@@ -1,0 +1,8 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/*"
+]
+
+[workspace.dependencies]
+tokio = { version = "1" }
