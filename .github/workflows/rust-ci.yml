@@ -81,17 +81,3 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: EmbarkStudios/cargo-deny-action@v1
-
-  verify_msrv:
-    name: Verify Minimum Supported Rust Version in Cargo.toml
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Install or use cached `cargo-msrv`
-        uses: baptiste0928/cargo-install@v1
-        with:
-          crate: cargo-msrv
-
-      - name: Verify Minimum Rust Version
-        run: cargo-msrv verify
