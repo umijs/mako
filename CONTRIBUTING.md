@@ -27,3 +27,10 @@ Test.
 $ cargo test
 $ cargo t
 ```
+
+
+Format.
+
+```bash
+	cargo fmt
+```
