@@ -71,6 +71,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
 
 [[package]]
+name = "base64"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4a4ddaa51a5bc52a6948f74c06d20aaaddb71924eab79b8c97a8c556e942d6a"
+
+[[package]]
 name = "better_scoped_tls"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -509,9 +515,11 @@ dependencies = [
 name = "mako_bundler"
 version = "0.0.0"
 dependencies = [
+ "base64 0.21.0",
  "lazy_static",
  "regex",
  "relative-path",
+ "rustc-serialize",
  "swc_common",
  "swc_ecma_ast",
  "swc_ecma_codegen",
@@ -918,6 +926,12 @@ name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
+
+[[package]]
+name = "rustc-serialize"
+version = "0.3.24"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dcf128d1287d2ea9d80910b5f1120d0b8eede3fbf1abe91c40d39ea7d51e6fda"
 
 [[package]]
 name = "rustc_version"
@@ -1460,7 +1474,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cd7d8418ffbd7a6631505d5e6d4c64bf6f22f499bad21cb2d8dcd4d0e7902111"
 dependencies = [
  "ahash",
- "base64",
+ "base64 0.13.1",
  "dashmap",
  "indexmap",
  "once_cell",
