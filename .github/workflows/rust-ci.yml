@@ -1,4 +1,4 @@
-name: Rust CI
+name: Rust-CI
 
 on:
   push:
@@ -8,11 +8,11 @@ on:
 
 jobs:
   build:
-    name: Run tests and doctests on ubuntu
+    name: Run tests and doc and build_fixture on ubuntu
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable, beta, nightly]
+        rust: [nightly]
     steps:
     - uses: actions/checkout@v2
     - uses: actions-rs/toolchain@v1

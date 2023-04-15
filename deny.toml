@@ -25,8 +25,6 @@ skip = [
     { name = "windows-sys" }, # console and terminal_size both depend on an old version
 ]
 skip-tree = [
-    { name = "criterion" },  # dev-dependency
-    { name = "quickcheck" }, # dev-dependency
 ]
 
 
