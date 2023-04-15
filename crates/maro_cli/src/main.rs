@@ -1,3 +1,3 @@
 fn main() {
-  mako_bundler::run();
+    mako_bundler::run();
 }
