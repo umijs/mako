@@ -1,24 +1,30 @@
-use std::{fs::read, path::Path};
+use std::{path::Path};
 
 use regex::Regex;
 use lazy_static::lazy_static;
-use rustc_serialize::base64::{ToBase64, MIME};
 
-use crate::context::Context;
+use crate::{context::Context, utils::file::{file_size, to_base64, content_hash, ext_name}};
 
 pub struct LoadParam<'a> {
     pub path: &'a str,
 }
 
+pub enum ContentType {
+	Js,
+	Raw,
+	File,
+}
+
 pub struct LoadResult {
     pub content: String,
+	pub content_type: ContentType,
+}
+
+lazy_static! {
+	static ref IMAGE_RE: Regex = Regex::new(r#"(jpg|jpeg|png|svg|gif)$"#).unwrap();
 }
 
 pub fn load(load_param: &LoadParam, _context: &Context) -> LoadResult {
-    lazy_static! {
-        static ref IMAGE_RE: Regex = Regex::new(r#"(jpg|jpeg|png|svg|gif)$"#).unwrap();
-    }
-
     println!("> load {}", load_param.path);
 	let ext_name = get_ext_name(load_param.path);
 	if IMAGE_RE.is_match(ext_name) {
@@ -35,27 +41,26 @@ fn get_ext_name(path: &str) -> &str {
 fn load_js(load_param: &LoadParam, _context: &Context) -> LoadResult {
     LoadResult {
         content: std::fs::read_to_string(load_param.path).unwrap(),
+		content_type: ContentType::Js,
     }
 }
 
 fn load_image(load_param: &LoadParam, _context: &Context) -> LoadResult {
-	let base64_string = to_base64(load_param.path);
-	let image_module_vec = vec![
-		"export default ",
-		"\"",
-		base64_string.as_str(),
-		"\""
-	];
-	println!("image_js_module_content: {}", image_module_vec.join(""));
-	LoadResult {
-		content: image_module_vec.join(""),
+	// emit file like file-loader
+	if file_size(load_param.path).unwrap() > _context.config.data_url_limit.try_into().unwrap() {
+		let final_file_name = content_hash(load_param.path).unwrap().to_string() + "/" + ext_name(load_param.path);
+		let final_file_path = _context.config.output.path.clone() + "/" + &final_file_name;
+		// emit asset file
+		return LoadResult {
+			content: format!("export default \"{}\"", final_file_path),
+			content_type: ContentType::File,
+		}
 	}
-}
 
-fn to_base64(path: &str) -> String {
-    let vec = read(path).unwrap();
-    let base64 = vec.to_base64(MIME);
-    let file_type = Path::new(path).extension().unwrap()
-        .to_str().unwrap();
-    format!("data:image/{};base64,{}", file_type, base64.replace("\r\n", ""))
+	// handle file as Data URL, only support base64 now
+	let base64_string = to_base64(load_param.path);
+	LoadResult {
+		content: format!("export default \"{}\"", base64_string.unwrap()),
+		content_type: ContentType::Raw,
+	}
 }

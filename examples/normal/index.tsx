@@ -3,11 +3,13 @@ import ReactDOM from "react-dom/client";
 
 import { foo } from "./foo";
 import UmiLogo from "./assets/umi-logo.png";
+import MailchimpUnsplash from "./assets/mailchimp-unsplash.jpg";
 
 function App() {
 	return <div>
 		Hello {foo}
 		<img src={UmiLogo} />
+		<img src={MailchimpUnsplash} />
 	</div>;
 }
 
