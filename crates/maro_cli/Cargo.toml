@@ -12,3 +12,4 @@ path = "src/main.rs"
 [dependencies]
 tokio = { workspace = true, features = ["full"] }
 mako_bundler = { path = "../mako_bundler" }
+clap = { version  = "4.2.2", features = ["derive"] }
