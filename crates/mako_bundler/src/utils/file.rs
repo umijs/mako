@@ -1,4 +1,4 @@
-use base64::{Engine, engine, alphabet::{STANDARD}};
+use base64::{alphabet::STANDARD, engine, Engine};
 use std::{
     fs,
     io::{BufRead, BufReader},
@@ -42,12 +42,9 @@ pub fn content_hash(file_path: &str) -> std::io::Result<String> {
 
 pub fn to_base64(path: &str) -> std::io::Result<String> {
     let vec = fs::read(path)?;
-	let engine = engine::GeneralPurpose::new(
-        &STANDARD,
-        engine::general_purpose::PAD,
-    );
+    let engine = engine::GeneralPurpose::new(&STANDARD, engine::general_purpose::PAD);
 
-	let base64 = engine.encode(&vec);
+    let base64 = engine.encode(&vec);
 
     // 直接用 extension 可能处理不了 jpeg 格式的情况
     let file_type = ext_name(path);
