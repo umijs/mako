@@ -3,10 +3,11 @@
 use std::{collections::HashMap, path::PathBuf, str::FromStr};
 
 use compiler::Compiler;
+use crate::config::Config;
 
+pub mod config;
 pub(crate) mod build;
 pub(crate) mod compiler;
-pub(crate) mod config;
 pub(crate) mod context;
 pub(crate) mod generate;
 pub(crate) mod module;
@@ -59,6 +60,11 @@ pub fn run() {
     }
 
     // compiler_origin::run_compiler(config);
+    let mut compiler = Compiler::new(config);
+    compiler.run();
+}
+
+pub fn run_with_config(config: Config) {
     let mut compiler = Compiler::new(config);
     compiler.run();
 }
