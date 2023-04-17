@@ -61,16 +61,16 @@ const requireModule = (name) => {
         // write to file
         fs::write(&output_dir.join("bundle.js"), contents).unwrap();
 
-		// write assets
-		let assets_info = &self.context.assets_info;
-		for (k, v) in assets_info {
-			let asset_path = &root_dir.join(k);
-			let asset_output_path = &output_dir.join(v);
-			if asset_path.exists() {
-				// just copy files for now
-				fs::copy(asset_path, asset_output_path).unwrap();
-			}
-		}
+        // write assets
+        let assets_info = &self.context.assets_info;
+        for (k, v) in assets_info {
+            let asset_path = &root_dir.join(k);
+            let asset_output_path = &output_dir.join(v);
+            if asset_path.exists() {
+                // just copy files for now
+                fs::copy(asset_path, asset_output_path).unwrap();
+            }
+        }
 
         // copy html
         let index_html_file = &root_dir.join("index.html");

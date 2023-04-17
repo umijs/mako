@@ -1,5 +1,10 @@
 use rustc_serialize::base64::{ToBase64, MIME};
-use std::{fs, str, io::{BufReader, BufRead}, path::Path};
+use std::{
+    fs,
+    io::{BufRead, BufReader},
+    path::Path,
+    str,
+};
 
 pub fn copy_file(source_path: &str, target_path: &str) -> std::io::Result<()> {
     fs::copy(source_path, target_path)?;
@@ -23,7 +28,7 @@ pub fn content_hash(file_path: &str) -> std::io::Result<String> {
     // Decide on a reasonable buffer size (1MB in this case, fastest will depend on hardware)
     let buf_len = len.min(1_000_000) as usize;
     let mut buf = BufReader::with_capacity(buf_len, file);
-	// webpack use md4
+    // webpack use md4
     let mut context = md5::Context::new();
     loop {
         // Get a chunk of the file

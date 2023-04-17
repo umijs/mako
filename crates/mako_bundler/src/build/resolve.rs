@@ -39,9 +39,9 @@ pub fn resolve(resolve_param: &ResolveParam, context: &Context) -> ResolveResult
         let path = PathBuf::from(resolve_param.path);
         let mut abs_resolved =
             RelativePath::new(resolve_param.dependency).to_logical_path(path.parent().unwrap());
-		//
+        //
         if !abs_resolved.exists() {
-			// default resolve.extensions
+            // default resolve.extensions
             let default_extensions = ["js", "jsx", "ts", "tsx"];
             for extension in default_extensions {
                 let abs_resolved_with_ext = abs_resolved.with_extension(extension);
@@ -56,8 +56,8 @@ pub fn resolve(resolve_param: &ResolveParam, context: &Context) -> ResolveResult
             }
             resolved = abs_resolved.to_string_lossy().to_string();
         } else {
-			resolved = abs_resolved.to_string_lossy().to_string();
-		}
+            resolved = abs_resolved.to_string_lossy().to_string();
+        }
     }
 
     ResolveResult {
