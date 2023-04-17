@@ -9,7 +9,9 @@ function App() {
 	return <div>
 		Hello {foo}
 		<img src={UmiLogo} />
-		<img src={MailchimpUnsplash} />
+		<div>
+			<img style={{width: 200}} src={MailchimpUnsplash} alt="unsplash big image" />
+		</div>
 	</div>;
 }
 

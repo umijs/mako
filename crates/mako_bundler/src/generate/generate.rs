@@ -67,7 +67,7 @@ const requireModule = (name) => {
 			let asset_path = &root_dir.join(k);
 			let asset_output_path = &output_dir.join(v);
 			if asset_path.exists() {
-				// just copy for now
+				// just copy files for now
 				fs::copy(asset_path, asset_output_path).unwrap();
 			}
 		}
