@@ -16,7 +16,6 @@ pub fn file_size(file_path: &str) -> std::io::Result<u64> {
 }
 
 pub fn content_hash(file_path: &str) -> std::io::Result<String> {
-    // https://stackoverflow.com/questions/75442962/how-to-do-partial-read-and-calculate-md5sum-of-a-large-file-in-rust
     let file = fs::File::open(file_path).unwrap();
     // Find the length of the file
     let len = file.metadata().unwrap().len();
