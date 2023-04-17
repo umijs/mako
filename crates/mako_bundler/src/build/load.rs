@@ -24,7 +24,7 @@ lazy_static! {
 	static ref IMAGE_RE: Regex = Regex::new(r#"(jpg|jpeg|png|svg|gif)$"#).unwrap();
 }
 
-pub fn load(load_param: &LoadParam, _context: &Context) -> LoadResult {
+pub fn load(load_param: &LoadParam, _context: &mut Context) -> LoadResult {
     println!("> load {}", load_param.path);
 	let ext_name = get_ext_name(load_param.path);
 	if IMAGE_RE.is_match(ext_name) {
@@ -45,14 +45,15 @@ fn load_js(load_param: &LoadParam, _context: &Context) -> LoadResult {
     }
 }
 
-fn load_image(load_param: &LoadParam, _context: &Context) -> LoadResult {
+fn load_image(load_param: &LoadParam, _context: &mut Context) -> LoadResult {
 	// emit file like file-loader
 	if file_size(load_param.path).unwrap() > _context.config.data_url_limit.try_into().unwrap() {
-		let final_file_name = content_hash(load_param.path).unwrap().to_string() + "/" + ext_name(load_param.path);
-		let final_file_path = _context.config.output.path.clone() + "/" + &final_file_name;
+		let final_file_name = content_hash(load_param.path).unwrap() + "." + ext_name(load_param.path);
+		// let final_file_path = _context.config.output.path.clone() + "/" + &final_file_name;
 		// emit asset file
+		_context.emit_assets(load_param.path.to_string(), final_file_name.clone());
 		return LoadResult {
-			content: format!("export default \"{}\"", final_file_path),
+			content: format!("export default \"{}\"", final_file_name),
 			content_type: ContentType::File,
 		}
 	}

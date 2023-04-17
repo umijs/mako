@@ -1,7 +1,5 @@
-use std::collections::hash_map::DefaultHasher;
-use std::{fs, path::Path};
-use std::hash::{Hash, Hasher};
 use rustc_serialize::base64::{ToBase64, MIME};
+use std::{fs, str, io::{BufReader, BufRead}, path::Path};
 
 pub fn copy_file(source_path: &str, target_path: &str) -> std::io::Result<()> {
     fs::copy(source_path, target_path)?;
@@ -9,26 +7,47 @@ pub fn copy_file(source_path: &str, target_path: &str) -> std::io::Result<()> {
 }
 
 pub fn ext_name(path: &str) -> &str {
-	Path::new(path).extension().unwrap().to_str().unwrap()
+    Path::new(path).extension().unwrap().to_str().unwrap()
 }
 
 pub fn file_size(file_path: &str) -> std::io::Result<u64> {
-	let metadata = fs::metadata(file_path)?;
-	Ok(metadata.len())
+    let metadata = fs::metadata(file_path)?;
+    Ok(metadata.len())
 }
 
-pub fn content_hash(file_path: &str) -> std::io::Result<u64> {
-	let file_string = fs::read_to_string(file_path)?;
-    let mut hasher = DefaultHasher::new();
-	file_string.hash(&mut hasher);
-    Ok(hasher.finish())
+pub fn content_hash(file_path: &str) -> std::io::Result<String> {
+    // https://stackoverflow.com/questions/75442962/how-to-do-partial-read-and-calculate-md5sum-of-a-large-file-in-rust
+    let file = fs::File::open(file_path).unwrap();
+    // Find the length of the file
+    let len = file.metadata().unwrap().len();
+    // Decide on a reasonable buffer size (1MB in this case, fastest will depend on hardware)
+    let buf_len = len.min(1_000_000) as usize;
+    let mut buf = BufReader::with_capacity(buf_len, file);
+	// webpack use md4
+    let mut context = md5::Context::new();
+    loop {
+        // Get a chunk of the file
+        let part = buf.fill_buf().unwrap();
+        if part.is_empty() {
+            break;
+        }
+        context.consume(part);
+        // Tell the buffer that the chunk is consumed
+        let part_len = part.len();
+        buf.consume(part_len);
+    }
+    let digest = context.compute();
+    Ok(format!("{:x}", digest))
 }
 
 pub fn to_base64(path: &str) -> std::io::Result<String> {
     let vec = fs::read(path)?;
     let base64 = vec.to_base64(MIME);
-	// 直接用 extension 可能处理不了 jpeg 格式的情况
-    let file_type = Path::new(path).extension().unwrap()
-        .to_str().unwrap();
-    Ok(format!("data:image/{};base64,{}", file_type, base64.replace("\r\n", "")))
+    // 直接用 extension 可能处理不了 jpeg 格式的情况
+    let file_type = Path::new(path).extension().unwrap().to_str().unwrap();
+    Ok(format!(
+        "data:image/{};base64,{}",
+        file_type,
+        base64.replace("\r\n", "")
+    ))
 }

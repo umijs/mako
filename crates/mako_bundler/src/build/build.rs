@@ -41,7 +41,7 @@ impl Compiler {
 
             // load
             let load_param = LoadParam { path: path_str };
-            let load_result = load(&load_param, &self.context);
+            let load_result = load(&load_param, &mut self.context);
 
             // parse
             let parse_param = ParseParam {
