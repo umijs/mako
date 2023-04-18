@@ -24,7 +24,7 @@ pub fn run() {
         .join(&args[1])
         .to_string_lossy()
         .to_string();
-    let mut config = config::Config::from_str(
+    let mut config = Config::from_str(
         format!(
             r#"
 {{
@@ -38,9 +38,9 @@ pub fn run() {
     "#,
             root
         )
-            .as_str(),
+        .as_str(),
     )
-        .unwrap();
+    .unwrap();
     config.normalize();
 
     // compiler_origin::run_compiler(config);
