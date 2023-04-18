@@ -20,6 +20,8 @@ pub struct Config {
     pub mode: Mode,
     pub resolve: ResolveConfig,
     pub externals: HashMap<String, String>,
+    // The limit of the size of the file to be converted to base64
+    pub data_url_limit: usize,
 }
 
 impl Default for Config {
@@ -38,6 +40,7 @@ impl Default for Config {
                 alias: HashMap::new(),
             },
             externals: HashMap::new(),
+            data_url_limit: 8192,
         }
     }
 }

@@ -11,6 +11,7 @@ pub(crate) mod context;
 pub(crate) mod generate;
 pub(crate) mod module;
 pub(crate) mod module_graph;
+pub(crate) mod utils;
 
 pub fn run() {
     let args: Vec<String> = std::env::args().collect();
