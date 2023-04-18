@@ -2,8 +2,8 @@ use std::{fs, path::PathBuf, str::FromStr};
 
 use kuchiki::traits::*;
 
-use crate::{compiler::Compiler, module::ModuleId};
 use crate::config::get_first_entry_value;
+use crate::{compiler::Compiler, module::ModuleId};
 
 fn wrap_module(id: &ModuleId, code: &str) -> String {
     let id = id.id.clone();
@@ -109,7 +109,7 @@ const requireModule = (name) => {
             }
         }
 
-       let entry = get_first_entry_value(&self.context.config.entry).unwrap();
+        let entry = get_first_entry_value(&self.context.config.entry).unwrap();
         if entry.ends_with(".html") || entry.ends_with(".htm") {
             let p = root_dir.join(entry);
 
@@ -137,7 +137,6 @@ const requireModule = (name) => {
                 fs::copy(index_html_file, &output_dir.join("index.html")).unwrap();
             }
         }
-
 
         GenerateResult {
             output_files: vec![OutputFile {

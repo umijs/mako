@@ -1,8 +1,8 @@
 #![feature(box_patterns)]
 
-use std::{collections::HashMap, path::PathBuf, str::FromStr};
-use compiler::Compiler;
 use crate::config::Config;
+use compiler::Compiler;
+use std::{collections::HashMap, path::PathBuf, str::FromStr};
 
 pub mod build;
 pub mod compiler;
@@ -39,9 +39,9 @@ pub fn run() {
     "#,
             root
         )
-            .as_str(),
+        .as_str(),
     )
-        .unwrap();
+    .unwrap();
     config.normalize();
 
     // compiler_origin::run_compiler(config);

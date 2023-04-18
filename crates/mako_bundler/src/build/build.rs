@@ -1,8 +1,13 @@
-use std::{collections::{HashMap, HashSet}, fs, path::PathBuf, str::FromStr};
-use std::path::Path;
 use select::document::Document;
 use select::predicate::{Attr, Name, Predicate};
 use std::io::{Error, ErrorKind};
+use std::path::Path;
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+    path::PathBuf,
+    str::FromStr,
+};
 
 use crate::{
     compiler::Compiler,
@@ -32,8 +37,7 @@ struct Task {
 impl Compiler {
     fn get_entry_point(&self) -> Result<String, Error> {
         let cwd = PathBuf::from_str(self.context.config.root.as_str()).unwrap();
-        let entry_point = cwd
-            .join(get_first_entry_value(&self.context.config.entry).unwrap());
+        let entry_point = cwd.join(get_first_entry_value(&self.context.config.entry).unwrap());
 
         if let Some(ext) = entry_point.extension() {
             match ext.to_str().or(Some("")).unwrap() {
@@ -41,18 +45,27 @@ impl Compiler {
                     return Ok(entry_point.to_string_lossy().to_string());
                 }
                 "html" | "htm" => {
-                    let relative_entry = self.extract_entry_from_html(entry_point.as_path()).unwrap();
-                    let entry_point = cwd.join(relative_entry.as_str())
-                        .canonicalize().expect(format!("Bad entry point {}", relative_entry).as_str());
+                    let relative_entry =
+                        self.extract_entry_from_html(entry_point.as_path()).unwrap();
+                    let entry_point = cwd
+                        .join(relative_entry.as_str())
+                        .canonicalize()
+                        .expect(format!("Bad entry point {}", relative_entry).as_str());
 
                     return Ok(entry_point.to_string_lossy().to_string());
                 }
                 _ => {
-                    panic!("Unsupported file {}", entry_point.to_string_lossy().to_string());
+                    panic!(
+                        "Unsupported file {}",
+                        entry_point.to_string_lossy().to_string()
+                    );
                 }
             }
         } else {
-            panic!("Unsupported file {}", entry_point.to_string_lossy().to_string());
+            panic!(
+                "Unsupported file {}",
+                entry_point.to_string_lossy().to_string()
+            );
         }
     }
 
@@ -64,17 +77,19 @@ impl Compiler {
         let mut entries: Vec<String> = document
             .find(Name("script").and(Attr("src", ())))
             .filter_map(|node| node.attr("src"))
-            .filter(|src| !src.starts_with("http://") &&
-                !src.starts_with("https://") &&
-                !src.starts_with("//")
-            )
+            .filter(|src| {
+                !src.starts_with("http://")
+                    && !src.starts_with("https://")
+                    && !src.starts_with("//")
+            })
             .map(|src| src.to_string())
             .collect();
 
         match entries.len() {
-            0 => {
-                Err(Error::new(ErrorKind::NotFound, format!("No entry found in {}", path_name)))
-            }
+            0 => Err(Error::new(
+                ErrorKind::NotFound,
+                format!("No entry found in {}", path_name),
+            )),
             1 => {
                 let entry = entries.remove(0);
                 if entry.starts_with("/") {
@@ -85,12 +100,16 @@ impl Compiler {
             }
             _ => {
                 dbg!(entries);
-                Err(Error::new(ErrorKind::InvalidData, format!("Multiple entries found in {}", path_name)))
+                Err(Error::new(
+                    ErrorKind::InvalidData,
+                    format!("Multiple entries found in {}", path_name),
+                ))
             }
         }
     }
 
-    pub fn build(&mut self, build_param: &BuildParam) {        let entry_point = self.get_entry_point().unwrap();
+    pub fn build(&mut self, build_param: &BuildParam) {
+        let entry_point = self.get_entry_point().unwrap();
 
         // build
         self.build_module_graph(entry_point, build_param);

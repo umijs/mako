@@ -93,14 +93,16 @@ impl Default for Config {
                 .to_string(),
             resolve: ResolveConfig {
                 alias: HashMap::new(),
-                extensions: ["js", "jsx", "ts", "tsx"].iter().map(|s| s.to_string()).collect::<Vec<String>>(),
+                extensions: ["js", "jsx", "ts", "tsx"]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<Vec<String>>(),
             },
             externals: HashMap::new(),
             data_url_limit: 8192,
         }
     }
 }
-
 
 pub fn get_first_entry_value(entry: &HashMap<String, String>) -> Result<&str, &'static str> {
     match entry.values().next() {

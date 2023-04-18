@@ -1,7 +1,7 @@
+use clap::{command, Parser};
+use mako_bundler::config::Config;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use clap::{Parser, command};
-use mako_bundler::config::Config;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -11,7 +11,6 @@ struct Cli {
     #[arg(short, long, default_value = ".")]
     root: String,
 }
-
 
 fn join_paths(current: &Path, another: &Path) -> PathBuf {
     let joined = current.join(another);
