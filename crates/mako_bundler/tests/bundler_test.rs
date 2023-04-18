@@ -87,7 +87,7 @@ export function three() {
     let mut vecs = vec![];
     for module_id in orders {
         let deps = compiler.context.module_graph.get_dependencies(&module_id);
-		vecs.push((module_id, deps));
+        vecs.push((module_id, deps));
     }
     insta::assert_debug_snapshot!(&vecs);
 }
