@@ -21,3 +21,5 @@ swc_ecma_transforms = { version = "0.203.20", features = [
 relative-path = "1.8.0"
 regex = "1"
 lazy_static = "1.4.0"
+select = "0.6.0"
+kuchiki = "0.8.1"

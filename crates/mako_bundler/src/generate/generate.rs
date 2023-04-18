@@ -1,6 +1,9 @@
 use std::{fs, path::PathBuf, str::FromStr};
 
+use kuchiki::traits::*;
+
 use crate::compiler::Compiler;
+use crate::config::get_first_entry_value;
 
 fn wrap_module(id: &str, code: &str) -> String {
     println!("> wrap_module: {}", id);
@@ -38,7 +41,7 @@ const requireModule = (name) => {
   return module.exports;
 };
         "#
-        .to_string()];
+            .to_string()];
         let values = self.context.module_graph.id_module_map.values();
         let mut results: Vec<String> = vec![];
         let mut entry_module_id = String::new();
@@ -61,10 +64,33 @@ const requireModule = (name) => {
         // write to file
         fs::write(&output_dir.join("bundle.js"), contents).unwrap();
 
-        // copy html
-        let index_html_file = &root_dir.join("index.html");
-        if index_html_file.exists() {
-            fs::copy(index_html_file, &output_dir.join("index.html")).unwrap();
+        let entry = get_first_entry_value(&self.context.config.entry).unwrap();
+        if entry.ends_with(".html") || entry.ends_with(".htm") {
+            let p = root_dir.join(entry);
+
+            let html = fs::read_to_string(p.as_path()).unwrap();
+            let document = kuchiki::parse_html().one(html);
+
+            for node_data in document.select("script[src]").unwrap() {
+                let node = node_data.as_node().as_element().unwrap();
+                let mut attrs = node.attributes.borrow_mut();
+
+                if let Some(src) = attrs.get("src") {
+                    if !src.starts_with("http://") && !src.starts_with("https://") {
+                        attrs.insert("src", "/bundle.js".to_owned());
+                    }
+                }
+            }
+
+            let mut updated_html = Vec::new();
+            document.serialize(&mut updated_html).unwrap();
+            fs::write(&output_dir.join("index.html"), updated_html).unwrap();
+        } else {
+            // copy html
+            let index_html_file = &root_dir.join("index.html");
+            if index_html_file.exists() {
+                fs::copy(index_html_file, &output_dir.join("index.html")).unwrap();
+            }
         }
 
         println!("✅ DONE");

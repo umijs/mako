@@ -1,8 +1,8 @@
-use std::{
-    collections::{HashMap, HashSet},
-    path::PathBuf,
-    str::FromStr,
-};
+use std::{collections::{HashMap, HashSet}, fs, path::PathBuf, str::FromStr};
+use std::path::Path;
+use select::document::Document;
+use select::predicate::{Attr, Name, Predicate};
+use std::io::{Error, ErrorKind};
 
 use crate::{
     compiler::Compiler,
@@ -19,12 +19,68 @@ use super::{
 };
 
 impl Compiler {
-    pub fn build(&mut self) {
+    fn get_entry_point(&self) -> Result<String, Error> {
         let cwd = PathBuf::from_str(self.context.config.root.as_str()).unwrap();
         let entry_point = cwd
-            .join(get_first_entry_value(&self.context.config.entry).unwrap())
-            .to_string_lossy()
-            .to_string();
+            .join(get_first_entry_value(&self.context.config.entry).unwrap());
+
+        if let Some(ext) = entry_point.extension() {
+            match ext.to_str().or(Some("")).unwrap() {
+                "ts" | "tsx" | "js" | "jsx" => {
+                    return Ok(entry_point.to_string_lossy().to_string());
+                }
+                "html" | "htm" => {
+                    let relative_entry = self.extract_entry_from_html(entry_point.as_path()).unwrap();
+                    let entry_point = cwd.join(relative_entry.as_str())
+                        .canonicalize().expect(format!("Bad entry point {}", relative_entry).as_str());
+
+                    return Ok(entry_point.to_string_lossy().to_string());
+                }
+                _ => {
+                    panic!("Unsupported file {}", entry_point.to_string_lossy().to_string());
+                }
+            }
+        } else {
+            panic!("Unsupported file {}", entry_point.to_string_lossy().to_string());
+        }
+    }
+
+    fn extract_entry_from_html(&self, html_path: &Path) -> Result<String, Error> {
+        let path_name = html_path.to_string_lossy().to_string();
+
+        let html = fs::read_to_string(html_path)?;
+        let document = Document::from(html.as_str());
+        let mut entries: Vec<String> = document
+            .find(Name("script").and(Attr("src", ())))
+            .filter_map(|node| node.attr("src"))
+            .filter(|src| !src.starts_with("http://") &&
+                !src.starts_with("https://") &&
+                !src.starts_with("//")
+            )
+            .map(|src| src.to_string())
+            .collect();
+
+        match entries.len() {
+            0 => {
+                Err(Error::new(ErrorKind::NotFound, format!("No entry found in {}", path_name)))
+            }
+            1 => {
+                let entry = entries.remove(0);
+                if entry.starts_with("/") {
+                    Ok(entry.strip_prefix("/").unwrap().to_string())
+                } else {
+                    Ok(entry)
+                }
+            }
+            _ => {
+                dbg!(entries);
+                Err(Error::new(ErrorKind::InvalidData, format!("Multiple entries found in {}", path_name)))
+            }
+        }
+    }
+
+    pub fn build(&mut self) {
+        let entry_point = self.get_entry_point().unwrap();
         let mut seen = HashSet::<String>::new();
         let mut queue = vec![entry_point.clone()];
 
