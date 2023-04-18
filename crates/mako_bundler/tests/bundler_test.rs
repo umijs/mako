@@ -1,7 +1,8 @@
 use std::{collections::HashMap, vec};
 
 use mako_bundler::{
-    build::build::BuildParam, compiler::Compiler, config::Config, generate::generate::GenerateParam, module::ModuleId,
+    build::build::BuildParam, compiler::Compiler, config::Config,
+    generate::generate::GenerateParam, module::ModuleId,
 };
 
 #[test]
@@ -25,11 +26,9 @@ export function fn() {
             .to_string(),
         ),
     ]);
-	let (output, _) = test_files(files);
+    let (output, _) = test_files(files);
     insta::assert_debug_snapshot!(output);
 }
-
-
 
 #[test]
 fn multiple_files() {
@@ -73,15 +72,18 @@ export function three() {
             .to_string(),
         ),
     ]);
-	let (output, mut compiler) = test_files(files);
+    let (output, mut compiler) = test_files(files);
     insta::assert_debug_snapshot!(output);
-	let orders = compiler.context.module_graph.topo_sort().unwrap();
-	assert_eq!(orders, vec![
-		ModuleId::new("/tmp/entry.js"),
-		ModuleId::new("/tmp/three.js"),
-		ModuleId::new("/tmp/one.js"),
-		ModuleId::new("/tmp/two.js"),
-	]);
+    let orders = compiler.context.module_graph.topo_sort().unwrap();
+    assert_eq!(
+        orders,
+        vec![
+            ModuleId::new("/tmp/entry.js"),
+            ModuleId::new("/tmp/three.js"),
+            ModuleId::new("/tmp/one.js"),
+            ModuleId::new("/tmp/two.js"),
+        ]
+    );
 }
 
 fn test_files(files: HashMap<String, String>) -> (Vec<String>, Compiler) {
@@ -104,5 +106,5 @@ fn test_files(files: HashMap<String, String>) -> (Vec<String>, Compiler) {
     compiler.build(&BuildParam { files: Some(files) });
     let generate_result = compiler.generate(&GenerateParam { write: false });
     let output = generate_result.output_files[0].__output.clone();
-	return (output, compiler)
+    return (output, compiler);
 }
