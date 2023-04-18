@@ -21,9 +21,9 @@ use petgraph::{
 pub struct Dependency {
     pub source: String,
     pub resolve_type: ResolveType,
-	/**
-	 * import or export 的顺序，generate 的时候要根据这个顺序来生成
-	 */
+    /**
+     * import or export 的顺序，generate 的时候要根据这个顺序来生成
+     */
     pub order: usize,
 }
 
@@ -96,7 +96,7 @@ impl ModuleGraph {
 
     /**
      * 对图进行拓扑排序
-	 * TODO: 1. 针对 sideEffects 情况的处理，import 顺序需要按照 order 排序
+     * TODO: 1. 针对 sideEffects 情况的处理，import 顺序需要按照 order 排序
      * TODO: 2. 针对成环情况下的友好处理
      */
     pub fn topo_sort(&mut self) -> Result<Vec<ModuleId>, Cycle<ModuleId>> {
