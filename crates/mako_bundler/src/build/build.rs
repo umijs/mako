@@ -7,7 +7,8 @@ use std::{
 use crate::{
     compiler::Compiler,
     config::get_first_entry_value,
-    module::{Module, ModuleAst, ModuleId, ModuleInfo}, module_graph::Dependency,
+    module::{Module, ModuleAst, ModuleId, ModuleInfo},
+    module_graph::Dependency,
 };
 
 use super::{
@@ -23,9 +24,9 @@ pub struct BuildParam {
 }
 
 struct Task {
-	pub path: String,
-	pub parent_module_id: Option<ModuleId>,
-	pub parent_dependecy: Option<Dependency>,
+    pub path: String,
+    pub parent_module_id: Option<ModuleId>,
+    pub parent_dependecy: Option<Dependency>,
 }
 
 impl Compiler {
@@ -36,11 +37,11 @@ impl Compiler {
             .to_string_lossy()
             .to_string();
         let mut seen = HashSet::<String>::new();
-        let mut queue: Vec<Task> = vec![Task{
-			path: entry_point.clone(),
-			parent_module_id: None,
-			parent_dependecy: None,
-		}];
+        let mut queue: Vec<Task> = vec![Task {
+            path: entry_point.clone(),
+            parent_module_id: None,
+            parent_dependecy: None,
+        }];
 
         while !queue.is_empty() {
             let task = queue.pop().unwrap();
@@ -102,18 +103,15 @@ impl Compiler {
                     let module_id = ModuleId::new(&resolve_result.path);
                     dep_map.insert(d.source.clone(), module_id.id.clone());
                     let module = Module::new(module_id.clone(), info);
-                    let _ = &self
-                        .context
-                        .module_graph
-						.add_module(module);
+                    let _ = &self.context.module_graph.add_module(module);
                 } else {
-					let dep_module_id = ModuleId::new(resolve_result.path.as_str());
+                    let dep_module_id = ModuleId::new(resolve_result.path.as_str());
                     dep_map.insert(d.source.clone(), dep_module_id.id.clone());
                     queue.push(Task {
-						parent_module_id: Some(module_id.clone()),
-						path: resolve_result.path,
-						parent_dependecy: Some(d.clone()),
-					});
+                        parent_module_id: Some(module_id.clone()),
+                        path: resolve_result.path,
+                        parent_dependecy: Some(d.clone()),
+                    });
                 }
             }
 
@@ -136,16 +134,19 @@ impl Compiler {
                 code: transform_result.code,
             };
             let module = Module::new(module_id.clone(), info);
-            let _ = &self
-                .context
-                .module_graph.add_module(module);
+            let _ = &self.context.module_graph.add_module(module);
 
-			// handle dependency bind
-			if let Some(parent_module_id) = task.parent_module_id {
-				let parent_dependency = task.parent_dependecy.expect("parent dependency is required for parent_module_id");
-				self.context.module_graph.add_dependency(&parent_module_id, &module_id, parent_dependency)
-			}
-
+            // handle dependency bind
+            if let Some(parent_module_id) = task.parent_module_id {
+                let parent_dependency = task
+                    .parent_dependecy
+                    .expect("parent dependency is required for parent_module_id");
+                self.context.module_graph.add_dependency(
+                    &parent_module_id,
+                    &module_id,
+                    parent_dependency,
+                )
+            }
         }
     }
 }

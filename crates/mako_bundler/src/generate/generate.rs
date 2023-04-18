@@ -1,9 +1,9 @@
 use std::{fs, path::PathBuf, str::FromStr};
 
-use crate::{compiler::Compiler, module::{ModuleId}};
+use crate::{compiler::Compiler, module::ModuleId};
 
 fn wrap_module(id: &ModuleId, code: &str) -> String {
-	let id = id.id.clone();
+    let id = id.id.clone();
     println!("> wrap_module: {}", id);
     format!(
         "define(\"{}\", function(module, exports, require) {{\n{}}});",
@@ -56,13 +56,21 @@ const requireModule = (name) => {
 };
         "#
         .to_string()];
-        let module_ids = self.context.module_graph.topo_sort().expect("module graph has cycle");
+        let module_ids = self
+            .context
+            .module_graph
+            .topo_sort()
+            .expect("module graph has cycle");
 
         let mut entry_module_id = String::new();
         let mut results: Vec<String> = vec![];
         for module_id in module_ids {
             let id = module_id.clone();
-			let module = self.context.module_graph.get_module(&id).expect("module not found");
+            let module = self
+                .context
+                .module_graph
+                .get_module(&id)
+                .expect("module not found");
             if module.info.is_entry {
                 entry_module_id = module.id.id.clone();
             }
