@@ -1,1 +1,1 @@
-pub(crate) mod generate;
+pub mod generate;

@@ -7,9 +7,11 @@ use crate::{
     context::Context,
     utils::file::{content_hash, ext_name, file_size, to_base64},
 };
+use std::collections::HashMap;
 
 pub struct LoadParam<'a> {
     pub path: &'a str,
+    pub files: Option<&'a HashMap<String, String>>,
 }
 
 pub enum ContentType {
@@ -42,9 +44,20 @@ fn get_ext_name(path: &str) -> &str {
 }
 
 fn load_js(load_param: &LoadParam, _context: &Context) -> LoadResult {
-    LoadResult {
-        content: std::fs::read_to_string(load_param.path).unwrap(),
-        content_type: ContentType::Js,
+    if let Some(files) = load_param.files {
+        if let Some(content) = files.get(load_param.path) {
+            return LoadResult {
+                content: content.clone(),
+                content_type: ContentType::Js,
+            };
+        } else {
+            panic!("File not found: {}", load_param.path);
+        }
+    } else {
+        LoadResult {
+            content: std::fs::read_to_string(load_param.path).unwrap(),
+            content_type: ContentType::Js,
+        }
     }
 }
 

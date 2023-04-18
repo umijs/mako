@@ -18,8 +18,12 @@ use super::{
     transform::transform::{transform, TransformParam},
 };
 
+pub struct BuildParam {
+    pub files: Option<HashMap<String, String>>,
+}
+
 impl Compiler {
-    pub fn build(&mut self) {
+    pub fn build(&mut self, build_param: &BuildParam) {
         let cwd = PathBuf::from_str(self.context.config.root.as_str()).unwrap();
         let entry_point = cwd
             .join(get_first_entry_value(&self.context.config.entry).unwrap())
@@ -40,7 +44,10 @@ impl Compiler {
             let is_entry = path_str == entry_point;
 
             // load
-            let load_param = LoadParam { path: path_str };
+            let load_param = LoadParam {
+                path: path_str,
+                files: build_param.files.as_ref(),
+            };
             let load_result = load(&load_param, &mut self.context);
 
             // parse
@@ -63,6 +70,7 @@ impl Compiler {
                 let resolve_param = ResolveParam {
                     path: path_str,
                     dependency: d,
+                    files: build_param.files.as_ref(),
                 };
                 let resolve_result = resolve(&resolve_param, &self.context);
                 println!(

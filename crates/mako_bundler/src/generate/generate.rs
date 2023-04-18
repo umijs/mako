@@ -10,8 +10,24 @@ fn wrap_module(id: &str, code: &str) -> String {
     )
 }
 
+pub struct GenerateParam {
+    pub write: bool,
+}
+
+#[derive(Debug)]
+pub struct GenerateResult {
+    pub output_files: Vec<OutputFile>,
+}
+
+#[derive(Debug)]
+pub struct OutputFile {
+    pub path: String,
+    pub __output: Vec<String>,
+    pub contents: String,
+}
+
 impl Compiler {
-    pub fn generate(&self) {
+    pub fn generate(&self, generate_param: &GenerateParam) -> GenerateResult {
         // generate code
         let mut output: Vec<String> = vec![r#"
 const modules = new Map();
@@ -54,19 +70,21 @@ const requireModule = (name) => {
 
         let root_dir = PathBuf::from_str(&self.context.config.root).unwrap();
         let output_dir = PathBuf::from_str(&self.context.config.output.path).unwrap();
-        if !output_dir.exists() {
+        if generate_param.write && !output_dir.exists() {
             fs::create_dir_all(&output_dir).unwrap();
         }
 
         // write to file
-        fs::write(&output_dir.join("bundle.js"), contents).unwrap();
+        if generate_param.write {
+            fs::write(&output_dir.join("bundle.js"), &contents).unwrap();
+        }
 
         // write assets
         let assets_info = &self.context.assets_info;
         for (k, v) in assets_info {
             let asset_path = &root_dir.join(k);
             let asset_output_path = &output_dir.join(v);
-            if asset_path.exists() {
+            if generate_param.write && asset_path.exists() {
                 // just copy files for now
                 fs::copy(asset_path, asset_output_path).unwrap();
             }
@@ -74,10 +92,17 @@ const requireModule = (name) => {
 
         // copy html
         let index_html_file = &root_dir.join("index.html");
-        if index_html_file.exists() {
+        if generate_param.write && index_html_file.exists() {
             fs::copy(index_html_file, &output_dir.join("index.html")).unwrap();
         }
 
-        println!("✅ DONE");
+        GenerateResult {
+            output_files: vec![OutputFile {
+                path: "bundle.js".to_string(),
+                // for test
+                __output: output,
+                contents,
+            }],
+        }
     }
 }
