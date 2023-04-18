@@ -76,14 +76,20 @@ export function three() {
     insta::assert_debug_snapshot!(output);
     let orders = compiler.context.module_graph.topo_sort().unwrap();
     assert_eq!(
-        orders,
-        vec![
+        &orders,
+        &vec![
             ModuleId::new("/tmp/entry.js"),
             ModuleId::new("/tmp/three.js"),
             ModuleId::new("/tmp/one.js"),
             ModuleId::new("/tmp/two.js"),
         ]
     );
+	let mut map = HashMap::new();
+    for module_id in orders {
+		let deps = compiler.context.module_graph.get_dependencies(&module_id);
+		map.insert(module_id, deps);
+    }
+	insta::assert_debug_snapshot!(&map);
 }
 
 fn test_files(files: HashMap<String, String>) -> (Vec<String>, Compiler) {
