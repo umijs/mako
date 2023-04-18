@@ -1,0 +1,72 @@
+---
+source: crates/mako_bundler/tests/bundler_test.rs
+expression: "&vecs"
+---
+[
+    (
+        ModuleId {
+            id: "/tmp/entry.js",
+        },
+        [
+            (
+                ModuleId {
+                    id: "/tmp/three.js",
+                },
+                Dependency {
+                    source: "./three",
+                    resolve_type: Import,
+                    order: 0,
+                },
+            ),
+            (
+                ModuleId {
+                    id: "/tmp/one.js",
+                },
+                Dependency {
+                    source: "./one",
+                    resolve_type: Import,
+                    order: 1,
+                },
+            ),
+            (
+                ModuleId {
+                    id: "/tmp/two.js",
+                },
+                Dependency {
+                    source: "./two",
+                    resolve_type: Import,
+                    order: 2,
+                },
+            ),
+        ],
+    ),
+    (
+        ModuleId {
+            id: "/tmp/three.js",
+        },
+        [],
+    ),
+    (
+        ModuleId {
+            id: "/tmp/one.js",
+        },
+        [
+            (
+                ModuleId {
+                    id: "/tmp/two.js",
+                },
+                Dependency {
+                    source: "./two",
+                    resolve_type: Import,
+                    order: 0,
+                },
+            ),
+        ],
+    ),
+    (
+        ModuleId {
+            id: "/tmp/two.js",
+        },
+        [],
+    ),
+]

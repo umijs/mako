@@ -1,7 +1,8 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, vec};
 
 use mako_bundler::{
-    build::build::BuildParam, compiler::Compiler, config::Config, generate::generate::GenerateParam,
+    build::build::BuildParam, compiler::Compiler, config::Config,
+    generate::generate::GenerateParam, module::ModuleId,
 };
 
 #[test]
@@ -25,10 +26,73 @@ export function fn() {
             .to_string(),
         ),
     ]);
-    insta::assert_debug_snapshot!(test_files(files));
+    let (output, _) = test_files(files);
+    insta::assert_debug_snapshot!(output);
 }
 
-fn test_files(files: HashMap<String, String>) -> Vec<String> {
+#[test]
+fn multiple_files() {
+    let files = HashMap::from([
+        (
+            "/tmp/entry.js".to_string(),
+            r###"
+import {three} from './three';
+import {one} from './one';
+import {two} from './two';
+console.log(one());
+            "###
+            .to_string(),
+        ),
+        (
+            "/tmp/one.js".to_string(),
+            r###"
+import {two} from './two';
+export function one() {
+    return two();
+}
+            "###
+            .to_string(),
+        ),
+        (
+            "/tmp/two.js".to_string(),
+            r###"
+export function two() {
+    return 123
+}
+            "###
+            .to_string(),
+        ),
+        (
+            "/tmp/three.js".to_string(),
+            r###"
+export function three() {
+    return 123
+}
+            "###
+            .to_string(),
+        ),
+    ]);
+    let (output, mut compiler) = test_files(files);
+    insta::assert_debug_snapshot!(output);
+    let orders = compiler.context.module_graph.topo_sort().unwrap();
+    assert_eq!(
+        &orders,
+        &vec![
+            ModuleId::new("/tmp/entry.js"),
+            ModuleId::new("/tmp/three.js"),
+            ModuleId::new("/tmp/one.js"),
+            ModuleId::new("/tmp/two.js"),
+        ]
+    );
+    let mut vecs = vec![];
+    for module_id in orders {
+        let deps = compiler.context.module_graph.get_dependencies(&module_id);
+        vecs.push((module_id, deps));
+    }
+    insta::assert_debug_snapshot!(&vecs);
+}
+
+fn test_files(files: HashMap<String, String>) -> (Vec<String>, Compiler) {
     let mut config = Config::from_str(
         format!(
             r#"
@@ -47,5 +111,6 @@ fn test_files(files: HashMap<String, String>) -> Vec<String> {
     let mut compiler = Compiler::new(config);
     compiler.build(&BuildParam { files: Some(files) });
     let generate_result = compiler.generate(&GenerateParam { write: false });
-    generate_result.output_files[0].__output.clone()
+    let output = generate_result.output_files[0].__output.clone();
+    return (output, compiler);
 }

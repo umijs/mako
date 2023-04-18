@@ -605,6 +605,7 @@ dependencies = [
  "insta",
  "lazy_static",
  "md5",
+ "petgraph",
  "regex",
  "relative-path",
  "serde",

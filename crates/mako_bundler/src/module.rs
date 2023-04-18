@@ -1,6 +1,6 @@
-use std::sync::RwLock;
-
 use lazy_static::lazy_static;
+use std::sync::RwLock;
+use swc_common::{sync::Lrc, SourceMap};
 
 lazy_static! {
     static ref GLOBAL_ID: RwLock<usize> = RwLock::new(0);
@@ -29,21 +29,44 @@ pub enum ModuleAst {
     None,
 }
 
+/**
+ * 模块元信息
+ */
 pub struct ModuleInfo {
-    pub code: String,
-    pub ast: ModuleAst,
+    pub original_ast: ModuleAst,
+    pub original_cm: Option<Lrc<SourceMap>>,
     pub path: String,
     pub is_external: bool,
     pub is_entry: bool,
 }
 
+pub struct ModuleTransformInfo {
+    pub ast: ModuleAst,
+    pub code: String,
+}
+
 pub struct Module {
     pub id: ModuleId,
+    /**
+     * 模块元信息
+     */
     pub info: ModuleInfo,
+    /**
+     * 转换结果代码
+     */
+    pub transform_info: Option<ModuleTransformInfo>,
 }
 
 impl Module {
     pub fn new(id: ModuleId, info: ModuleInfo) -> Self {
-        Self { id, info }
+        Self {
+            id,
+            info,
+            transform_info: None,
+        }
+    }
+
+    pub fn add_transform_info(&mut self, info: ModuleTransformInfo) {
+        self.transform_info = Some(info);
     }
 }
