@@ -2,9 +2,9 @@ name: Rust-CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 jobs:
   build:
@@ -14,67 +14,66 @@ jobs:
       matrix:
         rust: [nightly]
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: ${{ matrix.rust }}
-        override: true
-    - name: Cache Cargo Dependencies
-      uses: Swatinem/rust-cache@v2
-      with:
-        cache-on-failure: true
-    - name: build
-      run: cargo build -v
-    - name: test
-      if: ${{ matrix.rust == 'stable' || matrix.rust == 'beta' || matrix.rust == 'nightly' }}
-      run: >
-        cargo test -v &&
-        cargo doc -v
-    - name: build_fixture
-      run: target/debug/mako examples/normal
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          override: true
+      - name: Cache Cargo Dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - name: build
+        run: cargo build -v
+      - name: test
+        if: ${{ matrix.rust == 'stable' || matrix.rust == 'beta' || matrix.rust == 'nightly' }}
+        run: >
+          cargo test -v
+      - name: build_fixture
+        run: target/debug/mako examples/normal
 
   build_benchmarks:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: nightly
-        override: true
-    - name: build
-      run: cargo build -v --benches
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+      - name: build
+        run: cargo build -v --benches
 
   clippy:
     runs-on: ubuntu-20.04
     steps:
-    - name: install-dependencies
-      run: sudo apt update && sudo apt install ninja-build meson nasm
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
-        components: clippy
-    - uses: actions-rs/cargo@v1
-      with:
-        args: clippy --all-features -- -D warnings
-      env:
-        SYSTEM_DEPS_DAV1D_BUILD_INTERNAL: always
+      - name: install-dependencies
+        run: sudo apt update && sudo apt install ninja-build meson nasm
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: clippy
+      - uses: actions-rs/cargo@v1
+        with:
+          args: clippy --all-features -- -D warnings
+        env:
+          SYSTEM_DEPS_DAV1D_BUILD_INTERNAL: always
 
   rustfmt:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
-        components: rustfmt
-    - name: Run rustfmt check
-      uses: actions-rs/cargo@v1
-      with:
-        command: fmt
-        args: -- --check
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: rustfmt
+      - name: Run rustfmt check
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: -- --check
 
   cargo-deny:
     runs-on: ubuntu-20.04
