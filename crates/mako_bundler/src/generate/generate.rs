@@ -1,8 +1,9 @@
 use std::{fs, path::PathBuf, str::FromStr};
 
-use crate::{compiler::Compiler, module::ModuleId};
+use crate::{compiler::Compiler, module::{ModuleId}};
 
-fn wrap_module(id: &str, code: &str) -> String {
+fn wrap_module(id: &ModuleId, code: &str) -> String {
+	let id = id.id.clone();
     println!("> wrap_module: {}", id);
     format!(
         "define(\"{}\", function(module, exports, require) {{\n{}}});",
@@ -27,7 +28,7 @@ pub struct OutputFile {
 }
 
 impl Compiler {
-    pub fn generate(&self, generate_param: &GenerateParam) -> GenerateResult {
+    pub fn generate(&mut self, generate_param: &GenerateParam) -> GenerateResult {
         // generate code
         let mut output: Vec<String> = vec![r#"
 const modules = new Map();
@@ -55,28 +56,20 @@ const requireModule = (name) => {
 };
         "#
         .to_string()];
-        let values = self.context.module_graph.id_module_map.values();
+        let module_ids = self.context.module_graph.topo_sort().expect("module graph has cycle");
 
-        let mut results: Vec<String> = vec![];
         let mut entry_module_id = String::new();
-        let mut module_ids = vec![];
-        for val in values {
-            module_ids.push(val.id.clone());
-            if val.info.is_entry {
-                entry_module_id = val.id.id.clone();
+        let mut results: Vec<String> = vec![];
+        for module_id in module_ids {
+            let id = module_id.clone();
+			let module = self.context.module_graph.get_module(&id).expect("module not found");
+            if module.info.is_entry {
+                entry_module_id = module.id.id.clone();
             }
-        }
-
-        // 先简单 sort，后面根据 module_graph 排序
-        module_ids.sort_by_key(|v| v.id.clone());
-
-        for module_id in module_ids.iter() {
-            let id = module_id.id.clone();
             let code = self
                 .context
                 .module_graph
-                .id_module_map
-                .get(module_id)
+                .get_module(&id)
                 .unwrap()
                 .info
                 .code
