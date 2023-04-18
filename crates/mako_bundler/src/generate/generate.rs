@@ -1,6 +1,6 @@
 use std::{fs, path::PathBuf, str::FromStr};
 
-use crate::compiler::Compiler;
+use crate::{compiler::Compiler, module::ModuleId};
 
 fn wrap_module(id: &str, code: &str) -> String {
     println!("> wrap_module: {}", id);
@@ -56,14 +56,34 @@ const requireModule = (name) => {
         "#
         .to_string()];
         let values = self.context.module_graph.id_module_map.values();
+
         let mut results: Vec<String> = vec![];
         let mut entry_module_id = String::new();
+        let mut module_ids = vec![];
         for val in values {
-            results.push(wrap_module(&val.id.id, &val.info.code));
+            module_ids.push(val.id.clone());
             if val.info.is_entry {
                 entry_module_id = val.id.id.clone();
             }
         }
+
+        // 先简单 sort，后面根据 module_graph 排序
+        module_ids.sort_by_key(|v| v.id.clone());
+
+        for module_id in module_ids.iter() {
+            let id = module_id.id.clone();
+            let code = self
+                .context
+                .module_graph
+                .id_module_map
+                .get(module_id)
+                .unwrap()
+                .info
+                .code
+                .clone();
+            results.push(wrap_module(&id, &code));
+        }
+
         output.extend(results);
         output.push(format!("\nrequireModule(\"{}\");", entry_module_id));
         let contents = output.join("\n");
