@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use lazy_static::lazy_static;
 use regex::Regex;
 
@@ -32,7 +30,7 @@ lazy_static! {
 
 pub fn load(load_param: &LoadParam, _context: &mut Context) -> LoadResult {
     println!("> load {}", load_param.path);
-    let ext_name = get_ext_name(load_param.path);
+    let ext_name = ext_name(load_param.path);
     match ext_name {
         "js" | "jsx" | "ts" | "tsx" => load_js(load_param, _context),
         "css" => load_css(load_param, _context),
@@ -49,10 +47,6 @@ pub fn load(load_param: &LoadParam, _context: &mut Context) -> LoadResult {
     }
 }
 
-fn get_ext_name(path: &str) -> &str {
-    Path::new(path).extension().unwrap().to_str().unwrap()
-}
-
 fn load_js(load_param: &LoadParam, _context: &Context) -> LoadResult {
     if let Some(files) = load_param.files {
         if let Some(content) = files.get(load_param.path) {
@@ -60,9 +54,8 @@ fn load_js(load_param: &LoadParam, _context: &Context) -> LoadResult {
                 content: content.clone(),
                 content_type: ContentType::Js,
             };
-        } else {
-            panic!("File not found: {}", load_param.path);
         }
+        panic!("File not found: {}", load_param.path);
     } else {
         LoadResult {
             content: std::fs::read_to_string(load_param.path).unwrap(),
