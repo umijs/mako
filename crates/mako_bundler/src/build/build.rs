@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashMap},
     path::PathBuf,
     str::FromStr,
 };
@@ -7,7 +7,7 @@ use std::{
 use crate::{
     compiler::Compiler,
     config::get_first_entry_value,
-    module::{Module, ModuleAst, ModuleId, ModuleInfo},
+    module::{Module, ModuleAst, ModuleId, ModuleInfo, ModuleTransformInfo},
     module_graph::Dependency,
 };
 
@@ -36,7 +36,15 @@ impl Compiler {
             .join(get_first_entry_value(&self.context.config.entry).unwrap())
             .to_string_lossy()
             .to_string();
-        let mut seen = HashSet::<String>::new();
+
+        // build
+        self.build_module_graph(entry_point, build_param);
+
+        // transform
+        self.transform_module_graph();
+    }
+
+    fn build_module_graph(&mut self, entry_point: String, build_param: &BuildParam) {
         let mut queue: Vec<Task> = vec![Task {
             path: entry_point.clone(),
             parent_module_id: None,
@@ -46,13 +54,15 @@ impl Compiler {
         while !queue.is_empty() {
             let task = queue.pop().unwrap();
             let path_str = task.path.as_str();
-            if seen.contains(&task.path) {
-                continue;
-            }
-            seen.insert(task.path.clone());
 
             let module_id = ModuleId::new(path_str);
             let is_entry = path_str == entry_point;
+
+            // check if module is already in the graph
+            if self.context.module_graph.has_module(&module_id) {
+                self.bind_dependency(&task, &module_id);
+                continue;
+            }
 
             // load
             let load_param = LoadParam {
@@ -68,6 +78,20 @@ impl Compiler {
             };
             let parse_result = parse(&parse_param, &self.context);
 
+            // add current module to module graph
+            let info = ModuleInfo {
+                path: task.path.clone(),
+                is_external: false,
+                is_entry,
+                original_cm: Some(parse_result.cm),
+                original_ast: ModuleAst::Script(parse_result.ast.clone()),
+            };
+            let module = Module::new(module_id.clone(), info);
+            self.context.module_graph.add_module(module);
+
+            // handle dependency bind
+            self.bind_dependency(&task, &module_id);
+
             // analyze deps
             let analyze_deps_param = AnalyzeDepsParam {
                 path: path_str,
@@ -76,7 +100,6 @@ impl Compiler {
             let analyze_deps_result = analyze_deps(&analyze_deps_param, &self.context);
 
             // resolve
-            let mut dep_map = HashMap::<String, String>::new();
             for d in &analyze_deps_result.dependencies {
                 let resolve_param = ResolveParam {
                     path: path_str,
@@ -94,19 +117,25 @@ impl Compiler {
                         path: resolve_result.path.clone(),
                         is_external: resolve_result.is_external,
                         is_entry: false,
+                        original_cm: None,
+                        original_ast: crate::module::ModuleAst::None,
+                    };
+                    let extrnal_module_id = ModuleId::new(&resolve_result.path);
+                    let mut extranl_module = Module::new(extrnal_module_id.clone(), info);
+                    extranl_module.add_transform_info(ModuleTransformInfo {
+                        ast: crate::module::ModuleAst::None,
                         code: format!(
                             "/* external {} */ exports.default = {};",
                             resolve_result.path, external_name,
                         ),
-                        ast: crate::module::ModuleAst::None,
-                    };
-                    let module_id = ModuleId::new(&resolve_result.path);
-                    dep_map.insert(d.source.clone(), module_id.id.clone());
-                    let module = Module::new(module_id.clone(), info);
-                    let _ = &self.context.module_graph.add_module(module);
+                    });
+                    self.context.module_graph.add_module(extranl_module);
+                    self.context.module_graph.add_dependency(
+                        &module_id,
+                        &extrnal_module_id,
+                        d.clone(),
+                    )
                 } else {
-                    let dep_module_id = ModuleId::new(resolve_result.path.as_str());
-                    dep_map.insert(d.source.clone(), dep_module_id.id.clone());
                     queue.push(Task {
                         parent_module_id: Some(module_id.clone()),
                         path: resolve_result.path,
@@ -114,39 +143,70 @@ impl Compiler {
                     });
                 }
             }
+        }
+    }
+
+    fn bind_dependency(&mut self, task: &Task, module_id: &ModuleId) {
+        if let Some(parent_module_id) = &task.parent_module_id {
+            let parent_dependency = task
+                .parent_dependecy
+                .as_ref()
+                .expect("parent dependency is required for parent_module_id");
+            self.context.module_graph.add_dependency(
+                &parent_module_id,
+                module_id,
+                parent_dependency.clone(),
+            )
+        }
+    }
+
+    fn transform_module_graph(&mut self) {
+        let orders = self
+            .context
+            .module_graph
+            .topo_sort()
+            .expect("module graph has cycle");
+
+        for module_id in orders {
+            let module = self.context.module_graph.get_module(&module_id).unwrap();
+			println!(
+				"> transform {}",
+				&module_id.id
+			);
+            if module.info.is_external {
+                continue;
+            }
+
+            // get deps
+            let deps = self.context.module_graph.get_dependencies(&module_id);
+            let dep_map: HashMap<String, String> = deps
+                .into_iter()
+                .map(|(id, dep)| return (dep.source.clone(), id.id.clone()))
+                .collect();
+
+            let info = &module.info;
 
             // transform
+            let cm = info.original_cm.as_ref().unwrap();
             // TODO: move transform before analyze deps
             let transform_param = TransformParam {
-                path: path_str,
-                ast: parse_result.ast,
-                cm: parse_result.cm,
+                path: info.path.as_str(),
+                ast: &info.original_ast,
+                cm,
                 dep_map,
             };
             let transform_result = transform(&transform_param, &self.context);
 
-            // add current module to module graph
-            let info = ModuleInfo {
-                path: task.path,
-                is_external: false,
-                is_entry,
+            // add transform info to module
+            let module = self
+                .context
+                .module_graph
+                .get_module_mut(&module_id)
+                .unwrap();
+            module.add_transform_info(ModuleTransformInfo {
                 ast: ModuleAst::Script(transform_result.ast),
                 code: transform_result.code,
-            };
-            let module = Module::new(module_id.clone(), info);
-            let _ = &self.context.module_graph.add_module(module);
-
-            // handle dependency bind
-            if let Some(parent_module_id) = task.parent_module_id {
-                let parent_dependency = task
-                    .parent_dependecy
-                    .expect("parent dependency is required for parent_module_id");
-                self.context.module_graph.add_dependency(
-                    &parent_module_id,
-                    &module_id,
-                    parent_dependency,
-                )
-            }
+            });
         }
     }
 }

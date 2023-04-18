@@ -5,6 +5,7 @@ use petgraph::{
     algo::toposort,
     graph::{DefaultIx, NodeIndex},
     stable_graph::StableDiGraph,
+    Direction,
 };
 
 /**
@@ -68,9 +69,14 @@ impl ModuleGraph {
     }
 
     pub fn add_dependency(&mut self, from: &ModuleId, to: &ModuleId, edge: Dependency) {
-        // TODO: error handler
-        let from = self.id_index_map.get(from).unwrap();
-        let to = self.id_index_map.get(to).unwrap();
+        let from = self
+            .id_index_map
+            .get(from)
+            .unwrap_or_else(|| panic!("module_id {:?} not found in the module graph", from));
+        let to = self
+            .id_index_map
+            .get(to)
+            .unwrap_or_else(|| panic!("module_id {:?} not found in the module graph", to));
         self.graph.update_edge(*from, *to, edge);
     }
 
@@ -84,6 +90,10 @@ impl ModuleGraph {
         }
     }
 
+	pub fn has_module(&self, module_id: &ModuleId) -> bool {
+		self.id_index_map.contains_key(module_id)
+	}
+
     pub fn get_module_mut(&mut self, module_id: &ModuleId) -> Option<&mut Module> {
         let i = self.id_index_map.get(module_id);
 
@@ -92,6 +102,26 @@ impl ModuleGraph {
         } else {
             None
         }
+    }
+
+    pub fn get_dependencies(&self, module_id: &ModuleId) -> Vec<(&ModuleId, &Dependency)> {
+        let i = self
+            .id_index_map
+            .get(module_id)
+            .unwrap_or_else(|| panic!("module_id {:?} not found in the module graph", module_id));
+        let mut edges = self
+            .graph
+            .neighbors_directed(*i, Direction::Outgoing)
+            .detach();
+
+        let mut deps: Vec<(&ModuleId, &Dependency)> = vec![];
+        while let Some((edge_index, node_index)) = edges.next(&self.graph) {
+            let dependency = self.graph.edge_weight(edge_index).unwrap();
+            let module = self.graph.node_weight(node_index).unwrap();
+            deps.push((&module.id, dependency));
+        }
+        deps.sort_by_key(|(_, dep)| dep.order);
+        deps
     }
 
     /**
