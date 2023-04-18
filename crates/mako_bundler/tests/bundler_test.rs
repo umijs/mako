@@ -84,12 +84,12 @@ export function three() {
             ModuleId::new("/tmp/two.js"),
         ]
     );
-	let mut map = HashMap::new();
+    let mut vecs = vec![];
     for module_id in orders {
-		let deps = compiler.context.module_graph.get_dependencies(&module_id);
-		map.insert(module_id, deps);
+        let deps = compiler.context.module_graph.get_dependencies(&module_id);
+		vecs.push((module_id, deps));
     }
-	insta::assert_debug_snapshot!(&map);
+    insta::assert_debug_snapshot!(&vecs);
 }
 
 fn test_files(files: HashMap<String, String>) -> (Vec<String>, Compiler) {
