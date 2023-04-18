@@ -1,0 +1,3 @@
+[alias]
+lint = "clippy --workspace --all-targets --all-features -- -D warnings"
+codecov = "llvm-cov nextest --workspace"
