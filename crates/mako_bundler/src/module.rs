@@ -1,6 +1,6 @@
+use lazy_static::lazy_static;
 use std::sync::RwLock;
 use swc_common::{sync::Lrc, SourceMap};
-use lazy_static::lazy_static;
 
 lazy_static! {
     static ref GLOBAL_ID: RwLock<usize> = RwLock::new(0);
@@ -34,7 +34,7 @@ pub enum ModuleAst {
  */
 pub struct ModuleInfo {
     pub original_ast: ModuleAst,
-	pub original_cm: Option<Lrc<SourceMap>>,
+    pub original_cm: Option<Lrc<SourceMap>>,
     pub path: String,
     pub is_external: bool,
     pub is_entry: bool,

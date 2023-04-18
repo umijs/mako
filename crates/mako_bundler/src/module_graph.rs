@@ -90,9 +90,9 @@ impl ModuleGraph {
         }
     }
 
-	pub fn has_module(&self, module_id: &ModuleId) -> bool {
-		self.id_index_map.contains_key(module_id)
-	}
+    pub fn has_module(&self, module_id: &ModuleId) -> bool {
+        self.id_index_map.contains_key(module_id)
+    }
 
     pub fn get_module_mut(&mut self, module_id: &ModuleId) -> Option<&mut Module> {
         let i = self.id_index_map.get(module_id);

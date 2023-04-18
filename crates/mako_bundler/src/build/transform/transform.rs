@@ -41,11 +41,11 @@ pub struct TransformResult {
 pub fn transform(transform_param: &TransformParam, _context: &Context) -> TransformResult {
     let globals = Globals::default();
 
-	let module_ast = if let ModuleAst::Script(ast) = transform_param.ast {
-		ast
-	} else {
-		panic!("not support module")
-	};
+    let module_ast = if let ModuleAst::Script(ast) = transform_param.ast {
+        ast
+    } else {
+        panic!("not support module")
+    };
 
     let mut ast = module_ast.clone();
     let cm = transform_param.cm.clone();

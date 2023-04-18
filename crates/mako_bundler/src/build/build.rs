@@ -1,8 +1,4 @@
-use std::{
-    collections::{HashMap},
-    path::PathBuf,
-    str::FromStr,
-};
+use std::{collections::HashMap, path::PathBuf, str::FromStr};
 
 use crate::{
     compiler::Compiler,
@@ -169,10 +165,7 @@ impl Compiler {
 
         for module_id in orders {
             let module = self.context.module_graph.get_module(&module_id).unwrap();
-			println!(
-				"> transform {}",
-				&module_id.id
-			);
+            println!("> transform {}", &module_id.id);
             if module.info.is_external {
                 continue;
             }
