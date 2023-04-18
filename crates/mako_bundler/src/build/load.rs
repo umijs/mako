@@ -16,6 +16,7 @@ pub enum ContentType {
     Js,
     Raw,
     File,
+    NotMatch,
 }
 
 pub struct LoadResult {
@@ -30,10 +31,19 @@ lazy_static! {
 pub fn load(load_param: &LoadParam, _context: &mut Context) -> LoadResult {
     println!("> load {}", load_param.path);
     let ext_name = get_ext_name(load_param.path);
-    if IMAGE_RE.is_match(ext_name) {
-        load_image(load_param, _context)
-    } else {
-        load_js(load_param, _context)
+    match ext_name {
+        "js" | "jsx" | "ts" | "tsx" => load_js(load_param, _context),
+        "css" => load_css(load_param, _context),
+        _ => {
+            if IMAGE_RE.is_match(ext_name) {
+                load_image(load_param, _context)
+            } else {
+                LoadResult {
+                    content: "not match".to_string(),
+                    content_type: ContentType::NotMatch,
+                }
+            }
+        }
     }
 }
 
@@ -44,6 +54,22 @@ fn get_ext_name(path: &str) -> &str {
 fn load_js(load_param: &LoadParam, _context: &Context) -> LoadResult {
     LoadResult {
         content: std::fs::read_to_string(load_param.path).unwrap(),
+        content_type: ContentType::Js,
+    }
+}
+
+fn load_css(load_param: &LoadParam, _context: &Context) -> LoadResult {
+    let css_content = std::fs::read_to_string(load_param.path).unwrap();
+    LoadResult {
+        content: format!(
+            r#"
+const cssCode = `{}`;
+const style = document.createElement('style');
+style.innerHTML = cssCode;
+document.head.appendChild(style);
+"#,
+            css_content
+        ),
         content_type: ContentType::Js,
     }
 }
