@@ -71,17 +71,12 @@ const requireModule = (name) => {
                 .module_graph
                 .get_module(&id)
                 .expect("module not found");
+
             if module.info.is_entry {
                 entry_module_id = module.id.id.clone();
             }
-            let code = self
-                .context
-                .module_graph
-                .get_module(&id)
-                .unwrap()
-                .info
-                .code
-                .clone();
+            let transform_info = module.transform_info.as_ref().unwrap();
+            let code = transform_info.code.clone();
             results.push(wrap_module(&id, &code));
         }
 

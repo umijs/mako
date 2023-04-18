@@ -22,13 +22,14 @@ use swc_ecma_transforms::{
 use swc_ecma_visit::VisitMutWith;
 
 use crate::context::Context;
+use crate::module::ModuleAst;
 
 use super::dep_replacer::DepReplacer;
 
 pub struct TransformParam<'a> {
     pub path: &'a str,
-    pub ast: Module,
-    pub cm: Lrc<SourceMap>,
+    pub ast: &'a ModuleAst,
+    pub cm: &'a Lrc<SourceMap>,
     pub dep_map: HashMap<String, String>,
 }
 
@@ -39,7 +40,14 @@ pub struct TransformResult {
 
 pub fn transform(transform_param: &TransformParam, _context: &Context) -> TransformResult {
     let globals = Globals::default();
-    let mut ast = transform_param.ast.clone();
+
+	let module_ast = if let ModuleAst::Script(ast) = transform_param.ast {
+		ast
+	} else {
+		panic!("not support module")
+	};
+
+    let mut ast = module_ast.clone();
     let cm = transform_param.cm.clone();
     GLOBALS.set(&globals, || {
         let helpers = Helpers::new(true);
