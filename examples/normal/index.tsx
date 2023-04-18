@@ -8,7 +8,7 @@ import "./index.css";
 
 function App() {
 	return <div>
-    <div class="title">
+    <div className="title">
 		  Hello {foo}
     </div>
 		<img src={UmiLogo} />

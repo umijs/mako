@@ -16,6 +16,7 @@ pub struct OutputConfig {
 #[derive(Debug, Deserialize)]
 pub struct ResolveConfig {
     pub alias: HashMap<String, String>,
+    pub extensions: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -53,7 +54,7 @@ impl Config {
     "entry": {{}},
     "output": {{ "path": "dist" }},
     "root": "{}",
-    "resolve": {{ "alias": {{}} }},
+    "resolve": {{ "alias": {{}}, "extensions": ["js", "jsx", "ts", "tsx"] }},
     "externals": {{}},
     "data_url_limit": 8192
 }}

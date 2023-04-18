@@ -36,7 +36,7 @@ pub fn resolve(resolve_param: &ResolveParam, context: &Context) -> ResolveResult
     // - ...
     // ref: https://github.com/webpack/enhanced-resolve
 
-    if resolved.starts_with(".") {
+    if resolved.starts_with('.') {
         let path = PathBuf::from(resolve_param.path);
         let mut abs_resolved =
             RelativePath::new(resolve_param.dependency).to_logical_path(path.parent().unwrap());
@@ -44,7 +44,7 @@ pub fn resolve(resolve_param: &ResolveParam, context: &Context) -> ResolveResult
         //
         if !exists_file(abs_resolved.to_str().unwrap(), resolve_param) {
             // default resolve.extensions
-            let default_extensions = ["js", "jsx", "ts", "tsx"];
+            let default_extensions = &context.config.resolve.extensions;
             for extension in default_extensions {
                 let abs_resolved_with_ext = abs_resolved.with_extension(extension);
                 // println!(">>> resolve {}", abs_resolved_with_ext.display());
