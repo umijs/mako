@@ -2,12 +2,7 @@ use select::document::Document;
 use select::predicate::{Attr, Name, Predicate};
 use std::io::{Error, ErrorKind};
 use std::path::Path;
-use std::{
-    collections::{HashMap, HashSet},
-    fs,
-    path::PathBuf,
-    str::FromStr,
-};
+use std::{collections::HashMap, fs, path::PathBuf, str::FromStr};
 
 use crate::{
     compiler::Compiler,
