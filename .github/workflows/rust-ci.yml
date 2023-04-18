@@ -30,7 +30,7 @@ jobs:
         run: >
           cargo test -v
       - name: build_fixture
-        run: target/debug/mako examples/normal
+        run: target/debug/mako --root examples/normal --entry index.tsx
 
   build_benchmarks:
     runs-on: ubuntu-latest
