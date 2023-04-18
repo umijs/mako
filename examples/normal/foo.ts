@@ -1,1 +1,2 @@
-export const foo = "World";
+import { bar } from "./bar";
+export const foo = bar;
