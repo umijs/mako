@@ -1,4 +1,6 @@
-use crate::{config::Config, context::Context};
+use crate::{
+    build::build::BuildParam, config::Config, context::Context, generate::generate::GenerateParam,
+};
 
 pub struct Compiler {
     pub context: Context,
@@ -11,8 +13,8 @@ impl Compiler {
     }
 
     pub fn run(&mut self) {
-        self.build();
-        self.generate();
+        self.build(&BuildParam { files: None });
+        self.generate(&GenerateParam { write: true });
     }
 
     pub fn _watch(&self) {}

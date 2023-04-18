@@ -1,46 +1,80 @@
-use std::collections::HashMap;
+use config;
+use serde::Deserialize;
+use std::{collections::HashMap, path::PathBuf, str::FromStr};
 
+#[derive(Debug, Deserialize)]
 pub struct OutputConfig {
     pub path: String,
 }
 
-pub enum Mode {
-    Development,
-    _Production,
-}
+// #[derive(Debug, Deserialize)]
+// pub enum Mode {
+//     Development,
+//     _Production,
+// }
 
+#[derive(Debug, Deserialize)]
 pub struct ResolveConfig {
     pub alias: HashMap<String, String>,
 }
 
+#[derive(Debug, Deserialize)]
 pub struct Config {
     pub entry: HashMap<String, String>,
     pub output: OutputConfig,
     pub root: String,
-    pub mode: Mode,
+    // pub mode: Mode,
     pub resolve: ResolveConfig,
     pub externals: HashMap<String, String>,
     // The limit of the size of the file to be converted to base64
     pub data_url_limit: usize,
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            entry: HashMap::new(),
-            output: OutputConfig {
-                path: "dist".to_string(),
-            },
-            root: std::env::current_dir()
-                .unwrap()
-                .to_string_lossy()
-                .to_string(),
-            mode: Mode::Development,
-            resolve: ResolveConfig {
-                alias: HashMap::new(),
-            },
-            externals: HashMap::new(),
-            data_url_limit: 8192,
+impl Config {
+    pub fn from_str(s: &str) -> Result<Self, config::ConfigError> {
+        let s = config::Config::builder()
+            .add_source(config::File::from_str(
+                &Self::default_str(),
+                config::FileFormat::Json,
+            ))
+            .add_source(config::File::from_str(s, config::FileFormat::Json))
+            .build()?;
+        s.try_deserialize()
+    }
+
+    pub fn default_str() -> String {
+        let cwd = std::env::current_dir()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
+        format!(
+            r#"
+{{
+    "entry": {{}},
+    "output": {{ "path": "dist" }},
+    "root": "{}",
+    "resolve": {{ "alias": {{}} }},
+    "externals": {{}},
+    "data_url_limit": 8192
+}}
+            "#,
+            cwd,
+        )
+    }
+
+    pub fn normalize(&mut self) {
+        self.output.path = PathBuf::from_str(&self.root)
+            .unwrap()
+            .join(&self.output.path)
+            .to_string_lossy()
+            .to_string();
+
+        let entry_length = self.entry.len();
+        if entry_length != 1 {
+            panic!(
+                "Only one entry is allowed, but {} entries are found",
+                entry_length
+            );
         }
     }
 }
