@@ -107,7 +107,6 @@ mod tests {
             resolve: ResolveConfig {
                 alias: hashmap! {
                     "react".to_string() => "React".to_string(),
-                    "react-dom/client".to_string() => "ReactDOM".to_string()
                 },
                 extensions: vec!["tsx".to_string()],
             },
@@ -127,8 +126,7 @@ mod tests {
   "root": "/root",
   "resolve": {
     "alias": {
-      "react": "React",
-      "react-dom/client": "ReactDOM"
+      "react": "React"
     },
     "extensions": [
       "tsx"
@@ -142,7 +140,12 @@ mod tests {
 
     #[test]
     fn test_config_deserialize() {
-        let expected: Config = Default::default();
+        let expected: Config = Config {
+            externals: hashmap! {
+                "react".to_string() => "React".to_string(),
+            },
+            ..Default::default()
+        };
         let s = serde_json::to_string_pretty::<Config>(&expected).unwrap();
 
         let config: Config = serde_json::from_str(&s).unwrap();
