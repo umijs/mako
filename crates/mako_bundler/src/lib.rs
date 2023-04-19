@@ -28,8 +28,6 @@ pub fn run() {
             r#"
 {{
     "externals": {{
-        "react": "React",
-        "react-dom/client": "ReactDOM"
     }},
     "root": "{}",
     "entry": {{ "index": "index.tsx" }}

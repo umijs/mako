@@ -1,5 +1,7 @@
-use std::{collections::HashMap, path::PathBuf};
+use nodejs_resolver::{AliasMap, Options, Resolver};
+use std::{collections::HashMap, path::PathBuf, vec};
 
+use crate::build::resolve;
 use relative_path::RelativePath;
 
 use crate::context::Context;
@@ -16,8 +18,34 @@ pub struct ResolveResult {
     pub external_name: Option<String>,
 }
 
+pub enum RequestType {
+    Module { module_id: String, context: PathBuf },
+    Local { request: PathBuf, context: PathBuf },
+}
+
+fn dispatch_request_type(request: &ResolveParam) -> RequestType {
+    let context_path = PathBuf::from(request.path);
+    if request.dependency.starts_with('.') {
+        RequestType::Local {
+            context: if context_path.is_dir() {
+                context_path
+            } else {
+                context_path //.parent().unwrap().to_path_buf()
+            },
+            request: PathBuf::from(request.dependency),
+        }
+    } else {
+        RequestType::Module {
+            context: context_path,
+            module_id: request.dependency.to_string(),
+        }
+    }
+}
+
 pub fn resolve(resolve_param: &ResolveParam, context: &Context) -> ResolveResult {
     let mut resolved = resolve_param.dependency.to_string();
+
+    dbg!(resolve_param.path, resolve_param.dependency);
 
     // support external
     if context.config.externals.contains_key(&resolved) {
@@ -28,6 +56,8 @@ pub fn resolve(resolve_param: &ResolveParam, context: &Context) -> ResolveResult
         };
     }
 
+    // dispatch RequestType
+
     // TODO:
     // - alias
     // - folder
@@ -35,6 +65,50 @@ pub fn resolve(resolve_param: &ResolveParam, context: &Context) -> ResolveResult
     // - exports
     // - ...
     // ref: https://github.com/webpack/enhanced-resolve
+
+    let resolver = Resolver::new(Options {
+        extensions: vec![
+            ".js".to_string(),
+            ".jsx".to_string(),
+            ".ts".to_string(),
+            ".tsx".to_string(),
+        ],
+        ..Default::default()
+    });
+    match dispatch_request_type(resolve_param) {
+        RequestType::Local { request, context } => {
+            match resolver.resolve(context.as_path(), request.to_str().unwrap()) {
+                Ok(nodejs_resolver::ResolveResult::Resource(resource)) => {
+                    return ResolveResult {
+                        path: resource.join().to_string_lossy().to_string(),
+                        external_name: None,
+                        is_external: false,
+                    };
+                }
+                Ok(nodejs_resolver::ResolveResult::Ignored) => println!("Ignored"),
+                Err(err) => println!("{err:?}"),
+            };
+        }
+        RequestType::Module { module_id, context } => {
+            let p = std::env::current_dir().unwrap(); //.unwrap().as_path();
+
+            dbg!(&p);
+
+            match resolver.resolve(context.as_path(), module_id.as_str()) {
+                Ok(nodejs_resolver::ResolveResult::Resource(resource)) => {
+                    print!("Module ||||");
+                    dbg!(resource.join());
+                    return ResolveResult {
+                        path: resource.join().to_string_lossy().to_string(),
+                        external_name: None,
+                        is_external: false,
+                    };
+                }
+                Ok(nodejs_resolver::ResolveResult::Ignored) => println!("Ignored"),
+                Err(err) => println!("MMMM {err:?}"),
+            };
+        }
+    }
 
     if resolved.starts_with('.') {
         let path = PathBuf::from(resolve_param.path);
