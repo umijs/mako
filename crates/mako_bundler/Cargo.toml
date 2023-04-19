@@ -30,3 +30,4 @@ config = "0.13.3"
 
 [dev-dependencies]
 insta = { version = "1.29.0", features = ["yaml"] }
+maplit = "1.0.2"

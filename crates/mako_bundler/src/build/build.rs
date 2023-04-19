@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::PathBuf, str::FromStr};
+use std::collections::HashMap;
 
 use crate::{
     compiler::Compiler,
@@ -27,7 +27,7 @@ struct Task {
 
 impl Compiler {
     pub fn build(&mut self, build_param: &BuildParam) {
-        let cwd = PathBuf::from_str(self.context.config.root.as_str()).unwrap();
+        let cwd = &self.context.config.root;
         let entry_point = cwd
             .join(get_first_entry_value(&self.context.config.entry).unwrap())
             .to_string_lossy()
