@@ -34,3 +34,9 @@ Format.
 ```bash
 	cargo fmt
 ```
+
+Lint.
+
+```bash
+	cargo lint
+```

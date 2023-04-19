@@ -125,8 +125,9 @@ function foo() {
     insta::assert_debug_snapshot!(output);
 }
 
+#[allow(clippy::useless_format)]
 fn test_files(files: HashMap<String, String>) -> (Vec<String>, Compiler) {
-    let mut config = Config::from_str(
+    let mut config = Config::from(
         format!(
             r#"
 {{
@@ -145,5 +146,5 @@ fn test_files(files: HashMap<String, String>) -> (Vec<String>, Compiler) {
     compiler.build(&BuildParam { files: Some(files) });
     let generate_result = compiler.generate(&GenerateParam { write: false });
     let output = generate_result.output_files[0].__output.clone();
-    return (output, compiler);
+    (output, compiler)
 }
