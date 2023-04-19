@@ -16,7 +16,6 @@ pub enum ContentType {
     Js,
     Raw,
     File,
-    NotMatch,
 }
 
 pub struct LoadResult {
@@ -34,16 +33,8 @@ pub fn load(load_param: &LoadParam, _context: &mut Context) -> LoadResult {
     match ext_name {
         "js" | "jsx" | "ts" | "tsx" => load_js(load_param, _context),
         "css" => load_css(load_param, _context),
-        _ => {
-            if IMAGE_RE.is_match(ext_name) {
-                load_image(load_param, _context)
-            } else {
-                LoadResult {
-                    content: "not match".to_string(),
-                    content_type: ContentType::NotMatch,
-                }
-            }
-        }
+        _ if IMAGE_RE.is_match(ext_name) => load_image(load_param, _context),
+        _ => load_js(load_param, _context), // todo - default use js
     }
 }
 
