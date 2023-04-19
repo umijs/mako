@@ -18,7 +18,7 @@ fn join_paths(current: &Path, another: &Path) -> PathBuf {
 }
 
 impl Into<Config> for Cli {
-    fn into(&self) -> Config {
+    fn into(self) -> Config {
         let current_path = std::env::current_dir().expect("Failed to get current directory");
         let result = join_paths(&current_path, &Path::new(self.root.as_str()));
 
