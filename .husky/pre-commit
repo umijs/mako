@@ -1,5 +1,9 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+# for rust code
 cargo lint
 cargo fmt
+
+# for js code
+npx --no-install lint-staged
