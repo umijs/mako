@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "prepare": "husky install"
+    "prepare": "husky install",
+		"rome:format": "rome format --write ."
   },
   "keywords": [],
   "author": "",
