@@ -94,7 +94,7 @@ export function three() {
 
 #[test]
 fn replace_env() {
-	let files = HashMap::from([
+    let files = HashMap::from([
         (
             "/tmp/entry.js".to_string(),
             r###"
