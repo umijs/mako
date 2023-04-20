@@ -108,8 +108,10 @@ if (process.env.NODE_ENV === 'production') {
         (
             "/tmp/one.js".to_string(),
             r###"
-if (process.env.NODE_ENV === 'production') {
-	console.log(123);
+function foo() {
+	if (process.env.NODE_ENV === 'production') {
+		console.log(123);
+	}
 }
             "###
             .to_string(),
