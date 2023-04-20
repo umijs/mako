@@ -87,7 +87,7 @@ const requireModule = (name) => {
         let root_dir = &self.context.config.root;
         let output_dir = &self.context.config.output.path;
         if generate_param.write && !output_dir.exists() {
-            fs::create_dir_all(&output_dir).unwrap();
+            fs::create_dir_all(output_dir).unwrap();
         }
 
         // write to file

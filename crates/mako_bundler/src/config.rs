@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::io::{Error, ErrorKind};
 use std::{collections::HashMap, path::PathBuf};
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub struct OutputConfig {
     pub path: PathBuf,
 }
@@ -14,13 +14,13 @@ pub struct OutputConfig {
 //     _Production,
 // }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub struct ResolveConfig {
     pub alias: HashMap<String, String>,
     pub extensions: Vec<String>,
 }
 
-#[derive(PartialEq, Debug, Deserialize, Serialize)]
+#[derive(Eq, PartialEq, Debug, Deserialize, Serialize)]
 pub struct Config {
     pub entry: HashMap<String, PathBuf>,
     pub output: OutputConfig,
@@ -81,14 +81,14 @@ impl Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Self::from_str(Config::default_str().as_str()).unwrap()
+        Self::from_literal_str(Config::default_str().as_str()).unwrap()
     }
 }
 
 pub fn get_first_entry_value(entry: &HashMap<String, PathBuf>) -> Result<&PathBuf, Error> {
     match entry.values().next() {
         Some(value) => Ok(value),
-        None => Err(Error::new(ErrorKind::NotFound, format!("No entry found"))),
+        None => Err(Error::new(ErrorKind::NotFound, "No entry found".to_string())),
     }
 }
 
