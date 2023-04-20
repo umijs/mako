@@ -88,7 +88,10 @@ impl Default for Config {
 pub fn get_first_entry_value(entry: &HashMap<String, PathBuf>) -> Result<&PathBuf, Error> {
     match entry.values().next() {
         Some(value) => Ok(value),
-        None => Err(Error::new(ErrorKind::NotFound, "No entry found".to_string())),
+        None => Err(Error::new(
+            ErrorKind::NotFound,
+            "No entry found".to_string(),
+        )),
     }
 }
 

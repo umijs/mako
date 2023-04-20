@@ -4,7 +4,7 @@
 # for rust code
 cargo lint
 cargo fmt
-git add
+git add .
 
 # for js code
 npx --no-install lint-staged
