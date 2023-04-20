@@ -17,3 +17,4 @@ target/
 lcov.info
 
 .idea
+node_modules
