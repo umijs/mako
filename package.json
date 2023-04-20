@@ -1,0 +1,21 @@
+{
+  "name": "@umi/mako",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "prepare": "husky install",
+		"rome:format": "rome format --write ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "husky": "^8.0.3",
+    "lint-staged": "^13.2.1",
+    "rome": "^12.0.0"
+  },
+	"lint-staged": {
+    "*.{ts,tsx,js,json,less,md}": "rome format --write"
+  }
+}

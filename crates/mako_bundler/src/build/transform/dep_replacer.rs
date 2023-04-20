@@ -23,7 +23,7 @@ impl VisitMut for DepReplacer {
                             // if (process.env.NODE_ENV === 'development') { require("./foo") }
                             *source = Str::from(replacement.clone());
                             // 保持原来的 span，不确定不加的话会不会导致 sourcemap 错误
-                            (*source).span = span;
+                            source.span = span;
                         }
                     }
                 }

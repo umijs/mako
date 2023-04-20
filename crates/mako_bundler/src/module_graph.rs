@@ -36,7 +36,7 @@ pub enum ResolveType {
     ExportAll,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Cycle<N>(N);
 
 impl<N> Cycle<N> {
@@ -145,5 +145,11 @@ impl ModuleGraph {
                 Err(Cycle(id))
             }
         }
+    }
+}
+
+impl Default for ModuleGraph {
+    fn default() -> Self {
+        Self::new()
     }
 }

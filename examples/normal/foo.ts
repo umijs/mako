@@ -1,2 +1,2 @@
-import { bar } from "./bar";
+import { bar } from './bar';
 export const foo = bar;
