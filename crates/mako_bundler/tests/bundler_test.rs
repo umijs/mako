@@ -92,6 +92,33 @@ export function three() {
     insta::assert_debug_snapshot!(&vecs);
 }
 
+#[test]
+fn replace_env() {
+	let files = HashMap::from([
+        (
+            "/tmp/entry.js".to_string(),
+            r###"
+import {one} from './one';
+if (process.env.NODE_ENV === 'production') {
+	console.log(123);
+}
+            "###
+            .to_string(),
+        ),
+        (
+            "/tmp/one.js".to_string(),
+            r###"
+if (process.env.NODE_ENV === 'production') {
+	console.log(123);
+}
+            "###
+            .to_string(),
+        ),
+    ]);
+    let (output, _) = test_files(files);
+    insta::assert_debug_snapshot!(output);
+}
+
 fn test_files(files: HashMap<String, String>) -> (Vec<String>, Compiler) {
     let mut config = Config::from_str(
         format!(
