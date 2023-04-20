@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf, str::FromStr};
+use std::fs;
 
 use crate::{compiler::Compiler, module::ModuleId};
 
@@ -84,8 +84,8 @@ const requireModule = (name) => {
         output.push(format!("\nrequireModule(\"{}\");", entry_module_id));
         let contents = output.join("\n");
 
-        let root_dir = PathBuf::from_str(&self.context.config.root).unwrap();
-        let output_dir = PathBuf::from_str(&self.context.config.output.path).unwrap();
+        let root_dir = &self.context.config.root;
+        let output_dir = &self.context.config.output.path;
         if generate_param.write && !output_dir.exists() {
             fs::create_dir_all(&output_dir).unwrap();
         }

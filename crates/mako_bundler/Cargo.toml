@@ -33,3 +33,4 @@ nodejs-resolver = "0.0.78"
 
 [dev-dependencies]
 insta = { version = "1.29.0", features = ["yaml"] }
+maplit = "1.0.2"
