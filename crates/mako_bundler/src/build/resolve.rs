@@ -1,8 +1,5 @@
-use nodejs_resolver::{AliasMap, Options, Resolver};
+use nodejs_resolver::{Options, Resolver};
 use std::{collections::HashMap, path::PathBuf, vec};
-
-use crate::build::resolve;
-use relative_path::RelativePath;
 
 use crate::context::Context;
 
@@ -30,7 +27,7 @@ fn dispatch_request_type(request: &ResolveParam) -> RequestType {
             context: if context_path.is_dir() {
                 context_path
             } else {
-                context_path //.parent().unwrap().to_path_buf()
+                context_path.parent().unwrap().to_path_buf()
             },
             request: PathBuf::from(request.dependency),
         }
@@ -43,26 +40,22 @@ fn dispatch_request_type(request: &ResolveParam) -> RequestType {
 }
 
 pub fn resolve(resolve_param: &ResolveParam, context: &Context) -> ResolveResult {
-    let mut resolved = resolve_param.dependency.to_string();
-
-    dbg!(resolve_param.path, resolve_param.dependency);
+    let to_resolve = resolve_param.dependency.to_string();
 
     // support external
-    if context.config.externals.contains_key(&resolved) {
+    if context.config.externals.contains_key(&to_resolve) {
         return ResolveResult {
-            path: resolved.clone(),
+            path: to_resolve.clone(),
             is_external: true,
-            external_name: Some(context.config.externals.get(&resolved).unwrap().clone()),
+            external_name: Some(context.config.externals.get(&to_resolve).unwrap().clone()),
         };
     }
 
-    // dispatch RequestType
-
     // TODO:
     // - alias
-    // - folder
-    // - node_modules
-    // - exports
+    // - [?] folder
+    // - [x] node_modules
+    // - [x] exports
     // - ...
     // ref: https://github.com/webpack/enhanced-resolve
 
@@ -85,74 +78,22 @@ pub fn resolve(resolve_param: &ResolveParam, context: &Context) -> ResolveResult
                         is_external: false,
                     };
                 }
-                Ok(nodejs_resolver::ResolveResult::Ignored) => println!("Ignored"),
-                Err(err) => println!("{err:?}"),
+                Ok(nodejs_resolver::ResolveResult::Ignored) => panic!("Should not happen dIgnored"),
+                Err(_err) => panic!("resolve {} failed", request.display()),
             };
         }
         RequestType::Module { module_id, context } => {
-            let p = std::env::current_dir().unwrap(); //.unwrap().as_path();
-
-            dbg!(&p);
-
             match resolver.resolve(context.as_path(), module_id.as_str()) {
                 Ok(nodejs_resolver::ResolveResult::Resource(resource)) => {
-                    print!("Module ||||");
-                    dbg!(resource.join());
                     return ResolveResult {
                         path: resource.join().to_string_lossy().to_string(),
                         external_name: None,
                         is_external: false,
                     };
                 }
-                Ok(nodejs_resolver::ResolveResult::Ignored) => println!("Ignored"),
-                Err(err) => println!("MMMM {err:?}"),
+                Ok(nodejs_resolver::ResolveResult::Ignored) => panic!("Should not happen dIgnored"),
+                Err(_err) => panic!("Resolve {module_id} failed"),
             };
         }
-    }
-
-    if resolved.starts_with('.') {
-        let path = PathBuf::from(resolve_param.path);
-        let mut abs_resolved =
-            RelativePath::new(resolve_param.dependency).to_logical_path(path.parent().unwrap());
-
-        //
-        if !exists_file(abs_resolved.to_str().unwrap(), resolve_param) {
-            // default resolve.extensions
-            let default_extensions = &context.config.resolve.extensions;
-            for extension in default_extensions {
-                let abs_resolved_with_ext = abs_resolved.with_extension(extension);
-                // println!(">>> resolve {}", abs_resolved_with_ext.display());
-                if exists_file(abs_resolved_with_ext.to_str().unwrap(), resolve_param) {
-                    abs_resolved = abs_resolved_with_ext;
-                    break;
-                }
-            }
-            if !exists_file(abs_resolved.to_str().unwrap(), resolve_param) {
-                panic!(
-                    "Dependency {} does not exist, import {} from {}",
-                    abs_resolved.display(),
-                    resolved,
-                    path.parent().unwrap().display()
-                );
-            }
-            resolved = abs_resolved.to_string_lossy().to_string();
-        } else {
-            resolved = abs_resolved.to_string_lossy().to_string();
-        }
-    }
-
-    ResolveResult {
-        path: resolved,
-        is_external: false,
-        external_name: None,
-    }
-}
-
-fn exists_file(path: &str, resolve_param: &ResolveParam) -> bool {
-    if resolve_param.files.is_some() {
-        return resolve_param.files.as_ref().unwrap().contains_key(path);
-    } else {
-        let path = PathBuf::from(path);
-        path.exists() && path.is_file()
     }
 }

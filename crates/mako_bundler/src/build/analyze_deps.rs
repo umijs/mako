@@ -80,11 +80,7 @@ impl Visit for RequiresCollector<'_> {
         if let Callee::Expr(callee_expr) = &expr.callee {
             if let Expr::Ident(ident) = callee_expr.as_ref() {
                 if ident.sym.to_string() == "require" && expr.args.len() == 1 {
-                    println!("calling ---> {} ", ident.sym.to_string());
-                    dbg!(expr.args[0].expr.as_ref());
                     if let Expr::Lit(Lit::Str(ref dep)) = expr.args[0].expr.as_ref() {
-                        dbg!(dep.value.to_string());
-
                         self.requires.push(Dependency {
                             source: dep.value.to_string(),
                             resolve_type: ResolveType::Require,

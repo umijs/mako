@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use swc_ecma_ast::{Callee, Expr, ExprOrSpread, Ident, Lit};
+use swc_ecma_ast::{Callee, Expr, ExprOrSpread, Ident, Lit, Str};
 use swc_ecma_visit::{VisitMut, VisitMutWith};
 
 pub struct DepReplacer {
@@ -18,7 +18,7 @@ impl VisitMut for DepReplacer {
                     } = &mut call_expr.args[0]
                     {
                         if let Some(replacement) = self.dep_map.get(&source.value.to_string()) {
-                            source.value = replacement.clone().into();
+                            *source = Str::from(replacement.clone())
                         }
                     }
                 }
