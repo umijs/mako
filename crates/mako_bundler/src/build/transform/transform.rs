@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 
+use swc_common::collections::AHashMap;
 use swc_common::sync::Lrc;
+use swc_common::DUMMY_SP;
 use swc_common::{
     comments::{NoopComments, SingleThreadedComments},
     Globals, Mark, SourceMap, GLOBALS,
 };
-use swc_ecma_ast::Module;
+use swc_ecma_ast::{Expr, Lit, Module, Str};
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
 use swc_ecma_transforms::{
@@ -25,12 +27,14 @@ use crate::context::Context;
 use crate::module::ModuleAst;
 
 use super::dep_replacer::DepReplacer;
+use super::env_replacer::EnvReplacer;
 
 pub struct TransformParam<'a> {
     pub path: &'a str,
     pub ast: &'a ModuleAst,
     pub cm: &'a Lrc<SourceMap>,
     pub dep_map: HashMap<String, String>,
+    pub env_map: HashMap<String, String>,
 }
 
 pub struct TransformResult {
@@ -46,6 +50,22 @@ pub fn transform(transform_param: &TransformParam, _context: &Context) -> Transf
     } else {
         panic!("not support module")
     };
+
+    let mut env_map = AHashMap::default();
+    transform_param
+        .env_map
+        .clone()
+        .into_iter()
+        .for_each(|(k, v)| {
+            env_map.insert(
+                k.into(),
+                Expr::Lit(Lit::Str(Str {
+                    span: DUMMY_SP,
+                    raw: None,
+                    value: v.into(),
+                })),
+            );
+        });
 
     let mut ast = module_ast.clone();
     let cm = transform_param.cm.clone();
@@ -70,6 +90,8 @@ pub fn transform(transform_param: &TransformParam, _context: &Context) -> Transf
                 cm.clone(),
                 Some(NoopComments),
                 Options {
+                    pragma: Some("_react.createElement".into()),
+                    pragma_frag: Some("_react.Fragment".into()),
                     ..Default::default()
                 },
                 top_level_mark,
@@ -84,6 +106,9 @@ pub fn transform(transform_param: &TransformParam, _context: &Context) -> Transf
                 dep_map: transform_param.dep_map.clone(),
             };
             ast.visit_mut_with(&mut dep_replacer);
+
+            let mut env_replacer = EnvReplacer::new(Lrc::new(env_map));
+            ast.visit_mut_with(&mut env_replacer);
         });
     });
 
@@ -94,7 +119,7 @@ pub fn transform(transform_param: &TransformParam, _context: &Context) -> Transf
             cfg: Default::default(),
             cm: cm.clone(),
             comments: None,
-            wr: Box::new(JsWriter::new(cm.clone(), "\n", &mut buf, None)),
+            wr: Box::new(JsWriter::new(cm, "\n", &mut buf, None)),
         };
         emitter.emit_module(&ast).unwrap();
     }

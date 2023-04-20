@@ -23,13 +23,11 @@ pub fn run() {
         .join(&args[1])
         .to_string_lossy()
         .to_string();
-    let mut config = config::Config::from_str(
+    let mut config = config::Config::from_literal_str(
         format!(
             r#"
 {{
     "externals": {{
-        "react": "React",
-        "react-dom/client": "ReactDOM"
     }},
     "root": "{}",
     "entry": {{ "index": "index.tsx" }}

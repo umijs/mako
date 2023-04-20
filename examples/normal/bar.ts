@@ -1,1 +1,1 @@
-export const bar = "world";
+export const bar = 'world';

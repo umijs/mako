@@ -149,7 +149,7 @@ impl Compiler {
                 .as_ref()
                 .expect("parent dependency is required for parent_module_id");
             self.context.module_graph.add_dependency(
-                &parent_module_id,
+                parent_module_id,
                 module_id,
                 parent_dependency.clone(),
             )
@@ -174,8 +174,12 @@ impl Compiler {
             let deps = self.context.module_graph.get_dependencies(&module_id);
             let dep_map: HashMap<String, String> = deps
                 .into_iter()
-                .map(|(id, dep)| return (dep.source.clone(), id.id.clone()))
+                .map(|(id, dep)| (dep.source.clone(), id.id.clone()))
                 .collect();
+
+            // define env
+            let env_map: HashMap<String, String> =
+                HashMap::from([("NODE_ENV".into(), "production".into())]);
 
             let info = &module.info;
 
@@ -187,6 +191,7 @@ impl Compiler {
                 ast: &info.original_ast,
                 cm,
                 dep_map,
+                env_map,
             };
             let transform_result = transform(&transform_param, &self.context);
 

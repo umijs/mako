@@ -13,8 +13,19 @@ jobs:
     strategy:
       matrix:
         rust: [nightly]
+        node_version: [ lts/-1, lts/* ]
     steps:
       - uses: actions/checkout@v2
+      - uses: pnpm/action-setup@v2
+        name: Install pnpm
+        id: pnpm-install
+        with:
+          version: 7
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node_version }}
+          cache: 'pnpm'
+      - run: pnpm i --no-lockfile
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
@@ -30,7 +41,7 @@ jobs:
         run: >
           cargo test -v
       - name: build_fixture
-        run: target/debug/mako examples/normal
+        run: cargo run --bin mako examples/normal
 
   build_benchmarks:
     runs-on: ubuntu-latest
@@ -43,7 +54,7 @@ jobs:
       - name: build
         run: cargo build -v --benches
 
-  clippy:
+  lint_with_clippy:
     runs-on: ubuntu-20.04
     steps:
       - name: install-dependencies
@@ -56,7 +67,7 @@ jobs:
           components: clippy
       - uses: actions-rs/cargo@v1
         with:
-          args: clippy --all-features -- -D warnings
+          args: cargo lint
         env:
           SYSTEM_DEPS_DAV1D_BUILD_INTERNAL: always
 

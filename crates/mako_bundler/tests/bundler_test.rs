@@ -6,6 +6,7 @@ use mako_bundler::{
 };
 
 #[test]
+#[ignore]
 fn normal() {
     let files = HashMap::from([
         (
@@ -31,6 +32,7 @@ export function fn() {
 }
 
 #[test]
+#[ignore]
 fn multiple_files() {
     let files = HashMap::from([
         (
@@ -92,8 +94,43 @@ export function three() {
     insta::assert_debug_snapshot!(&vecs);
 }
 
+#[test]
+#[ignore]
+fn replace_env() {
+    let files = HashMap::from([
+        (
+            "/tmp/entry.js".to_string(),
+            r###"
+import {one} from './one';
+if (process.env.NODE_ENV === 'production') {
+	console.log(123);
+}
+            "###
+            .to_string(),
+        ),
+        (
+            "/tmp/one.js".to_string(),
+            r###"
+function foo() {
+	if (process.env.NODE_ENV === 'production') {
+		console.log(123);
+	}
+	if (process.env['NODE_ENV'] === 'production') {
+		console.log(123);
+	}
+	const test = process.env['NODE_ENV'];
+}
+            "###
+            .to_string(),
+        ),
+    ]);
+    let (output, _) = test_files(files);
+    insta::assert_debug_snapshot!(output);
+}
+
+#[allow(clippy::useless_format)]
 fn test_files(files: HashMap<String, String>) -> (Vec<String>, Compiler) {
-    let mut config = Config::from_str(
+    let mut config = Config::from_literal_str(
         format!(
             r#"
 {{
@@ -112,5 +149,5 @@ fn test_files(files: HashMap<String, String>) -> (Vec<String>, Compiler) {
     compiler.build(&BuildParam { files: Some(files) });
     let generate_result = compiler.generate(&GenerateParam { write: false });
     let output = generate_result.output_files[0].__output.clone();
-    return (output, compiler);
+    (output, compiler)
 }

@@ -1,0 +1,14 @@
+{
+  "formatter": {
+    "enabled": true,
+    "ignore": ["./examples/**/dist/*", "./.vscode/**", "node_modules/**"],
+    "indentStyle": "space",
+    "lineWidth": 100,
+    "indentSize": 2
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single"
+    }
+  }
+}
