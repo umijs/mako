@@ -127,7 +127,7 @@ function foo() {
 
 #[allow(clippy::useless_format)]
 fn test_files(files: HashMap<String, String>) -> (Vec<String>, Compiler) {
-    let mut config = Config::from(
+    let mut config = Config::from_literal_str(
         format!(
             r#"
 {{

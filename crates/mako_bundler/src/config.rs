@@ -32,7 +32,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from(s: &str) -> Result<Self, config::ConfigError> {
+    pub fn from_literal_str(s: &str) -> Result<Self, config::ConfigError> {
         let conf = config::Config::builder()
             .add_source(config::File::from_str(
                 &Self::default_str(),
