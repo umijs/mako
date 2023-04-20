@@ -32,15 +32,15 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_str(s: &str) -> Result<Self, config::ConfigError> {
-        let s = config::Config::builder()
+    pub fn from_literal_str(s: &str) -> Result<Self, config::ConfigError> {
+        let conf = config::Config::builder()
             .add_source(config::File::from_str(
                 &Self::default_str(),
                 config::FileFormat::Json,
             ))
             .add_source(config::File::from_str(s, config::FileFormat::Json))
             .build()?;
-        s.try_deserialize()
+        conf.try_deserialize()
     }
 
     pub fn default_str() -> String {

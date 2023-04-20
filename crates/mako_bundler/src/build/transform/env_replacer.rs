@@ -35,43 +35,40 @@ impl VisitMut for EnvReplacer {
 
         expr.visit_mut_children_with(self);
 
-        match expr {
-            Expr::Member(MemberExpr { obj, prop, .. }) => {
-                if let Expr::Member(MemberExpr {
-                    obj: first_obj,
-                    prop:
-                        MemberProp::Ident(Ident {
-                            sym: js_word!("env"),
-                            ..
-                        }),
-                    ..
-                }) = &**obj
-                {
-                    if let Expr::Ident(Ident {
-                        sym: js_word!("process"),
+        if let Expr::Member(MemberExpr { obj, prop, .. }) = expr {
+            if let Expr::Member(MemberExpr {
+                obj: first_obj,
+                prop:
+                    MemberProp::Ident(Ident {
+                        sym: js_word!("env"),
                         ..
-                    }) = &**first_obj
-                    {
-                        match prop {
-                            MemberProp::Computed(ComputedPropName { expr: c, .. }) => {
-                                if let Expr::Lit(Lit::Str(Str { value: sym, .. })) = &**c {
-                                    if let Some(env) = self.envs.get(sym) {
-                                        *expr = env.clone();
-                                    }
-                                }
-                            }
-
-                            MemberProp::Ident(Ident { sym, .. }) => {
+                    }),
+                ..
+            }) = &**obj
+            {
+                if let Expr::Ident(Ident {
+                    sym: js_word!("process"),
+                    ..
+                }) = &**first_obj
+                {
+                    match prop {
+                        MemberProp::Computed(ComputedPropName { expr: c, .. }) => {
+                            if let Expr::Lit(Lit::Str(Str { value: sym, .. })) = &**c {
                                 if let Some(env) = self.envs.get(sym) {
                                     *expr = env.clone();
                                 }
                             }
-                            _ => {}
                         }
+
+                        MemberProp::Ident(Ident { sym, .. }) => {
+                            if let Some(env) = self.envs.get(sym) {
+                                *expr = env.clone();
+                            }
+                        }
+                        _ => {}
                     }
                 }
             }
-            _ => {}
         }
     }
 }
