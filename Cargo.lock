@@ -610,11 +610,13 @@ dependencies = [
  "relative-path",
  "serde",
  "serde_json",
+ "swc_atoms",
  "swc_common",
  "swc_ecma_ast",
  "swc_ecma_codegen",
  "swc_ecma_parser",
  "swc_ecma_transforms",
+ "swc_ecma_utils",
  "swc_ecma_visit",
  "tokio",
 ]
