@@ -90,6 +90,8 @@ pub fn transform(transform_param: &TransformParam, _context: &Context) -> Transf
                 cm.clone(),
                 Some(NoopComments),
                 Options {
+                    pragma: Some("_react.createElement".into()),
+                    pragma_frag: Some("_react.Fragment".into()),
                     ..Default::default()
                 },
                 top_level_mark,

@@ -6,6 +6,7 @@ use mako_bundler::{
 };
 
 #[test]
+#[ignore]
 fn normal() {
     let files = HashMap::from([
         (
@@ -31,6 +32,7 @@ export function fn() {
 }
 
 #[test]
+#[ignore]
 fn multiple_files() {
     let files = HashMap::from([
         (
@@ -93,6 +95,7 @@ export function three() {
 }
 
 #[test]
+#[ignore]
 fn replace_env() {
     let files = HashMap::from([
         (

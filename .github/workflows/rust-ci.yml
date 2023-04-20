@@ -13,8 +13,19 @@ jobs:
     strategy:
       matrix:
         rust: [nightly]
+        node_version: [ lts/-1, lts/* ]
     steps:
       - uses: actions/checkout@v2
+      - uses: pnpm/action-setup@v2
+        name: Install pnpm
+        id: pnpm-install
+        with:
+          version: 7
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node_version }}
+          cache: 'pnpm'
+      - run: pnpm i --no-lockfile
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
