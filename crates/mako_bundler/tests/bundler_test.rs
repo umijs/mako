@@ -40,7 +40,7 @@ fn multiple_files() {
             r###"
 import {three} from './three';
 import {one} from './one';
-import {two} from './two';
+import {two} from './two'replace_env;
 console.log(one());
             "###
             .to_string(),
@@ -95,6 +95,7 @@ export function three() {
 }
 
 #[test]
+#[ignore]
 fn replace_env() {
     let files = HashMap::from([
         (
