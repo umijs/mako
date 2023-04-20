@@ -1,5 +1,5 @@
 import React from "react";
-import ReactDOM from "react-dom/client";
+import { createRoot }from "react-dom/client";
 
 import { foo } from "./foo";
 import { bar } from './bar';
@@ -22,4 +22,4 @@ function App() {
 	</div>;
 }
 
-ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(<App />);
