@@ -18,6 +18,8 @@ swc_ecma_transforms = { version = "0.203.20", features = [
   "react",
   "concurrent",
 ] }
+swc_ecma_utils = { version = "0.107.12" }
+swc_atoms = { version = "0.4.41" }
 relative-path = "1.8.0"
 regex = "1"
 lazy_static = "1.4.0"

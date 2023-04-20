@@ -177,6 +177,10 @@ impl Compiler {
                 .map(|(id, dep)| return (dep.source.clone(), id.id.clone()))
                 .collect();
 
+            // define env
+            let env_map: HashMap<String, String> =
+                HashMap::from([("NODE_ENV".into(), "production".into())]);
+
             let info = &module.info;
 
             // transform
@@ -187,6 +191,7 @@ impl Compiler {
                 ast: &info.original_ast,
                 cm,
                 dep_map,
+                env_map,
             };
             let transform_result = transform(&transform_param, &self.context);
 
