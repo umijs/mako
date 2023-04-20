@@ -40,7 +40,7 @@ fn multiple_files() {
             r###"
 import {three} from './three';
 import {one} from './one';
-import {two} from './two'replace_env;
+import {two} from './two';
 console.log(one());
             "###
             .to_string(),
