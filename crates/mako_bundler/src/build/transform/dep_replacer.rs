@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-
 use swc_ecma_ast::{Callee, Expr, ExprOrSpread, Ident, Lit, Str};
 use swc_ecma_visit::{VisitMut, VisitMutWith};
 
@@ -18,7 +17,13 @@ impl VisitMut for DepReplacer {
                     } = &mut call_expr.args[0]
                     {
                         if let Some(replacement) = self.dep_map.get(&source.value.to_string()) {
-                            *source = Str::from(replacement.clone())
+                            let span = source.span;
+
+                            // NOTE: JsWord 有缓存，直接设置 value 的方式在这种情况下不会生效
+                            // if (process.env.NODE_ENV === 'development') { require("./foo") }
+                            *source = Str::from(replacement.clone());
+                            // 保持原来的 span，不确定不加的话会不会导致 sourcemap 错误
+                            (*source).span = span;
                         }
                     }
                 }
