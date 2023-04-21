@@ -1,0 +1,9 @@
+{
+	"compilerOptions": {
+		"jsx": "react",
+		"types": [
+			"./node_modules/@types",
+			"./typings"
+		]
+	}
+}
