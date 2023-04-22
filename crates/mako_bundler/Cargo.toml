@@ -6,6 +6,7 @@ repository = "https://github.com/umijs/mako"
 license = "MIT"
 
 [dependencies]
+maplit = "1.0.2"
 tokio = { workspace = true, features = ["full"] }
 swc_ecma_ast = { version = "0.96.5", features = ["rkyv-impl"] }
 swc_ecma_parser = { version = "0.124.9" }
@@ -33,4 +34,3 @@ nodejs-resolver = "0.0.78"
 
 [dev-dependencies]
 insta = { version = "1.29.0", features = ["yaml"] }
-maplit = "1.0.2"
