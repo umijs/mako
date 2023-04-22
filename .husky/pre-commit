@@ -3,7 +3,7 @@
 
 # for rust code
 cargo lint
-cargo fmt --all
+cargo fmt --all --check
 # only add staged files though cargo fmt all projects
 git add $(git diff --name-only --cached --diff-filter=AM)
 
