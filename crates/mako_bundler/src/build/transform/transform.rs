@@ -79,8 +79,9 @@ pub fn transform(transform_param: &TransformParam, _context: &Context) -> Transf
             ast.visit_mut_with(&mut common_js::<SingleThreadedComments>(
                 unresolved_mark,
                 Config {
-                    import_interop: Some(ImportInterop::None),
+                    import_interop: Some(ImportInterop::Swc),
                     ignore_dynamic: true,
+
                     ..Default::default()
                 },
                 features,
