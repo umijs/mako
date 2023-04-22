@@ -3,8 +3,9 @@
 
 # for rust code
 cargo lint
-cargo fmt
-git add .
+cargo fmt --all
+# only add staged files though cargo fmt all projects
+git add $(git diff --name-only --cached --diff-filter=AM)
 
 # for js code
 npx --no-install lint-staged
