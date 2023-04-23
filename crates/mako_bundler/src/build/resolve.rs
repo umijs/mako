@@ -69,8 +69,10 @@ pub fn resolve(resolve_param: &ResolveParam, context: &Context) -> ResolveResult
             ".mjs".to_string(),
         ],
         condition_names: hashset! {
+            "node".to_string(),
             "require".to_string(),
-            "import".to_string()
+            "import".to_string(),
+            "default".to_string()
         },
         ..Default::default()
     });
