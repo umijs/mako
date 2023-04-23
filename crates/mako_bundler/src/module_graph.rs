@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use crate::module::{Module, ModuleId};
 use petgraph::{
-    algo::toposort,
     graph::{DefaultIx, NodeIndex},
     stable_graph::StableDiGraph,
     Direction,
@@ -131,22 +130,32 @@ impl ModuleGraph {
      * TODO: 2. 针对成环情况下的友好处理
      */
     pub fn topo_sort(&mut self) -> Result<Vec<ModuleId>, Cycle<ModuleId>> {
-        let orders = toposort(&self.graph, None);
-        match orders {
-            Ok(orders) => {
-                let orders = orders
-                    .into_iter()
-                    .map(|idx| self.graph[idx].id.clone())
-                    .collect();
-                Ok(orders)
-            }
-            Err(err) => {
-                let id = err.node_id();
-                let id = self.graph[id].id.clone();
-                Err(Cycle(id))
-            }
-        }
+        let orders = self
+            .graph
+            .node_indices()
+            .map(|x| self.graph[x].id.clone())
+            .collect();
+
+        Ok(orders)
     }
+    /*
+           match orders {
+               Ok(orders) => {
+                   let orders = orders
+                       .into_iter()
+                       .map(|idx| self.graph[idx].id.clone())
+                       .collect();
+                   Ok(orders)
+               }
+               Err(err) => {
+                   let id = err.node_id();
+                   let id = self.graph[id].id.clone();
+                   Err(Cycle(id))
+               }
+           }
+       }
+
+    */
 }
 
 impl Default for ModuleGraph {

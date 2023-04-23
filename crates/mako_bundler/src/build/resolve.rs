@@ -1,3 +1,4 @@
+use maplit::hashset;
 use nodejs_resolver::{Options, Resolver};
 use std::{collections::HashMap, path::PathBuf, vec};
 
@@ -65,7 +66,14 @@ pub fn resolve(resolve_param: &ResolveParam, context: &Context) -> ResolveResult
             ".jsx".to_string(),
             ".ts".to_string(),
             ".tsx".to_string(),
+            ".mjs".to_string(),
         ],
+        condition_names: hashset! {
+            "node".to_string(),
+            "require".to_string(),
+            "import".to_string(),
+            "default".to_string()
+        },
         ..Default::default()
     });
     match dispatch_request_type(resolve_param) {
@@ -92,7 +100,10 @@ pub fn resolve(resolve_param: &ResolveParam, context: &Context) -> ResolveResult
                     };
                 }
                 Ok(nodejs_resolver::ResolveResult::Ignored) => panic!("Should not happen dIgnored"),
-                Err(_err) => panic!("Resolve {module_id} failed"),
+                Err(_err) => panic!(
+                    "Resolve Module {module_id} failed from {}",
+                    context.display()
+                ),
             };
         }
     }

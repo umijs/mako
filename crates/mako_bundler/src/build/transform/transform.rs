@@ -10,9 +10,12 @@ use swc_common::{
 use swc_ecma_ast::{Expr, Lit, Module, Str};
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
+use swc_ecma_transforms::helpers::inject_helpers;
 use swc_ecma_transforms::{
     feature::FeatureFlag,
+    fixer,
     helpers::{Helpers, HELPERS},
+    hygiene,
     modules::{
         common_js,
         import_analysis::import_analyzer,
@@ -75,27 +78,35 @@ pub fn transform(transform_param: &TransformParam, _context: &Context) -> Transf
             let top_level_mark = Mark::new();
             let unresolved_mark = Mark::new();
             let features = FeatureFlag::empty();
-            ast.visit_mut_with(&mut import_analyzer(ImportInterop::Swc, true));
+
+            let import_interop = ImportInterop::Swc;
+            ast.visit_mut_with(&mut import_analyzer(import_interop, true));
+            ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
+
+            ast.visit_mut_with(&mut react(
+                cm.clone(),
+                Some(NoopComments),
+                Options {
+                    import_source: Some("react".to_string()),
+                    pragma: Some("require('react').createElement".into()),
+                    pragma_frag: Some("require('react').Fragment".into()),
+                    ..Default::default()
+                },
+                top_level_mark,
+            ));
+
             ast.visit_mut_with(&mut common_js::<SingleThreadedComments>(
                 unresolved_mark,
                 Config {
-                    import_interop: Some(ImportInterop::None),
+                    import_interop: Some(import_interop),
                     ignore_dynamic: true,
+                    preserve_import_meta: true,
                     ..Default::default()
                 },
                 features,
                 None,
             ));
-            ast.visit_mut_with(&mut react(
-                cm.clone(),
-                Some(NoopComments),
-                Options {
-                    pragma: Some("_react.createElement".into()),
-                    pragma_frag: Some("_react.Fragment".into()),
-                    ..Default::default()
-                },
-                top_level_mark,
-            ));
+
             ast.visit_mut_with(&mut strip_with_jsx(
                 cm.clone(),
                 Default::default(),
@@ -109,6 +120,10 @@ pub fn transform(transform_param: &TransformParam, _context: &Context) -> Transf
 
             let mut env_replacer = EnvReplacer::new(Lrc::new(env_map));
             ast.visit_mut_with(&mut env_replacer);
+
+            ast.visit_mut_with(&mut fixer(None));
+
+            ast.visit_mut_with(&mut hygiene());
         });
     });
 
