@@ -1,6 +1,6 @@
-import React from 'react';
+import React1 from 'react';
 import ReactDOM from 'react-dom/client';
-import Button from 'antd/es/button/index.js';
+import Button from 'antd/es/button';
 
 function App() {
   return (
@@ -10,4 +10,4 @@ function App() {
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(<App />);
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
