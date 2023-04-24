@@ -37,12 +37,13 @@ pub struct ModuleInfo {
     pub original_cm: Option<Lrc<SourceMap>>,
     pub path: String,
     pub is_external: bool,
+    pub external_name: Option<String>,
     pub is_entry: bool,
 }
 
 pub struct ModuleTransformInfo {
     pub ast: ModuleAst,
-    pub code: String,
+    pub code: Option<String>,
 }
 
 pub struct Module {
