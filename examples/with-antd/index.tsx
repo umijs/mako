@@ -1,4 +1,4 @@
-import React1 from 'react';
+import React from 'react';
 import ReactDOM from 'react-dom/client';
 import Button from 'antd/es/button';
 
