@@ -67,11 +67,13 @@ pub fn resolve(resolve_param: &ResolveParam, context: &Context) -> ResolveResult
             ".ts".to_string(),
             ".tsx".to_string(),
             ".mjs".to_string(),
+            ".cjs".to_string(),
         ],
         condition_names: hashset! {
             "node".to_string(),
             "require".to_string(),
             "import".to_string(),
+            "browser".to_string(),
             "default".to_string()
         },
         ..Default::default()
