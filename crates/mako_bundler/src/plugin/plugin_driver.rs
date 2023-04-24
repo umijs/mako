@@ -32,8 +32,8 @@ impl PluginDriver {
         let before = plugin.before();
 
         if let Some(before_pos) = match before.is_empty() {
-            true => self.plugins.iter().position(|p| p.name() == before),
-            false => None,
+            false => self.plugins.iter().position(|p| p.name() == before),
+            true => None,
         } {
             insert_pos = before_pos;
         }
