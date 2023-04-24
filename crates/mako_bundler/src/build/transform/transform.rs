@@ -93,6 +93,7 @@ pub fn transform(transform_param: &TransformParam, _context: &Context) -> Transf
                     ..Default::default()
                 },
                 top_level_mark,
+                unresolved_mark,
             ));
 
             ast.visit_mut_with(&mut common_js::<SingleThreadedComments>(
