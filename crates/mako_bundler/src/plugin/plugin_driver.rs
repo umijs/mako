@@ -61,14 +61,18 @@ impl PluginDriver {
 
     /// run hook in serial mode
     ///
-    /// * `executor` - a closure function that accept a plugin, use to call plugin method
-    pub fn run_hook_serial<E>(&mut self, mut executor: E)
+    /// * `executor` - a closure function that accept a plugin, use to call plugin method and serial return result
+    pub fn run_hook_serial<T, E>(&mut self, executor: E) -> Option<T>
     where
-        E: FnMut(&dyn Plugin),
+        E: Fn(&dyn Plugin, Option<T>) -> Option<T>,
     {
+        let mut last_ret: Option<T> = None;
+
         for plugin in &self.plugins {
-            executor(plugin.as_ref());
+            last_ret = executor(plugin.as_ref(), last_ret);
         }
+
+        last_ret
     }
 
     /// run hook in parallel mode
