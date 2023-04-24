@@ -1,3 +1,5 @@
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+
 use super::Plugin;
 
 pub struct PluginDriver {
@@ -22,7 +24,7 @@ impl PluginDriver {
     /// register a new plugin
     ///
     /// * `plugin` - a plugin instance
-    pub fn register<T: 'static + Plugin>(&mut self, plugin: T) {
+    pub fn register<T: Plugin>(&mut self, plugin: T) {
         assert!(
             !self.check_plugin_exist(plugin.name()),
             "plugin {} already exist, please check your plugin name",
@@ -44,9 +46,9 @@ impl PluginDriver {
     /// run hook in first mode and return first result
     ///
     /// * `executor` - a closure function that accept a plugin, use to call plugin method and return result
-    pub fn run_hook_first<T, E>(&mut self, mut executor: E) -> Option<T>
+    pub fn run_hook_first<T, E>(&mut self, executor: E) -> Option<T>
     where
-        E: FnMut(&dyn Plugin) -> Option<T>,
+        E: Fn(&dyn Plugin) -> Option<T>,
     {
         for plugin in &self.plugins {
             let ret = executor(plugin.as_ref());
@@ -78,12 +80,12 @@ impl PluginDriver {
     /// run hook in parallel mode
     ///
     /// * `executor` - a closure function that accept a plugin, use to call plugin method
-    pub fn run_hook_parallel<E>(&mut self, mut executor: E)
+    pub fn run_hook_parallel<E>(&mut self, executor: E)
     where
-        E: FnMut(&dyn Plugin),
+        E: Fn(&dyn Plugin) + Sync,
     {
         self.plugins
-            .iter()
+            .par_iter()
             .for_each(|plugin| executor(plugin.as_ref()));
     }
 }

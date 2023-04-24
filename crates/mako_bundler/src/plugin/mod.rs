@@ -1,6 +1,8 @@
+use std::any::Any;
+
 pub mod plugin_driver;
 
-pub trait Plugin {
+pub trait Plugin: Any + Send + Sync {
     /// define plugin name
     ///
     /// Note: it is recommended to prefix a namespace to avoid name conflicts, such as `mako:plugin-xxx`
