@@ -11,17 +11,18 @@ use swc_ecma_ast::{Expr, Lit, Module, Str};
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
 use swc_ecma_transforms::helpers::inject_helpers;
+use swc_ecma_transforms::hygiene::{hygiene_with_config, Config as HygieneConfig};
 use swc_ecma_transforms::{
     feature::FeatureFlag,
     fixer,
     helpers::{Helpers, HELPERS},
-    hygiene,
     modules::{
         common_js,
         import_analysis::import_analyzer,
         util::{Config, ImportInterop},
     },
     react::{react, Options},
+    resolver,
     typescript::strip_with_jsx,
 };
 use swc_ecma_visit::VisitMutWith;
@@ -80,20 +81,21 @@ pub fn transform(transform_param: &TransformParam, _context: &Context) -> Transf
             let features = FeatureFlag::empty();
 
             let import_interop = ImportInterop::Swc;
-            ast.visit_mut_with(&mut import_analyzer(import_interop, true));
-            ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
-
             ast.visit_mut_with(&mut react(
                 cm.clone(),
                 Some(NoopComments),
                 Options {
                     import_source: Some("react".to_string()),
-                    pragma: Some("require('react').createElement".into()),
-                    pragma_frag: Some("require('react').Fragment".into()),
+                    pragma: Some("React.createElement".into()),
+                    pragma_frag: Some("React.Fragment".into()),
                     ..Default::default()
                 },
                 top_level_mark,
             ));
+
+            ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
+            ast.visit_mut_with(&mut import_analyzer(import_interop, true));
+            ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
 
             ast.visit_mut_with(&mut common_js::<SingleThreadedComments>(
                 unresolved_mark,
@@ -121,9 +123,11 @@ pub fn transform(transform_param: &TransformParam, _context: &Context) -> Transf
             let mut env_replacer = EnvReplacer::new(Lrc::new(env_map));
             ast.visit_mut_with(&mut env_replacer);
 
+            ast.visit_mut_with(&mut hygiene_with_config(HygieneConfig {
+                top_level_mark,
+                ..Default::default()
+            }));
             ast.visit_mut_with(&mut fixer(None));
-
-            ast.visit_mut_with(&mut hygiene());
         });
     });
 
