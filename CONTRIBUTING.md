@@ -18,7 +18,7 @@ $ cargo build
 Run.
 
 ```bash
-$ cargo run --bin mako
+$ cargo run --bin mako examples/normal
 ```
 
 Test.
@@ -28,15 +28,14 @@ $ cargo test
 $ cargo t
 ```
 
-
 Format.
 
 ```bash
-	cargo fmt
+$ cargo fmt
 ```
 
 Lint.
 
 ```bash
-	cargo lint
+$ cargo lint
 ```

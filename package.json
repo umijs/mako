@@ -16,6 +16,6 @@
     "rome": "^12.0.0"
   },
   "lint-staged": {
-    "*.{ts,tsx,js,json,less,md}": "rome format --write"
+    "*.{ts,tsx,js,jsx,json}": "rome format --write"
   }
 }
