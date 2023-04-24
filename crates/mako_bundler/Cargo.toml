@@ -8,19 +8,19 @@ license = "MIT"
 [dependencies]
 maplit = "1.0.2"
 tokio = { workspace = true, features = ["full"] }
-swc_ecma_ast = { version = "0.96.5", features = ["rkyv-impl"] }
-swc_ecma_parser = { version = "0.124.9" }
-swc_common = { version = "0.29.31", features = ["concurrent"] }
-swc_ecma_visit = { version = "0.82.5" }
-swc_ecma_codegen = { version = "0.129.12" }
-swc_ecma_transforms = { version = "0.203.20", features = [
+swc_ecma_ast = { version = "0.102.5", features = ["rkyv-impl"] }
+swc_ecma_parser = { version = "0.132.6" }
+swc_common = { version = "0.30.5", features = ["concurrent"] }
+swc_ecma_visit = { version = "0.88.5" }
+swc_ecma_codegen = { version = "0.137.6" }
+swc_ecma_transforms = { version = "0.216.4", features = [
   "module",
   "typescript",
   "react",
   "concurrent",
 ] }
-swc_ecma_utils = { version = "0.107.12" }
-swc_atoms = { version = "0.4.41" }
+swc_ecma_utils = { version = "0.115.8" }
+swc_atoms = { version = "0.4.43" }
 relative-path = "1.8.0"
 regex = "1"
 lazy_static = "1.4.0"
