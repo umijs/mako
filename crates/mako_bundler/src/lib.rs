@@ -3,12 +3,15 @@
 use compiler::Compiler;
 
 pub mod build;
+pub mod chunk;
+pub mod chunk_graph;
 pub mod compiler;
 pub mod config;
 pub mod context;
 pub mod generate;
 pub mod module;
 pub mod module_graph;
+pub mod update;
 pub mod utils;
 
 pub fn run() {

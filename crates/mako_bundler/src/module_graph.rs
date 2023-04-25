@@ -1,11 +1,54 @@
-use std::collections::HashMap;
+use std::{
+    cell::RefCell,
+    collections::{HashMap, HashSet, VecDeque},
+    rc::Rc,
+};
 
-use crate::module::{Module, ModuleId};
+use crate::{
+    chunk::{Chunk, ChunkType},
+    module::{Module, ModuleId},
+};
 use petgraph::{
     graph::{DefaultIx, NodeIndex},
     stable_graph::StableDiGraph,
     Direction,
 };
+
+#[derive(Clone)]
+pub struct Bfs<N> {
+    pub queue: VecDeque<N>,
+    pub visited: Rc<RefCell<HashSet<N>>>,
+}
+
+pub enum NextResult<N> {
+    Visited,
+    First(N),
+}
+impl<N> Bfs<N>
+where
+    N: Eq + std::hash::Hash + Clone,
+{
+    pub fn new(queue: VecDeque<N>, visited: Rc<RefCell<HashSet<N>>>) -> Self {
+        Bfs { queue, visited }
+    }
+
+    pub fn done(&self) -> bool {
+        self.queue.is_empty()
+    }
+
+    pub fn next_node(&mut self) -> NextResult<N> {
+        let head = self.queue.pop_front().unwrap();
+        if self.visited.borrow().contains(&head) {
+            return NextResult::Visited;
+        }
+        self.visited.borrow_mut().insert(head.clone());
+        NextResult::First(head)
+    }
+
+    pub fn visit(&mut self, node: N) {
+        self.queue.push_back(node);
+    }
+}
 
 /**
  * Dependency = Module Graph Edge
@@ -38,21 +81,14 @@ pub enum ResolveType {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Cycle<N>(N);
-
-impl<N> Cycle<N> {
-    /// Return a node id that participates in the cycle
-    pub fn node_id(&self) -> N
-    where
-        N: Copy,
-    {
-        self.0
-    }
+pub struct Cycle<N> {
+    cyclic: Vec<Vec<N>>,
 }
 
 pub struct ModuleGraph {
     id_index_map: HashMap<ModuleId, NodeIndex<DefaultIx>>,
     graph: StableDiGraph<Module, Dependency>,
+    entries: HashSet<ModuleId>,
 }
 
 impl ModuleGraph {
@@ -60,13 +96,37 @@ impl ModuleGraph {
         Self {
             id_index_map: HashMap::new(),
             graph: StableDiGraph::new(),
+            entries: HashSet::new(),
         }
+    }
+
+    pub fn get_entry_modules(&self) -> HashSet<ModuleId> {
+        self.entries.clone().into_iter().collect()
+    }
+
+    pub fn add_entry_module(&mut self, module: Module) {
+        self.entries.insert(module.id.clone());
+        self.add_module(module);
     }
 
     pub fn add_module(&mut self, module: Module) {
         let id = module.id.clone();
         let idx = self.graph.add_node(module);
         self.id_index_map.insert(id, idx);
+    }
+
+    pub fn remove_module(&mut self, module_id: &ModuleId) -> Module {
+        let index = self
+            .id_index_map
+            .remove(module_id)
+            .unwrap_or_else(|| panic!("module_id {:?} not found in the module graph", module_id));
+        self.graph.remove_node(index).unwrap()
+    }
+
+    pub fn update_module(&mut self, module: Module) {
+        let id = module.id.clone();
+        let index = self.id_index_map.get(&id).unwrap();
+        self.graph[*index] = module;
     }
 
     pub fn add_dependency(&mut self, from: &ModuleId, to: &ModuleId, edge: Dependency) {
@@ -125,38 +185,102 @@ impl ModuleGraph {
         deps
     }
 
+    pub fn get_modules(&mut self) -> Vec<ModuleId> {
+        let modules = self
+            .graph
+            .node_indices()
+            .map(|x| self.graph[x].id.clone())
+            .collect();
+        modules
+    }
+
     /**
      * 对图进行拓扑排序
      * TODO: 1. 针对 sideEffects 情况的处理，import 顺序需要按照 order 排序
      * TODO: 2. 针对成环情况下的友好处理
      */
-    pub fn topo_sort(&mut self) -> Result<Vec<ModuleId>, Cycle<ModuleId>> {
-        let orders = self
-            .graph
-            .node_indices()
-            .map(|x| self.graph[x].id.clone())
-            .collect();
+    pub fn topo_sort(&mut self) -> (Vec<ModuleId>, Cycle<ModuleId>) {
+        fn dfs(
+            entry: &ModuleId,
+            graph: &ModuleGraph,
+            stack: &mut Vec<ModuleId>,
+            visited: &mut HashSet<ModuleId>,
+            result: &mut Vec<ModuleId>,
+            cyclic: &mut Vec<Vec<ModuleId>>,
+        ) {
+            // cycle detected
+            if let Some(pos) = stack.iter().position(|m| m == entry) {
+                cyclic.push(stack.clone()[pos..].to_vec());
+                return;
+            } else if visited.contains(entry) {
+                // skip visited module
+                return;
+            }
 
-        Ok(orders)
+            visited.insert(entry.clone());
+            stack.push(entry.clone());
+
+            let deps = graph.get_dependencies(entry);
+
+            for (dep, _) in &deps {
+                dfs(dep, graph, stack, visited, result, cyclic)
+            }
+
+            // visit current entry
+            result.push(stack.pop().unwrap());
+        }
+
+        let mut result = vec![];
+        let mut cyclic = vec![];
+        let mut stack = vec![];
+
+        // sort entries to make sure it is stable
+        let mut entries = self.entries.iter().collect::<Vec<_>>();
+        entries.sort();
+
+        let mut visited = HashSet::new();
+
+        for entry in entries {
+            let mut res = vec![];
+            dfs(entry, self, &mut stack, &mut visited, &mut res, &mut cyclic);
+            result.extend(res);
+        }
+
+        result.reverse();
+
+        (result, Cycle { cyclic })
     }
-    /*
-           match orders {
-               Ok(orders) => {
-                   let orders = orders
-                       .into_iter()
-                       .map(|idx| self.graph[idx].id.clone())
-                       .collect();
-                   Ok(orders)
-               }
-               Err(err) => {
-                   let id = err.node_id();
-                   let id = self.graph[id].id.clone();
-                   Err(Cycle(id))
-               }
-           }
-       }
 
-    */
+    pub fn create_chunk_by_entry_module_id(
+        &mut self,
+        entry_module_id: &ModuleId,
+        chunk_type: ChunkType,
+    ) -> (Chunk, Vec<ModuleId>) {
+        let mut dynamic_entries = vec![];
+        let mut bfs = Bfs::new(VecDeque::from(vec![entry_module_id]), Default::default());
+        let chunk = Chunk::new(entry_module_id.clone(), chunk_type);
+        self.get_module_mut(entry_module_id)
+            .unwrap()
+            .chunks
+            .insert(entry_module_id.clone());
+
+        while !bfs.done() {
+            match bfs.next_node() {
+                NextResult::Visited => continue,
+                NextResult::First(head) => {
+                    for (dep_module_id, dep) in self.get_dependencies(head) {
+                        if dep.resolve_type == ResolveType::DynamicImport {
+                            dynamic_entries.push(dep_module_id.clone());
+                        } else {
+                            bfs.visit(dep_module_id);
+                        }
+                    }
+                }
+            }
+        }
+
+        (chunk, dynamic_entries)
+    }
 }
 
 impl Default for ModuleGraph {

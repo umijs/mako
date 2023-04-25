@@ -76,7 +76,7 @@ export function three() {
     ]);
     let (output, mut compiler) = test_files(files);
     insta::assert_debug_snapshot!(output);
-    let orders = compiler.context.module_graph.topo_sort().unwrap();
+    let (orders, _) = compiler.context.module_graph.topo_sort();
     assert_eq!(
         &orders,
         &vec![

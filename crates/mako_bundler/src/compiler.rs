@@ -15,6 +15,7 @@ impl Compiler {
     pub fn run(&mut self) {
         self.build(&BuildParam { files: None });
         self.generate(&GenerateParam { write: true });
+        self.context.chunk_graph.print_graph();
     }
 
     pub fn _watch(&self) {}
