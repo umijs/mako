@@ -39,8 +39,8 @@ fn test_first_and_before() {
     pd1.register(TestPlugin2 {});
 
     // register in before order for pd2
-    pd2.register(TestPlugin1 {});
     pd2.register(TestPlugin2 {});
+    pd2.register(TestPlugin1 {});
 
     // assert 2 plugin drivers get same order
     let ret1 = pd1.run_hook_first(|p| p.example_method("p1".to_string()));
