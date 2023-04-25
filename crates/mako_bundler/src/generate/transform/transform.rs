@@ -80,7 +80,7 @@ pub fn transform(transform_param: &TransformParam, _context: &Context) -> Transf
         emitter.emit_module(&ast).unwrap();
     }
     let code = String::from_utf8(buf).unwrap();
-    println!("code: {}", code);
+    // println!("code: {}", code);
 
     TransformResult { ast, code }
 }
