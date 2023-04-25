@@ -34,6 +34,7 @@ pub enum ResolveType {
     ExportNamed,
     ExportAll,
     Require,
+    DynamicImport,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
