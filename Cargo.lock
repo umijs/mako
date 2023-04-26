@@ -708,6 +708,7 @@ dependencies = [
  "md5",
  "nodejs-resolver",
  "petgraph",
+ "rayon",
  "regex",
  "relative-path",
  "serde",

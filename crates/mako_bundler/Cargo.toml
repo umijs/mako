@@ -37,6 +37,7 @@ swc_css_codegen = "0.146.6"
 swc_css_parser = "0.145.6"
 swc_css_visit = "0.135.6"
 swc_css_utils = "0.133.6"
+rayon = "1.7.0"
 
 [dev-dependencies]
 insta = { version = "1.29.0", features = ["yaml"] }

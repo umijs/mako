@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     compiler::Compiler,
     config::get_first_entry_value,
-    module::{Module, ModuleAst, ModuleId, ModuleInfo, ModuleTransformInfo},
+    module::{Module, ModuleAst, ModuleId, ModuleInfo},
     module_graph::Dependency,
 };
 
@@ -35,9 +35,6 @@ impl Compiler {
 
         // build
         self.build_module_graph(entry_point, build_param);
-
-        // transform
-        self.transform_module_graph();
     }
 
     fn build_module_graph(&mut self, entry_point: String, build_param: &BuildParam) {
@@ -74,13 +71,22 @@ impl Compiler {
             };
             let parse_result = parse(&parse_param, &self.context);
 
+            // transform
+            let transform_param = TransformParam {
+                path: path_str,
+                ast: &ModuleAst::Script(parse_result.ast.clone()),
+                cm: &parse_result.cm,
+            };
+            let transform_result = transform(&transform_param, &self.context);
+
             // add current module to module graph
             let info = ModuleInfo {
                 path: task.path.clone(),
                 is_external: false,
+                external_name: None,
                 is_entry,
                 original_cm: Some(parse_result.cm),
-                original_ast: ModuleAst::Script(parse_result.ast.clone()),
+                original_ast: ModuleAst::Script(transform_result.ast),
             };
             let module = Module::new(module_id.clone(), info);
             self.context.module_graph.add_module(module);
@@ -112,19 +118,13 @@ impl Compiler {
                     let info = ModuleInfo {
                         path: resolve_result.path.clone(),
                         is_external: resolve_result.is_external,
+                        external_name: Some(external_name),
                         is_entry: false,
                         original_cm: None,
                         original_ast: crate::module::ModuleAst::None,
                     };
                     let extrnal_module_id = ModuleId::new(&resolve_result.path);
-                    let mut extranl_module = Module::new(extrnal_module_id.clone(), info);
-                    extranl_module.add_transform_info(ModuleTransformInfo {
-                        ast: crate::module::ModuleAst::None,
-                        code: format!(
-                            "/* external {} */ exports.default = {};",
-                            resolve_result.path, external_name,
-                        ),
-                    });
+                    let extranl_module = Module::new(extrnal_module_id.clone(), info);
                     self.context.module_graph.add_module(extranl_module);
                     self.context.module_graph.add_dependency(
                         &module_id,
@@ -153,58 +153,6 @@ impl Compiler {
                 module_id,
                 parent_dependency.clone(),
             )
-        }
-    }
-
-    fn transform_module_graph(&mut self) {
-        let orders = self
-            .context
-            .module_graph
-            .topo_sort()
-            .expect("module graph has cycle");
-
-        for module_id in orders {
-            let module = self.context.module_graph.get_module(&module_id).unwrap();
-            println!("> transform {}", &module_id.id);
-            if module.info.is_external {
-                continue;
-            }
-
-            // get deps
-            let deps = self.context.module_graph.get_dependencies(&module_id);
-            let dep_map: HashMap<String, String> = deps
-                .into_iter()
-                .map(|(id, dep)| (dep.source.clone(), id.id.clone()))
-                .collect();
-
-            // define env
-            let env_map: HashMap<String, String> =
-                HashMap::from([("NODE_ENV".into(), "production".into())]);
-
-            let info = &module.info;
-
-            // transform
-            let cm = info.original_cm.as_ref().unwrap();
-            // TODO: move transform before analyze deps
-            let transform_param = TransformParam {
-                path: info.path.as_str(),
-                ast: &info.original_ast,
-                cm,
-                dep_map,
-                env_map,
-            };
-            let transform_result = transform(&transform_param, &self.context);
-
-            // add transform info to module
-            let module = self
-                .context
-                .module_graph
-                .get_module_mut(&module_id)
-                .unwrap();
-            module.add_transform_info(ModuleTransformInfo {
-                ast: ModuleAst::Script(transform_result.ast),
-                code: transform_result.code,
-            });
         }
     }
 }

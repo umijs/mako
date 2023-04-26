@@ -1,15 +1,9 @@
-use std::collections::HashMap;
-
-use swc_common::collections::AHashMap;
 use swc_common::sync::Lrc;
-use swc_common::DUMMY_SP;
 use swc_common::{
     comments::{NoopComments, SingleThreadedComments},
     Globals, Mark, SourceMap, GLOBALS,
 };
-use swc_ecma_ast::{Expr, Lit, Module, Str};
-use swc_ecma_codegen::text_writer::JsWriter;
-use swc_ecma_codegen::Emitter;
+use swc_ecma_ast::Module;
 use swc_ecma_transforms::helpers::inject_helpers;
 use swc_ecma_transforms::hygiene::{hygiene_with_config, Config as HygieneConfig};
 use swc_ecma_transforms::{
@@ -30,20 +24,14 @@ use swc_ecma_visit::VisitMutWith;
 use crate::context::Context;
 use crate::module::ModuleAst;
 
-use super::dep_replacer::DepReplacer;
-use super::env_replacer::EnvReplacer;
-
 pub struct TransformParam<'a> {
     pub path: &'a str,
     pub ast: &'a ModuleAst,
     pub cm: &'a Lrc<SourceMap>,
-    pub dep_map: HashMap<String, String>,
-    pub env_map: HashMap<String, String>,
 }
 
 pub struct TransformResult {
     pub ast: Module,
-    pub code: String,
 }
 
 pub fn transform(transform_param: &TransformParam, _context: &Context) -> TransformResult {
@@ -54,22 +42,6 @@ pub fn transform(transform_param: &TransformParam, _context: &Context) -> Transf
     } else {
         panic!("not support module")
     };
-
-    let mut env_map = AHashMap::default();
-    transform_param
-        .env_map
-        .clone()
-        .into_iter()
-        .for_each(|(k, v)| {
-            env_map.insert(
-                k.into(),
-                Expr::Lit(Lit::Str(Str {
-                    span: DUMMY_SP,
-                    raw: None,
-                    value: v.into(),
-                })),
-            );
-        });
 
     let mut ast = module_ast.clone();
     let cm = transform_param.cm.clone();
@@ -102,7 +74,8 @@ pub fn transform(transform_param: &TransformParam, _context: &Context) -> Transf
                 unresolved_mark,
                 Config {
                     import_interop: Some(import_interop),
-                    ignore_dynamic: true,
+                    // NOTE: 这里后面要调整为注入自定义require
+                    // ignore_dynamic: true,
                     preserve_import_meta: true,
                     ..Default::default()
                 },
@@ -116,13 +89,6 @@ pub fn transform(transform_param: &TransformParam, _context: &Context) -> Transf
                 NoopComments,
                 top_level_mark,
             ));
-            let mut dep_replacer = DepReplacer {
-                dep_map: transform_param.dep_map.clone(),
-            };
-            ast.visit_mut_with(&mut dep_replacer);
-
-            let mut env_replacer = EnvReplacer::new(Lrc::new(env_map));
-            ast.visit_mut_with(&mut env_replacer);
 
             ast.visit_mut_with(&mut hygiene_with_config(HygieneConfig {
                 top_level_mark,
@@ -132,19 +98,5 @@ pub fn transform(transform_param: &TransformParam, _context: &Context) -> Transf
         });
     });
 
-    // ast to code
-    let mut buf = Vec::new();
-    {
-        let mut emitter = Emitter {
-            cfg: Default::default(),
-            cm: cm.clone(),
-            comments: None,
-            wr: Box::new(JsWriter::new(cm, "\n", &mut buf, None)),
-        };
-        emitter.emit_module(&ast).unwrap();
-    }
-    let code = String::from_utf8(buf).unwrap();
-    // println!("code: {}", code);
-
-    TransformResult { ast, code }
+    TransformResult { ast }
 }
