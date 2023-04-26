@@ -1,4 +1,5 @@
-.title {
-  font-size: 48px;
-  color: blue;
+@import "./title.css";
+
+#root {
+  margin: 20px;
 }

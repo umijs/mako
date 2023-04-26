@@ -32,6 +32,11 @@ serde_json = "1.0.96"
 config = "0.13.3"
 nodejs-resolver = "0.0.78"
 lightningcss = "1.0.0-alpha.41"
+swc_css_ast = "0.136.6"
+swc_css_codegen = "0.146.6"
+swc_css_parser = "0.145.6"
+swc_css_visit = "0.135.6"
+swc_css_utils = "0.133.6"
 
 [dev-dependencies]
 insta = { version = "1.29.0", features = ["yaml"] }
