@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::chunk::ChunkId;
 use crate::{chunk::Chunk, module::ModuleId};
 use petgraph::stable_graph::{DefaultIx, NodeIndex, StableDiGraph};
 use petgraph::visit::EdgeRef;
@@ -33,7 +34,7 @@ impl ChunkGraph {
         self.id_index_map.insert(chunk_id, node_index);
     }
 
-    pub fn add_edge(&mut self, from: &ModuleId, to: &ModuleId) {
+    pub fn add_edge(&mut self, from: &ChunkId, to: &ChunkId) {
         let from_node_index = self.id_index_map.get(from).unwrap();
         let to_node_index = self.id_index_map.get(to).unwrap();
         self.graph.add_edge(*from_node_index, *to_node_index, ());

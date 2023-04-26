@@ -11,7 +11,6 @@ pub mod context;
 pub mod generate;
 pub mod module;
 pub mod module_graph;
-pub mod update;
 pub mod utils;
 
 pub fn run() {
