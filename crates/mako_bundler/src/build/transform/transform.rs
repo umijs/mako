@@ -74,7 +74,8 @@ pub fn transform(transform_param: &TransformParam, _context: &Context) -> Transf
                 unresolved_mark,
                 Config {
                     import_interop: Some(import_interop),
-                    ignore_dynamic: true,
+                    // NOTE: 这里后面要调整为注入自定义require
+                    // ignore_dynamic: true,
                     preserve_import_meta: true,
                     ..Default::default()
                 },
