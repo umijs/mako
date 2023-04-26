@@ -9,6 +9,7 @@ pub mod context;
 pub mod generate;
 pub mod module;
 pub mod module_graph;
+pub mod plugin;
 pub mod utils;
 
 pub fn run() {
