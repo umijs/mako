@@ -1,4 +1,7 @@
+use maplit::hashset;
+use nodejs_resolver::{Options, Resolver};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::{
     compiler::Compiler,
@@ -43,6 +46,26 @@ impl Compiler {
             parent_module_id: None,
             parent_dependecy: None,
         }];
+
+        let resolver: Resolver = Resolver::new(Options {
+            extensions: vec![
+                ".js".to_string(),
+                ".jsx".to_string(),
+                ".ts".to_string(),
+                ".tsx".to_string(),
+                ".mjs".to_string(),
+                ".cjs".to_string(),
+            ],
+            condition_names: hashset! {
+                "node".to_string(),
+                "require".to_string(),
+                "import".to_string(),
+                "browser".to_string(),
+                "default".to_string()
+            },
+            external_cache: Some(Arc::new(Default::default())),
+            ..Default::default()
+        });
 
         while !queue.is_empty() {
             let task = queue.pop().unwrap();
@@ -109,7 +132,7 @@ impl Compiler {
                     dependency: &d.source,
                     files: build_param.files.as_ref(),
                 };
-                let resolve_result = resolve(&resolve_param, &self.context);
+                let resolve_result = resolve(&resolve_param, &self.context, &resolver);
                 println!(
                     "> resolve {} from {} -> {}",
                     &d.source, path_str, resolve_result.path
