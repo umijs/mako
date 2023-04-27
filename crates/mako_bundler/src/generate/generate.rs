@@ -1,4 +1,3 @@
-use std::sync::{Arc, Mutex};
 use std::{collections::HashMap, fs};
 
 use crate::{compiler::Compiler, module::ModuleId};
@@ -174,7 +173,7 @@ function _interop_require_wildcard(obj, nodeInterop) {
             .topo_sort()
             .expect("module graph has cycle");
 
-        let entry_module_id = Arc::new(Mutex::new(String::new()));
+        let mut entry_module_id = String::new();
         let mut results = vec![];
 
         module_ids
@@ -186,11 +185,6 @@ function _interop_require_wildcard(obj, nodeInterop) {
                     .module_graph
                     .get_module(&id)
                     .expect("module not found");
-
-                if module.info.is_entry {
-                    *entry_module_id.lock().unwrap() = module_id.id.clone();
-                }
-
                 let info = &module.info;
                 let code = if info.is_external {
                     format!(
@@ -227,11 +221,20 @@ function _interop_require_wildcard(obj, nodeInterop) {
             })
             .collect_into_vec(&mut results);
 
+        for id in module_ids.iter() {
+            let module = self
+                .context
+                .module_graph
+                .get_module(id)
+                .expect("module not found");
+            if module.info.is_entry {
+                entry_module_id = id.id.clone();
+                break;
+            }
+        }
+
         output.extend(results.into_iter());
-        output.push(format!(
-            "\nrequireModule(\"{}\");",
-            entry_module_id.lock().unwrap().clone()
-        ));
+        output.push(format!("\nrequireModule(\"{}\");", entry_module_id));
         let contents = output.join("\n");
 
         let root_dir = &self.context.config.root;
