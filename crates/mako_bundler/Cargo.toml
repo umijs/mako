@@ -6,6 +6,7 @@ repository = "https://github.com/umijs/mako"
 license = "MIT"
 
 [dependencies]
+rsfs = { version = "0.4.1" }
 maplit = "1.0.2"
 tokio = { workspace = true, features = ["full"] }
 swc_ecma_ast = { version = "0.102.5", features = ["rkyv-impl"] }

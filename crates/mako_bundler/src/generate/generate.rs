@@ -1,6 +1,8 @@
-use std::{collections::HashMap, fs};
+use rsfs::GenFS;
+use std::collections::HashMap;
 
-use crate::{compiler::Compiler, module::ModuleId};
+use crate::utils::fs::write;
+use crate::{compiler::Compiler, module::ModuleId, utils::fs::FS};
 
 fn wrap_module(id: &ModuleId, code: &str) -> String {
     let id = id.id.clone();
@@ -224,12 +226,12 @@ function _interop_require_wildcard(obj, nodeInterop) {
         let root_dir = &self.context.config.root;
         let output_dir = &self.context.config.output.path;
         if generate_param.write && !output_dir.exists() {
-            fs::create_dir_all(output_dir).unwrap();
+            FS.create_dir_all(output_dir).unwrap();
         }
 
         // write to file
         if generate_param.write {
-            fs::write(&output_dir.join("bundle.js"), &contents).unwrap();
+            write(&output_dir.join("bundle.js"), &contents).unwrap();
         }
 
         // write assets
@@ -239,14 +241,15 @@ function _interop_require_wildcard(obj, nodeInterop) {
             let asset_output_path = &output_dir.join(v);
             if generate_param.write && asset_path.exists() {
                 // just copy files for now
-                fs::copy(asset_path, asset_output_path).unwrap();
+                FS.copy(asset_path, asset_output_path).unwrap();
             }
         }
 
         // copy html
         let index_html_file = &root_dir.join("index.html");
         if generate_param.write && index_html_file.exists() {
-            fs::copy(index_html_file, &output_dir.join("index.html")).unwrap();
+            FS.copy(index_html_file, &output_dir.join("index.html"))
+                .unwrap();
         }
 
         GenerateResult {

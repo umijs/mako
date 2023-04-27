@@ -1,6 +1,7 @@
+use super::fs::{read, FS};
 use base64::{alphabet::STANDARD, engine, Engine};
+use rsfs::{File, GenFS, Metadata};
 use std::{
-    fs,
     io::{BufRead, BufReader},
     path::Path,
     str,
@@ -11,12 +12,12 @@ pub fn ext_name(path: &str) -> &str {
 }
 
 pub fn file_size(file_path: &str) -> std::io::Result<u64> {
-    let metadata = fs::metadata(file_path)?;
+    let metadata = FS.metadata(file_path)?;
     Ok(metadata.len())
 }
 
 pub fn content_hash(file_path: &str) -> std::io::Result<String> {
-    let file = fs::File::open(file_path).unwrap();
+    let file = FS.open_file(file_path).unwrap();
     // Find the length of the file
     let len = file.metadata().unwrap().len();
     // Decide on a reasonable buffer size (1MB in this case, fastest will depend on hardware)
@@ -40,7 +41,7 @@ pub fn content_hash(file_path: &str) -> std::io::Result<String> {
 }
 
 pub fn to_base64(path: &str) -> std::io::Result<String> {
-    let vec = fs::read(path)?;
+    let vec = read(path)?;
     let engine = engine::GeneralPurpose::new(&STANDARD, engine::general_purpose::PAD);
 
     let base64 = engine.encode(&vec);
