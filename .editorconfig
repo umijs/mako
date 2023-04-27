@@ -15,3 +15,7 @@ indent_style = space
 
 [*.rs]
 indent_size = 4
+
+[{**.ts, **.tsx, **.json}]
+indent_style = space
+indent_size = 2
