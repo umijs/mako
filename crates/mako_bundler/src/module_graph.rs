@@ -1,6 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet, VecDeque},
-};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::utils::bfs::{Bfs, NextResult};
 use crate::{
