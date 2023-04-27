@@ -34,7 +34,6 @@ fn multiple_files() {
 }
 
 #[test]
-#[ignore]
 fn replace_env() {
     let (output, ..) = test_files("env".into());
     insta::assert_debug_snapshot!(output);
