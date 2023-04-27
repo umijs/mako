@@ -1,10 +1,13 @@
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::fmt;
 
 use crate::utils::bfs::{Bfs, NextResult};
 use crate::{
     chunk::{Chunk, ChunkType},
     module::{Module, ModuleId},
 };
+use petgraph::prelude::EdgeRef;
+use petgraph::visit::IntoEdgeReferences;
 use petgraph::{
     graph::{DefaultIx, NodeIndex},
     stable_graph::StableDiGraph,
@@ -247,5 +250,31 @@ impl ModuleGraph {
 impl Default for ModuleGraph {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl fmt::Display for ModuleGraph {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let nodes = self
+            .graph
+            .node_weights()
+            .into_iter()
+            .map(|node| &node.id.id)
+            .collect::<Vec<_>>();
+        let references = self
+            .graph
+            .edge_references()
+            .into_iter()
+            .map(|edge| {
+                let source = &self.graph[edge.source()].id.id;
+                let target = &self.graph[edge.target()].id.id;
+                format!("{} -> {}", source, target)
+            })
+            .collect::<Vec<_>>();
+        write!(
+            f,
+            "graph\n nodes:{:?} \n references:{:?}",
+            &nodes, &references
+        )
     }
 }

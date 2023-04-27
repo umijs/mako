@@ -1,8 +1,5 @@
-use std::vec;
-
 use mako_bundler::{
-    build::build::BuildParam, compiler::Compiler, config::Config,
-    generate::generate::GenerateParam, module::ModuleId,
+    build::build::BuildParam, compiler::Compiler, config::Config, generate::generate::GenerateParam,
 };
 
 #[test]
@@ -13,24 +10,11 @@ fn normal() {
 
 #[test]
 fn multiple_files() {
-    let (output, mut compiler, cwd) = test_files("multiple".into());
+    let (output, mut compiler, ..) = test_files("multiple".into());
     assert_debug_snapshot!(output);
     let (orders, _) = compiler.context.module_graph.topo_sort();
-    assert_eq!(
-        &orders,
-        &vec![
-            ModuleId::new(format!("{}/entry.js", cwd).as_str()),
-            ModuleId::new(format!("{}/three.js", cwd).as_str()),
-            ModuleId::new(format!("{}/one.js", cwd).as_str()),
-            ModuleId::new(format!("{}/two.js", cwd).as_str()),
-        ]
-    );
-    let mut vecs = vec![];
-    for module_id in orders {
-        let deps = compiler.context.module_graph.get_dependencies(&module_id);
-        vecs.push((module_id, deps));
-    }
-    insta::assert_debug_snapshot!(&vecs);
+    assert_debug_snapshot!(&orders);
+    assert_display_snapshot!(&compiler.context.module_graph);
 }
 
 #[test]
