@@ -25,6 +25,9 @@ importers:
 
   examples/with-antd:
     devDependencies:
+      '@tanstack/react-query':
+        specifier: ^5.0.0-alpha.21
+        version: 5.0.0-alpha.21(react-dom@18.2.0)(react@18.2.0)
       antd:
         specifier: ^5.4.4
         version: 5.4.4(react-dom@18.2.0)(react@18.2.0)
@@ -430,6 +433,27 @@ packages:
     requiresBuild: true
     dev: true
     optional: true
+
+  /@tanstack/query-core@5.0.0-alpha.21:
+    resolution: {integrity: sha512-bXnHC8NEKU840o1YYiENySobGWYXCHBSgXnEOsuUsh/gD2uE2EymUYS2wbKI2I7rflTWojx/Ne1PauEKBz8Rtw==}
+    dev: true
+
+  /@tanstack/react-query@5.0.0-alpha.21(react-dom@18.2.0)(react@18.2.0):
+    resolution: {integrity: sha512-HCa+BLPTFoM5fcleFx6GPMyo3X8P+4lhy/fzHup9QYBPcSQ0L1USUOhaA4LwkFc+VSdOwZg9wuCc3BkpmKEqLA==}
+    peerDependencies:
+      react: ^18.0.0
+      react-dom: ^18.0.0
+      react-native: '*'
+    peerDependenciesMeta:
+      react-dom:
+        optional: true
+      react-native:
+        optional: true
+    dependencies:
+      '@tanstack/query-core': 5.0.0-alpha.21
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+    dev: true
 
   /aggregate-error@3.1.0:
     resolution: {integrity: sha512-4I7Td01quW/RpocfNayFdFVk1qSuoh0E7JrbRJ16nH01HhKFQ88INq9Sd+nd72zqRySlr9BmDA8xlEJ6vJMrYA==}
