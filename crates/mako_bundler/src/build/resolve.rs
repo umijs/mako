@@ -1,6 +1,5 @@
-use maplit::hashset;
-use nodejs_resolver::{Options, Resolver};
-use std::{collections::HashMap, path::PathBuf, vec};
+use nodejs_resolver::Resolver;
+use std::{collections::HashMap, path::PathBuf};
 
 use crate::context::Context;
 
@@ -40,7 +39,11 @@ fn dispatch_request_type(request: &ResolveParam) -> RequestType {
     }
 }
 
-pub fn resolve(resolve_param: &ResolveParam, context: &Context) -> ResolveResult {
+pub fn resolve(
+    resolve_param: &ResolveParam,
+    context: &Context,
+    resolver: &Resolver,
+) -> ResolveResult {
     let to_resolve = resolve_param.dependency.to_string();
 
     // support external
@@ -60,24 +63,6 @@ pub fn resolve(resolve_param: &ResolveParam, context: &Context) -> ResolveResult
     // - ...
     // ref: https://github.com/webpack/enhanced-resolve
 
-    let resolver = Resolver::new(Options {
-        extensions: vec![
-            ".js".to_string(),
-            ".jsx".to_string(),
-            ".ts".to_string(),
-            ".tsx".to_string(),
-            ".mjs".to_string(),
-            ".cjs".to_string(),
-        ],
-        condition_names: hashset! {
-            "node".to_string(),
-            "require".to_string(),
-            "import".to_string(),
-            "browser".to_string(),
-            "default".to_string()
-        },
-        ..Default::default()
-    });
     match dispatch_request_type(resolve_param) {
         RequestType::Local { request, context } => {
             match resolver.resolve(context.as_path(), request.to_str().unwrap()) {
