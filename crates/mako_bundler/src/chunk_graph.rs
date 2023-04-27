@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt;
 
 use crate::chunk::ChunkId;
 use crate::{chunk::Chunk, module::ModuleId};
@@ -56,5 +57,31 @@ impl ChunkGraph {
         }
 
         println!("}}");
+    }
+}
+
+impl fmt::Display for ChunkGraph {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let nodes = self
+            .graph
+            .node_weights()
+            .into_iter()
+            .map(|node| &node.id.id)
+            .collect::<Vec<_>>();
+        let references = self
+            .graph
+            .edge_references()
+            .into_iter()
+            .map(|edge| {
+                let source = &self.graph[edge.source()].id.id;
+                let target = &self.graph[edge.target()].id.id;
+                format!("{} -> {}", source, target)
+            })
+            .collect::<Vec<_>>();
+        write!(
+            f,
+            "graph\n nodes:{:?} \n references:{:?}",
+            &nodes, &references
+        )
     }
 }
