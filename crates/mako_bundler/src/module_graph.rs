@@ -35,7 +35,8 @@ pub enum ResolveType {
     ExportAll,
     Require,
     DynamicImport,
-    CssImport,
+    CssImportUrl,
+    CssImportStr,
     CssUrl,
 }
 

@@ -1,3 +1,5 @@
+use swc_css_ast::*;
+use swc_css_visit::{VisitMut, VisitMutWith};
 use swc_ecma_ast::*;
 use swc_ecma_visit::noop_visit_type;
 use swc_ecma_visit::{Visit, VisitWith};
@@ -26,7 +28,8 @@ pub fn analyze_deps(
     if let ModuleAst::Script(ast) = analyze_deps_param.ast {
         ast.visit_with(&mut collector);
     } else if let ModuleAst::Css(stylesheet) = analyze_deps_param.ast {
-        stylesheet.visit_with(&mut collector);
+        let mut stylesheet = stylesheet.clone();
+        stylesheet.visit_mut_with(&mut collector);
     }
     AnalyzeDepsResult {
         dependencies: collector.dependencies,
@@ -108,11 +111,55 @@ impl Visit for DepsCollector {
     }
 }
 
+impl VisitMut for DepsCollector {
+    fn visit_mut_import_href(&mut self, n: &mut ImportHref) {
+        // 检查 @import
+        if let ImportHref::Url(url) = n {
+            let href_string = url
+                .value
+                .as_ref()
+                .map(|box value| match value {
+                    UrlValue::Str(str) => str.value.to_string(),
+                    UrlValue::Raw(raw) => raw.value.to_string(),
+                })
+                .unwrap();
+            self.bind_dependencies(Dependency {
+                source: href_string,
+                resolve_type: ResolveType::CssImportUrl,
+                order: self.order,
+            });
+        } else if let ImportHref::Str(str) = n {
+            self.bind_dependencies(Dependency {
+                source: str.value.to_string(),
+                resolve_type: ResolveType::CssImportStr,
+                order: self.order,
+            });
+        }
+    }
+
+    fn visit_mut_url(&mut self, n: &mut Url) {
+        // 检查 url 属性
+        let href_string = n
+            .value
+            .as_ref()
+            .map(|box value| match value {
+                UrlValue::Str(str) => str.value.to_string(),
+                UrlValue::Raw(raw) => raw.value.to_string(),
+            })
+            .unwrap();
+        self.bind_dependencies(Dependency {
+            source: href_string,
+            resolve_type: ResolveType::CssImportStr,
+            order: self.order,
+        });
+    }
+}
+
 pub fn is_dynamic_import(call_expr: &CallExpr) -> bool {
     matches!(&call_expr.callee, Callee::Import(Import { .. }))
 }
 pub fn is_commonjs_require(call_expr: &CallExpr) -> bool {
-    if let Callee::Expr(box Expr::Ident(Ident { sym, .. })) = &call_expr.callee {
+    if let Callee::Expr(box Expr::Ident(swc_ecma_ast::Ident { sym, .. })) = &call_expr.callee {
         sym == "require"
     } else {
         false
