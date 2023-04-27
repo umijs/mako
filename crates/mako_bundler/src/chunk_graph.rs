@@ -40,24 +40,6 @@ impl ChunkGraph {
         let to_node_index = self.id_index_map.get(to).unwrap();
         self.graph.add_edge(*from_node_index, *to_node_index, ());
     }
-
-    pub fn print_graph(&self) {
-        println!("digraph {{\n nodes:");
-
-        for node in self.graph.node_weights() {
-            println!("  \"{}\";", &node.id.id);
-        }
-
-        println!("\nedges:");
-
-        for edge in self.graph.edge_references() {
-            let source = &self.graph[edge.source()].id.id;
-            let target = &self.graph[edge.target()].id.id;
-            println!("  \"{}\" -> \"{}\";", source, target);
-        }
-
-        println!("}}");
-    }
 }
 
 impl fmt::Display for ChunkGraph {
