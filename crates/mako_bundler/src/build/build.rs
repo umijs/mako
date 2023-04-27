@@ -66,6 +66,7 @@ impl Compiler {
             external_cache: Some(Arc::new(Default::default())),
             ..Default::default()
         });
+
         while !queue.is_empty() {
             let task = queue.pop().unwrap();
             let path_str = task.path.as_str();
