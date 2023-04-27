@@ -1,0 +1,38 @@
+import React from 'react';
+import { Outlet, Link } from 'react-router-dom';
+// import styled from "styled-components";
+
+// const Wrapper = styled.div`
+// 	h1 {
+// 		color: red;
+// 	}
+// 	h2 {
+// 		color: blue;
+// 	}
+// 	nav {
+// 		ul {
+// 			padding-left: 1rem;
+// 		}
+// 	}
+// `;
+
+export function Layout() {
+  return (
+    <div>
+      <h1>with-antd</h1>
+      <nav>
+        <ul>
+          <li>
+            <Link to="/">Home</Link>
+          </li>
+          <li>
+            <Link to="/todos">Todos</Link>
+          </li>
+        </ul>
+      </nav>
+      <div>
+        <Outlet />
+      </div>
+    </div>
+  );
+}
