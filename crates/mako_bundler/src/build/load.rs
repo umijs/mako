@@ -14,6 +14,7 @@ pub struct LoadParam<'a> {
 
 pub enum ContentType {
     Js,
+    Css,
     Raw,
     File,
 }
@@ -56,18 +57,19 @@ fn load_js(load_param: &LoadParam, _context: &Context) -> LoadResult {
 }
 
 fn load_css(load_param: &LoadParam, _context: &Context) -> LoadResult {
-    let css_content = std::fs::read_to_string(load_param.path).unwrap();
-    LoadResult {
-        content: format!(
-            r#"
-const cssCode = `{}`;
-const style = document.createElement('style');
-style.innerHTML = cssCode;
-document.head.appendChild(style);
-"#,
-            css_content
-        ),
-        content_type: ContentType::Js,
+    if let Some(files) = load_param.files {
+        if let Some(content) = files.get(load_param.path) {
+            return LoadResult {
+                content: content.clone(),
+                content_type: ContentType::Css,
+            };
+        }
+        panic!("File not found: {}", load_param.path);
+    } else {
+        LoadResult {
+            content: std::fs::read_to_string(load_param.path).unwrap(),
+            content_type: ContentType::Css,
+        }
     }
 }
 

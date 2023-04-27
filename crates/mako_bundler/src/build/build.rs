@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     compiler::Compiler,
     config::get_first_entry_value,
-    module::{Module, ModuleAst, ModuleId, ModuleInfo},
+    module::{Module, ModuleId, ModuleInfo},
     module_graph::Dependency,
 };
 
@@ -68,13 +68,14 @@ impl Compiler {
             let parse_param = ParseParam {
                 path: path_str,
                 content: load_result.content,
+                content_type: load_result.content_type,
             };
             let parse_result = parse(&parse_param, &self.context);
 
             // transform
             let transform_param = TransformParam {
                 path: path_str,
-                ast: &ModuleAst::Script(parse_result.ast.clone()),
+                ast: &parse_result.ast,
                 cm: &parse_result.cm,
             };
             let transform_result = transform(&transform_param, &self.context);
@@ -86,7 +87,7 @@ impl Compiler {
                 external_name: None,
                 is_entry,
                 original_cm: Some(parse_result.cm),
-                original_ast: ModuleAst::Script(transform_result.ast),
+                original_ast: transform_result.ast,
             };
             let module = Module::new(module_id.clone(), info);
             self.context.module_graph.add_module(module);

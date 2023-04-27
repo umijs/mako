@@ -26,6 +26,7 @@ impl ModuleId {
 
 pub enum ModuleAst {
     Script(swc_ecma_ast::Module),
+    Css(swc_css_ast::Stylesheet),
     None,
 }
 

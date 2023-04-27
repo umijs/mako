@@ -4,12 +4,13 @@ use swc_ecma_visit::{Visit, VisitWith};
 
 use crate::{
     context::Context,
+    module::ModuleAst,
     module_graph::{Dependency, ResolveType},
 };
 
 pub struct AnalyzeDepsParam<'a> {
     pub path: &'a str,
-    pub ast: &'a Module,
+    pub ast: &'a ModuleAst,
 }
 
 pub struct AnalyzeDepsResult {
@@ -22,7 +23,11 @@ pub fn analyze_deps(
 ) -> AnalyzeDepsResult {
     // get dependencies from ast
     let mut collector = DepsCollector::new();
-    analyze_deps_param.ast.visit_with(&mut collector);
+    if let ModuleAst::Script(ast) = analyze_deps_param.ast {
+        ast.visit_with(&mut collector);
+    } else if let ModuleAst::Css(stylesheet) = analyze_deps_param.ast {
+        stylesheet.visit_with(&mut collector);
+    }
     AnalyzeDepsResult {
         dependencies: collector.dependencies,
     }
