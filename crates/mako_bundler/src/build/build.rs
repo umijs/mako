@@ -4,12 +4,13 @@ use std::{
     rc::Rc,
 };
 
+use crate::utils::bfs::{Bfs, NextResult};
 use crate::{
     chunk::ChunkType,
     compiler::Compiler,
     config::get_first_entry_value,
     module::{Module, ModuleAst, ModuleId, ModuleInfo},
-    module_graph::{Bfs, Dependency, NextResult},
+    module_graph::Dependency,
 };
 
 use super::{
