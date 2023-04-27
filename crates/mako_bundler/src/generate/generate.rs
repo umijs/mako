@@ -1,6 +1,8 @@
+use std::sync::{Arc, Mutex};
 use std::{collections::HashMap, fs};
 
 use crate::{compiler::Compiler, module::ModuleId};
+use rayon::prelude::*;
 
 fn wrap_module(id: &ModuleId, code: &str) -> String {
     let id = id.id.clone();
@@ -172,57 +174,64 @@ function _interop_require_wildcard(obj, nodeInterop) {
             .topo_sort()
             .expect("module graph has cycle");
 
-        let mut entry_module_id = String::new();
-        let mut results: Vec<String> = vec![];
-        for module_id in module_ids {
-            let id = module_id.clone();
-            let module = self
-                .context
-                .module_graph
-                .get_module(&id)
-                .expect("module not found");
+        let entry_module_id = Arc::new(Mutex::new(String::new()));
+        let mut results = vec![];
 
-            if module.info.is_entry {
-                entry_module_id = module.id.id.clone();
-            }
+        module_ids
+            .par_iter()
+            .map(|module_id| {
+                let id = module_id.clone();
+                let module = self
+                    .context
+                    .module_graph
+                    .get_module(&id)
+                    .expect("module not found");
 
-            let info = &module.info;
-            let code = if info.is_external {
-                format!(
-                    "/* external {} */ exports.default = {};",
-                    info.path,
-                    info.external_name.as_ref().unwrap(),
-                )
-            } else {
-                // get deps
-                let deps = self.context.module_graph.get_dependencies(&module_id);
-                let dep_map: HashMap<String, String> = deps
-                    .into_iter()
-                    .map(|(id, dep)| (dep.source.clone(), id.id.clone()))
-                    .collect();
+                if module.info.is_entry {
+                    *entry_module_id.lock().unwrap() = module_id.id.clone();
+                }
 
-                // define env
-                let env_map: HashMap<String, String> =
-                    HashMap::from([("NODE_ENV".into(), "production".into())]);
+                let info = &module.info;
+                let code = if info.is_external {
+                    format!(
+                        "/* external {} */ exports.default = {};",
+                        info.path,
+                        info.external_name.as_ref().unwrap(),
+                    )
+                } else {
+                    // get deps
+                    let deps = self.context.module_graph.get_dependencies(module_id);
+                    let dep_map: HashMap<String, String> = deps
+                        .into_iter()
+                        .map(|(id, dep)| (dep.source.clone(), id.id.clone()))
+                        .collect();
 
-                let cm = info.original_cm.as_ref().unwrap();
+                    // define env
+                    let env_map: HashMap<String, String> =
+                        HashMap::from([("NODE_ENV".into(), "production".into())]);
 
-                // transform
-                let transform_param = TransformParam {
-                    cm,
-                    ast: &info.original_ast,
-                    dep_map,
-                    env_map,
+                    let cm = info.original_cm.as_ref().unwrap();
+
+                    // transform
+                    let transform_param = TransformParam {
+                        cm,
+                        ast: &info.original_ast,
+                        dep_map,
+                        env_map,
+                    };
+                    let transform_result = transform(&transform_param, &self.context);
+                    transform_result.code
                 };
-                let transform_result = transform(&transform_param, &self.context);
-                transform_result.code
-            };
 
-            results.push(wrap_module(&id, &code));
-        }
+                wrap_module(&id, &code)
+            })
+            .collect_into_vec(&mut results);
 
-        output.extend(results);
-        output.push(format!("\nrequireModule(\"{}\");", entry_module_id));
+        output.extend(results.into_iter());
+        output.push(format!(
+            "\nrequireModule(\"{}\");",
+            entry_module_id.lock().unwrap().clone()
+        ));
         let contents = output.join("\n");
 
         let root_dir = &self.context.config.root;
