@@ -11,6 +11,7 @@ pub mod context;
 pub mod generate;
 pub mod module;
 pub mod module_graph;
+pub mod plugin;
 pub mod utils;
 
 pub fn run() {
@@ -26,10 +27,13 @@ pub fn run() {
         .to_string_lossy()
         .to_string();
     let mut config = config::Config::from_literal_str(
+        // stream is a dependency of styled-components
+        // TODO: support node polyfill
         format!(
             r#"
 {{
     "externals": {{
+        "stream": "stream"
     }},
     "root": "{}",
     "entry": {{ "index": "index.tsx" }}
