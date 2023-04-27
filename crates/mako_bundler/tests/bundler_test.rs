@@ -1,4 +1,4 @@
-use std::{collections::HashMap, vec};
+use std::vec;
 
 use mako_bundler::{
     build::build::BuildParam, compiler::Compiler, config::Config,
@@ -6,84 +6,23 @@ use mako_bundler::{
 };
 
 #[test]
-#[ignore]
 fn normal() {
-    let files = HashMap::from([
-        (
-            "/tmp/entry.js".to_string(),
-            r###"
-import {fn} from './foo';
-console.log(fn());
-            "###
-            .to_string(),
-        ),
-        (
-            "/tmp/foo.js".to_string(),
-            r###"
-export function fn() {
-    return 123
-}
-            "###
-            .to_string(),
-        ),
-    ]);
-    let (output, _) = test_files(files);
+    let (output, ..) = test_files("normal".into());
     insta::assert_debug_snapshot!(output);
 }
 
 #[test]
-#[ignore]
 fn multiple_files() {
-    let files = HashMap::from([
-        (
-            "/tmp/entry.js".to_string(),
-            r###"
-import {three} from './three';
-import {one} from './one';
-import {two} from './two';
-console.log(one());
-            "###
-            .to_string(),
-        ),
-        (
-            "/tmp/one.js".to_string(),
-            r###"
-import {two} from './two';
-export function one() {
-    return two();
-}
-            "###
-            .to_string(),
-        ),
-        (
-            "/tmp/two.js".to_string(),
-            r###"
-export function two() {
-    return 123
-}
-            "###
-            .to_string(),
-        ),
-        (
-            "/tmp/three.js".to_string(),
-            r###"
-export function three() {
-    return 123
-}
-            "###
-            .to_string(),
-        ),
-    ]);
-    let (output, mut compiler) = test_files(files);
+    let (output, mut compiler, cwd) = test_files("multiple".into());
     insta::assert_debug_snapshot!(output);
     let (orders, _) = compiler.context.module_graph.topo_sort();
     assert_eq!(
         &orders,
         &vec![
-            ModuleId::new("/tmp/entry.js"),
-            ModuleId::new("/tmp/three.js"),
-            ModuleId::new("/tmp/one.js"),
-            ModuleId::new("/tmp/two.js"),
+            ModuleId::new(format!("{}/entry.js", cwd).as_str()),
+            ModuleId::new(format!("{}/three.js", cwd).as_str()),
+            ModuleId::new(format!("{}/one.js", cwd).as_str()),
+            ModuleId::new(format!("{}/two.js", cwd).as_str()),
         ]
     );
     let mut vecs = vec![];
@@ -97,57 +36,41 @@ export function three() {
 #[test]
 #[ignore]
 fn replace_env() {
-    let files = HashMap::from([
-        (
-            "/tmp/entry.js".to_string(),
-            r###"
-import {one} from './one';
-if (process.env.NODE_ENV === 'production') {
-	console.log(123);
-}
-            "###
-            .to_string(),
-        ),
-        (
-            "/tmp/one.js".to_string(),
-            r###"
-function foo() {
-	if (process.env.NODE_ENV === 'production') {
-		console.log(123);
-	}
-	if (process.env['NODE_ENV'] === 'production') {
-		console.log(123);
-	}
-	const test = process.env['NODE_ENV'];
-}
-            "###
-            .to_string(),
-        ),
-    ]);
-    let (output, _) = test_files(files);
+    let (output, ..) = test_files("env".into());
     insta::assert_debug_snapshot!(output);
 }
 
 #[allow(clippy::useless_format)]
-fn test_files(files: HashMap<String, String>) -> (Vec<String>, Compiler) {
+fn test_files(name: String) -> (Vec<String>, Compiler, String) {
+    let cwd = std::env::current_dir()
+        .unwrap()
+        .join("tests/fixtures")
+        .join(&name)
+        .to_string_lossy()
+        .to_string();
     let mut config = Config::from_literal_str(
         format!(
             r#"
 {{
     "entry": {{
-        "entry": "/tmp/entry.js"
+        "entry": "entry.js"
     }},
-    "root": "/tmp"
+    "root": "{}"
 }}
-            "#
+            "#,
+            cwd,
         )
         .as_str(),
     )
     .unwrap();
     config.normalize();
     let mut compiler = Compiler::new(config);
-    compiler.build(&BuildParam { files: Some(files) });
+    compiler.build(&BuildParam { files: None });
     let generate_result = compiler.generate(&GenerateParam { write: false });
     let output = generate_result.output_files[0].__output.clone();
-    (output, compiler)
+    let output = output
+        .into_iter()
+        .map(|s| s.replace(&cwd, "<CWD>"))
+        .collect();
+    (output, compiler, cwd)
 }
