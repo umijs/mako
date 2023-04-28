@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use swc_ecma_ast::*;
 use swc_ecma_visit::noop_visit_type;
 use swc_ecma_visit::{Visit, VisitWith};
@@ -18,7 +19,7 @@ pub struct AnalyzeDepsResult {
 
 pub fn analyze_deps(
     analyze_deps_param: &AnalyzeDepsParam,
-    _context: &Context,
+    _context: &Arc<Context>,
 ) -> AnalyzeDepsResult {
     // get dependencies from ast
     let mut collector = DepsCollector::new();

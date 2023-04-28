@@ -2,32 +2,33 @@ use mako_bundler::{
     build::build::BuildParam, compiler::Compiler, config::Config, generate::generate::GenerateParam,
 };
 
-#[test]
-fn normal() {
+#[tokio::test(flavor = "multi_thread")]
+async fn normal() {
     let (output, ..) = test_files("normal".into());
     assert_debug_snapshot!(output);
 }
 
-#[test]
-fn multiple_files() {
-    let (output, mut compiler, ..) = test_files("multiple".into());
+#[tokio::test(flavor = "multi_thread")]
+async fn multiple_files() {
+    let (output, compiler, ..) = test_files("multiple".into());
     assert_debug_snapshot!(output);
-    let (orders, _) = compiler.context.module_graph.topo_sort();
+    let mut module_graph = compiler.context.module_graph.write().unwrap();
+    let (orders, _) = module_graph.topo_sort();
     assert_debug_snapshot!(&orders);
-    assert_display_snapshot!(&compiler.context.module_graph);
+    assert_display_snapshot!(&module_graph);
 }
 
-#[test]
-fn replace_env() {
+#[tokio::test(flavor = "multi_thread")]
+async fn replace_env() {
     let (output, ..) = test_files("env".into());
     assert_debug_snapshot!(output);
 }
 
-#[test]
-fn chunk() {
+#[tokio::test(flavor = "multi_thread")]
+async fn chunk() {
     let (output, compiler, ..) = test_files("chunks".into());
     assert_debug_snapshot!(output);
-    assert_display_snapshot!(compiler.context.chunk_graph);
+    assert_display_snapshot!(compiler.context.chunk_graph.read().unwrap());
 }
 
 #[allow(clippy::useless_format)]

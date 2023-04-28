@@ -1,4 +1,5 @@
 use nodejs_resolver::Resolver;
+use std::sync::Arc;
 use std::{collections::HashMap, path::PathBuf};
 
 use crate::context::Context;
@@ -41,7 +42,7 @@ fn dispatch_request_type(request: &ResolveParam) -> RequestType {
 
 pub fn resolve(
     resolve_param: &ResolveParam,
-    context: &Context,
+    context: &Arc<Context>,
     resolver: &Resolver,
 ) -> ResolveResult {
     let to_resolve = resolve_param.dependency.to_string();

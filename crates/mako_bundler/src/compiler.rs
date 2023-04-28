@@ -1,15 +1,18 @@
 use crate::{
     build::build::BuildParam, config::Config, context::Context, generate::generate::GenerateParam,
 };
+use std::sync::Arc;
 
 pub struct Compiler {
-    pub context: Context,
+    pub context: Arc<Context>,
 }
 
 impl Compiler {
     pub fn new(config: Config) -> Self {
         let context = Context::new(config);
-        Self { context }
+        Self {
+            context: Arc::new(context),
+        }
     }
 
     pub fn run(&mut self) {

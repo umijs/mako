@@ -149,7 +149,7 @@ impl ModuleGraph {
         deps
     }
 
-    pub fn get_modules(&mut self) -> Vec<ModuleId> {
+    pub fn get_modules(&self) -> Vec<ModuleId> {
         let modules = self
             .graph
             .node_indices()

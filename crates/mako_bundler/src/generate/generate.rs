@@ -166,17 +166,14 @@ function _interop_require_wildcard(obj, nodeInterop) {
 
 
         ];
-        let module_ids = self.context.module_graph.get_modules();
+        let module_graph = self.context.module_graph.read().unwrap();
+        let module_ids = module_graph.get_modules();
 
         let mut entry_module_id = String::new();
         let mut results: Vec<String> = vec![];
         for module_id in module_ids {
             let id = module_id.clone();
-            let module = self
-                .context
-                .module_graph
-                .get_module(&id)
-                .expect("module not found");
+            let module = module_graph.get_module(&id).expect("module not found");
 
             if module.info.is_entry {
                 entry_module_id = module.id.id.clone();
@@ -191,7 +188,7 @@ function _interop_require_wildcard(obj, nodeInterop) {
                 )
             } else {
                 // get deps
-                let deps = self.context.module_graph.get_dependencies(&module_id);
+                let deps = module_graph.get_dependencies(&module_id);
                 let dep_map: HashMap<String, String> = deps
                     .into_iter()
                     .map(|(id, dep)| (dep.source.clone(), id.id.clone()))
@@ -216,7 +213,7 @@ function _interop_require_wildcard(obj, nodeInterop) {
 
             results.push(wrap_module(&id, &code));
         }
-
+        drop(module_graph);
         output.extend(results);
         output.push(format!("\nrequireModule(\"{}\");", entry_module_id));
         let contents = output.join("\n");
@@ -233,7 +230,7 @@ function _interop_require_wildcard(obj, nodeInterop) {
         }
 
         // write assets
-        let assets_info = &self.context.assets_info;
+        let assets_info = &(*self.context.assets_info.lock().unwrap());
         for (k, v) in assets_info {
             let asset_path = &root_dir.join(k);
             let asset_output_path = &output_dir.join(v);
