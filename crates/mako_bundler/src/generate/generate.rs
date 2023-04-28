@@ -233,7 +233,7 @@ function _interop_require_wildcard(obj, nodeInterop) {
             }
         }
 
-        output.extend(results.into_iter());
+        output.extend(results);
         output.push(format!("\nrequireModule(\"{}\");", entry_module_id));
         let contents = output.join("\n");
 
