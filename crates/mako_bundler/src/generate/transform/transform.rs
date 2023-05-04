@@ -96,11 +96,11 @@ pub fn transform(transform_param: &TransformParam, _context: &Context) -> Transf
 
         let code = format!(
             r#"
-  const cssCode = `{}`;
-  const style = document.createElement('style');
-  style.innerHTML = cssCode;
-  document.head.appendChild(style);
-  "#,
+const cssCode = `{}`;
+const style = document.createElement('style');
+style.innerHTML = cssCode;
+document.head.appendChild(style);
+"#,
             css_code
         );
 
