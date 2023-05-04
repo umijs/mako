@@ -1,12 +1,14 @@
 use lazy_static::lazy_static;
-use std::sync::RwLock;
+use std::{collections::HashSet, sync::RwLock};
 use swc_common::{sync::Lrc, SourceMap};
+
+use crate::chunk::ChunkId;
 
 lazy_static! {
     static ref GLOBAL_ID: RwLock<usize> = RwLock::new(0);
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct ModuleId {
     pub id: String,
 }
@@ -52,10 +54,11 @@ pub struct Module {
      * 模块元信息
      */
     pub info: ModuleInfo,
+
     /**
-     * 转换结果代码
+     * 当前模块归属的 chunk
      */
-    pub transform_info: Option<ModuleTransformInfo>,
+    pub chunks: HashSet<ChunkId>,
 }
 
 impl Module {
@@ -63,11 +66,7 @@ impl Module {
         Self {
             id,
             info,
-            transform_info: None,
+            chunks: HashSet::new(),
         }
-    }
-
-    pub fn add_transform_info(&mut self, info: ModuleTransformInfo) {
-        self.transform_info = Some(info);
     }
 }

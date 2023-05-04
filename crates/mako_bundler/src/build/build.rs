@@ -1,9 +1,15 @@
 use maplit::hashset;
 use nodejs_resolver::{Options, Resolver};
-use std::collections::HashMap;
 use std::sync::Arc;
+use std::{
+    cell::RefCell,
+    collections::{HashMap, HashSet, VecDeque},
+    rc::Rc,
+};
 
+use crate::utils::bfs::{Bfs, NextResult};
 use crate::{
+    chunk::ChunkType,
     compiler::Compiler,
     config::get_first_entry_value,
     module::{Module, ModuleAst, ModuleId, ModuleInfo},
@@ -38,6 +44,9 @@ impl Compiler {
 
         // build
         self.build_module_graph(entry_point, build_param);
+
+        // chunks
+        self.grouping_chunks();
     }
 
     fn build_module_graph(&mut self, entry_point: String, build_param: &BuildParam) {
@@ -112,7 +121,13 @@ impl Compiler {
                 original_ast: ModuleAst::Script(transform_result.ast),
             };
             let module = Module::new(module_id.clone(), info);
-            self.context.module_graph.add_module(module);
+
+            // setup entry module
+            if module.info.is_entry {
+                self.context.module_graph.add_entry_module(module);
+            } else {
+                self.context.module_graph.add_module(module);
+            }
 
             // handle dependency bind
             self.bind_dependency(&task, &module_id);
@@ -176,6 +191,62 @@ impl Compiler {
                 module_id,
                 parent_dependency.clone(),
             )
+        }
+    }
+
+    // 通过 BFS 搜索从入口模块进入后的所有依赖，直到遇到 DynamicImport 为止，作为一个 chunk
+    // TODO: 后续可增加 common-chunk 算法等
+    fn grouping_chunks(&mut self) {
+        let visited = Rc::new(RefCell::new(HashSet::new()));
+        let chunk_graph = &mut self.context.chunk_graph;
+        let mut edges = vec![];
+        let entries_modules = self.context.module_graph.get_entry_modules();
+        for entry_id in entries_modules {
+            // 处理入口 chunk
+            let (chunk, dynamic_dependencies) = self
+                .context
+                .module_graph
+                .create_chunk_by_entry_module_id(&entry_id, ChunkType::Entry);
+            visited.borrow_mut().insert(entry_id.clone());
+
+            edges.extend(
+                dynamic_dependencies
+                    .clone()
+                    .into_iter()
+                    .map(|dep| (chunk.id.clone(), dep)),
+            );
+
+            chunk_graph.add_chunk(chunk);
+
+            // 处理 dynamic import 部分的chunk
+            let mut bfs = Bfs::new(VecDeque::from(dynamic_dependencies), visited.clone());
+            while !bfs.done() {
+                match bfs.next_node() {
+                    NextResult::Visited => continue,
+                    NextResult::First(head) => {
+                        let (chunk, dynamic_dependencies) = self
+                            .context
+                            .module_graph
+                            .create_chunk_by_entry_module_id(&head, ChunkType::Async);
+
+                        edges.extend(
+                            dynamic_dependencies
+                                .clone()
+                                .into_iter()
+                                .map(|dep| (chunk.id.clone(), dep)),
+                        );
+
+                        chunk_graph.add_chunk(chunk);
+                        for dep_module_id in &dynamic_dependencies {
+                            bfs.visit(dep_module_id.clone());
+                        }
+                    }
+                }
+            }
+        }
+
+        for (from, to) in &edges {
+            chunk_graph.add_edge(from, to);
         }
     }
 }

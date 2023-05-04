@@ -166,11 +166,7 @@ function _interop_require_wildcard(obj, nodeInterop) {
 
 
         ];
-        let module_ids = self
-            .context
-            .module_graph
-            .topo_sort()
-            .expect("module graph has cycle");
+        let module_ids = self.context.module_graph.get_modules();
 
         let mut entry_module_id = String::new();
         let mut results: Vec<String> = vec![];

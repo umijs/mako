@@ -3,6 +3,8 @@
 use compiler::Compiler;
 
 pub mod build;
+pub mod chunk;
+pub mod chunk_graph;
 pub mod compiler;
 pub mod config;
 pub mod context;

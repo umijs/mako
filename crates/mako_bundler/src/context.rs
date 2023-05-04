@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
-use crate::{config::Config, module_graph::ModuleGraph};
+use crate::{chunk_graph::ChunkGraph, config::Config, module_graph::ModuleGraph};
 
 pub struct Context {
     pub config: Config,
     pub module_graph: ModuleGraph,
+    pub chunk_graph: ChunkGraph,
     pub assets_info: HashMap<String, String>,
 }
 
@@ -13,6 +14,7 @@ impl Context {
         Self {
             config,
             module_graph: ModuleGraph::new(),
+            chunk_graph: ChunkGraph::new(),
             assets_info: HashMap::new(),
         }
     }
