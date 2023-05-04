@@ -1,7 +1,7 @@
 ---
 source: crates/mako_bundler/tests/bundler_test.rs
-expression: "&compiler.context.module_graph"
+expression: "&module_graph"
 ---
 graph
- nodes:["<CWD>/tests/fixtures/multiple/entry.js", "<CWD>/tests/fixtures/multiple/two.js", "<CWD>/tests/fixtures/multiple/one.js", "<CWD>/tests/fixtures/multiple/three.js"] 
+ nodes:["<CWD>/tests/fixtures/multiple/entry.js", "<CWD>/tests/fixtures/multiple/one.js", "<CWD>/tests/fixtures/multiple/three.js", "<CWD>/tests/fixtures/multiple/two.js"] 
  references:["<CWD>/tests/fixtures/multiple/entry.js -> <CWD>/tests/fixtures/multiple/two.js", "<CWD>/tests/fixtures/multiple/entry.js -> <CWD>/tests/fixtures/multiple/one.js", "<CWD>/tests/fixtures/multiple/one.js -> <CWD>/tests/fixtures/multiple/two.js", "<CWD>/tests/fixtures/multiple/entry.js -> <CWD>/tests/fixtures/multiple/three.js"]
