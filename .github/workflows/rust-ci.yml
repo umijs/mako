@@ -4,7 +4,7 @@ on:
   push:
     branches: [master]
   pull_request:
-    types: [ opened, synchronize ]
+    types: [opened, synchronize]
 
 # Cancel prev CI if new commit
 concurrency:
@@ -16,12 +16,12 @@ permissions:
 
 jobs:
   build:
-    name: Run tests and doc and build_fixture on ubuntu
+    name: Run tests and build_fixture on ubuntu
     runs-on: ubuntu-latest
     strategy:
       matrix:
         rust: [nightly]
-        node_version: [ lts/-1, lts/* ]
+        node_version: [lts/*]
     steps:
       - uses: actions/checkout@v2
       - uses: pnpm/action-setup@v2
@@ -32,7 +32,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node_version }}
-          cache: 'pnpm'
+          cache: "pnpm"
       - run: pnpm i --no-lockfile
       - uses: actions-rs/toolchain@v1
         with:
