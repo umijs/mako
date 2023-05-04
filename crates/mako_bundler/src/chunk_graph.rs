@@ -50,7 +50,7 @@ impl fmt::Display for ChunkGraph {
             .into_iter()
             .map(|node| &node.id.id)
             .collect::<Vec<_>>();
-        let references = self
+        let mut references = self
             .graph
             .edge_references()
             .into_iter()
@@ -61,6 +61,7 @@ impl fmt::Display for ChunkGraph {
             })
             .collect::<Vec<_>>();
         nodes.sort_by_key(|id| id.to_string());
+        references.sort_by_key(|id| id.to_string());
         write!(
             f,
             "graph\n nodes:{:?} \n references:{:?}",

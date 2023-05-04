@@ -28,7 +28,9 @@ async fn replace_env() {
 async fn chunk() {
     let (output, compiler, ..) = test_files("chunks".into());
     assert_debug_snapshot!(output);
-    assert_display_snapshot!(compiler.context.chunk_graph.read().unwrap());
+    let chunk_graph = compiler.context.chunk_graph.read().unwrap();
+    println!("{}", &chunk_graph);
+    assert_display_snapshot!(chunk_graph);
 }
 
 #[allow(clippy::useless_format)]

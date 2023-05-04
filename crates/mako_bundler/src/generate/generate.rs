@@ -175,11 +175,11 @@ function _interop_require_wildcard(obj, nodeInterop) {
             let id = module_id.clone();
             let module = module_graph.get_module(&id).expect("module not found");
 
-            if module.info.is_entry {
+            let info = module.info.as_ref().unwrap();
+            if info.is_entry {
                 entry_module_id = module.id.id.clone();
             }
 
-            let info = &module.info;
             let code = if info.is_external {
                 format!(
                     "/* external {} */ exports.default = {};",

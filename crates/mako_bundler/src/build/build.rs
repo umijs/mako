@@ -11,6 +11,7 @@ use tokio::sync::mpsc::error::TryRecvError;
 
 use crate::context::Context;
 
+use crate::module_graph::ModuleGraph;
 use crate::utils::bfs::{Bfs, NextResult};
 use crate::{
     chunk::ChunkType,
@@ -142,18 +143,25 @@ impl Compiler {
         resolver: Arc<Resolver>,
     ) -> BuildModuleGraphResult {
         let path_str = task.path.as_str();
-        //
         let module_id = ModuleId::new(path_str);
         let is_entry = path_str == entry_point;
 
-        let module_graph_r = context.module_graph.read().unwrap();
+        let mut module_graph_w = context.module_graph.write().unwrap();
+
+        // NOTE: 因为多线程的原因，需要在一个锁事务内持久化 module，否则多个线程并发 has_module 会导致重跑
         // check if module is already in the graph
-        if module_graph_r.has_module(&module_id) {
-            drop(module_graph_r);
-            Self::bind_dependency(&context, &task, &module_id);
+        if module_graph_w.has_module(&module_id) {
+            Self::bind_dependency(&mut module_graph_w, &task, &module_id);
+            drop(module_graph_w);
             return BuildModuleGraphResult::Skip;
         }
-        drop(module_graph_r);
+        // setup entry module
+        let module = Module::new(module_id.clone());
+        module_graph_w.add_module(module);
+        // handle dependency bind
+        Self::bind_dependency(&mut module_graph_w, &task, &module_id);
+        drop(module_graph_w);
+
         // load
         let load_param = LoadParam {
             path: path_str,
@@ -176,7 +184,7 @@ impl Compiler {
         };
         let transform_result = transform(&transform_param, &context);
 
-        // add current module to module graph
+        // add module info
         let info = ModuleInfo {
             path: task.path.clone(),
             is_external: false,
@@ -185,19 +193,13 @@ impl Compiler {
             original_cm: Some(parse_result.cm),
             original_ast: ModuleAst::Script(transform_result.ast),
         };
-        let module = Module::new(module_id.clone(), info);
-
-        // setup entry module
         let mut module_graph_w = context.module_graph.write().unwrap();
-        if module.info.is_entry {
-            module_graph_w.add_entry_module(module);
-        } else {
-            module_graph_w.add_module(module);
+        if info.is_entry {
+            module_graph_w.mark_entry_module(&module_id);
         }
+        let module = module_graph_w.get_module_mut(&module_id).unwrap();
+        module.add_info(info);
         drop(module_graph_w);
-
-        // handle dependency bind
-        Self::bind_dependency(&context, &task, &module_id);
 
         // analyze deps
         let analyze_deps_param = AnalyzeDepsParam {
@@ -229,7 +231,8 @@ impl Compiler {
                     original_ast: crate::module::ModuleAst::None,
                 };
                 let external_module_id = ModuleId::new(&resolve_result.path);
-                let external_module = Module::new(external_module_id.clone(), info);
+                let mut external_module = Module::new(external_module_id.clone());
+                external_module.add_info(info);
                 let mut module_graph_w = context.module_graph.write().unwrap();
                 module_graph_w.add_module(external_module);
                 module_graph_w.add_dependency(&module_id, &external_module_id, d.clone());
@@ -249,16 +252,13 @@ impl Compiler {
         BuildModuleGraphResult::Next(tasks)
     }
 
-    fn bind_dependency(context: &Arc<Context>, task: &Task, module_id: &ModuleId) {
+    fn bind_dependency(module_graph: &mut ModuleGraph, task: &Task, module_id: &ModuleId) {
         if let Some(parent_module_id) = &task.parent_module_id {
             let parent_dependency = task
                 .parent_dependency
                 .as_ref()
                 .expect("parent dependency is required for parent_module_id");
-
-            let mut module_graph = context.module_graph.write().unwrap();
             module_graph.add_dependency(parent_module_id, module_id, parent_dependency.clone());
-            drop(module_graph);
         }
     }
 

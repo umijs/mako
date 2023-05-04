@@ -68,9 +68,8 @@ impl ModuleGraph {
         self.entries.clone().into_iter().collect()
     }
 
-    pub fn add_entry_module(&mut self, module: Module) {
-        self.entries.insert(module.id.clone());
-        self.add_module(module);
+    pub fn mark_entry_module(&mut self, module_id: &ModuleId) {
+        self.entries.insert(module_id.clone());
     }
 
     pub fn add_module(&mut self, module: Module) {
@@ -263,7 +262,7 @@ impl fmt::Display for ModuleGraph {
             .into_iter()
             .map(|node| &node.id.id)
             .collect::<Vec<_>>();
-        let references = self
+        let mut references = self
             .graph
             .edge_references()
             .into_iter()
@@ -274,6 +273,7 @@ impl fmt::Display for ModuleGraph {
             })
             .collect::<Vec<_>>();
         nodes.sort_by_key(|id| id.to_string());
+        references.sort_by_key(|id| id.to_string());
         write!(
             f,
             "graph\n nodes:{:?} \n references:{:?}",
