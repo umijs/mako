@@ -1,6 +1,7 @@
 use maplit::hashset;
 use nodejs_resolver::{Options, Resolver};
 
+use std::ops::ControlFlow;
 use std::sync::Arc;
 use std::{
     cell::RefCell,
@@ -42,7 +43,6 @@ struct Task {
 
 #[derive(Debug)]
 enum BuildModuleGraphResult {
-    Skip,
     Done,
     Next(Vec<Task>),
 }
@@ -101,6 +101,11 @@ impl Compiler {
                 let ctx = self.context.clone();
                 let ep = entry_point.clone();
                 let res = resolver.clone();
+
+                if let ControlFlow::Break(_) = Self::add_module(&task, &ctx) {
+                    continue;
+                }
+
                 tokio::spawn({
                     active_task_count += 1;
                     let sender = result_sender.clone();
@@ -113,7 +118,6 @@ impl Compiler {
             match result_receiver.try_recv() {
                 Ok(result) => {
                     match result {
-                        BuildModuleGraphResult::Skip => {}
                         BuildModuleGraphResult::Done => {}
                         BuildModuleGraphResult::Next(tasks) => {
                             for task in tasks {
@@ -145,22 +149,6 @@ impl Compiler {
         let path_str = task.path.as_str();
         let module_id = ModuleId::new(path_str);
         let is_entry = path_str == entry_point;
-
-        let mut module_graph_w = context.module_graph.write().unwrap();
-
-        // NOTE: 因为多线程的原因，需要在一个锁事务内持久化 module，否则多个线程并发 has_module 会导致重跑
-        // check if module is already in the graph
-        if module_graph_w.has_module(&module_id) {
-            Self::bind_dependency(&mut module_graph_w, &task, &module_id);
-            drop(module_graph_w);
-            return BuildModuleGraphResult::Skip;
-        }
-        // setup entry module
-        let module = Module::new(module_id.clone());
-        module_graph_w.add_module(module);
-        // handle dependency bind
-        Self::bind_dependency(&mut module_graph_w, &task, &module_id);
-        drop(module_graph_w);
 
         // load
         let load_param = LoadParam {
@@ -260,6 +248,29 @@ impl Compiler {
                 .expect("parent dependency is required for parent_module_id");
             module_graph.add_dependency(parent_module_id, module_id, parent_dependency.clone());
         }
+    }
+
+    fn add_module(task: &Task, ctx: &Arc<Context>) -> ControlFlow<()> {
+        let path_str = task.path.as_str();
+        let module_id = ModuleId::new(path_str);
+        let mut module_graph_w = ctx.module_graph.write().unwrap();
+
+        // check if module is already in the graph
+        if module_graph_w.has_module(&module_id) {
+            Self::bind_dependency(&mut module_graph_w, task, &module_id);
+            drop(module_graph_w);
+            return ControlFlow::Break(());
+        }
+        let module = Module::new(module_id.clone());
+
+        // setup entry module
+        module_graph_w.add_module(module);
+
+        // handle dependency bind
+        Self::bind_dependency(&mut module_graph_w, task, &module_id);
+        drop(module_graph_w);
+
+        ControlFlow::Continue(())
     }
 
     // 通过 BFS 搜索从入口模块进入后的所有依赖，直到遇到 DynamicImport 为止，作为一个 chunk
