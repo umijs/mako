@@ -118,7 +118,7 @@ impl Compiler {
                 external_name: None,
                 is_entry,
                 original_cm: Some(parse_result.cm),
-                original_ast: ModuleAst::Script(transform_result.ast),
+                original_ast: ModuleAst::Script(transform_result.ast.clone()),
             };
             let module = Module::new(module_id.clone(), info);
 
@@ -133,9 +133,10 @@ impl Compiler {
             self.bind_dependency(&task, &module_id);
 
             // analyze deps
+            // if info.original_ast matches ModuleAst::Script
             let analyze_deps_param = AnalyzeDepsParam {
                 path: path_str,
-                ast: &parse_result.ast,
+                ast: &transform_result.ast,
             };
             let analyze_deps_result = analyze_deps(&analyze_deps_param, &self.context);
 

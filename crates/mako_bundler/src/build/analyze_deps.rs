@@ -23,6 +23,12 @@ pub fn analyze_deps(
     // get dependencies from ast
     let mut collector = DepsCollector::new();
     analyze_deps_param.ast.visit_with(&mut collector);
+
+    println!("> analyze deps: {}", analyze_deps_param.path);
+    for d in &collector.dependencies {
+        println!("  - {} ({:?})", d.source, d.resolve_type);
+    }
+
     AnalyzeDepsResult {
         dependencies: collector.dependencies,
     }
