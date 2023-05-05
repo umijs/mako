@@ -2,7 +2,11 @@
 
 use compiler::Compiler;
 
+use crate::plugins::node_polyfill::get_node_builtins;
+
 pub mod build;
+pub mod chunk;
+pub mod chunk_graph;
 pub mod compiler;
 pub mod config;
 pub mod context;
@@ -10,6 +14,7 @@ pub mod generate;
 pub mod module;
 pub mod module_graph;
 pub mod plugin;
+pub mod plugins;
 pub mod utils;
 
 pub fn run() {
@@ -25,14 +30,10 @@ pub fn run() {
         .to_string_lossy()
         .to_string();
     let mut config = config::Config::from_literal_str(
-        // stream is a dependency of styled-components
-        // TODO: support node polyfill
         format!(
             r#"
 {{
-    "externals": {{
-        "stream": "stream"
-    }},
+    "externals": {{}},
     "root": "{}",
     "entry": {{ "index": "index.tsx" }}
 }}
@@ -43,6 +44,13 @@ pub fn run() {
     )
     .unwrap();
     config.normalize();
+
+    // TODO: move this to plugin
+    // node polyfills
+    let builtins = get_node_builtins();
+    for name in builtins.iter() {
+        config.externals.insert(name.to_string(), name.to_string());
+    }
 
     // compiler_origin::run_compiler(config);
     let mut compiler = Compiler::new(config);

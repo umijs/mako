@@ -31,6 +31,12 @@ export function Layout() {
           <li>
             <Link to="/react-query">React Query</Link>
           </li>
+          <li>
+            <Link to="/monaco-editor">Monaco Query</Link>
+          </li>
+          <li>
+            <Link to="/ant-design-icons">Ant Design Icons</Link>
+          </li>
         </ul>
       </nav>
       <div>

@@ -13,6 +13,7 @@ use crate::{
 pub struct AnalyzeDepsParam<'a> {
     pub path: &'a str,
     pub ast: &'a ModuleAst,
+    pub transform_ast: &'a ModuleAst,
 }
 
 pub struct AnalyzeDepsResult {
@@ -25,11 +26,23 @@ pub fn analyze_deps(
 ) -> AnalyzeDepsResult {
     // get dependencies from ast
     let mut collector = DepsCollector::new();
+
     if let ModuleAst::Script(ast) = analyze_deps_param.ast {
         ast.visit_with(&mut collector);
+        if let ModuleAst::Script(transform_ast) = analyze_deps_param.transform_ast {
+            // transform ast 分析到的都是 require
+            // TODO: only analyze top level require to improve performance
+            transform_ast.visit_with(&mut collector);
+
+            println!("> analyze deps: {}", analyze_deps_param.path);
+            for d in &collector.dependencies {
+                println!("  - {} ({:?})", d.source, d.resolve_type);
+            }
+        }
     } else if let ModuleAst::Css(stylesheet) = analyze_deps_param.ast {
         stylesheet.visit_with(&mut collector);
     }
+
     AnalyzeDepsResult {
         dependencies: collector.dependencies,
     }
@@ -37,19 +50,24 @@ pub fn analyze_deps(
 pub struct DepsCollector {
     order: usize,
     pub dependencies: Vec<Dependency>,
+    pub dep_strs: Vec<String>,
 }
 
 impl DepsCollector {
     pub fn new() -> Self {
         DepsCollector {
             dependencies: Vec::new(),
+            dep_strs: Vec::new(),
             order: 0,
         }
     }
 
     fn bind_dependencies(&mut self, dependency: Dependency) {
-        self.dependencies.push(dependency);
-        self.order += 1;
+        if !self.dep_strs.contains(&dependency.source) {
+            self.dep_strs.push(dependency.source.clone());
+            self.dependencies.push(dependency);
+            self.order += 1;
+        }
     }
 }
 

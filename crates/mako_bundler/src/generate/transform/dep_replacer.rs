@@ -30,7 +30,6 @@ impl VisitMut for DepReplacer {
 
 impl CssVisitMut for DepReplacer {
     fn visit_mut_stylesheet(&mut self, n: &mut Stylesheet) {
-        n.visit_mut_children_with(self);
         n.rules = n
             .rules
             .take()
@@ -60,6 +59,7 @@ impl CssVisitMut for DepReplacer {
                 _ => true,
             })
             .collect();
+        n.visit_mut_children_with(self);
     }
 
     fn visit_mut_url(&mut self, n: &mut Url) {

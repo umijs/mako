@@ -1,6 +1,6 @@
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
-use super::Plugin;
+use super::{Plugin, Result};
 
 pub struct PluginDriver {
     plugins: Vec<Box<dyn Plugin>>,
@@ -46,29 +46,29 @@ impl PluginDriver {
     /// run hook in first mode and return first result
     ///
     /// * `executor` - a closure function that accept a plugin, use to call plugin method and return result
-    pub fn run_hook_first<T, E>(&mut self, executor: E) -> Option<T>
+    pub fn run_hook_first<T, E>(&mut self, executor: E) -> Result<Option<T>>
     where
-        E: Fn(&dyn Plugin) -> Option<T>,
+        E: Fn(&dyn Plugin) -> Result<Option<T>>,
     {
         for plugin in &self.plugins {
             let ret = executor(plugin.as_ref());
 
-            if ret.is_some() {
+            if ret.is_ok() && ret.as_ref().unwrap().is_some() {
                 return ret;
             }
         }
 
-        None
+        Ok(None)
     }
 
     /// run hook in serial mode
     ///
     /// * `executor` - a closure function that accept a plugin, use to call plugin method and serial return result
-    pub fn run_hook_serial<T, E>(&mut self, executor: E) -> Option<T>
+    pub fn run_hook_serial<T, E>(&mut self, executor: E) -> Result<Option<T>>
     where
-        E: Fn(&dyn Plugin, Option<T>) -> Option<T>,
+        E: Fn(&dyn Plugin, Result<Option<T>>) -> Result<Option<T>>,
     {
-        let mut last_ret: Option<T> = None;
+        let mut last_ret: Result<Option<T>> = Ok(None);
 
         for plugin in &self.plugins {
             last_ret = executor(plugin.as_ref(), last_ret);

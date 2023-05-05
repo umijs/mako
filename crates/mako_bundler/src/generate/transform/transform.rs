@@ -108,7 +108,7 @@ pub fn transform(transform_param: &TransformParam, _context: &Context) -> Transf
 
         let mut code_vec: Vec<String> = vec![];
 
-        for (_key, value) in &transform_param.dep_map {
+        for value in transform_param.dep_map.values() {
             code_vec.push(format!("require(\"{}\");", value));
         }
 

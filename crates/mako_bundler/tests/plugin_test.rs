@@ -1,4 +1,4 @@
-use mako_bundler::plugin::{plugin_driver::PluginDriver, Plugin};
+use mako_bundler::plugin::{plugin_driver::PluginDriver, Plugin, Result};
 use std::{thread::sleep, time::Duration};
 
 pub struct TestPlugin1;
@@ -8,8 +8,8 @@ impl Plugin for TestPlugin1 {
         "mako-test:plugin-1"
     }
 
-    fn example_method(&self, prefix: String) -> Option<String> {
-        Some(prefix + ":plugin-1")
+    fn example_method(&self, prefix: String) -> Result<Option<String>> {
+        Ok(Some(prefix + ":plugin-1"))
     }
 }
 
@@ -24,8 +24,8 @@ impl Plugin for TestPlugin2 {
         "mako-test:plugin-1"
     }
 
-    fn example_method(&self, prefix: String) -> Option<String> {
-        Some(prefix + ":plugin-2")
+    fn example_method(&self, prefix: String) -> Result<Option<String>> {
+        Ok(Some(prefix + ":plugin-2"))
     }
 }
 
@@ -44,12 +44,10 @@ fn test_first_and_before() {
 
     // assert 2 plugin drivers get same order
     let ret1 = pd1.run_hook_first(|p| p.example_method("p1".to_string()));
-    assert!(ret1.is_some());
-    assert_eq!(ret1.unwrap(), "p1:plugin-2");
+    assert_eq!(ret1.unwrap().unwrap(), "p1:plugin-2");
 
     let ret2 = pd2.run_hook_first(|p| p.example_method("p2".to_string()));
-    assert!(ret2.is_some());
-    assert_eq!(ret2.unwrap(), "p2:plugin-2");
+    assert_eq!(ret2.unwrap().unwrap(), "p2:plugin-2");
 }
 
 #[test]
@@ -64,13 +62,16 @@ fn test_serial() {
             // sleep 1ms for plugin-2 to assert plugin-2 still run before plugin-1
             sleep(Duration::from_millis(1));
         }
-        p.example_method(last_ret.unwrap_or_else(|| "serial".to_string()))
+        p.example_method(
+            last_ret
+                .unwrap_or_default()
+                .unwrap_or_else(|| "serial".to_string()),
+        )
     });
 
     // expect hook return value is plugin method return value concat
     // and the plugin-1 is run after plugin-2
-    assert!(ret.is_some());
-    assert_eq!(ret.unwrap(), "serial:plugin-2:plugin-1");
+    assert_eq!(ret.unwrap().unwrap(), "serial:plugin-2:plugin-1");
 }
 
 #[test]
@@ -86,7 +87,7 @@ fn test_parallel() {
         if p.name() == "mako-test:plugin-2" {
             sleep(Duration::from_millis(1));
         }
-        p.example_method("p".to_string());
+        assert!(p.example_method("p".to_string()).is_ok());
         unsafe {
             LAST_PLUGIN = p.name().to_string();
         }
