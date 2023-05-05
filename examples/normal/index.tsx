@@ -13,7 +13,7 @@ function App() {
     <div>
       <Lazy />
       <div className="title">Hello {foo}</div>
-      <div className="title">Hello {bar}</div>
+      <div className="desc">Hello {bar}</div>
       <img src={UmiLogo} />
       <div>
         <img style={{ width: 200 }} src={MailchimpUnsplash} alt="unsplash big image" />

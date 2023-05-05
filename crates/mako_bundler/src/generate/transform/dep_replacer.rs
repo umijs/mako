@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use swc_css_ast::{ImportHref, Url, UrlValue};
+use swc_css_visit::VisitMut as CssVisitMut;
 use swc_ecma_ast::{Expr, ExprOrSpread, Lit, Str};
 use swc_ecma_visit::{VisitMut, VisitMutWith};
 
@@ -22,6 +24,42 @@ impl VisitMut for DepReplacer {
             }
         }
         expr.visit_mut_children_with(self);
+    }
+}
+
+impl CssVisitMut for DepReplacer {
+    fn visit_mut_import_href(&mut self, n: &mut ImportHref) {
+        // 检查 @import
+        if let ImportHref::Url(url) = n {
+            let href_string = url
+                .value
+                .as_ref()
+                .map(|box value| match value {
+                    UrlValue::Str(str) => str.value.to_string(),
+                    UrlValue::Raw(raw) => raw.value.to_string(),
+                })
+                .unwrap();
+        } else if let ImportHref::Str(str) = n {
+        }
+    }
+
+    fn visit_mut_url(&mut self, n: &mut Url) {
+        // 检查 url 属性
+        match n.value {
+            Some(box UrlValue::Str(ref mut s)) => {
+                if let Some(replacement) = self.dep_map.get(&s.value.to_string()) {
+                    s.value = replacement.clone().into();
+                    s.raw = None;
+                }
+            }
+            Some(box UrlValue::Raw(ref mut s)) => {
+                if let Some(replacement) = self.dep_map.get(&s.value.to_string()) {
+                  s.value = replacement.clone().into();
+                  s.raw = None;
+                }
+            }
+            None => {}
+        };
     }
 }
 

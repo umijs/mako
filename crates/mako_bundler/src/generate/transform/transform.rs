@@ -8,6 +8,7 @@ use swc_css_codegen::{
     writer::basic::{BasicCssWriter, BasicCssWriterConfig},
     CodeGenerator, CodegenConfig, Emit,
 };
+use swc_css_visit::VisitMutWith as CssVisitMutWith;
 use swc_ecma_ast::{Expr, Lit, Str};
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -87,6 +88,17 @@ pub fn transform(transform_param: &TransformParam, _context: &Context) -> Transf
         }
     } else if let ModuleAst::Css(stylesheet) = transform_param.ast {
         let mut stylesheet = stylesheet.clone();
+
+        let globals = Globals::default();
+        GLOBALS.set(&globals, || {
+            let helpers = Helpers::new(true);
+            HELPERS.set(&helpers, || {
+                let mut dep_replacer = DepReplacer {
+                    dep_map: transform_param.dep_map.clone(),
+                };
+                stylesheet.visit_mut_with(&mut dep_replacer);
+            });
+        });
 
         let mut css_code = String::new();
         let css_writer = BasicCssWriter::new(&mut css_code, None, BasicCssWriterConfig::default());
