@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use swc_common::util::take::Take;
-use swc_css_ast::{ImportHref, Rule, Stylesheet, Url, UrlValue, AtRulePrelude};
+use swc_css_ast::{AtRulePrelude, Rule, Stylesheet, Url, UrlValue};
 use swc_css_visit::{VisitMut as CssVisitMut, VisitMutWith as CssVisitMutWith};
 use swc_ecma_ast::{Expr, ExprOrSpread, Lit, Str};
 use swc_ecma_visit::{VisitMut, VisitMutWith};
@@ -37,45 +37,29 @@ impl CssVisitMut for DepReplacer {
             .into_iter()
             .filter(|rule| match rule {
                 Rule::AtRule(at_rule) => {
-                  if let Some(box AtRulePrelude::ImportPrelude(_prelude)) = &at_rule.prelude {
-                    // let href_string = match &prelude.href {
-                    //   box ImportHref::Url(url) => {
-                    //     let href_string = url
-                    //       .value
-                    //       .as_ref()
-                    //       .map(|box value| match value {
-                    //         UrlValue::Str(str) => str.value.clone(),
-                    //         UrlValue::Raw(raw) => raw.value.clone(),
-                    //       })
-                    //       .unwrap_or_default();
-                    //     href_string
-                    //   }
-                    //   box ImportHref::Str(str) => str.value.clone(),
-                    // };
-                    false
-                  } else {
-                    true
-                  }
+                    if let Some(box AtRulePrelude::ImportPrelude(_prelude)) = &at_rule.prelude {
+                        // let href_string = match &prelude.href {
+                        //   box ImportHref::Url(url) => {
+                        //     let href_string = url
+                        //       .value
+                        //       .as_ref()
+                        //       .map(|box value| match value {
+                        //         UrlValue::Str(str) => str.value.clone(),
+                        //         UrlValue::Raw(raw) => raw.value.clone(),
+                        //       })
+                        //       .unwrap_or_default();
+                        //     href_string
+                        //   }
+                        //   box ImportHref::Str(str) => str.value.clone(),
+                        // };
+                        false
+                    } else {
+                        true
+                    }
                 }
                 _ => true,
             })
             .collect();
-    }
-
-    fn visit_mut_import_href(&mut self, n: &mut ImportHref) {
-        // 检查 @import
-        if let ImportHref::Url(url) = n {
-            let href_string = url
-                .value
-                .as_ref()
-                .map(|box value| match value {
-                    UrlValue::Str(str) => str.value.to_string(),
-                    UrlValue::Raw(raw) => raw.value.to_string(),
-                })
-                .unwrap();
-        } else if let ImportHref::Str(str) = n {
-        }
-        n.visit_mut_children_with(self);
     }
 
     fn visit_mut_url(&mut self, n: &mut Url) {

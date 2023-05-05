@@ -106,7 +106,13 @@ pub fn transform(transform_param: &TransformParam, _context: &Context) -> Transf
 
         gen.emit(&stylesheet).unwrap();
 
-        let code = format!(
+        let mut code_vec: Vec<String> = vec![];
+
+        for (_key, value) in &transform_param.dep_map {
+            code_vec.push(format!("require(\"{}\");", value));
+        }
+
+        code_vec.push(format!(
             r#"
 const cssCode = `{}`;
 const style = document.createElement('style');
@@ -114,7 +120,9 @@ style.innerHTML = cssCode;
 document.head.appendChild(style);
 "#,
             css_code
-        );
+        ));
+
+        let code = code_vec.join("\n");
 
         TransformResult {
             ast: ModuleAst::Css(stylesheet),
