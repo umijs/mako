@@ -6,6 +6,7 @@ import { Home } from './home';
 import { Todos } from './todos';
 import { ReactQuery } from './react-query';
 import { MonacoEditor } from './monaco-editor';
+import { AntDesignIcons } from './ant-design-icons';
 
 const router = createHashRouter([
   {
@@ -23,6 +24,10 @@ const router = createHashRouter([
       {
         path: '/monaco-editor',
         element: <MonacoEditor />,
+      },
+      {
+        path: '/ant-design-icons',
+        element: <AntDesignIcons />,
       },
       {
         path: '/',
