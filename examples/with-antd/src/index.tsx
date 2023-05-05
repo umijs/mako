@@ -5,6 +5,7 @@ import { Layout } from './layout';
 import { Home } from './home';
 import { Todos } from './todos';
 import { ReactQuery } from './react-query';
+import { MonacoEditor } from './monaco-editor';
 
 const router = createHashRouter([
   {
@@ -18,6 +19,10 @@ const router = createHashRouter([
       {
         path: '/react-query',
         element: <ReactQuery />,
+      },
+      {
+        path: '/monaco-editor',
+        element: <MonacoEditor />,
       },
       {
         path: '/',
