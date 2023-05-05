@@ -136,7 +136,8 @@ impl Compiler {
             // if info.original_ast matches ModuleAst::Script
             let analyze_deps_param = AnalyzeDepsParam {
                 path: path_str,
-                ast: &transform_result.ast,
+                ast: &parse_result.ast,
+                transform_ast: &transform_result.ast,
             };
             let analyze_deps_result = analyze_deps(&analyze_deps_param, &self.context);
 

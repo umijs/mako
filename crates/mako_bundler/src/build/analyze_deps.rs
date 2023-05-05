@@ -10,6 +10,7 @@ use crate::{
 pub struct AnalyzeDepsParam<'a> {
     pub path: &'a str,
     pub ast: &'a Module,
+    pub transform_ast: &'a Module,
 }
 
 pub struct AnalyzeDepsResult {
@@ -23,6 +24,9 @@ pub fn analyze_deps(
     // get dependencies from ast
     let mut collector = DepsCollector::new();
     analyze_deps_param.ast.visit_with(&mut collector);
+    // transform ast 分析到的都是 require
+    // TODO: only analyze top level require to improve performance
+    analyze_deps_param.transform_ast.visit_with(&mut collector);
 
     println!("> analyze deps: {}", analyze_deps_param.path);
     for d in &collector.dependencies {
@@ -36,19 +40,24 @@ pub fn analyze_deps(
 pub struct DepsCollector {
     order: usize,
     pub dependencies: Vec<Dependency>,
+    pub dep_strs: Vec<String>,
 }
 
 impl DepsCollector {
     pub fn new() -> Self {
         DepsCollector {
             dependencies: Vec::new(),
+            dep_strs: Vec::new(),
             order: 0,
         }
     }
 
     fn bind_dependencies(&mut self, dependency: Dependency) {
-        self.dependencies.push(dependency);
-        self.order += 1;
+        if !self.dep_strs.contains(&dependency.source) {
+            self.dep_strs.push(dependency.source.clone());
+            self.dependencies.push(dependency);
+            self.order += 1;
+        }
     }
 }
 
