@@ -2,11 +2,11 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { createHashRouter, RouterProvider } from 'react-router-dom';
 import { Layout } from './layout';
-import { Home } from './home';
-import { Todos } from './todos';
-import { ReactQuery } from './react-query';
-import { MonacoEditor } from './monaco-editor';
-import { AntDesignIcons } from './ant-design-icons';
+import { Home } from './pages/home';
+import { Todos } from './pages/todos';
+import { ReactQuery } from './pages/react-query';
+import { MonacoEditor } from './pages/monaco-editor';
+import { AntDesignIcons } from './pages/ant-design-icons';
 
 const router = createHashRouter([
   {

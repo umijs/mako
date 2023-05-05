@@ -102,73 +102,7 @@ const requireModule = (name) => {
   return module.exports;
 };
         "#
-            .to_string(),
-            r#"
-        g_define("@swc/helpers/_/_interop_require_default", function(module, exports, require) {
-"use strict";
-exports._ = exports._interop_require_default = _interop_require_default;
-function _interop_require_default(obj) {
-    return obj && obj.__esModule ? obj : { default: obj, ...obj };
-}
-        });
-"#
-            .to_string(),
-            r#"
-        g_define("@swc/helpers/_/_export_star", function(module, exports, require) {
-"use strict";
-exports._ = exports._export_star = _export_star;
-function _export_star(from, to) {
-    Object.keys(from).forEach(function(k) {
-        if (k !== "default" && !Object.prototype.hasOwnProperty.call(to, k)) {
-            Object.defineProperty(to, k, {
-                enumerable: true,
-                get: function() {
-                    return from[k];
-                }
-            });
-        }
-    });
-    return from;
-}
-        });
-"#
-            .to_string(),
-            r#"
-        g_define("@swc/helpers/_/_interop_require_wildcard", function(module, exports, require) {
-"use strict";
-function _getRequireWildcardCache(nodeInterop) {
-    if (typeof WeakMap !== "function") return null;
-    var cacheBabelInterop = new WeakMap();
-    var cacheNodeInterop = new WeakMap();
-    return (_getRequireWildcardCache = function(nodeInterop) {
-        return nodeInterop ? cacheNodeInterop : cacheBabelInterop;
-    })(nodeInterop);
-}
-exports._ = exports._interop_require_wildcard = _interop_require_wildcard;
-function _interop_require_wildcard(obj, nodeInterop) {
-    if (!nodeInterop && obj && obj.__esModule) return obj;
-    if (obj === null || typeof obj !== "object" && typeof obj !== "function") return { default: obj };
-    var cache = _getRequireWildcardCache(nodeInterop);
-    if (cache && cache.has(obj)) return cache.get(obj);
-    var newObj = {};
-    var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor;
-    for (var key in obj) {
-        if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) {
-            var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null;
-            if (desc && (desc.get || desc.set)) Object.defineProperty(newObj, key, desc);
-            else newObj[key] = obj[key];
-        }
-    }
-    newObj.default = obj;
-    if (cache) cache.set(obj, newObj);
-    return newObj;
-}
-        });
-"#
-                .to_string(),
-
-
-        ];
+        .to_string()];
         let module_ids = self.context.module_graph.get_modules();
 
         let mut entry_module_id = String::new();

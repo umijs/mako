@@ -4,6 +4,9 @@ importers:
 
   .:
     devDependencies:
+      '@swc/helpers':
+        specifier: ^0.5.1
+        version: 0.5.1
       husky:
         specifier: ^8.0.3
         version: 8.0.3
@@ -462,6 +465,12 @@ packages:
     requiresBuild: true
     dev: true
     optional: true
+
+  /@swc/helpers@0.5.1:
+    resolution: {integrity: sha512-sJ902EfIzn1Fa+qYmjdQqh8tPsoxyBz+8yBKC2HKUxyezKJFwPGOn7pv4WY6QuQW//ySQi5lJjA/ZT9sNWWNTg==}
+    dependencies:
+      tslib: 2.5.0
+    dev: true
 
   /@tanstack/query-core@5.0.0-alpha.21:
     resolution: {integrity: sha512-bXnHC8NEKU840o1YYiENySobGWYXCHBSgXnEOsuUsh/gD2uE2EymUYS2wbKI2I7rflTWojx/Ne1PauEKBz8Rtw==}
