@@ -1,5 +1,5 @@
 use swc_css_ast::*;
-use swc_css_visit::{VisitMut, VisitMutWith};
+use swc_css_visit::{Visit as CssVisit, VisitWith as CssVisitWith};
 use swc_ecma_ast::*;
 use swc_ecma_visit::noop_visit_type;
 use swc_ecma_visit::{Visit, VisitWith};
@@ -28,8 +28,7 @@ pub fn analyze_deps(
     if let ModuleAst::Script(ast) = analyze_deps_param.ast {
         ast.visit_with(&mut collector);
     } else if let ModuleAst::Css(stylesheet) = analyze_deps_param.ast {
-        let mut stylesheet = stylesheet.clone();
-        stylesheet.visit_mut_with(&mut collector);
+        stylesheet.visit_with(&mut collector);
     }
     AnalyzeDepsResult {
         dependencies: collector.dependencies,
@@ -111,8 +110,8 @@ impl Visit for DepsCollector {
     }
 }
 
-impl VisitMut for DepsCollector {
-    fn visit_mut_import_href(&mut self, n: &mut ImportHref) {
+impl CssVisit for DepsCollector {
+    fn visit_import_href(&mut self, n: &ImportHref) {
         // 检查 @import
         if let ImportHref::Url(url) = n {
             let href_string = url
@@ -135,9 +134,10 @@ impl VisitMut for DepsCollector {
                 order: self.order,
             });
         }
+        n.visit_children_with(self);
     }
 
-    fn visit_mut_url(&mut self, n: &mut Url) {
+    fn visit_url(&mut self, n: &Url) {
         // 检查 url 属性
         let href_string = n
             .value
@@ -152,6 +152,7 @@ impl VisitMut for DepsCollector {
             resolve_type: ResolveType::CssImportStr,
             order: self.order,
         });
+        n.visit_children_with(self);
     }
 }
 
