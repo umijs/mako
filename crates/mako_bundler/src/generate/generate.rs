@@ -6,7 +6,7 @@ fn wrap_module(id: &ModuleId, code: &str) -> String {
     let id = id.id.clone();
     println!("> wrap_module: {}", id);
     format!(
-        "define(\"{}\", function(module, exports, require) {{\n{}}});",
+        "g_define(\"{}\", function(module, exports, require) {{\n{}}});",
         id, code
     )
 }
@@ -31,10 +31,13 @@ pub struct OutputFile {
 
 impl Compiler {
     pub fn generate(&mut self, generate_param: &GenerateParam) -> GenerateResult {
+        // why g_define?
+        // define is conflict with monaco-editor
+        // TODO: new runtime script
         // generate code
         let mut output: Vec<String> = vec![r#"
 const modules = new Map();
-const define = (name, moduleFactory) => {
+const g_define = (name, moduleFactory) => {
   modules.set(name, moduleFactory);
 };
 
@@ -101,7 +104,7 @@ const requireModule = (name) => {
         "#
             .to_string(),
             r#"
-        define("@swc/helpers/_/_interop_require_default", function(module, exports, require) {
+        g_define("@swc/helpers/_/_interop_require_default", function(module, exports, require) {
 "use strict";
 exports._ = exports._interop_require_default = _interop_require_default;
 function _interop_require_default(obj) {
@@ -111,7 +114,7 @@ function _interop_require_default(obj) {
 "#
             .to_string(),
             r#"
-        define("@swc/helpers/_/_export_star", function(module, exports, require) {
+        g_define("@swc/helpers/_/_export_star", function(module, exports, require) {
 "use strict";
 exports._ = exports._export_star = _export_star;
 function _export_star(from, to) {
@@ -131,7 +134,7 @@ function _export_star(from, to) {
 "#
             .to_string(),
             r#"
-        define("@swc/helpers/_/_interop_require_wildcard", function(module, exports, require) {
+        g_define("@swc/helpers/_/_interop_require_wildcard", function(module, exports, require) {
 "use strict";
 function _getRequireWildcardCache(nodeInterop) {
     if (typeof WeakMap !== "function") return null;
