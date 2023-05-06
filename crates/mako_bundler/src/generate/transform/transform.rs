@@ -17,7 +17,6 @@ use swc_ecma_visit::VisitMutWith;
 
 use lightningcss::stylesheet::{MinifyOptions, ParserOptions, PrinterOptions, StyleSheet};
 
-use crate::context::Context;
 use crate::module::ModuleAst;
 
 use super::dep_replacer::DepReplacer;
@@ -35,7 +34,7 @@ pub struct TransformResult {
     pub code: String,
 }
 
-pub fn transform(transform_param: &TransformParam, _context: &Context) -> TransformResult {
+pub fn transform(transform_param: &TransformParam) -> TransformResult {
     if let ModuleAst::Script(ast) = transform_param.ast {
         let mut ast = ast.clone();
 

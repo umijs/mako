@@ -26,6 +26,15 @@ impl ChunkGraph {
         }
     }
 
+    pub fn get_chunk(&self, id: &ChunkId) -> Option<&Chunk> {
+        let node_index = self.id_index_map.get(id).unwrap();
+        self.graph.node_weight(*node_index)
+    }
+
+    pub fn get_chunks(&self) -> Vec<&Chunk> {
+        self.graph.node_weights().collect()
+    }
+
     pub fn add_chunk(&mut self, chunk: Chunk) {
         let chunk_id = chunk.id.clone();
         if self.id_index_map.contains_key(&chunk_id) {

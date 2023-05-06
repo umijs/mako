@@ -62,6 +62,15 @@ importers:
         specifier: ^1.10.4
         version: 1.10.4(react@18.2.0)
 
+  examples/with-dynamic-import:
+    dependencies:
+      react:
+        specifier: 18.2.0
+        version: 18.2.0
+      react-dom:
+        specifier: 18.2.0
+        version: 18.2.0(react@18.2.0)
+
 packages:
 
   /@ant-design/colors@7.0.0:
@@ -419,7 +428,7 @@ packages:
     dev: true
 
   /@rometools/cli-darwin-arm64@12.0.0:
-    resolution: {integrity: sha512-kEFCzU6cgy6vfY0mkMzq57ea3srqV5X2wyCAxjVfA2JF7fioq695uWhy7yOCBW+nUUFIz62N9v1nf/aYqX8XkA==}
+    resolution: {integrity: sha512-kEFCzU6cgy6vfY0mkMzq57ea3srqV5X2wyCAxjVfA2JF7fioq695uWhy7yOCBW+nUUFIz62N9v1nf/aYqX8XkA==, tarball: https://registry.npm.alibaba-inc.com/@rometools/cli-darwin-arm64/download/@rometools/cli-darwin-arm64-12.0.0.tgz}
     cpu: [arm64]
     os: [darwin]
     requiresBuild: true
@@ -427,7 +436,7 @@ packages:
     optional: true
 
   /@rometools/cli-darwin-x64@12.0.0:
-    resolution: {integrity: sha512-YDevVPKrkRFdjjM/3zOpOWI5mEY2ivjKM2eR8Yqv9xH3SZhyD/t67f/xo7Azp6NkGUVXSnHLGdkmIg+qrYgz5A==}
+    resolution: {integrity: sha512-YDevVPKrkRFdjjM/3zOpOWI5mEY2ivjKM2eR8Yqv9xH3SZhyD/t67f/xo7Azp6NkGUVXSnHLGdkmIg+qrYgz5A==, tarball: https://registry.npm.alibaba-inc.com/@rometools/cli-darwin-x64/download/@rometools/cli-darwin-x64-12.0.0.tgz}
     cpu: [x64]
     os: [darwin]
     requiresBuild: true
@@ -435,7 +444,7 @@ packages:
     optional: true
 
   /@rometools/cli-linux-arm64@12.0.0:
-    resolution: {integrity: sha512-n2LJg6eAZENUcJF99wjDeqQCr/40IqGUJDbX7NwiU1RvCy+RBZNmhcmSAaKOc6rCoLUcM9W5q+H4jfn4bWfJBA==}
+    resolution: {integrity: sha512-n2LJg6eAZENUcJF99wjDeqQCr/40IqGUJDbX7NwiU1RvCy+RBZNmhcmSAaKOc6rCoLUcM9W5q+H4jfn4bWfJBA==, tarball: https://registry.npm.alibaba-inc.com/@rometools/cli-linux-arm64/download/@rometools/cli-linux-arm64-12.0.0.tgz}
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
@@ -443,7 +452,7 @@ packages:
     optional: true
 
   /@rometools/cli-linux-x64@12.0.0:
-    resolution: {integrity: sha512-VuQO4eOrKmfrLrc8KzMaZypz3i1rD9FXRxwOFk6ha16DNHV+17dRQYm7jRZ1p+HrXdjAJYTScxR/E03yGLThlQ==}
+    resolution: {integrity: sha512-VuQO4eOrKmfrLrc8KzMaZypz3i1rD9FXRxwOFk6ha16DNHV+17dRQYm7jRZ1p+HrXdjAJYTScxR/E03yGLThlQ==, tarball: https://registry.npm.alibaba-inc.com/@rometools/cli-linux-x64/download/@rometools/cli-linux-x64-12.0.0.tgz}
     cpu: [x64]
     os: [linux]
     requiresBuild: true
@@ -451,7 +460,7 @@ packages:
     optional: true
 
   /@rometools/cli-win32-arm64@12.0.0:
-    resolution: {integrity: sha512-lvOh5/B8YuQdI2ieGJnJ6CUMZxvVwA8+1VDkEZJyl5IEF8AXzbXYx4k6SFA5a79cfXEL9tJuJy0rn+Zs/+1yJQ==}
+    resolution: {integrity: sha512-lvOh5/B8YuQdI2ieGJnJ6CUMZxvVwA8+1VDkEZJyl5IEF8AXzbXYx4k6SFA5a79cfXEL9tJuJy0rn+Zs/+1yJQ==, tarball: https://registry.npm.alibaba-inc.com/@rometools/cli-win32-arm64/download/@rometools/cli-win32-arm64-12.0.0.tgz}
     cpu: [arm64]
     os: [win32]
     requiresBuild: true
@@ -459,7 +468,7 @@ packages:
     optional: true
 
   /@rometools/cli-win32-x64@12.0.0:
-    resolution: {integrity: sha512-yTfz71k8+9QIDzglKnMbEMMv1JUk30qfeSomgEUG2v0qDSbSq0Gs1ff0H0dysYOHLvZZmWA3IheOY/SC8fj1nA==}
+    resolution: {integrity: sha512-yTfz71k8+9QIDzglKnMbEMMv1JUk30qfeSomgEUG2v0qDSbSq0Gs1ff0H0dysYOHLvZZmWA3IheOY/SC8fj1nA==, tarball: https://registry.npm.alibaba-inc.com/@rometools/cli-win32-x64/download/@rometools/cli-win32-x64-12.0.0.tgz}
     cpu: [x64]
     os: [win32]
     requiresBuild: true
@@ -918,7 +927,7 @@ packages:
     dev: true
 
   /js-tokens@4.0.0:
-    resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
+    resolution: {integrity: sha1-GSA/tZmR35jjoocFDUZHzerzJJk=, tarball: https://registry.npm.alibaba-inc.com/js-tokens/download/js-tokens-4.0.0.tgz}
 
   /jsesc@2.5.2:
     resolution: {integrity: sha512-OYu7XEzjkCQ3C5Ps3QIZsQfNpqoJyZZA99wd9aWd05NCtC5pWOkShK2mkL6HXQR6/Cy2lbNdPlZBpuQHXE63gA==}
@@ -1671,7 +1680,7 @@ packages:
     dev: true
 
   /react-dom@18.2.0(react@18.2.0):
-    resolution: {integrity: sha512-6IMTriUmvsjHUjNtEDudZfuDQUoWXVxKHhlEGSk81n4YFS+r/Kl99wXiwlVXtPBtJenozv2P+hxDsw9eA7Xo6g==}
+    resolution: {integrity: sha512-6IMTriUmvsjHUjNtEDudZfuDQUoWXVxKHhlEGSk81n4YFS+r/Kl99wXiwlVXtPBtJenozv2P+hxDsw9eA7Xo6g==, tarball: https://registry.npm.alibaba-inc.com/react-dom/download/react-dom-18.2.0.tgz}
     peerDependencies:
       react: ^18.2.0
     dependencies:
@@ -1707,7 +1716,7 @@ packages:
     dev: true
 
   /react@18.2.0:
-    resolution: {integrity: sha512-/3IjMdb2L9QbBdWiW5e3P2/npwMBaU9mHCSCUzNln0ZCYbcfTsGbTJrU/kGemdH2IWmB2ioZ+zkxtmq6g09fGQ==}
+    resolution: {integrity: sha512-/3IjMdb2L9QbBdWiW5e3P2/npwMBaU9mHCSCUzNln0ZCYbcfTsGbTJrU/kGemdH2IWmB2ioZ+zkxtmq6g09fGQ==, tarball: https://registry.npm.alibaba-inc.com/react/download/react-18.2.0.tgz}
     engines: {node: '>=0.10.0'}
     dependencies:
       loose-envify: 1.4.0

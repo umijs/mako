@@ -34,7 +34,7 @@ async fn chunk() {
 }
 
 #[allow(clippy::useless_format)]
-fn test_files(name: String) -> (Vec<String>, Compiler, String) {
+fn test_files(name: String) -> (Vec<Vec<String>>, Compiler, String) {
     let cwd = std::env::current_dir()
         .unwrap()
         .join("tests/fixtures")
@@ -60,7 +60,11 @@ fn test_files(name: String) -> (Vec<String>, Compiler, String) {
     let mut compiler = Compiler::new(config);
     compiler.build(&BuildParam { files: None });
     let generate_result = compiler.generate(&GenerateParam { write: false });
-    let output = generate_result.output_files[0].__output.clone();
+    let output = generate_result
+        .output_files
+        .into_iter()
+        .map(|f| f.__output)
+        .collect::<Vec<Vec<String>>>();
     (output, compiler, cwd)
 }
 

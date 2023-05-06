@@ -103,7 +103,9 @@ impl Visit for DepsCollector {
                     order: self.order,
                 });
             }
-            _ => {}
+            _ => {
+                n.visit_children_with(self);
+            }
         }
     }
 

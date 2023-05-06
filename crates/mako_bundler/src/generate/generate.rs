@@ -1,6 +1,9 @@
 use std::{collections::HashMap, fs};
 
+use crate::chunk::{Chunk, ChunkType};
+use crate::module_graph::ModuleGraph;
 use crate::{compiler::Compiler, module::ModuleId};
+use rayon::prelude::*;
 
 fn wrap_module(id: &ModuleId, code: &str) -> String {
     let id = id.id.clone();
@@ -30,15 +33,13 @@ pub struct OutputFile {
 }
 
 impl Compiler {
-    pub fn generate(&mut self, generate_param: &GenerateParam) -> GenerateResult {
-        // why g_define?
-        // define is conflict with monaco-editor
-        // TODO: new runtime script
-        // generate code
-        let mut output: Vec<String> = vec![r#"
+    pub fn chunk_codegen(chunk: &Chunk, module_graph: &ModuleGraph) -> Vec<String> {
+        // TODO: 根据不同的chunk类型使用不同的 wrapper，比如 async chunk 的 wrapper 就不太一样
+        let mut results = vec![];
+        let entry_preset = vec![r#"
 const modules = new Map();
 const g_define = (name, moduleFactory) => {
-  modules.set(name, moduleFactory);
+    modules.set(name, moduleFactory);
 };
 
 function _interop_require_default(obj) {
@@ -85,86 +86,121 @@ function _interop_require_wildcard(obj, nodeInterop) {
 
 const moduleCache = new Map();
 const requireModule = (name) => {
-  if (moduleCache.has(name)) {
+    if (moduleCache.has(name)) {
     return moduleCache.get(name).exports;
-  }
+    }
 
-  if (!modules.has(name)) {
+    if (!modules.has(name)) {
     throw new Error(`Module '${name}' does not exist.`);
-  }
+    }
 
-  const moduleFactory = modules.get(name);
-  const module = {
+    const moduleFactory = modules.get(name);
+    const module = {
     exports: {},
-  };
-  moduleCache.set(name, module);
-  moduleFactory(module, module.exports, requireModule);
-  return module.exports;
+    };
+    moduleCache.set(name, module);
+    moduleFactory(module, module.exports, requireModule);
+    return module.exports;
 };
         "#
         .to_string()];
-        let module_graph = self.context.module_graph.read().unwrap();
-        let module_ids = module_graph.get_modules();
+        let outputs = chunk
+            .get_modules()
+            .par_iter()
+            .map(|module_id| {
+                let module = module_graph
+                    .get_module(module_id)
+                    .expect("module not found");
+                let info = module.info.as_ref().unwrap();
+                let code = if info.is_external {
+                    format!(
+                        "/* external {} */ exports.default = {};",
+                        info.path,
+                        info.external_name.as_ref().unwrap(),
+                    )
+                } else {
+                    // get deps
+                    let deps = module_graph.get_dependencies(module_id);
+                    let dep_map: HashMap<String, String> = deps
+                        .into_iter()
+                        .map(|(id, dep)| (dep.source.clone(), id.id.clone()))
+                        .collect();
 
-        let mut entry_module_id = String::new();
-        let mut results: Vec<String> = vec![];
-        for module_id in module_ids {
-            let id = module_id.clone();
-            let module = module_graph.get_module(&id).expect("module not found");
+                    // define env
+                    let env_map: HashMap<String, String> =
+                        HashMap::from([("NODE_ENV".into(), "production".into())]);
 
-            let info = module.info.as_ref().unwrap();
-            if info.is_entry {
-                entry_module_id = module.id.id.clone();
-            }
+                    let cm = info.original_cm.as_ref().unwrap();
 
-            let code = if info.is_external {
-                format!(
-                    "/* external {} */ exports.default = {};",
-                    info.path,
-                    info.external_name.as_ref().unwrap(),
-                )
-            } else {
-                // get deps
-                let deps = module_graph.get_dependencies(&module_id);
-                let dep_map: HashMap<String, String> = deps
-                    .into_iter()
-                    .map(|(id, dep)| (dep.source.clone(), id.id.clone()))
-                    .collect();
-
-                // define env
-                let env_map: HashMap<String, String> =
-                    HashMap::from([("NODE_ENV".into(), "production".into())]);
-
-                let cm = info.original_cm.as_ref().unwrap();
-
-                // transform
-                let transform_param = TransformParam {
-                    cm,
-                    ast: &info.original_ast,
-                    dep_map,
-                    env_map,
+                    // transform
+                    let transform_param = TransformParam {
+                        cm,
+                        ast: &info.original_ast,
+                        dep_map,
+                        env_map,
+                    };
+                    let transform_result = transform(&transform_param);
+                    transform_result.code
                 };
-                let transform_result = transform(&transform_param, &self.context);
-                transform_result.code
-            };
-
-            results.push(wrap_module(&id, &code));
+                wrap_module(module_id, &code)
+            })
+            .collect::<Vec<_>>();
+        // setup entry module
+        match chunk.chunk_type {
+            ChunkType::Runtime => {}
+            ChunkType::Entry => {
+                results.extend(entry_preset);
+                results.extend(outputs);
+                results.push(format!("\nrequireModule(\"{}\");", &chunk.id.id));
+            }
+            ChunkType::Async => {
+                results.extend(outputs);
+            }
         }
-        drop(module_graph);
-        output.extend(results);
-        output.push(format!("\nrequireModule(\"{}\");", entry_module_id));
-        let contents = output.join("\n");
-
+        results
+    }
+    pub fn generate(&mut self, generate_param: &GenerateParam) -> GenerateResult {
         let root_dir = &self.context.config.root;
         let output_dir = &self.context.config.output.path;
+
+        // ensure dir
         if generate_param.write && !output_dir.exists() {
             fs::create_dir_all(output_dir).unwrap();
         }
 
+        let chunk_graph = self.context.chunk_graph.read().unwrap();
+        let module_graph = self.context.module_graph.read().unwrap();
+        println!("chunks {}", &chunk_graph);
+        // generate codes
+        let output_files: Vec<OutputFile> = chunk_graph
+            .get_chunks()
+            .par_iter()
+            .map(|chunk| {
+                let output = Self::chunk_codegen(chunk, &module_graph);
+                let contents = output.join("\n");
+                OutputFile {
+                    path: chunk.filename(),
+                    __output: output,
+                    contents,
+                }
+            })
+            .collect();
+        drop(chunk_graph);
+        drop(module_graph);
+
         // write to file
-        if generate_param.write {
-            fs::write(&output_dir.join("bundle.js"), &contents).unwrap();
-        }
+        output_files.par_iter().for_each(|file| {
+            if generate_param.write {
+                let output = &output_dir.join(&file.path);
+                println!(
+                    "output {} {} {}",
+                    output.to_string_lossy(),
+                    output_dir.to_string_lossy(),
+                    file.path
+                );
+                fs::write(output, &file.contents).unwrap();
+            }
+        });
 
         // write assets
         let assets_info = &(*self.context.assets_info.lock().unwrap());
@@ -183,13 +219,6 @@ const requireModule = (name) => {
             fs::copy(index_html_file, &output_dir.join("index.html")).unwrap();
         }
 
-        GenerateResult {
-            output_files: vec![OutputFile {
-                path: "bundle.js".to_string(),
-                // for test
-                __output: output,
-                contents,
-            }],
-        }
+        GenerateResult { output_files }
     }
 }
