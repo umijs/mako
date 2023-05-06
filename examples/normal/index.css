@@ -1,4 +1,10 @@
-.title {
-  font-size: 48px;
-  color: blue;
+@import "./title.css";
+
+#root {
+  margin: 20px;
+}
+
+.desc {
+  background: url('./assets/umi-logo.png') 100px no-repeat;
+  background-size: 20px 20px;
 }
