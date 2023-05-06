@@ -46,9 +46,10 @@ pub fn parse(parse_param: &ParseParam, _context: &Arc<Context>) -> ParseResult {
         }
     } else {
         let lexer = Lexer::new(
+            // TODO: 细化这块的处理
             Syntax::Typescript(TsConfig {
                 decorators: true,
-                tsx: parse_param.path.ends_with(".tsx"),
+                tsx: parse_param.path.ends_with(".tsx") || parse_param.path.ends_with(".jsx"),
                 ..Default::default()
             }),
             swc_ecma_ast::EsVersion::Es2015,
