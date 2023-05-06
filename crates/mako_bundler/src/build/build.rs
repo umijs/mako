@@ -182,13 +182,15 @@ impl Compiler {
             original_cm: Some(parse_result.cm),
             original_ast: transform_result.ast.clone(),
         };
-        let mut module_graph_w = context.module_graph.write().unwrap();
-        if info.is_entry {
-            module_graph_w.mark_entry_module(&module_id);
+
+        {
+            let mut module_graph_w = context.module_graph.write().unwrap();
+            if info.is_entry {
+                module_graph_w.mark_entry_module(&module_id);
+            }
+            let module = module_graph_w.get_module_mut(&module_id).unwrap();
+            module.add_info(info);
         }
-        let module = module_graph_w.get_module_mut(&module_id).unwrap();
-        module.add_info(info);
-        drop(module_graph_w);
 
         // analyze deps
         let analyze_deps_param = AnalyzeDepsParam {
@@ -223,10 +225,11 @@ impl Compiler {
                 let external_module_id = ModuleId::new(&resolve_result.path);
                 let mut external_module = Module::new(external_module_id.clone());
                 external_module.add_info(info);
-                let mut module_graph_w = context.module_graph.write().unwrap();
-                module_graph_w.add_module(external_module);
-                module_graph_w.add_dependency(&module_id, &external_module_id, d.clone());
-                drop(module_graph_w);
+                {
+                    let mut module_graph_w = context.module_graph.write().unwrap();
+                    module_graph_w.add_module(external_module);
+                    module_graph_w.add_dependency(&module_id, &external_module_id, d.clone());
+                }
             } else {
                 tasks.push(Task {
                     parent_module_id: Some(module_id.clone()),
@@ -260,7 +263,6 @@ impl Compiler {
         // check if module is already in the graph
         if module_graph_w.has_module(&module_id) {
             Self::bind_dependency(&mut module_graph_w, task, &module_id);
-            drop(module_graph_w);
             return ControlFlow::Break(());
         }
         let module = Module::new(module_id.clone());
@@ -270,8 +272,6 @@ impl Compiler {
 
         // handle dependency bind
         Self::bind_dependency(&mut module_graph_w, task, &module_id);
-        drop(module_graph_w);
-
         ControlFlow::Continue(())
     }
 
