@@ -103,23 +103,20 @@ const requireModule = (name) => {
 };
         "#
         .to_string()];
-        let module_ids = self.context.module_graph.get_modules();
+        let module_graph = self.context.module_graph.read().unwrap();
+        let module_ids = module_graph.get_modules();
 
         let mut entry_module_id = String::new();
         let mut results: Vec<String> = vec![];
         for module_id in module_ids {
             let id = module_id.clone();
-            let module = self
-                .context
-                .module_graph
-                .get_module(&id)
-                .expect("module not found");
+            let module = module_graph.get_module(&id).expect("module not found");
 
-            if module.info.is_entry {
+            let info = module.info.as_ref().unwrap();
+            if info.is_entry {
                 entry_module_id = module.id.id.clone();
             }
 
-            let info = &module.info;
             let code = if info.is_external {
                 format!(
                     "/* external {} */ exports.default = {};",
@@ -128,7 +125,7 @@ const requireModule = (name) => {
                 )
             } else {
                 // get deps
-                let deps = self.context.module_graph.get_dependencies(&module_id);
+                let deps = module_graph.get_dependencies(&module_id);
                 let dep_map: HashMap<String, String> = deps
                     .into_iter()
                     .map(|(id, dep)| (dep.source.clone(), id.id.clone()))
@@ -153,7 +150,7 @@ const requireModule = (name) => {
 
             results.push(wrap_module(&id, &code));
         }
-
+        drop(module_graph);
         output.extend(results);
         output.push(format!("\nrequireModule(\"{}\");", entry_module_id));
         let contents = output.join("\n");
@@ -170,7 +167,7 @@ const requireModule = (name) => {
         }
 
         // write assets
-        let assets_info = &self.context.assets_info;
+        let assets_info = &(*self.context.assets_info.lock().unwrap());
         for (k, v) in assets_info {
             let asset_path = &root_dir.join(k);
             let asset_output_path = &output_dir.join(v);

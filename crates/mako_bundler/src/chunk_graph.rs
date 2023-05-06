@@ -44,13 +44,13 @@ impl ChunkGraph {
 
 impl fmt::Display for ChunkGraph {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let nodes = self
+        let mut nodes = self
             .graph
             .node_weights()
             .into_iter()
             .map(|node| &node.id.id)
             .collect::<Vec<_>>();
-        let references = self
+        let mut references = self
             .graph
             .edge_references()
             .into_iter()
@@ -60,6 +60,8 @@ impl fmt::Display for ChunkGraph {
                 format!("{} -> {}", source, target)
             })
             .collect::<Vec<_>>();
+        nodes.sort_by_key(|id| id.to_string());
+        references.sort_by_key(|id| id.to_string());
         write!(
             f,
             "graph\n nodes:{:?} \n references:{:?}",

@@ -71,9 +71,8 @@ impl ModuleGraph {
         self.entries.clone().into_iter().collect()
     }
 
-    pub fn add_entry_module(&mut self, module: Module) {
-        self.entries.insert(module.id.clone());
-        self.add_module(module);
+    pub fn mark_entry_module(&mut self, module_id: &ModuleId) {
+        self.entries.insert(module_id.clone());
     }
 
     pub fn add_module(&mut self, module: Module) {
@@ -152,12 +151,14 @@ impl ModuleGraph {
         deps
     }
 
-    pub fn get_modules(&mut self) -> Vec<ModuleId> {
-        let modules = self
+    pub fn get_modules(&self) -> Vec<ModuleId> {
+        let mut modules = self
             .graph
             .node_indices()
             .map(|x| self.graph[x].id.clone())
-            .collect();
+            .collect::<Vec<_>>();
+        // sort by module id
+        modules.sort_by_key(|m| m.id.to_string());
         modules
     }
 
@@ -258,13 +259,13 @@ impl Default for ModuleGraph {
 
 impl fmt::Display for ModuleGraph {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let nodes = self
+        let mut nodes = self
             .graph
             .node_weights()
             .into_iter()
             .map(|node| &node.id.id)
             .collect::<Vec<_>>();
-        let references = self
+        let mut references = self
             .graph
             .edge_references()
             .into_iter()
@@ -274,6 +275,8 @@ impl fmt::Display for ModuleGraph {
                 format!("{} -> {}", source, target)
             })
             .collect::<Vec<_>>();
+        nodes.sort_by_key(|id| id.to_string());
+        references.sort_by_key(|id| id.to_string());
         write!(
             f,
             "graph\n nodes:{:?} \n references:{:?}",

@@ -6,6 +6,7 @@ use crate::{
     utils::file::{content_hash, ext_name, file_size, to_base64},
 };
 use std::collections::HashMap;
+use std::sync::Arc;
 
 pub struct LoadParam<'a> {
     pub path: &'a str,
@@ -28,7 +29,7 @@ lazy_static! {
     static ref IMAGE_RE: Regex = Regex::new(r#"(jpg|jpeg|png|svg|gif)$"#).unwrap();
 }
 
-pub fn load(load_param: &LoadParam, _context: &mut Context) -> LoadResult {
+pub fn load(load_param: &LoadParam, _context: &Arc<Context>) -> LoadResult {
     println!("> load {}", load_param.path);
     let ext_name = ext_name(load_param.path);
     match ext_name {
@@ -73,7 +74,7 @@ fn load_css(load_param: &LoadParam, _context: &Context) -> LoadResult {
     }
 }
 
-fn load_image(load_param: &LoadParam, _context: &mut Context) -> LoadResult {
+fn load_image(load_param: &LoadParam, _context: &Arc<Context>) -> LoadResult {
     // emit file like file-loader
     if file_size(load_param.path).unwrap() > _context.config.data_url_limit.try_into().unwrap() {
         let final_file_name =

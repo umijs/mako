@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use swc_common::sync::Lrc;
 use swc_common::{FileName, SourceMap};
 use swc_css_parser::{
@@ -21,7 +22,7 @@ pub struct ParseResult {
     pub cm: Lrc<SourceMap>,
 }
 
-pub fn parse(parse_param: &ParseParam, _context: &Context) -> ParseResult {
+pub fn parse(parse_param: &ParseParam, _context: &Arc<Context>) -> ParseResult {
     let cm: Lrc<SourceMap> = Default::default();
     let fm = cm.new_source_file(
         FileName::Custom(parse_param.path.to_string()),

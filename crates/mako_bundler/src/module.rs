@@ -54,7 +54,7 @@ pub struct Module {
     /**
      * 模块元信息
      */
-    pub info: ModuleInfo,
+    pub info: Option<ModuleInfo>,
 
     /**
      * 当前模块归属的 chunk
@@ -63,11 +63,15 @@ pub struct Module {
 }
 
 impl Module {
-    pub fn new(id: ModuleId, info: ModuleInfo) -> Self {
+    pub fn new(id: ModuleId) -> Self {
         Self {
             id,
-            info,
+            info: None,
             chunks: HashSet::new(),
         }
+    }
+
+    pub fn add_info(&mut self, info: ModuleInfo) {
+        self.info = Some(info);
     }
 }

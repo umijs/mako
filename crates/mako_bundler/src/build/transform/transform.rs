@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use swc_common::sync::Lrc;
 use swc_common::{
     comments::{NoopComments, SingleThreadedComments},
@@ -33,7 +34,7 @@ pub struct TransformResult {
     pub ast: ModuleAst,
 }
 
-pub fn transform(transform_param: &TransformParam, _context: &Context) -> TransformResult {
+pub fn transform(transform_param: &TransformParam, _context: &Arc<Context>) -> TransformResult {
     let globals = Globals::default();
 
     if let ModuleAst::Script(ast) = transform_param.ast {
