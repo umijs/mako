@@ -33,7 +33,71 @@ pub struct OutputFile {
 }
 
 impl Compiler {
-    pub fn chunk_codegen(chunk: &Chunk, module_graph: &ModuleGraph) -> Vec<String> {
+    pub fn generate(&mut self, generate_param: &GenerateParam) -> GenerateResult {
+        let root_dir = &self.context.config.root;
+        let output_dir = &self.context.config.output.path;
+
+        // ensure dir
+        if generate_param.write && !output_dir.exists() {
+            fs::create_dir_all(output_dir).unwrap();
+        }
+
+        let mut output_files: Vec<OutputFile> = vec![];
+        {
+            let chunk_graph = self.context.chunk_graph.read().unwrap();
+            let module_graph = self.context.module_graph.read().unwrap();
+            println!("chunks {}", &chunk_graph);
+            // generate codes
+            chunk_graph
+                .get_chunks()
+                .par_iter()
+                .map(|chunk| {
+                    let output = Self::chunk_codegen(chunk, &module_graph);
+                    let contents = output.join("\n");
+                    OutputFile {
+                        path: chunk.filename(),
+                        __output: output,
+                        contents,
+                    }
+                })
+                .collect_into_vec(&mut output_files);
+        }
+
+        // write to file
+        output_files.par_iter().for_each(|file| {
+            if generate_param.write {
+                let output = &output_dir.join(&file.path);
+                println!(
+                    "output {} {} {}",
+                    output.to_string_lossy(),
+                    output_dir.to_string_lossy(),
+                    file.path
+                );
+                fs::write(output, &file.contents).unwrap();
+            }
+        });
+
+        // write assets
+        let assets_info = &(*self.context.assets_info.lock().unwrap());
+        for (k, v) in assets_info {
+            let asset_path = &root_dir.join(k);
+            let asset_output_path = &output_dir.join(v);
+            if generate_param.write && asset_path.exists() {
+                // just copy files for now
+                fs::copy(asset_path, asset_output_path).unwrap();
+            }
+        }
+
+        // copy html
+        let index_html_file = &root_dir.join("index.html");
+        if generate_param.write && index_html_file.exists() {
+            fs::copy(index_html_file, &output_dir.join("index.html")).unwrap();
+        }
+
+        GenerateResult { output_files }
+    }
+
+    fn chunk_codegen(chunk: &Chunk, module_graph: &ModuleGraph) -> Vec<String> {
         // TODO: 根据不同的chunk类型使用不同的 wrapper，比如 async chunk 的 wrapper 就不太一样
         let mut results = vec![];
         let entry_preset = vec![r#"
@@ -158,67 +222,5 @@ const requireModule = (name) => {
             }
         }
         results
-    }
-    pub fn generate(&mut self, generate_param: &GenerateParam) -> GenerateResult {
-        let root_dir = &self.context.config.root;
-        let output_dir = &self.context.config.output.path;
-
-        // ensure dir
-        if generate_param.write && !output_dir.exists() {
-            fs::create_dir_all(output_dir).unwrap();
-        }
-
-        let chunk_graph = self.context.chunk_graph.read().unwrap();
-        let module_graph = self.context.module_graph.read().unwrap();
-        println!("chunks {}", &chunk_graph);
-        // generate codes
-        let output_files: Vec<OutputFile> = chunk_graph
-            .get_chunks()
-            .par_iter()
-            .map(|chunk| {
-                let output = Self::chunk_codegen(chunk, &module_graph);
-                let contents = output.join("\n");
-                OutputFile {
-                    path: chunk.filename(),
-                    __output: output,
-                    contents,
-                }
-            })
-            .collect();
-        drop(chunk_graph);
-        drop(module_graph);
-
-        // write to file
-        output_files.par_iter().for_each(|file| {
-            if generate_param.write {
-                let output = &output_dir.join(&file.path);
-                println!(
-                    "output {} {} {}",
-                    output.to_string_lossy(),
-                    output_dir.to_string_lossy(),
-                    file.path
-                );
-                fs::write(output, &file.contents).unwrap();
-            }
-        });
-
-        // write assets
-        let assets_info = &(*self.context.assets_info.lock().unwrap());
-        for (k, v) in assets_info {
-            let asset_path = &root_dir.join(k);
-            let asset_output_path = &output_dir.join(v);
-            if generate_param.write && asset_path.exists() {
-                // just copy files for now
-                fs::copy(asset_path, asset_output_path).unwrap();
-            }
-        }
-
-        // copy html
-        let index_html_file = &root_dir.join("index.html");
-        if generate_param.write && index_html_file.exists() {
-            fs::copy(index_html_file, &output_dir.join("index.html")).unwrap();
-        }
-
-        GenerateResult { output_files }
     }
 }
