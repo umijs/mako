@@ -15,6 +15,8 @@ use swc_ecma_codegen::Emitter;
 use swc_ecma_transforms::helpers::{Helpers, HELPERS};
 use swc_ecma_visit::VisitMutWith;
 
+use lightningcss::stylesheet::{MinifyOptions, ParserOptions, PrinterOptions, StyleSheet};
+
 use crate::context::Context;
 use crate::module::ModuleAst;
 
@@ -106,8 +108,19 @@ pub fn transform(transform_param: &TransformParam, _context: &Context) -> Transf
 
         gen.emit(&stylesheet).unwrap();
 
+        //lightingcss
+        let mut lightingcss_stylesheet =
+            StyleSheet::parse(&css_code, ParserOptions::default()).unwrap();
+        lightingcss_stylesheet
+            .minify(MinifyOptions::default())
+            .unwrap();
+        let out = lightingcss_stylesheet
+            .to_css(PrinterOptions::default())
+            .unwrap();
+
         let mut code_vec: Vec<String> = vec![];
 
+        // add dependencies
         for value in transform_param.dep_map.values() {
             code_vec.push(format!("require(\"{}\");", value));
         }
@@ -119,7 +132,7 @@ const style = document.createElement('style');
 style.innerHTML = cssCode;
 document.head.appendChild(style);
 "#,
-            css_code
+            out.code
         ));
 
         let code = code_vec.join("\n");
