@@ -18,7 +18,7 @@ use crate::{
     chunk::ChunkType,
     compiler::Compiler,
     config::get_first_entry_value,
-    module::{Module, ModuleAst, ModuleId, ModuleInfo},
+    module::{Module, ModuleId, ModuleInfo},
     module_graph::Dependency,
 };
 
@@ -161,13 +161,14 @@ impl Compiler {
         let parse_param = ParseParam {
             path: path_str,
             content: load_result.content,
+            content_type: load_result.content_type,
         };
         let parse_result = parse(&parse_param, &context);
 
         // transform
         let transform_param = TransformParam {
             path: path_str,
-            ast: &ModuleAst::Script(parse_result.ast.clone()),
+            ast: &parse_result.ast,
             cm: &parse_result.cm,
         };
         let transform_result = transform(&transform_param, &context);
@@ -179,7 +180,7 @@ impl Compiler {
             external_name: None,
             is_entry,
             original_cm: Some(parse_result.cm),
-            original_ast: ModuleAst::Script(transform_result.ast),
+            original_ast: transform_result.ast.clone(),
         };
         let mut module_graph_w = context.module_graph.write().unwrap();
         if info.is_entry {
@@ -193,6 +194,7 @@ impl Compiler {
         let analyze_deps_param = AnalyzeDepsParam {
             path: path_str,
             ast: &parse_result.ast,
+            transform_ast: &transform_result.ast,
         };
         let analyze_deps_result = analyze_deps(&analyze_deps_param, &context);
         let mut tasks = vec![];
