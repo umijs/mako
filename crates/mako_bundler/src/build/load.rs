@@ -50,7 +50,8 @@ fn load_js(load_param: &LoadParam, _context: &Context) -> LoadResult {
         panic!("File not found: {}", load_param.path);
     } else {
         LoadResult {
-            content: std::fs::read_to_string(load_param.path).unwrap(),
+            content: std::fs::read_to_string(load_param.path)
+                .unwrap_or_else(|_| panic!("File not found {:?}", load_param.path)),
             content_type: ContentType::Js,
         }
     }

@@ -26,6 +26,7 @@ use petgraph::{
  */
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Dependency {
+    // 依赖的模块在代码中的原始名称 eg react or ../components/box
     pub source: String,
     pub resolve_type: ResolveType,
     /**
@@ -84,6 +85,15 @@ impl ModuleGraph {
             .remove(module_id)
             .unwrap_or_else(|| panic!("module_id {:?} not found in the module graph", module_id));
         self.graph.remove_node(index).unwrap()
+    }
+
+    pub fn get_or_add_module(&mut self, module_id: &ModuleId) -> &mut Module {
+        if self.get_module_mut(module_id).is_none() {
+            let module = Module::new(module_id.clone());
+            self.add_module(module);
+        }
+
+        self.get_module_mut(module_id).unwrap()
     }
 
     pub fn update_module(&mut self, module: Module) {

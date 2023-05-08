@@ -3,6 +3,7 @@ use std::{collections::HashSet, sync::RwLock};
 use swc_common::{sync::Lrc, SourceMap};
 
 use crate::chunk::ChunkId;
+use crate::module_graph::Dependency;
 
 lazy_static! {
     static ref GLOBAL_ID: RwLock<usize> = RwLock::new(0);
@@ -41,6 +42,95 @@ pub struct ModuleInfo {
     pub is_external: bool,
     pub external_name: Option<String>,
     pub is_entry: bool,
+}
+
+pub enum ModuleInfo2 {
+    External {
+        module_id: ModuleId,
+        path: String,
+        external_name: String,
+        dep: Dependency,
+    },
+    Normal {
+        module_id: ModuleId,
+        path: String,
+        original_ast: ModuleAst,
+        original_cm: Lrc<SourceMap>,
+        is_entry: bool,
+    },
+}
+
+impl ModuleInfo2 {
+    pub fn path(&self) -> String {
+        match self {
+            ModuleInfo2::External {
+                module_id,
+                path: _,
+                external_name: _,
+                dep: _dep,
+            } => module_id.id.clone(),
+            ModuleInfo2::Normal {
+                module_id,
+                path: _,
+                original_ast: _,
+                original_cm: _,
+                is_entry: _is_entry,
+            } => module_id.id.clone(),
+        }
+    }
+
+    pub fn module_id(&self) -> &ModuleId {
+        match self {
+            ModuleInfo2::External {
+                module_id,
+                path: _,
+                external_name: _,
+                dep: _dep,
+            } => module_id,
+            ModuleInfo2::Normal {
+                module_id,
+                path: _,
+                original_ast: _,
+                original_cm: _,
+                is_entry: _is_entry,
+            } => module_id,
+        }
+    }
+}
+
+impl From<ModuleInfo2> for ModuleInfo {
+    fn from(module_info: ModuleInfo2) -> ModuleInfo {
+        match module_info {
+            ModuleInfo2::Normal {
+                module_id: _module_id,
+                is_entry,
+                path,
+                original_ast,
+                original_cm,
+            } => ModuleInfo {
+                is_entry,
+                original_ast,
+                external_name: None,
+                path,
+                original_cm: Some(original_cm),
+                is_external: false,
+            },
+
+            ModuleInfo2::External {
+                path,
+                dep: _dep,
+                module_id: _module_id,
+                external_name,
+            } => ModuleInfo {
+                path,
+                is_external: true,
+                is_entry: false,
+                original_ast: ModuleAst::None,
+                original_cm: None,
+                external_name: Some(external_name),
+            },
+        }
+    }
 }
 
 pub struct ModuleTransformInfo {

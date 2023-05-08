@@ -32,6 +32,7 @@ serde_json = "1.0.96"
 config = "0.13.3"
 nodejs-resolver = "0.0.78"
 rayon = "1.7.0"
+spliter = "0.1.0"
 
 [dev-dependencies]
 insta = { version = "1.29.0", features = ["yaml"] }

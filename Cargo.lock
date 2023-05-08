@@ -574,6 +574,7 @@ dependencies = [
  "relative-path",
  "serde",
  "serde_json",
+ "spliter",
  "swc_atoms",
  "swc_common",
  "swc_ecma_ast",
@@ -1336,6 +1337,15 @@ dependencies = [
  "serde_json",
  "unicode-id",
  "url",
+]
+
+[[package]]
+name = "spliter"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6a8214ef2abf5af37e475edbed5e624581466f52dffc63514d37183a8669a37e"
+dependencies = [
+ "rayon",
 ]
 
 [[package]]
