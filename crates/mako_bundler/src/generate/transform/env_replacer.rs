@@ -2,10 +2,11 @@ use swc_atoms::{js_word, JsWord};
 use swc_common::{
     collections::{AHashMap, AHashSet},
     sync::Lrc,
+    DUMMY_SP,
 };
 use swc_ecma_ast::{
-    ComputedPropName, Expr, Id, Ident, Lit, MemberExpr, MemberProp, MetaPropExpr, MetaPropKind,
-    Module, Str,
+    ComputedPropName, Expr, Id, Ident, KeyValueProp, Lit, MemberExpr, MemberProp, MetaPropExpr,
+    MetaPropKind, Module, ObjectLit, Prop, PropName, PropOrSpread, Str,
 };
 use swc_ecma_utils::collect_decls;
 use swc_ecma_visit::{VisitMut, VisitMutWith};
@@ -64,8 +65,6 @@ impl VisitMut for EnvReplacer {
             }
         }
 
-        expr.visit_mut_children_with(self);
-
         if let Expr::Member(MemberExpr { obj, prop, .. }) = expr {
             if let Expr::Member(MemberExpr {
                 obj: first_obj,
@@ -77,6 +76,7 @@ impl VisitMut for EnvReplacer {
                 ..
             }) = &**obj
             {
+                // handle `env.XX`
                 let mut envs = EnvsType::Node(self.envs.clone());
 
                 if match &**first_obj {
@@ -93,24 +93,74 @@ impl VisitMut for EnvReplacer {
                     }
                     _ => false,
                 } {
+                    // handle `process.env.XX` and `import.meta.env.XX`
+                    // create an empty object to replace below
+                    let expr_with_empty_obj = Expr::Member(MemberExpr {
+                        obj: Box::new(Expr::Object(ObjectLit {
+                            span: DUMMY_SP,
+                            props: vec![],
+                        })),
+                        prop: prop.clone(),
+                        span: DUMMY_SP,
+                    });
+
                     match prop {
                         MemberProp::Computed(ComputedPropName { expr: c, .. }) => {
                             if let Expr::Lit(Lit::Str(Str { value: sym, .. })) = &**c {
                                 if let Some(env) = EnvReplacer::get_env(&envs, sym) {
+                                    // replace with real value if env found
                                     *expr = env;
+                                } else {
+                                    // replace with an empty object if env not found
+                                    *expr = expr_with_empty_obj;
                                 }
                             }
                         }
 
                         MemberProp::Ident(Ident { sym, .. }) => {
                             if let Some(env) = EnvReplacer::get_env(&envs, sym) {
+                                // replace with real value if env found
                                 *expr = env;
+                            } else {
+                                // replace with an empty object if env not found
+                                *expr = expr_with_empty_obj;
                             }
                         }
                         _ => {}
                     }
                 }
+            } else if let Expr::Member(MemberExpr {
+                obj:
+                    box Expr::MetaProp(MetaPropExpr {
+                        kind: MetaPropKind::ImportMeta,
+                        ..
+                    }),
+                prop:
+                    MemberProp::Ident(Ident {
+                        sym: js_word!("env"),
+                        ..
+                    }),
+                ..
+            }) = *expr
+            {
+                // replace independent `import.meta.env` to json object
+                let mut props = Vec::new();
+
+                // convert envs to object properties
+                for (k, v) in self.meta_envs.iter() {
+                    props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                        key: PropName::Ident(Ident::new(k.clone().into(), DUMMY_SP)),
+                        value: Box::new(v.clone()),
+                    }))));
+                }
+
+                *expr = Expr::Object(ObjectLit {
+                    span: DUMMY_SP,
+                    props,
+                });
             }
         }
+
+        expr.visit_mut_children_with(self);
     }
 }
