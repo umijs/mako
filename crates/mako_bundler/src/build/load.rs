@@ -34,6 +34,7 @@ pub fn load(load_param: &LoadParam, _context: &Arc<Context>) -> LoadResult {
     let ext_name = ext_name(load_param.path);
     match ext_name {
         "js" | "jsx" | "ts" | "tsx" => load_js(load_param, _context),
+        "json" => load_json(load_param, _context),
         "css" => load_css(load_param, _context),
         _ if IMAGE_RE.is_match(ext_name) => load_image(load_param, _context),
         _ => load_js(load_param, _context), // todo - default use js
@@ -54,6 +55,16 @@ fn load_js(load_param: &LoadParam, _context: &Context) -> LoadResult {
             content: std::fs::read_to_string(load_param.path).unwrap(),
             content_type: ContentType::Js,
         }
+    }
+}
+
+fn load_json(load_param: &LoadParam, _context: &Context) -> LoadResult {
+    LoadResult {
+        content: format!(
+            "module.exports = {}",
+            std::fs::read_to_string(load_param.path).unwrap()
+        ),
+        content_type: ContentType::Js,
     }
 }
 
