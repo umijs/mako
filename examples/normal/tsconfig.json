@@ -1,9 +1,10 @@
 {
-	"compilerOptions": {
-		"jsx": "react",
-		"types": [
-			"./node_modules/@types",
-			"./typings"
-		]
-	}
+  "compilerOptions": {
+    "target": "ES6",
+    "module": "CommonJS",
+    "jsx": "react",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "types": ["./node_modules/@types", "./typings"]
+  }
 }
