@@ -21,6 +21,12 @@ Run.
 $ cargo run --bin mako examples/normal
 ```
 
+Dev.
+
+```bash
+$ pnpm dev examples/normal
+```
+
 Test.
 
 ```bash
