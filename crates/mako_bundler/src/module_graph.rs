@@ -1,11 +1,7 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 
-use crate::utils::bfs::{Bfs, NextResult};
-use crate::{
-    chunk::{Chunk, ChunkType},
-    module::{Module, ModuleId},
-};
+use crate::module::{Module, ModuleId};
 use petgraph::prelude::EdgeRef;
 use petgraph::visit::IntoEdgeReferences;
 use petgraph::{
@@ -151,6 +147,10 @@ impl ModuleGraph {
         deps
     }
 
+    pub fn get_dependencies_mut(&mut self, module_id: &ModuleId) -> Vec<(&ModuleId, &Dependency)> {
+        self.get_dependencies(module_id)
+    }
+
     pub fn get_modules(&self) -> Vec<ModuleId> {
         let mut modules = self
             .graph
@@ -217,37 +217,6 @@ impl ModuleGraph {
         result.reverse();
 
         (result, Cycle { cyclic })
-    }
-
-    pub fn create_chunk_by_entry_module_id(
-        &mut self,
-        entry_module_id: &ModuleId,
-        chunk_type: ChunkType,
-    ) -> (Chunk, Vec<ModuleId>) {
-        let mut dynamic_entries = vec![];
-        let mut bfs = Bfs::new(VecDeque::from(vec![entry_module_id]), Default::default());
-        let chunk = Chunk::new(entry_module_id.clone(), chunk_type);
-        self.get_module_mut(entry_module_id)
-            .unwrap()
-            .chunks
-            .insert(entry_module_id.clone());
-
-        while !bfs.done() {
-            match bfs.next_node() {
-                NextResult::Visited => continue,
-                NextResult::First(head) => {
-                    for (dep_module_id, dep) in self.get_dependencies(head) {
-                        if dep.resolve_type == ResolveType::DynamicImport {
-                            dynamic_entries.push(dep_module_id.clone());
-                        } else {
-                            bfs.visit(dep_module_id);
-                        }
-                    }
-                }
-            }
-        }
-
-        (chunk, dynamic_entries)
     }
 }
 
