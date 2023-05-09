@@ -1,18 +1,5 @@
-use maplit::hashset;
-use nodejs_resolver::{Options, Resolver};
-use rayon::iter::ParallelIterator;
-use spliter::{ParallelSpliterator, Spliterator};
-use std::ops::ControlFlow;
-use std::sync::{Arc, Mutex};
-use std::{
-    cell::RefCell,
-    collections::{HashMap, HashSet, VecDeque},
-    rc::Rc,
-};
-use tokio::sync::mpsc::error::TryRecvError;
-
+use crate::build::build_utils::{ModuleBFS, ModuleGraphNode, ModuleNode, Task2};
 use crate::context::Context;
-
 use crate::module::ModuleInfo2;
 use crate::module_graph::ModuleGraph;
 use crate::utils::bfs::{Bfs, NextResult};
@@ -23,6 +10,18 @@ use crate::{
     module::{Module, ModuleAst, ModuleId, ModuleInfo},
     module_graph::Dependency,
 };
+use maplit::hashset;
+use nodejs_resolver::{Options, Resolver};
+use rayon::iter::ParallelIterator;
+use spliter::ParallelSpliterator;
+use std::ops::ControlFlow;
+use std::sync::Arc;
+use std::{
+    cell::RefCell,
+    collections::{HashMap, HashSet, VecDeque},
+    rc::Rc,
+};
+use tokio::sync::mpsc::error::TryRecvError;
 
 use super::{
     analyze_deps::{analyze_deps, AnalyzeDepsParam},
@@ -45,149 +44,9 @@ struct Task {
 }
 
 #[derive(Debug)]
-#[allow(dead_code)]
-struct Task2 {
-    pub path: String,
-    pub is_entry: bool,
-    pub parent_module_id: Option<ModuleId>,
-    pub parent_dependency: Option<Dependency>,
-}
-
-impl PartialEq for Task2 {
-    fn eq(&self, other: &Self) -> bool {
-        self.path == other.path
-    }
-}
-
-#[derive(Debug)]
 enum BuildModuleGraphResult {
     Done,
     Next(Vec<Task>),
-}
-
-struct BuildModuleGraphResult2 {
-    current_module_info: ModuleInfo2,
-    to_module_infos: Vec<ModuleInfo2>,
-    tasks: Vec<Task2>,
-}
-
-struct ModuleBFS {
-    queue: VecDeque<Task2>,
-    visited: Arc<Mutex<HashSet<String>>>,
-    ctx: Arc<Context>,
-    build_params: Arc<Mutex<BuildParam>>,
-    resolver: Arc<Resolver>,
-}
-
-impl Spliterator for ModuleBFS {
-    fn split(&mut self) -> Option<Self> {
-        self.try_split()
-    }
-}
-
-impl ModuleBFS {
-    #[allow(dead_code)]
-    pub fn try_split(&mut self) -> Option<Self> {
-        if self.queue.len() > 1 {
-            let mid = self.queue.len() / 2;
-            let right = self.queue.split_off(mid);
-            Some(ModuleBFS {
-                queue: right,
-                visited: self.visited.clone(),
-                ctx: self.ctx.clone(),
-                build_params: self.build_params.clone(),
-                resolver: self.resolver.clone(),
-            })
-        } else {
-            None
-        }
-    }
-
-    pub fn new(entry_point: String, ctx: Arc<Context>, resolver: Arc<Resolver>) -> Self {
-        let mut queue = VecDeque::new();
-        let visited = Arc::new(Mutex::new(HashSet::new()));
-
-        queue.push_back(Task2 {
-            path: entry_point,
-            is_entry: true,
-            parent_module_id: None,
-            parent_dependency: None,
-        });
-
-        Self {
-            queue,
-            visited,
-            ctx,
-            build_params: Arc::new(Mutex::new(BuildParam { files: None })),
-            resolver: Arc::clone(&resolver),
-        }
-    }
-}
-
-struct ModuleNode {
-    current: ModuleInfo2,
-    resolved_module_infos: Vec<ModuleInfo2>,
-    dependencies_edges: Vec<ModuleEdge>,
-}
-
-struct ModuleEdge {
-    to: ModuleId,
-    dep: Dependency,
-}
-
-impl Iterator for ModuleBFS {
-    type Item = ModuleNode;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(task) = self.queue.pop_front() {
-            let result = Compiler::build_module2(
-                self.ctx.clone(),
-                &task,
-                &self.build_params.lock().unwrap(),
-                self.resolver.clone(),
-            );
-
-            self.visited
-                .lock()
-                .unwrap()
-                .insert(result.current_module_info.path());
-
-            let edges = result
-                .tasks
-                .iter()
-                .map(|t| ModuleEdge {
-                    to: ModuleId::new(t.path.clone().as_str()),
-                    dep: t.parent_dependency.as_ref().unwrap().clone(),
-                })
-                .collect();
-
-            let tasks = result
-                .tasks
-                .into_iter()
-                .filter(|task| {
-                    if self.visited.lock().unwrap().contains(&task.path) {
-                        return false;
-                    }
-
-                    if self.queue.contains(task) {
-                        return false;
-                    }
-
-                    true
-                })
-                .collect::<Vec<Task2>>();
-
-            self.queue.extend(tasks);
-
-            Some(ModuleNode {
-                current: result.current_module_info,
-                resolved_module_infos: result.to_module_infos,
-                dependencies_edges: edges,
-            })
-        } else {
-            None
-        }
-    }
 }
 
 impl Compiler {
@@ -199,8 +58,17 @@ impl Compiler {
             .to_string();
 
         // build
-        // self.build_module_graph_threaded(entry_point.clone(), build_param);
+        // self.build_module_graph_threaded(entry_point.clone(), _build_param);
+        self.build_module_graph_with_iter(entry_point, _build_param);
 
+        self.grouping_chunks();
+    }
+
+    fn build_module_graph_with_iter(
+        &mut self,
+        entry_point: String,
+        _build_param: &'static BuildParam,
+    ) {
         let resolver = Arc::new(Resolver::new(Options {
             extensions: vec![
                 ".js".to_string(),
@@ -245,10 +113,9 @@ impl Compiler {
                         let m = other_module_graph.get_or_add_module(module_info.module_id());
                         m.add_info(module_info.into());
                     });
-                drop(other_module_graph);
             });
-        self.grouping_chunks();
     }
+
     #[allow(dead_code)]
     fn build_module_graph_threaded(
         &mut self,
@@ -328,12 +195,12 @@ impl Compiler {
         });
     }
 
-    fn build_module2(
+    pub fn build_module2(
         context: Arc<Context>,
         task: &Task2,
         build_param: &BuildParam,
         resolver: Arc<Resolver>,
-    ) -> BuildModuleGraphResult2 {
+    ) -> ModuleGraphNode {
         let path_str = task.path.as_str();
         let module_id = ModuleId::new(path_str);
         let is_entry = task.is_entry;
@@ -409,7 +276,7 @@ impl Compiler {
                 });
             }
         }
-        BuildModuleGraphResult2 {
+        ModuleGraphNode {
             current_module_info,
             to_module_infos: module_infos,
             tasks,
