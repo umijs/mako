@@ -17,7 +17,7 @@ assert(
 console.log("watch", targetDir);
 const watcher = chokidar.watch([`${targetDir}/**/*.(js|jsx|ts|tsx)`], {
   ignoreInitial: true,
-  ignored: [/node_modules/, /dist/],
+  ignored: [/node_modules/, /dist/, /\.git/],
 });
 watcher.on("all", async (event, changedPath) => {
   console.log(1, event, changedPath);
@@ -29,6 +29,13 @@ watcher.on("all", async (event, changedPath) => {
 build().catch((e) => {
   console.error(e);
 });
+
+// start livereload server
+(async () => {
+  const targetDistDir = path.join(targetDir, "dist");
+  const livereloadBinPath = path.join(cwd, "node_modules/.bin/livereload");
+  await $`${livereloadBinPath} ${targetDistDir} --wait 100`;
+})();
 
 async function build() {
   await $`${makoPath} ${targetDir}`;

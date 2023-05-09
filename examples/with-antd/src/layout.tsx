@@ -37,6 +37,9 @@ export function Layout() {
           <li>
             <Link to="/ant-design-icons">Ant Design Icons</Link>
           </li>
+          <li>
+            <Link to="/ant-design-pro">Ant Design Pro</Link>
+          </li>
         </ul>
       </nav>
       <div>
