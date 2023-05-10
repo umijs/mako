@@ -1,5 +1,7 @@
 use std::any::Any;
 
+use crate::config::Config;
+
 pub mod plugin_driver;
 
 /// define all plugin errors here
@@ -21,8 +23,13 @@ pub trait Plugin: Any + Send + Sync {
         ""
     }
 
+    /// config hook
+    fn config(&self, _config: &mut Config) -> Result<Option<()>> {
+        Ok(None)
+    }
+
     // write other plugin hooks here
-    fn example_method(&self, _prefix: String) -> Result<Option<String>, BundleError> {
+    fn example_method(&self, _prefix: String) -> Result<Option<String>> {
         Ok(None)
     }
 }
