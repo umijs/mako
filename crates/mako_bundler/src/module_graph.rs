@@ -73,6 +73,10 @@ impl ModuleGraph {
         self.entries.insert(module_id.clone());
     }
 
+    pub fn is_entry_module(&self, module_id: &ModuleId) -> bool {
+        self.entries.contains(module_id)
+    }
+
     pub fn add_module(&mut self, module: Module) {
         let id = module.id.clone();
         let idx = self.graph.add_node(module);
