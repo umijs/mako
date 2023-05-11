@@ -49,6 +49,11 @@ impl ChunkGraph {
         let to_node_index = self.id_index_map.get(to).unwrap();
         self.graph.add_edge(*from_node_index, *to_node_index, ());
     }
+
+    pub fn clear(&mut self) {
+        self.graph.clear();
+        self.id_index_map.clear();
+    }
 }
 
 impl fmt::Display for ChunkGraph {

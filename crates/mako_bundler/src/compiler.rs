@@ -21,4 +21,6 @@ impl Compiler {
     }
 
     pub fn _watch(&self) {}
+
+    pub fn update() {}
 }

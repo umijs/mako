@@ -12,3 +12,8 @@ path = "src/main.rs"
 [dependencies]
 tokio = { workspace = true, features = ["full"] }
 mako_bundler = { path = "../mako_bundler" }
+maplit = { workspace = true }
+notify = { version = "5.1.0", features = ["macos_kqueue"] }
+futures = "0.3.28"
+clap = { version = "4.2.7", features = ["derive"] }
+
