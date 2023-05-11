@@ -4,10 +4,11 @@ use crate::chunk::{Chunk, ChunkType};
 use crate::module_graph::ModuleGraph;
 use crate::{compiler::Compiler, module::ModuleId};
 use rayon::prelude::*;
+use tracing::debug;
 
 fn wrap_module(id: &ModuleId, code: &str) -> String {
     let id = id.id.clone();
-    println!("> wrap_module: {}", id);
+    debug!(id, "wrap_module");
     format!(
         "g_define(\"{}\", function(module, exports, require) {{\n{}}});",
         id, code
@@ -46,7 +47,7 @@ impl Compiler {
         {
             let chunk_graph = self.context.chunk_graph.read().unwrap();
             let module_graph = self.context.module_graph.read().unwrap();
-            println!("chunks {}", &chunk_graph);
+            debug!("chunks {}", &chunk_graph);
             // generate codes
             chunk_graph
                 .get_chunks()
@@ -67,7 +68,7 @@ impl Compiler {
         output_files.par_iter().for_each(|file| {
             if generate_param.write {
                 let output = &output_dir.join(&file.path);
-                println!(
+                debug!(
                     "output {} {} {}",
                     output.to_string_lossy(),
                     output_dir.to_string_lossy(),

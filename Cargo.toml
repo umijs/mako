@@ -6,3 +6,5 @@ members = [
 
 [workspace.dependencies]
 tokio = { version = "1" }
+tracing = "0.1.37"
+tracing-subscriber = "0.3.17"
