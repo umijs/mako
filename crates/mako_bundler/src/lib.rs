@@ -1,8 +1,9 @@
 #![feature(box_patterns)]
 
 use compiler::Compiler;
+use std::sync::{Arc, Mutex};
 
-use crate::plugins::node_polyfill::get_node_builtins;
+use crate::{plugin::plugin_driver::PluginDriver, plugins::node_polyfill::NodePolyfillPlugin};
 
 pub mod build;
 pub mod chunk;
@@ -22,6 +23,12 @@ pub fn run() {
     if args.len() <= 1 {
         panic!("Please specify the root directory of the project");
     }
+
+    // plugin driver
+    let mut plugin_driver = PluginDriver::new();
+
+    // register plugins
+    plugin_driver.register(NodePolyfillPlugin {});
 
     // config
     let root = std::env::current_dir()
@@ -43,17 +50,21 @@ pub fn run() {
         .as_str(),
     )
     .unwrap();
+
+    // allow plugin to modify config
+    let config_lock = Arc::new(Mutex::new(&mut config));
+
+    plugin_driver
+        .run_hook_serial(|p, _last_ret| {
+            p.config(&mut config_lock.lock().unwrap())?;
+            Ok(Some(()))
+        })
+        .unwrap();
+
     config.normalize();
 
-    // TODO: move this to plugin
-    // node polyfills
-    let builtins = get_node_builtins();
-    for name in builtins.iter() {
-        config.externals.insert(name.to_string(), name.to_string());
-    }
-
     // compiler_origin::run_compiler(config);
-    let mut compiler = Compiler::new(config);
+    let mut compiler = Compiler::new(config, plugin_driver);
     compiler.run();
 
     println!("✅ DONE");

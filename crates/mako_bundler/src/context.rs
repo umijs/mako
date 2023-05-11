@@ -1,17 +1,13 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, RwLock};
 
-use crate::{
-    chunk_graph::ChunkGraph, config::Config, module_graph::ModuleGraph,
-    plugin::plugin_driver::PluginDriver,
-};
+use crate::{chunk_graph::ChunkGraph, config::Config, module_graph::ModuleGraph};
 
 pub struct Context {
     pub config: Config,
     pub module_graph: RwLock<ModuleGraph>,
     pub chunk_graph: RwLock<ChunkGraph>,
     pub assets_info: Mutex<HashMap<String, String>>,
-    pub plugin_driver: PluginDriver,
 }
 
 impl Context {
@@ -21,7 +17,6 @@ impl Context {
             module_graph: RwLock::new(ModuleGraph::new()),
             chunk_graph: RwLock::new(ChunkGraph::new()),
             assets_info: Mutex::new(HashMap::new()),
-            plugin_driver: PluginDriver::new(),
         }
     }
 
