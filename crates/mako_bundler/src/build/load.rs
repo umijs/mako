@@ -1,5 +1,6 @@
 use lazy_static::lazy_static;
 use regex::Regex;
+use tracing::debug;
 
 use crate::{
     context::Context,
@@ -30,7 +31,7 @@ lazy_static! {
 }
 
 pub fn load(load_param: &LoadParam, _context: &Arc<Context>) -> LoadResult {
-    println!("> load {}", load_param.path);
+    debug!(load_param.path, "load");
     let ext_name = ext_name(load_param.path);
     match ext_name {
         "js" | "jsx" | "ts" | "tsx" => load_js(load_param, _context),

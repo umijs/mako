@@ -1,6 +1,7 @@
 #![feature(box_patterns)]
 
 use compiler::Compiler;
+use tracing::info;
 
 use crate::plugins::node_polyfill::get_node_builtins;
 
@@ -56,5 +57,5 @@ pub fn run() {
     let mut compiler = Compiler::new(config);
     compiler.run();
 
-    println!("✅ DONE");
+    info!("✅ DONE");
 }
