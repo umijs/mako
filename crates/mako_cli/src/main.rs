@@ -5,6 +5,8 @@ use clap::Parser;
 use mako_bundler::compiler::Compiler;
 use mako_bundler::config;
 use std::path::PathBuf;
+use tracing::Level;
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -16,6 +18,17 @@ struct MakoCLI {
 
 #[tokio::main]
 async fn main() {
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::INFO)
+        .with_env_filter(
+            EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| EnvFilter::new("mako_bundler=debug")),
+        )
+        .without_time()
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber).expect("Failed to set subscriber");
+
     let cli: MakoCLI = MakoCLI::parse();
 
     // config
@@ -36,7 +49,7 @@ async fn main() {
 
     // compiler_origin::run_compiler(config);
     let root = config.root.clone();
-    let mut compiler = Compiler::new(config);
+    let mut compiler = Compiler::new(&mut config);
     compiler.run();
 
     println!("✅ DONE");

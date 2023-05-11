@@ -11,6 +11,8 @@ path = "src/main.rs"
 
 [dependencies]
 tokio = { workspace = true, features = ["full"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 mako_bundler = { path = "../mako_bundler" }
 maplit = { workspace = true }
 notify = { version = "5.1.0", features = ["macos_kqueue"] }

@@ -1,8 +1,7 @@
 #![feature(box_patterns)]
 
 use compiler::Compiler;
-
-use crate::plugins::node_polyfill::get_node_builtins;
+use tracing::info;
 
 pub mod build;
 pub mod chunk;
@@ -43,18 +42,12 @@ pub fn run() {
         .as_str(),
     )
     .unwrap();
+
     config.normalize();
 
-    // TODO: move this to plugin
-    // node polyfills
-    let builtins = get_node_builtins();
-    for name in builtins.iter() {
-        config.externals.insert(name.to_string(), name.to_string());
-    }
-
     // compiler_origin::run_compiler(config);
-    let mut compiler = Compiler::new(config);
+    let mut compiler = Compiler::new(&mut config);
     compiler.run();
 
-    println!("✅ DONE");
+    info!("✅ DONE");
 }

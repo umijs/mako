@@ -1,5 +1,9 @@
-// TODO: implement this using plugin
-pub fn get_node_builtins() -> Vec<String> {
+use crate::{
+    config::Config,
+    plugin::{Plugin, Result},
+};
+
+fn get_node_builtins() -> Vec<String> {
     vec![
         "assert",
         "assert/strict",
@@ -59,4 +63,22 @@ pub fn get_node_builtins() -> Vec<String> {
     .iter()
     .map(|s| s.to_string())
     .collect()
+}
+
+pub struct NodePolyfillPlugin;
+
+impl Plugin for NodePolyfillPlugin {
+    fn name(&self) -> &str {
+        "mako:plugin-node-polyfill"
+    }
+
+    fn config(&self, config: &mut Config) -> Result<Option<()>> {
+        let builtins = get_node_builtins();
+
+        for name in builtins.iter() {
+            config.externals.insert(name.to_string(), name.to_string());
+        }
+
+        Ok(Some(()))
+    }
 }

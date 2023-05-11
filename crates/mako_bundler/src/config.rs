@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::io::{Error, ErrorKind};
 use std::{collections::HashMap, path::PathBuf};
 
-#[derive(Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Eq, PartialEq, Clone)]
 pub struct OutputConfig {
     pub path: PathBuf,
 }
@@ -14,13 +14,13 @@ pub struct OutputConfig {
 //     _Production,
 // }
 
-#[derive(Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Eq, PartialEq, Clone)]
 pub struct ResolveConfig {
     pub alias: HashMap<String, String>,
     pub extensions: Vec<String>,
 }
 
-#[derive(Eq, PartialEq, Debug, Deserialize, Serialize)]
+#[derive(Eq, PartialEq, Debug, Deserialize, Serialize, Clone)]
 pub struct Config {
     pub entry: HashMap<String, PathBuf>,
     pub output: OutputConfig,
