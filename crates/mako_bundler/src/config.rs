@@ -34,12 +34,16 @@ pub struct Config {
 
 impl Config {
     pub fn from_literal_str(s: &str) -> Result<Self, config::ConfigError> {
+        let args: Vec<String> = std::env::args().collect();
+        let root = std::env::current_dir().unwrap().join(&args[1]);
+
         let conf = config::Config::builder()
             .add_source(config::File::from_str(
                 &Self::default_str(),
                 config::FileFormat::Json,
             ))
             .add_source(config::File::from_str(s, config::FileFormat::Json))
+            .add_source(config::File::from(root.join("mako.config.json")))
             .build()?;
         conf.try_deserialize()
     }
