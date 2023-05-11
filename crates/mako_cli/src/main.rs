@@ -1,9 +1,5 @@
-mod utils;
-
-use crate::utils::start_watch;
 use clap::Parser;
-use mako_bundler::compiler::Compiler;
-use mako_bundler::config;
+use mako_bundler::{config, Bundler};
 use std::path::PathBuf;
 use tracing::Level;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
@@ -31,11 +27,8 @@ async fn main() {
 
     let cli: MakoCLI = MakoCLI::parse();
 
-    // config
-    let root = std::env::current_dir().unwrap().join(cli.root.as_path());
-
-    let mut config = config::Config {
-        root,
+    let config = config::Config {
+        root: cli.root.clone(),
         externals: maplit::hashmap! {
             "stream".to_string() => "stream".to_string()
         },
@@ -45,16 +38,6 @@ async fn main() {
         ..Default::default()
     };
 
-    config.normalize();
-
-    // compiler_origin::run_compiler(config);
-    let root = config.root.clone();
-    let mut compiler = Compiler::new(&mut config);
-    compiler.run();
-
-    println!("✅ DONE");
-
-    if cli.watch {
-        start_watch(&root, &mut compiler);
-    }
+    let mut b = Bundler::new(config);
+    b.run(cli.watch);
 }

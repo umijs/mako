@@ -1,8 +1,8 @@
+use crate::compiler::Compiler;
 use futures::{
     channel::mpsc::{channel, Receiver},
     SinkExt, StreamExt,
 };
-use mako_bundler::compiler::Compiler;
 use notify::event::DataChange;
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::Path;

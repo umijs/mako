@@ -1010,12 +1010,14 @@ version = "0.0.0"
 dependencies = [
  "base64 0.21.0",
  "config",
+ "futures",
  "insta",
  "lazy_static",
  "lightningcss",
  "maplit",
  "md5",
  "nodejs-resolver",
+ "notify",
  "petgraph",
  "rayon",
  "regex",
@@ -1044,10 +1046,8 @@ name = "mako_cli"
 version = "0.0.0"
 dependencies = [
  "clap",
- "futures",
  "mako_bundler",
  "maplit",
- "notify",
  "tokio",
  "tracing",
  "tracing-subscriber",

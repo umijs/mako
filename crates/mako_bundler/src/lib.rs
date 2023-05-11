@@ -1,7 +1,10 @@
 #![feature(box_patterns)]
 
 use compiler::Compiler;
-use tracing::info;
+use std::sync::{Arc, Mutex};
+
+pub use crate::watch::start_watch;
+use crate::{plugin::plugin_driver::PluginDriver, plugins::node_polyfill::NodePolyfillPlugin};
 
 pub mod build;
 pub mod chunk;
@@ -15,39 +18,44 @@ pub mod module_graph;
 pub mod plugin;
 pub mod plugins;
 pub mod utils;
+pub(crate) mod watch;
 
-pub fn run() {
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() <= 1 {
-        panic!("Please specify the root directory of the project");
+pub struct Bundler {
+    compiler: Compiler,
+}
+
+impl Bundler {
+    pub fn new(mut config: config::Config) -> Self {
+        // plugin driver
+        let mut plugin_driver = PluginDriver::new();
+
+        // register plugins
+        plugin_driver.register(NodePolyfillPlugin {});
+
+        config.normalize();
+        // allow plugin to modify config
+
+        let config_lock = Arc::new(Mutex::new(&mut config));
+
+        plugin_driver
+            .run_hook_serial(|p, _last_ret| {
+                p.config(&mut config_lock.lock().unwrap())?;
+                Ok(Some(()))
+            })
+            .unwrap();
+
+        let compiler = Compiler::new(config, plugin_driver);
+
+        Self { compiler }
     }
 
-    // config
-    let root = std::env::current_dir()
-        .unwrap()
-        .join(&args[1])
-        .to_string_lossy()
-        .to_string();
-    let mut config = config::Config::from_literal_str(
-        format!(
-            r#"
-{{
-    "externals": {{}},
-    "root": "{}",
-    "entry": {{ "index": "index.tsx" }}
-}}
-    "#,
-            root
-        )
-        .as_str(),
-    )
-    .unwrap();
+    pub fn run(&mut self, watch: bool) {
+        self.compiler.run();
+        println!("✅Done");
 
-    config.normalize();
-
-    // compiler_origin::run_compiler(config);
-    let mut compiler = Compiler::new(&mut config);
-    compiler.run();
-
-    info!("✅ DONE");
+        if watch {
+            let root = self.compiler.context.config.root.clone();
+            start_watch(&root, &mut self.compiler);
+        }
+    }
 }
