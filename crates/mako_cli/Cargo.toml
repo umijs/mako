@@ -12,3 +12,5 @@ path = "src/main.rs"
 [dependencies]
 tokio = { workspace = true, features = ["full"] }
 mako_bundler = { path = "../mako_bundler" }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

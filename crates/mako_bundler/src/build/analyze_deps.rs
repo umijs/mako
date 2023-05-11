@@ -4,6 +4,7 @@ use swc_css_visit::{Visit as CssVisit, VisitWith as CssVisitWith};
 use swc_ecma_ast::*;
 use swc_ecma_visit::noop_visit_type;
 use swc_ecma_visit::{Visit, VisitWith};
+use tracing::debug;
 
 use crate::{
     context::Context,
@@ -35,9 +36,9 @@ pub fn analyze_deps(
             // TODO: only analyze top level require to improve performance
             transform_ast.visit_with(&mut collector);
 
-            println!("> analyze deps: {}", analyze_deps_param.path);
+            debug!(analyze_deps_param.path, "analyze deps");
             for d in &collector.dependencies {
-                println!("  - {} ({:?})", d.source, d.resolve_type);
+                debug!("  - {} ({:?})", d.source, d.resolve_type);
             }
         }
     } else if let ModuleAst::Css(stylesheet) = analyze_deps_param.ast {

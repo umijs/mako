@@ -1,5 +1,6 @@
 use maplit::hashset;
 use nodejs_resolver::{Options, Resolver};
+use tracing::debug;
 
 use std::collections::{HashMap, VecDeque};
 use std::ops::ControlFlow;
@@ -202,8 +203,8 @@ impl Compiler {
                 files: None,
             };
             let resolve_result = resolve(&resolve_param, &context, &resolver);
-            println!(
-                "> resolve {} from {} -> {}",
+            debug!(
+                "resolve {} from {} -> {}",
                 &d.source, path_str, resolve_result.path
             );
             if resolve_result.is_external {

@@ -1,6 +1,7 @@
 use mako_bundler::{
     build::build::BuildParam, compiler::Compiler, config::Config, generate::generate::GenerateParam,
 };
+use tracing::debug;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn normal() {
@@ -29,7 +30,7 @@ async fn chunk() {
     let (output, compiler, ..) = test_files("chunks".into());
     assert_debug_snapshot!(output);
     let chunk_graph = compiler.context.chunk_graph.read().unwrap();
-    println!("{}", &chunk_graph);
+    debug!("{}", &chunk_graph);
     assert_display_snapshot!(chunk_graph);
 }
 
