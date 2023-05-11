@@ -2,6 +2,7 @@
 
 use compiler::Compiler;
 use std::sync::{Arc, Mutex};
+use tracing::info;
 
 use crate::{plugin::plugin_driver::PluginDriver, plugins::node_polyfill::NodePolyfillPlugin};
 
@@ -67,5 +68,5 @@ pub fn run() {
     let mut compiler = Compiler::new(config, plugin_driver);
     compiler.run();
 
-    println!("✅ DONE");
+    info!("✅ DONE");
 }
