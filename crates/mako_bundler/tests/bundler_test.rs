@@ -1,5 +1,6 @@
 use mako_bundler::{
-    build::build::BuildParam, compiler::Compiler, config::Config, generate::generate::GenerateParam,
+    build::build::BuildParam, compiler::Compiler, config::Config,
+    generate::generate::GenerateParam, plugin::plugin_driver::PluginDriver,
 };
 use tracing::debug;
 
@@ -58,7 +59,7 @@ fn test_files(name: String) -> (Vec<Vec<String>>, Compiler, String) {
     )
     .unwrap();
     config.normalize();
-    let mut compiler = Compiler::new(config);
+    let mut compiler = Compiler::new(config, PluginDriver::new());
     compiler.build(&BuildParam { files: None });
     let generate_result = compiler.generate(&GenerateParam { write: false });
     let output = generate_result
