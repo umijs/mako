@@ -95,6 +95,14 @@ impl Compiler {
             fs::copy(index_html_file, &output_dir.join("index.html")).unwrap();
         }
 
+        // generate_end hook
+        self.plugin_driver
+            .run_hook_serial(|p, _| {
+                p.generate_end(&self.context, generate_param)?;
+                Ok(Some(()))
+            })
+            .unwrap();
+
         GenerateResult { output_files }
     }
 
