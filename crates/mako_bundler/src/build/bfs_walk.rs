@@ -152,8 +152,6 @@ impl Compiler {
             parent_module_id: None,
             path: entry_point,
         });
-
-        self.grouping_chunks();
     }
 
     pub fn walk(&self, from: Task) {

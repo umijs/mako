@@ -1,8 +1,8 @@
-use maplit::hashset;
 use std::collections::{HashMap, VecDeque};
 use std::ops::ControlFlow;
 use std::sync::Arc;
 
+use maplit::hashset;
 use nodejs_resolver::{Options, Resolver};
 use tokio::sync::mpsc::error::TryRecvError;
 use tracing::debug;
@@ -11,7 +11,6 @@ use crate::context::Context;
 use crate::module_graph::ModuleGraph;
 use crate::{
     compiler::Compiler,
-    config::get_first_entry_value,
     module::{Module, ModuleId, ModuleInfo},
     module_graph::Dependency,
 };
@@ -44,20 +43,7 @@ enum BuildModuleGraphResult {
 
 impl Compiler {
     pub fn build(&mut self, _build_param: &'static BuildParam) {
-        let cwd = &self.context.config.root;
-        let entry_point = cwd
-            .join(get_first_entry_value(&self.context.config.entry).unwrap())
-            .to_string_lossy()
-            .to_string();
-
-        // build
-        // self.build_module_graph_threaded(entry_point, build_param);
-
-        self.walk(Task {
-            parent_dependency: None,
-            parent_module_id: None,
-            path: entry_point,
-        });
+        self.build_module_graph(_build_param);
 
         self.grouping_chunks();
     }
