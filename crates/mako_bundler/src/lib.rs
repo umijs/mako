@@ -4,7 +4,10 @@ use compiler::Compiler;
 use std::sync::{Arc, Mutex};
 use tracing::info;
 
-use crate::{plugin::plugin_driver::PluginDriver, plugins::node_polyfill::NodePolyfillPlugin};
+use crate::{
+    plugin::plugin_driver::PluginDriver,
+    plugins::{copy::CopyPlugin, node_polyfill::NodePolyfillPlugin},
+};
 
 pub mod build;
 pub mod chunk;
@@ -30,6 +33,7 @@ pub fn run() {
 
     // register plugins
     plugin_driver.register(NodePolyfillPlugin {});
+    plugin_driver.register(CopyPlugin {});
 
     // config
     let root = std::env::current_dir()
