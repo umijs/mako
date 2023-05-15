@@ -1,5 +1,6 @@
 use config;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::io::{Error, ErrorKind};
 use std::{collections::HashMap, path::PathBuf};
 
@@ -27,6 +28,7 @@ pub struct Config {
     pub root: PathBuf,
     // pub mode: Mode,
     pub resolve: ResolveConfig,
+    pub copy: HashSet<PathBuf>,
     pub externals: HashMap<String, String>,
     // The limit of the size of the file to be converted to base64
     pub data_url_limit: usize,
@@ -34,12 +36,18 @@ pub struct Config {
 
 impl Config {
     pub fn from_literal_str(s: &str) -> Result<Self, config::ConfigError> {
+        let args: Vec<String> = std::env::args().collect();
+        let root = std::env::current_dir()
+            .unwrap()
+            .join(args.get(1).unwrap_or(&String::from("mako_project")));
+
         let conf = config::Config::builder()
             .add_source(config::File::from_str(
                 &Self::default_str(),
                 config::FileFormat::Json,
             ))
             .add_source(config::File::from_str(s, config::FileFormat::Json))
+            .add_source(config::File::from(root.join("mako.config.json")).required(false))
             .build()?;
         conf.try_deserialize()
     }
@@ -56,6 +64,7 @@ impl Config {
     "output": {{ "path": "dist" }},
     "root": "{}",
     "resolve": {{ "alias": {{}}, "extensions": ["js", "jsx", "ts", "tsx"] }},
+    "copy": ["public"],
     "externals": {{}},
     "data_url_limit": 8192
 }}
@@ -135,6 +144,9 @@ mod tests {
       "tsx"
     ]
   },
+  "copy": [
+    "public"
+  ],
   "externals": {},
   "data_url_limit": 8192
 }"#

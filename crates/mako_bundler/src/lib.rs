@@ -1,10 +1,12 @@
 #![feature(box_patterns)]
 
+use crate::watch::start_watch;
+use crate::{
+    plugin::plugin_driver::PluginDriver,
+    plugins::{copy::CopyPlugin, node_polyfill::NodePolyfillPlugin},
+};
 use compiler::Compiler;
 use std::sync::{Arc, Mutex};
-
-pub use crate::watch::start_watch;
-use crate::{plugin::plugin_driver::PluginDriver, plugins::node_polyfill::NodePolyfillPlugin};
 
 pub mod build;
 pub mod chunk;
@@ -31,6 +33,7 @@ impl Bundler {
 
         // register plugins
         plugin_driver.register(NodePolyfillPlugin {});
+        plugin_driver.register(CopyPlugin {});
 
         config.normalize();
         // allow plugin to modify config

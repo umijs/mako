@@ -1,6 +1,6 @@
-use std::any::Any;
+use std::{any::Any, sync::Arc};
 
-use crate::config::Config;
+use crate::{config::Config, context::Context, generate::generate::GenerateParam};
 
 pub mod plugin_driver;
 
@@ -25,6 +25,14 @@ pub trait Plugin: Any + Send + Sync {
 
     /// config hook
     fn config(&self, _config: &mut Config) -> Result<Option<()>> {
+        Ok(None)
+    }
+
+    fn generate_end(
+        &self,
+        _context: &Arc<Context>,
+        _generate_param: &GenerateParam,
+    ) -> Result<Option<()>> {
         Ok(None)
     }
 
