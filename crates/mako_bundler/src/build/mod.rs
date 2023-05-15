@@ -1,4 +1,5 @@
 pub(crate) mod analyze_deps;
+pub(crate) mod bfs_walk;
 pub mod build;
 pub(crate) mod grouping_chunks;
 pub(crate) mod load;

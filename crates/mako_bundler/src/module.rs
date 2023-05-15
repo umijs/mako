@@ -1,5 +1,7 @@
-use lazy_static::lazy_static;
+use std::fmt::{Debug, Formatter};
 use std::{collections::HashSet, sync::RwLock};
+
+use lazy_static::lazy_static;
 use swc_common::{sync::Lrc, SourceMap};
 
 use crate::chunk::ChunkId;
@@ -25,7 +27,7 @@ impl ModuleId {
         // }
     }
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ModuleAst {
     Script(swc_ecma_ast::Module),
     Css(swc_css_ast::Stylesheet),
@@ -35,6 +37,7 @@ pub enum ModuleAst {
 /**
  * 模块元信息
  */
+#[derive(Clone)]
 pub struct ModuleInfo {
     pub original_ast: ModuleAst,
     pub original_cm: Option<Lrc<SourceMap>>,
@@ -42,6 +45,20 @@ pub struct ModuleInfo {
     pub is_external: bool,
     pub external_name: Option<String>,
     pub is_entry: bool,
+}
+
+impl Debug for ModuleInfo {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if self.is_external {
+            write!(
+                f,
+                "External(ModuleInfo) name={:?} path={}",
+                self.external_name, self.path
+            )
+        } else {
+            write!(f, "Imported(ModuleInfo) path={}", self.path)
+        }
+    }
 }
 
 pub struct ModuleTransformInfo {

@@ -12,7 +12,7 @@ use crate::build::parse::{parse, ParseParam};
 use crate::build::transform::transform::{transform, TransformParam};
 use crate::compiler::Compiler;
 use crate::context::Context as MakoContext;
-use crate::module::ModuleId;
+use crate::module::{Module, ModuleId};
 use crate::module_graph::Dependency;
 
 struct BfsIterator {
@@ -117,6 +117,7 @@ pub struct ModuleVisit {
 struct ImportedDependence {
     pub by: Dependency,
     pub path: String,
+    #[allow(dead_code)]
     pub parent: ModuleId,
 }
 #[derive(Debug)]
@@ -133,19 +134,71 @@ enum MyDependence {
 }
 
 impl Compiler {
-    // task is a edge in the graph
+    pub fn build_module_graph(&mut self, _build_param: &BuildParam) {
+        let cwd = &self.context.config.root;
+        let entry_point = cwd
+            .join(crate::config::get_first_entry_value(&self.context.config.entry).unwrap())
+            .to_string_lossy()
+            .to_string();
+
+        self.context
+            .module_graph
+            .write()
+            .unwrap()
+            .mark_entry_module(&ModuleId::new(&entry_point));
+
+        self.walk(Task {
+            parent_dependency: None,
+            parent_module_id: None,
+            path: entry_point,
+        });
+
+        self.grouping_chunks();
+    }
+
     pub fn walk(&self, from: Task) {
         let bfs_visit = BfsIterator::new(self.context.clone(), from);
+        let mut module_graph = self.context.module_graph.write().unwrap();
         for v in bfs_visit {
             match v {
                 Ok(visit) => {
-                    // let mut module_graph_w = self.context.module_graph.write().unwrap();
-                    //
-                    // let module = module_graph_w.get_or_add_module(&visit.module_id);
-                    // module.add_info(visit.current.clone());
+                    let module = module_graph.get_or_add_module(&visit.module_id);
+                    module.add_info(visit.current.clone());
 
-                    for _task in visit.dependencies {
-                        // self.add_module(&task);
+                    let from_module_id = &visit.module_id;
+
+                    for dep_edge in visit.dependencies {
+                        match dep_edge {
+                            MyDependence::Imported(dep) => {
+                                let to_module_id = ModuleId::new(&dep.path.clone());
+                                module_graph.get_or_add_module(&to_module_id);
+                                module_graph.add_dependency(
+                                    from_module_id,
+                                    &to_module_id,
+                                    dep.by.clone(),
+                                );
+                            }
+                            MyDependence::Externalized(dep) => {
+                                let to_module_id = ModuleId::new(&dep.path.clone());
+
+                                let mut module = Module::new(to_module_id.clone());
+                                module.add_info(crate::module::ModuleInfo {
+                                    path: dep.path.clone(),
+                                    external_name: Some(dep.external_name.clone()),
+                                    is_external: true,
+                                    is_entry: false,
+                                    original_cm: None,
+                                    original_ast: crate::module::ModuleAst::None,
+                                });
+
+                                module_graph.add_module(module);
+                                module_graph.add_dependency(
+                                    from_module_id,
+                                    &to_module_id,
+                                    dep.by.clone(),
+                                )
+                            }
+                        }
                     }
                 }
                 Err(TryRecvError::Disconnected) => {
