@@ -66,6 +66,7 @@ async fn async_watch<P: AsRef<Path>>(path: P, c: &mut Compiler) -> notify::Resul
                         println!("files changed: {:?} ", project_files);
                         println!("re-compiling...");
                         let start = Instant::now();
+                        c.before_rerun();
                         c.run();
                         println!("✅re-compiled {:?}", start.elapsed());
                     }

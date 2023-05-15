@@ -1,8 +1,10 @@
-use clap::Parser;
-use mako_bundler::{config, Bundler};
 use std::path::PathBuf;
+
+use clap::Parser;
 use tracing::Level;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
+
+use mako_bundler::{config, Bundler};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -28,7 +30,7 @@ async fn main() {
     let cli: MakoCLI = MakoCLI::parse();
 
     let config = config::Config {
-        root: cli.root.clone(),
+        root: std::env::current_dir().unwrap().join(cli.root.clone()),
         externals: maplit::hashmap! {
             "stream".to_string() => "stream".to_string()
         },
