@@ -138,6 +138,9 @@ mod tests {
       "tsx"
     ]
   },
+  "copy": [
+    "public"
+  ],
   "externals": {},
   "data_url_limit": 8192
 }"#
