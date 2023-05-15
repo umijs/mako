@@ -14,7 +14,6 @@ impl Compiler {
         let visited = Rc::new(RefCell::new(HashSet::new()));
         let mut module_graph = self.context.module_graph.write().unwrap();
         let mut chunk_graph = self.context.chunk_graph.write().unwrap();
-        chunk_graph.clear();
         let mut edges = vec![];
         let entries_modules = module_graph.get_entry_modules();
         for entry_id in entries_modules {
