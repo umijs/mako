@@ -1,8 +1,9 @@
+use std::sync::Arc;
+
 use crate::{
     build::build::BuildParam, config::Config, context::Context, generate::generate::GenerateParam,
     plugin::plugin_driver::PluginDriver,
 };
-use std::sync::Arc;
 
 pub struct Compiler {
     pub context: Arc<Context>,
@@ -23,5 +24,9 @@ impl Compiler {
         self.generate(&GenerateParam { write: true });
     }
 
-    pub fn _watch(&self) {}
+    pub fn before_rerun(&self) {
+        self.context.chunk_graph.write().unwrap().clear();
+    }
+
+    pub fn update() {}
 }

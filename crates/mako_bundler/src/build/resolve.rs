@@ -87,7 +87,7 @@ pub fn resolve(
                         is_external: false,
                     };
                 }
-                Ok(nodejs_resolver::ResolveResult::Ignored) => panic!("Should not happen dIgnored"),
+                Ok(nodejs_resolver::ResolveResult::Ignored) => panic!("Should not happen Ignored"),
                 Err(_err) => panic!(
                     "Resolve Module {module_id} failed from {}",
                     context.display()
