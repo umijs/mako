@@ -168,6 +168,7 @@ fn wrap_css(id: &ModuleId, dep_map: &HashMap<String, String>, css: &str) -> Modu
 
     let css_code_var = Ident::new("cssCode".into(), DUMMY_SP);
 
+    // const cssCode = { stylesheet }
     let css_code_decl = VarDecl {
         span: DUMMY_SP,
         kind: VarDeclKind::Const,
@@ -182,6 +183,7 @@ fn wrap_css(id: &ModuleId, dep_map: &HashMap<String, String>, css: &str) -> Modu
 
     let style_var = Ident::new("style".into(), DUMMY_SP);
 
+    // const style = document.createElement('style')
     let style_var_decl = VarDecl {
         span: DUMMY_SP,
         kind: VarDeclKind::Const,
@@ -208,6 +210,7 @@ fn wrap_css(id: &ModuleId, dep_map: &HashMap<String, String>, css: &str) -> Modu
         declare: false,
     };
 
+    // style.innerHTML = cssCode
     let style_inner_html_assign = Expr::Assign(AssignExpr {
         span: DUMMY_SP,
         op: op!("="),
@@ -219,6 +222,7 @@ fn wrap_css(id: &ModuleId, dep_map: &HashMap<String, String>, css: &str) -> Modu
         right: Box::new(Expr::Ident(css_code_var.into())),
     });
 
+    // require(...)
     let append_child_call = Expr::Call(CallExpr {
         span: DUMMY_SP,
         callee: Ident::new("document".into(), DUMMY_SP)
@@ -272,9 +276,10 @@ fn wrap_css(id: &ModuleId, dep_map: &HashMap<String, String>, css: &str) -> Modu
     ast
 }
 
-fn wrap_module(id: &ModuleId, dep: &mut Module) {
+fn wrap_module(id: &ModuleId, module: &mut Module) {
     let id = id.id.clone();
 
+    // funciton (module, exports, require) { module }
     let module_fn = Expr::Fn(FnExpr {
         ident: None,
         function: Box::new(Function {
@@ -305,8 +310,8 @@ fn wrap_module(id: &ModuleId, dep: &mut Module) {
                 },
             ],
             body: Some(BlockStmt {
-                span: dep.span,
-                stmts: dep
+                span: module.span,
+                stmts: module
                     .clone()
                     .body
                     .into_iter()
@@ -321,6 +326,7 @@ fn wrap_module(id: &ModuleId, dep: &mut Module) {
         }),
     });
 
+    // g_define(module_id, function (module, exports, require) { module })
     let stmt = Stmt::Expr(ExprStmt {
         span: DUMMY_SP,
         expr: Box::new(Expr::Call(CallExpr {
@@ -339,7 +345,7 @@ fn wrap_module(id: &ModuleId, dep: &mut Module) {
         })),
     });
 
-    *dep = Module {
+    *module = Module {
         span: DUMMY_SP,
         body: vec![ModuleItem::Stmt(stmt)],
         shebang: None,
