@@ -1,19 +1,10 @@
 use std::{collections::HashMap, fs};
 
 use crate::chunk::{Chunk, ChunkType};
+use crate::compiler::Compiler;
 use crate::module_graph::ModuleGraph;
-use crate::{compiler::Compiler, module::ModuleId};
 use rayon::prelude::*;
 use tracing::debug;
-
-fn wrap_module(id: &ModuleId, code: &str) -> String {
-    let id = id.id.clone();
-    debug!(id, "wrap_module");
-    format!(
-        "g_define(\"{}\", function(module, exports, require) {{\n{}}});",
-        id, code
-    )
-}
 
 use super::transform::transform::{transform, TransformParam};
 
@@ -207,6 +198,7 @@ const requireModule = (name) => {
 
                     // transform
                     let transform_param = TransformParam {
+                        id: module_id,
                         cm,
                         ast: &info.original_ast,
                         dep_map,
@@ -215,7 +207,8 @@ const requireModule = (name) => {
                     let transform_result = transform(&transform_param);
                     transform_result.code
                 };
-                wrap_module(module_id, &code)
+                code
+                // wrap_module(module_id, &code)
             })
             .collect::<Vec<_>>();
         // setup entry module
