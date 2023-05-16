@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
-use crate::module::{Module, ModuleId};
 use petgraph::prelude::EdgeRef;
 use petgraph::visit::IntoEdgeReferences;
 use petgraph::{
@@ -9,6 +8,8 @@ use petgraph::{
     stable_graph::StableDiGraph,
     Direction,
 };
+
+use crate::module::{Module, ModuleId};
 
 /**
  * Dependency = Module Graph Edge
@@ -75,6 +76,16 @@ impl ModuleGraph {
         let id = module.id.clone();
         let idx = self.graph.add_node(module);
         self.id_index_map.insert(id, idx);
+    }
+
+    pub fn get_or_add_module(&mut self, module_id: &ModuleId) -> &mut Module {
+        if self.get_module_mut(module_id).is_none() {
+            let module = Module::new(module_id.clone());
+            self.add_module(module);
+            return self.get_module_mut(module_id).unwrap();
+        } else {
+            self.get_module_mut(module_id).unwrap()
+        }
     }
 
     pub fn remove_module(&mut self, module_id: &ModuleId) -> Module {

@@ -1,18 +1,16 @@
-use maplit::hashset;
-use nodejs_resolver::{Options, Resolver};
-use tracing::debug;
-
 use std::collections::{HashMap, VecDeque};
 use std::ops::ControlFlow;
 use std::sync::Arc;
+
+use maplit::hashset;
+use nodejs_resolver::{Options, Resolver};
 use tokio::sync::mpsc::error::TryRecvError;
+use tracing::debug;
 
 use crate::context::Context;
-
 use crate::module_graph::ModuleGraph;
 use crate::{
     compiler::Compiler,
-    config::get_first_entry_value,
     module::{Module, ModuleId, ModuleInfo},
     module_graph::Dependency,
 };
@@ -30,32 +28,27 @@ pub struct BuildParam {
 }
 
 #[derive(Debug)]
-struct Task {
+pub struct Task {
     pub path: String,
     pub parent_module_id: Option<ModuleId>,
     pub parent_dependency: Option<Dependency>,
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 enum BuildModuleGraphResult {
     Done,
     Next(Vec<Task>),
 }
 
 impl Compiler {
-    pub fn build(&mut self, build_param: &'static BuildParam) {
-        let cwd = &self.context.config.root;
-        let entry_point = cwd
-            .join(get_first_entry_value(&self.context.config.entry).unwrap())
-            .to_string_lossy()
-            .to_string();
-
-        // build
-        self.build_module_graph_threaded(entry_point, build_param);
+    pub fn build(&mut self, _build_param: &'static BuildParam) {
+        self.build_module_graph(_build_param);
 
         self.grouping_chunks();
     }
 
+    #[allow(dead_code)]
     fn build_module_graph_threaded(
         &mut self,
         entry_point: String,
@@ -134,6 +127,7 @@ impl Compiler {
         });
     }
 
+    #[allow(dead_code)]
     fn build_module(
         context: Arc<Context>,
         task: Task,
@@ -207,6 +201,7 @@ impl Compiler {
                 "resolve {} from {} -> {}",
                 &d.source, path_str, resolve_result.path
             );
+
             if resolve_result.is_external {
                 let external_name = resolve_result.external_name.unwrap();
                 let info = ModuleInfo {
@@ -240,6 +235,7 @@ impl Compiler {
         BuildModuleGraphResult::Next(tasks)
     }
 
+    #[allow(dead_code)]
     fn bind_dependency(module_graph: &mut ModuleGraph, task: &Task, module_id: &ModuleId) {
         if let Some(parent_module_id) = &task.parent_module_id {
             let parent_dependency = task
@@ -250,6 +246,7 @@ impl Compiler {
         }
     }
 
+    #[allow(dead_code)]
     fn add_module(task: &Task, ctx: &Arc<Context>) -> ControlFlow<()> {
         let path_str = task.path.as_str();
         let module_id = ModuleId::new(path_str);
