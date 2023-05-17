@@ -4,6 +4,8 @@ use std::sync::Arc;
 
 use maplit::hashset;
 use nodejs_resolver::{Options, Resolver};
+use swc_common::DUMMY_SP;
+use swc_ecma_ast::*;
 use tokio::sync::mpsc::error::TryRecvError;
 use tracing::debug;
 
@@ -207,10 +209,10 @@ impl Compiler {
                 let info = ModuleInfo {
                     path: resolve_result.path.clone(),
                     is_external: resolve_result.is_external,
-                    external_name: Some(external_name),
+                    external_name: Some(external_name.clone()),
                     is_entry: false,
                     original_cm: None,
-                    original_ast: crate::module::ModuleAst::None,
+                    original_ast: Self::build_external(&external_name),
                 };
                 let external_module_id = ModuleId::new(&resolve_result.path);
                 let mut external_module = Module::new(external_module_id.clone());
@@ -233,6 +235,29 @@ impl Compiler {
             return BuildModuleGraphResult::Done;
         }
         BuildModuleGraphResult::Next(tasks)
+    }
+
+    pub(crate) fn build_external(external_name: &str) -> crate::module::ModuleAst {
+        let module_exports_assign = Expr::Assign(AssignExpr {
+            span: DUMMY_SP,
+            op: op!("="),
+            left: PatOrExpr::Expr(Box::new(Expr::Member(MemberExpr {
+                span: DUMMY_SP,
+                obj: Box::new(Expr::Ident(Ident::new("exports".into(), DUMMY_SP))),
+                prop: MemberProp::Ident(Ident::new("default".into(), DUMMY_SP)),
+            }))),
+            right: Box::new(Expr::Ident(Ident::new(external_name.into(), DUMMY_SP))),
+        });
+
+        let ast = swc_ecma_ast::Module {
+            span: DUMMY_SP,
+            body: vec![ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+                span: DUMMY_SP,
+                expr: Box::new(module_exports_assign),
+            }))],
+            shebang: None,
+        };
+        crate::module::ModuleAst::Script(ast)
     }
 
     #[allow(dead_code)]

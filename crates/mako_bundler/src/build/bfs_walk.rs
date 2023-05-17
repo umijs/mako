@@ -186,7 +186,9 @@ impl Compiler {
                                     is_external: true,
                                     is_entry: false,
                                     original_cm: None,
-                                    original_ast: crate::module::ModuleAst::None,
+                                    original_ast: Compiler::build_external(
+                                        &dep.external_name.clone(),
+                                    ),
                                 });
 
                                 module_graph.add_module(module);

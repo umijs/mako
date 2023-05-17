@@ -11,6 +11,12 @@ async fn normal() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn external() {
+    let (output, ..) = test_files("external".into());
+    assert_debug_snapshot!(output);
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn multiple_files() {
     let (output, compiler, ..) = test_files("multiple".into());
     assert_debug_snapshot!(output);
@@ -50,7 +56,8 @@ fn test_files(name: String) -> (Vec<Vec<String>>, Compiler, String) {
     "entry": {{
         "entry": "entry.js"
     }},
-    "root": "{}"
+    "root": "{}",
+    "externals":  {{ "test": "test" }}
 }}
             "#,
             cwd,

@@ -176,39 +176,32 @@ const requireModule = (name) => {
                     .get_module(module_id)
                     .expect("module not found");
                 let info = module.info.as_ref().unwrap();
-                let code = if info.is_external {
-                    format!(
-                        "/* external {} */ exports.default = {};",
-                        info.path,
-                        info.external_name.as_ref().unwrap(),
-                    )
-                } else {
-                    // get deps
-                    let deps = module_graph.get_dependencies(module_id);
-                    let dep_map: HashMap<String, String> = deps
-                        .into_iter()
-                        .map(|(id, dep)| (dep.source.clone(), id.id.clone()))
-                        .collect();
+                let deps = module_graph.get_dependencies(module_id);
+                let dep_map: HashMap<String, String> = deps
+                    .into_iter()
+                    .map(|(id, dep)| (dep.source.clone(), id.id.clone()))
+                    .collect();
 
-                    // define env
-                    let env_map: HashMap<String, String> =
-                        HashMap::from([("NODE_ENV".into(), "production".into())]);
+                // define env
+                let env_map: HashMap<String, String> =
+                    HashMap::from([("NODE_ENV".into(), "production".into())]);
 
-                    let cm = info.original_cm.as_ref().unwrap();
-
-                    // transform
-                    let transform_param = TransformParam {
-                        id: module_id,
-                        cm,
-                        ast: &info.original_ast,
-                        dep_map,
-                        env_map,
-                    };
-                    let transform_result = transform(&transform_param);
-                    transform_result.code
+                let default_cm = Default::default();
+                let cm = match info.original_cm.as_ref() {
+                    Some(cm) => cm,
+                    None => &default_cm,
                 };
-                code
-                // wrap_module(module_id, &code)
+
+                // transform
+                let transform_param = TransformParam {
+                    id: module_id,
+                    cm,
+                    ast: &info.original_ast,
+                    dep_map,
+                    env_map,
+                };
+                let transform_result = transform(&transform_param);
+                transform_result.code
             })
             .collect::<Vec<_>>();
         // setup entry module
