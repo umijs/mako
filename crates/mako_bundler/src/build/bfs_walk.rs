@@ -1,4 +1,5 @@
 use std::collections::{HashSet, VecDeque};
+use std::fmt::Error;
 use std::sync::Arc;
 
 use nodejs_resolver::Resolver;
@@ -15,7 +16,7 @@ use crate::context::Context as MakoContext;
 use crate::module::{Module, ModuleId};
 use crate::module_graph::Dependency;
 
-struct BfsIterator {
+pub struct BfsIterator {
     queue: VecDeque<Task>,
     visited: HashSet<String>,
     sender: UnboundedSender<ModuleVisit>,
@@ -76,8 +77,8 @@ impl Iterator for BfsIterator {
                 Ok(visit) => {
                     self.running -= 1;
 
-                    for d in visit.dependencies.iter() {
-                        if let MyDependence::Imported(dep) = d {
+                    for d in visit.visit_results.iter() {
+                        if let VisitResult::Imported(dep) = d {
                             let task = Task {
                                 path: dep.path.clone(),
                                 parent_module_id: Some(visit.module_id.clone()),
@@ -87,7 +88,7 @@ impl Iterator for BfsIterator {
                             if !self.visited.contains(&task.path) && !self.queue.contains(&task) {
                                 self.queue.push_back(task);
                             }
-                        } else if let MyDependence::Externalized(ed) = d {
+                        } else if let VisitResult::Externalized(ed) = d {
                             debug!("MyDependence::Externalized {}", ed.path);
                         }
                     }
@@ -109,32 +110,37 @@ impl Iterator for BfsIterator {
 
 #[derive(Debug)]
 pub struct ModuleVisit {
-    module_id: ModuleId,
-    current: crate::module::ModuleInfo,
-    dependencies: Vec<MyDependence>,
+    pub module_id: ModuleId,
+    pub current: crate::module::ModuleInfo,
+    pub visit_results: Vec<VisitResult>,
 }
 #[derive(Debug)]
-struct ImportedDependence {
+pub struct ImportedDependence {
     pub by: Dependency,
     pub path: String,
     #[allow(dead_code)]
     pub parent: ModuleId,
 }
 #[derive(Debug)]
-struct ExternalizedDependence {
-    path: String,
-    external_name: String,
-    by: Dependency,
+pub struct ExternalizedDependence {
+    pub path: String,
+    pub external_name: String,
+    pub by: Dependency,
 }
 
 #[derive(Debug)]
-enum MyDependence {
+pub enum VisitResult {
     Imported(ImportedDependence),
     Externalized(ExternalizedDependence),
 }
 
+#[derive(Default, Debug)]
+pub struct WalkResult {
+    pub added: HashSet<ModuleId>,
+    pub removed: HashSet<ModuleId>,
+}
 impl Compiler {
-    pub fn build_module_graph(&mut self, _build_param: &BuildParam) {
+    pub fn build_module_graph(&mut self, _build_param: &BuildParam) -> Result<(), Error> {
         let cwd = &self.context.config.root;
         let entry_point = cwd
             .join(crate::config::get_first_entry_value(&self.context.config.entry).unwrap())
@@ -151,34 +157,76 @@ impl Compiler {
             parent_dependency: None,
             parent_module_id: None,
             path: entry_point,
-        });
+        })?;
+        Ok(())
     }
 
-    pub fn walk(&self, from: Task) {
+    pub fn walk(&self, from: Task) -> Result<WalkResult, Error> {
         let bfs_visit = BfsIterator::new(self.context.clone(), from);
-        let mut module_graph = self.context.module_graph.write().unwrap();
+        let mut walk_result = WalkResult {
+            ..Default::default()
+        };
         for v in bfs_visit {
             match v {
                 Ok(visit) => {
-                    let module = module_graph.get_or_add_module(&visit.module_id);
-                    module.add_info(visit.current.clone());
-
-                    let from_module_id = &visit.module_id;
-
-                    for dep_edge in visit.dependencies {
-                        match dep_edge {
-                            MyDependence::Imported(dep) => {
-                                let to_module_id = ModuleId::new(&dep.path.clone());
-                                module_graph.get_or_add_module(&to_module_id);
-                                module_graph.add_dependency(
-                                    from_module_id,
-                                    &to_module_id,
-                                    dep.by.clone(),
-                                );
+                    let mut need_removed_module_id: Vec<ModuleId> = vec![];
+                    let mut added_deps: HashSet<Dependency> = HashSet::new();
+                    let mut remove_deps: HashSet<Dependency> = HashSet::new();
+                    let from_module_id = visit.module_id;
+                    {
+                        let mut module_graph_w = self.context.module_graph.write().unwrap();
+                        let module = module_graph_w.get_or_add_module(&from_module_id);
+                        module.add_info(visit.current.clone());
+                        let left_dependencies = module_graph_w.get_dependencies(&from_module_id);
+                        let visit = diff_visit(&left_dependencies, &visit.visit_results);
+                        added_deps.extend(visit.0);
+                        remove_deps.extend(visit.1);
+                        {
+                            for remove in &remove_deps {
+                                let mut to_module_id = None;
+                                for (to_id, dep) in &left_dependencies {
+                                    if **dep == *remove {
+                                        to_module_id = Some(*to_id);
+                                        break;
+                                    }
+                                }
+                                let to_module_id = to_module_id.unwrap();
+                                need_removed_module_id.push(to_module_id.clone());
+                                walk_result.removed.insert(to_module_id.clone());
                             }
-                            MyDependence::Externalized(dep) => {
+                        }
+                    }
+                    // 清理已经移除的依赖
+                    {
+                        let mut module_graph_w = self.context.module_graph.write().unwrap();
+                        for module_id in need_removed_module_id {
+                            module_graph_w.remove_dependency(&from_module_id, &module_id)?;
+                            module_graph_w.remove_module(&module_id);
+                        }
+                    }
+
+                    for dep_edge in &visit.visit_results {
+                        match dep_edge {
+                            VisitResult::Imported(dep) => {
                                 let to_module_id = ModuleId::new(&dep.path.clone());
 
+                                if added_deps.contains(&(dep.by.clone())) {
+                                    walk_result.added.insert(to_module_id.clone());
+                                }
+
+                                {
+                                    let mut module_graph_w =
+                                        self.context.module_graph.write().unwrap();
+                                    module_graph_w.get_or_add_module(&to_module_id);
+                                    module_graph_w.add_dependency(
+                                        &from_module_id,
+                                        &to_module_id,
+                                        dep.by.clone(),
+                                    );
+                                }
+                            }
+                            VisitResult::Externalized(dep) => {
+                                let to_module_id = ModuleId::new(&dep.path.clone());
                                 let mut module = Module::new(to_module_id.clone());
                                 module.add_info(crate::module::ModuleInfo {
                                     path: dep.path.clone(),
@@ -190,13 +238,16 @@ impl Compiler {
                                         &dep.external_name.clone(),
                                     ),
                                 });
-
-                                module_graph.add_module(module);
-                                module_graph.add_dependency(
-                                    from_module_id,
-                                    &to_module_id,
-                                    dep.by.clone(),
-                                )
+                                {
+                                    let mut module_graph_w =
+                                        self.context.module_graph.write().unwrap();
+                                    module_graph_w.add_module(module);
+                                    module_graph_w.add_dependency(
+                                        &from_module_id,
+                                        &to_module_id,
+                                        dep.by.clone(),
+                                    )
+                                }
                             }
                         }
                     }
@@ -207,6 +258,8 @@ impl Compiler {
                 _ => {}
             }
         }
+
+        Ok(walk_result)
     }
 
     pub(crate) fn visit_module(
@@ -251,12 +304,6 @@ impl Compiler {
             original_ast: transform_result.ast.clone(),
         };
 
-        {
-            // let mut module_graph_w = context.module_graph.write().unwrap();
-            // let module = module_graph_w.get_module_mut(&module_id).unwrap();
-            // module.add_info(info);
-        }
-
         // analyze deps
         let analyze_deps_param = crate::build::analyze_deps::AnalyzeDepsParam {
             path: path_str,
@@ -284,14 +331,14 @@ impl Compiler {
             if resolve_result.is_external {
                 let external_name = resolve_result.external_name.unwrap();
 
-                my_dependencies.push(MyDependence::Externalized(ExternalizedDependence {
+                my_dependencies.push(VisitResult::Externalized(ExternalizedDependence {
                     by: d.clone(),
                     path: resolve_result.path.clone(),
                     external_name: external_name.clone(),
                 }));
             } else {
                 debug!("put task in {}", resolve_result.path);
-                my_dependencies.push(MyDependence::Imported(ImportedDependence {
+                my_dependencies.push(VisitResult::Imported(ImportedDependence {
                     by: d.clone(),
                     path: resolve_result.path.clone(),
                     parent: module_id.clone(),
@@ -302,7 +349,37 @@ impl Compiler {
         ModuleVisit {
             module_id,
             current,
-            dependencies: my_dependencies,
+            visit_results: my_dependencies,
         }
     }
+}
+
+/**
+ * 对比两颗 dependency 的差别
+ */
+pub fn diff_visit(
+    current: &[(&ModuleId, &Dependency)],
+    visit_deps: &[VisitResult],
+) -> (HashSet<Dependency>, HashSet<Dependency>) {
+    let left: HashSet<&Dependency> = current.iter().map(|(_, dep)| *dep).collect();
+    let right: HashSet<&Dependency> = visit_deps
+        .iter()
+        .map(|dep| match dep {
+            VisitResult::Imported(dep) => &dep.by,
+            VisitResult::Externalized(dep) => &dep.by,
+        })
+        .collect();
+    let added = right
+        .difference(&left)
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .map(|dep| (**dep).clone())
+        .collect();
+    let removed = left
+        .difference(&right)
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .map(|dep| (**dep).clone())
+        .collect();
+    (added, removed)
 }

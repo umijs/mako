@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use std::fmt;
+use std::fmt::{self, Error};
 
 use petgraph::prelude::EdgeRef;
 use petgraph::visit::IntoEdgeReferences;
@@ -21,7 +21,7 @@ use crate::module::{Module, ModuleId};
  * 则代表：
  * a -> b
  */
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Dependency {
     pub source: String,
     pub resolve_type: ResolveType,
@@ -88,6 +88,14 @@ impl ModuleGraph {
         }
     }
 
+    pub fn replace_module(&mut self, module: Module) {
+        let i = self
+            .id_index_map
+            .get(&module.id)
+            .unwrap_or_else(|| panic!("module_id {:?} should in the module graph", module.id));
+        self.graph[*i] = module;
+    }
+
     pub fn remove_module(&mut self, module_id: &ModuleId) -> Module {
         let index = self
             .id_index_map
@@ -136,6 +144,47 @@ impl ModuleGraph {
         } else {
             None
         }
+    }
+
+    pub fn remove_dependency(&mut self, from: &ModuleId, to: &ModuleId) -> Result<(), Error> {
+        let from_index = self.id_index_map.get(from).ok_or_else(|| {
+            panic!(
+                r#"from node "{}" does not exist in the module graph when remove edge"#,
+                from.id
+            )
+        })?;
+
+        let to_index = self.id_index_map.get(to).ok_or_else(|| {
+            panic!(
+                r#"to node "{}" does not exist in the module graph when remove edge"#,
+                to.id
+            )
+        })?;
+
+        let edge = self
+            .graph
+            .find_edge(*from_index, *to_index)
+            .ok_or_else(|| {
+                panic!(
+                    r#"edge "{}" -> "{}" does not exist in the module graph when remove edge"#,
+                    from.id, to.id
+                )
+            })?;
+
+        self.graph.remove_edge(edge);
+
+        Result::Ok(())
+    }
+
+    pub fn has_dependency(&self, from: &ModuleId, to: &ModuleId) -> bool {
+        let from = self.id_index_map.get(from);
+        let to = self.id_index_map.get(to);
+
+        if from.is_none() || to.is_none() {
+            return false;
+        }
+
+        self.graph.find_edge(*from.unwrap(), *to.unwrap()).is_some()
     }
 
     pub fn get_dependencies(&self, module_id: &ModuleId) -> Vec<(&ModuleId, &Dependency)> {

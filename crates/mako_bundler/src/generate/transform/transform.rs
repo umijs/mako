@@ -216,10 +216,10 @@ fn wrap_css(id: &ModuleId, dep_map: &HashMap<String, String>, css: &str) -> Modu
         op: op!("="),
         left: PatOrExpr::Expr(Box::new(Expr::Member(MemberExpr {
             span: DUMMY_SP,
-            obj: Box::new(Expr::Ident(style_var.clone().into())),
+            obj: Box::new(Expr::Ident(style_var.clone())),
             prop: MemberProp::Ident(Ident::new("innerHTML".into(), DUMMY_SP)),
         }))),
-        right: Box::new(Expr::Ident(css_code_var.into())),
+        right: Box::new(Expr::Ident(css_code_var)),
     });
 
     // require(...)

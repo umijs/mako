@@ -6,6 +6,7 @@ use crate::{
     plugins::{copy::CopyPlugin, node_polyfill::NodePolyfillPlugin},
 };
 use compiler::Compiler;
+use std::fmt::Error;
 use std::sync::{Arc, Mutex};
 
 pub mod build;
@@ -19,6 +20,7 @@ pub mod module;
 pub mod module_graph;
 pub mod plugin;
 pub mod plugins;
+pub mod test_helper;
 pub mod utils;
 pub(crate) mod watch;
 
@@ -52,13 +54,15 @@ impl Bundler {
         Self { compiler }
     }
 
-    pub fn run(&mut self, watch: bool) {
-        self.compiler.run();
+    pub fn run(&mut self, watch: bool) -> Result<(), Error> {
+        self.compiler.run()?;
         println!("✅Done");
 
         if watch {
             let root = self.compiler.context.config.root.clone();
             start_watch(&root, &mut self.compiler);
         }
+
+        Ok(())
     }
 }

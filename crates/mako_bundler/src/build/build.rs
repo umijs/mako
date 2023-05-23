@@ -1,4 +1,5 @@
 use std::collections::{HashMap, VecDeque};
+use std::fmt::Error;
 use std::ops::ControlFlow;
 use std::sync::Arc;
 
@@ -44,10 +45,12 @@ enum BuildModuleGraphResult {
 }
 
 impl Compiler {
-    pub fn build(&mut self, _build_param: &'static BuildParam) {
-        self.build_module_graph(_build_param);
+    pub fn build(&mut self, _build_param: &'static BuildParam) -> Result<(), Error> {
+        self.build_module_graph(_build_param)?;
 
         self.grouping_chunks();
+
+        Ok(())
     }
 
     #[allow(dead_code)]

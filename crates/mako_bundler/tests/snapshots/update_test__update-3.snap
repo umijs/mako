@@ -1,0 +1,21 @@
+---
+source: crates/mako_bundler/tests/update_test.rs
+expression: "&result"
+---
+UpdateResult {
+    added: {
+        ModuleId {
+            id: "<CWD>/tests/fixtures/update/chunk-2.js",
+        },
+    },
+    removed: {
+        ModuleId {
+            id: "<CWD>/tests/fixtures/update/chunk-1.js",
+        },
+    },
+    changed: {
+        ModuleId {
+            id: "<CWD>/tests/fixtures/update/entry.js",
+        },
+    },
+}

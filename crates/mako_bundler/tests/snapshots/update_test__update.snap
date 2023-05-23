@@ -1,0 +1,7 @@
+---
+source: crates/mako_bundler/tests/update_test.rs
+expression: "&module_graph"
+---
+graph
+ nodes:["<CWD>/tests/fixtures/update/chunk-1.js", "<CWD>/tests/fixtures/update/entry.js"] 
+ references:["<CWD>/tests/fixtures/update/entry.js -> <CWD>/tests/fixtures/update/chunk-1.js"]

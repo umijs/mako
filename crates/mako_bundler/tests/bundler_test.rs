@@ -1,6 +1,6 @@
 use mako_bundler::{
-    build::build::BuildParam, compiler::Compiler, config::Config,
-    generate::generate::GenerateParam, plugin::plugin_driver::PluginDriver,
+    assert_debug_snapshot, assert_display_snapshot, build::build::BuildParam, compiler::Compiler,
+    config::Config, generate::generate::GenerateParam, plugin::plugin_driver::PluginDriver,
 };
 use tracing::debug;
 
@@ -67,7 +67,7 @@ fn test_files(name: String) -> (Vec<Vec<String>>, Compiler, String) {
     .unwrap();
     config.normalize();
     let mut compiler = Compiler::new(config, PluginDriver::new());
-    compiler.build(&BuildParam { files: None });
+    compiler.build(&BuildParam { files: None }).unwrap();
     let generate_result = compiler.generate(&GenerateParam { write: false });
     let output = generate_result
         .output_files
@@ -75,28 +75,4 @@ fn test_files(name: String) -> (Vec<Vec<String>>, Compiler, String) {
         .map(|f| f.__output)
         .collect::<Vec<Vec<String>>>();
     (output, compiler, cwd)
-}
-
-#[macro_export]
-macro_rules! assert_display_snapshot {
-    ($value:expr) => {{
-        let cwd = std::env::current_dir()
-            .unwrap()
-            .to_string_lossy()
-            .to_string();
-        let value = format!("{}", $value).replace(&cwd, "<CWD>");
-        insta::assert_snapshot!(insta::_macro_support::AutoName, value, stringify!($value));
-    }};
-}
-
-#[macro_export]
-macro_rules! assert_debug_snapshot {
-    ($value:expr) => {{
-        let cwd = std::env::current_dir()
-            .unwrap()
-            .to_string_lossy()
-            .to_string();
-        let value = format!("{:#?}", $value).replace(&cwd, "<CWD>");
-        insta::assert_snapshot!(insta::_macro_support::AutoName, value, stringify!($value));
-    }};
 }

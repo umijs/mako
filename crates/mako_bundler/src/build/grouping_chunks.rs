@@ -9,7 +9,7 @@ use std::rc::Rc;
 
 impl Compiler {
     // 通过 BFS 搜索从入口模块进入后的所有依赖，直到遇到 DynamicImport 为止，作为一个 chunk
-    // TODO: 后续可增加 common-chunk 算法等
+    // TODO: 后续可增加 common-chunk、split chunk 算法等，现在是有重复依赖的
     pub fn grouping_chunks(&mut self) {
         let visited = Rc::new(RefCell::new(HashSet::new()));
         let mut module_graph = self.context.module_graph.write().unwrap();

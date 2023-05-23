@@ -41,5 +41,5 @@ async fn main() {
     };
 
     let mut b = Bundler::new(config);
-    b.run(cli.watch);
+    b.run(cli.watch).unwrap();
 }

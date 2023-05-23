@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{fmt::Error, sync::Arc};
 
 use crate::{
     build::build::BuildParam, config::Config, context::Context, generate::generate::GenerateParam,
@@ -19,14 +19,13 @@ impl Compiler {
         }
     }
 
-    pub fn run(&mut self) {
-        self.build(&BuildParam { files: None });
+    pub fn run(&mut self) -> Result<(), Error> {
+        self.build(&BuildParam { files: None })?;
         self.generate(&GenerateParam { write: true });
+        Ok(())
     }
 
     pub fn before_rerun(&self) {
         self.context.chunk_graph.write().unwrap().clear();
     }
-
-    pub fn update() {}
 }
