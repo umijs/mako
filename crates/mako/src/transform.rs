@@ -134,6 +134,25 @@ var _foo = require("./foo");
     }
 
     #[test]
+    fn test_dynamic_import() {
+        let code = r#"
+const foo = import('./foo');
+        "#
+        .trim();
+        let (code, _) = transform_code(code, None);
+        println!(">> CODE\n{}", code);
+        assert_eq!(
+            code,
+            r#"
+const foo = Promise.resolve().then(function() {
+    return _interop_require_wildcard(require("./foo"));
+});
+        "#
+            .trim()
+        );
+    }
+
+    #[test]
     fn test_import_deps() {
         let code = r#"
 import React from 'react';

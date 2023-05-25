@@ -1,6 +1,6 @@
 use swc_css_ast::{ImportHref, UrlValue};
 use swc_css_visit::VisitWith as CSSVisitWith;
-use swc_ecma_ast::{CallExpr, Callee, Expr, Import, Lit, ModuleDecl};
+use swc_ecma_ast::{CallExpr, Callee, Decl, Expr, Import, Lit, ModuleDecl, ModuleItem, Stmt};
 use swc_ecma_visit::{Visit, VisitWith};
 
 use crate::module::{Dependency, ModuleAst, ResolveType};
@@ -12,6 +12,38 @@ pub fn analyze_deps(ast: &ModuleAst) -> Vec<Dependency> {
         _ => {
             vec![]
         }
+    }
+}
+
+pub fn add_swc_helper_deps(deps: &mut Vec<Dependency>, ast: &ModuleAst) {
+    match ast {
+        ModuleAst::Script(ast) => {
+            ast.body.iter().for_each(|stmt| {
+                // var x = require('x'); -> x
+                if let ModuleItem::Stmt(Stmt::Decl(Decl::Var(box decl))) = stmt {
+                    let x = &decl.decls[0].init.as_ref();
+                    if x.is_none() {
+                        return;
+                    }
+                    if let box Expr::Call(call_expr) = x.unwrap() {
+                        if is_commonjs_require(&call_expr) {
+                            if let Some(src) = get_first_arg_str(&call_expr) {
+                                if src.starts_with("@swc/helpers") {
+                                    deps.push(Dependency {
+                                        source: src,
+                                        resolve_type: ResolveType::Require,
+                                        // why 0?
+                                        // swc helpers are always inserted before other modules
+                                        order: 0 as usize,
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        _ => {}
     }
 }
 
@@ -38,7 +70,9 @@ impl DepCollectVisitor {
         Self {
             dependencies: vec![],
             dep_strs: vec![],
-            order: 0,
+            // start with 1
+            // 0 for swc helpers
+            order: 1,
         }
     }
     fn bind_dependency(&mut self, source: String, resolve_type: ResolveType) {
@@ -134,4 +168,33 @@ fn get_first_arg_str(call_expr: &CallExpr) -> Option<String> {
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::ast::build_js_ast;
+
+    use super::add_swc_helper_deps;
+
+    #[test]
+    fn test_add_swc_helper_deps() {
+        let (_cm, ast) = build_js_ast(
+            "test.js",
+            r#"
+var a = require("@swc/helpers/a");
+var b = require("foo");
+var c = require("@swc/helpers/b");
+        "#
+            .trim(),
+        );
+        let ast = crate::module::ModuleAst::Script(ast);
+        let mut deps = vec![];
+        add_swc_helper_deps(&mut deps, &ast);
+        let deps = deps
+            .iter()
+            .map(|dep| dep.source.as_str())
+            .collect::<Vec<_>>()
+            .join(",");
+        assert_eq!(deps, "@swc/helpers/a,@swc/helpers/b");
+    }
 }

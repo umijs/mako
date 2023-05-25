@@ -4,7 +4,7 @@ use tokio::sync::mpsc::error::TryRecvError;
 use tracing::info;
 
 use crate::{
-    analyze_deps::analyze_deps,
+    analyze_deps::{add_swc_helper_deps, analyze_deps},
     ast::build_js_ast,
     compiler::{Compiler, Context},
     load::load,
@@ -108,15 +108,18 @@ impl Compiler {
         // parse
         let (mut ast, cm) = parse(&content, &task.path);
 
+        // analyze deps
+        // transform 之后的 helper 怎么处理？比如 @swc/helpers/_/_interop_require_default
+        // 解法是在 transform 之后补一遍以 @swc/helpers 开头的 require 方法
+        let mut deps = analyze_deps(&ast);
+
         // transform
         transform(&mut ast, &cm);
 
-        // analyze deps
-        // TODO：怎么处理 transform helper 怎么处理？
-        // 两个方案，
-        // 1. analyze 时跑两边 ast，一遍是原始的，一遍是 transform 之后的
-        // 2. build 不处理 helper 模块，在 generate 阶段手动处理
-        let deps = analyze_deps(&ast);
+        // add @swc/helpers deps
+        add_swc_helper_deps(&mut deps, &ast);
+
+        // resolve
         let mut tasks = vec![];
         let mut deps_to_add = vec![];
         for dep in deps {
@@ -296,7 +299,6 @@ mod tests {
             })
             .collect();
         module_ids.sort_by_key(|module_id| module_id.to_string());
-        // module_graph.fmt();
         let mut references: Vec<(String, String)> = module_graph
             .graph
             .edge_references()
