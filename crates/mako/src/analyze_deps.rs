@@ -184,7 +184,7 @@ mod tests {
 var a = require("@swc/helpers/a");
 var b = require("foo");
 var c = require("@swc/helpers/b");
-        "#
+            "#
             .trim(),
         );
         let ast = crate::module::ModuleAst::Script(ast);
