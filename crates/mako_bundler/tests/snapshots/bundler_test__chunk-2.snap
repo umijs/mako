@@ -1,7 +1,0 @@
----
-source: crates/mako_bundler/tests/bundler_test.rs
-expression: chunk_graph
----
-graph
- nodes:["<CWD>/tests/fixtures/chunks/chunk-1.js", "<CWD>/tests/fixtures/chunks/chunk-2.js", "<CWD>/tests/fixtures/chunks/entry.js"] 
- references:["<CWD>/tests/fixtures/chunks/chunk-1.js -> <CWD>/tests/fixtures/chunks/chunk-2.js", "<CWD>/tests/fixtures/chunks/entry.js -> <CWD>/tests/fixtures/chunks/chunk-1.js"]

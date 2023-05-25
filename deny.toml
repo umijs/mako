@@ -9,13 +9,11 @@ targets = [
     { triple = "x86_64-unknown-linux-musl" },
 ]
 
-
 [advisories]
 vulnerability = "deny"
 unmaintained = "warn"
 yanked = "deny"
 ignore = []
-
 
 [bans]
 multiple-versions = "deny"
@@ -28,7 +26,6 @@ skip-tree = [
 	{ name = "syn" }, # tokio-macros and serde_derive use v2 syn
 	{ name = "base64" }, # swc_ecma_transforms_* use v0.13 base64
 ]
-
 
 [licenses]
 unlicensed = "allow"
