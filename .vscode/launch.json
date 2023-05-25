@@ -7,23 +7,9 @@
 		{
 			"type": "lldb",
 			"request": "launch",
-			"name": "Debug unit tests in library 'mako_bundler'",
-			"cargo": {
-				"args": ["test", "--no-run", "--lib", "--package=mako_bundler"],
-				"filter": {
-					"name": "mako_bundler",
-					"kind": "lib"
-				}
-			},
-			"args": [],
-			"cwd": "${workspaceFolder}"
-		},
-		{
-			"type": "lldb",
-			"request": "launch",
 			"name": "Debug executable 'mako'",
 			"cargo": {
-				"args": ["build", "--bin=mako", "--package=mako_cli"],
+				"args": ["build", "--bin=mako", "--package=mako"],
 				"filter": {
 					"name": "mako",
 					"kind": "bin"
@@ -37,7 +23,7 @@
 			"request": "launch",
 			"name": "Debug unit tests in executable 'mako'",
 			"cargo": {
-				"args": ["test", "--no-run", "--bin=mako", "--package=mako_cli"],
+				"args": ["test", "--no-run", "--bin=mako", "--package=mako"],
 				"filter": {
 					"name": "mako",
 					"kind": "bin"

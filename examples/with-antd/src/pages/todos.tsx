@@ -59,7 +59,10 @@ export function Todos() {
         {snap.list.map((todo) => {
           return (
             <div key={todo.id}>
-              <Checkbox checked={todo.done} onChange={() => actions.toggleChecked(todo.id)}>
+              <Checkbox
+                checked={todo.done}
+                onChange={() => actions.toggleChecked(todo.id)}
+              >
                 {todo.text}
               </Checkbox>
             </div>

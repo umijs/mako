@@ -1,0 +1,46 @@
+[package]
+name = "mako"
+version = "0.1.0"
+edition = "2021"
+repository = "https://github.com/umijs/mako"
+license = "MIT"
+
+[[bin]]
+name = "mako"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+swc_ecma_ast = { version = "0.104.3", features = ["rkyv-impl"] }
+swc_ecma_parser = { version = "0.134.5" }
+swc_common = { version = "0.31.10", features = ["concurrent", "sourcemap"] }
+swc_ecma_visit = { version = "0.90.3" }
+swc_ecma_codegen = { version = "0.139.7" }
+swc_ecma_transforms = { version = "0.218.9", features = [
+  "module",
+  "typescript",
+  "react",
+  "concurrent",
+] }
+swc_ecma_utils = { version = "0.117.5" }
+swc_atoms = { version = "0.5.6" }
+base64 = "0.21.0"
+petgraph = "0.6.3"
+md5 = "0.7.0"
+serde = { version = "1.0.163", features = ["derive"] }
+serde_json = "1.0.96"
+config = "0.13.3"
+nodejs-resolver = "0.0.78"
+lightningcss = "1.0.0-alpha.41"
+swc_css_ast = "0.137.10"
+swc_css_codegen = "0.147.11"
+swc_css_parser = "0.146.11"
+swc_css_visit = "0.136.10"
+rayon = "1.7.0"
+tracing = "0.1.37"
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
+notify = { version = "5.2.0", features = ["macos_kqueue"] }
+futures = "0.3.28"
+fs_extra = "1.3.0"
+glob = "0.3.1"
+clap = { version = "4.2.7", features = ["derive"] }

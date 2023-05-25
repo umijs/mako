@@ -3,8 +3,8 @@
     "enabled": true,
     "ignore": ["./examples/**/dist/*", "./.vscode/**", "node_modules/**"],
     "indentStyle": "space",
-    "lineWidth": 100,
-    "indentSize": 2
+    "indentSize": 2,
+    "lineWidth": 80
   },
   "javascript": {
     "formatter": {

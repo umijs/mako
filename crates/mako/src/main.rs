@@ -1,0 +1,68 @@
+#![feature(box_patterns)]
+
+use clap::Parser;
+use tracing::{debug, info};
+use tracing_subscriber::EnvFilter;
+
+mod analyze_deps;
+mod ast;
+mod bfs;
+mod build;
+mod chunk;
+mod chunk_graph;
+mod cli;
+mod compiler;
+mod config;
+mod config_node_polyfill;
+mod copy;
+mod generate;
+mod generate_chunks;
+mod group_chunk;
+mod load;
+mod module;
+mod module_graph;
+mod parse;
+mod resolve;
+mod transform;
+mod transform_dep_replacer;
+mod transform_env_replacer;
+mod transform_in_generate;
+mod watch;
+
+#[tokio::main]
+async fn main() {
+    // logger
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("mako=info")),
+        )
+        .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
+        .without_time()
+        .init();
+
+    // cli
+    let cli = cli::Cli::parse();
+    debug!(
+        "cli: watch = {}, root = {}",
+        cli.watch,
+        cli.root.to_str().unwrap()
+    );
+    let root = if cli.root.is_absolute() {
+        cli.root
+    } else {
+        std::env::current_dir().unwrap().join(cli.root)
+    };
+
+    // config
+    let config = config::Config::new(&root).unwrap();
+    debug!("config: {:?}", config);
+    if cli.watch {
+        config.watch(&root, || {
+            info!("config changed");
+        });
+    }
+
+    // compiler
+    let compiler = compiler::Compiler::new(config, root);
+    compiler.compile();
+}

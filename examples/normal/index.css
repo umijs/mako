@@ -1,10 +1,5 @@
-@import "./title.css";
+@import "./foo.css";
 
-#root {
-  margin: 20px;
-}
-
-.desc {
-  background: url('./assets/umi-logo.png') 100px no-repeat;
-  background-size: 20px 20px;
+h1 {
+    background: #000;
 }
