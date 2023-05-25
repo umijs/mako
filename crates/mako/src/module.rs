@@ -30,6 +30,9 @@ impl ModuleInfo {
     }
 }
 
+// TODO:
+// - id 不包含当前路径
+// - 支持 hash id
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct ModuleId {
     pub id: String,

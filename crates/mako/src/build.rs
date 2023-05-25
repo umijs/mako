@@ -35,7 +35,7 @@ impl Compiler {
     }
 
     // TODO:
-    // - support multiple entries
+    // - 处理出错（比如找不到模块）的情况，现在会直接挂起
     fn build_module_graph(&self) {
         info!("build module graph");
 
@@ -201,8 +201,6 @@ impl Compiler {
         Some(tasks)
     }
 
-    // TODO:
-    // - entry 支持从 config 里读取
     fn get_entries(&self) -> Option<Vec<std::path::PathBuf>> {
         let root = &self.context.root;
         let entry = &self.context.config.entry;

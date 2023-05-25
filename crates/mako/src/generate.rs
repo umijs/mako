@@ -38,6 +38,16 @@ impl Compiler {
         });
 
         // write assets
+        let assets_info = &(*self.context.assets_info.lock().unwrap());
+        for (k, v) in assets_info {
+            let asset_path = &self.context.root.join(k);
+            let asset_output_path = &config.output.path.join(v);
+            if asset_path.exists() {
+                fs::copy(asset_path, asset_output_path).unwrap();
+            } else {
+                panic!("asset not found: {}", asset_path.display());
+            }
+        }
 
         // copy
         self.copy();
