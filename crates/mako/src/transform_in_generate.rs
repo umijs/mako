@@ -304,6 +304,36 @@ g_define('test.css', function(module, exports, require) {
         );
     }
 
+    #[test]
+    fn test_transform_css_url() {
+        let code = r#"
+.foo { background: url("url.png"); }
+        "#
+        .trim();
+        let (code, _cm) = transform_css_code(
+            code,
+            None,
+            HashMap::from([("url.png".into(), "replace.png".into())]),
+        );
+        println!(">> CODE\n{}", code);
+        assert_eq!(
+            code,
+            r#"
+g_define('test.css', function(module, exports, require) {
+    require("replace.png");
+    let css = `.foo {
+  background: url("replace.png");
+}
+`;
+    let style = document.createElement('style');
+    style.innerHTML = css;
+    document.head.appendChild(style);
+});
+        "#
+            .trim()
+        );
+    }
+
     fn transform_js_code(
         origin: &str,
         path: Option<&str>,
