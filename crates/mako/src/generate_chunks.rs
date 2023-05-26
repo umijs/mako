@@ -83,13 +83,12 @@ impl Compiler {
                 // 暂时无需处理
 
                 // minify
-                let js_ast = minify_js(&js_ast, &js_cm);
+                let minify = matches!(self.context.config.mode, Mode::Production);
+                if minify {
+                    js_ast = minify_js(&js_ast, &js_cm);
+                }
 
-                let (js_code, js_sourcemap) = js_ast_to_code(
-                    &js_ast,
-                    &js_cm,
-                    matches!(self.context.config.mode, Mode::Production),
-                );
+                let (js_code, js_sourcemap) = js_ast_to_code(&js_ast, &js_cm, minify);
                 OutputFile {
                     path: chunk.filename(),
                     content: js_code,
