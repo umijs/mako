@@ -45,6 +45,6 @@ impl VisitMut for CssHandler {
             }
             None => {}
         };
-        n.visit_mut_children_with(self);
+        // n.visit_mut_children_with(self);
     }
 }

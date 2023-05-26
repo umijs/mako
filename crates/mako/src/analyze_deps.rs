@@ -146,7 +146,8 @@ impl swc_css_visit::Visit for DepCollectVisitor {
                 self.bind_dependency(src, ResolveType::Css);
             }
         }
-        n.visit_children_with(self);
+        // remove visit children since it is not used currently
+        // n.visit_children_with(self);
     }
 
     fn visit_url(&mut self, n: &Url) {
@@ -160,7 +161,7 @@ impl swc_css_visit::Visit for DepCollectVisitor {
             })
             .unwrap();
         self.bind_dependency(href_string, ResolveType::Css);
-        n.visit_children_with(self);
+        // n.visit_children_with(self);
     }
 }
 
