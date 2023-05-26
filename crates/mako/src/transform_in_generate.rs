@@ -92,6 +92,7 @@ fn transform_css(
     let content = content.replace("__CSS__", code);
     let require_code: Vec<String> = dep_map
         .values()
+        .filter(|val| val.ends_with(".css"))
         .map(|val| format!("require(\"{}\");", val))
         .collect();
     let content = format!("{}{}", require_code.join("\n"), content);
@@ -320,7 +321,6 @@ g_define('test.css', function(module, exports, require) {
             code,
             r#"
 g_define('test.css', function(module, exports, require) {
-    require("replace.png");
     let css = `.foo {
   background: url("replace.png");
 }
