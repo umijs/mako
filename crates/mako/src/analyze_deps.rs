@@ -1,4 +1,4 @@
-use swc_css_ast::{ImportHref, UrlValue};
+use swc_css_ast::{ImportHref, Url, UrlValue};
 use swc_css_visit::VisitWith as CSSVisitWith;
 use swc_ecma_ast::{CallExpr, Callee, Decl, Expr, Import, Lit, ModuleDecl, ModuleItem, Stmt};
 use swc_ecma_visit::{Visit, VisitWith};
@@ -146,6 +146,21 @@ impl swc_css_visit::Visit for DepCollectVisitor {
                 self.bind_dependency(src, ResolveType::Css);
             }
         }
+        n.visit_children_with(self);
+    }
+
+    fn visit_url(&mut self, n: &Url) {
+        // 检查 url()
+        let href_string = n
+            .value
+            .as_ref()
+            .map(|box value| match value {
+                UrlValue::Str(str) => str.value.to_string(),
+                UrlValue::Raw(raw) => raw.value.to_string(),
+            })
+            .unwrap();
+        self.bind_dependency(href_string, ResolveType::Css);
+        n.visit_children_with(self);
     }
 }
 

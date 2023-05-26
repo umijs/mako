@@ -65,9 +65,9 @@ fn transform_css(
     path: &str,
     dep_map: HashMap<String, String>,
 ) -> (Module, Lrc<SourceMap>) {
-    // remove @import
+    // remove @import and handle url()
     let mut dep_replacer = DepReplacer {
-        dep_map: Default::default(),
+        dep_map: dep_map.clone(),
     };
     ast.visit_mut_with(&mut dep_replacer);
 

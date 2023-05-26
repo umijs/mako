@@ -1,5 +1,6 @@
 @import "./foo.css";
 
 h1 {
-    background: #000;
+    background: url('./assets/person.svg') 200px no-repeat;
+    background-size: 20px 20px;
 }
