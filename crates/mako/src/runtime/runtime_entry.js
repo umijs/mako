@@ -255,6 +255,7 @@ function createRuntime(makoModules, entryModuleId) {
   };
 }
 
+// xian gou yi xia
 const modules = {};
 function g_define(moduleId, fn) {
   modules[moduleId] = fn;
@@ -263,4 +264,5 @@ const registerModules = function (fn) {
   fn();
 };
 registerModules(function () {});
+
 createRuntime(modules, 'main');
