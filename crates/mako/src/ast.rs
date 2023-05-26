@@ -156,18 +156,18 @@ pub fn test_ast() {
     // }
 
     // ast to code
-    let (code, sourcemap) = js_ast_to_code(&ast, &cm);
+    let (code, sourcemap) = js_ast_to_code(&ast, &cm, false);
     println!("code: \n\n{}", code);
     println!("source map: \n\n{}", sourcemap);
 }
 
-pub fn js_ast_to_code(ast: &Module, cm: &Lrc<SourceMap>) -> (String, String) {
+pub fn js_ast_to_code(ast: &Module, cm: &Lrc<SourceMap>, minify: bool) -> (String, String) {
     let mut buf = vec![];
     let mut source_map_buf = Vec::new();
     {
         let mut emitter = Emitter {
             cfg: JsCodegenConfig {
-                minify: true,
+                minify,
                 ..Default::default()
             },
             cm: cm.clone(),

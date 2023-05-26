@@ -186,7 +186,7 @@ var _react = _interop_require_default._(require("react"));
         };
         let (cm, mut ast) = build_js_ast(path, origin);
         transform_js(&mut ast, &cm);
-        let (code, _sourcemap) = js_ast_to_code(&ast, &cm);
+        let (code, _sourcemap) = js_ast_to_code(&ast, &cm, false);
         let code = code.replace("\"use strict\";", "");
         let code = code.trim().to_string();
         (code, _sourcemap)

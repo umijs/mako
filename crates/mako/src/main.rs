@@ -44,8 +44,9 @@ async fn main() {
     // cli
     let cli = cli::Cli::parse();
     debug!(
-        "cli: watch = {}, root = {}",
+        "cli: watch = {}, mode = {}, root = {}",
         cli.watch,
+        cli.mode,
         cli.root.to_str().unwrap()
     );
     let root = if cli.root.is_absolute() {
@@ -55,7 +56,8 @@ async fn main() {
     };
 
     // config
-    let config = config::Config::new(&root).unwrap();
+    let mut config = config::Config::new(&root).unwrap();
+    config.mode = cli.mode;
     debug!("config: {:?}", config);
     if cli.watch {
         config.watch(&root, || {

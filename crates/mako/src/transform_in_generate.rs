@@ -315,7 +315,7 @@ g_define('test.css', function(module, exports, require) {
         let (cm, mut ast) = build_js_ast(path, origin);
         let env_map = build_env_map(env_map);
         super::transform_js(&mut ast, "test", path, dep_map, env_map);
-        let (code, _sourcemap) = js_ast_to_code(&ast, &cm);
+        let (code, _sourcemap) = js_ast_to_code(&ast, &cm, false);
         // let code = code.replace("\"use strict\";", "");
         let code = code.trim().to_string();
         (code, _sourcemap)
@@ -333,7 +333,7 @@ g_define('test.css', function(module, exports, require) {
         };
         let (_cm, mut ast) = build_css_ast(path, content);
         let (ast, cm) = transform_css(&mut ast, "test.css", path, dep_map);
-        let (code, _sourcemap) = js_ast_to_code(&ast, &cm);
+        let (code, _sourcemap) = js_ast_to_code(&ast, &cm, false);
         let code = code.trim().to_string();
         (code, _sourcemap)
     }
