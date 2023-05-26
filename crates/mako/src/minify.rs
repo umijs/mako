@@ -13,15 +13,13 @@ use swc_ecma_visit::VisitMutWith;
 use swc_error_reporters::handler::try_with_handler;
 use tracing::info;
 
-pub fn minify_js(ast: &Module, cm: &Lrc<SourceMap>) -> Module {
+pub fn minify_js(mut ast: Module, cm: &Lrc<SourceMap>) -> Module {
     info!("minify");
     let globals = Globals::default();
     GLOBALS.set(&globals, || {
         try_with_handler(cm.clone(), Default::default(), |handler| {
             HELPERS.set(&Helpers::new(true), || {
                 HANDLER.set(handler, || {
-                    let mut ast = ast.clone();
-
                     let unresolved_mark = Mark::new();
                     let top_level_mark = Mark::new();
 

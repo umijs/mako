@@ -85,7 +85,7 @@ impl Compiler {
                 // minify
                 let minify = matches!(self.context.config.mode, Mode::Production);
                 if minify {
-                    js_ast = minify_js(&js_ast, &js_cm);
+                    js_ast = minify_js(js_ast, &js_cm);
                 }
 
                 let (js_code, js_sourcemap) = js_ast_to_code(&js_ast, &js_cm, minify);
