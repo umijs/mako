@@ -19,6 +19,7 @@ mod generate;
 mod generate_chunks;
 mod group_chunk;
 mod load;
+mod minify;
 mod module;
 mod module_graph;
 mod parse;

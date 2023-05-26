@@ -10,7 +10,7 @@ use swc_ecma_ast::{
     ModuleItem, Stmt, Str,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
-use swc_ecma_codegen::Emitter;
+use swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
 use swc_ecma_parser::lexer::Lexer;
 use swc_ecma_parser::{Parser, StringInput, Syntax, TsConfig};
 use swc_ecma_transforms::resolver;
@@ -166,7 +166,10 @@ pub fn js_ast_to_code(ast: &Module, cm: &Lrc<SourceMap>) -> (String, String) {
     let mut source_map_buf = Vec::new();
     {
         let mut emitter = Emitter {
-            cfg: Default::default(),
+            cfg: JsCodegenConfig {
+                minify: true,
+                ..Default::default()
+            },
             cm: cm.clone(),
             comments: None,
             wr: Box::new(JsWriter::new(
