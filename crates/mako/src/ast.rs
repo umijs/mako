@@ -69,7 +69,7 @@ pub fn build_css_ast(path: &str, content: &str) -> (Lrc<SourceMap>, Stylesheet) 
 #[allow(dead_code)]
 pub fn test_ast() {
     let path = "test.ts";
-    let content = include_str!("runtime/runtime_entry.ts");
+    let content = include_str!("runtime/runtime_entry.js");
 
     // code to parser
     let (cm, mut ast) = build_js_ast(path, content);
