@@ -4,6 +4,8 @@ use swc_ecma_ast::{Callee, Expr, ExprOrSpread, ExprStmt, ModuleItem, Stmt};
 use crate::{
     ast::{build_js_ast, js_ast_to_code},
     compiler::Compiler,
+    config::Mode,
+    minify::minify_js,
     module::ModuleAst,
 };
 
@@ -80,7 +82,13 @@ impl Compiler {
                 // TODO
                 // 暂时无需处理
 
-                let (js_code, js_sourcemap) = js_ast_to_code(&js_ast, &js_cm);
+                // minify
+                let minify = matches!(self.context.config.mode, Mode::Production);
+                if minify {
+                    js_ast = minify_js(js_ast, &js_cm);
+                }
+
+                let (js_code, js_sourcemap) = js_ast_to_code(&js_ast, &js_cm, minify);
                 OutputFile {
                     path: chunk.filename(),
                     content: js_code,

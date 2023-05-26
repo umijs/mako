@@ -1,5 +1,6 @@
 use std::{collections::HashMap, path::PathBuf};
 
+use clap::ValueEnum;
 use config;
 use futures::{channel::mpsc::channel, SinkExt, StreamExt};
 use notify::{
@@ -19,11 +20,26 @@ pub struct ResolveConfig {
     pub extensions: Vec<String>,
 }
 
+#[derive(Deserialize, Debug, ValueEnum, Clone)]
+pub enum Mode {
+    #[serde(rename = "development")]
+    Development,
+    #[serde(rename = "production")]
+    Production,
+}
+
+impl std::fmt::Display for Mode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.to_possible_value().unwrap().get_name().fmt(f)
+    }
+}
+
 #[derive(Deserialize, Debug)]
 pub struct Config {
     pub entry: HashMap<String, PathBuf>,
     pub output: OutputConfig,
     pub resolve: ResolveConfig,
+    pub mode: Mode,
     pub externals: HashMap<String, String>,
     pub copy: Vec<String>,
     pub data_url_limit: usize,
@@ -37,6 +53,7 @@ const DEFAULT_CONFIG: &str = r#"
     "entry": {},
     "output": { "path": "dist" },
     "resolve": { "alias": {}, "extensions": ["js", "jsx", "ts", "tsx"] },
+    "mode": "development",
     "externals": {},
     "copy": ["public"],
     "data_url_limit": 8192
