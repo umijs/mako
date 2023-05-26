@@ -13,7 +13,10 @@ use crate::ast::{build_js_ast, css_ast_to_code};
 use crate::compiler::Context;
 use crate::module::ModuleId;
 use crate::transform_env_replacer::EnvReplacer;
-use crate::{compiler::Compiler, module::ModuleAst, transform_dep_replacer::DepReplacer};
+use crate::{
+    compiler::Compiler, module::ModuleAst, transform_css_handler::CssHandler,
+    transform_dep_replacer::DepReplacer,
+};
 
 impl Compiler {
     pub fn transform_all(&self) {
@@ -66,10 +69,10 @@ fn transform_css(
     dep_map: HashMap<String, String>,
 ) -> (Module, Lrc<SourceMap>) {
     // remove @import and handle url()
-    let mut dep_replacer = DepReplacer {
+    let mut css_handler = CssHandler {
         dep_map: dep_map.clone(),
     };
-    ast.visit_mut_with(&mut dep_replacer);
+    ast.visit_mut_with(&mut css_handler);
 
     // ast to code
     let code = css_ast_to_code(ast);
