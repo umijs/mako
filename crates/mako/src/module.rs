@@ -1,13 +1,14 @@
+use std::fmt::{Debug, Formatter};
 use swc_common::{sync::Lrc, SourceMap};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Dependency {
     pub source: String,
     pub resolve_type: ResolveType,
     pub order: usize,
 }
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Clone)]
 pub enum ResolveType {
     Import,
     ExportNamed,
@@ -64,5 +65,11 @@ impl Module {
     #[allow(dead_code)]
     pub fn add_info(&mut self, info: Option<ModuleInfo>) {
         self.info = info;
+    }
+}
+
+impl Debug for Module {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Module id={}", self.id.id)
     }
 }
