@@ -250,7 +250,7 @@ mod tests {
         let (module_ids, references) = build("test/build/css");
         assert_eq!(
             module_ids.join(","),
-            "foo.css,index.css,index.ts".to_string()
+            "foo.css,index.css,index.ts,umi-logo.png".to_string()
         );
         assert_eq!(
             references
@@ -260,7 +260,7 @@ mod tests {
                 })
                 .collect::<Vec<String>>()
                 .join(","),
-            "index.css -> foo.css,index.ts -> index.css".to_string()
+            "index.css -> foo.css,index.css -> umi-logo.png,index.ts -> index.css".to_string()
         );
     }
 

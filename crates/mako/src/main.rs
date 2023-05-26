@@ -25,6 +25,7 @@ mod module_graph;
 mod parse;
 mod resolve;
 mod transform;
+mod transform_css_handler;
 mod transform_dep_replacer;
 mod transform_env_replacer;
 mod transform_in_generate;

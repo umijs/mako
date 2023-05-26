@@ -1,7 +1,4 @@
 use std::collections::HashMap;
-use swc_common::util::take::Take;
-use swc_css_ast::{AtRulePrelude, Rule, Stylesheet, Url, UrlValue};
-use swc_css_visit::{VisitMut as CssVisitMut, VisitMutWith as CssVisitMutWith};
 use swc_ecma_ast::{Expr, ExprOrSpread, Lit, Str};
 use swc_ecma_visit::{VisitMut, VisitMutWith};
 
@@ -25,63 +22,6 @@ impl VisitMut for DepReplacer {
             }
         }
         expr.visit_mut_children_with(self);
-    }
-}
-
-// TODO:
-// 应该改个名，叫 @import remover
-impl CssVisitMut for DepReplacer {
-    fn visit_mut_stylesheet(&mut self, n: &mut Stylesheet) {
-        n.rules = n
-            .rules
-            .take()
-            .into_iter()
-            .filter(|rule| match rule {
-                Rule::AtRule(at_rule) => {
-                    if let Some(box AtRulePrelude::ImportPrelude(_prelude)) = &at_rule.prelude {
-                        // let href_string = match &prelude.href {
-                        //   box ImportHref::Url(url) => {
-                        //     let href_string = url
-                        //       .value
-                        //       .as_ref()
-                        //       .map(|box value| match value {
-                        //         UrlValue::Str(str) => str.value.clone(),
-                        //         UrlValue::Raw(raw) => raw.value.clone(),
-                        //       })
-                        //       .unwrap_or_default();
-                        //     href_string
-                        //   }
-                        //   box ImportHref::Str(str) => str.value.clone(),
-                        // };
-                        false
-                    } else {
-                        true
-                    }
-                }
-                _ => true,
-            })
-            .collect();
-        n.visit_mut_children_with(self);
-    }
-
-    fn visit_mut_url(&mut self, n: &mut Url) {
-        // 检查 url 属性
-        match n.value {
-            Some(box UrlValue::Str(ref mut s)) => {
-                if let Some(replacement) = self.dep_map.get(&s.value.to_string()) {
-                    s.value = replacement.clone().into();
-                    s.raw = None;
-                }
-            }
-            Some(box UrlValue::Raw(ref mut s)) => {
-                if let Some(replacement) = self.dep_map.get(&s.value.to_string()) {
-                    s.value = replacement.clone().into();
-                    s.raw = None;
-                }
-            }
-            None => {}
-        };
-        n.visit_mut_children_with(self);
     }
 }
 
