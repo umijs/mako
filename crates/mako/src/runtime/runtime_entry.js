@@ -1,4 +1,4 @@
-export function createRuntime(makoModules, entryModuleId) {
+function createRuntime(makoModules, entryModuleId) {
   const modulesRegistry = {};
 
   function requireModule(moduleId) {
@@ -215,7 +215,7 @@ export function createRuntime(makoModules, entryModuleId) {
       }
       if (prev) return prev(event);
     };
-    // 可能不需要，有 timeout 属性了
+    // May not be needed, already has timeout attributes
     const timeout = setTimeout(
       onLoadEnd.bind(null, undefined, { type: 'timeout', target: script }),
       120000,
@@ -254,3 +254,15 @@ export function createRuntime(makoModules, entryModuleId) {
     _jsonpCallback: jsonpCallback,
   };
 }
+
+// xian gou yi xia
+const modules = {};
+function g_define(moduleId, fn) {
+  modules[moduleId] = fn;
+}
+const registerModules = function (fn) {
+  fn();
+};
+registerModules(function () {});
+
+createRuntime(modules, 'main');

@@ -1,5 +1,6 @@
 use rayon::prelude::*;
 use swc_ecma_ast::{Callee, Expr, ExprOrSpread, ExprStmt, ModuleItem, Stmt};
+use tracing::info;
 
 use crate::{
     ast::{build_js_ast, js_ast_to_code},
@@ -17,6 +18,7 @@ pub struct OutputFile {
 
 impl Compiler {
     pub fn generate_chunks(&self) -> Vec<OutputFile> {
+        info!("generate chunks");
         let module_graph = self.context.module_graph.read().unwrap();
         let chunk_graph = self.context.chunk_graph.read().unwrap();
 
@@ -46,7 +48,8 @@ impl Compiler {
                 });
 
                 // build js ast
-                let mut content = include_str!("runtime/runtime_entry.ts").to_string();
+                // TODO: support chunk, 目前只支持 entry
+                let mut content = include_str!("runtime/runtime_entry.js").to_string();
                 content = content.replace("main", chunk.id.id.as_str());
                 let (js_cm, mut js_ast) = build_js_ast("index.js", content.as_str());
                 for stmt in &mut js_ast.body {
