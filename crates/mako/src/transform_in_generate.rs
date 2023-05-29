@@ -13,6 +13,7 @@ use tracing::{debug, info};
 use crate::ast::{build_js_ast, css_ast_to_code};
 use crate::compiler::Context;
 use crate::module::ModuleId;
+use crate::transform_dynamic_import::DynamicImport;
 use crate::transform_env_replacer::EnvReplacer;
 use crate::{
     compiler::Compiler, module::ModuleAst, transform_css_handler::CssHandler,
@@ -135,6 +136,8 @@ fn transform_js(
     GLOBALS.set(&globals, || {
         let mut dep_replacer = DepReplacer { dep_map };
         ast.visit_mut_with(&mut dep_replacer);
+        let mut dynamic_import = DynamicImport {};
+        ast.visit_mut_with(&mut dynamic_import);
 
         let mut env_replacer = EnvReplacer::new(Lrc::new(env_map));
         ast.visit_mut_with(&mut env_replacer);

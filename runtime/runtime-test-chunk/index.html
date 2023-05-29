@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <script src="runtime.js"></script>
+    <script>
+      const modules = {
+        "entry": function (module, exports, require) {
+          const foo = require("foo");
+          console.log(`Hello ${foo}`);
+          console.log('test', require);
+          require.ensure(["bar"])
+            .then(require.bind(require, "bar"))
+            .then((bar) => {
+                console.log(`Hello ${bar}`);
+            });
+        },
+        "foo": function (module, exports, require) {
+          module.exports = "world";
+        },
+      };
+      const r = createRuntime(modules, "entry");
+      window.jsonpCallback = r._jsonpCallback;
+    </script>
+  </body>
+</html>

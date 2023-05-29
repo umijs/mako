@@ -175,8 +175,7 @@ function createRuntime(makoModules, entryModuleId) {
       });
       data[2] = promise;
       // TODO: support public path
-      // const url = `/${chunkId}.async.js`;
-      const url = chunksIdToUrlMap[chunkId];
+      const url = `/${chunkId}.async.js`;
       const error = new Error();
       const onLoadEnd = (event) => {
         data = installedChunks[chunkId];
@@ -217,7 +216,7 @@ function createRuntime(makoModules, entryModuleId) {
       }
       if (prev) return prev(event);
     };
-    // May not be needed, already has timeout attributes
+    // 可能不需要，有 timeout 属性了
     const timeout = setTimeout(
       onLoadEnd.bind(null, undefined, { type: 'timeout', target: script }),
       120000,
@@ -256,16 +255,3 @@ function createRuntime(makoModules, entryModuleId) {
     _jsonpCallback: jsonpCallback,
   };
 }
-
-// xian gou yi xia
-const modules = {};
-function g_define(moduleId, fn) {
-  modules[moduleId] = fn;
-}
-const registerModules = function (fn) {
-  fn();
-};
-registerModules(function () {});
-
-const runtime = createRuntime(modules, 'main');
-window.jsonpCallback = runtime._jsonpCallback;

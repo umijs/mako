@@ -1,5 +1,4 @@
 use std::fmt::{Debug, Formatter};
-use swc_common::{sync::Lrc, SourceMap};
 
 #[derive(Debug, Clone)]
 pub struct Dependency {
