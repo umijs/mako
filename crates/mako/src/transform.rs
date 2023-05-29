@@ -56,7 +56,7 @@ fn transform_js(ast: &mut Module, context: &Arc<Context>) {
                 Config {
                     import_interop: Some(import_interop),
                     // NOTE: 这里后面要调整为注入自定义require
-                    // ignore_dynamic: true,
+                    ignore_dynamic: true,
                     preserve_import_meta: true,
                     ..Default::default()
                 },
@@ -159,9 +159,7 @@ const foo = import('./foo');
         assert_eq!(
             code,
             r#"
-const foo = Promise.resolve().then(function() {
-    return _interop_require_wildcard(require("./foo"));
-});
+const foo = import('./foo');
         "#
             .trim()
         );

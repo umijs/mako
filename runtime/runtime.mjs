@@ -64,7 +64,8 @@ export function createRuntime(makoModules, entryModuleId) {
       }
       return require(request);
     };
-    // TODO: fn.ensure
+    // TODO: fn.ensure 需要确保依赖关系
+    fn.ensure = ensure;
     return fn;
   };
   const createModuleHotObject = (moduleId, me) => {
@@ -245,8 +246,8 @@ export function createRuntime(makoModules, entryModuleId) {
     }
   };
 
-  requireModule(entryModuleId);
   requireModule.ensure = ensure;
+  requireModule(entryModuleId);
 
   return {
     requireModule,

@@ -22,7 +22,23 @@ impl Compiler {
         let module_graph = self.context.module_graph.read().unwrap();
         let chunk_graph = self.context.chunk_graph.read().unwrap();
 
+        // TODO: remove this
         let chunks = chunk_graph.get_chunks();
+        let chunks_map_str: Vec<String> = chunks
+            .iter()
+            .map(|chunk| {
+                format!(
+                    "chunksIdToUrlMap[\"{}\"] = \"{}\";",
+                    chunk.id.id,
+                    chunk.filename()
+                )
+            })
+            .collect();
+        let chunks_map_str = format!(
+            "const chunksIdToUrlMap = {{}};\n{}",
+            chunks_map_str.join("\n")
+        );
+
         let output_files = chunks
             // TODO:
             // 由于任务划分不科学，rayon + par_iter 没啥效果
@@ -48,10 +64,17 @@ impl Compiler {
                 });
 
                 // build js ast
-                // TODO: support chunk, 目前只支持 entry
-                let mut content = include_str!("runtime/runtime_entry.js").to_string();
+                let mut content = if matches!(chunk.chunk_type, crate::chunk::ChunkType::Entry) {
+                    format!(
+                        "{}\n{}",
+                        chunks_map_str,
+                        include_str!("runtime/runtime_entry.js")
+                    )
+                } else {
+                    include_str!("runtime/runtime_chunk.js").to_string()
+                };
                 content = content.replace("main", chunk.id.id.as_str());
-                let mut js_ast = build_js_ast("index.js", content.as_str(), &self.context);
+                let mut js_ast = build_js_ast(&chunk.filename(), content.as_str(), &self.context);
                 for stmt in &mut js_ast.body {
                     if let ModuleItem::Stmt(Stmt::Expr(expr)) = stmt {
                         if let ExprStmt {
@@ -62,6 +85,7 @@ impl Compiler {
                             let is_register_modules =
                                 if let Callee::Expr(box Expr::Ident(ident)) = &call_expr.callee {
                                     ident.sym.to_string() == "registerModules"
+                                        || ident.sym.to_string() == "registerModulesForChunk"
                                 } else {
                                     false
                                 };
