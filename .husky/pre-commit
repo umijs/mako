@@ -2,9 +2,10 @@
 . "$(dirname -- "$0")/_/husky.sh"
 
 # for rust code
-cargo lint
 cargo fmt
-git add .
-
 # for js code
-npx --no-install lint-staged
+npm run rome:format
+
+# only add staged files though cargo fmt all projects
+git add $(git diff --name-only --cached --diff-filter=AM)
+

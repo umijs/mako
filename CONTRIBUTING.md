@@ -13,32 +13,49 @@ Compile.
 
 ```bash
 $ cargo build
+$ cargo build --release
 ```
 
 Run.
 
 ```bash
-$ cargo run --bin mako
+$ cargo run --bin mako examples/normal
+# filter logs
+$ RUST_LOG=mako=debug,info cargo run --bin mako examples/normal
+$ RUST_LOG=mako::parse=debug,info cargo run --bin mako examples/normal
+```
+
+Dev.
+
+```bash
+$ pnpm dev examples/normal
 ```
 
 Test.
 
 ```bash
 $ cargo test
-$ cargo t
 ```
-
 
 Format.
 
 ```bash
-	cargo fmt
+$ cargo fmt
 ```
 
 Lint.
 
 ```bash
-	cargo lint
+$ cargo lint
+```
+
+Benchmark with-antd example.
+
+```bash
+$ cargo build --release
+$ time ./target/release/mako examples/with-antd
+# or using hyperfine
+$ hyperfine --runs 10 "./target/release/mako examples/with-antd"
 ```
 
 ## Project Structure

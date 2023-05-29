@@ -5,4 +5,3 @@ members = [
 ]
 
 [workspace.dependencies]
-tokio = { version = "1" }

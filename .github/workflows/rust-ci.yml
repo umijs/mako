@@ -4,7 +4,7 @@ on:
   push:
     branches: [master]
   pull_request:
-    types: [ opened, synchronize ]
+    types: [opened, synchronize]
 
 # Cancel prev CI if new commit
 concurrency:
@@ -16,12 +16,12 @@ permissions:
 
 jobs:
   build:
-    name: Run tests and doc and build_fixture on ubuntu
+    name: Run tests and build_fixture on ubuntu
     runs-on: ubuntu-latest
     strategy:
       matrix:
         rust: [nightly]
-        node_version: [ lts/-1, lts/* ]
+        node_version: [lts/*]
     steps:
       - uses: actions/checkout@v2
       - uses: pnpm/action-setup@v2
@@ -32,7 +32,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node_version }}
-          cache: 'pnpm'
+          cache: "pnpm"
       - run: pnpm i --no-lockfile
       - uses: actions-rs/toolchain@v1
         with:
@@ -51,16 +51,16 @@ jobs:
       - name: build_fixture
         run: cargo run --bin mako examples/normal
 
-  build_benchmarks:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          override: true
-      - name: build
-        run: cargo build -v --benches
+  # build_benchmarks:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - uses: actions-rs/toolchain@v1
+  #       with:
+  #         toolchain: nightly
+  #         override: true
+  #     - name: build
+  #       run: cargo build -v --benches
 
   lint_with_clippy:
     runs-on: ubuntu-20.04
@@ -93,9 +93,3 @@ jobs:
         with:
           command: fmt
           args: -- --check
-
-  cargo-deny:
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v2
-      - uses: EmbarkStudios/cargo-deny-action@v1

@@ -1,2 +1,1 @@
-import { bar } from './bar';
-export const foo = bar;
+export const foo = 'foo';
