@@ -53,7 +53,7 @@ fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) {
         let ast = &mut info.ast;
         match ast {
             ModuleAst::Script(ast) => {
-                transform_js(ast, &module.id.id, &path, dep_map, env_map.clone(), context);
+                transform_js(ast, &module.id.id, dep_map, env_map.clone(), context);
             }
             ModuleAst::Css(ast) => {
                 let ast = transform_css(ast, &module.id.id, &path, dep_map, context);
@@ -104,7 +104,7 @@ fn transform_css(
     let mut ast = build_js_ast(path, content.as_str(), context);
 
     // wrap js module
-    wrap_js_module(&mut ast, id, path, context);
+    wrap_js_module(&mut ast, id, context);
 
     ast
 }
@@ -127,7 +127,6 @@ fn build_env_map(env_map: HashMap<String, String>) -> AHashMap<JsWord, Expr> {
 fn transform_js(
     ast: &mut swc_ecma_ast::Module,
     id: &str,
-    path: &str,
     dep_map: HashMap<String, String>,
     env_map: AHashMap<JsWord, Expr>,
     context: &Arc<Context>,
@@ -143,10 +142,10 @@ fn transform_js(
         ast.visit_mut_with(&mut env_replacer);
     });
 
-    wrap_js_module(ast, id, path, context);
+    wrap_js_module(ast, id, context);
 }
 
-fn wrap_js_module(ast: &mut Module, id: &str, path: &str, context: &Arc<Context>) {
+fn wrap_js_module(ast: &mut Module, id: &str, context: &Arc<Context>) {
     // 找到 call_expr 的第二个 fn 参数，将原来的 stmts 加入到新的 fn 的 body 中
     // 用字符串生成 ast 的方式是为了容易维护，因为走 ast 拼接的方式不易懂，同时前期修改可能比较频繁
     let origin_stmts: Vec<Stmt> = ast
@@ -155,7 +154,8 @@ fn wrap_js_module(ast: &mut Module, id: &str, path: &str, context: &Arc<Context>
         .map(|stmt| stmt.as_stmt().unwrap().clone())
         .collect();
     let content = include_str!("runtime/runtime_module.ts").replace("__ID__", id);
-    let mut new_ast = build_js_ast(path, content.as_str(), context);
+    // 不能使用 path, 因为会覆盖 cm 中记录的对应 path 的源码内容
+    let mut new_ast = build_js_ast("mako_internal_wrapper", content.as_str(), context);
     for stmt in &mut new_ast.body {
         if let ModuleItem::Stmt(Stmt::Expr(expr)) = stmt {
             if let ExprStmt {
@@ -372,9 +372,8 @@ g_define('test.css', function(module, exports, require) {
         });
         let mut ast = build_js_ast(path, origin, &context);
         let env_map = build_env_map(env_map);
-        super::transform_js(&mut ast, "test", path, dep_map, env_map, &context);
-        let (code, _sourcemap) =
-            js_ast_to_code(&ast, &context.meta.script.cm, &context, "index.js");
+        super::transform_js(&mut ast, "test", dep_map, env_map, &context);
+        let (code, _sourcemap) = js_ast_to_code(&ast, &context, "index.js");
         // let code = code.replace("\"use strict\";", "");
         let code = code.trim().to_string();
         (code, _sourcemap)
@@ -401,8 +400,7 @@ g_define('test.css', function(module, exports, require) {
         });
         let mut ast = build_css_ast(path, content, &context);
         let ast = transform_css(&mut ast, "test.css", path, dep_map, &context);
-        let (code, _sourcemap) =
-            js_ast_to_code(&ast, &context.meta.script.cm, &context, "index.js");
+        let (code, _sourcemap) = js_ast_to_code(&ast, &context, "index.js");
         let code = code.trim().to_string();
         (code, _sourcemap)
     }

@@ -25,6 +25,7 @@ use crate::chunk_graph::ChunkGraph;
 use crate::compiler::{Context, Meta};
 use crate::config::{Config, Mode};
 use crate::module_graph::ModuleGraph;
+use crate::sourcemap::build_source_map;
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -187,19 +188,15 @@ pub fn test_ast() {
     // }
 
     // ast to code
-    let (code, sourcemap) = js_ast_to_code(&ast, &context.meta.script.cm, &context, "index.js");
+    let (code, sourcemap) = js_ast_to_code(&ast, &context, "index.js");
     println!("code: \n\n{}", code);
     println!("source map: \n\n{}", sourcemap);
 }
 
-pub fn js_ast_to_code(
-    ast: &Module,
-    cm: &Lrc<SourceMap>,
-    context: &Arc<Context>,
-    filename: &str,
-) -> (String, String) {
+pub fn js_ast_to_code(ast: &Module, context: &Arc<Context>, filename: &str) -> (String, String) {
     let mut buf = vec![];
     let mut source_map_buf = Vec::new();
+    let cm = context.meta.script.cm.clone();
     {
         let mut emitter = Emitter {
             cfg: JsCodegenConfig {
@@ -225,10 +222,7 @@ pub fn js_ast_to_code(
         );
     }
     let code = String::from_utf8(buf).unwrap();
-    let mut src_buf = vec![];
-    cm.build_source_map(&mut source_map_buf)
-        .to_writer(&mut src_buf)
-        .unwrap();
+    let src_buf = build_source_map(&source_map_buf, cm);
     let sourcemap = String::from_utf8(src_buf).unwrap();
     (code, sourcemap)
 }

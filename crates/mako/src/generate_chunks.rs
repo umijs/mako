@@ -115,12 +115,7 @@ impl Compiler {
                 }
 
                 let filename = chunk.filename();
-                let (js_code, js_sourcemap) = js_ast_to_code(
-                    &js_ast,
-                    &self.context.meta.script.cm,
-                    &self.context,
-                    &filename,
-                );
+                let (js_code, js_sourcemap) = js_ast_to_code(&js_ast, &self.context, &filename);
                 OutputFile {
                     path: filename,
                     content: js_code,
