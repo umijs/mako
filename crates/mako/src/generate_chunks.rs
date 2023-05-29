@@ -74,7 +74,12 @@ impl Compiler {
                     include_str!("runtime/runtime_chunk.js").to_string()
                 };
                 content = content.replace("main", chunk.id.id.as_str());
-                let mut js_ast = build_js_ast(&chunk.filename(), content.as_str(), &self.context);
+                let file_name = if matches!(chunk.chunk_type, crate::chunk::ChunkType::Entry) {
+                    "mako_internal_runtime_entry.js"
+                } else {
+                    "mako_internal_runtime_chunk.js"
+                };
+                let mut js_ast = build_js_ast(file_name, content.as_str(), &self.context);
                 for stmt in &mut js_ast.body {
                     if let ModuleItem::Stmt(Stmt::Expr(expr)) = stmt {
                         if let ExprStmt {

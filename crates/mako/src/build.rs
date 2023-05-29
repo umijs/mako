@@ -107,8 +107,11 @@ impl Compiler {
                             let module = if is_external {
                                 let external = dep.1.as_ref().unwrap();
                                 let code = format!("module.exports = {};", external);
-                                let ast =
-                                    build_js_ast(&resolved_path, code.as_str(), &self.context);
+                                let ast = build_js_ast(
+                                    format!("external_{}", &resolved_path).as_str(),
+                                    code.as_str(),
+                                    &self.context,
+                                );
                                 Module::new(
                                     dep_module_id.clone(),
                                     false,

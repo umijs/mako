@@ -155,7 +155,7 @@ fn wrap_js_module(ast: &mut Module, id: &str, context: &Arc<Context>) {
         .collect();
     let content = include_str!("runtime/runtime_module.ts").replace("__ID__", id);
     // 不能使用 path, 因为会覆盖 cm 中记录的对应 path 的源码内容
-    let mut new_ast = build_js_ast("mako_internal_wrapper", content.as_str(), context);
+    let mut new_ast = build_js_ast("mako_internal_js_module_wrapper", content.as_str(), context);
     for stmt in &mut new_ast.body {
         if let ModuleItem::Stmt(Stmt::Expr(expr)) = stmt {
             if let ExprStmt {
