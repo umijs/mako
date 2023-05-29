@@ -107,13 +107,13 @@ impl Compiler {
                             let module = if is_external {
                                 let external = dep.1.as_ref().unwrap();
                                 let code = format!("module.exports = {};", external);
-                                let (cm, ast) = build_js_ast(&resolved_path, code.as_str());
+                                let ast =
+                                    build_js_ast(&resolved_path, code.as_str(), &self.context);
                                 Module::new(
                                     dep_module_id.clone(),
                                     false,
                                     Some(ModuleInfo {
                                         ast: ModuleAst::Script(ast),
-                                        cm: Some(cm),
                                         path: resolved_path,
                                         external: Some(external.to_string()),
                                     }),
@@ -160,7 +160,7 @@ impl Compiler {
         let content = load(&task.path, &context);
 
         // parse
-        let (mut ast, cm) = parse(&content, &task.path);
+        let mut ast = parse(&content, &task.path, &context);
 
         // analyze deps
         // transform 之后的 helper 怎么处理？比如 @swc/helpers/_/_interop_require_default
@@ -168,7 +168,7 @@ impl Compiler {
         let mut deps = analyze_deps(&ast);
 
         // transform
-        transform(&mut ast, &cm);
+        transform(&mut ast, &context);
 
         // add @swc/helpers deps
         add_swc_helper_deps(&mut deps, &ast);
@@ -184,7 +184,6 @@ impl Compiler {
 
         let info = ModuleInfo {
             ast,
-            cm: Some(cm),
             path: task.path.clone(),
             external: None,
         };

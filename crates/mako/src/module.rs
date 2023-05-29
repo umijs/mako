@@ -20,7 +20,6 @@ pub enum ResolveType {
 
 pub struct ModuleInfo {
     pub ast: ModuleAst,
-    pub cm: Option<Lrc<SourceMap>>,
     pub path: String,
     pub external: Option<String>,
 }

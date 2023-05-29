@@ -35,6 +35,9 @@ impl Compiler {
         output_files.iter().for_each(|file| {
             let output = &config.output.path.join(&file.path);
             fs::write(output, &file.content).unwrap();
+            if self.context.config.sourcemap {
+                fs::write(format!("{}.map", output.display()), &file.sourcemap).unwrap();
+            }
         });
 
         // write assets

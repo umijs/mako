@@ -3,6 +3,7 @@ use std::{
     path::PathBuf,
     sync::{Arc, Mutex, RwLock},
 };
+use swc_common::{sync::Lrc, SourceMap};
 
 use crate::{chunk_graph::ChunkGraph, config::Config, module_graph::ModuleGraph};
 
@@ -12,6 +13,45 @@ pub struct Context {
     pub assets_info: Mutex<HashMap<String, String>>,
     pub config: Config,
     pub root: PathBuf,
+    pub meta: Meta,
+}
+
+pub struct Meta {
+    pub script: ScriptMeta,
+    pub css: CssMeta,
+}
+
+impl Meta {
+    pub fn new() -> Self {
+        Self {
+            script: ScriptMeta::new(),
+            css: CssMeta::new(),
+        }
+    }
+}
+
+pub struct ScriptMeta {
+    pub cm: Lrc<SourceMap>,
+}
+
+impl ScriptMeta {
+    fn new() -> Self {
+        Self {
+            cm: Default::default(),
+        }
+    }
+}
+
+pub struct CssMeta {
+    pub cm: Lrc<SourceMap>,
+}
+
+impl CssMeta {
+    fn new() -> Self {
+        Self {
+            cm: Default::default(),
+        }
+    }
 }
 
 impl Context {
@@ -36,6 +76,7 @@ impl Compiler {
                 module_graph: RwLock::new(ModuleGraph::new()),
                 chunk_graph: RwLock::new(ChunkGraph::new()),
                 assets_info: Mutex::new(HashMap::new()),
+                meta: Meta::new(),
             }),
         }
     }

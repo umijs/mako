@@ -188,13 +188,26 @@ fn get_first_arg_str(call_expr: &CallExpr) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::build_js_ast;
+    use std::{
+        collections::HashMap,
+        path::PathBuf,
+        sync::{Arc, Mutex, RwLock},
+    };
+
+    use crate::{
+        ast::build_js_ast,
+        chunk_graph::ChunkGraph,
+        compiler::{Context, Meta},
+        config::Config,
+        module_graph::ModuleGraph,
+    };
 
     use super::add_swc_helper_deps;
 
     #[test]
     fn test_add_swc_helper_deps() {
-        let (_cm, ast) = build_js_ast(
+        let root = PathBuf::from("/path/to/root");
+        let ast = build_js_ast(
             "test.js",
             r#"
 var a = require("@swc/helpers/a");
@@ -202,6 +215,14 @@ var b = require("foo");
 var c = require("@swc/helpers/b");
             "#
             .trim(),
+            &Arc::new(Context {
+                config: Config::new(&root).unwrap(),
+                root,
+                module_graph: RwLock::new(ModuleGraph::new()),
+                chunk_graph: RwLock::new(ChunkGraph::new()),
+                assets_info: Mutex::new(HashMap::new()),
+                meta: Meta::new(),
+            }),
         );
         let ast = crate::module::ModuleAst::Script(ast);
         let mut deps = vec![];

@@ -40,6 +40,7 @@ pub struct Config {
     pub output: OutputConfig,
     pub resolve: ResolveConfig,
     pub mode: Mode,
+    pub sourcemap: bool,
     pub externals: HashMap<String, String>,
     pub copy: Vec<String>,
     pub data_url_limit: usize,
@@ -54,6 +55,7 @@ const DEFAULT_CONFIG: &str = r#"
     "output": { "path": "dist" },
     "resolve": { "alias": {}, "extensions": ["js", "jsx", "ts", "tsx"] },
     "mode": "development",
+    "sourcemap": false,
     "externals": {},
     "copy": ["public"],
     "data_url_limit": 8192

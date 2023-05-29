@@ -1084,6 +1084,7 @@ dependencies = [
  "md5",
  "nodejs-resolver",
  "notify",
+ "pathdiff",
  "petgraph",
  "rayon",
  "serde",
