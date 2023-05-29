@@ -3,3 +3,4 @@
 /examples/*/node_modules
 /node_modules
 /flamegraph.svg
+.DS_Store
