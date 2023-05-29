@@ -1,3 +1,7 @@
+use pathdiff::diff_paths;
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex, RwLock};
 use swc_common::comments::NoopComments;
 use swc_common::sync::Lrc;
 use swc_common::{FileName, Globals, Mark, SourceMap, DUMMY_SP, GLOBALS};
@@ -17,6 +21,11 @@ use swc_ecma_transforms::resolver;
 use swc_ecma_transforms::typescript::strip_with_jsx;
 use swc_ecma_visit::VisitMutWith;
 
+use crate::chunk_graph::ChunkGraph;
+use crate::compiler::{Context, Meta};
+use crate::config::{Config, Mode};
+use crate::module_graph::ModuleGraph;
+
 #[derive(Debug)]
 #[allow(dead_code)]
 struct ParseError {
@@ -24,9 +33,15 @@ struct ParseError {
     source: String,
 }
 
-pub fn build_js_ast(path: &str, content: &str) -> (Lrc<SourceMap>, Module) {
-    let cm: Lrc<SourceMap> = Default::default();
-    let fm = cm.new_source_file(FileName::Custom(path.to_string()), content.to_string());
+pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Module {
+    let absolute_path = PathBuf::from(path);
+    let relative_path =
+        diff_paths(&absolute_path, &context.config.output.path).unwrap_or_else(|| absolute_path);
+    let fm = context
+        .meta
+        .script
+        .cm
+        .new_source_file(FileName::Real(relative_path), content.to_string());
     let syntax = Syntax::Typescript(TsConfig {
         decorators: true,
         tsx: path.ends_with(".tsx") || path.ends_with(".jsx"),
@@ -41,29 +56,35 @@ pub fn build_js_ast(path: &str, content: &str) -> (Lrc<SourceMap>, Module) {
     let mut parser = Parser::new_from(lexer);
 
     // parse to ast
-    let ast = parser.parse_module().map_err(|e| ParseError {
-        resolved_path: path.to_string(),
-        source: format!("{:?}", e),
-    });
-    let ast = ast.unwrap();
-    (cm, ast)
+    parser
+        .parse_module()
+        .map_err(|e| ParseError {
+            resolved_path: path.to_string(),
+            source: format!("{:?}", e),
+        })
+        .unwrap()
 }
 
-pub fn build_css_ast(path: &str, content: &str) -> (Lrc<SourceMap>, Stylesheet) {
-    let cm: Lrc<SourceMap> = Default::default();
-    let fm = cm.new_source_file(FileName::Custom(path.to_string()), content.to_string());
+pub fn build_css_ast(path: &str, content: &str, context: &Arc<Context>) -> Stylesheet {
+    let absolute_path = PathBuf::from(path);
+    let relative_path =
+        diff_paths(&absolute_path, &context.config.output.path).unwrap_or_else(|| absolute_path);
+    let fm = context
+        .meta
+        .css
+        .cm
+        .new_source_file(FileName::Real(relative_path), content.to_string());
     let config = ParserConfig {
         ..Default::default()
     };
     let lexer = swc_css_parser::lexer::Lexer::new(StringInput::from(&*fm), config);
     let mut parser = swc_css_parser::parser::Parser::new(lexer, config);
-    let stylesheet = parser
+    parser
         .parse_all()
         .map_err(|_e| {
             // e.into_diagnostic(&parser.handler).emit();
         })
-        .unwrap();
-    (cm, stylesheet)
+        .unwrap()
 }
 
 #[allow(dead_code)]
@@ -71,8 +92,18 @@ pub fn test_ast() {
     let path = "test.ts";
     let content = include_str!("runtime/runtime_entry.js");
 
+    let root = PathBuf::from("/path/to/root");
+    let context = Arc::new(Context {
+        config: Config::new(&root).unwrap(),
+        root,
+        module_graph: RwLock::new(ModuleGraph::new()),
+        chunk_graph: RwLock::new(ChunkGraph::new()),
+        assets_info: Mutex::new(HashMap::new()),
+        meta: Meta::new(),
+    });
+
     // code to parser
-    let (cm, mut ast) = build_js_ast(path, content);
+    let mut ast = build_js_ast(path, content, &context);
 
     // transform
     let globals = Globals::default();
@@ -81,7 +112,7 @@ pub fn test_ast() {
         let unresolved_mark = Mark::new();
         ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
         ast.visit_mut_with(&mut strip_with_jsx(
-            cm.clone(),
+            context.meta.script.cm.clone(),
             Default::default(),
             NoopComments,
             top_level_mark,
@@ -156,18 +187,23 @@ pub fn test_ast() {
     // }
 
     // ast to code
-    let (code, sourcemap) = js_ast_to_code(&ast, &cm, false);
+    let (code, sourcemap) = js_ast_to_code(&ast, &context.meta.script.cm, &context, "index.js");
     println!("code: \n\n{}", code);
     println!("source map: \n\n{}", sourcemap);
 }
 
-pub fn js_ast_to_code(ast: &Module, cm: &Lrc<SourceMap>, minify: bool) -> (String, String) {
+pub fn js_ast_to_code(
+    ast: &Module,
+    cm: &Lrc<SourceMap>,
+    context: &Arc<Context>,
+    filename: &str,
+) -> (String, String) {
     let mut buf = vec![];
     let mut source_map_buf = Vec::new();
     {
         let mut emitter = Emitter {
             cfg: JsCodegenConfig {
-                minify,
+                minify: matches!(context.config.mode, Mode::Production),
                 ..Default::default()
             },
             cm: cm.clone(),
@@ -180,6 +216,13 @@ pub fn js_ast_to_code(ast: &Module, cm: &Lrc<SourceMap>, minify: bool) -> (Strin
             )),
         };
         emitter.emit_module(&ast).unwrap();
+    }
+    if context.config.sourcemap {
+        buf.append(
+            &mut format!("\n//# sourceMappingURL={filename}.map")
+                .as_bytes()
+                .to_vec(),
+        );
     }
     let code = String::from_utf8(buf).unwrap();
     let mut src_buf = vec![];
@@ -197,15 +240,3 @@ pub fn css_ast_to_code(ast: &Stylesheet) -> String {
     gen.emit(&ast).unwrap();
     css_code
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::build_js_ast;
-
-//     #[test]
-//     fn test_build_js_ast() {
-//         let path = "/Users/chencheng/Documents/Code/test/mako-next/node_modules/.pnpm/axios@1.3.6/node_modules/axios/dist/browser/axios.cjs";
-//         let content = include_str!("/Users/chencheng/Documents/Code/test/mako-next/node_modules/.pnpm/axios@1.3.6/node_modules/axios/dist/browser/axios.cjs");
-//         build_js_ast(path, content);
-//     }
-// }

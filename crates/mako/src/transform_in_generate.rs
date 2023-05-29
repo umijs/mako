@@ -1,9 +1,10 @@
 use lightningcss::stylesheet::{MinifyOptions, ParserOptions, PrinterOptions, StyleSheet};
 use std::collections::HashMap;
+use std::sync::Arc;
 use swc_atoms::JsWord;
 use swc_common::collections::AHashMap;
 use swc_common::sync::Lrc;
-use swc_common::{Globals, SourceMap, DUMMY_SP, GLOBALS};
+use swc_common::{Globals, DUMMY_SP, GLOBALS};
 use swc_css_visit::VisitMutWith as CssVisitMutWith;
 use swc_ecma_ast::{Expr, ExprOrSpread, ExprStmt, Lit, Module, ModuleItem, Stmt, Str};
 use swc_ecma_visit::VisitMutWith;
@@ -30,7 +31,7 @@ impl Compiler {
     }
 }
 
-fn transform_modules(module_ids: Vec<ModuleId>, context: &Context) {
+fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) {
     // build env map
     let env_map = build_env_map(HashMap::from([("NODE_ENV".into(), "production".into())]));
 
@@ -51,10 +52,10 @@ fn transform_modules(module_ids: Vec<ModuleId>, context: &Context) {
         let ast = &mut info.ast;
         match ast {
             ModuleAst::Script(ast) => {
-                transform_js(ast, &module.id.id, &path, dep_map, env_map.clone());
+                transform_js(ast, &module.id.id, &path, dep_map, env_map.clone(), context);
             }
             ModuleAst::Css(ast) => {
-                let (ast, _cm) = transform_css(ast, &module.id.id, &path, dep_map);
+                let ast = transform_css(ast, &module.id.id, &path, dep_map, context);
                 info.set_ast(ModuleAst::Script(ast));
             }
             ModuleAst::None => {}
@@ -67,7 +68,8 @@ fn transform_css(
     id: &str,
     path: &str,
     dep_map: HashMap<String, String>,
-) -> (Module, Lrc<SourceMap>) {
+    context: &Arc<Context>,
+) -> Module {
     // remove @import and handle url()
     let mut css_handler = CssHandler {
         dep_map: dep_map.clone(),
@@ -98,12 +100,12 @@ fn transform_css(
     let content = format!("{}{}", require_code.join("\n"), content);
     let path = format!("{}.ts", path);
     let path = path.as_str();
-    let (cm, mut ast) = build_js_ast(path, content.as_str());
+    let mut ast = build_js_ast(path, content.as_str(), context);
 
     // wrap js module
-    wrap_js_module(&mut ast, id, path);
+    wrap_js_module(&mut ast, id, path, context);
 
-    (ast, cm)
+    ast
 }
 
 fn build_env_map(env_map: HashMap<String, String>) -> AHashMap<JsWord, Expr> {
@@ -127,6 +129,7 @@ fn transform_js(
     path: &str,
     dep_map: HashMap<String, String>,
     env_map: AHashMap<JsWord, Expr>,
+    context: &Arc<Context>,
 ) {
     let globals = Globals::default();
     GLOBALS.set(&globals, || {
@@ -137,10 +140,10 @@ fn transform_js(
         ast.visit_mut_with(&mut env_replacer);
     });
 
-    wrap_js_module(ast, id, path);
+    wrap_js_module(ast, id, path, context);
 }
 
-fn wrap_js_module(ast: &mut Module, id: &str, path: &str) {
+fn wrap_js_module(ast: &mut Module, id: &str, path: &str, context: &Arc<Context>) {
     // 找到 call_expr 的第二个 fn 参数，将原来的 stmts 加入到新的 fn 的 body 中
     // 用字符串生成 ast 的方式是为了容易维护，因为走 ast 拼接的方式不易懂，同时前期修改可能比较频繁
     let origin_stmts: Vec<Stmt> = ast
@@ -149,7 +152,7 @@ fn wrap_js_module(ast: &mut Module, id: &str, path: &str) {
         .map(|stmt| stmt.as_stmt().unwrap().clone())
         .collect();
     let content = include_str!("runtime/runtime_module.ts").replace("__ID__", id);
-    let (_cm, mut new_ast) = build_js_ast(path, content.as_str());
+    let mut new_ast = build_js_ast(path, content.as_str(), context);
     for stmt in &mut new_ast.body {
         if let ModuleItem::Stmt(Stmt::Expr(expr)) = stmt {
             if let ExprStmt {
@@ -178,9 +181,19 @@ fn wrap_js_module(ast: &mut Module, id: &str, path: &str) {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::{
+        collections::HashMap,
+        path::PathBuf,
+        sync::{Arc, Mutex, RwLock},
+    };
 
-    use crate::ast::{build_css_ast, build_js_ast, js_ast_to_code};
+    use crate::{
+        ast::{build_css_ast, build_js_ast, js_ast_to_code},
+        chunk_graph::ChunkGraph,
+        compiler::{Context, Meta},
+        config::Config,
+        module_graph::ModuleGraph,
+    };
 
     use super::{build_env_map, transform_css};
 
@@ -345,10 +358,20 @@ g_define('test.css', function(module, exports, require) {
         } else {
             path.unwrap()
         };
-        let (cm, mut ast) = build_js_ast(path, origin);
+        let root = PathBuf::from("/path/to/root");
+        let context = Arc::new(Context {
+            config: Config::new(&root).unwrap(),
+            root,
+            module_graph: RwLock::new(ModuleGraph::new()),
+            chunk_graph: RwLock::new(ChunkGraph::new()),
+            assets_info: Mutex::new(HashMap::new()),
+            meta: Meta::new(),
+        });
+        let mut ast = build_js_ast(path, origin, &context);
         let env_map = build_env_map(env_map);
-        super::transform_js(&mut ast, "test", path, dep_map, env_map);
-        let (code, _sourcemap) = js_ast_to_code(&ast, &cm, false);
+        super::transform_js(&mut ast, "test", path, dep_map, env_map, &context);
+        let (code, _sourcemap) =
+            js_ast_to_code(&ast, &context.meta.script.cm, &context, "index.js");
         // let code = code.replace("\"use strict\";", "");
         let code = code.trim().to_string();
         (code, _sourcemap)
@@ -364,9 +387,19 @@ g_define('test.css', function(module, exports, require) {
         } else {
             path.unwrap()
         };
-        let (_cm, mut ast) = build_css_ast(path, content);
-        let (ast, cm) = transform_css(&mut ast, "test.css", path, dep_map);
-        let (code, _sourcemap) = js_ast_to_code(&ast, &cm, false);
+        let root = PathBuf::from("/path/to/root");
+        let context = Arc::new(Context {
+            config: Config::new(&root).unwrap(),
+            root,
+            module_graph: RwLock::new(ModuleGraph::new()),
+            chunk_graph: RwLock::new(ChunkGraph::new()),
+            assets_info: Mutex::new(HashMap::new()),
+            meta: Meta::new(),
+        });
+        let mut ast = build_css_ast(path, content, &context);
+        let ast = transform_css(&mut ast, "test.css", path, dep_map, &context);
+        let (code, _sourcemap) =
+            js_ast_to_code(&ast, &context.meta.script.cm, &context, "index.js");
         let code = code.trim().to_string();
         (code, _sourcemap)
     }

@@ -51,7 +51,7 @@ impl Compiler {
                 // TODO: support chunk, 目前只支持 entry
                 let mut content = include_str!("runtime/runtime_entry.js").to_string();
                 content = content.replace("main", chunk.id.id.as_str());
-                let (js_cm, mut js_ast) = build_js_ast("index.js", content.as_str());
+                let mut js_ast = build_js_ast("index.js", content.as_str(), &self.context);
                 for stmt in &mut js_ast.body {
                     if let ModuleItem::Stmt(Stmt::Expr(expr)) = stmt {
                         if let ExprStmt {
@@ -86,14 +86,19 @@ impl Compiler {
                 // 暂时无需处理
 
                 // minify
-                let minify = matches!(self.context.config.mode, Mode::Production);
-                if minify {
-                    js_ast = minify_js(js_ast, &js_cm);
+                if matches!(self.context.config.mode, Mode::Production) {
+                    js_ast = minify_js(js_ast, &self.context.meta.script.cm);
                 }
 
-                let (js_code, js_sourcemap) = js_ast_to_code(&js_ast, &js_cm, minify);
+                let filename = chunk.filename();
+                let (js_code, js_sourcemap) = js_ast_to_code(
+                    &js_ast,
+                    &self.context.meta.script.cm,
+                    &self.context,
+                    &filename,
+                );
                 OutputFile {
-                    path: chunk.filename(),
+                    path: filename,
                     content: js_code,
                     sourcemap: js_sourcemap,
                 }

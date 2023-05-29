@@ -1,6 +1,7 @@
+use std::sync::Arc;
 use swc_common::comments::{NoopComments, SingleThreadedComments};
-use swc_common::{sync::Lrc, Globals};
-use swc_common::{Mark, SourceMap, GLOBALS};
+use swc_common::Globals;
+use swc_common::{Mark, GLOBALS};
 use swc_ecma_ast::Module;
 use swc_ecma_transforms::feature::FeatureFlag;
 use swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
@@ -13,18 +14,20 @@ use swc_ecma_transforms::typescript::strip_with_jsx;
 use swc_ecma_transforms::{fixer, resolver};
 use swc_ecma_visit::VisitMutWith;
 
+use crate::compiler::Context;
 use crate::module::ModuleAst;
 
-pub fn transform(ast: &mut ModuleAst, cm: &Lrc<SourceMap>) {
+pub fn transform(ast: &mut ModuleAst, context: &Arc<Context>) {
     match ast {
-        ModuleAst::Script(ast) => transform_js(ast, cm),
+        ModuleAst::Script(ast) => transform_js(ast, context),
         _ => {}
     }
 }
 
 // TODO:
 // polyfill and targets
-fn transform_js(ast: &mut Module, cm: &Lrc<SourceMap>) {
+fn transform_js(ast: &mut Module, context: &Arc<Context>) {
+    let cm = context.meta.script.cm.clone();
     let globals = Globals::default();
     GLOBALS.set(&globals, || {
         let helpers = Helpers::new(true);
@@ -61,7 +64,7 @@ fn transform_js(ast: &mut Module, cm: &Lrc<SourceMap>) {
                 None,
             ));
             ast.visit_mut_with(&mut strip_with_jsx(
-                cm.clone(),
+                cm,
                 Default::default(),
                 NoopComments,
                 top_level_mark,
@@ -79,7 +82,19 @@ fn transform_js(ast: &mut Module, cm: &Lrc<SourceMap>) {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{build_js_ast, js_ast_to_code};
+    use std::{
+        collections::HashMap,
+        path::PathBuf,
+        sync::{Arc, Mutex, RwLock},
+    };
+
+    use crate::{
+        ast::{build_js_ast, js_ast_to_code},
+        chunk_graph::ChunkGraph,
+        compiler::{Context, Meta},
+        config::Config,
+        module_graph::ModuleGraph,
+    };
 
     use super::transform_js;
 
@@ -184,9 +199,19 @@ var _react = _interop_require_default._(require("react"));
         } else {
             path.unwrap()
         };
-        let (cm, mut ast) = build_js_ast(path, origin);
-        transform_js(&mut ast, &cm);
-        let (code, _sourcemap) = js_ast_to_code(&ast, &cm, false);
+        let root = PathBuf::from("/path/to/root");
+        let context = Arc::new(Context {
+            config: Config::new(&root).unwrap(),
+            root,
+            module_graph: RwLock::new(ModuleGraph::new()),
+            chunk_graph: RwLock::new(ChunkGraph::new()),
+            assets_info: Mutex::new(HashMap::new()),
+            meta: Meta::new(),
+        });
+        let mut ast = build_js_ast(path, origin, &context);
+        transform_js(&mut ast, &context);
+        let (code, _sourcemap) =
+            js_ast_to_code(&ast, &context.meta.script.cm, &context, "index.js");
         let code = code.replace("\"use strict\";", "");
         let code = code.trim().to_string();
         (code, _sourcemap)
