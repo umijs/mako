@@ -44,7 +44,10 @@ fn do_resolve(
             let path = resource.path.to_string_lossy().to_string();
             return (path, None);
         } else {
-            panic!("resolve error: {:?}", result);
+            panic!(
+                "resolve error: {:?}, parent: {:?}, source: {:?}",
+                result, parent, source
+            );
         }
     }
 }
