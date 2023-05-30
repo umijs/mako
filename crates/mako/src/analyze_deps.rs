@@ -110,6 +110,8 @@ impl Visit for DepCollectVisitor {
             }
             _ => {}
         }
+        // export function xxx() {} 里可能包含 require 或 import()
+        n.visit_children_with(self);
     }
     fn visit_call_expr(&mut self, expr: &CallExpr) {
         if is_commonjs_require(expr) {
@@ -212,6 +214,20 @@ mod tests {
         let deps = resolve(
             r#"
 import 'foo';
+            "#
+            .trim(),
+            false,
+        );
+        assert_eq!(deps, "foo");
+    }
+
+    #[test]
+    fn test_analyze_deps_inside_exports() {
+        let deps = resolve(
+            r#"
+export function foo() {
+    require('foo');
+}           
             "#
             .trim(),
             false,

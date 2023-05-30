@@ -55,42 +55,40 @@ impl VisitMut for DynamicImport {
                                 optional: false,
                             }),
                         }))),
-                        args: vec![
-                            ExprOrSpread {
-                                spread: None,
-                                expr: Box::new(Expr::Call(CallExpr {
+                        args: vec![ExprOrSpread {
+                            spread: None,
+                            expr: Box::new(Expr::Call(CallExpr {
+                                span: DUMMY_SP,
+                                callee: Callee::Expr(Box::new(Expr::Member(MemberExpr {
                                     span: DUMMY_SP,
-                                    callee: Callee::Expr(Box::new(Expr::Member(MemberExpr {
+                                    obj: Box::new(Expr::Ident(Ident {
                                         span: DUMMY_SP,
-                                        obj: Box::new(Expr::Ident(Ident {
+                                        sym: "require".into(),
+                                        optional: false,
+                                    })),
+                                    prop: MemberProp::Ident(Ident {
+                                        span: DUMMY_SP,
+                                        sym: "bind".into(),
+                                        optional: false,
+                                    }),
+                                }))),
+                                args: vec![
+                                    ExprOrSpread {
+                                        spread: None,
+                                        expr: Box::new(Expr::Ident(Ident {
                                             span: DUMMY_SP,
                                             sym: "require".into(),
                                             optional: false,
                                         })),
-                                        prop: MemberProp::Ident(Ident {
-                                            span: DUMMY_SP,
-                                            sym: "bind".into(),
-                                            optional: false,
-                                        }),
-                                    }))),
-                                    args: vec![
-                                        ExprOrSpread {
-                                            spread: None,
-                                            expr: Box::new(Expr::Ident(Ident {
-                                                span: DUMMY_SP,
-                                                sym: "require".into(),
-                                                optional: false,
-                                            })),
-                                        },
-                                        ExprOrSpread {
-                                            spread: None,
-                                            expr: Box::new(Expr::Lit(Lit::Str(source.clone()))),
-                                        },
-                                    ],
-                                    type_args: None,
-                                })),
-                            }, // TODO: require.bind(require, "id");
-                        ],
+                                    },
+                                    ExprOrSpread {
+                                        spread: None,
+                                        expr: Box::new(Expr::Lit(Lit::Str(source.clone()))),
+                                    },
+                                ],
+                                type_args: None,
+                            })),
+                        }],
                         type_args: None,
                     });
                 }

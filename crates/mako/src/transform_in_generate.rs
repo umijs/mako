@@ -297,7 +297,6 @@ document.head.appendChild(style);
         let env_map = build_env_map(env_map);
         super::transform_js(&mut ast, dep_map, env_map);
         let (code, _sourcemap) = js_ast_to_code(&ast, &context, "index.js");
-        // let code = code.replace("\"use strict\";", "");
         let code = code.trim().to_string();
         (code, _sourcemap)
     }
