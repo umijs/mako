@@ -69,6 +69,7 @@ const DEFAULT_CONFIG: &str = r#"
 // - add Default impl
 // - add test
 // - add validation
+// - rename sourcemap to devtool?
 
 impl Config {
     pub fn new(root: &PathBuf) -> Result<Self, config::ConfigError> {
