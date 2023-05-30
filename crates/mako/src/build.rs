@@ -64,12 +64,13 @@ impl Compiler {
         let mut active_task_count: usize = 0;
         let mut t_main_thread: usize = 0;
         let mut module_count: usize = 0;
+        let tokio_runtime = tokio::runtime::Runtime::new().unwrap();
         tokio::task::block_in_place(move || loop {
             let mut module_graph = self.context.module_graph.write().unwrap();
             while let Some(task) = queue.pop_front() {
                 let resolver = resolver.clone();
                 let context = self.context.clone();
-                tokio::spawn({
+                let handler = tokio::spawn({
                     active_task_count += 1;
                     module_count += 1;
                     let rs = rs.clone();
@@ -80,6 +81,9 @@ impl Compiler {
                             .expect("send task failed");
                     }
                 });
+                if let Err(err) = tokio_runtime.block_on(handler) {
+                    panic!("build module failed: {:?}", err);
+                }
             }
             match rr.try_recv() {
                 Ok((module, deps, task)) => {
