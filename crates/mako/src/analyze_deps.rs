@@ -92,6 +92,9 @@ impl Visit for DepCollectVisitor {
     fn visit_module_decl(&mut self, n: &ModuleDecl) {
         match n {
             ModuleDecl::Import(import) => {
+                if import.type_only {
+                    return;
+                }
                 let src = import.src.value.to_string();
                 self.bind_dependency(src, ResolveType::Import);
             }
@@ -202,19 +205,52 @@ mod tests {
         module_graph::ModuleGraph,
     };
 
-    use super::add_swc_helper_deps;
+    use super::{add_swc_helper_deps, analyze_deps_js};
+
+    #[test]
+    fn test_analyze_deps() {
+        let deps = resolve(
+            r#"
+import 'foo';
+                "#
+            .trim(),
+            false,
+        );
+        assert_eq!(deps, "foo");
+    }
+
+    #[test]
+    fn test_analyze_deps_ignore_type_only() {
+        let deps = resolve(
+            r#"
+import type { x } from 'foo';
+import 'bar';
+                "#
+            .trim(),
+            false,
+        );
+        assert_eq!(deps, "bar");
+    }
 
     #[test]
     fn test_add_swc_helper_deps() {
-        let root = PathBuf::from("/path/to/root");
-        let ast = build_js_ast(
-            "test.js",
+        let deps = resolve(
             r#"
 var a = require("@swc/helpers/a");
 var b = require("foo");
 var c = require("@swc/helpers/b");
-            "#
+                "#
             .trim(),
+            true,
+        );
+        assert_eq!(deps, "@swc/helpers/a,@swc/helpers/b");
+    }
+
+    fn resolve(code: &str, swc_helper: bool) -> String {
+        let root = PathBuf::from("/path/to/root");
+        let ast = build_js_ast(
+            "test.js",
+            code,
             &Arc::new(Context {
                 config: Config::new(&root).unwrap(),
                 root,
@@ -224,14 +260,18 @@ var c = require("@swc/helpers/b");
                 meta: Meta::new(),
             }),
         );
-        let ast = crate::module::ModuleAst::Script(ast);
         let mut deps = vec![];
-        add_swc_helper_deps(&mut deps, &ast);
+        if swc_helper {
+            let ast = crate::module::ModuleAst::Script(ast);
+            add_swc_helper_deps(&mut deps, &ast);
+        } else {
+            deps.extend(analyze_deps_js(&ast));
+        }
         let deps = deps
             .iter()
             .map(|dep| dep.source.as_str())
             .collect::<Vec<_>>()
             .join(",");
-        assert_eq!(deps, "@swc/helpers/a,@swc/helpers/b");
+        deps
     }
 }
