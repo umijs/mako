@@ -43,6 +43,7 @@ pub struct Config {
     pub sourcemap: bool,
     pub externals: HashMap<String, String>,
     pub copy: Vec<String>,
+    pub public_path: String,
     pub data_url_limit: usize,
 }
 
@@ -58,6 +59,7 @@ const DEFAULT_CONFIG: &str = r#"
     "sourcemap": false,
     "externals": {},
     "copy": ["public"],
+    "public_path": "/",
     "data_url_limit": 8192
 }
 "#;
@@ -66,6 +68,7 @@ const DEFAULT_CONFIG: &str = r#"
 // - support .ts file
 // - add Default impl
 // - add test
+// - add validation
 
 impl Config {
     pub fn new(root: &PathBuf) -> Result<Self, config::ConfigError> {
@@ -86,6 +89,10 @@ impl Config {
         if let Ok(config) = &mut ret {
             if config.output.path.is_relative() {
                 config.output.path = root.join(config.output.path.to_string_lossy().to_string());
+            }
+
+            if !config.public_path.ends_with('/') {
+                panic!("public_path must end with '/'");
             }
 
             Config::config_node_polyfill(config);

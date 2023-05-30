@@ -28,14 +28,16 @@ impl Compiler {
         let module_graph = self.context.module_graph.read().unwrap();
         let chunk_graph = self.context.chunk_graph.read().unwrap();
 
-        // TODO: remove this
+        let public_path = self.context.config.public_path.clone();
         let chunks = chunk_graph.get_chunks();
+        // TODO: remove this
         let chunks_map_str: Vec<String> = chunks
             .iter()
             .map(|chunk| {
                 format!(
-                    "chunksIdToUrlMap[\"{}\"] = \"{}\";",
+                    "chunksIdToUrlMap[\"{}\"] = \"{}{}\";",
                     chunk.id.id,
+                    public_path,
                     chunk.filename()
                 )
             })
