@@ -1,6 +1,5 @@
 use std::vec;
 
-use rayon::prelude::*;
 use swc_common::DUMMY_SP;
 use swc_ecma_ast::{
     ArrayLit, BindingIdent, BlockStmt, CallExpr, Callee, Decl, Expr, ExprOrSpread, ExprStmt,
@@ -49,7 +48,7 @@ impl Compiler {
         let output_files = chunks
             // TODO:
             // 由于任务划分不科学，rayon + par_iter 没啥效果
-            .par_iter()
+            .iter()
             .map(|chunk| {
                 // build stmts
                 let mut js_stmts = vec![];
