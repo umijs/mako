@@ -6,7 +6,7 @@ use swc_common::collections::AHashMap;
 use swc_common::sync::Lrc;
 use swc_common::{Globals, DUMMY_SP, GLOBALS};
 use swc_css_visit::VisitMutWith as CssVisitMutWith;
-use swc_ecma_ast::{Expr, ExprOrSpread, ExprStmt, Lit, Module, ModuleItem, Stmt, Str};
+use swc_ecma_ast::{Expr, Lit, Module, Str};
 use swc_ecma_visit::VisitMutWith;
 use tracing::{debug, info};
 
@@ -53,10 +53,10 @@ fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) {
         let ast = &mut info.ast;
         match ast {
             ModuleAst::Script(ast) => {
-                transform_js(ast, &module.id.id, dep_map, env_map.clone(), context);
+                transform_js(ast, dep_map, env_map.clone());
             }
             ModuleAst::Css(ast) => {
-                let ast = transform_css(ast, &module.id.id, &path, dep_map, context);
+                let ast = transform_css(ast, &path, dep_map, context);
                 info.set_ast(ModuleAst::Script(ast));
             }
             ModuleAst::None => {}
@@ -66,7 +66,6 @@ fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) {
 
 fn transform_css(
     ast: &mut swc_css_ast::Stylesheet,
-    id: &str,
     path: &str,
     dep_map: HashMap<String, String>,
     context: &Arc<Context>,
@@ -101,12 +100,7 @@ fn transform_css(
     let content = format!("{}{}", require_code.join("\n"), content);
     let path = format!("{}.ts", path);
     let path = path.as_str();
-    let mut ast = build_js_ast(path, content.as_str(), context);
-
-    // wrap js module
-    wrap_js_module(&mut ast, id, context);
-
-    ast
+    build_js_ast(path, content.as_str(), context)
 }
 
 fn build_env_map(env_map: HashMap<String, String>) -> AHashMap<JsWord, Expr> {
@@ -126,10 +120,8 @@ fn build_env_map(env_map: HashMap<String, String>) -> AHashMap<JsWord, Expr> {
 
 fn transform_js(
     ast: &mut swc_ecma_ast::Module,
-    id: &str,
     dep_map: HashMap<String, String>,
     env_map: AHashMap<JsWord, Expr>,
-    context: &Arc<Context>,
 ) {
     let globals = Globals::default();
     GLOBALS.set(&globals, || {
@@ -141,45 +133,6 @@ fn transform_js(
         let mut env_replacer = EnvReplacer::new(Lrc::new(env_map));
         ast.visit_mut_with(&mut env_replacer);
     });
-
-    wrap_js_module(ast, id, context);
-}
-
-fn wrap_js_module(ast: &mut Module, id: &str, context: &Arc<Context>) {
-    // 找到 call_expr 的第二个 fn 参数，将原来的 stmts 加入到新的 fn 的 body 中
-    // 用字符串生成 ast 的方式是为了容易维护，因为走 ast 拼接的方式不易懂，同时前期修改可能比较频繁
-    let origin_stmts: Vec<Stmt> = ast
-        .body
-        .iter()
-        .map(|stmt| stmt.as_stmt().unwrap().clone())
-        .collect();
-    let content = include_str!("runtime/runtime_module.ts").replace("__ID__", id);
-    // 不能使用 path, 因为会覆盖 cm 中记录的对应 path 的源码内容
-    let mut new_ast = build_js_ast("mako_internal_js_module_wrapper", content.as_str(), context);
-    for stmt in &mut new_ast.body {
-        if let ModuleItem::Stmt(Stmt::Expr(expr)) = stmt {
-            if let ExprStmt {
-                expr: box Expr::Call(call_expr),
-                ..
-            } = expr
-            {
-                if let ExprOrSpread {
-                    expr: box Expr::Fn(func),
-                    ..
-                } = &mut call_expr.args[1]
-                {
-                    func.function
-                        .body
-                        .as_mut()
-                        .unwrap()
-                        .stmts
-                        .extend(origin_stmts);
-                    break;
-                }
-            }
-        }
-    }
-    *ast = new_ast;
 }
 
 #[cfg(test)]
@@ -216,9 +169,7 @@ require("foo");
         assert_eq!(
             code,
             r#"
-g_define('test', function(module, exports, require) {
-    require("bar");
-});
+require("bar");
         "#
             .trim()
         );
@@ -240,29 +191,7 @@ if (process.env.NODE_ENV === "production") 1;
         assert_eq!(
             code,
             r#"
-g_define('test', function(module, exports, require) {
-    if ("production" === "production") 1;
-});
-        "#
-            .trim()
-        );
-    }
-
-    #[test]
-    fn test_transform_js_wrapper() {
-        let code = r#"
-const Foo = "foo";
-        "#
-        .trim();
-        let (code, _sourcemap) =
-            transform_js_code(code, None, Default::default(), Default::default());
-        println!(">> CODE\n{}", code);
-        assert_eq!(
-            code,
-            r#"
-g_define('test', function(module, exports, require) {
-    const Foo = "foo";
-});
+if ("production" === "production") 1;
         "#
             .trim()
         );
@@ -279,15 +208,13 @@ g_define('test', function(module, exports, require) {
         assert_eq!(
             code,
             r#"
-g_define('test.css', function(module, exports, require) {
-    let css = `.foo {
+let css = `.foo {
   color: red;
 }
 `;
-    let style = document.createElement('style');
-    style.innerHTML = css;
-    document.head.appendChild(style);
-});
+let style = document.createElement('style');
+style.innerHTML = css;
+document.head.appendChild(style);
         "#
             .trim()
         );
@@ -306,16 +233,14 @@ g_define('test.css', function(module, exports, require) {
         assert_eq!(
             code,
             r#"
-g_define('test.css', function(module, exports, require) {
-    require("bar.css");
-    let css = `.foo {
+require("bar.css");
+let css = `.foo {
   color: red;
 }
 `;
-    let style = document.createElement('style');
-    style.innerHTML = css;
-    document.head.appendChild(style);
-});
+let style = document.createElement('style');
+style.innerHTML = css;
+document.head.appendChild(style);
         "#
             .trim()
         );
@@ -336,15 +261,13 @@ g_define('test.css', function(module, exports, require) {
         assert_eq!(
             code,
             r#"
-g_define('test.css', function(module, exports, require) {
-    let css = `.foo {
+let css = `.foo {
   background: url("replace.png");
 }
 `;
-    let style = document.createElement('style');
-    style.innerHTML = css;
-    document.head.appendChild(style);
-});
+let style = document.createElement('style');
+style.innerHTML = css;
+document.head.appendChild(style);
         "#
             .trim()
         );
@@ -372,7 +295,7 @@ g_define('test.css', function(module, exports, require) {
         });
         let mut ast = build_js_ast(path, origin, &context);
         let env_map = build_env_map(env_map);
-        super::transform_js(&mut ast, "test", dep_map, env_map, &context);
+        super::transform_js(&mut ast, dep_map, env_map);
         let (code, _sourcemap) = js_ast_to_code(&ast, &context, "index.js");
         // let code = code.replace("\"use strict\";", "");
         let code = code.trim().to_string();
@@ -399,7 +322,7 @@ g_define('test.css', function(module, exports, require) {
             meta: Meta::new(),
         });
         let mut ast = build_css_ast(path, content, &context);
-        let ast = transform_css(&mut ast, "test.css", path, dep_map, &context);
+        let ast = transform_css(&mut ast, path, dep_map, &context);
         let (code, _sourcemap) = js_ast_to_code(&ast, &context, "index.js");
         let code = code.trim().to_string();
         (code, _sourcemap)
