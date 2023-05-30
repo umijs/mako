@@ -212,7 +212,7 @@ mod tests {
         let deps = resolve(
             r#"
 import 'foo';
-                "#
+            "#
             .trim(),
             false,
         );
@@ -225,7 +225,7 @@ import 'foo';
             r#"
 import type { x } from 'foo';
 import 'bar';
-                "#
+            "#
             .trim(),
             false,
         );
@@ -239,7 +239,7 @@ import 'bar';
 var a = require("@swc/helpers/a");
 var b = require("foo");
 var c = require("@swc/helpers/b");
-                "#
+            "#
             .trim(),
             true,
         );
