@@ -47,3 +47,4 @@ clap = { version = "4.3.0", features = ["derive"] }
 swc_ecma_minifier = "0.181.21"
 swc_error_reporters = "0.15.11"
 pathdiff = "0.2.1"
+anyhow = "1.0.71"
