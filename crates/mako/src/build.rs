@@ -75,7 +75,6 @@ impl Compiler {
                     async move {
                         let (module, dependencies, task) =
                             Compiler::build_module(context, task, resolver);
-                        println!("{:?},{:?},{:?}", module, dependencies, task);
                         rs.send((module, dependencies, task))
                             .expect("send task failed");
                     }
