@@ -88,8 +88,7 @@ crates/mako/src
 ├── runtime                       # runtime file templates
 │   ├── runtime_chunk.js          # template to create runtime chunk
 │   ├── runtime_css.ts            # template to apply inline css module in runtime
-│   ├── runtime_entry.js          # template to init runtime module system
-│   └── runtime_module.ts         # template to create runtime module
+│   └── runtime_entry.js          # template to init runtime module system
 ├── sourcemap.rs                  # generate sourcemap
 ├── transform.rs                  # transform js ast with swc transformers
 ├── transform_css_handler.rs      # transform css ast for replace url and @import
