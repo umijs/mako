@@ -60,83 +60,82 @@ $ hyperfine --runs 10 "./target/release/mako examples/with-antd"
 
 ## Project Structure
 
-There are 2 main crates in this project.
-
-### `mako_bundler`
-
-The core bundler of mako, use to bundle frontend project like webpack. The summary of directory structure is as follows:
+There are 1 main crate `mako` in this project, and the summary of directory structure is as follows:
 
 ```bash
-crates/mako_bundler
-└── src
-    ├── build                   # generate module graph then transform
-    │   ├── analyze_deps.rs			# analyze dependency modules for js module
-    │   ├── build.rs
-    │   ├── load.rs             # load file to js module and collect assets
-    │   ├── mod.rs
-    │   ├── parse.rs						# parse js module to ast and sourcemap
-    │   ├── resolve.rs          # resolve dependency module path
-    │   └── transform           # transform js module ast to code
-    │       ├── dep_replacer.rs # replace source with id for dependency requires
-    │       ├── env_replacer.rs # replace `process.env.xxx` with real value
-    │       ├── mod.rs
-    │       └── transform.rs
-    ├── compiler.rs             # compile project according to config
-    ├── config.rs               # normalize bundler config
-    ├── context.rs              # compiler context (module graph, assets info, etc.)
-    ├── generate                # generate assets, modules and module runtime to disk
-    │   ├── generate.rs
-    │   └── mod.rs
-    ├── lib.rs                  # entry of bundler
-    ├── module.rs               # structure for describe each module
-    ├── module_graph.rs         # structure for manage module graph (base on petgraph)
-    └── utils
-        ├── file.rs
-        └── mod.rs
+crates/mako/src
+├── analyze_deps.rs               # analyze deps from js/css ast
+├── ast.rs                        # parse source to ast and parse ast to code and sourcemap
+├── bfs.rs                        # util for breadth-first search
+├── build.rs                      # transform source code to ast and combine into module graph
+├── chunk.rs                      # structure to describe chunk
+├── chunk_graph.rs                # structure to manage chunk graph
+├── cli.rs                        # cli arguments parser
+├── compiler.rs                   # compile project according to user config
+├── config.rs                     # serialize and watch user config
+├── config_node_polyfill.rs       # externalize node standard library
+├── copy.rs                       # util for copy files to dist
+├── generate.rs                   # generate modules and assets to dist
+├── generate_chunks.rs            # generate chunks from module graph and chunk graph
+├── group_chunk.rs                # split module graph into chunks
+├── load.rs                       # load file content or base64 (assets only)
+├── main.rs                       # the entry of this crate
+├── minify.rs                     # minify js code via ast
+├── module.rs                     # structure to describe module
+├── module_graph.rs               # structure to manage module graph
+├── parse.rs                      # parse source code with ast.rs
+├── resolve.rs                    # resolve module by path
+├── runtime                       # runtime file templates
+│   ├── runtime_chunk.js          # template to create runtime chunk
+│   ├── runtime_css.ts            # template to apply inline css module in runtime
+│   ├── runtime_entry.js          # template to init runtime module system
+│   └── runtime_module.ts         # template to create runtime module
+├── sourcemap.rs                  # generate sourcemap
+├── transform.rs                  # transform js ast with swc transformers
+├── transform_css_handler.rs      # transform css ast for replace url and @import
+├── transform_dep_replacer.rs     # transform dep path with runtime module path
+├── transform_dynamic_import.rs   # transform dynamic import to runtime require
+├── transform_env_replacer.rs     # transform env variables
+├── transform_in_generate.rs      # transform ast for generate runtime chunks
+└── watch.rs                      # todo
 ```
 
-Flow of bundler:
+Flow of mako:
 
-<!-- https://asciiflow.com/#/share/eJzFVtFqwyAU%2FRXxefRhjNH1cf0NoXHEdgFjijHQrhRGvmAPIx%2Byx9Kv6ZdM06WNqxpN0%2B2SkJvovffIOd64gQynBE5YQekdpHhNOJzADYIrBCdPj%2BM7BNfSux8%2FSE%2BQlZAvCAKDRdLANEuXCSW8fvM2hJgxo%2Bmjl6mMh8%2B9%2B9LrdE43hrYsLDrqjDguAQDCBF8H4jtUO1XkpUhoHLw4S7oFYYRjQdzZ1Mw4yUU9y8BC9dWDhWp3DQuOaC8Wmry%2FJKYX7ZSkPscq%2Bf52RloClvEU0%2BSNXKIoPZCWDnTguRZVUxVcFtdD7MUjYLBjcd9ddEoTqug6sNlh04zNk4VGUZNUPU676KeKfLw77o%2FrlwLSLC4oAQuOl6%2BgBddISu%2F1m6lx0G8O6AQXkEu5nOD4XxEMXNzCQTk8N3Ww4Jjlc9kAAPCVzoXeLIoOg9JrQ1oTmgfaPPiBs5oaLZax%2FMNZQh3Wbu4t3w7Dlavat31XK5aNSx3JQv8agx%2B3hu9Nvc5j%2FYR11v9M67fHEZznROSzhM0zfWA0Gt2sM%2F%2Fh6vvZDY4vEYJbuP0G7CrIaQ%3D%3D) -->
+<!-- https://asciiflow.com/#/share/eJzFV71u2zAQfhWCQ6dAQ1ugacZmKAr0EQTYjE07aiRSIGU0zg9gZO7gwTA69BE6FZkKP42fpBQl64c5SqRspAcBpqU73ne%2FPN5jRhKKL3BCbviI0e%2F4DMdkSYV6dR%2Fi2xBffPzw7izES7V6e%2F5erTJ6m6k%2FIUZ9NFaELnmSRjEV%2Bp8HhSHrV9DL0SGrFOw3u5cPImIuEfip5mlD0C9Xbs8aRLPf%2FHAT3x200iTKKmEYZWEhuvz6xcKy%2FavCw2bRvMdcWFTR1SKKp74eaJlTC%2BY7zimjgmTUbpMruGkkM1T5wBZBQ8ohyrC6rgxpRXljemD7pzPKk%2BsFu5F9UQYUmQDG3Z8hrE%2BGvOQLMaEJSaVTbTbJt%2FgRIlLSDFSUA5NURCSO7mgvbhfbFE14ukQz1aecbUOfdO4btrVYPh%2By2bAtCIKjgzYGmcygNdQcU1C1niGSBlRLq3juaniGISg%2FrYKJbl3BN8kZMkBqL1TNSb34BQNBMo1VGy2rDFZ2Eq89oYRPFzFFc0HS62rbNewdXwc7n5VAA8qf35aY%2FCxcYkAs6aG1u%2FdxbU%2FnY3xe4B0%2BO%2BjUMcCgTBAmZ1wkZRDLTDmxzepX6WgcgegEaiB7Xsu5lpnm2ZJsa9MnNQ1Mtdz4mJPpofb0ixceGe4SbzBvGqkENqV80yoBWl3p6BpfddT4%2F%2FHIgexVYeM5aYXbpL2HHLVzc94BmRo8mlyUwLSHJ78%2BGWA5cGdtp7o%2B5PdBtN%2FuKhPrpUnmp9e447kp8E505wub7my%2BReQNvmxxo2q80HleDNGjiM142ft2RVdp8OXTqLenHA1fFUBs%2FcgycHjs7eupgeTfC3wpxI%2F48R%2BiZatF) -->
 ```bash
-                    ```` Compiler `````````````````````````````````````````````
-                    `                                                         `
-┌─────────┐         `    ┌─────────────┐                    ┌────────────┐    `   ┌────────┐
-│  entry  ├──────────────►    build    ├────────────────────►  generate  ├────────►  dist  │
-└────▲────┘         `    └──────▲──────┘                    └─────▲──────┘    `   └────────┘
-     │              `           │                                 │           `
-                    ```````````````````````````````````````````````````````````
-     │ normalize                │                                 │
-                    ```` Build ```````` ``````
-     │              `           │            `                    │
-┌────┴─────┐        `    ┌──────┴───────┐    `
-│  Config  │        `    │    build     ├─ ─ ─ ─ ─ ─ ─ ─ ┐        │
-└──────────┘        `    │ module graph │    `
-                    `    └──────┬───────┘    `           │        │
-                    `           │            `
-                    `                        `           │        │ read
-                    `           │            `
-                    `                        `           │        │
-                    `           │            `
-                    `    ┌──────┴───────┐    `           │        │
-                    `    │  transform   │    `
-                    `    │ module graph ├─ ─ ─ ┐         │        │
-                    `    └──────────────┘    `
-                    `                        ` │         │        │
-                    ``````````````````````````    update
-                                               │         │        │
-                                               ▼         ▼
-                    ```` Context ```````````````````````````````````````````````
-                    `                                                          `
-                    `    ┌──────────────┐      ┌─────────────┐      ┌─────┐    `
-                    `    │ module_graph │      │ assets_info │      │ ... │    `
-                    `    └──────────────┘      └─────────────┘      └─────┘    `
-                    `                                                          `
-                    ````````````````````````````````````````````````````````````
+                                 ```` Compiler ```````````````````````````````````````````````
+                                 `                                                           `
+┌─────┐ args ┌────────┐          `    ┌─────────────┐                     ┌────────────┐     `  emit       ┌──────┐
+│ CLI ├──────► Config ├───────────────►    build    ├─────────────────────►  generate  ├───────────────────► dist │
+└─────┘      └───▲────┘          `    └───────▲─────┘                     └─────▲──────┘     `  chunks     └──────┘
+                 │               `            │                                 │            `  sourcemaps
+                                 ````````````` ```````````````````````````````````````````````  assets
+                 │ serialize                  │                                 │               copy files
+                                 ```` Build `` ````````````         ````Generate `````````````  ...
+                 │               `            │           `         `           │            `
+        ┌────────┴─────────┐     `    ┌───────┴──────┐    `         `    ┌──────┴───────┐    `
+        │ mako.config.json │     `    │    build     │    `         `    │ split chunks │    `
+        └──────────────────┘     `    │ module graph ├─┐  `         `    └──────────────┘    `
+                                 `    └───────┬──────┘ │  `         `           |            `
+                                 `            │           `         ` ┌───────────────────┐  `
+                                 `                     │  `         ` │ transform modules │  `
+                                 `            │           `         ` │   for generate    │  `
+                                 `            │        │  `         ` └───────────────────┘  `
+                                 `    ┌───────┴──────┐    `         `           |            `
+                                 `    │ load module  │ │  `         `  ┌─────────────────┐   `
+                                 `    │ & transform  │    `         `  │ generate chunks │   `
+                                 `    └───────┬──────┘ │  `         `  └────────┬────────┘   `
+                                 `            │           `         `           │            `
+                                 `                     │  `         `                        `
+                                 `````````````│```````` ```         ````````````│`````````````
+                                                       │
+                                              │        │                        │
+                                 ```` Context ▼````````▼````````````````````````▼`````````````
+                                 `                                                           `
+                                 `    ┌──────────────┐ ┌─────────────┐ ┌─────────────┐       `
+                                 `    │ module_graph │ │ assets_info │ │ chunk_graph │  ...  `
+                                 `    └──────────────┘ └─────────────┘ └─────────────┘       `
+                                 `                                                           `
+                                 `````````````````````````````````````````````````````````````
 ```
-
-### `mako_cli`
-
-The CLI of mako, use to drive bundler via command line.
-
-Currently too simple, details omitted.
