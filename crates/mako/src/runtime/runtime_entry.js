@@ -257,15 +257,5 @@ function createRuntime(makoModules, entryModuleId) {
   };
 }
 
-// xian gou yi xia
-const modules = {};
-function g_define(moduleId, fn) {
-  modules[moduleId] = fn;
-}
-const registerModules = function (fn) {
-  fn();
-};
-registerModules(function () {});
-
-const runtime = createRuntime(modules, 'main');
-window.jsonpCallback = runtime._jsonpCallback;
+const runtime = createRuntime({}, 'main');
+globalThis.jsonpCallback = runtime._jsonpCallback;

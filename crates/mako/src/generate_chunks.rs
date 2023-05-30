@@ -1,5 +1,11 @@
-use rayon::prelude::*;
-use swc_ecma_ast::{Callee, Expr, ExprOrSpread, ExprStmt, ModuleItem, Stmt};
+use std::vec;
+
+use swc_common::DUMMY_SP;
+use swc_ecma_ast::{
+    ArrayLit, BindingIdent, BlockStmt, CallExpr, Callee, Decl, Expr, ExprOrSpread, ExprStmt,
+    FnExpr, Function, Ident, KeyValueProp, MemberExpr, MemberProp, ModuleItem, ObjectLit, Param,
+    Pat, Prop, PropOrSpread, Stmt, Str, VarDecl,
+};
 use tracing::info;
 
 use crate::{
@@ -42,7 +48,7 @@ impl Compiler {
         let output_files = chunks
             // TODO:
             // 由于任务划分不科学，rayon + par_iter 没啥效果
-            .par_iter()
+            .iter()
             .map(|chunk| {
                 // build stmts
                 let mut js_stmts = vec![];
@@ -52,8 +58,24 @@ impl Compiler {
                     let ast = module.info.as_ref().unwrap();
                     let ast = &ast.ast;
                     match ast {
-                        ModuleAst::Script(ast) => js_stmts
-                            .extend(ast.body.iter().map(|stmt| stmt.as_stmt().unwrap().clone())),
+                        ModuleAst::Script(ast) => {
+                            // id: function(module, exports, require) {}
+                            js_stmts.push(build_props(
+                                module.id.id.as_str(),
+                                Box::new(Expr::Fn(build_fn_expr(
+                                    None,
+                                    vec![
+                                        build_ident_param("module"),
+                                        build_ident_param("exports"),
+                                        build_ident_param("require"),
+                                    ],
+                                    ast.body
+                                        .iter()
+                                        .map(|stmt| stmt.as_stmt().unwrap().clone())
+                                        .collect(),
+                                ))),
+                            ));
+                        }
                         ModuleAst::Css(_ast) => {
                             // TODO:
                             // 目前 transform_all 之后，css 的 ast 会变成 js 的 ast，所以这里不需要处理
@@ -81,29 +103,74 @@ impl Compiler {
                 };
                 let mut js_ast = build_js_ast(file_name, content.as_str(), &self.context);
                 for stmt in &mut js_ast.body {
-                    if let ModuleItem::Stmt(Stmt::Expr(expr)) = stmt {
-                        if let ExprStmt {
-                            expr: box Expr::Call(call_expr),
-                            ..
-                        } = expr
-                        {
-                            let is_register_modules =
-                                if let Callee::Expr(box Expr::Ident(ident)) = &call_expr.callee {
-                                    ident.sym.to_string() == "registerModules"
-                                        || ident.sym.to_string() == "registerModulesForChunk"
-                                } else {
-                                    false
-                                };
-                            if !is_register_modules {
+                    // const runtime = createRuntime({}, 'main');
+                    if let ModuleItem::Stmt(Stmt::Decl(Decl::Var(box VarDecl { decls, .. }))) = stmt
+                    {
+                        if decls.len() != 1 {
+                            continue;
+                        }
+                        let decl = &mut decls[0];
+                        if let Pat::Ident(BindingIdent { id, .. }) = &decl.name {
+                            if id.sym.to_string() != "runtime" {
                                 continue;
                             }
-
+                        }
+                        if let Some(box Expr::Call(CallExpr {
+                            args,
+                            callee: Callee::Expr(box Expr::Ident(ident)),
+                            ..
+                        })) = &mut decl.init
+                        {
+                            if args.len() != 2 || ident.sym.to_string() != "createRuntime" {
+                                continue;
+                            }
                             if let ExprOrSpread {
-                                expr: box Expr::Fn(func),
+                                expr: box Expr::Object(ObjectLit { props, .. }),
                                 ..
-                            } = &mut call_expr.args[0]
+                            } = &mut args[0]
                             {
-                                func.function.body.as_mut().unwrap().stmts.extend(js_stmts);
+                                props.extend(js_stmts.clone());
+                                break;
+                            }
+                        }
+                    }
+
+                    // window.jsonpCallback([['main'], {}]);
+                    if let ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+                        expr:
+                            box Expr::Call(CallExpr {
+                                args,
+                                callee:
+                                    Callee::Expr(box Expr::Member(MemberExpr {
+                                        obj: box Expr::Ident(ident),
+                                        prop: MemberProp::Ident(ident2),
+                                        ..
+                                    })),
+                                ..
+                            }),
+                        ..
+                    })) = stmt
+                    {
+                        if args.len() != 1
+                            || ident.sym.to_string() != "globalThis"
+                            || ident2.sym.to_string() != "jsonpCallback"
+                        {
+                            continue;
+                        }
+                        if let ExprOrSpread {
+                            expr: box Expr::Array(ArrayLit { elems, .. }),
+                            ..
+                        } = &mut args[0]
+                        {
+                            if elems.len() != 2 {
+                                continue;
+                            }
+                            if let Some(ExprOrSpread {
+                                expr: box Expr::Object(ObjectLit { props, .. }),
+                                ..
+                            }) = &mut elems[1]
+                            {
+                                props.extend(js_stmts.clone());
                                 break;
                             }
                         }
@@ -130,4 +197,46 @@ impl Compiler {
             .collect();
         output_files
     }
+}
+
+fn build_ident_param(ident: &str) -> Param {
+    Param {
+        span: DUMMY_SP,
+        decorators: vec![],
+        pat: Pat::Ident(BindingIdent {
+            id: Ident::new(ident.into(), DUMMY_SP),
+            type_ann: None,
+        }),
+    }
+}
+
+fn build_fn_expr(ident: Option<Ident>, params: Vec<Param>, stmts: Vec<Stmt>) -> FnExpr {
+    let func = Function {
+        span: DUMMY_SP,
+        params,
+        decorators: vec![],
+        body: Some(BlockStmt {
+            span: DUMMY_SP,
+            stmts,
+        }),
+        is_generator: false,
+        is_async: false,
+        type_params: None,
+        return_type: None,
+    };
+    FnExpr {
+        ident,
+        function: Box::new(func),
+    }
+}
+
+fn build_props(key_str: &str, value: Box<Expr>) -> PropOrSpread {
+    PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+        key: swc_ecma_ast::PropName::Str(Str {
+            span: DUMMY_SP,
+            value: key_str.into(),
+            raw: None,
+        }),
+        value,
+    })))
 }
