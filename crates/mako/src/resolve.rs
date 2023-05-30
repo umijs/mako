@@ -109,8 +109,22 @@ mod tests {
     #[test]
     fn test_resolve_alias() {
         let alias = HashMap::from([("bar".to_string(), "foo".to_string())]);
-        let x = resolve("test/resolve/normal", Some(alias), None, "index.ts", "bar");
+        let x = resolve(
+            "test/resolve/normal",
+            Some(alias.clone()),
+            None,
+            "index.ts",
+            "bar",
+        );
         assert_eq!(x, ("node_modules/foo/index.js".to_string(), None));
+        let x = resolve(
+            "test/resolve/normal",
+            Some(alias.clone()),
+            None,
+            "index.ts",
+            "bar/foo",
+        );
+        assert_eq!(x, ("node_modules/foo/foo.js".to_string(), None));
     }
 
     #[test]
