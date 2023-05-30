@@ -1,3 +1,4 @@
+use anyhow;
 use base64::{alphabet::STANDARD, engine, Engine};
 use std::{
     fs,
@@ -90,12 +91,12 @@ fn ext_name(path: &str) -> Option<&str> {
     None
 }
 
-fn file_size(path: &str) -> std::io::Result<u64> {
+fn file_size(path: &str) -> anyhow::Result<u64> {
     let metadata = std::fs::metadata(path)?;
     Ok(metadata.len())
 }
 
-fn to_base64(path: &str) -> std::io::Result<String> {
+fn to_base64(path: &str) -> anyhow::Result<String> {
     let vec = std::fs::read(path)?;
     let engine = engine::GeneralPurpose::new(&STANDARD, engine::general_purpose::PAD);
     let base64 = engine.encode(&vec);
@@ -107,7 +108,7 @@ fn to_base64(path: &str) -> std::io::Result<String> {
     ))
 }
 
-fn content_hash(file_path: &str) -> std::io::Result<String> {
+fn content_hash(file_path: &str) -> anyhow::Result<String> {
     let file = fs::File::open(file_path).unwrap();
     // Find the length of the file
     let len = file.metadata().unwrap().len();
