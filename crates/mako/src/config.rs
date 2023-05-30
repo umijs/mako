@@ -92,8 +92,8 @@ impl Config {
                 config.output.path = root.join(config.output.path.to_string_lossy().to_string());
             }
 
-            if !config.public_path.ends_with('/') {
-                panic!("public_path must end with '/'");
+            if config.public_path != "runtime" && !config.public_path.ends_with('/') {
+                panic!("public_path must end with '/' or be 'runtime'");
             }
 
             Config::config_node_polyfill(config);
