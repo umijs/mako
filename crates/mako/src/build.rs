@@ -38,9 +38,8 @@ impl Compiler {
     fn build_module_graph(&self) {
         info!("build module graph");
 
-        let entries = get_entries(&self.context.root, &self.context.config);
-        assert!(entries.is_some(), "entry not found");
-        let entries = entries.unwrap();
+        let entries =
+            get_entries(&self.context.root, &self.context.config).expect("entry not found");
         if entries.len() == 0 {
             panic!("entry not found");
         }
@@ -76,6 +75,7 @@ impl Compiler {
                     async move {
                         let (module, dependencies, task) =
                             Compiler::build_module(context, task, resolver);
+                        println!("{:?},{:?},{:?}", module, dependencies, task);
                         rs.send((module, dependencies, task))
                             .expect("send task failed");
                     }
