@@ -49,6 +49,11 @@ impl ModuleId {
             id: path_buf.to_string_lossy().to_string(),
         }
     }
+
+    // FIXME: 这里暂时直接通过 module_id 转换为 path，后续如果改了逻辑要记得改
+    pub fn to_path(&self) -> PathBuf {
+        PathBuf::from(self.id.clone())
+    }
 }
 
 pub enum ModuleAst {

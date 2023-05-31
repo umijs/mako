@@ -117,8 +117,7 @@ impl Compiler {
         let mut added = vec![];
         let mut modified_module_ids = HashSet::new();
         for (module, add, _) in &result {
-            // FIXME: 这里暂时直接通过 module_id 转换为 path，后续如果改了逻辑要记得改
-            added.extend(add.iter().map(|f| PathBuf::from(f.0.id.clone())));
+            added.extend(add.iter().map(|f| f.0.to_path()));
             modified_module_ids.insert(module.id.clone());
         }
         (modified_module_ids, added)
@@ -182,3 +181,6 @@ fn diff(
         .collect();
     (added, removed)
 }
+
+#[cfg(test)]
+mod tests {}
