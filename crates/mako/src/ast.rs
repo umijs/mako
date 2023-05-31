@@ -36,7 +36,7 @@ struct ParseError {
 pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Module {
     let absolute_path = PathBuf::from(path);
     let relative_path =
-        diff_paths(&absolute_path, &context.config.output.path).unwrap_or_else(|| absolute_path);
+        diff_paths(&absolute_path, &context.config.output.path).unwrap_or(absolute_path);
     let fm = context
         .meta
         .script
@@ -68,7 +68,7 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Module
 pub fn build_css_ast(path: &str, content: &str, context: &Arc<Context>) -> Stylesheet {
     let absolute_path = PathBuf::from(path);
     let relative_path =
-        diff_paths(&absolute_path, &context.config.output.path).unwrap_or_else(|| absolute_path);
+        diff_paths(&absolute_path, &context.config.output.path).unwrap_or(absolute_path);
     let fm = context
         .meta
         .css
@@ -211,7 +211,7 @@ pub fn js_ast_to_code(ast: &Module, context: &Arc<Context>, filename: &str) -> (
                 Some(&mut source_map_buf),
             )),
         };
-        emitter.emit_module(&ast).unwrap();
+        emitter.emit_module(ast).unwrap();
     }
     if context.config.sourcemap {
         buf.append(

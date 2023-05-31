@@ -71,7 +71,7 @@ impl Config {
                 .externals
                 // why replace / ?
                 // since a/b is not a valid js variable name
-                .insert(name.to_string(), name.to_string().replace("/", "__"));
+                .insert(name.to_string(), name.to_string().replace('/', "__"));
         }
     }
 }

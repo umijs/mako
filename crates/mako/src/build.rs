@@ -1,5 +1,10 @@
 use nodejs_resolver::Resolver;
-use std::{collections::VecDeque, path::PathBuf, sync::Arc, time::Instant};
+use std::{
+    collections::{HashSet, VecDeque},
+    path::PathBuf,
+    sync::Arc,
+    time::Instant,
+};
 use tokio::sync::mpsc::error::TryRecvError;
 use tracing::info;
 
@@ -16,9 +21,9 @@ use crate::{
 };
 
 #[derive(Debug)]
-struct Task {
-    path: String,
-    is_entry: bool,
+pub struct Task {
+    pub path: String,
+    pub is_entry: bool,
 }
 
 impl Compiler {
@@ -40,7 +45,7 @@ impl Compiler {
 
         let entries =
             get_entries(&self.context.root, &self.context.config).expect("entry not found");
-        if entries.len() == 0 {
+        if entries.is_empty() {
             panic!("entry not found");
         }
 
@@ -55,6 +60,14 @@ impl Compiler {
             });
         }
 
+        self.build_module_graph_by_task_queue(&mut queue, resolver);
+    }
+
+    pub fn build_module_graph_by_task_queue(
+        &self,
+        queue: &mut VecDeque<Task>,
+        resolver: Arc<Resolver>,
+    ) -> HashSet<ModuleId> {
         let (rs, mut rr) = tokio::sync::mpsc::unbounded_channel::<(
             Module,
             Vec<(String, Option<String>, Dependency)>,
@@ -63,7 +76,8 @@ impl Compiler {
         let mut active_task_count: usize = 0;
         let mut t_main_thread: usize = 0;
         let mut module_count: usize = 0;
-        tokio::task::block_in_place(move || loop {
+        let mut added_module_ids = HashSet::new();
+        tokio::task::block_in_place(|| loop {
             let mut module_graph = self.context.module_graph.write().unwrap();
             while let Some(task) = queue.pop_front() {
                 let resolver = resolver.clone();
@@ -89,6 +103,7 @@ impl Compiler {
                     // 只有处理 entry 时，module 会不存在于 module_graph 里
                     // 否则，module 会存在于 module_graph 里，只需要补充 info 信息即可
                     if task.is_entry {
+                        added_module_ids.insert(module_id.clone());
                         module_graph.add_module(module);
                     } else {
                         let m = module_graph.get_module_mut(&module_id).unwrap();
@@ -129,6 +144,7 @@ impl Compiler {
                             };
                             // 拿到依赖之后需要直接添加 module 到 module_graph 里，不能等依赖 build 完再添加
                             // 由于是异步处理各个模块，后者会导致大量重复任务的 build_module 任务（3 倍左右）
+                            added_module_ids.insert(module.id.clone());
                             module_graph.add_module(module);
                         }
                         module_graph.add_dependency(&module_id, &dep_module_id, dependency);
@@ -149,9 +165,10 @@ impl Compiler {
                 }
             }
         });
+        added_module_ids
     }
 
-    fn build_module(
+    pub fn build_module(
         context: Arc<Context>,
         task: Task,
         resolver: Arc<Resolver>,
@@ -179,7 +196,7 @@ impl Compiler {
         let dependencies: Vec<(String, Option<String>, Dependency)> = deps
             .iter()
             .map(|dep| {
-                let (x, y) = resolve(&task.path, &dep, &resolver, &context);
+                let (x, y) = resolve(&task.path, dep, &resolver, &context);
                 (x, y, dep.clone())
             })
             .collect();
@@ -208,10 +225,7 @@ fn get_entries(root: &PathBuf, config: &Config) -> Option<Vec<std::path::PathBuf
     } else {
         let vals = entry
             .values()
-            .map(|v| {
-                let file_path = root.join(v);
-                file_path
-            })
+            .map(|v| root.join(v))
             .collect::<Vec<std::path::PathBuf>>();
         return Some(vals);
     }
@@ -236,9 +250,7 @@ mod tests {
         assert_eq!(
             references
                 .into_iter()
-                .map(|(source, target)| {
-                    return format!("{} -> {}", source, target);
-                })
+                .map(|(source, target)| { format!("{} -> {}", source, target) })
                 .collect::<Vec<String>>()
                 .join(","),
             "bar_1.ts -> foo.ts,bar_2.ts -> foo.ts,index.ts -> bar_1.ts,index.ts -> bar_2.ts"
@@ -256,9 +268,7 @@ mod tests {
         assert_eq!(
             references
                 .into_iter()
-                .map(|(source, target)| {
-                    return format!("{} -> {}", source, target);
-                })
+                .map(|(source, target)| { format!("{} -> {}", source, target) })
                 .collect::<Vec<String>>()
                 .join(","),
             "index.css -> foo.css,index.css -> umi-logo.png,index.ts -> index.css".to_string()
@@ -307,7 +317,7 @@ mod tests {
                 )
             })
             .collect();
-        references.sort_by_key(|(source, target)| format!("{} -> {}", source, target).to_string());
+        references.sort_by_key(|(source, target)| format!("{} -> {}", source, target));
 
         println!("module_ids:");
         for module_id in &module_ids {
