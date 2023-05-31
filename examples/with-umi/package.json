@@ -1,0 +1,13 @@
+{
+	"scripts": {
+		"setup": "umi setup"
+	},
+	"devDependencies": {
+		"@swc/helpers": "^0.5.1",
+		"@types/react": "^18.2.7",
+		"@types/react-dom": "^18.2.4",
+		"react": "^18.2.0",
+		"react-dom": "^18.2.0",
+		"umi": "^4.0.69"
+	}
+}

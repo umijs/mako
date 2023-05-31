@@ -1,6 +1,8 @@
 /target
 /examples/*/dist
 /examples/*/node_modules
+/examples/*/.umi
+/examples/*/.umi-production
 /node_modules
 /flamegraph.svg
 .DS_Store
