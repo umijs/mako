@@ -136,7 +136,7 @@ impl Compiler {
                                 ..
                             } = &mut args[0]
                             {
-                                props.extend(js_stmts.clone());
+                                props.extend(js_stmts);
                                 break;
                             }
                         }
@@ -177,7 +177,7 @@ impl Compiler {
                                 ..
                             }) = &mut elems[1]
                             {
-                                props.extend(js_stmts.clone());
+                                props.extend(js_stmts);
                                 break;
                             }
                         }

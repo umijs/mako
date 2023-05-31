@@ -26,15 +26,15 @@ pub fn add_swc_helper_deps(deps: &mut Vec<Dependency>, ast: &ModuleAst) {
                         return;
                     }
                     if let box Expr::Call(call_expr) = x.unwrap() {
-                        if is_commonjs_require(&call_expr) {
-                            if let Some(src) = get_first_arg_str(&call_expr) {
+                        if is_commonjs_require(call_expr) {
+                            if let Some(src) = get_first_arg_str(call_expr) {
                                 if src.starts_with("@swc/helpers") {
                                     deps.push(Dependency {
                                         source: src,
                                         resolve_type: ResolveType::Require,
                                         // why 0?
                                         // swc helpers are always inserted before other modules
-                                        order: 0 as usize,
+                                        order: 0_usize,
                                     });
                                 }
                             }

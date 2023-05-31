@@ -1,4 +1,3 @@
-use anyhow;
 use base64::{alphabet::STANDARD, engine, Engine};
 use std::{
     fs,
@@ -51,7 +50,7 @@ fn load_json(path: &str) -> Content {
 
 fn load_assets(path: &str, context: &Arc<Context>) -> Content {
     let file_size = file_size(path);
-    if !file_size.is_ok() {
+    if file_size.is_err() {
         panic!("read file size error: {}", path);
     }
     let file_size = file_size.unwrap();
@@ -60,24 +59,24 @@ fn load_assets(path: &str, context: &Arc<Context>) -> Content {
         let final_file_name = content_hash(path).unwrap() + "." + ext_name(path).unwrap();
         let path = path.to_string();
         context.emit_assets(path.clone(), final_file_name.clone());
-        return Content::Assets(Asset {
+        Content::Assets(Asset {
             // TODO: improve assets structure
-            path: path.clone(),
+            path,
             content: format!("module.exports = \"{}\"", final_file_name),
-        });
+        })
     } else {
         let base64 = to_base64(path);
-        if !base64.is_ok() {
+        if base64.is_err() {
             panic!("to base64 error: {}", path);
         }
         let base64 = base64.unwrap();
-        return Content::Js(format!("export default \"{}\";", base64));
+        Content::Js(format!("export default \"{}\";", base64))
     }
 }
 
 fn read_content(path: &str) -> String {
     let content = std::fs::read_to_string(path);
-    if !content.is_ok() {
+    if content.is_err() {
         panic!("read file error: {}", path);
     }
     content.unwrap()
