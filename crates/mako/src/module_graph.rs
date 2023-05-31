@@ -50,6 +50,14 @@ impl ModuleGraph {
             .and_then(|i| self.graph.node_weight(*i))
     }
 
+    pub fn remove_module(&mut self, module_id: &ModuleId) -> Module {
+        let index = self
+            .id_index_map
+            .remove(module_id)
+            .unwrap_or_else(|| panic!("module_id {:?} not found in the module graph", module_id));
+        self.graph.remove_node(index).unwrap()
+    }
+
     pub fn get_module_mut(&mut self, module_id: &ModuleId) -> Option<&mut Module> {
         self.id_index_map
             .get(module_id)
@@ -66,6 +74,33 @@ impl ModuleGraph {
     #[allow(dead_code)]
     pub fn get_modules_mut(&mut self) -> Vec<&mut Module> {
         self.graph.node_weights_mut().collect()
+    }
+    pub fn remove_dependency(&mut self, from: &ModuleId, to: &ModuleId) {
+        let from_index = self.id_index_map.get(from).unwrap_or_else(|| {
+            panic!(
+                r#"from node "{}" does not exist in the module graph when remove edge"#,
+                from.id
+            )
+        });
+
+        let to_index = self.id_index_map.get(to).unwrap_or_else(|| {
+            panic!(
+                r#"to node "{}" does not exist in the module graph when remove edge"#,
+                to.id
+            )
+        });
+
+        let edge = self
+            .graph
+            .find_edge(*from_index, *to_index)
+            .unwrap_or_else(|| {
+                panic!(
+                    r#"edge "{}" -> "{}" does not exist in the module graph when remove edge"#,
+                    from.id, to.id
+                )
+            });
+
+        self.graph.remove_edge(edge);
     }
 
     pub fn add_dependency(&mut self, from: &ModuleId, to: &ModuleId, edge: Dependency) {

@@ -1,13 +1,16 @@
-use std::fmt::{Debug, Formatter};
+use std::{
+    fmt::{Debug, Formatter},
+    path::PathBuf,
+};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct Dependency {
     pub source: String,
     pub resolve_type: ResolveType,
     pub order: usize,
 }
 
-#[derive(Eq, PartialEq, Debug, Clone)]
+#[derive(Eq, Hash, PartialEq, Debug, Clone)]
 pub enum ResolveType {
     Import,
     ExportNamed,
@@ -39,6 +42,12 @@ pub struct ModuleId {
 impl ModuleId {
     pub fn new(id: String) -> Self {
         Self { id }
+    }
+
+    pub fn from_path(path_buf: PathBuf) -> Self {
+        Self {
+            id: path_buf.to_string_lossy().to_string(),
+        }
     }
 }
 
