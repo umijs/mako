@@ -33,16 +33,16 @@ fn do_resolve(
         None
     };
     if let Some(external) = external {
-        (source.to_string(), Some(external.to_string()))
+        (source.to_string(), Some(external))
     } else {
         let path = PathBuf::from(path);
         // 所有的 path 都是文件，所以 parent() 肯定是其所在目录
         let parent = path.parent().unwrap();
         debug!("parent: {:?}, source: {:?}", parent, source);
-        let result = resolver.resolve(parent, &source);
+        let result = resolver.resolve(parent, source);
         if let Ok(ResolveResult::Resource(resource)) = result {
             let path = resource.path.to_string_lossy().to_string();
-            return (path, None);
+            (path, None)
         } else {
             panic!(
                 "resolve error: {:?}, parent: {:?}, source: {:?}",
@@ -119,7 +119,7 @@ mod tests {
         assert_eq!(x, ("node_modules/foo/index.js".to_string(), None));
         let x = resolve(
             "test/resolve/normal",
-            Some(alias.clone()),
+            Some(alias),
             None,
             "index.ts",
             "bar/foo",
@@ -151,15 +151,13 @@ mod tests {
         let fixture = current_dir.join(base);
         let resolver = super::get_resolver(alias);
         let (path, external) = super::do_resolve(
-            &fixture.join(path).to_string_lossy().to_string(),
+            &fixture.join(path).to_string_lossy(),
             source,
             &resolver,
             externals,
         );
         println!("> path: {:?}, {:?}", path, external);
-        let path = path
-            .replace(format!("{}/", fixture.to_str().unwrap()).as_str(), "")
-            .to_string();
+        let path = path.replace(format!("{}/", fixture.to_str().unwrap()).as_str(), "");
         (path, external)
     }
 }

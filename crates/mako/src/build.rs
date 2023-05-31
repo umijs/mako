@@ -40,7 +40,7 @@ impl Compiler {
 
         let entries =
             get_entries(&self.context.root, &self.context.config).expect("entry not found");
-        if entries.len() == 0 {
+        if entries.is_empty() {
             panic!("entry not found");
         }
 
@@ -179,7 +179,7 @@ impl Compiler {
         let dependencies: Vec<(String, Option<String>, Dependency)> = deps
             .iter()
             .map(|dep| {
-                let (x, y) = resolve(&task.path, &dep, &resolver, &context);
+                let (x, y) = resolve(&task.path, dep, &resolver, &context);
                 (x, y, dep.clone())
             })
             .collect();
@@ -208,10 +208,7 @@ fn get_entries(root: &PathBuf, config: &Config) -> Option<Vec<std::path::PathBuf
     } else {
         let vals = entry
             .values()
-            .map(|v| {
-                let file_path = root.join(v);
-                file_path
-            })
+            .map(|v| root.join(v))
             .collect::<Vec<std::path::PathBuf>>();
         return Some(vals);
     }
@@ -236,9 +233,7 @@ mod tests {
         assert_eq!(
             references
                 .into_iter()
-                .map(|(source, target)| {
-                    return format!("{} -> {}", source, target);
-                })
+                .map(|(source, target)| { format!("{} -> {}", source, target) })
                 .collect::<Vec<String>>()
                 .join(","),
             "bar_1.ts -> foo.ts,bar_2.ts -> foo.ts,index.ts -> bar_1.ts,index.ts -> bar_2.ts"
@@ -256,9 +251,7 @@ mod tests {
         assert_eq!(
             references
                 .into_iter()
-                .map(|(source, target)| {
-                    return format!("{} -> {}", source, target);
-                })
+                .map(|(source, target)| { format!("{} -> {}", source, target) })
                 .collect::<Vec<String>>()
                 .join(","),
             "index.css -> foo.css,index.css -> umi-logo.png,index.ts -> index.css".to_string()
@@ -307,7 +300,7 @@ mod tests {
                 )
             })
             .collect();
-        references.sort_by_key(|(source, target)| format!("{} -> {}", source, target).to_string());
+        references.sort_by_key(|(source, target)| format!("{} -> {}", source, target));
 
         println!("module_ids:");
         for module_id in &module_ids {

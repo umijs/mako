@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use clap::ValueEnum;
-use config;
+
 use futures::{channel::mpsc::channel, SinkExt, StreamExt};
 use notify::{
     event::{DataChange, ModifyKind},
