@@ -1,0 +1,12 @@
+{
+  "entry": {
+    "umi": ".umi/umi.ts"
+  },
+  "resolve": {
+    "alias": {
+      "@": "./",
+      "@@": "./.umi/",
+      "umi": "./.umi/exports"
+    }
+  }
+}
