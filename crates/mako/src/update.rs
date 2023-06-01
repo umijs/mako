@@ -7,7 +7,7 @@ use crate::resolve::get_resolver;
 use nodejs_resolver::Resolver;
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::fmt::Error;
+use std::fmt::{self, Error};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::debug;
@@ -26,6 +26,34 @@ pub struct UpdateResult {
     pub removed: HashSet<ModuleId>,
     // 修改的模块Id
     pub modified: HashSet<ModuleId>,
+}
+
+impl fmt::Display for UpdateResult {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut added = self.added.iter().map(|f| f.id.clone()).collect::<Vec<_>>();
+        added.sort_by_key(|id| id.to_string());
+        let mut modified = self
+            .modified
+            .iter()
+            .map(|f| f.id.clone())
+            .collect::<Vec<_>>();
+        modified.sort_by_key(|id| id.to_string());
+        let mut removed = self
+            .removed
+            .iter()
+            .map(|f| f.id.clone())
+            .collect::<Vec<_>>();
+        removed.sort_by_key(|id| id.to_string());
+        write!(
+            f,
+            r#"
+added:{:?}
+modified:{:?}
+removed:{:?}
+"#,
+            &added, &modified, &removed
+        )
+    }
 }
 
 impl Compiler {
@@ -212,7 +240,7 @@ mod tests {
     use std::fs;
 
     use crate::{
-        assert_debug_snapshot, assert_display_snapshot,
+        assert_display_snapshot,
         compiler::{self, Compiler},
         config::Config,
         update::UpdateType,
@@ -220,7 +248,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_build() {
-        let compiler = setup_compiler("test/build/update");
+        let compiler = setup_compiler();
         setup_files(
             &compiler,
             vec![
@@ -277,7 +305,7 @@ export const foo = 1;
             )])
             .unwrap();
 
-        assert_debug_snapshot!(&result);
+        assert_display_snapshot!(&result);
 
         {
             let module_graph = compiler.context.module_graph.read().unwrap();
@@ -287,7 +315,7 @@ export const foo = 1;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_update_multi() {
-        let compiler = setup_compiler("test/build/update");
+        let compiler = setup_compiler();
         setup_files(
             &compiler,
             vec![
@@ -351,7 +379,7 @@ export const foo = 1;
             )])
             .unwrap();
 
-        assert_debug_snapshot!(&result);
+        assert_display_snapshot!(&result);
 
         {
             let module_graph = compiler.context.module_graph.read().unwrap();
@@ -359,7 +387,7 @@ export const foo = 1;
         }
     }
 
-    fn setup_compiler(base: &str) -> Compiler {
+    fn setup_compiler() -> Compiler {
         // tracing_subscriber::fmt()
         //     .with_env_filter(
         //         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("mako=debug")),
@@ -367,9 +395,10 @@ export const foo = 1;
         //     .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
         //     .without_time()
         //     .init();
-
         let current_dir = std::env::current_dir().unwrap();
-        let root = current_dir.join(base);
+        let root = current_dir.join("test/build/tmp");
+        fs::remove_dir(&root);
+        fs::create_dir(&root);
         let config = Config::new(&root).unwrap();
 
         compiler::Compiler::new(config, root)

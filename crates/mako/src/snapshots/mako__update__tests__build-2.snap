@@ -2,22 +2,8 @@
 source: crates/mako/src/update.rs
 expression: "&result"
 ---
-UpdateResult {
-    added: {
-        ModuleId {
-            id: "<CWD>/crates/mako/test/build/update/chunk-3.ts",
-        },
-        ModuleId {
-            id: "<CWD>/node_modules/.pnpm/@swc+helpers@0.5.1/node_modules/@swc/helpers/esm/_export_star.js",
-        },
-        ModuleId {
-            id: "<CWD>/crates/mako/test/build/update/chunk-2.ts",
-        },
-    },
-    removed: {},
-    modified: {
-        ModuleId {
-            id: "<CWD>/crates/mako/test/build/update/index.ts",
-        },
-    },
-}
+
+added:["<CWD>/crates/mako/test/build/tmp/chunk-2.ts"]
+modified:["<CWD>/crates/mako/test/build/tmp/index.ts"]
+removed:[]
+
