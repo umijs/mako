@@ -10,6 +10,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::Error;
 use std::path::PathBuf;
 use std::sync::Arc;
+use tracing::debug;
 
 pub enum UpdateType {
     Add,
@@ -61,13 +62,19 @@ impl Compiler {
         // 分析修改的模块，结果中会包含新增的模块
         let (modified_module_ids, add_paths) = self.build_by_modify(modified, resolver.clone());
         added.extend(add_paths);
-        dbg!("added:{:?}", &added);
+        debug!("added:{:?}", &added);
         update_result.modified.extend(modified_module_ids);
 
         // 最后做添加
-        let added_module_ids = self.build_by_add(added, resolver);
+        let added_module_ids = self.build_by_add(&added, resolver);
+        update_result.added.extend(
+            added
+                .into_iter()
+                .map(ModuleId::from_path)
+                .collect::<HashSet<_>>(),
+        );
         update_result.added.extend(added_module_ids);
-
+        debug!("update_result:{:?}", &update_result);
         Result::Ok(update_result)
     }
 
@@ -112,8 +119,6 @@ impl Compiler {
             })
             .collect::<Vec<_>>();
 
-        dbg!("result:{:?}", &result);
-
         let mut added = vec![];
         let mut modified_module_ids = HashSet::new();
 
@@ -143,7 +148,7 @@ impl Compiler {
         (modified_module_ids, added)
     }
 
-    fn build_by_add(&self, added: Vec<PathBuf>, resolver: Arc<Resolver>) -> HashSet<ModuleId> {
+    fn build_by_add(&self, added: &Vec<PathBuf>, resolver: Arc<Resolver>) -> HashSet<ModuleId> {
         let mut add_queue: VecDeque<Task> = VecDeque::new();
         for path in added {
             add_queue.push_back(Task {
@@ -205,8 +210,6 @@ fn diff(
 #[cfg(test)]
 mod tests {
     use std::fs;
-
-    use tracing_subscriber::EnvFilter;
 
     use crate::{
         assert_debug_snapshot, assert_display_snapshot,
@@ -282,14 +285,88 @@ export const foo = 1;
         }
     }
 
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_update_multi() {
+        let compiler = setup_compiler("test/build/update");
+        setup_files(
+            &compiler,
+            vec![
+                (
+                    "index.ts".into(),
+                    r#"
+(async () => {
+    await import('./chunk-1.ts');
+})();
+    "#
+                    .into(),
+                ),
+                (
+                    "chunk-1.ts".into(),
+                    r#"
+export default async function () {
+    console.log(123);
+}
+    "#
+                    .into(),
+                ),
+            ],
+        );
+        compiler.build();
+        {
+            let module_graph = compiler.context.module_graph.read().unwrap();
+            assert_display_snapshot!(&module_graph);
+        }
+        setup_files(
+            &compiler,
+            vec![
+                (
+                    "index.ts".into(),
+                    r#"
+(async () => {
+    await import('./chunk-2.ts');
+})();
+"#
+                    .into(),
+                ),
+                (
+                    "chunk-2.ts".into(),
+                    r#"
+export * from './chunk-3.ts';
+"#
+                    .into(),
+                ),
+                (
+                    "chunk-3.ts".into(),
+                    r#"
+export const foo = 1;
+"#
+                    .into(),
+                ),
+            ],
+        );
+        let result = compiler
+            .update(vec![(
+                compiler.context.root.join("index.ts"),
+                UpdateType::Modify,
+            )])
+            .unwrap();
+
+        assert_debug_snapshot!(&result);
+
+        {
+            let module_graph = compiler.context.module_graph.read().unwrap();
+            assert_display_snapshot!(&module_graph);
+        }
+    }
+
     fn setup_compiler(base: &str) -> Compiler {
-        tracing_subscriber::fmt()
-            .with_env_filter(
-                EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("mako=debug")),
-            )
-            .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
-            .without_time()
-            .init();
+        // tracing_subscriber::fmt()
+        //     .with_env_filter(
+        //         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("mako=debug")),
+        //     )
+        //     .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
+        //     .without_time()
+        //     .init();
 
         let current_dir = std::env::current_dir().unwrap();
         let root = current_dir.join(base);

@@ -5,13 +5,13 @@ expression: "&result"
 UpdateResult {
     added: {
         ModuleId {
-            id: "<CWD>/crates/mako/test/build/update/chunk-3.ts",
-        },
-        ModuleId {
             id: "<CWD>/node_modules/.pnpm/@swc+helpers@0.5.1/node_modules/@swc/helpers/esm/_export_star.js",
         },
         ModuleId {
             id: "<CWD>/crates/mako/test/build/update/chunk-2.ts",
+        },
+        ModuleId {
+            id: "<CWD>/crates/mako/test/build/update/chunk-3.ts",
         },
     },
     removed: {},
