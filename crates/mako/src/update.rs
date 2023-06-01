@@ -248,7 +248,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_build() {
-        let compiler = setup_compiler();
+        let compiler = setup_compiler("test/build/tmp/single");
         setup_files(
             &compiler,
             vec![
@@ -272,7 +272,7 @@ export default async function () {
                 ),
             ],
         );
-        compiler.build();
+        compiler.compile();
         {
             let module_graph = compiler.context.module_graph.read().unwrap();
             assert_display_snapshot!(&module_graph);
@@ -315,7 +315,7 @@ export const foo = 1;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_update_multi() {
-        let compiler = setup_compiler();
+        let compiler = setup_compiler("test/build/tmp/multi");
         setup_files(
             &compiler,
             vec![
@@ -339,7 +339,7 @@ export default async function () {
                 ),
             ],
         );
-        compiler.build();
+        compiler.compile();
         {
             let module_graph = compiler.context.module_graph.read().unwrap();
             assert_display_snapshot!(&module_graph);
@@ -387,7 +387,7 @@ export const foo = 1;
         }
     }
 
-    fn setup_compiler() -> Compiler {
+    fn setup_compiler(base: &str) -> Compiler {
         // tracing_subscriber::fmt()
         //     .with_env_filter(
         //         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("mako=debug")),
@@ -396,9 +396,14 @@ export const foo = 1;
         //     .without_time()
         //     .init();
         let current_dir = std::env::current_dir().unwrap();
-        let root = current_dir.join("test/build/tmp");
-        fs::remove_dir(&root);
-        fs::create_dir(&root);
+        let root = current_dir.join(base);
+        if !root.parent().unwrap().exists() {
+            fs::create_dir_all(root.parent().unwrap()).unwrap();
+        }
+        if root.exists() {
+            fs::remove_dir_all(&root).unwrap();
+        }
+        fs::create_dir_all(&root).unwrap();
         let config = Config::new(&root).unwrap();
 
         compiler::Compiler::new(config, root)

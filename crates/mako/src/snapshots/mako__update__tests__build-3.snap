@@ -3,5 +3,5 @@ source: crates/mako/src/update.rs
 expression: "&module_graph"
 ---
 graph
- nodes:["<CWD>/crates/mako/test/build/tmp/chunk-1.ts", "<CWD>/crates/mako/test/build/tmp/chunk-2.ts", "<CWD>/crates/mako/test/build/tmp/index.ts"] 
- references:["<CWD>/crates/mako/test/build/tmp/index.ts -> <CWD>/crates/mako/test/build/tmp/chunk-2.ts"]
+ nodes:["<CWD>/crates/mako/test/build/tmp/single/chunk-1.ts", "<CWD>/crates/mako/test/build/tmp/single/chunk-2.ts", "<CWD>/crates/mako/test/build/tmp/single/index.ts"] 
+ references:["<CWD>/crates/mako/test/build/tmp/single/index.ts -> <CWD>/crates/mako/test/build/tmp/single/chunk-2.ts"]
