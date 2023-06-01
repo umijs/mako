@@ -123,7 +123,7 @@ impl Compiler {
                                 resolved_path.clone(),
                                 &dep_module_id,
                             );
-                            if is_external {
+                            if !is_external {
                                 queue.push_back(Task {
                                     path: resolved_path,
                                     // parent_module_id: None,
