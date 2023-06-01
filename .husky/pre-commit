@@ -2,6 +2,7 @@
 . "$(dirname -- "$0")/_/husky.sh"
 
 # for rust code
+cargo lintfix
 cargo fmt
 # for js code
 npm run rome:format
