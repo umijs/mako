@@ -1,12 +1,9 @@
 use lightningcss::stylesheet::{MinifyOptions, ParserOptions, PrinterOptions, StyleSheet};
 use std::collections::HashMap;
 use std::sync::Arc;
-use swc_atoms::JsWord;
-use swc_common::collections::AHashMap;
-use swc_common::sync::Lrc;
-use swc_common::{Globals, DUMMY_SP, GLOBALS};
+use swc_common::{Globals, GLOBALS};
 use swc_css_visit::VisitMutWith as CssVisitMutWith;
-use swc_ecma_ast::{Expr, Lit, Module, Str};
+use swc_ecma_ast::Module;
 use swc_ecma_visit::VisitMutWith;
 use tracing::{debug, info};
 
@@ -14,7 +11,6 @@ use crate::ast::{build_js_ast, css_ast_to_code};
 use crate::compiler::Context;
 use crate::module::ModuleId;
 use crate::transform_dynamic_import::DynamicImport;
-use crate::transform_env_replacer::EnvReplacer;
 use crate::{
     compiler::Compiler, module::ModuleAst, transform_css_handler::CssHandler,
     transform_dep_replacer::DepReplacer,
@@ -33,9 +29,6 @@ impl Compiler {
 }
 
 fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) {
-    // build env map
-    let env_map = build_env_map(HashMap::from([("NODE_ENV".into(), "production".into())]));
-
     module_ids.iter().for_each(|module_id| {
         let module_graph = context.module_graph.read().unwrap();
         let deps = module_graph.get_dependencies(module_id);
@@ -53,7 +46,7 @@ fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) {
         let ast = &mut info.ast;
         match ast {
             ModuleAst::Script(ast) => {
-                transform_js(ast, dep_map, env_map.clone());
+                transform_js(ast, dep_map);
             }
             ModuleAst::Css(ast) => {
                 let ast = transform_css(ast, &path, dep_map, context);
@@ -103,35 +96,13 @@ fn transform_css(
     build_js_ast(path, content.as_str(), context)
 }
 
-fn build_env_map(env_map: HashMap<String, String>) -> AHashMap<JsWord, Expr> {
-    let mut map = AHashMap::default();
-    env_map.into_iter().for_each(|(k, v)| {
-        map.insert(
-            k.into(),
-            Expr::Lit(Lit::Str(Str {
-                span: DUMMY_SP,
-                raw: None,
-                value: v.into(),
-            })),
-        );
-    });
-    map
-}
-
-fn transform_js(
-    ast: &mut swc_ecma_ast::Module,
-    dep_map: HashMap<String, String>,
-    env_map: AHashMap<JsWord, Expr>,
-) {
+fn transform_js(ast: &mut swc_ecma_ast::Module, dep_map: HashMap<String, String>) {
     let globals = Globals::default();
     GLOBALS.set(&globals, || {
         let mut dep_replacer = DepReplacer { dep_map };
         ast.visit_mut_with(&mut dep_replacer);
         let mut dynamic_import = DynamicImport {};
         ast.visit_mut_with(&mut dynamic_import);
-
-        let mut env_replacer = EnvReplacer::new(Lrc::new(env_map));
-        ast.visit_mut_with(&mut env_replacer);
     });
 }
 
@@ -151,7 +122,7 @@ mod tests {
         module_graph::ModuleGraph,
     };
 
-    use super::{build_env_map, transform_css};
+    use super::transform_css;
 
     #[test]
     fn test_transform_js_dep_replacer() {
@@ -159,39 +130,13 @@ mod tests {
 require("foo");
         "#
         .trim();
-        let (code, _sourcemap) = transform_js_code(
-            code,
-            None,
-            HashMap::from([("foo".into(), "bar".into())]),
-            Default::default(),
-        );
+        let (code, _sourcemap) =
+            transform_js_code(code, None, HashMap::from([("foo".into(), "bar".into())]));
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
             r#"
 require("bar");
-        "#
-            .trim()
-        );
-    }
-
-    #[test]
-    fn test_transform_js_env_replacer() {
-        let code = r#"
-if (process.env.NODE_ENV === "production") 1;
-        "#
-        .trim();
-        let (code, _sourcemap) = transform_js_code(
-            code,
-            None,
-            Default::default(),
-            HashMap::from([("NODE_ENV".into(), "production".into())]),
-        );
-        println!(">> CODE\n{}", code);
-        assert_eq!(
-            code,
-            r#"
-if ("production" === "production") 1;
         "#
             .trim()
         );
@@ -277,7 +222,6 @@ document.head.appendChild(style);
         origin: &str,
         path: Option<&str>,
         dep_map: HashMap<String, String>,
-        env_map: HashMap<String, String>,
     ) -> (String, String) {
         let path = if path.is_none() {
             "test.tsx"
@@ -294,8 +238,7 @@ document.head.appendChild(style);
             meta: Meta::new(),
         });
         let mut ast = build_js_ast(path, origin, &context);
-        let env_map = build_env_map(env_map);
-        super::transform_js(&mut ast, dep_map, env_map);
+        super::transform_js(&mut ast, dep_map);
         let (code, _sourcemap) = js_ast_to_code(&ast, &context, "index.js");
         let code = code.trim().to_string();
         (code, _sourcemap)
