@@ -1,0 +1,15 @@
+{
+  "name": "@alipay/okam-darwin-universal",
+  "version": "0.0.0",
+  "os": [
+    "darwin"
+  ],
+  "main": "okam.darwin-universal.node",
+  "files": [
+    "okam.darwin-universal.node"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">= 10"
+  }
+}

@@ -1,0 +1,20 @@
+[package]
+edition = "2021"
+name = "alipay_okam"
+version = "0.0.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# Default enable napi4 feature, see https://nodejs.org/api/n-api.html#node-api-version-matrix
+napi = { version = "2.11.1", default-features = false, features = ["napi4", "serde-json", "tokio_rt"] }
+napi-derive = "2.11.0"
+mako = { path = '../mako' }
+serde_json = { workspace = true }
+
+[build-dependencies]
+napi-build = "2.0.1"
+
+[profile.release]
+lto = true
