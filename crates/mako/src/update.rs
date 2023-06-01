@@ -209,7 +209,7 @@ mod tests {
     use tracing_subscriber::EnvFilter;
 
     use crate::{
-        assert_display_snapshot,
+        assert_debug_snapshot, assert_display_snapshot,
         compiler::{self, Compiler},
         config::Config,
         update::UpdateType,
@@ -267,12 +267,15 @@ export const foo = 1;
                 ),
             ],
         );
-        compiler
+        let result = compiler
             .update(vec![(
                 compiler.context.root.join("index.ts"),
                 UpdateType::Modify,
             )])
             .unwrap();
+
+        assert_debug_snapshot!(&result);
+
         {
             let module_graph = compiler.context.module_graph.read().unwrap();
             assert_display_snapshot!(&module_graph);
