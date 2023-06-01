@@ -9,7 +9,7 @@ use tokio::sync::mpsc::error::TryRecvError;
 use tracing::info;
 
 use crate::{
-    analyze_deps::{add_swc_helper_deps, analyze_deps},
+    analyze_deps::analyze_deps,
     ast::build_js_ast,
     compiler::{Compiler, Context},
     config::Config,
@@ -191,6 +191,7 @@ impl Compiler {
         task: Task,
         resolver: Arc<Resolver>,
     ) -> (Module, Vec<(String, Option<String>, Dependency)>, Task) {
+        let mut deps = Vec::new();
         let module_id = ModuleId::new(task.path.clone());
 
         // load
@@ -199,16 +200,10 @@ impl Compiler {
         // parse
         let mut ast = parse(&content, &task.path, &context);
 
-        // analyze deps
-        // transform 之后的 helper 怎么处理？比如 @swc/helpers/_/_interop_require_default
-        // 解法是在 transform 之后补一遍以 @swc/helpers 开头的 require 方法
-        let mut deps = analyze_deps(&ast);
-
         // transform
-        transform(&mut ast, &context);
-
-        // add @swc/helpers deps
-        add_swc_helper_deps(&mut deps, &ast);
+        transform(&mut ast, &context, &mut |ast| {
+            deps = analyze_deps(ast);
+        });
 
         // resolve
         let dependencies: Vec<(String, Option<String>, Dependency)> = deps
