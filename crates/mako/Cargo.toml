@@ -48,3 +48,6 @@ swc_ecma_minifier = "0.181.21"
 swc_error_reporters = "0.15.11"
 pathdiff = "0.2.1"
 anyhow = "1.0.71"
+
+[dev-dependencies]
+insta = { version = "1.29.0", features = ["yaml"] }

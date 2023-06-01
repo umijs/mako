@@ -1,12 +1,12 @@
 use crate::build::Task;
 use crate::compiler::Compiler;
-use crate::module::{Dependency, ModuleId};
+use crate::module::{Dependency, Module, ModuleId};
 
 use crate::resolve::get_resolver;
 
 use nodejs_resolver::Resolver;
 use rayon::prelude::*;
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::Error;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -61,6 +61,7 @@ impl Compiler {
         // 分析修改的模块，结果中会包含新增的模块
         let (modified_module_ids, add_paths) = self.build_by_modify(modified, resolver.clone());
         added.extend(add_paths);
+        dbg!("added:{:?}", &added);
         update_result.modified.extend(modified_module_ids);
 
         // 最后做添加
@@ -96,30 +97,49 @@ impl Compiler {
                     .map(|(module_id, dep)| (module_id.clone(), dep.clone()))
                     .collect();
                 drop(module_graph);
-                let target_dependencies: Vec<(ModuleId, Dependency)> = dependencies
-                    .into_iter()
-                    .map(|(path, _, dep)| (ModuleId::new(path), dep))
-                    .collect();
+
+                let mut add_modules: HashMap<ModuleId, Module> = HashMap::new();
+                let mut target_dependencies: Vec<(ModuleId, Dependency)> = vec![];
+                dependencies.into_iter().for_each(|(path, external, dep)| {
+                    let module_id = ModuleId::new(path.clone());
+                    let module = self.create_module(external, path, &module_id);
+                    target_dependencies.push((module_id.clone(), dep));
+                    add_modules.insert(module_id, module);
+                });
+
                 let (add, remove) = diff(current_dependencies, target_dependencies);
-                (module, add, remove)
+                (module, add, remove, add_modules)
             })
             .collect::<Vec<_>>();
 
-        // remove bind dependency
-        for (module, _, remove) in &result {
-            let mut module_graph = self.context.module_graph.write().unwrap();
-            for (remove_module_id, _) in remove {
-                module_graph.remove_dependency(remove_module_id, &module.id)
-            }
-        }
+        dbg!("result:{:?}", &result);
 
-        // 把二维的结构拍平，如果有更好的写法可替换
         let mut added = vec![];
         let mut modified_module_ids = HashSet::new();
-        for (module, add, _) in &result {
-            added.extend(add.iter().map(|f| f.0.to_path()));
+
+        for (module, add, remove, mut add_modules) in result {
+            let mut module_graph = self.context.module_graph.write().unwrap();
+
+            // remove bind dependency
+            for (remove_module_id, _) in remove {
+                module_graph.remove_dependency(&module.id, &remove_module_id)
+            }
+
+            // add bind dependency
+            for (add_module_id, dep) in &add {
+                let add_module = add_modules.remove(add_module_id).unwrap();
+
+                // 只针对非 external 的模块设置 add Task
+                if add_module.info.is_none() {
+                    added.push(add_module_id.to_path());
+                }
+
+                module_graph.add_module(add_module);
+                module_graph.add_dependency(&module.id, add_module_id, dep.clone());
+            }
             modified_module_ids.insert(module.id.clone());
         }
+
         (modified_module_ids, added)
     }
 
@@ -128,7 +148,7 @@ impl Compiler {
         for path in added {
             add_queue.push_back(Task {
                 path: path.to_string_lossy().to_string(),
-                is_entry: true,
+                is_entry: false,
             })
         }
 
@@ -167,13 +187,13 @@ fn diff(
 ) {
     let right: HashSet<(ModuleId, Dependency)> = right.into_iter().collect();
     let left: HashSet<(ModuleId, Dependency)> = left.into_iter().collect();
-    let added = right
+    let removed = right
         .difference(&left)
         .collect::<HashSet<_>>()
         .into_iter()
         .map(|dep| (*dep).clone())
         .collect();
-    let removed = left
+    let added = left
         .difference(&right)
         .collect::<HashSet<_>>()
         .into_iter()
@@ -183,4 +203,103 @@ fn diff(
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use std::fs;
+
+    use tracing_subscriber::EnvFilter;
+
+    use crate::{
+        assert_display_snapshot,
+        compiler::{self, Compiler},
+        config::Config,
+        update::UpdateType,
+    };
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_build() {
+        let compiler = setup_compiler("test/build/update");
+        setup_files(
+            &compiler,
+            vec![
+                (
+                    "index.ts".into(),
+                    r#"
+(async () => {
+    await import('./chunk-1.ts');
+})();
+    "#
+                    .into(),
+                ),
+                (
+                    "chunk-1.ts".into(),
+                    r#"
+export default async function () {
+    console.log(123);
+}
+    "#
+                    .into(),
+                ),
+            ],
+        );
+        compiler.build();
+        {
+            let module_graph = compiler.context.module_graph.read().unwrap();
+            assert_display_snapshot!(&module_graph);
+        }
+        setup_files(
+            &compiler,
+            vec![
+                (
+                    "index.ts".into(),
+                    r#"
+(async () => {
+    await import('./chunk-2.ts');
+})();
+"#
+                    .into(),
+                ),
+                (
+                    "chunk-2.ts".into(),
+                    r#"
+export const foo = 1;
+"#
+                    .into(),
+                ),
+            ],
+        );
+        compiler
+            .update(vec![(
+                compiler.context.root.join("index.ts"),
+                UpdateType::Modify,
+            )])
+            .unwrap();
+        {
+            let module_graph = compiler.context.module_graph.read().unwrap();
+            assert_display_snapshot!(&module_graph);
+        }
+    }
+
+    fn setup_compiler(base: &str) -> Compiler {
+        tracing_subscriber::fmt()
+            .with_env_filter(
+                EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("mako=debug")),
+            )
+            .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
+            .without_time()
+            .init();
+
+        let current_dir = std::env::current_dir().unwrap();
+        let root = current_dir.join(base);
+        let config = Config::new(&root).unwrap();
+
+        compiler::Compiler::new(config, root)
+    }
+
+    fn setup_files(compiler: &Compiler, extra_files: Vec<(String, String)>) {
+        let cwd_path = &compiler.context.root;
+        extra_files.into_iter().for_each(|(path, content)| {
+            let output = cwd_path.join(path);
+            fs::write(output, content).unwrap();
+        });
+    }
+}

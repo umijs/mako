@@ -1,0 +1,7 @@
+---
+source: crates/mako/src/update.rs
+expression: "&module_graph"
+---
+graph
+ nodes:["<CWD>/test/build/update/chunk-1.ts", "<CWD>/test/build/update/chunk-2.ts", "<CWD>/test/build/update/index.ts"] 
+ references:["<CWD>/test/build/update/index.ts -> <CWD>/test/build/update/chunk-2.ts"]

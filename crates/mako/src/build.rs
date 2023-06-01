@@ -118,30 +118,18 @@ impl Compiler {
                         let dependency = dep.2.clone();
 
                         if !module_graph.has_module(&dep_module_id) {
-                            let module = if is_external {
-                                let external = dep.1.as_ref().unwrap();
-                                let code = format!("module.exports = {};", external);
-                                let ast = build_js_ast(
-                                    format!("external_{}", &resolved_path).as_str(),
-                                    code.as_str(),
-                                    &self.context,
-                                );
-                                Module::new(
-                                    dep_module_id.clone(),
-                                    false,
-                                    Some(ModuleInfo {
-                                        ast: ModuleAst::Script(ast),
-                                        path: resolved_path,
-                                        external: Some(external.to_string()),
-                                    }),
-                                )
-                            } else {
+                            let module = self.create_module(
+                                dep.1.clone(),
+                                resolved_path.clone(),
+                                &dep_module_id,
+                            );
+                            if is_external {
                                 queue.push_back(Task {
                                     path: resolved_path,
+                                    // parent_module_id: None,
                                     is_entry: false,
                                 });
-                                Module::new(dep_module_id.clone(), false, None)
-                            };
+                            }
                             // 拿到依赖之后需要直接添加 module 到 module_graph 里，不能等依赖 build 完再添加
                             // 由于是异步处理各个模块，后者会导致大量重复任务的 build_module 任务（3 倍左右）
                             added_module_ids.insert(module.id.clone());
@@ -166,6 +154,36 @@ impl Compiler {
             }
         });
         added_module_ids
+    }
+
+    pub fn create_module(
+        &self,
+        external: Option<String>,
+        resolved_path: String,
+        dep_module_id: &ModuleId,
+    ) -> Module {
+        let module = match external {
+            Some(external) => {
+                let code = format!("module.exports = {};", external);
+                let ast = build_js_ast(
+                    format!("external_{}", &resolved_path).as_str(),
+                    code.as_str(),
+                    &self.context,
+                );
+
+                Module::new(
+                    dep_module_id.clone(),
+                    false,
+                    Some(ModuleInfo {
+                        ast: ModuleAst::Script(ast),
+                        path: resolved_path,
+                        external: Some(external),
+                    }),
+                )
+            }
+            None => Module::new(dep_module_id.clone(), false, None),
+        };
+        module
     }
 
     pub fn build_module(

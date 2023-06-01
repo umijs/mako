@@ -6,6 +6,7 @@ use petgraph::{
     stable_graph::StableDiGraph,
 };
 use std::collections::{HashMap, HashSet};
+use std::fmt;
 
 use crate::module::{Dependency, Module, ModuleId};
 
@@ -135,9 +136,8 @@ impl ModuleGraph {
     }
 }
 
-impl ModuleGraph {
-    #[allow(dead_code)]
-    pub fn fmt(&self) {
+impl fmt::Display for ModuleGraph {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut nodes = self
             .graph
             .node_weights()
@@ -156,6 +156,10 @@ impl ModuleGraph {
             .collect::<Vec<_>>();
         nodes.sort_by_key(|id| id.to_string());
         references.sort_by_key(|id| id.to_string());
-        println!("graph\n nodes:{:?} \n references:{:?}", &nodes, &references);
+        write!(
+            f,
+            "graph\n nodes:{:?} \n references:{:?}",
+            &nodes, &references
+        )
     }
 }
