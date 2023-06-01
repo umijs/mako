@@ -1,7 +1,9 @@
 {
   "formatter": {
     "enabled": true,
-    "ignore": ["./examples/**/dist/*", "./.vscode/**", "node_modules/**"],
+    "ignore": [
+      "./examples/**/dist/*", "./.vscode/**", "node_modules/**", "target/**"
+    ],
     "indentStyle": "space",
     "indentSize": 2,
     "lineWidth": 80
