@@ -22,10 +22,16 @@ use crate::compiler::Context;
 use crate::module::ModuleAst;
 use crate::transform_env_replacer::EnvReplacer;
 
-pub fn transform(ast: &mut ModuleAst, context: &Arc<Context>) {
+pub fn transform(
+    ast: &mut ModuleAst,
+    context: &Arc<Context>,
+    analyze_deps_hook: &mut dyn for<'r> FnMut(&'r ModuleAst),
+) {
     match ast {
-        ModuleAst::Script(ast) => transform_js(ast, context),
-        _ => {}
+        ModuleAst::Script(ast) => transform_js(ast, context, analyze_deps_hook),
+        _ => {
+            analyze_deps_hook(ast);
+        }
     }
 }
 
@@ -46,7 +52,11 @@ fn build_env_map(env_map: HashMap<String, String>) -> AHashMap<JsWord, Expr> {
 
 // TODO:
 // polyfill and targets
-fn transform_js(ast: &mut Module, context: &Arc<Context>) {
+fn transform_js(
+    ast: &mut Module,
+    context: &Arc<Context>,
+    before_cjs_hook: &mut dyn for<'r> FnMut(&'r ModuleAst),
+) {
     let cm = context.meta.script.cm.clone();
     let globals = Globals::default();
     // build env map
@@ -77,6 +87,9 @@ fn transform_js(ast: &mut Module, context: &Arc<Context>) {
 
             let mut env_replacer = EnvReplacer::new(Lrc::new(env_map));
             ast.visit_mut_with(&mut env_replacer);
+
+            // 在 cjs 执行前调用 hook，用于收集依赖
+            before_cjs_hook(&ModuleAst::Script(ast.clone()));
 
             ast.visit_mut_with(&mut common_js::<SingleThreadedComments>(
                 unresolved_mark,
@@ -236,10 +249,10 @@ if ("production" === "production") 1;
     }
 
     fn transform_code(origin: &str, path: Option<&str>) -> (String, String) {
-        let path = if path.is_none() {
-            "test.tsx"
-        } else {
+        let path = if let Some(..) = path {
             path.unwrap()
+        } else {
+            "test.tsx"
         };
         let root = PathBuf::from("/path/to/root");
         let context = Arc::new(Context {
@@ -251,7 +264,7 @@ if ("production" === "production") 1;
             meta: Meta::new(),
         });
         let mut ast = build_js_ast(path, origin, &context);
-        transform_js(&mut ast, &context);
+        transform_js(&mut ast, &context, &mut |_| {});
         let (code, _sourcemap) = js_ast_to_code(&ast, &context, "index.js");
         let code = code.replace("\"use strict\";", "");
         let code = code.trim().to_string();
