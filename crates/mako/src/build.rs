@@ -1,5 +1,10 @@
 use nodejs_resolver::Resolver;
-use std::{collections::VecDeque, path::PathBuf, sync::Arc, time::Instant};
+use std::{
+    collections::{HashSet, VecDeque},
+    path::PathBuf,
+    sync::Arc,
+    time::Instant,
+};
 use tokio::sync::mpsc::error::TryRecvError;
 use tracing::info;
 
@@ -16,9 +21,9 @@ use crate::{
 };
 
 #[derive(Debug)]
-struct Task {
-    path: String,
-    is_entry: bool,
+pub struct Task {
+    pub path: String,
+    pub is_entry: bool,
 }
 
 impl Compiler {
@@ -55,6 +60,14 @@ impl Compiler {
             });
         }
 
+        self.build_module_graph_by_task_queue(&mut queue, resolver);
+    }
+
+    pub fn build_module_graph_by_task_queue(
+        &self,
+        queue: &mut VecDeque<Task>,
+        resolver: Arc<Resolver>,
+    ) -> HashSet<ModuleId> {
         let (rs, mut rr) = tokio::sync::mpsc::unbounded_channel::<(
             Module,
             Vec<(String, Option<String>, Dependency)>,
@@ -63,7 +76,8 @@ impl Compiler {
         let mut active_task_count: usize = 0;
         let mut t_main_thread: usize = 0;
         let mut module_count: usize = 0;
-        tokio::task::block_in_place(move || loop {
+        let mut added_module_ids = HashSet::new();
+        tokio::task::block_in_place(|| loop {
             let mut module_graph = self.context.module_graph.write().unwrap();
             while let Some(task) = queue.pop_front() {
                 let resolver = resolver.clone();
@@ -89,6 +103,7 @@ impl Compiler {
                     // 只有处理 entry 时，module 会不存在于 module_graph 里
                     // 否则，module 会存在于 module_graph 里，只需要补充 info 信息即可
                     if task.is_entry {
+                        added_module_ids.insert(module_id.clone());
                         module_graph.add_module(module);
                     } else {
                         let m = module_graph.get_module_mut(&module_id).unwrap();
@@ -103,32 +118,21 @@ impl Compiler {
                         let dependency = dep.2.clone();
 
                         if !module_graph.has_module(&dep_module_id) {
-                            let module = if is_external {
-                                let external = dep.1.as_ref().unwrap();
-                                let code = format!("module.exports = {};", external);
-                                let ast = build_js_ast(
-                                    format!("external_{}", &resolved_path).as_str(),
-                                    code.as_str(),
-                                    &self.context,
-                                );
-                                Module::new(
-                                    dep_module_id.clone(),
-                                    false,
-                                    Some(ModuleInfo {
-                                        ast: ModuleAst::Script(ast),
-                                        path: resolved_path,
-                                        external: Some(external.to_string()),
-                                    }),
-                                )
-                            } else {
+                            let module = self.create_module(
+                                dep.1.clone(),
+                                resolved_path.clone(),
+                                &dep_module_id,
+                            );
+                            if !is_external {
                                 queue.push_back(Task {
                                     path: resolved_path,
+                                    // parent_module_id: None,
                                     is_entry: false,
                                 });
-                                Module::new(dep_module_id.clone(), false, None)
-                            };
+                            }
                             // 拿到依赖之后需要直接添加 module 到 module_graph 里，不能等依赖 build 完再添加
                             // 由于是异步处理各个模块，后者会导致大量重复任务的 build_module 任务（3 倍左右）
+                            added_module_ids.insert(module.id.clone());
                             module_graph.add_module(module);
                         }
                         module_graph.add_dependency(&module_id, &dep_module_id, dependency);
@@ -149,9 +153,40 @@ impl Compiler {
                 }
             }
         });
+        added_module_ids
     }
 
-    fn build_module(
+    pub fn create_module(
+        &self,
+        external: Option<String>,
+        resolved_path: String,
+        dep_module_id: &ModuleId,
+    ) -> Module {
+        let module = match external {
+            Some(external) => {
+                let code = format!("module.exports = {};", external);
+                let ast = build_js_ast(
+                    format!("external_{}", &resolved_path).as_str(),
+                    code.as_str(),
+                    &self.context,
+                );
+
+                Module::new(
+                    dep_module_id.clone(),
+                    false,
+                    Some(ModuleInfo {
+                        ast: ModuleAst::Script(ast),
+                        path: resolved_path,
+                        external: Some(external),
+                    }),
+                )
+            }
+            None => Module::new(dep_module_id.clone(), false, None),
+        };
+        module
+    }
+
+    pub fn build_module(
         context: Arc<Context>,
         task: Task,
         resolver: Arc<Resolver>,

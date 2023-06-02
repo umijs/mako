@@ -25,12 +25,14 @@ mod module_graph;
 mod parse;
 mod resolve;
 mod sourcemap;
+mod test_helper;
 mod transform;
 mod transform_css_handler;
 mod transform_dep_replacer;
 mod transform_dynamic_import;
 mod transform_env_replacer;
 mod transform_in_generate;
+mod update;
 mod watch;
 
 #[tokio::main]

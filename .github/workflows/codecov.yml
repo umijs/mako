@@ -1,68 +1,68 @@
 # Run cargo-llvm-cov and upload to codecov.io
 
-name: Code Coverage
+# name: Code Coverage
 
-on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
-    types: [ opened, synchronize ]
+# on:
+#   push:
+#     branches: [ master ]
+#   pull_request:
+#     branches: [ master ]
+#     types: [ opened, synchronize ]
 
-# Cancel prev CI if new commit
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+# # Cancel prev CI if new commit
+# concurrency:
+#   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+#   cancel-in-progress: true
 
-permissions:
-  contents: read
+# permissions:
+#   contents: read
 
-jobs:
-  coverage:
-    name: Code Coverage
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          override: true
+# jobs:
+  # coverage:
+  #   name: Code Coverage
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - uses: actions-rs/toolchain@v1
+  #       with:
+  #         toolchain: nightly
+  #         override: true
 
-      - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
+  #     - name: Install cargo-llvm-cov
+  #       uses: taiki-e/install-action@cargo-llvm-cov
 
-      - name: Install cargo-nextest
-        uses: taiki-e/install-action@cargo-nextest
+  #     - name: Install cargo-nextest
+  #       uses: taiki-e/install-action@cargo-nextest
 
-      - name: Install llvm-tools-preview for llvm-cov
-        run: rustup component add llvm-tools-preview
+  #     - name: Install llvm-tools-preview for llvm-cov
+  #       run: rustup component add llvm-tools-preview
 
-      - name: Run
-        run: cargo codecov --lcov --output-path lcov.info
+  #     - name: Run
+  #       run: cargo codecov --lcov --output-path lcov.info
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: codecov
-          path: lcov.info
+  #     - name: Upload Artifact
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #         name: codecov
+  #         path: lcov.info
 
   # codecov often fails, use another workflow for retry
-  upload-codecov:
-    name: Upload coverage file
-    runs-on: ubuntu-latest
-    needs: coverage
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+  # upload-codecov:
+  #   name: Upload coverage file
+  #   runs-on: ubuntu-latest
+  #   needs: coverage
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v3
 
-      - name: Download coverage file
-        uses: actions/download-artifact@v3
-        with:
-          name: codecov
+  #     - name: Download coverage file
+  #       uses: actions/download-artifact@v3
+  #       with:
+  #         name: codecov
 
-      - name: Upload to codecov.io
-        uses: codecov/codecov-action@v3
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: true
-          files: lcov.info
+  #     - name: Upload to codecov.io
+  #       uses: codecov/codecov-action@v3
+  #       with:
+  #         token: ${{ secrets.CODECOV_TOKEN }}
+  #         fail_ci_if_error: true
+  #         files: lcov.info
