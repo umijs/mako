@@ -32,6 +32,7 @@ mod transform_dep_replacer;
 mod transform_dynamic_import;
 mod transform_env_replacer;
 mod transform_in_generate;
+mod transform_optimizer;
 mod update;
 mod watch;
 

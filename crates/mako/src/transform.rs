@@ -21,6 +21,7 @@ use swc_ecma_visit::VisitMutWith;
 use crate::compiler::Context;
 use crate::module::ModuleAst;
 use crate::transform_env_replacer::EnvReplacer;
+use crate::transform_optimizer::Optimizer;
 
 pub fn transform(
     ast: &mut ModuleAst,
@@ -87,6 +88,9 @@ fn transform_js(
 
             let mut env_replacer = EnvReplacer::new(Lrc::new(env_map));
             ast.visit_mut_with(&mut env_replacer);
+
+            let mut optimizer = Optimizer {};
+            ast.visit_mut_with(&mut optimizer);
 
             // 在 cjs 执行前调用 hook，用于收集依赖
             before_cjs_hook(&ModuleAst::Script(ast.clone()));
