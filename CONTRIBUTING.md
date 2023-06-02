@@ -96,6 +96,7 @@ crates/mako/src
 ├── transform_dynamic_import.rs   # transform dynamic import to runtime require
 ├── transform_env_replacer.rs     # transform env variables
 ├── transform_in_generate.rs      # transform ast for generate runtime chunks
+├── transform_optimizer.rs        # transform ast for optimize ast
 └── watch.rs                      # todo
 ```
 
