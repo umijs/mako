@@ -54,9 +54,26 @@ impl Optimizer {
     }
 
     fn compare_lits(&self, left: Lit, right: Lit, op: BinaryOp) -> Option<bool> {
+        // 比较简单字面量的值（此处不会处理隐式转换）
+        let is_equal = match left {
+            Lit::Str(str) => match right {
+                Lit::Str(str2) => str.value == str2.value,
+                _ => false,
+            },
+            Lit::Num(num) => match right {
+                Lit::Num(num2) => num.value == num2.value,
+                _ => false,
+            },
+            Lit::Bool(bool) => match right {
+                Lit::Bool(bool2) => bool.value == bool2.value,
+                _ => false,
+            },
+            _ => false,
+        };
+
         match op {
-            op!("==") | op!("===") => Some(left.eq(&right)),
-            op!("!=") | op!("!==") => Some(left.ne(&right)),
+            op!("==") | op!("===") => Some(is_equal),
+            op!("!=") | op!("!==") => Some(!is_equal),
             _ => None,
         }
     }
