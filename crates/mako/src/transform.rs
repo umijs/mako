@@ -60,7 +60,9 @@ fn transform_js(
     let cm = context.meta.script.cm.clone();
     let globals = Globals::default();
     // build env map
-    let env_map = build_env_map(HashMap::from([("NODE_ENV".into(), "production".into())]));
+    // TODO: read env from .env
+    let mode = &context.config.mode.to_string();
+    let env_map = build_env_map(HashMap::from([("NODE_ENV".into(), mode.into())]));
 
     GLOBALS.set(&globals, || {
         let helpers = Helpers::new(true);
@@ -254,7 +256,7 @@ const a = process.env.NODE_ENV;
         assert_eq!(
             code,
             r#"
-const a = "production";
+const a = "development";
         "#
             .trim()
         );
