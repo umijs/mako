@@ -22,6 +22,8 @@ mod module_graph;
 mod parse;
 mod resolve;
 mod sourcemap;
+#[cfg(test)]
+mod test_helper;
 mod transform;
 mod transform_css_handler;
 mod transform_dep_replacer;
@@ -29,4 +31,5 @@ mod transform_dynamic_import;
 mod transform_env_replacer;
 mod transform_in_generate;
 mod transform_optimizer;
+mod update;
 mod watch;

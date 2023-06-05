@@ -1,5 +1,6 @@
 #![feature(box_patterns)]
 
+use crate::watch::watch;
 use clap::Parser;
 use tracing::{debug, info};
 use tracing_subscriber::EnvFilter;
@@ -25,6 +26,7 @@ mod module_graph;
 mod parse;
 mod resolve;
 mod sourcemap;
+#[cfg(test)]
 mod test_helper;
 mod transform;
 mod transform_css_handler;
@@ -65,13 +67,18 @@ async fn main() {
     let mut config = config::Config::new(&root).unwrap();
     config.mode = cli.mode;
     debug!("config: {:?}", config);
-    if cli.watch {
-        config.watch(&root, || {
-            info!("config changed");
-        });
-    }
 
     // compiler
-    let compiler = compiler::Compiler::new(config, root);
+    let compiler = compiler::Compiler::new(config, root.clone());
     compiler.compile();
+
+    if cli.watch {
+        watch(&root, |events| {
+            info!("chang event {:?}", events);
+
+            let res = compiler.update(events.into());
+            dbg!(res);
+            compiler.generate();
+        });
+    }
 }
