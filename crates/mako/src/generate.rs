@@ -2,7 +2,7 @@ use std::{fs, time::Instant};
 
 use tracing::info;
 
-use crate::{compiler::Compiler, config::SourcemapConfig};
+use crate::{compiler::Compiler, config::DevtoolConfig};
 
 impl Compiler {
     pub fn generate(&self) {
@@ -34,7 +34,7 @@ impl Compiler {
             let output = &config.output.path.join(&file.path);
             fs::write(output, &file.content).unwrap();
             // generate separate sourcemap file
-            if matches!(self.context.config.sourcemap, SourcemapConfig::Bool(true)) {
+            if matches!(self.context.config.devtool, DevtoolConfig::SourceMap) {
                 fs::write(format!("{}.map", output.display()), &file.sourcemap).unwrap();
             }
         });

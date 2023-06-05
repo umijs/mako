@@ -35,44 +35,14 @@ impl std::fmt::Display for Mode {
     }
 }
 
-macro_rules! named_unit_variant {
-    ($variant:ident) => {
-        pub mod $variant {
-            pub fn deserialize<'de, D>(deserializer: D) -> Result<(), D::Error>
-            where
-                D: serde::Deserializer<'de>,
-            {
-                struct V;
-                impl<'de> serde::de::Visitor<'de> for V {
-                    type Value = ();
-                    fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                        f.write_str(concat!("\"", stringify!($variant), "\""))
-                    }
-                    fn visit_str<E: serde::de::Error>(self, value: &str) -> Result<Self::Value, E> {
-                        if value == stringify!($variant) {
-                            Ok(())
-                        } else {
-                            Err(E::invalid_value(serde::de::Unexpected::Str(value), &self))
-                        }
-                    }
-                }
-                deserializer.deserialize_str(V)
-            }
-        }
-    };
-}
-
-mod strings {
-    named_unit_variant!(inline);
-}
-
 #[derive(Deserialize, Debug)]
-#[serde(untagged)]
-pub enum SourcemapConfig {
-    Bool(bool),
+pub enum DevtoolConfig {
+    /// Generate separate sourcemap file
+    #[serde(rename = "source-map")]
+    SourceMap,
     /// Generate inline sourcemap
-    #[serde(with = "strings::inline")]
-    Inline,
+    #[serde(rename = "inline-source-map")]
+    InlineSourceMap,
 }
 
 #[derive(Deserialize, Debug)]
@@ -81,7 +51,7 @@ pub struct Config {
     pub output: OutputConfig,
     pub resolve: ResolveConfig,
     pub mode: Mode,
-    pub sourcemap: SourcemapConfig,
+    pub devtool: DevtoolConfig,
     pub externals: HashMap<String, String>,
     pub copy: Vec<String>,
     pub public_path: String,
@@ -98,7 +68,7 @@ const DEFAULT_CONFIG: &str = r#"
     "output": { "path": "dist" },
     "resolve": { "alias": {}, "extensions": ["js", "jsx", "ts", "tsx"] },
     "mode": "development",
-    "sourcemap": false,
+    "devtool": "source-map",
     "externals": {},
     "copy": ["public"],
     "public_path": "/",
@@ -112,7 +82,6 @@ const DEFAULT_CONFIG: &str = r#"
 // - add Default impl
 // - add test
 // - add validation
-// - rename sourcemap to devtool?
 
 impl Config {
     pub fn new(root: &PathBuf) -> Result<Self, config::ConfigError> {
