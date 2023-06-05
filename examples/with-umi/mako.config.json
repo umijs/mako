@@ -6,7 +6,8 @@
     "alias": {
       "@": "./",
       "@@": "./.umi/",
-      "umi": "./.umi/exports"
+      "umi": "./.umi/exports",
+      "dva": "@umijs/plugins/libs/dva"
     }
   }
 }
