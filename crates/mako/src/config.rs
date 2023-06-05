@@ -34,13 +34,53 @@ impl std::fmt::Display for Mode {
     }
 }
 
+macro_rules! named_unit_variant {
+    ($variant:ident) => {
+        pub mod $variant {
+            pub fn deserialize<'de, D>(deserializer: D) -> Result<(), D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                struct V;
+                impl<'de> serde::de::Visitor<'de> for V {
+                    type Value = ();
+                    fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                        f.write_str(concat!("\"", stringify!($variant), "\""))
+                    }
+                    fn visit_str<E: serde::de::Error>(self, value: &str) -> Result<Self::Value, E> {
+                        if value == stringify!($variant) {
+                            Ok(())
+                        } else {
+                            Err(E::invalid_value(serde::de::Unexpected::Str(value), &self))
+                        }
+                    }
+                }
+                deserializer.deserialize_str(V)
+            }
+        }
+    };
+}
+
+mod strings {
+    named_unit_variant!(inline);
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum SourcemapConfig {
+    Bool(bool),
+    /// Generate inline sourcemap
+    #[serde(with = "strings::inline")]
+    Inline,
+}
+
 #[derive(Deserialize, Debug)]
 pub struct Config {
     pub entry: HashMap<String, PathBuf>,
     pub output: OutputConfig,
     pub resolve: ResolveConfig,
     pub mode: Mode,
-    pub sourcemap: bool,
+    pub sourcemap: SourcemapConfig,
     pub externals: HashMap<String, String>,
     pub copy: Vec<String>,
     pub public_path: String,
