@@ -43,8 +43,6 @@ impl Compiler {
         info!("build done in {}ms", t_build.as_millis());
     }
 
-    // TODO:
-    // - 处理出错（比如找不到模块）的情况，现在会直接挂起
     fn build_module_graph(&self) {
         info!("build module graph");
 
