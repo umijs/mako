@@ -28,7 +28,7 @@ impl Compiler {
     }
 }
 
-fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) {
+pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) {
     module_ids.iter().for_each(|module_id| {
         let module_graph = context.module_graph.read().unwrap();
         let deps = module_graph.get_dependencies(module_id);

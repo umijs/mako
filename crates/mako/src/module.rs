@@ -20,6 +20,7 @@ pub enum ResolveType {
     Css,
 }
 
+#[derive(Debug)]
 pub struct ModuleInfo {
     pub ast: ModuleAst,
     pub path: String,
@@ -56,6 +57,7 @@ impl ModuleId {
     }
 }
 
+#[derive(Debug)]
 pub enum ModuleAst {
     Script(swc_ecma_ast::Module),
     Css(swc_css_ast::Stylesheet),
