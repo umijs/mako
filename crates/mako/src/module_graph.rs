@@ -143,8 +143,6 @@ impl ModuleGraph {
         deps.sort_by_key(|(_, dep)| dep.order);
         deps
     }
-
-    pub fn get_all_modules(&self) {}
 }
 
 impl fmt::Display for ModuleGraph {
