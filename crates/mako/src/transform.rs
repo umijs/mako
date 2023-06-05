@@ -21,6 +21,7 @@ use swc_ecma_visit::VisitMutWith;
 use crate::compiler::Context;
 use crate::module::ModuleAst;
 use crate::transform_env_replacer::EnvReplacer;
+use crate::transform_optimizer::Optimizer;
 
 pub fn transform(
     ast: &mut ModuleAst,
@@ -87,6 +88,9 @@ fn transform_js(
 
             let mut env_replacer = EnvReplacer::new(Lrc::new(env_map));
             ast.visit_mut_with(&mut env_replacer);
+
+            let mut optimizer = Optimizer {};
+            ast.visit_mut_with(&mut optimizer);
 
             // 在 cjs 执行前调用 hook，用于收集依赖
             before_cjs_hook(&ModuleAst::Script(ast.clone()));
@@ -229,7 +233,7 @@ var _react = _interop_require_default._(require("react"));
     #[test]
     fn test_transform_js_env_replacer() {
         let code = r#"
-if (process.env.NODE_ENV === "production") 1;
+const a = process.env.NODE_ENV;
         "#
         .trim();
         let (code, _sourcemap) = transform_code(code, None);
@@ -237,7 +241,28 @@ if (process.env.NODE_ENV === "production") 1;
         assert_eq!(
             code,
             r#"
-if ("production" === "production") 1;
+const a = "production";
+        "#
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_transform_optimizer() {
+        let code = r#"
+if ('a1' === 'a1') 1.1;
+if ('a2' == 'a3') 1.2;
+if ('b1' !== 'b1') 2.1;
+if ('b2' != 'b3') 2.2;
+        "#
+        .trim();
+        let (code, _sourcemap) = transform_code(code, None);
+        println!(">> CODE\n{}", code);
+        assert_eq!(
+            code,
+            r#"
+1.1;
+2.2;
         "#
             .trim()
         );
