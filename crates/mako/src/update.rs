@@ -88,14 +88,9 @@ impl Compiler {
         update_result.removed.extend(removed_module_ids);
 
         // 分析修改的模块，结果中会包含新增的模块
-        let (modified_module_ids, add_paths) =
-            match self.build_by_modify(modified, resolver.clone()) {
-                Ok((modified_module_ids, add_paths)) => (modified_module_ids, add_paths),
-                Err(err) => {
-                    debug!("build_by_modify error:{:?}", &err);
-                    return Result::Err(Error);
-                }
-            };
+        let (modified_module_ids, add_paths) = self
+            .build_by_modify(modified, resolver.clone())
+            .map_err(|_| Error {})?;
         added.extend(add_paths);
         debug!("added:{:?}", &added);
         update_result.modified.extend(modified_module_ids);
@@ -118,24 +113,18 @@ impl Compiler {
         modified: Vec<PathBuf>,
         resolver: Arc<Resolver>,
     ) -> Result<(HashSet<ModuleId>, Vec<PathBuf>), BuildError> {
-        let result: Result<Vec<_>, _> = modified
+        let result = modified
             .par_iter()
             .map(|entry| {
                 // first build
-                let (module, dependencies, _) = match Compiler::build_module(
+                let (module, dependencies, _) = Compiler::build_module(
                     self.context.clone(),
                     Task {
                         path: entry.to_string_lossy().to_string(),
                         is_entry: false,
                     },
                     resolver.clone(),
-                ) {
-                    Ok(ret) => ret,
-                    Err(err) => {
-                        debug!("build_module error:{:?}", &err);
-                        return Result::Err(err);
-                    }
-                };
+                )?;
 
                 // diff
                 let module_graph = self.context.module_graph.read().unwrap();
@@ -158,15 +147,8 @@ impl Compiler {
                 let (add, remove) = diff(current_dependencies, target_dependencies);
                 Result::Ok((module, add, remove, add_modules))
             })
-            .collect();
-
-        let result = match result {
-            Ok(ret) => ret,
-            Err(err) => {
-                debug!("build_by_modify error:{:?}", &err);
-                return Result::Err(err);
-            }
-        };
+            .collect::<Result<Vec<_>, _>>();
+        let result = result?;
 
         let mut added = vec![];
         let mut modified_module_ids = HashSet::new();
