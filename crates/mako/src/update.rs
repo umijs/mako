@@ -1,4 +1,4 @@
-use crate::build::Task;
+use crate::build::{BuildError, Task};
 use crate::compiler::Compiler;
 use crate::module::{Dependency, Module, ModuleId};
 
@@ -88,7 +88,9 @@ impl Compiler {
         update_result.removed.extend(removed_module_ids);
 
         // 分析修改的模块，结果中会包含新增的模块
-        let (modified_module_ids, add_paths) = self.build_by_modify(modified, resolver.clone());
+        let (modified_module_ids, add_paths) = self
+            .build_by_modify(modified, resolver.clone())
+            .map_err(|_| Error {})?;
         added.extend(add_paths);
         debug!("added:{:?}", &added);
         update_result.modified.extend(modified_module_ids);
@@ -110,7 +112,7 @@ impl Compiler {
         &self,
         modified: Vec<PathBuf>,
         resolver: Arc<Resolver>,
-    ) -> (HashSet<ModuleId>, Vec<PathBuf>) {
+    ) -> Result<(HashSet<ModuleId>, Vec<PathBuf>), BuildError> {
         let result = modified
             .par_iter()
             .map(|entry| {
@@ -122,7 +124,7 @@ impl Compiler {
                         is_entry: false,
                     },
                     resolver.clone(),
-                );
+                )?;
 
                 // diff
                 let module_graph = self.context.module_graph.read().unwrap();
@@ -143,9 +145,10 @@ impl Compiler {
                 });
 
                 let (add, remove) = diff(current_dependencies, target_dependencies);
-                (module, add, remove, add_modules)
+                Result::Ok((module, add, remove, add_modules))
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>, _>>();
+        let result = result?;
 
         let mut added = vec![];
         let mut modified_module_ids = HashSet::new();
@@ -173,7 +176,7 @@ impl Compiler {
             modified_module_ids.insert(module.id.clone());
         }
 
-        (modified_module_ids, added)
+        Result::Ok((modified_module_ids, added))
     }
 
     fn build_by_add(&self, added: &Vec<PathBuf>, resolver: Arc<Resolver>) -> HashSet<ModuleId> {
