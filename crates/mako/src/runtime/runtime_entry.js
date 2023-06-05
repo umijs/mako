@@ -259,3 +259,4 @@ function createRuntime(makoModules, entryModuleId) {
 
 const runtime = createRuntime({}, 'main');
 globalThis.jsonpCallback = runtime._jsonpCallback;
+globalThis.modulesRegistry = runtime._modulesRegistry;
