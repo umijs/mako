@@ -21,6 +21,11 @@ use crate::{
 };
 
 #[derive(Debug)]
+pub enum BuildError {
+    ResolveError { module: String },
+}
+
+#[derive(Debug)]
 pub struct Task {
     pub path: String,
     pub is_entry: bool,
@@ -68,11 +73,9 @@ impl Compiler {
         queue: &mut VecDeque<Task>,
         resolver: Arc<Resolver>,
     ) -> HashSet<ModuleId> {
-        let (rs, mut rr) = tokio::sync::mpsc::unbounded_channel::<(
-            Module,
-            Vec<(String, Option<String>, Dependency)>,
-            Task,
-        )>();
+        let (rs, mut rr) = tokio::sync::mpsc::unbounded_channel::<
+            Result<(Module, Vec<(String, Option<String>, Dependency)>, Task), BuildError>,
+        >();
         let mut active_task_count: usize = 0;
         let mut t_main_thread: usize = 0;
         let mut module_count: usize = 0;
@@ -87,15 +90,19 @@ impl Compiler {
                     module_count += 1;
                     let rs = rs.clone();
                     async move {
-                        let (module, dependencies, task) =
-                            Compiler::build_module(context, task, resolver);
-                        rs.send((module, dependencies, task))
-                            .expect("send task failed");
+                        let ret = Compiler::build_module(context, task, resolver);
+                        rs.send(ret).expect("send task failed");
                     }
                 });
             }
             match rr.try_recv() {
-                Ok((module, deps, task)) => {
+                Ok(ret) => {
+                    let (module, deps, task) = match ret {
+                        Ok(ret) => ret,
+                        Err(err) => {
+                            panic!("build module failed: {:?}", err);
+                        }
+                    };
                     let t = Instant::now();
 
                     // current module
@@ -190,7 +197,7 @@ impl Compiler {
         context: Arc<Context>,
         task: Task,
         resolver: Arc<Resolver>,
-    ) -> (Module, Vec<(String, Option<String>, Dependency)>, Task) {
+    ) -> Result<(Module, Vec<(String, Option<String>, Dependency)>, Task), BuildError> {
         let mut deps = Vec::new();
         let module_id = ModuleId::new(task.path.clone());
 
@@ -206,13 +213,22 @@ impl Compiler {
         });
 
         // resolve
-        let dependencies: Vec<(String, Option<String>, Dependency)> = deps
-            .iter()
-            .map(|dep| {
-                let (x, y) = resolve(&task.path, dep, &resolver, &context);
-                (x, y, dep.clone())
-            })
-            .collect();
+        let mut dependencies = Vec::new();
+
+        for dep in deps.iter() {
+            let ret = resolve(&task.path, dep, &resolver, &context);
+
+            match ret {
+                Ok((x, y)) => {
+                    dependencies.push((x, y, dep.clone()));
+                }
+                Err(_) => {
+                    return Err(BuildError::ResolveError {
+                        module: dep.clone().source,
+                    });
+                }
+            }
+        }
 
         let info = ModuleInfo {
             ast,
@@ -221,7 +237,7 @@ impl Compiler {
         };
         let module = Module::new(module_id, task.is_entry, Some(info));
 
-        (module, dependencies, task)
+        Ok((module, dependencies, task))
     }
 }
 
