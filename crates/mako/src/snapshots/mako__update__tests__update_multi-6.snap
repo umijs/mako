@@ -1,0 +1,7 @@
+---
+source: crates/mako/src/update.rs
+expression: "&module_graph"
+---
+graph
+ nodes:["<CWD>/crates/mako/test/build/tmp/multi/chunk-1.ts", "<CWD>/crates/mako/test/build/tmp/multi/chunk-2.ts", "<CWD>/crates/mako/test/build/tmp/multi/chunk-3.ts", "<CWD>/crates/mako/test/build/tmp/multi/index.ts", "<CWD>/node_modules/.pnpm/@swc+helpers@0.5.1/node_modules/@swc/helpers/esm/_export_star.js"] 
+ references:["<CWD>/crates/mako/test/build/tmp/multi/chunk-2.ts -> <CWD>/crates/mako/test/build/tmp/multi/chunk-3.ts", "<CWD>/crates/mako/test/build/tmp/multi/chunk-2.ts -> <CWD>/node_modules/.pnpm/@swc+helpers@0.5.1/node_modules/@swc/helpers/esm/_export_star.js", "<CWD>/crates/mako/test/build/tmp/multi/index.ts -> <CWD>/crates/mako/test/build/tmp/multi/chunk-2.ts"]

@@ -3,6 +3,7 @@ use crate::compiler::Compiler;
 use crate::module::{Dependency, Module, ModuleId};
 
 use crate::resolve::get_resolver;
+use crate::transform_in_generate::transform_modules;
 
 use nodejs_resolver::Resolver;
 use rayon::prelude::*;
@@ -105,7 +106,22 @@ impl Compiler {
         );
         update_result.added.extend(added_module_ids);
         debug!("update_result:{:?}", &update_result);
+
+        // 对有修改的模块执行一次 transform
+        self.transform_for_change(&update_result);
+
         Result::Ok(update_result)
+    }
+
+    fn transform_for_change(&self, update_result: &UpdateResult) {
+        let mut changes: Vec<ModuleId> = vec![];
+        for module_id in &update_result.added {
+            changes.push(module_id.clone());
+        }
+        for module_id in &update_result.modified {
+            changes.push(module_id.clone());
+        }
+        transform_modules(changes, &self.context.clone());
     }
 
     fn build_by_modify(
@@ -173,7 +189,11 @@ impl Compiler {
                 module_graph.add_module(add_module);
                 module_graph.add_dependency(&module.id, add_module_id, dep.clone());
             }
+
             modified_module_ids.insert(module.id.clone());
+
+            // replace module
+            module_graph.replace_module(module);
         }
 
         Result::Ok((modified_module_ids, added))
@@ -243,9 +263,11 @@ mod tests {
     use std::fs;
 
     use crate::{
-        assert_display_snapshot,
+        assert_debug_snapshot, assert_display_snapshot,
+        ast::js_ast_to_code,
         compiler::{self, Compiler},
         config::Config,
+        module::ModuleId,
         update::UpdateType,
     };
 
@@ -319,6 +341,7 @@ export const foo = 1;
     #[tokio::test(flavor = "multi_thread")]
     async fn test_update_multi() {
         let compiler = setup_compiler("test/build/tmp/multi");
+        let target_path = compiler.context.root.join("index.ts");
         setup_files(
             &compiler,
             vec![
@@ -345,7 +368,9 @@ export default async function () {
         compiler.compile();
         {
             let module_graph = compiler.context.module_graph.read().unwrap();
+            let code = module_to_jscode(&compiler, &ModuleId::from_path(target_path.clone()));
             assert_display_snapshot!(&module_graph);
+            assert_debug_snapshot!(&code);
         }
         setup_files(
             &compiler,
@@ -376,14 +401,16 @@ export const foo = 1;
             ],
         );
         let result = compiler
-            .update(vec![(
-                compiler.context.root.join("index.ts"),
-                UpdateType::Modify,
-            )])
+            .update(vec![(target_path.clone(), UpdateType::Modify)])
             .unwrap();
 
         assert_display_snapshot!(&result);
-
+        {
+            let module_graph = compiler.context.module_graph.read().unwrap();
+            let code = module_to_jscode(&compiler, &ModuleId::from_path(target_path));
+            assert_display_snapshot!(&module_graph);
+            assert_debug_snapshot!(&code);
+        }
         {
             let module_graph = compiler.context.module_graph.read().unwrap();
             assert_display_snapshot!(&module_graph);
@@ -418,5 +445,21 @@ export const foo = 1;
             let output = cwd_path.join(path);
             fs::write(output, content).unwrap();
         });
+    }
+
+    fn module_to_jscode(compiler: &Compiler, module_id: &ModuleId) -> String {
+        let module_graph = compiler.context.module_graph.read().unwrap();
+        let module = module_graph.get_module(module_id).unwrap();
+        let context = compiler.context.clone();
+        let info = module.info.as_ref().unwrap();
+        let ast = &info.ast;
+        match ast {
+            crate::module::ModuleAst::Script(ast) => {
+                let (code, _) = js_ast_to_code(&ast.clone(), &context, module.id.id.as_str());
+                code
+            }
+            crate::module::ModuleAst::Css(_) => todo!(),
+            crate::module::ModuleAst::None => todo!(),
+        }
     }
 }
