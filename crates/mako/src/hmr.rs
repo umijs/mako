@@ -121,6 +121,8 @@ modulesRegistry['/index.ts'].hot.apply({
         }
     }
 });
+
+//# sourceMappingURL=index.js.map
         "#
             .trim()
         );

@@ -137,6 +137,8 @@ require("foo");
             code,
             r#"
 require("bar");
+
+//# sourceMappingURL=index.js.map
         "#
             .trim()
         );
@@ -160,6 +162,8 @@ let css = `.foo {
 let style = document.createElement('style');
 style.innerHTML = css;
 document.head.appendChild(style);
+
+//# sourceMappingURL=index.js.map
         "#
             .trim()
         );
@@ -186,6 +190,8 @@ let css = `.foo {
 let style = document.createElement('style');
 style.innerHTML = css;
 document.head.appendChild(style);
+
+//# sourceMappingURL=index.js.map
         "#
             .trim()
         );
@@ -213,6 +219,8 @@ let css = `.foo {
 let style = document.createElement('style');
 style.innerHTML = css;
 document.head.appendChild(style);
+
+//# sourceMappingURL=index.js.map
         "#
             .trim()
         );
