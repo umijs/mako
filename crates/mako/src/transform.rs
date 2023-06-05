@@ -283,6 +283,24 @@ if ('a1' === "a2") { 3.1; } else 3.2;
         );
     }
 
+    #[test]
+    fn test_preset_env() {
+        let code = r#"
+const b = window.a?.b;
+        "#
+        .trim();
+        let (code, _sourcemap) = transform_code(code, None);
+        println!(">> CODE\n{}", code);
+        assert_eq!(
+            code,
+            r#"
+var _window_a;
+const b = (_window_a = window.a) === null || _window_a === void 0 ? void 0 : _window_a.b;
+        "#
+            .trim()
+        );
+    }
+
     #[allow(dead_code)]
     fn test_parse_error() {
         // TODO
