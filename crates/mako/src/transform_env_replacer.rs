@@ -54,13 +54,13 @@ impl EnvReplacer {
 impl VisitMut for EnvReplacer {
     fn visit_mut_module(&mut self, module: &mut Module) {
         self.bindings = Lrc::new(collect_decls(&*module));
-
         module.visit_mut_children_with(self);
     }
 
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Ident(Ident { ref sym, span, .. }) = expr {
             if self.bindings.contains(&(sym.clone(), span.ctxt)) {
+                expr.visit_mut_children_with(self);
                 return;
             }
         }

@@ -254,6 +254,7 @@ if ('a1' === 'a1') 1.1;
 if ('a2' == 'a3') 1.2;
 if ('b1' !== 'b1') 2.1;
 if ('b2' != 'b3') 2.2;
+if ('a1' === "a2") { 3.1; } else 3.2;
         "#
         .trim();
         let (code, _sourcemap) = transform_code(code, None);
@@ -263,6 +264,7 @@ if ('b2' != 'b3') 2.2;
             r#"
 1.1;
 2.2;
+3.2;
         "#
             .trim()
         );
