@@ -7,6 +7,7 @@ use swc_common::sync::Lrc;
 use swc_common::{Globals, DUMMY_SP};
 use swc_common::{Mark, GLOBALS};
 use swc_ecma_ast::{Expr, Lit, Module, Str};
+use swc_ecma_preset_env::{self as swc_preset_env};
 use swc_ecma_transforms::feature::FeatureFlag;
 use swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
 use swc_ecma_transforms::hygiene::hygiene_with_config;
@@ -15,8 +16,8 @@ use swc_ecma_transforms::modules::import_analysis::import_analyzer;
 use swc_ecma_transforms::modules::util::{Config, ImportInterop};
 use swc_ecma_transforms::react::{react, Options};
 use swc_ecma_transforms::typescript::strip_with_jsx;
-use swc_ecma_transforms::{fixer, resolver};
-use swc_ecma_visit::VisitMutWith;
+use swc_ecma_transforms::{fixer, resolver, Assumptions};
+use swc_ecma_visit::{Fold, VisitMutWith};
 
 use crate::compiler::Context;
 use crate::module::ModuleAst;
@@ -51,8 +52,6 @@ fn build_env_map(env_map: HashMap<String, String>) -> AHashMap<JsWord, Expr> {
     map
 }
 
-// TODO:
-// polyfill and targets
 fn transform_js(
     ast: &mut Module,
     context: &Arc<Context>,
@@ -91,6 +90,20 @@ fn transform_js(
 
             let mut optimizer = Optimizer {};
             ast.visit_mut_with(&mut optimizer);
+
+            // TODO: polyfill
+            let mut preset_env = swc_preset_env::preset_env(
+                unresolved_mark,
+                Some(NoopComments),
+                swc_preset_env::Config {
+                    mode: Some(swc_preset_env::Mode::Entry),
+                    targets: Some(context.config.targets.clone()),
+                    ..Default::default()
+                },
+                Assumptions::default(),
+                &mut FeatureFlag::default(),
+            );
+            ast.body = preset_env.fold_module(ast.clone()).body;
 
             // 在 cjs 执行前调用 hook，用于收集依赖
             before_cjs_hook(&ModuleAst::Script(ast.clone()));
