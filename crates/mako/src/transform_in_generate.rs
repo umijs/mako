@@ -1,14 +1,13 @@
 use lightningcss::stylesheet::{MinifyOptions, ParserOptions, PrinterOptions, StyleSheet};
 use std::collections::HashMap;
 use std::sync::Arc;
-use swc_css_visit::VisitMutWith as CssVisitMutWith;
 use swc_ecma_ast::Module;
 use tracing::{debug, info};
 
 use crate::ast::{build_js_ast, css_ast_to_code};
 use crate::compiler::Context;
 use crate::module::ModuleId;
-use crate::{compiler::Compiler, module::ModuleAst, transform_css_handler::CssHandler};
+use crate::{compiler::Compiler, module::ModuleAst};
 
 impl Compiler {
     pub fn transform_all(&self) {
@@ -38,12 +37,9 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) {
         let info = module.info.as_mut().unwrap();
         let path = info.path.clone();
         let ast = &mut info.ast;
-        match ast {
-            ModuleAst::Css(ast) => {
-                let ast = transform_css(ast, &path, dep_map, context);
-                info.set_ast(ModuleAst::Script(ast));
-            }
-            _ => {}
+        if let ModuleAst::Css(ast) = ast {
+            let ast = transform_css(ast, &path, dep_map, context);
+            info.set_ast(ModuleAst::Script(ast));
         }
     });
 }
@@ -54,12 +50,6 @@ fn transform_css(
     dep_map: HashMap<String, String>,
     context: &Arc<Context>,
 ) -> Module {
-    // remove @import and handle url()
-    let mut css_handler = CssHandler {
-        dep_map: dep_map.clone(),
-    };
-    ast.visit_mut_with(&mut css_handler);
-
     // ast to code
     let code = css_ast_to_code(ast);
 
@@ -133,7 +123,6 @@ document.head.appendChild(style);
     #[test]
     fn test_transform_css_import() {
         let code = r#"
-@import "./foo.css";
 .foo { color: red; }
         "#
         .trim();
@@ -146,35 +135,6 @@ document.head.appendChild(style);
 require("bar.css");
 let css = `.foo {
   color: red;
-}
-`;
-let style = document.createElement('style');
-style.innerHTML = css;
-document.head.appendChild(style);
-
-//# sourceMappingURL=index.js.map
-        "#
-            .trim()
-        );
-    }
-
-    #[test]
-    fn test_transform_css_url() {
-        let code = r#"
-.foo { background: url("url.png"); }
-        "#
-        .trim();
-        let (code, _cm) = transform_css_code(
-            code,
-            None,
-            HashMap::from([("url.png".into(), "replace.png".into())]),
-        );
-        println!(">> CODE\n{}", code);
-        assert_eq!(
-            code,
-            r#"
-let css = `.foo {
-  background: url("replace.png");
 }
 `;
 let style = document.createElement('style');
