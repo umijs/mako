@@ -1,16 +1,13 @@
 use lightningcss::stylesheet::{MinifyOptions, ParserOptions, PrinterOptions, StyleSheet};
 use std::collections::HashMap;
 use std::sync::Arc;
-use swc_common::{Globals, GLOBALS};
 use swc_css_visit::VisitMutWith as CssVisitMutWith;
 use swc_ecma_ast::Module;
-use swc_ecma_visit::VisitMutWith;
 use tracing::{debug, info};
 
 use crate::ast::{build_js_ast, css_ast_to_code};
 use crate::compiler::Context;
 use crate::module::ModuleId;
-use crate::transform_dynamic_import::DynamicImport;
 use crate::{compiler::Compiler, module::ModuleAst, transform_css_handler::CssHandler};
 
 impl Compiler {
@@ -42,14 +39,11 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) {
         let path = info.path.clone();
         let ast = &mut info.ast;
         match ast {
-            ModuleAst::Script(ast) => {
-                transform_js(ast);
-            }
             ModuleAst::Css(ast) => {
                 let ast = transform_css(ast, &path, dep_map, context);
                 info.set_ast(ModuleAst::Script(ast));
             }
-            ModuleAst::None => {}
+            _ => {}
         }
     });
 }
@@ -91,14 +85,6 @@ fn transform_css(
     let path = format!("{}.ts", path);
     let path = path.as_str();
     build_js_ast(path, content.as_str(), context)
-}
-
-fn transform_js(ast: &mut swc_ecma_ast::Module) {
-    let globals = Globals::default();
-    GLOBALS.set(&globals, || {
-        let mut dynamic_import = DynamicImport {};
-        ast.visit_mut_with(&mut dynamic_import);
-    });
 }
 
 #[cfg(test)]

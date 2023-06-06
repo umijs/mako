@@ -23,6 +23,7 @@ use crate::build::ModuleDeps;
 use crate::compiler::Context;
 use crate::module::ModuleAst;
 use crate::transform_dep_replacer::DepReplacer;
+use crate::transform_dynamic_import::DynamicImport;
 use crate::transform_env_replacer::EnvReplacer;
 use crate::transform_optimizer::Optimizer;
 
@@ -145,6 +146,9 @@ fn transform_js(
 
             let mut dep_replacer = DepReplacer { dep_map };
             ast.visit_mut_with(&mut dep_replacer);
+
+            let mut dynamic_import = DynamicImport {};
+            ast.visit_mut_with(&mut dynamic_import);
         });
     });
 }
@@ -235,7 +239,9 @@ const foo = import('./foo');
         assert_eq!(
             code,
             r#"
-const foo = import('./foo');
+const foo = require.ensure([
+    './foo'
+]).then(require.bind(require, './foo'));
 
 //# sourceMappingURL=index.js.map
         "#
@@ -342,6 +348,8 @@ require("foo");
             code,
             r#"
 require("bar");
+
+//# sourceMappingURL=index.js.map
         "#
             .trim()
         );
