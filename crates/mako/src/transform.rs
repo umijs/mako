@@ -167,6 +167,8 @@ const App = () => <><h1>Hello World</h1></>;
         println!(">> CODE\n{}", code);
         assert_eq!(code, r#"
 const App = ()=>React.createElement(React.Fragment, null, React.createElement("h1", null, "Hello World"));
+
+//# sourceMappingURL=index.js.map
         "#.trim());
     }
 
@@ -182,6 +184,8 @@ const Foo: string = "foo";
             code,
             r#"
 const Foo = "foo";
+
+//# sourceMappingURL=index.js.map
         "#
             .trim()
         );
@@ -202,6 +206,8 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 var _foo = require("./foo");
+
+//# sourceMappingURL=index.js.map
         "#
             .trim()
         );
@@ -219,6 +225,8 @@ const foo = import('./foo');
             code,
             r#"
 const foo = import('./foo');
+
+//# sourceMappingURL=index.js.map
         "#
             .trim()
         );
@@ -240,6 +248,8 @@ Object.defineProperty(exports, "__esModule", {
 });
 var _interop_require_default = require("@swc/helpers/_/_interop_require_default");
 var _react = _interop_require_default._(require("react"));
+
+//# sourceMappingURL=index.js.map
         "#
             .trim()
         );
@@ -257,6 +267,8 @@ const a = process.env.NODE_ENV;
             code,
             r#"
 const a = "development";
+
+//# sourceMappingURL=index.js.map
         "#
             .trim()
         );
@@ -280,6 +292,8 @@ if ('a1' === "a2") { 3.1; } else 3.2;
 1.1;
 2.2;
 3.2;
+
+//# sourceMappingURL=index.js.map
         "#
             .trim()
         );
@@ -298,6 +312,8 @@ const b = window.a?.b;
             r#"
 var _window_a;
 const b = (_window_a = window.a) === null || _window_a === void 0 ? void 0 : _window_a.b;
+
+//# sourceMappingURL=index.js.map
         "#
             .trim()
         );

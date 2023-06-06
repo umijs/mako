@@ -36,12 +36,22 @@ impl std::fmt::Display for Mode {
 }
 
 #[derive(Deserialize, Debug)]
+pub enum DevtoolConfig {
+    /// Generate separate sourcemap file
+    #[serde(rename = "source-map")]
+    SourceMap,
+    /// Generate inline sourcemap
+    #[serde(rename = "inline-source-map")]
+    InlineSourceMap,
+}
+
+#[derive(Deserialize, Debug)]
 pub struct Config {
     pub entry: HashMap<String, PathBuf>,
     pub output: OutputConfig,
     pub resolve: ResolveConfig,
     pub mode: Mode,
-    pub sourcemap: bool,
+    pub devtool: DevtoolConfig,
     pub externals: HashMap<String, String>,
     pub copy: Vec<String>,
     pub public_path: String,
@@ -58,7 +68,7 @@ const DEFAULT_CONFIG: &str = r#"
     "output": { "path": "dist" },
     "resolve": { "alias": {}, "extensions": ["js", "jsx", "ts", "tsx"] },
     "mode": "development",
-    "sourcemap": false,
+    "devtool": "source-map",
     "externals": {},
     "copy": ["public"],
     "public_path": "/",
@@ -72,7 +82,6 @@ const DEFAULT_CONFIG: &str = r#"
 // - add Default impl
 // - add test
 // - add validation
-// - rename sourcemap to devtool?
 
 impl Config {
     pub fn new(root: &PathBuf) -> Result<Self, config::ConfigError> {
