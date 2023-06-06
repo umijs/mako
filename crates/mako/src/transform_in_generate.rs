@@ -1,20 +1,13 @@
 use lightningcss::stylesheet::{MinifyOptions, ParserOptions, PrinterOptions, StyleSheet};
 use std::collections::HashMap;
 use std::sync::Arc;
-use swc_common::{Globals, GLOBALS};
-use swc_css_visit::VisitMutWith as CssVisitMutWith;
 use swc_ecma_ast::Module;
-use swc_ecma_visit::VisitMutWith;
 use tracing::{debug, info};
 
 use crate::ast::{build_js_ast, css_ast_to_code};
 use crate::compiler::Context;
 use crate::module::ModuleId;
-use crate::transform_dynamic_import::DynamicImport;
-use crate::{
-    compiler::Compiler, module::ModuleAst, transform_css_handler::CssHandler,
-    transform_dep_replacer::DepReplacer,
-};
+use crate::{compiler::Compiler, module::ModuleAst};
 
 impl Compiler {
     pub fn transform_all(&self) {
@@ -44,15 +37,9 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) {
         let info = module.info.as_mut().unwrap();
         let path = info.path.clone();
         let ast = &mut info.ast;
-        match ast {
-            ModuleAst::Script(ast) => {
-                transform_js(ast, dep_map);
-            }
-            ModuleAst::Css(ast) => {
-                let ast = transform_css(ast, &path, dep_map, context);
-                info.set_ast(ModuleAst::Script(ast));
-            }
-            ModuleAst::None => {}
+        if let ModuleAst::Css(ast) = ast {
+            let ast = transform_css(ast, &path, dep_map, context);
+            info.set_ast(ModuleAst::Script(ast));
         }
     });
 }
@@ -63,12 +50,6 @@ fn transform_css(
     dep_map: HashMap<String, String>,
     context: &Arc<Context>,
 ) -> Module {
-    // remove @import and handle url()
-    let mut css_handler = CssHandler {
-        dep_map: dep_map.clone(),
-    };
-    ast.visit_mut_with(&mut css_handler);
-
     // ast to code
     let code = css_ast_to_code(ast);
 
@@ -96,16 +77,6 @@ fn transform_css(
     build_js_ast(path, content.as_str(), context)
 }
 
-fn transform_js(ast: &mut swc_ecma_ast::Module, dep_map: HashMap<String, String>) {
-    let globals = Globals::default();
-    GLOBALS.set(&globals, || {
-        let mut dep_replacer = DepReplacer { dep_map };
-        ast.visit_mut_with(&mut dep_replacer);
-        let mut dynamic_import = DynamicImport {};
-        ast.visit_mut_with(&mut dynamic_import);
-    });
-}
-
 #[cfg(test)]
 mod tests {
     use std::{
@@ -115,7 +86,7 @@ mod tests {
     };
 
     use crate::{
-        ast::{build_css_ast, build_js_ast, js_ast_to_code},
+        ast::{build_css_ast, js_ast_to_code},
         chunk_graph::ChunkGraph,
         compiler::{Context, Meta},
         config::Config,
@@ -123,26 +94,6 @@ mod tests {
     };
 
     use super::transform_css;
-
-    #[test]
-    fn test_transform_js_dep_replacer() {
-        let code = r#"
-require("foo");
-        "#
-        .trim();
-        let (code, _sourcemap) =
-            transform_js_code(code, None, HashMap::from([("foo".into(), "bar".into())]));
-        println!(">> CODE\n{}", code);
-        assert_eq!(
-            code,
-            r#"
-require("bar");
-
-//# sourceMappingURL=index.js.map
-        "#
-            .trim()
-        );
-    }
 
     #[test]
     fn test_transform_css() {
@@ -172,7 +123,6 @@ document.head.appendChild(style);
     #[test]
     fn test_transform_css_import() {
         let code = r#"
-@import "./foo.css";
 .foo { color: red; }
         "#
         .trim();
@@ -195,61 +145,6 @@ document.head.appendChild(style);
         "#
             .trim()
         );
-    }
-
-    #[test]
-    fn test_transform_css_url() {
-        let code = r#"
-.foo { background: url("url.png"); }
-        "#
-        .trim();
-        let (code, _cm) = transform_css_code(
-            code,
-            None,
-            HashMap::from([("url.png".into(), "replace.png".into())]),
-        );
-        println!(">> CODE\n{}", code);
-        assert_eq!(
-            code,
-            r#"
-let css = `.foo {
-  background: url("replace.png");
-}
-`;
-let style = document.createElement('style');
-style.innerHTML = css;
-document.head.appendChild(style);
-
-//# sourceMappingURL=index.js.map
-        "#
-            .trim()
-        );
-    }
-
-    fn transform_js_code(
-        origin: &str,
-        path: Option<&str>,
-        dep_map: HashMap<String, String>,
-    ) -> (String, String) {
-        let path = if path.is_none() {
-            "test.tsx"
-        } else {
-            path.unwrap()
-        };
-        let root = PathBuf::from("/path/to/root");
-        let context = Arc::new(Context {
-            config: Config::new(&root).unwrap(),
-            root,
-            module_graph: RwLock::new(ModuleGraph::new()),
-            chunk_graph: RwLock::new(ChunkGraph::new()),
-            assets_info: Mutex::new(HashMap::new()),
-            meta: Meta::new(),
-        });
-        let mut ast = build_js_ast(path, origin, &context);
-        super::transform_js(&mut ast, dep_map);
-        let (code, _sourcemap) = js_ast_to_code(&ast, &context, "index.js");
-        let code = code.trim().to_string();
-        (code, _sourcemap)
     }
 
     fn transform_css_code(

@@ -6,6 +6,8 @@ use swc_common::comments::{NoopComments, SingleThreadedComments};
 use swc_common::sync::Lrc;
 use swc_common::{Globals, DUMMY_SP};
 use swc_common::{Mark, GLOBALS};
+use swc_css_ast::Stylesheet;
+use swc_css_visit::VisitMutWith;
 use swc_ecma_ast::{Expr, Lit, Module, Str};
 use swc_ecma_preset_env::{self as swc_preset_env};
 use swc_ecma_transforms::feature::FeatureFlag;
@@ -17,23 +19,26 @@ use swc_ecma_transforms::modules::util::{Config, ImportInterop};
 use swc_ecma_transforms::react::{react, Options};
 use swc_ecma_transforms::typescript::strip_with_jsx;
 use swc_ecma_transforms::{fixer, resolver, Assumptions};
-use swc_ecma_visit::{Fold, VisitMutWith};
+use swc_ecma_visit::{Fold, VisitMutWith as CssVisitMutWith};
 
+use crate::build::ModuleDeps;
 use crate::compiler::Context;
 use crate::module::ModuleAst;
+use crate::transform_css_handler::CssHandler;
+use crate::transform_dep_replacer::DepReplacer;
+use crate::transform_dynamic_import::DynamicImport;
 use crate::transform_env_replacer::EnvReplacer;
 use crate::transform_optimizer::Optimizer;
 
 pub fn transform(
     ast: &mut ModuleAst,
     context: &Arc<Context>,
-    analyze_deps_hook: &mut dyn for<'r> FnMut(&'r ModuleAst),
+    get_deps: &mut dyn for<'r> FnMut(&'r ModuleAst) -> ModuleDeps,
 ) {
     match ast {
-        ModuleAst::Script(ast) => transform_js(ast, context, analyze_deps_hook),
-        _ => {
-            analyze_deps_hook(ast);
-        }
+        ModuleAst::Script(ast) => transform_js(ast, context, get_deps),
+        ModuleAst::Css(ast) => transform_css(ast, context, get_deps),
+        _ => {}
     }
 }
 
@@ -55,7 +60,7 @@ fn build_env_map(env_map: HashMap<String, String>) -> AHashMap<JsWord, Expr> {
 fn transform_js(
     ast: &mut Module,
     context: &Arc<Context>,
-    before_cjs_hook: &mut dyn for<'r> FnMut(&'r ModuleAst),
+    get_deps: &mut dyn for<'r> FnMut(&'r ModuleAst) -> ModuleDeps,
 ) {
     let cm = context.meta.script.cm.clone();
     let globals = Globals::default();
@@ -108,7 +113,7 @@ fn transform_js(
             ast.body = preset_env.fold_module(ast.clone()).body;
 
             // 在 cjs 执行前调用 hook，用于收集依赖
-            before_cjs_hook(&ModuleAst::Script(ast.clone()));
+            let deps = get_deps(&ModuleAst::Script(ast.clone()));
 
             ast.visit_mut_with(&mut common_js::<SingleThreadedComments>(
                 unresolved_mark,
@@ -135,8 +140,32 @@ fn transform_js(
                 },
             ));
             ast.visit_mut_with(&mut fixer(None));
+
+            let dep_map = get_dep_map(deps);
+            let mut dep_replacer = DepReplacer { dep_map };
+            ast.visit_mut_with(&mut dep_replacer);
+
+            let mut dynamic_import = DynamicImport {};
+            ast.visit_mut_with(&mut dynamic_import);
         });
     });
+}
+
+fn transform_css(
+    ast: &mut Stylesheet,
+    _context: &Arc<Context>,
+    get_deps: &mut dyn for<'r> FnMut(&'r ModuleAst) -> ModuleDeps,
+) {
+    let dep_map = get_dep_map(get_deps(&ModuleAst::Css(ast.clone())));
+    // remove @import and handle url()
+    let mut css_handler = CssHandler { dep_map };
+    ast.visit_mut_with(&mut css_handler);
+}
+
+fn get_dep_map(deps: ModuleDeps) -> HashMap<String, String> {
+    deps.into_iter()
+        .map(|(path, _, dep)| (dep.source, path))
+        .collect::<HashMap<_, _>>()
 }
 
 #[cfg(test)]
@@ -148,14 +177,16 @@ mod tests {
     };
 
     use crate::{
-        ast::{build_js_ast, js_ast_to_code},
+        ast::{build_css_ast, build_js_ast, css_ast_to_code, js_ast_to_code},
+        build::ModuleDeps,
         chunk_graph::ChunkGraph,
         compiler::{Context, Meta},
         config::Config,
+        module::{Dependency, ResolveType},
         module_graph::ModuleGraph,
     };
 
-    use super::transform_js;
+    use super::{transform_css, transform_js};
 
     #[test]
     fn test_react() {
@@ -163,7 +194,7 @@ mod tests {
 const App = () => <><h1>Hello World</h1></>;
         "#
         .trim();
-        let (code, _) = transform_code(code, None);
+        let (code, _) = transform_js_code(code, None);
         println!(">> CODE\n{}", code);
         assert_eq!(code, r#"
 const App = ()=>React.createElement(React.Fragment, null, React.createElement("h1", null, "Hello World"));
@@ -178,7 +209,7 @@ const App = ()=>React.createElement(React.Fragment, null, React.createElement("h
 const Foo: string = "foo";
         "#
         .trim();
-        let (code, _) = transform_code(code, None);
+        let (code, _) = transform_js_code(code, None);
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -197,7 +228,7 @@ const Foo = "foo";
 import { foo } from './foo';
         "#
         .trim();
-        let (code, _) = transform_code(code, None);
+        let (code, _) = transform_js_code(code, None);
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -219,12 +250,14 @@ var _foo = require("./foo");
 const foo = import('./foo');
         "#
         .trim();
-        let (code, _) = transform_code(code, None);
+        let (code, _) = transform_js_code(code, None);
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
             r#"
-const foo = import('./foo');
+const foo = require.ensure([
+    './foo'
+]).then(require.bind(require, './foo'));
 
 //# sourceMappingURL=index.js.map
         "#
@@ -238,7 +271,7 @@ const foo = import('./foo');
 import React from 'react';
         "#
         .trim();
-        let (code, _) = transform_code(code, None);
+        let (code, _) = transform_js_code(code, None);
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -261,7 +294,7 @@ var _react = _interop_require_default._(require("react"));
 const a = process.env.NODE_ENV;
         "#
         .trim();
-        let (code, _sourcemap) = transform_code(code, None);
+        let (code, _sourcemap) = transform_js_code(code, None);
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -284,7 +317,7 @@ if ('b2' != 'b3') 2.2;
 if ('a1' === "a2") { 3.1; } else 3.2;
         "#
         .trim();
-        let (code, _sourcemap) = transform_code(code, None);
+        let (code, _sourcemap) = transform_js_code(code, None);
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -305,7 +338,7 @@ if ('a1' === "a2") { 3.1; } else 3.2;
 const b = window.a?.b;
         "#
         .trim();
-        let (code, _sourcemap) = transform_code(code, None);
+        let (code, _sourcemap) = transform_js_code(code, None);
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -319,12 +352,60 @@ const b = (_window_a = window.a) === null || _window_a === void 0 ? void 0 : _wi
         );
     }
 
+    #[test]
+    fn test_transform_dep_replacer() {
+        let code = r#"
+require("foo");
+        "#
+        .trim();
+        let (code, _sourcemap) = transform_js_code(code, None);
+        println!(">> CODE\n{}", code);
+        assert_eq!(
+            code,
+            r#"
+require("bar");
+
+//# sourceMappingURL=index.js.map
+        "#
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_transform_css_url() {
+        let code = r#"
+@import "should_be_removed.css";
+.foo { background: url("url.png"); }
+        "#
+        .trim();
+        let deps = Vec::from([(
+            "replace.png".to_string(),
+            None,
+            Dependency {
+                source: "url.png".to_string(),
+                resolve_type: ResolveType::Css,
+                order: 0,
+            },
+        )]);
+        let code = transform_css_code(code, None, deps);
+        println!(">> CODE\n{}", code);
+        assert_eq!(
+            code,
+            r#"
+.foo {
+  background: url("replace.png");
+}
+        "#
+            .trim()
+        );
+    }
+
     #[allow(dead_code)]
     fn test_parse_error() {
         // TODO
     }
 
-    fn transform_code(origin: &str, path: Option<&str>) -> (String, String) {
+    fn transform_js_code(origin: &str, path: Option<&str>) -> (String, String) {
         let path = if let Some(..) = path {
             path.unwrap()
         } else {
@@ -340,10 +421,46 @@ const b = (_window_a = window.a) === null || _window_a === void 0 ? void 0 : _wi
             meta: Meta::new(),
         });
         let mut ast = build_js_ast(path, origin, &context);
-        transform_js(&mut ast, &context, &mut |_| {});
+        transform_js(&mut ast, &context, &mut |_| {
+            if origin.contains("require(\"foo\");") {
+                Vec::from([(
+                    "bar".to_string(),
+                    None,
+                    Dependency {
+                        source: "foo".to_string(),
+                        resolve_type: ResolveType::Require,
+                        order: 0,
+                    },
+                )])
+            } else {
+                Vec::new()
+            }
+        });
         let (code, _sourcemap) = js_ast_to_code(&ast, &context, "index.js");
         let code = code.replace("\"use strict\";", "");
         let code = code.trim().to_string();
         (code, _sourcemap)
+    }
+
+    fn transform_css_code(origin: &str, path: Option<&str>, deps: ModuleDeps) -> String {
+        let path = if let Some(..) = path {
+            path.unwrap()
+        } else {
+            "test.css"
+        };
+        let root = PathBuf::from("/path/to/root");
+        let context = Arc::new(Context {
+            config: Config::new(&root).unwrap(),
+            root,
+            module_graph: RwLock::new(ModuleGraph::new()),
+            chunk_graph: RwLock::new(ChunkGraph::new()),
+            assets_info: Mutex::new(HashMap::new()),
+            meta: Meta::new(),
+        });
+        let mut ast = build_css_ast(path, origin, &context);
+        transform_css(&mut ast, &context, &mut |_| deps.clone());
+        let code = css_ast_to_code(&ast);
+
+        code.trim().to_string()
     }
 }
