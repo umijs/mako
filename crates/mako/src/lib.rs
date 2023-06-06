@@ -16,6 +16,7 @@ mod css_modules;
 mod generate;
 mod generate_chunks;
 mod group_chunk;
+mod hmr;
 mod load;
 mod minify;
 mod module;

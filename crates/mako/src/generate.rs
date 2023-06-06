@@ -5,8 +5,6 @@ use tracing::info;
 use crate::compiler::Compiler;
 
 impl Compiler {
-    // TODO:
-    // - 特殊处理 react，目前会同时包含 dev 和 prod 两个版本，虽然只会用到一个
     pub fn generate(&self) {
         info!("generate");
         let t_generate = Instant::now();
