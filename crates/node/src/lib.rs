@@ -5,6 +5,7 @@ extern crate napi_derive;
 
 use mako::compiler::Compiler;
 use mako::config::Config;
+use mako::logger::init_logger;
 
 #[napi]
 pub fn build(
@@ -26,8 +27,10 @@ pub fn build(
 }"#)]
     config: serde_json::Value,
 ) {
-    let mako_config = serde_json::from_value::<Config>(config);
+    // logger
+    init_logger();
 
+    let mako_config = serde_json::from_value::<Config>(config);
     match mako_config {
         Ok(config) => {
             Compiler::new(config, root.into()).compile();
