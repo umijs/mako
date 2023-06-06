@@ -31,6 +31,8 @@ pub struct Task {
     pub is_entry: bool,
 }
 
+pub type ModuleDeps = Vec<(String, Option<String>, Dependency)>;
+
 impl Compiler {
     pub fn build(&self) {
         info!("build");
@@ -72,7 +74,7 @@ impl Compiler {
         resolver: Arc<Resolver>,
     ) -> HashSet<ModuleId> {
         let (rs, mut rr) = tokio::sync::mpsc::unbounded_channel::<
-            Result<(Module, Vec<(String, Option<String>, Dependency)>, Task), BuildError>,
+            Result<(Module, ModuleDeps, Task), BuildError>,
         >();
         let mut active_task_count: usize = 0;
         let mut t_main_thread: usize = 0;
@@ -195,8 +197,9 @@ impl Compiler {
         context: Arc<Context>,
         task: Task,
         resolver: Arc<Resolver>,
-    ) -> Result<(Module, Vec<(String, Option<String>, Dependency)>, Task), BuildError> {
-        let mut deps = Vec::new();
+    ) -> Result<(Module, ModuleDeps, Task), BuildError> {
+        let mut dependencies = Vec::new();
+        let mut dep_resolve_err = None;
         let module_id = ModuleId::new(task.path.clone());
 
         // load
@@ -207,25 +210,30 @@ impl Compiler {
 
         // transform
         transform(&mut ast, &context, &mut |ast| {
-            deps = analyze_deps(ast);
-        });
+            let deps = analyze_deps(ast);
 
-        // resolve
-        let mut dependencies = Vec::new();
+            // resolve
+            for dep in deps.iter() {
+                let ret = resolve(&task.path, dep, &resolver, &context);
 
-        for dep in deps.iter() {
-            let ret = resolve(&task.path, dep, &resolver, &context);
-
-            match ret {
-                Ok((x, y)) => {
-                    dependencies.push((x, y, dep.clone()));
-                }
-                Err(_) => {
-                    return Err(BuildError::Resolve {
-                        module: dep.clone().source,
-                    });
+                match ret {
+                    Ok((x, y)) => {
+                        dependencies.push((x, y, dep.clone()));
+                    }
+                    Err(_) => {
+                        dep_resolve_err = Some(BuildError::Resolve {
+                            module: dep.clone().source,
+                        });
+                        return dependencies.clone();
+                    }
                 }
             }
+
+            dependencies.clone()
+        });
+
+        if let Some(e) = dep_resolve_err {
+            return Err(e);
         }
 
         let info = ModuleInfo {

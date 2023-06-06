@@ -19,20 +19,22 @@ use swc_ecma_transforms::typescript::strip_with_jsx;
 use swc_ecma_transforms::{fixer, resolver, Assumptions};
 use swc_ecma_visit::{Fold, VisitMutWith};
 
+use crate::build::ModuleDeps;
 use crate::compiler::Context;
 use crate::module::ModuleAst;
+use crate::transform_dep_replacer::DepReplacer;
 use crate::transform_env_replacer::EnvReplacer;
 use crate::transform_optimizer::Optimizer;
 
 pub fn transform(
     ast: &mut ModuleAst,
     context: &Arc<Context>,
-    analyze_deps_hook: &mut dyn for<'r> FnMut(&'r ModuleAst),
+    get_deps: &mut dyn for<'r> FnMut(&'r ModuleAst) -> ModuleDeps,
 ) {
     match ast {
-        ModuleAst::Script(ast) => transform_js(ast, context, analyze_deps_hook),
+        ModuleAst::Script(ast) => transform_js(ast, context, get_deps),
         _ => {
-            analyze_deps_hook(ast);
+            get_deps(ast);
         }
     }
 }
@@ -55,7 +57,7 @@ fn build_env_map(env_map: HashMap<String, String>) -> AHashMap<JsWord, Expr> {
 fn transform_js(
     ast: &mut Module,
     context: &Arc<Context>,
-    before_cjs_hook: &mut dyn for<'r> FnMut(&'r ModuleAst),
+    get_deps: &mut dyn for<'r> FnMut(&'r ModuleAst) -> ModuleDeps,
 ) {
     let cm = context.meta.script.cm.clone();
     let globals = Globals::default();
@@ -108,7 +110,7 @@ fn transform_js(
             ast.body = preset_env.fold_module(ast.clone()).body;
 
             // 在 cjs 执行前调用 hook，用于收集依赖
-            before_cjs_hook(&ModuleAst::Script(ast.clone()));
+            let deps = get_deps(&ModuleAst::Script(ast.clone()));
 
             ast.visit_mut_with(&mut common_js::<SingleThreadedComments>(
                 unresolved_mark,
@@ -135,6 +137,14 @@ fn transform_js(
                 },
             ));
             ast.visit_mut_with(&mut fixer(None));
+
+            let dep_map = deps
+                .into_iter()
+                .map(|(path, _, dep)| (dep.source, path))
+                .collect::<HashMap<_, _>>();
+
+            let mut dep_replacer = DepReplacer { dep_map };
+            ast.visit_mut_with(&mut dep_replacer);
         });
     });
 }
@@ -152,6 +162,7 @@ mod tests {
         chunk_graph::ChunkGraph,
         compiler::{Context, Meta},
         config::Config,
+        module::{Dependency, ResolveType},
         module_graph::ModuleGraph,
     };
 
@@ -319,6 +330,23 @@ const b = (_window_a = window.a) === null || _window_a === void 0 ? void 0 : _wi
         );
     }
 
+    #[test]
+    fn test_transform_dep_replacer() {
+        let code = r#"
+require("foo");
+        "#
+        .trim();
+        let (code, _sourcemap) = transform_code(code, None);
+        println!(">> CODE\n{}", code);
+        assert_eq!(
+            code,
+            r#"
+require("bar");
+        "#
+            .trim()
+        );
+    }
+
     #[allow(dead_code)]
     fn test_parse_error() {
         // TODO
@@ -340,7 +368,21 @@ const b = (_window_a = window.a) === null || _window_a === void 0 ? void 0 : _wi
             meta: Meta::new(),
         });
         let mut ast = build_js_ast(path, origin, &context);
-        transform_js(&mut ast, &context, &mut |_| {});
+        transform_js(&mut ast, &context, &mut |_| {
+            if origin.contains("require(\"foo\");") {
+                Vec::from([(
+                    "bar".to_string(),
+                    None,
+                    Dependency {
+                        source: "foo".to_string(),
+                        resolve_type: ResolveType::Require,
+                        order: 0,
+                    },
+                )])
+            } else {
+                Vec::new()
+            }
+        });
         let (code, _sourcemap) = js_ast_to_code(&ast, &context, "index.js");
         let code = code.replace("\"use strict\";", "");
         let code = code.trim().to_string();
