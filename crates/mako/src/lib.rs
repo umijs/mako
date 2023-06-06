@@ -12,6 +12,7 @@ mod chunk_graph;
 mod cli;
 mod config_node_polyfill;
 mod copy;
+mod css_modules;
 mod generate;
 mod generate_chunks;
 mod group_chunk;

@@ -3,15 +3,16 @@ import ReactDOM from 'react-dom/client';
 
 import { foo } from './foo';
 import './index.css';
+import styles from './style.module.css';
 import UmiLogo from './assets/umi-logo.png';
 import MailchimpUnsplash from './assets/mailchimp-unsplash.jpg';
 
 function App() {
   return (
     <div>
-      <h1>Hello {foo}!</h1>
-      <div>
-        <img src={UmiLogo} />
+      <h1 className={styles.title}>Hello {foo}!</h1>
+      <div class="imageContainer">
+        <img className={styles.image} src={UmiLogo} />
       </div>
       <div>
         <img
