@@ -1,9 +1,13 @@
 use base64::{alphabet::STANDARD, engine, Engine};
-use std::{path::Path, sync::Arc};
+use std::{
+    fs,
+    io::{BufRead, BufReader},
+    path::Path,
+    sync::Arc,
+};
 use tracing::debug;
 
 use crate::compiler::Context;
-use crate::hash;
 
 pub struct Asset {
     pub path: String,
@@ -52,7 +56,7 @@ fn load_assets(path: &str, context: &Arc<Context>) -> Content {
     let file_size = file_size.unwrap();
 
     if file_size > context.config.data_url_limit.try_into().unwrap() {
-        let final_file_name = hash::content_hash(path).unwrap() + "." + ext_name(path).unwrap();
+        let final_file_name = content_hash(path).unwrap() + "." + ext_name(path).unwrap();
         let path = path.to_string();
         context.emit_assets(path.clone(), final_file_name.clone());
         Content::Assets(Asset {
@@ -101,4 +105,28 @@ fn to_base64(path: &str) -> anyhow::Result<String> {
         file_type,
         base64.replace("\r\n", "")
     ))
+}
+
+fn content_hash(file_path: &str) -> anyhow::Result<String> {
+    let file = fs::File::open(file_path).unwrap();
+    // Find the length of the file
+    let len = file.metadata().unwrap().len();
+    // Decide on a reasonable buffer size (1MB in this case, fastest will depend on hardware)
+    let buf_len = len.min(1_000_000) as usize;
+    let mut buf = BufReader::with_capacity(buf_len, file);
+    // webpack use md4
+    let mut context = md5::Context::new();
+    loop {
+        // Get a chunk of the file
+        let part = buf.fill_buf().unwrap();
+        if part.is_empty() {
+            break;
+        }
+        context.consume(part);
+        // Tell the buffer that the chunk is consumed
+        let part_len = part.len();
+        buf.consume(part_len);
+    }
+    let digest = context.compute();
+    Ok(format!("{:x}", digest))
 }
