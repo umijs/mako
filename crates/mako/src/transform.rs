@@ -7,6 +7,7 @@ use swc_common::sync::Lrc;
 use swc_common::{Globals, DUMMY_SP};
 use swc_common::{Mark, GLOBALS};
 use swc_ecma_ast::{Expr, Lit, Module, Str};
+use swc_ecma_preset_env::{self as swc_preset_env};
 use swc_ecma_transforms::feature::FeatureFlag;
 use swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
 use swc_ecma_transforms::hygiene::hygiene_with_config;
@@ -15,8 +16,8 @@ use swc_ecma_transforms::modules::import_analysis::import_analyzer;
 use swc_ecma_transforms::modules::util::{Config, ImportInterop};
 use swc_ecma_transforms::react::{react, Options};
 use swc_ecma_transforms::typescript::strip_with_jsx;
-use swc_ecma_transforms::{fixer, resolver};
-use swc_ecma_visit::VisitMutWith;
+use swc_ecma_transforms::{fixer, resolver, Assumptions};
+use swc_ecma_visit::{Fold, VisitMutWith};
 
 use crate::compiler::Context;
 use crate::module::ModuleAst;
@@ -51,8 +52,6 @@ fn build_env_map(env_map: HashMap<String, String>) -> AHashMap<JsWord, Expr> {
     map
 }
 
-// TODO:
-// polyfill and targets
 fn transform_js(
     ast: &mut Module,
     context: &Arc<Context>,
@@ -61,7 +60,9 @@ fn transform_js(
     let cm = context.meta.script.cm.clone();
     let globals = Globals::default();
     // build env map
-    let env_map = build_env_map(HashMap::from([("NODE_ENV".into(), "production".into())]));
+    // TODO: read env from .env
+    let mode = &context.config.mode.to_string();
+    let env_map = build_env_map(HashMap::from([("NODE_ENV".into(), mode.into())]));
 
     GLOBALS.set(&globals, || {
         let helpers = Helpers::new(true);
@@ -91,6 +92,20 @@ fn transform_js(
 
             let mut optimizer = Optimizer {};
             ast.visit_mut_with(&mut optimizer);
+
+            // TODO: polyfill
+            let mut preset_env = swc_preset_env::preset_env(
+                unresolved_mark,
+                Some(NoopComments),
+                swc_preset_env::Config {
+                    mode: Some(swc_preset_env::Mode::Entry),
+                    targets: Some(context.config.targets.clone()),
+                    ..Default::default()
+                },
+                Assumptions::default(),
+                &mut FeatureFlag::default(),
+            );
+            ast.body = preset_env.fold_module(ast.clone()).body;
 
             // 在 cjs 执行前调用 hook，用于收集依赖
             before_cjs_hook(&ModuleAst::Script(ast.clone()));
@@ -152,6 +167,8 @@ const App = () => <><h1>Hello World</h1></>;
         println!(">> CODE\n{}", code);
         assert_eq!(code, r#"
 const App = ()=>React.createElement(React.Fragment, null, React.createElement("h1", null, "Hello World"));
+
+//# sourceMappingURL=index.js.map
         "#.trim());
     }
 
@@ -167,6 +184,8 @@ const Foo: string = "foo";
             code,
             r#"
 const Foo = "foo";
+
+//# sourceMappingURL=index.js.map
         "#
             .trim()
         );
@@ -187,6 +206,8 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 var _foo = require("./foo");
+
+//# sourceMappingURL=index.js.map
         "#
             .trim()
         );
@@ -204,6 +225,8 @@ const foo = import('./foo');
             code,
             r#"
 const foo = import('./foo');
+
+//# sourceMappingURL=index.js.map
         "#
             .trim()
         );
@@ -225,6 +248,8 @@ Object.defineProperty(exports, "__esModule", {
 });
 var _interop_require_default = require("@swc/helpers/_/_interop_require_default");
 var _react = _interop_require_default._(require("react"));
+
+//# sourceMappingURL=index.js.map
         "#
             .trim()
         );
@@ -241,7 +266,9 @@ const a = process.env.NODE_ENV;
         assert_eq!(
             code,
             r#"
-const a = "production";
+const a = "development";
+
+//# sourceMappingURL=index.js.map
         "#
             .trim()
         );
@@ -265,6 +292,28 @@ if ('a1' === "a2") { 3.1; } else 3.2;
 1.1;
 2.2;
 3.2;
+
+//# sourceMappingURL=index.js.map
+        "#
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_preset_env() {
+        let code = r#"
+const b = window.a?.b;
+        "#
+        .trim();
+        let (code, _sourcemap) = transform_code(code, None);
+        println!(">> CODE\n{}", code);
+        assert_eq!(
+            code,
+            r#"
+var _window_a;
+const b = (_window_a = window.a) === null || _window_a === void 0 ? void 0 : _window_a.b;
+
+//# sourceMappingURL=index.js.map
         "#
             .trim()
         );

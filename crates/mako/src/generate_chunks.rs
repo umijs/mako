@@ -1,4 +1,4 @@
-use std::vec;
+use std::{collections::HashSet, vec};
 
 use swc_common::DUMMY_SP;
 use swc_ecma_ast::{
@@ -13,7 +13,7 @@ use crate::{
     compiler::Compiler,
     config::Mode,
     minify::minify_js,
-    module::ModuleAst,
+    module::{ModuleAst, ModuleId},
 };
 
 pub struct OutputFile {
@@ -58,39 +58,8 @@ impl Compiler {
             .iter()
             .map(|chunk| {
                 // build stmts
-                let mut js_stmts = vec![];
-                let modules = chunk.get_modules();
-                modules.iter().for_each(|module_id| {
-                    let module = module_graph.get_module(module_id).unwrap();
-                    let ast = module.info.as_ref().unwrap();
-                    let ast = &ast.ast;
-                    match ast {
-                        ModuleAst::Script(ast) => {
-                            // id: function(module, exports, require) {}
-                            js_stmts.push(build_props(
-                                module.id.id.as_str(),
-                                Box::new(Expr::Fn(build_fn_expr(
-                                    None,
-                                    vec![
-                                        build_ident_param("module"),
-                                        build_ident_param("exports"),
-                                        build_ident_param("require"),
-                                    ],
-                                    ast.body
-                                        .iter()
-                                        .map(|stmt| stmt.as_stmt().unwrap().clone())
-                                        .collect(),
-                                ))),
-                            ));
-                        }
-                        ModuleAst::Css(_ast) => {
-                            // TODO:
-                            // 目前 transform_all 之后，css 的 ast 会变成 js 的 ast，所以这里不需要处理
-                            // 之后如果要支持提取独立的 css 文件，会需要在这里进行处理
-                        }
-                        ModuleAst::None => {}
-                    }
-                });
+                let module_ids = chunk.get_modules();
+                let js_stmts = modules_to_js_stmts(module_ids, &module_graph);
 
                 // build js ast
                 let mut content = if matches!(chunk.chunk_type, crate::chunk::ChunkType::Entry) {
@@ -246,4 +215,45 @@ fn build_props(key_str: &str, value: Box<Expr>) -> PropOrSpread {
         }),
         value,
     })))
+}
+
+pub fn modules_to_js_stmts(
+    module_ids: &HashSet<ModuleId>,
+    module_graph: &std::sync::RwLockReadGuard<crate::module_graph::ModuleGraph>,
+) -> Vec<PropOrSpread> {
+    let mut js_stmts = vec![];
+    let mut module_ids: Vec<_> = module_ids.iter().collect();
+    module_ids.sort_by_key(|module_id| module_id.id.to_string());
+    module_ids.iter().for_each(|module_id| {
+        let module = module_graph.get_module(module_id).unwrap();
+        let ast = module.info.as_ref().unwrap();
+        let ast = &ast.ast;
+        match ast {
+            ModuleAst::Script(ast) => {
+                // id: function(module, exports, require) {}
+                js_stmts.push(build_props(
+                    module.id.id.as_str(),
+                    Box::new(Expr::Fn(build_fn_expr(
+                        None,
+                        vec![
+                            build_ident_param("module"),
+                            build_ident_param("exports"),
+                            build_ident_param("require"),
+                        ],
+                        ast.body
+                            .iter()
+                            .map(|stmt| stmt.as_stmt().unwrap().clone())
+                            .collect(),
+                    ))),
+                ));
+            }
+            ModuleAst::Css(_ast) => {
+                // TODO:
+                // 目前 transform_all 之后，css 的 ast 会变成 js 的 ast，所以这里不需要处理
+                // 之后如果要支持提取独立的 css 文件，会需要在这里进行处理
+            }
+            ModuleAst::None => {}
+        }
+    });
+    js_stmts
 }

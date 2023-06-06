@@ -2,11 +2,9 @@ use std::{fs, time::Instant};
 
 use tracing::info;
 
-use crate::compiler::Compiler;
+use crate::{compiler::Compiler, config::DevtoolConfig};
 
 impl Compiler {
-    // TODO:
-    // - 特殊处理 react，目前会同时包含 dev 和 prod 两个版本，虽然只会用到一个
     pub fn generate(&self) {
         info!("generate");
         let t_generate = Instant::now();
@@ -35,7 +33,8 @@ impl Compiler {
         output_files.iter().for_each(|file| {
             let output = &config.output.path.join(&file.path);
             fs::write(output, &file.content).unwrap();
-            if self.context.config.sourcemap {
+            // generate separate sourcemap file
+            if matches!(self.context.config.devtool, DevtoolConfig::SourceMap) {
                 fs::write(format!("{}.map", output.display()), &file.sourcemap).unwrap();
             }
         });

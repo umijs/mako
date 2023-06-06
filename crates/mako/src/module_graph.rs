@@ -72,10 +72,19 @@ impl ModuleGraph {
             .collect()
     }
 
+    pub fn replace_module(&mut self, module: Module) {
+        let i = self
+            .id_index_map
+            .get(&module.id)
+            .unwrap_or_else(|| panic!("module_id {:?} should in the module graph", module.id));
+        self.graph[*i] = module;
+    }
+
     #[allow(dead_code)]
     pub fn get_modules_mut(&mut self) -> Vec<&mut Module> {
         self.graph.node_weights_mut().collect()
     }
+
     pub fn remove_dependency(&mut self, from: &ModuleId, to: &ModuleId) {
         let from_index = self.id_index_map.get(from).unwrap_or_else(|| {
             panic!(

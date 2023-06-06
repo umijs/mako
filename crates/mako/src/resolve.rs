@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::{compiler::Context, module::Dependency};
-use nodejs_resolver::{AliasMap, Options, ResolveResult, Resolver};
+use nodejs_resolver::{AliasMap, Error, Options, ResolveResult, Resolver};
 use tracing::debug;
 
 pub fn resolve(
@@ -14,7 +14,7 @@ pub fn resolve(
     dep: &Dependency,
     resolver: &Resolver,
     context: &Arc<Context>,
-) -> (String, Option<String>) {
+) -> Result<(String, Option<String>), Error> {
     do_resolve(path, &dep.source, resolver, Some(&context.config.externals))
 }
 
@@ -26,14 +26,14 @@ fn do_resolve(
     source: &str,
     resolver: &Resolver,
     externals: Option<&HashMap<String, String>>,
-) -> (String, Option<String>) {
+) -> Result<(String, Option<String>), Error> {
     let external = if let Some(externals) = externals {
         externals.get(&source.to_string()).cloned()
     } else {
         None
     };
     if let Some(external) = external {
-        (source.to_string(), Some(external))
+        Ok((source.to_string(), Some(external)))
     } else {
         let path = PathBuf::from(path);
         // 所有的 path 都是文件，所以 parent() 肯定是其所在目录
@@ -42,12 +42,9 @@ fn do_resolve(
         let result = resolver.resolve(parent, source);
         if let Ok(ResolveResult::Resource(resource)) = result {
             let path = resource.path.to_string_lossy().to_string();
-            (path, None)
+            Ok((path, None))
         } else {
-            panic!(
-                "resolve error: {:?}, parent: {:?}, source: {:?}",
-                result, parent, source
-            );
+            Err(result.err().unwrap())
         }
     }
 }
@@ -155,7 +152,8 @@ mod tests {
             source,
             &resolver,
             externals,
-        );
+        )
+        .unwrap();
         println!("> path: {:?}, {:?}", path, external);
         let path = path.replace(format!("{}/", fixture.to_str().unwrap()).as_str(), "");
         (path, external)

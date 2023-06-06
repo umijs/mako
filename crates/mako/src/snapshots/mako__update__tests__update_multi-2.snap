@@ -1,9 +1,5 @@
 ---
 source: crates/mako/src/update.rs
-expression: "&result"
+expression: "&code"
 ---
-
-added:["<CWD>/crates/mako/test/build/tmp/multi/chunk-2.ts", "<CWD>/crates/mako/test/build/tmp/multi/chunk-3.ts", "<CWD>/node_modules/.pnpm/@swc+helpers@0.5.1/node_modules/@swc/helpers/esm/_export_star.js"]
-modified:["<CWD>/crates/mako/test/build/tmp/multi/index.ts"]
-removed:[]
-
+"\"use strict\";\n(async ()=>{\n    await require.ensure([\n        \"<CWD>/crates/mako/test/build/tmp/multi/chunk-1.ts\"\n    ]).then(require.bind(require, \"<CWD>/crates/mako/test/build/tmp/multi/chunk-1.ts\"));\n})();\n\n//# sourceMappingURL=<CWD>/crates/mako/test/build/tmp/multi/index.ts.map"

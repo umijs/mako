@@ -19,6 +19,7 @@ mod copy;
 mod generate;
 mod generate_chunks;
 mod group_chunk;
+mod hmr;
 mod load;
 mod minify;
 mod module;

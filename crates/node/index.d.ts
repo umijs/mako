@@ -13,7 +13,7 @@ export function build(
       extensions: string[];
     };
     mode: 'development' | 'production';
-    sourcemap: boolean;
+    devtool: 'source-map' | 'inline-source-map';
     externals: Record<string, string>;
     copy: string[];
     public_path: string;

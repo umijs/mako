@@ -28,7 +28,7 @@ impl Compiler {
     }
 }
 
-fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) {
+pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) {
     module_ids.iter().for_each(|module_id| {
         let module_graph = context.module_graph.read().unwrap();
         let deps = module_graph.get_dependencies(module_id);
@@ -137,6 +137,8 @@ require("foo");
             code,
             r#"
 require("bar");
+
+//# sourceMappingURL=index.js.map
         "#
             .trim()
         );
@@ -160,6 +162,8 @@ let css = `.foo {
 let style = document.createElement('style');
 style.innerHTML = css;
 document.head.appendChild(style);
+
+//# sourceMappingURL=index.js.map
         "#
             .trim()
         );
@@ -186,6 +190,8 @@ let css = `.foo {
 let style = document.createElement('style');
 style.innerHTML = css;
 document.head.appendChild(style);
+
+//# sourceMappingURL=index.js.map
         "#
             .trim()
         );
@@ -213,6 +219,8 @@ let css = `.foo {
 let style = document.createElement('style');
 style.innerHTML = css;
 document.head.appendChild(style);
+
+//# sourceMappingURL=index.js.map
         "#
             .trim()
         );
