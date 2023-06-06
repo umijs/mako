@@ -2,7 +2,8 @@
 
 use clap::Parser;
 use tracing::{debug, info};
-use tracing_subscriber::EnvFilter;
+
+use crate::logger::init_logger;
 
 mod analyze_deps;
 mod ast;
@@ -20,6 +21,7 @@ mod generate_chunks;
 mod group_chunk;
 mod hmr;
 mod load;
+mod logger;
 mod minify;
 mod module;
 mod module_graph;
@@ -40,13 +42,7 @@ mod watch;
 #[tokio::main]
 async fn main() {
     // logger
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("mako=info")),
-        )
-        .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
-        .without_time()
-        .init();
+    init_logger();
 
     // cli
     let cli = cli::Cli::parse();
