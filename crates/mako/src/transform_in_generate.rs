@@ -77,7 +77,7 @@ fn transform_css(
             ),
             &sourcemap,
         )
-        .unwrap();
+        .unwrap_or(());
         code = format!(
             "{code}\n/*# sourceMappingURL={}.map*/",
             filename.to_string_lossy()
@@ -135,7 +135,8 @@ mod tests {
 let css = `.foo {
   color: red;
 }
-`;
+
+/*# sourceMappingURL=test.tsx.map*/`;
 let style = document.createElement('style');
 style.innerHTML = css;
 document.head.appendChild(style);
@@ -162,7 +163,8 @@ require("bar.css");
 let css = `.foo {
   color: red;
 }
-`;
+
+/*# sourceMappingURL=test.tsx.map*/`;
 let style = document.createElement('style');
 style.innerHTML = css;
 document.head.appendChild(style);
