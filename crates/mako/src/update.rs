@@ -172,10 +172,6 @@ impl Compiler {
         for (module, add, remove, mut add_modules) in result {
             let mut module_graph = self.context.module_graph.write().unwrap();
 
-            // replace module
-            let m_module = module_graph.get_module_mut(&module.id).unwrap();
-            m_module.add_info(module.info);
-
             // remove bind dependency
             for (remove_module_id, _) in remove {
                 module_graph.remove_dependency(&module.id, &remove_module_id)

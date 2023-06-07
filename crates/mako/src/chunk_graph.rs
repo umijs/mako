@@ -1,8 +1,9 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+
+use petgraph::stable_graph::{DefaultIx, NodeIndex, StableDiGraph};
 
 use crate::chunk::ChunkId;
 use crate::{chunk::Chunk, module::ModuleId};
-use petgraph::stable_graph::{DefaultIx, NodeIndex, StableDiGraph};
 
 pub struct ChunkGraph {
     graph: StableDiGraph<Chunk, ()>,
@@ -15,6 +16,11 @@ impl ChunkGraph {
             graph: StableDiGraph::new(),
             id_index_map: HashMap::new(),
         }
+    }
+
+    pub fn clear(&mut self) {
+        self.graph.clear();
+        self.id_index_map.clear();
     }
 
     pub fn add_chunk(&mut self, chunk: Chunk) {
@@ -32,9 +38,17 @@ impl ChunkGraph {
         self.graph.node_weights().collect()
     }
 
+    pub fn chunks_mut(&mut self) -> Vec<&mut Chunk> {
+        self.graph.node_weights_mut().collect()
+    }
+
     pub fn add_edge(&mut self, from: &ChunkId, to: &ChunkId) {
         let from = self.id_index_map.get(from).unwrap();
         let to = self.id_index_map.get(to).unwrap();
         self.graph.add_edge(*from, *to, ());
+    }
+
+    pub fn chunk_names(&self) -> HashSet<String> {
+        self.graph.node_weights().map(|c| c.filename()).collect()
     }
 }

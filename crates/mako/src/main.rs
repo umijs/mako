@@ -1,9 +1,14 @@
 #![feature(box_patterns)]
 
-use crate::watch::watch;
+use std::sync::Arc;
+
 use clap::Parser;
+use hyper::service::service_fn;
+use hyper::Server;
 use tracing::{debug, info};
 use tracing_subscriber::EnvFilter;
+
+use crate::watch::watch;
 
 mod analyze_deps;
 mod ast;
@@ -73,13 +78,71 @@ async fn main() {
     let compiler = compiler::Compiler::new(config, root.clone());
     compiler.compile();
 
-    if cli.watch {
-        watch(&root, |events| {
-            info!("chang event {:?}", events);
+    let arc_compiler = Arc::new(compiler);
 
-            let res = compiler.update(events.into());
-            dbg!(res);
-            compiler.generate();
+    let watch_compiler = arc_compiler.clone();
+    if cli.watch {
+        let watch_handler = tokio::spawn(async move {
+            watch(&root, |events| {
+                info!("chang event {:?}", events);
+
+                let c = watch_compiler.clone();
+                let res = c.update(events.into()).unwrap();
+                dbg!(&res);
+                c.generate_with_update(res);
+            });
         });
+
+        let handle_nf = move |req: hyper::Request<hyper::Body>| {
+            let for_fn = arc_compiler.clone();
+            async move {
+                let path = req.uri().path().strip_prefix('/').or({ Some("") }).unwrap();
+
+                dbg!(&path);
+
+                match path {
+                    "" | "index.html" | "index.htm" => {
+                        let index = std::fs::read(
+                            for_fn.context.config.output.path.clone().join("index.html"),
+                        )
+                        .unwrap();
+
+                        Ok::<_, hyper::Error>(
+                            hyper::Response::builder()
+                                .header("content-type", "text/html")
+                                .body(hyper::Body::from(index))
+                                .unwrap(),
+                        )
+                    }
+                    _ => {
+                        if let Some(chunk) = for_fn.get_chunk_content_by_path(path.to_string()) {
+                            Ok::<_, hyper::Error>(hyper::Response::new(hyper::Body::from(chunk)))
+                        } else {
+                            Ok::<_, hyper::Error>(
+                                hyper::Response::builder()
+                                    .status(hyper::StatusCode::NOT_FOUND)
+                                    .body(hyper::Body::from("404 - Page not found"))
+                                    .unwrap(),
+                            )
+                        }
+                    }
+                }
+            }
+        };
+        let dev_service = hyper::service::make_service_fn(move |_conn| {
+            let my_fn = handle_nf.clone();
+            async move { Ok::<_, hyper::Error>(service_fn(my_fn)) }
+        });
+
+        let dev_server_handle = tokio::spawn(async move {
+            if let Err(_e) = Server::bind(&([127, 0, 0, 1], 3000).into())
+                .serve(dev_service)
+                .await
+            {
+                println!("done");
+            }
+        });
+
+        tokio::join!(watch_handler, dev_server_handle);
     }
 }
