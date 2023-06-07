@@ -16,7 +16,7 @@ use swc_ecma_transforms::hygiene::hygiene_with_config;
 use swc_ecma_transforms::modules::common_js;
 use swc_ecma_transforms::modules::import_analysis::import_analyzer;
 use swc_ecma_transforms::modules::util::{Config, ImportInterop};
-use swc_ecma_transforms::react::{react, Options};
+use swc_ecma_transforms::react::{react, Options, Runtime};
 use swc_ecma_transforms::typescript::strip_with_jsx;
 use swc_ecma_transforms::{fixer, resolver, Assumptions};
 use swc_ecma_visit::{Fold, VisitMutWith as CssVisitMutWith};
@@ -83,6 +83,8 @@ fn transform_js(
                     import_source: Some("react".to_string()),
                     pragma: Some("React.createElement".into()),
                     pragma_frag: Some("React.Fragment".into()),
+                    // support react 17 + only
+                    runtime: Some(Runtime::Automatic),
                     ..Default::default()
                 },
                 top_level_mark,
@@ -196,11 +198,23 @@ const App = () => <><h1>Hello World</h1></>;
         .trim();
         let (code, _) = transform_js_code(code, None);
         println!(">> CODE\n{}", code);
-        assert_eq!(code, r#"
-const App = ()=>React.createElement(React.Fragment, null, React.createElement("h1", null, "Hello World"));
+        assert_eq!(
+            code,
+            r#"
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var _jsxruntime = require("react/jsx-runtime");
+const App = ()=>(0, _jsxruntime.jsx)(_jsxruntime.Fragment, {
+        children: (0, _jsxruntime.jsx)("h1", {
+            children: "Hello World"
+        })
+    });
 
 //# sourceMappingURL=index.js.map
-        "#.trim());
+        "#
+            .trim()
+        );
     }
 
     #[test]
