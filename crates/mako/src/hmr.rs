@@ -89,14 +89,14 @@ modulesRegistry['/index.ts'].hot.apply({
             Object.defineProperty(exports, "__esModule", {
                 value: true
             });
-            require("./foo");
+            require("/foo.ts");
         },
         "/bar_2.ts": function(module, exports, require) {
             "use strict";
             Object.defineProperty(exports, "__esModule", {
                 value: true
             });
-            require("./foo");
+            require("/foo.ts");
         },
         "/foo.ts": function(module, exports, require) {
             "use strict";
@@ -116,11 +116,13 @@ modulesRegistry['/index.ts'].hot.apply({
             Object.defineProperty(exports, "__esModule", {
                 value: true
             });
-            require("./bar_1");
-            require("./bar_2");
+            require("/bar_1.ts");
+            require("/bar_2.ts");
         }
     }
 });
+
+//# sourceMappingURL=index.js.map
         "#
             .trim()
         );

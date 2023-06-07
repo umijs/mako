@@ -1,3 +1,4 @@
+use base64::{engine::general_purpose, Engine};
 use pathdiff::diff_paths;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -22,7 +23,7 @@ use swc_ecma_visit::VisitMutWith;
 
 use crate::chunk_graph::ChunkGraph;
 use crate::compiler::{Context, Meta};
-use crate::config::{Config, Mode};
+use crate::config::{Config, DevtoolConfig, Mode};
 use crate::module_graph::ModuleGraph;
 use crate::sourcemap::build_source_map;
 
@@ -213,23 +214,51 @@ pub fn js_ast_to_code(ast: &Module, context: &Arc<Context>, filename: &str) -> (
         };
         emitter.emit_module(ast).unwrap();
     }
-    if context.config.sourcemap {
+    // source map
+    let src_buf = build_source_map(&source_map_buf, cm);
+    let sourcemap = String::from_utf8(src_buf).unwrap();
+    if matches!(context.config.devtool, DevtoolConfig::SourceMap) {
+        // separate sourcemap file
         buf.append(
             &mut format!("\n//# sourceMappingURL={filename}.map")
                 .as_bytes()
                 .to_vec(),
         );
+    } else if matches!(context.config.devtool, DevtoolConfig::InlineSourceMap) {
+        // inline sourcemap
+        buf.append(
+            &mut format!(
+                "\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,{}",
+                base64_encode(&sourcemap)
+            )
+            .as_bytes()
+            .to_vec(),
+        );
     }
     let code = String::from_utf8(buf).unwrap();
-    let src_buf = build_source_map(&source_map_buf, cm);
-    let sourcemap = String::from_utf8(src_buf).unwrap();
     (code, sourcemap)
 }
 
-pub fn css_ast_to_code(ast: &Stylesheet) -> String {
+pub fn css_ast_to_code(ast: &Stylesheet, context: &Arc<Context>) -> (String, String) {
     let mut css_code = String::new();
-    let css_writer = BasicCssWriter::new(&mut css_code, None, BasicCssWriterConfig::default());
-    let mut gen = CodeGenerator::new(css_writer, CodegenConfig::default());
+    let mut source_map = Vec::new();
+    let css_writer = BasicCssWriter::new(
+        &mut css_code,
+        Some(&mut source_map),
+        BasicCssWriterConfig::default(),
+    );
+    let mut gen = CodeGenerator::new(
+        css_writer,
+        CodegenConfig {
+            minify: matches!(context.config.mode, Mode::Production),
+        },
+    );
     gen.emit(&ast).unwrap();
-    css_code
+    let src_buf = build_source_map(&source_map, context.meta.css.cm.clone());
+    let sourcemap = String::from_utf8(src_buf).unwrap();
+    (css_code, sourcemap)
+}
+
+pub fn base64_encode(raw: &str) -> String {
+    general_purpose::STANDARD.encode(raw)
 }

@@ -1,8 +1,5 @@
 #![feature(box_patterns)]
 
-pub mod compiler;
-pub mod config;
-
 mod analyze_deps;
 mod ast;
 mod bfs;
@@ -10,6 +7,8 @@ mod build;
 mod chunk;
 mod chunk_graph;
 mod cli;
+pub mod compiler;
+pub mod config;
 mod config_node_polyfill;
 mod copy;
 mod css_modules;
@@ -18,6 +17,7 @@ mod generate_chunks;
 mod group_chunk;
 mod hmr;
 mod load;
+pub mod logger;
 mod minify;
 mod module;
 mod module_graph;

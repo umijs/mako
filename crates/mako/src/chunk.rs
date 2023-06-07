@@ -1,3 +1,5 @@
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use std::{collections::HashSet, path::Path};
 
 use crate::module::ModuleId;
@@ -41,8 +43,9 @@ impl Chunk {
             }
             ChunkType::Async => {
                 let path = Path::new(&self.id.id);
+                let hash = hash_path(path);
                 let filename = path.file_name().unwrap().to_string_lossy();
-                format!("{}-async.js", &filename)
+                format!("{}-{}-async.js", &filename, hash)
             }
         }
     }
@@ -54,4 +57,11 @@ impl Chunk {
     pub fn get_modules(&self) -> &HashSet<ModuleId> {
         &self.modules
     }
+}
+
+fn hash_path<P: AsRef<std::path::Path>>(path: P) -> u64 {
+    let path_str = path.as_ref().to_str().expect("Path is not valid UTF-8");
+    let mut hasher = DefaultHasher::new();
+    path_str.hash(&mut hasher);
+    hasher.finish()
 }

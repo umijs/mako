@@ -55,6 +55,7 @@ pub fn get_resolver(alias: Option<HashMap<String, String>>) -> Resolver {
     } else {
         vec![]
     };
+    // TODO: read from config
     Resolver::new(Options {
         alias,
         extensions: vec![

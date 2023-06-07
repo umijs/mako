@@ -133,6 +133,8 @@ import("./foo");
 require.ensure([
     "./foo"
 ]).then(require.bind(require, "./foo"));
+
+//# sourceMappingURL=index.js.map
             "#
             .trim()
         );

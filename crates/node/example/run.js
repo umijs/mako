@@ -16,4 +16,6 @@ build(root, {
   copy: ['public'],
   data_url_limit: 10000,
   public_path: '/',
+  devtool: 'source-map',
+  targets: {},
 });
