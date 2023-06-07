@@ -97,7 +97,7 @@ fn transform_css(
         .filter(|val| val.ends_with(".css"))
         .map(|val| format!("require(\"{}\");", val))
         .collect();
-    let content = format!("{}{}", require_code.join("\n"), content);
+    let content = format!("{}\n{}", require_code.join("\n"), content);
     let path = format!("{}.ts", path);
     let path = path.as_str();
     build_js_ast(path, content.as_str(), context)
