@@ -1,11 +1,14 @@
 use lightningcss::stylesheet::{MinifyOptions, ParserOptions, PrinterOptions, StyleSheet};
 use std::collections::HashMap;
+use std::fs;
+use std::path::PathBuf;
 use std::sync::Arc;
 use swc_ecma_ast::Module;
 use tracing::{debug, info};
 
-use crate::ast::{build_js_ast, css_ast_to_code};
+use crate::ast::{base64_encode, build_js_ast, css_ast_to_code};
 use crate::compiler::Context;
+use crate::config::DevtoolConfig;
 use crate::module::ModuleId;
 use crate::{compiler::Compiler, module::ModuleAst};
 
@@ -51,7 +54,7 @@ fn transform_css(
     context: &Arc<Context>,
 ) -> Module {
     // ast to code
-    let code = css_ast_to_code(ast);
+    let (code, sourcemap) = css_ast_to_code(ast, context);
 
     // lightingcss
     let mut lightingcss_stylesheet = StyleSheet::parse(&code, ParserOptions::default()).unwrap();
@@ -61,11 +64,34 @@ fn transform_css(
     let out = lightingcss_stylesheet
         .to_css(PrinterOptions::default())
         .unwrap();
-    let code = out.code.as_str();
+    let mut code = out.code;
+
+    // TODO: 后续支持生成单独的 css 文件后需要优化
+    if matches!(context.config.devtool, DevtoolConfig::SourceMap) {
+        let path_buf = PathBuf::from(path);
+        let filename = path_buf.file_name().unwrap();
+        fs::write(
+            format!(
+                "{}.map",
+                context.config.output.path.join(filename).to_string_lossy()
+            ),
+            &sourcemap,
+        )
+        .unwrap_or(());
+        code = format!(
+            "{code}\n/*# sourceMappingURL={}.map*/",
+            filename.to_string_lossy()
+        );
+    } else if matches!(context.config.devtool, DevtoolConfig::InlineSourceMap) {
+        code = format!(
+            "{code}\n/*# sourceMappingURL=data:application/json;charset=utf-8;base64,{}*/",
+            base64_encode(&sourcemap)
+        );
+    }
 
     // code to js ast
     let content = include_str!("runtime/runtime_css.ts").to_string();
-    let content = content.replace("__CSS__", code);
+    let content = content.replace("__CSS__", code.as_str());
     let require_code: Vec<String> = dep_map
         .values()
         .filter(|val| val.ends_with(".css"))
@@ -109,7 +135,8 @@ mod tests {
 let css = `.foo {
   color: red;
 }
-`;
+
+/*# sourceMappingURL=test.tsx.map*/`;
 let style = document.createElement('style');
 style.innerHTML = css;
 document.head.appendChild(style);
@@ -136,7 +163,8 @@ require("bar.css");
 let css = `.foo {
   color: red;
 }
-`;
+
+/*# sourceMappingURL=test.tsx.map*/`;
 let style = document.createElement('style');
 style.innerHTML = css;
 document.head.appendChild(style);

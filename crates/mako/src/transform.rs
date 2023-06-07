@@ -459,7 +459,7 @@ require("bar");
         });
         let mut ast = build_css_ast(path, origin, &context);
         transform_css(&mut ast, &context, &mut |_| deps.clone());
-        let code = css_ast_to_code(&ast);
+        let (code, _) = css_ast_to_code(&ast, &context);
 
         code.trim().to_string()
     }
