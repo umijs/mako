@@ -22,7 +22,7 @@ use crate::{
 
 #[derive(Debug)]
 pub enum BuildError {
-    Resolve { module: String },
+    Resolve { target: String, from: String },
 }
 
 #[derive(Debug)]
@@ -222,7 +222,8 @@ impl Compiler {
                     }
                     Err(_) => {
                         dep_resolve_err = Some(BuildError::Resolve {
-                            module: dep.clone().source,
+                            target: dep.clone().source,
+                            from: task.path.clone(),
                         });
                         return dependencies.clone();
                     }
