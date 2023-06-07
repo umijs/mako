@@ -1,5 +1,7 @@
 use lightningcss::stylesheet::{MinifyOptions, ParserOptions, PrinterOptions, StyleSheet};
 use std::collections::HashMap;
+use std::fs;
+use std::path::PathBuf;
 use std::sync::Arc;
 use swc_ecma_ast::Module;
 use tracing::{debug, info};
@@ -64,7 +66,23 @@ fn transform_css(
         .unwrap();
     let mut code = out.code;
 
-    if matches!(context.config.devtool, DevtoolConfig::InlineSourceMap) {
+    // TODO: 后续支持生成单独的 css 文件后需要优化
+    if matches!(context.config.devtool, DevtoolConfig::SourceMap) {
+        let path_buf = PathBuf::from(path);
+        let filename = path_buf.file_name().unwrap();
+        fs::write(
+            format!(
+                "{}.map",
+                context.config.output.path.join(filename).to_string_lossy()
+            ),
+            &sourcemap,
+        )
+        .unwrap();
+        code = format!(
+            "{code}\n/*# sourceMappingURL={}.map*/",
+            filename.to_string_lossy()
+        );
+    } else if matches!(context.config.devtool, DevtoolConfig::InlineSourceMap) {
         code = format!(
             "{code}\n/*# sourceMappingURL=data:application/json;charset=utf-8;base64,{}*/",
             base64_encode(&sourcemap)
