@@ -13,13 +13,17 @@ pub struct CssModuleRename {
 impl TransformConfig for CssModuleRename {
     fn new_name_for(&self, local: &swc_atoms::JsWord) -> swc_atoms::JsWord {
         let name = local.to_string();
-        let source = format!("{}__{}", &self.path, name);
-        let digest = md5::compute(&source);
-        let hash = general_purpose::URL_SAFE.encode(digest.0);
-        let hash_slice = hash[..8].to_string();
-        let new_name = format!("{}-{}", name, hash_slice);
+        let new_name = hash_for_name(&self.path, &name);
         new_name.into()
     }
+}
+
+fn hash_for_name(path: &str, name: &str) -> String {
+    let source = format!("{}__{}", path, name);
+    let digest = md5::compute(&source);
+    let hash = general_purpose::URL_SAFE.encode(digest.0);
+    let hash_slice = hash[..8].to_string();
+    format!("{}-{}", name, hash_slice)
 }
 
 pub fn is_css_modules_path(path: &str) -> bool {
@@ -75,4 +79,15 @@ export default {{{}}}
             .collect::<Vec<String>>()
             .join(",")
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::hash_for_name;
+
+    #[test]
+    fn test_hash_for_name() {
+        let result = hash_for_name("/test/path", "name");
+        assert_eq!(result, "name-L9IOSlj5");
+    }
 }
