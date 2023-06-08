@@ -94,9 +94,12 @@ function createRuntime(makoModules, entryModuleId) {
             return res.json();
           })
           .then((update) => {
-            if (update) {
-              hot.apply(update);
-            }
+            console.log(update);
+
+            load(
+              'http://localhost:3000/lazy.tsx-async.hot-update.js',
+              console.log,
+            );
           });
       },
       apply(update) {
@@ -128,7 +131,7 @@ function createRuntime(makoModules, entryModuleId) {
         const outdatedSelfAcceptedModules = [];
         for (const moduleId of outdatedModules) {
           const module = modulesRegistry[moduleId];
-          if (module.hot._selfAccepted) {
+          if (!module.hot._selfAccepted) {
             outdatedSelfAcceptedModules.push(module);
           }
         }
