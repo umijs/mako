@@ -11,7 +11,7 @@ function App() {
   return (
     <div>
       <h1 className={styles.title}>Hello {foo}!</h1>
-      <div class="imageContainer">
+      <div className="imageContainer">
         <img className={styles.image} src={UmiLogo} />
       </div>
       <div>
