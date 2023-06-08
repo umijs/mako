@@ -115,7 +115,6 @@ mod tests {
         ast::{build_css_ast, js_ast_to_code},
         chunk_graph::ChunkGraph,
         compiler::{Context, Meta},
-        config::Config,
         module_graph::ModuleGraph,
     };
 
@@ -187,7 +186,7 @@ document.head.appendChild(style);
         };
         let root = PathBuf::from("/path/to/root");
         let context = Arc::new(Context {
-            config: Config::new(&root).unwrap(),
+            config: Default::default(),
             root,
             module_graph: RwLock::new(ModuleGraph::new()),
             chunk_graph: RwLock::new(ChunkGraph::new()),

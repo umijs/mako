@@ -183,7 +183,6 @@ mod tests {
         build::ModuleDeps,
         chunk_graph::ChunkGraph,
         compiler::{Context, Meta},
-        config::Config,
         module::{Dependency, ResolveType},
         module_graph::ModuleGraph,
     };
@@ -427,7 +426,7 @@ require("bar");
         };
         let root = PathBuf::from("/path/to/root");
         let context = Arc::new(Context {
-            config: Config::new(&root).unwrap(),
+            config: Default::default(),
             root,
             module_graph: RwLock::new(ModuleGraph::new()),
             chunk_graph: RwLock::new(ChunkGraph::new()),
@@ -464,7 +463,7 @@ require("bar");
         };
         let root = PathBuf::from("/path/to/root");
         let context = Arc::new(Context {
-            config: Config::new(&root).unwrap(),
+            config: Default::default(),
             root,
             module_graph: RwLock::new(ModuleGraph::new()),
             chunk_graph: RwLock::new(ChunkGraph::new()),
