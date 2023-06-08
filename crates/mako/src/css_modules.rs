@@ -13,12 +13,12 @@ pub struct CssModuleRename {
 impl TransformConfig for CssModuleRename {
     fn new_name_for(&self, local: &swc_atoms::JsWord) -> swc_atoms::JsWord {
         let name = local.to_string();
-        let new_name = hash_for_name(&self.path, &name);
+        let new_name = ident_name(&self.path, &name);
         new_name.into()
     }
 }
 
-fn hash_for_name(path: &str, name: &str) -> String {
+fn ident_name(path: &str, name: &str) -> String {
     let source = format!("{}__{}", path, name);
     let digest = md5::compute(&source);
     let hash = general_purpose::URL_SAFE.encode(digest.0);
@@ -83,11 +83,11 @@ export default {{{}}}
 
 #[cfg(test)]
 mod tests {
-    use super::hash_for_name;
+    use super::ident_name;
 
     #[test]
-    fn test_hash_for_name() {
-        let result = hash_for_name("/test/path", "name");
+    fn test_ident_name() {
+        let result = ident_name("/test/path", "name");
         assert_eq!(result, "name-L9IOSlj5");
     }
 }
