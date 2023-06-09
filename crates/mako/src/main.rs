@@ -156,20 +156,8 @@ async fn main() {
                             )
                         }
                     }
-                    "" | "index.html" | "index.htm" => {
-                        let index = std::fs::read(
-                            for_fn.context.config.output.path.clone().join("index.html"),
-                        )
-                        .unwrap();
-
-                        Ok::<_, hyper::Error>(
-                            hyper::Response::builder()
-                                .header("content-type", "text/html")
-                                .body(hyper::Body::from(index))
-                                .unwrap(),
-                        )
-                    }
                     _ => {
+                        // try chunk content in memory first, else use dist content
                         if let Some(chunk) = for_fn.get_chunk_content_by_path(path.to_string()) {
                             Ok::<_, hyper::Error>(hyper::Response::new(hyper::Body::from(chunk)))
                         } else {
