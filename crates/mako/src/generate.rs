@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+
 use std::{fs, time::Instant};
 
 use serde::Serialize;
@@ -75,7 +76,6 @@ impl Compiler {
         info!("  - generate chunks: {}ms", t_generate_chunks.as_millis());
     }
 
-    // - 特殊处理 react，目前会同时包含 dev 和 prod 两个版本，虽然只会用到一个
     pub fn generate_with_update(&self, updated_modules: UpdateResult) {
         let last_chunk_names: HashSet<String> = {
             let chunk_graph = self.context.chunk_graph.read().unwrap();
@@ -112,14 +112,10 @@ impl Compiler {
 
             let chunk_names = cg.chunk_names();
 
-            println!("xxx");
-            dbg!(&chunk_names);
-
             let modified_chunks: Vec<String> = cg
                 .get_chunks()
                 .iter()
                 .filter(|c| {
-                    println!("ffff -> {}", c.filename());
                     updated_modules
                         .modified
                         .iter()
@@ -131,23 +127,18 @@ impl Compiler {
             (chunk_names, modified_chunks)
         };
 
-        let created_chunks: Vec<String> = current_chunks
-            .difference(&last_chunk_names)
-            .cloned()
-            .collect();
-
         let removed_chunks: Vec<String> = last_chunk_names
             .difference(&current_chunks)
             .cloned()
             .collect();
 
+        let cg = self.context.chunk_graph.read().unwrap();
         for chunk_name in &modified_chunks {
-            let cg = self.context.chunk_graph.read().unwrap();
-
             if let Some(chunk) = cg.get_chunk_by_name(chunk_name) {
                 let (code, _) = self.generate_hmr_chunk(chunk, &updated_modules.modified);
 
-                self.write_to_dist("lazy.tsx-async.hot-update.js", code);
+                // TODO the final format should be {name}.{full_hash}.hot-update.{ext}
+                self.write_to_dist(to_hot_update_chunk_name(chunk_name), code);
             }
         }
 
@@ -155,7 +146,6 @@ impl Compiler {
             "hot-update.json",
             serde_json::to_string(&HotUpdateManifest {
                 removed_chunks,
-                created_chunks,
                 modified_chunks,
             })
             .unwrap(),
@@ -192,12 +182,25 @@ impl Compiler {
     }
 }
 
+fn to_hot_update_chunk_name(chunk_name: &String) -> String {
+    match chunk_name.rsplit_once('.') {
+        None => {
+            format!("{chunk_name}.hot-update")
+        }
+        Some((left, ext)) => {
+            format!("{left}.hot-update.{ext}")
+        }
+    }
+}
+
 #[derive(Serialize)]
 struct HotUpdateManifest {
     #[serde(rename(serialize = "c"))]
-    created_chunks: Vec<String>,
+    modified_chunks: Vec<String>,
+
     #[serde(rename(serialize = "r"))]
     removed_chunks: Vec<String>,
-    #[serde(rename(serialize = "m"))]
-    modified_chunks: Vec<String>,
+    // TODO
+    // #[serde(rename(serialize = "c"))]
+    // removed_modules: Vec<String>,
 }
