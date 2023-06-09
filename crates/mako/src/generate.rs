@@ -1,8 +1,7 @@
-use serde::Serialize;
 use std::collections::HashSet;
-
 use std::{fs, time::Instant};
 
+use serde::Serialize;
 use tracing::info;
 
 use crate::update::UpdateResult;
@@ -142,8 +141,18 @@ impl Compiler {
             .cloned()
             .collect();
 
+        for chunk_name in &modified_chunks {
+            let cg = self.context.chunk_graph.read().unwrap();
+
+            if let Some(chunk) = cg.get_chunk_by_name(chunk_name) {
+                let (code, _) = self.generate_hmr_chunk(chunk, &updated_modules.modified);
+
+                self.write_to_dist("lazy.tsx-async.hot-update.js", code);
+            }
+        }
+
         self.write_to_dist(
-            "mani.json",
+            "hot-update.json",
             serde_json::to_string(&HotUpdateManifest {
                 removed_chunks,
                 created_chunks,

@@ -8,6 +8,7 @@ use crate::transform_in_generate::transform_modules;
 use nodejs_resolver::Resolver;
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet, VecDeque};
+
 use std::fmt::{self, Error};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -59,12 +60,22 @@ removed:{:?}
 
 impl Compiler {
     pub fn update(&self, paths: Vec<(PathBuf, UpdateType)>) -> Result<UpdateResult, Error> {
-        let mut update_result = UpdateResult {
-            ..Default::default()
-        };
+        let mut update_result: UpdateResult = Default::default();
+
         let resolver = Arc::new(get_resolver(Some(
             self.context.config.resolve.alias.clone(),
         )));
+
+        let paths: Vec<(PathBuf, UpdateType)> = {
+            let cg = self.context.module_graph.read().unwrap();
+            paths
+                .into_iter()
+                .filter(|(p, _)| {
+                    let _str = p.to_string_lossy();
+                    cg.has_module(&p.clone().into())
+                })
+                .collect()
+        };
 
         // 先分组
         let mut modified = vec![];

@@ -106,7 +106,7 @@ function createRuntime(makoModules, entryModuleId) {
         const { modules, removedModules } = update;
 
         // get outdated modules
-        const outdatedModules = [];
+        let outdatedModules = [];
         for (const moduleId of Object.keys(modules)) {
           if (!modulesRegistry[moduleId]) continue;
           if (outdatedModules.includes(moduleId)) continue;
@@ -126,6 +126,10 @@ function createRuntime(makoModules, entryModuleId) {
             }
           }
         }
+
+        outdatedModules = outdatedModules.filter(
+          (id) => !id.match(/index\.tsx$/),
+        );
 
         // get self accepted modules
         const outdatedSelfAcceptedModules = [];

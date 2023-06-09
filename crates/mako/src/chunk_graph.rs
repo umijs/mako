@@ -38,6 +38,10 @@ impl ChunkGraph {
         self.graph.node_weights().collect()
     }
 
+    pub fn get_chunk_by_name(&self, name: &String) -> Option<&Chunk> {
+        self.graph.node_weights().find(|c| c.filename().eq(name))
+    }
+
     pub fn chunks_mut(&mut self) -> Vec<&mut Chunk> {
         self.graph.node_weights_mut().collect()
     }

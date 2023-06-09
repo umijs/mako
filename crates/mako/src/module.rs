@@ -57,6 +57,20 @@ impl ModuleId {
     }
 }
 
+impl From<String> for ModuleId {
+    fn from(id: String) -> Self {
+        Self { id }
+    }
+}
+
+impl From<PathBuf> for ModuleId {
+    fn from(path: PathBuf) -> Self {
+        Self {
+            id: path.to_string_lossy().to_string(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum ModuleAst {
     Script(swc_ecma_ast::Module),
