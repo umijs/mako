@@ -273,7 +273,7 @@ mod tests {
     use petgraph::prelude::EdgeRef;
     use petgraph::visit::IntoEdgeReferences;
 
-    use crate::{compiler, config};
+    use crate::{compiler, config::Config};
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_build() {
@@ -316,7 +316,7 @@ mod tests {
         // let fixtures = current_dir.join("test/build");
         let pnpm_dir = current_dir.join("node_modules/.pnpm");
         let root = current_dir.join(base);
-        let config = config::Config::new(&root).unwrap();
+        let config = Config::new(&root, None, None).unwrap();
         let compiler = compiler::Compiler::new(config, root.clone());
         compiler.build();
         let module_graph = compiler.context.module_graph.read().unwrap();

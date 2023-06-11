@@ -12,28 +12,31 @@ pub fn build(
     root: String,
     #[napi(ts_arg_type = r#"
 {
-    entry: Record<string, string>;
-    output: {path: string};
-    resolve: {
-       alias: Record<string, string>;
-       extensions: string[];
+    entry?: Record<string, string>;
+    output?: {path: string};
+    resolve?: {
+       alias?: Record<string, string>;
+       extensions?: string[];
     };
-    mode: "development" | "production";
-    devtool: "source-map" | "inline-source-map";
-    externals: Record<string, string>;
-    copy: string[];
-    public_path: string;
-    data_url_limit: number;
+    mode?: "development" | "production";
+    devtool?: "source-map" | "inline-source-map";
+    externals?: Record<string, string>;
+    copy?: string[];
+    public_path?: string;
+    data_url_limit?: number;
 }"#)]
     config: serde_json::Value,
 ) {
     // logger
     init_logger();
 
-    let mako_config = serde_json::from_value::<Config>(config);
+    let default_config = serde_json::to_string(&config).unwrap();
+    let root = std::path::PathBuf::from(&root);
+    let mako_config = Config::new(&root, Some(&default_config), None);
+
     match mako_config {
         Ok(config) => {
-            Compiler::new(config, root.into()).compile();
+            Compiler::new(config, root).compile();
         }
         Err(e) => println!("error: {:?}", e),
     }

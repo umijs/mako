@@ -23,7 +23,7 @@ use swc_ecma_visit::VisitMutWith;
 
 use crate::chunk_graph::ChunkGraph;
 use crate::compiler::{Context, Meta};
-use crate::config::{Config, DevtoolConfig, Mode};
+use crate::config::{DevtoolConfig, Mode};
 use crate::module_graph::ModuleGraph;
 use crate::sourcemap::build_source_map;
 
@@ -95,7 +95,7 @@ pub fn test_ast() {
 
     let root = PathBuf::from("/path/to/root");
     let context = Arc::new(Context {
-        config: Config::new(&root).unwrap(),
+        config: Default::default(),
         root,
         module_graph: RwLock::new(ModuleGraph::new()),
         chunk_graph: RwLock::new(ChunkGraph::new()),

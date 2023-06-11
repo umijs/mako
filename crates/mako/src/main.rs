@@ -59,7 +59,7 @@ async fn main() {
     };
 
     // config
-    let mut config = config::Config::new(&root).unwrap();
+    let mut config = config::Config::new(&root, None, None).unwrap();
     config.mode = cli.mode;
     debug!("config: {:?}", config);
     if cli.watch {
