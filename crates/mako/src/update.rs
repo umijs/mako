@@ -156,7 +156,8 @@ impl Compiler {
                 let mut target_dependencies: Vec<(ModuleId, Dependency)> = vec![];
                 dependencies.into_iter().for_each(|(path, external, dep)| {
                     let module_id = ModuleId::new(path.clone());
-                    let module = self.create_module(external, path, &module_id);
+                    // TODO: handle error
+                    let module = self.create_module(external, path, &module_id).unwrap();
                     target_dependencies.push((module_id.clone(), dep));
                     add_modules.insert(module_id, module);
                 });

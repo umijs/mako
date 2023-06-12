@@ -9,39 +9,44 @@ use crate::css_modules::{
 };
 use crate::load::Asset;
 use crate::{load::Content, module::ModuleAst};
+use anyhow::Result;
+use thiserror::Error;
 
-pub fn parse(content: &Content, path: &str, context: &Arc<Context>) -> ModuleAst {
+#[derive(Error, Debug)]
+pub enum ParseError {}
+
+pub fn parse(content: &Content, path: &str, context: &Arc<Context>) -> Result<ModuleAst> {
     debug!("parse {}", path);
     match content {
-        Content::Js(content) => parse_js(content, path, context),
-        Content::Css(content) => parse_css(content, path, context),
-        Content::Assets(asset) => parse_asset(asset, path, context),
+        Content::Js(content) => Ok(parse_js(content, path, context)?),
+        Content::Css(content) => Ok(parse_css(content, path, context)?),
+        Content::Assets(asset) => Ok(parse_asset(asset, path, context)?),
     }
 }
 
-fn parse_js(content: &str, path: &str, context: &Arc<Context>) -> ModuleAst {
-    let ast = build_js_ast(path, content, context);
-    ModuleAst::Script(ast)
+fn parse_js(content: &str, path: &str, context: &Arc<Context>) -> Result<ModuleAst> {
+    let ast = build_js_ast(path, content, context)?;
+    Ok(ModuleAst::Script(ast))
 }
 
-fn parse_css(content: &str, path: &str, context: &Arc<Context>) -> ModuleAst {
-    let mut ast = build_css_ast(path, content, context);
+fn parse_css(content: &str, path: &str, context: &Arc<Context>) -> Result<ModuleAst> {
+    let mut ast = build_css_ast(path, content, context)?;
     // parse css module as js
     if is_css_modules_path(path) {
         let code = generate_code_for_css_modules(path, &mut ast);
-        let js_ast = build_js_ast(path, &code, context);
-        ModuleAst::Script(js_ast)
+        let js_ast = build_js_ast(path, &code, context)?;
+        Ok(ModuleAst::Script(js_ast))
     } else {
         // for mako css module, compile it and parse it as css
         if is_mako_css_modules(path) {
             // should remove the suffix to generate the same hash
             compile_css_modules(path.trim_end_matches(MAKO_CSS_MODULES_SUFFIX), &mut ast);
         }
-        ModuleAst::Css(ast)
+        Ok(ModuleAst::Css(ast))
     }
 }
 
-fn parse_asset(asset: &Asset, path: &str, context: &Arc<Context>) -> ModuleAst {
-    let ast = build_js_ast(path, &asset.content, context);
-    ModuleAst::Script(ast)
+fn parse_asset(asset: &Asset, path: &str, context: &Arc<Context>) -> Result<ModuleAst> {
+    let ast = build_js_ast(path, &asset.content, context)?;
+    Ok(ModuleAst::Script(ast))
 }

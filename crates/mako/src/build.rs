@@ -120,11 +120,10 @@ impl Compiler {
                         let dependency = dep.2.clone();
 
                         if !module_graph.has_module(&dep_module_id) {
-                            let module = self.create_module(
-                                dep.1.clone(),
-                                resolved_path.clone(),
-                                &dep_module_id,
-                            );
+                            // TODO: handle create module failed
+                            let module = self
+                                .create_module(dep.1.clone(), resolved_path.clone(), &dep_module_id)
+                                .unwrap();
                             if !is_external {
                                 queue.push_back(Task {
                                     path: resolved_path,
@@ -163,7 +162,7 @@ impl Compiler {
         external: Option<String>,
         resolved_path: String,
         dep_module_id: &ModuleId,
-    ) -> Module {
+    ) -> Result<Module> {
         let module = match external {
             Some(external) => {
                 let code = format!("module.exports = {};", external);
@@ -171,7 +170,7 @@ impl Compiler {
                     format!("external_{}", &resolved_path).as_str(),
                     code.as_str(),
                     &self.context,
-                );
+                )?;
 
                 Module::new(
                     dep_module_id.clone(),
@@ -185,7 +184,7 @@ impl Compiler {
             }
             None => Module::new(dep_module_id.clone(), false, None),
         };
-        module
+        Ok(module)
     }
 
     pub fn build_module(
@@ -201,7 +200,7 @@ impl Compiler {
         let content = load(&task.path, &context)?;
 
         // parse
-        let mut ast = parse(&content, &task.path, &context);
+        let mut ast = parse(&content, &task.path, &context)?;
 
         // transform
         transform(&mut ast, &context, &mut |ast| {

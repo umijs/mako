@@ -24,7 +24,8 @@ impl Compiler {
         let mut content = include_str!("runtime/runtime_hmr.js").to_string();
         content = content.replace("__CHUNK_ID__", &chunk.id.id);
         let filename = &chunk.filename();
-        let mut js_ast = build_js_ast(filename, content.as_str(), &self.context);
+        // TODO: handle error
+        let mut js_ast = build_js_ast(filename, content.as_str(), &self.context).unwrap();
 
         for stmt in &mut js_ast.body {
             if let ModuleItem::Stmt(Stmt::Expr(ExprStmt {

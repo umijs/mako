@@ -154,7 +154,7 @@ require.ensure([
             assets_info: Mutex::new(HashMap::new()),
             meta: Meta::new(),
         });
-        let mut ast = build_js_ast(path, origin, &context);
+        let mut ast = build_js_ast(path, origin, &context).unwrap();
 
         let globals = Globals::default();
         GLOBALS.set(&globals, || {
