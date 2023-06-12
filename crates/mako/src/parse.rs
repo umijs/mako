@@ -10,10 +10,6 @@ use crate::css_modules::{
 use crate::load::Asset;
 use crate::{load::Content, module::ModuleAst};
 use anyhow::Result;
-use thiserror::Error;
-
-#[derive(Error, Debug)]
-pub enum ParseError {}
 
 pub fn parse(content: &Content, path: &str, context: &Arc<Context>) -> Result<ModuleAst> {
     debug!("parse {}", path);

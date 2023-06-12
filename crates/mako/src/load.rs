@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context as AnyHowContext, Result};
 use base64::{alphabet::STANDARD, engine, Engine};
 use std::{
     fs,
@@ -63,31 +63,27 @@ pub fn load(path: &str, context: &Arc<Context>) -> Result<Content> {
 }
 
 fn load_js(path: &str) -> Result<Content> {
-    Ok(Content::Js(read_content(path)))
+    Ok(Content::Js(read_content(path)?))
 }
 
 fn load_css(path: &str) -> Result<Content> {
-    Ok(Content::Css(read_content(path)))
+    Ok(Content::Css(read_content(path)?))
 }
 
 fn load_json(path: &str) -> Result<Content> {
     Ok(Content::Js(format!(
         "module.exports = {}",
-        read_content(path)
+        read_content(path)?
     )))
 }
 
 fn load_assets(path: &str, context: &Arc<Context>) -> Result<Content> {
-    let file_size = file_size(path);
-    if file_size.is_err() {
-        return Err(anyhow!(LoadError::ReadFileSizeError {
-            path: path.to_string(),
-        }));
-    }
-    let file_size = file_size.unwrap();
+    let file_size = file_size(path).with_context(|| LoadError::ReadFileSizeError {
+        path: path.to_string(),
+    })?;
 
     if file_size > context.config.data_url_limit.try_into().unwrap() {
-        let final_file_name = content_hash(path).unwrap() + "." + ext_name(path).unwrap();
+        let final_file_name = content_hash(path)? + "." + ext_name(path).unwrap();
         let path = path.to_string();
         context.emit_assets(path.clone(), final_file_name.clone());
         Ok(Content::Assets(Asset {
@@ -96,23 +92,15 @@ fn load_assets(path: &str, context: &Arc<Context>) -> Result<Content> {
             content: format!("module.exports = \"{}\"", final_file_name),
         }))
     } else {
-        let base64 = to_base64(path);
-        if base64.is_err() {
-            return Err(anyhow!(LoadError::ToBase64Error {
-                path: path.to_string(),
-            }));
-        }
-        let base64 = base64.unwrap();
+        let base64 = to_base64(path).with_context(|| LoadError::ToBase64Error {
+            path: path.to_string(),
+        })?;
         Ok(Content::Js(format!("export default \"{}\";", base64)))
     }
 }
 
-fn read_content(path: &str) -> String {
-    let content = std::fs::read_to_string(path);
-    if content.is_err() {
-        panic!("read file error: {}", path);
-    }
-    content.unwrap()
+fn read_content(path: &str) -> Result<String> {
+    std::fs::read_to_string(path).with_context(|| format!("read file error: {}", path))
 }
 
 fn ext_name(path: &str) -> Option<&str> {
@@ -123,12 +111,12 @@ fn ext_name(path: &str) -> Option<&str> {
     None
 }
 
-fn file_size(path: &str) -> anyhow::Result<u64> {
+fn file_size(path: &str) -> Result<u64> {
     let metadata = std::fs::metadata(path)?;
     Ok(metadata.len())
 }
 
-fn to_base64(path: &str) -> anyhow::Result<String> {
+fn to_base64(path: &str) -> Result<String> {
     let vec = std::fs::read(path)?;
     let engine = engine::GeneralPurpose::new(&STANDARD, engine::general_purpose::PAD);
     let base64 = engine.encode(&vec);
@@ -140,10 +128,10 @@ fn to_base64(path: &str) -> anyhow::Result<String> {
     ))
 }
 
-fn content_hash(file_path: &str) -> anyhow::Result<String> {
-    let file = fs::File::open(file_path).unwrap();
+fn content_hash(file_path: &str) -> Result<String> {
+    let file = fs::File::open(file_path)?;
     // Find the length of the file
-    let len = file.metadata().unwrap().len();
+    let len = file.metadata()?.len();
     // Decide on a reasonable buffer size (1MB in this case, fastest will depend on hardware)
     let buf_len = len.min(1_000_000) as usize;
     let mut buf = BufReader::with_capacity(buf_len, file);
@@ -151,7 +139,7 @@ fn content_hash(file_path: &str) -> anyhow::Result<String> {
     let mut context = md5::Context::new();
     loop {
         // Get a chunk of the file
-        let part = buf.fill_buf().unwrap();
+        let part = buf.fill_buf()?;
         if part.is_empty() {
             break;
         }
