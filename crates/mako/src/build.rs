@@ -1,3 +1,4 @@
+use anyhow::Result;
 use nodejs_resolver::Resolver;
 use std::{
     collections::{HashSet, VecDeque},
@@ -19,18 +20,6 @@ use crate::{
     resolve::{get_resolver, resolve},
     transform::transform,
 };
-
-#[derive(Debug)]
-pub enum BuildError {
-    // resolve
-    Resolve { target: String, from: String },
-
-    // load
-    UnsupportedExtName { ext_name: String, path: String },
-    ToBase64Error { path: String },
-    FileNotFound { path: String },
-    ReadFileSizeError { path: String },
-}
 
 #[derive(Debug)]
 pub struct Task {
@@ -80,9 +69,8 @@ impl Compiler {
         queue: &mut VecDeque<Task>,
         resolver: Arc<Resolver>,
     ) -> HashSet<ModuleId> {
-        let (rs, mut rr) = tokio::sync::mpsc::unbounded_channel::<
-            Result<(Module, ModuleDeps, Task), BuildError>,
-        >();
+        let (rs, mut rr) =
+            tokio::sync::mpsc::unbounded_channel::<Result<(Module, ModuleDeps, Task)>>();
         let mut active_task_count: usize = 0;
         let mut t_main_thread: usize = 0;
         let mut module_count: usize = 0;
@@ -204,7 +192,7 @@ impl Compiler {
         context: Arc<Context>,
         task: Task,
         resolver: Arc<Resolver>,
-    ) -> Result<(Module, ModuleDeps, Task), BuildError> {
+    ) -> Result<(Module, ModuleDeps, Task)> {
         let mut dependencies = Vec::new();
         let mut dep_resolve_err = None;
         let module_id = ModuleId::new(task.path.clone());
@@ -227,11 +215,8 @@ impl Compiler {
                     Ok((x, y)) => {
                         dependencies.push((x, y, dep.clone()));
                     }
-                    Err(_) => {
-                        dep_resolve_err = Some(BuildError::Resolve {
-                            target: dep.clone().source,
-                            from: task.path.clone(),
-                        });
+                    Err(err) => {
+                        dep_resolve_err = Some(err);
                         return dependencies.clone();
                     }
                 }
