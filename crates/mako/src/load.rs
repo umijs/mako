@@ -23,10 +23,11 @@ pub enum Content {
 
 pub fn load(path: &str, context: &Arc<Context>) -> Content {
     debug!("load: {}", path);
-    let mut path = path;
-    if is_mako_css_modules(path) {
-        path = path.trim_end_matches(MAKO_CSS_MODULES_SUFFIX);
-    }
+    let path = if is_mako_css_modules(path) {
+        path.trim_end_matches(MAKO_CSS_MODULES_SUFFIX)
+    } else {
+        path
+    };
     let exists = Path::new(path).exists();
     if !exists {
         panic!("file not found: {}", path);
