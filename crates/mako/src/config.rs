@@ -2,7 +2,6 @@ use std::{collections::HashMap, path::PathBuf};
 
 use clap::ValueEnum;
 
-use notify::Watcher;
 use serde::Deserialize;
 use swc_ecma_preset_env::Targets;
 
