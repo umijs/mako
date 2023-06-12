@@ -59,3 +59,8 @@ hyper-staticfile = "0.9.5"
 
 [dev-dependencies]
 insta = { version = "1.29.0", features = ["yaml"] }
+criterion = "0.5.1"
+
+[[bench]]
+name = "mako_benchmark"
+harness = false
