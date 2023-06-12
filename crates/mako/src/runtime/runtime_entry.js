@@ -89,16 +89,27 @@ function createRuntime(makoModules, entryModuleId) {
       },
       invalidate() {},
       check() {
-        fetch('/hot-update.json')
+        return fetch('/hot-update.json')
           .then((res) => {
             return res.json();
           })
           .then((update) => {
             console.log(update);
 
-            load(
-              'http://localhost:3000/lazy.tsx-async.hot-update.js',
-              console.log,
+            return Promise.all(
+              update.c.map((chunk) => {
+                let parts = chunk.split('.');
+                let l = parts.length;
+                let left = parts.slice(0, parts.length - 1).join('.');
+
+                let ext = parts[l - 1];
+
+                const hotChunkName = [left, 'hot-update', ext].join('.');
+
+                return new Promise((done) => {
+                  load(`/${hotChunkName}`, done);
+                });
+              }),
             );
           });
       },
@@ -127,15 +138,11 @@ function createRuntime(makoModules, entryModuleId) {
           }
         }
 
-        outdatedModules = outdatedModules.filter(
-          (id) => !id.match(/index\.tsx$/),
-        );
-
         // get self accepted modules
         const outdatedSelfAcceptedModules = [];
         for (const moduleId of outdatedModules) {
           const module = modulesRegistry[moduleId];
-          if (!module.hot._selfAccepted) {
+          if (module.hot._selfAccepted) {
             outdatedSelfAcceptedModules.push(module);
           }
         }
