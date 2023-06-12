@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Result};
 use base64::{alphabet::STANDARD, engine, Engine};
 use std::{
     fs,
@@ -5,10 +6,11 @@ use std::{
     path::Path,
     sync::Arc,
 };
+use thiserror::Error;
 use tracing::debug;
 
+use crate::compiler::Context;
 use crate::css_modules::{is_mako_css_modules, MAKO_CSS_MODULES_SUFFIX};
-use crate::{build::BuildError, compiler::Context};
 
 pub struct Asset {
     pub path: String,
@@ -21,7 +23,19 @@ pub enum Content {
     Assets(Asset),
 }
 
-pub fn load(path: &str, context: &Arc<Context>) -> Result<Content, BuildError> {
+#[derive(Debug, Error)]
+pub enum LoadError {
+    #[error("Unsupported ext name: {ext_name:?} in {path:?}")]
+    UnsupportedExtName { ext_name: String, path: String },
+    #[error("To base64 error: {path:?}")]
+    ToBase64Error { path: String },
+    #[error("File not found: {path:?}")]
+    FileNotFound { path: String },
+    #[error("Read file size error: {path:?}")]
+    ReadFileSizeError { path: String },
+}
+
+pub fn load(path: &str, context: &Arc<Context>) -> Result<Content> {
     debug!("load: {}", path);
     let path = if is_mako_css_modules(path) {
         path.trim_end_matches(MAKO_CSS_MODULES_SUFFIX)
@@ -30,9 +44,9 @@ pub fn load(path: &str, context: &Arc<Context>) -> Result<Content, BuildError> {
     };
     let exists = Path::new(path).exists();
     if !exists {
-        return Err(BuildError::FileNotFound {
+        return Err(anyhow!(LoadError::FileNotFound {
             path: path.to_string(),
-        });
+        }));
     }
 
     let ext_name = ext_name(path);
@@ -40,35 +54,35 @@ pub fn load(path: &str, context: &Arc<Context>) -> Result<Content, BuildError> {
         Some("js" | "jsx" | "ts" | "tsx" | "cjs" | "mjs") => load_js(path),
         Some("css") => load_css(path),
         Some("json") => load_json(path),
-        Some("less" | "sass" | "scss" | "stylus") => Err(BuildError::UnsupportedExtName {
+        Some("less" | "sass" | "scss" | "stylus") => Err(anyhow!(LoadError::UnsupportedExtName {
             ext_name: ext_name.unwrap().to_string(),
             path: path.to_string(),
-        }),
+        })),
         _ => load_assets(path, context),
     }
 }
 
-fn load_js(path: &str) -> Result<Content, BuildError> {
+fn load_js(path: &str) -> Result<Content> {
     Ok(Content::Js(read_content(path)))
 }
 
-fn load_css(path: &str) -> Result<Content, BuildError> {
+fn load_css(path: &str) -> Result<Content> {
     Ok(Content::Css(read_content(path)))
 }
 
-fn load_json(path: &str) -> Result<Content, BuildError> {
+fn load_json(path: &str) -> Result<Content> {
     Ok(Content::Js(format!(
         "module.exports = {}",
         read_content(path)
     )))
 }
 
-fn load_assets(path: &str, context: &Arc<Context>) -> Result<Content, BuildError> {
+fn load_assets(path: &str, context: &Arc<Context>) -> Result<Content> {
     let file_size = file_size(path);
     if file_size.is_err() {
-        return Err(BuildError::ReadFileSizeError {
+        return Err(anyhow!(LoadError::ReadFileSizeError {
             path: path.to_string(),
-        });
+        }));
     }
     let file_size = file_size.unwrap();
 
@@ -84,9 +98,9 @@ fn load_assets(path: &str, context: &Arc<Context>) -> Result<Content, BuildError
     } else {
         let base64 = to_base64(path);
         if base64.is_err() {
-            return Err(BuildError::ToBase64Error {
+            return Err(anyhow!(LoadError::ToBase64Error {
                 path: path.to_string(),
-            });
+            }));
         }
         let base64 = base64.unwrap();
         Ok(Content::Js(format!("export default \"{}\";", base64)))

@@ -1,10 +1,11 @@
-use crate::build::{BuildError, Task};
+use crate::build::Task;
 use crate::compiler::Compiler;
 use crate::module::{Dependency, Module, ModuleId};
 
 use crate::resolve::get_resolver;
 use crate::transform_in_generate::transform_modules;
 
+use anyhow::Result;
 use nodejs_resolver::Resolver;
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -128,7 +129,7 @@ impl Compiler {
         &self,
         modified: Vec<PathBuf>,
         resolver: Arc<Resolver>,
-    ) -> Result<(HashSet<ModuleId>, Vec<PathBuf>), BuildError> {
+    ) -> Result<(HashSet<ModuleId>, Vec<PathBuf>)> {
         let result = modified
             .par_iter()
             .map(|entry| {
@@ -163,7 +164,7 @@ impl Compiler {
                 let (add, remove) = diff(current_dependencies, target_dependencies);
                 Result::Ok((module, add, remove, add_modules))
             })
-            .collect::<Result<Vec<_>, _>>();
+            .collect::<Result<Vec<_>>>();
         let result = result?;
 
         let mut added = vec![];
