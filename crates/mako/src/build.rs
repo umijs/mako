@@ -22,7 +22,14 @@ use crate::{
 
 #[derive(Debug)]
 pub enum BuildError {
+    // resolve
     Resolve { target: String, from: String },
+
+    // load
+    UnsupportedExtName { ext_name: String, path: String },
+    ToBase64Error { path: String },
+    FileNotFound { path: String },
+    ReadFileSizeError { path: String },
 }
 
 #[derive(Debug)]
@@ -203,7 +210,7 @@ impl Compiler {
         let module_id = ModuleId::new(task.path.clone());
 
         // load
-        let content = load(&task.path, &context);
+        let content = load(&task.path, &context)?;
 
         // parse
         let mut ast = parse(&content, &task.path, &context);
