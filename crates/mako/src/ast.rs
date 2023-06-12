@@ -1,40 +1,32 @@
+use anyhow::{anyhow, Result};
 use base64::{engine::general_purpose, Engine};
 use pathdiff::diff_paths;
-use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, RwLock};
-use swc_common::comments::NoopComments;
-use swc_common::{FileName, Globals, Mark, DUMMY_SP, GLOBALS};
+use std::sync::Arc;
+use swc_common::FileName;
 use swc_css_ast::Stylesheet;
 use swc_css_codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};
 use swc_css_codegen::{CodeGenerator, CodegenConfig, Emit};
 use swc_css_parser::parser::ParserConfig;
-use swc_ecma_ast::{
-    BlockStmt, CallExpr, Expr, ExprOrSpread, ExprStmt, FnExpr, Function, Ident, Lit, Module,
-    ModuleItem, Stmt, Str,
-};
+use swc_ecma_ast::Module;
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
 use swc_ecma_parser::lexer::Lexer;
 use swc_ecma_parser::{Parser, StringInput, Syntax, TsConfig};
-use swc_ecma_transforms::resolver;
-use swc_ecma_transforms::typescript::strip_with_jsx;
-use swc_ecma_visit::VisitMutWith;
+use thiserror::Error;
 
-use crate::chunk_graph::ChunkGraph;
-use crate::compiler::{Context, Meta};
+use crate::compiler::Context;
 use crate::config::{DevtoolConfig, Mode};
-use crate::module_graph::ModuleGraph;
 use crate::sourcemap::build_source_map;
 
-#[derive(Debug)]
-#[allow(dead_code)]
+#[derive(Debug, Error)]
+#[error("parse error: {error_message:?} in {resolved_path:?}")]
 struct ParseError {
     resolved_path: String,
-    source: String,
+    error_message: String,
 }
 
-pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Module {
+pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result<Module> {
     let absolute_path = PathBuf::from(path);
     let relative_path =
         diff_paths(&absolute_path, &context.config.output.path).unwrap_or(absolute_path);
@@ -57,16 +49,15 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Module
     let mut parser = Parser::new_from(lexer);
 
     // parse to ast
-    parser
-        .parse_module()
-        .map_err(|e| ParseError {
+    parser.parse_module().map_err(|e| {
+        anyhow!(ParseError {
             resolved_path: path.to_string(),
-            source: format!("{:?}", e),
+            error_message: format!("{:?}", e),
         })
-        .unwrap()
+    })
 }
 
-pub fn build_css_ast(path: &str, content: &str, context: &Arc<Context>) -> Stylesheet {
+pub fn build_css_ast(path: &str, content: &str, context: &Arc<Context>) -> Result<Stylesheet> {
     let absolute_path = PathBuf::from(path);
     let relative_path =
         diff_paths(&absolute_path, &context.config.output.path).unwrap_or(absolute_path);
@@ -80,117 +71,12 @@ pub fn build_css_ast(path: &str, content: &str, context: &Arc<Context>) -> Style
     };
     let lexer = swc_css_parser::lexer::Lexer::new(StringInput::from(&*fm), config);
     let mut parser = swc_css_parser::parser::Parser::new(lexer, config);
-    parser
-        .parse_all()
-        .map_err(|_e| {
-            // e.into_diagnostic(&parser.handler).emit();
+    parser.parse_all().map_err(|e| {
+        anyhow!(ParseError {
+            resolved_path: path.to_string(),
+            error_message: format!("{:?}", e),
         })
-        .unwrap()
-}
-
-#[allow(dead_code)]
-pub fn test_ast() {
-    let path = "test.ts";
-    let content = include_str!("runtime/runtime_entry.js");
-
-    let root = PathBuf::from("/path/to/root");
-    let context = Arc::new(Context {
-        config: Default::default(),
-        root,
-        module_graph: RwLock::new(ModuleGraph::new()),
-        chunk_graph: RwLock::new(ChunkGraph::new()),
-        assets_info: Mutex::new(HashMap::new()),
-        meta: Meta::new(),
-    });
-
-    // code to parser
-    let mut ast = build_js_ast(path, content, &context);
-
-    // transform
-    let globals = Globals::default();
-    GLOBALS.set(&globals, || {
-        let top_level_mark = Mark::new();
-        let unresolved_mark = Mark::new();
-        ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
-        ast.visit_mut_with(&mut strip_with_jsx(
-            context.meta.script.cm.clone(),
-            Default::default(),
-            NoopComments,
-            top_level_mark,
-        ));
-    });
-
-    // add define wrapper by construct
-    // define("test", function() {})
-    let body = ast.clone().body;
-    let stmts: Vec<Stmt> = body
-        .iter()
-        .map(|stmt| stmt.as_stmt().unwrap().clone())
-        .collect();
-    let call_expr = Expr::Call(CallExpr {
-        span: DUMMY_SP,
-        callee: swc_ecma_ast::Callee::Expr(Box::new(Expr::Ident(Ident {
-            span: DUMMY_SP,
-            sym: "define".into(),
-            optional: false,
-        }))),
-        args: vec![
-            ExprOrSpread {
-                spread: None,
-                expr: Box::new(Expr::Lit(Lit::Str(Str::from("test")))),
-            },
-            ExprOrSpread {
-                spread: None,
-                expr: Box::new(Expr::Fn(FnExpr {
-                    ident: None,
-                    function: Box::new(Function {
-                        params: vec![],
-                        decorators: vec![],
-                        span: DUMMY_SP,
-                        body: Some(BlockStmt {
-                            span: DUMMY_SP,
-                            stmts,
-                        }),
-                        is_generator: false,
-                        is_async: false,
-                        type_params: None,
-                        return_type: None,
-                    }),
-                })),
-            },
-        ],
-        type_args: None,
-    });
-    let stmt = ModuleItem::Stmt(Stmt::Expr(ExprStmt {
-        span: DUMMY_SP,
-        expr: Box::new(call_expr),
-    }));
-    ast.body = vec![stmt];
-
-    // add define wrapper
-    // let (_, mut ast2) = build_ast(path, "function define() {}\ndefine(\"test\", function() {});");
-    // for stmt in &mut ast2.body {
-    //     if let ModuleItem::Stmt(Stmt::Expr(expr)) = stmt {
-    //         if let ExprStmt {
-    //             expr: box Expr::Call(call_expr),
-    //             ..
-    //         } = expr {
-    //             if let ExprOrSpread {
-    //                 expr: box Expr::Fn(func),
-    //                 ..
-    //             } = &mut call_expr.args[1] {
-    //                 let body = ast.clone().body;
-    //                 let stmts: Vec<Stmt> = body.iter().map(|stmt| stmt.as_stmt().unwrap().clone()).collect();
-    //                 func.function.body.as_mut().unwrap().stmts.extend(stmts);
-    //             }
-    //         }
-    //     }
-    // }
-
-    // ast to code
-    let (code, sourcemap) = js_ast_to_code(&ast, &context, "index.js");
-    println!("code: \n\n{}", code);
-    println!("source map: \n\n{}", sourcemap);
+    })
 }
 
 pub fn js_ast_to_code(ast: &Module, context: &Arc<Context>, filename: &str) -> (String, String) {
