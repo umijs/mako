@@ -1,13 +1,15 @@
-use crate::compiler;
-use crate::compiler::Compiler;
-use crate::watch::watch;
-use futures::{SinkExt, StreamExt};
-use hyper::Server;
 use std::path::PathBuf;
 use std::sync::Arc;
+
+use futures::{SinkExt, StreamExt};
+use hyper::Server;
 use tokio::sync::broadcast::{Receiver, Sender};
 use tokio::task::JoinHandle;
 use tungstenite::Message;
+
+use crate::compiler;
+use crate::compiler::Compiler;
+use crate::watch::watch;
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
@@ -35,7 +37,7 @@ impl DevServer {
 
             let (mut sender, mut ws_recv) = websocket.split();
 
-            sender.send(Message::text("{}")).await?;
+            // sender.send(Message::text("{}")).await?;
 
             let fwd_task = tokio::spawn(async move {
                 loop {
@@ -161,9 +163,13 @@ impl ProjectWatch {
         tokio::spawn(async move {
             watch(&root, |events| {
                 let res = c.update(events.into()).unwrap();
-                c.generate_with_update(res);
-                if tx.receiver_count() > 0 {
-                    tx.send(()).unwrap();
+
+                if !res.modified.is_empty() || !res.added.is_empty() || !res.removed.is_empty() {
+                    c.generate_with_update(res);
+
+                    if tx.receiver_count() > 0 {
+                        tx.send(()).unwrap();
+                    }
                 }
             });
         })
