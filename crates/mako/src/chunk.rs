@@ -31,8 +31,8 @@ impl Chunk {
     pub fn filename(&self) -> String {
         match self.chunk_type {
             ChunkType::Runtime => "runtime.js".into(),
+            // foo/bar.tsx -> bar.js
             ChunkType::Entry => {
-                // foo/bar.js -> bar.js
                 let id = self.id.id.clone();
                 let basename = Path::new(&id)
                     .file_stem()
@@ -41,10 +41,11 @@ impl Chunk {
                     .to_string();
                 format!("{}.js", basename)
             }
+            // foo/bar.tsx -> bar-{hash}-async.js
             ChunkType::Async => {
                 let path = Path::new(&self.id.id);
                 let hash = hash_path(path);
-                let filename = path.file_name().unwrap().to_string_lossy();
+                let filename = path.file_stem().unwrap().to_string_lossy();
                 format!("{}-{}-async.js", &filename, hash)
             }
         }
@@ -64,4 +65,24 @@ fn hash_path<P: AsRef<std::path::Path>>(path: P) -> u64 {
     let mut hasher = DefaultHasher::new();
     path_str.hash(&mut hasher);
     hasher.finish()
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        chunk::{Chunk, ChunkType},
+        module::ModuleId,
+    };
+
+    #[test]
+    fn test_filename() {
+        let chunk = Chunk::new(ModuleId::new("foo/bar.tsx".into()), ChunkType::Entry);
+        assert_eq!(chunk.filename(), "bar.js");
+
+        let chunk = Chunk::new(ModuleId::new("foo/bar.tsx".into()), ChunkType::Async);
+        assert_eq!(chunk.filename(), "bar-15149280808876942159-async.js");
+
+        let chunk = Chunk::new(ModuleId::new("foo/bar.tsx".into()), ChunkType::Runtime);
+        assert_eq!(chunk.filename(), "runtime.js");
+    }
 }
