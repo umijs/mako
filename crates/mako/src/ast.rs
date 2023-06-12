@@ -23,7 +23,7 @@ use swc_ecma_visit::VisitMutWith;
 
 use crate::chunk_graph::ChunkGraph;
 use crate::compiler::{Context, Meta};
-use crate::config::{Config, DevtoolConfig, Mode};
+use crate::config::{DevtoolConfig, Mode};
 use crate::module_graph::ModuleGraph;
 use crate::sourcemap::build_source_map;
 
@@ -95,7 +95,7 @@ pub fn test_ast() {
 
     let root = PathBuf::from("/path/to/root");
     let context = Arc::new(Context {
-        config: Config::new(&root).unwrap(),
+        config: Default::default(),
         root,
         module_graph: RwLock::new(ModuleGraph::new()),
         chunk_graph: RwLock::new(ChunkGraph::new()),
@@ -239,14 +239,26 @@ pub fn js_ast_to_code(ast: &Module, context: &Arc<Context>, filename: &str) -> (
     (code, sourcemap)
 }
 
-pub fn css_ast_to_code(ast: &Stylesheet) -> String {
+pub fn css_ast_to_code(ast: &Stylesheet, context: &Arc<Context>) -> (String, String) {
     let mut css_code = String::new();
-    let css_writer = BasicCssWriter::new(&mut css_code, None, BasicCssWriterConfig::default());
-    let mut gen = CodeGenerator::new(css_writer, CodegenConfig::default());
+    let mut source_map = Vec::new();
+    let css_writer = BasicCssWriter::new(
+        &mut css_code,
+        Some(&mut source_map),
+        BasicCssWriterConfig::default(),
+    );
+    let mut gen = CodeGenerator::new(
+        css_writer,
+        CodegenConfig {
+            minify: matches!(context.config.mode, Mode::Production),
+        },
+    );
     gen.emit(&ast).unwrap();
-    css_code
+    let src_buf = build_source_map(&source_map, context.meta.css.cm.clone());
+    let sourcemap = String::from_utf8(src_buf).unwrap();
+    (css_code, sourcemap)
 }
 
-fn base64_encode(raw: &str) -> String {
+pub fn base64_encode(raw: &str) -> String {
     general_purpose::STANDARD.encode(raw)
 }

@@ -1,10 +1,10 @@
 #![feature(box_patterns)]
 
-use std::sync::Arc;
-
 use clap::Parser;
+use std::sync::Arc;
 use tracing::debug;
-use tracing_subscriber::EnvFilter;
+
+use crate::logger::init_logger;
 
 mod analyze_deps;
 mod ast;
@@ -17,12 +17,14 @@ mod compiler;
 mod config;
 mod config_node_polyfill;
 mod copy;
+mod css_modules;
 mod dev;
 mod generate;
 mod generate_chunks;
 mod group_chunk;
 mod hmr;
 mod load;
+mod logger;
 mod minify;
 mod module;
 mod module_graph;
@@ -44,13 +46,7 @@ mod watch;
 #[tokio::main]
 async fn main() {
     // logger
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("mako=info")),
-        )
-        .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
-        .without_time()
-        .init();
+    init_logger();
 
     // cli
     let cli = cli::Cli::parse();
@@ -67,7 +63,7 @@ async fn main() {
     };
 
     // config
-    let mut config = config::Config::new(&root).unwrap();
+    let mut config = config::Config::new(&root, None, None).unwrap();
     config.mode = cli.mode;
     debug!("config: {:?}", config);
 

@@ -74,24 +74,42 @@ const DEFAULT_CONFIG: &str = r#"
 
 // TODO:
 // - support .ts file
-// - add Default impl
 // - add test
 // - add validation
 
 impl Config {
-    pub fn new(root: &PathBuf) -> Result<Self, config::ConfigError> {
+    pub fn new(
+        root: &PathBuf,
+        default_config: Option<&str>,
+        cli_config: Option<&str>,
+    ) -> Result<Self, config::ConfigError> {
         let abs_config_file = root.join(CONFIG_FILE);
         let abs_config_file = abs_config_file.to_str().unwrap();
-        let c = config::Config::builder()
-            // default config
-            .add_source(config::File::from_str(
-                DEFAULT_CONFIG,
+        let c = config::Config::builder();
+        // default config
+        let c = c.add_source(config::File::from_str(
+            DEFAULT_CONFIG,
+            config::FileFormat::Json,
+        ));
+        // default config from args
+        let c = if let Some(default_config) = default_config {
+            c.add_source(config::File::from_str(
+                default_config,
                 config::FileFormat::Json,
             ))
-            // user config
-            .add_source(config::File::with_name(abs_config_file).required(false))
-            // cli config
-            .build()?;
+        } else {
+            c
+        };
+        // user config
+        let c = c.add_source(config::File::with_name(abs_config_file).required(false));
+        // cli config
+        let c = if let Some(cli_config) = cli_config {
+            c.add_source(config::File::from_str(cli_config, config::FileFormat::Json))
+        } else {
+            c
+        };
+
+        let c = c.build()?;
         let mut ret = c.try_deserialize::<Config>();
         // normalize & check
         if let Ok(config) = &mut ret {
@@ -114,5 +132,17 @@ impl Config {
             // }
         }
         ret
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        let c = config::Config::builder();
+        let c = c.add_source(config::File::from_str(
+            DEFAULT_CONFIG,
+            config::FileFormat::Json,
+        ));
+        let c = c.build().unwrap();
+        c.try_deserialize::<Config>().unwrap()
     }
 }

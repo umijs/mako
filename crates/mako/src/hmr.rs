@@ -62,7 +62,7 @@ impl Compiler {
 
 #[cfg(test)]
 mod tests {
-    use crate::{compiler::Compiler, config::Config};
+    use crate::compiler::Compiler;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_generate_hmr_chunk() {
@@ -89,14 +89,14 @@ modulesRegistry['/index.ts'].hot.apply({
             Object.defineProperty(exports, "__esModule", {
                 value: true
             });
-            require("./foo");
+            require("/foo.ts");
         },
         "/bar_2.ts": function(module, exports, require) {
             "use strict";
             Object.defineProperty(exports, "__esModule", {
                 value: true
             });
-            require("./foo");
+            require("/foo.ts");
         },
         "/foo.ts": function(module, exports, require) {
             "use strict";
@@ -116,8 +116,8 @@ modulesRegistry['/index.ts'].hot.apply({
             Object.defineProperty(exports, "__esModule", {
                 value: true
             });
-            require("./bar_1");
-            require("./bar_2");
+            require("/bar_1.ts");
+            require("/bar_2.ts");
         }
     }
 });
@@ -131,8 +131,7 @@ modulesRegistry['/index.ts'].hot.apply({
     fn create_compiler(base: &str) -> Compiler {
         let current_dir = std::env::current_dir().unwrap();
         let root = current_dir.join(base);
-        let config = Config::new(&root).unwrap();
-
+        let config = Default::default();
         Compiler::new(config, root)
     }
 }

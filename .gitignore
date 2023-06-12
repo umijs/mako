@@ -3,6 +3,7 @@
 /examples/*/node_modules
 /examples/*/.umi
 /examples/*/.umi-production
+/packages/*/node_modules
 /node_modules
 /flamegraph.svg
 .DS_Store

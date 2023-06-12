@@ -445,7 +445,7 @@ export const foo = 1;
             fs::remove_dir_all(&root).unwrap();
         }
         fs::create_dir_all(&root).unwrap();
-        let config = Config::new(&root).unwrap();
+        let config = Config::new(&root, None, None).unwrap();
 
         compiler::Compiler::new(config, root)
     }
