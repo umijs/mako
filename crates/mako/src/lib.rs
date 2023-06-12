@@ -11,6 +11,7 @@ pub mod compiler;
 pub mod config;
 mod config_node_polyfill;
 mod copy;
+mod css_modules;
 mod generate;
 mod generate_chunks;
 mod group_chunk;

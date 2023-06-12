@@ -95,9 +95,9 @@ fn transform_css(
     let require_code: Vec<String> = dep_map
         .values()
         .filter(|val| val.ends_with(".css"))
-        .map(|val| format!("require(\"{}\");", val))
+        .map(|val| format!("require(\"{}\");\n", val))
         .collect();
-    let content = format!("{}\n{}", require_code.join("\n"), content);
+    let content = format!("{}{}", require_code.join(""), content);
     let path = format!("{}.ts", path);
     let path = path.as_str();
     build_js_ast(path, content.as_str(), context)

@@ -5,7 +5,7 @@ use std::{
     vec,
 };
 
-use crate::{compiler::Context, module::Dependency};
+use crate::{compiler::Context, css_modules::is_mako_css_modules, module::Dependency};
 use nodejs_resolver::{AliasMap, Error, Options, ResolveResult, Resolver};
 use tracing::debug;
 
@@ -34,6 +34,9 @@ fn do_resolve(
     };
     if let Some(external) = external {
         Ok((source.to_string(), Some(external)))
+    } else if is_mako_css_modules(source) {
+        // css_modules has resolved and mako_css_modules cannot be resolved since the suffix
+        Ok((source.to_string(), None))
     } else {
         let path = PathBuf::from(path);
         // 所有的 path 都是文件，所以 parent() 肯定是其所在目录

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use crate::chunk::ChunkId;
-use crate::{chunk::Chunk, module::ModuleId};
+use crate::chunk::{Chunk, ChunkId};
+use crate::module::ModuleId;
 use petgraph::stable_graph::{DefaultIx, NodeIndex, StableDiGraph};
 
 pub struct ChunkGraph {

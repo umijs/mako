@@ -8,6 +8,7 @@ use std::{
 use tracing::debug;
 
 use crate::compiler::Context;
+use crate::css_modules::{is_mako_css_modules, MAKO_CSS_MODULES_SUFFIX};
 
 pub struct Asset {
     pub path: String,
@@ -22,6 +23,11 @@ pub enum Content {
 
 pub fn load(path: &str, context: &Arc<Context>) -> Content {
     debug!("load: {}", path);
+    let path = if is_mako_css_modules(path) {
+        path.trim_end_matches(MAKO_CSS_MODULES_SUFFIX)
+    } else {
+        path
+    };
     let exists = Path::new(path).exists();
     if !exists {
         panic!("file not found: {}", path);
