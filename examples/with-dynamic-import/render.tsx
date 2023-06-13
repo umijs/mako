@@ -9,7 +9,6 @@ const Lazy = React.lazy(async () => {
 function App() {
   return (
     <div>
-      123
       <Lazy />
     </div>
   );
