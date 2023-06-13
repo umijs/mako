@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::chunk::{Chunk, ChunkId};
 use crate::module::ModuleId;
@@ -17,6 +17,11 @@ impl ChunkGraph {
         }
     }
 
+    pub fn clear(&mut self) {
+        self.graph.clear();
+        self.id_index_map.clear();
+    }
+
     pub fn add_chunk(&mut self, chunk: Chunk) {
         let chunk_id = chunk.id.clone();
         let node_index = self.graph.add_node(chunk);
@@ -32,9 +37,21 @@ impl ChunkGraph {
         self.graph.node_weights().collect()
     }
 
+    pub fn get_chunk_by_name(&self, name: &String) -> Option<&Chunk> {
+        self.graph.node_weights().find(|c| c.filename().eq(name))
+    }
+
+    pub fn chunks_mut(&mut self) -> Vec<&mut Chunk> {
+        self.graph.node_weights_mut().collect()
+    }
+
     pub fn add_edge(&mut self, from: &ChunkId, to: &ChunkId) {
         let from = self.id_index_map.get(from).unwrap();
         let to = self.id_index_map.get(to).unwrap();
         self.graph.add_edge(*from, *to, ());
+    }
+
+    pub fn chunk_names(&self) -> HashSet<String> {
+        self.graph.node_weights().map(|c| c.filename()).collect()
     }
 }

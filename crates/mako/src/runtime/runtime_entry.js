@@ -89,14 +89,26 @@ function createRuntime(makoModules, entryModuleId) {
       },
       invalidate() {},
       check() {
-        fetch('/hot-update.json')
+        return fetch('/hot-update.json')
           .then((res) => {
             return res.json();
           })
           .then((update) => {
-            if (update) {
-              hot.apply(update);
-            }
+            return Promise.all(
+              update.c.map((chunk) => {
+                let parts = chunk.split('.');
+                let l = parts.length;
+                let left = parts.slice(0, parts.length - 1).join('.');
+
+                let ext = parts[l - 1];
+
+                const hotChunkName = [left, 'hot-update', ext].join('.');
+
+                return new Promise((done) => {
+                  load(`/${hotChunkName}`, done);
+                });
+              }),
+            );
           });
       },
       apply(update) {

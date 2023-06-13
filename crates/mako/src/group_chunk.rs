@@ -24,6 +24,7 @@ impl Compiler {
         let mut edges = vec![];
         let module_graph = self.context.module_graph.read().unwrap();
         let mut chunk_graph = self.context.chunk_graph.write().unwrap();
+        chunk_graph.clear();
 
         let entries = module_graph.get_entry_modules();
         for entry in entries {
@@ -95,5 +96,17 @@ impl Compiler {
         // 因为还没有看到在哪里会用到
 
         (chunk, dynamic_entries)
+    }
+
+    pub fn get_chunk_content_by_path(&self, p: String) -> Option<String> {
+        let chunk_graph = self.context.chunk_graph.read().unwrap();
+        let chunks = chunk_graph.get_chunks();
+        let c = chunks
+            .into_iter()
+            .find(|chunk| chunk.filename().eq(p.as_str()));
+        match c {
+            Some(c) => c.content.clone(),
+            None => None,
+        }
     }
 }

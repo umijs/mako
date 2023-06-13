@@ -1,7 +1,9 @@
 #![feature(box_patterns)]
 
+use std::sync::Arc;
+
 use clap::Parser;
-use tracing::{debug, info};
+use tracing::debug;
 
 use crate::logger::init_logger;
 
@@ -17,6 +19,7 @@ mod config;
 mod config_node_polyfill;
 mod copy;
 mod css_modules;
+mod dev;
 mod generate;
 mod generate_chunks;
 mod group_chunk;
@@ -30,6 +33,7 @@ mod parse;
 mod resolve;
 mod sourcemap;
 mod targets;
+#[cfg(test)]
 mod test_helper;
 mod transform;
 mod transform_css_handler;
@@ -64,13 +68,14 @@ async fn main() {
     let mut config = config::Config::new(&root, None, None).unwrap();
     config.mode = cli.mode;
     debug!("config: {:?}", config);
-    if cli.watch {
-        config.watch(&root, || {
-            info!("config changed");
-        });
-    }
 
     // compiler
-    let compiler = compiler::Compiler::new(config, root);
+    let compiler = compiler::Compiler::new(config, root.clone());
     compiler.compile();
+
+    if cli.watch {
+        let d = crate::dev::DevServer::new(root.clone(), Arc::new(compiler));
+        //TODO when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
+        d.serve().await;
+    }
 }

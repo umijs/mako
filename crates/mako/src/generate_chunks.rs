@@ -26,7 +26,7 @@ impl Compiler {
     pub fn generate_chunks(&self) -> Vec<OutputFile> {
         info!("generate chunks");
         let module_graph = self.context.module_graph.read().unwrap();
-        let chunk_graph = self.context.chunk_graph.read().unwrap();
+        let mut chunk_graph = self.context.chunk_graph.write().unwrap();
 
         let mut public_path = self.context.config.public_path.clone();
         public_path = if public_path == "runtime" {
@@ -34,7 +34,7 @@ impl Compiler {
         } else {
             format!("\"{}\"", public_path)
         };
-        let chunks = chunk_graph.get_chunks();
+        let mut chunks = chunk_graph.chunks_mut();
         // TODO: remove this
         let chunks_map_str: Vec<String> = chunks
             .iter()
@@ -55,7 +55,7 @@ impl Compiler {
         let output_files = chunks
             // TODO:
             // 由于任务划分不科学，rayon + par_iter 没啥效果
-            .iter()
+            .iter_mut()
             .map(|chunk| {
                 // build stmts
                 let module_ids = chunk.get_modules();
@@ -165,6 +165,9 @@ impl Compiler {
 
                 let filename = chunk.filename();
                 let (js_code, js_sourcemap) = js_ast_to_code(&js_ast, &self.context, &filename);
+
+                chunk.cache_content(js_code.clone(), js_sourcemap.clone());
+
                 OutputFile {
                     path: filename,
                     content: js_code,

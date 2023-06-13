@@ -1,10 +1,8 @@
 use crate::build::Task;
 use crate::compiler::Compiler;
 use crate::module::{Dependency, Module, ModuleId};
-
 use crate::resolve::get_resolver;
 use crate::transform_in_generate::transform_modules;
-
 use anyhow::Result;
 use nodejs_resolver::Resolver;
 use rayon::prelude::*;
@@ -28,6 +26,12 @@ pub struct UpdateResult {
     pub removed: HashSet<ModuleId>,
     // 修改的模块Id
     pub modified: HashSet<ModuleId>,
+}
+
+impl UpdateResult {
+    pub fn is_updated(&self) -> bool {
+        !self.modified.is_empty() || !self.added.is_empty() || !self.removed.is_empty()
+    }
 }
 
 impl fmt::Display for UpdateResult {
@@ -60,12 +64,20 @@ removed:{:?}
 
 impl Compiler {
     pub fn update(&self, paths: Vec<(PathBuf, UpdateType)>) -> Result<UpdateResult, Error> {
-        let mut update_result = UpdateResult {
-            ..Default::default()
-        };
+        let mut update_result: UpdateResult = Default::default();
+
         let resolver = Arc::new(get_resolver(Some(
             self.context.config.resolve.alias.clone(),
         )));
+
+        // watch 到变化的文件，如果不在在前的 module graph 中，需过滤掉
+        let paths: Vec<(PathBuf, UpdateType)> = {
+            let module_graph = self.context.module_graph.read().unwrap();
+            paths
+                .into_iter()
+                .filter(|(p, _)| module_graph.has_module(&p.clone().into()))
+                .collect()
+        };
 
         // 先分组
         let mut modified = vec![];

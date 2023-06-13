@@ -1,17 +1,11 @@
-import * as React from 'react';
-import * as ReactDOM from 'react-dom/client';
-import './index.css';
+import './render';
+const onUpate = () => {
+  console.time('hmr');
+  module.hot.check().then(() => {
+    console.timeEnd('hmr');
+  });
+};
 
-const Lazy = React.lazy(async () => {
-  return await import('./lazy');
-});
+const socket = new WebSocket('ws://127.0.0.1:3000/__/hmr-ws');
 
-function App() {
-  return (
-    <div>
-      <Lazy />
-    </div>
-  );
-}
-
-ReactDOM.createRoot(document.getElementById('root')!).render(<App />);
+socket.addEventListener('message', onUpate);

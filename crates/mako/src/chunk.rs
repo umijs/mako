@@ -17,6 +17,8 @@ pub struct Chunk {
     pub id: ChunkId,
     pub chunk_type: ChunkType,
     modules: HashSet<ModuleId>,
+    pub content: Option<String>,
+    pub source_map: Option<String>,
 }
 
 impl Chunk {
@@ -25,6 +27,8 @@ impl Chunk {
             modules: HashSet::from([id.clone()]),
             id,
             chunk_type,
+            content: None,
+            source_map: None,
         }
     }
 
@@ -51,12 +55,21 @@ impl Chunk {
         }
     }
 
+    pub fn cache_content(&mut self, js_code: String, source_map: String) {
+        self.content = Some(js_code);
+        self.source_map = Some(source_map);
+    }
+
     pub fn add_module(&mut self, module_id: ModuleId) {
         self.modules.insert(module_id);
     }
 
     pub fn get_modules(&self) -> &HashSet<ModuleId> {
         &self.modules
+    }
+
+    pub fn has_module(&self, module_id: &ModuleId) -> bool {
+        self.modules.contains(module_id)
     }
 }
 

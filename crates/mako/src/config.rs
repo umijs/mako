@@ -2,11 +2,6 @@ use std::{collections::HashMap, path::PathBuf};
 
 use clap::ValueEnum;
 
-use futures::{channel::mpsc::channel, SinkExt, StreamExt};
-use notify::{
-    event::{DataChange, ModifyKind},
-    EventKind, RecommendedWatcher, RecursiveMode, Watcher,
-};
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
@@ -136,48 +131,6 @@ impl Config {
             // }
         }
         ret
-    }
-
-    pub fn watch<T>(&self, root: &PathBuf, func: T)
-    where
-        T: Fn(),
-    {
-        futures::executor::block_on(async {
-            self.watch_async(root, func).await;
-        });
-    }
-
-    pub async fn watch_async<T>(&self, root: &PathBuf, func: T)
-    where
-        T: Fn(),
-    {
-        let (mut tx, mut rx) = channel(1);
-        let mut watcher = RecommendedWatcher::new(
-            move |res| {
-                futures::executor::block_on(async {
-                    tx.send(res).await.unwrap();
-                })
-            },
-            notify::Config::default(),
-        )
-        .unwrap();
-        let abs_config_file = root.join(CONFIG_FILE);
-        watcher
-            .watch(abs_config_file.as_path(), RecursiveMode::NonRecursive)
-            .unwrap();
-        while let Some(res) = rx.next().await {
-            match res {
-                Ok(event) => {
-                    if let EventKind::Modify(ModifyKind::Data(DataChange::Any)) = event.kind {
-                        println!("{:?}", event);
-                        func();
-                    }
-                }
-                Err(e) => {
-                    println!("watch error: {:?}", e);
-                }
-            }
-        }
     }
 }
 
