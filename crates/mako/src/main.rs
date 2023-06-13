@@ -1,7 +1,8 @@
 #![feature(box_patterns)]
 
-use clap::Parser;
 use std::sync::Arc;
+
+use clap::Parser;
 use tracing::debug;
 
 use crate::logger::init_logger;
@@ -73,7 +74,7 @@ async fn main() {
 
     if cli.watch {
         let d = crate::dev::DevServer::new(root.clone(), Arc::new(compiler));
-
+        //TODO when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
         d.serve().await;
     }
 }
