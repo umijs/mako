@@ -31,7 +31,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 config = "0.13.3"
 nodejs-resolver = "0.0.78"
-lightningcss = "1.0.0-alpha.41"
+lightningcss = { version = "1.0.0-alpha.42", features = ["browserslist"] }
 swc_css_ast = "0.137.11"
 swc_css_codegen = "0.147.12"
 swc_css_modules = "0.25.13"
