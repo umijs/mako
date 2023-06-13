@@ -1,18 +1,16 @@
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::fmt::{self, Error};
-use std::path::PathBuf;
-use std::sync::Arc;
-
-use anyhow::Result;
-use nodejs_resolver::Resolver;
-use rayon::prelude::*;
-use tracing::debug;
-
 use crate::build::Task;
 use crate::compiler::Compiler;
 use crate::module::{Dependency, Module, ModuleId};
 use crate::resolve::get_resolver;
 use crate::transform_in_generate::transform_modules;
+use anyhow::Result;
+use nodejs_resolver::Resolver;
+use rayon::prelude::*;
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::fmt::{self, Error};
+use std::path::PathBuf;
+use std::sync::Arc;
+use tracing::debug;
 
 pub enum UpdateType {
     Add,
