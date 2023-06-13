@@ -5,10 +5,12 @@ use futures::{SinkExt, StreamExt};
 use hyper::Server;
 use tokio::sync::broadcast::{Receiver, Sender};
 use tokio::task::JoinHandle;
+use tokio::time::Instant;
 use tungstenite::Message;
 
 use crate::compiler;
 use crate::compiler::Compiler;
+use crate::config::DevtoolConfig;
 use crate::watch::watch;
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
@@ -105,18 +107,14 @@ impl DevServer {
                     }
                     _ => {
                         // try chunk content in memory first, else use dist content
-                        if let Some(chunk) = for_fn.get_chunk_content_by_path(path.to_string()) {
-                            Ok::<_, hyper::Error>(hyper::Response::new(hyper::Body::from(chunk)))
-                        } else {
-                            match static_serve.serve(req).await {
-                                Ok(res) => Ok(res),
-                                Err(_) => Ok::<_, hyper::Error>(
-                                    hyper::Response::builder()
-                                        .status(hyper::StatusCode::NOT_FOUND)
-                                        .body(hyper::Body::from("404 - Page not found"))
-                                        .unwrap(),
-                                ),
-                            }
+                        match static_serve.serve(req).await {
+                            Ok(res) => Ok(res),
+                            Err(_) => Ok::<_, hyper::Error>(
+                                hyper::Response::builder()
+                                    .status(hyper::StatusCode::NOT_FOUND)
+                                    .body(hyper::Body::from("404 - Page not found"))
+                                    .unwrap(),
+                            ),
                         }
                     }
                 }
@@ -164,12 +162,25 @@ impl ProjectWatch {
             watch(&root, |events| {
                 let res = c.update(events.into()).unwrap();
 
-                if !res.modified.is_empty() || !res.added.is_empty() || !res.removed.is_empty() {
-                    c.generate_with_update(res);
+                if res.is_updated() {
+                    c.generate_hot_update_chunks(res);
 
                     if tx.receiver_count() > 0 {
                         tx.send(()).unwrap();
                     }
+
+                    let c = c.clone();
+                    tokio::spawn(async move {
+                        let t = Instant::now();
+
+                        c.generate_chunks().iter().for_each(|file| {
+                            c.write_to_dist(&file.path, &file.content);
+                            if matches!(c.context.config.devtool, DevtoolConfig::SourceMap) {
+                                c.write_to_dist(format!("{}.map", &file.path), &file.sourcemap);
+                            }
+                        });
+                        println!(" async chunk task {}", t.elapsed().as_millis());
+                    });
                 }
             });
         })

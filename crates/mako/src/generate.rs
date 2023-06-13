@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-
 use std::{fs, time::Instant};
 
 use serde::Serialize;
@@ -30,27 +29,18 @@ impl Compiler {
 
         // generate chunks
         let t_generate_chunks = Instant::now();
-        let _output_files = self.generate_chunks();
+        let output_files = self.generate_chunks();
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         // write chunks to files
-        self.context
-            .chunk_graph
-            .read()
-            .unwrap()
-            .get_chunks()
-            .iter()
-            .for_each(|chunk| {
-                let output = &config.output.path.join(chunk.filename());
-                fs::write(output, &chunk.content.as_ref().unwrap().clone()).unwrap();
-                if matches!(self.context.config.devtool, DevtoolConfig::SourceMap) {
-                    fs::write(
-                        format!("{}.map", output.display()),
-                        &chunk.source_map.as_ref().unwrap().clone(),
-                    )
-                    .unwrap();
-                }
-            });
+        output_files.iter().for_each(|file| {
+            let output = &config.output.path.join(&file.path);
+            fs::write(output, &file.content).unwrap();
+            // generate separate sourcemap file
+            if matches!(self.context.config.devtool, DevtoolConfig::SourceMap) {
+                fs::write(format!("{}.map", output.display()), &file.sourcemap).unwrap();
+            }
+        });
 
         // write assets
         let assets_info = &(*self.context.assets_info.lock().unwrap());
@@ -76,7 +66,7 @@ impl Compiler {
         info!("  - generate chunks: {}ms", t_generate_chunks.as_millis());
     }
 
-    pub fn generate_with_update(&self, updated_modules: UpdateResult) {
+    pub fn generate_hot_update_chunks(&self, updated_modules: UpdateResult) {
         let last_chunk_names: HashSet<String> = {
             let chunk_graph = self.context.chunk_graph.read().unwrap();
             chunk_graph.chunk_names()
@@ -91,6 +81,7 @@ impl Compiler {
         let t_group_chunks = t_group_chunks.elapsed();
 
         // 为啥单独提前 transform modules？
+
         // 因为放 chunks 的循环里，一个 module 可能存在于多个 chunk 里，可能会被编译多遍，
         let t_transform_modules = Instant::now();
         self.transform_all();
@@ -101,11 +92,6 @@ impl Compiler {
         if !config.output.path.exists() {
             fs::create_dir_all(&config.output.path).unwrap();
         }
-
-        // generate chunks
-        let t_generate_chunks = Instant::now();
-        self.generate_chunks();
-        let t_generate_chunks = t_generate_chunks.elapsed();
 
         let (current_chunks, modified_chunks) = {
             let cg = self.context.chunk_graph.read().unwrap();
@@ -151,31 +137,25 @@ impl Compiler {
             .unwrap(),
         );
 
-        // write assets
-        let assets_info = &(*self.context.assets_info.lock().unwrap());
-        for (k, v) in assets_info {
-            let asset_path = &self.context.root.join(k);
-            let asset_output_path = &config.output.path.join(v);
-            if asset_path.exists() {
-                fs::copy(asset_path, asset_output_path).unwrap();
-            } else {
-                panic!("asset not found: {}", asset_path.display());
-            }
-        }
-
         // copy
         self.copy();
 
-        info!("generate done in {}ms", t_generate.elapsed().as_millis());
+        info!(
+            "generate(hmr) done in {}ms",
+            t_generate.elapsed().as_millis()
+        );
         info!("  - group chunks: {}ms", t_group_chunks.as_millis());
         info!(
             "  - transform modules: {}ms",
             t_transform_modules.as_millis()
         );
-        info!("  - generate chunks: {}ms", t_generate_chunks.as_millis());
     }
 
-    fn write_to_dist<P: AsRef<std::path::Path>, C: AsRef<[u8]>>(&self, filename: P, content: C) {
+    pub fn write_to_dist<P: AsRef<std::path::Path>, C: AsRef<[u8]>>(
+        &self,
+        filename: P,
+        content: C,
+    ) {
         let to = self.context.config.output.path.join(filename);
 
         std::fs::write(to, content).unwrap();
