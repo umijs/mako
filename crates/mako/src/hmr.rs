@@ -5,13 +5,11 @@ use swc_ecma_ast::{
     PropOrSpread, Stmt,
 };
 
-use crate::{
-    ast::{build_js_ast, js_ast_to_code},
-    chunk::Chunk,
-    compiler::Compiler,
-    generate_chunks::modules_to_js_stmts,
-    module::ModuleId,
-};
+use crate::ast::{build_js_ast, js_ast_to_code};
+use crate::chunk::Chunk;
+use crate::compiler::Compiler;
+use crate::generate_chunks::modules_to_js_stmts;
+use crate::module::ModuleId;
 
 impl Compiler {
     pub fn generate_hmr_chunk(

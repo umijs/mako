@@ -1,6 +1,9 @@
-use futures::{channel::mpsc::channel, SinkExt, StreamExt};
-use notify::{event::ModifyKind, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::PathBuf;
+
+use futures::channel::mpsc::channel;
+use futures::{SinkExt, StreamExt};
+use notify::event::ModifyKind;
+use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 
 use crate::update::UpdateType;
 

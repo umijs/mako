@@ -1,4 +1,5 @@
-use std::{collections::HashSet, vec};
+use std::collections::HashSet;
+use std::vec;
 
 use swc_common::DUMMY_SP;
 use swc_ecma_ast::{
@@ -8,13 +9,11 @@ use swc_ecma_ast::{
 };
 use tracing::info;
 
-use crate::{
-    ast::{build_js_ast, js_ast_to_code},
-    compiler::Compiler,
-    config::Mode,
-    minify::minify_js,
-    module::{ModuleAst, ModuleId},
-};
+use crate::ast::{build_js_ast, js_ast_to_code};
+use crate::compiler::Compiler;
+use crate::config::Mode;
+use crate::minify::minify_js;
+use crate::module::{ModuleAst, ModuleId};
 
 pub struct OutputFile {
     pub path: String,

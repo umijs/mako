@@ -100,23 +100,18 @@ impl VisitMut for DynamicImport {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        collections::HashMap,
-        path::PathBuf,
-        sync::{Arc, Mutex, RwLock},
-    };
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+    use std::sync::{Arc, Mutex, RwLock};
 
     use swc_common::{Globals, GLOBALS};
     use swc_ecma_visit::VisitMutWith;
 
-    use crate::{
-        ast::{build_js_ast, js_ast_to_code},
-        chunk_graph::ChunkGraph,
-        compiler::{Context, Meta},
-        module_graph::ModuleGraph,
-    };
-
     use super::DynamicImport;
+    use crate::ast::{build_js_ast, js_ast_to_code};
+    use crate::chunk_graph::ChunkGraph;
+    use crate::compiler::{Context, Meta};
+    use crate::module_graph::ModuleGraph;
 
     #[test]
     fn test_dyanmic_import() {

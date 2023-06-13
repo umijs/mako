@@ -1,6 +1,7 @@
 use std::collections::hash_map::DefaultHasher;
+use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
-use std::{collections::HashSet, path::Path};
+use std::path::Path;
 
 use crate::module::ModuleId;
 
@@ -82,10 +83,8 @@ fn hash_path<P: AsRef<std::path::Path>>(path: P) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        chunk::{Chunk, ChunkType},
-        module::ModuleId,
-    };
+    use crate::chunk::{Chunk, ChunkType};
+    use crate::module::ModuleId;
 
     #[test]
     fn test_filename() {

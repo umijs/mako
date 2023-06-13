@@ -1,17 +1,17 @@
-use lightningcss::stylesheet::{MinifyOptions, ParserOptions, PrinterOptions, StyleSheet};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
+
+use lightningcss::stylesheet::{MinifyOptions, ParserOptions, PrinterOptions, StyleSheet};
 use swc_ecma_ast::Module;
 use tracing::{debug, info};
 
 use crate::ast::{base64_encode, build_js_ast, css_ast_to_code};
-use crate::compiler::Context;
+use crate::compiler::{Compiler, Context};
 use crate::config::{DevtoolConfig, Mode};
-use crate::module::ModuleId;
+use crate::module::{ModuleAst, ModuleId};
 use crate::targets;
-use crate::{compiler::Compiler, module::ModuleAst};
 
 impl Compiler {
     pub fn transform_all(&self) {
@@ -115,20 +115,15 @@ fn transform_css(
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        collections::HashMap,
-        path::PathBuf,
-        sync::{Arc, Mutex, RwLock},
-    };
-
-    use crate::{
-        ast::{build_css_ast, js_ast_to_code},
-        chunk_graph::ChunkGraph,
-        compiler::{Context, Meta},
-        module_graph::ModuleGraph,
-    };
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+    use std::sync::{Arc, Mutex, RwLock};
 
     use super::transform_css;
+    use crate::ast::{build_css_ast, js_ast_to_code};
+    use crate::chunk_graph::ChunkGraph;
+    use crate::compiler::{Context, Meta};
+    use crate::module_graph::ModuleGraph;
 
     #[test]
     fn test_transform_css() {

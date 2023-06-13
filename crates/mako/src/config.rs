@@ -1,7 +1,7 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 use clap::ValueEnum;
-
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]

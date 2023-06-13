@@ -1,5 +1,6 @@
-use lightningcss::targets::{Browsers, Targets as LightningcssTargets};
 use std::collections::HashMap;
+
+use lightningcss::targets::{Browsers, Targets as LightningcssTargets};
 use swc_ecma_preset_env::Targets as SwcPresetEnvTargets;
 
 pub fn swc_preset_env_targets_from_map(map: HashMap<String, usize>) -> SwcPresetEnvTargets {
@@ -32,9 +33,10 @@ pub fn lightningcss_targets_from_map(map: HashMap<String, usize>) -> Lightningcs
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use super::{lightningcss_targets_from_map, swc_preset_env_targets_from_map};
     use crate::assert_debug_snapshot;
-    use std::collections::HashMap;
 
     #[test]
     fn test_swc_preset_env_targets() {

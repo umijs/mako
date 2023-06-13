@@ -1,8 +1,9 @@
 use std::collections::{HashMap, HashSet};
 
+use petgraph::stable_graph::{DefaultIx, NodeIndex, StableDiGraph};
+
 use crate::chunk::{Chunk, ChunkId};
 use crate::module::ModuleId;
-use petgraph::stable_graph::{DefaultIx, NodeIndex, StableDiGraph};
 
 pub struct ChunkGraph {
     graph: StableDiGraph<Chunk, ()>,

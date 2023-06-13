@@ -1,5 +1,6 @@
-use glob::glob;
 use std::path::Path;
+
+use glob::glob;
 use tracing::info;
 
 use crate::compiler::Compiler;

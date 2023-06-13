@@ -1,11 +1,13 @@
 use std::collections::HashSet;
-use std::{fs, time::Instant};
+use std::fs;
+use std::time::Instant;
 
 use serde::Serialize;
 use tracing::info;
 
+use crate::compiler::Compiler;
+use crate::config::DevtoolConfig;
 use crate::update::UpdateResult;
-use crate::{compiler::Compiler, config::DevtoolConfig};
 
 impl Compiler {
     pub fn generate(&self) {
