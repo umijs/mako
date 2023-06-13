@@ -1,0 +1,41 @@
+---
+source: crates/mako/src/targets.rs
+assertion_line: 43
+expression: "&targets"
+---
+Versions(
+    BrowserData {
+        chrome: Some(
+            Version {
+                major: 80,
+                minor: 0,
+                patch: 0,
+            },
+        ),
+        chrome_android: None,
+        firerfox_android: None,
+        opera_android: None,
+        quest: None,
+        react_native: None,
+        and_chr: None,
+        and_ff: None,
+        op_mob: None,
+        ie: None,
+        edge: None,
+        firefox: None,
+        safari: None,
+        node: None,
+        ios: None,
+        samsung: None,
+        opera: None,
+        android: None,
+        electron: None,
+        phantom: None,
+        opera_mobile: None,
+        rhino: None,
+        deno: None,
+        hermes: None,
+        oculus: None,
+        bun: None,
+    },
+)
