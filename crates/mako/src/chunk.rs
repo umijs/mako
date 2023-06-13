@@ -69,7 +69,7 @@ impl Chunk {
         &self.modules
     }
 
-    pub fn contains_modules(&self, module_id: &ModuleId) -> bool {
+    pub fn has_module(&self, module_id: &ModuleId) -> bool {
         self.modules.contains(module_id)
     }
 }

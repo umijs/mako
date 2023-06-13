@@ -105,7 +105,7 @@ impl Compiler {
                     updated_modules
                         .modified
                         .iter()
-                        .any(|m_id| c.contains_modules(m_id))
+                        .any(|m_id| c.has_module(m_id))
                 })
                 .map(|c| c.filename())
                 .collect();
