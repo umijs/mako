@@ -94,8 +94,6 @@ function createRuntime(makoModules, entryModuleId) {
             return res.json();
           })
           .then((update) => {
-            console.log(update);
-
             return Promise.all(
               update.c.map((chunk) => {
                 let parts = chunk.split('.');
@@ -117,7 +115,7 @@ function createRuntime(makoModules, entryModuleId) {
         const { modules, removedModules } = update;
 
         // get outdated modules
-        let outdatedModules = [];
+        const outdatedModules = [];
         for (const moduleId of Object.keys(modules)) {
           if (!modulesRegistry[moduleId]) continue;
           if (outdatedModules.includes(moduleId)) continue;
