@@ -1,10 +1,11 @@
-use crate::build::{BuildError, Task};
+use crate::build::Task;
 use crate::compiler::Compiler;
 use crate::module::{Dependency, Module, ModuleId};
 
 use crate::resolve::get_resolver;
 use crate::transform_in_generate::transform_modules;
 
+use anyhow::Result;
 use nodejs_resolver::Resolver;
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -128,7 +129,7 @@ impl Compiler {
         &self,
         modified: Vec<PathBuf>,
         resolver: Arc<Resolver>,
-    ) -> Result<(HashSet<ModuleId>, Vec<PathBuf>), BuildError> {
+    ) -> Result<(HashSet<ModuleId>, Vec<PathBuf>)> {
         let result = modified
             .par_iter()
             .map(|entry| {
@@ -155,7 +156,8 @@ impl Compiler {
                 let mut target_dependencies: Vec<(ModuleId, Dependency)> = vec![];
                 dependencies.into_iter().for_each(|(path, external, dep)| {
                     let module_id = ModuleId::new(path.clone());
-                    let module = self.create_module(external, path, &module_id);
+                    // TODO: handle error
+                    let module = self.create_module(external, path, &module_id).unwrap();
                     target_dependencies.push((module_id.clone(), dep));
                     add_modules.insert(module_id, module);
                 });
@@ -163,7 +165,7 @@ impl Compiler {
                 let (add, remove) = diff(current_dependencies, target_dependencies);
                 Result::Ok((module, add, remove, add_modules))
             })
-            .collect::<Result<Vec<_>, _>>();
+            .collect::<Result<Vec<_>>>();
         let result = result?;
 
         let mut added = vec![];

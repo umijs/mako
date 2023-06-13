@@ -1,3 +1,4 @@
+use anyhow::Result;
 use nodejs_resolver::Resolver;
 use std::{
     collections::{HashSet, VecDeque},
@@ -19,11 +20,6 @@ use crate::{
     resolve::{get_resolver, resolve},
     transform::transform,
 };
-
-#[derive(Debug)]
-pub enum BuildError {
-    Resolve { target: String, from: String },
-}
 
 #[derive(Debug)]
 pub struct Task {
@@ -73,9 +69,8 @@ impl Compiler {
         queue: &mut VecDeque<Task>,
         resolver: Arc<Resolver>,
     ) -> HashSet<ModuleId> {
-        let (rs, mut rr) = tokio::sync::mpsc::unbounded_channel::<
-            Result<(Module, ModuleDeps, Task), BuildError>,
-        >();
+        let (rs, mut rr) =
+            tokio::sync::mpsc::unbounded_channel::<Result<(Module, ModuleDeps, Task)>>();
         let mut active_task_count: usize = 0;
         let mut t_main_thread: usize = 0;
         let mut module_count: usize = 0;
@@ -125,11 +120,10 @@ impl Compiler {
                         let dependency = dep.2.clone();
 
                         if !module_graph.has_module(&dep_module_id) {
-                            let module = self.create_module(
-                                dep.1.clone(),
-                                resolved_path.clone(),
-                                &dep_module_id,
-                            );
+                            // TODO: handle create module failed
+                            let module = self
+                                .create_module(dep.1.clone(), resolved_path.clone(), &dep_module_id)
+                                .unwrap();
                             if !is_external {
                                 queue.push_back(Task {
                                     path: resolved_path,
@@ -168,7 +162,7 @@ impl Compiler {
         external: Option<String>,
         resolved_path: String,
         dep_module_id: &ModuleId,
-    ) -> Module {
+    ) -> Result<Module> {
         let module = match external {
             Some(external) => {
                 let code = format!("module.exports = {};", external);
@@ -176,7 +170,7 @@ impl Compiler {
                     format!("external_{}", &resolved_path).as_str(),
                     code.as_str(),
                     &self.context,
-                );
+                )?;
 
                 Module::new(
                     dep_module_id.clone(),
@@ -190,23 +184,23 @@ impl Compiler {
             }
             None => Module::new(dep_module_id.clone(), false, None),
         };
-        module
+        Ok(module)
     }
 
     pub fn build_module(
         context: Arc<Context>,
         task: Task,
         resolver: Arc<Resolver>,
-    ) -> Result<(Module, ModuleDeps, Task), BuildError> {
+    ) -> Result<(Module, ModuleDeps, Task)> {
         let mut dependencies = Vec::new();
         let mut dep_resolve_err = None;
         let module_id = ModuleId::new(task.path.clone());
 
         // load
-        let content = load(&task.path, &context);
+        let content = load(&task.path, &context)?;
 
         // parse
-        let mut ast = parse(&content, &task.path, &context);
+        let mut ast = parse(&content, &task.path, &context)?;
 
         // transform
         transform(&mut ast, &context, &mut |ast| {
@@ -220,11 +214,8 @@ impl Compiler {
                     Ok((x, y)) => {
                         dependencies.push((x, y, dep.clone()));
                     }
-                    Err(_) => {
-                        dep_resolve_err = Some(BuildError::Resolve {
-                            target: dep.clone().source,
-                            from: task.path.clone(),
-                        });
+                    Err(err) => {
+                        dep_resolve_err = Some(err);
                         return dependencies.clone();
                     }
                 }

@@ -1293,6 +1293,7 @@ dependencies = [
  "swc_ecma_utils",
  "swc_ecma_visit",
  "swc_error_reporters",
+ "thiserror",
  "tokio",
  "tracing",
  "tracing-subscriber",

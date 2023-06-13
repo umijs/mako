@@ -225,7 +225,8 @@ import 'bar';
                 assets_info: Mutex::new(HashMap::new()),
                 meta: Meta::new(),
             }),
-        );
+        )
+        .unwrap();
         let mut deps = vec![];
         deps.extend(analyze_deps_js(&ast));
         let deps = deps

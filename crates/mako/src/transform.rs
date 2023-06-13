@@ -436,7 +436,7 @@ require("bar");
             assets_info: Mutex::new(HashMap::new()),
             meta: Meta::new(),
         });
-        let mut ast = build_js_ast(path, origin, &context);
+        let mut ast = build_js_ast(path, origin, &context).unwrap();
         transform_js(&mut ast, &context, &mut |_| {
             if origin.contains("require(\"foo\");") {
                 Vec::from([(
@@ -473,7 +473,7 @@ require("bar");
             assets_info: Mutex::new(HashMap::new()),
             meta: Meta::new(),
         });
-        let mut ast = build_css_ast(path, origin, &context);
+        let mut ast = build_css_ast(path, origin, &context).unwrap();
         transform_css(&mut ast, &context, &mut |_| deps.clone());
         let (code, _) = css_ast_to_code(&ast, &context);
 
