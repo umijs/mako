@@ -49,7 +49,6 @@ impl Chunk {
             ChunkType::Async => {
                 let path = Path::new(&self.id.id);
                 let hash = hash_path(path);
-                // FIXME  a/lazy.ts  and  b/lazy.ts will conflict with chunk name
                 let filename = path.file_stem().unwrap().to_string_lossy();
                 format!("{}-{}-async.js", &filename, hash)
             }
