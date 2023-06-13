@@ -1,12 +1,11 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 use clap::ValueEnum;
-
-use futures::{channel::mpsc::channel, SinkExt, StreamExt};
-use notify::{
-    event::{DataChange, ModifyKind},
-    EventKind, RecommendedWatcher, RecursiveMode, Watcher,
-};
+use futures::channel::mpsc::channel;
+use futures::{SinkExt, StreamExt};
+use notify::event::{DataChange, ModifyKind};
+use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use serde::Deserialize;
 use swc_ecma_preset_env::Targets;
 

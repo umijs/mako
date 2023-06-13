@@ -1,18 +1,18 @@
-use crate::build::Task;
-use crate::compiler::Compiler;
-use crate::module::{Dependency, Module, ModuleId};
-
-use crate::resolve::get_resolver;
-use crate::transform_in_generate::transform_modules;
-
-use anyhow::Result;
-use nodejs_resolver::Resolver;
-use rayon::prelude::*;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::{self, Error};
 use std::path::PathBuf;
 use std::sync::Arc;
+
+use anyhow::Result;
+use nodejs_resolver::Resolver;
+use rayon::prelude::*;
 use tracing::debug;
+
+use crate::build::Task;
+use crate::compiler::Compiler;
+use crate::module::{Dependency, Module, ModuleId};
+use crate::resolve::get_resolver;
+use crate::transform_in_generate::transform_modules;
 
 pub enum UpdateType {
     Add,
@@ -264,14 +264,12 @@ fn diff(
 mod tests {
     use std::fs;
 
-    use crate::{
-        assert_debug_snapshot, assert_display_snapshot,
-        ast::js_ast_to_code,
-        compiler::{self, Compiler},
-        config::Config,
-        module::ModuleId,
-        update::UpdateType,
-    };
+    use crate::ast::js_ast_to_code;
+    use crate::compiler::{self, Compiler};
+    use crate::config::Config;
+    use crate::module::ModuleId;
+    use crate::update::UpdateType;
+    use crate::{assert_debug_snapshot, assert_display_snapshot};
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_build() {

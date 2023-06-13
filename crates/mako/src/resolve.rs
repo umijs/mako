@@ -1,15 +1,16 @@
-use std::{
-    collections::{HashMap, HashSet},
-    path::PathBuf,
-    sync::Arc,
-    vec,
-};
+use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::vec;
 
-use crate::{compiler::Context, css_modules::is_mako_css_modules, module::Dependency};
 use anyhow::{anyhow, Result};
 use nodejs_resolver::{AliasMap, Options, ResolveResult, Resolver};
 use thiserror::Error;
 use tracing::debug;
+
+use crate::compiler::Context;
+use crate::css_modules::is_mako_css_modules;
+use crate::module::Dependency;
 
 #[derive(Debug, Error)]
 enum ResolveError {

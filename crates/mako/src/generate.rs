@@ -1,8 +1,10 @@
-use std::{fs, time::Instant};
+use std::fs;
+use std::time::Instant;
 
 use tracing::info;
 
-use crate::{compiler::Compiler, config::DevtoolConfig};
+use crate::compiler::Compiler;
+use crate::config::DevtoolConfig;
 
 impl Compiler {
     pub fn generate(&self) {

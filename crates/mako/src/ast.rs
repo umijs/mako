@@ -1,8 +1,10 @@
-use anyhow::{anyhow, Result};
-use base64::{engine::general_purpose, Engine};
-use pathdiff::diff_paths;
 use std::path::PathBuf;
 use std::sync::Arc;
+
+use anyhow::{anyhow, Result};
+use base64::engine::general_purpose;
+use base64::Engine;
+use pathdiff::diff_paths;
 use swc_common::FileName;
 use swc_css_ast::Stylesheet;
 use swc_css_codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};

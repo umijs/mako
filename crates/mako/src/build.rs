@@ -1,25 +1,22 @@
+use std::collections::{HashSet, VecDeque};
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::time::Instant;
+
 use anyhow::Result;
 use nodejs_resolver::Resolver;
-use std::{
-    collections::{HashSet, VecDeque},
-    path::PathBuf,
-    sync::Arc,
-    time::Instant,
-};
 use tokio::sync::mpsc::error::TryRecvError;
 use tracing::info;
 
-use crate::{
-    analyze_deps::analyze_deps,
-    ast::build_js_ast,
-    compiler::{Compiler, Context},
-    config::Config,
-    load::load,
-    module::{Dependency, Module, ModuleAst, ModuleId, ModuleInfo},
-    parse::parse,
-    resolve::{get_resolver, resolve},
-    transform::transform,
-};
+use crate::analyze_deps::analyze_deps;
+use crate::ast::build_js_ast;
+use crate::compiler::{Compiler, Context};
+use crate::config::Config;
+use crate::load::load;
+use crate::module::{Dependency, Module, ModuleAst, ModuleId, ModuleInfo};
+use crate::parse::parse;
+use crate::resolve::{get_resolver, resolve};
+use crate::transform::transform;
 
 #[derive(Debug)]
 pub struct Task {
@@ -264,7 +261,8 @@ mod tests {
     use petgraph::prelude::EdgeRef;
     use petgraph::visit::IntoEdgeReferences;
 
-    use crate::{compiler, config::Config};
+    use crate::compiler;
+    use crate::config::Config;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_build() {

@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+
 use swc_atoms::JsWord;
 use swc_common::collections::AHashMap;
 use swc_common::comments::{NoopComments, SingleThreadedComments};
 use swc_common::sync::Lrc;
-use swc_common::{Globals, DUMMY_SP};
-use swc_common::{Mark, GLOBALS};
+use swc_common::{Globals, Mark, DUMMY_SP, GLOBALS};
 use swc_css_ast::Stylesheet;
 use swc_css_visit::VisitMutWith;
 use swc_ecma_ast::{Expr, Lit, Module, Str};
@@ -172,22 +172,17 @@ fn get_dep_map(deps: ModuleDeps) -> HashMap<String, String> {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        collections::HashMap,
-        path::PathBuf,
-        sync::{Arc, Mutex, RwLock},
-    };
-
-    use crate::{
-        ast::{build_css_ast, build_js_ast, css_ast_to_code, js_ast_to_code},
-        build::ModuleDeps,
-        chunk_graph::ChunkGraph,
-        compiler::{Context, Meta},
-        module::{Dependency, ResolveType},
-        module_graph::ModuleGraph,
-    };
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+    use std::sync::{Arc, Mutex, RwLock};
 
     use super::{transform_css, transform_js};
+    use crate::ast::{build_css_ast, build_js_ast, css_ast_to_code, js_ast_to_code};
+    use crate::build::ModuleDeps;
+    use crate::chunk_graph::ChunkGraph;
+    use crate::compiler::{Context, Meta};
+    use crate::module::{Dependency, ResolveType};
+    use crate::module_graph::ModuleGraph;
 
     #[test]
     fn test_react() {

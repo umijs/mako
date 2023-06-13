@@ -1,7 +1,5 @@
-use std::{
-    fmt::{Debug, Formatter},
-    path::PathBuf,
-};
+use std::fmt::{Debug, Formatter};
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct Dependency {
