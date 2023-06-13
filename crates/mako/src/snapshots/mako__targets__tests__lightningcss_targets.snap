@@ -1,0 +1,28 @@
+---
+source: crates/mako/src/targets.rs
+assertion_line: 50
+expression: "&targets"
+---
+Targets {
+    browsers: Some(
+        Browsers {
+            android: None,
+            chrome: Some(
+                5242880,
+            ),
+            edge: None,
+            firefox: None,
+            ie: None,
+            ios_saf: None,
+            opera: None,
+            safari: None,
+            samsung: None,
+        },
+    ),
+    include: Features(
+        0x0,
+    ),
+    exclude: Features(
+        0x0,
+    ),
+}

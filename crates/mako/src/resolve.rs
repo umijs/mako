@@ -88,7 +88,11 @@ pub fn get_resolver(alias: Option<HashMap<String, String>>) -> Resolver {
             "browser".to_string(),
             "default".to_string(),
         ]),
-        main_fields: vec!["module".to_string(), "main".to_string()],
+        main_fields: vec![
+            "browser".to_string(),
+            "module".to_string(),
+            "main".to_string(),
+        ],
         ..Default::default()
     })
 }
