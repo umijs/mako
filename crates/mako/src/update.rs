@@ -1,18 +1,17 @@
-use crate::build::{BuildError, Task};
-use crate::compiler::Compiler;
-use crate::module::{Dependency, Module, ModuleId};
-
-use crate::resolve::get_resolver;
-use crate::transform_in_generate::transform_modules;
-
-use nodejs_resolver::Resolver;
-use rayon::prelude::*;
 use std::collections::{HashMap, HashSet, VecDeque};
-
 use std::fmt::{self, Error};
 use std::path::PathBuf;
 use std::sync::Arc;
+
+use nodejs_resolver::Resolver;
+use rayon::prelude::*;
 use tracing::debug;
+
+use crate::build::{BuildError, Task};
+use crate::compiler::Compiler;
+use crate::module::{Dependency, Module, ModuleId};
+use crate::resolve::get_resolver;
+use crate::transform_in_generate::transform_modules;
 
 pub enum UpdateType {
     Add,
@@ -28,6 +27,12 @@ pub struct UpdateResult {
     pub removed: HashSet<ModuleId>,
     // 修改的模块Id
     pub modified: HashSet<ModuleId>,
+}
+
+impl UpdateResult {
+    pub fn is_updated(&self) -> bool {
+        !self.modified.is_empty() || !self.added.is_empty() || !self.removed.is_empty()
+    }
 }
 
 impl fmt::Display for UpdateResult {
