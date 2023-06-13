@@ -1,5 +1,9 @@
 lockfileVersion: '6.0'
 
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
 importers:
 
   .:
@@ -80,6 +84,14 @@ importers:
         specifier: 18.2.0
         version: 18.2.0(react@18.2.0)
 
+  examples/with-max: {}
+
+  examples/with-tslib:
+    dependencies:
+      tslib:
+        specifier: ^2
+        version: 2.5.2
+
   examples/with-umi:
     devDependencies:
       '@swc/helpers':
@@ -109,6 +121,9 @@ importers:
       '@alipay/okam':
         specifier: 0.0.0
         version: link:../../crates/node
+      '@swc/helpers':
+        specifier: 0.5.1
+        version: 0.5.1
       rimraf:
         specifier: 5.0.1
         version: 5.0.1
@@ -3476,7 +3491,6 @@ packages:
     resolution: {integrity: sha512-sJ902EfIzn1Fa+qYmjdQqh8tPsoxyBz+8yBKC2HKUxyezKJFwPGOn7pv4WY6QuQW//ySQi5lJjA/ZT9sNWWNTg==}
     dependencies:
       tslib: 2.5.2
-    dev: true
 
   /@tanstack/match-sorter-utils@8.8.4:
     resolution: {integrity: sha512-rKH8LjZiszWEvmi01NR72QWZ8m4xmXre0OOwlRGnjU01Eqz/QnN+cqpty2PJ0efHblq09+KilvyR7lsbzmXVEw==}
@@ -12100,7 +12114,6 @@ packages:
 
   /tslib@2.5.2:
     resolution: {integrity: sha512-5svOrSA2w3iGFDs1HibEVBGbDrAY82bFQ3HZ3ixB+88nsbsWQoKqDRb5UBYAUPEzbBn6dAp5gRNXglySbx1MlA==}
-    dev: true
 
   /tsutils@3.21.0(typescript@5.0.4):
     resolution: {integrity: sha512-mHKK3iUXL+3UF6xL5k0PEhKRUBKPBCv/+RkEOpjRWxxx27KKRBmmA60A9pgOUvMi8GKhRMPEmjBRPzs2W7O1OA==}
