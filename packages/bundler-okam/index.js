@@ -48,11 +48,14 @@ exports.build = async function (opts) {
   const { build } = require('@alipay/okam');
   build(cwd, config);
 
+  const stats = {
+    compilation: { assets: { 'umi.js': 'umi.js' } },
+    hasErrors: () => false,
+  };
   onBuildComplete({
     err: null,
+    stats,
   });
-
-  const stats = { compilation: { assets: { 'umi.js': 'umi.js' } } };
   return stats;
 };
 
