@@ -32,6 +32,7 @@ mod module_graph;
 mod parse;
 mod resolve;
 mod sourcemap;
+mod targets;
 #[cfg(test)]
 mod test_helper;
 mod transform;

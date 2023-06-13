@@ -1326,12 +1326,13 @@ dependencies = [
 
 [[package]]
 name = "lightningcss"
-version = "1.0.0-alpha.41"
+version = "1.0.0-alpha.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05745e54889965f22e544ccf6d8182656275eece23355e13550e76d48ad42bc1"
+checksum = "a00aabc173bdf67a26da17777a5584ae344238b043626b5eb1c6b137af9c9edb"
 dependencies = [
  "ahash 0.7.6",
- "bitflags 1.3.2",
+ "bitflags 2.2.1",
+ "browserslist-rs",
  "const-str",
  "cssparser",
  "dashmap",
@@ -1340,6 +1341,7 @@ dependencies = [
  "lazy_static",
  "parcel_selectors",
  "parcel_sourcemap",
+ "paste",
  "pathdiff",
  "rayon",
  "serde",
@@ -1754,11 +1756,11 @@ checksum = "c1b04fb49957986fdce4d6ee7a65027d55d4b6d2265e5848bbb507b58ccfdb6f"
 
 [[package]]
 name = "parcel_selectors"
-version = "0.25.3"
+version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "537fd75055e0ed78c7820d0ac8f6407dd813d760995cd2252022a5514df7aecd"
+checksum = "d3e808c7a75aedcc522bd24187de6903adab3265d690a61f8b8181edaa988377"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.2.1",
  "cssparser",
  "fxhash",
  "log",
@@ -1804,6 +1806,12 @@ dependencies = [
  "smallvec",
  "windows-sys 0.45.0",
 ]
+
+[[package]]
+name = "paste"
+version = "1.0.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f746c4065a8fa3fe23974dd82f15431cc8d40779821001404d10d2e79ca7d79"
 
 [[package]]
 name = "path-absolutize"

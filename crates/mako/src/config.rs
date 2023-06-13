@@ -3,7 +3,6 @@ use std::{collections::HashMap, path::PathBuf};
 use clap::ValueEnum;
 
 use serde::Deserialize;
-use swc_ecma_preset_env::Targets;
 
 #[derive(Deserialize, Debug)]
 pub struct OutputConfig {
@@ -51,7 +50,7 @@ pub struct Config {
     pub copy: Vec<String>,
     pub public_path: String,
     pub data_url_limit: usize,
-    pub targets: Targets,
+    pub targets: HashMap<String, usize>,
 }
 
 // pub struct CliConfig {}

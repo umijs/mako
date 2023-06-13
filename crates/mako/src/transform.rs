@@ -24,6 +24,7 @@ use swc_ecma_visit::{Fold, VisitMutWith as CssVisitMutWith};
 use crate::build::ModuleDeps;
 use crate::compiler::Context;
 use crate::module::ModuleAst;
+use crate::targets;
 use crate::transform_css_handler::CssHandler;
 use crate::transform_dep_replacer::DepReplacer;
 use crate::transform_dynamic_import::DynamicImport;
@@ -106,7 +107,9 @@ fn transform_js(
                 Some(NoopComments),
                 swc_preset_env::Config {
                     mode: Some(swc_preset_env::Mode::Entry),
-                    targets: Some(context.config.targets.clone()),
+                    targets: Some(targets::swc_preset_env_targets_from_map(
+                        context.config.targets.clone(),
+                    )),
                     ..Default::default()
                 },
                 Assumptions::default(),

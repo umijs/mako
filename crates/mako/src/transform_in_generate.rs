@@ -8,8 +8,9 @@ use tracing::{debug, info};
 
 use crate::ast::{base64_encode, build_js_ast, css_ast_to_code};
 use crate::compiler::Context;
-use crate::config::DevtoolConfig;
+use crate::config::{DevtoolConfig, Mode};
 use crate::module::ModuleId;
+use crate::targets;
 use crate::{compiler::Compiler, module::ModuleAst};
 
 impl Compiler {
@@ -57,12 +58,20 @@ fn transform_css(
     let (code, sourcemap) = css_ast_to_code(ast, context);
 
     // lightingcss
+    let targets = targets::lightningcss_targets_from_map(context.config.targets.clone());
     let mut lightingcss_stylesheet = StyleSheet::parse(&code, ParserOptions::default()).unwrap();
     lightingcss_stylesheet
-        .minify(MinifyOptions::default())
+        .minify(MinifyOptions {
+            targets,
+            ..Default::default()
+        })
         .unwrap();
     let out = lightingcss_stylesheet
-        .to_css(PrinterOptions::default())
+        .to_css(PrinterOptions {
+            minify: matches!(context.config.mode, Mode::Production),
+            targets,
+            ..Default::default()
+        })
         .unwrap();
     let mut code = out.code;
 
