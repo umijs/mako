@@ -18,6 +18,6 @@ export function build(
     copy?: string[];
     public_path?: string;
     data_url_limit?: number;
-    targets?: Record<string, number>; 
+    targets?: Record<string, number>;
   },
 ): void;
