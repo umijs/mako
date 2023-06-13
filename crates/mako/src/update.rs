@@ -70,14 +70,12 @@ impl Compiler {
             self.context.config.resolve.alias.clone(),
         )));
 
+        // watch 到变化的文件，如果不在在前的 module graph 中，需过滤掉
         let paths: Vec<(PathBuf, UpdateType)> = {
-            let cg = self.context.module_graph.read().unwrap();
+            let module_graph = self.context.module_graph.read().unwrap();
             paths
                 .into_iter()
-                .filter(|(p, _)| {
-                    let _str = p.to_string_lossy();
-                    cg.has_module(&p.clone().into())
-                })
+                .filter(|(p, _)| module_graph.has_module(&p.clone().into()))
                 .collect()
         };
 
