@@ -25,6 +25,12 @@ $ RUST_LOG=mako=debug,info cargo run --bin mako examples/normal
 $ RUST_LOG=mako::parse=debug,info cargo run --bin mako examples/normal
 ```
 
+Run with HMR.
+
+```bash
+$ cargo run --bin mako examples/with-dynamic-import --watch
+```
+
 Dev.
 
 ```bash
@@ -56,6 +62,14 @@ $ cargo build --release
 $ time ./target/release/mako examples/with-antd
 # or using hyperfine
 $ hyperfine --runs 10 "./target/release/mako examples/with-antd"
+```
+
+Use mako in umi or bigfish.
+
+```bash
+$ OKAM=/PATH/TO/umijs/marko/packages/bundler-okam/index.js umi build --dev
+$ OKAM=/PATH/TO/umijs/marko/packages/bundler-okam/index.js max build --dev
+$ OKAM=/PATH/TO/umijs/marko/packages/bundler-okam/index.js bigfish build --dev
 ```
 
 ## Project Structure
