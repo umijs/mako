@@ -1,17 +1,13 @@
-use std::{
-    cell::RefCell,
-    collections::{HashSet, VecDeque},
-    rc::Rc,
-};
+use std::cell::RefCell;
+use std::collections::{HashSet, VecDeque};
+use std::rc::Rc;
 
 use tracing::info;
 
-use crate::{
-    bfs::{Bfs, NextResult},
-    chunk::{Chunk, ChunkType},
-    compiler::Compiler,
-    module::{ModuleId, ResolveType},
-};
+use crate::bfs::{Bfs, NextResult};
+use crate::chunk::{Chunk, ChunkType};
+use crate::compiler::Compiler;
+use crate::module::{ModuleId, ResolveType};
 
 impl Compiler {
     // TODO:

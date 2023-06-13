@@ -1,6 +1,6 @@
-use swc_common::{
-    source_map::SourceMapGenConfig, sync::Lrc, BytePos, FileName, LineCol, SourceMap,
-};
+use swc_common::source_map::SourceMapGenConfig;
+use swc_common::sync::Lrc;
+use swc_common::{BytePos, FileName, LineCol, SourceMap};
 
 pub struct SwcSourceMapGenConfig;
 

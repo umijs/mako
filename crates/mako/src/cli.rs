@@ -1,6 +1,8 @@
-use crate::config::Mode;
-use clap::Parser;
 use std::path::PathBuf;
+
+use clap::Parser;
+
+use crate::config::Mode;
 
 #[derive(Parser)]
 pub struct Cli {

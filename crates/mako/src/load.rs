@@ -1,11 +1,11 @@
+use std::fs;
+use std::io::{BufRead, BufReader};
+use std::path::Path;
+use std::sync::Arc;
+
 use anyhow::{anyhow, Context as AnyHowContext, Result};
-use base64::{alphabet::STANDARD, engine, Engine};
-use std::{
-    fs,
-    io::{BufRead, BufReader},
-    path::Path,
-    sync::Arc,
-};
+use base64::alphabet::STANDARD;
+use base64::{engine, Engine};
 use thiserror::Error;
 use tracing::debug;
 

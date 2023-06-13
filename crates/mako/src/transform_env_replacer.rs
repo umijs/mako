@@ -1,9 +1,7 @@
 use swc_atoms::{js_word, JsWord};
-use swc_common::{
-    collections::{AHashMap, AHashSet},
-    sync::Lrc,
-    DUMMY_SP,
-};
+use swc_common::collections::{AHashMap, AHashSet};
+use swc_common::sync::Lrc;
+use swc_common::DUMMY_SP;
 use swc_ecma_ast::{
     ComputedPropName, Expr, Id, Ident, KeyValueProp, Lit, MemberExpr, MemberProp, MetaPropExpr,
     MetaPropKind, Module, ObjectLit, Prop, PropName, PropOrSpread, Str,

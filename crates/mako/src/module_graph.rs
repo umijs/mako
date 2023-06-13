@@ -1,12 +1,11 @@
-use petgraph::prelude::EdgeRef;
-use petgraph::visit::IntoEdgeReferences;
-use petgraph::Direction;
-use petgraph::{
-    graph::{DefaultIx, NodeIndex},
-    stable_graph::StableDiGraph,
-};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
+
+use petgraph::graph::{DefaultIx, NodeIndex};
+use petgraph::prelude::EdgeRef;
+use petgraph::stable_graph::StableDiGraph;
+use petgraph::visit::IntoEdgeReferences;
+use petgraph::Direction;
 
 use crate::module::{Dependency, Module, ModuleId};
 

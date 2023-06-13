@@ -1,4 +1,6 @@
 use std::sync::Arc;
+
+use anyhow::Result;
 use tracing::debug;
 
 use crate::ast::{build_css_ast, build_js_ast};
@@ -7,9 +9,8 @@ use crate::css_modules::{
     compile_css_modules, generate_code_for_css_modules, is_css_modules_path, is_mako_css_modules,
     MAKO_CSS_MODULES_SUFFIX,
 };
-use crate::load::Asset;
-use crate::{load::Content, module::ModuleAst};
-use anyhow::Result;
+use crate::load::{Asset, Content};
+use crate::module::ModuleAst;
 
 pub fn parse(content: &Content, path: &str, context: &Arc<Context>) -> Result<ModuleAst> {
     debug!("parse {}", path);

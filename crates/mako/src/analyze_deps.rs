@@ -161,20 +161,15 @@ fn get_first_arg_str(call_expr: &CallExpr) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        collections::HashMap,
-        path::PathBuf,
-        sync::{Arc, Mutex, RwLock},
-    };
-
-    use crate::{
-        ast::build_js_ast,
-        chunk_graph::ChunkGraph,
-        compiler::{Context, Meta},
-        module_graph::ModuleGraph,
-    };
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+    use std::sync::{Arc, Mutex, RwLock};
 
     use super::analyze_deps_js;
+    use crate::ast::build_js_ast;
+    use crate::chunk_graph::ChunkGraph;
+    use crate::compiler::{Context, Meta};
+    use crate::module_graph::ModuleGraph;
 
     #[test]
     fn test_analyze_deps() {

@@ -1,11 +1,13 @@
-use std::{
-    collections::HashMap,
-    path::PathBuf,
-    sync::{Arc, Mutex, RwLock},
-};
-use swc_common::{sync::Lrc, SourceMap};
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex, RwLock};
 
-use crate::{chunk_graph::ChunkGraph, config::Config, module_graph::ModuleGraph};
+use swc_common::sync::Lrc;
+use swc_common::SourceMap;
+
+use crate::chunk_graph::ChunkGraph;
+use crate::config::Config;
+use crate::module_graph::ModuleGraph;
 
 pub struct Context {
     pub module_graph: RwLock<ModuleGraph>,
