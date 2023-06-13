@@ -77,7 +77,8 @@ impl Compiler {
                 } else {
                     "mako_internal_runtime_chunk.js"
                 };
-                let mut js_ast = build_js_ast(file_name, content.as_str(), &self.context);
+                // TODO: handle error
+                let mut js_ast = build_js_ast(file_name, content.as_str(), &self.context).unwrap();
                 for stmt in &mut js_ast.body {
                     // const runtime = createRuntime({}, 'main');
                     if let ModuleItem::Stmt(Stmt::Decl(Decl::Var(box VarDecl { decls, .. }))) = stmt

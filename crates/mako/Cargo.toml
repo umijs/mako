@@ -38,6 +38,7 @@ swc_css_modules = "0.25.13"
 swc_css_parser = "0.146.12"
 swc_css_visit = "0.136.11"
 rayon = "1.7.0"
+thiserror = "1.0.40"
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 notify = { version = "5.2.0", features = ["macos_kqueue"] }

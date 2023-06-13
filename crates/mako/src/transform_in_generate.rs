@@ -100,7 +100,8 @@ fn transform_css(
     let content = format!("{}{}", require_code.join(""), content);
     let path = format!("{}.ts", path);
     let path = path.as_str();
-    build_js_ast(path, content.as_str(), context)
+    // TODO: handle error
+    build_js_ast(path, content.as_str(), context).unwrap()
 }
 
 #[cfg(test)]
@@ -193,7 +194,7 @@ document.head.appendChild(style);
             assets_info: Mutex::new(HashMap::new()),
             meta: Meta::new(),
         });
-        let mut ast = build_css_ast(path, content, &context);
+        let mut ast = build_css_ast(path, content, &context).unwrap();
         let ast = transform_css(&mut ast, path, dep_map, &context);
         let (code, _sourcemap) = js_ast_to_code(&ast, &context, "index.js");
         let code = code.trim().to_string();

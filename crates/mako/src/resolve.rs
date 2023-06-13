@@ -6,15 +6,23 @@ use std::{
 };
 
 use crate::{compiler::Context, css_modules::is_mako_css_modules, module::Dependency};
-use nodejs_resolver::{AliasMap, Error, Options, ResolveResult, Resolver};
+use anyhow::{anyhow, Result};
+use nodejs_resolver::{AliasMap, Options, ResolveResult, Resolver};
+use thiserror::Error;
 use tracing::debug;
+
+#[derive(Debug, Error)]
+enum ResolveError {
+    #[error("Resolve {path:?} failed from {from:?}")]
+    ResolveError { path: String, from: String },
+}
 
 pub fn resolve(
     path: &str,
     dep: &Dependency,
     resolver: &Resolver,
     context: &Arc<Context>,
-) -> Result<(String, Option<String>), Error> {
+) -> Result<(String, Option<String>)> {
     do_resolve(path, &dep.source, resolver, Some(&context.config.externals))
 }
 
@@ -26,7 +34,7 @@ fn do_resolve(
     source: &str,
     resolver: &Resolver,
     externals: Option<&HashMap<String, String>>,
-) -> Result<(String, Option<String>), Error> {
+) -> Result<(String, Option<String>)> {
     let external = if let Some(externals) = externals {
         externals.get(&source.to_string()).cloned()
     } else {
@@ -47,7 +55,10 @@ fn do_resolve(
             let path = resource.path.to_string_lossy().to_string();
             Ok((path, None))
         } else {
-            Err(result.err().unwrap())
+            Err(anyhow!(ResolveError::ResolveError {
+                path: source.to_string(),
+                from: path.to_string_lossy().to_string(),
+            }))
         }
     }
 }
