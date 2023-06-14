@@ -68,9 +68,7 @@ impl Compiler {
     pub fn update(&self, paths: Vec<(PathBuf, UpdateType)>) -> Result<UpdateResult, Error> {
         let mut update_result: UpdateResult = Default::default();
 
-        let resolver = Arc::new(get_resolver(Some(
-            self.context.config.resolve.alias.clone(),
-        )));
+        let resolver = Arc::new(get_resolver(&self.context.config));
 
         // watch 到变化的文件，如果不在在前的 module graph 中，需过滤掉
         let paths: Vec<(PathBuf, UpdateType)> = {

@@ -47,9 +47,7 @@ impl Compiler {
             panic!("entry not found");
         }
 
-        let resolver = Arc::new(get_resolver(Some(
-            self.context.config.resolve.alias.clone(),
-        )));
+        let resolver = Arc::new(get_resolver(&self.context.config));
         let mut queue: VecDeque<Task> = VecDeque::new();
         for entry in entries {
             queue.push_back(Task {
