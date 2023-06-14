@@ -15,7 +15,7 @@ pub struct ResolveConfig {
     pub extensions: Vec<String>,
 }
 
-#[derive(Deserialize, Debug, ValueEnum, Clone)]
+#[derive(Deserialize, Debug, PartialEq, Eq, ValueEnum, Clone)]
 pub enum Mode {
     #[serde(rename = "development")]
     Development,
@@ -25,7 +25,7 @@ pub enum Mode {
 
 // TODO:
 // 1. node specific runtime
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, PartialEq, Eq)]
 pub enum Platform {
     #[serde(rename = "browser")]
     Browser,
@@ -61,10 +61,8 @@ pub struct Config {
     pub public_path: String,
     pub data_url_limit: usize,
     pub targets: HashMap<String, usize>,
-    pub platform: String,
+    pub platform: Platform,
 }
-
-// pub struct CliConfig {}
 
 const CONFIG_FILE: &str = "mako.config.json";
 const DEFAULT_CONFIG: &str = r#"
@@ -85,7 +83,6 @@ const DEFAULT_CONFIG: &str = r#"
 
 // TODO:
 // - support .ts file
-// - add test
 // - add validation
 
 impl Config {
@@ -155,5 +152,56 @@ impl Default for Config {
         ));
         let c = c.build().unwrap();
         c.try_deserialize::<Config>().unwrap()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::config::{Config, Mode, Platform};
+
+    #[test]
+    fn test_config() {
+        let current_dir = std::env::current_dir().unwrap();
+        let config = Config::new(&current_dir.join("test/config/normal"), None, None).unwrap();
+        println!("{:?}", config);
+        assert_eq!(config.platform, Platform::Node);
+    }
+
+    #[test]
+    fn test_config_args_default() {
+        let current_dir = std::env::current_dir().unwrap();
+        let config = Config::new(
+            &current_dir.join("test/config/normal"),
+            Some(r#"{"mode":"production"}"#),
+            None,
+        )
+        .unwrap();
+        println!("{:?}", config);
+        assert_eq!(config.mode, Mode::Production);
+    }
+
+    #[test]
+    fn test_config_cli_args() {
+        let current_dir = std::env::current_dir().unwrap();
+        let config = Config::new(
+            &current_dir.join("test/config/normal"),
+            None,
+            Some(r#"{"platform":"browser"}"#),
+        )
+        .unwrap();
+        println!("{:?}", config);
+        assert_eq!(config.platform, Platform::Browser);
+    }
+
+    #[test]
+    #[should_panic(expected = "public_path must end with '/' or be 'runtime'")]
+    fn test_config_invalid_public_path() {
+        let current_dir = std::env::current_dir().unwrap();
+        Config::new(
+            &current_dir.join("test/config/normal"),
+            None,
+            Some(r#"{"public_path":"abc"}"#),
+        )
+        .unwrap();
     }
 }

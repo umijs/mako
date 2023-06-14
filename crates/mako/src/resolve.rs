@@ -9,7 +9,7 @@ use thiserror::Error;
 use tracing::debug;
 
 use crate::compiler::Context;
-use crate::config::Config;
+use crate::config::{Config, Platform};
 use crate::css_modules::is_mako_css_modules;
 use crate::module::Dependency;
 
@@ -66,7 +66,7 @@ fn do_resolve(
 
 pub fn get_resolver(config: &Config) -> Resolver {
     let alias = parse_alias(config.resolve.alias.clone());
-    let is_browser = config.platform == "browser";
+    let is_browser = config.platform == Platform::Browser;
     // TODO: read from config
     Resolver::new(Options {
         alias,

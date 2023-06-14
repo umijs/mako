@@ -43,6 +43,13 @@ Test.
 $ cargo test
 ```
 
+Coverage.
+
+```bash
+$ cargo codecov
+$ cargo codecov --html && open target/llvm-cov/html/index.html
+```
+
 Format.
 
 ```bash
