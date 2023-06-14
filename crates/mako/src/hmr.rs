@@ -62,6 +62,7 @@ impl Compiler {
 #[cfg(test)]
 mod tests {
     use crate::compiler::Compiler;
+    use crate::config::Config;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_generate_hmr_chunk() {
@@ -117,6 +118,10 @@ modulesRegistry['/index.ts'].hot.apply({
             });
             require("/bar_1.ts");
             require("/bar_2.ts");
+            require("hoo");
+        },
+        "hoo": function(module, exports, require) {
+            module.exports = hoo;
         }
     }
 });
@@ -130,7 +135,7 @@ modulesRegistry['/index.ts'].hot.apply({
     fn create_compiler(base: &str) -> Compiler {
         let current_dir = std::env::current_dir().unwrap();
         let root = current_dir.join(base);
-        let config = Default::default();
+        let config = Config::new(&root, None, None).unwrap();
         Compiler::new(config, root)
     }
 }

@@ -263,12 +263,11 @@ mod tests {
     use crate::config::Config;
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn test_build() {
+    async fn test_build_normal() {
         let (module_ids, references) = build("test/build/normal");
-        // let (module_ids, _) = build("examples/normal");
         assert_eq!(
             module_ids.join(","),
-            "bar_1.ts,bar_2.ts,foo.ts,index.ts".to_string()
+            "bar_1.ts,bar_2.ts,foo.ts,hoo,index.ts".to_string()
         );
         assert_eq!(
             references
@@ -276,9 +275,21 @@ mod tests {
                 .map(|(source, target)| { format!("{} -> {}", source, target) })
                 .collect::<Vec<String>>()
                 .join(","),
-            "bar_1.ts -> foo.ts,bar_2.ts -> foo.ts,index.ts -> bar_1.ts,index.ts -> bar_2.ts"
+            "bar_1.ts -> foo.ts,bar_2.ts -> foo.ts,index.ts -> bar_1.ts,index.ts -> bar_2.ts,index.ts -> hoo"
                 .to_string()
         );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_build_config_entry() {
+        let (module_ids, _references) = build("test/build/config-entry");
+        assert_eq!(module_ids.join(","), "bar.ts,foo.ts".to_string());
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[should_panic]
+    async fn test_build_panic_resolve() {
+        build("test/build/panic-resolve");
     }
 
     #[tokio::test(flavor = "multi_thread")]
