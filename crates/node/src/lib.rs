@@ -25,6 +25,7 @@ pub fn build(
     public_path?: string;
     data_url_limit?: number;
     targets?: Record<string, number>;
+    platform?: "node" | "browser";
 }"#)]
     config: serde_json::Value,
 ) {

@@ -9,6 +9,7 @@ use thiserror::Error;
 use tracing::debug;
 
 use crate::compiler::Context;
+use crate::config::Config;
 use crate::css_modules::is_mako_css_modules;
 use crate::module::Dependency;
 
@@ -29,7 +30,6 @@ pub fn resolve(
 
 // TODO:
 // - 支持物理缓存，让第二次更快
-// - @swc/helpers 需要内置，而无需用户手动安装 [?]
 fn do_resolve(
     path: &str,
     source: &str,
@@ -64,12 +64,9 @@ fn do_resolve(
     }
 }
 
-pub fn get_resolver(alias: Option<HashMap<String, String>>) -> Resolver {
-    let alias = if let Some(alias) = alias {
-        parse_alias(alias)
-    } else {
-        vec![]
-    };
+pub fn get_resolver(config: &Config) -> Resolver {
+    let alias = parse_alias(config.resolve.alias.clone());
+    let is_browser = config.platform == "browser";
     // TODO: read from config
     Resolver::new(Options {
         alias,
@@ -88,11 +85,15 @@ pub fn get_resolver(alias: Option<HashMap<String, String>>) -> Resolver {
             "browser".to_string(),
             "default".to_string(),
         ]),
-        main_fields: vec![
-            "browser".to_string(),
-            "module".to_string(),
-            "main".to_string(),
-        ],
+        main_fields: if is_browser {
+            vec![
+                "browser".to_string(),
+                "module".to_string(),
+                "main".to_string(),
+            ]
+        } else {
+            vec!["module".to_string(), "main".to_string()]
+        },
         ..Default::default()
     })
 }
@@ -110,6 +111,8 @@ fn parse_alias(alias: HashMap<String, String>) -> Vec<(String, Vec<AliasMap>)> {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
+
+    use crate::config::Config;
 
     #[test]
     fn test_resolve() {
@@ -166,7 +169,11 @@ mod tests {
     ) -> (String, Option<String>) {
         let current_dir = std::env::current_dir().unwrap();
         let fixture = current_dir.join(base);
-        let resolver = super::get_resolver(alias);
+        let mut config: Config = Default::default();
+        if alias.is_some() {
+            config.resolve.alias = alias.unwrap();
+        }
+        let resolver = super::get_resolver(&config);
         let (path, external) = super::do_resolve(
             &fixture.join(path).to_string_lossy(),
             source,

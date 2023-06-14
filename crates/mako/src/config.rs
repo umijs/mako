@@ -23,6 +23,16 @@ pub enum Mode {
     Production,
 }
 
+// TODO:
+// 1. node specific runtime
+#[derive(Deserialize, Debug)]
+pub enum Platform {
+    #[serde(rename = "browser")]
+    Browser,
+    #[serde(rename = "node")]
+    Node,
+}
+
 impl std::fmt::Display for Mode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.to_possible_value().unwrap().get_name().fmt(f)
@@ -51,6 +61,7 @@ pub struct Config {
     pub public_path: String,
     pub data_url_limit: usize,
     pub targets: HashMap<String, usize>,
+    pub platform: String,
 }
 
 // pub struct CliConfig {}
@@ -67,7 +78,8 @@ const DEFAULT_CONFIG: &str = r#"
     "copy": ["public"],
     "public_path": "/",
     "data_url_limit": 8192,
-    "targets": { "chrome": 80 }
+    "targets": { "chrome": 80 },
+    "platform": "browser"
 }
 "#;
 
