@@ -1,5 +1,6 @@
 const rimraf = require('rimraf');
 const path = require('path');
+const nodePolyfillAlias = require('node-libs-browser');
 
 exports.build = async function (opts) {
   const {
@@ -32,6 +33,7 @@ exports.build = async function (opts) {
     output: { path: outputPath },
     resolve: {
       alias: {
+        ...nodePolyfillAlias,
         ...alias,
         '@swc/helpers': path.dirname(
           require.resolve('@swc/helpers/package.json'),
