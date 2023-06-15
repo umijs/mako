@@ -30,6 +30,13 @@ jobs:
             target/
           key: cargo-store-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: Setup benchmark data
+        uses: actions/cache@v3
+        with:
+          # ref: https://github.com/benchmark-action/github-action-benchmark#minimal-setup
+          path: ./benchmark-data
+          key: ${{ runner.os }}-benchmark
+
       - name: Run benchmark
         run: cargo bench --bench with_antd -- --output-format bencher | tee output.txt
 
@@ -42,5 +49,5 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           alert-threshold: '150%'
           comment-always: true
-          skip-fetch-gh-pages: true
+          external-data-json-path: ./benchmark-data/prev.json
 
