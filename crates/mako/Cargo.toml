@@ -46,7 +46,7 @@ futures = "0.3.28"
 fs_extra = "1.3.0"
 glob = "0.3.1"
 clap = { version = "4.3.0", features = ["derive"] }
-swc_ecma_minifier = "0.181.21"
+swc_ecma_minifier = { version = "0.181.21", features = ["concurrent"] }
 swc_error_reporters = "0.15.11"
 pathdiff = "0.2.1"
 anyhow = "1.0.71"
