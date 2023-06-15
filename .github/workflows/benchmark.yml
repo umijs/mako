@@ -15,6 +15,21 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: rustup toolchain update nightly && rustup default nightly
+
+      - name: Setup cargo cache
+        uses: actions/cache@v3
+        with:
+          # ref: https://doc.rust-lang.org/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci
+          path: |
+            ~/.cargo/.crates.toml
+            ~/.cargo/.crates2.json
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: cargo-store-${{ hashFiles('**/Cargo.lock') }}
+
       - name: Run benchmark
         run: cargo bench --bench with_antd -- --output-format bencher | tee output.txt
 
@@ -27,3 +42,5 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           alert-threshold: '150%'
           comment-always: true
+          skip-fetch-gh-pages: true
+
