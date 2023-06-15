@@ -62,5 +62,5 @@ insta = { version = "1.29.0", features = ["yaml"] }
 criterion = "0.5.1"
 
 [[bench]]
-name = "mako_benchmark"
+name = "with_antd"
 harness = false
