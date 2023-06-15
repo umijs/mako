@@ -7,6 +7,7 @@ on:
 permissions:
   contents: write
   deployments: write
+  pull-requests: write
 
 jobs:
   benchmark:
@@ -48,6 +49,72 @@ jobs:
           output-file-path: output.txt
           github-token: ${{ secrets.GITHUB_TOKEN }}
           alert-threshold: '150%'
-          comment-always: true
           external-data-json-path: ./benchmark-data/prev.json
+          summary-always: true
+          fail-on-alert: true
+          comment-on-alert: true
+
+      - name: Comment PR
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const cacheIdFile = './benchmark-data/comment_id.txt';
+            const { owner, repo } = context.repo;
+            const prNumber = context.payload.pull_request.number;
+
+            let data = '';
+            await exec.exec('node', ['-e', `
+              const fs = require('fs');
+              const path = require('path');
+              const summaryDir = path.dirname('${process.env.GITHUB_STEP_SUMMARY}');
+              let summary;
+
+              // read benchmark summary from prev step
+              fs.readdirSync(summaryDir)
+                .filter(file => file.startsWith('step_summary_'))
+                .some(file => {
+                  const content = fs.readFileSync(path.join(summaryDir, file), 'utf-8');
+
+                  if (content.includes('mako_with_antd')) {
+                    summary = content;
+                    return true;
+                  }
+                });
+
+              // read cached comment id
+              const commentId = fs.existsSync('${cacheIdFile}') ? fs.readFileSync('${cacheIdFile}', 'utf-8') : null;
+
+              console.log(JSON.stringify({
+                summary,
+                commentId,
+              }));
+            `], {
+              listeners: {
+                stdout: (chunk) => {
+                  data += chunk;
+                },
+              },
+            });
+            data = JSON.parse(data);
+
+            const { summary, commentId } = data;
+
+            if (commentId) {
+              const { id } = await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: commentId,
+                body: summary,
+              });
+            } else {
+              const { id } = await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: prNumber,
+                body: summary,
+              });
+              await exec.exec('echo', [id, '>', cacheIdFile]);
+            }
+
 
