@@ -38,6 +38,9 @@ exports.build = async function (opts) {
         '@swc/helpers': path.dirname(
           require.resolve('@swc/helpers/package.json'),
         ),
+        'node-libs-browser-okam': path.dirname(
+          require.resolve('node-libs-browser-okam/package.json'),
+        ),
       },
     },
     mode,

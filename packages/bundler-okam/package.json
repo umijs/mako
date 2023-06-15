@@ -3,8 +3,8 @@
     "version": "0.0.0-alpha.1",
     "dependencies": {
         "@alipay/okam": "0.0.0",
-        "rimraf": "5.0.1",
         "@swc/helpers": "0.5.1",
-        "node-libs-browser": "2.2.1"
+        "node-libs-browser-okam": "2.2.2",
+        "rimraf": "5.0.1"
     }
 }
