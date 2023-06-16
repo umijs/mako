@@ -187,9 +187,9 @@ mod tests {
     use crate::build::ModuleDeps;
     use crate::chunk_graph::ChunkGraph;
     use crate::compiler::{Context, Meta};
+    use crate::config::Config;
     use crate::module::{Dependency, ResolveType};
     use crate::module_graph::ModuleGraph;
-    use crate::config::Config;
 
     #[test]
     fn test_react() {
@@ -429,12 +429,7 @@ require("bar");
             "test.tsx"
         };
         let current_dir = std::env::current_dir().unwrap();
-        let config = Config::new(
-            &current_dir.join("test/config/define"),
-            None,
-            None,
-        )
-        .unwrap();
+        let config = Config::new(&current_dir.join("test/config/define"), None,None,).unwrap();
 
         let root = PathBuf::from("/path/to/root");
         let context = Arc::new(Context {
