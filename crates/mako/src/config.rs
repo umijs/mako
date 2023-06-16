@@ -59,7 +59,7 @@ pub struct Config {
     pub externals: HashMap<String, String>,
     pub copy: Vec<String>,
     pub public_path: String,
-    pub data_url_limit: usize,
+    pub inline_limit: usize,
     pub targets: HashMap<String, usize>,
     pub platform: Platform,
 }
@@ -75,7 +75,7 @@ const DEFAULT_CONFIG: &str = r#"
     "externals": {},
     "copy": ["public"],
     "public_path": "/",
-    "data_url_limit": 8192,
+    "inline_limit": 10000,
     "targets": { "chrome": 80 },
     "platform": "browser"
 }
