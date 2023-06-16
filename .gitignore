@@ -6,5 +6,6 @@
 /packages/*/node_modules
 /node_modules
 /flamegraph.svg
+/crates/mako/test/compile/*/dist
 .DS_Store
 .idea

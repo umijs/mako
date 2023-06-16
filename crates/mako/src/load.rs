@@ -82,7 +82,7 @@ fn load_assets(path: &str, context: &Arc<Context>) -> Result<Content> {
         path: path.to_string(),
     })?;
 
-    if file_size > context.config.data_url_limit.try_into().unwrap() {
+    if file_size > context.config.inline_limit.try_into().unwrap() {
         let final_file_name = content_hash(path)? + "." + ext_name(path).unwrap();
         let path = path.to_string();
         context.emit_assets(path.clone(), final_file_name.clone());
