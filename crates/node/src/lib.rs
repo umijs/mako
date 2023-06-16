@@ -19,6 +19,7 @@ pub fn build(
        extensions?: string[];
     };
     mode?: "development" | "production";
+    define?: Record<string, string>;
     devtool?: "source-map" | "inline-source-map";
     externals?: Record<string, string>;
     copy?: string[];
