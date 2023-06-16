@@ -429,7 +429,7 @@ require("bar");
             "test.tsx"
         };
         let current_dir = std::env::current_dir().unwrap();
-        let config = Config::new(&current_dir.join("test/config/define"), None,None,).unwrap();
+        let config = Config::new(&current_dir.join("test/config/define"), None,None).unwrap();
 
         let root = PathBuf::from("/path/to/root");
         let context = Arc::new(Context {
