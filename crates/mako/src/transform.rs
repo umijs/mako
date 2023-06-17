@@ -68,8 +68,11 @@ fn transform_js(
     // build env map
     // TODO: read env from .env
     let mode = &context.config.mode.to_string();
-    let env_map = build_env_map(HashMap::from([("NODE_ENV".into(), mode.into())]));
+    // if not define NODE_ENV, set NODE_ENV to mode
+    let mut define = context.config.define.clone();
+    define.entry("NODE_ENV".to_string()).or_insert(mode.clone());
 
+    let env_map = build_env_map(define);
     GLOBALS.set(&globals, || {
         let helpers = Helpers::new(true);
         HELPERS.set(&helpers, || {
@@ -184,6 +187,7 @@ mod tests {
     use crate::build::ModuleDeps;
     use crate::chunk_graph::ChunkGraph;
     use crate::compiler::{Context, Meta};
+    use crate::config::Config;
     use crate::module::{Dependency, ResolveType};
     use crate::module_graph::ModuleGraph;
 
@@ -303,6 +307,7 @@ var _react = _interop_require_default._(require("react"));
     fn test_transform_js_env_replacer() {
         let code = r#"
 const a = process.env.NODE_ENV;
+const b = process.env.PACKAGE_NAME;
         "#
         .trim();
         let (code, _sourcemap) = transform_js_code(code, None);
@@ -311,6 +316,7 @@ const a = process.env.NODE_ENV;
             code,
             r#"
 const a = "development";
+const b = "MAKO";
 
 //# sourceMappingURL=index.js.map
         "#
@@ -422,9 +428,12 @@ require("bar");
         } else {
             "test.tsx"
         };
+        let current_dir = std::env::current_dir().unwrap();
+        let config = Config::new(&current_dir.join("test/config/define"), None, None).unwrap();
+
         let root = PathBuf::from("/path/to/root");
         let context = Arc::new(Context {
-            config: Default::default(),
+            config,
             root,
             module_graph: RwLock::new(ModuleGraph::new()),
             chunk_graph: RwLock::new(ChunkGraph::new()),
