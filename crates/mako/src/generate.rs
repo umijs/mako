@@ -38,34 +38,27 @@ impl Compiler {
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         // minify
+        let t_minify = Instant::now();
         output_files.par_iter_mut().for_each(|file| {
             if matches!(self.context.config.mode, Mode::Production) {
                 file.js_ast = minify_js(file.js_ast.clone(), &self.context.meta.script.cm);
             }
         });
+        let t_minify = t_minify.elapsed();
 
         // ast to code and sourcemap, then write
+        let t_ast_to_code_and_write = Instant::now();
         output_files.par_iter().for_each(|file| {
+            // ast to code
             let (js_code, js_sourcemap) = js_ast_to_code(&file.js_ast, &self.context, &file.path);
+            // generate code and sourcemap files
             let output = &config.output.path.join(&file.path);
             fs::write(output, &js_code).unwrap();
-            // generate sourcemap files
             if matches!(self.context.config.devtool, DevtoolConfig::SourceMap) {
                 fs::write(format!("{}.map", output.display()), &js_sourcemap).unwrap();
             }
         });
-
-        // write chunks to files
-        let t_write_chunks = Instant::now();
-        // output_files.iter().for_each(|file| {
-        //     let output = &config.output.path.join(&file.path);
-        //     fs::write(output, &file.content).unwrap();
-        //     // generate sourcemap files
-        //     if matches!(self.context.config.devtool, DevtoolConfig::SourceMap) {
-        //         fs::write(format!("{}.map", output.display()), &file.sourcemap).unwrap();
-        //     }
-        // });
-        let t_write_chunks = t_write_chunks.elapsed();
+        let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
 
         // write assets
         let t_write_assets = Instant::now();
@@ -93,7 +86,11 @@ impl Compiler {
             t_transform_modules.as_millis()
         );
         info!("  - generate chunks: {}ms", t_generate_chunks.as_millis());
-        info!("  - write chunks: {}ms", t_write_chunks.as_millis());
+        info!("  - minify: {}ms", t_minify.as_millis());
+        info!(
+            "  - ast to code and write: {}ms",
+            t_ast_to_code_and_write.as_millis()
+        );
         info!("  - write assets: {}ms", t_write_assets.as_millis());
         info!("  - copy: {}ms", t_copy.as_millis());
     }
