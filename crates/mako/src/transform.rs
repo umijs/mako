@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use anyhow::Result;
 use swc_atoms::JsWord;
 use swc_common::collections::AHashMap;
 use swc_common::comments::{NoopComments, SingleThreadedComments};
@@ -35,11 +36,11 @@ pub fn transform(
     ast: &mut ModuleAst,
     context: &Arc<Context>,
     get_deps: &mut dyn for<'r> FnMut(&'r ModuleAst) -> ModuleDeps,
-) {
+) -> Result<()> {
     match ast {
         ModuleAst::Script(ast) => transform_js(ast, context, get_deps),
         ModuleAst::Css(ast) => transform_css(ast, context, get_deps),
-        _ => {}
+        _ => Ok(()),
     }
 }
 
@@ -62,7 +63,7 @@ fn transform_js(
     ast: &mut Module,
     context: &Arc<Context>,
     get_deps: &mut dyn for<'r> FnMut(&'r ModuleAst) -> ModuleDeps,
-) {
+) -> Result<()> {
     let cm = context.meta.script.cm.clone();
     let globals = Globals::default();
     // build env map
@@ -157,17 +158,20 @@ fn transform_js(
             ast.visit_mut_with(&mut dynamic_import);
         });
     });
+
+    Ok(())
 }
 
 fn transform_css(
     ast: &mut Stylesheet,
     _context: &Arc<Context>,
     get_deps: &mut dyn for<'r> FnMut(&'r ModuleAst) -> ModuleDeps,
-) {
+) -> Result<()> {
     let dep_map = get_dep_map(get_deps(&ModuleAst::Css(ast.clone())));
     // remove @import and handle url()
     let mut css_handler = CssHandler { dep_map };
     ast.visit_mut_with(&mut css_handler);
+    Ok(())
 }
 
 fn get_dep_map(deps: ModuleDeps) -> HashMap<String, String> {
@@ -455,7 +459,8 @@ require("bar");
             } else {
                 Vec::new()
             }
-        });
+        })
+        .unwrap();
         let (code, _sourcemap) = js_ast_to_code(&ast, &context, "index.js");
         let code = code.replace("\"use strict\";", "");
         let code = code.trim().to_string();
@@ -478,7 +483,7 @@ require("bar");
             meta: Meta::new(),
         });
         let mut ast = build_css_ast(path, origin, &context).unwrap();
-        transform_css(&mut ast, &context, &mut |_| deps.clone());
+        transform_css(&mut ast, &context, &mut |_| deps.clone()).unwrap();
         let (code, _) = css_ast_to_code(&ast, &context);
 
         code.trim().to_string()
