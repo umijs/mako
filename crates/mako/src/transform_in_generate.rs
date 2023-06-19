@@ -200,7 +200,7 @@ document.head.appendChild(style);
         });
         let mut ast = build_css_ast(path, content, &context).unwrap();
         let ast = transform_css(&mut ast, path, dep_map, &context);
-        let (code, _sourcemap) = js_ast_to_code(&ast, &context, "index.js");
+        let (code, _sourcemap) = js_ast_to_code(&ast, &context, "index.js").unwrap();
         let code = code.trim().to_string();
         (code, _sourcemap)
     }

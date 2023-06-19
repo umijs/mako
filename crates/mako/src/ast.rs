@@ -91,7 +91,11 @@ pub fn build_css_ast(path: &str, content: &str, context: &Arc<Context>) -> Resul
     })
 }
 
-pub fn js_ast_to_code(ast: &Module, context: &Arc<Context>, filename: &str) -> (String, String) {
+pub fn js_ast_to_code(
+    ast: &Module,
+    context: &Arc<Context>,
+    filename: &str,
+) -> Result<(String, String)> {
     let mut buf = vec![];
     let mut source_map_buf = Vec::new();
     let cm = context.meta.script.cm.clone();
@@ -110,7 +114,7 @@ pub fn js_ast_to_code(ast: &Module, context: &Arc<Context>, filename: &str) -> (
                 Some(&mut source_map_buf),
             )),
         };
-        emitter.emit_module(ast).unwrap();
+        emitter.emit_module(ast)?;
     }
     // source map
     let src_buf = build_source_map(&source_map_buf, cm);
@@ -133,8 +137,8 @@ pub fn js_ast_to_code(ast: &Module, context: &Arc<Context>, filename: &str) -> (
             .to_vec(),
         );
     }
-    let code = String::from_utf8(buf).unwrap();
-    (code, sourcemap)
+    let code = String::from_utf8(buf)?;
+    Ok((code, sourcemap))
 }
 
 pub fn css_ast_to_code(ast: &Stylesheet, context: &Arc<Context>) -> (String, String) {
