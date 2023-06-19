@@ -2,7 +2,6 @@ use std::path::Path;
 
 use anyhow::Result;
 use glob::glob;
-use tracing::info;
 
 use crate::compiler::Compiler;
 
@@ -10,7 +9,6 @@ impl Compiler {
     // TODO:
     // copy 的文件在 watch 模式下，不应该每次都 copy，而是应该只 copy 发生变化的文件
     pub fn copy(&self) -> Result<()> {
-        info!("copy");
         let dest = self.context.config.output.path.as_path();
         for src in self.context.config.copy.iter() {
             let src = self.context.root.join(src);

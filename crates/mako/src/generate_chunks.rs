@@ -8,7 +8,6 @@ use swc_ecma_ast::{
     FnExpr, Function, Ident, KeyValueProp, MemberExpr, MemberProp, Module, ModuleItem, ObjectLit,
     Param, Pat, Prop, PropOrSpread, Stmt, Str, VarDecl,
 };
-use tracing::info;
 
 use crate::ast::build_js_ast;
 use crate::compiler::Compiler;
@@ -23,7 +22,6 @@ pub struct OutputFile {
 
 impl Compiler {
     pub fn generate_chunks(&self) -> Result<Vec<OutputFile>> {
-        info!("generate chunks");
         let module_graph = self.context.module_graph.read().unwrap();
         let mut chunk_graph = self.context.chunk_graph.write().unwrap();
 

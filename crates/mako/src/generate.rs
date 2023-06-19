@@ -24,6 +24,7 @@ impl Compiler {
         // 为啥单独提前 transform modules？
         // 因为放 chunks 的循环里，一个 module 可能存在于多个 chunk 里，可能会被编译多遍
         let t_transform_modules = Instant::now();
+        info!("transform all modules");
         self.transform_all();
         let t_transform_modules = t_transform_modules.elapsed();
 
@@ -35,6 +36,7 @@ impl Compiler {
 
         // generate chunks
         let t_generate_chunks = Instant::now();
+        info!("generate chunks");
         let mut output_files = self.generate_chunks()?;
         let t_generate_chunks = t_generate_chunks.elapsed();
 
@@ -53,6 +55,7 @@ impl Compiler {
 
         // ast to code and sourcemap, then write
         let t_ast_to_code_and_write = Instant::now();
+        info!("ast to code and write");
         output_files.par_iter().try_for_each(|file| -> Result<()> {
             // ast to code
             let (js_code, js_sourcemap) = js_ast_to_code(&file.js_ast, &self.context, &file.path)?;
@@ -68,6 +71,7 @@ impl Compiler {
 
         // write assets
         let t_write_assets = Instant::now();
+        info!("write assets");
         let assets_info = &(*self.context.assets_info.lock().unwrap());
         for (k, v) in assets_info {
             let asset_path = &self.context.root.join(k);
@@ -82,6 +86,7 @@ impl Compiler {
 
         // copy
         let t_copy = Instant::now();
+        info!("copy");
         self.copy()?;
         let t_copy = t_copy.elapsed();
 
@@ -103,6 +108,7 @@ impl Compiler {
         Ok(())
     }
 
+    // TODO: 集成到 fn generate 里
     pub fn generate_hot_update_chunks(&self, updated_modules: UpdateResult) {
         let last_chunk_names: HashSet<String> = {
             let chunk_graph = self.context.chunk_graph.read().unwrap();
@@ -175,7 +181,7 @@ impl Compiler {
         );
 
         // copy
-        self.copy();
+        self.copy().unwrap();
 
         info!(
             "generate(hmr) done in {}ms",
