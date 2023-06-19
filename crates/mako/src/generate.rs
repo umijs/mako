@@ -2,11 +2,14 @@ use std::collections::HashSet;
 use std::fs;
 use std::time::Instant;
 
+use rayon::prelude::*;
 use serde::Serialize;
 use tracing::info;
 
+use crate::ast::js_ast_to_code;
 use crate::compiler::Compiler;
-use crate::config::DevtoolConfig;
+use crate::config::{DevtoolConfig, Mode};
+use crate::minify::minify_js;
 use crate::update::UpdateResult;
 
 impl Compiler {
@@ -31,20 +34,41 @@ impl Compiler {
 
         // generate chunks
         let t_generate_chunks = Instant::now();
-        let output_files = self.generate_chunks();
+        let mut output_files = self.generate_chunks().unwrap();
         let t_generate_chunks = t_generate_chunks.elapsed();
 
-        // write chunks to files
-        output_files.iter().for_each(|file| {
-            let output = &config.output.path.join(&file.path);
-            fs::write(output, &file.content).unwrap();
-            // generate separate sourcemap file
-            if matches!(self.context.config.devtool, DevtoolConfig::SourceMap) {
-                fs::write(format!("{}.map", output.display()), &file.sourcemap).unwrap();
+        // minify
+        output_files.par_iter_mut().for_each(|file| {
+            if matches!(self.context.config.mode, Mode::Production) {
+                file.js_ast = minify_js(file.js_ast.clone(), &self.context.meta.script.cm);
             }
         });
 
+        // ast to code and sourcemap, then write
+        output_files.par_iter().for_each(|file| {
+            let (js_code, js_sourcemap) = js_ast_to_code(&file.js_ast, &self.context, &file.path);
+            let output = &config.output.path.join(&file.path);
+            fs::write(output, &js_code).unwrap();
+            // generate sourcemap files
+            if matches!(self.context.config.devtool, DevtoolConfig::SourceMap) {
+                fs::write(format!("{}.map", output.display()), &js_sourcemap).unwrap();
+            }
+        });
+
+        // write chunks to files
+        let t_write_chunks = Instant::now();
+        // output_files.iter().for_each(|file| {
+        //     let output = &config.output.path.join(&file.path);
+        //     fs::write(output, &file.content).unwrap();
+        //     // generate sourcemap files
+        //     if matches!(self.context.config.devtool, DevtoolConfig::SourceMap) {
+        //         fs::write(format!("{}.map", output.display()), &file.sourcemap).unwrap();
+        //     }
+        // });
+        let t_write_chunks = t_write_chunks.elapsed();
+
         // write assets
+        let t_write_assets = Instant::now();
         let assets_info = &(*self.context.assets_info.lock().unwrap());
         for (k, v) in assets_info {
             let asset_path = &self.context.root.join(k);
@@ -55,9 +79,12 @@ impl Compiler {
                 panic!("asset not found: {}", asset_path.display());
             }
         }
+        let t_write_assets = t_write_assets.elapsed();
 
         // copy
+        let t_copy = Instant::now();
         self.copy();
+        let t_copy = t_copy.elapsed();
 
         info!("generate done in {}ms", t_generate.elapsed().as_millis());
         info!("  - group chunks: {}ms", t_group_chunks.as_millis());
@@ -66,6 +93,9 @@ impl Compiler {
             t_transform_modules.as_millis()
         );
         info!("  - generate chunks: {}ms", t_generate_chunks.as_millis());
+        info!("  - write chunks: {}ms", t_write_chunks.as_millis());
+        info!("  - write assets: {}ms", t_write_assets.as_millis());
+        info!("  - copy: {}ms", t_copy.as_millis());
     }
 
     pub fn generate_hot_update_chunks(&self, updated_modules: UpdateResult) {
