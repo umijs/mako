@@ -14,7 +14,7 @@ use swc_ecma_ast::Module;
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
 use swc_ecma_parser::lexer::Lexer;
-use swc_ecma_parser::{Parser, StringInput, Syntax, TsConfig};
+use swc_ecma_parser::{EsConfig, Parser, StringInput, Syntax, TsConfig};
 use thiserror::Error;
 
 use crate::compiler::Context;
@@ -37,11 +37,21 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
         .script
         .cm
         .new_source_file(FileName::Real(relative_path), content.to_string());
-    let syntax = Syntax::Typescript(TsConfig {
-        decorators: true,
-        tsx: path.ends_with(".tsx") || path.ends_with(".jsx"),
-        ..Default::default()
-    });
+    let is_ts = path.ends_with(".ts") || path.ends_with(".tsx");
+    let jsx = path.ends_with(".jsx");
+    let tsx = path.ends_with(".tsx");
+    let syntax = if is_ts {
+        Syntax::Typescript(TsConfig {
+            decorators: true,
+            tsx,
+            ..Default::default()
+        })
+    } else {
+        Syntax::Es(EsConfig {
+            jsx,
+            ..Default::default()
+        })
+    };
     let lexer = Lexer::new(
         syntax,
         swc_ecma_ast::EsVersion::Es2015,

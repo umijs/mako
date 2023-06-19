@@ -210,7 +210,7 @@ import 'bar';
     fn resolve(code: &str) -> String {
         let root = PathBuf::from("/path/to/root");
         let ast = build_js_ast(
-            "test.js",
+            "test.ts",
             code,
             &Arc::new(Context {
                 config: Default::default(),
