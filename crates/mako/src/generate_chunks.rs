@@ -1,34 +1,34 @@
 use std::collections::HashSet;
 use std::vec;
 
+use anyhow::Result;
 use swc_common::DUMMY_SP;
 use swc_ecma_ast::{
     ArrayLit, BindingIdent, BlockStmt, CallExpr, Callee, Decl, Expr, ExprOrSpread, ExprStmt,
-    FnExpr, Function, Ident, KeyValueProp, MemberExpr, MemberProp, ModuleItem, ObjectLit, Param,
-    Pat, Prop, PropOrSpread, Stmt, Str, VarDecl,
+    FnExpr, Function, Ident, KeyValueProp, MemberExpr, MemberProp, Module, ModuleItem, ObjectLit,
+    Param, Pat, Prop, PropOrSpread, Stmt, Str, VarDecl,
 };
 use tracing::info;
 
-use crate::ast::{build_js_ast, js_ast_to_code};
+use crate::ast::build_js_ast;
 use crate::compiler::Compiler;
-use crate::config::Mode;
-use crate::minify::minify_js;
 use crate::module::{ModuleAst, ModuleId};
 
 pub struct OutputFile {
     pub path: String,
     pub content: String,
     pub sourcemap: String,
+    pub js_ast: Module,
 }
 
 impl Compiler {
-    pub fn generate_chunks(&self) -> Vec<OutputFile> {
+    pub fn generate_chunks(&self) -> Result<Vec<OutputFile>> {
         info!("generate chunks");
         let module_graph = self.context.module_graph.read().unwrap();
         let mut chunk_graph = self.context.chunk_graph.write().unwrap();
 
-        let mut public_path = self.context.config.public_path.clone();
-        public_path = if public_path == "runtime" {
+        let public_path = self.context.config.public_path.clone();
+        let public_path = if public_path == "runtime" {
             "globalThis.publicPath".to_string()
         } else {
             format!("\"{}\"", public_path)
@@ -158,23 +158,25 @@ impl Compiler {
                 // 暂时无需处理
 
                 // minify
-                if matches!(self.context.config.mode, Mode::Production) {
-                    js_ast = minify_js(js_ast, &self.context.meta.script.cm);
-                }
+                // if matches!(self.context.config.mode, Mode::Production) {
+                //     js_ast = minify_js(js_ast, &self.context.meta.script.cm);
+                // }
 
                 let filename = chunk.filename();
-                let (js_code, js_sourcemap) = js_ast_to_code(&js_ast, &self.context, &filename);
+                // let (js_code, js_sourcemap) = js_ast_to_code(&js_ast, &self.context, &filename);
 
-                chunk.cache_content(js_code.clone(), js_sourcemap.clone());
+                // chunk.cache_content(js_code.clone(), js_sourcemap.clone());
 
                 OutputFile {
                     path: filename,
-                    content: js_code,
-                    sourcemap: js_sourcemap,
+                    content: "".to_string(),
+                    sourcemap: "".to_string(),
+                    js_ast,
+                    // filename: chunk.filename(),
                 }
             })
             .collect();
-        output_files
+        Ok(output_files)
     }
 }
 
