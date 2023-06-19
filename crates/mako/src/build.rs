@@ -115,21 +115,29 @@ impl Compiler {
                         let dependency = dep.2.clone();
 
                         if !module_graph.has_module(&dep_module_id) {
-                            // TODO: handle create module failed
-                            let module = self
-                                .create_module(dep.1.clone(), resolved_path.clone(), &dep_module_id)
-                                .unwrap();
-                            if !is_external {
-                                queue.push_back(Task {
-                                    path: resolved_path,
-                                    // parent_module_id: None,
-                                    is_entry: false,
-                                });
+                            let module = self.create_module(
+                                dep.1.clone(),
+                                resolved_path.clone(),
+                                &dep_module_id,
+                            );
+                            match module {
+                                Ok(module) => {
+                                    if !is_external {
+                                        queue.push_back(Task {
+                                            path: resolved_path,
+                                            // parent_module_id: None,
+                                            is_entry: false,
+                                        });
+                                    }
+                                    // 拿到依赖之后需要直接添加 module 到 module_graph 里，不能等依赖 build 完再添加
+                                    // 由于是异步处理各个模块，后者会导致大量重复任务的 build_module 任务（3 倍左右）
+                                    added_module_ids.insert(module.id.clone());
+                                    module_graph.add_module(module);
+                                }
+                                Err(err) => {
+                                    panic!("create module failed: {:?}", err);
+                                }
                             }
-                            // 拿到依赖之后需要直接添加 module 到 module_graph 里，不能等依赖 build 完再添加
-                            // 由于是异步处理各个模块，后者会导致大量重复任务的 build_module 任务（3 倍左右）
-                            added_module_ids.insert(module.id.clone());
-                            module_graph.add_module(module);
                         }
                         module_graph.add_dependency(&module_id, &dep_module_id, dependency);
                     });
@@ -188,7 +196,6 @@ impl Compiler {
         resolver: Arc<Resolver>,
     ) -> Result<(Module, ModuleDeps, Task)> {
         let mut dependencies = Vec::new();
-        let mut dep_resolve_err = None;
         let module_id = ModuleId::new(task.path.clone());
 
         // load
@@ -197,14 +204,14 @@ impl Compiler {
         // parse
         let mut ast = parse(&content, &task.path, &context)?;
 
-        // transform
+        // transform & resolve
+        // TODO: 支持同时有多个 resolve error
+        let mut dep_resolve_err = None;
         transform(&mut ast, &context, &mut |ast| {
             let deps = analyze_deps(ast);
-
             // resolve
             for dep in deps.iter() {
                 let ret = resolve(&task.path, dep, &resolver, &context);
-
                 match ret {
                     Ok((x, y)) => {
                         dependencies.push((x, y, dep.clone()));
@@ -215,10 +222,8 @@ impl Compiler {
                     }
                 }
             }
-
             dependencies.clone()
-        });
-
+        })?;
         if let Some(e) = dep_resolve_err {
             return Err(e);
         }
@@ -311,7 +316,6 @@ mod tests {
 
     fn build(base: &str) -> (Vec<String>, Vec<(String, String)>) {
         let current_dir = std::env::current_dir().unwrap();
-        // let fixtures = current_dir.join("test/build");
         let pnpm_dir = current_dir.join("node_modules/.pnpm");
         let root = current_dir.join(base);
         let config = Config::new(&root, None, None).unwrap();
