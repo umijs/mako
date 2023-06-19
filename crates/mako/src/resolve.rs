@@ -78,13 +78,21 @@ pub fn get_resolver(config: &Config) -> Resolver {
             ".mjs".to_string(),
             ".cjs".to_string(),
         ],
-        condition_names: HashSet::from([
-            "node".to_string(),
-            "require".to_string(),
-            "import".to_string(),
-            "browser".to_string(),
-            "default".to_string(),
-        ]),
+        condition_names: if is_browser {
+            HashSet::from([
+                "browser".to_string(),
+                "import".to_string(),
+                "default".to_string(),
+                "require".to_string(),
+            ])
+        } else {
+            HashSet::from([
+                "node".to_string(),
+                "import".to_string(),
+                "default".to_string(),
+                "require".to_string(),
+            ])
+        },
         main_fields: if is_browser {
             vec![
                 "browser".to_string(),
