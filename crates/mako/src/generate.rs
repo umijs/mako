@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::fs;
 use std::time::Instant;
 
+use anyhow::Result;
 use rayon::prelude::*;
 use serde::Serialize;
 use tracing::info;
@@ -13,7 +14,7 @@ use crate::minify::minify_js;
 use crate::update::UpdateResult;
 
 impl Compiler {
-    pub fn generate(&self) {
+    pub fn generate(&self) -> Result<()> {
         info!("generate");
         let t_generate = Instant::now();
         let t_group_chunks = Instant::now();
@@ -21,7 +22,7 @@ impl Compiler {
         let t_group_chunks = t_group_chunks.elapsed();
 
         // 为啥单独提前 transform modules？
-        // 因为放 chunks 的循环里，一个 module 可能存在于多个 chunk 里，可能会被编译多遍，
+        // 因为放 chunks 的循环里，一个 module 可能存在于多个 chunk 里，可能会被编译多遍
         let t_transform_modules = Instant::now();
         self.transform_all();
         let t_transform_modules = t_transform_modules.elapsed();
@@ -29,35 +30,40 @@ impl Compiler {
         // ensure output dir exists
         let config = &self.context.config;
         if !config.output.path.exists() {
-            fs::create_dir_all(&config.output.path).unwrap();
+            fs::create_dir_all(&config.output.path)?;
         }
 
         // generate chunks
         let t_generate_chunks = Instant::now();
-        let mut output_files = self.generate_chunks().unwrap();
+        let mut output_files = self.generate_chunks()?;
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         // minify
         let t_minify = Instant::now();
-        output_files.par_iter_mut().for_each(|file| {
-            if matches!(self.context.config.mode, Mode::Production) {
-                file.js_ast = minify_js(file.js_ast.clone(), &self.context.meta.script.cm);
-            }
-        });
+        info!("minify");
+        output_files
+            .par_iter_mut()
+            .try_for_each(|file| -> Result<()> {
+                if matches!(self.context.config.mode, Mode::Production) {
+                    file.js_ast = minify_js(file.js_ast.clone(), &self.context.meta.script.cm)?;
+                }
+                Ok(())
+            })?;
         let t_minify = t_minify.elapsed();
 
         // ast to code and sourcemap, then write
         let t_ast_to_code_and_write = Instant::now();
-        output_files.par_iter().for_each(|file| {
+        output_files.par_iter().try_for_each(|file| -> Result<()> {
             // ast to code
-            let (js_code, js_sourcemap) = js_ast_to_code(&file.js_ast, &self.context, &file.path);
+            let (js_code, js_sourcemap) = js_ast_to_code(&file.js_ast, &self.context, &file.path)?;
             // generate code and sourcemap files
             let output = &config.output.path.join(&file.path);
             fs::write(output, &js_code).unwrap();
             if matches!(self.context.config.devtool, DevtoolConfig::SourceMap) {
                 fs::write(format!("{}.map", output.display()), &js_sourcemap).unwrap();
             }
-        });
+            Ok(())
+        })?;
         let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
 
         // write assets
@@ -67,7 +73,7 @@ impl Compiler {
             let asset_path = &self.context.root.join(k);
             let asset_output_path = &config.output.path.join(v);
             if asset_path.exists() {
-                fs::copy(asset_path, asset_output_path).unwrap();
+                fs::copy(asset_path, asset_output_path)?;
             } else {
                 panic!("asset not found: {}", asset_path.display());
             }
@@ -76,7 +82,7 @@ impl Compiler {
 
         // copy
         let t_copy = Instant::now();
-        self.copy();
+        self.copy()?;
         let t_copy = t_copy.elapsed();
 
         info!("generate done in {}ms", t_generate.elapsed().as_millis());
@@ -93,6 +99,8 @@ impl Compiler {
         );
         info!("  - write assets: {}ms", t_write_assets.as_millis());
         info!("  - copy: {}ms", t_copy.as_millis());
+
+        Ok(())
     }
 
     pub fn generate_hot_update_chunks(&self, updated_modules: UpdateResult) {

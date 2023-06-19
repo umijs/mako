@@ -85,7 +85,13 @@ impl Compiler {
 
     pub fn compile(&self) {
         self.build();
-        self.generate();
+        let result = self.generate();
+        match result {
+            Ok(_) => {}
+            Err(e) => {
+                panic!("generate failed: {:?}", e);
+            }
+        }
     }
 }
 
