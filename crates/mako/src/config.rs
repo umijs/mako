@@ -127,6 +127,12 @@ impl Config {
                 config.output.path = root.join(config.output.path.to_string_lossy().to_string());
             }
 
+            // set NODE_ENV to mode
+            config
+                .define
+                .entry("NODE_ENV".to_string())
+                .or_insert(config.mode.to_string());
+
             if config.public_path != "runtime" && !config.public_path.ends_with('/') {
                 panic!("public_path must end with '/' or be 'runtime'");
             }
