@@ -5,6 +5,7 @@ use anyhow::Result;
 use swc_atoms::JsWord;
 use swc_common::collections::AHashMap;
 use swc_common::comments::{NoopComments, SingleThreadedComments};
+use swc_common::errors::HANDLER;
 use swc_common::sync::Lrc;
 use swc_common::{Globals, Mark, DUMMY_SP, GLOBALS};
 use swc_css_ast::Stylesheet;
@@ -21,6 +22,7 @@ use swc_ecma_transforms::react::{react, Options, Runtime};
 use swc_ecma_transforms::typescript::strip_with_jsx;
 use swc_ecma_transforms::{fixer, resolver, Assumptions};
 use swc_ecma_visit::{Fold, VisitMutWith as CssVisitMutWith};
+use swc_error_reporters::handler::try_with_handler;
 
 use crate::build::ModuleDeps;
 use crate::compiler::Context;
@@ -70,91 +72,93 @@ fn transform_js(
     let define = context.config.define.clone();
     let env_map = build_env_map(define);
     GLOBALS.set(&globals, || {
-        let helpers = Helpers::new(true);
-        HELPERS.set(&helpers, || {
-            let top_level_mark = Mark::new();
-            let unresolved_mark = Mark::new();
-            let import_interop = ImportInterop::Swc;
+        try_with_handler(cm.clone(), Default::default(), |handler| {
+            HELPERS.set(&Helpers::new(true), || {
+                HANDLER.set(handler, || {
+                    let top_level_mark = Mark::new();
+                    let unresolved_mark = Mark::new();
+                    let import_interop = ImportInterop::Swc;
 
-            ast.visit_mut_with(&mut react(
-                cm.clone(),
-                Some(NoopComments),
-                Options {
-                    import_source: Some("react".to_string()),
-                    pragma: Some("React.createElement".into()),
-                    pragma_frag: Some("React.Fragment".into()),
-                    // support react 17 + only
-                    runtime: Some(Runtime::Automatic),
-                    ..Default::default()
-                },
-                top_level_mark,
-                unresolved_mark,
-            ));
-            ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
-            ast.visit_mut_with(&mut import_analyzer(import_interop, true));
-            ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
+                    ast.visit_mut_with(&mut react(
+                        cm.clone(),
+                        Some(NoopComments),
+                        Options {
+                            import_source: Some("react".to_string()),
+                            pragma: Some("React.createElement".into()),
+                            pragma_frag: Some("React.Fragment".into()),
+                            // support react 17 + only
+                            runtime: Some(Runtime::Automatic),
+                            ..Default::default()
+                        },
+                        top_level_mark,
+                        unresolved_mark,
+                    ));
+                    ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
+                    ast.visit_mut_with(&mut import_analyzer(import_interop, true));
+                    ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
 
-            let mut env_replacer = EnvReplacer::new(Lrc::new(env_map));
-            ast.visit_mut_with(&mut env_replacer);
+                    let mut env_replacer = EnvReplacer::new(Lrc::new(env_map));
+                    ast.visit_mut_with(&mut env_replacer);
 
-            let mut optimizer = Optimizer {};
-            ast.visit_mut_with(&mut optimizer);
+                    let mut optimizer = Optimizer {};
+                    ast.visit_mut_with(&mut optimizer);
 
-            // TODO: polyfill
-            let mut preset_env = swc_preset_env::preset_env(
-                unresolved_mark,
-                Some(NoopComments),
-                swc_preset_env::Config {
-                    mode: Some(swc_preset_env::Mode::Entry),
-                    targets: Some(targets::swc_preset_env_targets_from_map(
-                        context.config.targets.clone(),
-                    )),
-                    ..Default::default()
-                },
-                Assumptions::default(),
-                &mut FeatureFlag::default(),
-            );
-            ast.body = preset_env.fold_module(ast.clone()).body;
+                    // TODO: polyfill
+                    let mut preset_env = swc_preset_env::preset_env(
+                        unresolved_mark,
+                        Some(NoopComments),
+                        swc_preset_env::Config {
+                            mode: Some(swc_preset_env::Mode::Entry),
+                            targets: Some(targets::swc_preset_env_targets_from_map(
+                                context.config.targets.clone(),
+                            )),
+                            ..Default::default()
+                        },
+                        Assumptions::default(),
+                        &mut FeatureFlag::default(),
+                    );
+                    ast.body = preset_env.fold_module(ast.clone()).body;
 
-            // 在 cjs 执行前调用 hook，用于收集依赖
-            let deps = get_deps(&ModuleAst::Script(ast.clone()));
+                    // 在 cjs 执行前调用 hook，用于收集依赖
+                    let deps = get_deps(&ModuleAst::Script(ast.clone()));
 
-            ast.visit_mut_with(&mut common_js::<SingleThreadedComments>(
-                unresolved_mark,
-                Config {
-                    import_interop: Some(import_interop),
-                    // NOTE: 这里后面要调整为注入自定义require
-                    ignore_dynamic: true,
-                    preserve_import_meta: true,
-                    ..Default::default()
-                },
-                FeatureFlag::empty(),
-                None,
-            ));
-            ast.visit_mut_with(&mut strip_with_jsx(
-                cm,
-                Default::default(),
-                NoopComments,
-                top_level_mark,
-            ));
-            ast.visit_mut_with(&mut hygiene_with_config(
-                swc_ecma_transforms::hygiene::Config {
-                    top_level_mark,
-                    ..Default::default()
-                },
-            ));
-            ast.visit_mut_with(&mut fixer(None));
+                    ast.visit_mut_with(&mut common_js::<SingleThreadedComments>(
+                        unresolved_mark,
+                        Config {
+                            import_interop: Some(import_interop),
+                            // NOTE: 这里后面要调整为注入自定义require
+                            ignore_dynamic: true,
+                            preserve_import_meta: true,
+                            ..Default::default()
+                        },
+                        FeatureFlag::empty(),
+                        None,
+                    ));
+                    ast.visit_mut_with(&mut strip_with_jsx(
+                        cm,
+                        Default::default(),
+                        NoopComments,
+                        top_level_mark,
+                    ));
+                    ast.visit_mut_with(&mut hygiene_with_config(
+                        swc_ecma_transforms::hygiene::Config {
+                            top_level_mark,
+                            ..Default::default()
+                        },
+                    ));
+                    ast.visit_mut_with(&mut fixer(None));
 
-            let dep_map = get_dep_map(deps);
-            let mut dep_replacer = DepReplacer { dep_map };
-            ast.visit_mut_with(&mut dep_replacer);
+                    let dep_map = get_dep_map(deps);
+                    let mut dep_replacer = DepReplacer { dep_map };
+                    ast.visit_mut_with(&mut dep_replacer);
 
-            let mut dynamic_import = DynamicImport {};
-            ast.visit_mut_with(&mut dynamic_import);
-        });
-    });
-
-    Ok(())
+                    let mut dynamic_import = DynamicImport {};
+                    ast.visit_mut_with(&mut dynamic_import);
+                    Ok(())
+                })
+            })
+        })
+    })
 }
 
 fn transform_css(
