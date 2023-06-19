@@ -67,12 +67,7 @@ fn transform_js(
     let cm = context.meta.script.cm.clone();
     let globals = Globals::default();
     // build env map
-    // TODO: read env from .env
-    let mode = &context.config.mode.to_string();
-    // if not define NODE_ENV, set NODE_ENV to mode
-    let mut define = context.config.define.clone();
-    define.entry("NODE_ENV".to_string()).or_insert(mode.clone());
-
+    let define = context.config.define.clone();
     let env_map = build_env_map(define);
     GLOBALS.set(&globals, || {
         let helpers = Helpers::new(true);
