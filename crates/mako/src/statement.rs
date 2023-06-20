@@ -45,19 +45,25 @@ pub struct ExportInfo {
 
 pub type StatementId = usize;
 
+#[derive(Debug, Clone)]
+pub struct ImportStatement {
+    pub id: StatementId,
+    pub info: ImportInfo,
+    pub is_self_executed: bool,
+    pub defined_ident: HashSet<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ExportStatement {
+    pub id: StatementId,
+    pub info: ExportInfo,
+    pub defined_ident: HashSet<String>,
+    pub used_ident: HashSet<String>,
+}
+
 pub enum StatementType {
-    Import {
-        id: StatementId,
-        info: ImportInfo,
-        is_self_executed: bool,
-        defined_ident: HashSet<String>,
-    },
-    Export {
-        id: StatementId,
-        info: ExportInfo,
-        defined_ident: HashSet<String>,
-        used_ident: HashSet<String>,
-    },
+    Import(ImportStatement),
+    Export(ExportStatement),
     Stmt {
         id: StatementId,
         defined_ident: HashSet<String>,
@@ -69,18 +75,18 @@ pub enum StatementType {
 impl StatementType {
     pub fn get_id(&self) -> StatementId {
         match self {
-            StatementType::Import {
+            StatementType::Import(ImportStatement {
                 id,
                 info: _,
                 is_self_executed: _,
                 defined_ident: _,
-            } => *id,
-            StatementType::Export {
+            }) => *id,
+            StatementType::Export(ExportStatement {
                 id,
                 info: _,
                 defined_ident: _,
                 used_ident: _,
-            } => *id,
+            }) => *id,
             StatementType::Stmt {
                 id,
                 defined_ident: _,
@@ -92,18 +98,18 @@ impl StatementType {
 
     pub fn get_defined_ident(&self) -> &HashSet<String> {
         match self {
-            StatementType::Import {
+            StatementType::Import(ImportStatement {
                 id: _,
                 info: _,
                 is_self_executed: _,
                 defined_ident,
-            } => defined_ident,
-            StatementType::Export {
+            }) => defined_ident,
+            StatementType::Export(ExportStatement {
                 id: _,
                 info: _,
                 defined_ident,
                 used_ident: _,
-            } => defined_ident,
+            }) => defined_ident,
             StatementType::Stmt {
                 id: _,
                 defined_ident,
@@ -114,18 +120,18 @@ impl StatementType {
     }
     pub fn get_used_ident(&self) -> Option<&HashSet<String>> {
         match self {
-            StatementType::Import {
+            StatementType::Import(ImportStatement {
                 id: _,
                 info: _,
                 is_self_executed: _,
                 defined_ident: _,
-            } => None,
-            StatementType::Export {
+            }) => None,
+            StatementType::Export(ExportStatement {
                 id: _,
                 info: _,
                 defined_ident: _,
                 used_ident,
-            } => Option::Some(used_ident),
+            }) => Option::Some(used_ident),
             StatementType::Stmt {
                 id: _,
                 defined_ident: _,

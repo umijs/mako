@@ -5,10 +5,14 @@ use swc_ecma_visit::VisitWith;
 
 use crate::defined_ident_collector::DefinedIdentCollector;
 use crate::statement::{
-    ExportInfo, ExportSpecifier, ImportInfo, ImportSpecifier, StatementId, StatementType,
+    ExportInfo, ExportSpecifier, ExportStatement, ImportInfo, ImportSpecifier, ImportStatement,
+    StatementId, StatementType,
 };
 use crate::used_ident_collector::UsedIdentCollector;
 
+/**
+ * 分析当前传入的 esm ast，返回 StatementType
+ */
 pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementType {
     let mut top_level_defined_ident = HashSet::new();
     let mut used_ident = HashSet::new();
@@ -16,19 +20,9 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
 
     let mut analyze_used_indent_from_statement =
         |statement: &dyn VisitWith<UsedIdentCollector>, _ident: Option<String>| {
-            // skip if used_defined_idents is not None as it is only uses the imports and exports for now
-            // if used_defined_idents.is_some() {
-            //     return;
-            // }
-
-            let mut used_idents_collector = UsedIdentCollector::new();
-            statement.visit_with(&mut used_idents_collector);
-
-            // if let Some(ident) = ident {
-            //     defined_idents_map.insert(ident, used_idents_collector.used_idents.clone());
-            // }
-
-            used_ident.extend(used_idents_collector.used_ident);
+            let mut used_ident_collector = UsedIdentCollector::new();
+            statement.visit_with(&mut used_ident_collector);
+            used_ident.extend(used_ident_collector.used_ident);
         };
 
     match statement {
@@ -70,7 +64,7 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
                         is_self_executed = true;
                     }
 
-                    StatementType::Import {
+                    StatementType::Import(ImportStatement {
                         id,
                         info: ImportInfo {
                             source,
@@ -79,7 +73,7 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
                         },
                         is_self_executed,
                         defined_ident: top_level_defined_ident,
-                    }
+                    })
                 }
                 swc_ecma_ast::ModuleDecl::ExportDecl(export_decl) => {
                     match &export_decl.decl {
@@ -90,7 +84,7 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
                                 &decl.class,
                                 Some(decl.ident.to_string()),
                             );
-                            StatementType::Export {
+                            StatementType::Export(ExportStatement {
                                 id,
                                 info: ExportInfo {
                                     source: None,
@@ -102,7 +96,7 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
                                 },
                                 defined_ident: top_level_defined_ident,
                                 used_ident,
-                            }
+                            })
                         }
                         // export function foo() {}
                         swc_ecma_ast::Decl::Fn(decl) => {
@@ -111,7 +105,7 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
                                 &decl.function,
                                 Some(decl.ident.to_string()),
                             );
-                            StatementType::Export {
+                            StatementType::Export(ExportStatement {
                                 info: ExportInfo {
                                     source: None,
                                     specifiers: vec![ExportSpecifier::Named {
@@ -123,7 +117,7 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
                                 defined_ident: top_level_defined_ident,
                                 used_ident,
                                 id,
-                            }
+                            })
                         }
                         // export const foo = 1;
                         swc_ecma_ast::Decl::Var(decl) => {
@@ -145,7 +139,7 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
                                     top_level_defined_ident.insert(ident.clone());
                                 }
                             }
-                            StatementType::Export {
+                            StatementType::Export(ExportStatement {
                                 info: ExportInfo {
                                     source: None,
                                     specifiers,
@@ -154,7 +148,7 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
                                 defined_ident: top_level_defined_ident,
                                 used_ident,
                                 id,
-                            }
+                            })
                         }
                         // 下面这些TS相关的一般是提前转换过的，不会出现在这里
                         _decl => {
@@ -205,7 +199,7 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
                             }
                         }
                     }
-                    return StatementType::Export {
+                    return StatementType::Export(ExportStatement {
                         info: ExportInfo {
                             source: decl.src.as_ref().map(|s| s.value.to_string()),
                             specifiers,
@@ -214,7 +208,7 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
                         defined_ident: top_level_defined_ident,
                         used_ident,
                         id,
-                    };
+                    });
                 }
                 swc_ecma_ast::ModuleDecl::ExportDefaultDecl(decl) => {
                     match &decl.decl {
@@ -230,7 +224,7 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
                         }
                         swc_ecma_ast::DefaultDecl::TsInterfaceDecl(_) => {}
                     }
-                    StatementType::Export {
+                    StatementType::Export(ExportStatement {
                         info: ExportInfo {
                             source: None,
                             specifiers: vec![ExportSpecifier::Default],
@@ -239,11 +233,11 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
                         defined_ident: top_level_defined_ident,
                         used_ident,
                         id,
-                    }
+                    })
                 }
                 swc_ecma_ast::ModuleDecl::ExportDefaultExpr(decl) => {
                     analyze_used_indent_from_statement(&decl.expr, None);
-                    StatementType::Export {
+                    StatementType::Export(ExportStatement {
                         info: ExportInfo {
                             source: None,
                             specifiers: vec![ExportSpecifier::Default],
@@ -252,18 +246,20 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
                         defined_ident: top_level_defined_ident,
                         used_ident,
                         id,
-                    }
+                    })
                 }
-                swc_ecma_ast::ModuleDecl::ExportAll(export_all) => StatementType::Export {
-                    info: ExportInfo {
-                        source: Some(export_all.src.value.to_string()),
-                        stmt_id: id,
-                        specifiers: vec![ExportSpecifier::All(None)],
-                    },
-                    defined_ident: top_level_defined_ident,
-                    used_ident,
-                    id,
-                },
+                swc_ecma_ast::ModuleDecl::ExportAll(export_all) => {
+                    StatementType::Export(ExportStatement {
+                        info: ExportInfo {
+                            source: Some(export_all.src.value.to_string()),
+                            stmt_id: id,
+                            specifiers: vec![ExportSpecifier::All(None)],
+                        },
+                        defined_ident: top_level_defined_ident,
+                        used_ident,
+                        id,
+                    })
+                }
                 _ => {
                     unreachable!("export Ts decl not supported");
                 }
