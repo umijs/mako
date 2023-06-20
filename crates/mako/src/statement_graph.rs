@@ -105,14 +105,16 @@ impl fmt::Display for StatementGraph {
                         id,
                         format!(
                             "import {:?} - {:?}",
-                            &import.defined_ident, &import.is_self_executed
+                            &stable_display_hashset(&import.defined_ident),
+                            &import.is_self_executed
                         ),
                     ),
                     StatementType::Export(export) => (
                         id,
                         format!(
                             "export {:?} - {:?}",
-                            &export.defined_ident, &export.used_ident
+                            &stable_display_hashset(&export.defined_ident),
+                            &stable_display_hashset(&export.used_ident)
                         ),
                     ),
                     StatementType::Stmt {
@@ -124,7 +126,9 @@ impl fmt::Display for StatementGraph {
                         *id,
                         format!(
                             "stmt {:?} - {:?} - {:?}",
-                            &defined_ident, &used_ident, is_self_executed
+                            &stable_display_hashset(defined_ident),
+                            &stable_display_hashset(used_ident),
+                            is_self_executed
                         ),
                     ),
                 }
@@ -148,4 +152,10 @@ impl fmt::Display for StatementGraph {
             &nodes, &references
         )
     }
+}
+
+fn stable_display_hashset<T: ToString>(a: &HashSet<T>) -> Vec<&T> {
+    let mut a = a.iter().collect::<Vec<_>>();
+    a.sort_by_key(|id| id.to_string());
+    a
 }

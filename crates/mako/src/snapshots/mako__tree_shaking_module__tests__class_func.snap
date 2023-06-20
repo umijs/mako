@@ -3,6 +3,6 @@ source: crates/mako/src/tree_shaking_module.rs
 expression: "&tree_shaking_module"
 ---
 graph
- nodes:[(0, "import {\"x#0\"} - false"), (1, "export {\"f3#0\"} - {\"x#0\"}"), (2, "stmt {} - {\"x#0\", \"f3#0\", \"constructor#0\"} - true")]
+ nodes:[(0, "import [\"x#0\"] - false"), (1, "export [\"f3#0\"] - [\"x#0\"]"), (2, "stmt [] - [\"constructor#0\", \"f3#0\", \"x#0\"] - true")]
  
  references:["1 -> 0", "2 -> 0", "2 -> 1"]
