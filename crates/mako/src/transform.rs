@@ -7,7 +7,7 @@ use swc_common::collections::AHashMap;
 use swc_common::comments::{NoopComments, SingleThreadedComments};
 use swc_common::errors::HANDLER;
 use swc_common::sync::Lrc;
-use swc_common::{Globals, Mark, DUMMY_SP, GLOBALS};
+use swc_common::{Mark, DUMMY_SP, GLOBALS};
 use swc_css_ast::Stylesheet;
 use swc_css_visit::VisitMutWith;
 use swc_ecma_ast::{Expr, Lit, Module, Str};
@@ -33,6 +33,7 @@ use crate::transform_dep_replacer::DepReplacer;
 use crate::transform_dynamic_import::DynamicImport;
 use crate::transform_env_replacer::EnvReplacer;
 use crate::transform_optimizer::Optimizer;
+use crate::transform_provide::Provide;
 
 pub fn transform(
     ast: &mut ModuleAst,
@@ -67,11 +68,10 @@ fn transform_js(
     get_deps: &mut dyn for<'r> FnMut(&'r ModuleAst) -> ModuleDeps,
 ) -> Result<()> {
     let cm = context.meta.script.cm.clone();
-    let globals = Globals::default();
     // build env map
     let define = context.config.define.clone();
     let env_map = build_env_map(define);
-    GLOBALS.set(&globals, || {
+    GLOBALS.set(&context.meta.script.globals, || {
         try_with_handler(cm.clone(), Default::default(), |handler| {
             HELPERS.set(&Helpers::new(true), || {
                 HANDLER.set(handler, || {
@@ -99,6 +99,9 @@ fn transform_js(
 
                     let mut env_replacer = EnvReplacer::new(Lrc::new(env_map));
                     ast.visit_mut_with(&mut env_replacer);
+
+                    let mut provide = Provide::new(context.config.providers.clone());
+                    ast.visit_mut_with(&mut provide);
 
                     let mut optimizer = Optimizer {};
                     ast.visit_mut_with(&mut optimizer);
@@ -276,6 +279,41 @@ const foo = import('./foo');
 const foo = require.ensure([
     './foo'
 ]).then(require.bind(require, './foo'));
+
+//# sourceMappingURL=index.js.map
+        "#
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_provide() {
+        let code = r#"
+console.log(process);
+console.log(process.env);
+Buffer.from('foo');
+function foo() {
+    let process = 1;
+    console.log(process);
+    let Buffer = 'b';
+    Buffer.from('foo');
+}
+        "#
+        .trim();
+        let (code, _) = transform_js_code(code, None);
+        println!(">> CODE\n{}", code);
+        assert_eq!(
+            code,
+            r#"
+console.log(require("process"));
+console.log(require("process").env);
+require("buffer").Buffer.from('foo');
+function foo() {
+    let process = 1;
+    console.log(process);
+    let Buffer = 'b';
+    Buffer.from('foo');
+}
 
 //# sourceMappingURL=index.js.map
         "#
