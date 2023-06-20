@@ -44,7 +44,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ./comment-id
-          key: ${{ github.ref }}-comment-id
+          key: ${{ github.ref }}-pr-comment-id
 
       - name: Run benchmark
         run: cargo bench --bench with_antd -- --output-format bencher | tee output.txt
