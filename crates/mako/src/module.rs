@@ -38,6 +38,19 @@ impl ModuleInfo {
 pub struct ModuleId {
     pub id: String,
 }
+
+impl Ord for ModuleId {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.id.cmp(&other.id)
+    }
+}
+
+impl PartialOrd for ModuleId {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.id.partial_cmp(&other.id)
+    }
+}
+
 impl ModuleId {
     pub fn new(id: String) -> Self {
         Self { id }
@@ -77,20 +90,54 @@ pub enum ModuleAst {
     None,
 }
 
+pub enum ModuleType {
+    Script,
+    Css,
+}
+
+impl ModuleType {
+    pub fn is_script(&self) -> bool {
+        match self {
+            ModuleType::Script => true,
+            _ => false,
+        }
+    }
+}
+
 pub struct Module {
     pub id: ModuleId,
     pub is_entry: bool,
     pub info: Option<ModuleInfo>,
+    pub side_effects: bool,
 }
 
 impl Module {
     pub fn new(id: ModuleId, is_entry: bool, info: Option<ModuleInfo>) -> Self {
-        Self { id, is_entry, info }
+        Self {
+            id,
+            is_entry,
+            info,
+            side_effects: false,
+        }
     }
 
     #[allow(dead_code)]
     pub fn add_info(&mut self, info: Option<ModuleInfo>) {
         self.info = info;
+    }
+
+    pub fn is_external(&self) -> bool {
+        let info = self.info.as_ref().unwrap();
+        info.external.is_some()
+    }
+
+    pub fn get_module_type(&self) -> ModuleType {
+        let info = self.info.as_ref().unwrap();
+        match info.ast {
+            ModuleAst::Script(_) => ModuleType::Script,
+            ModuleAst::Css(_) => ModuleType::Css,
+            ModuleAst::None => todo!(),
+        }
     }
 }
 

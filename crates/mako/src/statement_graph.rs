@@ -1,18 +1,20 @@
 use std::collections::{HashMap, HashSet};
+use std::fmt;
 
-use petgraph::stable_graph::NodeIndex;
-use petgraph::Graph;
+use petgraph::stable_graph::{NodeIndex, StableDiGraph};
+use petgraph::visit::{EdgeRef, IntoEdgeReferences};
 use swc_ecma_ast::Module;
 
 use crate::analyze_statement::analyze_statement;
 use crate::statement::{StatementId, StatementType};
 
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct StatementGraphEdge {
     pub ident: HashSet<String>,
 }
 
 pub struct StatementGraph {
-    graph: Graph<StatementType, StatementGraphEdge>,
+    graph: StableDiGraph<StatementType, StatementGraphEdge>,
     id_index_map: HashMap<StatementId, NodeIndex>,
 }
 
@@ -21,7 +23,7 @@ pub struct StatementGraph {
  */
 impl StatementGraph {
     pub fn new(module: &Module) -> Self {
-        let mut graph = Graph::new();
+        let mut graph = StableDiGraph::new();
         let mut id_index_map = HashMap::new();
 
         // 只分析 body 顶层的声明语句
@@ -42,7 +44,7 @@ impl StatementGraph {
 
     pub fn empty() -> Self {
         Self {
-            graph: petgraph::graph::Graph::new(),
+            graph: StableDiGraph::new(),
             id_index_map: HashMap::new(),
         }
     }
@@ -87,5 +89,60 @@ impl StatementGraph {
         for (from, to, ident) in edges_to_add {
             self.add_edge(from, to, ident);
         }
+    }
+}
+
+impl fmt::Display for StatementGraph {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut nodes = self
+            .graph
+            .node_weights()
+            .into_iter()
+            .map(|node| {
+                let id = node.get_id();
+                match node {
+                    StatementType::Import(import) => (
+                        id,
+                        format!(
+                            "import {:?} - {:?}",
+                            &import.defined_ident, &import.info.source
+                        ),
+                    ),
+                    StatementType::Export(export) => (
+                        id,
+                        format!(
+                            "export {:?} - {:?} - {:?}",
+                            &export.defined_ident, &export.used_ident, &export.info.source
+                        ),
+                    ),
+                    StatementType::Stmt {
+                        id,
+                        defined_ident,
+                        used_ident,
+                        is_self_executed: _,
+                    } => (
+                        *id,
+                        format!("stmt {:?} - {:?}", &defined_ident, &used_ident),
+                    ),
+                }
+            })
+            .collect::<Vec<_>>();
+        let mut references = self
+            .graph
+            .edge_references()
+            .into_iter()
+            .map(|edge| {
+                let source = &self.graph[edge.source()].get_id();
+                let target = &self.graph[edge.target()].get_id();
+                format!("{} -> {}", source, target)
+            })
+            .collect::<Vec<_>>();
+        nodes.sort_by_key(|id| id.0);
+        references.sort_by_key(|id| id.to_string());
+        write!(
+            f,
+            "graph\n nodes:{:?}\n \n references:{:?}",
+            &nodes, &references
+        )
     }
 }

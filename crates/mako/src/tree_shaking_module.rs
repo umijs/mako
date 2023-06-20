@@ -1,4 +1,4 @@
-use std::vec;
+use std::{fmt, vec};
 
 use crate::module::{Module, ModuleId};
 use crate::statement::{ExportStatement, ImportStatement, StatementType};
@@ -65,13 +65,19 @@ impl TreeShakingModule {
     }
 }
 
+impl fmt::Display for TreeShakingModule {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.statement_graph.fmt(f)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
 
     use super::TreeShakingModule;
-    use crate::assert_debug_snapshot;
     use crate::test_helper::create_mock_module;
+    use crate::{assert_debug_snapshot, assert_display_snapshot};
 
     #[test]
     fn test_tree_shaking_module() {
@@ -89,5 +95,6 @@ export const f2 = x;
         assert_debug_snapshot!(&tree_shaking_module.statements());
         assert_eq!(tree_shaking_module.exports().len(), 2);
         assert_eq!(tree_shaking_module.imports().len(), 2);
+        assert_display_snapshot!(&tree_shaking_module);
     }
 }
