@@ -38,6 +38,12 @@ jobs:
           path: ./benchmark-data
           key: ${{ runner.os }}-benchmark
 
+      - name: Setup comment id
+        uses: actions/cache@v3
+        with:
+          path: ./comment_id
+          key: ${{ github.ref }}-comment-id
+
       - name: Run benchmark
         run: cargo bench --bench with_antd -- --output-format bencher | tee output.txt
 
@@ -59,9 +65,9 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const cacheIdFile = './benchmark-data/comment_id.txt';
             const { owner, repo } = context.repo;
             const prNumber = context.payload.pull_request.number;
+            const cacheIdFile = `./comment_id`;
 
             let data = '';
             await exec.exec('node', ['-e', `
@@ -101,20 +107,20 @@ jobs:
             const { summary, commentId } = data;
 
             if (commentId) {
-              const { id } = await github.rest.issues.updateComment({
+              await github.rest.issues.updateComment({
                 owner,
                 repo,
                 comment_id: commentId,
                 body: summary,
               });
             } else {
-              const { id } = await github.rest.issues.createComment({
+              const { data: { id } } = await github.rest.issues.createComment({
                 owner,
                 repo,
                 issue_number: prNumber,
                 body: summary,
               });
-              await exec.exec('echo', [id, '>', cacheIdFile]);
+              await exec.exec('node', ['-e', `require('fs').writeFileSync('${cacheIdFile}', '${id}', 'utf-8')`]);
             }
 
 
