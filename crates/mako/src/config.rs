@@ -15,6 +15,8 @@ pub struct ResolveConfig {
     pub extensions: Vec<String>,
 }
 
+pub type Providers = HashMap<String, (String, String)>;
+
 #[derive(Deserialize, Debug, PartialEq, Eq, ValueEnum, Clone)]
 pub enum Mode {
     #[serde(rename = "development")]
@@ -57,6 +59,7 @@ pub struct Config {
     pub mode: Mode,
     pub devtool: DevtoolConfig,
     pub externals: HashMap<String, String>,
+    pub providers: Providers,
     pub copy: Vec<String>,
     pub public_path: String,
     pub inline_limit: usize,
@@ -75,6 +78,7 @@ const DEFAULT_CONFIG: &str = r#"
     "devtool": "source-map",
     "externals": {},
     "copy": ["public"],
+    "providers": {},
     "public_path": "/",
     "inline_limit": 10000,
     "targets": { "chrome": 80 },

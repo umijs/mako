@@ -46,5 +46,12 @@ impl Config {
                     format!("node-libs-browser-okam/polyfill/{}", name),
                 );
         }
+
+        config
+            .providers
+            .insert("process".into(), ("process".into(), "".into()));
+        config
+            .providers
+            .insert("Buffer".into(), ("buffer".into(), "Buffer".into()));
     }
 }
