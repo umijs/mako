@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
 
 use swc_common::sync::Lrc;
-use swc_common::SourceMap;
+use swc_common::{Globals, SourceMap};
 
 use crate::chunk_graph::ChunkGraph;
 use crate::config::Config;
@@ -34,24 +34,28 @@ impl Meta {
 
 pub struct ScriptMeta {
     pub cm: Lrc<SourceMap>,
+    pub globals: Globals,
 }
 
 impl ScriptMeta {
     fn new() -> Self {
         Self {
             cm: Default::default(),
+            globals: Globals::default(),
         }
     }
 }
 
 pub struct CssMeta {
     pub cm: Lrc<SourceMap>,
+    pub globals: Globals,
 }
 
 impl CssMeta {
     fn new() -> Self {
         Self {
             cm: Default::default(),
+            globals: Globals::default(),
         }
     }
 }

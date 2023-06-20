@@ -48,7 +48,7 @@ impl Compiler {
             .par_iter_mut()
             .try_for_each(|file| -> Result<()> {
                 if matches!(self.context.config.mode, Mode::Production) {
-                    file.js_ast = minify_js(file.js_ast.clone(), &self.context.meta.script.cm)?;
+                    file.js_ast = minify_js(file.js_ast.clone(), &self.context)?;
                 }
                 Ok(())
             })?;

@@ -7,7 +7,7 @@ use swc_common::collections::AHashMap;
 use swc_common::comments::{NoopComments, SingleThreadedComments};
 use swc_common::errors::HANDLER;
 use swc_common::sync::Lrc;
-use swc_common::{Globals, Mark, DUMMY_SP, GLOBALS};
+use swc_common::{Mark, DUMMY_SP, GLOBALS};
 use swc_css_ast::Stylesheet;
 use swc_css_visit::VisitMutWith;
 use swc_ecma_ast::{Expr, Lit, Module, Str};
@@ -68,11 +68,10 @@ fn transform_js(
     get_deps: &mut dyn for<'r> FnMut(&'r ModuleAst) -> ModuleDeps,
 ) -> Result<()> {
     let cm = context.meta.script.cm.clone();
-    let globals = Globals::default();
     // build env map
     let define = context.config.define.clone();
     let env_map = build_env_map(define);
-    GLOBALS.set(&globals, || {
+    GLOBALS.set(&context.meta.script.globals, || {
         try_with_handler(cm.clone(), Default::default(), |handler| {
             HELPERS.set(&Helpers::new(true), || {
                 HANDLER.set(handler, || {
