@@ -37,13 +37,13 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           # ref: https://github.com/benchmark-action/github-action-benchmark#minimal-setup
-          path: ./benchmark_data
+          path: ./benchmark-data
           key: ${{ runner.os }}-benchmark
 
       - name: Setup comment id
         uses: actions/cache@v3
         with:
-          path: ./comment_id
+          path: ./comment-id
           key: ${{ github.ref }}-comment-id
 
       - name: Run benchmark
@@ -57,7 +57,7 @@ jobs:
           output-file-path: output.txt
           github-token: ${{ secrets.GITHUB_TOKEN }}
           alert-threshold: '150%'
-          external-data-json-path: ./benchmark_data/prev.json
+          external-data-json-path: ./benchmark-data/prev.json
           summary-always: true
           fail-on-alert: true
           comment-on-alert: true
@@ -71,7 +71,7 @@ jobs:
           script: |
             const { owner, repo } = context.repo;
             const prNumber = context.payload.pull_request.number;
-            const cacheIdFile = `./comment_id`;
+            const cacheIdFile = `./comment-id`;
 
             let data = '';
             await exec.exec('node', ['-e', `
@@ -132,6 +132,6 @@ jobs:
         uses: actions/cache/save@v3
         if: ${{ github.event_name == 'push' }}
         with:
-          path: ./benchmark_data
+          path: ./benchmark-data
           key: ${{ runner.os }}-benchmark
 
