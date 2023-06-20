@@ -80,6 +80,7 @@ pub fn get_resolver(config: &Config) -> Resolver {
         ],
         condition_names: if is_browser {
             HashSet::from([
+                "module".to_string(),
                 "browser".to_string(),
                 "import".to_string(),
                 "default".to_string(),
@@ -87,6 +88,7 @@ pub fn get_resolver(config: &Config) -> Resolver {
             ])
         } else {
             HashSet::from([
+                "module".to_string(),
                 "node".to_string(),
                 "import".to_string(),
                 "default".to_string(),
