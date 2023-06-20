@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use clap::ValueEnum;
 use serde::Deserialize;
@@ -93,7 +93,7 @@ const DEFAULT_CONFIG: &str = r#"
 
 impl Config {
     pub fn new(
-        root: &PathBuf,
+        root: &Path,
         default_config: Option<&str>,
         cli_config: Option<&str>,
     ) -> Result<Self, config::ConfigError> {
@@ -135,7 +135,7 @@ impl Config {
             config
                 .define
                 .entry("NODE_ENV".to_string())
-                .or_insert(config.mode.to_string());
+                .or_insert_with(|| config.mode.to_string());
 
             if config.public_path != "runtime" && !config.public_path.ends_with('/') {
                 panic!("public_path must end with '/' or be 'runtime'");
