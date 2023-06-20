@@ -61,6 +61,7 @@ pub struct ExportStatement {
     pub used_ident: HashSet<String>,
 }
 
+#[derive(Debug, Clone)]
 pub enum StatementType {
     Import(ImportStatement),
     Export(ExportStatement),

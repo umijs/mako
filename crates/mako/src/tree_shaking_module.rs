@@ -14,7 +14,7 @@ pub struct TreeShakingModule {
     pub id: ModuleId,
     pub used_exports: UsedExports,
     pub side_effects: bool,
-    pub statement_graph: StatementGraph,
+    statement_graph: StatementGraph,
 }
 
 impl TreeShakingModule {
@@ -40,6 +40,10 @@ impl TreeShakingModule {
         }
     }
 
+    pub fn statements(&self) -> Vec<&StatementType> {
+        self.statement_graph.statements()
+    }
+
     pub fn imports(&self) -> Vec<ImportStatement> {
         let mut imports: Vec<ImportStatement> = vec![];
         for statement in self.statement_graph.statements() {
@@ -58,5 +62,32 @@ impl TreeShakingModule {
             }
         }
         exports
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use super::TreeShakingModule;
+    use crate::assert_debug_snapshot;
+    use crate::test_helper::create_mock_module;
+
+    #[test]
+    fn test_tree_shaking_module() {
+        let module = create_mock_module(
+            PathBuf::from("/path/to/test"),
+            r#"
+import { x } from 'foo';
+import 'bar';
+const f0 = 1;
+export const f1 = 1;
+export const f2 = x;
+"#,
+        );
+        let tree_shaking_module = TreeShakingModule::new(&module);
+        assert_debug_snapshot!(&tree_shaking_module.statements());
+        assert_eq!(tree_shaking_module.exports().len(), 2);
+        assert_eq!(tree_shaking_module.imports().len(), 2);
     }
 }
