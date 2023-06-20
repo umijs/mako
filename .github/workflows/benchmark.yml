@@ -1,6 +1,8 @@
 name: Rust-Benchmark
 
 on:
+  push:
+    branches: [master]
   pull_request:
     types: [opened, synchronize]
 
@@ -31,11 +33,11 @@ jobs:
             target/
           key: cargo-store-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Setup benchmark data
-        uses: actions/cache@v3
+      - name: Setup baseline benchmark data
+        uses: actions/cache/restore@v3
         with:
           # ref: https://github.com/benchmark-action/github-action-benchmark#minimal-setup
-          path: ./benchmark-data
+          path: ./benchmark_data
           key: ${{ runner.os }}-benchmark
 
       - name: Setup comment id
@@ -55,13 +57,15 @@ jobs:
           output-file-path: output.txt
           github-token: ${{ secrets.GITHUB_TOKEN }}
           alert-threshold: '150%'
-          external-data-json-path: ./benchmark-data/prev.json
+          external-data-json-path: ./benchmark_data/prev.json
           summary-always: true
           fail-on-alert: true
           comment-on-alert: true
 
+      # only comment for pull request
       - name: Comment PR
         uses: actions/github-script@v6
+        if: ${{ github.event_name == 'pull_request' }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -123,4 +127,11 @@ jobs:
               await exec.exec('node', ['-e', `require('fs').writeFileSync('${cacheIdFile}', '${id}', 'utf-8')`]);
             }
 
+      # only save baseline data for master
+      - name: Save baseline benchmark data
+        uses: actions/cache/save@v3
+        if: ${{ github.event_name == 'push' }}
+        with:
+          path: ./benchmark_data
+          key: ${{ runner.os }}-benchmark
 
