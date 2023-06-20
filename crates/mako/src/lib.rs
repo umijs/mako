@@ -34,4 +34,5 @@ mod transform_dynamic_import;
 mod transform_env_replacer;
 mod transform_in_generate;
 mod transform_optimizer;
+mod transform_provide;
 mod update;

@@ -35,6 +35,7 @@ impl Compiler {
         }
 
         // generate chunks
+        // TODO: 并行
         let t_generate_chunks = Instant::now();
         info!("generate chunks");
         let mut output_files = self.generate_chunks()?;

@@ -33,6 +33,7 @@ use crate::transform_dep_replacer::DepReplacer;
 use crate::transform_dynamic_import::DynamicImport;
 use crate::transform_env_replacer::EnvReplacer;
 use crate::transform_optimizer::Optimizer;
+use crate::transform_provide::Provide;
 
 pub fn transform(
     ast: &mut ModuleAst,
@@ -99,6 +100,9 @@ fn transform_js(
 
                     let mut env_replacer = EnvReplacer::new(Lrc::new(env_map));
                     ast.visit_mut_with(&mut env_replacer);
+
+                    let mut provide = Provide::new(context.config.providers.clone());
+                    ast.visit_mut_with(&mut provide);
 
                     let mut optimizer = Optimizer {};
                     ast.visit_mut_with(&mut optimizer);
@@ -276,6 +280,41 @@ const foo = import('./foo');
 const foo = require.ensure([
     './foo'
 ]).then(require.bind(require, './foo'));
+
+//# sourceMappingURL=index.js.map
+        "#
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_provide() {
+        let code = r#"
+console.log(process);
+console.log(process.env);
+Buffer.from('foo');
+function foo() {
+    let process = 1;
+    console.log(process);
+    let Buffer = 'b';
+    Buffer.from('foo');
+}
+        "#
+        .trim();
+        let (code, _) = transform_js_code(code, None);
+        println!(">> CODE\n{}", code);
+        assert_eq!(
+            code,
+            r#"
+console.log(require("process"));
+console.log(require("process").env);
+require("buffer").Buffer.from('foo');
+function foo() {
+    let process = 1;
+    console.log(process);
+    let Buffer = 'b';
+    Buffer.from('foo');
+}
 
 //# sourceMappingURL=index.js.map
         "#
