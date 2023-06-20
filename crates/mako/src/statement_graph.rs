@@ -105,24 +105,27 @@ impl fmt::Display for StatementGraph {
                         id,
                         format!(
                             "import {:?} - {:?}",
-                            &import.defined_ident, &import.info.source
+                            &import.defined_ident, &import.is_self_executed
                         ),
                     ),
                     StatementType::Export(export) => (
                         id,
                         format!(
-                            "export {:?} - {:?} - {:?}",
-                            &export.defined_ident, &export.used_ident, &export.info.source
+                            "export {:?} - {:?}",
+                            &export.defined_ident, &export.used_ident
                         ),
                     ),
                     StatementType::Stmt {
                         id,
                         defined_ident,
                         used_ident,
-                        is_self_executed: _,
+                        is_self_executed,
                     } => (
                         *id,
-                        format!("stmt {:?} - {:?}", &defined_ident, &used_ident),
+                        format!(
+                            "stmt {:?} - {:?} - {:?}",
+                            &defined_ident, &used_ident, is_self_executed
+                        ),
                     ),
                 }
             })

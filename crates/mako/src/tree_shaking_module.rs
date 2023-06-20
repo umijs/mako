@@ -97,4 +97,34 @@ export const f2 = x;
         assert_eq!(tree_shaking_module.imports().len(), 2);
         assert_display_snapshot!(&tree_shaking_module);
     }
+
+    #[test]
+    fn test_class_func() {
+        let module = create_mock_module(
+            PathBuf::from("/path/to/test"),
+            r#"
+import { x } from 'foo';
+
+export const f3 = x;
+
+if (true) {
+    const f1 = x;
+
+    {
+        const f2 = 1;
+    }
+
+    class Foo {
+        constructor() {
+            x;
+            f3;
+        }
+    }
+}
+
+"#,
+        );
+        let tree_shaking_module = TreeShakingModule::new(&module);
+        assert_display_snapshot!(&tree_shaking_module);
+    }
 }
