@@ -1,5 +1,19 @@
 {
   "define": {
-    "PACKAGE_NAME": "MAKO"
+    "PACKAGE_NAME": "MAKO",
+    "FOO": false,
+    "YOUYOU": {
+      "name": "youyou"
+    },
+    "XIAOHUONI": {
+      "friend": {
+        "name": "sorrycc"
+      }
+    },
+    "MEMBERS": 3,
+    "MEMBER_NAMES": [
+      { "name": "sorrycc" },
+      { "name": "xiaohuoni" }
+    ]
   }
 }

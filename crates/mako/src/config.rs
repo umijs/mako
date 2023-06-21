@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use clap::ValueEnum;
 use serde::Deserialize;
+use serde_json::Value;
 
 #[derive(Deserialize, Debug)]
 pub struct OutputConfig {
@@ -62,7 +63,7 @@ pub struct Config {
     pub inline_limit: usize,
     pub targets: HashMap<String, usize>,
     pub platform: Platform,
-    pub define: HashMap<String, String>,
+    pub define: HashMap<String, Value>,
 }
 
 const CONFIG_FILE: &str = "mako.config.json";
