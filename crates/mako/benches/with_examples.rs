@@ -21,7 +21,6 @@ fn multiple_entries_heavy_min(c: &mut Criterion) {
             Command::new("target/release/mako")
                 .current_dir("../..")
                 .args(["examples/multiple-entries-heavy", "--mode", "production"])
-                .arg("--mode production")
                 .output()
                 .expect("Failed to execute binary");
         });

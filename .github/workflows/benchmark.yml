@@ -97,7 +97,7 @@ jobs:
                       .replace(
                         /`(\d+)`\s+ns|`(±\s+)(\d+)`/g,
                         (_, d1, s, d2) => {
-                          return `${s}${((d2 || d1)/10e6).toFixed(2)} ms`
+                          return `${s || ''}${((d2 || d1)/10e6).toFixed(2)} ms`
                         }
                       );
                     return true;
