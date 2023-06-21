@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   benchmark:
-    name: Run Rust benchmark with antd
+    name: Run benchmark
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -46,13 +46,13 @@ jobs:
           path: ./comment-id
           key: ${{ github.ref }}-pr-comment-id
 
-      - name: Run benchmark
-        run: cargo bench --bench with_antd -- --output-format bencher | tee output.txt
+      - name: Run cargo bench
+        run: cargo bench --bench with_examples -- --output-format bencher | tee output.txt
 
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
         with:
-          name: Rust Benchmark
+          name: examples
           tool: 'cargo'
           output-file-path: output.txt
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -86,7 +86,7 @@ jobs:
                 .some(file => {
                   const content = fs.readFileSync(path.join(summaryDir, file), 'utf-8');
 
-                  if (content.includes('mako_with_antd')) {
+                  if (content.includes('Benchmark')) {
                     summary = content;
                     return true;
                   }

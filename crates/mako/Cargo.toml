@@ -62,5 +62,5 @@ insta = { version = "1.29.0", features = ["yaml"] }
 criterion = "0.5.1"
 
 [[bench]]
-name = "with_antd"
+name = "with_examples"
 harness = false
