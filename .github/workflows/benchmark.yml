@@ -34,6 +34,7 @@ jobs:
           key: cargo-store-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Setup baseline benchmark data
+        id: cache-benchmark-restore
         uses: actions/cache/restore@v3
         with:
           # ref: https://github.com/benchmark-action/github-action-benchmark#minimal-setup
@@ -139,9 +140,10 @@ jobs:
 
       # only save baseline data for master
       - name: Save baseline benchmark data
+        id: cache-benchmark-save
         uses: actions/cache/save@v3
         if: ${{ github.event_name == 'pull_request' }}
         with:
           path: ./benchmark-data
-          key: ${{ runner.os }}-benchmark
+          key: ${{ steps.cache-benchmark-restore.outputs.cache-primary-key }}
 
