@@ -18,7 +18,7 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
     let mut used_ident = HashSet::new();
     let mut is_self_executed = false;
 
-    let mut analyze_used_indent_from_statement =
+    let mut analyze_used_ident_from_statement =
         |statement: &dyn VisitWith<UsedIdentCollector>, _ident: Option<String>| {
             let mut used_ident_collector = UsedIdentCollector::new();
             statement.visit_with(&mut used_ident_collector);
@@ -80,7 +80,7 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
                         // export class Foo {}
                         swc_ecma_ast::Decl::Class(decl) => {
                             top_level_defined_ident.insert(decl.ident.to_string());
-                            analyze_used_indent_from_statement(
+                            analyze_used_ident_from_statement(
                                 &decl.class,
                                 Some(decl.ident.to_string()),
                             );
@@ -101,7 +101,7 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
                         // export function foo() {}
                         swc_ecma_ast::Decl::Fn(decl) => {
                             top_level_defined_ident.insert(decl.ident.to_string());
-                            analyze_used_indent_from_statement(
+                            analyze_used_ident_from_statement(
                                 &decl.function,
                                 Some(decl.ident.to_string()),
                             );
@@ -236,7 +236,7 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
                     })
                 }
                 swc_ecma_ast::ModuleDecl::ExportDefaultExpr(decl) => {
-                    analyze_used_indent_from_statement(&decl.expr, None);
+                    analyze_used_ident_from_statement(&decl.expr, None);
                     StatementType::Export(ExportStatement {
                         info: ExportInfo {
                             source: None,
@@ -269,20 +269,20 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
             match statement {
                 swc_ecma_ast::Stmt::Block(block) => {
                     is_self_executed = true;
-                    analyze_used_indent_from_statement(block, None);
+                    analyze_used_ident_from_statement(block, None);
                 }
                 swc_ecma_ast::Stmt::Empty(_) => todo!(),
                 swc_ecma_ast::Stmt::Debugger(_) => todo!(),
                 swc_ecma_ast::Stmt::With(with) => {
                     is_self_executed = true;
-                    analyze_used_indent_from_statement(with, None);
+                    analyze_used_ident_from_statement(with, None);
                 }
                 swc_ecma_ast::Stmt::Return(_) => {
                     unreachable!("return statement is not supported");
                 }
                 swc_ecma_ast::Stmt::Labeled(label) => {
                     is_self_executed = true;
-                    analyze_used_indent_from_statement(label, None);
+                    analyze_used_ident_from_statement(label, None);
                 }
                 swc_ecma_ast::Stmt::Break(_) => {
                     unreachable!("break statement is not supported");
@@ -292,51 +292,51 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
                 }
                 swc_ecma_ast::Stmt::If(if_statement) => {
                     is_self_executed = true;
-                    analyze_used_indent_from_statement(if_statement, None);
+                    analyze_used_ident_from_statement(if_statement, None);
                 }
                 swc_ecma_ast::Stmt::Switch(switch_statement) => {
                     is_self_executed = true;
-                    analyze_used_indent_from_statement(switch_statement, None);
+                    analyze_used_ident_from_statement(switch_statement, None);
                 }
                 swc_ecma_ast::Stmt::Throw(throw_statement) => {
                     is_self_executed = true;
-                    analyze_used_indent_from_statement(throw_statement, None);
+                    analyze_used_ident_from_statement(throw_statement, None);
                 }
                 swc_ecma_ast::Stmt::Try(try_statement) => {
                     is_self_executed = true;
-                    analyze_used_indent_from_statement(try_statement, None);
+                    analyze_used_ident_from_statement(try_statement, None);
                 }
                 swc_ecma_ast::Stmt::While(while_statement) => {
                     is_self_executed = true;
-                    analyze_used_indent_from_statement(while_statement, None);
+                    analyze_used_ident_from_statement(while_statement, None);
                 }
                 swc_ecma_ast::Stmt::DoWhile(do_while_statement) => {
                     is_self_executed = true;
-                    analyze_used_indent_from_statement(do_while_statement, None);
+                    analyze_used_ident_from_statement(do_while_statement, None);
                 }
                 swc_ecma_ast::Stmt::For(for_statement) => {
                     is_self_executed = true;
-                    analyze_used_indent_from_statement(for_statement, None);
+                    analyze_used_ident_from_statement(for_statement, None);
                 }
                 swc_ecma_ast::Stmt::ForIn(for_in_statement) => {
                     is_self_executed = true;
-                    analyze_used_indent_from_statement(for_in_statement, None);
+                    analyze_used_ident_from_statement(for_in_statement, None);
                 }
                 swc_ecma_ast::Stmt::ForOf(for_of_statement) => {
                     is_self_executed = true;
-                    analyze_used_indent_from_statement(for_of_statement, None);
+                    analyze_used_ident_from_statement(for_of_statement, None);
                 }
                 swc_ecma_ast::Stmt::Decl(decl) => match decl {
                     swc_ecma_ast::Decl::Class(class_decl) => {
                         top_level_defined_ident.insert(class_decl.ident.to_string());
-                        analyze_used_indent_from_statement(
+                        analyze_used_ident_from_statement(
                             &class_decl.class,
                             Some(class_decl.ident.to_string()),
                         );
                     }
                     swc_ecma_ast::Decl::Fn(fn_decl) => {
                         top_level_defined_ident.insert(fn_decl.ident.to_string());
-                        analyze_used_indent_from_statement(
+                        analyze_used_ident_from_statement(
                             &fn_decl.function,
                             Some(fn_decl.ident.to_string()),
                         );
@@ -360,7 +360,7 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
                 },
                 swc_ecma_ast::Stmt::Expr(expr_statement) => {
                     is_self_executed = true;
-                    analyze_used_indent_from_statement(expr_statement, None)
+                    analyze_used_ident_from_statement(expr_statement, None)
                 }
             }
             StatementType::Stmt {

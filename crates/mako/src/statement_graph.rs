@@ -72,16 +72,16 @@ impl StatementGraph {
         let mut edges_to_add = Vec::new();
         for statement in self.statements() {
             for def_statement in self.statements() {
-                let mut deps_indents = HashSet::new();
+                let mut deps_ident = HashSet::new();
                 for def_ident in def_statement.get_defined_ident() {
                     if let Some(used_ident) = statement.get_used_ident() {
                         if used_ident.contains(def_ident) {
-                            deps_indents.insert(def_ident.clone());
+                            deps_ident.insert(def_ident.clone());
                         }
                     }
                 }
-                if !deps_indents.is_empty() {
-                    edges_to_add.push((statement.get_id(), def_statement.get_id(), deps_indents));
+                if !deps_ident.is_empty() {
+                    edges_to_add.push((statement.get_id(), def_statement.get_id(), deps_ident));
                 }
             }
         }
