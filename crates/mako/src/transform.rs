@@ -82,6 +82,8 @@ fn transform_js(
                     let import_interop = ImportInterop::Swc;
 
                     ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
+
+                    // indent.span needed in mako_react refresh, so it must be after resolver visitor
                     ast.visit_mut_with(&mut mako_react(
                         cm.clone(),
                         context,
