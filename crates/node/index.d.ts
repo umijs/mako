@@ -13,11 +13,14 @@ export function build(
       extensions?: string[];
     };
     mode?: 'development' | 'production';
+    define?: Record<string, string>;
     devtool?: 'source-map' | 'inline-source-map';
     externals?: Record<string, string>;
     copy?: string[];
+    providers?: Record<string, string[]>;
     public_path?: string;
-    data_url_limit?: number;
+    inline_limit?: number;
     targets?: Record<string, number>;
+    platform?: 'node' | 'browser';
   },
 ): void;

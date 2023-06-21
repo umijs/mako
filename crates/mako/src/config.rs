@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use clap::ValueEnum;
 use serde::Deserialize;
@@ -15,6 +15,8 @@ pub struct ResolveConfig {
     pub alias: HashMap<String, String>,
     pub extensions: Vec<String>,
 }
+
+pub type Providers = HashMap<String, (String, String)>;
 
 #[derive(Deserialize, Debug, PartialEq, Eq, ValueEnum, Clone)]
 pub enum Mode {
@@ -58,6 +60,7 @@ pub struct Config {
     pub mode: Mode,
     pub devtool: DevtoolConfig,
     pub externals: HashMap<String, String>,
+    pub providers: Providers,
     pub copy: Vec<String>,
     pub public_path: String,
     pub inline_limit: usize,
@@ -76,6 +79,7 @@ const DEFAULT_CONFIG: &str = r#"
     "devtool": "source-map",
     "externals": {},
     "copy": ["public"],
+    "providers": {},
     "public_path": "/",
     "inline_limit": 10000,
     "targets": { "chrome": 80 },
@@ -90,7 +94,7 @@ const DEFAULT_CONFIG: &str = r#"
 
 impl Config {
     pub fn new(
-        root: &PathBuf,
+        root: &Path,
         default_config: Option<&str>,
         cli_config: Option<&str>,
     ) -> Result<Self, config::ConfigError> {
@@ -127,6 +131,12 @@ impl Config {
             if config.output.path.is_relative() {
                 config.output.path = root.join(config.output.path.to_string_lossy().to_string());
             }
+
+            // set NODE_ENV to mode
+            config
+                .define
+                .entry("NODE_ENV".to_string())
+                .or_insert_with(|| config.mode.to_string());
 
             if config.public_path != "runtime" && !config.public_path.ends_with('/') {
                 panic!("public_path must end with '/' or be 'runtime'");

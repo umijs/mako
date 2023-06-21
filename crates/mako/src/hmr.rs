@@ -54,7 +54,7 @@ impl Compiler {
             }
         }
 
-        let (js_code, js_sourcemap) = js_ast_to_code(&js_ast, &self.context, filename);
+        let (js_code, js_sourcemap) = js_ast_to_code(&js_ast, &self.context, filename).unwrap();
         (js_code, js_sourcemap)
     }
 }
