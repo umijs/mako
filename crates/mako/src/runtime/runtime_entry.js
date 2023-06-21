@@ -37,6 +37,8 @@ function createRuntime(makoModules, entryModuleId) {
   let currentChildModule;
   const hmrHandler = (options) => {
     options.module.hot = createModuleHotObject(options.id, options.module);
+    // for refresh module.meta.hot API style
+    options.module.meta = { hot: options.module.hot };
     options.module.parents = currentParents;
     currentParents = [];
     options.module.children = [];
