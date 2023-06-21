@@ -57,7 +57,6 @@ impl VisitMut for EnvReplacer {
     }
 
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
-
         if let Expr::Ident(Ident { ref sym, span, .. }) = expr {
             let envs = EnvsType::Node(self.envs.clone());
             if let Some(env) = EnvReplacer::get_env(&envs, sym) {
@@ -65,7 +64,7 @@ impl VisitMut for EnvReplacer {
                 *expr = env;
                 return;
             }
-            
+
             if self.bindings.contains(&(sym.clone(), span.ctxt)) {
                 expr.visit_mut_children_with(self);
                 return;

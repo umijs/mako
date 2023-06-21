@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use serde_json::Value;
 use swc_atoms::JsWord;
 use swc_common::collections::AHashMap;
 use swc_common::comments::{NoopComments, SingleThreadedComments};
@@ -8,7 +9,10 @@ use swc_common::sync::Lrc;
 use swc_common::{Globals, Mark, DUMMY_SP, GLOBALS};
 use swc_css_ast::Stylesheet;
 use swc_css_visit::VisitMutWith;
-use swc_ecma_ast::{Expr, Lit, Module, Str, Bool, Number, ArrayLit, Null, Prop, KeyValueProp, PropName, ObjectLit, Ident, PropOrSpread, ExprOrSpread};
+use swc_ecma_ast::{
+    ArrayLit, Bool, Expr, ExprOrSpread, Ident, KeyValueProp, Lit, Module, Null, Number, ObjectLit,
+    Prop, PropName, PropOrSpread, Str,
+};
 use swc_ecma_preset_env::{self as swc_preset_env};
 use swc_ecma_transforms::feature::FeatureFlag;
 use swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
@@ -30,7 +34,6 @@ use crate::transform_dep_replacer::DepReplacer;
 use crate::transform_dynamic_import::DynamicImport;
 use crate::transform_env_replacer::EnvReplacer;
 use crate::transform_optimizer::Optimizer;
-use serde_json::{Value};
 
 pub fn transform(
     ast: &mut ModuleAst,
@@ -65,11 +68,14 @@ fn get_env_expr(v: Value) -> Expr {
             for item in val.iter() {
                 elems.push(Some(ExprOrSpread {
                     spread: None,
-                    expr: Box::new(get_env_expr(item.clone()))
+                    expr: Box::new(get_env_expr(item.clone())),
                 }));
             }
-            Expr::Array(ArrayLit { span: DUMMY_SP, elems })
-        },
+            Expr::Array(ArrayLit {
+                span: DUMMY_SP,
+                elems,
+            })
+        }
         Value::Null => Expr::Lit(Lit::Null(Null { span: DUMMY_SP })),
         Value::Object(val) => {
             let mut props = vec![];
@@ -80,7 +86,10 @@ fn get_env_expr(v: Value) -> Expr {
                 })));
                 props.push(prop);
             }
-            Expr::Object(ObjectLit { span: DUMMY_SP, props })
+            Expr::Object(ObjectLit {
+                span: DUMMY_SP,
+                props,
+            })
         }
     }
 }
@@ -106,7 +115,9 @@ fn transform_js(
     let mode = &context.config.mode.to_string();
     // if not define NODE_ENV, set NODE_ENV to mode
     let mut define = context.config.define.clone();
-    define.entry("NODE_ENV".to_string()).or_insert(mode.clone().into());
+    define
+        .entry("NODE_ENV".to_string())
+        .or_insert(mode.clone().into());
 
     let env_map = build_env_map(define);
     GLOBALS.set(&globals, || {
