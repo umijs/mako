@@ -75,9 +75,7 @@ jobs:
           components: clippy
       - uses: actions-rs/cargo@v1
         with:
-          args: cargo lint
-        env:
-          SYSTEM_DEPS_DAV1D_BUILD_INTERNAL: always
+          command: lint
 
   rustfmt:
     runs-on: ubuntu-latest
