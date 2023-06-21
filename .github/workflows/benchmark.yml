@@ -65,7 +65,7 @@ jobs:
       # only comment for pull request
       - name: Comment PR
         uses: actions/github-script@v6
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ github.event_name == 'pull_request1' }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -140,7 +140,7 @@ jobs:
       # only save baseline data for master
       - name: Save baseline benchmark data
         uses: actions/cache/save@v3
-        if: ${{ github.event_name == 'push' }}
+        if: ${{ github.event_name == 'pull_request' }}
         with:
           path: ./benchmark-data
           key: ${{ runner.os }}-benchmark
