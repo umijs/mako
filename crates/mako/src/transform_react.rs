@@ -27,8 +27,6 @@ pub fn mako_react(
     let is_dev = matches!(context.config.mode, Mode::Development);
     let use_refresh = is_dev && context.config.hmr && !task.path.contains("/node_modules/");
 
-    dbg!(&is_dev);
-
     let visit = react(
         cm,
         Some(NoopComments),
@@ -144,4 +142,141 @@ impl VisitMut for NoopVisitor {
 
 fn noop() -> Box<dyn VisitMut> {
     Box::new(NoopVisitor)
+}
+
+#[cfg(test)]
+mod tests {
+
+    use std::sync::Arc;
+
+    use swc_common::sync::Lrc;
+    use swc_common::{chain, Globals, Mark, SourceMap, GLOBALS};
+    use swc_ecma_ast::Module;
+    use swc_ecma_codegen::text_writer::JsWriter;
+    use swc_ecma_codegen::Emitter;
+    use swc_ecma_transforms::resolver;
+    use swc_ecma_visit::VisitMutWith;
+
+    use crate::ast::build_js_ast;
+    use crate::build::Task;
+    use crate::compiler::Context;
+    use crate::transform_react::mako_react;
+
+    #[test]
+    pub fn entry_with_react_refresh() {
+        assert_eq!(
+            r#"const RefreshRuntime = require('react-refresh');
+RefreshRuntime.injectIntoGlobalHook(window);
+window.$RefreshReg$ = ()=>{};
+window.$RefreshSig$ = ()=>(type)=>type;
+console.log('entry');"#,
+            transform(TransformTask {
+                is_entry: true,
+                path: "index.js".to_string(),
+                code: "console.log('entry');".to_string()
+            })
+        );
+    }
+
+    #[test]
+    pub fn node_modules_with_react_refresh() {
+        assert_eq!(
+            r#"console.log('in node modules');"#,
+            transform(TransformTask {
+                code: "console.log('in node modules');".to_string(),
+                is_entry: false,
+                path: "project/node_modules/pkg/index.js".to_string()
+            })
+        );
+    }
+
+    struct TransformTask {
+        code: String,
+        path: String,
+        is_entry: bool,
+    }
+
+    #[test]
+    pub fn normal_module_with_react_refresh() {
+        assert_eq!(
+            r#"import * as RefreshRuntime from 'react-refresh';
+var prevRefreshReg;
+var prevRefreshSig;
+prevRefreshReg = window.$RefreshReg$;
+prevRefreshSig = window.$RefreshSig$;
+window.$RefreshReg$ = (type, id)=>{
+    RefreshRuntime.register(type, module.id + id);
+};
+window.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
+import { jsxDEV as _jsxDEV } from "react/jsx-dev-runtime";
+export default function R() {
+    return _jsxDEV("h1", {}, void 0, false, {
+        fileName: "<<jsx-config-pragmaFrag.js>>",
+        lineNumber: 1,
+        columnNumber: 16
+    }, this);
+}
+_c = R;
+var _c;
+$RefreshReg$(_c, "R");
+window.$RefreshReg$ = prevRefreshReg;
+window.$RefreshSig$ = prevRefreshSig;
+module.meta.hot.accept();
+RefreshRuntime.performReactRefresh();"#,
+            transform(TransformTask {
+                code: "export default function R(){return <h1></h1>}".to_string(),
+                is_entry: false,
+                path: "index.js".to_string()
+            })
+        );
+    }
+
+    fn transform(task: TransformTask) -> String {
+        let context: Arc<Context> = Arc::new(Default::default());
+
+        let globals = Globals::new();
+        GLOBALS.set(&globals, || {
+            // Your code here
+            let mut ast = build_js_ast("index.jsx", &task.code, &context).unwrap();
+
+            let unresolved_mark = Mark::new();
+            let top_level_mark = Mark::new();
+
+            let mut visitor = chain!(
+                resolver(unresolved_mark, top_level_mark, false),
+                mako_react(
+                    Default::default(),
+                    &context,
+                    &Task {
+                        is_entry: task.is_entry,
+                        path: task.path,
+                    },
+                    &Mark::new(),
+                    &Mark::new(),
+                )
+            );
+
+            ast.visit_mut_with(&mut visitor);
+            emit_js(&ast)
+        })
+    }
+
+    fn emit_js(module: &Module) -> String {
+        let cm: Lrc<SourceMap> = Default::default();
+        let mut buf = Vec::new();
+
+        {
+            let writer = Box::new(JsWriter::new(cm.clone(), "\n", &mut buf, None));
+            let mut emitter = Emitter {
+                cfg: Default::default(),
+                comments: None,
+                cm,
+                wr: writer,
+            };
+            // This may return an error if it fails to write
+            emitter.emit_module(module).unwrap();
+        }
+
+        String::from_utf8(buf).unwrap().trim().to_string()
+    }
 }
