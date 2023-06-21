@@ -91,7 +91,7 @@ pub fn react_refresh_entry_prefix(context: &Arc<Context>) -> Box<dyn VisitMut> {
     Box::new(PrefixCode {
         context: context.clone(),
         code: r#"
-const RefreshRuntime = require( 'react-refresh');
+const RefreshRuntime = require('react-refresh');
 RefreshRuntime.injectIntoGlobalHook(window)
 window.$RefreshReg$ = () => {}
 window.$RefreshSig$ = () => (type) => type
@@ -104,7 +104,7 @@ pub fn react_refresh_module_prefix(context: &std::sync::Arc<Context>) -> Box<dyn
     Box::new(PrefixCode {
         context: context.clone(),
         code: r#"
-import * as  RefreshRuntime from 'react-refresh';
+import * as RefreshRuntime from 'react-refresh';
 var prevRefreshReg;
 var prevRefreshSig;
 
