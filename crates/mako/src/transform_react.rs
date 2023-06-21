@@ -25,7 +25,9 @@ pub fn mako_react(
     unresolved_mark: &Mark,
 ) -> Box<dyn VisitMut> {
     let is_dev = matches!(context.config.mode, Mode::Development);
-    let use_refresh = is_dev && !task.path.contains("/node_modules/");
+    let use_refresh = is_dev && context.config.hmr && !task.path.contains("/node_modules/");
+
+    dbg!(&is_dev);
 
     let visit = react(
         cm,

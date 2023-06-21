@@ -1,5 +1,6 @@
 {
   "entry": {
     "foo": "foo.ts"
-  }
+  },
+  "hmr": false
 }

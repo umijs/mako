@@ -201,12 +201,16 @@ const App = () => <><h1>Hello World</h1></>;
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-var _jsxruntime = require("react/jsx-runtime");
-const App = ()=>(0, _jsxruntime.jsx)(_jsxruntime.Fragment, {
-        children: (0, _jsxruntime.jsx)("h1", {
+var _jsxdevruntime = require("react/jsx-dev-runtime");
+const App = ()=>(0, _jsxdevruntime.jsxDEV)(_jsxdevruntime.Fragment, {
+        children: (0, _jsxdevruntime.jsxDEV)("h1", {
             children: "Hello World"
-        })
-    });
+        }, void 0, false, {
+            fileName: "test.tsx",
+            lineNumber: 1,
+            columnNumber: 21
+        }, void 0)
+    }, void 0, false);
 
 //# sourceMappingURL=index.js.map
         "#
@@ -426,6 +430,8 @@ require("bar");
         };
         let current_dir = std::env::current_dir().unwrap();
         let config = Config::new(&current_dir.join("test/config/define"), None, None).unwrap();
+
+        dbg!(&config);
 
         let root = PathBuf::from("/path/to/root");
         let context = Arc::new(Context {
