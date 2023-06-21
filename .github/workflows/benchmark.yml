@@ -91,14 +91,12 @@ jobs:
                       // add hyperlink for commit hash
                       .replace(
                         /((?:Current|Previous): )"(.{8})(.+?)"/g,
-                        '$1<a href="../tree/$2$3"><code>$2</code></a>'
+                        '$1<a href="../tree/$2$3"><code>$2</code></a>',
                       )
                       // convert ns to ms for duration time
                       .replace(
-                        /`(\d+)`\s+ns|`(±\s+)(\d+)`/g,
-                        (_, d1, s, d2) => {
-                          return `${s || ''}${((d2 || d1)/10e6).toFixed(2)} ms`
-                        }
+                        /\`(\\d+)\`\\s+ns|\`(±\\s+)(\\d+)\`/g,
+                        (_, d1, s, d2) => \`\${s || ''}\${((d2 || d1)/10e6).toFixed(2)} ms\`,
                       );
                     return true;
                   }

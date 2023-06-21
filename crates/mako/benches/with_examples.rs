@@ -20,7 +20,9 @@ fn multiple_entries_heavy_min(c: &mut Criterion) {
         b.iter(|| {
             Command::new("target/release/mako")
                 .current_dir("../..")
-                .args(["examples/multiple-entries-heavy", "--mode", "production"])
+                .arg("--mode")
+                .arg("production")
+                .arg("examples/multiple-entries-heavy")
                 .output()
                 .expect("Failed to execute binary");
         });
@@ -44,7 +46,9 @@ fn with_antd_min(c: &mut Criterion) {
         b.iter(|| {
             Command::new("target/release/mako")
                 .current_dir("../..")
-                .args(["examples/with-antd", "--mode", "production"])
+                .arg("--mode")
+                .arg("production")
+                .arg("examples/with-antd")
                 .output()
                 .expect("Failed to execute binary");
         });
