@@ -468,7 +468,8 @@ export const foo = 1;
         let ast = &info.ast;
         match ast {
             crate::module::ModuleAst::Script(ast) => {
-                let (code, _) = js_ast_to_code(&ast.clone(), &context, module.id.id.as_str());
+                let (code, _) =
+                    js_ast_to_code(&ast.clone(), &context, module.id.id.as_str()).unwrap();
                 code
             }
             crate::module::ModuleAst::Css(_) => todo!(),

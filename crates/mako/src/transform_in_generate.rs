@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use lightningcss::stylesheet::{MinifyOptions, ParserOptions, PrinterOptions, StyleSheet};
 use swc_ecma_ast::Module;
-use tracing::{debug, info};
+use tracing::debug;
 
 use crate::ast::{base64_encode, build_js_ast, css_ast_to_code};
 use crate::compiler::{Compiler, Context};
@@ -15,7 +15,6 @@ use crate::targets;
 
 impl Compiler {
     pub fn transform_all(&self) {
-        info!("transform all modules");
         let context = &self.context;
         let module_graph = context.module_graph.read().unwrap();
         let module_ids = module_graph.get_module_ids();
@@ -200,7 +199,7 @@ document.head.appendChild(style);
         });
         let mut ast = build_css_ast(path, content, &context).unwrap();
         let ast = transform_css(&mut ast, path, dep_map, &context);
-        let (code, _sourcemap) = js_ast_to_code(&ast, &context, "index.js");
+        let (code, _sourcemap) = js_ast_to_code(&ast, &context, "index.js").unwrap();
         let code = code.trim().to_string();
         (code, _sourcemap)
     }
