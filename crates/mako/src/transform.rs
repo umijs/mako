@@ -120,7 +120,7 @@ fn transform_js(
     let mut define = context.config.define.clone();
     define
         .entry("NODE_ENV".to_string())
-        .or_insert(mode.clone().into());
+        .or_insert_with(|| mode.clone().into());
 
     let env_map = build_env_map(define);
     GLOBALS.set(&context.meta.script.globals, || {
