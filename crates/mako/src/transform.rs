@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use serde_json::Value;
+
 use anyhow::Result;
+use serde_json::Value;
 use swc_atoms::JsWord;
 use swc_common::collections::AHashMap;
 use swc_common::comments::{NoopComments, SingleThreadedComments};
