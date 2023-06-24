@@ -212,7 +212,7 @@ impl Compiler {
         // transform & resolve
         // TODO: 支持同时有多个 resolve error
         let mut dep_resolve_err = None;
-        transform(&mut ast, &context, &mut |ast| {
+        transform(&mut ast, &context, &task, &mut |ast| {
             let deps = analyze_deps(ast);
             // resolve
             for dep in deps.iter() {

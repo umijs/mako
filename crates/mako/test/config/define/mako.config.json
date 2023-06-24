@@ -15,5 +15,6 @@
       { "name": "sorrycc" },
       { "name": "xiaohuoni" }
     ]
-  }
+  },
+  "hmr": false
 }
