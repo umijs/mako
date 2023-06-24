@@ -18,6 +18,19 @@ pub struct Context {
     pub meta: Meta,
 }
 
+impl Default for Context {
+    fn default() -> Self {
+        Self {
+            config: Default::default(),
+            root: PathBuf::from(""),
+            module_graph: RwLock::new(ModuleGraph::new()),
+            chunk_graph: RwLock::new(ChunkGraph::new()),
+            assets_info: Mutex::new(HashMap::new()),
+            meta: Meta::new(),
+        }
+    }
+}
+
 pub struct Meta {
     pub script: ScriptMeta,
     pub css: CssMeta,

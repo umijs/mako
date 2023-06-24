@@ -18,13 +18,12 @@ use swc_ecma_transforms::hygiene::hygiene_with_config;
 use swc_ecma_transforms::modules::common_js;
 use swc_ecma_transforms::modules::import_analysis::import_analyzer;
 use swc_ecma_transforms::modules::util::{Config, ImportInterop};
-use swc_ecma_transforms::react::{react, Options, Runtime};
 use swc_ecma_transforms::typescript::strip_with_jsx;
 use swc_ecma_transforms::{fixer, resolver, Assumptions};
 use swc_ecma_visit::{Fold, VisitMutWith as CssVisitMutWith};
 use swc_error_reporters::handler::try_with_handler;
 
-use crate::build::ModuleDeps;
+use crate::build::{ModuleDeps, Task};
 use crate::compiler::Context;
 use crate::module::ModuleAst;
 use crate::targets;
@@ -34,14 +33,16 @@ use crate::transform_dynamic_import::DynamicImport;
 use crate::transform_env_replacer::EnvReplacer;
 use crate::transform_optimizer::Optimizer;
 use crate::transform_provide::Provide;
+use crate::transform_react::mako_react;
 
 pub fn transform(
     ast: &mut ModuleAst,
     context: &Arc<Context>,
+    task: &Task,
     get_deps: &mut dyn for<'r> FnMut(&'r ModuleAst) -> ModuleDeps,
 ) -> Result<()> {
     match ast {
-        ModuleAst::Script(ast) => transform_js(ast, context, get_deps),
+        ModuleAst::Script(ast) => transform_js(ast, context, task, get_deps),
         ModuleAst::Css(ast) => transform_css(ast, context, get_deps),
         _ => Ok(()),
     }
@@ -65,6 +66,7 @@ fn build_env_map(env_map: HashMap<String, String>) -> AHashMap<JsWord, Expr> {
 fn transform_js(
     ast: &mut Module,
     context: &Arc<Context>,
+    task: &Task,
     get_deps: &mut dyn for<'r> FnMut(&'r ModuleAst) -> ModuleDeps,
 ) -> Result<()> {
     let cm = context.meta.script.cm.clone();
@@ -79,21 +81,17 @@ fn transform_js(
                     let unresolved_mark = Mark::new();
                     let import_interop = ImportInterop::Swc;
 
-                    ast.visit_mut_with(&mut react(
-                        cm.clone(),
-                        Some(NoopComments),
-                        Options {
-                            import_source: Some("react".to_string()),
-                            pragma: Some("React.createElement".into()),
-                            pragma_frag: Some("React.Fragment".into()),
-                            // support react 17 + only
-                            runtime: Some(Runtime::Automatic),
-                            ..Default::default()
-                        },
-                        top_level_mark,
-                        unresolved_mark,
-                    ));
                     ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
+
+                    // indent.span needed in mako_react refresh, so it must be after resolver visitor
+                    ast.visit_mut_with(&mut mako_react(
+                        cm.clone(),
+                        context,
+                        task,
+                        &top_level_mark,
+                        &unresolved_mark,
+                    ));
+
                     ast.visit_mut_with(&mut import_analyzer(import_interop, true));
                     ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
 
@@ -211,12 +209,16 @@ const App = () => <><h1>Hello World</h1></>;
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-var _jsxruntime = require("react/jsx-runtime");
-const App = ()=>(0, _jsxruntime.jsx)(_jsxruntime.Fragment, {
-        children: (0, _jsxruntime.jsx)("h1", {
+var _jsxdevruntime = require("react/jsx-dev-runtime");
+const App = ()=>(0, _jsxdevruntime.jsxDEV)(_jsxdevruntime.Fragment, {
+        children: (0, _jsxdevruntime.jsxDEV)("h1", {
             children: "Hello World"
-        })
-    });
+        }, void 0, false, {
+            fileName: "test.tsx",
+            lineNumber: 1,
+            columnNumber: 21
+        }, void 0)
+    }, void 0, false);
 
 //# sourceMappingURL=index.js.map
         "#
@@ -472,31 +474,41 @@ require("bar");
         let current_dir = std::env::current_dir().unwrap();
         let config = Config::new(&current_dir.join("test/config/define"), None, None).unwrap();
 
+        dbg!(&config);
+
         let root = PathBuf::from("/path/to/root");
         let context = Arc::new(Context {
             config,
-            root,
+            root: root.clone(),
             module_graph: RwLock::new(ModuleGraph::new()),
             chunk_graph: RwLock::new(ChunkGraph::new()),
             assets_info: Mutex::new(HashMap::new()),
             meta: Meta::new(),
         });
         let mut ast = build_js_ast(path, origin, &context).unwrap();
-        transform_js(&mut ast, &context, &mut |_| {
-            if origin.contains("require(\"foo\");") {
-                Vec::from([(
-                    "bar".to_string(),
-                    None,
-                    Dependency {
-                        source: "foo".to_string(),
-                        resolve_type: ResolveType::Require,
-                        order: 0,
-                    },
-                )])
-            } else {
-                Vec::new()
-            }
-        })
+        transform_js(
+            &mut ast,
+            &context,
+            &crate::build::Task {
+                path: root.to_string_lossy().to_string(),
+                is_entry: false,
+            },
+            &mut |_| {
+                if origin.contains("require(\"foo\");") {
+                    Vec::from([(
+                        "bar".to_string(),
+                        None,
+                        Dependency {
+                            source: "foo".to_string(),
+                            resolve_type: ResolveType::Require,
+                            order: 0,
+                        },
+                    )])
+                } else {
+                    Vec::new()
+                }
+            },
+        )
         .unwrap();
         let (code, _sourcemap) = js_ast_to_code(&ast, &context, "index.js").unwrap();
         let code = code.replace("\"use strict\";", "");
