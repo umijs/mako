@@ -66,7 +66,7 @@ pub struct Config {
     pub inline_limit: usize,
     pub targets: HashMap<String, usize>,
     pub platform: Platform,
-    pub define: HashMap<String, String>,
+    pub define: HashMap<String, Value>,
     // temp solution
     pub hmr: bool,
 }
