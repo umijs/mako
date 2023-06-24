@@ -59,14 +59,16 @@ impl VisitMut for EnvReplacer {
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Ident(Ident { ref sym, span, .. }) = expr {
             let envs = EnvsType::Node(self.envs.clone());
-            if let Some(env) = EnvReplacer::get_env(&envs, sym) {
-                // replace with real value if env found
-                *expr = env;
+
+            // 先判断 env 中的变量名称，是否是上下文中已经存在的变量名称
+            if self.bindings.contains(&(sym.clone(), span.ctxt)) {
+                expr.visit_mut_children_with(self);
                 return;
             }
 
-            if self.bindings.contains(&(sym.clone(), span.ctxt)) {
-                expr.visit_mut_children_with(self);
+            if let Some(env) = EnvReplacer::get_env(&envs, sym) {
+                // replace with real value if env found
+                *expr = env;
                 return;
             }
         }

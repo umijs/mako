@@ -401,6 +401,8 @@ var _react = _interop_require_default._(require("react"));
     #[test]
     fn test_transform_js_env_replacer() {
         let code = r#"
+const EXIT = false;
+console.log(EXIT);
 console.log(FOO);
 console.log(PACKAGE_NAME);
 const a = process.env.NODE_ENV;
@@ -416,6 +418,8 @@ const f = MEMBER_NAMES;
         assert_eq!(
             code,
             r#"
+const EXIT = false;
+console.log(EXIT);
 console.log(false);
 console.log("MAKO");
 const a = "development";
@@ -550,8 +554,6 @@ require("bar");
         };
         let current_dir = std::env::current_dir().unwrap();
         let config = Config::new(&current_dir.join("test/config/define"), None, None).unwrap();
-
-        dbg!(&config);
 
         let root = PathBuf::from("/path/to/root");
         let context = Arc::new(Context {
