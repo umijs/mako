@@ -466,11 +466,7 @@ require("bar");
     }
 
     fn transform_js_code(origin: &str, path: Option<&str>) -> (String, String) {
-        let path = if let Some(..) = path {
-            path.unwrap()
-        } else {
-            "test.tsx"
-        };
+        let path = path.unwrap_or("test.tsx");
         let current_dir = std::env::current_dir().unwrap();
         let config = Config::new(&current_dir.join("test/config/define"), None, None).unwrap();
 
@@ -517,19 +513,12 @@ require("bar");
     }
 
     fn transform_css_code(origin: &str, path: Option<&str>, deps: ModuleDeps) -> String {
-        let path = if let Some(..) = path {
-            path.unwrap()
-        } else {
-            "test.css"
-        };
+        let path = path.unwrap_or("test.css");
+
         let root = PathBuf::from("/path/to/root");
         let context = Arc::new(Context {
-            config: Default::default(),
             root,
-            module_graph: RwLock::new(ModuleGraph::new()),
-            chunk_graph: RwLock::new(ChunkGraph::new()),
-            assets_info: Mutex::new(HashMap::new()),
-            meta: Meta::new(),
+            ..Default::default()
         });
         let mut ast = build_css_ast(path, origin, &context).unwrap();
         transform_css(&mut ast, &context, &mut |_| deps.clone()).unwrap();
