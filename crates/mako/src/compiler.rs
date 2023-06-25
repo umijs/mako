@@ -45,6 +45,12 @@ impl Meta {
     }
 }
 
+impl Default for Meta {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct ScriptMeta {
     pub cm: Lrc<SourceMap>,
     pub globals: Globals,
@@ -123,21 +129,18 @@ mod tests {
     async fn test_config_inline_limit() {
         let (files, file_contents) = compile("test/compile/config-inline-limit");
         println!("{:?}", files);
-        assert_eq!(
+        assert!(
             files.join(",").contains(&".jpg".to_string()),
-            true,
             "big.jpg is not inlined"
         );
-        assert_eq!(
-            files.join(",").contains(&".png".to_string()),
-            false,
+        assert!(
+            !files.join(",").contains(&".png".to_string()),
             "small.png is inlined"
         );
         assert_eq!(files.len(), 3, "index.js, index.js.map, xxx.jpg");
         let index_js_content = file_contents.get("index.js").unwrap();
-        assert_eq!(
+        assert!(
             index_js_content.contains("data:image/png;base64,"),
-            true,
             "small.png is inlined"
         );
     }
