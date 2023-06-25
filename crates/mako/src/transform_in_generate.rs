@@ -183,11 +183,7 @@ document.head.appendChild(style);
         path: Option<&str>,
         dep_map: HashMap<String, String>,
     ) -> (String, String) {
-        let path = if path.is_none() {
-            "test.tsx"
-        } else {
-            path.unwrap()
-        };
+        let path = if let Some(p) = path { p } else { "test.tsx" };
         let root = PathBuf::from("/path/to/root");
         let context = Arc::new(Context {
             config: Default::default(),

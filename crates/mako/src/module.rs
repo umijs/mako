@@ -90,19 +90,19 @@ pub enum ModuleAst {
     None,
 }
 
+#[allow(dead_code)]
 pub enum ModuleType {
     Script,
     Css,
 }
 
+#[allow(dead_code)]
 impl ModuleType {
     pub fn is_script(&self) -> bool {
-        match self {
-            ModuleType::Script => true,
-            _ => false,
-        }
+        matches!(self, ModuleType::Script)
     }
 }
+#[allow(dead_code)]
 
 pub struct Module {
     pub id: ModuleId,
@@ -110,6 +110,7 @@ pub struct Module {
     pub info: Option<ModuleInfo>,
     pub side_effects: bool,
 }
+#[allow(dead_code)]
 
 impl Module {
     pub fn new(id: ModuleId, is_entry: bool, info: Option<ModuleInfo>) -> Self {

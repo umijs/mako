@@ -14,6 +14,7 @@ use crate::module::{Dependency, Module, ModuleId};
 use crate::resolve::get_resolver;
 use crate::transform_in_generate::transform_modules;
 
+#[allow(dead_code)]
 pub enum UpdateType {
     Add,
     Remove,
@@ -174,8 +175,8 @@ impl Compiler {
                     add_modules.insert(module_id, module);
                 });
 
-                let (add, remove) = diff(current_dependencies, target_dependencies);
-                Result::Ok((module, add, remove, add_modules))
+                let d = diff(current_dependencies, target_dependencies);
+                Result::Ok((module, d.added, d.removed, add_modules))
             })
             .collect::<Result<Vec<_>>>();
         let result = result?;
@@ -247,14 +248,13 @@ impl Compiler {
     }
 }
 
+pub struct Diff {
+    added: HashSet<(ModuleId, Dependency)>,
+    removed: HashSet<(ModuleId, Dependency)>,
+}
+
 // 对比两颗 Dependency 的差异
-fn diff(
-    right: Vec<(ModuleId, Dependency)>,
-    left: Vec<(ModuleId, Dependency)>,
-) -> (
-    HashSet<(ModuleId, Dependency)>,
-    HashSet<(ModuleId, Dependency)>,
-) {
+fn diff(right: Vec<(ModuleId, Dependency)>, left: Vec<(ModuleId, Dependency)>) -> Diff {
     let right: HashSet<(ModuleId, Dependency)> = right.into_iter().collect();
     let left: HashSet<(ModuleId, Dependency)> = left.into_iter().collect();
     let removed = right
@@ -269,7 +269,7 @@ fn diff(
         .into_iter()
         .map(|dep| (*dep).clone())
         .collect();
-    (added, removed)
+    Diff { added, removed }
 }
 
 #[cfg(test)]

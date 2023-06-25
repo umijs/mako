@@ -40,6 +40,7 @@ macro_rules! assert_debug_snapshot {
     }};
 }
 
+#[allow(dead_code)]
 pub fn create_mock_module(path: PathBuf, code: &str) -> Module {
     let root = PathBuf::from("/path/to/root");
     let ast = build_js_ast(

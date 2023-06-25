@@ -171,3 +171,9 @@ impl fmt::Display for ModuleGraph {
         )
     }
 }
+
+impl Default for ModuleGraph {
+    fn default() -> Self {
+        Self::new()
+    }
+}
