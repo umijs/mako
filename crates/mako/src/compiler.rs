@@ -134,7 +134,7 @@ mod tests {
             "big.jpg is not inlined"
         );
         assert!(
-            files.join(",").contains(&".png".to_string()),
+            !files.join(",").contains(&".png".to_string()),
             "small.png is inlined"
         );
         assert_eq!(files.len(), 3, "index.js, index.js.map, xxx.jpg");
