@@ -82,7 +82,7 @@ mod tests {
         assert_eq!(
             js_code.trim(),
             r#"
-modulesRegistry['/index.ts'].hot.apply({
+globalThis.makoModuleHotUpdate('/index.ts', {
     modules: {
         "/bar_1.ts": function(module, exports, require) {
             "use strict";
