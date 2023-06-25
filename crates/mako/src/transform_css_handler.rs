@@ -16,13 +16,10 @@ impl VisitMut for CssHandler {
             .take()
             .into_iter()
             .filter(|rule| match rule {
-                Rule::AtRule(at_rule) => {
-                    if let Some(box AtRulePrelude::ImportPrelude(_prelude)) = &at_rule.prelude {
-                        false
-                    } else {
-                        true
-                    }
-                }
+                Rule::AtRule(at_rule) => !matches!(
+                    &at_rule.prelude,
+                    Some(box AtRulePrelude::ImportPrelude(_prelude))
+                ),
                 _ => true,
             })
             .collect();

@@ -1,5 +1,5 @@
 use std::collections::{HashSet, VecDeque};
-use std::path::PathBuf;
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -244,7 +244,7 @@ impl Compiler {
     }
 }
 
-fn get_entries(root: &PathBuf, config: &Config) -> Option<Vec<std::path::PathBuf>> {
+fn get_entries(root: &Path, config: &Config) -> Option<Vec<std::path::PathBuf>> {
     let entry = &config.entry;
     if entry.is_empty() {
         let file_paths = vec!["src/index.tsx", "src/index.ts", "index.tsx", "index.ts"];
@@ -330,7 +330,6 @@ mod tests {
         let mut module_ids: Vec<String> = module_graph
             .graph
             .node_weights()
-            .into_iter()
             .map(|module| {
                 module
                     .id
@@ -344,7 +343,6 @@ mod tests {
         let mut references: Vec<(String, String)> = module_graph
             .graph
             .edge_references()
-            .into_iter()
             .map(|edge| {
                 let source = &module_graph.graph[edge.source()].id.id;
                 let target = &module_graph.graph[edge.target()].id.id;

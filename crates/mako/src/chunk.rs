@@ -56,11 +56,6 @@ impl Chunk {
         }
     }
 
-    pub fn cache_content(&mut self, js_code: String, source_map: String) {
-        self.content = Some(js_code);
-        self.source_map = Some(source_map);
-    }
-
     pub fn add_module(&mut self, module_id: ModuleId) {
         self.modules.insert(module_id);
     }

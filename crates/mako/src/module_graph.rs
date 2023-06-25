@@ -149,13 +149,11 @@ impl fmt::Display for ModuleGraph {
         let mut nodes = self
             .graph
             .node_weights()
-            .into_iter()
             .map(|node| &node.id.id)
             .collect::<Vec<_>>();
         let mut references = self
             .graph
             .edge_references()
-            .into_iter()
             .map(|edge| {
                 let source = &self.graph[edge.source()].id.id;
                 let target = &self.graph[edge.target()].id.id;
@@ -169,5 +167,11 @@ impl fmt::Display for ModuleGraph {
             "graph\n nodes:{:?} \n references:{:?}",
             &nodes, &references
         )
+    }
+}
+
+impl Default for ModuleGraph {
+    fn default() -> Self {
+        Self::new()
     }
 }

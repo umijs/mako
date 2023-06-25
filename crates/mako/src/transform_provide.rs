@@ -32,40 +32,41 @@ impl VisitMut for Provide {
         if let Expr::Ident(Ident { ref sym, span, .. }) = expr {
             let has_binding = self.bindings.contains(&(sym.clone(), span.ctxt));
             let provider = self.providers.get(&sym.to_string());
-            if !has_binding && provider.is_some() {
-                let (from, key) = provider.unwrap();
-                // require("provider")
-                let new_expr = Expr::Call(CallExpr {
-                    span: *span,
-                    callee: Callee::Expr(Box::new(Expr::Ident(Ident {
+            if !has_binding {
+                if let Some((from, key)) = provider {
+                    // require("provider")
+                    let new_expr = Expr::Call(CallExpr {
                         span: *span,
-                        sym: "require".into(),
-                        optional: false,
-                    }))),
-                    args: vec![ExprOrSpread {
-                        spread: None,
-                        expr: Box::new(Expr::Lit(Lit::Str(Str {
-                            span: DUMMY_SP,
-                            value: JsWord::from(from.clone()),
-                            raw: None,
-                        }))),
-                    }],
-                    type_args: None,
-                });
-                if !key.is_empty() {
-                    // require("buffer").Buffer
-                    let new_expr = Expr::Member(MemberExpr {
-                        obj: Box::new(new_expr),
-                        span: DUMMY_SP,
-                        prop: swc_ecma_ast::MemberProp::Ident(Ident {
+                        callee: Callee::Expr(Box::new(Expr::Ident(Ident {
                             span: *span,
-                            sym: JsWord::from(key.clone()),
+                            sym: "require".into(),
                             optional: false,
-                        }),
+                        }))),
+                        args: vec![ExprOrSpread {
+                            spread: None,
+                            expr: Box::new(Expr::Lit(Lit::Str(Str {
+                                span: DUMMY_SP,
+                                value: JsWord::from(from.clone()),
+                                raw: None,
+                            }))),
+                        }],
+                        type_args: None,
                     });
-                    *expr = new_expr;
-                } else {
-                    *expr = new_expr;
+                    if !key.is_empty() {
+                        // require("buffer").Buffer
+                        let new_expr = Expr::Member(MemberExpr {
+                            obj: Box::new(new_expr),
+                            span: DUMMY_SP,
+                            prop: swc_ecma_ast::MemberProp::Ident(Ident {
+                                span: *span,
+                                sym: JsWord::from(key.clone()),
+                                optional: false,
+                            }),
+                        });
+                        *expr = new_expr;
+                    } else {
+                        *expr = new_expr;
+                    }
                 }
             }
         }

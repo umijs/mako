@@ -20,7 +20,7 @@ impl TransformConfig for CssModuleRename {
 
 fn ident_name(path: &str, name: &str) -> String {
     let source = format!("{}__{}", path, name);
-    let digest = md5::compute(&source);
+    let digest = md5::compute(source);
     let hash = general_purpose::URL_SAFE.encode(digest.0);
     let hash_slice = hash[..8].to_string();
     format!("{}-{}", name, hash_slice)
