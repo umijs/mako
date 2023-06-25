@@ -1,5 +1,6 @@
 {
   "define": {
     "PACKAGE_NAME": "MAKO"
-  }
+  },
+  "hmr": false
 }

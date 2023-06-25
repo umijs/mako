@@ -168,7 +168,12 @@ impl Compiler {
     ) -> Result<Module> {
         let module = match external {
             Some(external) => {
-                let code = format!("module.exports = {};", external);
+                // support empty external
+                let code = if external.is_empty() {
+                    "module.exports = {};".to_string()
+                } else {
+                    format!("module.exports = {};", external)
+                };
                 let ast = build_js_ast(
                     format!("external_{}", &resolved_path).as_str(),
                     code.as_str(),
@@ -207,7 +212,7 @@ impl Compiler {
         // transform & resolve
         // TODO: 支持同时有多个 resolve error
         let mut dep_resolve_err = None;
-        transform(&mut ast, &context, &mut |ast| {
+        transform(&mut ast, &context, &task, &mut |ast| {
             let deps = analyze_deps(ast);
             // resolve
             for dep in deps.iter() {

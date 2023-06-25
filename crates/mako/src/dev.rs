@@ -171,7 +171,7 @@ impl ProjectWatch {
 
                     let c = c.clone();
                     tokio::spawn(async move {
-                        let t = Instant::now();
+                        let _t = Instant::now();
 
                         c.generate_chunks().unwrap().iter().for_each(|file| {
                             c.write_to_dist(&file.path, &file.content);
@@ -179,7 +179,6 @@ impl ProjectWatch {
                                 c.write_to_dist(format!("{}.map", &file.path), &file.sourcemap);
                             }
                         });
-                        println!(" async chunk task {}", t.elapsed().as_millis());
                     });
                 }
             });

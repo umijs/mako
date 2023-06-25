@@ -1,6 +1,7 @@
 import * as React from 'react';
 import * as ReactDOM from 'react-dom/client';
 import './index.css';
+import Local from './local';
 
 const Lazy = React.lazy(async () => {
   return await import('./lazy');
@@ -9,6 +10,7 @@ const Lazy = React.lazy(async () => {
 function App() {
   return (
     <div>
+      <Local />
       <Lazy />
     </div>
   );

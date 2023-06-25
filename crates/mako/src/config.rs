@@ -66,6 +66,8 @@ pub struct Config {
     pub targets: HashMap<String, usize>,
     pub platform: Platform,
     pub define: HashMap<String, String>,
+    // temp solution
+    pub hmr: bool,
 }
 
 const CONFIG_FILE: &str = "mako.config.json";
@@ -83,7 +85,8 @@ const DEFAULT_CONFIG: &str = r#"
     "inline_limit": 10000,
     "targets": { "chrome": 80 },
     "define": {},
-    "platform": "browser"
+    "platform": "browser",
+    "hmr": true
 }
 "#;
 
