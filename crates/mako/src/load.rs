@@ -119,7 +119,7 @@ fn file_size(path: &str) -> Result<u64> {
 fn to_base64(path: &str) -> Result<String> {
     let vec = std::fs::read(path)?;
     let engine = engine::GeneralPurpose::new(&STANDARD, engine::general_purpose::PAD);
-    let base64 = engine.encode(&vec);
+    let base64 = engine.encode(vec);
     let file_type = ext_name(path).unwrap();
     Ok(format!(
         "data:image/{};base64,{}",
