@@ -71,7 +71,7 @@ function createRuntime(makoModules, entryModuleId) {
     return fn;
   };
 
-  const applyHotUpdate = (update) => {
+  const applyHotUpdate = (chunkId, update) => {
     const { modules, removedModules } = update;
 
     // get outdated modules
