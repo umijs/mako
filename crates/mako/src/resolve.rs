@@ -111,8 +111,7 @@ pub fn get_resolver(config: &Config) -> Resolver {
 fn parse_alias(alias: HashMap<String, String>) -> Vec<(String, Vec<AliasMap>)> {
     let mut result = vec![];
     for (key, value) in alias {
-        let mut alias_map = vec![];
-        alias_map.push(AliasMap::Target(value));
+        let alias_map = vec![AliasMap::Target(value)];
         result.push((key, alias_map));
     }
     result
@@ -180,8 +179,8 @@ mod tests {
         let current_dir = std::env::current_dir().unwrap();
         let fixture = current_dir.join(base);
         let mut config: Config = Default::default();
-        if alias.is_some() {
-            config.resolve.alias = alias.unwrap();
+        if let Some(alias_config) = alias {
+            config.resolve.alias = alias_config;
         }
         let resolver = super::get_resolver(&config);
         let (path, external) = super::do_resolve(

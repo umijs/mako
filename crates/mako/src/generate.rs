@@ -62,9 +62,9 @@ impl Compiler {
             let (js_code, js_sourcemap) = js_ast_to_code(&file.js_ast, &self.context, &file.path)?;
             // generate code and sourcemap files
             let output = &config.output.path.join(&file.path);
-            fs::write(output, &js_code).unwrap();
+            fs::write(output, js_code).unwrap();
             if matches!(self.context.config.devtool, DevtoolConfig::SourceMap) {
-                fs::write(format!("{}.map", output.display()), &js_sourcemap).unwrap();
+                fs::write(format!("{}.map", output.display()), js_sourcemap).unwrap();
             }
             Ok(())
         })?;

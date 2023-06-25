@@ -10,12 +10,13 @@ use crate::update::UpdateType;
 #[derive(Debug)]
 pub enum WatchEvent {
     Modified(Vec<PathBuf>),
+    #[allow(dead_code)]
     Removed(Vec<PathBuf>),
 }
 
-impl Into<Vec<(PathBuf, UpdateType)>> for WatchEvent {
-    fn into(self) -> Vec<(PathBuf, UpdateType)> {
-        match self {
+impl From<WatchEvent> for Vec<(PathBuf, UpdateType)> {
+    fn from(event: WatchEvent) -> Self {
+        match event {
             WatchEvent::Modified(paths) => paths
                 .into_iter()
                 .map(|path| (path, UpdateType::Modify))

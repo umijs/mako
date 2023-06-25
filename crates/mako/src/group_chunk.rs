@@ -93,16 +93,4 @@ impl Compiler {
 
         (chunk, dynamic_entries)
     }
-
-    pub fn get_chunk_content_by_path(&self, p: String) -> Option<String> {
-        let chunk_graph = self.context.chunk_graph.read().unwrap();
-        let chunks = chunk_graph.get_chunks();
-        let c = chunks
-            .into_iter()
-            .find(|chunk| chunk.filename().eq(p.as_str()));
-        match c {
-            Some(c) => c.content.clone(),
-            None => None,
-        }
-    }
 }

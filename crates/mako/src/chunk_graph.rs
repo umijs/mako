@@ -56,3 +56,9 @@ impl ChunkGraph {
         self.graph.node_weights().map(|c| c.filename()).collect()
     }
 }
+
+impl Default for ChunkGraph {
+    fn default() -> Self {
+        Self::new()
+    }
+}
