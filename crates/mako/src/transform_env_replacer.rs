@@ -14,6 +14,7 @@ enum EnvsType {
     Browser(Lrc<AHashMap<String, Expr>>),
 }
 
+#[derive(Debug)]
 pub struct EnvReplacer {
     bindings: Lrc<AHashSet<Id>>,
     envs: Lrc<AHashMap<JsWord, Expr>>,
@@ -26,7 +27,7 @@ impl EnvReplacer {
         // generate meta_envs from envs
         for (k, v) in envs.iter() {
             // convert NODE_ENV to MODE
-            let key = if k.eq(&js_word!("NODE_ENV")) {
+            let key: String = if k.eq(&js_word!("NODE_ENV")) {
                 "MODE".into()
             } else {
                 k.to_string()
@@ -57,8 +58,17 @@ impl VisitMut for EnvReplacer {
 
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Ident(Ident { ref sym, span, .. }) = expr {
+            let envs = EnvsType::Node(self.envs.clone());
+
+            // 先判断 env 中的变量名称，是否是上下文中已经存在的变量名称
             if self.bindings.contains(&(sym.clone(), span.ctxt)) {
                 expr.visit_mut_children_with(self);
+                return;
+            }
+
+            if let Some(env) = EnvReplacer::get_env(&envs, sym) {
+                // replace with real value if env found
+                *expr = env;
                 return;
             }
         }

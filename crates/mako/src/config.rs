@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use clap::ValueEnum;
 use serde::Deserialize;
+use serde_json::Value;
 
 #[derive(Deserialize, Debug)]
 pub struct OutputConfig {
@@ -65,7 +66,7 @@ pub struct Config {
     pub inline_limit: usize,
     pub targets: HashMap<String, usize>,
     pub platform: Platform,
-    pub define: HashMap<String, String>,
+    pub define: HashMap<String, Value>,
     // temp solution
     pub hmr: bool,
 }
@@ -138,7 +139,7 @@ impl Config {
             config
                 .define
                 .entry("NODE_ENV".to_string())
-                .or_insert_with(|| config.mode.to_string());
+                .or_insert_with(|| serde_json::Value::String(config.mode.to_string()));
 
             if config.public_path != "runtime" && !config.public_path.ends_with('/') {
                 panic!("public_path must end with '/' or be 'runtime'");
