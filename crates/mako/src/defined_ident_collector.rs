@@ -28,10 +28,8 @@ impl Visit for DefinedIdentCollector {
             }
             // const [x, y] = [1, 2];
             Pat::Array(array_pat) => {
-                for elem in &array_pat.elems {
-                    if let Some(elem) = elem {
-                        self.visit_pat(elem);
-                    }
+                for elem in array_pat.elems.iter().flatten() {
+                    self.visit_pat(elem);
                 }
             }
             // const [x, ...rest] = [1, 2, 3, 4];

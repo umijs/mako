@@ -43,27 +43,20 @@ impl DevServer {
 
             let fwd_task = tokio::spawn(async move {
                 loop {
-                    match rx.recv().await {
-                        Ok(_) => {
-                            if sender
-                                .send(Message::text(r#"{"update": "todo"}"#))
-                                .await
-                                .is_err()
-                            {
-                                break;
-                            }
-                        }
-                        _ => {}
-                    };
+                    if (rx.recv().await).is_ok()
+                        && sender
+                            .send(Message::text(r#"{"update": "todo"}"#))
+                            .await
+                            .is_err()
+                    {
+                        break;
+                    }
                 }
             });
 
             while let Some(message) = ws_recv.next().await {
-                match message.unwrap() {
-                    Message::Close(_) => {
-                        break;
-                    }
-                    _ => {}
+                if let Message::Close(_) = message.unwrap() {
+                    break;
                 }
             }
 
@@ -134,7 +127,7 @@ impl DevServer {
             }
         });
 
-        tokio::join!(watch_handler, dev_server_handle);
+        let _ = tokio::join!(watch_handler, dev_server_handle);
     }
 }
 

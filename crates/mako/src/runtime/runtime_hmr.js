@@ -1,3 +1,3 @@
-modulesRegistry['__CHUNK_ID__'].hot.apply({
+globalThis.makoModuleHotUpdate('__CHUNK_ID__', {
   modules: {},
 });
