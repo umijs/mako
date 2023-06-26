@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::vec;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use swc_common::DUMMY_SP;
 use swc_ecma_ast::{
     ArrayLit, BindingIdent, BlockStmt, CallExpr, Callee, Decl, Expr, ExprOrSpread, ExprStmt,
@@ -11,17 +11,17 @@ use swc_ecma_ast::{
 
 use crate::ast::build_js_ast;
 use crate::compiler::Compiler;
+use crate::config::Mode;
+use crate::minify::minify_js;
 use crate::module::{ModuleAst, ModuleId};
 
-pub struct OutputFile {
+pub struct OutputAst {
     pub path: String,
-    pub content: String,
-    pub sourcemap: String,
     pub js_ast: Module,
 }
 
 impl Compiler {
-    pub fn generate_chunks(&self) -> Result<Vec<OutputFile>> {
+    pub fn generate_chunks_ast(&self) -> Result<Vec<OutputAst>> {
         let module_graph = self.context.module_graph.read().unwrap();
         let mut chunk_graph = self.context.chunk_graph.write().unwrap();
 
@@ -49,9 +49,7 @@ impl Compiler {
             chunks_map_str.join("\n")
         );
 
-        let output_files = chunks
-            // TODO:
-            // 由于任务划分不科学，rayon + par_iter 没啥效果
+        chunks
             .iter_mut()
             .map(|chunk| {
                 // build stmts
@@ -155,26 +153,25 @@ impl Compiler {
                 // TODO
                 // 暂时无需处理
 
-                // minify
-                // if matches!(self.context.config.mode, Mode::Production) {
-                //     js_ast = minify_js(js_ast, &self.context.meta.script.cm);
-                // }
-
                 let filename = chunk.filename();
-                // let (js_code, js_sourcemap) = js_ast_to_code(&js_ast, &self.context, &filename);
 
-                // chunk.cache_content(js_code.clone(), js_sourcemap.clone());
-
-                OutputFile {
-                    path: filename,
-                    content: "".to_string(),
-                    sourcemap: "".to_string(),
-                    js_ast,
-                    // filename: chunk.filename(),
+                // minify
+                if matches!(self.context.config.mode, Mode::Production) {
+                    let minified = minify_js(js_ast.clone(), &self.context)
+                        .map_err(|e| anyhow!("Minified with error {}", e))
+                        .unwrap();
+                    Ok(OutputAst {
+                        path: filename,
+                        js_ast: minified,
+                    })
+                } else {
+                    Ok(OutputAst {
+                        path: filename,
+                        js_ast,
+                    })
                 }
             })
-            .collect();
-        Ok(output_files)
+            .collect::<Result<Vec<OutputAst>>>()
     }
 }
 

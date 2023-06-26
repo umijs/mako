@@ -10,7 +10,6 @@ use tungstenite::Message;
 
 use crate::compiler;
 use crate::compiler::Compiler;
-use crate::config::DevtoolConfig;
 use crate::watch::watch;
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
@@ -166,12 +165,7 @@ impl ProjectWatch {
                     tokio::spawn(async move {
                         let _t = Instant::now();
 
-                        c.generate_chunks().unwrap().iter().for_each(|file| {
-                            c.write_to_dist(&file.path, &file.content);
-                            if matches!(c.context.config.devtool, DevtoolConfig::SourceMap) {
-                                c.write_to_dist(format!("{}.map", &file.path), &file.sourcemap);
-                            }
-                        });
+                        c.generate().unwrap();
                     });
                 }
             });
