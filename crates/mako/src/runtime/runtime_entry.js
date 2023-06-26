@@ -264,6 +264,12 @@ function createRuntime(makoModules, entryModuleId) {
   requireModule.ensure = ensure;
   requireModule(entryModuleId);
 
+  requireModule._h = 'full_hash';
+
+  requireModule.currentHash = () => {
+    return registerModules._h;
+  };
+
   return {
     requireModule,
     _modulesRegistry: modulesRegistry,

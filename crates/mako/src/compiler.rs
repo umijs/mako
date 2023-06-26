@@ -116,6 +116,12 @@ impl Compiler {
             }
         }
     }
+
+    pub fn full_hash(&self) -> u64 {
+        let cg = self.context.chunk_graph.read().unwrap();
+        let mg = self.context.module_graph.read().unwrap();
+        cg.full_hash(&mg)
+    }
 }
 
 #[cfg(test)]

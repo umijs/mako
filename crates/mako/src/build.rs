@@ -187,6 +187,7 @@ impl Compiler {
                         ast: ModuleAst::Script(ast),
                         path: resolved_path,
                         external: Some(external),
+                        raw_hash: 0,
                     }),
                 )
             }
@@ -237,6 +238,7 @@ impl Compiler {
             ast,
             path: task.path.clone(),
             external: None,
+            raw_hash: content.raw_hash(),
         };
         let module = Module::new(module_id, task.is_entry, Some(info));
 

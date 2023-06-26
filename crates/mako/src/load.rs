@@ -1,4 +1,5 @@
 use std::fs;
+use std::hash::Hasher;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::sync::Arc;
@@ -8,6 +9,7 @@ use base64::alphabet::STANDARD;
 use base64::{engine, Engine};
 use thiserror::Error;
 use tracing::debug;
+use twox_hash::XxHash64;
 
 use crate::compiler::Context;
 use crate::css_modules::{is_mako_css_modules, MAKO_CSS_MODULES_SUFFIX};
@@ -21,6 +23,20 @@ pub enum Content {
     Js(String),
     Css(String),
     Assets(Asset),
+}
+
+impl Content {
+    pub fn raw_hash(&self) -> u64 {
+        let mut hasher: XxHash64 = Default::default();
+        match self {
+            Content::Js(content)
+            | Content::Css(content)
+            | Content::Assets(Asset { content, .. }) => {
+                hasher.write(content.as_bytes());
+                hasher.finish()
+            }
+        }
+    }
 }
 
 #[derive(Debug, Error)]

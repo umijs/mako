@@ -23,6 +23,7 @@ pub struct ModuleInfo {
     pub ast: ModuleAst,
     pub path: String,
     pub external: Option<String>,
+    pub raw_hash: u64,
 }
 
 impl ModuleInfo {
