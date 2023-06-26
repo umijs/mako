@@ -22,5 +22,7 @@ export function build(
     inline_limit?: number;
     targets?: Record<string, number>;
     platform?: 'node' | 'browser';
+    hmr?: boolean;
   },
-): void;
+  watch: boolean,
+): Promise<void>;

@@ -3,12 +3,15 @@
 #[macro_use]
 extern crate napi_derive;
 
+use std::sync::Arc;
+
 use mako::compiler::Compiler;
 use mako::config::Config;
+use mako::dev::DevServer;
 use mako::logger::init_logger;
 
 #[napi]
-pub fn build(
+pub async fn build(
     root: String,
     #[napi(ts_arg_type = r#"
 {
@@ -28,8 +31,10 @@ pub fn build(
     inline_limit?: number;
     targets?: Record<string, number>;
     platform?: "node" | "browser";
+    hmr?: boolean;
 }"#)]
     config: serde_json::Value,
+    watch: bool,
 ) {
     // logger
     init_logger();
@@ -40,7 +45,14 @@ pub fn build(
 
     match mako_config {
         Ok(config) => {
-            Compiler::new(config, root).compile();
+            let compiler = Compiler::new(config, root.clone());
+            compiler.compile();
+
+            if watch {
+                let d = DevServer::new(root.clone(), Arc::new(compiler));
+                // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
+                d.serve().await;
+            }
         }
         Err(e) => println!("error: {:?}", e),
     }

@@ -1,5 +1,5 @@
 import './render';
-const onUpate = () => {
+const onUpdate = () => {
   console.time('hmr');
   module.hot.check().then(() => {
     console.timeEnd('hmr');
@@ -8,4 +8,4 @@ const onUpate = () => {
 
 const socket = new WebSocket('ws://127.0.0.1:3000/__/hmr-ws');
 
-socket.addEventListener('message', onUpate);
+socket.addEventListener('message', onUpdate);

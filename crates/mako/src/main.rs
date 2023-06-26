@@ -77,7 +77,7 @@ async fn main() {
 
     if cli.watch {
         let d = crate::dev::DevServer::new(root.clone(), Arc::new(compiler));
-        //TODO when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
+        // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
         d.serve().await;
     }
 }
