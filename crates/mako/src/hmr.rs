@@ -32,7 +32,7 @@ impl Compiler {
             })) = stmt
             {
                 if args.len() != 2 {
-                    panic!("hmr runtime should only have twow argument2");
+                    panic!("hmr runtime should only have two arguments");
                 }
                 if let ExprOrSpread {
                     expr: box Expr::Object(ObjectLit { props, .. }),
