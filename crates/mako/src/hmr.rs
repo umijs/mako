@@ -31,13 +31,13 @@ impl Compiler {
                 ..
             })) = stmt
             {
-                if args.len() != 1 {
-                    panic!("hmr runtime should only have one argument");
+                if args.len() != 2 {
+                    panic!("hmr runtime should only have twow argument2");
                 }
                 if let ExprOrSpread {
                     expr: box Expr::Object(ObjectLit { props, .. }),
                     ..
-                } = &mut args[0]
+                } = &mut args[1]
                 {
                     if props.len() != 1 {
                         panic!("hmr runtime should only have one modules property");
@@ -82,7 +82,7 @@ mod tests {
         assert_eq!(
             js_code.trim(),
             r#"
-modulesRegistry['/index.ts'].hot.apply({
+globalThis.makoModuleHotUpdate('/index.ts', {
     modules: {
         "/bar_1.ts": function(module, exports, require) {
             "use strict";
