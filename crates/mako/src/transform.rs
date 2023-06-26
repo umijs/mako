@@ -402,8 +402,9 @@ var _react = _interop_require_default._(require("react"));
     fn test_transform_js_env_replacer() {
         let code = r#"
 const EXIT = false;
+const FOO = 1;
 console.log(EXIT);
-console.log(FOO);
+if(FOO){}
 console.log(PACKAGE_NAME);
 const a = process.env.NODE_ENV;
 const b = process.env.PACKAGE_NAME;
@@ -419,8 +420,9 @@ const f = MEMBER_NAMES;
             code,
             r#"
 const EXIT = false;
+const FOO = 1;
 console.log(EXIT);
-console.log(false);
+if (FOO) {}
 console.log("MAKO");
 const a = "development";
 const b = "MAKO";
