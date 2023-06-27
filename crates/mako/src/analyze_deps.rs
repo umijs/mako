@@ -27,6 +27,10 @@ fn analyze_deps_css(ast: &swc_css_ast::Stylesheet) -> Vec<Dependency> {
     visitor.dependencies
 }
 
+pub fn is_url_ignored(url: &String) -> bool {
+    url.starts_with("http")
+}
+
 struct DepCollectVisitor {
     dependencies: Vec<Dependency>,
     dep_strs: Vec<String>,
@@ -52,6 +56,12 @@ impl DepCollectVisitor {
                 resolve_type,
             });
             self.order += 1;
+        }
+    }
+
+    fn handle_css_url(&mut self, url: String) {
+        if !is_url_ignored(&url) {
+            self.bind_dependency(url, ResolveType::Css);
         }
     }
 }
@@ -109,14 +119,14 @@ impl swc_css_visit::Visit for DepCollectVisitor {
                     UrlValue::Raw(raw) => raw.value.to_string(),
                 });
                 if let Some(src) = src {
-                    self.bind_dependency(src, ResolveType::Css);
+                    self.handle_css_url(src);
                 }
             }
             // e.g.
             // @import "a.css"
             ImportHref::Str(src) => {
                 let src = src.value.to_string();
-                self.bind_dependency(src, ResolveType::Css);
+                self.handle_css_url(src);
             }
         }
         // remove visit children since it is not used currently
@@ -133,7 +143,7 @@ impl swc_css_visit::Visit for DepCollectVisitor {
                 UrlValue::Raw(raw) => raw.value.to_string(),
             })
             .unwrap();
-        self.bind_dependency(href_string, ResolveType::Css);
+        self.handle_css_url(href_string);
         // n.visit_children_with(self);
     }
 }
@@ -165,11 +175,27 @@ mod tests {
     use std::path::PathBuf;
     use std::sync::{Arc, Mutex, RwLock};
 
-    use super::analyze_deps_js;
+    use super::{analyze_deps_js, is_url_ignored};
     use crate::ast::build_js_ast;
     use crate::chunk_graph::ChunkGraph;
     use crate::compiler::{Context, Meta};
     use crate::module_graph::ModuleGraph;
+
+    #[test]
+    fn test_is_url_ignore() {
+        assert!(
+            is_url_ignored(&String::from("http://abc")),
+            "http should ignore"
+        );
+        assert!(
+            is_url_ignored(&String::from("https://abc")),
+            "https should ignore"
+        );
+        assert!(
+            !is_url_ignored(&String::from("./abc")),
+            "./ should not ignore"
+        );
+    }
 
     #[test]
     fn test_analyze_deps() {

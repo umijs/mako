@@ -57,6 +57,7 @@ fn transform_css(
     let (code, sourcemap) = css_ast_to_code(ast, context);
 
     // lightingcss
+    // something more, lightning will transform @import url() to @import ""
     let targets = targets::lightningcss_targets_from_map(context.config.targets.clone());
     let mut lightingcss_stylesheet = StyleSheet::parse(&code, ParserOptions::default()).unwrap();
     lightingcss_stylesheet
