@@ -106,6 +106,7 @@ export const f2 = x;
 import { x } from 'foo';
 
 export const f3 = x;
+export const f1 = 1;
 
 if (true) {
     const f1 = x;
@@ -117,6 +118,7 @@ if (true) {
     class Foo {
         constructor() {
             x;
+            f1;
             f3;
         }
     }
