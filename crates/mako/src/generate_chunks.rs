@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::vec;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use rayon::prelude::*;
 use swc_common::DUMMY_SP;
 use swc_ecma_ast::{
@@ -12,8 +12,6 @@ use swc_ecma_ast::{
 
 use crate::ast::build_js_ast;
 use crate::compiler::Compiler;
-use crate::config::Mode;
-use crate::minify::minify_js;
 use crate::module::{ModuleAst, ModuleId};
 
 pub struct OutputAst {
@@ -24,7 +22,7 @@ pub struct OutputAst {
 impl Compiler {
     pub fn generate_chunks_ast(&self) -> Result<Vec<OutputAst>> {
         let module_graph = self.context.module_graph.read().unwrap();
-        let mut chunk_graph = self.context.chunk_graph.write().unwrap();
+        let chunk_graph = self.context.chunk_graph.read().unwrap();
 
         let public_path = self.context.config.public_path.clone();
         let public_path = if public_path == "runtime" {
@@ -32,7 +30,7 @@ impl Compiler {
         } else {
             format!("\"{}\"", public_path)
         };
-        let mut chunks = chunk_graph.chunks_mut();
+        let chunks = chunk_graph.get_chunks();
         // TODO: remove this
         let chunks_map_str: Vec<String> = chunks
             .iter()
@@ -51,7 +49,7 @@ impl Compiler {
         );
 
         chunks
-            .par_iter_mut()
+            .par_iter()
             .map(|chunk| {
                 // build stmts
                 let module_ids = chunk.get_modules();
@@ -150,27 +148,12 @@ impl Compiler {
                     }
                 }
 
-                // build css ast
-                // TODO
-                // 暂时无需处理
-
                 let filename = chunk.filename();
 
-                // minify
-                if matches!(self.context.config.mode, Mode::Production) {
-                    let minified = minify_js(js_ast.clone(), &self.context)
-                        .map_err(|e| anyhow!("Minified with error {}", e))
-                        .unwrap();
-                    Ok(OutputAst {
-                        path: filename,
-                        js_ast: minified,
-                    })
-                } else {
-                    Ok(OutputAst {
-                        path: filename,
-                        js_ast,
-                    })
-                }
+                Ok(OutputAst {
+                    path: filename,
+                    js_ast,
+                })
             })
             .collect::<Result<Vec<OutputAst>>>()
     }

@@ -9,7 +9,8 @@ use tracing::info;
 
 use crate::ast::js_ast_to_code;
 use crate::compiler::Compiler;
-use crate::config::DevtoolConfig;
+use crate::config::{DevtoolConfig, Mode};
+use crate::minify::minify_js;
 use crate::update::UpdateResult;
 
 impl Compiler {
@@ -37,13 +38,25 @@ impl Compiler {
         // TODO: 并行
         let t_generate_chunks = Instant::now();
         info!("generate chunks");
-        let chunk_asts = self.generate_chunks_ast()?;
+        let mut chunk_asts = self.generate_chunks_ast()?;
         let t_generate_chunks = t_generate_chunks.elapsed();
 
-        // ast to code and sourcemap, then writ
+        // minify
+        let t_minify = Instant::now();
+        info!("minify");
+        chunk_asts
+            .par_iter_mut()
+            .try_for_each(|file| -> Result<()> {
+                if matches!(self.context.config.mode, Mode::Production) {
+                    file.js_ast = minify_js(file.js_ast.clone(), &self.context)?;
+                }
+                Ok(())
+            })?;
+        let t_minify = t_minify.elapsed();
+
+        // ast to code and sourcemap, then write
         let t_ast_to_code_and_write = Instant::now();
         info!("ast to code and write");
-
         chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
             // ast to code
             let (js_code, js_sourcemap) = js_ast_to_code(&file.js_ast, &self.context, &file.path)?;
@@ -85,6 +98,7 @@ impl Compiler {
             t_transform_modules.as_millis()
         );
         info!("  - generate chunks: {}ms", t_generate_chunks.as_millis());
+        info!("  - minify: {}ms", t_minify.as_millis());
         info!(
             "  - ast to code and write: {}ms",
             t_ast_to_code_and_write.as_millis()
