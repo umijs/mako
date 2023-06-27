@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::vec;
 
 use anyhow::{anyhow, Result};
+use rayon::prelude::*;
 use swc_common::DUMMY_SP;
 use swc_ecma_ast::{
     ArrayLit, BindingIdent, BlockStmt, CallExpr, Callee, Decl, Expr, ExprOrSpread, ExprStmt,
@@ -50,7 +51,7 @@ impl Compiler {
         );
 
         chunks
-            .iter_mut()
+            .par_iter_mut()
             .map(|chunk| {
                 // build stmts
                 let module_ids = chunk.get_modules();

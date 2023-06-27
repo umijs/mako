@@ -11,10 +11,7 @@
       }
     },
     "MEMBERS": 3,
-    "MEMBER_NAMES": [
-      { "name": "sorrycc" },
-      { "name": "xiaohuoni" }
-    ],
+    "MEMBER_NAMES": [{ "name": "sorrycc" }, { "name": "xiaohuoni" }],
     "EXIT": true
   },
   "hmr": false
