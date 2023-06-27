@@ -138,9 +138,13 @@ fn to_base64(path: &str) -> Result<String> {
     let engine = engine::GeneralPurpose::new(&STANDARD, engine::general_purpose::PAD);
     let base64 = engine.encode(vec);
     let file_type = ext_name(path).unwrap();
+    let base64_type = match file_type {
+        "svg" => "svg+xml",
+        other => other,
+    };
     Ok(format!(
         "data:image/{};base64,{}",
-        file_type,
+        base64_type,
         base64.replace("\r\n", "")
     ))
 }
