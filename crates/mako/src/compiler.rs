@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex, RwLock};
 
 use swc_common::sync::Lrc;
 use swc_common::{Globals, SourceMap};
+use swc_node_comments::SwcComments;
 
 use crate::chunk_graph::ChunkGraph;
 use crate::config::Config;
@@ -53,6 +54,7 @@ impl Default for Meta {
 
 pub struct ScriptMeta {
     pub cm: Lrc<SourceMap>,
+    pub comments: Lrc<SwcComments>,
     pub globals: Globals,
 }
 
@@ -60,6 +62,7 @@ impl ScriptMeta {
     fn new() -> Self {
         Self {
             cm: Default::default(),
+            comments: Default::default(),
             globals: Globals::default(),
         }
     }

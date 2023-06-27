@@ -37,6 +37,7 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
         .script
         .cm
         .new_source_file(FileName::Real(relative_path), content.to_string());
+    let comments = context.meta.script.comments.clone();
     let is_ts = path.ends_with(".ts") || path.ends_with(".tsx");
     let jsx = path.ends_with(".jsx");
     let tsx = path.ends_with(".tsx");
@@ -56,7 +57,7 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
         syntax,
         swc_ecma_ast::EsVersion::Es2015,
         StringInput::from(&*fm),
-        None,
+        Some(&*comments),
     );
     let mut parser = Parser::new_from(lexer);
 
