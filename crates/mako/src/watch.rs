@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use futures::channel::mpsc::channel;
 use futures::{SinkExt, StreamExt};
-use notify::event::ModifyKind;
+use notify::event::{DataChange, ModifyKind};
 use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 
 use crate::update::UpdateType;
@@ -85,7 +85,7 @@ where
                 EventKind::Create(_) => {
                     // a new create file trigger both Create and Modify Event
                 }
-                EventKind::Modify(ModifyKind::Data(_)) => {
+                EventKind::Modify(ModifyKind::Data(DataChange::Any)) => {
                     println!("{:?}", event);
                     func(crate::watch::WatchEvent::Modified(event.paths));
                 }

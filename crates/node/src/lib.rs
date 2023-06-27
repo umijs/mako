@@ -32,6 +32,8 @@ pub async fn build(
     targets?: Record<string, number>;
     platform?: "node" | "browser";
     hmr?: boolean;
+    hmr_port?: string;
+    hmr_host?: string;
 }"#)]
     config: serde_json::Value,
     watch: bool,

@@ -85,6 +85,10 @@ exports.dev = async function (opts) {
   // okam dev
   const { build } = require('@alipay/okam');
   const okamConfig = getOkamConfig(opts);
+  okamConfig.hmr = true;
+  // TODO: detect port
+  okamConfig.hmr_port = String(opts.port + 1);
+  okamConfig.hmr_host = opts.host;
   build(opts.cwd, okamConfig, true);
 };
 

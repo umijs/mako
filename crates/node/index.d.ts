@@ -23,6 +23,8 @@ export function build(
     targets?: Record<string, number>;
     platform?: 'node' | 'browser';
     hmr?: boolean;
+    hmr_port?: string;
+    hmr_host?: string;
   },
   watch: boolean,
 ): Promise<void>;
