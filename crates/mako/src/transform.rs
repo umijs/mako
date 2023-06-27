@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Result;
+use serde_json::Value;
 use swc_atoms::JsWord;
 use swc_common::collections::AHashMap;
 use swc_common::comments::{NoopComments, SingleThreadedComments};
@@ -10,7 +11,10 @@ use swc_common::sync::Lrc;
 use swc_common::{Mark, DUMMY_SP, GLOBALS};
 use swc_css_ast::Stylesheet;
 use swc_css_visit::VisitMutWith;
-use swc_ecma_ast::{Expr, Lit, Module, Str};
+use swc_ecma_ast::{
+    ArrayLit, Bool, Expr, ExprOrSpread, Ident, KeyValueProp, Lit, Module, Null, Number, ObjectLit,
+    Prop, PropName, PropOrSpread, Str,
+};
 use swc_ecma_preset_env::{self as swc_preset_env};
 use swc_ecma_transforms::feature::FeatureFlag;
 use swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
@@ -48,17 +52,58 @@ pub fn transform(
     }
 }
 
-fn build_env_map(env_map: HashMap<String, String>) -> AHashMap<JsWord, Expr> {
+fn get_env_expr(v: Value) -> Expr {
+    match v {
+        Value::String(v) => Expr::Lit(Lit::Str(Str {
+            span: DUMMY_SP,
+            raw: None,
+            value: v.into(),
+        })),
+        Value::Bool(v) => Expr::Lit(Lit::Bool(Bool {
+            span: DUMMY_SP,
+            value: v,
+        })),
+        Value::Number(v) => Expr::Lit(Lit::Num(Number {
+            span: DUMMY_SP,
+            raw: None,
+            value: v.as_f64().unwrap(),
+        })),
+        Value::Array(val) => {
+            let mut elems = vec![];
+            for item in val.iter() {
+                elems.push(Some(ExprOrSpread {
+                    spread: None,
+                    expr: Box::new(get_env_expr(item.clone())),
+                }));
+            }
+            Expr::Array(ArrayLit {
+                span: DUMMY_SP,
+                elems,
+            })
+        }
+        Value::Null => Expr::Lit(Lit::Null(Null { span: DUMMY_SP })),
+        Value::Object(val) => {
+            let mut props = vec![];
+            for (key, value) in val.iter() {
+                let prop = PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                    key: PropName::Ident(Ident::new(key.clone().into(), DUMMY_SP)),
+                    value: Box::new(get_env_expr(value.clone())),
+                })));
+                props.push(prop);
+            }
+            Expr::Object(ObjectLit {
+                span: DUMMY_SP,
+                props,
+            })
+        }
+    }
+}
+
+fn build_env_map(env_map: HashMap<String, Value>) -> AHashMap<JsWord, Expr> {
     let mut map = AHashMap::default();
     env_map.into_iter().for_each(|(k, v)| {
-        map.insert(
-            k.into(),
-            Expr::Lit(Lit::Str(Str {
-                span: DUMMY_SP,
-                raw: None,
-                value: v.into(),
-            })),
-        );
+        let expr = get_env_expr(v);
+        map.insert(k.into(), expr);
     });
     map
 }
@@ -71,7 +116,14 @@ fn transform_js(
 ) -> Result<()> {
     let cm = context.meta.script.cm.clone();
     // build env map
-    let define = context.config.define.clone();
+    // TODO: read env from .env
+    let mode = &context.config.mode.to_string();
+    // if not define NODE_ENV, set NODE_ENV to mode
+    let mut define = context.config.define.clone();
+    define
+        .entry("NODE_ENV".to_string())
+        .or_insert_with(|| mode.clone().into());
+
     let env_map = build_env_map(define);
     GLOBALS.set(&context.meta.script.globals, || {
         try_with_handler(cm.clone(), Default::default(), |handler| {
@@ -349,8 +401,20 @@ var _react = _interop_require_default._(require("react"));
     #[test]
     fn test_transform_js_env_replacer() {
         let code = r#"
+const EXIT = false;
+console.log(EXIT);
+console.log(FOO);
+if (1) {
+  const FOO = 1;
+  console.log(FOO);
+}
+console.log(PACKAGE_NAME);
 const a = process.env.NODE_ENV;
 const b = process.env.PACKAGE_NAME;
+const c = MEMBERS;
+const d = YOUYOU.name;
+const e = XIAOHUONI.friend;
+const f = MEMBER_NAMES;
         "#
         .trim();
         let (code, _sourcemap) = transform_js_code(code, None);
@@ -358,8 +422,33 @@ const b = process.env.PACKAGE_NAME;
         assert_eq!(
             code,
             r#"
+const EXIT = false;
+console.log(EXIT);
+console.log(false);
+if (1) {
+    const FOO = 1;
+    console.log(FOO);
+}
+console.log("MAKO");
 const a = "development";
 const b = "MAKO";
+const c = 3;
+const d = {
+    name: "youyou"
+}.name;
+const e = {
+    friend: {
+        name: "sorrycc"
+    }
+}.friend;
+const f = [
+    {
+        name: "sorrycc"
+    },
+    {
+        name: "xiaohuoni"
+    }
+];
 
 //# sourceMappingURL=index.js.map
         "#
@@ -469,8 +558,6 @@ require("bar");
         let path = path.unwrap_or("test.tsx");
         let current_dir = std::env::current_dir().unwrap();
         let config = Config::new(&current_dir.join("test/config/define"), None, None).unwrap();
-
-        dbg!(&config);
 
         let root = PathBuf::from("/path/to/root");
         let context = Arc::new(Context {
