@@ -2,6 +2,7 @@ import React from 'react';
 
 export default function LazyComponent() {
   const [text, setText] = React.useState('Initial State');
+  const [count, setCount] = React.useState(123);
 
   React.useEffect(() => {
     setTimeout(() => {
@@ -12,6 +13,15 @@ export default function LazyComponent() {
   return (
     <div>
       <h3>{text}</h3>
+      <h3>count: {count}</h3>
+      {/* rome-ignore lint/a11y/useButtonType: <explanation> */}
+      <button
+        onClick={() => {
+          setCount(count + 1);
+        }}
+      >
+        add count
+      </button>
     </div>
   );
 }
