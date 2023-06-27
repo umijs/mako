@@ -4,7 +4,7 @@ use swc_common::util::take::Take;
 use swc_css_ast::{AtRulePrelude, ImportHref, Rule, Stylesheet, Url, UrlValue};
 use swc_css_visit::{VisitMut, VisitMutWith};
 
-use crate::analyze_deps::is_url_ignored;
+use crate::analyze_deps::is_remote_url;
 
 pub struct CssHandler {
     pub dep_map: HashMap<String, String>,
@@ -35,7 +35,7 @@ impl VisitMut for CssHandler {
                             }
                             box ImportHref::Str(str) => str.value.to_string(),
                         };
-                        is_url_ignored(&href_string)
+                        is_remote_url(&href_string)
                     } else {
                         true
                     }

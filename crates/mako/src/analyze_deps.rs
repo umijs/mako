@@ -27,8 +27,8 @@ fn analyze_deps_css(ast: &swc_css_ast::Stylesheet) -> Vec<Dependency> {
     visitor.dependencies
 }
 
-pub fn is_url_ignored(url: &String) -> bool {
-    url.starts_with("http")
+pub fn is_remote_url(url: &str) -> bool {
+    url.starts_with("http://") || url.starts_with("https://")
 }
 
 struct DepCollectVisitor {
@@ -60,7 +60,7 @@ impl DepCollectVisitor {
     }
 
     fn handle_css_url(&mut self, url: String) {
-        if !is_url_ignored(&url) {
+        if !is_remote_url(&url) {
             self.bind_dependency(url, ResolveType::Css);
         }
     }
@@ -175,25 +175,25 @@ mod tests {
     use std::path::PathBuf;
     use std::sync::{Arc, Mutex, RwLock};
 
-    use super::{analyze_deps_js, is_url_ignored};
+    use super::{analyze_deps_js, is_remote_url};
     use crate::ast::build_js_ast;
     use crate::chunk_graph::ChunkGraph;
     use crate::compiler::{Context, Meta};
     use crate::module_graph::ModuleGraph;
 
     #[test]
-    fn test_is_url_ignore() {
+    fn test_is_remote_url() {
         assert!(
-            is_url_ignored(&String::from("http://abc")),
-            "http should ignore"
+            is_remote_url(&String::from("http://abc")),
+            "http is remote url"
         );
         assert!(
-            is_url_ignored(&String::from("https://abc")),
-            "https should ignore"
+            is_remote_url(&String::from("https://abc")),
+            "https is remote url"
         );
         assert!(
-            !is_url_ignored(&String::from("./abc")),
-            "./ should not ignore"
+            !is_remote_url(&String::from("./abc")),
+            "./ is not remote url"
         );
     }
 
