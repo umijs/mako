@@ -51,7 +51,7 @@ pub enum LoadError {
     ReadFileSizeError { path: String },
 }
 
-pub fn load(path: &str, context: &Arc<Context>) -> Result<Content> {
+pub fn load(path: &str, is_entry: bool, context: &Arc<Context>) -> Result<Content> {
     debug!("load: {}", path);
     let path = if is_mako_css_modules(path) {
         path.trim_end_matches(MAKO_CSS_MODULES_SUFFIX)
@@ -67,7 +67,23 @@ pub fn load(path: &str, context: &Arc<Context>) -> Result<Content> {
 
     let ext_name = ext_name(path);
     match ext_name {
-        Some("js" | "jsx" | "ts" | "tsx" | "cjs" | "mjs") => load_js(path),
+        Some("js" | "jsx" | "ts" | "tsx" | "cjs" | "mjs") => {
+            let mut content = read_content(path)?;
+            // TODO: use array entry instead
+            if is_entry && context.config.hmr {
+                let port = &context.config.hmr_port.to_string();
+                let host = &context.config.hmr_host.to_string();
+                let host = if host == "0.0.0.0" { "127.0.0.1" } else { host };
+                content = format!(
+                    "{}\n{}\n",
+                    content,
+                    include_str!("runtime/runtime_hmr_entry.js")
+                )
+                .replace("__PORT__", port)
+                .replace("__HOST__", host);
+            }
+            Ok(Content::Js(content))
+        }
         Some("css") => load_css(path),
         Some("json") => load_json(path),
         Some("less" | "sass" | "scss" | "stylus") => Err(anyhow!(LoadError::UnsupportedExtName {
@@ -78,6 +94,7 @@ pub fn load(path: &str, context: &Arc<Context>) -> Result<Content> {
     }
 }
 
+#[allow(dead_code)]
 fn load_js(path: &str) -> Result<Content> {
     Ok(Content::Js(read_content(path)?))
 }
@@ -136,12 +153,18 @@ fn to_base64(path: &str) -> Result<String> {
     let vec = std::fs::read(path)?;
     let engine = engine::GeneralPurpose::new(&STANDARD, engine::general_purpose::PAD);
     let base64 = engine.encode(vec);
-    let file_type = ext_name(path).unwrap();
-    Ok(format!(
-        "data:image/{};base64,{}",
-        file_type,
-        base64.replace("\r\n", "")
-    ))
+    let guess = mime_guess::from_path(path);
+    if let Some(mime) = guess.first() {
+        Ok(format!(
+            "data:{};base64,{}",
+            mime,
+            base64.replace("\r\n", "")
+        ))
+    } else {
+        Err(anyhow!(LoadError::ToBase64Error {
+            path: path.to_string(),
+        }))
+    }
 }
 
 fn content_hash(file_path: &str) -> Result<String> {

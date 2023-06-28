@@ -45,10 +45,6 @@ impl ChunkGraph {
         self.graph.node_weights().find(|c| c.filename().eq(name))
     }
 
-    pub fn chunks_mut(&mut self) -> Vec<&mut Chunk> {
-        self.graph.node_weights_mut().collect()
-    }
-
     pub fn add_edge(&mut self, from: &ChunkId, to: &ChunkId) {
         let from = self.id_index_map.get(from).unwrap();
         let to = self.id_index_map.get(to).unwrap();

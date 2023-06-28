@@ -38,13 +38,13 @@ impl Compiler {
         // TODO: 并行
         let t_generate_chunks = Instant::now();
         info!("generate chunks");
-        let mut output_files = self.generate_chunks()?;
+        let mut chunk_asts = self.generate_chunks_ast()?;
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         // minify
         let t_minify = Instant::now();
         info!("minify");
-        output_files
+        chunk_asts
             .par_iter_mut()
             .try_for_each(|file| -> Result<()> {
                 if matches!(self.context.config.mode, Mode::Production) {
@@ -57,7 +57,7 @@ impl Compiler {
         // ast to code and sourcemap, then write
         let t_ast_to_code_and_write = Instant::now();
         info!("ast to code and write");
-        output_files.par_iter().try_for_each(|file| -> Result<()> {
+        chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
             // ast to code
             let (js_code, js_sourcemap) = js_ast_to_code(&file.js_ast, &self.context, &file.path)?;
             // generate code and sourcemap files

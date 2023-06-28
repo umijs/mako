@@ -1397,6 +1397,7 @@ dependencies = [
  "insta",
  "lightningcss",
  "md5",
+ "mime_guess",
  "nodejs-resolver",
  "notify",
  "pathdiff",

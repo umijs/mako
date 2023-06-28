@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use clap::ValueEnum;
 use serde::Deserialize;
+use serde_json::Value;
 
 #[derive(Deserialize, Debug)]
 pub struct OutputConfig {
@@ -65,9 +66,11 @@ pub struct Config {
     pub inline_limit: usize,
     pub targets: HashMap<String, usize>,
     pub platform: Platform,
-    pub define: HashMap<String, String>,
+    pub define: HashMap<String, Value>,
     // temp solution
     pub hmr: bool,
+    pub hmr_port: String,
+    pub hmr_host: String,
 }
 
 const CONFIG_FILE: &str = "mako.config.json";
@@ -86,7 +89,9 @@ const DEFAULT_CONFIG: &str = r#"
     "targets": { "chrome": 80 },
     "define": {},
     "platform": "browser",
-    "hmr": true
+    "hmr": true,
+    "hmr_host": "127.0.0.1",
+    "hmr_port": "3000"
 }
 "#;
 
@@ -138,7 +143,7 @@ impl Config {
             config
                 .define
                 .entry("NODE_ENV".to_string())
-                .or_insert_with(|| config.mode.to_string());
+                .or_insert_with(|| serde_json::Value::String(config.mode.to_string()));
 
             if config.public_path != "runtime" && !config.public_path.ends_with('/') {
                 panic!("public_path must end with '/' or be 'runtime'");

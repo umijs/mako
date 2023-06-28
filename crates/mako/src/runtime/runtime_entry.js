@@ -70,6 +70,65 @@ function createRuntime(makoModules, entryModuleId) {
     fn.ensure = ensure;
     return fn;
   };
+
+  const applyHotUpdate = (chunkId, update) => {
+    const { modules, removedModules } = update;
+
+    // get outdated modules
+    const outdatedModules = [];
+    for (const moduleId of Object.keys(modules)) {
+      if (!modulesRegistry[moduleId]) continue;
+      if (outdatedModules.includes(moduleId)) continue;
+      outdatedModules.push(moduleId);
+      const queue = [moduleId];
+      while (queue.length) {
+        const item = queue.pop();
+        const module = modulesRegistry[item];
+        if (!module) continue;
+        if (module.hot._selfAccepted) {
+          continue;
+        }
+        for (const parentModule of module.parents) {
+          if (outdatedModules.includes(parentModule)) continue;
+          outdatedModules.push(parentModule);
+          queue.push(parentModule);
+        }
+      }
+    }
+
+    // get self accepted modules
+    const outdatedSelfAcceptedModules = [];
+    for (const moduleId of outdatedModules) {
+      const module = modulesRegistry[moduleId];
+      if (module.hot._selfAccepted) {
+        outdatedSelfAcceptedModules.push(module);
+      }
+    }
+
+    // dispose
+    for (const moduleId of outdatedModules) {
+      const module = modulesRegistry[moduleId];
+      for (const handler of module.hot._disposeHandlers) {
+        handler();
+      }
+      module.hot.active = false;
+      delete modulesRegistry[moduleId];
+      for (const childModule of module.children) {
+        const child = modulesRegistry[childModule];
+        if (!child) continue;
+        const idx = child.parents.indexOf(moduleId);
+        if (idx !== -1) {
+          child.parents.splice(idx, 1);
+        }
+      }
+    }
+
+    // apply
+    registerModules(modules);
+    for (const module of outdatedSelfAcceptedModules) {
+      module.hot._requireSelf();
+    }
+  };
   const createModuleHotObject = (moduleId, me) => {
     const hot = {
       _acceptedDependencies: {},
@@ -121,62 +180,7 @@ function createRuntime(makoModules, entryModuleId) {
           });
       },
       apply(update) {
-        const { modules, removedModules } = update;
-
-        // get outdated modules
-        const outdatedModules = [];
-        for (const moduleId of Object.keys(modules)) {
-          if (!modulesRegistry[moduleId]) continue;
-          if (outdatedModules.includes(moduleId)) continue;
-          outdatedModules.push(moduleId);
-          const queue = [moduleId];
-          while (queue.length) {
-            const item = queue.pop();
-            const module = modulesRegistry[item];
-            if (!module) continue;
-            if (module.hot._selfAccepted) {
-              continue;
-            }
-            for (const parentModule of module.parents) {
-              if (outdatedModules.includes(parentModule)) continue;
-              outdatedModules.push(parentModule);
-              queue.push(parentModule);
-            }
-          }
-        }
-
-        // get self accepted modules
-        const outdatedSelfAcceptedModules = [];
-        for (const moduleId of outdatedModules) {
-          const module = modulesRegistry[moduleId];
-          if (module.hot._selfAccepted) {
-            outdatedSelfAcceptedModules.push(module);
-          }
-        }
-
-        // dispose
-        for (const moduleId of outdatedModules) {
-          const module = modulesRegistry[moduleId];
-          for (const handler of module.hot._disposeHandlers) {
-            handler();
-          }
-          module.hot.active = false;
-          delete modulesRegistry[moduleId];
-          for (const childModule of module.children) {
-            const child = modulesRegistry[childModule];
-            if (!child) continue;
-            const idx = child.parents.indexOf(moduleId);
-            if (idx !== -1) {
-              child.parents.splice(idx, 1);
-            }
-          }
-        }
-
-        // apply
-        registerModules(modules);
-        for (const module of outdatedSelfAcceptedModules) {
-          module.hot._requireSelf();
-        }
+        return applyHotUpdate(update);
       },
     };
     return hot;
@@ -281,9 +285,11 @@ function createRuntime(makoModules, entryModuleId) {
     requireModule,
     _modulesRegistry: modulesRegistry,
     _jsonpCallback: jsonpCallback,
+    _makoModuleHotUpdate: applyHotUpdate,
   };
 }
 
 const runtime = createRuntime({}, 'main');
 globalThis.jsonpCallback = runtime._jsonpCallback;
 globalThis.modulesRegistry = runtime._modulesRegistry;
+globalThis.makoModuleHotUpdate = runtime._makoModuleHotUpdate;
