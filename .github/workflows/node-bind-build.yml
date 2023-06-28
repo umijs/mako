@@ -178,19 +178,19 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: bindings-x86_64-apple-darwin
-          path: artifacts
+          path: crates/node/artifacts
       - name: Download macOS arm64 artifact
         uses: actions/download-artifact@v3
         with:
           name: bindings-aarch64-apple-darwin
-          path: artifacts
+          path: crates/node/artifacts
       - name: Combine binaries
-        run: pnpm universal
+        run: pnpm  --filter @alipay/okam universal
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
           name: bindings-universal-apple-darwin
-          path: ${{ env.APP_NAME }}.*.node
+          path: crates/node/${{ env.APP_NAME }}.*.node
           if-no-files-found: error
   publish:
     name: Publish
@@ -200,20 +200,25 @@ jobs:
       - universal-macOS
     steps:
       - uses: actions/checkout@v3
+      - uses: pnpm/action-setup@v2
+        name: Install pnpm
+        id: pnpm-install
+        with:
+          version: 8
       - name: Setup node
         uses: actions/setup-node@v3
         with:
           node-version: 18
           check-latest: true
-          cache: yarn
+          cache: pnpm
       - name: Install dependencies
-        run: yarn install
+        run: pnpm install
       - name: Download all artifacts
         uses: actions/download-artifact@v3
         with:
-          path: artifacts
+          path: crates/node/artifacts
       - name: Move artifacts
-        run: pnpm artifacts
+        run: pnpm --filter @alipay/okam artifacts
       - name: List packages
         run: ls -R ./crates/node/npm
         shell: bash
