@@ -137,16 +137,18 @@ fn to_base64(path: &str) -> Result<String> {
     let vec = std::fs::read(path)?;
     let engine = engine::GeneralPurpose::new(&STANDARD, engine::general_purpose::PAD);
     let base64 = engine.encode(vec);
-    let file_type = ext_name(path).unwrap();
-    let base64_type = match file_type {
-        "svg" => "svg+xml",
-        other => other,
-    };
-    Ok(format!(
-        "data:image/{};base64,{}",
-        base64_type,
-        base64.replace("\r\n", "")
-    ))
+    let guess = mime_guess::from_path(path);
+    if let Some(mime) = guess.first() {
+        Ok(format!(
+            "data:{};base64,{}",
+            mime,
+            base64.replace("\r\n", "")
+        ))
+    } else {
+        Err(anyhow!(LoadError::ToBase64Error {
+            path: path.to_string(),
+        }))
+    }
 }
 
 fn content_hash(file_path: &str) -> Result<String> {
