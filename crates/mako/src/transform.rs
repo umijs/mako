@@ -524,6 +524,7 @@ require("bar");
     fn test_transform_css_url() {
         let code = r#"
 @import "should_be_removed.css";
+@import "http://should-not-be-removed";
 .foo { background: url("url.png"); }
         "#
         .trim();
@@ -541,6 +542,7 @@ require("bar");
         assert_eq!(
             code,
             r#"
+@import "http://should-not-be-removed";
 .foo {
   background: url("replace.png");
 }
