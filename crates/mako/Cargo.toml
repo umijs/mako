@@ -57,6 +57,9 @@ tokio-tungstenite = "0.19.0"
 hyper-tungstenite = "0.10.0"
 hyper-staticfile = "0.9.5"
 mime_guess = "2.0.4"
+toml = "0.7.5"
+serde_yaml = "0.9.22"
+serde-xml-rs = "0.6.0"
 
 [dev-dependencies]
 insta = { version = "1.29.0", features = ["yaml"] }
