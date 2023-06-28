@@ -1,4 +1,4 @@
-name: CI
+name: node-bind-build
 env:
   DEBUG: napi:*
   APP_NAME: okam
@@ -33,6 +33,7 @@ jobs:
             target: x86_64-pc-windows-msvc
           - host: windows-latest
             build: |
+              rustup target add i686-pc-windows-msvc
               pnpm --filter @alipay/okam  build --target i686-pc-windows-msvc
             target: i686-pc-windows-msvc
           - host: ubuntu-latest
@@ -49,13 +50,15 @@ jobs:
           - host: macos-latest
             target: aarch64-apple-darwin
             build: |
+              rustup target add aarch64-apple-darwin
               pnpm --filter @alipay/okam build --target aarch64-apple-darwin
-              strip -x *.node
+              strip -x ./crates/node/*.node
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian-aarch64
             build: |-
               set -e &&
+              rustup target add aarch64-unknown-linux-gnu &&
               pnpm --filter @alipay/okam build --target aarch64-unknown-linux-gnu &&
               aarch64-unknown-linux-gnu-strip ./crates/node/*.node
           - host: ubuntu-latest
@@ -64,6 +67,7 @@ jobs:
               sudo apt-get update
               sudo apt-get install gcc-arm-linux-gnueabihf -y
             build: |
+              rustup target add armv7-unknown-linux-gnueabihf
               pnpm --filter @alipay/okam build --target armv7-unknown-linux-gnueabihf
               arm-linux-gnueabihf-strip ./crates/node/*.node
           - host: ubuntu-latest
@@ -76,7 +80,9 @@ jobs:
               /aarch64-linux-musl-cross/bin/aarch64-linux-musl-strip ./crates/node/*.node
           - host: windows-latest
             target: aarch64-pc-windows-msvc
-            build: pnpm --filter @alipay/okam build --target aarch64-pc-windows-msvc
+            build: |
+              rustup target add aarch64-pc-windows-msvc
+              pnpm --filter @alipay/okam build --target aarch64-pc-windows-msvc
     name: stable - ${{ matrix.settings.target }} - node@18
     runs-on: ${{ matrix.settings.host }}
     steps:
