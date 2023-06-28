@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use futures::channel::mpsc::channel;
 use futures::{SinkExt, StreamExt};
-use notify::event::ModifyKind;
+use notify::event::{DataChange, ModifyKind};
 use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 
 use crate::update::UpdateType;
@@ -31,16 +31,16 @@ impl From<WatchEvent> for Vec<(PathBuf, UpdateType)> {
 
 pub fn watch<T>(root: &PathBuf, func: T)
 where
-    T: Fn(WatchEvent),
+    T: FnMut(WatchEvent),
 {
     futures::executor::block_on(async {
         watch_async(root, func).await;
     });
 }
 
-pub async fn watch_async<T>(root: &PathBuf, func: T)
+pub async fn watch_async<T>(root: &PathBuf, mut func: T)
 where
-    T: Fn(WatchEvent),
+    T: FnMut(WatchEvent),
 {
     let (mut tx, mut rx) = channel(2);
     let mut watcher = RecommendedWatcher::new(
@@ -85,7 +85,7 @@ where
                 EventKind::Create(_) => {
                     // a new create file trigger both Create and Modify Event
                 }
-                EventKind::Modify(ModifyKind::Data(_)) => {
+                EventKind::Modify(ModifyKind::Data(DataChange::Any)) => {
                     println!("{:?}", event);
                     func(crate::watch::WatchEvent::Modified(event.paths));
                 }

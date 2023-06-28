@@ -151,14 +151,25 @@ impl ProjectWatch {
         let c = self.compiler.clone();
         let root = self.root.clone();
         let tx = self.tx.clone();
+
+        let mut last_full_hash = Box::new(c.full_hash());
+
         tokio::spawn(async move {
             watch(&root, |events| {
                 let res = c.update(events.into()).unwrap();
 
                 if res.is_updated() {
-                    c.generate_hot_update_chunks(res);
+                    let next_full_hash = c.generate_hot_update_chunks(res, *last_full_hash);
+
+                    if next_full_hash == *last_full_hash {
+                        // no need to continue
+                        return;
+                    } else {
+                        *last_full_hash = next_full_hash;
+                    }
 
                     if tx.receiver_count() > 0 {
+                        //TODO: send the next hash to runtime
                         tx.send(()).unwrap();
                     }
 

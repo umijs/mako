@@ -22,6 +22,8 @@ pub struct OutputFile {
 
 impl Compiler {
     pub fn generate_chunks(&self) -> Result<Vec<OutputFile>> {
+        let full_hash = self.full_hash();
+
         let module_graph = self.context.module_graph.read().unwrap();
         let mut chunk_graph = self.context.chunk_graph.write().unwrap();
 
@@ -65,6 +67,7 @@ impl Compiler {
                         chunks_map_str,
                         include_str!("runtime/runtime_entry.js")
                     )
+                    .replace("_%full_hash%_", &full_hash.to_string())
                 } else {
                     include_str!("runtime/runtime_chunk.js").to_string()
                 };

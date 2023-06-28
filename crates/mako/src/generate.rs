@@ -110,7 +110,11 @@ impl Compiler {
     }
 
     // TODO: 集成到 fn generate 里
-    pub fn generate_hot_update_chunks(&self, updated_modules: UpdateResult) {
+    pub fn generate_hot_update_chunks(
+        &self,
+        updated_modules: UpdateResult,
+        last_full_hash: u64,
+    ) -> u64 {
         let last_chunk_names: HashSet<String> = {
             let chunk_graph = self.context.chunk_graph.read().unwrap();
             chunk_graph.chunk_names()
@@ -130,6 +134,23 @@ impl Compiler {
         let t_transform_modules = Instant::now();
         self.transform_all();
         let t_transform_modules = t_transform_modules.elapsed();
+
+        let current_full_hash = self.full_hash();
+
+        println!(
+            "{} {} {}",
+            current_full_hash,
+            if current_full_hash == last_full_hash {
+                "equals"
+            } else {
+                "not equals"
+            },
+            last_full_hash
+        );
+
+        if current_full_hash == last_full_hash {
+            return current_full_hash;
+        }
 
         // ensure output dir exists
         let config = &self.context.config;
@@ -168,12 +189,12 @@ impl Compiler {
                 let (code, _) = self.generate_hmr_chunk(chunk, &updated_modules.modified);
 
                 // TODO the final format should be {name}.{full_hash}.hot-update.{ext}
-                self.write_to_dist(to_hot_update_chunk_name(chunk_name), code);
+                self.write_to_dist(to_hot_update_chunk_name(chunk_name, last_full_hash), code);
             }
         }
 
         self.write_to_dist(
-            "hot-update.json",
+            format!("{}.hot-update.json", last_full_hash),
             serde_json::to_string(&HotUpdateManifest {
                 removed_chunks,
                 modified_chunks,
@@ -193,6 +214,8 @@ impl Compiler {
             "  - transform modules: {}ms",
             t_transform_modules.as_millis()
         );
+        info!("  - next full hash: {}", current_full_hash);
+        current_full_hash
     }
 
     pub fn write_to_dist<P: AsRef<std::path::Path>, C: AsRef<[u8]>>(
@@ -206,13 +229,13 @@ impl Compiler {
     }
 }
 
-fn to_hot_update_chunk_name(chunk_name: &String) -> String {
+fn to_hot_update_chunk_name(chunk_name: &String, hash: u64) -> String {
     match chunk_name.rsplit_once('.') {
         None => {
-            format!("{chunk_name}.hot-update")
+            format!("{chunk_name}.{hash}.hot-update")
         }
         Some((left, ext)) => {
-            format!("{left}.hot-update.{ext}")
+            format!("{left}.{hash}.hot-update.{ext}")
         }
     }
 }

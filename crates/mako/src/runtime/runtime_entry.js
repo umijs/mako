@@ -91,7 +91,9 @@ function createRuntime(makoModules, entryModuleId) {
       },
       invalidate() {},
       check() {
-        return fetch('/hot-update.json')
+        const current_hash = requireModule.currentHash();
+
+        return fetch(`/${current_hash}.hot-update.json`)
           .then((res) => {
             return res.json();
           })
@@ -104,7 +106,12 @@ function createRuntime(makoModules, entryModuleId) {
 
                 let ext = parts[l - 1];
 
-                const hotChunkName = [left, 'hot-update', ext].join('.');
+                const hotChunkName = [
+                  left,
+                  current_hash,
+                  'hot-update',
+                  ext,
+                ].join('.');
 
                 return new Promise((done) => {
                   load(`/${hotChunkName}`, done);
@@ -264,10 +271,10 @@ function createRuntime(makoModules, entryModuleId) {
   requireModule.ensure = ensure;
   requireModule(entryModuleId);
 
-  requireModule._h = 'full_hash';
+  requireModule._h = '_%full_hash%_';
 
   requireModule.currentHash = () => {
-    return registerModules._h;
+    return requireModule._h;
   };
 
   return {

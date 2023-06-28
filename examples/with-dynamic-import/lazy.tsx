@@ -11,7 +11,7 @@ export default function LazyComponent() {
 
   return (
     <div>
-      <h3>{text}12</h3>
+      <h3>{text}</h3>
     </div>
   );
 }
