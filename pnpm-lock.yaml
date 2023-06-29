@@ -39,6 +39,15 @@ importers:
         specifier: workspace:*
         version: link:../../packages/bundler-okam
 
+  examples/import-resources:
+    dependencies:
+      react:
+        specifier: 18.2.0
+        version: 18.2.0
+      react-dom:
+        specifier: 18.2.0
+        version: 18.2.0(react@18.2.0)
+
   examples/multiple-entries-heavy:
     dependencies:
       '@ant-design/icons':
