@@ -1,3 +1,3 @@
-# `@alipay/okam-linux-arm-gnueabihf`
+# `@okamjs/okam-linux-arm-gnueabihf`
 
-This is the **armv7-unknown-linux-gnueabihf** binary for `@alipay/okam`
+This is the **armv7-unknown-linux-gnueabihf** binary for `@okamjs/okam`

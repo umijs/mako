@@ -176,7 +176,7 @@ importers:
 
   packages/bundler-okam:
     dependencies:
-      '@alipay/okam':
+      '@okamjs/okam':
         specifier: 0.0.0
         version: link:../../crates/node
       '@swc/helpers':

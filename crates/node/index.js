@@ -36,7 +36,7 @@ switch (platform) {
           if (localFileExisted) {
             nativeBinding = require('./okam.android-arm64.node');
           } else {
-            nativeBinding = require('@alipay/okam-android-arm64');
+            nativeBinding = require('@okamjs/okam-android-arm64');
           }
         } catch (e) {
           loadError = e;
@@ -50,7 +50,7 @@ switch (platform) {
           if (localFileExisted) {
             nativeBinding = require('./okam.android-arm-eabi.node');
           } else {
-            nativeBinding = require('@alipay/okam-android-arm-eabi');
+            nativeBinding = require('@okamjs/okam-android-arm-eabi');
           }
         } catch (e) {
           loadError = e;
@@ -70,7 +70,7 @@ switch (platform) {
           if (localFileExisted) {
             nativeBinding = require('./okam.win32-x64-msvc.node');
           } else {
-            nativeBinding = require('@alipay/okam-win32-x64-msvc');
+            nativeBinding = require('@okamjs/okam-win32-x64-msvc');
           }
         } catch (e) {
           loadError = e;
@@ -84,7 +84,7 @@ switch (platform) {
           if (localFileExisted) {
             nativeBinding = require('./okam.win32-ia32-msvc.node');
           } else {
-            nativeBinding = require('@alipay/okam-win32-ia32-msvc');
+            nativeBinding = require('@okamjs/okam-win32-ia32-msvc');
           }
         } catch (e) {
           loadError = e;
@@ -98,7 +98,7 @@ switch (platform) {
           if (localFileExisted) {
             nativeBinding = require('./okam.win32-arm64-msvc.node');
           } else {
-            nativeBinding = require('@alipay/okam-win32-arm64-msvc');
+            nativeBinding = require('@okamjs/okam-win32-arm64-msvc');
           }
         } catch (e) {
           loadError = e;
@@ -116,7 +116,7 @@ switch (platform) {
       if (localFileExisted) {
         nativeBinding = require('./okam.darwin-universal.node');
       } else {
-        nativeBinding = require('@alipay/okam-darwin-universal');
+        nativeBinding = require('@okamjs/okam-darwin-universal');
       }
       break;
     } catch {}
@@ -127,7 +127,7 @@ switch (platform) {
           if (localFileExisted) {
             nativeBinding = require('./okam.darwin-x64.node');
           } else {
-            nativeBinding = require('@alipay/okam-darwin-x64');
+            nativeBinding = require('@okamjs/okam-darwin-x64');
           }
         } catch (e) {
           loadError = e;
@@ -141,7 +141,7 @@ switch (platform) {
           if (localFileExisted) {
             nativeBinding = require('./okam.darwin-arm64.node');
           } else {
-            nativeBinding = require('@alipay/okam-darwin-arm64');
+            nativeBinding = require('@okamjs/okam-darwin-arm64');
           }
         } catch (e) {
           loadError = e;
@@ -160,7 +160,7 @@ switch (platform) {
       if (localFileExisted) {
         nativeBinding = require('./okam.freebsd-x64.node');
       } else {
-        nativeBinding = require('@alipay/okam-freebsd-x64');
+        nativeBinding = require('@okamjs/okam-freebsd-x64');
       }
     } catch (e) {
       loadError = e;
@@ -177,7 +177,7 @@ switch (platform) {
             if (localFileExisted) {
               nativeBinding = require('./okam.linux-x64-musl.node');
             } else {
-              nativeBinding = require('@alipay/okam-linux-x64-musl');
+              nativeBinding = require('@okamjs/okam-linux-x64-musl');
             }
           } catch (e) {
             loadError = e;
@@ -190,7 +190,7 @@ switch (platform) {
             if (localFileExisted) {
               nativeBinding = require('./okam.linux-x64-gnu.node');
             } else {
-              nativeBinding = require('@alipay/okam-linux-x64-gnu');
+              nativeBinding = require('@okamjs/okam-linux-x64-gnu');
             }
           } catch (e) {
             loadError = e;
@@ -206,7 +206,7 @@ switch (platform) {
             if (localFileExisted) {
               nativeBinding = require('./okam.linux-arm64-musl.node');
             } else {
-              nativeBinding = require('@alipay/okam-linux-arm64-musl');
+              nativeBinding = require('@okamjs/okam-linux-arm64-musl');
             }
           } catch (e) {
             loadError = e;
@@ -219,7 +219,7 @@ switch (platform) {
             if (localFileExisted) {
               nativeBinding = require('./okam.linux-arm64-gnu.node');
             } else {
-              nativeBinding = require('@alipay/okam-linux-arm64-gnu');
+              nativeBinding = require('@okamjs/okam-linux-arm64-gnu');
             }
           } catch (e) {
             loadError = e;
@@ -234,7 +234,7 @@ switch (platform) {
           if (localFileExisted) {
             nativeBinding = require('./okam.linux-arm-gnueabihf.node');
           } else {
-            nativeBinding = require('@alipay/okam-linux-arm-gnueabihf');
+            nativeBinding = require('@okamjs/okam-linux-arm-gnueabihf');
           }
         } catch (e) {
           loadError = e;
