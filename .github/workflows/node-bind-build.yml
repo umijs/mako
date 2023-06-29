@@ -222,23 +222,13 @@ jobs:
       - name: List packages
         run: ls -R ./crates/node/npm
         shell: bash
-      - name: List LOg
-        run: |
-          git log -1 --pretty=%B | grep "^[0-9]\+\.[0-9]\+\.[0-9]\+$"
-          echo $?
-          git log -1 --pretty=%B | grep "^[0-9]\+\.[0-9]\+\.[0-9]\+"
-          echo $?
-        shell: bash
+
       - name: Publish
         run: |
-          if git log -1 --pretty=%B | grep "^[0-9]\+\.[0-9]\+\.[0-9]\+$";
+          if git log -1 --pretty=%B | grep "^Release [0-9]\+\.[0-9]\+\.[0-9]\+$";
           then
             echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
             pnpm --filter @okamjs/okam publish --access public
-          elif git log -1 --pretty=%B | grep "^[0-9]\+\.[0-9]\+\.[0-9]\+";
-          then
-            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
-            pnpm --filter @okamjs/okam publish --tag next --access public
           else
             echo "Not a release, skipping publish"
           fi
