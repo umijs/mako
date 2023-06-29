@@ -25,6 +25,37 @@ importers:
         version: 12.0.0
 
   crates/node:
+    optionalDependencies:
+      '@okamjs/okam-darwin-arm64':
+        specifier: 0.0.1-alpha.2
+        version: 0.0.1-alpha.2
+      '@okamjs/okam-darwin-x64':
+        specifier: 0.0.1-alpha.2
+        version: 0.0.1-alpha.2
+      '@okamjs/okam-linux-arm-gnueabihf':
+        specifier: 0.0.1-alpha.2
+        version: 0.0.1-alpha.2
+      '@okamjs/okam-linux-arm64-gnu':
+        specifier: 0.0.1-alpha.2
+        version: 0.0.1-alpha.2
+      '@okamjs/okam-linux-arm64-musl':
+        specifier: 0.0.1-alpha.2
+        version: 0.0.1-alpha.2
+      '@okamjs/okam-linux-x64-gnu':
+        specifier: 0.0.1-alpha.2
+        version: 0.0.1-alpha.2
+      '@okamjs/okam-linux-x64-musl':
+        specifier: 0.0.1-alpha.2
+        version: 0.0.1-alpha.2
+      '@okamjs/okam-win32-arm64-msvc':
+        specifier: 0.0.1-alpha.2
+        version: 0.0.1-alpha.2
+      '@okamjs/okam-win32-ia32-msvc':
+        specifier: 0.0.1-alpha.2
+        version: 0.0.1-alpha.2
+      '@okamjs/okam-win32-x64-msvc':
+        specifier: 0.0.1-alpha.2
+        version: 0.0.1-alpha.2
     devDependencies:
       '@napi-rs/cli':
         specifier: ^2.14.8
@@ -186,8 +217,8 @@ importers:
   packages/bundler-okam:
     dependencies:
       '@okamjs/okam':
-        specifier: 0.0.1-alpha.2
-        version: 0.0.1-alpha.2
+        specifier: ~0.0.1-alpha.2
+        version: link:../../crates/node
       '@swc/helpers':
         specifier: 0.5.1
         version: 0.5.1
@@ -3081,14 +3112,6 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-darwin-universal@0.0.1-alpha.2:
-    resolution: {integrity: sha512-9B8xa92yJ2baCqVkxYeoDCkri1TAXPdW9EX5bug8rABR730Zja/7HcP8UzUJQwL4KklXWUqlZHzq6lHeM+qp3g==}
-    engines: {node: '>= 10'}
-    os: [darwin]
-    requiresBuild: true
-    dev: false
-    optional: true
-
   /@okamjs/okam-darwin-x64@0.0.1-alpha.2:
     resolution: {integrity: sha512-TqMvYZv0/SDruq+qQiH2WQownGKSsfsTn03LKyFwu6MaBht/UbvQ7QFdThtuirLclJ8OxOV46vG8N36txXciwQ==}
     engines: {node: '>= 10'}
@@ -3169,23 +3192,6 @@ packages:
     requiresBuild: true
     dev: false
     optional: true
-
-  /@okamjs/okam@0.0.1-alpha.2:
-    resolution: {integrity: sha512-ydwWSzL6xWsZIj/3t72xoWck2Nb1rRYl6wYMV8BVbhaklZq2sMAgUytQoObqhvTaQCRx6xdwWIK2s+dczdZrhQ==}
-    engines: {node: '>= 10'}
-    optionalDependencies:
-      '@okamjs/okam-darwin-arm64': 0.0.1-alpha.2
-      '@okamjs/okam-darwin-universal': 0.0.1-alpha.2
-      '@okamjs/okam-darwin-x64': 0.0.1-alpha.2
-      '@okamjs/okam-linux-arm-gnueabihf': 0.0.1-alpha.2
-      '@okamjs/okam-linux-arm64-gnu': 0.0.1-alpha.2
-      '@okamjs/okam-linux-arm64-musl': 0.0.1-alpha.2
-      '@okamjs/okam-linux-x64-gnu': 0.0.1-alpha.2
-      '@okamjs/okam-linux-x64-musl': 0.0.1-alpha.2
-      '@okamjs/okam-win32-arm64-msvc': 0.0.1-alpha.2
-      '@okamjs/okam-win32-ia32-msvc': 0.0.1-alpha.2
-      '@okamjs/okam-win32-x64-msvc': 0.0.1-alpha.2
-    dev: false
 
   /@pkgjs/parseargs@0.11.0:
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
