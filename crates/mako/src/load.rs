@@ -76,6 +76,7 @@ pub fn load(path: &str, is_entry: bool, context: &Arc<Context>) -> Result<Conten
         Some("toml") => load_toml(path),
         Some("yaml") => load_yaml(path),
         Some("xml") => load_xml(path),
+        Some("wasm") => load_wasm(path),
         Some("less" | "sass" | "scss" | "stylus") => Err(anyhow!(LoadError::UnsupportedExtName {
             ext_name: ext_name.unwrap().to_string(),
             path: path.to_string(),
@@ -119,6 +120,21 @@ fn load_xml(path: &str) -> Result<Content> {
     let xml_value = from_xml_str::<serde_json::Value>(&xml_string)?;
     let json_string = serde_json::to_string(&xml_value)?;
     Ok(Content::Js(format!("module.exports = {}", json_string)))
+}
+
+fn load_wasm(path: &str) -> Result<Content> {
+    let raw = to_base64(path)?.replace("data:application/wasm;base64,", "");
+    Ok(Content::Js(format!(
+        "
+            const raw = globalThis.atob('{raw}');
+            const rawLength = raw.length;
+            const buf = new Uint8Array(new ArrayBuffer(rawLength));
+            for (let i = 0; i < rawLength; i++) {{
+                buf[i] = raw.charCodeAt(i);
+            }}
+            module.exports = WebAssembly.instantiate(buf);
+        "
+    )))
 }
 
 fn load_assets(path: &str, context: &Arc<Context>) -> Result<Content> {
