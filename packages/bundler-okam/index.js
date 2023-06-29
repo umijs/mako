@@ -22,7 +22,7 @@ exports.build = async function (opts) {
   const mode = process.argv.includes('--dev') ? 'development' : 'production';
   okamConfig.mode = mode;
 
-  const { build } = require('@alipay/okam');
+  const { build } = require('@okamjs/okam');
   build(cwd, okamConfig, false);
 
   // FIXME: mock stats
@@ -83,7 +83,7 @@ exports.dev = async function (opts) {
     console.log(banner);
   });
   // okam dev
-  const { build } = require('@alipay/okam');
+  const { build } = require('@okamjs/okam');
   const okamConfig = getOkamConfig(opts);
   okamConfig.hmr = true;
   // TODO: detect port

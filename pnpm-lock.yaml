@@ -185,9 +185,9 @@ importers:
 
   packages/bundler-okam:
     dependencies:
-      '@alipay/okam':
-        specifier: 0.0.0
-        version: link:../../crates/node
+      '@okamjs/okam':
+        specifier: 0.0.1-alpha.2
+        version: 0.0.1-alpha.2
       '@swc/helpers':
         specifier: 0.5.1
         version: 0.5.1
@@ -3071,6 +3071,121 @@ packages:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.15.0
     dev: true
+
+  /@okamjs/okam-darwin-arm64@0.0.1-alpha.2:
+    resolution: {integrity: sha512-Ij/TBzYXQpXp+fwxHQk42glPsB9PVTSSA6yUcOmd860aP9Sn3phbc+yVX+QgtLf2xkO2zeLeq4aknx5d3TXd+Q==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [darwin]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@okamjs/okam-darwin-universal@0.0.1-alpha.2:
+    resolution: {integrity: sha512-9B8xa92yJ2baCqVkxYeoDCkri1TAXPdW9EX5bug8rABR730Zja/7HcP8UzUJQwL4KklXWUqlZHzq6lHeM+qp3g==}
+    engines: {node: '>= 10'}
+    os: [darwin]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@okamjs/okam-darwin-x64@0.0.1-alpha.2:
+    resolution: {integrity: sha512-TqMvYZv0/SDruq+qQiH2WQownGKSsfsTn03LKyFwu6MaBht/UbvQ7QFdThtuirLclJ8OxOV46vG8N36txXciwQ==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [darwin]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@okamjs/okam-linux-arm-gnueabihf@0.0.1-alpha.2:
+    resolution: {integrity: sha512-TCYBRAN5xK6P88I0Hy5/4KYoXAQth7YsHyGxACCK6hu6PN+g1txfYMU1gh7VCQMYWLu5g3xPmh7vPyXLwB6sWQ==}
+    engines: {node: '>= 10'}
+    cpu: [arm]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@okamjs/okam-linux-arm64-gnu@0.0.1-alpha.2:
+    resolution: {integrity: sha512-oq4hp6qodOg2IV5CYEfB+LTx8Y5oEktNL1vHkShwec8Yqzn2WGnd9ZuYG+TIRZqe9bDLRfo8Jk9TGduovBeyEQ==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@okamjs/okam-linux-arm64-musl@0.0.1-alpha.2:
+    resolution: {integrity: sha512-WiE+SCPzDvCNsaSYeOlp6pNg9fFK8/PVsqTF5t/qojjOpouLRDFbjrQuKwtEaR7tcJ90MPnNRLmogGBB426hXw==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@okamjs/okam-linux-x64-gnu@0.0.1-alpha.2:
+    resolution: {integrity: sha512-G1u359QiqahKXsFWPAkW7o4rCk5lDIj/jd3VZctmcbiWhy3CLM3dvBmsp9IF9VGWBVRRK2dJQa61EgQtfCu5Sw==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@okamjs/okam-linux-x64-musl@0.0.1-alpha.2:
+    resolution: {integrity: sha512-86KAV9ZPJbji5VrKPunDR9nXWOyIZhYHSWSpUWZL10G7pBe8oKPKg/19c24aGp4zisYd/gXQy9vmKQCDIb/ugw==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@okamjs/okam-win32-arm64-msvc@0.0.1-alpha.2:
+    resolution: {integrity: sha512-G3+S6NoBFNm8lNPfyVr6cOaq7zoh9hjTKr90QnhCfUO2ySwQZ7jjKAgJKFn7Zt0BmtfCcSWUPPodIhZ97yXwTA==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [win32]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@okamjs/okam-win32-ia32-msvc@0.0.1-alpha.2:
+    resolution: {integrity: sha512-Uq5Nyx2MwLQP9ct0ptR/Gu8l3qMMZ2snuZmyKG3vPnJDy86OHvCu80Ihc+5bTgY8AMcNDWBIEYOjcK5Byhi0OQ==}
+    engines: {node: '>= 10'}
+    cpu: [ia32]
+    os: [win32]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@okamjs/okam-win32-x64-msvc@0.0.1-alpha.2:
+    resolution: {integrity: sha512-6zU3apqTKdxgExvg4LDwh9gTIS+Ko/M8wy0lLkPnwnW2KILOAMsdiDNBs7kAH5C5h0NYp7QbrHyzgHyfPp0FmQ==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [win32]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@okamjs/okam@0.0.1-alpha.2:
+    resolution: {integrity: sha512-ydwWSzL6xWsZIj/3t72xoWck2Nb1rRYl6wYMV8BVbhaklZq2sMAgUytQoObqhvTaQCRx6xdwWIK2s+dczdZrhQ==}
+    engines: {node: '>= 10'}
+    optionalDependencies:
+      '@okamjs/okam-darwin-arm64': 0.0.1-alpha.2
+      '@okamjs/okam-darwin-universal': 0.0.1-alpha.2
+      '@okamjs/okam-darwin-x64': 0.0.1-alpha.2
+      '@okamjs/okam-linux-arm-gnueabihf': 0.0.1-alpha.2
+      '@okamjs/okam-linux-arm64-gnu': 0.0.1-alpha.2
+      '@okamjs/okam-linux-arm64-musl': 0.0.1-alpha.2
+      '@okamjs/okam-linux-x64-gnu': 0.0.1-alpha.2
+      '@okamjs/okam-linux-x64-musl': 0.0.1-alpha.2
+      '@okamjs/okam-win32-arm64-msvc': 0.0.1-alpha.2
+      '@okamjs/okam-win32-ia32-msvc': 0.0.1-alpha.2
+      '@okamjs/okam-win32-x64-msvc': 0.0.1-alpha.2
+    dev: false
 
   /@pkgjs/parseargs@0.11.0:
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
