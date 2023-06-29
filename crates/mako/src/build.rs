@@ -81,8 +81,7 @@ impl Compiler {
                     let rs = rs.clone();
                     async move {
                         let ret = Compiler::build_module(context, task, resolver);
-                        let x = rs.send(ret);
-                        println!("x: {:?}", x);
+                        rs.send(ret).expect("send task failed");
                     }
                 });
             }
