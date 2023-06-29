@@ -76,6 +76,7 @@ pub fn load(path: &str, is_entry: bool, context: &Arc<Context>) -> Result<Conten
         Some("toml") => load_toml(path),
         Some("yaml") => load_yaml(path),
         Some("xml") => load_xml(path),
+        Some("svg") => load_svg(path),
         Some("less" | "sass" | "scss" | "stylus") => Err(anyhow!(LoadError::UnsupportedExtName {
             ext_name: ext_name.unwrap().to_string(),
             path: path.to_string(),
@@ -119,6 +120,39 @@ fn load_xml(path: &str) -> Result<Content> {
     let xml_value = from_xml_str::<serde_json::Value>(&xml_string)?;
     let json_string = serde_json::to_string(&xml_value)?;
     Ok(Content::Js(format!("module.exports = {}", json_string)))
+}
+
+fn load_svg(path: &str) -> Result<Content> {
+    let code = read_content(path)?;
+    let transform_code = svgr_rs::transform(
+        code,
+        svgr_rs::Config {
+            named_export: "ReactComponent".to_string(),
+            export_type: Some(svgr_rs::ExportType::Named),
+            ..Default::default()
+        },
+        svgr_rs::State {
+            ..Default::default()
+        },
+    );
+    // todo: 1.return result<string, error> rather than result<string, string>
+    // todo: 2.transform class to className
+    // have submit issues https://github.com/svg-rust/svgr-rs/issues/21
+    let svgr_code = match transform_code {
+        Ok(res) => res,
+        Err(res) => res,
+    };
+
+    // todo: now all svg will base64
+    // will improve the case - large file, after assets structure improved which metioned in load_assets
+    let base64 = to_base64(path).with_context(|| LoadError::ToBase64Error {
+        path: path.to_string(),
+    })?;
+
+    Ok(Content::Js(format!(
+        "{}\nexport default \"{}\";",
+        svgr_code, base64
+    )))
 }
 
 fn load_assets(path: &str, context: &Arc<Context>) -> Result<Content> {

@@ -6,11 +6,14 @@ import './index.css';
 import styles from './style.module.css';
 import UmiLogo from './assets/umi-logo.png';
 import MailchimpUnsplash from './assets/mailchimp-unsplash.jpg';
+import Person, { ReactComponent as PersonComponent } from './assets/person.svg';
 
 function App() {
   return (
     <div>
       <h1 className={styles.title}>Hello {foo}!</h1>
+      <PersonComponent width="40px" height="40px" />
+      <img src={Person} />
       <div className="imageContainer">
         <img className={styles.image} src={UmiLogo} />
       </div>
