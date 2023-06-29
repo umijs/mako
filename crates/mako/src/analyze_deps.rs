@@ -7,7 +7,7 @@ use crate::module::{Dependency, ModuleAst, ResolveType};
 
 pub fn analyze_deps(ast: &ModuleAst) -> Vec<Dependency> {
     match ast {
-        ModuleAst::Script(ast) => analyze_deps_js(ast),
+        ModuleAst::Script(ast) => analyze_deps_js(&ast.ast),
         ModuleAst::Css(ast) => analyze_deps_css(ast),
         _ => {
             vec![]
@@ -54,6 +54,7 @@ impl DepCollectVisitor {
                 source,
                 order: self.order,
                 resolve_type,
+                replaced_source: None,
             });
             self.order += 1;
         }
@@ -249,7 +250,7 @@ import 'bar';
         )
         .unwrap();
         let mut deps = vec![];
-        deps.extend(analyze_deps_js(&ast));
+        deps.extend(analyze_deps_js(&ast.ast));
         let deps = deps
             .iter()
             .map(|dep| dep.source.as_str())

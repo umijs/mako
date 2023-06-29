@@ -24,8 +24,8 @@ impl ModuleGraph {
         }
     }
 
-    pub fn get_entry_modules(&self) -> Vec<&ModuleId> {
-        self.entries.iter().collect()
+    pub fn get_entry_modules(&self) -> Vec<ModuleId> {
+        self.entries.iter().cloned().collect()
     }
 
     pub fn add_module(&mut self, module: Module) {
@@ -141,6 +141,75 @@ impl ModuleGraph {
         }
         deps.sort_by_key(|(_, dep)| dep.order);
         deps
+    }
+
+    pub fn get_dependency_module_by_replaced_source(
+        &self,
+        module_id: &ModuleId,
+        source: String,
+    ) -> &ModuleId {
+        let deps = self.get_dependencies(module_id);
+        for (module_id, dep) in deps {
+            if source == dep.source {
+                return module_id;
+            }
+        }
+        panic!(
+            "source `{}` is not a dependency of `{:?}`",
+            source, module_id
+        );
+    }
+
+    /**
+     * 拓扑排序，得到成环依赖
+     */
+    pub fn toposort(&self) -> (Vec<ModuleId>, Vec<Vec<ModuleId>>) {
+        fn dfs(
+            entry: &ModuleId,
+            graph: &ModuleGraph,
+            stack: &mut Vec<ModuleId>,
+            visited: &mut HashSet<ModuleId>,
+            result: &mut Vec<ModuleId>,
+            cyclic: &mut Vec<Vec<ModuleId>>,
+        ) {
+            if let Some(pos) = stack.iter().position(|m| m == entry) {
+                cyclic.push(stack.clone()[pos..].to_vec());
+                return;
+            } else if visited.contains(entry) {
+                return;
+            }
+
+            visited.insert(entry.clone());
+            stack.push(entry.clone());
+
+            let deps = graph.get_dependencies(entry);
+
+            for (dep, _) in &deps {
+                dfs(dep, graph, stack, visited, result, cyclic)
+            }
+
+            result.push(stack.pop().unwrap());
+        }
+
+        let mut result = vec![];
+        let mut cyclic = vec![];
+        let mut stack = vec![];
+
+        let mut entries = self.entries.iter().collect::<Vec<_>>();
+        entries.sort();
+
+        let mut visited = HashSet::new();
+
+        for entry in entries {
+            let mut res = vec![];
+            dfs(entry, self, &mut stack, &mut visited, &mut res, &mut cyclic);
+
+            result.extend(res);
+        }
+
+        result.reverse();
+
+        (result, cyclic)
     }
 }
 

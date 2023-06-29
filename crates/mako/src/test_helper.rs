@@ -57,10 +57,10 @@ pub fn create_mock_module(path: PathBuf, code: &str) -> Module {
     )
     .unwrap();
     let module_id = ModuleId::from_path(path.clone());
-    let info = ModuleInfo {
-        ast: crate::module::ModuleAst::Script(ast),
-        path: path.to_string_lossy().to_string(),
-        external: None,
-    };
+    let info = ModuleInfo::new(
+        crate::module::ModuleAst::Script(ast),
+        path.to_string_lossy().to_string(),
+        None,
+    );
     Module::new(module_id, false, Some(info))
 }

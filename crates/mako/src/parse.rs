@@ -14,11 +14,12 @@ use crate::module::ModuleAst;
 
 pub fn parse(content: &Content, path: &str, context: &Arc<Context>) -> Result<ModuleAst> {
     debug!("parse {}", path);
-    match content {
-        Content::Js(content) => Ok(parse_js(content, path, context)?),
-        Content::Css(content) => Ok(parse_css(content, path, context)?),
-        Content::Assets(asset) => Ok(parse_asset(asset, path, context)?),
-    }
+    let ast = match content {
+        Content::Js(content) => parse_js(content, path, context)?,
+        Content::Css(content) => parse_css(content, path, context)?,
+        Content::Assets(asset) => parse_asset(asset, path, context)?,
+    };
+    Ok(ast)
 }
 
 fn parse_js(content: &str, path: &str, context: &Arc<Context>) -> Result<ModuleAst> {

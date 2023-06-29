@@ -72,7 +72,9 @@ impl Compiler {
                     "mako_internal_runtime_chunk.js"
                 };
                 // TODO: handle error
-                let mut js_ast = build_js_ast(file_name, content.as_str(), &self.context).unwrap();
+                let mut js_ast = build_js_ast(file_name, content.as_str(), &self.context)
+                    .unwrap()
+                    .ast;
                 for stmt in &mut js_ast.body {
                     // const runtime = createRuntime({}, 'main');
                     if let ModuleItem::Stmt(Stmt::Decl(Decl::Var(box VarDecl { decls, .. }))) = stmt
@@ -224,7 +226,8 @@ pub fn modules_to_js_stmts(
                             build_ident_param("exports"),
                             build_ident_param("require"),
                         ],
-                        ast.body
+                        ast.ast
+                            .body
                             .iter()
                             .map(|stmt| stmt.as_stmt().unwrap().clone())
                             .collect(),

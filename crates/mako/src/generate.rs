@@ -17,6 +17,11 @@ impl Compiler {
     pub fn generate(&self) -> Result<()> {
         info!("generate");
         let t_generate = Instant::now();
+        let t_tree_shaking = Instant::now();
+        // if matches!(self.context.config.mode, Mode::Production) {
+        self.tree_shaking();
+        // }
+        let t_tree_shaking = t_tree_shaking.elapsed();
         let t_group_chunks = Instant::now();
         self.group_chunk();
         let t_group_chunks = t_group_chunks.elapsed();
@@ -25,7 +30,7 @@ impl Compiler {
         // 因为放 chunks 的循环里，一个 module 可能存在于多个 chunk 里，可能会被编译多遍
         let t_transform_modules = Instant::now();
         info!("transform all modules");
-        self.transform_all();
+        self.transform_all()?;
         let t_transform_modules = t_transform_modules.elapsed();
 
         // ensure output dir exists
@@ -92,6 +97,7 @@ impl Compiler {
         let t_copy = t_copy.elapsed();
 
         info!("generate done in {}ms", t_generate.elapsed().as_millis());
+        info!("  - tree shaking: {}ms", t_tree_shaking.as_millis());
         info!("  - group chunks: {}ms", t_group_chunks.as_millis());
         info!(
             "  - transform modules: {}ms",
@@ -110,7 +116,7 @@ impl Compiler {
     }
 
     // TODO: 集成到 fn generate 里
-    pub fn generate_hot_update_chunks(&self, updated_modules: UpdateResult) {
+    pub fn generate_hot_update_chunks(&self, updated_modules: UpdateResult) -> Result<()> {
         let last_chunk_names: HashSet<String> = {
             let chunk_graph = self.context.chunk_graph.read().unwrap();
             chunk_graph.chunk_names()
@@ -128,7 +134,7 @@ impl Compiler {
 
         // 因为放 chunks 的循环里，一个 module 可能存在于多个 chunk 里，可能会被编译多遍，
         let t_transform_modules = Instant::now();
-        self.transform_all();
+        self.transform_all()?;
         let t_transform_modules = t_transform_modules.elapsed();
 
         // ensure output dir exists
@@ -193,6 +199,8 @@ impl Compiler {
             "  - transform modules: {}ms",
             t_transform_modules.as_millis()
         );
+
+        Ok(())
     }
 
     pub fn write_to_dist<P: AsRef<std::path::Path>, C: AsRef<[u8]>>(

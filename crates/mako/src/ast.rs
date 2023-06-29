@@ -5,7 +5,7 @@ use anyhow::{anyhow, Result};
 use base64::engine::general_purpose;
 use base64::Engine;
 use pathdiff::diff_paths;
-use swc_common::FileName;
+use swc_common::{FileName, Mark, GLOBALS};
 use swc_css_ast::Stylesheet;
 use swc_css_codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};
 use swc_css_codegen::{CodeGenerator, CodegenConfig, Emit};
@@ -28,7 +28,14 @@ struct ParseError {
     error_message: String,
 }
 
-pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result<Module> {
+#[derive(Debug)]
+pub struct Ast {
+    pub ast: Module,
+    pub unresolved_mark: Mark,
+    pub top_level_mark: Mark,
+}
+
+pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result<Ast> {
     let absolute_path = PathBuf::from(path);
     let relative_path =
         diff_paths(&absolute_path, &context.config.output.path).unwrap_or(absolute_path);
@@ -37,7 +44,7 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
         .script
         .cm
         .new_source_file(FileName::Real(relative_path), content.to_string());
-    let comments = context.meta.script.comments.clone();
+    let comments = context.meta.script.comments.read().unwrap();
     let is_ts = path.ends_with(".ts") || path.ends_with(".tsx");
     let jsx = path.ends_with(".jsx");
     let tsx = path.ends_with(".tsx");
@@ -57,15 +64,26 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
         syntax,
         swc_ecma_ast::EsVersion::Es2015,
         StringInput::from(&*fm),
-        Some(&*comments),
+        Some(comments.get_swc_comments()),
     );
     let mut parser = Parser::new_from(lexer);
 
     // parse to ast
-    parser.parse_module().map_err(|e| {
+    let ast = parser.parse_module().map_err(|e| {
         anyhow!(ParseError {
             resolved_path: path.to_string(),
             error_message: format!("{:?}", e),
+        })
+    })?;
+
+    GLOBALS.set(&context.meta.script.globals, || {
+        let top_level_mark = Mark::new();
+        let unresolved_mark = Mark::new();
+        // ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
+        Ok(Ast {
+            ast,
+            unresolved_mark,
+            top_level_mark,
         })
     })
 }
@@ -100,6 +118,8 @@ pub fn js_ast_to_code(
     let mut buf = vec![];
     let mut source_map_buf = Vec::new();
     let cm = context.meta.script.cm.clone();
+    let comments = context.meta.script.comments.read().unwrap();
+    let swc_comments = comments.get_swc_comments();
     {
         let mut emitter = Emitter {
             cfg: JsCodegenConfig {
@@ -107,7 +127,7 @@ pub fn js_ast_to_code(
                 ..Default::default()
             },
             cm: cm.clone(),
-            comments: None,
+            comments: Some(swc_comments),
             wr: Box::new(JsWriter::new(
                 cm.clone(),
                 "\n",

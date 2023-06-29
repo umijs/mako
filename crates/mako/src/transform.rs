@@ -5,7 +5,7 @@ use anyhow::Result;
 use serde_json::Value;
 use swc_atoms::JsWord;
 use swc_common::collections::AHashMap;
-use swc_common::comments::{NoopComments, SingleThreadedComments};
+use swc_common::comments::NoopComments;
 use swc_common::errors::HANDLER;
 use swc_common::sync::Lrc;
 use swc_common::{Mark, DUMMY_SP, GLOBALS};
@@ -18,22 +18,19 @@ use swc_ecma_ast::{
 use swc_ecma_preset_env::{self as swc_preset_env};
 use swc_ecma_transforms::feature::FeatureFlag;
 use swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
-use swc_ecma_transforms::hygiene::hygiene_with_config;
-use swc_ecma_transforms::modules::common_js;
 use swc_ecma_transforms::modules::import_analysis::import_analyzer;
-use swc_ecma_transforms::modules::util::{Config, ImportInterop};
+use swc_ecma_transforms::modules::util::ImportInterop;
 use swc_ecma_transforms::typescript::strip_with_jsx;
-use swc_ecma_transforms::{fixer, resolver, Assumptions};
+use swc_ecma_transforms::{resolver, Assumptions};
 use swc_ecma_visit::{Fold, VisitMutWith as CssVisitMutWith};
 use swc_error_reporters::handler::try_with_handler;
 
+use crate::ast::Ast;
 use crate::build::{ModuleDeps, Task};
 use crate::compiler::Context;
 use crate::module::ModuleAst;
 use crate::targets;
 use crate::transform_css_handler::CssHandler;
-use crate::transform_dep_replacer::DepReplacer;
-use crate::transform_dynamic_import::DynamicImport;
 use crate::transform_env_replacer::EnvReplacer;
 use crate::transform_optimizer::Optimizer;
 use crate::transform_provide::Provide;
@@ -46,7 +43,14 @@ pub fn transform(
     get_deps: &mut dyn for<'r> FnMut(&'r ModuleAst) -> ModuleDeps,
 ) -> Result<()> {
     match ast {
-        ModuleAst::Script(ast) => transform_js(ast, context, task, get_deps),
+        ModuleAst::Script(ast) => transform_js(
+            &mut ast.ast,
+            context,
+            task,
+            get_deps,
+            ast.top_level_mark,
+            ast.unresolved_mark,
+        ),
         ModuleAst::Css(ast) => transform_css(ast, context, get_deps),
         _ => Ok(()),
     }
@@ -113,6 +117,8 @@ fn transform_js(
     context: &Arc<Context>,
     task: &Task,
     get_deps: &mut dyn for<'r> FnMut(&'r ModuleAst) -> ModuleDeps,
+    _top_level_mark: Mark,
+    _unresolved_mark: Mark,
 ) -> Result<()> {
     let cm = context.meta.script.cm.clone();
     // build env map
@@ -173,40 +179,37 @@ fn transform_js(
                     ast.body = preset_env.fold_module(ast.clone()).body;
 
                     // 在 cjs 执行前调用 hook，用于收集依赖
-                    let deps = get_deps(&ModuleAst::Script(ast.clone()));
-
-                    ast.visit_mut_with(&mut common_js::<SingleThreadedComments>(
+                    let _deps = get_deps(&ModuleAst::Script(Ast {
+                        ast: ast.clone(),
+                        top_level_mark,
                         unresolved_mark,
-                        Config {
-                            import_interop: Some(import_interop),
-                            // NOTE: 这里后面要调整为注入自定义require
-                            ignore_dynamic: true,
-                            preserve_import_meta: true,
-                            ..Default::default()
-                        },
-                        FeatureFlag::empty(),
-                        None,
-                    ));
+                    }));
+
+                    // ast.visit_mut_with(&mut common_js::<SingleThreadedComments>(
+                    //     unresolved_mark,
+                    //     Config {
+                    //         import_interop: Some(import_interop),
+                    //         // NOTE: 这里后面要调整为注入自定义require
+                    //         ignore_dynamic: true,
+                    //         preserve_import_meta: true,
+                    //         ..Default::default()
+                    //     },
+                    //     FeatureFlag::empty(),
+                    //     None,
+                    // ));
                     ast.visit_mut_with(&mut strip_with_jsx(
                         cm,
                         Default::default(),
                         NoopComments,
                         top_level_mark,
                     ));
-                    ast.visit_mut_with(&mut hygiene_with_config(
-                        swc_ecma_transforms::hygiene::Config {
-                            top_level_mark,
-                            ..Default::default()
-                        },
-                    ));
-                    ast.visit_mut_with(&mut fixer(None));
 
-                    let dep_map = get_dep_map(deps);
-                    let mut dep_replacer = DepReplacer { dep_map };
-                    ast.visit_mut_with(&mut dep_replacer);
+                    // let dep_map = get_dep_map(deps);
+                    // let mut dep_replacer = DepReplacer { dep_map };
+                    // ast.visit_mut_with(&mut dep_replacer);
 
-                    let mut dynamic_import = DynamicImport {};
-                    ast.visit_mut_with(&mut dynamic_import);
+                    // let mut dynamic_import = DynamicImport {};
+                    // ast.visit_mut_with(&mut dynamic_import);
                     Ok(())
                 })
             })
@@ -237,6 +240,8 @@ mod tests {
     use std::collections::HashMap;
     use std::path::PathBuf;
     use std::sync::{Arc, Mutex, RwLock};
+
+    use swc_common::Mark;
 
     use super::{transform_css, transform_js};
     use crate::ast::{build_css_ast, build_js_ast, css_ast_to_code, js_ast_to_code};
@@ -535,6 +540,7 @@ require("bar");
                 source: "url.png".to_string(),
                 resolve_type: ResolveType::Css,
                 order: 0,
+                replaced_source: None,
             },
         )]);
         let code = transform_css_code(code, None, deps);
@@ -571,8 +577,11 @@ require("bar");
             meta: Meta::new(),
         });
         let mut ast = build_js_ast(path, origin, &context).unwrap();
+
+        let top_level_mark = Mark::new();
+        let unresolved_mark = Mark::new();
         transform_js(
-            &mut ast,
+            &mut ast.ast,
             &context,
             &crate::build::Task {
                 path: root.to_string_lossy().to_string(),
@@ -587,15 +596,18 @@ require("bar");
                             source: "foo".to_string(),
                             resolve_type: ResolveType::Require,
                             order: 0,
+                            replaced_source: None,
                         },
                     )])
                 } else {
                     Vec::new()
                 }
             },
+            top_level_mark,
+            unresolved_mark,
         )
         .unwrap();
-        let (code, _sourcemap) = js_ast_to_code(&ast, &context, "index.js").unwrap();
+        let (code, _sourcemap) = js_ast_to_code(&ast.ast, &context, "index.js").unwrap();
         let code = code.replace("\"use strict\";", "");
         let code = code.trim().to_string();
         (code, _sourcemap)
