@@ -22,7 +22,7 @@ exports.build = async function (opts) {
   const mode = process.argv.includes('--dev') ? 'development' : 'production';
   okamConfig.mode = mode;
 
-  const { build } = require('@okamjs/okam');
+  const { build } = require('@alipay/okam');
   build(cwd, okamConfig, false);
 
   // FIXME: mock stats
@@ -38,58 +38,65 @@ exports.build = async function (opts) {
 };
 
 exports.dev = async function (opts) {
-  assert(opts, 'opts should be supplied');
-  checkConfig(opts.config);
-  const express = require('express');
-  const app = express();
-  // cros
-  app.use(
-    require('cors')({
-      origin: true,
-      methods: ['GET', 'HEAD', 'PUT', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-      credentials: true,
-    }),
-  );
-  // compression
-  app.use(require('compression')());
-  // Provides the ability to execute custom middleware prior to all other middleware internally within the server.
-  if (opts.onBeforeMiddleware) {
-    opts.onBeforeMiddleware(app);
-  }
-  // before middlewares
-  (opts.beforeMiddlewares || []).forEach((m) => app.use(m));
-  // serve dist files
-  app.use(express.static(path.join(opts.cwd, 'dist')));
-  // TODO: proxy
-  // opts.config.proxy
-  // after middlewares
-  (opts.afterMiddlewares || []).forEach((m) => {
-    // TODO: FIXME
-    app.use(m.toString().includes('{ compiler }') ? m({}) : m);
-  });
-  // history fallback
-  app.use(
-    require('connect-history-api-fallback')({
-      index: '/',
-    }),
-  );
-  // TODO: https
-  // opts.config.https
-  const server = require('http').createServer(app);
-  const port = opts.port || 8000;
-  server.listen(port, () => {
-    const protocol = opts.config.https ? 'https:' : 'http:';
-    const banner = getDevBanner(protocol, opts.host, port, opts.ip);
-    console.log(banner);
-  });
+  // assert(opts, 'opts should be supplied');
+  // checkConfig(opts.config);
+  // const express = require('express');
+  // const app = express();
+  // // cros
+  // app.use(
+  //   require('cors')({
+  //     origin: true,
+  //     methods: ['GET', 'HEAD', 'PUT', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  //     credentials: true,
+  //   }),
+  // );
+  // // compression
+  // app.use(require('compression')());
+  // // Provides the ability to execute custom middleware prior to all other middleware internally within the server.
+  // if (opts.onBeforeMiddleware) {
+  //   opts.onBeforeMiddleware(app);
+  // }
+  // // before middlewares
+  // (opts.beforeMiddlewares || []).forEach((m) => app.use(m));
+  // // serve dist files
+  // app.use(express.static(path.join(opts.cwd, 'dist')));
+  // // TODO: proxy
+  // // opts.config.proxy
+  // // after middlewares
+  // (opts.afterMiddlewares || []).forEach((m) => {
+  //   // TODO: FIXME
+  //   app.use(m.toString().includes('{ compiler }') ? m({}) : m);
+  // });
+  // // history fallback
+  // app.use(
+  //   require('connect-history-api-fallback')({
+  //     index: '/',
+  //   }),
+  // );
+  // // TODO: https
+  // // opts.config.https
+  // const server = require('http').createServer(app);
+  // const port = opts.port || 8000;
+  // server.listen(port, () => {
+  //   const protocol = opts.config.https ? 'https:' : 'http:';
+  //   const banner = getDevBanner(protocol, opts.host, port, opts.ip);
+  //   console.log(banner);
+  // });
   // okam dev
-  const { build } = require('@okamjs/okam');
+  // const { build } = require('@alipay/okam');
+  // const okamConfig = getOkamConfig(opts);
+  // okamConfig.hmr = true;
+  // // TODO: detect port
+  // okamConfig.hmr_port = String(opts.port + 1);
+  // okamConfig.hmr_host = opts.host;
+  // build(opts.cwd, okamConfig, false);
+
   const okamConfig = getOkamConfig(opts);
-  okamConfig.hmr = true;
-  // TODO: detect port
-  okamConfig.hmr_port = String(opts.port + 1);
-  okamConfig.hmr_host = opts.host;
-  build(opts.cwd, okamConfig, true);
+  const mode = process.argv.includes('--dev') ? 'development' : 'production';
+  okamConfig.mode = mode;
+
+  const { build } = require('@alipay/okam');
+  build(opts.cwd, okamConfig, false);
 };
 
 function getDevBanner(protocol, host, port, ip) {
