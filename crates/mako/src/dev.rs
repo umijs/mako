@@ -2,6 +2,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use futures::{SinkExt, StreamExt};
+use hyper::header::CONTENT_TYPE;
+use hyper::http::HeaderValue;
 use hyper::Server;
 use tokio::sync::broadcast::{Receiver, Sender};
 use tokio::task::JoinHandle;
@@ -10,7 +12,6 @@ use tungstenite::Message;
 
 use crate::compiler;
 use crate::compiler::Compiler;
-use crate::config::DevtoolConfig;
 use crate::watch::watch;
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
@@ -101,7 +102,25 @@ impl DevServer {
                     _ => {
                         // try chunk content in memory first, else use dist content
                         match static_serve.serve(req).await {
-                            Ok(res) => Ok(res),
+                            Ok(mut res) => {
+                                if let Some(content_type) = res.headers().get(CONTENT_TYPE).cloned()
+                                {
+                                    if let Ok(c_str) = content_type.to_str() {
+                                        if c_str.contains("javascript") || c_str.contains("text") {
+                                            res.headers_mut()
+                                                .insert(
+                                                    CONTENT_TYPE,
+                                                    HeaderValue::from_str(&format!(
+                                                        "{c_str}; charset=utf-8"
+                                                    ))
+                                                    .unwrap(),
+                                                )
+                                                .unwrap();
+                                        }
+                                    }
+                                }
+                                Ok(res)
+                            }
                             Err(_) => Ok::<_, hyper::Error>(
                                 hyper::Response::builder()
                                     .status(hyper::StatusCode::NOT_FOUND)
@@ -118,8 +137,10 @@ impl DevServer {
             async move { Ok::<_, hyper::Error>(hyper::service::service_fn(my_fn)) }
         });
 
+        let port = self.compiler.context.config.hmr_port.clone();
+        let port = port.parse::<u16>().unwrap();
         let dev_server_handle = tokio::spawn(async move {
-            if let Err(_e) = Server::bind(&([127, 0, 0, 1], 3000).into())
+            if let Err(_e) = Server::bind(&([127, 0, 0, 1], port).into())
                 .serve(dev_service)
                 .await
             {
@@ -166,12 +187,7 @@ impl ProjectWatch {
                     tokio::spawn(async move {
                         let _t = Instant::now();
 
-                        c.generate_chunks().unwrap().iter().for_each(|file| {
-                            c.write_to_dist(&file.path, &file.content);
-                            if matches!(c.context.config.devtool, DevtoolConfig::SourceMap) {
-                                c.write_to_dist(format!("{}.map", &file.path), &file.sourcemap);
-                            }
-                        });
+                        c.generate().unwrap();
                     });
                 }
             });

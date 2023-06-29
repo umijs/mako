@@ -6,7 +6,10 @@ use std::sync::Arc;
 use anyhow::{anyhow, Context as AnyHowContext, Result};
 use base64::alphabet::STANDARD;
 use base64::{engine, Engine};
+use serde_xml_rs::from_str as from_xml_str;
+use serde_yaml::{from_str as from_yaml_str, Value as YamlValue};
 use thiserror::Error;
+use toml::{from_str as from_toml_str, Value as TomlValue};
 use tracing::debug;
 
 use crate::compiler::Context;
@@ -35,7 +38,7 @@ pub enum LoadError {
     ReadFileSizeError { path: String },
 }
 
-pub fn load(path: &str, context: &Arc<Context>) -> Result<Content> {
+pub fn load(path: &str, is_entry: bool, context: &Arc<Context>) -> Result<Content> {
     debug!("load: {}", path);
     let path = if is_mako_css_modules(path) {
         path.trim_end_matches(MAKO_CSS_MODULES_SUFFIX)
@@ -51,9 +54,28 @@ pub fn load(path: &str, context: &Arc<Context>) -> Result<Content> {
 
     let ext_name = ext_name(path);
     match ext_name {
-        Some("js" | "jsx" | "ts" | "tsx" | "cjs" | "mjs") => load_js(path),
+        Some("js" | "jsx" | "ts" | "tsx" | "cjs" | "mjs") => {
+            let mut content = read_content(path)?;
+            // TODO: use array entry instead
+            if is_entry && context.config.hmr {
+                let port = &context.config.hmr_port.to_string();
+                let host = &context.config.hmr_host.to_string();
+                let host = if host == "0.0.0.0" { "127.0.0.1" } else { host };
+                content = format!(
+                    "{}\n{}\n",
+                    content,
+                    include_str!("runtime/runtime_hmr_entry.js")
+                )
+                .replace("__PORT__", port)
+                .replace("__HOST__", host);
+            }
+            Ok(Content::Js(content))
+        }
         Some("css") => load_css(path),
-        Some("json") => load_json(path),
+        Some("json" | "json5") => load_json(path),
+        Some("toml") => load_toml(path),
+        Some("yaml") => load_yaml(path),
+        Some("xml") => load_xml(path),
         Some("less" | "sass" | "scss" | "stylus") => Err(anyhow!(LoadError::UnsupportedExtName {
             ext_name: ext_name.unwrap().to_string(),
             path: path.to_string(),
@@ -62,6 +84,7 @@ pub fn load(path: &str, context: &Arc<Context>) -> Result<Content> {
     }
 }
 
+#[allow(dead_code)]
 fn load_js(path: &str) -> Result<Content> {
     Ok(Content::Js(read_content(path)?))
 }
@@ -75,6 +98,27 @@ fn load_json(path: &str) -> Result<Content> {
         "module.exports = {}",
         read_content(path)?
     )))
+}
+
+fn load_toml(path: &str) -> Result<Content> {
+    let toml_string = read_content(path)?;
+    let toml_value = from_toml_str::<TomlValue>(&toml_string)?;
+    let json_string = serde_json::to_string(&toml_value)?;
+    Ok(Content::Js(format!("module.exports = {}", json_string)))
+}
+
+fn load_yaml(path: &str) -> Result<Content> {
+    let yaml_string = read_content(path)?;
+    let yaml_value = from_yaml_str::<YamlValue>(&yaml_string)?;
+    let json_string = serde_json::to_string(&yaml_value)?;
+    Ok(Content::Js(format!("module.exports = {}", json_string)))
+}
+
+fn load_xml(path: &str) -> Result<Content> {
+    let xml_string = read_content(path)?;
+    let xml_value = from_xml_str::<serde_json::Value>(&xml_string)?;
+    let json_string = serde_json::to_string(&xml_value)?;
+    Ok(Content::Js(format!("module.exports = {}", json_string)))
 }
 
 fn load_assets(path: &str, context: &Arc<Context>) -> Result<Content> {
@@ -120,12 +164,18 @@ fn to_base64(path: &str) -> Result<String> {
     let vec = std::fs::read(path)?;
     let engine = engine::GeneralPurpose::new(&STANDARD, engine::general_purpose::PAD);
     let base64 = engine.encode(vec);
-    let file_type = ext_name(path).unwrap();
-    Ok(format!(
-        "data:image/{};base64,{}",
-        file_type,
-        base64.replace("\r\n", "")
-    ))
+    let guess = mime_guess::from_path(path);
+    if let Some(mime) = guess.first() {
+        Ok(format!(
+            "data:{};base64,{}",
+            mime,
+            base64.replace("\r\n", "")
+        ))
+    } else {
+        Err(anyhow!(LoadError::ToBase64Error {
+            path: path.to_string(),
+        }))
+    }
 }
 
 fn content_hash(file_path: &str) -> Result<String> {

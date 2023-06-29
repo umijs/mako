@@ -69,6 +69,8 @@ pub struct Config {
     pub define: HashMap<String, Value>,
     // temp solution
     pub hmr: bool,
+    pub hmr_port: String,
+    pub hmr_host: String,
 }
 
 const CONFIG_FILE: &str = "mako.config.json";
@@ -87,7 +89,9 @@ const DEFAULT_CONFIG: &str = r#"
     "targets": { "chrome": 80 },
     "define": {},
     "platform": "browser",
-    "hmr": true
+    "hmr": true,
+    "hmr_host": "127.0.0.1",
+    "hmr_port": "3000"
 }
 "#;
 

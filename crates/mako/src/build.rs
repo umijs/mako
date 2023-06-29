@@ -204,7 +204,7 @@ impl Compiler {
         let module_id = ModuleId::new(task.path.clone());
 
         // load
-        let content = load(&task.path, &context)?;
+        let content = load(&task.path, task.is_entry, &context)?;
 
         // parse
         let mut ast = parse(&content, &task.path, &context)?;
