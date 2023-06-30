@@ -214,7 +214,6 @@ pub fn modules_to_js_stmts(
         let module = module_graph.get_module(module_id).unwrap();
         let ast = module.info.as_ref().unwrap();
         let ast = &ast.ast;
-        dbg!(&ast);
         match ast {
             ModuleAst::Script(ast) => {
                 // id: function(module, exports, require) {}

@@ -76,10 +76,10 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
         })
     })?;
 
+    // top level mark、unresolved mark 需要持久化起来，后续的 transform 需要用到
     GLOBALS.set(&context.meta.script.globals, || {
         let top_level_mark = Mark::new();
         let unresolved_mark = Mark::new();
-        // ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
         Ok(Ast {
             ast,
             unresolved_mark,
