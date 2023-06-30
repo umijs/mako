@@ -18,9 +18,9 @@ impl Compiler {
         info!("generate");
         let t_generate = Instant::now();
         let t_tree_shaking = Instant::now();
-        // if matches!(self.context.config.mode, Mode::Production) {
-        self.tree_shaking();
-        // }
+        if matches!(self.context.config.mode, Mode::Production) {
+            self.tree_shaking();
+        }
         let t_tree_shaking = t_tree_shaking.elapsed();
         let t_group_chunks = Instant::now();
         self.group_chunk();
