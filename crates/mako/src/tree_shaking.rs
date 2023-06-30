@@ -106,9 +106,7 @@ impl Compiler {
             }
         }
 
-        // tree_shaking_module_map.into_iter().for_each(|(_, module)| {
-        //     println!("tree_shaking_module {}", module);
-        // })
+        // TODO: 增加minify阶段的删除功能
     }
 
     fn make_toposort(&self) -> (Vec<ModuleId>, Vec<ModuleId>, Vec<Vec<ModuleId>>) {
