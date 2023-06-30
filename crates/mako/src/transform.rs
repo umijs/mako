@@ -117,8 +117,8 @@ fn transform_js(
     context: &Arc<Context>,
     task: &Task,
     get_deps: &mut dyn for<'r> FnMut(&'r ModuleAst) -> ModuleDeps,
-    _top_level_mark: Mark,
-    _unresolved_mark: Mark,
+    top_level_mark: Mark,
+    unresolved_mark: Mark,
 ) -> Result<()> {
     let cm = context.meta.script.cm.clone();
     // build env map
@@ -135,8 +135,8 @@ fn transform_js(
         try_with_handler(cm.clone(), Default::default(), |handler| {
             HELPERS.set(&Helpers::new(true), || {
                 HANDLER.set(handler, || {
-                    let top_level_mark = Mark::new();
-                    let unresolved_mark = Mark::new();
+                    // let top_level_mark = Mark::new();
+                    // let unresolved_mark = Mark::new();
                     let import_interop = ImportInterop::Swc;
 
                     ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
@@ -241,8 +241,6 @@ mod tests {
     use std::path::PathBuf;
     use std::sync::{Arc, Mutex, RwLock};
 
-    use swc_common::Mark;
-
     use super::{transform_css, transform_js};
     use crate::ast::{build_css_ast, build_js_ast, css_ast_to_code, js_ast_to_code};
     use crate::build::ModuleDeps;
@@ -251,6 +249,7 @@ mod tests {
     use crate::config::Config;
     use crate::module::{Dependency, ResolveType};
     use crate::module_graph::ModuleGraph;
+    use crate::transform_in_generate::transform_js_generate;
 
     #[test]
     fn test_react() {
@@ -258,7 +257,7 @@ mod tests {
 const App = () => <><h1>Hello World</h1></>;
         "#
         .trim();
-        let (code, _) = transform_js_code(code, None);
+        let (code, _) = transform_js_code(code, None, HashMap::new());
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -289,7 +288,7 @@ const App = ()=>(0, _jsxdevruntime.jsxDEV)(_jsxdevruntime.Fragment, {
 const Foo: string = "foo";
         "#
         .trim();
-        let (code, _) = transform_js_code(code, None);
+        let (code, _) = transform_js_code(code, None, HashMap::new());
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -306,9 +305,10 @@ const Foo = "foo";
     fn test_import() {
         let code = r#"
 import { foo } from './foo';
+console.log(foo);
         "#
         .trim();
-        let (code, _) = transform_js_code(code, None);
+        let (code, _) = transform_js_code(code, None, HashMap::new());
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -317,6 +317,7 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 var _foo = require("./foo");
+console.log(_foo.foo);
 
 //# sourceMappingURL=index.js.map
         "#
@@ -330,7 +331,7 @@ var _foo = require("./foo");
 const foo = import('./foo');
         "#
         .trim();
-        let (code, _) = transform_js_code(code, None);
+        let (code, _) = transform_js_code(code, None, HashMap::new());
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -359,7 +360,7 @@ function foo() {
 }
         "#
         .trim();
-        let (code, _) = transform_js_code(code, None);
+        let (code, _) = transform_js_code(code, None, HashMap::new());
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -386,7 +387,7 @@ function foo() {
 import React from 'react';
         "#
         .trim();
-        let (code, _) = transform_js_code(code, None);
+        let (code, _) = transform_js_code(code, None, HashMap::new());
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -395,7 +396,7 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 var _interop_require_default = require("@swc/helpers/_/_interop_require_default");
-var _react = _interop_require_default._(require("react"));
+var _react = /*#__PURE__*/ _interop_require_default._(require("react"));
 
 //# sourceMappingURL=index.js.map
         "#
@@ -422,7 +423,7 @@ const e = XIAOHUONI.friend;
 const f = MEMBER_NAMES;
         "#
         .trim();
-        let (code, _sourcemap) = transform_js_code(code, None);
+        let (code, _sourcemap) = transform_js_code(code, None, HashMap::new());
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -471,7 +472,7 @@ if ('b2' != 'b3') 2.2;
 if ('a1' === "a2") { 3.1; } else 3.2;
         "#
         .trim();
-        let (code, _sourcemap) = transform_js_code(code, None);
+        let (code, _sourcemap) = transform_js_code(code, None, HashMap::new());
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -492,7 +493,7 @@ if ('a1' === "a2") { 3.1; } else 3.2;
 const b = window.a?.b;
         "#
         .trim();
-        let (code, _sourcemap) = transform_js_code(code, None);
+        let (code, _sourcemap) = transform_js_code(code, None, HashMap::new());
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -512,7 +513,11 @@ const b = (_window_a = window.a) === null || _window_a === void 0 ? void 0 : _wi
 require("foo");
         "#
         .trim();
-        let (code, _sourcemap) = transform_js_code(code, None);
+        let (code, _sourcemap) = transform_js_code(
+            code,
+            None,
+            HashMap::from([("foo".to_string(), "bar".to_string())]),
+        );
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -562,7 +567,11 @@ require("bar");
         // TODO
     }
 
-    fn transform_js_code(origin: &str, path: Option<&str>) -> (String, String) {
+    fn transform_js_code(
+        origin: &str,
+        path: Option<&str>,
+        dep: HashMap<String, String>,
+    ) -> (String, String) {
         let path = path.unwrap_or("test.tsx");
         let current_dir = std::env::current_dir().unwrap();
         let config = Config::new(&current_dir.join("test/config/define"), None, None).unwrap();
@@ -577,9 +586,6 @@ require("bar");
             meta: Meta::new(),
         });
         let mut ast = build_js_ast(path, origin, &context).unwrap();
-
-        let top_level_mark = Mark::new();
-        let unresolved_mark = Mark::new();
         transform_js(
             &mut ast.ast,
             &context,
@@ -603,10 +609,11 @@ require("bar");
                     Vec::new()
                 }
             },
-            top_level_mark,
-            unresolved_mark,
+            ast.top_level_mark,
+            ast.unresolved_mark,
         )
         .unwrap();
+        transform_js_generate(&context, &mut ast, &dep);
         let (code, _sourcemap) = js_ast_to_code(&ast.ast, &context, "index.js").unwrap();
         let code = code.replace("\"use strict\";", "");
         let code = code.trim().to_string();

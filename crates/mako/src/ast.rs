@@ -123,7 +123,7 @@ pub fn js_ast_to_code(
     {
         let mut emitter = Emitter {
             cfg: JsCodegenConfig {
-                minify: matches!(context.config.mode, Mode::Production),
+                minify: context.config.minify & matches!(context.config.mode, Mode::Production),
                 ..Default::default()
             },
             cm: cm.clone(),
@@ -173,7 +173,7 @@ pub fn css_ast_to_code(ast: &Stylesheet, context: &Arc<Context>) -> (String, Str
     let mut gen = CodeGenerator::new(
         css_writer,
         CodegenConfig {
-            minify: matches!(context.config.mode, Mode::Production),
+            minify: context.config.minify & matches!(context.config.mode, Mode::Production),
         },
     );
     gen.emit(&ast).unwrap();

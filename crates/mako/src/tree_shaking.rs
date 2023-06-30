@@ -177,3 +177,17 @@ impl Compiler {
         (tree_shaking_module_ids, tree_shaking_module_map)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::assert_display_snapshot;
+    use crate::test_helper::{read_dist_file, setup_compiler};
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking() {
+        let compiler = setup_compiler("test/build/tree-shaking", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
+}

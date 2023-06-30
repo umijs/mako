@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use anyhow::Result;
 use swc_ecma_ast::{
     CallExpr, Expr, ExprOrSpread, ExprStmt, KeyValueProp, ModuleItem, ObjectLit, Prop,
     PropOrSpread, Stmt,
@@ -10,15 +11,20 @@ use crate::chunk::Chunk;
 use crate::compiler::Compiler;
 use crate::generate_chunks::modules_to_js_stmts;
 use crate::module::ModuleId;
+use crate::transform_in_generate::transform_modules;
 
 impl Compiler {
     pub fn generate_hmr_chunk(
         &self,
         chunk: &Chunk,
         module_ids: &HashSet<ModuleId>,
-    ) -> (String, String) {
+    ) -> Result<(String, String)> {
         let module_graph = &self.context.module_graph.read().unwrap();
+
+        transform_modules(module_ids.iter().cloned().collect(), &self.context)?;
+
         let js_stmts = modules_to_js_stmts(module_ids, module_graph);
+        dbg!(&js_stmts);
         let mut content = include_str!("runtime/runtime_hmr.js").to_string();
         content = content.replace("__CHUNK_ID__", &chunk.id.id);
         let filename = &chunk.filename();
@@ -57,7 +63,7 @@ impl Compiler {
         }
 
         let (js_code, js_sourcemap) = js_ast_to_code(&js_ast, &self.context, filename).unwrap();
-        (js_code, js_sourcemap)
+        Ok((js_code, js_sourcemap))
     }
 }
 
@@ -75,7 +81,7 @@ mod tests {
         let chunks = chunk_graph.get_chunks();
         let chunk = chunks[0];
         let module_ids = chunk.get_modules();
-        let (js_code, _js_sourcemap) = compiler.generate_hmr_chunk(chunk, module_ids);
+        let (js_code, _js_sourcemap) = compiler.generate_hmr_chunk(chunk, module_ids).unwrap();
         let js_code = js_code.replace(
             compiler.context.root.to_string_lossy().to_string().as_str(),
             "",

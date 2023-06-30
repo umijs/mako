@@ -58,65 +58,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         let ast = &mut info.ast;
 
         if let ModuleAst::Script(ast) = ast {
-            GLOBALS
-                .set(&context.meta.script.globals, || {
-                    try_with_handler(
-                        context.meta.script.cm.clone(),
-                        Default::default(),
-                        |handler| {
-                            HELPERS.set(&Helpers::new(true), || {
-                                HANDLER.set(handler, || {
-                                    let unresolved_mark = ast.unresolved_mark;
-                                    let top_level_mark = ast.top_level_mark;
-                                    // let unresolved_mark = Mark::new();
-                                    let import_interop = ImportInterop::Swc;
-                                    // FIXME: 执行两轮 import_analyzer + inject_helpers，第一轮是为了 module_graph，第二轮是为了依赖替换
-                                    ast.ast
-                                        .visit_mut_with(&mut import_analyzer(import_interop, true));
-                                    ast.ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
-                                    ast.ast.visit_mut_with(&mut common_js(
-                                        unresolved_mark,
-                                        Config {
-                                            import_interop: Some(import_interop),
-                                            // NOTE: 这里后面要调整为注入自定义require
-                                            ignore_dynamic: true,
-                                            preserve_import_meta: true,
-                                            ..Default::default()
-                                        },
-                                        FeatureFlag::empty(),
-                                        Some(
-                                            context
-                                                .meta
-                                                .script
-                                                .comments
-                                                .read()
-                                                .unwrap()
-                                                .get_swc_comments(),
-                                        ),
-                                    ));
-
-                                    let mut dynamic_import = DynamicImport {};
-                                    ast.ast.visit_mut_with(&mut dynamic_import);
-
-                                    let mut dep_replacer = DepReplacer {
-                                        dep_map: dep_map.clone(),
-                                    };
-                                    ast.ast.visit_mut_with(&mut dep_replacer);
-
-                                    ast.ast.visit_mut_with(&mut hygiene_with_config(
-                                        swc_ecma_transforms::hygiene::Config {
-                                            top_level_mark,
-                                            ..Default::default()
-                                        },
-                                    ));
-                                    ast.ast.visit_mut_with(&mut fixer(None));
-                                    Ok(())
-                                })
-                            })
-                        },
-                    )
-                })
-                .unwrap();
+            transform_js_generate(context, ast, &dep_map);
         }
 
         if let ModuleAst::Css(ast) = ast {
@@ -125,6 +67,79 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         }
     });
     Ok(())
+}
+
+pub fn transform_js_generate(
+    context: &Arc<Context>,
+    ast: &mut Ast,
+    dep_map: &HashMap<String, String>,
+) {
+    GLOBALS
+        .set(&context.meta.script.globals, || {
+            try_with_handler(
+                context.meta.script.cm.clone(),
+                Default::default(),
+                |handler| {
+                    HELPERS.set(&Helpers::new(true), || {
+                        HANDLER.set(handler, || {
+                            let unresolved_mark = ast.unresolved_mark;
+                            let top_level_mark = ast.top_level_mark;
+
+                            let import_interop = ImportInterop::Swc;
+                            // FIXME: 执行两轮 import_analyzer + inject_helpers，第一轮是为了 module_graph，第二轮是为了依赖替换
+                            ast.ast
+                                .visit_mut_with(&mut import_analyzer(import_interop, true));
+                            ast.ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
+                            ast.ast.visit_mut_with(&mut common_js(
+                                unresolved_mark,
+                                Config {
+                                    import_interop: Some(import_interop),
+                                    // NOTE: 这里后面要调整为注入自定义require
+                                    ignore_dynamic: true,
+                                    preserve_import_meta: true,
+                                    ..Default::default()
+                                },
+                                FeatureFlag::empty(),
+                                Some(
+                                    context
+                                        .meta
+                                        .script
+                                        .comments
+                                        .read()
+                                        .unwrap()
+                                        .get_swc_comments(),
+                                ),
+                            ));
+                            let mut dep_replacer = DepReplacer {
+                                dep_map: dep_map.clone(),
+                            };
+                            ast.ast.visit_mut_with(&mut dep_replacer);
+
+                            let mut dynamic_import = DynamicImport {};
+                            ast.ast.visit_mut_with(&mut dynamic_import);
+
+                            ast.ast.visit_mut_with(&mut hygiene_with_config(
+                                swc_ecma_transforms::hygiene::Config {
+                                    top_level_mark,
+                                    ..Default::default()
+                                },
+                            ));
+                            ast.ast.visit_mut_with(&mut fixer(Some(
+                                context
+                                    .meta
+                                    .script
+                                    .comments
+                                    .read()
+                                    .unwrap()
+                                    .get_swc_comments(),
+                            )));
+                            Ok(())
+                        })
+                    })
+                },
+            )
+        })
+        .unwrap();
 }
 
 // fn get_dep_map(deps: Vec<(&ModuleId, &crate::module::Dependency)>) -> HashMap<String, String> {
@@ -154,7 +169,7 @@ fn transform_css(
         .unwrap();
     let out = lightingcss_stylesheet
         .to_css(PrinterOptions {
-            minify: matches!(context.config.mode, Mode::Production),
+            minify: context.config.minify && matches!(context.config.mode, Mode::Production),
             targets,
             ..Default::default()
         })

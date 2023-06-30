@@ -42,7 +42,7 @@ impl Compiler {
         info!("build module graph");
 
         let entries =
-            get_entries(&self.context.root, &self.context.config).expect("entry not found");
+            get_entries(&self.context.root, &self.context.config).expect("entry{} not found");
         if entries.is_empty() {
             panic!("entry not found");
         }

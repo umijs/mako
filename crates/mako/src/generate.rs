@@ -49,14 +49,16 @@ impl Compiler {
         // minify
         let t_minify = Instant::now();
         info!("minify");
-        chunk_asts
-            .par_iter_mut()
-            .try_for_each(|file| -> Result<()> {
-                if matches!(self.context.config.mode, Mode::Production) {
-                    file.js_ast = minify_js(file.js_ast.clone(), &self.context)?;
-                }
-                Ok(())
-            })?;
+        if self.context.config.minify {
+            chunk_asts
+                .par_iter_mut()
+                .try_for_each(|file| -> Result<()> {
+                    if matches!(self.context.config.mode, Mode::Production) {
+                        file.js_ast = minify_js(file.js_ast.clone(), &self.context)?;
+                    }
+                    Ok(())
+                })?;
+        }
         let t_minify = t_minify.elapsed();
 
         // ast to code and sourcemap, then write
@@ -171,7 +173,7 @@ impl Compiler {
         let cg = self.context.chunk_graph.read().unwrap();
         for chunk_name in &modified_chunks {
             if let Some(chunk) = cg.get_chunk_by_name(chunk_name) {
-                let (code, _) = self.generate_hmr_chunk(chunk, &updated_modules.modified);
+                let (code, ..) = self.generate_hmr_chunk(chunk, &updated_modules.modified)?;
 
                 // TODO the final format should be {name}.{full_hash}.hot-update.{ext}
                 self.write_to_dist(to_hot_update_chunk_name(chunk_name), code);
