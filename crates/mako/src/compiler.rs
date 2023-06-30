@@ -54,7 +54,8 @@ impl Default for Meta {
 
 pub struct ScriptMeta {
     pub cm: Lrc<SourceMap>,
-    pub comments: RwLock<Comments>,
+    pub origin_comments: RwLock<Comments>,
+    pub output_comments: RwLock<Comments>,
     pub globals: Globals,
 }
 
@@ -62,7 +63,8 @@ impl ScriptMeta {
     fn new() -> Self {
         Self {
             cm: Default::default(),
-            comments: Default::default(),
+            origin_comments: Default::default(),
+            output_comments: Default::default(),
             globals: Globals::default(),
         }
     }

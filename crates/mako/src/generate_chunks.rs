@@ -6,17 +6,17 @@ use rayon::prelude::*;
 use swc_common::DUMMY_SP;
 use swc_ecma_ast::{
     ArrayLit, BindingIdent, BlockStmt, CallExpr, Callee, Decl, Expr, ExprOrSpread, ExprStmt,
-    FnExpr, Function, Ident, KeyValueProp, MemberExpr, MemberProp, Module, ModuleItem, ObjectLit,
-    Param, Pat, Prop, PropOrSpread, Stmt, Str, VarDecl,
+    FnExpr, Function, Ident, KeyValueProp, MemberExpr, MemberProp, ModuleItem, ObjectLit, Param,
+    Pat, Prop, PropOrSpread, Stmt, Str, VarDecl,
 };
 
-use crate::ast::build_js_ast;
+use crate::ast::{build_js_ast, Ast};
 use crate::compiler::Compiler;
 use crate::module::{ModuleAst, ModuleId};
 
 pub struct OutputAst {
     pub path: String,
-    pub js_ast: Module,
+    pub js_ast: Ast,
 }
 
 impl Compiler {
@@ -72,10 +72,8 @@ impl Compiler {
                     "mako_internal_runtime_chunk.js"
                 };
                 // TODO: handle error
-                let mut js_ast = build_js_ast(file_name, content.as_str(), &self.context)
-                    .unwrap()
-                    .ast;
-                for stmt in &mut js_ast.body {
+                let mut js_ast = build_js_ast(file_name, content.as_str(), &self.context).unwrap();
+                for stmt in &mut js_ast.ast.body {
                     // const runtime = createRuntime({}, 'main');
                     if let ModuleItem::Stmt(Stmt::Decl(Decl::Var(box VarDecl { decls, .. }))) = stmt
                     {

@@ -75,7 +75,7 @@ impl Compiler {
                 let ast = module.info.as_mut().unwrap().ast.as_script_mut();
 
                 // 通过 tree_shaking_module 进行无用的标记
-                let mut comments = self.context.meta.script.comments.write().unwrap();
+                let mut comments = self.context.meta.script.output_comments.write().unwrap();
                 let mut marker = UnusedStatementMarker::new(tree_shaking_module, &mut comments);
                 ast.visit_mut_with(&mut marker);
                 drop(module_graph);

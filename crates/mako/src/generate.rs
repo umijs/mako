@@ -54,7 +54,7 @@ impl Compiler {
                 .par_iter_mut()
                 .try_for_each(|file| -> Result<()> {
                     if matches!(self.context.config.mode, Mode::Production) {
-                        file.js_ast = minify_js(file.js_ast.clone(), &self.context)?;
+                        minify_js(&mut file.js_ast, &self.context)?;
                     }
                     Ok(())
                 })?;
@@ -66,7 +66,8 @@ impl Compiler {
         info!("ast to code and write");
         chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
             // ast to code
-            let (js_code, js_sourcemap) = js_ast_to_code(&file.js_ast, &self.context, &file.path)?;
+            let (js_code, js_sourcemap) =
+                js_ast_to_code(&file.js_ast.ast, &self.context, &file.path)?;
             // generate code and sourcemap files
             let output = &config.output.path.join(&file.path);
             fs::write(output, js_code).unwrap();

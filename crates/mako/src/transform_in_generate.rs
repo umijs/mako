@@ -104,7 +104,7 @@ pub fn transform_js_generate(
                                     context
                                         .meta
                                         .script
-                                        .comments
+                                        .origin_comments
                                         .read()
                                         .unwrap()
                                         .get_swc_comments(),
@@ -128,7 +128,7 @@ pub fn transform_js_generate(
                                 context
                                     .meta
                                     .script
-                                    .comments
+                                    .origin_comments
                                     .read()
                                     .unwrap()
                                     .get_swc_comments(),

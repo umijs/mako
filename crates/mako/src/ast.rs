@@ -44,7 +44,7 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
         .script
         .cm
         .new_source_file(FileName::Real(relative_path), content.to_string());
-    let comments = context.meta.script.comments.read().unwrap();
+    let comments = context.meta.script.origin_comments.read().unwrap();
     let is_ts = path.ends_with(".ts") || path.ends_with(".tsx");
     let jsx = path.ends_with(".jsx");
     let tsx = path.ends_with(".tsx");
@@ -118,7 +118,7 @@ pub fn js_ast_to_code(
     let mut buf = vec![];
     let mut source_map_buf = Vec::new();
     let cm = context.meta.script.cm.clone();
-    let comments = context.meta.script.comments.read().unwrap();
+    let comments = context.meta.script.output_comments.read().unwrap();
     let swc_comments = comments.get_swc_comments();
     {
         let mut emitter = Emitter {

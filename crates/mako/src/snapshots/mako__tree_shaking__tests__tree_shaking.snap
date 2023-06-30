@@ -29,12 +29,10 @@ function createRuntime(makoModules, entryModuleId) {
         }
         return module.exports;
     }
-    // hmr
     let currentParents = [];
     let currentChildModule;
     const hmrHandler = (options)=>{
         options.module.hot = createModuleHotObject(options.id, options.module);
-        // for refresh module.meta.hot API style
         options.module.meta = {
             hot: options.module.hot
         };
@@ -62,18 +60,14 @@ function createRuntime(makoModules, entryModuleId) {
                 if (!me.children.includes(request)) {
                     me.children.push(request);
                 }
-            } else {
-            // TODO
-            }
+            } else {}
             return require(request);
         };
-        // TODO: fn.ensure 需要确保依赖关系
         fn.ensure = ensure;
         return fn;
     };
     const applyHotUpdate = (chunkId, update)=>{
         const { modules , removedModules  } = update;
-        // get outdated modules
         const outdatedModules = [];
         for (const moduleId of Object.keys(modules)){
             if (!modulesRegistry[moduleId]) continue;
@@ -96,7 +90,6 @@ function createRuntime(makoModules, entryModuleId) {
                 }
             }
         }
-        // get self accepted modules
         const outdatedSelfAcceptedModules = [];
         for (const moduleId of outdatedModules){
             const module = modulesRegistry[moduleId];
@@ -104,7 +97,6 @@ function createRuntime(makoModules, entryModuleId) {
                 outdatedSelfAcceptedModules.push(module);
             }
         }
-        // dispose
         for (const moduleId of outdatedModules){
             const module = modulesRegistry[moduleId];
             for (const handler of module.hot._disposeHandlers){
@@ -121,7 +113,6 @@ function createRuntime(makoModules, entryModuleId) {
                 }
             }
         }
-        // apply
         registerModules(modules);
         for (const module of outdatedSelfAcceptedModules){
             module.hot._requireSelf();
@@ -173,13 +164,11 @@ function createRuntime(makoModules, entryModuleId) {
         };
         return hot;
     };
-    // chunk and async load
     const installedChunks = {};
     const ensure = (chunkId)=>{
         let data = installedChunks[chunkId];
         if (data === 0) return Promise.resolve();
         if (data) {
-            // [resolve, reject, promise]
             return data[2];
         } else {
             const promise = new Promise((resolve, reject)=>{
@@ -189,8 +178,6 @@ function createRuntime(makoModules, entryModuleId) {
                 ];
             });
             data[2] = promise;
-            // TODO: support public path
-            // const url = `/${chunkId}.async.js`;
             const url = chunksIdToUrlMap[chunkId];
             const error = new Error();
             const onLoadEnd = (event)=>{
@@ -205,7 +192,6 @@ function createRuntime(makoModules, entryModuleId) {
                     data[1](error);
                 }
             };
-            // load
             load(url, onLoadEnd, `chunk-${chunkId}`);
             return promise;
         }
@@ -233,7 +219,6 @@ function createRuntime(makoModules, entryModuleId) {
             }
             if (prev) return prev(event);
         };
-        // May not be needed, already has timeout attributes
         const timeout = setTimeout(onLoadEnd.bind(null, undefined, {
             type: 'timeout',
             target: script

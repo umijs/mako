@@ -396,7 +396,7 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 var _interop_require_default = require("@swc/helpers/_/_interop_require_default");
-var _react = /*#__PURE__*/ _interop_require_default._(require("react"));
+var _react = _interop_require_default._(require("react"));
 
 //# sourceMappingURL=index.js.map
         "#
