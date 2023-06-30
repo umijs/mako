@@ -545,7 +545,6 @@ require("bar");
                 source: "url.png".to_string(),
                 resolve_type: ResolveType::Css,
                 order: 0,
-                replaced_source: None,
             },
         )]);
         let code = transform_css_code(code, None, deps);
@@ -602,7 +601,6 @@ require("bar");
                             source: "foo".to_string(),
                             resolve_type: ResolveType::Require,
                             order: 0,
-                            replaced_source: None,
                         },
                     )])
                 } else {

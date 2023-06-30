@@ -143,7 +143,7 @@ impl ModuleGraph {
         deps
     }
 
-    pub fn get_dependency_module_by_replaced_source(
+    pub fn get_dependency_module_by_source(
         &self,
         module_id: &ModuleId,
         source: String,

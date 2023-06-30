@@ -142,12 +142,6 @@ pub fn transform_js_generate(
         .unwrap();
 }
 
-// fn get_dep_map(deps: Vec<(&ModuleId, &crate::module::Dependency)>) -> HashMap<String, String> {
-//     deps.into_iter()
-//         .map(|(.., dep)| (dep.source.clone(), dep.replaced_source.unwrap().clone()))
-//         .collect::<HashMap<_, _>>()
-// }
-
 fn transform_css(
     ast: &mut swc_css_ast::Stylesheet,
     path: &str,

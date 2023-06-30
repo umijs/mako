@@ -8,10 +8,6 @@ pub struct Dependency {
     pub source: String,
     pub resolve_type: ResolveType,
     pub order: usize,
-    /**
-     * 被替换依赖后的地址
-     */
-    pub replaced_source: Option<String>,
 }
 
 #[derive(Eq, Hash, PartialEq, Debug, Clone)]

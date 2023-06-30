@@ -54,7 +54,6 @@ impl DepCollectVisitor {
                 source,
                 order: self.order,
                 resolve_type,
-                replaced_source: None,
             });
             self.order += 1;
         }

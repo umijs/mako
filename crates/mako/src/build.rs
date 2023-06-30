@@ -209,11 +209,10 @@ impl Compiler {
         transform(&mut ast, &context, &task, &mut |ast| {
             let deps = analyze_deps(ast);
             // resolve
-            for mut dep in deps {
+            for dep in deps {
                 let ret = resolve(&task.path, &dep, &resolver, &context);
                 match ret {
                     Ok((x, y)) => {
-                        dep.replaced_source = Some(x.clone());
                         dependencies.push((x, y, dep.clone()));
                     }
                     Err(err) => {
@@ -222,12 +221,6 @@ impl Compiler {
                     }
                 }
             }
-            // for mut dep in deps {
-            //     for (origin_source, replaced_source, dep) in dependencies {
-
-            //     }
-            //     dep.replaced_source =
-            // }
             dependencies.clone()
         })?;
         if let Some(e) = dep_resolve_err {
