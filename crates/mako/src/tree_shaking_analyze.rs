@@ -43,7 +43,7 @@ impl Compiler {
                         }
                     }
                     ExportSpecifier::Named { local, .. } => {
-                        if *local == "default".to_string() {
+                        if *local == "default" {
                             exported_tree_shaking_module
                                 .used_exports
                                 .add_used_export(&UsedIdent::Default);
@@ -125,7 +125,7 @@ impl Compiler {
     }
 }
 
-fn strip_context(ident: &String) -> String {
+fn strip_context(ident: &str) -> String {
     let ident_split = ident.split('#').into_iter().collect::<Vec<_>>();
     ident_split[0].to_string()
 }

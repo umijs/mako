@@ -2,14 +2,10 @@ use swc_atoms::atom;
 use swc_common::{BytePos, Span, DUMMY_SP};
 use swc_node_comments::SwcComments;
 
-// #[derive(Default)]
+#[derive(Default)]
 pub struct Comments(SwcComments);
 
 impl Comments {
-    pub fn new() -> Self {
-        Self(SwcComments::default())
-    }
-
     pub fn get_swc_comments(&self) -> &SwcComments {
         &self.0
     }
@@ -30,6 +26,7 @@ impl Comments {
     /**
      * Check for `/*#__PURE__*/`
      */
+    #[allow(dead_code)]
     fn has_pure(&self, span: Span) -> bool {
         self.has_flag(span, "PURE")
     }
@@ -37,10 +34,12 @@ impl Comments {
     /**
      * Check for `/*#__NO_SIDE_EFFECTS__*/`
      */
+    #[allow(dead_code)]
     fn has_no_side_effects(&self, span: Span) -> bool {
         self.has_flag(span, "NO_SIDE_EFFECTS")
     }
 
+    #[allow(dead_code)]
     fn has_flag(&self, span: Span, text: &'static str) -> bool {
         self.find_comment(span, |c| {
             if c.kind == swc_common::comments::CommentKind::Block {
@@ -58,6 +57,7 @@ impl Comments {
         })
     }
 
+    #[allow(dead_code)]
     fn find_comment<F>(&self, span: Span, mut op: F) -> bool
     where
         F: FnMut(&swc_common::comments::Comment) -> bool,

@@ -62,7 +62,7 @@ impl ScriptMeta {
     fn new() -> Self {
         Self {
             cm: Default::default(),
-            comments: RwLock::new(Comments::new()),
+            comments: Default::default(),
             globals: Globals::default(),
         }
     }

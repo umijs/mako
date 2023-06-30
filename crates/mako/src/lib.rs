@@ -26,7 +26,6 @@ mod minify;
 mod module;
 mod module_graph;
 mod parse;
-mod pure_collector;
 mod resolve;
 mod sourcemap;
 mod statement;

@@ -99,7 +99,8 @@ impl TreeShakingModule {
         }
     }
 
-    fn statements(&self) -> Vec<&StatementType> {
+    #[allow(dead_code)]
+    fn get_statements(&self) -> Vec<&StatementType> {
         self.statement_graph.get_statements()
     }
 
@@ -249,10 +250,12 @@ impl TreeShakingModule {
                         }
                     } else {
                         for export_statement in self.exports() {
-                            if export_statement.info.specifiers.iter().any(|sp| match sp {
-                                ExportSpecifier::All(_) => true,
-                                _ => false,
-                            }) {
+                            if export_statement
+                                .info
+                                .specifiers
+                                .iter()
+                                .any(|sp| matches!(sp, ExportSpecifier::All(_)))
+                            {
                                 used_ident.push((
                                     UsedIdent::InExportAll(ident.to_string()),
                                     export_statement.id,
@@ -267,7 +270,7 @@ impl TreeShakingModule {
         }
     }
 
-    fn is_same_ident(ident1: &String, ident2: &String) -> bool {
+    fn is_same_ident(ident1: &str, ident2: &str) -> bool {
         let split1 = ident1.split('#').collect::<Vec<_>>();
         let split2 = ident2.split('#').collect::<Vec<_>>();
 
@@ -306,7 +309,7 @@ export const f2 = x;
 "#,
         );
         let tree_shaking_module = TreeShakingModule::new(&module);
-        assert_debug_snapshot!(&tree_shaking_module.statements());
+        assert_debug_snapshot!(&tree_shaking_module.get_statements());
         assert_eq!(tree_shaking_module.exports().len(), 2);
         assert_eq!(tree_shaking_module.imports().len(), 2);
         assert_display_snapshot!(&tree_shaking_module);

@@ -32,18 +32,14 @@ impl VisitMut for UnusedStatementMarker<'_, '_> {
         // 清理没有用到的 decl
         for (statement_id, ..) in &self.used_export_statement {
             let statement = self.tree_shaking_module.get_statement(statement_id);
-            match statement {
-                StatementType::Export(export_statement) => match &mut export_decl.decl {
-                    Decl::Var(var_decl) => {
-                        for decl in &var_decl.decls {
-                            if !is_same_decl(export_statement, decl) {
-                                self.comments.add_unused_comment(decl.span.lo)
-                            }
+            if let StatementType::Export(export_statement) = statement {
+                if let Decl::Var(var_decl) = &mut export_decl.decl {
+                    for decl in &var_decl.decls {
+                        if !is_same_decl(export_statement, decl) {
+                            self.comments.add_unused_comment(decl.span.lo)
                         }
                     }
-                    _ => {}
-                },
-                _ => {}
+                }
             }
         }
     }
@@ -52,20 +48,14 @@ impl VisitMut for UnusedStatementMarker<'_, '_> {
         // 清理没有用到的 specifier
         for (statement_id, ..) in &self.used_export_statement {
             let statement = self.tree_shaking_module.get_statement(statement_id);
-            match statement {
-                StatementType::Import(import_statement) => {
-                    for specifier in &import_decl.specifiers {
-                        match specifier {
-                            swc_ecma_ast::ImportSpecifier::Named(named_specifier) => {
-                                if !is_same_import_specifier(import_statement, named_specifier) {
-                                    self.comments.add_unused_comment(named_specifier.span.lo)
-                                }
-                            }
-                            _ => {}
+            if let StatementType::Import(import_statement) = statement {
+                for specifier in &import_decl.specifiers {
+                    if let swc_ecma_ast::ImportSpecifier::Named(named_specifier) = specifier {
+                        if !is_same_import_specifier(import_statement, named_specifier) {
+                            self.comments.add_unused_comment(named_specifier.span.lo)
                         }
                     }
                 }
-                _ => {}
             }
         }
     }

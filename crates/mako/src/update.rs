@@ -3,7 +3,7 @@ use std::fmt::{self, Error};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{Ok, Result};
 use nodejs_resolver::Resolver;
 use rayon::prelude::*;
 use tracing::debug;
@@ -66,7 +66,7 @@ removed:{:?}
 }
 
 impl Compiler {
-    pub fn update(&self, paths: Vec<(PathBuf, UpdateType)>) -> Result<UpdateResult, Error> {
+    pub fn update(&self, paths: Vec<(PathBuf, UpdateType)>) -> Result<UpdateResult> {
         let mut update_result: UpdateResult = Default::default();
 
         let resolver = Arc::new(get_resolver(&self.context.config));
@@ -122,12 +122,12 @@ impl Compiler {
         debug!("update_result:{:?}", &update_result);
 
         // 对有修改的模块执行一次 transform
-        self.transform_for_change(&update_result);
+        self.transform_for_change(&update_result)?;
 
         Result::Ok(update_result)
     }
 
-    fn transform_for_change(&self, update_result: &UpdateResult) {
+    fn transform_for_change(&self, update_result: &UpdateResult) -> Result<()> {
         let mut changes: Vec<ModuleId> = vec![];
         for module_id in &update_result.added {
             changes.push(module_id.clone());
@@ -135,7 +135,8 @@ impl Compiler {
         for module_id in &update_result.modified {
             changes.push(module_id.clone());
         }
-        transform_modules(changes, &self.context.clone());
+        transform_modules(changes, &self.context.clone())?;
+        Ok(())
     }
 
     fn build_by_modify(
