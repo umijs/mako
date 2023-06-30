@@ -11,7 +11,6 @@ use crate::chunk::Chunk;
 use crate::compiler::Compiler;
 use crate::generate_chunks::modules_to_js_stmts;
 use crate::module::ModuleId;
-use crate::transform_in_generate::transform_modules;
 
 impl Compiler {
     pub fn generate_hmr_chunk(
@@ -20,11 +19,7 @@ impl Compiler {
         module_ids: &HashSet<ModuleId>,
     ) -> Result<(String, String)> {
         let module_graph = &self.context.module_graph.read().unwrap();
-
-        transform_modules(module_ids.iter().cloned().collect(), &self.context)?;
-
         let js_stmts = modules_to_js_stmts(module_ids, module_graph);
-        dbg!(&js_stmts);
         let mut content = include_str!("runtime/runtime_hmr.js").to_string();
         content = content.replace("__CHUNK_ID__", &chunk.id.id);
         let filename = &chunk.filename();
@@ -71,6 +66,7 @@ impl Compiler {
 mod tests {
     use crate::compiler::Compiler;
     use crate::config::Config;
+    use crate::transform_in_generate::transform_modules;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_generate_hmr_chunk() {
@@ -81,6 +77,7 @@ mod tests {
         let chunks = chunk_graph.get_chunks();
         let chunk = chunks[0];
         let module_ids = chunk.get_modules();
+        transform_modules(module_ids.iter().cloned().collect(), &compiler.context).unwrap();
         let (js_code, _js_sourcemap) = compiler.generate_hmr_chunk(chunk, module_ids).unwrap();
         let js_code = js_code.replace(
             compiler.context.root.to_string_lossy().to_string().as_str(),
@@ -129,6 +126,7 @@ globalThis.makoModuleHotUpdate('/index.ts', {
             require("hoo");
         },
         "hoo": function(module, exports, require) {
+            "use strict";
             module.exports = hoo;
         }
     }
