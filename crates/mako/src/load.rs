@@ -76,6 +76,7 @@ pub fn load(path: &str, is_entry: bool, context: &Arc<Context>) -> Result<Conten
         Some("toml") => load_toml(path),
         Some("yaml") => load_yaml(path),
         Some("xml") => load_xml(path),
+        Some("wasm") => load_wasm(path, context),
         Some("less" | "sass" | "scss" | "stylus") => Err(anyhow!(LoadError::UnsupportedExtName {
             ext_name: ext_name.unwrap().to_string(),
             path: path.to_string(),
@@ -119,6 +120,20 @@ fn load_xml(path: &str) -> Result<Content> {
     let xml_value = from_xml_str::<serde_json::Value>(&xml_string)?;
     let json_string = serde_json::to_string(&xml_value)?;
     Ok(Content::Js(format!("module.exports = {}", json_string)))
+}
+
+fn load_wasm(path: &str, context: &Arc<Context>) -> Result<Content> {
+    // emit as assets firstly
+    let final_file_name = content_hash(path)? + "." + ext_name(path).unwrap();
+    context.emit_assets(path.to_string(), final_file_name.clone());
+
+    Ok(Content::Assets(Asset {
+        path: path.to_string(),
+        content: format!(
+            "module.exports = require._interopreRequireWasm(exports, \"{}\")",
+            final_file_name
+        ),
+    }))
 }
 
 fn load_assets(path: &str, context: &Arc<Context>) -> Result<Content> {
