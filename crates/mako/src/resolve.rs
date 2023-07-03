@@ -11,7 +11,7 @@ use tracing::debug;
 use crate::compiler::Context;
 use crate::config::{Config, Platform};
 use crate::css_modules::is_mako_css_modules;
-use crate::module::Dependency;
+use crate::module::{Dependency, ResolveType};
 
 #[derive(Debug, Error)]
 enum ResolveError {
@@ -19,12 +19,28 @@ enum ResolveError {
     ResolveError { path: String, from: String },
 }
 
+#[derive(Debug, PartialEq)]
+enum ResolverType {
+    Cjs,
+    Esm,
+}
+
+pub struct Resolvers {
+    cjs: Resolver,
+    esm: Resolver,
+}
+
 pub fn resolve(
     path: &str,
     dep: &Dependency,
-    resolver: &Resolver,
+    resolvers: &Resolvers,
     context: &Arc<Context>,
 ) -> Result<(String, Option<String>)> {
+    let resolver = if dep.resolve_type == ResolveType::Require {
+        &resolvers.cjs
+    } else {
+        &resolvers.esm
+    };
     do_resolve(path, &dep.source, resolver, Some(&context.config.externals))
 }
 
@@ -64,7 +80,16 @@ fn do_resolve(
     }
 }
 
-pub fn get_resolver(config: &Config) -> Resolver {
+pub fn get_resolvers(config: &Config) -> Resolvers {
+    let cjs_resolver = get_resolver(config, ResolverType::Cjs);
+    let esm_resolver = get_resolver(config, ResolverType::Esm);
+    Resolvers {
+        cjs: cjs_resolver,
+        esm: esm_resolver,
+    }
+}
+
+fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
     let alias = parse_alias(config.resolve.alias.clone());
     let is_browser = config.platform == Platform::Browser;
     // TODO: read from config
@@ -79,13 +104,23 @@ pub fn get_resolver(config: &Config) -> Resolver {
             ".cjs".to_string(),
         ],
         condition_names: if is_browser {
-            HashSet::from([
-                "module".to_string(),
-                "browser".to_string(),
-                "import".to_string(),
-                "default".to_string(),
-                "require".to_string(),
-            ])
+            if resolver_type == ResolverType::Cjs {
+                HashSet::from([
+                    "browser".to_string(),
+                    "default".to_string(),
+                    "require".to_string(),
+                ])
+            } else {
+                // esm
+                HashSet::from([
+                    "module".to_string(),
+                    "browser".to_string(),
+                    "import".to_string(),
+                    // why add require? e.g. axios needs it
+                    "require".to_string(),
+                    "default".to_string(),
+                ])
+            }
         } else {
             HashSet::from([
                 "module".to_string(),
@@ -122,6 +157,7 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::config::Config;
+    use crate::resolve::ResolverType;
 
     #[test]
     fn test_resolve() {
@@ -182,7 +218,7 @@ mod tests {
         if let Some(alias_config) = alias {
             config.resolve.alias = alias_config;
         }
-        let resolver = super::get_resolver(&config);
+        let resolver = super::get_resolver(&config, ResolverType::Cjs);
         let (path, external) = super::do_resolve(
             &fixture.join(path).to_string_lossy(),
             source,
