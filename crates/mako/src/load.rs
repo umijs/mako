@@ -76,7 +76,7 @@ pub fn load(path: &str, is_entry: bool, context: &Arc<Context>) -> Result<Conten
         Some("toml") => load_toml(path),
         Some("yaml") => load_yaml(path),
         Some("xml") => load_xml(path),
-        Some("wasm") => load_wasm(path),
+        Some("wasm") => load_wasm(path, context),
         Some("less" | "sass" | "scss" | "stylus") => Err(anyhow!(LoadError::UnsupportedExtName {
             ext_name: ext_name.unwrap().to_string(),
             path: path.to_string(),
@@ -122,19 +122,36 @@ fn load_xml(path: &str) -> Result<Content> {
     Ok(Content::Js(format!("module.exports = {}", json_string)))
 }
 
-fn load_wasm(path: &str) -> Result<Content> {
-    let raw = to_base64(path)?.replace("data:application/wasm;base64,", "");
-    Ok(Content::Js(format!(
-        "
-            const raw = globalThis.atob('{raw}');
-            const rawLength = raw.length;
-            const buf = new Uint8Array(new ArrayBuffer(rawLength));
-            for (let i = 0; i < rawLength; i++) {{
-                buf[i] = raw.charCodeAt(i);
-            }}
-            module.exports = WebAssembly.instantiate(buf);
-        "
-    )))
+fn load_wasm(path: &str, context: &Arc<Context>) -> Result<Content> {
+    let file_size = file_size(path).with_context(|| LoadError::ReadFileSizeError {
+        path: path.to_string(),
+    })?;
+
+    if file_size > context.config.inline_limit.try_into().unwrap() {
+        let final_file_name = content_hash(path)? + "." + ext_name(path).unwrap();
+        context.emit_assets(path.to_string(), final_file_name.clone());
+
+        Ok(Content::Assets(Asset {
+            path: path.to_string(),
+            content: format!(
+                "module.exports = require._interopreRequireWasm(exports, \"{}\")",
+                final_file_name
+            ),
+        }))
+    } else {
+        let raw = to_base64(path)?.replace("data:application/wasm;base64,", "");
+        Ok(Content::Js(format!(
+            "
+                const raw = globalThis.atob('{raw}');
+                const rawLength = raw.length;
+                const buf = new Uint8Array(new ArrayBuffer(rawLength));
+                for (let i = 0; i < rawLength; i++) {{
+                    buf[i] = raw.charCodeAt(i);
+                }}
+                module.exports = WebAssembly.instantiate(buf).then(({{ instance }}) => instance.exports);
+            "
+        )))
+    }
 }
 
 fn load_assets(path: &str, context: &Arc<Context>) -> Result<Content> {

@@ -14,8 +14,8 @@ function App() {
 
   useEffect(() => {
     (async () => {
-      const { instance } = await wasm;
-      setSum(instance.exports.add(num1, num2));
+      const { add } = await wasm;
+      setSum(add(num1, num2));
     })();
   }, []);
 
