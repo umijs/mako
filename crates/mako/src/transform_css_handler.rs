@@ -1,16 +1,20 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use swc_common::util::take::Take;
 use swc_css_ast::{AtRulePrelude, ImportHref, Rule, Stylesheet, Url, UrlValue};
 use swc_css_visit::{VisitMut, VisitMutWith};
 
 use crate::analyze_deps::is_remote_url;
+use crate::compiler::Context;
+use crate::module::generate_module_id;
 
-pub struct CssHandler {
+pub struct CssHandler<'a> {
     pub dep_map: HashMap<String, String>,
+    pub context: &'a Arc<Context>,
 }
 
-impl VisitMut for CssHandler {
+impl VisitMut for CssHandler<'_> {
     // remove @import,
     // http(s) will not be removed
     fn visit_mut_stylesheet(&mut self, n: &mut Stylesheet) {
@@ -51,13 +55,13 @@ impl VisitMut for CssHandler {
         match n.value {
             Some(box UrlValue::Str(ref mut s)) => {
                 if let Some(replacement) = self.dep_map.get(&s.value.to_string()) {
-                    s.value = replacement.clone().into();
+                    s.value = generate_module_id(replacement.clone(), self.context).into();
                     s.raw = None;
                 }
             }
             Some(box UrlValue::Raw(ref mut s)) => {
                 if let Some(replacement) = self.dep_map.get(&s.value.to_string()) {
-                    s.value = replacement.clone().into();
+                    s.value = generate_module_id(replacement.clone(), self.context).into();
                     s.raw = None;
                 }
             }

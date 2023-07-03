@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::sync::Arc;
 use std::vec;
 
 use anyhow::Result;
@@ -10,8 +11,8 @@ use swc_ecma_ast::{
     Param, Pat, Prop, PropOrSpread, Stmt, Str, VarDecl,
 };
 
-use crate::ast::build_js_ast;
-use crate::compiler::Compiler;
+use crate::ast::{build_js_ast, Ast};
+use crate::compiler::{Compiler, Context};
 use crate::module::{ModuleAst, ModuleId};
 
 pub struct OutputAst {
@@ -39,7 +40,7 @@ impl Compiler {
             .map(|chunk| {
                 format!(
                     "chunksIdToUrlMap[\"{}\"] = `${{{}}}{}`;",
-                    chunk.id.id,
+                    chunk.id.generate(&self.context),
                     public_path,
                     chunk.filename()
                 )
@@ -55,7 +56,7 @@ impl Compiler {
             .map(|chunk| {
                 // build stmts
                 let module_ids = chunk.get_modules();
-                let js_stmts = modules_to_js_stmts(module_ids, &module_graph);
+                let js_stmts = modules_to_js_stmts(module_ids, &module_graph, &self.context);
 
                 // build js ast
                 let mut content = if matches!(chunk.chunk_type, crate::chunk::ChunkType::Entry) {
@@ -75,7 +76,8 @@ impl Compiler {
                 } else {
                     include_str!("runtime/runtime_chunk.js").to_string()
                 };
-                content = content.replace("main", chunk.id.id.as_str());
+                content = content.replace("main", chunk.id.generate(&self.context).as_str());
+                // content = content.replace("main", chunk.id.id.as_str());
                 let file_name = if matches!(chunk.chunk_type, crate::chunk::ChunkType::Entry) {
                     "mako_internal_runtime_entry.js"
                 } else {
@@ -226,6 +228,7 @@ fn build_props(key_str: &str, value: Box<Expr>) -> PropOrSpread {
 pub fn modules_to_js_stmts(
     module_ids: &HashSet<ModuleId>,
     module_graph: &std::sync::RwLockReadGuard<crate::module_graph::ModuleGraph>,
+    context: &Arc<Context>,
 ) -> Vec<PropOrSpread> {
     let mut js_stmts = vec![];
     let mut module_ids: Vec<_> = module_ids.iter().collect();
@@ -237,8 +240,9 @@ pub fn modules_to_js_stmts(
         match ast {
             ModuleAst::Script(ast) => {
                 // id: function(module, exports, require) {}
+                // 生成 define('module_id' 的位置
                 js_stmts.push(build_props(
-                    module.id.id.as_str(),
+                    module.id.generate(context).as_str(),
                     Box::new(Expr::Fn(build_fn_expr(
                         None,
                         vec![
