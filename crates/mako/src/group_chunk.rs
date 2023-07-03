@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::hash::Hasher;
 use std::path::Path;
 use std::rc::Rc;
+use std::vec;
 
 use anyhow::Result;
 use cached::proc_macro::cached;
@@ -13,6 +14,7 @@ use twox_hash::XxHash64;
 
 use crate::bfs::{Bfs, NextResult};
 use crate::chunk::{Chunk, ChunkId, ChunkType};
+use crate::chunk_graph::ChunkGraph;
 use crate::compiler::Compiler;
 use crate::config::{CodeSplittingStrategy, Mode};
 use crate::module::{ModuleId, ResolveType};
@@ -107,7 +109,9 @@ impl Compiler {
 
         let entries = module_graph.get_entry_modules();
         for entry in entries {
-            let (chunk, dynamic_dependencies) = self.create_chunk(&entry, ChunkType::Entry);
+            let (chunk, dynamic_dependencies) =
+                self.create_chunk(&entry, ChunkType::Entry, &mut chunk_graph, vec![]);
+            let chunk_name = chunk.filename();
             visited.borrow_mut().insert(chunk.id.clone());
             edges.extend(
                 dynamic_dependencies
@@ -123,8 +127,12 @@ impl Compiler {
                 match bfs.next_node() {
                     NextResult::Visited => continue,
                     NextResult::First(head) => {
-                        let (chunk, dynamic_dependencies) =
-                            self.create_chunk(&head, ChunkType::Async);
+                        let (chunk, dynamic_dependencies) = self.create_chunk(
+                            &head,
+                            ChunkType::Async,
+                            &mut chunk_graph,
+                            vec![chunk_name.clone()],
+                        );
                         edges.extend(
                             dynamic_dependencies
                                 .clone()
@@ -188,6 +196,8 @@ impl Compiler {
         &self,
         entry_module_id: &ModuleId,
         chunk_type: ChunkType,
+        chunk_graph: &mut ChunkGraph,
+        shared_chunk_names: Vec<String>,
     ) -> (Chunk, Vec<ModuleId>) {
         let mut dynamic_entries = vec![];
         let mut bfs = Bfs::new(VecDeque::from(vec![entry_module_id]), Default::default());
@@ -197,28 +207,38 @@ impl Compiler {
         let mut visited_modules: Vec<ModuleId> = vec![entry_module_id.clone()];
 
         let module_graph = self.context.module_graph.read().unwrap();
+
         while !bfs.done() {
             match bfs.next_node() {
                 NextResult::Visited => continue,
                 NextResult::First(head) => {
-                    let parent_index = visited_modules
-                        .iter()
-                        .position(|m| m.id == head.id)
-                        .unwrap_or(0);
-                    let mut normal_deps = vec![];
+                    let module_already_in_entry = shared_chunk_names.iter().any(|name| {
+                        chunk_graph
+                            .get_chunk_by_name(name)
+                            .unwrap()
+                            .has_module(head)
+                    });
 
-                    for (dep_module_id, dep) in module_graph.get_dependencies(head) {
-                        if dep.resolve_type == ResolveType::DynamicImport {
-                            dynamic_entries.push(dep_module_id.clone());
-                        } else {
-                            bfs.visit(dep_module_id);
-                            // collect normal deps for current head
-                            normal_deps.push(dep_module_id.clone());
+                    if !module_already_in_entry {
+                        let parent_index = visited_modules
+                            .iter()
+                            .position(|m| m.id == head.id)
+                            .unwrap_or(0);
+                        let mut normal_deps = vec![];
+
+                        for (dep_module_id, dep) in module_graph.get_dependencies(head) {
+                            if dep.resolve_type == ResolveType::DynamicImport {
+                                dynamic_entries.push(dep_module_id.clone());
+                            } else {
+                                bfs.visit(dep_module_id);
+                                // collect normal deps for current head
+                                normal_deps.push(dep_module_id.clone());
+                            }
                         }
-                    }
 
-                    // insert normal deps before head, so that we can keep the dfs order
-                    visited_modules.splice(parent_index..parent_index, normal_deps);
+                        // insert normal deps before head, so that we can keep the dfs order
+                        visited_modules.splice(parent_index..parent_index, normal_deps);
+                    }
                 }
             }
         }
