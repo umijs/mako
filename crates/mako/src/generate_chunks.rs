@@ -4,11 +4,12 @@ use std::vec;
 
 use anyhow::Result;
 use rayon::prelude::*;
-use swc_common::DUMMY_SP;
+use swc_common::comments::{Comment, CommentKind};
+use swc_common::{Spanned, DUMMY_SP, DUMMY_SP};
 use swc_ecma_ast::{
-    ArrayLit, BindingIdent, BlockStmt, CallExpr, Callee, Decl, Expr, ExprOrSpread, ExprStmt,
-    FnExpr, Function, Ident, KeyValueProp, MemberExpr, MemberProp, ModuleItem, ObjectLit, Param,
-    Pat, Prop, PropOrSpread, Stmt, Str, VarDecl,
+    ArrayLit, BindingIdent, BlockStmt, CallExpr, CallExpr, Callee, Decl, Expr, Expr, ExprOrSpread,
+    ExprStmt, FnExpr, Function, Ident, KeyValueProp, MemberExpr, MemberProp, ModuleItem, ObjectLit,
+    Param, Pat, Prop, PropName, PropOrSpread, Stmt, Str, VarDecl, Lit,
 };
 
 use crate::ast::{build_js_ast, Ast};
@@ -235,15 +236,8 @@ fn build_fn_expr(ident: Option<Ident>, params: Vec<Param>, stmts: Vec<Stmt>) -> 
     }
 }
 
-fn build_props(key_str: &str, value: Box<Expr>) -> PropOrSpread {
-    PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-        key: swc_ecma_ast::PropName::Str(Str {
-            span: DUMMY_SP,
-            value: key_str.into(),
-            raw: None,
-        }),
-        value,
-    })))
+fn build_props(key: PropName, value: Box<Expr>) -> PropOrSpread {
+    PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp { key, value })))
 }
 
 pub fn modules_to_js_stmts(
@@ -254,6 +248,8 @@ pub fn modules_to_js_stmts(
     let mut js_stmts = vec![];
     let mut module_ids: Vec<_> = module_ids.iter().collect();
     module_ids.sort_by_key(|module_id| module_id.id.to_string());
+    let mut comments = context.meta.script.output_comments.write().unwrap();
+
     module_ids.iter().for_each(|module_id| {
         let module = module_graph.get_module(module_id).unwrap();
         let ast = module.info.as_ref().unwrap();
@@ -261,8 +257,25 @@ pub fn modules_to_js_stmts(
         match ast {
             ModuleAst::Script(ast) => {
                 // id: function(module, exports, require) {}
+                // 生成 define('module_id' 的位置
+                let key = swc_ecma_ast::PropName::Str(Str {
+                    span: DUMMY_SP,
+                    value: module.id.generate(context).into(),
+                    raw: None,
+                });
+
+                let origin_stats: Vec<Stmt> = ast
+                    .ast
+                    .body
+                    .iter()
+                    .map(|stmt| stmt.as_stmt().unwrap().clone())
+                    .collect();
+
+                // 加注释
+                comments.add_import_source_comment(module.id.id.clone(), key.span_hi());
+
                 js_stmts.push(build_props(
-                    module.id.generate(context).as_str(),
+                    key,
                     Box::new(Expr::Fn(build_fn_expr(
                         None,
                         vec![
@@ -270,11 +283,7 @@ pub fn modules_to_js_stmts(
                             build_ident_param("exports"),
                             build_ident_param("require"),
                         ],
-                        ast.ast
-                            .body
-                            .iter()
-                            .map(|stmt| stmt.as_stmt().unwrap().clone())
-                            .collect(),
+                        origin_stats,
                     ))),
                 ));
             }

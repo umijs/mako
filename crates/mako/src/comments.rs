@@ -1,4 +1,4 @@
-use swc_atoms::atom;
+use swc_atoms::{atom, Atom};
 use swc_common::{BytePos, Span, DUMMY_SP};
 use swc_node_comments::SwcComments;
 
@@ -20,6 +20,19 @@ impl Comments {
 
         if !leading.iter().any(|c| c.text == unused_comment.text) {
             leading.push(unused_comment);
+        }
+    }
+
+    pub fn add_import_source_comment(&mut self, source_import_string: String, pos: BytePos) {
+        let mut leading = self.0.leading.entry(pos).or_default();
+        let import_source_comment = swc_common::comments::Comment {
+            kind: swc_common::comments::CommentKind::Block,
+            span: DUMMY_SP,
+            text: Atom::from(source_import_string),
+        };
+
+        if !leading.iter().any(|c| c.text == import_source_comment.text) {
+            leading.push(import_source_comment);
         }
     }
 

@@ -1,5 +1,6 @@
 ---
 source: crates/mako/src/update.rs
+assertion_line: 425
 expression: "&code"
 ---
 "\"use strict\";\n(async ()=>{\n    await require.ensure([\n        \"./chunk-2.ts\"\n    ]).then(require.bind(require, \"./chunk-2.ts\"));\n})();\n\n//# sourceMappingURL=<CWD>/crates/mako/test/build/tmp/multi/index.ts.map"

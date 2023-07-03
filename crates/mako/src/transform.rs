@@ -591,7 +591,7 @@ require("./bar");
             r#"
 @import "http://should-not-be-removed";
 .foo {
-  background: url("replace.png");
+  background: url("./replace.png");
 }
         "#
             .trim()

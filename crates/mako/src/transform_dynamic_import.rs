@@ -1,20 +1,22 @@
 use std::sync::Arc;
 
-use swc_common::DUMMY_SP;
+use swc_common::{DUMMY_SP, Spanned};
 use swc_ecma_ast::{
     ArrayLit, CallExpr, Callee, Expr, ExprOrSpread, Ident, Lit, MemberExpr, MemberProp,
 };
 use swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::analyze_deps::is_dynamic_import;
+use crate::comments::Comments;
 use crate::compiler::Context;
 use crate::module::generate_module_id;
 
-pub struct DynamicImport<'a> {
+pub struct DynamicImport<'a, 'b> {
     pub context: &'a Arc<Context>,
+    pub comments: &'b mut Comments,
 }
 
-impl VisitMut for DynamicImport<'_> {
+impl VisitMut for DynamicImport<'_, '_> {
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Call(call_expr) = expr {
             if is_dynamic_import(call_expr) {
@@ -101,6 +103,12 @@ impl VisitMut for DynamicImport<'_> {
                         }],
                         type_args: None,
                     });
+
+                    // 这里加不成功
+                    self.comments.add_import_source_comment(
+                        "import()".to_owned(),
+                        expr.span_lo(),
+                    );
                 }
             }
         }
