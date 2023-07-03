@@ -1,10 +1,14 @@
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::path::Path;
+use std::fs;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
 
 use anyhow::Result;
+use cached::proc_macro::cached;
 use colored::Colorize;
+use regex::Regex;
+use serde_json::{from_str, Value};
 use swc_ecma_utils::contains_top_level_await;
 use tokio::sync::mpsc::error::TryRecvError;
 use tracing::debug;
@@ -216,13 +220,14 @@ impl Compiler {
                     false,
                     Some(ModuleInfo {
                         ast: ModuleAst::Script(ast),
-                        path: resolved_path,
+                        path: resolved_path.clone(),
                         external: Some(external),
                         raw_hash: 0,
                         resolved_resource: Some(resource.clone()),
                         missing_deps: HashMap::new(),
                         top_level_await: false,
                         is_async: false,
+                        pkg: get_dep_closest_package_json(resolved_path),
                     }),
                 )
             }
@@ -370,6 +375,7 @@ impl Compiler {
             top_level_await,
             is_async: top_level_await || is_async_module(&task.path),
             resolved_resource: task.parent_resource.clone(),
+            pkg: get_dep_closest_package_json(task.path.clone()),
         };
         let module = Module::new(module_id, task.is_entry, Some(info));
 
@@ -423,6 +429,43 @@ fn parse_path(path: &str) -> Result<FileRequest> {
         path: path.to_string(),
         query: query_vec,
     })
+}
+
+#[cached(
+    key = "String",
+    // use dep dir as cache key
+    // for example node_modules/a/1.js and node_modules/a/2.js will have same cache key
+    convert = r#"{ Regex::new(r"^(.+node_modules[\/\\](@[^\/\\]+)?[^@][^\/\\]+).+?$").unwrap().replace(&cwd, "$1").to_string() }"#
+)]
+fn get_dep_closest_package_json(cwd: String) -> Option<Value> {
+    if !cwd.contains("node_modules") {
+        return None;
+    }
+    println!("get_dep_closest_package_json: {}", cwd);
+
+    let mut dir = PathBuf::from(cwd.clone());
+
+    dir.pop();
+
+    loop {
+        let pkg_json_path = dir.join("package.json");
+
+        if pkg_json_path.exists() {
+            let pkg_json_str =
+                fs::read_to_string(pkg_json_path.clone()).expect("Failed to read package.json");
+            let pkg_json: Value = from_str(&pkg_json_str).expect("Failed to parse package.json");
+
+            // skip sub directory package.json
+            if pkg_json.get("name").is_some() {
+                return Some(pkg_json);
+            }
+        }
+
+        if !dir.pop() || !dir.to_str().unwrap().contains("node_modules") {
+            break;
+        }
+    }
+    panic!("package.json not found from {}", cwd);
 }
 
 #[derive(Debug)]
