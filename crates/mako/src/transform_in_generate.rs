@@ -110,12 +110,14 @@ pub fn transform_js_generate(
                                         .get_swc_comments(),
                                 ),
                             ));
+
                             let mut dep_replacer = DepReplacer {
                                 dep_map: dep_map.clone(),
+                                context,
                             };
                             ast.ast.visit_mut_with(&mut dep_replacer);
 
-                            let mut dynamic_import = DynamicImport {};
+                            let mut dynamic_import = DynamicImport { context };
                             ast.ast.visit_mut_with(&mut dynamic_import);
 
                             ast.ast.visit_mut_with(&mut hygiene_with_config(
@@ -196,9 +198,10 @@ fn transform_css(
     // code to js ast
     let content = include_str!("runtime/runtime_css.ts").to_string();
     let content = content.replace("__CSS__", code.as_str());
+    // 这里将 css 依赖的文件引入到 js 中
+    // 判断条件是 .css 后缀
     let require_code: Vec<String> = dep_map
         .values()
-        .filter(|val| val.ends_with(".css"))
         .map(|val| format!("require(\"{}\");\n", val))
         .collect();
     let content = format!("{}{}", require_code.join(""), content);

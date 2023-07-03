@@ -205,10 +205,10 @@ fn transform_js(
                     ));
 
                     // let dep_map = get_dep_map(deps);
-                    // let mut dep_replacer = DepReplacer { dep_map };
+                    // let mut dep_replacer = DepReplacer { dep_map, context };
                     // ast.visit_mut_with(&mut dep_replacer);
 
-                    // let mut dynamic_import = DynamicImport {};
+                    // let mut dynamic_import = DynamicImport { context };
                     // ast.visit_mut_with(&mut dynamic_import);
                     Ok(())
                 })
@@ -219,12 +219,12 @@ fn transform_js(
 
 fn transform_css(
     ast: &mut Stylesheet,
-    _context: &Arc<Context>,
+    context: &Arc<Context>,
     get_deps: &mut dyn for<'r> FnMut(&'r ModuleAst) -> ModuleDeps,
 ) -> Result<()> {
     let dep_map = get_dep_map(get_deps(&ModuleAst::Css(ast.clone())));
     // remove @import and handle url()
-    let mut css_handler = CssHandler { dep_map };
+    let mut css_handler = CssHandler { dep_map, context };
     ast.visit_mut_with(&mut css_handler);
     Ok(())
 }
@@ -337,8 +337,8 @@ const foo = import('./foo');
             code,
             r#"
 const foo = require.ensure([
-    './foo'
-]).then(require.bind(require, './foo'));
+    "./foo"
+]).then(require.bind(require, "./foo"));
 
 //# sourceMappingURL=index.js.map
         "#
@@ -522,7 +522,7 @@ require("foo");
         assert_eq!(
             code,
             r#"
-require("bar");
+require("./bar");
 
 //# sourceMappingURL=index.js.map
         "#
@@ -554,7 +554,7 @@ require("bar");
             r#"
 @import "http://should-not-be-removed";
 .foo {
-  background: url("replace.png");
+  background: url("./replace.png");
 }
         "#
             .trim()

@@ -2,3 +2,4 @@
 codecov = "llvm-cov nextest --workspace"
 lint = "clippy --workspace --all-targets --all-features -- -D warnings -Aclippy::module_inception"
 lintfix = "clippy --workspace --fix --allow-dirty --allow-staged  --all-targets --all-features -- -D warnings -Aclippy::module_inception"
+mako = "run --bin mako"
