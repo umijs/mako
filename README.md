@@ -7,3 +7,5 @@ Mako is a bundler written in Rust.
 ## CONTRIBUTING
 
 Read [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+.
