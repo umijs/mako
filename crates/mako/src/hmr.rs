@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use anyhow::Result;
 use swc_ecma_ast::{
     CallExpr, Expr, ExprOrSpread, ExprStmt, KeyValueProp, ModuleItem, ObjectLit, Prop,
     PropOrSpread, Stmt,
@@ -16,14 +17,16 @@ impl Compiler {
         &self,
         chunk: &Chunk,
         module_ids: &HashSet<ModuleId>,
-    ) -> (String, String) {
+    ) -> Result<(String, String)> {
         let module_graph = &self.context.module_graph.read().unwrap();
         let js_stmts = modules_to_js_stmts(module_ids, module_graph);
         let mut content = include_str!("runtime/runtime_hmr.js").to_string();
         content = content.replace("__CHUNK_ID__", &chunk.id.id);
         let filename = &chunk.filename();
         // TODO: handle error
-        let mut js_ast = build_js_ast(filename, content.as_str(), &self.context).unwrap();
+        let mut js_ast = build_js_ast(filename, content.as_str(), &self.context)
+            .unwrap()
+            .ast;
 
         for stmt in &mut js_ast.body {
             if let ModuleItem::Stmt(Stmt::Expr(ExprStmt {
@@ -55,7 +58,7 @@ impl Compiler {
         }
 
         let (js_code, js_sourcemap) = js_ast_to_code(&js_ast, &self.context, filename).unwrap();
-        (js_code, js_sourcemap)
+        Ok((js_code, js_sourcemap))
     }
 }
 
@@ -63,6 +66,7 @@ impl Compiler {
 mod tests {
     use crate::compiler::Compiler;
     use crate::config::Config;
+    use crate::transform_in_generate::transform_modules;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_generate_hmr_chunk() {
@@ -73,7 +77,8 @@ mod tests {
         let chunks = chunk_graph.get_chunks();
         let chunk = chunks[0];
         let module_ids = chunk.get_modules();
-        let (js_code, _js_sourcemap) = compiler.generate_hmr_chunk(chunk, module_ids);
+        transform_modules(module_ids.iter().cloned().collect(), &compiler.context).unwrap();
+        let (js_code, _js_sourcemap) = compiler.generate_hmr_chunk(chunk, module_ids).unwrap();
         let js_code = js_code.replace(
             compiler.context.root.to_string_lossy().to_string().as_str(),
             "",
@@ -121,6 +126,7 @@ globalThis.makoModuleHotUpdate('/index.ts', {
             require("hoo");
         },
         "hoo": function(module, exports, require) {
+            "use strict";
             module.exports = hoo;
         }
     }

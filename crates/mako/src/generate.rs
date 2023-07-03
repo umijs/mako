@@ -18,6 +18,11 @@ impl Compiler {
     pub fn generate(&self) -> Result<()> {
         info!("generate");
         let t_generate = Instant::now();
+        let t_tree_shaking = Instant::now();
+        if matches!(self.context.config.mode, Mode::Production) {
+            self.tree_shaking();
+        }
+        let t_tree_shaking = t_tree_shaking.elapsed();
         let t_group_chunks = Instant::now();
         self.group_chunk();
         let t_group_chunks = t_group_chunks.elapsed();
@@ -26,7 +31,7 @@ impl Compiler {
         // 因为放 chunks 的循环里，一个 module 可能存在于多个 chunk 里，可能会被编译多遍
         let t_transform_modules = Instant::now();
         info!("transform all modules");
-        self.transform_all();
+        self.transform_all()?;
         let t_transform_modules = t_transform_modules.elapsed();
 
         // ensure output dir exists
@@ -45,14 +50,16 @@ impl Compiler {
         // minify
         let t_minify = Instant::now();
         info!("minify");
-        chunk_asts
-            .par_iter_mut()
-            .try_for_each(|file| -> Result<()> {
-                if matches!(self.context.config.mode, Mode::Production) {
-                    file.js_ast = minify_js(file.js_ast.clone(), &self.context)?;
-                }
-                Ok(())
-            })?;
+        if self.context.config.minify {
+            chunk_asts
+                .par_iter_mut()
+                .try_for_each(|file| -> Result<()> {
+                    if matches!(self.context.config.mode, Mode::Production) {
+                        minify_js(&mut file.js_ast, &self.context)?;
+                    }
+                    Ok(())
+                })?;
+        }
         let t_minify = t_minify.elapsed();
 
         // ast to code and sourcemap, then write
@@ -60,7 +67,8 @@ impl Compiler {
         info!("ast to code and write");
         chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
             // ast to code
-            let (js_code, js_sourcemap) = js_ast_to_code(&file.js_ast, &self.context, &file.path)?;
+            let (js_code, js_sourcemap) =
+                js_ast_to_code(&file.js_ast.ast, &self.context, &file.path)?;
             // generate code and sourcemap files
             let output = &config.output.path.join(&file.path);
             fs::write(output, js_code).unwrap();
@@ -93,6 +101,7 @@ impl Compiler {
         let t_copy = t_copy.elapsed();
 
         info!("generate done in {}ms", t_generate.elapsed().as_millis());
+        info!("  - tree shaking: {}ms", t_tree_shaking.as_millis());
         info!("  - group chunks: {}ms", t_group_chunks.as_millis());
         info!(
             "  - transform modules: {}ms",
@@ -126,7 +135,8 @@ impl Compiler {
         info!("ast to code and write");
         chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
             // ast to code
-            let (js_code, js_sourcemap) = js_ast_to_code(&file.js_ast, &self.context, &file.path)?;
+            let (js_code, js_sourcemap) =
+                js_ast_to_code(&file.js_ast.ast, &self.context, &file.path)?;
             // generate code and sourcemap files
             let output = &config.output.path.join(&file.path);
             fs::write(output, js_code).unwrap();
@@ -175,7 +185,7 @@ impl Compiler {
     }
 
     // TODO: 集成到 fn generate 里
-    pub fn generate_hot_update_chunks(&self, updated_modules: UpdateResult) {
+    pub fn generate_hot_update_chunks(&self, updated_modules: UpdateResult) -> Result<()> {
         info!("generate_hot_update_chunks start");
 
         let last_chunk_names: HashSet<String> = {
@@ -195,7 +205,7 @@ impl Compiler {
 
         // 因为放 chunks 的循环里，一个 module 可能存在于多个 chunk 里，可能会被编译多遍，
         let t_transform_modules = Instant::now();
-        self.transform_all();
+        self.transform_all()?;
         let t_transform_modules = t_transform_modules.elapsed();
 
         // ensure output dir exists
@@ -232,7 +242,7 @@ impl Compiler {
         let cg = self.context.chunk_graph.read().unwrap();
         for chunk_name in &modified_chunks {
             if let Some(chunk) = cg.get_chunk_by_name(chunk_name) {
-                let (code, _) = self.generate_hmr_chunk(chunk, &updated_modules.modified);
+                let (code, ..) = self.generate_hmr_chunk(chunk, &updated_modules.modified)?;
 
                 // TODO the final format should be {name}.{full_hash}.hot-update.{ext}
                 self.write_to_dist(to_hot_update_chunk_name(chunk_name), code);
@@ -260,6 +270,8 @@ impl Compiler {
             "  - transform modules: {}ms",
             t_transform_modules.as_millis()
         );
+
+        Ok(())
     }
 
     pub fn write_to_dist<P: AsRef<std::path::Path>, C: AsRef<[u8]>>(

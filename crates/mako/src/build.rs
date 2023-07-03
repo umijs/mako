@@ -174,21 +174,15 @@ impl Compiler {
                 } else {
                     format!("module.exports = {};", external)
                 };
+
                 let ast = build_js_ast(
                     format!("external_{}", &resolved_path).as_str(),
                     code.as_str(),
                     &self.context,
                 )?;
 
-                Module::new(
-                    dep_module_id.clone(),
-                    false,
-                    Some(ModuleInfo {
-                        ast: ModuleAst::Script(ast),
-                        path: resolved_path,
-                        external: Some(external),
-                    }),
-                )
+                let info = ModuleInfo::new(ModuleAst::Script(ast), resolved_path, Some(external));
+                Module::new(dep_module_id.clone(), false, Some(info))
             }
             None => Module::new(dep_module_id.clone(), false, None),
         };
@@ -215,8 +209,8 @@ impl Compiler {
         transform(&mut ast, &context, &task, &mut |ast| {
             let deps = analyze_deps(ast);
             // resolve
-            for dep in deps.iter() {
-                let ret = resolve(&task.path, dep, &resolver, &context);
+            for dep in deps {
+                let ret = resolve(&task.path, &dep, &resolver, &context);
                 match ret {
                     Ok((x, y)) => {
                         dependencies.push((x, y, dep.clone()));
@@ -233,12 +227,11 @@ impl Compiler {
             return Err(e);
         }
 
-        let info = ModuleInfo {
-            ast,
-            path: task.path.clone(),
-            external: None,
-        };
-        let module = Module::new(module_id, task.is_entry, Some(info));
+        let module = Module::new(
+            module_id,
+            task.is_entry,
+            Some(ModuleInfo::new(ast, task.path.clone(), None)),
+        );
 
         Ok((module, dependencies, task))
     }
