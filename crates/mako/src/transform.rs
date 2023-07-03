@@ -29,6 +29,7 @@ use swc_error_reporters::handler::try_with_handler;
 
 use crate::build::{ModuleDeps, Task};
 use crate::compiler::Context;
+use crate::config::Mode;
 use crate::module::ModuleAst;
 use crate::targets;
 use crate::transform_css_handler::CssHandler;
@@ -123,6 +124,7 @@ fn transform_js(
     define
         .entry("NODE_ENV".to_string())
         .or_insert_with(|| mode.clone().into());
+    let is_dev = matches!(context.config.mode, Mode::Development);
 
     let env_map = build_env_map(define);
     GLOBALS.set(&context.meta.script.globals, || {
@@ -190,7 +192,7 @@ fn transform_js(
 
                     // TODO: this code should be put in the top of entry.
                     //   virtual entry or put in loader phase is better solution
-                    if task.is_entry {
+                    if task.is_entry && is_dev {
                         ast.visit_mut_with(&mut react_refresh_entry_prefix(context));
                     }
 
@@ -583,7 +585,7 @@ require("bar");
             &mut ast,
             &context,
             &crate::build::Task {
-                path: root.to_string_lossy().to_string(),
+                path: root.join(path).to_string_lossy().to_string(),
                 is_entry: false,
             },
             &mut |_| {

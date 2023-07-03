@@ -12,12 +12,6 @@ use crate::build::Task;
 use crate::compiler::Context;
 use crate::config::Mode;
 
-pub struct ReactRefreshPrefixCode {
-    import_code: String,
-    code: String,
-    context: Arc<Context>,
-}
-
 pub struct PrefixCode {
     code: String,
     context: Arc<Context>,
@@ -36,7 +30,7 @@ pub fn mako_react(
     let is_jsx = task.path.ends_with(".jsx") || task.path.ends_with(".tsx");
 
     if !is_jsx {
-        return if task.is_entry {
+        return if task.is_entry && is_dev {
             Box::new(chain!(react_refresh_inject_runtime_only(context), noop()))
         } else {
             Box::new(noop())
@@ -194,17 +188,15 @@ mod tests {
 
     #[test]
     pub fn entry_with_react_refresh() {
+        //it's a hack for dep analyze
         assert_eq!(
-            r#"const RefreshRuntime = require('react-refresh');
-RefreshRuntime.injectIntoGlobalHook(window);
-window.$RefreshReg$ = ()=>{};
-window.$RefreshSig$ = ()=>(type)=>type;
-console.log('entry');"#,
             transform(TransformTask {
                 is_entry: true,
                 path: "index.js".to_string(),
                 code: "console.log('entry');".to_string()
-            })
+            }),
+            r#"import 'react-refresh';
+console.log('entry');"#,
         );
     }
 
@@ -256,7 +248,7 @@ RefreshRuntime.performReactRefresh();"#,
             transform(TransformTask {
                 code: "export default function R(){return <h1></h1>}".to_string(),
                 is_entry: false,
-                path: "index.js".to_string()
+                path: "index.jsx".to_string()
             })
         );
     }

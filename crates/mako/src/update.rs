@@ -277,7 +277,7 @@ mod tests {
 
     use crate::ast::js_ast_to_code;
     use crate::compiler::{self, Compiler};
-    use crate::config::Config;
+    use crate::config::{Config, Mode};
     use crate::module::ModuleId;
     use crate::update::UpdateType;
     use crate::{assert_debug_snapshot, assert_display_snapshot};
@@ -288,6 +288,10 @@ mod tests {
         setup_files(
             &compiler,
             vec![
+                (
+                    "mako.config.json".into(),
+                    r#"{"mode": "production"}"#.into(),
+                ),
                 (
                     "index.ts".into(),
                     r#"
@@ -356,6 +360,10 @@ export const foo = 1;
         setup_files(
             &compiler,
             vec![
+                (
+                    "mako.config.json".into(),
+                    r#"{"mode": "production"}"#.into(),
+                ),
                 (
                     "index.ts".into(),
                     r#"
@@ -447,6 +455,7 @@ export const foo = 1;
         fs::create_dir_all(&root).unwrap();
         let mut config = Config::new(&root, None, None).unwrap();
         config.hmr = false;
+        config.mode = Mode::Production;
 
         compiler::Compiler::new(config, root)
     }
