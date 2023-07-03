@@ -4,14 +4,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::{Ok, Result};
-use nodejs_resolver::Resolver;
 use rayon::prelude::*;
 use tracing::debug;
 
 use crate::build::Task;
 use crate::compiler::Compiler;
 use crate::module::{Dependency, Module, ModuleId};
-use crate::resolve::get_resolver;
+use crate::resolve::{get_resolvers, Resolvers};
 use crate::transform_in_generate::transform_modules;
 
 #[allow(dead_code)]
@@ -69,7 +68,7 @@ impl Compiler {
     pub fn update(&self, paths: Vec<(PathBuf, UpdateType)>) -> Result<UpdateResult> {
         let mut update_result: UpdateResult = Default::default();
 
-        let resolver = Arc::new(get_resolver(&self.context.config));
+        let resolvers = Arc::new(get_resolvers(&self.context.config));
 
         // watch 到变化的文件，如果不在在前的 module graph 中，需过滤掉
         let paths: Vec<(PathBuf, UpdateType)> = {
@@ -104,14 +103,14 @@ impl Compiler {
 
         // 分析修改的模块，结果中会包含新增的模块
         let (modified_module_ids, add_paths) = self
-            .build_by_modify(modified, resolver.clone())
+            .build_by_modify(modified, resolvers.clone())
             .map_err(|_| Error {})?;
         added.extend(add_paths);
         debug!("added:{:?}", &added);
         update_result.modified.extend(modified_module_ids);
 
         // 最后做添加
-        let added_module_ids = self.build_by_add(&added, resolver);
+        let added_module_ids = self.build_by_add(&added, resolvers);
         update_result.added.extend(
             added
                 .into_iter()
@@ -142,7 +141,7 @@ impl Compiler {
     fn build_by_modify(
         &self,
         modified: Vec<PathBuf>,
-        resolver: Arc<Resolver>,
+        resolvers: Arc<Resolvers>,
     ) -> Result<(HashSet<ModuleId>, Vec<PathBuf>)> {
         let result = modified
             .par_iter()
@@ -154,7 +153,7 @@ impl Compiler {
                         path: entry.to_string_lossy().to_string(),
                         is_entry: false,
                     },
-                    resolver.clone(),
+                    resolvers.clone(),
                 )?;
 
                 // diff
@@ -214,7 +213,7 @@ impl Compiler {
         Result::Ok((modified_module_ids, added))
     }
 
-    fn build_by_add(&self, added: &Vec<PathBuf>, resolver: Arc<Resolver>) -> HashSet<ModuleId> {
+    fn build_by_add(&self, added: &Vec<PathBuf>, resolvers: Arc<Resolvers>) -> HashSet<ModuleId> {
         let mut add_queue: VecDeque<Task> = VecDeque::new();
         for path in added {
             add_queue.push_back(Task {
@@ -223,7 +222,7 @@ impl Compiler {
             })
         }
 
-        self.build_module_graph_by_task_queue(&mut add_queue, resolver)
+        self.build_module_graph_by_task_queue(&mut add_queue, resolvers)
     }
 
     fn build_by_remove(&self, removed: Vec<PathBuf>) -> HashSet<ModuleId> {
