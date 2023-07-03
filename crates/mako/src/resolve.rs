@@ -85,6 +85,7 @@ pub fn get_resolver(config: &Config) -> Resolver {
                 "import".to_string(),
                 "default".to_string(),
                 "require".to_string(),
+                "node".to_string(), // will be removed by sorryCC
             ])
         } else {
             HashSet::from([
