@@ -185,9 +185,8 @@ impl Compiler {
         let mut added = vec![];
         let mut modified_module_ids = HashSet::new();
 
+        let mut module_graph = self.context.module_graph.write().unwrap();
         for (module, add, remove, mut add_modules) in result {
-            let mut module_graph = self.context.module_graph.write().unwrap();
-
             // remove bind dependency
             for (remove_module_id, _) in remove {
                 module_graph.remove_dependency(&module.id, &remove_module_id)
