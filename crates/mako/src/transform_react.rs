@@ -12,6 +12,12 @@ use crate::build::Task;
 use crate::compiler::Context;
 use crate::config::Mode;
 
+pub struct ReactRefreshPrefixCode {
+    import_code: String,
+    code: String,
+    context: Arc<Context>,
+}
+
 pub struct PrefixCode {
     code: String,
     context: Arc<Context>,
@@ -26,6 +32,16 @@ pub fn mako_react(
 ) -> Box<dyn VisitMut> {
     let is_dev = matches!(context.config.mode, Mode::Development);
     let use_refresh = is_dev && context.config.hmr && !task.path.contains("/node_modules/");
+
+    let is_jsx = task.path.ends_with(".jsx") || task.path.ends_with(".tsx");
+
+    if !is_jsx {
+        return if task.is_entry {
+            Box::new(chain!(react_refresh_inject_runtime_only(context), noop()))
+        } else {
+            Box::new(noop())
+        };
+    }
 
     let visit = react(
         cm,
@@ -49,7 +65,11 @@ pub fn mako_react(
     );
     if use_refresh {
         Box::new(if task.is_entry {
-            chain!(visit, react_refresh_entry_prefix(context), noop())
+            chain!(
+                visit,
+                react_refresh_module_prefix(context),
+                react_refresh_module_postfix(context)
+            )
         } else {
             chain!(
                 visit,
@@ -114,6 +134,16 @@ window.$RefreshReg$ = (type, id) => {
   RefreshRuntime.register(type, module.id + id);
 };
 window.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
+"#
+        .to_string(),
+    })
+}
+
+pub fn react_refresh_inject_runtime_only(context: &std::sync::Arc<Context>) -> Box<dyn VisitMut> {
+    Box::new(PrefixCode {
+        context: context.clone(),
+        code: r#"
+import 'react-refresh';
 "#
         .to_string(),
     })

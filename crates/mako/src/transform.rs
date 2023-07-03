@@ -37,7 +37,7 @@ use crate::transform_dynamic_import::DynamicImport;
 use crate::transform_env_replacer::EnvReplacer;
 use crate::transform_optimizer::Optimizer;
 use crate::transform_provide::Provide;
-use crate::transform_react::mako_react;
+use crate::transform_react::{mako_react, react_refresh_entry_prefix};
 
 pub fn transform(
     ast: &mut ModuleAst,
@@ -187,6 +187,13 @@ fn transform_js(
                         FeatureFlag::empty(),
                         None,
                     ));
+
+                    // TODO: this code should be put in the top of entry.
+                    //   virtual entry or put in loader phase is better solution
+                    if task.is_entry {
+                        ast.visit_mut_with(&mut react_refresh_entry_prefix(context));
+                    }
+
                     ast.visit_mut_with(&mut strip_with_jsx(
                         cm,
                         Default::default(),
@@ -207,6 +214,7 @@ fn transform_js(
 
                     let mut dynamic_import = DynamicImport {};
                     ast.visit_mut_with(&mut dynamic_import);
+
                     Ok(())
                 })
             })
