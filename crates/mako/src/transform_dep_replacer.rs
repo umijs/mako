@@ -10,20 +10,6 @@ pub struct DepReplacer {
 }
 
 impl VisitMut for DepReplacer {
-    // fn visit_mut_import_decl(&mut self, import_decl: &mut ImportDecl) {
-    //     self.replace_source(&mut *import_decl.src);
-    // }
-
-    // fn visit_mut_export_all(&mut self, export_all: &mut ExportAll) {
-    //     self.replace_source(&mut *export_all.src);
-    // }
-
-    // fn visit_mut_named_export(&mut self, named_export: &mut NamedExport) {
-    //     if let Some(src) = &mut named_export.src {
-    //         self.replace_source(src);
-    //     }
-    // }
-
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Call(call_expr) = expr {
             if is_commonjs_require(call_expr) || is_dynamic_import(call_expr) {

@@ -42,7 +42,7 @@ impl Compiler {
         info!("build module graph");
 
         let entries =
-            get_entries(&self.context.root, &self.context.config).expect("entry{} not found");
+            get_entries(&self.context.root, &self.context.config).expect("entry not found");
         if entries.is_empty() {
             panic!("entry not found");
         }
@@ -227,8 +227,11 @@ impl Compiler {
             return Err(e);
         }
 
-        let info = ModuleInfo::new(ast, task.path.clone(), None);
-        let module = Module::new(module_id, task.is_entry, Some(info));
+        let module = Module::new(
+            module_id,
+            task.is_entry,
+            Some(ModuleInfo::new(ast, task.path.clone(), None)),
+        );
 
         Ok((module, dependencies, task))
     }
