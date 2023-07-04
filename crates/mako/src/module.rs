@@ -1,8 +1,6 @@
 use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
 
-use crate::ast::Ast;
-
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct Dependency {
     pub source: String,
@@ -28,13 +26,6 @@ pub struct ModuleInfo {
 }
 
 impl ModuleInfo {
-    pub fn new(ast: ModuleAst, path: String, external: Option<String>) -> Self {
-        Self {
-            ast,
-            path,
-            external,
-        }
-    }
     pub fn set_ast(&mut self, ast: ModuleAst) {
         self.ast = ast;
     }
@@ -93,20 +84,10 @@ impl From<PathBuf> for ModuleId {
 
 #[derive(Debug)]
 pub enum ModuleAst {
-    Script(Ast),
+    Script(swc_ecma_ast::Module),
     Css(swc_css_ast::Stylesheet),
     #[allow(dead_code)]
     None,
-}
-
-impl ModuleAst {
-    pub fn as_script_mut(&mut self) -> &mut swc_ecma_ast::Module {
-        if let Self::Script(script) = self {
-            &mut script.ast
-        } else {
-            panic!("ModuleAst is not Script")
-        }
-    }
 }
 
 #[allow(dead_code)]
