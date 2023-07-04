@@ -63,7 +63,7 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
     );
     let mut parser = Parser::new_from(lexer);
 
-    let wr = Box::new(LockedWriter::default());
+    let wr = Box::<LockedWriter>::default();
     let emitter: PrettyEmitter = PrettyEmitter::new(
         context.meta.script.cm.clone(),
         wr.clone(),

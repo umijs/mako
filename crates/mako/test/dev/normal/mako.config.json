@@ -2,6 +2,5 @@
   "externals": {
     "hoo": "hoo"
   },
-  "hmr": false,
-  "mode": "production"
+  "hmr": true
 }
