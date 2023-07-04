@@ -4,7 +4,6 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use anyhow::Result;
-use nodejs_resolver::Resolver;
 use tokio::sync::mpsc::error::TryRecvError;
 use tracing::info;
 
@@ -15,7 +14,7 @@ use crate::config::Config;
 use crate::load::load;
 use crate::module::{Dependency, Module, ModuleAst, ModuleId, ModuleInfo};
 use crate::parse::parse;
-use crate::resolve::{get_resolver, resolve};
+use crate::resolve::{get_resolvers, resolve, Resolvers};
 use crate::transform::transform;
 
 #[derive(Debug)]
@@ -47,7 +46,7 @@ impl Compiler {
             panic!("entry not found");
         }
 
-        let resolver = Arc::new(get_resolver(&self.context.config));
+        let resolvers = Arc::new(get_resolvers(&self.context.config));
         let mut queue: VecDeque<Task> = VecDeque::new();
         for entry in entries {
             queue.push_back(Task {
@@ -56,13 +55,13 @@ impl Compiler {
             });
         }
 
-        self.build_module_graph_by_task_queue(&mut queue, resolver);
+        self.build_module_graph_by_task_queue(&mut queue, resolvers);
     }
 
     pub fn build_module_graph_by_task_queue(
         &self,
         queue: &mut VecDeque<Task>,
-        resolver: Arc<Resolver>,
+        resolvers: Arc<Resolvers>,
     ) -> HashSet<ModuleId> {
         let (rs, mut rr) =
             tokio::sync::mpsc::unbounded_channel::<Result<(Module, ModuleDeps, Task)>>();
@@ -73,14 +72,14 @@ impl Compiler {
         tokio::task::block_in_place(|| loop {
             let mut module_graph = self.context.module_graph.write().unwrap();
             while let Some(task) = queue.pop_front() {
-                let resolver = resolver.clone();
+                let resolvers = resolvers.clone();
                 let context = self.context.clone();
                 tokio::spawn({
                     active_task_count += 1;
                     module_count += 1;
                     let rs = rs.clone();
                     async move {
-                        let ret = Compiler::build_module(context, task, resolver);
+                        let ret = Compiler::build_module(context, task, resolvers);
                         rs.send(ret).expect("send task failed");
                     }
                 });
@@ -198,7 +197,7 @@ impl Compiler {
     pub fn build_module(
         context: Arc<Context>,
         task: Task,
-        resolver: Arc<Resolver>,
+        resolvers: Arc<Resolvers>,
     ) -> Result<(Module, ModuleDeps, Task)> {
         let mut dependencies = Vec::new();
         let module_id = ModuleId::new(task.path.clone());
@@ -216,7 +215,7 @@ impl Compiler {
             let deps = analyze_deps(ast);
             // resolve
             for dep in deps.iter() {
-                let ret = resolve(&task.path, dep, &resolver, &context);
+                let ret = resolve(&task.path, dep, &resolvers, &context);
                 match ret {
                     Ok((x, y)) => {
                         dependencies.push((x, y, dep.clone()));
