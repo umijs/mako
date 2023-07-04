@@ -1,3 +1,3 @@
-# `@alipay/okam-linux-x64-musl`
+# `@okamjs/okam-linux-x64-musl`
 
-This is the **x86_64-unknown-linux-musl** binary for `@alipay/okam`
+This is the **x86_64-unknown-linux-musl** binary for `@okamjs/okam`

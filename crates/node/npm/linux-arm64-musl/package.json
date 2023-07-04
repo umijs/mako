@@ -1,5 +1,5 @@
 {
-  "name": "@alipay/okam-linux-arm64-musl",
+  "name": "@okamjs/okam-linux-arm64-musl",
   "version": "0.0.0",
   "os": [
     "linux"

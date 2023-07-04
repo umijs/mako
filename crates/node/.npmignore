@@ -11,3 +11,7 @@ yarn.lock
 .yarn
 __test__
 renovate.json
+artifacts
+src
+example
+build.rs

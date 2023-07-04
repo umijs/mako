@@ -1,3 +1,3 @@
-# `@alipay/okam-linux-arm64-gnu`
+# `@okamjs/okam-linux-arm64-gnu`
 
-This is the **aarch64-unknown-linux-gnu** binary for `@alipay/okam`
+This is the **aarch64-unknown-linux-gnu** binary for `@okamjs/okam`
