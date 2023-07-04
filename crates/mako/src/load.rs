@@ -13,6 +13,7 @@ use toml::{from_str as from_toml_str, Value as TomlValue};
 use tracing::debug;
 
 use crate::compiler::Context;
+use crate::config::Mode;
 use crate::css_modules::{is_mako_css_modules, MAKO_CSS_MODULES_SUFFIX};
 
 pub struct Asset {
@@ -57,7 +58,7 @@ pub fn load(path: &str, is_entry: bool, context: &Arc<Context>) -> Result<Conten
         Some("js" | "jsx" | "ts" | "tsx" | "cjs" | "mjs") => {
             let mut content = read_content(path)?;
             // TODO: use array entry instead
-            if is_entry && context.config.hmr {
+            if is_entry && context.config.hmr && context.config.mode == Mode::Development {
                 let port = &context.config.hmr_port.to_string();
                 let host = &context.config.hmr_host.to_string();
                 let host = if host == "0.0.0.0" { "127.0.0.1" } else { host };
@@ -77,6 +78,7 @@ pub fn load(path: &str, is_entry: bool, context: &Arc<Context>) -> Result<Conten
         Some("yaml") => load_yaml(path),
         Some("xml") => load_xml(path),
         Some("wasm") => load_wasm(path, context),
+        Some("svg") => load_svg(path),
         Some("less" | "sass" | "scss" | "stylus") => Err(anyhow!(LoadError::UnsupportedExtName {
             ext_name: ext_name.unwrap().to_string(),
             path: path.to_string(),
@@ -152,6 +154,39 @@ fn load_wasm(path: &str, context: &Arc<Context>) -> Result<Content> {
             "
         )))
     }
+}
+
+fn load_svg(path: &str) -> Result<Content> {
+    let code = read_content(path)?;
+    let transform_code = svgr_rs::transform(
+        code,
+        svgr_rs::Config {
+            named_export: "ReactComponent".to_string(),
+            export_type: Some(svgr_rs::ExportType::Named),
+            ..Default::default()
+        },
+        svgr_rs::State {
+            ..Default::default()
+        },
+    );
+    // todo: 1.return result<string, error> rather than result<string, string>
+    // todo: 2.transform class to className
+    // have submit issues https://github.com/svg-rust/svgr-rs/issues/21
+    let svgr_code = match transform_code {
+        Ok(res) => res,
+        Err(res) => res,
+    };
+
+    // todo: now all svg will base64
+    // will improve the case - large file, after assets structure improved which metioned in load_assets
+    let base64 = to_base64(path).with_context(|| LoadError::ToBase64Error {
+        path: path.to_string(),
+    })?;
+
+    Ok(Content::Js(format!(
+        "{}\nexport default \"{}\";",
+        svgr_code, base64
+    )))
 }
 
 fn load_assets(path: &str, context: &Arc<Context>) -> Result<Content> {

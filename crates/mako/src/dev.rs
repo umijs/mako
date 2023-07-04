@@ -7,7 +7,6 @@ use hyper::http::HeaderValue;
 use hyper::Server;
 use tokio::sync::broadcast::{Receiver, Sender};
 use tokio::task::JoinHandle;
-use tokio::time::Instant;
 use tungstenite::Message;
 
 use crate::compiler;
@@ -172,10 +171,15 @@ impl ProjectWatch {
         let c = self.compiler.clone();
         let root = self.root.clone();
         let tx = self.tx.clone();
+
         tokio::spawn(async move {
             watch(&root, |events| {
-                let res = c.update(events.into()).unwrap();
-
+                let res = c.update(events.into());
+                if res.is_err() {
+                    eprintln!("Error in watch: {:?}", res.err().unwrap());
+                    return;
+                }
+                let res = res.unwrap();
                 if res.is_updated() {
                     c.generate_hot_update_chunks(res);
 
@@ -184,10 +188,11 @@ impl ProjectWatch {
                     }
 
                     let c = c.clone();
-                    tokio::spawn(async move {
-                        let _t = Instant::now();
 
-                        c.generate().unwrap();
+                    tokio::spawn(async move {
+                        // TODO use only one tokio handle to emit chunks, and it only emit the latest chunks
+                        let chunk_asts = c.generate_chunks_ast().unwrap();
+                        c.emit_dev_chunks(chunk_asts).unwrap();
                     });
                 }
             });

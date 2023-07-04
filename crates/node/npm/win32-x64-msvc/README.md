@@ -1,3 +1,3 @@
-# `@alipay/okam-win32-x64-msvc`
+# `@okamjs/okam-win32-x64-msvc`
 
-This is the **x86_64-pc-windows-msvc** binary for `@alipay/okam`
+This is the **x86_64-pc-windows-msvc** binary for `@okamjs/okam`

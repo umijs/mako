@@ -1,10 +1,12 @@
+use std::fmt;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use anyhow::{anyhow, Result};
 use base64::engine::general_purpose;
 use base64::Engine;
 use pathdiff::diff_paths;
+use swc_common::errors::Handler;
 use swc_common::FileName;
 use swc_css_ast::Stylesheet;
 use swc_css_codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};
@@ -15,6 +17,7 @@ use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
 use swc_ecma_parser::lexer::Lexer;
 use swc_ecma_parser::{EsConfig, Parser, StringInput, Syntax, TsConfig};
+use swc_error_reporters::{GraphicalReportHandler, PrettyEmitter, PrettyEmitterConfig};
 use thiserror::Error;
 
 use crate::compiler::Context;
@@ -38,7 +41,8 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
         .cm
         .new_source_file(FileName::Real(relative_path), content.to_string());
     let is_ts = path.ends_with(".ts") || path.ends_with(".tsx");
-    let jsx = path.ends_with(".jsx");
+    // treat svgr as jsx
+    let jsx = path.ends_with(".jsx") || path.ends_with(".svg");
     let tsx = path.ends_with(".tsx");
     let syntax = if is_ts {
         Syntax::Typescript(TsConfig {
@@ -60,11 +64,27 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
     );
     let mut parser = Parser::new_from(lexer);
 
+    let wr = Box::<LockedWriter>::default();
+    let emitter: PrettyEmitter = PrettyEmitter::new(
+        context.meta.script.cm.clone(),
+        wr.clone(),
+        GraphicalReportHandler::new().with_context_lines(3),
+        PrettyEmitterConfig {
+            skip_filename: false,
+        },
+    );
+    let handler = Handler::with_emitter(true, false, Box::new(emitter));
+
     // parse to ast
     parser.parse_module().map_err(|e| {
+        let mut span = e.into_diagnostic(&handler);
+        span.note(format!("Parse file failed: {}", path).as_str());
+        span.emit();
+        let s = &**wr.0.lock().unwrap();
+        eprintln!("{}", s);
         anyhow!(ParseError {
             resolved_path: path.to_string(),
-            error_message: format!("{:?}", e),
+            error_message: "Parse file failed".to_string(),
         })
     })
 }
@@ -163,4 +183,14 @@ pub fn css_ast_to_code(ast: &Stylesheet, context: &Arc<Context>) -> (String, Str
 
 pub fn base64_encode(raw: &str) -> String {
     general_purpose::STANDARD.encode(raw)
+}
+
+#[derive(Clone, Default)]
+struct LockedWriter(Arc<Mutex<String>>);
+
+impl fmt::Write for LockedWriter {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.0.lock().unwrap().push_str(s);
+        Ok(())
+    }
 }

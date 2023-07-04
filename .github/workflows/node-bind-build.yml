@@ -1,0 +1,216 @@
+name: node-bind-build
+env:
+  DEBUG: napi:*
+  APP_NAME: okam
+  MACOSX_DEPLOYMENT_TARGET: '10.13'
+'on':
+  push:
+    branches:
+      - master
+    tags-ignore:
+      - '**'
+    paths-ignore:
+      - '**/*.md'
+      - LICENSE
+      - '**/*.gitignore'
+      - .editorconfig
+      - docs/**
+  pull_request:
+    types: [opened, synchronize]
+jobs:
+  pre-check:
+    name: Check Is Release node-binding
+    if: "contains(github.event.head_commit.message, 'Release')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: is Release Commit
+        run: |
+          echo Start Release
+          if git log -1 --pretty=%B | grep "^Release [0-9]\+\.[0-9]\+\.[0-9]\+"; then
+            echo "start Release"
+          else
+            gh run cancel ${{ github.run_id }}
+            gh run watch ${{ github.run_id }}
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  build:
+    needs:
+      - pre-check
+    strategy:
+      fail-fast: false
+      matrix:
+        settings:
+          - host: macos-latest
+            target: x86_64-apple-darwin
+            build: |
+              pnpm --filter @okamjs/okam  build
+              strip -x ./crates/node/*.node
+          - host: windows-latest
+            build: pnpm --filter @okamjs/okam build
+            target: x86_64-pc-windows-msvc
+          - host: windows-latest
+            build: |
+              rustup target add i686-pc-windows-msvc
+              pnpm --filter @okamjs/okam  build --target i686-pc-windows-msvc
+            target: i686-pc-windows-msvc
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian
+            build: |-
+              set -e &&
+              pnpm --filter @okamjs/okam build --target x86_64-unknown-linux-gnu &&
+              strip ./crates/node/*.node
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
+            build: set -e && pnpm --filter @okamjs/okam build && strip ./crates/node/*.node
+          - host: macos-latest
+            target: aarch64-apple-darwin
+            build: |
+              rustup target add aarch64-apple-darwin
+              pnpm --filter @okamjs/okam build --target aarch64-apple-darwin
+              strip -x ./crates/node/*.node
+          - host: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian-aarch64
+            build: |-
+              set -e &&
+              rustup target add aarch64-unknown-linux-gnu &&
+              pnpm --filter @okamjs/okam build --target aarch64-unknown-linux-gnu &&
+              aarch64-unknown-linux-gnu-strip ./crates/node/*.node
+          - host: ubuntu-latest
+            target: armv7-unknown-linux-gnueabihf
+            setup: |
+              sudo apt-get update
+              sudo apt-get install gcc-arm-linux-gnueabihf -y
+            build: |
+              rustup target add armv7-unknown-linux-gnueabihf
+              pnpm --filter @okamjs/okam build --target armv7-unknown-linux-gnueabihf
+              arm-linux-gnueabihf-strip ./crates/node/*.node
+          - host: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
+            build: |-
+              set -e &&
+              rustup target add aarch64-unknown-linux-musl &&
+              pnpm --filter @okamjs/okam build --target aarch64-unknown-linux-musl &&
+              /aarch64-linux-musl-cross/bin/aarch64-linux-musl-strip ./crates/node/*.node
+          - host: windows-latest
+            target: aarch64-pc-windows-msvc
+            build: |
+              rustup target add aarch64-pc-windows-msvc
+              pnpm --filter @okamjs/okam build --target aarch64-pc-windows-msvc
+    name: stable - ${{ matrix.settings.target }} - node@18
+    runs-on: ${{ matrix.settings.host }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: pnpm/action-setup@v2
+        name: Install pnpm
+        id: pnpm-install
+        with:
+          version: 8
+      - name: Setup node
+        uses: actions/setup-node@v3
+        if: ${{ !matrix.settings.docker }}
+        with:
+          node-version: 18
+          check-latest: true
+          cache: pnpm
+      - name: Install
+        uses: dtolnay/rust-toolchain@stable
+        if: ${{ !matrix.settings.docker }}
+        with:
+          toolchain: stable
+          targets: ${{ matrix.settings.target }}
+      - name: Cache cargo
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            .cargo-cache
+            target/
+          key: ${{ matrix.settings.target }}-cargo-${{ matrix.settings.host }}
+      - uses: goto-bus-stop/setup-zig@v2
+        if: ${{ matrix.settings.target == 'armv7-unknown-linux-gnueabihf' }}
+        with:
+          version: 0.10.1
+      - name: Setup toolchain
+        run: ${{ matrix.settings.setup }}
+        if: ${{ matrix.settings.setup }}
+        shell: bash
+      - name: Setup node x86
+        if: matrix.settings.target == 'i686-pc-windows-msvc'
+        run: yarn config set supportedArchitectures.cpu "ia32"
+        shell: bash
+      - name: Install dependencies
+        run: pnpm install
+      - name: Setup node x86
+        uses: actions/setup-node@v3
+        if: matrix.settings.target == 'i686-pc-windows-msvc'
+        with:
+          node-version: 18
+          check-latest: true
+          cache: pnpm
+          architecture: x86
+      - name: Build in docker
+        uses: addnab/docker-run-action@v3
+        if: ${{ matrix.settings.docker }}
+        with:
+          image: ${{ matrix.settings.docker }}
+          options: '--user 0:0 -v ${{ github.workspace }}/.cargo-cache/git/db:/usr/local/cargo/git/db -v ${{ github.workspace }}/.cargo/registry/cache:/usr/local/cargo/registry/cache -v ${{ github.workspace }}/.cargo/registry/index:/usr/local/cargo/registry/index -v ${{ github.workspace }}:/build -w /build'
+          run: ${{ matrix.settings.build }}
+      - name: Build
+        run: ${{ matrix.settings.build }}
+        if: ${{ !matrix.settings.docker }}
+        shell: bash
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: bindings-${{ matrix.settings.target }}
+          path: ./crates/node/${{ env.APP_NAME }}.*.node
+          if-no-files-found: error
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    needs:
+      - build
+    steps:
+      - uses: actions/checkout@v3
+      - uses: pnpm/action-setup@v2
+        name: Install pnpm
+        id: pnpm-install
+        with:
+          version: 8
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          check-latest: true
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: crates/node/artifacts
+      - name: Move artifacts
+        run: pnpm --filter @okamjs/okam artifacts
+      - name: List packages
+        run: ls -R ./crates/node/npm
+        shell: bash
+
+      - name: Publish
+        run: |
+          if git log -1 --pretty=%B | grep "^Release [0-9]\+\.[0-9]\+\.[0-9]\+"; then
+            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
+            pnpm --filter @okamjs/okam publish --access public
+          else
+            echo "Not a release, skipping publish"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
