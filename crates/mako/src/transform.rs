@@ -136,10 +136,16 @@ fn transform_js(
                     let import_interop = ImportInterop::Swc;
 
                     ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
+                    ast.visit_mut_with(&mut strip_with_jsx(
+                        cm.clone(),
+                        Default::default(),
+                        NoopComments,
+                        top_level_mark,
+                    ));
 
                     // indent.span needed in mako_react refresh, so it must be after resolver visitor
                     ast.visit_mut_with(&mut mako_react(
-                        cm.clone(),
+                        cm,
                         context,
                         task,
                         &top_level_mark,
@@ -196,12 +202,6 @@ fn transform_js(
                         ast.visit_mut_with(&mut react_refresh_entry_prefix(context));
                     }
 
-                    ast.visit_mut_with(&mut strip_with_jsx(
-                        cm,
-                        Default::default(),
-                        NoopComments,
-                        top_level_mark,
-                    ));
                     ast.visit_mut_with(&mut hygiene_with_config(
                         swc_ecma_transforms::hygiene::Config {
                             top_level_mark,
@@ -308,9 +308,38 @@ const Foo = "foo";
     }
 
     #[test]
+    fn test_strip_type_2() {
+        let code = r#"
+import { X } from 'foo';
+import x from 'foo';
+x;
+const b: X;
+        "#
+        .trim();
+        let (code, _) = transform_js_code(code, None);
+        println!(">> CODE\n{}", code);
+        assert_eq!(
+            code,
+            r#"
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var _interop_require_default = require("@swc/helpers/_/_interop_require_default");
+var _foo = _interop_require_default._(require("foo"));
+_foo.default;
+const b;
+
+//# sourceMappingURL=index.js.map
+        "#
+            .trim()
+        );
+    }
+
+    #[test]
     fn test_import() {
         let code = r#"
 import { foo } from './foo';
+foo;
         "#
         .trim();
         let (code, _) = transform_js_code(code, None);
@@ -322,6 +351,32 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 var _foo = require("./foo");
+_foo.foo;
+
+//# sourceMappingURL=index.js.map
+        "#
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_import_2() {
+        let code = r#"
+import * as foo from './foo';
+foo.bar;
+        "#
+        .trim();
+        let (code, _) = transform_js_code(code, None);
+        println!(">> CODE\n{}", code);
+        assert_eq!(
+            code,
+            r#"
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var _interop_require_wildcard = require("@swc/helpers/_/_interop_require_wildcard");
+var _foo = _interop_require_wildcard._(require("./foo"));
+_foo.bar;
 
 //# sourceMappingURL=index.js.map
         "#
@@ -482,6 +537,8 @@ if ('a1' === "a2") { 3.1; } else 3.2;
             code,
             r#"
 1.1;
+;
+;
 2.2;
 3.2;
 
