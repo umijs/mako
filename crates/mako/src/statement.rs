@@ -97,20 +97,6 @@ impl StatementType {
         }
     }
 
-    pub fn get_is_self_executed(&self) -> bool {
-        match self {
-            StatementType::Import(ImportStatement {
-                is_self_executed, ..
-            }) => *is_self_executed,
-            StatementType::Export(ExportStatement {
-                defined_ident: _, ..
-            }) => false,
-            StatementType::Stmt {
-                is_self_executed, ..
-            } => *is_self_executed,
-        }
-    }
-
     pub fn get_defined_ident(&self) -> &HashSet<String> {
         match self {
             StatementType::Import(ImportStatement {

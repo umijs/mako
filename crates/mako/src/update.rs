@@ -3,7 +3,7 @@ use std::fmt::{self, Error};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use anyhow::{Ok, Result};
+use anyhow::Result;
 use rayon::prelude::*;
 use tracing::debug;
 
@@ -65,7 +65,7 @@ removed:{:?}
 }
 
 impl Compiler {
-    pub fn update(&self, paths: Vec<(PathBuf, UpdateType)>) -> Result<UpdateResult> {
+    pub fn update(&self, paths: Vec<(PathBuf, UpdateType)>) -> Result<UpdateResult, Error> {
         let mut update_result: UpdateResult = Default::default();
 
         let resolvers = Arc::new(get_resolvers(&self.context.config));
@@ -121,12 +121,12 @@ impl Compiler {
         debug!("update_result:{:?}", &update_result);
 
         // 对有修改的模块执行一次 transform
-        self.transform_for_change(&update_result)?;
+        self.transform_for_change(&update_result);
 
         Result::Ok(update_result)
     }
 
-    fn transform_for_change(&self, update_result: &UpdateResult) -> Result<()> {
+    fn transform_for_change(&self, update_result: &UpdateResult) {
         let mut changes: Vec<ModuleId> = vec![];
         for module_id in &update_result.added {
             changes.push(module_id.clone());
@@ -134,8 +134,7 @@ impl Compiler {
         for module_id in &update_result.modified {
             changes.push(module_id.clone());
         }
-        transform_modules(changes, &self.context)?;
-        Ok(())
+        transform_modules(changes, &self.context.clone());
     }
 
     fn build_by_modify(
@@ -273,15 +272,18 @@ fn diff(right: Vec<(ModuleId, Dependency)>, left: Vec<(ModuleId, Dependency)>) -
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
 
+    use crate::ast::js_ast_to_code;
+    use crate::compiler::{self, Compiler};
+    use crate::config::Config;
     use crate::module::ModuleId;
-    use crate::test_helper::{module_to_jscode, setup_compiler, setup_files};
     use crate::update::UpdateType;
     use crate::{assert_debug_snapshot, assert_display_snapshot};
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_build() {
-        let compiler = setup_compiler("test/build/tmp/single", true);
+        let compiler = setup_compiler("test/build/tmp/single");
         setup_files(
             &compiler,
             vec![
@@ -348,7 +350,7 @@ export const foo = 1;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_update_multi() {
-        let compiler = setup_compiler("test/build/tmp/multi", true);
+        let compiler = setup_compiler("test/build/tmp/multi");
         let target_path = compiler.context.root.join("index.ts");
         setup_files(
             &compiler,
@@ -422,6 +424,54 @@ export const foo = 1;
         {
             let module_graph = compiler.context.module_graph.read().unwrap();
             assert_display_snapshot!(&module_graph);
+        }
+    }
+
+    fn setup_compiler(base: &str) -> Compiler {
+        // tracing_subscriber::fmt()
+        //     .with_env_filter(
+        //         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("mako=debug")),
+        //     )
+        //     .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
+        //     .without_time()
+        //     .init();
+        let current_dir = std::env::current_dir().unwrap();
+        let root = current_dir.join(base);
+        if !root.parent().unwrap().exists() {
+            fs::create_dir_all(root.parent().unwrap()).unwrap();
+        }
+        if root.exists() {
+            fs::remove_dir_all(&root).unwrap();
+        }
+        fs::create_dir_all(&root).unwrap();
+        let mut config = Config::new(&root, None, None).unwrap();
+        config.hmr = false;
+
+        compiler::Compiler::new(config, root)
+    }
+
+    fn setup_files(compiler: &Compiler, extra_files: Vec<(String, String)>) {
+        let cwd_path = &compiler.context.root;
+        extra_files.into_iter().for_each(|(path, content)| {
+            let output = cwd_path.join(path);
+            fs::write(output, content).unwrap();
+        });
+    }
+
+    fn module_to_jscode(compiler: &Compiler, module_id: &ModuleId) -> String {
+        let module_graph = compiler.context.module_graph.read().unwrap();
+        let module = module_graph.get_module(module_id).unwrap();
+        let context = compiler.context.clone();
+        let info = module.info.as_ref().unwrap();
+        let ast = &info.ast;
+        match ast {
+            crate::module::ModuleAst::Script(ast) => {
+                let (code, _) =
+                    js_ast_to_code(&ast.clone(), &context, module.id.id.as_str()).unwrap();
+                code
+            }
+            crate::module::ModuleAst::Css(_) => todo!(),
+            crate::module::ModuleAst::None => todo!(),
         }
     }
 }

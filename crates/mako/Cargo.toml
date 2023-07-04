@@ -16,7 +16,6 @@ swc_ecma_parser = { version = "0.134.11" }
 swc_common = { version = "0.31.11", features = ["concurrent", "sourcemap"] }
 swc_ecma_visit = { version = "0.90.4" }
 swc_ecma_codegen = { version = "0.139.13" }
-swc_node_comments = { version = "0.18.4"}
 swc_ecma_transforms = { version = "0.218.18", features = [
   "module",
   "typescript",
