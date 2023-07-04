@@ -177,7 +177,7 @@ impl ProjectWatch {
                 let res = c.update(events.into()).unwrap();
 
                 if res.is_updated() {
-                    c.generate_hot_update_chunks(res).unwrap();
+                    c.generate_hot_update_chunks(res);
 
                     if tx.receiver_count() > 0 {
                         tx.send(()).unwrap();

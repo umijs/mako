@@ -66,7 +66,7 @@ impl VisitMut for PrefixCode {
     fn visit_mut_module(&mut self, module: &mut Module) {
         let post_code_snippet_module =
             build_js_ast("_pre_code.js", &self.code, &self.context).unwrap();
-        module.body.splice(0..0, post_code_snippet_module.ast.body);
+        module.body.splice(0..0, post_code_snippet_module.body);
 
         module.visit_mut_children_with(self);
     }
@@ -81,7 +81,7 @@ impl VisitMut for PostfixCode {
     fn visit_mut_module(&mut self, module: &mut Module) {
         let post_code_snippet_module =
             build_js_ast("_post_code.js", &self.code, &self.context).unwrap();
-        module.body.extend(post_code_snippet_module.ast.body);
+        module.body.extend(post_code_snippet_module.body);
 
         module.visit_mut_children_with(self);
     }
@@ -256,8 +256,8 @@ RefreshRuntime.performReactRefresh();"#,
                 )
             );
 
-            ast.ast.visit_mut_with(&mut visitor);
-            emit_js(&ast.ast)
+            ast.visit_mut_with(&mut visitor);
+            emit_js(&ast)
         })
     }
 
