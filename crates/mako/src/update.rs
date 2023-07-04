@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::{self, Error};
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex as StdMutex};
 
 use anyhow::{Ok, Result};
 use rayon::prelude::*;
@@ -143,6 +143,9 @@ impl Compiler {
         modified: Vec<PathBuf>,
         resolvers: Arc<Resolvers>,
     ) -> Result<(HashSet<ModuleId>, Vec<PathBuf>)> {
+        let dep_resolve_err_map: Arc<StdMutex<HashMap<String, Option<String>>>> =
+            Arc::new(StdMutex::new(HashMap::new()));
+
         let result = modified
             .par_iter()
             .map(|entry| {
@@ -154,6 +157,7 @@ impl Compiler {
                         is_entry: false,
                     },
                     resolvers.clone(),
+                    dep_resolve_err_map.clone(),
                 )?;
 
                 // diff

@@ -1,6 +1,6 @@
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use anyhow::Result;
@@ -69,17 +69,23 @@ impl Compiler {
         let mut t_main_thread: usize = 0;
         let mut module_count: usize = 0;
         let mut added_module_ids = HashSet::new();
+        // 记录 module 父子级关系的 map
+        let dep_resolve_err_map: Arc<Mutex<HashMap<String, Option<String>>>> =
+            Arc::new(Mutex::new(HashMap::new()));
+
         tokio::task::block_in_place(|| loop {
             let mut module_graph = self.context.module_graph.write().unwrap();
             while let Some(task) = queue.pop_front() {
                 let resolvers = resolvers.clone();
                 let context = self.context.clone();
+                let dep_resolve_err_map = dep_resolve_err_map.clone();
                 tokio::spawn({
                     active_task_count += 1;
                     module_count += 1;
                     let rs = rs.clone();
                     async move {
-                        let ret = Compiler::build_module(context, task, resolvers);
+                        let ret =
+                            Compiler::build_module(context, task, resolvers, dep_resolve_err_map);
                         rs.send(ret).expect("send task failed");
                     }
                 });
@@ -192,6 +198,7 @@ impl Compiler {
         context: Arc<Context>,
         task: Task,
         resolvers: Arc<Resolvers>,
+        dep_resolve_err_map: Arc<Mutex<HashMap<String, Option<String>>>>,
     ) -> Result<(Module, ModuleDeps, Task)> {
         let mut dependencies = Vec::new();
         let module_id = ModuleId::new(task.path.clone());
@@ -205,6 +212,14 @@ impl Compiler {
         // transform & resolve
         // TODO: 支持同时有多个 resolve error
         let mut dep_resolve_err = None;
+
+        // 最父级的引用的上级为 None
+        dep_resolve_err_map
+            .lock()
+            .unwrap()
+            .entry(task.path.clone())
+            .or_insert(None);
+
         transform(&mut ast, &context, &task, &mut |ast| {
             let deps = analyze_deps(ast);
             // resolve
@@ -212,18 +227,55 @@ impl Compiler {
                 let ret = resolve(&task.path, &dep, &resolvers, &context);
                 match ret {
                     Ok((x, y)) => {
+                        if y.is_none() {
+                            // 只有 externals 时才有值, css 和 js 都为 None
+                            // css module 和 js module 将绝对路径记为 key, 上级路径记为 value
+                            dep_resolve_err_map
+                                .lock()
+                                .unwrap()
+                                .entry(x.clone())
+                                .or_insert(Some(task.path.clone()));
+                        }
                         dependencies.push((x, y, dep.clone()));
                     }
-                    Err(err) => {
-                        dep_resolve_err = Some(err);
+                    Err(_) => {
+                        // 获取 本次引用 和 上一级引用 路径
+                        dep_resolve_err = Some((task.path.clone(), dep.source));
                         return dependencies.clone();
                     }
                 }
             }
             dependencies.clone()
         })?;
+
         if let Some(e) = dep_resolve_err {
-            return Err(e);
+            let mut parent = e.0;
+            let mut current = e.1;
+
+            let mut err = format!(
+                "\n\nResolve Error: Resolve \"{}\" failed from \"{}\" \n",
+                current, parent
+            );
+            // 通过 err_map 寻找上一级引用
+            while let Some(p) = dep_resolve_err_map.lock().unwrap().get(&parent) {
+                if let Some(p) = p {
+                    current = parent;
+                    parent = p.clone();
+                    // 拼接引用堆栈
+                    err = format!(
+                        "{}  -> Resolve \"{}\" from \"{}\" \n",
+                        err.clone(),
+                        current,
+                        parent
+                    );
+                } else {
+                    break;
+                }
+            }
+            // 调整格式
+            err = format!("{} \n", err);
+
+            return Err(anyhow::anyhow!(err));
         }
 
         let module = Module::new(
