@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use swc_common::{DUMMY_SP};
+use swc_common::{DUMMY_SP, Spanned};
 use swc_ecma_ast::{
     ArrayLit, CallExpr, Callee, Expr, ExprOrSpread, Ident, Lit, MemberExpr, MemberProp,
 };
@@ -104,10 +104,11 @@ impl VisitMut for DynamicImport<'_, '_> {
                         type_args: None,
                     });
 
-                    // self.comments.add_import_source_comment(
-                    //     format!("import({})", source.value.to_string()),
-                    //     new_expr.span().lo,
-                    // );
+                    // 这里加不成功
+                    self.comments.add_import_source_comment(
+                        "import()".to_owned(),
+                        expr.span_lo(),
+                    );
                 }
             }
         }
