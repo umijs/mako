@@ -234,7 +234,7 @@ impl Compiler {
                                 .lock()
                                 .unwrap()
                                 .entry(x.clone())
-                                .or_insert(Some(task.path.clone()));
+                                .or_insert_with(|| Some(task.path.clone()));
                         }
                         dependencies.push((x, y, dep.clone()));
                     }
