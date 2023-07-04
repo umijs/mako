@@ -1,3 +1,3 @@
-# `@alipay/okam-win32-ia32-msvc`
+# `@okamjs/okam-win32-ia32-msvc`
 
-This is the **i686-pc-windows-msvc** binary for `@alipay/okam`
+This is the **i686-pc-windows-msvc** binary for `@okamjs/okam`

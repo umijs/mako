@@ -2,10 +2,11 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use futures::{SinkExt, StreamExt};
+use hyper::header::CONTENT_TYPE;
+use hyper::http::HeaderValue;
 use hyper::Server;
 use tokio::sync::broadcast::{Receiver, Sender};
 use tokio::task::JoinHandle;
-use tokio::time::Instant;
 use tungstenite::Message;
 
 use crate::compiler;
@@ -100,7 +101,25 @@ impl DevServer {
                     _ => {
                         // try chunk content in memory first, else use dist content
                         match static_serve.serve(req).await {
-                            Ok(res) => Ok(res),
+                            Ok(mut res) => {
+                                if let Some(content_type) = res.headers().get(CONTENT_TYPE).cloned()
+                                {
+                                    if let Ok(c_str) = content_type.to_str() {
+                                        if c_str.contains("javascript") || c_str.contains("text") {
+                                            res.headers_mut()
+                                                .insert(
+                                                    CONTENT_TYPE,
+                                                    HeaderValue::from_str(&format!(
+                                                        "{c_str}; charset=utf-8"
+                                                    ))
+                                                    .unwrap(),
+                                                )
+                                                .unwrap();
+                                        }
+                                    }
+                                }
+                                Ok(res)
+                            }
                             Err(_) => Ok::<_, hyper::Error>(
                                 hyper::Response::builder()
                                     .status(hyper::StatusCode::NOT_FOUND)
@@ -175,10 +194,11 @@ impl ProjectWatch {
                     }
 
                     let c = c.clone();
-                    tokio::spawn(async move {
-                        let _t = Instant::now();
 
-                        c.generate().unwrap();
+                    tokio::spawn(async move {
+                        // TODO use only one tokio handle to emit chunks, and it only emit the latest chunks
+                        let chunk_asts = c.generate_chunks_ast().unwrap();
+                        c.emit_dev_chunks(chunk_asts).unwrap();
                     });
                 }
             });

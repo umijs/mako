@@ -10,6 +10,7 @@ use tracing::info;
 use crate::ast::js_ast_to_code;
 use crate::compiler::Compiler;
 use crate::config::{DevtoolConfig, Mode};
+use crate::generate_chunks::OutputAst;
 use crate::minify::minify_js;
 use crate::update::UpdateResult;
 
@@ -109,18 +110,84 @@ impl Compiler {
         Ok(())
     }
 
+    pub fn emit_dev_chunks(&self, chunk_asts: Vec<OutputAst>) -> Result<()> {
+        info!("generate(hmr)");
+
+        let t_generate_chunks = Instant::now();
+
+        // ensure output dir exists
+        let config = &self.context.config;
+        if !config.output.path.exists() {
+            fs::create_dir_all(&config.output.path)?;
+        }
+
+        // ast to code and sourcemap, then write
+        let t_ast_to_code_and_write = Instant::now();
+        info!("ast to code and write");
+        chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
+            // ast to code
+            let (js_code, js_sourcemap) = js_ast_to_code(&file.js_ast, &self.context, &file.path)?;
+            // generate code and sourcemap files
+            let output = &config.output.path.join(&file.path);
+            fs::write(output, js_code).unwrap();
+            if matches!(self.context.config.devtool, DevtoolConfig::SourceMap) {
+                fs::write(format!("{}.map", output.display()), js_sourcemap).unwrap();
+            }
+            Ok(())
+        })?;
+        let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
+
+        // write assets
+        let t_write_assets = Instant::now();
+        info!("write assets");
+        let assets_info = &(*self.context.assets_info.lock().unwrap());
+        for (k, v) in assets_info {
+            let asset_path = &self.context.root.join(k);
+            let asset_output_path = &config.output.path.join(v);
+            if asset_path.exists() {
+                fs::copy(asset_path, asset_output_path)?;
+            } else {
+                panic!("asset not found: {}", asset_path.display());
+            }
+        }
+        let t_write_assets = t_write_assets.elapsed();
+
+        // copy
+        let t_copy = Instant::now();
+        info!("copy");
+        self.copy()?;
+        let t_copy = t_copy.elapsed();
+
+        let t_generate_chunks = t_generate_chunks.elapsed();
+
+        info!(
+            "  - generate chunks(hmr): {}ms",
+            t_generate_chunks.as_millis()
+        );
+        info!(
+            "  - ast to code and write: {}ms",
+            t_ast_to_code_and_write.as_millis()
+        );
+        info!("  - write assets: {}ms", t_write_assets.as_millis());
+        info!("  - copy: {}ms", t_copy.as_millis());
+
+        Ok(())
+    }
+
     // TODO: 集成到 fn generate 里
     pub fn generate_hot_update_chunks(
         &self,
         updated_modules: UpdateResult,
         last_full_hash: u64,
     ) -> u64 {
+        info!("generate_hot_update_chunks start");
+
         let last_chunk_names: HashSet<String> = {
             let chunk_graph = self.context.chunk_graph.read().unwrap();
             chunk_graph.chunk_names()
         };
 
-        info!("generate");
+        info!("hot-update:generate");
 
         let t_generate = Instant::now();
         let t_group_chunks = Instant::now();

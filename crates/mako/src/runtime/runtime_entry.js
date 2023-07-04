@@ -7,6 +7,7 @@ function createRuntime(makoModules, entryModuleId) {
     }
 
     const module = {
+      id: moduleId,
       exports: {},
     };
     modulesRegistry[moduleId] = module;
