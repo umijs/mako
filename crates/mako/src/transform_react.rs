@@ -27,6 +27,16 @@ pub fn mako_react(
     let is_dev = matches!(context.config.mode, Mode::Development);
     let use_refresh = is_dev && context.config.hmr && !task.path.contains("/node_modules/");
 
+    let is_jsx = task.path.ends_with(".jsx") || task.path.ends_with(".tsx");
+
+    if !is_jsx {
+        return if task.is_entry && is_dev {
+            Box::new(chain!(react_refresh_inject_runtime_only(context), noop()))
+        } else {
+            Box::new(noop())
+        };
+    }
+
     let visit = react(
         cm,
         Some(NoopComments),
@@ -49,7 +59,11 @@ pub fn mako_react(
     );
     if use_refresh {
         Box::new(if task.is_entry {
-            chain!(visit, react_refresh_entry_prefix(context), noop())
+            chain!(
+                visit,
+                react_refresh_module_prefix(context),
+                react_refresh_module_postfix(context)
+            )
         } else {
             chain!(
                 visit,
@@ -66,7 +80,7 @@ impl VisitMut for PrefixCode {
     fn visit_mut_module(&mut self, module: &mut Module) {
         let post_code_snippet_module =
             build_js_ast("_pre_code.js", &self.code, &self.context).unwrap();
-        module.body.splice(0..0, post_code_snippet_module.ast.body);
+        module.body.splice(0..0, post_code_snippet_module.body);
 
         module.visit_mut_children_with(self);
     }
@@ -81,7 +95,7 @@ impl VisitMut for PostfixCode {
     fn visit_mut_module(&mut self, module: &mut Module) {
         let post_code_snippet_module =
             build_js_ast("_post_code.js", &self.code, &self.context).unwrap();
-        module.body.extend(post_code_snippet_module.ast.body);
+        module.body.extend(post_code_snippet_module.body);
 
         module.visit_mut_children_with(self);
     }
@@ -114,6 +128,16 @@ window.$RefreshReg$ = (type, id) => {
   RefreshRuntime.register(type, module.id + id);
 };
 window.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
+"#
+        .to_string(),
+    })
+}
+
+pub fn react_refresh_inject_runtime_only(context: &std::sync::Arc<Context>) -> Box<dyn VisitMut> {
+    Box::new(PrefixCode {
+        context: context.clone(),
+        code: r#"
+import 'react-refresh';
 "#
         .to_string(),
     })
@@ -164,17 +188,15 @@ mod tests {
 
     #[test]
     pub fn entry_with_react_refresh() {
+        //it's a hack for dep analyze
         assert_eq!(
-            r#"const RefreshRuntime = require('react-refresh');
-RefreshRuntime.injectIntoGlobalHook(window);
-window.$RefreshReg$ = ()=>{};
-window.$RefreshSig$ = ()=>(type)=>type;
-console.log('entry');"#,
             transform(TransformTask {
                 is_entry: true,
                 path: "index.js".to_string(),
                 code: "console.log('entry');".to_string()
-            })
+            }),
+            r#"import 'react-refresh';
+console.log('entry');"#,
         );
     }
 
@@ -226,7 +248,7 @@ RefreshRuntime.performReactRefresh();"#,
             transform(TransformTask {
                 code: "export default function R(){return <h1></h1>}".to_string(),
                 is_entry: false,
-                path: "index.js".to_string()
+                path: "index.jsx".to_string()
             })
         );
     }
@@ -256,8 +278,8 @@ RefreshRuntime.performReactRefresh();"#,
                 )
             );
 
-            ast.ast.visit_mut_with(&mut visitor);
-            emit_js(&ast.ast)
+            ast.visit_mut_with(&mut visitor);
+            emit_js(&ast)
         })
     }
 

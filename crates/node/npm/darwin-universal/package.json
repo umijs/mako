@@ -1,5 +1,5 @@
 {
-  "name": "@alipay/okam-darwin-universal",
+  "name": "@okamjs/okam-darwin-universal",
   "version": "0.0.0",
   "os": [
     "darwin"

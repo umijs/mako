@@ -5,7 +5,7 @@ use anyhow::Result;
 use serde_json::Value;
 use swc_atoms::JsWord;
 use swc_common::collections::AHashMap;
-use swc_common::comments::NoopComments;
+use swc_common::comments::{NoopComments, SingleThreadedComments};
 use swc_common::errors::HANDLER;
 use swc_common::sync::Lrc;
 use swc_common::{Mark, DUMMY_SP, GLOBALS};
@@ -18,23 +18,27 @@ use swc_ecma_ast::{
 use swc_ecma_preset_env::{self as swc_preset_env};
 use swc_ecma_transforms::feature::FeatureFlag;
 use swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
+use swc_ecma_transforms::hygiene::hygiene_with_config;
+use swc_ecma_transforms::modules::common_js;
 use swc_ecma_transforms::modules::import_analysis::import_analyzer;
-use swc_ecma_transforms::modules::util::ImportInterop;
+use swc_ecma_transforms::modules::util::{Config, ImportInterop};
 use swc_ecma_transforms::typescript::strip_with_jsx;
-use swc_ecma_transforms::{resolver, Assumptions};
+use swc_ecma_transforms::{fixer, resolver, Assumptions};
 use swc_ecma_visit::{Fold, VisitMutWith as CssVisitMutWith};
 use swc_error_reporters::handler::try_with_handler;
 
-use crate::ast::Ast;
 use crate::build::{ModuleDeps, Task};
 use crate::compiler::Context;
+use crate::config::Mode;
 use crate::module::ModuleAst;
 use crate::targets;
 use crate::transform_css_handler::CssHandler;
+use crate::transform_dep_replacer::DepReplacer;
+use crate::transform_dynamic_import::DynamicImport;
 use crate::transform_env_replacer::EnvReplacer;
 use crate::transform_optimizer::Optimizer;
 use crate::transform_provide::Provide;
-use crate::transform_react::mako_react;
+use crate::transform_react::{mako_react, react_refresh_entry_prefix};
 
 pub fn transform(
     ast: &mut ModuleAst,
@@ -43,14 +47,7 @@ pub fn transform(
     get_deps: &mut dyn for<'r> FnMut(&'r ModuleAst) -> ModuleDeps,
 ) -> Result<()> {
     match ast {
-        ModuleAst::Script(ast) => transform_js(
-            &mut ast.ast,
-            context,
-            task,
-            get_deps,
-            ast.top_level_mark,
-            ast.unresolved_mark,
-        ),
+        ModuleAst::Script(ast) => transform_js(ast, context, task, get_deps),
         ModuleAst::Css(ast) => transform_css(ast, context, get_deps),
         _ => Ok(()),
     }
@@ -117,8 +114,6 @@ fn transform_js(
     context: &Arc<Context>,
     task: &Task,
     get_deps: &mut dyn for<'r> FnMut(&'r ModuleAst) -> ModuleDeps,
-    top_level_mark: Mark,
-    unresolved_mark: Mark,
 ) -> Result<()> {
     let cm = context.meta.script.cm.clone();
     // build env map
@@ -129,21 +124,28 @@ fn transform_js(
     define
         .entry("NODE_ENV".to_string())
         .or_insert_with(|| mode.clone().into());
+    let is_dev = matches!(context.config.mode, Mode::Development);
 
     let env_map = build_env_map(define);
     GLOBALS.set(&context.meta.script.globals, || {
         try_with_handler(cm.clone(), Default::default(), |handler| {
             HELPERS.set(&Helpers::new(true), || {
                 HANDLER.set(handler, || {
-                    // let top_level_mark = Mark::new();
-                    // let unresolved_mark = Mark::new();
+                    let top_level_mark = Mark::new();
+                    let unresolved_mark = Mark::new();
                     let import_interop = ImportInterop::Swc;
 
                     ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
+                    ast.visit_mut_with(&mut strip_with_jsx(
+                        cm.clone(),
+                        Default::default(),
+                        NoopComments,
+                        top_level_mark,
+                    ));
 
                     // indent.span needed in mako_react refresh, so it must be after resolver visitor
                     ast.visit_mut_with(&mut mako_react(
-                        cm.clone(),
+                        cm,
                         context,
                         task,
                         &top_level_mark,
@@ -179,37 +181,42 @@ fn transform_js(
                     ast.body = preset_env.fold_module(ast.clone()).body;
 
                     // 在 cjs 执行前调用 hook，用于收集依赖
-                    let _deps = get_deps(&ModuleAst::Script(Ast {
-                        ast: ast.clone(),
-                        top_level_mark,
-                        unresolved_mark,
-                    }));
+                    let deps = get_deps(&ModuleAst::Script(ast.clone()));
 
-                    // ast.visit_mut_with(&mut common_js::<SingleThreadedComments>(
-                    //     unresolved_mark,
-                    //     Config {
-                    //         import_interop: Some(import_interop),
-                    //         // NOTE: 这里后面要调整为注入自定义require
-                    //         ignore_dynamic: true,
-                    //         preserve_import_meta: true,
-                    //         ..Default::default()
-                    //     },
-                    //     FeatureFlag::empty(),
-                    //     None,
-                    // ));
-                    ast.visit_mut_with(&mut strip_with_jsx(
-                        cm,
-                        Default::default(),
-                        NoopComments,
-                        top_level_mark,
+                    ast.visit_mut_with(&mut common_js::<SingleThreadedComments>(
+                        unresolved_mark,
+                        Config {
+                            import_interop: Some(import_interop),
+                            // NOTE: 这里后面要调整为注入自定义require
+                            ignore_dynamic: true,
+                            preserve_import_meta: true,
+                            ..Default::default()
+                        },
+                        FeatureFlag::empty(),
+                        None,
                     ));
 
-                    // let dep_map = get_dep_map(deps);
-                    // let mut dep_replacer = DepReplacer { dep_map };
-                    // ast.visit_mut_with(&mut dep_replacer);
+                    // TODO: this code should be put in the top of entry.
+                    //   virtual entry or put in loader phase is better solution
+                    if task.is_entry && is_dev {
+                        ast.visit_mut_with(&mut react_refresh_entry_prefix(context));
+                    }
 
-                    // let mut dynamic_import = DynamicImport {};
-                    // ast.visit_mut_with(&mut dynamic_import);
+                    ast.visit_mut_with(&mut hygiene_with_config(
+                        swc_ecma_transforms::hygiene::Config {
+                            top_level_mark,
+                            ..Default::default()
+                        },
+                    ));
+                    ast.visit_mut_with(&mut fixer(None));
+
+                    let dep_map = get_dep_map(deps);
+                    let mut dep_replacer = DepReplacer { dep_map };
+                    ast.visit_mut_with(&mut dep_replacer);
+
+                    let mut dynamic_import = DynamicImport {};
+                    ast.visit_mut_with(&mut dynamic_import);
+
                     Ok(())
                 })
             })
@@ -249,7 +256,6 @@ mod tests {
     use crate::config::Config;
     use crate::module::{Dependency, ResolveType};
     use crate::module_graph::ModuleGraph;
-    use crate::transform_in_generate::transform_js_generate;
 
     #[test]
     fn test_react() {
@@ -257,7 +263,7 @@ mod tests {
 const App = () => <><h1>Hello World</h1></>;
         "#
         .trim();
-        let (code, _) = transform_js_code(code, None, HashMap::new());
+        let (code, _) = transform_js_code(code, None);
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -288,7 +294,7 @@ const App = ()=>(0, _jsxdevruntime.jsxDEV)(_jsxdevruntime.Fragment, {
 const Foo: string = "foo";
         "#
         .trim();
-        let (code, _) = transform_js_code(code, None, HashMap::new());
+        let (code, _) = transform_js_code(code, None);
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -302,13 +308,41 @@ const Foo = "foo";
     }
 
     #[test]
+    fn test_strip_type_2() {
+        let code = r#"
+import { X } from 'foo';
+import x from 'foo';
+x;
+const b: X;
+        "#
+        .trim();
+        let (code, _) = transform_js_code(code, None);
+        println!(">> CODE\n{}", code);
+        assert_eq!(
+            code,
+            r#"
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var _interop_require_default = require("@swc/helpers/_/_interop_require_default");
+var _foo = _interop_require_default._(require("foo"));
+_foo.default;
+const b;
+
+//# sourceMappingURL=index.js.map
+        "#
+            .trim()
+        );
+    }
+
+    #[test]
     fn test_import() {
         let code = r#"
 import { foo } from './foo';
-console.log(foo);
+foo;
         "#
         .trim();
-        let (code, _) = transform_js_code(code, None, HashMap::new());
+        let (code, _) = transform_js_code(code, None);
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -317,7 +351,32 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 var _foo = require("./foo");
-console.log(_foo.foo);
+_foo.foo;
+
+//# sourceMappingURL=index.js.map
+        "#
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_import_2() {
+        let code = r#"
+import * as foo from './foo';
+foo.bar;
+        "#
+        .trim();
+        let (code, _) = transform_js_code(code, None);
+        println!(">> CODE\n{}", code);
+        assert_eq!(
+            code,
+            r#"
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var _interop_require_wildcard = require("@swc/helpers/_/_interop_require_wildcard");
+var _foo = _interop_require_wildcard._(require("./foo"));
+_foo.bar;
 
 //# sourceMappingURL=index.js.map
         "#
@@ -331,7 +390,7 @@ console.log(_foo.foo);
 const foo = import('./foo');
         "#
         .trim();
-        let (code, _) = transform_js_code(code, None, HashMap::new());
+        let (code, _) = transform_js_code(code, None);
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -360,7 +419,7 @@ function foo() {
 }
         "#
         .trim();
-        let (code, _) = transform_js_code(code, None, HashMap::new());
+        let (code, _) = transform_js_code(code, None);
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -387,7 +446,7 @@ function foo() {
 import React from 'react';
         "#
         .trim();
-        let (code, _) = transform_js_code(code, None, HashMap::new());
+        let (code, _) = transform_js_code(code, None);
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -423,7 +482,7 @@ const e = XIAOHUONI.friend;
 const f = MEMBER_NAMES;
         "#
         .trim();
-        let (code, _sourcemap) = transform_js_code(code, None, HashMap::new());
+        let (code, _sourcemap) = transform_js_code(code, None);
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -472,12 +531,14 @@ if ('b2' != 'b3') 2.2;
 if ('a1' === "a2") { 3.1; } else 3.2;
         "#
         .trim();
-        let (code, _sourcemap) = transform_js_code(code, None, HashMap::new());
+        let (code, _sourcemap) = transform_js_code(code, None);
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
             r#"
 1.1;
+;
+;
 2.2;
 3.2;
 
@@ -493,7 +554,7 @@ if ('a1' === "a2") { 3.1; } else 3.2;
 const b = window.a?.b;
         "#
         .trim();
-        let (code, _sourcemap) = transform_js_code(code, None, HashMap::new());
+        let (code, _sourcemap) = transform_js_code(code, None);
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -513,11 +574,7 @@ const b = (_window_a = window.a) === null || _window_a === void 0 ? void 0 : _wi
 require("foo");
         "#
         .trim();
-        let (code, _sourcemap) = transform_js_code(
-            code,
-            None,
-            HashMap::from([("foo".to_string(), "bar".to_string())]),
-        );
+        let (code, _sourcemap) = transform_js_code(code, None);
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -566,11 +623,7 @@ require("bar");
         // TODO
     }
 
-    fn transform_js_code(
-        origin: &str,
-        path: Option<&str>,
-        dep: HashMap<String, String>,
-    ) -> (String, String) {
+    fn transform_js_code(origin: &str, path: Option<&str>) -> (String, String) {
         let path = path.unwrap_or("test.tsx");
         let current_dir = std::env::current_dir().unwrap();
         let config = Config::new(&current_dir.join("test/config/define"), None, None).unwrap();
@@ -586,10 +639,10 @@ require("bar");
         });
         let mut ast = build_js_ast(path, origin, &context).unwrap();
         transform_js(
-            &mut ast.ast,
+            &mut ast,
             &context,
             &crate::build::Task {
-                path: root.to_string_lossy().to_string(),
+                path: root.join(path).to_string_lossy().to_string(),
                 is_entry: false,
             },
             &mut |_| {
@@ -607,12 +660,9 @@ require("bar");
                     Vec::new()
                 }
             },
-            ast.top_level_mark,
-            ast.unresolved_mark,
         )
         .unwrap();
-        transform_js_generate(&context, &mut ast, &dep);
-        let (code, _sourcemap) = js_ast_to_code(&ast.ast, &context, "index.js").unwrap();
+        let (code, _sourcemap) = js_ast_to_code(&ast, &context, "index.js").unwrap();
         let code = code.replace("\"use strict\";", "");
         let code = code.trim().to_string();
         (code, _sourcemap)

@@ -1,5 +1,5 @@
 {
-  "name": "@alipay/okam-win32-ia32-msvc",
+  "name": "@okamjs/okam-win32-ia32-msvc",
   "version": "0.0.0",
   "os": [
     "win32"

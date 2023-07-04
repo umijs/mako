@@ -174,10 +174,14 @@ impl ProjectWatch {
 
         tokio::spawn(async move {
             watch(&root, |events| {
-                let res = c.update(events.into()).unwrap();
-
+                let res = c.update(events.into());
+                if res.is_err() {
+                    eprintln!("Error in watch: {:?}", res.err().unwrap());
+                    return;
+                }
+                let res = res.unwrap();
                 if res.is_updated() {
-                    c.generate_hot_update_chunks(res).unwrap();
+                    c.generate_hot_update_chunks(res);
 
                     if tx.receiver_count() > 0 {
                         tx.send(()).unwrap();

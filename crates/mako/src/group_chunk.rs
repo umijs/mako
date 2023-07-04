@@ -14,7 +14,7 @@ impl Compiler {
     // - 多个 entry 之间的 chunk 共享
     // - 支持各种 chunk 拆分策略，比如把所有 node_modules 下的包按 package name 拆
     pub fn group_chunk(&self) {
-        info!("generate_chunk");
+        info!("group_chunk");
 
         let visited = Rc::new(RefCell::new(HashSet::new()));
         let mut edges = vec![];
@@ -24,7 +24,7 @@ impl Compiler {
 
         let entries = module_graph.get_entry_modules();
         for entry in entries {
-            let (chunk, dynamic_dependencies) = self.create_chunk(&entry, ChunkType::Entry);
+            let (chunk, dynamic_dependencies) = self.create_chunk(entry, ChunkType::Entry);
             visited.borrow_mut().insert(chunk.id.clone());
             edges.extend(
                 dynamic_dependencies
