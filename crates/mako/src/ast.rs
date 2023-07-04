@@ -80,10 +80,10 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
         span.note(format!("Parse file failed: {}", path).as_str());
         span.emit();
         let s = &**wr.0.lock().unwrap();
-        println!("{}", s);
+        eprintln!("{}", s);
         anyhow!(ParseError {
             resolved_path: path.to_string(),
-            error_message: s.to_string(),
+            error_message: "Parse file failed".to_string(),
         })
     })
 }
