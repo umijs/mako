@@ -1,6 +1,6 @@
 {
   "name": "@okamjs/okam",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "main": "index.js",
   "types": "index.d.ts",
   "napi": {
@@ -13,8 +13,7 @@
         "aarch64-pc-windows-msvc",
         "armv7-unknown-linux-gnueabihf",
         "x86_64-unknown-linux-musl",
-        "i686-pc-windows-msvc",
-        "universal-apple-darwin"
+        "i686-pc-windows-msvc"
       ]
     }
   },
@@ -37,5 +36,17 @@
     "test": "ava",
     "universal": "napi universal",
     "version": "napi version"
+  },
+  "optionalDependencies": {
+    "@okamjs/okam-win32-x64-msvc": "0.0.1-alpha.2",
+    "@okamjs/okam-darwin-x64": "0.0.1-alpha.2",
+    "@okamjs/okam-linux-x64-gnu": "0.0.1-alpha.2",
+    "@okamjs/okam-darwin-arm64": "0.0.1-alpha.2",
+    "@okamjs/okam-linux-arm64-gnu": "0.0.1-alpha.2",
+    "@okamjs/okam-linux-arm64-musl": "0.0.1-alpha.2",
+    "@okamjs/okam-win32-arm64-msvc": "0.0.1-alpha.2",
+    "@okamjs/okam-linux-arm-gnueabihf": "0.0.1-alpha.2",
+    "@okamjs/okam-linux-x64-musl": "0.0.1-alpha.2",
+    "@okamjs/okam-win32-ia32-msvc": "0.0.1-alpha.2"
   }
 }
