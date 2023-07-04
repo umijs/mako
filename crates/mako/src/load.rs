@@ -13,6 +13,7 @@ use toml::{from_str as from_toml_str, Value as TomlValue};
 use tracing::debug;
 
 use crate::compiler::Context;
+use crate::config::Mode;
 use crate::css_modules::{is_mako_css_modules, MAKO_CSS_MODULES_SUFFIX};
 
 pub struct Asset {
@@ -57,7 +58,7 @@ pub fn load(path: &str, is_entry: bool, context: &Arc<Context>) -> Result<Conten
         Some("js" | "jsx" | "ts" | "tsx" | "cjs" | "mjs") => {
             let mut content = read_content(path)?;
             // TODO: use array entry instead
-            if is_entry && context.config.hmr {
+            if is_entry && context.config.hmr && context.config.mode == Mode::Development {
                 let port = &context.config.hmr_port.to_string();
                 let host = &context.config.hmr_host.to_string();
                 let host = if host == "0.0.0.0" { "127.0.0.1" } else { host };

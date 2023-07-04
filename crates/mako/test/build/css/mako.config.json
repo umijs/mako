@@ -1,3 +1,4 @@
 {
-  "hmr": false
+  "hmr": false,
+  "mode": "production"
 }
