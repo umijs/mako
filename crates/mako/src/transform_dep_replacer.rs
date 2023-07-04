@@ -5,15 +5,17 @@ use swc_ecma_ast::{Expr, ExprOrSpread, Lit, Str};
 use swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::analyze_deps::{is_commonjs_require, is_dynamic_import};
+use crate::comments::Comments;
 use crate::compiler::Context;
 use crate::module::generate_module_id;
 
-pub struct DepReplacer<'a> {
+pub struct DepReplacer<'a, 'b> {
     pub dep_map: HashMap<String, String>,
     pub context: &'a Arc<Context>,
+    pub comments: &'b mut Comments,
 }
 
-impl VisitMut for DepReplacer<'_> {
+impl VisitMut for DepReplacer<'_, '_> {
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Call(call_expr) = expr {
             if is_commonjs_require(call_expr) || is_dynamic_import(call_expr) {
@@ -22,6 +24,12 @@ impl VisitMut for DepReplacer<'_> {
                     ..
                 } = &mut call_expr.args[0]
                 {
+                    // mark import resource as comment
+                    self.comments.add_import_source_comment(
+                        source.value.to_string(),
+                        source.span.lo,
+                    );
+
                     self.replace_source(source);
                 }
             }
@@ -30,7 +38,7 @@ impl VisitMut for DepReplacer<'_> {
     }
 }
 
-impl DepReplacer<'_> {
+impl DepReplacer<'_, '_> {
     fn replace_source(&mut self, source: &mut Str) {
         if let Some(replacement) = self.dep_map.get(&source.value.to_string()) {
             let span = source.span;

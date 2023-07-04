@@ -111,13 +111,16 @@ pub fn transform_js_generate(
                                 ),
                             ));
 
+                            let mut comments = context.meta.script.output_comments.write().unwrap();
+
                             let mut dep_replacer = DepReplacer {
                                 dep_map: dep_map.clone(),
                                 context,
+                                comments: &mut comments,
                             };
                             ast.ast.visit_mut_with(&mut dep_replacer);
 
-                            let mut dynamic_import = DynamicImport { context };
+                            let mut dynamic_import = DynamicImport { context, comments: &mut comments };
                             ast.ast.visit_mut_with(&mut dynamic_import);
 
                             ast.ast.visit_mut_with(&mut hygiene_with_config(
