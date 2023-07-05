@@ -62,7 +62,14 @@ impl Compiler {
                     format!(
                         "{}\n{}",
                         chunks_map_str,
-                        include_str!("runtime/runtime_entry.js")
+                        compile_runtime_entry(
+                            self.context
+                                .assets_info
+                                .lock()
+                                .unwrap()
+                                .values()
+                                .any(|info| info.ends_with(".wasm"))
+                        )
                     )
                     .replace("_%full_hash%_", &full_hash.to_string())
                 } else {
@@ -160,6 +167,18 @@ impl Compiler {
             })
             .collect::<Result<Vec<OutputAst>>>()
     }
+}
+
+fn compile_runtime_entry(has_wasm: bool) -> String {
+    let runtime_entry_content_str = include_str!("runtime/runtime_entry.js");
+    runtime_entry_content_str.replace(
+        "// __WASM_REQUIRE_SUPPORT",
+        if has_wasm {
+            include_str!("runtime/runtime_wasm.js")
+        } else {
+            ""
+        },
+    )
 }
 
 fn build_ident_param(ident: &str) -> Param {

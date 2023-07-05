@@ -41,7 +41,8 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
         .cm
         .new_source_file(FileName::Real(relative_path), content.to_string());
     let is_ts = path.ends_with(".ts") || path.ends_with(".tsx");
-    let jsx = path.ends_with(".jsx");
+    // treat svgr as jsx
+    let jsx = path.ends_with(".jsx") || path.ends_with(".svg");
     let tsx = path.ends_with(".tsx");
     let syntax = if is_ts {
         Syntax::Typescript(TsConfig {
@@ -80,10 +81,10 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
         span.note(format!("Parse file failed: {}", path).as_str());
         span.emit();
         let s = &**wr.0.lock().unwrap();
-        println!("{}", s);
+        eprintln!("{}", s);
         anyhow!(ParseError {
             resolved_path: path.to_string(),
-            error_message: s.to_string(),
+            error_message: "Parse file failed".to_string(),
         })
     })
 }

@@ -72,7 +72,7 @@ function createRuntime(makoModules, entryModuleId) {
       return require(request);
     };
     // TODO: fn.ensure 需要确保依赖关系
-    fn.ensure = ensure;
+    Object.assign(fn, require);
     return fn;
   };
 
@@ -285,6 +285,7 @@ function createRuntime(makoModules, entryModuleId) {
   };
 
   requireModule.ensure = ensure;
+  // __WASM_REQUIRE_SUPPORT
   requireModule(entryModuleId);
 
   return {

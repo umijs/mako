@@ -61,6 +61,7 @@ twox-hash = "1.6.3"
 toml = "0.7.5"
 serde_yaml = "0.9.22"
 serde-xml-rs = "0.6.0"
+svgr-rs = "0.1.2"
 
 [dev-dependencies]
 insta = { version = "1.29.0", features = ["yaml"] }

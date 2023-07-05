@@ -1,9 +1,9 @@
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::fmt::{self, Error};
+use std::fmt;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use rayon::prelude::*;
 use tracing::debug;
 
@@ -65,7 +65,7 @@ removed:{:?}
 }
 
 impl Compiler {
-    pub fn update(&self, paths: Vec<(PathBuf, UpdateType)>) -> Result<UpdateResult, Error> {
+    pub fn update(&self, paths: Vec<(PathBuf, UpdateType)>) -> Result<UpdateResult> {
         let mut update_result: UpdateResult = Default::default();
 
         let resolvers = Arc::new(get_resolvers(&self.context.config));
@@ -104,7 +104,7 @@ impl Compiler {
         // 分析修改的模块，结果中会包含新增的模块
         let (modified_module_ids, add_paths) = self
             .build_by_modify(modified, resolvers.clone())
-            .map_err(|_| Error {})?;
+            .map_err(|err| anyhow!("build_by_modify err:{:?}", err))?;
         added.extend(add_paths);
         debug!("added:{:?}", &added);
         update_result.modified.extend(modified_module_ids);

@@ -185,28 +185,35 @@ impl ProjectWatch {
         let watch_compiler = c.clone();
         let watch_handle = tokio::spawn(async move {
             watch(&root, |events| {
-                let res = watch_compiler.update(events.into()).unwrap();
+                let res = watch_compiler.update(events.into());
 
-                if res.is_updated() {
-                    let next_full_hash =
-                        watch_compiler.generate_hot_update_chunks(res, *last_full_hash);
-
-                    if next_full_hash == *last_full_hash {
-                        // no need to continue
-                        return;
-                    } else {
-                        *last_full_hash = next_full_hash;
+                match res {
+                    Err(e) => {
+                        eprintln!("Error in watch: {:?}", e);
                     }
+                    Ok(res) => {
+                        if res.is_updated() {
+                            let next_full_hash =
+                                watch_compiler.generate_hot_update_chunks(res, *last_full_hash);
 
-                    if tx.receiver_count() > 0 {
-                        //TODO: send the next hash to runtime
-                        tx.send(WsMessage {
-                            hash: next_full_hash,
-                        })
-                        .unwrap();
+                            if next_full_hash == *last_full_hash {
+                                // no need to continue
+                                return;
+                            } else {
+                                *last_full_hash = next_full_hash;
+                            }
+
+                            if tx.receiver_count() > 0 {
+                                //TODO: send the next hash to runtime
+                                tx.send(WsMessage {
+                                    hash: next_full_hash,
+                                })
+                                .unwrap();
+                            }
+
+                            let _ = build_tx.send(());
+                        }
                     }
-
-                    let _ = build_tx.send(());
                 }
             });
         });
