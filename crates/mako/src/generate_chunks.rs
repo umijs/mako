@@ -11,7 +11,7 @@ use swc_ecma_ast::{
     Param, Pat, Prop, PropOrSpread, Stmt, Str, VarDecl,
 };
 
-use crate::ast::{build_js_ast, Ast};
+use crate::ast::build_js_ast;
 use crate::compiler::{Compiler, Context};
 use crate::module::{ModuleAst, ModuleId};
 

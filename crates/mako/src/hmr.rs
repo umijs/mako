@@ -21,10 +21,12 @@ impl Compiler {
         let module_graph = &self.context.module_graph.read().unwrap();
         let js_stmts = modules_to_js_stmts(module_ids, module_graph, &self.context);
         let mut content = include_str!("runtime/runtime_hmr.js").to_string();
-        content = content.replace("__CHUNK_ID__", &chunk.id.generate(&self.context)).replace(
-            "__runtime_code__",
-            &format!("runtime._h='{}';", current_hash),
-        );
+        content = content
+            .replace("__CHUNK_ID__", &chunk.id.generate(&self.context))
+            .replace(
+                "__runtime_code__",
+                &format!("runtime._h='{}';", current_hash),
+            );
         let filename = &chunk.filename();
         // TODO: handle error
         let mut js_ast = build_js_ast(filename, content.as_str(), &self.context).unwrap();
@@ -96,42 +98,11 @@ globalThis.makoModuleHotUpdate('./index.ts', {
                 value: true
             });
             require("./foo.ts");
-        },
-        "./bar_2.ts": function(module, exports, require) {
-            "use strict";
-            Object.defineProperty(exports, "__esModule", {
-                value: true
-            });
-            require("./foo.ts");
-        },
-        "./foo.ts": function(module, exports, require) {
-            "use strict";
-            Object.defineProperty(exports, "__esModule", {
-                value: true
-            });
-            Object.defineProperty(exports, "default", {
-                enumerable: true,
-                get: function() {
-                    return _default;
-                }
-            });
-            var _default = 1;
-        },
-        "./index.ts": function(module, exports, require) {
-            "use strict";
-            Object.defineProperty(exports, "__esModule", {
-                value: true
-            });
-            require("./bar_1.ts");
-            require("./bar_2.ts");
-            require("./hoo");
-        },
-        "./hoo": function(module, exports, require) {
-            module.exports = hoo;
         }
     }
 }, function(runtime) {
     runtime._h = '42';
+    ;
 });
 
 //# sourceMappingURL=index.js.map

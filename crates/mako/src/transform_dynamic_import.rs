@@ -160,7 +160,7 @@ require.ensure([
         let globals = Globals::default();
         GLOBALS.set(&globals, || {
             let mut dyanmic_import = DynamicImport { context: &context };
-            ast.ast.visit_mut_with(&mut dyanmic_import);
+            ast.visit_mut_with(&mut dyanmic_import);
         });
 
         let (code, _sourcemap) = js_ast_to_code(&ast, &context, "index.js").unwrap();
