@@ -23,7 +23,7 @@ exports.build = async function (opts) {
   okamConfig.mode = mode;
 
   const { build } = require('@okamjs/okam');
-  build(cwd, okamConfig, false);
+  await build(cwd, okamConfig, false);
 
   // FIXME: mock stats
   const stats = {
@@ -89,7 +89,7 @@ exports.dev = async function (opts) {
   // TODO: detect port
   okamConfig.hmr_port = String(opts.port + 1);
   okamConfig.hmr_host = opts.host;
-  build(opts.cwd, okamConfig, true);
+  await build(opts.cwd, okamConfig, true);
 };
 
 function getDevBanner(protocol, host, port, ip) {
