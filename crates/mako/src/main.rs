@@ -3,7 +3,6 @@
 use std::sync::Arc;
 
 use clap::Parser;
-use tokio::time::Instant;
 use tracing::debug;
 
 use crate::logger::init_logger;
@@ -75,9 +74,6 @@ async fn main() {
     // compiler
     let compiler = compiler::Compiler::new(config, root.clone());
     compiler.compile();
-    let i = Instant::now();
-    println!("{}", compiler.full_hash());
-    println!("{}", i.elapsed().as_millis());
 
     if cli.watch {
         let d = crate::dev::DevServer::new(root.clone(), Arc::new(compiler));
