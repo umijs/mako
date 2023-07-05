@@ -1,4 +1,5 @@
 use std::fs;
+use std::hash::Hasher;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::sync::Arc;
@@ -11,6 +12,7 @@ use serde_yaml::{from_str as from_yaml_str, Value as YamlValue};
 use thiserror::Error;
 use toml::{from_str as from_toml_str, Value as TomlValue};
 use tracing::debug;
+use twox_hash::XxHash64;
 
 use crate::compiler::Context;
 use crate::config::Mode;
@@ -25,6 +27,20 @@ pub enum Content {
     Js(String),
     Css(String),
     Assets(Asset),
+}
+
+impl Content {
+    pub fn raw_hash(&self) -> u64 {
+        let mut hasher: XxHash64 = Default::default();
+        match self {
+            Content::Js(content)
+            | Content::Css(content)
+            | Content::Assets(Asset { content, .. }) => {
+                hasher.write(content.as_bytes());
+                hasher.finish()
+            }
+        }
+    }
 }
 
 #[derive(Debug, Error)]

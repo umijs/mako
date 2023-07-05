@@ -37,6 +37,7 @@ function createRuntime(makoModules, entryModuleId) {
   let currentParents = [];
   let currentChildModule;
   const hmrHandler = (options) => {
+    const orginRequire = options.require;
     options.module.hot = createModuleHotObject(options.id, options.module);
     // for refresh module.meta.hot API style
     options.module.meta = { hot: options.module.hot };
@@ -44,6 +45,9 @@ function createRuntime(makoModules, entryModuleId) {
     currentParents = [];
     options.module.children = [];
     options.require = createHmrRequire(options.require, options.id);
+    options.require.currentHash = () => {
+      return orginRequire._h;
+    };
   };
   const createHmrRequire = (require, moduleId) => {
     const me = modulesRegistry[moduleId];
@@ -72,7 +76,7 @@ function createRuntime(makoModules, entryModuleId) {
     return fn;
   };
 
-  const applyHotUpdate = (chunkId, update) => {
+  const applyHotUpdate = (chunkId, update, runtime) => {
     const { modules, removedModules } = update;
 
     // get outdated modules
@@ -129,6 +133,8 @@ function createRuntime(makoModules, entryModuleId) {
     for (const module of outdatedSelfAcceptedModules) {
       module.hot._requireSelf();
     }
+
+    runtime(requireModule);
   };
   const createModuleHotObject = (moduleId, me) => {
     const hot = {
@@ -151,7 +157,9 @@ function createRuntime(makoModules, entryModuleId) {
       },
       invalidate() {},
       check() {
-        return fetch('/hot-update.json')
+        const current_hash = requireModule.currentHash();
+
+        return fetch(`/${current_hash}.hot-update.json`)
           .then((res) => {
             return res.json();
           })
@@ -164,7 +172,12 @@ function createRuntime(makoModules, entryModuleId) {
 
                 let ext = parts[l - 1];
 
-                const hotChunkName = [left, 'hot-update', ext].join('.');
+                const hotChunkName = [
+                  left,
+                  current_hash,
+                  'hot-update',
+                  ext,
+                ].join('.');
 
                 return new Promise((done) => {
                   load(`/${hotChunkName}`, done);
@@ -264,6 +277,11 @@ function createRuntime(makoModules, entryModuleId) {
     for (const id in modules) {
       makoModules[id] = modules[id];
     }
+  };
+
+  requireModule._h = '_%full_hash%_';
+  requireModule.currentHash = () => {
+    return requireModule._h;
   };
 
   requireModule.ensure = ensure;

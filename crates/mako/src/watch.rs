@@ -31,16 +31,16 @@ impl From<WatchEvent> for Vec<(PathBuf, UpdateType)> {
 
 pub fn watch<T>(root: &PathBuf, func: T)
 where
-    T: Fn(WatchEvent),
+    T: FnMut(WatchEvent),
 {
     futures::executor::block_on(async {
         watch_async(root, func).await;
     });
 }
 
-pub async fn watch_async<T>(root: &PathBuf, func: T)
+pub async fn watch_async<T>(root: &PathBuf, mut func: T)
 where
-    T: Fn(WatchEvent),
+    T: FnMut(WatchEvent),
 {
     let (mut tx, mut rx) = channel(2);
     let mut watcher = RecommendedWatcher::new(

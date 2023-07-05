@@ -6,7 +6,9 @@ use hyper::header::CONTENT_TYPE;
 use hyper::http::HeaderValue;
 use hyper::Server;
 use tokio::sync::broadcast::{Receiver, Sender};
+use tokio::sync::mpsc::unbounded_channel;
 use tokio::task::JoinHandle;
+use tokio::try_join;
 use tungstenite::Message;
 
 use crate::compiler;
@@ -29,27 +31,26 @@ impl DevServer {
     }
 
     pub async fn serve(&self) {
-        let watch_handler = self.watcher.start();
+        let (watch_handler, build_handle) = self.watcher.start();
 
         async fn serve_websocket(
             websocket: hyper_tungstenite::HyperWebsocket,
-            mut rx: Receiver<()>,
+            mut rx: Receiver<WsMessage>,
         ) -> Result<(), Error> {
             let websocket = websocket.await?;
 
             let (mut sender, mut ws_recv) = websocket.split();
 
-            // sender.send(Message::text("{}")).await?;
-
             let fwd_task = tokio::spawn(async move {
                 loop {
-                    if (rx.recv().await).is_ok()
-                        && sender
-                            .send(Message::text(r#"{"update": "todo"}"#))
+                    if let Ok(msg) = rx.recv().await {
+                        if sender
+                            .send(Message::text(format!(r#"{{"hash":"{}"}}"#, msg.hash)))
                             .await
                             .is_err()
-                    {
-                        break;
+                        {
+                            break;
+                        }
                     }
                 }
             });
@@ -147,19 +148,24 @@ impl DevServer {
             }
         });
 
-        let _ = tokio::join!(watch_handler, dev_server_handle);
+        let _ = try_join!(watch_handler, dev_server_handle, build_handle);
     }
+}
+
+#[derive(Clone, Debug)]
+struct WsMessage {
+    hash: u64,
 }
 
 struct ProjectWatch {
     root: PathBuf,
     compiler: std::sync::Arc<compiler::Compiler>,
-    tx: Sender<()>,
+    tx: Sender<WsMessage>,
 }
 
 impl ProjectWatch {
     pub fn new(root: PathBuf, c: Arc<compiler::Compiler>) -> Self {
-        let (tx, _) = tokio::sync::broadcast::channel::<()>(256);
+        let (tx, _) = tokio::sync::broadcast::channel::<WsMessage>(256);
         Self {
             compiler: c,
             root,
@@ -167,39 +173,64 @@ impl ProjectWatch {
         }
     }
 
-    pub fn start(&self) -> JoinHandle<()> {
+    pub fn start(&self) -> (JoinHandle<()>, JoinHandle<()>) {
         let c = self.compiler.clone();
         let root = self.root.clone();
         let tx = self.tx.clone();
 
-        tokio::spawn(async move {
+        let mut last_full_hash = Box::new(c.full_hash());
+
+        let (build_tx, mut build_rx) = unbounded_channel::<()>();
+
+        let watch_compiler = c.clone();
+        let watch_handle = tokio::spawn(async move {
             watch(&root, |events| {
-                let res = c.update(events.into());
-                if res.is_err() {
-                    eprintln!("Error in watch: {:?}", res.err().unwrap());
-                    return;
-                }
-                let res = res.unwrap();
-                if res.is_updated() {
-                    c.generate_hot_update_chunks(res);
+                let res = watch_compiler.update(events.into());
 
-                    if tx.receiver_count() > 0 {
-                        tx.send(()).unwrap();
+                match res {
+                    Err(e) => {
+                        eprintln!("Error in watch: {:?}", e);
                     }
+                    Ok(res) => {
+                        if res.is_updated() {
+                            let next_full_hash =
+                                watch_compiler.generate_hot_update_chunks(res, *last_full_hash);
 
-                    let c = c.clone();
+                            if next_full_hash == *last_full_hash {
+                                // no need to continue
+                                return;
+                            } else {
+                                *last_full_hash = next_full_hash;
+                            }
 
-                    tokio::spawn(async move {
-                        // TODO use only one tokio handle to emit chunks, and it only emit the latest chunks
-                        let chunk_asts = c.generate_chunks_ast().unwrap();
-                        c.emit_dev_chunks(chunk_asts).unwrap();
-                    });
+                            if tx.receiver_count() > 0 {
+                                //TODO: send the next hash to runtime
+                                tx.send(WsMessage {
+                                    hash: next_full_hash,
+                                })
+                                .unwrap();
+                            }
+
+                            let _ = build_tx.send(());
+                        }
+                    }
                 }
             });
-        })
+        });
+
+        let build_handle = tokio::spawn(async move {
+            while (build_rx.recv().await).is_some() {
+                // Then try to receive all remaining messages immediately.
+                while build_rx.try_recv().is_ok() {}
+                let chunk_asts = c.generate_chunks_ast().unwrap();
+                c.emit_dev_chunks(chunk_asts).unwrap();
+            }
+        });
+
+        (watch_handle, build_handle)
     }
 
-    pub fn clone_receiver(&self) -> Receiver<()> {
+    pub fn clone_receiver(&self) -> Receiver<WsMessage> {
         self.tx.subscribe()
     }
 }

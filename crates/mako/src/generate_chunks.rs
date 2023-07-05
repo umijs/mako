@@ -21,8 +21,10 @@ pub struct OutputAst {
 
 impl Compiler {
     pub fn generate_chunks_ast(&self) -> Result<Vec<OutputAst>> {
+        let full_hash = self.full_hash();
+
         let module_graph = self.context.module_graph.read().unwrap();
-        let chunk_graph = self.context.chunk_graph.read().unwrap();
+        let chunk_graph = self.context.chunk_graph.write().unwrap();
 
         let public_path = self.context.config.public_path.clone();
         let public_path = if public_path == "runtime" {
@@ -69,6 +71,7 @@ impl Compiler {
                                 .any(|info| info.ends_with(".wasm"))
                         )
                     )
+                    .replace("_%full_hash%_", &full_hash.to_string())
                 } else {
                     include_str!("runtime/runtime_chunk.js").to_string()
                 };

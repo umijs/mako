@@ -3,7 +3,10 @@ use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 use std::path::Path;
 
+use twox_hash::XxHash64;
+
 use crate::module::ModuleId;
+use crate::module_graph::ModuleGraph;
 
 pub type ChunkId = ModuleId;
 
@@ -66,6 +69,21 @@ impl Chunk {
 
     pub fn has_module(&self, module_id: &ModuleId) -> bool {
         self.modules.contains(module_id)
+    }
+
+    pub fn hash(&self, mg: &ModuleGraph) -> u64 {
+        let mut sorted_module_ids = self.modules.iter().cloned().collect::<Vec<ModuleId>>();
+        sorted_module_ids.sort_by_key(|m| m.id.clone());
+
+        let mut hash: XxHash64 = Default::default();
+
+        for id in sorted_module_ids {
+            let m = mg.get_module(&id).unwrap();
+
+            hash.write_u64(m.info.as_ref().unwrap().raw_hash);
+        }
+
+        hash.finish()
     }
 }
 

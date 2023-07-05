@@ -1,4 +1,5 @@
 #![feature(box_patterns)]
+#![feature(hasher_prefixfree_extras)]
 
 mod analyze_deps;
 // mod analyze_statement;

@@ -16,11 +16,15 @@ impl Compiler {
         &self,
         chunk: &Chunk,
         module_ids: &HashSet<ModuleId>,
+        current_hash: u64,
     ) -> (String, String) {
         let module_graph = &self.context.module_graph.read().unwrap();
         let js_stmts = modules_to_js_stmts(module_ids, module_graph);
         let mut content = include_str!("runtime/runtime_hmr.js").to_string();
-        content = content.replace("__CHUNK_ID__", &chunk.id.id);
+        content = content.replace("__CHUNK_ID__", &chunk.id.id).replace(
+            "__runtime_code__",
+            &format!("runtime._h='{}';", current_hash),
+        );
         let filename = &chunk.filename();
         // TODO: handle error
         let mut js_ast = build_js_ast(filename, content.as_str(), &self.context).unwrap();
@@ -31,9 +35,6 @@ impl Compiler {
                 ..
             })) = stmt
             {
-                if args.len() != 2 {
-                    panic!("hmr runtime should only have two arguments");
-                }
                 if let ExprOrSpread {
                     expr: box Expr::Object(ObjectLit { props, .. }),
                     ..
@@ -78,7 +79,7 @@ mod tests {
 
         let mut module_ids = HashSet::new();
         module_ids.insert(compiler.context.root.join("bar_1.ts").into());
-        let (js_code, _js_sourcemap) = compiler.generate_hmr_chunk(chunk, &module_ids);
+        let (js_code, _js_sourcemap) = compiler.generate_hmr_chunk(chunk, &module_ids, 42);
         let js_code = js_code.replace(
             compiler.context.root.to_string_lossy().to_string().as_str(),
             "",
@@ -97,6 +98,8 @@ globalThis.makoModuleHotUpdate('/index.ts', {
             require("/foo.ts");
         }
     }
+}, function(runtime) {
+    runtime._h = '42';
 });
 
 //# sourceMappingURL=index.js.map

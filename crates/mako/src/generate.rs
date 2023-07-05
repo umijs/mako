@@ -5,7 +5,7 @@ use std::time::Instant;
 use anyhow::Result;
 use rayon::prelude::*;
 use serde::Serialize;
-use tracing::info;
+use tracing::{debug, info};
 
 use crate::ast::js_ast_to_code;
 use crate::compiler::Compiler;
@@ -111,7 +111,7 @@ impl Compiler {
     }
 
     pub fn emit_dev_chunks(&self, chunk_asts: Vec<OutputAst>) -> Result<()> {
-        info!("generate(hmr)");
+        info!("generate(hmr-rebuild)");
 
         let t_generate_chunks = Instant::now();
 
@@ -175,7 +175,11 @@ impl Compiler {
     }
 
     // TODO: 集成到 fn generate 里
-    pub fn generate_hot_update_chunks(&self, updated_modules: UpdateResult) {
+    pub fn generate_hot_update_chunks(
+        &self,
+        updated_modules: UpdateResult,
+        last_full_hash: u64,
+    ) -> u64 {
         info!("generate_hot_update_chunks start");
 
         let last_chunk_names: HashSet<String> = {
@@ -197,6 +201,23 @@ impl Compiler {
         let t_transform_modules = Instant::now();
         self.transform_all();
         let t_transform_modules = t_transform_modules.elapsed();
+
+        let current_full_hash = self.full_hash();
+
+        debug!(
+            "{} {} {}",
+            current_full_hash,
+            if current_full_hash == last_full_hash {
+                "equals"
+            } else {
+                "not equals"
+            },
+            last_full_hash
+        );
+
+        if current_full_hash == last_full_hash {
+            return current_full_hash;
+        }
 
         // ensure output dir exists
         let config = &self.context.config;
@@ -232,24 +253,22 @@ impl Compiler {
         let cg = self.context.chunk_graph.read().unwrap();
         for chunk_name in &modified_chunks {
             if let Some(chunk) = cg.get_chunk_by_name(chunk_name) {
-                let (code, _) = self.generate_hmr_chunk(chunk, &updated_modules.modified);
+                let (code, _) =
+                    self.generate_hmr_chunk(chunk, &updated_modules.modified, current_full_hash);
 
                 // TODO the final format should be {name}.{full_hash}.hot-update.{ext}
-                self.write_to_dist(to_hot_update_chunk_name(chunk_name), code);
+                self.write_to_dist(to_hot_update_chunk_name(chunk_name, last_full_hash), code);
             }
         }
 
         self.write_to_dist(
-            "hot-update.json",
+            format!("{}.hot-update.json", last_full_hash),
             serde_json::to_string(&HotUpdateManifest {
                 removed_chunks,
                 modified_chunks,
             })
             .unwrap(),
         );
-
-        // copy
-        self.copy().unwrap();
 
         info!(
             "generate(hmr) done in {}ms",
@@ -260,6 +279,8 @@ impl Compiler {
             "  - transform modules: {}ms",
             t_transform_modules.as_millis()
         );
+        info!("  - next full hash: {}", current_full_hash);
+        current_full_hash
     }
 
     pub fn write_to_dist<P: AsRef<std::path::Path>, C: AsRef<[u8]>>(
@@ -273,13 +294,13 @@ impl Compiler {
     }
 }
 
-fn to_hot_update_chunk_name(chunk_name: &String) -> String {
+fn to_hot_update_chunk_name(chunk_name: &String, hash: u64) -> String {
     match chunk_name.rsplit_once('.') {
         None => {
-            format!("{chunk_name}.hot-update")
+            format!("{chunk_name}.{hash}.hot-update")
         }
         Some((left, ext)) => {
-            format!("{left}.hot-update.{ext}")
+            format!("{left}.{hash}.hot-update.{ext}")
         }
     }
 }

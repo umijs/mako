@@ -1,9 +1,12 @@
 use std::collections::{HashMap, HashSet};
+use std::hash::Hasher;
 
 use petgraph::stable_graph::{DefaultIx, NodeIndex, StableDiGraph};
+use twox_hash::XxHash64;
 
 use crate::chunk::{Chunk, ChunkId};
 use crate::module::ModuleId;
+use crate::module_graph::ModuleGraph;
 
 pub struct ChunkGraph {
     graph: StableDiGraph<Chunk, ()>,
@@ -50,6 +53,17 @@ impl ChunkGraph {
 
     pub fn chunk_names(&self) -> HashSet<String> {
         self.graph.node_weights().map(|c| c.filename()).collect()
+    }
+
+    pub fn full_hash(&self, module_graph: &ModuleGraph) -> u64 {
+        let mut chunks = self.get_chunks();
+        chunks.sort_by_key(|c| c.id.id.clone());
+
+        let mut hasher: XxHash64 = Default::default();
+        for c in chunks {
+            hasher.write_u64(c.hash(module_graph))
+        }
+        hasher.finish()
     }
 }
 

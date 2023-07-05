@@ -1512,6 +1512,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "tungstenite",
+ "twox-hash",
 ]
 
 [[package]]
@@ -4183,6 +4184,17 @@ dependencies = [
  "thiserror",
  "url",
  "utf-8",
+]
+
+[[package]]
+name = "twox-hash"
+version = "1.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
+dependencies = [
+ "cfg-if",
+ "rand",
+ "static_assertions",
 ]
 
 [[package]]
