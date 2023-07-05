@@ -20,7 +20,7 @@ export default function LazyComponent() {
           setCount(count + 1);
         }}
       >
-        add count
+        count
       </button>
     </div>
   );

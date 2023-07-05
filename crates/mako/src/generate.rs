@@ -5,7 +5,7 @@ use std::time::Instant;
 use anyhow::Result;
 use rayon::prelude::*;
 use serde::Serialize;
-use tracing::info;
+use tracing::{debug, info};
 
 use crate::ast::js_ast_to_code;
 use crate::compiler::Compiler;
@@ -111,7 +111,7 @@ impl Compiler {
     }
 
     pub fn emit_dev_chunks(&self, chunk_asts: Vec<OutputAst>) -> Result<()> {
-        info!("generate(hmr)");
+        info!("generate(hmr-rebuild)");
 
         let t_generate_chunks = Instant::now();
 
@@ -204,7 +204,7 @@ impl Compiler {
 
         let current_full_hash = self.full_hash();
 
-        println!(
+        debug!(
             "{} {} {}",
             current_full_hash,
             if current_full_hash == last_full_hash {
@@ -253,7 +253,8 @@ impl Compiler {
         let cg = self.context.chunk_graph.read().unwrap();
         for chunk_name in &modified_chunks {
             if let Some(chunk) = cg.get_chunk_by_name(chunk_name) {
-                let (code, _) = self.generate_hmr_chunk(chunk, &updated_modules.modified);
+                let (code, _) =
+                    self.generate_hmr_chunk(chunk, &updated_modules.modified, current_full_hash);
 
                 // TODO the final format should be {name}.{full_hash}.hot-update.{ext}
                 self.write_to_dist(to_hot_update_chunk_name(chunk_name, last_full_hash), code);
@@ -268,9 +269,6 @@ impl Compiler {
             })
             .unwrap(),
         );
-
-        // copy
-        self.copy().unwrap();
 
         info!(
             "generate(hmr) done in {}ms",
