@@ -2802,9 +2802,9 @@ dependencies = [
 
 [[package]]
 name = "svgr-rs"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93c54736ba6feee4113ff3104653b04e7f1cb35b786be935d9ebbe38666afb85"
+checksum = "a959be330ea7bc8f5722868a53e625962ae70842ade80427bda9a0810ff50a80"
 dependencies = [
  "clap",
  "linked-hash-map",
