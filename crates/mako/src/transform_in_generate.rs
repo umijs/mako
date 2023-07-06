@@ -30,7 +30,9 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) {
 
         let dep_map: HashMap<String, String> = deps
             .into_iter()
-            .map(|(id, dep)| (dep.source.clone(), id.id.clone()))
+            // 仅保留 .css 后缀的 require，避免不必要的计算和内存使用
+            .filter(|(id, _dep)| id.id.ends_with(".css"))
+            .map(|(id, dep)| (dep.source.clone(), id.generate(context)))
             .collect();
         drop(module_graph);
 
@@ -83,11 +85,8 @@ fn transform_css(
     // code to js ast
     let content = include_str!("runtime/runtime_css.ts").to_string();
     let content = content.replace("__CSS__", code.as_str());
-    // 这里将 css 依赖的文件引入到 js 中
-    // 判断条件是 .css 后缀
     let require_code: Vec<String> = dep_map
         .values()
-        .filter(|val| val.ends_with(".css"))
         .map(|val| format!("require(\"{}\");\n", val))
         .collect();
     let content = format!("{}{}", require_code.join(""), content);
