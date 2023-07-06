@@ -3,15 +3,14 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use lightningcss::stylesheet::{MinifyOptions, ParserOptions, PrinterOptions, StyleSheet};
 use swc_ecma_ast::Module;
 use tracing::debug;
 
 use crate::ast::{base64_encode, build_js_ast, css_ast_to_code};
 use crate::compiler::{Compiler, Context};
-use crate::config::{DevtoolConfig, Mode};
+use crate::config::DevtoolConfig;
+use crate::lightningcss::lightingcss_transform;
 use crate::module::{ModuleAst, ModuleId};
-use crate::targets;
 
 impl Compiler {
     pub fn transform_all(&self) {
@@ -55,25 +54,8 @@ fn transform_css(
 ) -> Module {
     // ast to code
     let (code, sourcemap) = css_ast_to_code(ast, context);
-
     // lightingcss
-    // something more, lightning will transform @import url() to @import ""
-    let targets = targets::lightningcss_targets_from_map(context.config.targets.clone());
-    let mut lightingcss_stylesheet = StyleSheet::parse(&code, ParserOptions::default()).unwrap();
-    lightingcss_stylesheet
-        .minify(MinifyOptions {
-            targets,
-            ..Default::default()
-        })
-        .unwrap();
-    let out = lightingcss_stylesheet
-        .to_css(PrinterOptions {
-            minify: matches!(context.config.mode, Mode::Production),
-            targets,
-            ..Default::default()
-        })
-        .unwrap();
-    let mut code = out.code;
+    let mut code = lightingcss_transform(&code, context);
 
     // TODO: 后续支持生成单独的 css 文件后需要优化
     if matches!(context.config.devtool, DevtoolConfig::SourceMap) {
