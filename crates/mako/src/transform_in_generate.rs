@@ -101,6 +101,8 @@ fn transform_css(
     // code to js ast
     let content = include_str!("runtime/runtime_css.ts").to_string();
     let content = content.replace("__CSS__", code.as_str());
+    // 这里将 css 依赖的文件引入到 js 中
+    // 判断条件是 .css 后缀
     let require_code: Vec<String> = dep_map
         .values()
         .filter(|val| val.ends_with(".css"))

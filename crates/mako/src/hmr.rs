@@ -19,12 +19,14 @@ impl Compiler {
         current_hash: u64,
     ) -> (String, String) {
         let module_graph = &self.context.module_graph.read().unwrap();
-        let js_stmts = modules_to_js_stmts(module_ids, module_graph);
+        let js_stmts = modules_to_js_stmts(module_ids, module_graph, &self.context);
         let mut content = include_str!("runtime/runtime_hmr.js").to_string();
-        content = content.replace("__CHUNK_ID__", &chunk.id.id).replace(
-            "__runtime_code__",
-            &format!("runtime._h='{}';", current_hash),
-        );
+        content = content
+            .replace("__CHUNK_ID__", &chunk.id.generate(&self.context))
+            .replace(
+                "__runtime_code__",
+                &format!("runtime._h='{}';", current_hash),
+            );
         let filename = &chunk.filename();
         // TODO: handle error
         let mut js_ast = build_js_ast(filename, content.as_str(), &self.context).unwrap();
@@ -88,18 +90,19 @@ mod tests {
         assert_eq!(
             js_code.trim(),
             r#"
-globalThis.makoModuleHotUpdate('/index.ts', {
+globalThis.makoModuleHotUpdate('./index.ts', {
     modules: {
-        "/bar_1.ts": function(module, exports, require) {
+        "./bar_1.ts": function(module, exports, require) {
             "use strict";
             Object.defineProperty(exports, "__esModule", {
                 value: true
             });
-            require("/foo.ts");
+            require("./foo.ts");
         }
     }
 }, function(runtime) {
     runtime._h = '42';
+    ;
 });
 
 //# sourceMappingURL=index.js.map

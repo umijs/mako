@@ -52,6 +52,14 @@ pub enum DevtoolConfig {
     InlineSourceMap,
 }
 
+#[derive(Deserialize, Clone, Copy, Debug)]
+pub enum ModuleIdStrategy {
+    #[serde(rename = "hashed")]
+    Hashed,
+    #[serde(rename = "named")]
+    Named,
+}
+
 #[derive(Deserialize, Debug)]
 pub struct Config {
     pub entry: HashMap<String, PathBuf>,
@@ -66,6 +74,7 @@ pub struct Config {
     pub inline_limit: usize,
     pub targets: HashMap<String, usize>,
     pub platform: Platform,
+    pub module_id_strategy: ModuleIdStrategy,
     pub define: HashMap<String, Value>,
     // temp solution
     pub hmr: bool,
@@ -91,7 +100,8 @@ const DEFAULT_CONFIG: &str = r#"
     "platform": "browser",
     "hmr": true,
     "hmr_host": "127.0.0.1",
-    "hmr_port": "3000"
+    "hmr_port": "3000",
+    "module_id_strategy": "named"
 }
 "#;
 

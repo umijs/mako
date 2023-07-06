@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use swc_common::DUMMY_SP;
 use swc_ecma_ast::{
     ArrayLit, CallExpr, Callee, Expr, ExprOrSpread, Ident, Lit, MemberExpr, MemberProp,
@@ -5,10 +7,14 @@ use swc_ecma_ast::{
 use swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::analyze_deps::is_dynamic_import;
+use crate::compiler::Context;
+use crate::module::generate_module_id;
 
-pub struct DynamicImport {}
+pub struct DynamicImport<'a> {
+    pub context: &'a Arc<Context>,
+}
 
-impl VisitMut for DynamicImport {
+impl VisitMut for DynamicImport<'_> {
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Call(call_expr) = expr {
             if is_dynamic_import(call_expr) {
@@ -17,6 +23,8 @@ impl VisitMut for DynamicImport {
                     ..
                 } = &mut call_expr.args[0]
                 {
+                    let module_id =
+                        generate_module_id(source.value.clone().to_string(), self.context);
                     // require.ensure(["id"]).then(require.bind(require, "id"))
                     *expr = Expr::Call(CallExpr {
                         span: DUMMY_SP,
@@ -43,7 +51,9 @@ impl VisitMut for DynamicImport {
                                         span: DUMMY_SP,
                                         elems: vec![Some(ExprOrSpread {
                                             spread: None,
-                                            expr: Box::new(Expr::Lit(Lit::Str(source.clone()))),
+                                            expr: Box::new(Expr::Lit(Lit::Str(
+                                                module_id.clone().into(),
+                                            ))),
                                         })],
                                     })),
                                 }],
@@ -83,7 +93,7 @@ impl VisitMut for DynamicImport {
                                     },
                                     ExprOrSpread {
                                         spread: None,
-                                        expr: Box::new(Expr::Lit(Lit::Str(source.clone()))),
+                                        expr: Box::new(Expr::Lit(Lit::Str(module_id.into()))),
                                     },
                                 ],
                                 type_args: None,
@@ -149,7 +159,7 @@ require.ensure([
 
         let globals = Globals::default();
         GLOBALS.set(&globals, || {
-            let mut dyanmic_import = DynamicImport {};
+            let mut dyanmic_import = DynamicImport { context: &context };
             ast.visit_mut_with(&mut dyanmic_import);
         });
 
