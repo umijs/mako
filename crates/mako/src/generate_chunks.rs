@@ -77,7 +77,6 @@ impl Compiler {
                     include_str!("runtime/runtime_chunk.js").to_string()
                 };
                 content = content.replace("main", chunk.id.generate(&self.context).as_str());
-                // content = content.replace("main", chunk.id.id.as_str());
                 let file_name = if matches!(chunk.chunk_type, crate::chunk::ChunkType::Entry) {
                     "mako_internal_runtime_entry.js"
                 } else {
@@ -240,7 +239,6 @@ pub fn modules_to_js_stmts(
         match ast {
             ModuleAst::Script(ast) => {
                 // id: function(module, exports, require) {}
-                // 生成 define('module_id' 的位置
                 js_stmts.push(build_props(
                     module.id.generate(context).as_str(),
                     Box::new(Expr::Fn(build_fn_expr(
