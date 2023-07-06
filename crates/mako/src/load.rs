@@ -53,6 +53,8 @@ pub enum LoadError {
     FileNotFound { path: String },
     #[error("Read file size error: {path:?}")]
     ReadFileSizeError { path: String },
+    #[error("To svgr error: {path:?}, reason: {reason:?}")]
+    ToSvgrError { path: String, reason: String },
 }
 
 pub fn load(path: &str, is_entry: bool, context: &Arc<Context>) -> Result<Content> {
@@ -185,16 +187,19 @@ fn load_svg(path: &str) -> Result<Content> {
             ..Default::default()
         },
     );
-    // todo: 1.return result<string, error> rather than result<string, string>
-    // todo: 2.transform class to className
-    // have submit issues https://github.com/svg-rust/svgr-rs/issues/21
+    // todo: return result<string, error> rather than result<string, string>
+    // need svgr-rs to improve
     let svgr_code = match transform_code {
         Ok(res) => res,
-        Err(res) => res,
+        Err(reason) => {
+            return Err(anyhow!(LoadError::ToSvgrError {
+                path: path.to_string(),
+                reason,
+            }));
+        }
     };
 
-    // todo: now all svg will base64
-    // will improve the case - large file, after assets structure improved which metioned in load_assets
+    // todo: now all svg will base64, will improve the case - large file
     let base64 = to_base64(path).with_context(|| LoadError::ToBase64Error {
         path: path.to_string(),
     })?;

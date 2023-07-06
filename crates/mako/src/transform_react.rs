@@ -27,7 +27,8 @@ pub fn mako_react(
     let is_dev = matches!(context.config.mode, Mode::Development);
     let use_refresh = is_dev && context.config.hmr && !task.path.contains("/node_modules/");
 
-    let is_jsx = task.path.ends_with(".jsx") || task.path.ends_with(".tsx");
+    let is_jsx =
+        task.path.ends_with(".jsx") || task.path.ends_with(".tsx") || task.path.ends_with(".svg");
 
     if !is_jsx {
         return if task.is_entry && is_dev {
