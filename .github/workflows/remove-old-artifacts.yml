@@ -15,6 +15,8 @@ jobs:
       uses: c-hive/gha-remove-artifacts@v1
       with:
         age: '1 hours' # '<number> <unit>', e.g. 5 days, 2 years, 90 seconds, parsed by Moment.js
+        GITHUB_TOKEN: ${{ secrets.GH_DOTCOM_TOKEN }}
+
         # Optional inputs
         # skip-tags: true
         # skip-recent: 5
