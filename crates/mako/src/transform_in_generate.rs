@@ -105,6 +105,7 @@ fn transform_css(
     // 判断条件是 .css 后缀
     let require_code: Vec<String> = dep_map
         .values()
+        .filter(|val| val.ends_with(".css"))
         .map(|val| format!("require(\"{}\");\n", val))
         .collect();
     let content = format!("{}{}", require_code.join(""), content);
