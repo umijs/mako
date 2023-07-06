@@ -41,9 +41,12 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) {
         let info = module.info.as_mut().unwrap();
         let path = info.path.clone();
         let ast = &mut info.ast;
+        // todo: should remove this if we keep dev and prod the same
         if let ModuleAst::Css(ast) = ast {
-            let ast = transform_css(ast, &path, dep_map, context);
-            info.set_ast(ModuleAst::Script(ast));
+            if false {
+                let ast = transform_css(ast, &path, dep_map, context);
+                info.set_ast(ModuleAst::Script(ast));
+            }
         }
     });
 }

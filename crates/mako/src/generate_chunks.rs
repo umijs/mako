@@ -5,10 +5,11 @@ use std::vec;
 use anyhow::Result;
 use rayon::prelude::*;
 use swc_common::DUMMY_SP;
+use swc_css_ast::Stylesheet;
 use swc_ecma_ast::{
     ArrayLit, BindingIdent, BlockStmt, CallExpr, Callee, Decl, Expr, ExprOrSpread, ExprStmt,
-    FnExpr, Function, Ident, KeyValueProp, MemberExpr, MemberProp, Module, ModuleItem, ObjectLit,
-    Param, Pat, Prop, PropOrSpread, Stmt, Str, VarDecl,
+    FnExpr, Function, Ident, KeyValueProp, MemberExpr, MemberProp, ModuleItem, ObjectLit, Param,
+    Pat, Prop, PropOrSpread, Stmt, Str, VarDecl,
 };
 
 use crate::ast::build_js_ast;
@@ -17,7 +18,7 @@ use crate::module::{ModuleAst, ModuleId};
 
 pub struct OutputAst {
     pub path: String,
-    pub js_ast: Module,
+    pub ast: ModuleAst,
 }
 
 impl Compiler {
@@ -51,12 +52,13 @@ impl Compiler {
             chunks_map_str.join("\n")
         );
 
-        chunks
+        let chunks_ast = chunks
             .par_iter()
             .map(|chunk| {
                 // build stmts
                 let module_ids = chunk.get_modules();
-                let js_stmts = modules_to_js_stmts(module_ids, &module_graph, &self.context);
+                let (js_stmts, merged_css_ast) =
+                    modules_to_js_stmts(module_ids, &module_graph, &self.context);
 
                 // build js ast
                 let mut content = if matches!(chunk.chunk_type, crate::chunk::ChunkType::Entry) {
@@ -160,13 +162,25 @@ impl Compiler {
                 }
 
                 let filename = chunk.filename();
+                let css_filename = format!("{}.css", filename.strip_suffix(".js").unwrap_or(""));
 
-                Ok(OutputAst {
+                let mut output = vec![];
+                output.push(OutputAst {
                     path: filename,
-                    js_ast,
-                })
+                    ast: ModuleAst::Script(js_ast),
+                });
+
+                if let Some(merged_css_ast) = merged_css_ast {
+                    output.push(OutputAst {
+                        path: css_filename,
+                        ast: ModuleAst::Css(merged_css_ast),
+                    });
+                }
+                output
             })
-            .collect::<Result<Vec<OutputAst>>>()
+            .flatten()
+            .collect();
+        Ok(chunks_ast)
     }
 }
 
@@ -228,8 +242,13 @@ pub fn modules_to_js_stmts(
     module_ids: &HashSet<ModuleId>,
     module_graph: &std::sync::RwLockReadGuard<crate::module_graph::ModuleGraph>,
     context: &Arc<Context>,
-) -> Vec<PropOrSpread> {
+) -> (Vec<PropOrSpread>, Option<Stylesheet>) {
     let mut js_stmts = vec![];
+    let mut merged_css_ast = Stylesheet {
+        span: DUMMY_SP,
+        rules: vec![],
+    };
+    let mut has_css = false;
     let mut module_ids: Vec<_> = module_ids.iter().collect();
     module_ids.sort_by_key(|module_id| module_id.id.to_string());
     module_ids.iter().for_each(|module_id| {
@@ -255,13 +274,16 @@ pub fn modules_to_js_stmts(
                     ))),
                 ));
             }
-            ModuleAst::Css(_ast) => {
-                // TODO:
-                // 目前 transform_all 之后，css 的 ast 会变成 js 的 ast，所以这里不需要处理
-                // 之后如果要支持提取独立的 css 文件，会需要在这里进行处理
+            ModuleAst::Css(ast) => {
+                has_css = true;
+                merged_css_ast.rules.extend(ast.rules.clone());
             }
             ModuleAst::None => {}
         }
     });
-    js_stmts
+    if has_css {
+        (js_stmts, Some(merged_css_ast))
+    } else {
+        (js_stmts, None)
+    }
 }
