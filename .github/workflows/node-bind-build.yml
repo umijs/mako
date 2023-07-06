@@ -47,14 +47,6 @@ jobs:
             build: |
               pnpm --filter @okamjs/okam  build
               strip -x ./crates/node/*.node
-          - host: windows-latest
-            build: pnpm --filter @okamjs/okam build
-            target: x86_64-pc-windows-msvc
-          - host: windows-latest
-            build: |
-              rustup target add i686-pc-windows-msvc
-              pnpm --filter @okamjs/okam  build --target i686-pc-windows-msvc
-            target: i686-pc-windows-msvc
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian
@@ -62,46 +54,12 @@ jobs:
               set -e &&
               pnpm --filter @okamjs/okam build --target x86_64-unknown-linux-gnu &&
               strip ./crates/node/*.node
-          - host: ubuntu-latest
-            target: x86_64-unknown-linux-musl
-            docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
-            build: set -e && pnpm --filter @okamjs/okam build && strip ./crates/node/*.node
           - host: macos-latest
             target: aarch64-apple-darwin
             build: |
               rustup target add aarch64-apple-darwin
               pnpm --filter @okamjs/okam build --target aarch64-apple-darwin
               strip -x ./crates/node/*.node
-          - host: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-            docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian-aarch64
-            build: |-
-              set -e &&
-              rustup target add aarch64-unknown-linux-gnu &&
-              pnpm --filter @okamjs/okam build --target aarch64-unknown-linux-gnu &&
-              aarch64-unknown-linux-gnu-strip ./crates/node/*.node
-          - host: ubuntu-latest
-            target: armv7-unknown-linux-gnueabihf
-            setup: |
-              sudo apt-get update
-              sudo apt-get install gcc-arm-linux-gnueabihf -y
-            build: |
-              rustup target add armv7-unknown-linux-gnueabihf
-              pnpm --filter @okamjs/okam build --target armv7-unknown-linux-gnueabihf
-              arm-linux-gnueabihf-strip ./crates/node/*.node
-          - host: ubuntu-latest
-            target: aarch64-unknown-linux-musl
-            docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
-            build: |-
-              set -e &&
-              rustup target add aarch64-unknown-linux-musl &&
-              pnpm --filter @okamjs/okam build --target aarch64-unknown-linux-musl &&
-              /aarch64-linux-musl-cross/bin/aarch64-linux-musl-strip ./crates/node/*.node
-          - host: windows-latest
-            target: aarch64-pc-windows-msvc
-            build: |
-              rustup target add aarch64-pc-windows-msvc
-              pnpm --filter @okamjs/okam build --target aarch64-pc-windows-msvc
     name: stable - ${{ matrix.settings.target }} - node@18
     runs-on: ${{ matrix.settings.host }}
     steps:
