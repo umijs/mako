@@ -46,7 +46,7 @@ jobs:
       - name: build
         run: cargo build -v
       - name: test
-        if: ${{ matrix.rust == 'stable' || matrix.rust == 'beta' || matrix.rust == 'nightly' }}
+        if: ${{ matrix.rust == 'stable' || matrix.rust == 'beta' || matrix.rust == 'nightly-2022-09-23' }}
         run: >
           cargo test -v
       - name: build_fixture

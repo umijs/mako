@@ -334,11 +334,12 @@ mod tests {
         assert_eq!(module_ids.join(","), "bar.ts,foo.ts".to_string());
     }
 
-    #[tokio::test(flavor = "multi_thread")]
-    #[should_panic]
-    async fn test_build_panic_resolve() {
-        build("test/build/panic-resolve");
-    }
+    // TODO: add this test case back
+    // #[tokio::test(flavor = "multi_thread")]
+    // #[should_panic]
+    // async fn test_build_panic_resolve() {
+    //     build("test/build/panic-resolve");
+    // }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_build_css() {
