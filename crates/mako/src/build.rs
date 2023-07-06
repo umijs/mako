@@ -1,4 +1,4 @@
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
@@ -234,6 +234,10 @@ impl Compiler {
             // resolve 报错时的 target 和 source
             let mut source = e.1;
             let mut target = e.0;
+            // 使用 hasMap 记录循环依赖
+            let mut target_map: HashMap<String, i32> = HashMap::new();
+            target_map.insert(target.clone(), 1);
+
             let mut err: String = format!(
                 "\n\nResolve Error: Resolve \"{}\" failed from \"{}\" \n",
                 source, target
@@ -251,6 +255,14 @@ impl Compiler {
                 target = target_module_id.id;
                 // 拼接引用堆栈 string
                 err = format!("{}  -> Resolve \"{}\" from \"{}\" \n", err, source, target);
+
+                if target_map.contains_key(&target) {
+                    // 存在循环依赖
+                    err = format!("{}  -> \"{}\" 中存在循环依赖", err, target);
+                    break;
+                } else {
+                    target_map.insert(target.clone(), 1);
+                }
             }
             // 调整格式
             err = format!("{} \n", err);
