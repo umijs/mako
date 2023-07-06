@@ -143,7 +143,7 @@ fn load_xml(path: &str) -> Result<Content> {
 }
 
 // 统一处理各类 asset，将其转为 base64 or 静态资源
-fn internal_handle_asset<T: AsRef<str>>(context: &Arc<Context>, path: T) -> Result<String> {
+pub fn internal_handle_asset<T: AsRef<str>>(context: &Arc<Context>, path: T) -> Result<String> {
     let path_str = path.as_ref();
     let path_string = path_str.to_string();
     let file_size = file_size(path_str).with_context(|| LoadError::ReadFileSizeError {
