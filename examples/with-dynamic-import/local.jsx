@@ -1,3 +1,3 @@
 export default function Local() {
-  return <div>Non Lazy Component</div>;
+  return <div data-test-id="local">Non Lazy Component</div>;
 }
