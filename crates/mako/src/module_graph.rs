@@ -3,7 +3,7 @@ use std::fmt;
 
 use petgraph::graph::{DefaultIx, NodeIndex};
 use petgraph::prelude::EdgeRef;
-use petgraph::stable_graph::StableDiGraph;
+use petgraph::stable_graph::{StableDiGraph, WalkNeighbors};
 use petgraph::visit::IntoEdgeReferences;
 use petgraph::Direction;
 
@@ -128,15 +128,18 @@ impl ModuleGraph {
         self.graph.update_edge(*from, *to, edge);
     }
 
-    pub fn get_dependencies(&self, module_id: &ModuleId) -> Vec<(&ModuleId, &Dependency)> {
+    // 公共方法抽出, InComing 找 targets, Outing 找 dependencies
+    fn get_edges(&self, module_id: &ModuleId, direction: Direction) -> WalkNeighbors<u32> {
         let i = self
             .id_index_map
             .get(module_id)
             .unwrap_or_else(|| panic!("module_id {:?} not found in the module graph", module_id));
-        let mut edges = self
-            .graph
-            .neighbors_directed(*i, Direction::Outgoing)
-            .detach();
+        let edges = self.graph.neighbors_directed(*i, direction).detach();
+        edges
+    }
+
+    pub fn get_dependencies(&self, module_id: &ModuleId) -> Vec<(&ModuleId, &Dependency)> {
+        let mut edges = self.get_edges(module_id, Direction::Outgoing);
         let mut deps: Vec<(&ModuleId, &Dependency)> = vec![];
         while let Some((edge_index, node_index)) = edges.next(&self.graph) {
             let dependency = self.graph.edge_weight(edge_index).unwrap();
@@ -147,25 +150,15 @@ impl ModuleGraph {
         deps
     }
 
-    pub fn get_dependents(&self, module_id: &ModuleId) -> Vec<(ModuleId, Dependency)> {
-        let i = self
-            .id_index_map
-            .get(module_id)
-            .unwrap_or_else(|| panic!("module_id {:?} should in the module graph", module_id));
-
-        let mut edges = self
-            .graph
-            .neighbors_directed(*i, Direction::Incoming)
-            .detach();
-
-        let mut incoming_modules = Vec::new();
-
-        while let Some((edge_index, node_index)) = edges.next(&self.graph) {
-            let module_id = self.graph[node_index].id.clone();
-            incoming_modules.push((module_id, self.graph[edge_index].clone()));
+    pub fn get_targets(&self, module_id: &ModuleId) -> Vec<ModuleId> {
+        let mut edges = self.get_edges(module_id, Direction::Incoming);
+        let mut targets = vec![];
+        while let Some((_, node_index)) = edges.next(&self.graph) {
+            let module = self.graph.node_weight(node_index).unwrap();
+            targets.push(module.id.clone());
         }
 
-        incoming_modules
+        targets
     }
 }
 

@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "e2e:ci": "start-server-and-test start 3000 test",
+    "start": "cargo run  -- $PWD --watch",
+    "test": "cypress run"
   },
   "keywords": [],
   "author": "pshu",
@@ -14,6 +16,8 @@
     "react-dom": "18.2.0"
   },
   "devDependencies": {
-    "react-refresh": "^0.14.0"
+    "cypress": "^12.17.0",
+    "react-refresh": "^0.14.0",
+    "start-server-and-test": "^2.0.0"
   }
 }

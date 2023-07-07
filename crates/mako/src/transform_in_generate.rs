@@ -3,7 +3,6 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use lightningcss::stylesheet::{MinifyOptions, ParserOptions, PrinterOptions, StyleSheet};
 use swc_common::DUMMY_SP;
 use swc_ecma_ast::{
     ArrowExpr, BindingIdent, BlockStmt, BlockStmtOrExpr, CallExpr, Callee, Expr, ExprOrSpread,
@@ -13,9 +12,9 @@ use tracing::debug;
 
 use crate::ast::{base64_encode, build_js_ast, css_ast_to_code};
 use crate::compiler::{Compiler, Context};
-use crate::config::{DevtoolConfig, Mode};
+use crate::config::DevtoolConfig;
+use crate::lightningcss::lightingcss_transform;
 use crate::module::{ModuleAst, ModuleId};
-use crate::targets;
 
 impl Compiler {
     pub fn transform_all(&self) {
@@ -35,7 +34,9 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) {
 
         let dep_map: HashMap<String, String> = deps
             .into_iter()
-            .map(|(id, dep)| (dep.source.clone(), id.id.clone()))
+            // 仅保留 .css 后缀的 require，避免不必要的计算和内存使用
+            .filter(|(id, _dep)| id.id.ends_with(".css"))
+            .map(|(id, dep)| (dep.source.clone(), id.generate(context)))
             .collect();
         drop(module_graph);
 
@@ -161,25 +162,8 @@ fn transform_css(
 ) -> Module {
     // ast to code
     let (code, sourcemap) = css_ast_to_code(ast, context);
-
     // lightingcss
-    // something more, lightning will transform @import url() to @import ""
-    let targets = targets::lightningcss_targets_from_map(context.config.targets.clone());
-    let mut lightingcss_stylesheet = StyleSheet::parse(&code, ParserOptions::default()).unwrap();
-    lightingcss_stylesheet
-        .minify(MinifyOptions {
-            targets,
-            ..Default::default()
-        })
-        .unwrap();
-    let out = lightingcss_stylesheet
-        .to_css(PrinterOptions {
-            minify: matches!(context.config.mode, Mode::Production),
-            targets,
-            ..Default::default()
-        })
-        .unwrap();
-    let mut code = out.code;
+    let mut code = lightingcss_transform(&code, context);
 
     // TODO: 后续支持生成单独的 css 文件后需要优化
     if matches!(context.config.devtool, DevtoolConfig::SourceMap) {
@@ -207,11 +191,8 @@ fn transform_css(
     // code to js ast
     let content = include_str!("runtime/runtime_css.ts").to_string();
     let content = content.replace("__CSS__", code.as_str());
-    // 这里将 css 依赖的文件引入到 js 中
-    // 判断条件是 .css 后缀
     let require_code: Vec<String> = dep_map
         .values()
-        .filter(|val| val.ends_with(".css"))
         .map(|val| format!("require(\"{}\");\n", val))
         .collect();
     let content = format!("{}{}", require_code.join(""), content);

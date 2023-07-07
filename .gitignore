@@ -9,3 +9,4 @@
 /crates/mako/test/compile/*/dist
 .DS_Store
 .idea
+**/cypress/videos/

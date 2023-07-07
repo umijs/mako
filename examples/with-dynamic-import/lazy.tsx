@@ -13,7 +13,7 @@ export default function LazyComponent() {
   return (
     <div>
       <h3>{text}</h3>
-      <h3>count: {count}</h3>
+      <h3 data-test-id="dynamic-counter">count: {count}</h3>
       {/* rome-ignore lint/a11y/useButtonType: <explanation> */}
       <button
         onClick={() => {

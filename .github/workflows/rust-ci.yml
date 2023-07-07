@@ -33,6 +33,7 @@ jobs:
         with:
           node-version: ${{ matrix.node_version }}
           cache: "pnpm"
+          token: ${{ secrets.GH_DOTCOM_TOKEN }}
       - run: pnpm i --no-lockfile
       - uses: actions-rs/toolchain@v1
         with:
@@ -45,11 +46,13 @@ jobs:
       - name: build
         run: cargo build -v
       - name: test
-        if: ${{ matrix.rust == 'stable' || matrix.rust == 'beta' || matrix.rust == 'nightly' }}
+        if: ${{ matrix.rust == 'stable' || matrix.rust == 'beta' || matrix.rust == 'nightly-2022-09-23' }}
         run: >
           cargo test -v
       - name: build_fixture
         run: cargo run --bin mako examples/normal
+      - name: HMR-CI
+        run: pnpm --filter with-dynamic-import run e2e:ci
 
   # build_benchmarks:
   #   runs-on: ubuntu-latest
