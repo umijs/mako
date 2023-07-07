@@ -84,7 +84,7 @@ fn wrap_async_module(ast: &mut Module, top_level_await: bool) -> Module {
         span: DUMMY_SP,
         callee: Callee::Expr(Box::new(Expr::Ident(Ident {
             span: DUMMY_SP,
-            sym: "require.async".into(),
+            sym: "require._async".into(),
             optional: false,
         }))),
         type_args: None,

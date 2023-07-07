@@ -38,7 +38,7 @@ var wrapDeps = (deps) =>
     ret[makoExports] = dep;
     return ret;
   });
-requireModule.async = (module, body, hasAwait) => {
+requireModule._async = (module, body, hasAwait) => {
   var queue;
   hasAwait && ((queue = []).d = -1);
   var depQueues = new Set();
