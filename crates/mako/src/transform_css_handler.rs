@@ -7,7 +7,7 @@ use swc_css_visit::{VisitMut, VisitMutWith};
 
 use crate::analyze_deps::is_url_ignored;
 use crate::compiler::Context;
-use crate::load::internal_handle_asset;
+use crate::load::handle_asset;
 
 pub struct CssHandler<'a> {
     pub dep_map: HashMap<String, String>,
@@ -58,7 +58,7 @@ impl VisitMut for CssHandler<'_> {
                 if !is_url_ignored(url) {
                     if let Some(replacement) = self.dep_map.get(url) {
                         // CSS url() 里的资源是 css visit 时 handle 的
-                        let asset_content = internal_handle_asset(self.context, replacement);
+                        let asset_content = handle_asset(self.context, replacement);
                         s.value = asset_content.unwrap_or_else(|_| replacement.clone()).into();
                         s.raw = None;
                     }
@@ -69,7 +69,7 @@ impl VisitMut for CssHandler<'_> {
                 if !is_url_ignored(url) {
                     if let Some(replacement) = self.dep_map.get(url) {
                         // CSS url() 里的资源是 css visit 时 handle 的
-                        let asset_content = internal_handle_asset(self.context, replacement);
+                        let asset_content = handle_asset(self.context, replacement);
                         s.value = asset_content.unwrap_or_else(|_| replacement.clone()).into();
                         s.raw = None;
                     }

@@ -143,7 +143,7 @@ fn load_xml(path: &str) -> Result<Content> {
 }
 
 // 统一处理各类 asset，将其转为 base64 or 静态资源
-pub fn internal_handle_asset<T: AsRef<str>>(context: &Arc<Context>, path: T) -> Result<String> {
+pub fn handle_asset<T: AsRef<str>>(context: &Arc<Context>, path: T) -> Result<String> {
     let path_str = path.as_ref();
     let path_string = path_str.to_string();
     let file_size = file_size(path_str).with_context(|| LoadError::ReadFileSizeError {
@@ -218,7 +218,7 @@ fn load_svg(path: &str, context: &Arc<Context>) -> Result<Content> {
         }
     };
 
-    let default_svg = internal_handle_asset(context, path)?;
+    let default_svg = handle_asset(context, path)?;
 
     Ok(Content::Js(format!(
         "{}\nexport default \"{}\";",
@@ -227,7 +227,7 @@ fn load_svg(path: &str, context: &Arc<Context>) -> Result<Content> {
 }
 
 fn load_assets(path: &str, context: &Arc<Context>) -> Result<Content> {
-    let asset_content = internal_handle_asset(context, path)?;
+    let asset_content = handle_asset(context, path)?;
     Ok(Content::Js(format!(
         "module.exports = \"{}\";",
         asset_content
