@@ -50,6 +50,8 @@ jobs:
           cargo test -v
       - name: build_fixture
         run: cargo run --bin mako examples/normal
+      - name: HMR-CI
+        run: pnpm --filter with-dynamic-import run e2e:ci
 
   # build_benchmarks:
   #   runs-on: ubuntu-latest
