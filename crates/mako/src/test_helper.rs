@@ -62,6 +62,8 @@ pub fn create_mock_module(path: PathBuf, code: &str) -> Module {
         path: path.to_string_lossy().to_string(),
         external: None,
         raw_hash: 0,
+        is_async: false,
+        top_level_await: false,
     };
     Module::new(module_id, false, Some(info))
 }

@@ -31,6 +31,8 @@ pub struct ModuleInfo {
     pub path: String,
     pub external: Option<String>,
     pub raw_hash: u64,
+    pub top_level_await: bool,
+    pub is_async: bool,
 }
 
 impl ModuleInfo {

@@ -187,6 +187,8 @@ impl Compiler {
                         path: resolved_path,
                         external: Some(external),
                         raw_hash: 0,
+                        top_level_await: false,
+                        is_async: false,
                     }),
                 )
             }
@@ -212,7 +214,7 @@ impl Compiler {
         // transform & resolve
         // TODO: 支持同时有多个 resolve error
         let mut dep_resolve_err = None;
-        transform(&mut ast, &context, &task, &mut |ast| {
+        let top_level_await = transform(&mut ast, &context, &task, &mut |ast| {
             let deps = analyze_deps(ast);
             // resolve
             for dep in deps.iter() {
@@ -238,8 +240,26 @@ impl Compiler {
             path: task.path.clone(),
             external: None,
             raw_hash: content.raw_hash(),
+            top_level_await,
+            is_async: top_level_await,
         };
-        let module = Module::new(module_id, task.is_entry, Some(info));
+        let module = Module::new(module_id.clone(), task.is_entry, Some(info));
+
+        // Mark incoming modules as async modules
+        if top_level_await {
+            let dependents = {
+                let module_graph = context.module_graph.read().unwrap();
+                module_graph.get_dependents(&module_id)
+            };
+
+            let mut module_graph = context.module_graph.write().unwrap();
+            dependents.iter().for_each(|(module_id, _)| {
+                if let Some(module) = module_graph.get_module_mut(module_id) {
+                    let info = module.info.as_mut().unwrap();
+                    info.is_async = true;
+                }
+            });
+        }
 
         Ok((module, dependencies, task))
     }

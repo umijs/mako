@@ -4,7 +4,11 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use lightningcss::stylesheet::{MinifyOptions, ParserOptions, PrinterOptions, StyleSheet};
-use swc_ecma_ast::Module;
+use swc_common::DUMMY_SP;
+use swc_ecma_ast::{
+    ArrowExpr, BindingIdent, BlockStmt, BlockStmtOrExpr, CallExpr, Callee, Expr, ExprOrSpread,
+    ExprStmt, Ident, Module, ModuleItem, Pat, Stmt,
+};
 use tracing::debug;
 
 use crate::ast::{base64_encode, build_js_ast, css_ast_to_code};
@@ -40,11 +44,113 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) {
         let info = module.info.as_mut().unwrap();
         let path = info.path.clone();
         let ast = &mut info.ast;
-        if let ModuleAst::Css(ast) = ast {
+        if let ModuleAst::Script(ast) = ast {
+            // transform async module
+            if info.is_async {
+                let ast = transform_js(ast, info.top_level_await);
+                info.set_ast(ModuleAst::Script(ast));
+            }
+        } else if let ModuleAst::Css(ast) = ast {
             let ast = transform_css(ast, &path, dep_map, context);
             info.set_ast(ModuleAst::Script(ast));
         }
     });
+}
+
+fn transform_js(ast: &mut Module, top_level_await: bool) -> Module {
+    // TODO: 处理当前模块 import async module 的情形
+
+    wrap_async_module(ast, top_level_await)
+}
+
+/// Wrap module with `require.async(module, async (asyncDeps, asyncResult) => { });`
+fn wrap_async_module(ast: &mut Module, top_level_await: bool) -> Module {
+    ast.body.push(ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+        span: DUMMY_SP,
+        expr: Box::new(Expr::Call(CallExpr {
+            span: DUMMY_SP,
+            callee: Callee::Expr(Box::new(Expr::Ident(Ident {
+                span: DUMMY_SP,
+                sym: "asyncResult".into(),
+                optional: false,
+            }))),
+            type_args: None,
+            args: vec![],
+        })),
+    })));
+
+    let require_expr = Expr::Call(CallExpr {
+        span: DUMMY_SP,
+        callee: Callee::Expr(Box::new(Expr::Ident(Ident {
+            span: DUMMY_SP,
+            sym: "require.async".into(),
+            optional: false,
+        }))),
+        type_args: None,
+        args: vec![
+            ExprOrSpread {
+                spread: None,
+                expr: Box::new(Expr::Ident(Ident {
+                    span: DUMMY_SP,
+                    sym: "module".into(),
+                    optional: false,
+                })),
+            },
+            ExprOrSpread {
+                spread: None,
+                expr: Box::new(Expr::Arrow(ArrowExpr {
+                    is_async: true,
+                    is_generator: false,
+                    type_params: None,
+                    return_type: None,
+                    span: DUMMY_SP,
+                    params: vec![
+                        Pat::Ident(BindingIdent {
+                            id: Ident {
+                                span: DUMMY_SP,
+                                sym: "asyncDeps".into(),
+                                optional: false,
+                            },
+                            type_ann: None,
+                        }),
+                        Pat::Ident(BindingIdent {
+                            id: Ident {
+                                span: DUMMY_SP,
+                                sym: "asyncResult".into(),
+                                optional: false,
+                            },
+                            type_ann: None,
+                        }),
+                    ],
+                    body: Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
+                        span: DUMMY_SP,
+                        stmts: ast
+                            .body
+                            .iter()
+                            .map(|stmt| stmt.as_stmt().unwrap().clone())
+                            .collect(),
+                    })),
+                })),
+            },
+            ExprOrSpread {
+                spread: None,
+                expr: Box::new(Expr::Ident(Ident {
+                    span: DUMMY_SP,
+                    sym: if top_level_await { "1" } else { "0" }.into(),
+                    optional: false,
+                })),
+            },
+        ],
+    });
+
+    Module {
+        shebang: None,
+        span: DUMMY_SP,
+        body: vec![ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+            span: DUMMY_SP,
+            expr: Box::new(require_expr),
+        }))],
+    }
 }
 
 fn transform_css(

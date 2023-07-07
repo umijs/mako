@@ -50,6 +50,10 @@ impl ModuleGraph {
             .and_then(|i| self.graph.node_weight(*i))
     }
 
+    pub fn get_modules(&self) -> Vec<&Module> {
+        self.graph.node_weights().collect()
+    }
+
     pub fn remove_module(&mut self, module_id: &ModuleId) -> Module {
         let index = self
             .id_index_map
@@ -141,6 +145,27 @@ impl ModuleGraph {
         }
         deps.sort_by_key(|(_, dep)| dep.order);
         deps
+    }
+
+    pub fn get_dependents(&self, module_id: &ModuleId) -> Vec<(ModuleId, Dependency)> {
+        let i = self
+            .id_index_map
+            .get(module_id)
+            .unwrap_or_else(|| panic!("module_id {:?} should in the module graph", module_id));
+
+        let mut edges = self
+            .graph
+            .neighbors_directed(*i, Direction::Incoming)
+            .detach();
+
+        let mut incoming_modules = Vec::new();
+
+        while let Some((edge_index, node_index)) = edges.next(&self.graph) {
+            let module_id = self.graph[node_index].id.clone();
+            incoming_modules.push((module_id, self.graph[edge_index].clone()));
+        }
+
+        incoming_modules
     }
 }
 
