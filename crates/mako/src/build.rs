@@ -12,7 +12,7 @@ use crate::ast::build_js_ast;
 use crate::compiler::{Compiler, Context};
 use crate::config::Config;
 use crate::load::load;
-use crate::module::{Dependency, Module, ModuleAst, ModuleId, ModuleInfo};
+use crate::module::{Dependency, Module, ModuleAst, ModuleId, ModuleInfo, ResolveType};
 use crate::parse::parse;
 use crate::resolve::{get_resolvers, resolve, Resolvers};
 use crate::transform::transform;
@@ -247,7 +247,7 @@ impl Compiler {
 
             let id = ModuleId::new(target.clone());
             let module_graph = context.module_graph.read().unwrap();
-            let mut targets = module_graph.get_targets(&id);
+            let mut targets: Vec<&ModuleId> = module_graph.get_targets(&id);
 
             // 循环找 target
             while !targets.is_empty() {
@@ -286,14 +286,16 @@ impl Compiler {
         if top_level_await {
             let dependents = {
                 let module_graph = context.module_graph.read().unwrap();
-                module_graph.get_targets(&module_id)
+                module_graph.get_dependents(&module_id)
             };
 
             let mut module_graph = context.module_graph.write().unwrap();
-            dependents.iter().for_each(|module_id| {
-                if let Some(module) = module_graph.get_module_mut(module_id) {
-                    let info = module.info.as_mut().unwrap();
-                    info.is_async = true;
+            dependents.iter().for_each(|(module_id, dep)| {
+                if matches!(dep.resolve_type, ResolveType::Import) {
+                    if let Some(module) = module_graph.get_module_mut(module_id) {
+                        let info = module.info.as_mut().unwrap();
+                        info.is_async = true;
+                    }
                 }
             });
         }
