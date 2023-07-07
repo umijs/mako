@@ -196,6 +196,13 @@ impl ProjectWatch {
                             let next_full_hash =
                                 watch_compiler.generate_hot_update_chunks(res, *last_full_hash);
 
+                            if let Err(e) = next_full_hash {
+                                eprintln!("Error in watch: {:?}", e);
+                                return;
+                            }
+
+                            let next_full_hash = next_full_hash.unwrap();
+
                             if next_full_hash == *last_full_hash {
                                 // no need to continue
                                 return;

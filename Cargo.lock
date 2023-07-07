@@ -1505,6 +1505,7 @@ dependencies = [
  "swc_ecma_utils 0.117.13",
  "swc_ecma_visit 0.90.5",
  "swc_error_reporters",
+ "swc_node_comments",
  "thiserror",
  "tokio",
  "tokio-tungstenite",
@@ -3730,6 +3731,18 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "swc_node_comments"
+version = "0.18.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "800d308508c0517a04f115c769cf398c23a62bcb8bfa186b7d15c42861b7448a"
+dependencies = [
+ "ahash 0.7.6",
+ "dashmap",
+ "swc_atoms 0.5.6",
+ "swc_common 0.31.12",
 ]
 
 [[package]]

@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use anyhow::Result;
 use swc_ecma_ast::{
     CallExpr, Expr, ExprOrSpread, ExprStmt, KeyValueProp, ModuleItem, ObjectLit, Prop,
     PropOrSpread, Stmt,
@@ -17,7 +18,7 @@ impl Compiler {
         chunk: &Chunk,
         module_ids: &HashSet<ModuleId>,
         current_hash: u64,
-    ) -> (String, String) {
+    ) -> Result<(String, String)> {
         let module_graph = &self.context.module_graph.read().unwrap();
         let js_stmts = modules_to_js_stmts(module_ids, module_graph, &self.context);
         let mut content = include_str!("runtime/runtime_hmr.js").to_string();
@@ -29,7 +30,9 @@ impl Compiler {
             );
         let filename = &chunk.filename();
         // TODO: handle error
-        let mut js_ast = build_js_ast(filename, content.as_str(), &self.context).unwrap();
+        let mut js_ast = build_js_ast(filename, content.as_str(), &self.context)
+            .unwrap()
+            .ast;
 
         for stmt in &mut js_ast.body {
             if let ModuleItem::Stmt(Stmt::Expr(ExprStmt {
@@ -58,16 +61,16 @@ impl Compiler {
         }
 
         let (js_code, js_sourcemap) = js_ast_to_code(&js_ast, &self.context, filename).unwrap();
-        (js_code, js_sourcemap)
+        Ok((js_code, js_sourcemap))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
 
     use crate::compiler::Compiler;
     use crate::config::Config;
+    use crate::transform_in_generate::transform_modules;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_generate_hmr_chunk() {
@@ -78,10 +81,9 @@ mod tests {
         let chunk_graph = &compiler.context.chunk_graph.read().unwrap();
         let chunks = chunk_graph.get_chunks();
         let chunk = chunks[0];
-
-        let mut module_ids = HashSet::new();
-        module_ids.insert(compiler.context.root.join("bar_1.ts").into());
-        let (js_code, _js_sourcemap) = compiler.generate_hmr_chunk(chunk, &module_ids, 42);
+        let module_ids = chunk.get_modules();
+        transform_modules(module_ids.iter().cloned().collect(), &compiler.context).unwrap();
+        let (js_code, _js_sourcemap) = compiler.generate_hmr_chunk(chunk, module_ids, 42).unwrap();
         let js_code = js_code.replace(
             compiler.context.root.to_string_lossy().to_string().as_str(),
             "",
