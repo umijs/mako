@@ -229,6 +229,8 @@ impl Compiler {
         let mut removed_module_ids = HashSet::new();
         for path in removed {
             let from_module_id = ModuleId::from_path(path);
+
+            // TODO: 如果当前被删除的module还在被人依赖的话， 就报个错
             let mut deps_module_ids = vec![];
             let mut module_graph = self.context.module_graph.write().unwrap();
             module_graph

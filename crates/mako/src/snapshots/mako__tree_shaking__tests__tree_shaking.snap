@@ -3,7 +3,7 @@ source: crates/mako/src/tree_shaking.rs
 expression: content
 ---
 const chunksIdToUrlMap = {};
-chunksIdToUrlMap["<CWD>/crates/mako/test/build/tree-shaking/index.ts"] = `${"/"}index.js`;
+chunksIdToUrlMap["./index.ts"] = `${"/"}index.js`;
 function createRuntime(makoModules, entryModuleId) {
     const modulesRegistry = {};
     function requireModule(moduleId) {
@@ -11,6 +11,7 @@ function createRuntime(makoModules, entryModuleId) {
             return modulesRegistry[moduleId].exports;
         }
         const module = {
+            id: moduleId,
             exports: {}
         };
         modulesRegistry[moduleId] = module;
@@ -32,6 +33,7 @@ function createRuntime(makoModules, entryModuleId) {
     let currentParents = [];
     let currentChildModule;
     const hmrHandler = (options)=>{
+        const orginRequire = options.require;
         options.module.hot = createModuleHotObject(options.id, options.module);
         options.module.meta = {
             hot: options.module.hot
@@ -40,6 +42,9 @@ function createRuntime(makoModules, entryModuleId) {
         currentParents = [];
         options.module.children = [];
         options.require = createHmrRequire(options.require, options.id);
+        options.require.currentHash = ()=>{
+            return orginRequire._h;
+        };
     };
     const createHmrRequire = (require, moduleId)=>{
         const me = modulesRegistry[moduleId];
@@ -63,10 +68,10 @@ function createRuntime(makoModules, entryModuleId) {
             } else {}
             return require(request);
         };
-        fn.ensure = ensure;
+        Object.assign(fn, require);
         return fn;
     };
-    const applyHotUpdate = (chunkId, update)=>{
+    const applyHotUpdate = (chunkId, update, runtime)=>{
         const { modules , removedModules  } = update;
         const outdatedModules = [];
         for (const moduleId of Object.keys(modules)){
@@ -117,6 +122,7 @@ function createRuntime(makoModules, entryModuleId) {
         for (const module of outdatedSelfAcceptedModules){
             module.hot._requireSelf();
         }
+        runtime(requireModule);
     };
     const createModuleHotObject = (moduleId, me)=>{
         const hot = {
@@ -139,7 +145,8 @@ function createRuntime(makoModules, entryModuleId) {
             },
             invalidate () {},
             check () {
-                return fetch('/hot-update.json').then((res)=>{
+                const current_hash = requireModule.currentHash();
+                return fetch(`/${current_hash}.hot-update.json`).then((res)=>{
                     return res.json();
                 }).then((update)=>{
                     return Promise.all(update.c.map((chunk)=>{
@@ -149,6 +156,7 @@ function createRuntime(makoModules, entryModuleId) {
                         let ext = parts[l - 1];
                         const hotChunkName = [
                             left,
+                            current_hash,
                             'hot-update',
                             ext
                         ].join('.');
@@ -245,6 +253,10 @@ function createRuntime(makoModules, entryModuleId) {
             makoModules[id] = modules[id];
         }
     };
+    requireModule._h = '1714256350570608699';
+    requireModule.currentHash = ()=>{
+        return requireModule._h;
+    };
     requireModule.ensure = ensure;
     requireModule(entryModuleId);
     return {
@@ -255,7 +267,7 @@ function createRuntime(makoModules, entryModuleId) {
     };
 }
 const runtime = createRuntime({
-    "<CWD>/crates/mako/test/build/tree-shaking/1.ts": function(module, exports, require) {
+    "./1.ts": function(module, exports, require) {
         "use strict";
         Object.defineProperty(exports, "__esModule", {
             value: true
@@ -285,15 +297,15 @@ const runtime = createRuntime({
             console.log(bar);
         }
     },
-    "<CWD>/crates/mako/test/build/tree-shaking/index.ts": function(module, exports, require) {
+    "./index.ts": function(module, exports, require) {
         "use strict";
         Object.defineProperty(exports, "__esModule", {
             value: true
         });
-        var _1 = require("<CWD>/crates/mako/test/build/tree-shaking/1.ts");
+        var _1 = require("./1");
         console.log(_1.foo);
     }
-}, '<CWD>/crates/mako/test/build/tree-shaking/index.ts');
+}, './index.ts');
 globalThis.jsonpCallback = runtime._jsonpCallback;
 globalThis.modulesRegistry = runtime._modulesRegistry;
 globalThis.makoModuleHotUpdate = runtime._makoModuleHotUpdate;
