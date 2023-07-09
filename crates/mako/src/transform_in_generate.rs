@@ -75,14 +75,14 @@ fn transform_js(
     wrap_async_module(ast, top_level_await)
 }
 
+/// handle async module dependency
 fn handle_async_deps(ast: &mut Module, dep_map: HashMap<String, (Dependency, ModuleInfo)>) {
-    let mut new_body = vec![];
-    // let mut async_deps = vec![];
+    // get all async deps, such as ['async1', 'async2']
+    let mut async_deps = vec![];
+    // get the index of last async dep in ast.body
+    let mut last_async_dep_index = 0;
 
-    // TODO: 处理当前模块 import async module 的情形
-    for module_item in &ast.body {
-        new_body.push(module_item.clone());
-
+    for (i, module_item) in ast.body.iter().enumerate() {
         match module_item {
             ModuleItem::Stmt(stmt) => {
                 match stmt {
@@ -120,116 +120,17 @@ fn handle_async_deps(ast: &mut Module, dep_map: HashMap<String, (Dependency, Mod
                                                     ) {
                                                         // 2. get the deps which is async module
                                                         if info.is_async {
-                                                            let mut ident_name = String::new();
-                                                            //  get ident name
                                                             if let Pat::Ident(binding_ident) =
                                                                 &decl.name
                                                             {
-                                                                ident_name = binding_ident
-                                                                    .id
-                                                                    .sym
-                                                                    .to_string();
+                                                                async_deps.push(
+                                                                    binding_ident
+                                                                        .id
+                                                                        .sym
+                                                                        .to_string(),
+                                                                );
+                                                                last_async_dep_index = i;
                                                             }
-
-                                                            // 3. push new stmt
-                                                            new_body.push(ModuleItem::Stmt(
-                                                                Stmt::Decl(Decl::Var(Box::new(
-                                                                    VarDecl {
-                                                                        span: DUMMY_SP,
-                                                                        kind: VarDeclKind::Var,
-                                                                        declare: false,
-                                                                        decls: vec![VarDeclarator {
-                                                                        span: DUMMY_SP,
-                                                                        name: Pat::Ident(
-                                                                            BindingIdent {
-                                                                                id: Ident {
-                                                                                    span: DUMMY_SP,
-                                                                                    sym: ASYNC_DEPS_IDENT.into(),
-                                                                                    optional: false,
-                                                                                },
-                                                                                type_ann: None,
-                                                                            },
-                                                                        ),
-                                                                        init: Some(Box::new(
-                                                                            Expr::Call(CallExpr {
-                                                                                span: DUMMY_SP,
-                                                                                callee:
-                                                                                    Callee::Expr(
-                                                                                        Box::new(Expr::Ident(Ident { span: DUMMY_SP, sym: "handleAsyncDeps".into(), optional: false })),
-                                                                                    ),
-                                                                                args: vec![
-                                                                                    ExprOrSpread {
-                                                                                        spread: None,
-                                                                                        expr: Box::new(Expr::Array(ArrayLit {
-                                                                                            span: DUMMY_SP,
-                                                                                            elems: vec![
-                                                                                                Some(ExprOrSpread {
-                                                                                                    spread:None,
-                                                                                                    expr: Box::new(Expr::Ident(Ident { span: DUMMY_SP, sym: ident_name.clone().into(), optional: false }))
-                                                                                                })
-                                                                                            ]
-                                                                                        }))
-                                                                                    }
-                                                                                ],
-                                                                                type_args: None,
-                                                                            }),
-                                                                        )),
-                                                                        definite: false,
-                                                                    }],
-                                                                    },
-                                                                ))),
-                                                            ));
-
-                                                            new_body.push(ModuleItem::Stmt(
-                                                                Stmt::Expr(ExprStmt {
-                                                                    span: DUMMY_SP,
-                                                                    expr: Box::new(Expr::Assign(
-                                                                        AssignExpr {
-                                                                            span: DUMMY_SP,
-                                                                            left: PatOrExpr::Expr(Box::new(Expr::Array(ArrayLit { span: DUMMY_SP, elems: vec![
-                                                                                Some(ExprOrSpread { spread: None, expr: Box::new(Expr::Ident(Ident {
-                                                                                    span: DUMMY_SP, sym: ident_name.into(), optional: false,
-                                                                                })) })
-                                                                            ]}))),
-                                                                            right: Box::new(
-                                                                                Expr::Cond(CondExpr {
-                                                                                    span: DUMMY_SP,
-                                                                                    test: Box::new(Expr::Member(
-                                                                                        MemberExpr {
-                                                                                            span: DUMMY_SP,
-                                                                                            obj: Box::new(Expr::Ident(Ident {span: DUMMY_SP, sym: ASYNC_DEPS_IDENT.into(), optional: false})),
-                                                                                            prop: MemberProp::Ident(Ident { span: DUMMY_SP, sym: "then".into(), optional: false })
-                                                                                        }
-                                                                                    )),
-                                                                                    cons: Box::new(
-                                                                                        Expr::Call(CallExpr {
-                                                                                            span: DUMMY_SP,
-                                                                                            callee: Callee::Expr(
-                                                                                                Box::new(Expr::Paren(ParenExpr {span: DUMMY_SP, expr: Box::new(Expr::Await(
-                                                                                                    AwaitExpr {
-                                                                                                        span: DUMMY_SP,
-                                                                                                        arg: Box::new(
-                                                                                                            Expr::Ident(Ident {
-                                                                                                                span: DUMMY_SP,
-                                                                                                                sym: ASYNC_DEPS_IDENT.into(),
-                                                                                                                optional: false
-                                                                                                            })
-                                                                                                        )
-                                                                                                    }
-                                                                                                ))}))
-                                                                                            ),
-                                                                                            args: vec![],
-                                                                                            type_args: None,
-                                                                                        }),
-                                                                                    ),
-                                                                                    alt: Box::new(Expr::Ident(Ident { span: DUMMY_SP, sym: ASYNC_DEPS_IDENT.into(), optional: false }))
-                                                                                })
-                                                                            ),
-                                                                            op: AssignOp::Assign,
-                                                                        },
-                                                                    )),
-                                                                }),
-                                                            ))
                                                         }
                                                     }
                                                 }
@@ -247,10 +148,125 @@ fn handle_async_deps(ast: &mut Module, dep_map: HashMap<String, (Dependency, Mod
         }
     }
 
-    ast.body = new_body;
+    // insert a new stmt after all async deps
+    // `var __mako_async_dependencies__ = handleAsyncDeps([async1, async2]);`
+    ast.body.insert(
+        last_async_dep_index + 1,
+        ModuleItem::Stmt(Stmt::Decl(Decl::Var(Box::new(VarDecl {
+            span: DUMMY_SP,
+            kind: VarDeclKind::Var,
+            declare: false,
+            decls: vec![VarDeclarator {
+                span: DUMMY_SP,
+                name: Pat::Ident(BindingIdent {
+                    id: Ident {
+                        span: DUMMY_SP,
+                        sym: ASYNC_DEPS_IDENT.into(),
+                        optional: false,
+                    },
+                    type_ann: None,
+                }),
+                init: Some(Box::new(Expr::Call(CallExpr {
+                    span: DUMMY_SP,
+                    callee: Callee::Expr(Box::new(Expr::Ident(Ident {
+                        span: DUMMY_SP,
+                        sym: "handleAsyncDeps".into(),
+                        optional: false,
+                    }))),
+                    args: vec![ExprOrSpread {
+                        spread: None,
+                        expr: Box::new(Expr::Array(ArrayLit {
+                            span: DUMMY_SP,
+                            elems: async_deps
+                                .iter()
+                                .map(|dep| {
+                                    Some(ExprOrSpread {
+                                        spread: None,
+                                        expr: Box::new(Expr::Ident(Ident {
+                                            span: DUMMY_SP,
+                                            sym: dep.clone().into(),
+                                            optional: false,
+                                        })),
+                                    })
+                                })
+                                .collect(),
+                        })),
+                    }],
+                    type_args: None,
+                }))),
+                definite: false,
+            }],
+        })))),
+    );
+
+    // insert a new stmt after above stmt
+    // `[async1, async2] = __mako_async_dependencies__.then ? (await __mako_async_dependencies__)() : __mako_async_dependencies__;`
+    ast.body.insert(
+        last_async_dep_index + 2,
+        ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+            span: DUMMY_SP,
+            expr: Box::new(Expr::Assign(AssignExpr {
+                span: DUMMY_SP,
+                left: PatOrExpr::Expr(Box::new(Expr::Array(ArrayLit {
+                    span: DUMMY_SP,
+                    elems: async_deps
+                        .iter()
+                        .map(|dep| {
+                            Some(ExprOrSpread {
+                                spread: None,
+                                expr: Box::new(Expr::Ident(Ident {
+                                    span: DUMMY_SP,
+                                    sym: dep.clone().into(),
+                                    optional: false,
+                                })),
+                            })
+                        })
+                        .collect(),
+                }))),
+                right: Box::new(Expr::Cond(CondExpr {
+                    span: DUMMY_SP,
+                    test: Box::new(Expr::Member(MemberExpr {
+                        span: DUMMY_SP,
+                        obj: Box::new(Expr::Ident(Ident {
+                            span: DUMMY_SP,
+                            sym: ASYNC_DEPS_IDENT.into(),
+                            optional: false,
+                        })),
+                        prop: MemberProp::Ident(Ident {
+                            span: DUMMY_SP,
+                            sym: "then".into(),
+                            optional: false,
+                        }),
+                    })),
+                    cons: Box::new(Expr::Call(CallExpr {
+                        span: DUMMY_SP,
+                        callee: Callee::Expr(Box::new(Expr::Paren(ParenExpr {
+                            span: DUMMY_SP,
+                            expr: Box::new(Expr::Await(AwaitExpr {
+                                span: DUMMY_SP,
+                                arg: Box::new(Expr::Ident(Ident {
+                                    span: DUMMY_SP,
+                                    sym: ASYNC_DEPS_IDENT.into(),
+                                    optional: false,
+                                })),
+                            })),
+                        }))),
+                        args: vec![],
+                        type_args: None,
+                    })),
+                    alt: Box::new(Expr::Ident(Ident {
+                        span: DUMMY_SP,
+                        sym: ASYNC_DEPS_IDENT.into(),
+                        optional: false,
+                    })),
+                })),
+                op: AssignOp::Assign,
+            })),
+        })),
+    );
 }
 
-/// Wrap module with `require.async(module, async (handleAsyncDeps, asyncResult) => { });`
+/// Wrap async module with `require._async(module, async (handleAsyncDeps, asyncResult) => { });`
 fn wrap_async_module(ast: &mut Module, top_level_await: bool) -> Module {
     ast.body.push(ModuleItem::Stmt(Stmt::Expr(ExprStmt {
         span: DUMMY_SP,
