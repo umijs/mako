@@ -286,7 +286,7 @@ impl Compiler {
         if top_level_await {
             let dependents = {
                 let module_graph = context.module_graph.read().unwrap();
-                module_graph.get_dependents(&module_id)
+                module_graph.get_all_dependents(&module_id)
             };
 
             let mut module_graph = context.module_graph.write().unwrap();

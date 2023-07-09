@@ -1,5 +1,3 @@
-import { result } from './async';
-import { result2 } from './async2';
+import { sum } from './async';
 
-console.log(result2);
-console.log(result);
+console.log(sum);

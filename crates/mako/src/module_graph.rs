@@ -180,12 +180,15 @@ impl ModuleGraph {
         targets
     }
 
-    pub fn get_dependents(&self, module_id: &ModuleId) -> Vec<(ModuleId, Dependency)> {
+    /// 获取所有依赖方, 包括直接依赖和间接依赖
+    pub fn get_all_dependents(&self, module_id: &ModuleId) -> Vec<(ModuleId, Dependency)> {
         let mut edges = self.get_edges(module_id, Direction::Incoming);
         let mut deps = vec![];
         while let Some((edge_index, node_index)) = edges.next(&self.graph) {
             let dependency = self.graph.edge_weight(edge_index).unwrap();
             let module = self.graph.node_weight(node_index).unwrap();
+
+            deps.extend_from_slice(&self.get_all_dependents(&module.id));
             deps.push((module.id.clone(), dependency.clone()));
         }
 

@@ -1,3 +1,3 @@
-import { calculate } from './deep';
+import { result } from './deepAsync';
 
-export const result = await calculate(10, 20);
+export const sum = result;
