@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use anyhow::Result;
+use swc_ecma_utils::contains_top_level_await;
 use tokio::sync::mpsc::error::TryRecvError;
 use tracing::info;
 
@@ -214,7 +215,7 @@ impl Compiler {
         // transform & resolve
         // TODO: 支持同时有多个 resolve error
         let mut dep_resolve_err = None;
-        let top_level_await = transform(&mut ast, &context, &task, &mut |ast| {
+        transform(&mut ast, &context, &task, &mut |ast| {
             let deps = analyze_deps(ast);
             // resolve
             for dep in deps.iter() {
@@ -271,6 +272,14 @@ impl Compiler {
 
             return Err(anyhow::anyhow!(err));
         }
+
+        let top_level_await = {
+            if let ModuleAst::Script(ast) = &ast {
+                contains_top_level_await(ast)
+            } else {
+                false
+            }
+        };
 
         let info = ModuleInfo {
             ast,
