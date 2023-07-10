@@ -36,7 +36,7 @@ describe('HMR', () => {
       `import React from 'react';
 export default function LazyComponent() {
   const [text, setText] = React.useState('Initial State');
-  const [count, setCount] = React.useState(123);
+  const [count, setCount] = React.useState(123456);
 
   React.useEffect(() => {
     setTimeout(() => {
@@ -64,7 +64,7 @@ export default function LazyComponent() {
 
     cy.get('[data-test-id="dynamic-counter"]').should(
       'contain.text',
-      'count: [123]',
+      'count: [123456]',
     );
   });
 });
