@@ -99,14 +99,14 @@ globalThis.makoModuleHotUpdate('./index.ts', {
             Object.defineProperty(exports, "__esModule", {
                 value: true
             });
-            require("./foo");
+            require("./foo.ts");
         },
         "./bar_2.ts": function(module, exports, require) {
             "use strict";
             Object.defineProperty(exports, "__esModule", {
                 value: true
             });
-            require("./foo");
+            require("./foo.ts");
         },
         "./foo.ts": function(module, exports, require) {
             "use strict";
@@ -126,10 +126,14 @@ globalThis.makoModuleHotUpdate('./index.ts', {
             Object.defineProperty(exports, "__esModule", {
                 value: true
             });
-            require("react-refresh");
-            require("./bar_1");
-            require("./bar_2");
-            require("hoo");
+            require("../../../../../node_modules/.pnpm/react-refresh@0.14.0/node_modules/react-refresh/runtime.js");
+            require("./bar_1.ts");
+            require("./bar_2.ts");
+            require("./hoo");
+            const RefreshRuntime = require("../../../../../node_modules/.pnpm/react-refresh@0.14.0/node_modules/react-refresh/runtime.js");
+            RefreshRuntime.injectIntoGlobalHook(window);
+            window.$RefreshReg$ = ()=>{};
+            window.$RefreshSig$ = ()=>(type)=>type;
             (function() {
                 const socket = new WebSocket('ws://127.0.0.1:3000/__/hmr-ws');
                 let latestHash = '';
@@ -607,7 +611,7 @@ globalThis.makoModuleHotUpdate('./index.ts', {
         "../../../../../node_modules/.pnpm/react-refresh@0.14.0/node_modules/react-refresh/runtime.js": function(module, exports, require) {
             'use strict';
             {
-                module.exports = require('./cjs/react-refresh-runtime.development.js');
+                module.exports = require("../../../../../node_modules/.pnpm/react-refresh@0.14.0/node_modules/react-refresh/cjs/react-refresh-runtime.development.js");
             }
         },
         "./hoo": function(module, exports, require) {

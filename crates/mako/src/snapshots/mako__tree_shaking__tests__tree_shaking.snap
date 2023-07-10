@@ -302,7 +302,7 @@ const runtime = createRuntime({
         Object.defineProperty(exports, "__esModule", {
             value: true
         });
-        var _1 = require("./1");
+        var _1 = require("./1.ts");
         console.log(_1.foo);
     }
 }, './index.ts');
