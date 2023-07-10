@@ -238,7 +238,7 @@ fn read_content(path: &str) -> Result<String> {
     std::fs::read_to_string(path).with_context(|| format!("read file error: {}", path))
 }
 
-fn ext_name(path: &str) -> Option<&str> {
+pub fn ext_name(path: &str) -> Option<&str> {
     let ext = Path::new(path).extension();
     if let Some(ext) = ext {
         return ext.to_str();

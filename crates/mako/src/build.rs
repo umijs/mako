@@ -12,7 +12,7 @@ use crate::analyze_deps::analyze_deps;
 use crate::ast::build_js_ast;
 use crate::compiler::{Compiler, Context};
 use crate::config::Config;
-use crate::load::load;
+use crate::load::{ext_name, load};
 use crate::module::{Dependency, Module, ModuleAst, ModuleId, ModuleInfo, ResolveType};
 use crate::parse::parse;
 use crate::resolve::{get_resolvers, resolve, Resolvers};
@@ -275,7 +275,11 @@ impl Compiler {
 
         let top_level_await = {
             if let ModuleAst::Script(ast) = &ast {
-                contains_top_level_await(ast)
+                if let Some("wasm") = ext_name(&task.path) {
+                    true
+                } else {
+                    contains_top_level_await(ast)
+                }
             } else {
                 false
             }

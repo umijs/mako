@@ -4,7 +4,7 @@ import json, { hello } from './index.json5';
 import toml, { title } from './index.toml';
 import yaml, { pi } from './index.yaml';
 import xml from './index.xml';
-import wasm from './add.wasm';
+import { add } from './add.wasm';
 
 const num1 = 10;
 const num2 = 20;
@@ -13,10 +13,7 @@ function App() {
   const [sum, setSum] = useState(0);
 
   useEffect(() => {
-    (async () => {
-      const { add } = await wasm;
-      setSum(add(num1, num2));
-    })();
+    setSum(add(num1, num2));
   }, []);
 
   return (
