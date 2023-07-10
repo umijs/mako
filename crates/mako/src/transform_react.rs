@@ -102,7 +102,6 @@ impl VisitMut for PostfixCode {
     }
 }
 
-#[allow(dead_code)]
 pub fn react_refresh_entry_prefix(context: &Arc<Context>) -> Box<dyn VisitMut> {
     Box::new(PrefixCode {
         context: context.clone(),

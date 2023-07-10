@@ -35,7 +35,7 @@ use crate::transform_css_handler::CssHandler;
 use crate::transform_env_replacer::EnvReplacer;
 use crate::transform_optimizer::Optimizer;
 use crate::transform_provide::Provide;
-use crate::transform_react::mako_react;
+use crate::transform_react::{mako_react, react_refresh_entry_prefix};
 
 pub fn transform(
     ast: &mut ModuleAst,
@@ -130,7 +130,7 @@ fn transform_js(
     define
         .entry("NODE_ENV".to_string())
         .or_insert_with(|| mode.clone().into());
-    let _is_dev = matches!(context.config.mode, Mode::Development);
+    let is_dev = matches!(context.config.mode, Mode::Development);
 
     let env_map = build_env_map(define);
     GLOBALS.set(&context.meta.script.globals, || {
@@ -185,6 +185,10 @@ fn transform_js(
                         &mut FeatureFlag::default(),
                     );
                     ast.body = preset_env.fold_module(ast.clone()).body;
+
+                    if task.is_entry && is_dev {
+                        ast.visit_mut_with(&mut react_refresh_entry_prefix(context));
+                    }
 
                     // 在 cjs 执行前调用 hook，用于收集依赖
                     let _deps = get_deps(&ModuleAst::Script(Ast {
