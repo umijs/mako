@@ -44,8 +44,6 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
 
         let dep_map: HashMap<String, String> = deps
             .into_iter()
-            // 仅保留 .css 后缀的 require，避免不必要的计算和内存使用
-            .filter(|(id, _dep)| id.id.ends_with(".css"))
             .map(|(id, dep)| (dep.source.clone(), id.generate(context)))
             .collect();
         drop(module_graph);
