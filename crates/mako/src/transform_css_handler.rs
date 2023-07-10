@@ -5,7 +5,7 @@ use swc_common::util::take::Take;
 use swc_css_ast::{AtRulePrelude, ImportHref, Rule, Stylesheet, Url, UrlValue};
 use swc_css_visit::{VisitMut, VisitMutWith};
 
-use crate::analyze_deps::is_remote_url;
+use crate::analyze_deps::is_url_ignored;
 use crate::compiler::Context;
 use crate::module::generate_module_id;
 
@@ -39,7 +39,7 @@ impl VisitMut for CssHandler<'_> {
                             }
                             box ImportHref::Str(str) => str.value.to_string(),
                         };
-                        is_remote_url(&href_string)
+                        is_url_ignored(&href_string)
                     } else {
                         true
                     }
@@ -54,15 +54,21 @@ impl VisitMut for CssHandler<'_> {
     fn visit_mut_url(&mut self, n: &mut Url) {
         match n.value {
             Some(box UrlValue::Str(ref mut s)) => {
-                if let Some(replacement) = self.dep_map.get(&s.value.to_string()) {
-                    s.value = generate_module_id(replacement.clone(), self.context).into();
-                    s.raw = None;
+                let url = &s.value.to_string();
+                if !is_url_ignored(url) {
+                    if let Some(replacement) = self.dep_map.get(url) {
+                        s.value = generate_module_id(replacement.clone(), self.context).into();
+                        s.raw = None;
+                    }
                 }
             }
             Some(box UrlValue::Raw(ref mut s)) => {
-                if let Some(replacement) = self.dep_map.get(&s.value.to_string()) {
-                    s.value = generate_module_id(replacement.clone(), self.context).into();
-                    s.raw = None;
+                let url = &s.value.to_string();
+                if !is_url_ignored(url) {
+                    if let Some(replacement) = self.dep_map.get(url) {
+                        s.value = generate_module_id(replacement.clone(), self.context).into();
+                        s.raw = None;
+                    }
                 }
             }
             None => {}
