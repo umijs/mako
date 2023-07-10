@@ -96,7 +96,7 @@ pub fn load(path: &str, is_entry: bool, context: &Arc<Context>) -> Result<Conten
         Some("yaml") => load_yaml(path),
         Some("xml") => load_xml(path),
         Some("wasm") => load_wasm(path, context),
-        Some("svg") => load_svg(path),
+        Some("svg") => load_svg(path, context),
         Some("less" | "sass" | "scss" | "stylus") => Err(anyhow!(LoadError::UnsupportedExtName {
             ext_name: ext_name.unwrap().to_string(),
             path: path.to_string(),
@@ -142,6 +142,25 @@ fn load_xml(path: &str) -> Result<Content> {
     Ok(Content::Js(format!("module.exports = {}", json_string)))
 }
 
+// 统一处理各类 asset，将其转为 base64 or 静态资源
+fn internal_handle_asset<T: AsRef<str>>(context: &Arc<Context>, path: T) -> Result<String> {
+    let path_str = path.as_ref();
+    let path_string = path_str.to_string();
+    let file_size = file_size(path_str).with_context(|| LoadError::ReadFileSizeError {
+        path: path_string.clone(),
+    })?;
+
+    if file_size > context.config.inline_limit.try_into().unwrap() {
+        let final_file_name = content_hash(path_str)? + "." + ext_name(path_str).unwrap();
+        context.emit_assets(path_string, final_file_name.clone());
+        Ok(final_file_name)
+    } else {
+        let base64 =
+            to_base64(path_str).with_context(|| LoadError::ToBase64Error { path: path_string })?;
+        Ok(base64)
+    }
+}
+
 fn load_wasm(path: &str, context: &Arc<Context>) -> Result<Content> {
     let file_size = file_size(path).with_context(|| LoadError::ReadFileSizeError {
         path: path.to_string(),
@@ -174,7 +193,7 @@ fn load_wasm(path: &str, context: &Arc<Context>) -> Result<Content> {
     }
 }
 
-fn load_svg(path: &str) -> Result<Content> {
+fn load_svg(path: &str, context: &Arc<Context>) -> Result<Content> {
     let code = read_content(path)?;
     let transform_code = svgr_rs::transform(
         code,
@@ -199,34 +218,12 @@ fn load_svg(path: &str) -> Result<Content> {
         }
     };
 
-    // todo: now all svg will base64, will improve the case - large file
-    let base64 = to_base64(path).with_context(|| LoadError::ToBase64Error {
-        path: path.to_string(),
-    })?;
+    let default_svg = internal_handle_asset(context, path)?;
 
     Ok(Content::Js(format!(
         "{}\nexport default \"{}\";",
-        svgr_code, base64
+        svgr_code, default_svg
     )))
-}
-
-// 统一处理各类 asset，将其转为 base64 or 静态资源
-fn internal_handle_asset<T: AsRef<str>>(context: &Arc<Context>, path: T) -> Result<String> {
-    let path_str = path.as_ref();
-    let path_string = path_str.to_string();
-    let file_size = file_size(path_str).with_context(|| LoadError::ReadFileSizeError {
-        path: path_string.clone(),
-    })?;
-
-    if file_size > context.config.inline_limit.try_into().unwrap() {
-        let final_file_name = content_hash(path_str)? + "." + ext_name(path_str).unwrap();
-        context.emit_assets(path_string, final_file_name.clone());
-        Ok(final_file_name)
-    } else {
-        let base64 =
-            to_base64(path_str).with_context(|| LoadError::ToBase64Error { path: path_string })?;
-        Ok(base64)
-    }
 }
 
 fn load_assets(path: &str, context: &Arc<Context>) -> Result<Content> {
