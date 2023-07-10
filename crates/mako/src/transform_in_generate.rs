@@ -65,6 +65,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) {
 }
 
 const ASYNC_DEPS_IDENT: &str = "__mako_async_dependencies__";
+const ASYNC_IMPORTED_MODULE: &str = "_async__mako_imported_module_";
 
 fn transform_js(
     ast: &mut Module,
@@ -82,10 +83,11 @@ fn handle_async_deps(ast: &mut Module, dep_map: HashMap<String, (Dependency, Mod
     // get the index of last async dep in ast.body
     let mut last_async_dep_index = 0;
 
-    for (i, module_item) in ast.body.iter().enumerate() {
+    for (i, module_item) in ast.body.iter_mut().enumerate() {
         match module_item {
             ModuleItem::Stmt(stmt) => {
                 match stmt {
+                    // `require('./async');` => `var _async__mako_imported_module_n__ = require('./async');`
                     Stmt::Expr(expr_stmt) => {
                         if let Expr::Call(call_expr) = &*expr_stmt.expr {
                             if let Callee::Expr(box Expr::Ident(swc_ecma_ast::Ident {
@@ -93,11 +95,50 @@ fn handle_async_deps(ast: &mut Module, dep_map: HashMap<String, (Dependency, Mod
                             })) = &call_expr.callee
                             {
                                 if sym == "require" {
-                                    // println!("{:?}", call_expr.args);
+                                    if let Expr::Lit(Lit::Str(Str { value, .. })) =
+                                        &*call_expr.args[0].expr
+                                    {
+                                        let source = value.to_string();
+                                        if let Some((dep, info)) = dep_map.get(&source) {
+                                            if matches!(dep.resolve_type, ResolveType::Import) {
+                                                // filter the async deps
+                                                if info.is_async {
+                                                    let ident_name =
+                                                        format!("{}{}__", ASYNC_IMPORTED_MODULE, i);
+                                                    *stmt =
+                                                        Stmt::Decl(Decl::Var(Box::new(VarDecl {
+                                                            span: DUMMY_SP,
+                                                            kind: VarDeclKind::Var,
+                                                            declare: false,
+                                                            decls: vec![VarDeclarator {
+                                                                span: DUMMY_SP,
+                                                                name: Pat::Ident(BindingIdent {
+                                                                    id: Ident {
+                                                                        span: DUMMY_SP,
+                                                                        sym: ident_name
+                                                                            .clone()
+                                                                            .into(),
+                                                                        optional: false,
+                                                                    },
+                                                                    type_ann: None,
+                                                                }),
+                                                                init: Some(Box::new(
+                                                                    *expr_stmt.expr.clone(),
+                                                                )),
+                                                                definite: false,
+                                                            }],
+                                                        })));
+                                                    async_deps.push(ident_name);
+                                                    last_async_dep_index = i;
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
+                    // `var async = require('./async');`
                     Stmt::Decl(decl_stmt) => {
                         if let Decl::Var(var_decl) = decl_stmt {
                             for decl in &var_decl.decls {
@@ -107,7 +148,6 @@ fn handle_async_deps(ast: &mut Module, dep_map: HashMap<String, (Dependency, Mod
                                         ..
                                     })) = &call_expr.callee
                                     {
-                                        // 1. filter which is not require()
                                         if sym == "require" {
                                             if let Expr::Lit(Lit::Str(Str { value, .. })) =
                                                 &*call_expr.args[0].expr
@@ -118,7 +158,7 @@ fn handle_async_deps(ast: &mut Module, dep_map: HashMap<String, (Dependency, Mod
                                                         dep.resolve_type,
                                                         ResolveType::Import
                                                     ) {
-                                                        // 2. get the deps which is async module
+                                                        // filter the async deps
                                                         if info.is_async {
                                                             if let Pat::Ident(binding_ident) =
                                                                 &decl.name
