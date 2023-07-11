@@ -1,0 +1,26 @@
+
+.foo { 
+    color: red;
+}
+
+:global .bar { 
+    color: blue;
+}
+
+.aaaa {
+    .bbb {
+        color: red;
+    }
+}
+
+/* 暂不支持 */
+/* :global {
+    .a {
+        color: red;
+    }
+} */
+
+/* 暂不支持 */
+/* :global(.a) {
+    color: red;
+} */
