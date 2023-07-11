@@ -122,6 +122,10 @@ globalThis.makoModuleHotUpdate('./index.ts', {
             var _default = 1;
         },
         "./index.ts": function(module, exports, require) {
+            const RefreshRuntime = require("../../../../../node_modules/.pnpm/react-refresh@0.14.0/node_modules/react-refresh/runtime.js");
+            RefreshRuntime.injectIntoGlobalHook(window);
+            window.$RefreshReg$ = ()=>{};
+            window.$RefreshSig$ = ()=>(type)=>type;
             "use strict";
             Object.defineProperty(exports, "__esModule", {
                 value: true
@@ -130,10 +134,6 @@ globalThis.makoModuleHotUpdate('./index.ts', {
             require("./bar_1.ts");
             require("./bar_2.ts");
             require("./hoo");
-            const RefreshRuntime = require("../../../../../node_modules/.pnpm/react-refresh@0.14.0/node_modules/react-refresh/runtime.js");
-            RefreshRuntime.injectIntoGlobalHook(window);
-            window.$RefreshReg$ = ()=>{};
-            window.$RefreshSig$ = ()=>(type)=>type;
             (function() {
                 const socket = new WebSocket('ws://127.0.0.1:3000/__/hmr-ws');
                 let latestHash = '';
