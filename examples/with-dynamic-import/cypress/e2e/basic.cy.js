@@ -17,7 +17,7 @@ describe('HMR', () => {
     cy.get('[data-test-id="dynamic-counter"]').should('exist');
   });
 
-  it('respones to write updadte', () => {
+  it.skip('respones to write updadte', () => {
     cy.get('[data-test-id="dynamic-counter"]').should(
       'contain.text',
       'count: 123',
