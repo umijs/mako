@@ -187,6 +187,32 @@ mod tests {
         );
     }
 
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_css_nesting() {
+        let (files, file_contents) = compile("test/compile/css-nesting");
+        println!("{:?}", files);
+        let index_js_content = file_contents.get("index.js").unwrap();
+        assert!(
+            index_js_content.contains(".foo .bar {"),
+            "css nesting works"
+        );
+        assert!(
+            index_js_content.contains(".hoo {"),
+            "css nesting with :global works"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_css_prefixer() {
+        let (files, file_contents) = compile("test/compile/css-prefixer");
+        println!("{:?}", files);
+        let index_js_content = file_contents.get("index.js").unwrap();
+        assert!(
+            index_js_content.contains("display: -ms-flexbox;"),
+            "ie 10 prefixer"
+        );
+    }
+
     fn compile(base: &str) -> (Vec<String>, HashMap<String, String>) {
         let current_dir = std::env::current_dir().unwrap();
         let root = current_dir.join(base);

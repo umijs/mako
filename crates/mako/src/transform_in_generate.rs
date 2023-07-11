@@ -6,6 +6,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use swc_common::errors::HANDLER;
 use swc_common::GLOBALS;
+use swc_css_visit::VisitMutWith as CSSVisitMutWith;
 use swc_ecma_transforms::feature::FeatureFlag;
 use swc_ecma_transforms::fixer;
 use swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
@@ -20,8 +21,8 @@ use tracing::debug;
 use crate::ast::{base64_encode, build_js_ast, css_ast_to_code, Ast};
 use crate::compiler::{Compiler, Context};
 use crate::config::{DevtoolConfig, Mode};
-use crate::lightningcss::lightingcss_transform;
 use crate::module::{ModuleAst, ModuleId};
+use crate::targets;
 use crate::transform_dep_replacer::DepReplacer;
 use crate::transform_dynamic_import::DynamicImport;
 use crate::transform_react::react_refresh_entry_prefix;
@@ -157,10 +158,23 @@ fn transform_css(
     dep_map: HashMap<String, String>,
     context: &Arc<Context>,
 ) -> Ast {
+    // prefixer
+    let mut prefixer = swc_css_prefixer::prefixer(swc_css_prefixer::options::Options {
+        env: Some(targets::swc_preset_env_targets_from_map(
+            context.config.targets.clone(),
+        )),
+    });
+    ast.visit_mut_with(&mut prefixer);
+
+    // minifier
+    if matches!(context.config.mode, Mode::Production) {
+        swc_css_minifier::minify(ast, Default::default());
+    }
+
     // ast to code
-    let (code, sourcemap) = css_ast_to_code(ast, context);
+    let (mut code, sourcemap) = css_ast_to_code(ast, context);
     // lightingcss
-    let mut code = lightingcss_transform(&code, context);
+    // let mut code = lightingcss_transform(&code, context);
 
     // TODO: 后续支持生成单独的 css 文件后需要优化
     if matches!(context.config.devtool, DevtoolConfig::SourceMap) {
@@ -225,7 +239,6 @@ mod tests {
 let css = `.foo {
   color: red;
 }
-
 /*# sourceMappingURL=test.tsx.map*/`;
 let style = document.createElement('style');
 style.innerHTML = css;
@@ -253,7 +266,6 @@ require("bar.css");
 let css = `.foo {
   color: red;
 }
-
 /*# sourceMappingURL=test.tsx.map*/`;
 let style = document.createElement('style');
 style.innerHTML = css;
