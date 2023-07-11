@@ -1,10 +1,12 @@
 use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
 
-use crate::ast::build_js_ast;
+use crate::ast::{build_js_ast, js_ast_to_code};
 use crate::chunk_graph::ChunkGraph;
-use crate::compiler::{Context, Meta};
+use crate::compiler::{self, Compiler, Context, Meta};
+use crate::config::{Config, Mode};
 use crate::module::{Module, ModuleId, ModuleInfo};
 use crate::module_graph::ModuleGraph;
 
@@ -64,4 +66,63 @@ pub fn create_mock_module(path: PathBuf, code: &str) -> Module {
         raw_hash: 0,
     };
     Module::new(module_id, false, Some(info))
+}
+
+#[allow(dead_code)]
+pub fn setup_compiler(base: &str, cleanup: bool) -> Compiler {
+    // tracing_subscriber::fmt()
+    //     .with_env_filter(
+    //         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("mako=debug")),
+    //     )
+    //     .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
+    //     .without_time()
+    //     .init();
+    let current_dir = std::env::current_dir().unwrap();
+    let root = current_dir.join(base);
+    if !root.parent().unwrap().exists() {
+        fs::create_dir_all(root.parent().unwrap()).unwrap();
+    }
+    if cleanup {
+        if root.exists() {
+            fs::remove_dir_all(&root).unwrap();
+        }
+        fs::create_dir_all(&root).unwrap();
+    }
+    let mut config = Config::new(&root, None, None).unwrap();
+    config.hmr = false;
+    config.minify = false;
+    config.mode = Mode::Production;
+
+    compiler::Compiler::new(config, root)
+}
+
+pub fn read_dist_file(compiler: &Compiler) -> String {
+    let cwd_path = &compiler.context.root;
+
+    fs::read_to_string(cwd_path.join("dist/index.js")).unwrap()
+}
+
+pub fn setup_files(compiler: &Compiler, extra_files: Vec<(String, String)>) {
+    let cwd_path = &compiler.context.root;
+    extra_files.into_iter().for_each(|(path, content)| {
+        let output = cwd_path.join(path);
+        fs::write(output, content).unwrap();
+    });
+}
+
+pub fn module_to_jscode(compiler: &Compiler, module_id: &ModuleId) -> String {
+    let module_graph = compiler.context.module_graph.read().unwrap();
+    let module = module_graph.get_module(module_id).unwrap();
+    let context = compiler.context.clone();
+    let info = module.info.as_ref().unwrap();
+    let ast = &info.ast;
+    match ast {
+        crate::module::ModuleAst::Script(ast) => {
+            let (code, _) =
+                js_ast_to_code(&ast.ast.clone(), &context, module.id.id.as_str()).unwrap();
+            code
+        }
+        crate::module::ModuleAst::Css(_) => todo!(),
+        crate::module::ModuleAst::None => todo!(),
+    }
 }

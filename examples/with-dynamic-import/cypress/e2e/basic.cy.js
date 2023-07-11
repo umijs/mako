@@ -17,14 +17,6 @@ describe('HMR', () => {
     cy.get('[data-test-id="dynamic-counter"]').should('exist');
   });
 
-  beforeEach(() => {
-    cy.exec('git checkout .');
-  });
-
-  afterEach(() => {
-    cy.exec('git checkout .');
-  });
-
   it('respones to write updadte', () => {
     cy.get('[data-test-id="dynamic-counter"]').should(
       'contain.text',

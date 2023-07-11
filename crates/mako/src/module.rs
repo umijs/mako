@@ -5,6 +5,7 @@ use std::sync::Arc;
 use base64::engine::{general_purpose, Engine};
 use pathdiff::diff_paths;
 
+use crate::ast::Ast;
 use crate::compiler::Context;
 use crate::config::ModuleIdStrategy;
 
@@ -124,10 +125,20 @@ impl From<PathBuf> for ModuleId {
 
 #[derive(Debug)]
 pub enum ModuleAst {
-    Script(swc_ecma_ast::Module),
+    Script(Ast),
     Css(swc_css_ast::Stylesheet),
     #[allow(dead_code)]
     None,
+}
+
+impl ModuleAst {
+    pub fn as_script_mut(&mut self) -> &mut swc_ecma_ast::Module {
+        if let Self::Script(script) = self {
+            &mut script.ast
+        } else {
+            panic!("ModuleAst is not Script")
+        }
+    }
 }
 
 #[allow(dead_code)]
