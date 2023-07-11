@@ -7,18 +7,11 @@
     color: blue;
 }
 
-.aaaa {
-    .bbb {
-        color: red;
-    }
-}
-
-/* 暂不支持 */
-/* :global {
+:global {
     .a {
         color: red;
     }
-} */
+}
 
 /* 暂不支持 */
 /* :global(.a) {

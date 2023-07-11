@@ -72,7 +72,7 @@ function createRuntime(makoModules, entryModuleId) {
         return fn;
     };
     const applyHotUpdate = (chunkId, update, runtime)=>{
-        const { modules , removedModules  } = update;
+        const { modules, removedModules } = update;
         const outdatedModules = [];
         for (const moduleId of Object.keys(modules)){
             if (!modulesRegistry[moduleId]) continue;

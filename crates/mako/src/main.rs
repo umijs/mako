@@ -27,7 +27,6 @@ mod generate;
 mod generate_chunks;
 mod group_chunk;
 mod hmr;
-mod lightningcss;
 mod load;
 mod logger;
 mod minify;

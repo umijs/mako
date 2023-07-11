@@ -62,6 +62,14 @@ Lint.
 $ cargo lint
 ```
 
+Upgrade dependencies.
+
+```bash
+$ cargo upgrade
+$ cargo upgrade --incompatible
+$ cargo upgrade --dry-run
+```
+
 Benchmark with-antd example.
 
 ```bash
