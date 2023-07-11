@@ -115,7 +115,6 @@ impl fmt::Display for StatementGraph {
         let mut nodes = self
             .graph
             .node_weights()
-            .into_iter()
             .map(|node| {
                 let id = node.get_id();
                 match node {
@@ -155,7 +154,6 @@ impl fmt::Display for StatementGraph {
         let mut references = self
             .graph
             .edge_references()
-            .into_iter()
             .map(|edge| {
                 let source = &self.graph[edge.source()].get_id();
                 let target = &self.graph[edge.target()].get_id();

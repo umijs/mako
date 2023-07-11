@@ -124,6 +124,6 @@ impl Compiler {
 }
 
 fn strip_context(ident: &str) -> String {
-    let ident_split = ident.split('#').into_iter().collect::<Vec<_>>();
+    let ident_split = ident.split('#').collect::<Vec<_>>();
     ident_split[0].to_string()
 }
