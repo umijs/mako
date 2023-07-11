@@ -19,11 +19,12 @@ use tracing::debug;
 
 use crate::ast::{base64_encode, build_js_ast, css_ast_to_code, Ast};
 use crate::compiler::{Compiler, Context};
-use crate::config::DevtoolConfig;
+use crate::config::{DevtoolConfig, Mode};
 use crate::lightningcss::lightingcss_transform;
 use crate::module::{ModuleAst, ModuleId};
 use crate::transform_dep_replacer::DepReplacer;
 use crate::transform_dynamic_import::DynamicImport;
+use crate::transform_react::react_refresh_entry_prefix;
 
 impl Compiler {
     pub fn transform_all(&self) -> Result<()> {
@@ -57,7 +58,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         let ast = &mut info.ast;
 
         if let ModuleAst::Script(ast) = ast {
-            transform_js_generate(context, ast, &dep_map);
+            transform_js_generate(context, ast, &dep_map, module.is_entry);
         }
 
         if let ModuleAst::Css(ast) = ast {
@@ -72,7 +73,9 @@ pub fn transform_js_generate(
     context: &Arc<Context>,
     ast: &mut Ast,
     dep_map: &HashMap<String, String>,
+    is_entry: bool,
 ) {
+    let is_dev = matches!(context.config.mode, Mode::Development);
     GLOBALS
         .set(&context.meta.script.globals, || {
             try_with_handler(
@@ -109,6 +112,12 @@ pub fn transform_js_generate(
                                         .get_swc_comments(),
                                 ),
                             ));
+
+                            if is_entry && is_dev {
+                                ast.ast
+                                    .visit_mut_with(&mut react_refresh_entry_prefix(context));
+                            }
+
                             let mut dep_replacer = DepReplacer {
                                 dep_map: dep_map.clone(),
                                 context,

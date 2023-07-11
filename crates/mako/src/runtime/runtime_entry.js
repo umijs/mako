@@ -230,6 +230,7 @@ function createRuntime(makoModules, entryModuleId) {
 
   const inProgress = {};
   const load = (url, done, key) => {
+    console.log(url, inProgress);
     if (inProgress[url]) {
       return inProgress[url].push(done);
     }
