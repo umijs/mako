@@ -204,6 +204,7 @@ fn transform_css(
     let content = content.replace("__CSS__", code.as_str());
     let require_code: Vec<String> = dep_map
         .values()
+        .filter(|val| val.ends_with(".css"))
         .map(|val| format!("require(\"{}\");\n", val))
         .collect();
     let content = format!("{}{}", require_code.join(""), content);
