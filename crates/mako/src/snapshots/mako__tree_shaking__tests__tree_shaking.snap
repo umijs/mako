@@ -3,6 +3,7 @@ source: crates/mako/src/tree_shaking.rs
 expression: content
 ---
 const chunksIdToUrlMap = {};
+chunksIdToUrlMap["./all_vendors"] = `${"/"}all_vendors-3347522080197650477-async.js`;
 chunksIdToUrlMap["./index.ts"] = `${"/"}index.js`;
 function createRuntime(makoModules, entryModuleId) {
     const modulesRegistry = {};
@@ -253,12 +254,16 @@ function createRuntime(makoModules, entryModuleId) {
             makoModules[id] = modules[id];
         }
     };
-    requireModule._h = '1714256350570608699';
+    requireModule._h = '6468287931592795205';
     requireModule.currentHash = ()=>{
         return requireModule._h;
     };
     requireModule.ensure = ensure;
-    requireModule(entryModuleId);
+    Promise.all([
+        ensure("./all_vendors")
+    ]).then(()=>{
+        requireModule(entryModuleId);
+    });
     return {
         requireModule,
         _modulesRegistry: modulesRegistry,

@@ -50,10 +50,6 @@ impl ModuleGraph {
             .and_then(|i| self.graph.node_weight(*i))
     }
 
-    pub fn module_node_idx(&self, module_id: &ModuleId) -> Option<NodeIndex<DefaultIx>> {
-        self.id_index_map.get(module_id).cloned()
-    }
-
     pub fn remove_module(&mut self, module_id: &ModuleId) -> Module {
         let index = self
             .id_index_map
