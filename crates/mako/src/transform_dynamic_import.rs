@@ -160,10 +160,10 @@ require.ensure([
         let globals = Globals::default();
         GLOBALS.set(&globals, || {
             let mut dyanmic_import = DynamicImport { context: &context };
-            ast.visit_mut_with(&mut dyanmic_import);
+            ast.ast.visit_mut_with(&mut dyanmic_import);
         });
 
-        let (code, _sourcemap) = js_ast_to_code(&ast, &context, "index.js").unwrap();
+        let (code, _sourcemap) = js_ast_to_code(&ast.ast, &context, "index.js").unwrap();
         let code = code.replace("\"use strict\";", "");
         let code = code.trim().to_string();
         (code, _sourcemap)

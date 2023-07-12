@@ -1,2 +1,2 @@
-import '@/foo';
-console.log(1);
+import { foo } from './foo';
+console.log(foo);

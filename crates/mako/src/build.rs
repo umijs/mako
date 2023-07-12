@@ -174,6 +174,7 @@ impl Compiler {
                 } else {
                     format!("module.exports = {};", external)
                 };
+
                 let ast = build_js_ast(
                     format!("external_{}", &resolved_path).as_str(),
                     code.as_str(),
@@ -218,15 +219,15 @@ impl Compiler {
         transform(&mut ast, &context, &task, &mut |ast| {
             let deps = analyze_deps(ast);
             // resolve
-            for dep in deps.iter() {
-                let ret = resolve(&task.path, dep, &resolvers, &context);
+            for dep in deps {
+                let ret = resolve(&task.path, &dep, &resolvers, &context);
                 match ret {
                     Ok((x, y)) => {
                         dependencies.push((x, y, dep.clone()));
                     }
                     Err(_) => {
                         // 获取 本次引用 和 上一级引用 路径
-                        dep_resolve_err = Some((task.path.clone(), dep.source.clone()));
+                        dep_resolve_err = Some((task.path.clone(), dep.source));
                         return dependencies.clone();
                     }
                 }
@@ -278,7 +279,7 @@ impl Compiler {
                 if let Some("wasm") = ext_name(&task.path) {
                     true
                 } else {
-                    contains_top_level_await(ast)
+                    contains_top_level_await(&ast.ast)
                 }
             } else {
                 false

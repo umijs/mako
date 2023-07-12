@@ -3,38 +3,62 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::{fs, vec};
 
-use swc_common::DUMMY_SP;
+use anyhow::Result;
+use swc_common::errors::HANDLER;
+use swc_common::{DUMMY_SP, GLOBALS};
+use swc_css_visit::VisitMutWith as CSSVisitMutWith;
 use swc_ecma_ast::{
     ArrayLit, ArrowExpr, AssignExpr, AssignOp, AwaitExpr, BindingIdent, BlockStmt, BlockStmtOrExpr,
     CallExpr, Callee, CondExpr, Decl, Expr, ExprOrSpread, ExprStmt, Ident, Lit, MemberExpr,
-    MemberProp, Module, ModuleItem, ParenExpr, Pat, PatOrExpr, Stmt, Str, VarDecl, VarDeclKind,
+    MemberProp, ModuleItem, ParenExpr, Pat, PatOrExpr, Stmt, Str, VarDecl, VarDeclKind,
     VarDeclarator,
 };
+use swc_ecma_transforms::feature::FeatureFlag;
+use swc_ecma_transforms::fixer;
+use swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
+use swc_ecma_transforms::hygiene::hygiene_with_config;
+use swc_ecma_transforms::modules::common_js;
+use swc_ecma_transforms::modules::import_analysis::import_analyzer;
+use swc_ecma_transforms::modules::util::{Config, ImportInterop};
+use swc_ecma_visit::VisitMutWith;
+use swc_error_reporters::handler::try_with_handler;
 use tracing::debug;
 
-use crate::ast::{base64_encode, build_js_ast, css_ast_to_code};
+use crate::ast::{base64_encode, build_js_ast, css_ast_to_code, Ast};
 use crate::compiler::{Compiler, Context};
-use crate::config::DevtoolConfig;
-use crate::lightningcss::lightingcss_transform;
+use crate::config::{DevtoolConfig, Mode};
 use crate::module::{Dependency, ModuleAst, ModuleId, ModuleInfo, ResolveType};
+use crate::targets;
+use crate::transform_dep_replacer::DepReplacer;
+use crate::transform_dynamic_import::DynamicImport;
+use crate::transform_react::react_refresh_entry_prefix;
 
 impl Compiler {
-    pub fn transform_all(&self) {
+    pub fn transform_all(&self) -> Result<()> {
         let context = &self.context;
         let module_graph = context.module_graph.read().unwrap();
         let module_ids = module_graph.get_module_ids();
         drop(module_graph);
         debug!("module ids: {:?}", module_ids);
-        transform_modules(module_ids, context);
+        transform_modules(module_ids, context)?;
+        Ok(())
     }
 }
 
-pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) {
+pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> Result<()> {
     module_ids.iter().for_each(|module_id| {
         let module_graph = context.module_graph.read().unwrap();
         let deps = module_graph.get_dependencies_info(module_id);
+
+        let dep_map: HashMap<String, String> = deps
+            .clone()
+            .into_iter()
+            .map(|(id, dep, _)| (dep.source, id.generate(context)))
+            .collect();
         drop(module_graph);
 
+        // let deps: Vec<(&ModuleId, &crate::module::Dependency)> =
+        //     module_graph.get_dependencies(module_id);
         let mut module_graph = context.module_graph.write().unwrap();
         let module = module_graph.get_module_mut(module_id).unwrap();
         let info = module.info.as_mut().unwrap();
@@ -42,48 +66,126 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) {
         let ast = &mut info.ast;
 
         if let ModuleAst::Script(ast) = ast {
-            let dep_map: HashMap<String, (Dependency, ModuleInfo)> = deps
+            transform_js_generate(context, ast, &dep_map, module.is_entry);
+            let dep_info_map: HashMap<String, (Dependency, ModuleInfo)> = deps
                 .into_iter()
                 .map(|(id, dep, module_info)| (id.generate(context), (dep, module_info)))
                 .collect();
             // transform async module
             if info.is_async {
-                let ast = transform_js(ast, dep_map, info.top_level_await);
+                let ast = transform_js(ast, dep_info_map, info.top_level_await);
                 info.set_ast(ModuleAst::Script(ast));
             }
         } else if let ModuleAst::Css(ast) = ast {
-            let dep_map: HashMap<String, String> = deps
-                .into_iter()
-                // 仅保留 .css 后缀的 require，避免不必要的计算和内存使用
-                // .filter(|(id, _dep)| id.id.ends_with(".css"))
-                .map(|(id, dep, _)| (dep.source, id.generate(context)))
-                .collect();
             let ast = transform_css(ast, &path, dep_map, context);
             info.set_ast(ModuleAst::Script(ast));
         }
     });
+    Ok(())
+}
+
+pub fn transform_js_generate(
+    context: &Arc<Context>,
+    ast: &mut Ast,
+    dep_map: &HashMap<String, String>,
+    is_entry: bool,
+) {
+    let is_dev = matches!(context.config.mode, Mode::Development);
+    GLOBALS
+        .set(&context.meta.script.globals, || {
+            try_with_handler(
+                context.meta.script.cm.clone(),
+                Default::default(),
+                |handler| {
+                    HELPERS.set(&Helpers::new(true), || {
+                        HANDLER.set(handler, || {
+                            let unresolved_mark = ast.unresolved_mark;
+                            let top_level_mark = ast.top_level_mark;
+
+                            let import_interop = ImportInterop::Swc;
+                            // FIXME: 执行两轮 import_analyzer + inject_helpers，第一轮是为了 module_graph，第二轮是为了依赖替换
+                            ast.ast
+                                .visit_mut_with(&mut import_analyzer(import_interop, true));
+                            ast.ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
+                            ast.ast.visit_mut_with(&mut common_js(
+                                unresolved_mark,
+                                Config {
+                                    import_interop: Some(import_interop),
+                                    // NOTE: 这里后面要调整为注入自定义require
+                                    ignore_dynamic: true,
+                                    preserve_import_meta: true,
+                                    ..Default::default()
+                                },
+                                FeatureFlag::empty(),
+                                Some(
+                                    context
+                                        .meta
+                                        .script
+                                        .origin_comments
+                                        .read()
+                                        .unwrap()
+                                        .get_swc_comments(),
+                                ),
+                            ));
+
+                            if is_entry && is_dev {
+                                ast.ast
+                                    .visit_mut_with(&mut react_refresh_entry_prefix(context));
+                            }
+
+                            let mut dep_replacer = DepReplacer {
+                                dep_map: dep_map.clone(),
+                                context,
+                            };
+                            ast.ast.visit_mut_with(&mut dep_replacer);
+
+                            let mut dynamic_import = DynamicImport { context };
+                            ast.ast.visit_mut_with(&mut dynamic_import);
+
+                            ast.ast.visit_mut_with(&mut hygiene_with_config(
+                                swc_ecma_transforms::hygiene::Config {
+                                    top_level_mark,
+                                    ..Default::default()
+                                },
+                            ));
+                            ast.ast.visit_mut_with(&mut fixer(Some(
+                                context
+                                    .meta
+                                    .script
+                                    .origin_comments
+                                    .read()
+                                    .unwrap()
+                                    .get_swc_comments(),
+                            )));
+                            Ok(())
+                        })
+                    })
+                },
+            )
+        })
+        .unwrap();
 }
 
 const ASYNC_DEPS_IDENT: &str = "__mako_async_dependencies__";
 const ASYNC_IMPORTED_MODULE: &str = "_async__mako_imported_module_";
 
 fn transform_js(
-    ast: &mut Module,
+    ast: &mut Ast,
     dep_map: HashMap<String, (Dependency, ModuleInfo)>,
     top_level_await: bool,
-) -> Module {
+) -> Ast {
     handle_async_deps(ast, dep_map);
     wrap_async_module(ast, top_level_await)
 }
 
 /// handle async module dependency
-fn handle_async_deps(ast: &mut Module, dep_map: HashMap<String, (Dependency, ModuleInfo)>) {
+fn handle_async_deps(ast: &mut Ast, dep_map: HashMap<String, (Dependency, ModuleInfo)>) {
     // get all async deps, such as ['async1', 'async2']
     let mut async_deps = vec![];
     // get the index of last async dep in ast.body
     let mut last_async_dep_index = 0;
 
-    for (i, module_item) in ast.body.iter_mut().enumerate() {
+    for (i, module_item) in ast.ast.body.iter_mut().enumerate() {
         if let ModuleItem::Stmt(stmt) = module_item {
             match stmt {
                 // `require('./async');` => `var _async__mako_imported_module_n__ = require('./async');`
@@ -171,7 +273,7 @@ fn handle_async_deps(ast: &mut Module, dep_map: HashMap<String, (Dependency, Mod
 
     // insert a new stmt after all async deps
     // `var __mako_async_dependencies__ = handleAsyncDeps([async1, async2]);`
-    ast.body.insert(
+    ast.ast.body.insert(
         last_async_dep_index + 1,
         ModuleItem::Stmt(Stmt::Decl(Decl::Var(Box::new(VarDecl {
             span: DUMMY_SP,
@@ -222,7 +324,7 @@ fn handle_async_deps(ast: &mut Module, dep_map: HashMap<String, (Dependency, Mod
 
     // insert a new stmt after above stmt
     // `[async1, async2] = __mako_async_dependencies__.then ? (await __mako_async_dependencies__)() : __mako_async_dependencies__;`
-    ast.body.insert(
+    ast.ast.body.insert(
         last_async_dep_index + 2,
         ModuleItem::Stmt(Stmt::Expr(ExprStmt {
             span: DUMMY_SP,
@@ -288,8 +390,8 @@ fn handle_async_deps(ast: &mut Module, dep_map: HashMap<String, (Dependency, Mod
 }
 
 /// Wrap async module with `require._async(module, async (handleAsyncDeps, asyncResult) => { });`
-fn wrap_async_module(ast: &mut Module, top_level_await: bool) -> Module {
-    ast.body.push(ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+fn wrap_async_module(ast: &mut Ast, top_level_await: bool) -> Ast {
+    ast.ast.body.push(ModuleItem::Stmt(Stmt::Expr(ExprStmt {
         span: DUMMY_SP,
         expr: Box::new(Expr::Call(CallExpr {
             span: DUMMY_SP,
@@ -303,78 +405,74 @@ fn wrap_async_module(ast: &mut Module, top_level_await: bool) -> Module {
         })),
     })));
 
-    let require_expr = Expr::Call(CallExpr {
+    ast.ast.body = vec![ModuleItem::Stmt(Stmt::Expr(ExprStmt {
         span: DUMMY_SP,
-        callee: Callee::Expr(Box::new(Expr::Ident(Ident {
+        expr: Box::new(Expr::Call(CallExpr {
             span: DUMMY_SP,
-            sym: "require._async".into(),
-            optional: false,
-        }))),
-        type_args: None,
-        args: vec![
-            ExprOrSpread {
-                spread: None,
-                expr: Box::new(Expr::Ident(Ident {
-                    span: DUMMY_SP,
-                    sym: "module".into(),
-                    optional: false,
-                })),
-            },
-            ExprOrSpread {
-                spread: None,
-                expr: Box::new(Expr::Arrow(ArrowExpr {
-                    is_async: true,
-                    is_generator: false,
-                    type_params: None,
-                    return_type: None,
-                    span: DUMMY_SP,
-                    params: vec![
-                        Pat::Ident(BindingIdent {
-                            id: Ident {
-                                span: DUMMY_SP,
-                                sym: "handleAsyncDeps".into(),
-                                optional: false,
-                            },
-                            type_ann: None,
-                        }),
-                        Pat::Ident(BindingIdent {
-                            id: Ident {
-                                span: DUMMY_SP,
-                                sym: "asyncResult".into(),
-                                optional: false,
-                            },
-                            type_ann: None,
-                        }),
-                    ],
-                    body: Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
+            callee: Callee::Expr(Box::new(Expr::Ident(Ident {
+                span: DUMMY_SP,
+                sym: "require._async".into(),
+                optional: false,
+            }))),
+            type_args: None,
+            args: vec![
+                ExprOrSpread {
+                    spread: None,
+                    expr: Box::new(Expr::Ident(Ident {
                         span: DUMMY_SP,
-                        stmts: ast
-                            .body
-                            .iter()
-                            .map(|stmt| stmt.as_stmt().unwrap().clone())
-                            .collect(),
+                        sym: "module".into(),
+                        optional: false,
                     })),
-                })),
-            },
-            ExprOrSpread {
-                spread: None,
-                expr: Box::new(Expr::Ident(Ident {
-                    span: DUMMY_SP,
-                    sym: if top_level_await { "1" } else { "0" }.into(),
-                    optional: false,
-                })),
-            },
-        ],
-    });
-
-    Module {
-        shebang: None,
-        span: DUMMY_SP,
-        body: vec![ModuleItem::Stmt(Stmt::Expr(ExprStmt {
-            span: DUMMY_SP,
-            expr: Box::new(require_expr),
-        }))],
-    }
+                },
+                ExprOrSpread {
+                    spread: None,
+                    expr: Box::new(Expr::Arrow(ArrowExpr {
+                        is_async: true,
+                        is_generator: false,
+                        type_params: None,
+                        return_type: None,
+                        span: DUMMY_SP,
+                        params: vec![
+                            Pat::Ident(BindingIdent {
+                                id: Ident {
+                                    span: DUMMY_SP,
+                                    sym: "handleAsyncDeps".into(),
+                                    optional: false,
+                                },
+                                type_ann: None,
+                            }),
+                            Pat::Ident(BindingIdent {
+                                id: Ident {
+                                    span: DUMMY_SP,
+                                    sym: "asyncResult".into(),
+                                    optional: false,
+                                },
+                                type_ann: None,
+                            }),
+                        ],
+                        body: Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
+                            span: DUMMY_SP,
+                            stmts: ast
+                                .ast
+                                .body
+                                .iter()
+                                .map(|stmt| stmt.as_stmt().unwrap().clone())
+                                .collect(),
+                        })),
+                    })),
+                },
+                ExprOrSpread {
+                    spread: None,
+                    expr: Box::new(Expr::Ident(Ident {
+                        span: DUMMY_SP,
+                        sym: if top_level_await { "1" } else { "0" }.into(),
+                        optional: false,
+                    })),
+                },
+            ],
+        })),
+    }))];
+    ast.clone()
 }
 
 fn transform_css(
@@ -382,11 +480,24 @@ fn transform_css(
     path: &str,
     dep_map: HashMap<String, String>,
     context: &Arc<Context>,
-) -> Module {
+) -> Ast {
+    // prefixer
+    let mut prefixer = swc_css_prefixer::prefixer(swc_css_prefixer::options::Options {
+        env: Some(targets::swc_preset_env_targets_from_map(
+            context.config.targets.clone(),
+        )),
+    });
+    ast.visit_mut_with(&mut prefixer);
+
+    // minifier
+    if matches!(context.config.mode, Mode::Production) {
+        swc_css_minifier::minify(ast, Default::default());
+    }
+
     // ast to code
-    let (code, sourcemap) = css_ast_to_code(ast, context);
+    let (mut code, sourcemap) = css_ast_to_code(ast, context);
     // lightingcss
-    let mut code = lightingcss_transform(&code, context);
+    // let mut code = lightingcss_transform(&code, context);
 
     // TODO: 后续支持生成单独的 css 文件后需要优化
     if matches!(context.config.devtool, DevtoolConfig::SourceMap) {
@@ -451,7 +562,6 @@ mod tests {
 let css = `.foo {
   color: red;
 }
-
 /*# sourceMappingURL=test.tsx.map*/`;
 let style = document.createElement('style');
 style.innerHTML = css;
@@ -479,7 +589,6 @@ require("bar.css");
 let css = `.foo {
   color: red;
 }
-
 /*# sourceMappingURL=test.tsx.map*/`;
 let style = document.createElement('style');
 style.innerHTML = css;
@@ -508,7 +617,7 @@ document.head.appendChild(style);
         });
         let mut ast = build_css_ast(path, content, &context).unwrap();
         let ast = transform_css(&mut ast, path, dep_map, &context);
-        let (code, _sourcemap) = js_ast_to_code(&ast, &context, "index.js").unwrap();
+        let (code, _sourcemap) = js_ast_to_code(&ast.ast, &context, "index.js").unwrap();
         let code = code.trim().to_string();
         (code, _sourcemap)
     }

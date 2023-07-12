@@ -13,6 +13,7 @@ pub struct StatementGraphEdge {
     pub ident: HashSet<String>,
 }
 
+#[derive(Debug)]
 pub struct StatementGraph {
     graph: StableDiGraph<StatementType, StatementGraphEdge>,
     id_index_map: HashMap<StatementId, NodeIndex>,
@@ -49,8 +50,25 @@ impl StatementGraph {
         }
     }
 
-    pub fn statements(&self) -> Vec<&StatementType> {
+    pub fn get_statements(&self) -> Vec<&StatementType> {
         self.graph.node_indices().map(|i| &self.graph[i]).collect()
+    }
+
+    pub fn get_statement(&self, id: &StatementId) -> &StatementType {
+        let node = self.id_index_map.get(id).unwrap();
+        &self.graph[*node]
+    }
+
+    pub fn get_dependencies(&self, id: &StatementId) -> Vec<(&StatementType, HashSet<String>)> {
+        let node = self.id_index_map.get(id).unwrap();
+        self.graph
+            .neighbors(*node)
+            .map(|i| {
+                let edge = self.graph.find_edge(*node, i).unwrap();
+                let edge = self.graph.edge_weight(edge).unwrap();
+                (&self.graph[i], edge.ident.clone())
+            })
+            .collect()
     }
 
     pub fn add_edge(&mut self, from: StatementId, to: StatementId, ident: HashSet<String>) {
@@ -70,8 +88,8 @@ impl StatementGraph {
 
     fn init_graph_edge(&mut self) {
         let mut edges_to_add = Vec::new();
-        for statement in self.statements() {
-            for def_statement in self.statements() {
+        for statement in self.get_statements() {
+            for def_statement in self.get_statements() {
                 let mut deps_ident = HashSet::new();
                 for def_ident in def_statement.get_defined_ident() {
                     if let Some(used_ident) = statement.get_used_ident() {
@@ -97,7 +115,6 @@ impl fmt::Display for StatementGraph {
         let mut nodes = self
             .graph
             .node_weights()
-            .into_iter()
             .map(|node| {
                 let id = node.get_id();
                 match node {
@@ -137,7 +154,6 @@ impl fmt::Display for StatementGraph {
         let mut references = self
             .graph
             .edge_references()
-            .into_iter()
             .map(|edge| {
                 let source = &self.graph[edge.source()].get_id();
                 let target = &self.graph[edge.target()].get_id();

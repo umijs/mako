@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use swc_css_ast::Stylesheet;
+use swc_css_visit::VisitMutWith;
 use tracing::debug;
 
 use crate::ast::{build_css_ast, build_js_ast};
@@ -14,11 +16,12 @@ use crate::module::ModuleAst;
 
 pub fn parse(content: &Content, path: &str, context: &Arc<Context>) -> Result<ModuleAst> {
     debug!("parse {}", path);
-    match content {
-        Content::Js(content) => Ok(parse_js(content, path, context)?),
-        Content::Css(content) => Ok(parse_css(content, path, context)?),
-        Content::Assets(asset) => Ok(parse_asset(asset, path, context)?),
-    }
+    let ast = match content {
+        Content::Js(content) => parse_js(content, path, context)?,
+        Content::Css(content) => parse_css(content, path, context)?,
+        Content::Assets(asset) => parse_asset(asset, path, context)?,
+    };
+    Ok(ast)
 }
 
 fn parse_js(content: &str, path: &str, context: &Arc<Context>) -> Result<ModuleAst> {
@@ -34,6 +37,9 @@ fn parse_css(content: &str, path: &str, context: &Arc<Context>) -> Result<Module
         let js_ast = build_js_ast(path, &code, context)?;
         Ok(ModuleAst::Script(js_ast))
     } else {
+        // TODO: move to transform step
+        // compile css compat
+        compile_css_compat(&mut ast);
         // for mako css module, compile it and parse it as css
         if is_mako_css_modules(path) {
             // should remove the suffix to generate the same hash
@@ -46,4 +52,12 @@ fn parse_css(content: &str, path: &str, context: &Arc<Context>) -> Result<Module
 fn parse_asset(asset: &Asset, path: &str, context: &Arc<Context>) -> Result<ModuleAst> {
     let ast = build_js_ast(path, &asset.content, context)?;
     Ok(ModuleAst::Script(ast))
+}
+
+fn compile_css_compat(ast: &mut Stylesheet) {
+    ast.visit_mut_with(&mut swc_css_compat::compiler::Compiler::new(
+        swc_css_compat::compiler::Config {
+            process: swc_css_compat::feature::Features::NESTING,
+        },
+    ));
 }

@@ -2,13 +2,14 @@
 #![feature(hasher_prefixfree_extras)]
 
 mod analyze_deps;
-// mod analyze_statement;
+mod analyze_statement;
 mod ast;
 mod bfs;
 mod build;
 mod chunk;
 mod chunk_graph;
 mod cli;
+mod comments;
 pub mod compiler;
 pub mod config;
 mod config_node_polyfill;
@@ -20,7 +21,6 @@ mod generate;
 mod generate_chunks;
 mod group_chunk;
 mod hmr;
-mod lightningcss;
 mod load;
 pub mod logger;
 mod minify;
@@ -29,8 +29,8 @@ mod module_graph;
 mod parse;
 mod resolve;
 mod sourcemap;
-// mod statement;
-// mod statement_graph;
+mod statement;
+mod statement_graph;
 mod targets;
 #[cfg(test)]
 mod test_helper;
@@ -43,8 +43,10 @@ mod transform_in_generate;
 mod transform_optimizer;
 mod transform_provide;
 mod transform_react;
-// mod tree_shaking;
-// mod tree_shaking_module;
+mod tree_shaking;
+mod tree_shaking_analyze;
+mod tree_shaking_module;
+mod unused_statement_marker;
 mod update;
 mod used_ident_collector;
 mod watch;

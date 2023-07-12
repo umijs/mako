@@ -6,6 +6,7 @@ use swc_common::sync::Lrc;
 use swc_common::{Globals, SourceMap};
 
 use crate::chunk_graph::ChunkGraph;
+use crate::comments::Comments;
 use crate::config::Config;
 use crate::module_graph::ModuleGraph;
 
@@ -53,6 +54,8 @@ impl Default for Meta {
 
 pub struct ScriptMeta {
     pub cm: Lrc<SourceMap>,
+    pub origin_comments: RwLock<Comments>,
+    pub output_comments: RwLock<Comments>,
     pub globals: Globals,
 }
 
@@ -60,6 +63,8 @@ impl ScriptMeta {
     fn new() -> Self {
         Self {
             cm: Default::default(),
+            origin_comments: Default::default(),
+            output_comments: Default::default(),
             globals: Globals::default(),
         }
     }
@@ -148,6 +153,63 @@ mod tests {
         assert!(
             index_js_content.contains("data:image/png;base64,"),
             "small.png is inlined"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_css_inline_limit() {
+        let (files, file_contents) = compile("test/compile/css-inline-limit");
+        println!("{:?}", files);
+        assert!(
+            files.join(",").contains(&".jpg".to_string()),
+            "big.jpg is not inlined"
+        );
+        assert!(
+            !files.join(",").contains(&".png".to_string()),
+            "small.png is inlined"
+        );
+        let index_js_content = file_contents.get("index.js").unwrap();
+        assert!(
+            index_js_content.contains("data:image/png;base64,"),
+            "small.png is inlined"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_css_modules() {
+        let (files, file_contents) = compile("test/compile/css-modules");
+        println!("{:?}", files);
+        let index_js_content = file_contents.get("index.js").unwrap();
+        assert!(index_js_content.contains(".foo-"), ".foo is css moduled");
+        assert!(
+            index_js_content.contains(".bar {"),
+            ".bar with :global is not css moduled"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_css_nesting() {
+        let (files, file_contents) = compile("test/compile/css-nesting");
+        println!("{:?}", files);
+        let index_js_content = file_contents.get("index.js").unwrap();
+        assert!(
+            index_js_content.contains(".foo .bar {"),
+            "css nesting works"
+        );
+        assert!(
+            index_js_content.contains(".hoo {"),
+            "css nesting with :global works"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_css_prefixer() {
+        let (files, file_contents) = compile("test/compile/css-prefixer");
+        println!("{:?}", files);
+        let index_js_content = file_contents.get("index.js").unwrap();
+        assert!(
+            index_js_content.contains("display: -ms-flexbox;"),
+            "ie 10 prefixer"
         );
     }
 
