@@ -88,8 +88,12 @@ pub fn handle_asset<T: AsRef<str>>(context: &Arc<Context>, path: T) -> Result<St
     if file_size > context.config.inline_limit.try_into().unwrap() {
         let final_file_name = content_hash(path_str)? + "." + ext_name(path_str).unwrap();
         context.emit_assets(path_string, final_file_name.clone());
-        let public_file_path = context.config.public_path.clone() + final_file_name.as_str();
-        Ok(public_file_path)
+        let public_path = context.config.public_path.clone();
+        Ok(if public_path != "runtime" {
+            public_path + final_file_name.as_str()
+        } else {
+            final_file_name
+        })
     } else {
         let base64 =
             to_base64(path_str).with_context(|| LoadError::ToBase64Error { path: path_string })?;
