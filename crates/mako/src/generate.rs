@@ -7,11 +7,12 @@ use rayon::prelude::*;
 use serde::Serialize;
 use tracing::{debug, info};
 
-use crate::ast::js_ast_to_code;
+use crate::ast::{css_ast_to_code, js_ast_to_code};
 use crate::compiler::Compiler;
 use crate::config::{DevtoolConfig, Mode};
 use crate::generate_chunks::OutputAst;
 use crate::minify::minify_js;
+use crate::module::ModuleAst;
 use crate::update::UpdateResult;
 
 impl Compiler {
@@ -55,7 +56,15 @@ impl Compiler {
                 .par_iter_mut()
                 .try_for_each(|file| -> Result<()> {
                     if matches!(self.context.config.mode, Mode::Production) {
-                        minify_js(&mut file.js_ast, &self.context)?;
+                        match &mut file.ast {
+                            ModuleAst::Script(ast) => {
+                                minify_js(ast, &self.context)?;
+                            }
+                            ModuleAst::Css(ast) => {
+                                swc_css_minifier::minify(ast, Default::default());
+                            }
+                            _ => (),
+                        }
                     }
                     Ok(())
                 })?;
@@ -66,14 +75,26 @@ impl Compiler {
         let t_ast_to_code_and_write = Instant::now();
         info!("ast to code and write");
         chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
-            // ast to code
-            let (js_code, js_sourcemap) =
-                js_ast_to_code(&file.js_ast.ast, &self.context, &file.path)?;
-            // generate code and sourcemap files
-            let output = &config.output.path.join(&file.path);
-            fs::write(output, js_code).unwrap();
-            if matches!(self.context.config.devtool, DevtoolConfig::SourceMap) {
-                fs::write(format!("{}.map", output.display()), js_sourcemap).unwrap();
+            match &file.ast {
+                ModuleAst::Script(ast) => {
+                    // ast to code
+                    let (js_code, js_sourcemap) =
+                        js_ast_to_code(&ast.ast, &self.context, &file.path)?;
+                    // generate code and sourcemap files
+                    let output = &config.output.path.join(&file.path);
+                    fs::write(output, js_code).unwrap();
+                    if matches!(self.context.config.devtool, DevtoolConfig::SourceMap) {
+                        fs::write(format!("{}.map", output.display()), js_sourcemap).unwrap();
+                    }
+                }
+                // TODO: Sourcemap part
+                ModuleAst::Css(ast) => {
+                    // ast to code
+                    let (css_code, _sourcemap) = css_ast_to_code(ast, &self.context);
+                    let output = &config.output.path.join(&file.path);
+                    fs::write(output, css_code).unwrap();
+                }
+                _ => (),
             }
             Ok(())
         })?;
@@ -134,14 +155,22 @@ impl Compiler {
         let t_ast_to_code_and_write = Instant::now();
         info!("ast to code and write");
         chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
-            // ast to code
-            let (js_code, js_sourcemap) =
-                js_ast_to_code(&file.js_ast.ast, &self.context, &file.path)?;
-            // generate code and sourcemap files
-            let output = &config.output.path.join(&file.path);
-            fs::write(output, js_code).unwrap();
-            if matches!(self.context.config.devtool, DevtoolConfig::SourceMap) {
-                fs::write(format!("{}.map", output.display()), js_sourcemap).unwrap();
+            match &file.ast {
+                ModuleAst::Script(ast) => {
+                    // ast to code
+                    let (js_code, js_sourcemap) =
+                        js_ast_to_code(&ast.ast, &self.context, &file.path)?;
+                    // generate code and sourcemap files
+                    let output = &config.output.path.join(&file.path);
+                    fs::write(output, js_code).unwrap();
+                    if matches!(self.context.config.devtool, DevtoolConfig::SourceMap) {
+                        fs::write(format!("{}.map", output.display()), js_sourcemap).unwrap();
+                    }
+                }
+                ModuleAst::Css(_ast) => {
+                    // TODO: css chunk
+                }
+                _ => (),
             }
             Ok(())
         })?;

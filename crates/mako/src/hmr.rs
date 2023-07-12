@@ -20,7 +20,7 @@ impl Compiler {
         current_hash: u64,
     ) -> Result<(String, String)> {
         let module_graph = &self.context.module_graph.read().unwrap();
-        let js_stmts = modules_to_js_stmts(module_ids, module_graph, &self.context);
+        let (js_stmts, _) = modules_to_js_stmts(module_ids, module_graph, &self.context);
         let mut content = include_str!("runtime/runtime_hmr.js").to_string();
         content = content
             .replace("__CHUNK_ID__", &chunk.id.generate(&self.context))
