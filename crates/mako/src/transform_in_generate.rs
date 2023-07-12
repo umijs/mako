@@ -1,7 +1,7 @@
 use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::{fs, vec};
 
 use anyhow::Result;
 use swc_common::errors::HANDLER;
@@ -73,8 +73,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
                 .collect();
             // transform async module
             if info.is_async {
-                let ast = transform_js(ast, dep_info_map, info.top_level_await);
-                info.set_ast(ModuleAst::Script(ast));
+                transform_async_module(ast, dep_info_map, info.top_level_await);
             }
         } else if let ModuleAst::Css(ast) = ast {
             let ast = transform_css(ast, &path, dep_map, context);
@@ -169,13 +168,13 @@ pub fn transform_js_generate(
 const ASYNC_DEPS_IDENT: &str = "__mako_async_dependencies__";
 const ASYNC_IMPORTED_MODULE: &str = "_async__mako_imported_module_";
 
-fn transform_js(
+fn transform_async_module(
     ast: &mut Ast,
     dep_map: HashMap<String, (Dependency, ModuleInfo)>,
     top_level_await: bool,
-) -> Ast {
+) {
     handle_async_deps(ast, dep_map);
-    wrap_async_module(ast, top_level_await)
+    wrap_async_module(ast, top_level_await);
 }
 
 /// handle async module dependency
@@ -390,7 +389,7 @@ fn handle_async_deps(ast: &mut Ast, dep_map: HashMap<String, (Dependency, Module
 }
 
 /// Wrap async module with `require._async(module, async (handleAsyncDeps, asyncResult) => { });`
-fn wrap_async_module(ast: &mut Ast, top_level_await: bool) -> Ast {
+fn wrap_async_module(ast: &mut Ast, top_level_await: bool) {
     ast.ast.body.push(ModuleItem::Stmt(Stmt::Expr(ExprStmt {
         span: DUMMY_SP,
         expr: Box::new(Expr::Call(CallExpr {
@@ -472,7 +471,6 @@ fn wrap_async_module(ast: &mut Ast, top_level_await: bool) -> Ast {
             ],
         })),
     }))];
-    ast.clone()
 }
 
 fn transform_css(
