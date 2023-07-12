@@ -183,6 +183,10 @@ impl Module {
         info.external.is_some()
     }
 
+    pub fn is_node_module(&self) -> bool {
+        self.id.id.contains("node_modules")
+    }
+
     pub fn get_module_type(&self) -> ModuleType {
         let info = self.info.as_ref().unwrap();
         match info.ast {

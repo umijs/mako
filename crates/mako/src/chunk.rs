@@ -15,6 +15,8 @@ pub enum ChunkType {
     Runtime,
     Entry,
     Async,
+    // mean that the chunk is not async, but it's a dependency of an async chunk
+    Sync,
 }
 
 pub struct Chunk {
@@ -28,12 +30,18 @@ pub struct Chunk {
 impl Chunk {
     pub fn new(id: ChunkId, chunk_type: ChunkType) -> Self {
         Self {
-            modules: HashSet::from([id.clone()]),
+            modules: HashSet::new(),
             id,
             chunk_type,
             content: None,
             source_map: None,
         }
+    }
+
+    pub fn new_for(id: ModuleId, chunk_type: ChunkType) -> Self {
+        let mut c = Chunk::new(ChunkId::new(id.id.clone()), chunk_type);
+        c.add_module(id);
+        c
     }
 
     pub fn filename(&self) -> String {
@@ -50,7 +58,7 @@ impl Chunk {
                 format!("{}.js", basename)
             }
             // foo/bar.tsx -> bar-{hash}-async.js
-            ChunkType::Async => {
+            ChunkType::Async | ChunkType::Sync => {
                 let path = Path::new(&self.id.id);
                 let hash = hash_path(path);
                 let filename = path.file_stem().unwrap().to_string_lossy();
@@ -101,13 +109,13 @@ mod tests {
 
     #[test]
     fn test_filename() {
-        let chunk = Chunk::new(ModuleId::new("foo/bar.tsx".into()), ChunkType::Entry);
+        let chunk = Chunk::new_for(ModuleId::new("foo/bar.tsx".into()), ChunkType::Entry);
         assert_eq!(chunk.filename(), "bar.js");
 
-        let chunk = Chunk::new(ModuleId::new("foo/bar.tsx".into()), ChunkType::Async);
+        let chunk = Chunk::new_for(ModuleId::new("foo/bar.tsx".into()), ChunkType::Async);
         assert_eq!(chunk.filename(), "bar-15149280808876942159-async.js");
 
-        let chunk = Chunk::new(ModuleId::new("foo/bar.tsx".into()), ChunkType::Runtime);
+        let chunk = Chunk::new_for(ModuleId::new("foo/bar.tsx".into()), ChunkType::Runtime);
         assert_eq!(chunk.filename(), "runtime.js");
     }
 }

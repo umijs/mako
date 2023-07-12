@@ -60,7 +60,13 @@ impl Compiler {
 
                 // build js ast
                 let mut content = if matches!(chunk.chunk_type, crate::chunk::ChunkType::Entry) {
-                    format!(
+                    let chunks_ids = chunk_graph
+                        .sync_dependencies_chunk(chunk)
+                        .into_iter()
+                        .map(|chunk| chunk.generate(&self.context))
+                        .collect::<Vec<String>>();
+
+                    let code = format!(
                         "{}\n{}",
                         chunks_map_str,
                         compile_runtime_entry(
@@ -72,7 +78,23 @@ impl Compiler {
                                 .any(|info| info.ends_with(".wasm"))
                         )
                     )
-                    .replace("_%full_hash%_", &full_hash.to_string())
+                    .replace("_%full_hash%_", &full_hash.to_string());
+
+                    if !chunks_ids.is_empty() {
+                        let ensures = chunks_ids
+                            .into_iter()
+                            .map(|id| format!("ensure(\"{}\")", id))
+                            .collect::<Vec<String>>()
+                            .join(", ");
+
+                        code.replace(
+                            "// __BEFORE_ENTRY",
+                            format!("Promise.all([{}]).then(()=>{{", ensures).as_str(),
+                        )
+                        .replace("// __AFTER_ENTRY", "});")
+                    } else {
+                        code
+                    }
                 } else {
                     include_str!("runtime/runtime_chunk.js").to_string()
                 };

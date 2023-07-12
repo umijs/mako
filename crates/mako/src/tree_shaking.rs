@@ -119,7 +119,7 @@ impl Compiler {
     fn markup_entry_modules_as_side_effects(&self, entry_modules: Vec<ModuleId>) {
         let mut module_graph = self.context.module_graph.write().unwrap();
         for entry_module_id in entry_modules {
-            let mut module = module_graph.get_module_mut(&entry_module_id).unwrap();
+            let module = module_graph.get_module_mut(&entry_module_id).unwrap();
             module.side_effects = true;
         }
     }
@@ -128,7 +128,7 @@ impl Compiler {
         let mut module_graph = self.context.module_graph.write().unwrap();
         for cycle_module in cycle_modules {
             for module_id in cycle_module {
-                let mut module = module_graph.get_module_mut(&module_id).unwrap();
+                let module = module_graph.get_module_mut(&module_id).unwrap();
                 module.side_effects = true;
             }
         }
@@ -154,7 +154,7 @@ impl Compiler {
             }
 
             let mut module_graph = self.context.module_graph.write().unwrap();
-            let mut module = module_graph.get_module_mut(&module_id).unwrap();
+            let module = module_graph.get_module_mut(&module_id).unwrap();
 
             // external 模块，设置为副作用模块
             if module.is_external() {
@@ -164,7 +164,7 @@ impl Compiler {
             if !module.get_module_type().is_script() {
                 // 非 js 模块，以及他们的依赖，都设置为副作用模块
                 for dep_module_id in dependencies_of_module {
-                    let mut dep_module = module_graph.get_module_mut(&dep_module_id).unwrap();
+                    let dep_module = module_graph.get_module_mut(&dep_module_id).unwrap();
                     dep_module.side_effects = true;
                 }
             }

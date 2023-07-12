@@ -22,9 +22,27 @@ impl Compiler {
         let mut chunk_graph = self.context.chunk_graph.write().unwrap();
         chunk_graph.clear();
 
+        let vendor_entry_module_id = ModuleId::from("all_vendors".to_string());
+
+        let mut vendor_chunk = Chunk::new(vendor_entry_module_id.clone(), ChunkType::Sync);
+
+        module_graph
+            .modules()
+            .iter()
+            .filter(|&&module| !module.is_external() && module.is_node_module())
+            .for_each(|module| {
+                // TODO chunk 中不能有反向依赖非 node_modules 的 module
+                vendor_chunk.add_module(module.id.clone());
+            });
+
+        chunk_graph.add_chunk(vendor_chunk);
+
         let entries = module_graph.get_entry_modules();
         for entry in entries {
             let (chunk, dynamic_dependencies) = self.create_chunk(&entry, ChunkType::Entry);
+
+            edges.push((chunk.id.clone(), vendor_entry_module_id.clone()));
+
             visited.borrow_mut().insert(chunk.id.clone());
             edges.extend(
                 dynamic_dependencies
@@ -69,7 +87,7 @@ impl Compiler {
     ) -> (Chunk, Vec<ModuleId>) {
         let mut dynamic_entries = vec![];
         let mut bfs = Bfs::new(VecDeque::from(vec![entry_module_id]), Default::default());
-        let mut chunk = Chunk::new(entry_module_id.clone(), chunk_type);
+        let mut chunk = Chunk::new_for(entry_module_id.clone(), chunk_type);
         let module_graph = self.context.module_graph.read().unwrap();
         while !bfs.done() {
             match bfs.next_node() {
@@ -79,7 +97,8 @@ impl Compiler {
                     for (dep_module_id, dep) in module_graph.get_dependencies(head) {
                         if dep.resolve_type == ResolveType::DynamicImport {
                             dynamic_entries.push(dep_module_id.clone());
-                        } else {
+                        } else if !dep_module_id.id.contains("node_modules") {
+                            // node_modules module in another chunk
                             bfs.visit(dep_module_id);
                         }
                     }

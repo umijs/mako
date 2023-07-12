@@ -50,6 +50,10 @@ impl ModuleGraph {
             .and_then(|i| self.graph.node_weight(*i))
     }
 
+    pub fn module_node_idx(&self, module_id: &ModuleId) -> Option<NodeIndex<DefaultIx>> {
+        self.id_index_map.get(module_id).cloned()
+    }
+
     pub fn remove_module(&mut self, module_id: &ModuleId) -> Module {
         let index = self
             .id_index_map
@@ -82,6 +86,10 @@ impl ModuleGraph {
     #[allow(dead_code)]
     pub fn get_modules_mut(&mut self) -> Vec<&mut Module> {
         self.graph.node_weights_mut().collect()
+    }
+
+    pub fn modules(&self) -> Vec<&Module> {
+        self.graph.node_weights().collect()
     }
 
     pub fn remove_dependency(&mut self, from: &ModuleId, to: &ModuleId) {
