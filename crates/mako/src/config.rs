@@ -81,6 +81,8 @@ pub struct Config {
     pub hmr: bool,
     pub hmr_port: String,
     pub hmr_host: String,
+    // temp flag
+    pub extract_css: bool,
 }
 
 const CONFIG_FILE: &str = "mako.config.json";
@@ -103,7 +105,8 @@ const DEFAULT_CONFIG: &str = r#"
     "hmr": true,
     "hmr_host": "127.0.0.1",
     "hmr_port": "3000",
-    "module_id_strategy": "named"
+    "module_id_strategy": "named",
+    "extract_css": false
 }
 "#;
 

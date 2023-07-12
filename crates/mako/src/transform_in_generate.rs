@@ -55,17 +55,20 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         let mut module_graph = context.module_graph.write().unwrap();
         let module = module_graph.get_module_mut(module_id).unwrap();
         let info = module.info.as_mut().unwrap();
-        let _path = info.path.clone();
+        let path = info.path.clone();
         let ast = &mut info.ast;
 
         if let ModuleAst::Script(ast) = ast {
             transform_js_generate(context, ast, &dep_map, module.is_entry);
         }
 
-        // if let ModuleAst::Css(ast) = ast {
-        //     let ast = transform_css(ast, &path, dep_map, context);
-        //     info.set_ast(ModuleAst::Script(ast));
-        // }
+        // 通过开关控制是否单独提取css文件
+        if !context.config.extract_css {
+            if let ModuleAst::Css(ast) = ast {
+                let ast = transform_css(ast, &path, dep_map, context);
+                info.set_ast(ModuleAst::Script(ast));
+            }
+        }
     });
     Ok(())
 }
