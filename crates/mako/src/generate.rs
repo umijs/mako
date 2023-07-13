@@ -20,6 +20,7 @@ impl Compiler {
         let t_generate = Instant::now();
         let t_tree_shaking = Instant::now();
         if matches!(self.context.config.mode, Mode::Production) {
+            info!("tree_shaking");
             self.tree_shaking();
         }
         let t_tree_shaking = t_tree_shaking.elapsed();
