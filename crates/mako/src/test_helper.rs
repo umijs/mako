@@ -72,14 +72,13 @@ pub fn create_mock_module(path: PathBuf, code: &str) -> Module {
 
 #[allow(dead_code)]
 pub fn setup_compiler(base: &str, cleanup: bool) -> Compiler {
-    tracing_subscriber::fmt()
+    let _result = tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("mako=debug")),
         )
         // .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
         // .without_time()
-        .try_init()
-        .unwrap();
+        .try_init();
     let current_dir = std::env::current_dir().unwrap();
     let root = current_dir.join(base);
     if !root.parent().unwrap().exists() {
