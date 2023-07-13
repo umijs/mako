@@ -271,8 +271,12 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
                     is_self_executed = true;
                     analyze_used_ident_from_statement(block, None);
                 }
-                swc_ecma_ast::Stmt::Empty(_) => todo!(),
-                swc_ecma_ast::Stmt::Debugger(_) => todo!(),
+                swc_ecma_ast::Stmt::Empty(_) => {
+                    // TODO: implement it
+                }
+                swc_ecma_ast::Stmt::Debugger(_) => {
+                    // TODO: implement it
+                }
                 swc_ecma_ast::Stmt::With(with) => {
                     is_self_executed = true;
                     analyze_used_ident_from_statement(with, None);
