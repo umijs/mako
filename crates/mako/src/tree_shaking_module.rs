@@ -1,6 +1,8 @@
 use std::collections::{HashMap, HashSet};
 use std::{fmt, vec};
 
+use tracing::debug;
+
 use crate::module::{Module, ModuleId};
 use crate::statement::{
     ExportSpecifier, ExportStatement, ImportStatement, StatementId, StatementType,
@@ -163,6 +165,7 @@ impl TreeShakingModule {
      * 当前模块内到处的 identifiers
      */
     pub fn get_used_export_ident(&self) -> Vec<(UsedIdent, usize)> {
+        debug!("used_exports {:?}", &self.used_exports);
         match &self.used_exports {
             UsedExports::All => {
                 // all exported identifiers are used

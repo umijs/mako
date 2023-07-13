@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use swc_ecma_ast::{Decl, ExportDecl, ImportDecl};
 use swc_ecma_visit::{VisitMut, VisitWith};
+use tracing::debug;
 
 use crate::comments::Comments;
 use crate::defined_ident_collector::DefinedIdentCollector;
@@ -29,16 +30,20 @@ impl<'a, 'b> UnusedStatementMarker<'a, 'b> {
 
 impl VisitMut for UnusedStatementMarker<'_, '_> {
     fn visit_mut_export_decl(&mut self, export_decl: &mut ExportDecl) {
-        // 清理没有用到的 decl
-        for (statement_id, ..) in &self.used_export_statement {
-            let statement = self.tree_shaking_module.get_statement(statement_id);
-            if let StatementType::Export(export_statement) = statement {
-                if let Decl::Var(var_decl) = &mut export_decl.decl {
-                    for decl in &var_decl.decls {
-                        if !is_same_decl(export_statement, decl) {
-                            self.comments.add_unused_comment(decl.span.lo)
-                        }
+        if let Decl::Var(var_decl) = &mut export_decl.decl {
+            for decl in &var_decl.decls {
+                let is_decl_used = &self.used_export_statement.iter().any(|(statement_id, ..)| {
+                    let statement = self.tree_shaking_module.get_statement(statement_id);
+                    if let StatementType::Export(export_statement) = statement {
+                        is_same_decl(export_statement, decl)
+                    } else {
+                        false
                     }
+                });
+
+                if !is_decl_used {
+                    debug!("add unused comment to {:?}", &decl);
+                    self.comments.add_unused_comment(decl.span.lo)
                 }
             }
         }
@@ -46,15 +51,21 @@ impl VisitMut for UnusedStatementMarker<'_, '_> {
 
     fn visit_mut_import_decl(&mut self, import_decl: &mut ImportDecl) {
         // 清理没有用到的 specifier
-        for (statement_id, ..) in &self.used_export_statement {
-            let statement = self.tree_shaking_module.get_statement(statement_id);
-            if let StatementType::Import(import_statement) = statement {
-                for specifier in &import_decl.specifiers {
-                    if let swc_ecma_ast::ImportSpecifier::Named(named_specifier) = specifier {
-                        if !is_same_import_specifier(import_statement, named_specifier) {
-                            self.comments.add_unused_comment(named_specifier.span.lo)
+        for specifier in &import_decl.specifiers {
+            if let swc_ecma_ast::ImportSpecifier::Named(named_specifier) = specifier {
+                let is_specifier_used =
+                    &self.used_export_statement.iter().any(|(statement_id, ..)| {
+                        let statement = self.tree_shaking_module.get_statement(statement_id);
+                        if let StatementType::Import(import_statement) = statement {
+                            is_same_import_specifier(import_statement, named_specifier)
+                        } else {
+                            false
                         }
-                    }
+                    });
+
+                if !is_specifier_used {
+                    debug!("add unused comment to {:?}", &named_specifier);
+                    self.comments.add_unused_comment(named_specifier.span.lo)
                 }
             }
         }

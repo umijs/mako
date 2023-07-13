@@ -13,6 +13,11 @@ impl Compiler {
         export_statement: ExportStatement,
     ) {
         let module_graph = self.context.module_graph.write().unwrap();
+        let used_export: UsedExports = tree_shake_modules_map
+            .get_mut(tree_shaking_module_id)
+            .unwrap()
+            .used_exports
+            .clone();
         if let Some(source) = &export_statement.info.source {
             let exported_module_id = module_graph
                 .get_dependency_module_by_source(tree_shaking_module_id, source.clone());
@@ -31,12 +36,27 @@ impl Compiler {
                         if let Some(used_ident) = used_ident {
                             for ident in used_ident {
                                 if ident == "*" {
-                                    exported_tree_shaking_module.used_exports = UsedExports::All;
+                                    if let UsedExports::Partial(ref idents) = used_export {
+                                        for ident in idents {
+                                            exported_tree_shaking_module
+                                                .used_exports
+                                                .add_used_export(&ident);
+                                        }
+                                    } else {
+                                        exported_tree_shaking_module.used_exports =
+                                            UsedExports::All;
+                                    }
                                 } else {
                                     exported_tree_shaking_module
                                         .used_exports
                                         .add_used_export(&strip_context(ident))
                                 }
+                            }
+                        } else if let UsedExports::Partial(ref idents) = used_export {
+                            for ident in idents {
+                                exported_tree_shaking_module
+                                    .used_exports
+                                    .add_used_export(&ident);
                             }
                         } else {
                             exported_tree_shaking_module.used_exports = UsedExports::All;
