@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use swc_ecma_visit::VisitMutWith;
+use tracing::debug;
 
 use crate::compiler::Compiler;
 use crate::module::ModuleId;
@@ -11,6 +12,8 @@ impl Compiler {
     pub fn tree_shaking(&self) {
         // 拓扑排序
         let (entry_modules, sorted_modules, cycle_modules) = self.make_toposort();
+        debug!("entry_modules: {:?}", &entry_modules);
+        debug!("cycle_modules: {:?}", &cycle_modules);
 
         // 入口模块设置为副作用模块
         self.markup_entry_modules_as_side_effects(entry_modules);
@@ -28,6 +31,10 @@ impl Compiler {
             let tree_shaking_module = tree_shaking_module_map
                 .get_mut(&tree_shaking_module_id)
                 .unwrap();
+            debug!(
+                "tree_shaking module: [{}]{}",
+                tree_shaking_module.side_effects, &tree_shaking_module_id.id
+            );
 
             // FIXME: 先默认是 esm 模块
 
@@ -40,6 +47,7 @@ impl Compiler {
 
                         // 分析使用情况
                         for import in imports {
+                            debug!("    - import: {:?}", &import);
                             self.analyze_import_statement(
                                 tree_shaking_module_map,
                                 &tree_shaking_module_id,
@@ -48,6 +56,7 @@ impl Compiler {
                         }
 
                         for export in exports {
+                            debug!("    - export: {:?}", &export);
                             self.analyze_export_statement(
                                 tree_shaking_module_map,
                                 &tree_shaking_module_id,
@@ -88,6 +97,7 @@ impl Compiler {
 
                     // 分析使用情况
                     for import in imports {
+                        debug!("    - import: {:?}", &import);
                         this.analyze_import_statement(
                             tree_shaking_module_map,
                             &tree_shaking_module_id,
@@ -96,6 +106,7 @@ impl Compiler {
                     }
 
                     for export in exports {
+                        debug!("    - export: {:?}", &export);
                         this.analyze_export_statement(
                             tree_shaking_module_map,
                             &tree_shaking_module_id,
@@ -104,6 +115,13 @@ impl Compiler {
                     }
                 };
             }
+            let tree_shaking_module = tree_shaking_module_map
+                .get(&tree_shaking_module_id)
+                .unwrap();
+            debug!(
+                "    - used_exports: {:?}",
+                &tree_shaking_module.used_exports
+            );
         }
 
         // TODO: 增加minify阶段的删除功能
@@ -186,6 +204,30 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_tree_shaking() {
         let compiler = setup_compiler("test/build/tree-shaking", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_reexport() {
+        let compiler = setup_compiler("test/build/tree-shaking_reexport", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_named_reexport() {
+        let compiler = setup_compiler("test/build/tree-shaking_named_reexport", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_export_namespace() {
+        let compiler = setup_compiler("test/build/tree-shaking_export_namespace", false);
         compiler.compile();
         let content = read_dist_file(&compiler);
         assert_display_snapshot!(content);

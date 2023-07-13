@@ -5,6 +5,7 @@ use swc_ecma_visit::{Visit, VisitWith};
 
 use crate::used_ident_collector::UsedIdentCollector;
 
+#[derive(Debug)]
 pub struct DefinedIdentCollector {
     pub defined_ident: HashSet<String>,
     pub used_ident: HashSet<String>,
