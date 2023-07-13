@@ -317,7 +317,7 @@ const runtime = createRuntime({
             });
         }
         _export(exports, {
-            _export_star: function() {
+            /*#__UNUSED__*/ _export_star: function() {
                 return _export_star;
             },
             _: function() {

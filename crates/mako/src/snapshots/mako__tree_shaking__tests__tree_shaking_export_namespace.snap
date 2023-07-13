@@ -310,7 +310,7 @@ const runtime = createRuntime({
             });
         }
         _export(exports, {
-            _interop_require_wildcard: function() {
+            /*#__UNUSED__*/ _interop_require_wildcard: function() {
                 return _interop_require_wildcard;
             },
             _: function() {
