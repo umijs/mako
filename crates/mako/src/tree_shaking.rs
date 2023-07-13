@@ -218,6 +218,14 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_named_reexport() {
+        let compiler = setup_compiler("test/build/tree-shaking_named_reexport", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_tree_shaking_export_namespace() {
         let compiler = setup_compiler("test/build/tree-shaking_export_namespace", false);
         compiler.compile();
