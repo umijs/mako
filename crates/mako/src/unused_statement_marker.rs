@@ -32,7 +32,6 @@ impl<'a, 'b> UnusedStatementMarker<'a, 'b> {
 impl VisitMut for UnusedStatementMarker<'_, '_> {
     // 清理 export { } 这里面的变量
     fn visit_mut_export_specifiers(&mut self, specifiers: &mut Vec<swc_ecma_ast::ExportSpecifier>) {
-        // let mut removed_specifiers = vec![];
         for (_, specifier) in specifiers.iter().enumerate() {
             if let swc_ecma_ast::ExportSpecifier::Named(named_specifier) = specifier {
                 let is_specifier_used = self.is_export_specifier_used(named_specifier);
