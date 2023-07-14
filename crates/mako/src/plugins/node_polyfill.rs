@@ -1,5 +1,7 @@
-use crate::{plugin::Plugin, config::Config};
 use anyhow::Result;
+
+use crate::config::Config;
+use crate::plugin::Plugin;
 
 pub struct NodePolyfillPlugin {}
 
