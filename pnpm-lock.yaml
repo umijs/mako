@@ -178,6 +178,9 @@ importers:
         specifier: 18.2.0
         version: 18.2.0(react@18.2.0)
     devDependencies:
+      classnames:
+        specifier: ^2.3.2
+        version: 2.3.2
       cypress:
         specifier: ^12.17.0
         version: 12.17.0
