@@ -14,6 +14,8 @@ pub enum ChunkType {
     Runtime,
     Entry,
     Async,
+    // mean that the chunk is not async, but it's a dependency of an async chunk
+    Sync,
 }
 
 pub struct Chunk {
@@ -49,7 +51,7 @@ impl Chunk {
                 format!("{}.js", basename)
             }
             // foo/bar.tsx -> foo_bar_tsx-async.js
-            ChunkType::Async => {
+            ChunkType::Async | ChunkType::Sync => {
                 let path = Path::new(&self.id.id);
 
                 let name = path
@@ -76,6 +78,14 @@ impl Chunk {
 
     pub fn get_modules(&self) -> &HashSet<ModuleId> {
         &self.modules
+    }
+
+    pub fn mut_modules(&mut self) -> &mut HashSet<ModuleId> {
+        &mut self.modules
+    }
+
+    pub fn remove_module(&mut self, module_id: &ModuleId) {
+        self.modules.remove(module_id);
     }
 
     pub fn has_module(&self, module_id: &ModuleId) -> bool {
