@@ -24,10 +24,18 @@ impl Comments {
     }
 
     /**
+     * Check for `/*#__UNUSED__*/`
+     */
+    #[allow(dead_code)]
+    pub fn has_unused(&self, span: Span) -> bool {
+        self.has_flag(span, "UNUSED")
+    }
+
+    /**
      * Check for `/*#__PURE__*/`
      */
     #[allow(dead_code)]
-    fn has_pure(&self, span: Span) -> bool {
+    pub fn has_pure(&self, span: Span) -> bool {
         self.has_flag(span, "PURE")
     }
 

@@ -213,11 +213,13 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
                 swc_ecma_ast::ModuleDecl::ExportDefaultDecl(decl) => {
                     match &decl.decl {
                         swc_ecma_ast::DefaultDecl::Class(decl) => {
+                            analyze_used_ident_from_statement(&decl.class, None);
                             if let Some(ident) = &decl.ident {
                                 top_level_defined_ident.insert(ident.to_string());
                             }
                         }
                         swc_ecma_ast::DefaultDecl::Fn(decl) => {
+                            analyze_used_ident_from_statement(&decl.function, None);
                             if let Some(ident) = &decl.ident {
                                 top_level_defined_ident.insert(ident.to_string());
                             }

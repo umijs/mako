@@ -91,14 +91,13 @@ impl Compiler {
                 drop(comments);
 
                 {
-                    let this = self;
                     let imports = tree_shaking_module.imports();
                     let exports = tree_shaking_module.exports();
 
                     // 分析使用情况
                     for import in imports {
                         debug!("    - import: {:?}", &import);
-                        this.analyze_import_statement(
+                        self.analyze_import_statement(
                             tree_shaking_module_map,
                             &tree_shaking_module_id,
                             import,
@@ -107,7 +106,7 @@ impl Compiler {
 
                     for export in exports {
                         debug!("    - export: {:?}", &export);
-                        this.analyze_export_statement(
+                        self.analyze_export_statement(
                             tree_shaking_module_map,
                             &tree_shaking_module_id,
                             export,
@@ -124,7 +123,7 @@ impl Compiler {
             );
         }
 
-        // TODO: 增加minify阶段的删除功能
+        // self.cleanup_no_used_export_module(modules_to_remove);
     }
 
     fn make_toposort(&self) -> (Vec<ModuleId>, Vec<ModuleId>, Vec<Vec<ModuleId>>) {
@@ -149,6 +148,14 @@ impl Compiler {
                 let module = module_graph.get_module_mut(&module_id).unwrap();
                 module.side_effects = true;
             }
+        }
+    }
+
+    #[allow(dead_code)]
+    fn cleanup_no_used_export_module(&self, modules_to_remove: Vec<ModuleId>) {
+        let mut module_graph = self.context.module_graph.write().unwrap();
+        for module_id in modules_to_remove {
+            module_graph.remove_module(&module_id);
         }
     }
 
@@ -246,10 +253,23 @@ mod tests {
         let content = read_dist_file(&compiler);
         assert_display_snapshot!(content);
     }
-
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_side_effect() {
+        let compiler = setup_compiler("test/build/tree-shaking_side_effect", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
     #[tokio::test(flavor = "multi_thread")]
     async fn test_tree_shaking_class() {
         let compiler = setup_compiler("test/build/tree-shaking_class", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_exported() {
+        let compiler = setup_compiler("test/build/tree-shaking_exported", false);
         compiler.compile();
         let content = read_dist_file(&compiler);
         assert_display_snapshot!(content);

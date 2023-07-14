@@ -59,14 +59,19 @@ impl StatementGraph {
         &self.graph[*node]
     }
 
-    pub fn get_dependencies(&self, id: &StatementId) -> Vec<(&StatementType, HashSet<String>)> {
+    pub fn get_dependencies(
+        &self,
+        id: &StatementId,
+    ) -> Vec<(&StatementType, HashSet<String>, StatementId)> {
         let node = self.id_index_map.get(id).unwrap();
         self.graph
             .neighbors(*node)
             .map(|i| {
                 let edge = self.graph.find_edge(*node, i).unwrap();
                 let edge = self.graph.edge_weight(edge).unwrap();
-                (&self.graph[i], edge.ident.clone())
+                let statement = self.graph.node_weight(i).unwrap();
+                let id = statement.get_id();
+                (&self.graph[i], edge.ident.clone(), id)
             })
             .collect()
     }

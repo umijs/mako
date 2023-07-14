@@ -26,6 +26,7 @@ use crate::targets;
 use crate::transform_dep_replacer::DepReplacer;
 use crate::transform_dynamic_import::DynamicImport;
 use crate::transform_react::react_refresh_entry_prefix;
+use crate::unused_statement_sweep::UnusedStatementSweep;
 
 impl Compiler {
     pub fn transform_all(&self) -> Result<()> {
@@ -88,6 +89,18 @@ pub fn transform_js_generate(
                             let unresolved_mark = ast.unresolved_mark;
                             let top_level_mark = ast.top_level_mark;
 
+                            {
+                                if context.config.minify
+                                    && matches!(context.config.mode, Mode::Production)
+                                {
+                                    let comments =
+                                        context.meta.script.output_comments.read().unwrap();
+                                    let mut unused_statement_sweep =
+                                        UnusedStatementSweep::new(&comments);
+                                    ast.ast.visit_mut_with(&mut unused_statement_sweep);
+                                }
+                            }
+
                             let import_interop = ImportInterop::Swc;
                             // FIXME: 执行两轮 import_analyzer + inject_helpers，第一轮是为了 module_graph，第二轮是为了依赖替换
                             ast.ast
@@ -143,6 +156,7 @@ pub fn transform_js_generate(
                                     .unwrap()
                                     .get_swc_comments(),
                             )));
+
                             Ok(())
                         })
                     })
