@@ -43,6 +43,7 @@ impl VisitMut for UnusedStatementSweep<'_> {
                 }
             }
         }
+        removed.reverse();
         for index in removed {
             specifiers.remove(index);
             self.removed_item_count += 1;
@@ -84,6 +85,7 @@ impl UnusedStatementSweep<'_> {
                 removed.push(index);
             }
         }
+        removed.reverse();
         for index in removed {
             var_decl.decls.remove(index);
             self.removed_item_count += 1;
