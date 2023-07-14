@@ -32,6 +32,7 @@ impl<'a, 'b> UnusedStatementMarker<'a, 'b> {
 impl VisitMut for UnusedStatementMarker<'_, '_> {
     // 清理 export { } 这里面的变量
     fn visit_mut_export_specifiers(&mut self, specifiers: &mut Vec<swc_ecma_ast::ExportSpecifier>) {
+        // let mut removed_specifiers = vec![];
         for (_, specifier) in specifiers.iter().enumerate() {
             if let swc_ecma_ast::ExportSpecifier::Named(named_specifier) = specifier {
                 let is_specifier_used = self.is_export_specifier_used(named_specifier);
@@ -104,20 +105,38 @@ impl<'a, 'b> UnusedStatementMarker<'a, 'b> {
         &mut self,
         named_specifier: &swc_ecma_ast::ExportNamedSpecifier,
     ) -> bool {
-        self.used_export_statement.iter().any(|(statement_id, ..)| {
-            let statement = self.tree_shaking_module.get_statement(statement_id);
-            if let StatementType::Export(export_statement) = statement {
-                let local = match &named_specifier.orig {
-                    ModuleExportName::Ident(i) => i.clone(),
-                    ModuleExportName::Str(_) => {
-                        unreachable!("str as ident is not supported")
+        self.used_export_statement
+            .iter()
+            .any(|(statement_id, used_idents)| {
+                let statement = self.tree_shaking_module.get_statement(statement_id);
+                if let StatementType::Export(export_statement) = statement {
+                    let local = match &named_specifier.orig {
+                        ModuleExportName::Ident(i) => i.clone(),
+                        ModuleExportName::Str(_) => {
+                            unreachable!("str as ident is not supported")
+                        }
+                    };
+                    if !is_same_ident(export_statement, &local) {
+                        return false;
                     }
-                };
-                is_same_ident(export_statement, &local)
-            } else {
-                false
-            }
-        })
+                    // 可能在 export {} 中使用部分变量，需要单独把他们识别出来
+                    let exported = if let Some(exported) = &named_specifier.exported {
+                        exported
+                    } else {
+                        &named_specifier.orig
+                    };
+                    let local = match exported {
+                        ModuleExportName::Ident(i) => i.clone(),
+                        ModuleExportName::Str(_) => {
+                            unreachable!("str as ident is not supported")
+                        }
+                    };
+
+                    used_idents.contains(&UsedIdent::SwcIdent(local.to_string()))
+                } else {
+                    false
+                }
+            })
     }
 }
 

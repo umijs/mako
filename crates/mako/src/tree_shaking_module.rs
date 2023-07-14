@@ -157,7 +157,6 @@ impl TreeShakingModule {
                 self.analyze_statement_used_ident(&mut stmt_used_ident_map, stmt, &mut visited);
             }
         }
-
         UsedIdentHashMap(stmt_used_ident_map)
     }
 
@@ -252,7 +251,7 @@ impl TreeShakingModule {
                                     if let Some(exported) = exported {
                                         if Self::is_same_ident(ident, &exported) {
                                             used_ident.push((
-                                                UsedIdent::SwcIdent(local.clone()),
+                                                UsedIdent::SwcIdent(exported.clone()),
                                                 export_statement.id,
                                             ));
                                         }

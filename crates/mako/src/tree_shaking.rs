@@ -267,4 +267,11 @@ mod tests {
         let content = read_dist_file(&compiler);
         assert_display_snapshot!(content);
     }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_exported() {
+        let compiler = setup_compiler("test/build/tree-shaking_exported", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
 }

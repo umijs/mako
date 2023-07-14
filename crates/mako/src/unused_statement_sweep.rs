@@ -32,6 +32,25 @@ impl VisitMut for UnusedStatementSweep<'_> {
             decl.take();
         }
     }
+    // TODO: import specifiers removed
+
+    fn visit_mut_export_specifiers(&mut self, specifiers: &mut Vec<swc_ecma_ast::ExportSpecifier>) {
+        let mut removed = vec![];
+        for (index, specifier) in specifiers.iter().enumerate() {
+            if let swc_ecma_ast::ExportSpecifier::Named(named_specifier) = specifier {
+                if self.comments.has_unused(named_specifier.span) {
+                    removed.push(index);
+                }
+            }
+        }
+        for index in removed {
+            specifiers.remove(index);
+            self.removed_item_count += 1;
+        }
+        if specifiers.is_empty() {
+            self.need_removed_module_item = true;
+        }
+    }
     fn visit_mut_export_decl(&mut self, export_decl: &mut ExportDecl) {
         match &mut export_decl.decl {
             Decl::Var(var_decl) => {
@@ -60,7 +79,7 @@ impl VisitMut for UnusedStatementSweep<'_> {
 impl UnusedStatementSweep<'_> {
     fn remove_unused_decls(&mut self, var_decl: &mut Box<swc_ecma_ast::VarDecl>) {
         let mut removed = vec![];
-        for (index, decl) in var_decl.decls.iter_mut().enumerate() {
+        for (index, decl) in var_decl.decls.iter().enumerate() {
             if self.comments.has_unused(decl.span) {
                 removed.push(index);
             }
