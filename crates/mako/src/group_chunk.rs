@@ -30,7 +30,7 @@ impl Compiler {
                 dynamic_dependencies
                     .clone()
                     .into_iter()
-                    .map(|dep| (chunk.id.clone(), dep)),
+                    .map(|dep| (chunk.id.clone(), dep.generate(&self.context).into())),
             );
             chunk_graph.add_chunk(chunk);
 
@@ -46,7 +46,7 @@ impl Compiler {
                             dynamic_dependencies
                                 .clone()
                                 .into_iter()
-                                .map(|dep| (chunk.id.clone(), dep)),
+                                .map(|dep| (chunk.id.clone(), dep.generate(&self.context).into())),
                         );
                         chunk_graph.add_chunk(chunk);
                         for dep in dynamic_dependencies {
@@ -69,7 +69,11 @@ impl Compiler {
     ) -> (Chunk, Vec<ModuleId>) {
         let mut dynamic_entries = vec![];
         let mut bfs = Bfs::new(VecDeque::from(vec![entry_module_id]), Default::default());
-        let mut chunk = Chunk::new(entry_module_id.clone(), chunk_type);
+
+        let chunk_id = entry_module_id.generate(&self.context);
+        let mut chunk = Chunk::new(chunk_id.into(), chunk_type);
+        chunk.add_module(entry_module_id.clone());
+
         let module_graph = self.context.module_graph.read().unwrap();
         while !bfs.done() {
             match bfs.next_node() {
