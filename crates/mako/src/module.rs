@@ -115,6 +115,12 @@ impl From<String> for ModuleId {
     }
 }
 
+impl From<&str> for ModuleId {
+    fn from(id: &str) -> Self {
+        Self { id: id.to_string() }
+    }
+}
+
 impl From<PathBuf> for ModuleId {
     fn from(path: PathBuf) -> Self {
         Self {
@@ -181,6 +187,10 @@ impl Module {
     pub fn is_external(&self) -> bool {
         let info = self.info.as_ref().unwrap();
         info.external.is_some()
+    }
+
+    pub fn is_node_module(&self) -> bool {
+        self.id.id.contains("node_modules")
     }
 
     pub fn get_module_type(&self) -> ModuleType {

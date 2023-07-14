@@ -4,6 +4,7 @@ expression: content
 ---
 const chunksIdToUrlMap = {};
 chunksIdToUrlMap["./index.ts"] = `${"/"}index.js`;
+chunksIdToUrlMap["./all_vendors"] = `${"/"}all_vendors-async.js`;
 function createRuntime(makoModules, entryModuleId) {
     const modulesRegistry = {};
     function requireModule(moduleId) {
@@ -253,12 +254,16 @@ function createRuntime(makoModules, entryModuleId) {
             makoModules[id] = modules[id];
         }
     };
-    requireModule._h = '1169780754386260144';
+    requireModule._h = '5628948983464596909';
     requireModule.currentHash = ()=>{
         return requireModule._h;
     };
     requireModule.ensure = ensure;
-    requireModule(entryModuleId);
+    Promise.all([
+        ensure("./all_vendors")
+    ]).then(()=>{
+        requireModule(entryModuleId);
+    });
     return {
         requireModule,
         _modulesRegistry: modulesRegistry,
@@ -304,39 +309,6 @@ const runtime = createRuntime({
             value: true
         });
         require("./2.ts");
-    },
-    "../../../../../node_modules/.pnpm/@swc+helpers@0.5.1/node_modules/@swc/helpers/esm/_export_star.js": function(module, exports, require) {
-        "use strict";
-        Object.defineProperty(exports, "__esModule", {
-            value: true
-        });
-        function _export(target, all) {
-            for(var name in all)Object.defineProperty(target, name, {
-                enumerable: true,
-                get: all[name]
-            });
-        }
-        _export(exports, {
-            _export_star: function() {
-                return _export_star;
-            },
-            _: function() {
-                return _export_star;
-            }
-        });
-        function _export_star(from, to) {
-            Object.keys(from).forEach(function(k) {
-                if (k !== "default" && !Object.prototype.hasOwnProperty.call(to, k)) {
-                    Object.defineProperty(to, k, {
-                        enumerable: true,
-                        get: function() {
-                            return from[k];
-                        }
-                    });
-                }
-            });
-            return from;
-        }
     }
 }, './index.ts');
 globalThis.jsonpCallback = runtime._jsonpCallback;

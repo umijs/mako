@@ -4,6 +4,7 @@ expression: content
 ---
 const chunksIdToUrlMap = {};
 chunksIdToUrlMap["./index.ts"] = `${"/"}index.js`;
+chunksIdToUrlMap["./all_vendors"] = `${"/"}all_vendors-async.js`;
 function createRuntime(makoModules, entryModuleId) {
     const modulesRegistry = {};
     function requireModule(moduleId) {
@@ -253,12 +254,16 @@ function createRuntime(makoModules, entryModuleId) {
             makoModules[id] = modules[id];
         }
     };
-    requireModule._h = '14373101935231009768';
+    requireModule._h = '12007938434137768300';
     requireModule.currentHash = ()=>{
         return requireModule._h;
     };
     requireModule.ensure = ensure;
-    requireModule(entryModuleId);
+    Promise.all([
+        ensure("./all_vendors")
+    ]).then(()=>{
+        requireModule(entryModuleId);
+    });
     return {
         requireModule,
         _modulesRegistry: modulesRegistry,

@@ -13,7 +13,14 @@ impl Compiler {
     // TODO:
     // - 多个 entry 之间的 chunk 共享
     // - 支持各种 chunk 拆分策略，比如把所有 node_modules 下的包按 package name 拆
+
     pub fn group_chunk(&self) {
+        self.group_main_chunk();
+
+        self.group_big_vendor_chunk();
+    }
+
+    pub fn group_main_chunk(&self) {
         info!("group_chunk");
 
         let visited = Rc::new(RefCell::new(HashSet::new()));
@@ -59,6 +66,42 @@ impl Compiler {
 
         for (from, to) in &edges {
             chunk_graph.add_edge(from, to);
+        }
+    }
+
+    fn group_big_vendor_chunk(&self) {
+        // big vendors chunk policy
+        let mut chunk_graph = self.context.chunk_graph.write().unwrap();
+        let chunks = chunk_graph.mut_chunks();
+        let mut big_vendor_chunk = Chunk::new("all_vendors".into(), ChunkType::Sync);
+
+        let mut entries = Vec::new();
+
+        for c in chunks {
+            let mut vendors_to_move = HashSet::new();
+
+            for m in c
+                .mut_modules()
+                .iter()
+                .filter(|&m| m.id.contains("node_modules"))
+            {
+                vendors_to_move.insert(m.clone());
+                big_vendor_chunk.add_module(m.clone())
+            }
+
+            for m in &vendors_to_move {
+                c.remove_module(m);
+            }
+
+            if matches!(c.chunk_type, ChunkType::Entry) {
+                entries.push(c.id.clone());
+            }
+        }
+
+        let to_chunk = big_vendor_chunk.id.clone();
+        chunk_graph.add_chunk(big_vendor_chunk);
+        for entry in entries {
+            chunk_graph.add_edge(&entry, &to_chunk);
         }
     }
 
