@@ -254,7 +254,7 @@ function createRuntime(makoModules, entryModuleId) {
             makoModules[id] = modules[id];
         }
     };
-    requireModule._h = '6468287931592795205';
+    requireModule._h = '15657923022568889959';
     requireModule.currentHash = ()=>{
         return requireModule._h;
     };
@@ -284,31 +284,33 @@ const runtime = createRuntime({
             });
         }
         _export(exports, {
-            foo: function() {
-                return foo;
+            /*#__UNUSED__*/ Foo: function() {
+                return Foo;
             },
-            /*#__UNUSED__*/ bar: function() {
+            bar: function() {
                 return bar;
-            },
-            /*#__UNUSED__*/ zoo: function() {
-                return zoo;
             }
         });
-        const foo = 1;
-        const bar = 2;
-        const zoo = 1;
-        if (true) {
-            const foo = 1;
-            console.log(bar);
+        class Foo {
+            echo() {}
         }
+        const bar = 1;
+    },
+    "./2.ts": function(module, exports, require) {
+        "use strict";
+        Object.defineProperty(exports, "__esModule", {
+            value: true
+        });
+        var _export_star = require("../../../../../node_modules/.pnpm/@swc+helpers@0.5.1/node_modules/@swc/helpers/esm/_export_star.js");
+        _export_star._(require("./1.ts"), exports);
     },
     "./index.ts": function(module, exports, require) {
         "use strict";
         Object.defineProperty(exports, "__esModule", {
             value: true
         });
-        var _1 = require("./1.ts");
-        console.log(_1.foo);
+        var _2 = require("./2.ts");
+        console.log(_2.bar);
     }
 }, './index.ts');
 globalThis.jsonpCallback = runtime._jsonpCallback;

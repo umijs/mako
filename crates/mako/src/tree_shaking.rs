@@ -232,4 +232,26 @@ mod tests {
         let content = read_dist_file(&compiler);
         assert_display_snapshot!(content);
     }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_named_export() {
+        let compiler = setup_compiler("test/build/tree-shaking_named_export", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_fn() {
+        let compiler = setup_compiler("test/build/tree-shaking_fn", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_class() {
+        let compiler = setup_compiler("test/build/tree-shaking_class", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
 }

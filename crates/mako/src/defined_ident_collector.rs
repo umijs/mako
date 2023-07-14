@@ -61,8 +61,8 @@ impl Visit for DefinedIdentCollector {
             Pat::Assign(assign_pat) => {
                 self.visit_pat(&assign_pat.left);
             }
-            Pat::Invalid(_) => todo!(),
-            Pat::Expr(_) => todo!(),
+            Pat::Invalid(_) => {}
+            Pat::Expr(_) => {}
         }
     }
 }
