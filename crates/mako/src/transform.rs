@@ -610,7 +610,14 @@ require("./bar");
     ) -> (String, String) {
         let path = path.unwrap_or("test.tsx");
         let current_dir = std::env::current_dir().unwrap();
-        let config = Config::new(&current_dir.join("test/config/define"), None, None).unwrap();
+        let mut config = Config::new(&current_dir.join("test/config/define"), None, None).unwrap();
+        // for test_provider
+        config
+            .providers
+            .insert("process".into(), ("process".into(), "".into()));
+        config
+            .providers
+            .insert("Buffer".into(), ("buffer".into(), "Buffer".into()));
 
         let root = PathBuf::from("/path/to/root");
         let context = Arc::new(Context {
@@ -620,6 +627,7 @@ require("./bar");
             chunk_graph: RwLock::new(ChunkGraph::new()),
             assets_info: Mutex::new(HashMap::new()),
             meta: Meta::new(),
+            plugin_driver: Default::default(),
         });
         let mut ast = build_js_ast(path, origin, &context).unwrap();
         transform_js(

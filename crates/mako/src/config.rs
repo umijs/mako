@@ -161,8 +161,6 @@ impl Config {
                 panic!("public_path must end with '/' or be 'runtime'");
             }
 
-            Config::config_node_polyfill(config);
-
             // let entry_length = cc.entry.len();
             // if entry_length != 1 {
             //     panic!(
