@@ -3,8 +3,8 @@ source: crates/mako/src/tree_shaking.rs
 expression: content
 ---
 const chunksIdToUrlMap = {};
-chunksIdToUrlMap["./all_vendors"] = `${"/"}all_vendors-3347522080197650477-async.js`;
 chunksIdToUrlMap["./index.ts"] = `${"/"}index.js`;
+chunksIdToUrlMap["./all_vendors"] = `${"/"}all_vendors-3347522080197650477-async.js`;
 function createRuntime(makoModules, entryModuleId) {
     const modulesRegistry = {};
     function requireModule(moduleId) {

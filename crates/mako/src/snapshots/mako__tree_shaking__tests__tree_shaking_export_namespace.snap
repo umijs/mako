@@ -4,6 +4,7 @@ expression: content
 ---
 const chunksIdToUrlMap = {};
 chunksIdToUrlMap["./index.ts"] = `${"/"}index.js`;
+chunksIdToUrlMap["./all_vendors"] = `${"/"}all_vendors-3347522080197650477-async.js`;
 function createRuntime(makoModules, entryModuleId) {
     const modulesRegistry = {};
     function requireModule(moduleId) {
@@ -253,12 +254,16 @@ function createRuntime(makoModules, entryModuleId) {
             makoModules[id] = modules[id];
         }
     };
-    requireModule._h = '5384276997891216573';
+    requireModule._h = '8607444061540746814';
     requireModule.currentHash = ()=>{
         return requireModule._h;
     };
     requireModule.ensure = ensure;
-    requireModule(entryModuleId);
+    Promise.all([
+        ensure("./all_vendors")
+    ]).then(()=>{
+        requireModule(entryModuleId);
+    });
     return {
         requireModule,
         _modulesRegistry: modulesRegistry,
@@ -297,54 +302,6 @@ const runtime = createRuntime({
         var _interop_require_wildcard = require("../../../../../node_modules/.pnpm/@swc+helpers@0.5.1/node_modules/@swc/helpers/esm/_interop_require_wildcard.js");
         var _1 = _interop_require_wildcard._(require("./1.ts"));
         console.log(_1.foo);
-    },
-    "../../../../../node_modules/.pnpm/@swc+helpers@0.5.1/node_modules/@swc/helpers/esm/_interop_require_wildcard.js": function(module, exports, require) {
-        "use strict";
-        Object.defineProperty(exports, "__esModule", {
-            value: true
-        });
-        function _export(target, all) {
-            for(var name in all)Object.defineProperty(target, name, {
-                enumerable: true,
-                get: all[name]
-            });
-        }
-        _export(exports, {
-            _interop_require_wildcard: function() {
-                return _interop_require_wildcard;
-            },
-            _: function() {
-                return _interop_require_wildcard;
-            }
-        });
-        function _getRequireWildcardCache(nodeInterop) {
-            if (typeof WeakMap !== "function") return null;
-            var cacheBabelInterop = new WeakMap();
-            var cacheNodeInterop = new WeakMap();
-            return (_getRequireWildcardCache = function(nodeInterop) {
-                return nodeInterop ? cacheNodeInterop : cacheBabelInterop;
-            })(nodeInterop);
-        }
-        function _interop_require_wildcard(obj, nodeInterop) {
-            if (!nodeInterop && obj && obj.__esModule) return obj;
-            if (obj === null || typeof obj !== "object" && typeof obj !== "function") return {
-                default: obj
-            };
-            var cache = _getRequireWildcardCache(nodeInterop);
-            if (cache && cache.has(obj)) return cache.get(obj);
-            var newObj = {};
-            var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor;
-            for(var key in obj){
-                if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) {
-                    var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null;
-                    if (desc && (desc.get || desc.set)) Object.defineProperty(newObj, key, desc);
-                    else newObj[key] = obj[key];
-                }
-            }
-            newObj.default = obj;
-            if (cache) cache.set(obj, newObj);
-            return newObj;
-        }
     }
 }, './index.ts');
 globalThis.jsonpCallback = runtime._jsonpCallback;

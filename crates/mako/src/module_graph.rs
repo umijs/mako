@@ -84,10 +84,6 @@ impl ModuleGraph {
         self.graph.node_weights_mut().collect()
     }
 
-    pub fn modules(&self) -> Vec<&Module> {
-        self.graph.node_weights().collect()
-    }
-
     pub fn remove_dependency(&mut self, from: &ModuleId, to: &ModuleId) {
         let from_index = self.id_index_map.get(from).unwrap_or_else(|| {
             panic!(

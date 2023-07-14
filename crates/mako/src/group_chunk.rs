@@ -73,7 +73,7 @@ impl Compiler {
         // big vendors chunk policy
         let mut chunk_graph = self.context.chunk_graph.write().unwrap();
         let chunks = chunk_graph.mut_chunks();
-        let mut big_vendor_chunk = Chunk::new("big_vendors".into(), ChunkType::Sync);
+        let mut big_vendor_chunk = Chunk::new("all_vendors".into(), ChunkType::Sync);
 
         let mut entries = Vec::new();
 

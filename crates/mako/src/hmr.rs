@@ -80,7 +80,7 @@ mod tests {
         compiler.group_chunk();
         let chunk_graph = &compiler.context.chunk_graph.read().unwrap();
         let chunks = chunk_graph.get_chunks();
-        let chunk = chunks[1];
+        let chunk = chunks[0];
         let module_ids = chunk.get_modules();
         transform_modules(module_ids.iter().cloned().collect(), &compiler.context).unwrap();
         let (js_code, _js_sourcemap) = compiler.generate_hmr_chunk(chunk, module_ids, 42).unwrap();
