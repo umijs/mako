@@ -4,7 +4,7 @@ expression: content
 ---
 const chunksIdToUrlMap = {};
 chunksIdToUrlMap["./index.ts"] = `${"/"}index.js`;
-chunksIdToUrlMap["./all_vendors"] = `${"/"}all_vendors-3347522080197650477-async.js`;
+chunksIdToUrlMap["./all_vendors"] = `${"/"}all_vendors-async.js`;
 function createRuntime(makoModules, entryModuleId) {
     const modulesRegistry = {};
     function requireModule(moduleId) {
