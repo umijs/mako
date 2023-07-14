@@ -75,6 +75,14 @@ impl Chunk {
         &self.modules
     }
 
+    pub fn mut_modules(&mut self) -> &mut HashSet<ModuleId> {
+        &mut self.modules
+    }
+
+    pub fn remove_module(&mut self, module_id: &ModuleId) {
+        self.modules.remove(module_id);
+    }
+
     pub fn has_module(&self, module_id: &ModuleId) -> bool {
         self.modules.contains(module_id)
     }

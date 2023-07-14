@@ -13,7 +13,14 @@ impl Compiler {
     // TODO:
     // - 多个 entry 之间的 chunk 共享
     // - 支持各种 chunk 拆分策略，比如把所有 node_modules 下的包按 package name 拆
+
     pub fn group_chunk(&self) {
+        self.group_main_chunk();
+
+        self.group_big_vendor_chunk();
+    }
+
+    pub fn group_main_chunk(&self) {
         info!("group_chunk");
 
         let visited = Rc::new(RefCell::new(HashSet::new()));
@@ -22,27 +29,9 @@ impl Compiler {
         let mut chunk_graph = self.context.chunk_graph.write().unwrap();
         chunk_graph.clear();
 
-        let vendor_entry_module_id = ModuleId::from("all_vendors".to_string());
-
-        let mut vendor_chunk = Chunk::new(vendor_entry_module_id.clone(), ChunkType::Sync);
-
-        module_graph
-            .modules()
-            .iter()
-            .filter(|&&module| !module.is_external() && module.is_node_module())
-            .for_each(|module| {
-                // TODO chunk 中不能有反向依赖非 node_modules 的 module
-                vendor_chunk.add_module(module.id.clone());
-            });
-
-        chunk_graph.add_chunk(vendor_chunk);
-
         let entries = module_graph.get_entry_modules();
         for entry in entries {
             let (chunk, dynamic_dependencies) = self.create_chunk(&entry, ChunkType::Entry);
-
-            edges.push((chunk.id.clone(), vendor_entry_module_id.clone()));
-
             visited.borrow_mut().insert(chunk.id.clone());
             edges.extend(
                 dynamic_dependencies
@@ -80,6 +69,42 @@ impl Compiler {
         }
     }
 
+    fn group_big_vendor_chunk(&self) {
+        // big vendors chunk policy
+        let mut chunk_graph = self.context.chunk_graph.write().unwrap();
+        let chunks = chunk_graph.mut_chunks();
+        let mut big_vendor_chunk = Chunk::new("big_vendors".into(), ChunkType::Sync);
+
+        let mut entries = Vec::new();
+
+        for c in chunks {
+            let mut vendors_to_move = HashSet::new();
+
+            for m in c
+                .mut_modules()
+                .iter()
+                .filter(|&m| m.id.contains("node_modules"))
+            {
+                vendors_to_move.insert(m.clone());
+                big_vendor_chunk.add_module(m.clone())
+            }
+
+            for m in &vendors_to_move {
+                c.remove_module(m);
+            }
+
+            if matches!(c.chunk_type, ChunkType::Entry) {
+                entries.push(c.id.clone());
+            }
+        }
+
+        let to_chunk = big_vendor_chunk.id.clone();
+        chunk_graph.add_chunk(big_vendor_chunk);
+        for entry in entries {
+            chunk_graph.add_edge(&entry, &to_chunk);
+        }
+    }
+
     fn create_chunk(
         &self,
         entry_module_id: &ModuleId,
@@ -97,8 +122,7 @@ impl Compiler {
                     for (dep_module_id, dep) in module_graph.get_dependencies(head) {
                         if dep.resolve_type == ResolveType::DynamicImport {
                             dynamic_entries.push(dep_module_id.clone());
-                        } else if !dep_module_id.id.contains("node_modules") {
-                            // node_modules module in another chunk
+                        } else {
                             bfs.visit(dep_module_id);
                         }
                     }

@@ -115,6 +115,12 @@ impl From<String> for ModuleId {
     }
 }
 
+impl From<&str> for ModuleId {
+    fn from(id: &str) -> Self {
+        Self { id: id.to_string() }
+    }
+}
+
 impl From<PathBuf> for ModuleId {
     fn from(path: PathBuf) -> Self {
         Self {
