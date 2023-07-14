@@ -627,6 +627,7 @@ require("./bar");
             chunk_graph: RwLock::new(ChunkGraph::new()),
             assets_info: Mutex::new(HashMap::new()),
             meta: Meta::new(),
+            plugin_driver: Default::default(),
         });
         let mut ast = build_js_ast(path, origin, &context).unwrap();
         transform_js(
