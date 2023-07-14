@@ -9,6 +9,8 @@ use crate::chunk_graph::ChunkGraph;
 use crate::comments::Comments;
 use crate::config::Config;
 use crate::module_graph::ModuleGraph;
+use crate::plugin::PluginDriver;
+use crate::plugins::node_polyfill::NodePolyfillPlugin;
 
 pub struct Context {
     pub module_graph: RwLock<ModuleGraph>,
@@ -99,6 +101,11 @@ pub struct Compiler {
 impl Compiler {
     pub fn new(config: Config, root: PathBuf) -> Self {
         assert!(root.is_absolute(), "root path must be absolute");
+
+        let plugin_driver = PluginDriver::new(vec![Arc::new(NodePolyfillPlugin {})]);
+        let mut config = config;
+        plugin_driver.modify_config(&mut config).unwrap();
+
         Self {
             context: Arc::new(Context {
                 config,
