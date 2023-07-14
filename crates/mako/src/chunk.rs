@@ -37,12 +37,6 @@ impl Chunk {
         }
     }
 
-    pub fn new_for(id: ModuleId, chunk_type: ChunkType) -> Self {
-        let mut c = Chunk::new(ChunkId::new(id.id.clone()), chunk_type);
-        c.add_module(id);
-        c
-    }
-
     pub fn filename(&self) -> String {
         match self.chunk_type {
             ChunkType::Runtime => "runtime.js".into(),
@@ -121,7 +115,7 @@ mod tests {
 
     #[test]
     fn test_filename() {
-        let chunk = Chunk::new_for(ModuleId::new("foo/bar.tsx".into()), ChunkType::Entry);
+        let chunk = Chunk::new(ModuleId::new("foo/bar.tsx".into()), ChunkType::Entry);
         assert_eq!(chunk.filename(), "bar.js");
 
         let chunk = Chunk::new(ModuleId::new("./foo/bar.tsx".into()), ChunkType::Async);
