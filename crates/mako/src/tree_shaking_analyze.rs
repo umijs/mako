@@ -62,11 +62,15 @@ impl Compiler {
                             exported_tree_shaking_module.used_exports = UsedExports::All;
                         }
                     }
-                    ExportSpecifier::Named { local, .. } => {
+                    ExportSpecifier::Named { exported, local } => {
                         if *local == "default" {
                             exported_tree_shaking_module
                                 .used_exports
                                 .add_used_export(&UsedIdent::Default);
+                        } else if let Some(exported) = exported {
+                            exported_tree_shaking_module
+                                .used_exports
+                                .add_used_export(&UsedIdent::SwcIdent(strip_context(exported)));
                         } else {
                             exported_tree_shaking_module
                                 .used_exports

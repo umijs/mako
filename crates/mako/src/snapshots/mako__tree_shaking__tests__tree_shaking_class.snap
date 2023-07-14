@@ -319,7 +319,7 @@ const runtime = createRuntime({
             });
         }
         _export(exports, {
-            /*#__UNUSED__*/ _export_star: function() {
+            _export_star: function() {
                 return _export_star;
             },
             _: function() {

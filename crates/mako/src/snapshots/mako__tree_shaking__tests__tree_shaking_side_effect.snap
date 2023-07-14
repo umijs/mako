@@ -253,7 +253,7 @@ function createRuntime(makoModules, entryModuleId) {
             makoModules[id] = modules[id];
         }
     };
-    requireModule._h = '3640074382974726742';
+    requireModule._h = '8045766977563236230';
     requireModule.currentHash = ()=>{
         return requireModule._h;
     };
@@ -282,12 +282,13 @@ const runtime = createRuntime({
             foo: function() {
                 return foo;
             },
-            /*#__UNUSED__*/ bar: function() {
+            bar: function() {
                 return bar;
             }
         });
-        const foo = 1;
+        function foo() {}
         const bar = 1;
+        foo();
     },
     "./2.ts": function(module, exports, require) {
         "use strict";
@@ -302,8 +303,7 @@ const runtime = createRuntime({
         Object.defineProperty(exports, "__esModule", {
             value: true
         });
-        var _2 = require("./2.ts");
-        console.log(_2.foo);
+        require("./2.ts");
     },
     "../../../../../node_modules/.pnpm/@swc+helpers@0.5.1/node_modules/@swc/helpers/esm/_export_star.js": function(module, exports, require) {
         "use strict";
