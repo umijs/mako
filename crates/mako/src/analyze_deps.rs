@@ -171,15 +171,10 @@ fn get_first_arg_str(call_expr: &CallExpr) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-    use std::path::PathBuf;
-    use std::sync::{Arc, Mutex, RwLock};
+    use std::sync::Arc;
 
     use super::{analyze_deps_js, is_url_ignored};
     use crate::ast::build_js_ast;
-    use crate::chunk_graph::ChunkGraph;
-    use crate::compiler::{Context, Meta};
-    use crate::module_graph::ModuleGraph;
 
     #[test]
     fn test_is_url_ignored() {
@@ -238,20 +233,7 @@ import 'bar';
     }
 
     fn resolve(code: &str) -> String {
-        let root = PathBuf::from("/path/to/root");
-        let ast = build_js_ast(
-            "test.ts",
-            code,
-            &Arc::new(Context {
-                config: Default::default(),
-                root,
-                module_graph: RwLock::new(ModuleGraph::new()),
-                chunk_graph: RwLock::new(ChunkGraph::new()),
-                assets_info: Mutex::new(HashMap::new()),
-                meta: Meta::new(),
-            }),
-        )
-        .unwrap();
+        let ast = build_js_ast("test.ts", code, &Arc::new(Default::default())).unwrap();
         let mut deps = vec![];
         deps.extend(analyze_deps_js(&ast.ast));
         let deps = deps

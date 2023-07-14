@@ -217,14 +217,10 @@ fn transform_css(
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
-    use std::path::PathBuf;
-    use std::sync::{Arc, Mutex, RwLock};
+    use std::sync::Arc;
 
     use super::transform_css;
     use crate::ast::{build_css_ast, js_ast_to_code};
-    use crate::chunk_graph::ChunkGraph;
-    use crate::compiler::{Context, Meta};
-    use crate::module_graph::ModuleGraph;
 
     #[test]
     fn test_transform_css() {
@@ -284,15 +280,7 @@ document.head.appendChild(style);
         dep_map: HashMap<String, String>,
     ) -> (String, String) {
         let path = if let Some(p) = path { p } else { "test.tsx" };
-        let root = PathBuf::from("/path/to/root");
-        let context = Arc::new(Context {
-            config: Default::default(),
-            root,
-            module_graph: RwLock::new(ModuleGraph::new()),
-            chunk_graph: RwLock::new(ChunkGraph::new()),
-            assets_info: Mutex::new(HashMap::new()),
-            meta: Meta::new(),
-        });
+        let context = Arc::new(Default::default());
         let mut ast = build_css_ast(path, content, &context).unwrap();
         let ast = transform_css(&mut ast, path, dep_map, &context);
         let (code, _sourcemap) = js_ast_to_code(&ast.ast, &context, "index.js").unwrap();
