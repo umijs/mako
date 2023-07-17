@@ -244,6 +244,9 @@ impl Compiler {
                 "\n\nResolve Error: Resolve \"{}\" failed from \"{}\" \n",
                 source, target
             );
+            // TODO: remove me
+            // 当 entry resolve 文件失败时，get_targets 自身会失败
+            println!("err: {}", err);
 
             let id = ModuleId::new(target.clone());
             let module_graph = context.module_graph.read().unwrap();
