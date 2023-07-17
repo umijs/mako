@@ -255,7 +255,7 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
                         info: ExportInfo {
                             source: Some(export_all.src.value.to_string()),
                             stmt_id: id,
-                            specifiers: vec![ExportSpecifier::All(None)],
+                            specifiers: vec![ExportSpecifier::All],
                         },
                         defined_ident: top_level_defined_ident,
                         used_ident,

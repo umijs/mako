@@ -16,7 +16,7 @@ pub enum ImportSpecifier {
 #[derive(Debug, Clone)]
 pub enum ExportSpecifier {
     // export * from 'foo';
-    All(Option<Vec<String>>),
+    All,
     // export { foo, bar, default as zoo } from 'foo';
     Named {
         local: String,

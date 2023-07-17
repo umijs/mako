@@ -5,7 +5,7 @@ use tracing::debug;
 
 use crate::compiler::Compiler;
 use crate::module::ModuleId;
-use crate::tree_shaking_module::TreeShakingModule;
+use crate::tree_shaking_module::{ModuleSystem, TreeShakingModule};
 use crate::unused_statement_marker::UnusedStatementMarker;
 
 impl Compiler {
@@ -31,16 +31,69 @@ impl Compiler {
             let tree_shaking_module = tree_shaking_module_map
                 .get_mut(&tree_shaking_module_id)
                 .unwrap();
+
             debug!(
                 "tree_shaking module: [{}]{}",
-                tree_shaking_module.side_effects, &tree_shaking_module_id.id
+                tree_shaking_module.side_effects, &tree_shaking_module_id.id,
+            );
+            debug!(
+                "    - used_exports: {:?}",
+                &tree_shaking_module.used_exports
             );
 
-            // FIXME: 先默认是 esm 模块
+            if matches!(tree_shaking_module.module_system, ModuleSystem::ESModule) {
+                // 包含副作用的模块
+                if tree_shaking_module.side_effects {
+                    {
+                        {
+                            let imports = tree_shaking_module.imports();
+                            let exports = tree_shaking_module.exports();
 
-            // 包含副作用的模块
-            if tree_shaking_module.side_effects {
-                {
+                            // 分析使用情况
+                            for import in imports {
+                                debug!("    - import: {:?}", &import);
+                                self.analyze_import_statement(
+                                    tree_shaking_module_map,
+                                    &tree_shaking_module_id,
+                                    import,
+                                );
+                            }
+
+                            for export in exports {
+                                debug!("    - export: {:?}", &export);
+                                self.analyze_export_statement(
+                                    tree_shaking_module_map,
+                                    &tree_shaking_module_id,
+                                    export,
+                                );
+                            }
+                        };
+                    }
+                } else {
+                    // 不包含副作用的模块，执行 tree shaking
+                    let tree_shaking_module = tree_shaking_module_map
+                        .get_mut(&tree_shaking_module_id)
+                        .unwrap();
+
+                    let mut module_graph = self.context.module_graph.write().unwrap();
+                    let module = module_graph
+                        .get_module_mut(&tree_shaking_module.id)
+                        .unwrap();
+                    let ast = module.info.as_mut().unwrap().ast.as_script_mut();
+
+                    // 通过 tree_shaking_module 进行无用的标记
+                    let mut comments = self.context.meta.script.output_comments.write().unwrap();
+                    let mut marker = UnusedStatementMarker::new(tree_shaking_module, &mut comments);
+                    ast.visit_mut_with(&mut marker);
+                    drop(module_graph);
+                    drop(comments);
+
+                    // 当前模块没有被使用到的导出，删除当前模块
+                    if tree_shaking_module.used_exports.is_empty() {
+                        modules_to_remove.push(tree_shaking_module_id.clone());
+                        continue;
+                    }
+
                     {
                         let imports = tree_shaking_module.imports();
                         let exports = tree_shaking_module.exports();
@@ -65,65 +118,10 @@ impl Compiler {
                         }
                     };
                 }
-            } else {
-                // 不包含副作用的模块，执行 tree shaking
-                let tree_shaking_module = tree_shaking_module_map
-                    .get_mut(&tree_shaking_module_id)
-                    .unwrap();
-
-                // 当前模块没有被使用到的导出，删除当前模块
-                if tree_shaking_module.used_exports.is_empty() {
-                    modules_to_remove.push(tree_shaking_module_id.clone());
-                    continue;
-                }
-
-                let mut module_graph = self.context.module_graph.write().unwrap();
-                let module = module_graph
-                    .get_module_mut(&tree_shaking_module.id)
-                    .unwrap();
-                let ast = module.info.as_mut().unwrap().ast.as_script_mut();
-
-                // 通过 tree_shaking_module 进行无用的标记
-                let mut comments = self.context.meta.script.output_comments.write().unwrap();
-                let mut marker = UnusedStatementMarker::new(tree_shaking_module, &mut comments);
-                ast.visit_mut_with(&mut marker);
-                drop(module_graph);
-                drop(comments);
-
-                {
-                    let imports = tree_shaking_module.imports();
-                    let exports = tree_shaking_module.exports();
-
-                    // 分析使用情况
-                    for import in imports {
-                        debug!("    - import: {:?}", &import);
-                        self.analyze_import_statement(
-                            tree_shaking_module_map,
-                            &tree_shaking_module_id,
-                            import,
-                        );
-                    }
-
-                    for export in exports {
-                        debug!("    - export: {:?}", &export);
-                        self.analyze_export_statement(
-                            tree_shaking_module_map,
-                            &tree_shaking_module_id,
-                            export,
-                        );
-                    }
-                };
             }
-            let tree_shaking_module = tree_shaking_module_map
-                .get(&tree_shaking_module_id)
-                .unwrap();
-            debug!(
-                "    - used_exports: {:?}",
-                &tree_shaking_module.used_exports
-            );
         }
 
-        // self.cleanup_no_used_export_module(modules_to_remove);
+        self.cleanup_no_used_export_module(modules_to_remove);
     }
 
     fn make_toposort(&self) -> (Vec<ModuleId>, Vec<ModuleId>, Vec<Vec<ModuleId>>) {
@@ -154,8 +152,9 @@ impl Compiler {
     #[allow(dead_code)]
     fn cleanup_no_used_export_module(&self, modules_to_remove: Vec<ModuleId>) {
         let mut module_graph = self.context.module_graph.write().unwrap();
+        debug!("modules_to_remove: {:?}", &modules_to_remove);
         for module_id in modules_to_remove {
-            module_graph.remove_module(&module_id);
+            module_graph.mark_missing_module(&module_id, &self.context);
         }
     }
 
@@ -270,6 +269,13 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_tree_shaking_exported() {
         let compiler = setup_compiler("test/build/tree-shaking_exported", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_export_default() {
+        let compiler = setup_compiler("test/build/tree-shaking_export_default", false);
         compiler.compile();
         let content = read_dist_file(&compiler);
         assert_display_snapshot!(content);
