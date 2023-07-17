@@ -239,7 +239,7 @@ impl Compiler {
 
         // 因为放 chunks 的循环里，一个 module 可能存在于多个 chunk 里，可能会被编译多遍，
         let t_transform_modules = Instant::now();
-        self.transform_all()?;
+        self.transform_for_change(&updated_modules)?;
         let t_transform_modules = t_transform_modules.elapsed();
 
         let current_full_hash = self.full_hash();
