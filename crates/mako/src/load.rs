@@ -23,6 +23,7 @@ pub struct Asset {
 pub enum Content {
     Js(String),
     Css(String),
+    #[allow(dead_code)]
     Assets(Asset),
 }
 

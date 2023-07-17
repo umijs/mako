@@ -14,3 +14,15 @@ import './foo.css';
 
 import toml from './foo.toml';
 console.log(toml);
+
+import jpgBig from './big.jpg';
+import pngSmall from './small.png';
+console.log(jpgBig);
+console.log(pngSmall);
+
+import svg from './umi.svg';
+console.log(svg);
+import { ReactComponent } from './umi.svg';
+console.log(ReactComponent);
+import x1, { ReactComponent as x2 } from './umi.svg';
+console.log(x1, x2);

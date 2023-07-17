@@ -265,6 +265,20 @@ mod tests {
             index_js_content.contains(".foo {\n  color: red;\n}"),
             "css loader"
         );
+        assert!(index_js_content.contains(".jpg\");\n}"), "big.jpg in css");
+        assert!(
+            index_js_content.contains(".big {\n  background: url(\""),
+            "small.png in css"
+        );
+        assert!(
+            index_js_content.contains("big.jpg\": function("),
+            "include big.jpg in js"
+        );
+        assert!(
+            index_js_content.contains("small.png\": function("),
+            "include small.png in js"
+        );
+        // TODO: svg
     }
 
     fn compile(base: &str) -> (Vec<String>, HashMap<String, String>) {
