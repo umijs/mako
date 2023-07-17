@@ -169,6 +169,11 @@ fn transform_css(
     });
     ast.visit_mut_with(&mut prefixer);
 
+    // minifier
+    if matches!(context.config.mode, Mode::Production) {
+        swc_css_minifier::minify(ast, Default::default());
+    }
+
     // ast to code
     let (mut code, sourcemap) = css_ast_to_code(ast, context);
     // lightingcss
