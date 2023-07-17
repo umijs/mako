@@ -3,6 +3,12 @@
     color: red;
 }
 
+.foo-compose {
+    color: black;
+    composes: bar from global;
+    composes: user from './user.css';
+}
+
 :global .bar { 
     color: blue;
 }

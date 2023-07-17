@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use swc_css_ast::Stylesheet;
-use swc_css_visit::VisitMutWith;
 use tracing::debug;
 
 use crate::build::FileRequest;
@@ -22,12 +20,4 @@ pub fn parse(
         .parse(&PluginParseParam { request, content }, context)?
         .unwrap();
     Ok(ast)
-}
-
-pub fn compile_css_compat(ast: &mut Stylesheet) {
-    ast.visit_mut_with(&mut swc_css_compat::compiler::Compiler::new(
-        swc_css_compat::compiler::Config {
-            process: swc_css_compat::feature::Features::NESTING,
-        },
-    ));
 }
