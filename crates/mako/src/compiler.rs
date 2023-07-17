@@ -236,6 +236,37 @@ mod tests {
         );
     }
 
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_load() {
+        let (files, file_contents) = compile("test/compile/load");
+        println!("{:?}", files);
+        let index_js_content = file_contents.get("index.js").unwrap();
+        assert!(
+            index_js_content.contains("\"foo\": \"json\""),
+            "json loader"
+        );
+        assert!(
+            index_js_content.contains("\"foo\": \"json5\""),
+            "json5 loader"
+        );
+        assert!(
+            index_js_content.contains("\"foo\": \"toml\""),
+            "toml loader"
+        );
+        assert!(
+            index_js_content.contains("\"$value\": \"foo\""),
+            "xml loader"
+        );
+        assert!(
+            index_js_content.contains("\"foo\": \"yaml\""),
+            "yaml loader"
+        );
+        assert!(
+            index_js_content.contains(".foo {\n  color: red;\n}"),
+            "css loader"
+        );
+    }
+
     fn compile(base: &str) -> (Vec<String>, HashMap<String, String>) {
         let current_dir = std::env::current_dir().unwrap();
         let root = current_dir.join(base);
