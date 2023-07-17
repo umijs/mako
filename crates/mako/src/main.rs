@@ -19,7 +19,6 @@ mod comments;
 mod compiler;
 mod config;
 mod copy;
-mod css_modules;
 mod defined_ident_collector;
 mod dev;
 mod generate;

@@ -13,7 +13,6 @@ mod comments;
 pub mod compiler;
 pub mod config;
 mod copy;
-mod css_modules;
 mod defined_ident_collector;
 pub mod dev;
 mod generate;
