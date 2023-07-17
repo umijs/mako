@@ -48,13 +48,10 @@ impl VisitMut for UnusedStatementSweep<'_> {
     fn visit_mut_import_decl(&mut self, import_decl: &mut swc_ecma_ast::ImportDecl) {
         let mut removed = vec![];
         for (index, specifier) in import_decl.specifiers.iter().enumerate() {
-            match specifier {
-                swc_ecma_ast::ImportSpecifier::Named(named_specifier) => {
-                    if self.comments.has_unused(named_specifier.span) {
-                        removed.push(index);
-                    }
+            if let swc_ecma_ast::ImportSpecifier::Named(named_specifier) = specifier {
+                if self.comments.has_unused(named_specifier.span) {
+                    removed.push(index);
                 }
-                _ => {}
             }
         }
         removed.reverse();
