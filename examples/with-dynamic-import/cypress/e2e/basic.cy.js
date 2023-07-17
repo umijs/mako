@@ -58,5 +58,12 @@ export default function LazyComponent() {
       'contain.text',
       'count: [123]',
     );
+
+    cy.reload();
+
+    cy.get('[data-test-id="dynamic-counter"]').should(
+      'contain.text',
+      'count: [123]',
+    );
   });
 });
