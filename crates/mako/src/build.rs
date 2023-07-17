@@ -244,14 +244,16 @@ impl Compiler {
                 "\n\nResolve Error: Resolve \"{}\" failed from \"{}\" \n",
                 source, target
             );
-            // TODO: remove me
-            // 当 entry resolve 文件失败时，get_targets 自身会失败
-            println!("err: {}", err);
 
             let id = ModuleId::new(target.clone());
             let module_graph = context.module_graph.read().unwrap();
-            let mut targets: Vec<&ModuleId> = module_graph.get_targets(&id);
 
+            //  当 entry resolve 文件失败时，get_targets 自身会失败
+            if module_graph.get_module(&id).is_none() {
+                return Err(anyhow::anyhow!(err));
+            }
+
+            let mut targets: Vec<&ModuleId> = module_graph.get_targets(&id);
             // 循环找 target
             while !targets.is_empty() {
                 let target_module_id = targets[0].clone();
