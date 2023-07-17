@@ -63,9 +63,12 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
             transform_js_generate(context, ast, &dep_map, module.is_entry);
         }
 
-        if let ModuleAst::Css(ast) = ast {
-            let ast = transform_css(ast, &path, dep_map, context);
-            info.set_ast(ModuleAst::Script(ast));
+        // 通过开关控制是否单独提取css文件
+        if !context.config.extract_css {
+            if let ModuleAst::Css(ast) = ast {
+                let ast = transform_css(ast, &path, dep_map, context);
+                info.set_ast(ModuleAst::Script(ast));
+            }
         }
     });
     Ok(())
