@@ -4,7 +4,6 @@ use swc_css_modules::{compile, CssClassName, TransformConfig, TransformResult};
 use tracing::warn;
 
 const CSS_MODULES_PATH_SUFFIX: &str = ".module.css";
-pub const MAKO_CSS_MODULES_SUFFIX: &str = ".MAKO_CSS_MODULES";
 
 pub struct CssModuleRename {
     pub path: String,
@@ -28,10 +27,6 @@ fn ident_name(path: &str, name: &str) -> String {
 
 pub fn is_css_modules_path(path: &str) -> bool {
     path.ends_with(CSS_MODULES_PATH_SUFFIX)
-}
-
-pub fn is_mako_css_modules(path: &str) -> bool {
-    path.ends_with(MAKO_CSS_MODULES_SUFFIX)
 }
 
 pub fn compile_css_modules(path: &str, ast: &mut Stylesheet) -> TransformResult {
@@ -68,11 +63,10 @@ pub fn generate_code_for_css_modules(path: &str, ast: &mut Stylesheet) -> String
     }
     format!(
         r#"
-import "{}{}";
+import "{}?modules";
 export default {{{}}}
 "#,
         path,
-        MAKO_CSS_MODULES_SUFFIX,
         export_names
             .iter()
             .map(|(name, classes)| format!("\"{}\": `{}`", name, classes.join(" ").trim()))
