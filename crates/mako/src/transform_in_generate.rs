@@ -60,7 +60,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         let ast = &mut info.ast;
 
         if let ModuleAst::Script(ast) = ast {
-            transform_js_generate(context, ast, &dep_map, module.is_entry);
+            transform_js_generate(&module.id, context, ast, &dep_map, module.is_entry);
         }
 
         // 通过开关控制是否单独提取css文件
@@ -75,6 +75,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
 }
 
 pub fn transform_js_generate(
+    id: &ModuleId,
     context: &Arc<Context>,
     ast: &mut Ast,
     dep_map: &HashMap<String, String>,
@@ -91,7 +92,8 @@ pub fn transform_js_generate(
                         HANDLER.set(handler, || {
                             let unresolved_mark = ast.unresolved_mark;
                             let top_level_mark = ast.top_level_mark;
-
+                            // let (code, ..) = js_ast_to_code(&ast.ast, context, "foo").unwrap();
+                            // print!("{}", code);
                             {
                                 if context.config.minify
                                     && matches!(context.config.mode, Mode::Production)
@@ -99,7 +101,7 @@ pub fn transform_js_generate(
                                     let comments =
                                         context.meta.script.output_comments.read().unwrap();
                                     let mut unused_statement_sweep =
-                                        UnusedStatementSweep::new(&comments);
+                                        UnusedStatementSweep::new(id, &comments);
                                     ast.ast.visit_mut_with(&mut unused_statement_sweep);
                                 }
                             }

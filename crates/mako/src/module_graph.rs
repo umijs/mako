@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt;
+use std::sync::Arc;
 
 use petgraph::graph::{DefaultIx, NodeIndex};
 use petgraph::prelude::EdgeRef;
@@ -7,6 +8,7 @@ use petgraph::stable_graph::{StableDiGraph, WalkNeighbors};
 use petgraph::visit::IntoEdgeReferences;
 use petgraph::Direction;
 
+use crate::compiler::Context;
 use crate::module::{Dependency, Module, ModuleId};
 
 pub struct ModuleGraph {
@@ -50,6 +52,19 @@ impl ModuleGraph {
             .and_then(|i| self.graph.node_weight(*i))
     }
 
+    pub fn remove_module_and_deps(&mut self, module_id: &ModuleId) -> Module {
+        let mut deps_module_ids = vec![];
+        self.get_dependencies(module_id)
+            .into_iter()
+            .for_each(|(module_id, _)| {
+                deps_module_ids.push(module_id.clone());
+            });
+        for to_module_id in deps_module_ids {
+            self.remove_dependency(module_id, &to_module_id);
+        }
+        self.remove_module(module_id)
+    }
+
     pub fn remove_module(&mut self, module_id: &ModuleId) -> Module {
         let index = self
             .id_index_map
@@ -69,6 +84,11 @@ impl ModuleGraph {
             .node_weights()
             .map(|node| node.id.clone())
             .collect()
+    }
+
+    pub fn mark_missing_module(&mut self, module_id: &ModuleId, _context: &Arc<Context>) {
+        let module = self.get_module_mut(module_id).unwrap();
+        module.is_missing = true;
     }
 
     pub fn replace_module(&mut self, module: Module) {

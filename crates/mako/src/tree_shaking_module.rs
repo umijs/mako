@@ -61,6 +61,15 @@ impl UsedExports {
             UsedExports::Partial(self_used_exports) => self_used_exports.is_empty(),
         }
     }
+
+    pub fn contains(&self, used_export: &dyn ToString) -> bool {
+        match self {
+            UsedExports::All => true,
+            UsedExports::Partial(self_used_exports) => {
+                self_used_exports.contains(&used_export.to_string())
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -74,20 +83,48 @@ impl From<UsedIdentHashMap> for Vec<(StatementId, HashSet<UsedIdent>)> {
 }
 
 #[derive(Debug)]
+pub enum ModuleSystem {
+    CommonJS,
+    ESModule,
+    Custom,
+}
+
+#[derive(Debug)]
 pub struct TreeShakingModule {
     pub id: ModuleId,
     pub used_exports: UsedExports,
     pub side_effects: bool,
+    pub module_system: ModuleSystem,
     statement_graph: StatementGraph,
 }
 
 impl TreeShakingModule {
     pub fn new(module: &Module) -> Self {
         let ast = &module.info.as_ref().unwrap().ast;
+
+        let mut module_system = ModuleSystem::CommonJS;
         let statement_graph = match ast {
-            crate::module::ModuleAst::Script(module) => StatementGraph::new(&module.ast),
-            crate::module::ModuleAst::Css(_) => StatementGraph::empty(),
-            crate::module::ModuleAst::None => StatementGraph::empty(),
+            crate::module::ModuleAst::Script(module) => {
+                let is_esm = module
+                    .ast
+                    .body
+                    .iter()
+                    .any(|s| matches!(s, swc_ecma_ast::ModuleItem::ModuleDecl(_)));
+                if is_esm {
+                    module_system = ModuleSystem::ESModule;
+                    StatementGraph::new(&module.ast)
+                } else {
+                    StatementGraph::empty()
+                }
+            }
+            crate::module::ModuleAst::Css(_) => {
+                module_system = ModuleSystem::Custom;
+                StatementGraph::empty()
+            }
+            crate::module::ModuleAst::None => {
+                module_system = ModuleSystem::Custom;
+                StatementGraph::empty()
+            }
         };
 
         let used_exports = if module.side_effects {
@@ -101,6 +138,7 @@ impl TreeShakingModule {
             used_exports,
             side_effects: module.side_effects,
             statement_graph,
+            module_system,
         }
     }
 
@@ -209,7 +247,7 @@ impl TreeShakingModule {
                                 used_ident
                                     .push((UsedIdent::SwcIdent(ns.clone()), export_statement.id));
                             }
-                            ExportSpecifier::All(_) => {
+                            ExportSpecifier::All => {
                                 used_ident.push((UsedIdent::ExportAll, export_statement.id));
                             }
                         }
@@ -235,7 +273,7 @@ impl TreeShakingModule {
                                 Self::is_same_ident(ident, exported_ident)
                             }
                             ExportSpecifier::Namespace(ns) => Self::is_same_ident(ident, ns),
-                            ExportSpecifier::All(_) => false,
+                            ExportSpecifier::All => false,
                         })
                     });
 
@@ -270,7 +308,7 @@ impl TreeShakingModule {
                                         ));
                                     }
                                 }
-                                ExportSpecifier::All(_) => unreachable!(),
+                                ExportSpecifier::All => unreachable!(),
                             }
                         }
                     } else {
@@ -279,7 +317,7 @@ impl TreeShakingModule {
                                 .info
                                 .specifiers
                                 .iter()
-                                .any(|sp| matches!(sp, ExportSpecifier::All(_)))
+                                .any(|sp| matches!(sp, ExportSpecifier::All))
                             {
                                 used_ident.push((
                                     UsedIdent::InExportAll(ident.to_string()),
