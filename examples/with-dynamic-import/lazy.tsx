@@ -1,6 +1,8 @@
 import React from 'react';
 import classNames from 'classnames';
 
+console.log(classNames({ lazy: 0 }));
+
 export default function LazyComponent() {
   const [text, setText] = React.useState('Initial State');
   const [count, setCount] = React.useState(123);
@@ -23,7 +25,6 @@ export default function LazyComponent() {
       >
         count
       </button>
-      {classNames({ lazy: 1 })}
     </div>
   );
 }
