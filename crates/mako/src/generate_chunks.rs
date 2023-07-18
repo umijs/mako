@@ -296,7 +296,9 @@ pub fn modules_to_js_stmts(
                 let mut stmts = Vec::new();
                 for n in ast.ast.body.iter() {
                     match n.as_stmt() {
-                        None => return Err(anyhow!("not a stmt")),
+                        None => {
+                            return Err(anyhow!("Error: {:?} not a stmt in {}", n, module.id.id))
+                        }
                         Some(stmt) => {
                             stmts.push(stmt.clone());
                         }
