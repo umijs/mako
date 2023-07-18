@@ -120,13 +120,10 @@ impl Compiler {
         update_result.added.extend(added_module_ids);
         debug!("update_result:{:?}", &update_result);
 
-        // 对有修改的模块执行一次 transform
-        self.transform_for_change(&update_result)?;
-
         Result::Ok(update_result)
     }
 
-    fn transform_for_change(&self, update_result: &UpdateResult) -> Result<()> {
+    pub fn transform_for_change(&self, update_result: &UpdateResult) -> Result<()> {
         let mut changes: Vec<ModuleId> = vec![];
         for module_id in &update_result.added {
             changes.push(module_id.clone());
@@ -414,6 +411,8 @@ export const foo = 1;
 
         assert_display_snapshot!(&result);
         {
+            compiler.generate_hot_update_chunks(result, 0).unwrap();
+
             let module_graph = compiler.context.module_graph.read().unwrap();
             let code = module_to_jscode(&compiler, &ModuleId::from_path(target_path));
             assert_display_snapshot!(&module_graph);
