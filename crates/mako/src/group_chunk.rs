@@ -1,13 +1,37 @@
 use std::cell::RefCell;
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::rc::Rc;
 
 use tracing::info;
 
 use crate::bfs::{Bfs, NextResult};
-use crate::chunk::{Chunk, ChunkType};
+use crate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::compiler::Compiler;
+use crate::config::CodeSplittingStrategy;
 use crate::module::{ModuleId, ResolveType};
+
+fn guess_pkg_name_from_path<T: AsRef<str>>(path1: T) -> Option<String> {
+    let path = path1.as_ref();
+
+    let target = path.rfind("/node_modules/").map(|idx| &path[idx + 14..]);
+
+    return match target {
+        None => None,
+        Some(name) => {
+            let parts: Vec<&str> = name.split('/').collect();
+
+            if parts.is_empty() {
+                return None;
+            }
+
+            if parts[0].starts_with('@') && parts.len() > 1 {
+                Some(format!("{}/{}", parts[0], parts[1]))
+            } else {
+                Some(parts[0].to_string())
+            }
+        }
+    };
+}
 
 impl Compiler {
     // TODO:
@@ -17,7 +41,64 @@ impl Compiler {
     pub fn group_chunk(&self) {
         self.group_main_chunk();
 
-        self.group_big_vendor_chunk();
+        match self.context.config.code_splitting {
+            CodeSplittingStrategy::BigVendor => {
+                self.group_big_vendor_chunk();
+            }
+            CodeSplittingStrategy::DepPerChunk => {
+                self.group_dep_per_chunk();
+            }
+        }
+    }
+
+    pub fn group_dep_per_chunk(&self) {
+        let mut chunk_graph = self.context.chunk_graph.write().unwrap();
+
+        let entries = chunk_graph.mut_chunks();
+
+        let mut pkg_modules: HashMap<String, HashSet<ModuleId>> = HashMap::new();
+        let mut pkg_chunk_dependant: HashMap<String, HashSet<ChunkId>> = HashMap::new();
+
+        for chunk in entries {
+            let mut to_remove = vec![];
+            for m_id in chunk.get_modules().iter().collect::<Vec<&ModuleId>>() {
+                match guess_pkg_name_from_path(&m_id.id) {
+                    None => continue,
+                    Some(pkg_name) => {
+                        pkg_modules
+                            .entry(pkg_name.clone())
+                            .or_insert(HashSet::new())
+                            .insert(m_id.clone());
+
+                        to_remove.push(m_id.clone());
+
+                        pkg_chunk_dependant
+                            .entry(pkg_name)
+                            .or_insert(HashSet::new())
+                            .insert(chunk.id.clone());
+                    }
+                }
+            }
+
+            for m_id in to_remove {
+                chunk.remove_module(&m_id);
+            }
+        }
+
+        for (pkg_name, modules) in pkg_modules {
+            let mut chunk = Chunk::new(pkg_name.clone().into(), ChunkType::Sync);
+
+            for m_id in modules {
+                chunk.add_module(m_id);
+            }
+            chunk_graph.add_chunk(chunk);
+
+            let dependant_chunks = pkg_chunk_dependant.get(&pkg_name).unwrap();
+
+            for dep_chunk in dependant_chunks {
+                chunk_graph.add_edge(dep_chunk, &pkg_name.clone().into());
+            }
+        }
     }
 
     pub fn group_main_chunk(&self) {

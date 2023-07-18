@@ -105,6 +105,7 @@ impl Compiler {
         let (modified_module_ids, add_paths) = self
             .build_by_modify(modified, resolvers.clone())
             .map_err(|err| anyhow!("build_by_modify err:{:?}", err))?;
+
         added.extend(add_paths);
         debug!("added:{:?}", &added);
         update_result.modified.extend(modified_module_ids);
@@ -119,9 +120,6 @@ impl Compiler {
         );
         update_result.added.extend(added_module_ids);
         debug!("update_result:{:?}", &update_result);
-
-        // 对有修改的模块执行一次 transform
-        self.transform_for_change(&update_result)?;
 
         Result::Ok(update_result)
     }
@@ -424,6 +422,8 @@ export const foo = 1;
 
         assert_display_snapshot!(&result);
         {
+            compiler.generate_hot_update_chunks(result, 0).unwrap();
+
             let module_graph = compiler.context.module_graph.read().unwrap();
             let code = module_to_jscode(&compiler, &ModuleId::from_path(target_path));
             assert_display_snapshot!(&module_graph);

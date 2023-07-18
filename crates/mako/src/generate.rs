@@ -12,6 +12,7 @@ use crate::compiler::Compiler;
 use crate::config::{DevtoolConfig, Mode};
 use crate::generate_chunks::OutputAst;
 use crate::minify::minify_js;
+use crate::transform_in_generate::transform_modules;
 use crate::update::UpdateResult;
 
 impl Compiler {
@@ -210,7 +211,13 @@ impl Compiler {
 
         // 因为放 chunks 的循环里，一个 module 可能存在于多个 chunk 里，可能会被编译多遍，
         let t_transform_modules = Instant::now();
-        self.transform_all()?;
+
+        let mut modules = Vec::new();
+        modules.extend(updated_modules.added.clone());
+        modules.extend(updated_modules.modified.clone());
+
+        transform_modules(modules, &self.context)?;
+
         let t_transform_modules = t_transform_modules.elapsed();
 
         let current_full_hash = self.full_hash();
