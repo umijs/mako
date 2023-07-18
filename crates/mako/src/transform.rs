@@ -122,10 +122,7 @@ fn transform_js(
     unresolved_mark: Mark,
 ) -> Result<()> {
     let cm = context.meta.script.cm.clone();
-    // build env map
-    // TODO: read env from .env
     let mode = &context.config.mode.to_string();
-    // if not define NODE_ENV, set NODE_ENV to mode
     let mut define = context.config.define.clone();
     define
         .entry("NODE_ENV".to_string())
@@ -137,8 +134,6 @@ fn transform_js(
         try_with_handler(cm.clone(), Default::default(), |handler| {
             HELPERS.set(&Helpers::new(true), || {
                 HANDLER.set(handler, || {
-                    // let top_level_mark = Mark::new();
-                    // let unresolved_mark = Mark::new();
                     let import_interop = ImportInterop::Swc;
 
                     ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));

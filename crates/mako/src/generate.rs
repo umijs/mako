@@ -10,7 +10,6 @@ use tracing::{debug, info};
 use crate::ast::{css_ast_to_code, js_ast_to_code};
 use crate::compiler::Compiler;
 use crate::config::{DevtoolConfig, Mode};
-use crate::generate_chunks::OutputAst;
 use crate::minify::minify_js;
 use crate::module::ModuleAst;
 use crate::update::UpdateResult;
@@ -43,7 +42,6 @@ impl Compiler {
         }
 
         // generate chunks
-        // TODO: 并行
         let t_generate_chunks = Instant::now();
         info!("generate chunks");
         let mut chunk_asts = self.generate_chunks_ast()?;
@@ -141,16 +139,21 @@ impl Compiler {
         Ok(())
     }
 
-    pub fn emit_dev_chunks(&self, chunk_asts: Vec<OutputAst>) -> Result<()> {
-        info!("generate(hmr-rebuild)");
+    pub fn emit_dev_chunks(&self) -> Result<()> {
+        info!("generate(hmr-fullbuild)");
 
-        let t_generate_chunks = Instant::now();
+        let t_generate = Instant::now();
 
         // ensure output dir exists
         let config = &self.context.config;
         if !config.output.path.exists() {
             fs::create_dir_all(&config.output.path)?;
         }
+
+        // generate chunks
+        let t_generate_chunks = Instant::now();
+        let chunk_asts = self.generate_chunks_ast()?;
+        let t_generate_chunks = t_generate_chunks.elapsed();
 
         // ast to code and sourcemap, then write
         let t_ast_to_code_and_write = Instant::now();
@@ -198,12 +201,13 @@ impl Compiler {
         self.copy()?;
         let t_copy = t_copy.elapsed();
 
-        let t_generate_chunks = t_generate_chunks.elapsed();
+        let t_generate = t_generate.elapsed();
 
         info!(
-            "  - generate chunks(hmr): {}ms",
-            t_generate_chunks.as_millis()
+            "generate(hmr-fullbuild) done in {}ms",
+            t_generate.as_millis()
         );
+        info!("  - generate chunks: {}ms", t_generate_chunks.as_millis());
         info!(
             "  - ast to code and write: {}ms",
             t_ast_to_code_and_write.as_millis()
@@ -235,14 +239,13 @@ impl Compiler {
         self.group_chunk();
         let t_group_chunks = t_group_chunks.elapsed();
 
-        // 为啥单独提前 transform modules？
-
-        // 因为放 chunks 的循环里，一个 module 可能存在于多个 chunk 里，可能会被编译多遍，
         let t_transform_modules = Instant::now();
         self.transform_for_change(&updated_modules)?;
         let t_transform_modules = t_transform_modules.elapsed();
 
+        let t_calculate_hash = Instant::now();
         let current_full_hash = self.full_hash();
+        let t_calculate_hash = t_calculate_hash.elapsed();
 
         debug!(
             "{} {} {}",
@@ -290,16 +293,17 @@ impl Compiler {
             .cloned()
             .collect();
 
+        let t_generate_hmr_chunk = Instant::now();
         let cg = self.context.chunk_graph.read().unwrap();
         for chunk_name in &modified_chunks {
             if let Some(chunk) = cg.get_chunk_by_name(chunk_name) {
                 let (code, ..) =
                     self.generate_hmr_chunk(chunk, &updated_modules.modified, current_full_hash)?;
-
                 // TODO the final format should be {name}.{full_hash}.hot-update.{ext}
                 self.write_to_dist(to_hot_update_chunk_name(chunk_name, last_full_hash), code);
             }
         }
+        let t_generate_hmr_chunk = t_generate_hmr_chunk.elapsed();
 
         self.write_to_dist(
             format!("{}.hot-update.json", last_full_hash),
@@ -318,6 +322,11 @@ impl Compiler {
         info!(
             "  - transform modules: {}ms",
             t_transform_modules.as_millis()
+        );
+        info!("  - calculate hash: {}ms", t_calculate_hash.as_millis());
+        info!(
+            "  - generate hmr chunk: {}ms",
+            t_generate_hmr_chunk.as_millis()
         );
         info!("  - next full hash: {}", current_full_hash);
 

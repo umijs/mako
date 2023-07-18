@@ -204,6 +204,12 @@ impl ProjectWatch {
 
                             let next_full_hash = next_full_hash.unwrap();
 
+                            debug!(
+                                "Updated: {:?} {:?} {}",
+                                next_full_hash,
+                                last_full_hash,
+                                next_full_hash == *last_full_hash
+                            );
                             if next_full_hash == *last_full_hash {
                                 // no need to continue
                                 return;
@@ -230,10 +236,7 @@ impl ProjectWatch {
                 // Then try to receive all remaining messages immediately.
                 while build_rx.try_recv().is_ok() {}
 
-                if let Err(e) = c
-                    .generate_chunks_ast()
-                    .and_then(|chunk_asts| c.emit_dev_chunks(chunk_asts))
-                {
+                if let Err(e) = c.emit_dev_chunks() {
                     debug!("Error in build: {:?}, will rebuild soon", e);
                 }
             }
