@@ -281,6 +281,9 @@ pub fn modules_to_js_stmts(
     };
     let mut has_css = false;
 
+    let mut module_ids: Vec<_> = module_ids.iter().collect();
+    module_ids.sort_by_key(|module_id| module_id.id.to_string());
+
     for module_id in module_ids {
         let module = module_graph.get_module(module_id).unwrap();
         if context.config.minify
