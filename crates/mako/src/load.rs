@@ -11,8 +11,8 @@ use thiserror::Error;
 use tracing::debug;
 use twox_hash::XxHash64;
 
+use crate::build::FileRequest;
 use crate::compiler::Context;
-use crate::css_modules::{is_mako_css_modules, MAKO_CSS_MODULES_SUFFIX};
 use crate::plugin::PluginLoadParam;
 
 pub struct Asset {
@@ -23,6 +23,7 @@ pub struct Asset {
 pub enum Content {
     Js(String),
     Css(String),
+    #[allow(dead_code)]
     Assets(Asset),
 }
 
@@ -54,13 +55,9 @@ pub enum LoadError {
     ToSvgrError { path: String, reason: String },
 }
 
-pub fn load(path: &str, is_entry: bool, context: &Arc<Context>) -> Result<Content> {
-    debug!("load: {}", path);
-    let path = if is_mako_css_modules(path) {
-        path.trim_end_matches(MAKO_CSS_MODULES_SUFFIX)
-    } else {
-        path
-    };
+pub fn load(request: &FileRequest, is_entry: bool, context: &Arc<Context>) -> Result<Content> {
+    debug!("load: {:?}", request);
+    let path = &request.path;
     let exists = Path::new(path).exists();
     if !exists {
         return Err(anyhow!(LoadError::FileNotFound {

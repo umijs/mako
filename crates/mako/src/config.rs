@@ -90,6 +90,8 @@ pub struct Config {
     pub hmr_port: String,
     pub hmr_host: String,
     pub code_splitting: CodeSplittingStrategy,
+    // temp flag
+    pub extract_css: bool,
 }
 
 const CONFIG_FILE: &str = "mako.config.json";
@@ -113,7 +115,8 @@ const DEFAULT_CONFIG: &str = r#"
     "hmr_host": "127.0.0.1",
     "hmr_port": "3000",
     "module_id_strategy": "named",
-    "code_splitting": "bigVendor"
+    "code_splitting": "bigVendor",
+    "extract_css": false
 }
 "#;
 

@@ -1,14 +1,14 @@
 use std::collections::HashSet;
 
-use swc_ecma_ast::{Decl, ExportDecl, Ident, ImportDecl, ModuleExportName};
-use swc_ecma_visit::{VisitMut, VisitWith};
+use swc_ecma_ast::{Decl, ExportDecl, ImportDecl, ModuleExportName, VarDeclarator};
+use swc_ecma_visit::{VisitMut, VisitMutWith, VisitWith};
 use tracing::debug;
 
 use crate::comments::Comments;
 use crate::defined_ident_collector::DefinedIdentCollector;
 use crate::statement::{self, ExportSpecifier, ImportSpecifier, StatementId, StatementType};
+use crate::tree_shaking_analyze::strip_context;
 use crate::tree_shaking_module::{TreeShakingModule, UsedIdent};
-
 /**
  * 针对没有使用到的 export、import 语句进行标记
  */
@@ -20,40 +20,50 @@ pub struct UnusedStatementMarker<'a, 'b> {
 
 impl<'a, 'b> UnusedStatementMarker<'a, 'b> {
     pub fn new(tree_shaking_module: &'a TreeShakingModule, comments: &'b mut Comments) -> Self {
+        let used_export_statement = tree_shaking_module.get_used_export_statement().into();
         Self {
             tree_shaking_module,
-            used_export_statement: tree_shaking_module.get_used_export_statement().into(),
+            used_export_statement,
             comments,
         }
     }
 }
 
 impl VisitMut for UnusedStatementMarker<'_, '_> {
+    // 清理空模块，打上注释
+    fn visit_mut_module(&mut self, module: &mut swc_ecma_ast::Module) {
+        if self.tree_shaking_module.used_exports.is_empty() {
+            self.comments.add_unused_module_comment(module.span.lo);
+        } else {
+            module.visit_mut_children_with(self);
+        }
+    }
+
     // 清理 export { } 这里面的变量
     fn visit_mut_export_specifiers(&mut self, specifiers: &mut Vec<swc_ecma_ast::ExportSpecifier>) {
         for (_, specifier) in specifiers.iter().enumerate() {
-            if let swc_ecma_ast::ExportSpecifier::Named(named_specifier) = specifier {
-                let is_specifier_used =
-                    &self.used_export_statement.iter().any(|(statement_id, ..)| {
-                        let statement = self.tree_shaking_module.get_statement(statement_id);
-                        if let StatementType::Export(export_statement) = statement {
-                            let local = match &named_specifier.orig {
-                                ModuleExportName::Ident(i) => i.clone(),
-                                ModuleExportName::Str(_) => {
-                                    unreachable!("str as ident is not supported")
-                                }
-                            };
-                            is_same_ident(export_statement, &local)
-                        } else {
-                            false
-                        }
-                    });
+            match specifier {
+                swc_ecma_ast::ExportSpecifier::Namespace(_) => {}
+                swc_ecma_ast::ExportSpecifier::Default(_) => {}
+                swc_ecma_ast::ExportSpecifier::Named(named_specifier) => {
+                    let is_specifier_used = self.is_named_export_specifier_used(named_specifier);
 
-                if !is_specifier_used {
-                    debug!("add unused comment to {:?}", &named_specifier);
-                    self.comments.add_unused_comment(named_specifier.span.lo)
+                    if !is_specifier_used {
+                        debug!("add unused comment to {:?}", &named_specifier);
+                        self.comments.add_unused_comment(named_specifier.span.lo);
+                    }
                 }
             }
+        }
+    }
+
+    fn visit_mut_export_default_decl(
+        &mut self,
+        default_decl: &mut swc_ecma_ast::ExportDefaultDecl,
+    ) {
+        if !self.tree_shaking_module.used_exports.contains(&"default") {
+            debug!("add unused comment to default fn");
+            self.comments.add_unused_comment(default_decl.span.lo)
         }
     }
 
@@ -61,27 +71,27 @@ impl VisitMut for UnusedStatementMarker<'_, '_> {
         match &mut export_decl.decl {
             Decl::Var(var_decl) => {
                 for decl in &var_decl.decls {
-                    let is_decl_used = self.is_decl_used(decl);
+                    let is_decl_used = self.is_var_decl_used(decl);
 
                     if !is_decl_used {
-                        debug!("add unused comment to {:?}", &decl);
-                        self.comments.add_unused_comment(decl.span.lo)
+                        debug!("add unused comment to {:?}", &decl.name);
+                        self.comments.add_unused_comment(decl.span.lo);
                     }
                 }
             }
             Decl::Class(class_decl) => {
-                let is_decl_used = self.is_decl_used(class_decl);
+                let is_decl_used = self.is_fn_or_class_decl_ident_used(&class_decl.ident);
 
                 if !is_decl_used {
-                    debug!("add unused comment to {:?}", &class_decl);
-                    self.comments.add_unused_comment(class_decl.ident.span.lo)
+                    debug!("add unused comment to {:?}", &class_decl.ident);
+                    self.comments.add_unused_comment(class_decl.ident.span.lo);
                 }
             }
             Decl::Fn(fn_decl) => {
-                let is_decl_used = self.is_decl_used(fn_decl);
+                let is_decl_used = self.is_fn_or_class_decl_ident_used(&fn_decl.ident);
 
                 if !is_decl_used {
-                    debug!("add unused comment to {:?}", &fn_decl);
+                    debug!("add unused comment to {:?}", &fn_decl.ident);
                     self.comments.add_unused_comment(fn_decl.ident.span.lo)
                 }
             }
@@ -113,11 +123,63 @@ impl VisitMut for UnusedStatementMarker<'_, '_> {
 }
 
 impl<'a, 'b> UnusedStatementMarker<'a, 'b> {
-    fn is_decl_used(&mut self, decl: &dyn VisitWith<DefinedIdentCollector>) -> bool {
+    fn is_named_export_specifier_used(
+        &mut self,
+        named_specifier: &swc_ecma_ast::ExportNamedSpecifier,
+    ) -> bool {
+        self.used_export_statement
+            .iter()
+            .any(|(statement_id, used_idents)| {
+                let statement = self.tree_shaking_module.get_statement(statement_id);
+                if let StatementType::Export(export_statement) = statement {
+                    let local = match &named_specifier.orig {
+                        ModuleExportName::Ident(i) => i.clone(),
+                        ModuleExportName::Str(_) => {
+                            unreachable!("str as ident is not supported")
+                        }
+                    };
+                    if !is_same_export_ident(export_statement, &local) {
+                        return false;
+                    }
+                    // 可能在 export {} 中使用部分变量，需要单独把他们识别出来
+                    let exported = if let Some(exported) = &named_specifier.exported {
+                        exported
+                    } else {
+                        &named_specifier.orig
+                    };
+                    let local = match exported {
+                        ModuleExportName::Ident(i) => i.clone(),
+                        ModuleExportName::Str(_) => {
+                            unreachable!("str as ident is not supported")
+                        }
+                    };
+
+                    used_idents.contains(&UsedIdent::SwcIdent(local.to_string()))
+                } else {
+                    false
+                }
+            })
+    }
+}
+
+impl<'a, 'b> UnusedStatementMarker<'a, 'b> {
+    fn is_var_decl_used(&mut self, decl: &VarDeclarator) -> bool {
         let is_decl_used = &self.used_export_statement.iter().any(|(statement_id, ..)| {
             let statement = self.tree_shaking_module.get_statement(statement_id);
             if let StatementType::Export(export_statement) = statement {
-                is_same_decl(export_statement, decl)
+                is_same_export_decl(export_statement, decl)
+            } else {
+                false
+            }
+        });
+        *is_decl_used
+    }
+
+    fn is_fn_or_class_decl_ident_used(&mut self, ident: &dyn ToString) -> bool {
+        let is_decl_used = &self.used_export_statement.iter().any(|(statement_id, ..)| {
+            let statement = self.tree_shaking_module.get_statement(statement_id);
+            if let StatementType::Export(export_statement) = statement {
+                is_same_export_ident(export_statement, ident)
             } else {
                 false
             }
@@ -126,31 +188,40 @@ impl<'a, 'b> UnusedStatementMarker<'a, 'b> {
     }
 }
 
-fn is_same_decl(
+fn is_same_export_decl(
     export_statement: &statement::ExportStatement,
     decl: &dyn VisitWith<DefinedIdentCollector>,
+) -> bool {
+    let mut defined_ident_collector = DefinedIdentCollector::new();
+    decl.visit_with(&mut defined_ident_collector);
+
+    export_statement
+        .info
+        .specifiers
+        .iter()
+        .any(|export_specifier| match export_specifier {
+            ExportSpecifier::Named { local, exported } => {
+                if let Some(exported) = exported {
+                    defined_ident_collector.defined_ident.contains(exported)
+                } else {
+                    defined_ident_collector.defined_ident.contains(local)
+                }
+            }
+            _ => false,
+        })
+}
+
+fn is_same_export_ident(
+    export_statement: &statement::ExportStatement,
+    ident: &dyn ToString,
 ) -> bool {
     export_statement
         .info
         .specifiers
         .iter()
         .any(|export_specifier| match export_specifier {
-            ExportSpecifier::Named { local, .. } => {
-                let mut defined_ident_collector = DefinedIdentCollector::new();
-                decl.visit_with(&mut defined_ident_collector);
-                defined_ident_collector.defined_ident.contains(local)
-            }
-            _ => false,
-        })
-}
-
-fn is_same_ident(export_statement: &statement::ExportStatement, ident: &Ident) -> bool {
-    export_statement
-        .info
-        .specifiers
-        .iter()
-        .any(|export_specifier| match export_specifier {
             ExportSpecifier::Named { local, .. } => ident.to_string() == *local,
+            ExportSpecifier::Default => strip_context(&ident.to_string()) == "default",
             _ => false,
         })
 }

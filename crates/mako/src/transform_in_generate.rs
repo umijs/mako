@@ -16,7 +16,6 @@ use swc_ecma_transforms::modules::import_analysis::import_analyzer;
 use swc_ecma_transforms::modules::util::{Config, ImportInterop};
 use swc_ecma_visit::VisitMutWith;
 use swc_error_reporters::handler::try_with_handler;
-use tracing::debug;
 
 use crate::ast::{base64_encode, build_js_ast, css_ast_to_code, Ast};
 use crate::compiler::{Compiler, Context};
@@ -26,6 +25,7 @@ use crate::targets;
 use crate::transform_dep_replacer::DepReplacer;
 use crate::transform_dynamic_import::DynamicImport;
 use crate::transform_react::react_refresh_entry_prefix;
+use crate::unused_statement_sweep::UnusedStatementSweep;
 
 impl Compiler {
     pub fn transform_all(&self) -> Result<()> {
@@ -33,7 +33,6 @@ impl Compiler {
         let module_graph = context.module_graph.read().unwrap();
         let module_ids = module_graph.get_module_ids();
         drop(module_graph);
-        debug!("module ids: {:?}", module_ids);
         transform_modules(module_ids, context)?;
         Ok(())
     }
@@ -59,18 +58,22 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         let ast = &mut info.ast;
 
         if let ModuleAst::Script(ast) = ast {
-            transform_js_generate(context, ast, &dep_map, module.is_entry);
+            transform_js_generate(&module.id, context, ast, &dep_map, module.is_entry);
         }
 
-        if let ModuleAst::Css(ast) = ast {
-            let ast = transform_css(ast, &path, dep_map, context);
-            info.set_ast(ModuleAst::Script(ast));
+        // 通过开关控制是否单独提取css文件
+        if !context.config.extract_css {
+            if let ModuleAst::Css(ast) = ast {
+                let ast = transform_css(ast, &path, dep_map, context);
+                info.set_ast(ModuleAst::Script(ast));
+            }
         }
     });
     Ok(())
 }
 
 pub fn transform_js_generate(
+    id: &ModuleId,
     context: &Arc<Context>,
     ast: &mut Ast,
     dep_map: &HashMap<String, String>,
@@ -87,6 +90,19 @@ pub fn transform_js_generate(
                         HANDLER.set(handler, || {
                             let unresolved_mark = ast.unresolved_mark;
                             let top_level_mark = ast.top_level_mark;
+                            // let (code, ..) = js_ast_to_code(&ast.ast, context, "foo").unwrap();
+                            // print!("{}", code);
+                            {
+                                if context.config.minify
+                                    && matches!(context.config.mode, Mode::Production)
+                                {
+                                    let comments =
+                                        context.meta.script.output_comments.read().unwrap();
+                                    let mut unused_statement_sweep =
+                                        UnusedStatementSweep::new(id, &comments);
+                                    ast.ast.visit_mut_with(&mut unused_statement_sweep);
+                                }
+                            }
 
                             let import_interop = ImportInterop::Swc;
                             // FIXME: 执行两轮 import_analyzer + inject_helpers，第一轮是为了 module_graph，第二轮是为了依赖替换
@@ -143,6 +159,7 @@ pub fn transform_js_generate(
                                     .unwrap()
                                     .get_swc_comments(),
                             )));
+
                             Ok(())
                         })
                     })

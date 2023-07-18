@@ -124,7 +124,7 @@ impl Compiler {
         Result::Ok(update_result)
     }
 
-    fn transform_for_change(&self, update_result: &UpdateResult) -> Result<()> {
+    pub fn transform_for_change(&self, update_result: &UpdateResult) -> Result<()> {
         let mut changes: Vec<ModuleId> = vec![];
         for module_id in &update_result.added {
             changes.push(module_id.clone());
@@ -229,18 +229,8 @@ impl Compiler {
             let from_module_id = ModuleId::from_path(path);
 
             // TODO: 如果当前被删除的module还在被人依赖的话， 就报个错
-            let mut deps_module_ids = vec![];
             let mut module_graph = self.context.module_graph.write().unwrap();
-            module_graph
-                .get_dependencies(&from_module_id)
-                .into_iter()
-                .for_each(|(module_id, _)| {
-                    deps_module_ids.push(module_id.clone());
-                });
-            for to_module_id in deps_module_ids {
-                module_graph.remove_dependency(&from_module_id, &to_module_id);
-            }
-            module_graph.remove_module(&from_module_id);
+            module_graph.remove_module_and_deps(&from_module_id);
             removed_module_ids.insert(from_module_id);
         }
         removed_module_ids

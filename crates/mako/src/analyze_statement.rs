@@ -213,11 +213,13 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
                 swc_ecma_ast::ModuleDecl::ExportDefaultDecl(decl) => {
                     match &decl.decl {
                         swc_ecma_ast::DefaultDecl::Class(decl) => {
+                            analyze_used_ident_from_statement(&decl.class, None);
                             if let Some(ident) = &decl.ident {
                                 top_level_defined_ident.insert(ident.to_string());
                             }
                         }
                         swc_ecma_ast::DefaultDecl::Fn(decl) => {
+                            analyze_used_ident_from_statement(&decl.function, None);
                             if let Some(ident) = &decl.ident {
                                 top_level_defined_ident.insert(ident.to_string());
                             }
@@ -253,7 +255,7 @@ pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementTy
                         info: ExportInfo {
                             source: Some(export_all.src.value.to_string()),
                             stmt_id: id,
-                            specifiers: vec![ExportSpecifier::All(None)],
+                            specifiers: vec![ExportSpecifier::All],
                         },
                         defined_ident: top_level_defined_ident,
                         used_ident,

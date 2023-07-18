@@ -1,3 +1,4 @@
 {
-  "devtool": "source-map"
+  "devtool": "source-map",
+  "extract_css": true
 }

@@ -2,10 +2,12 @@ use std::sync::Arc;
 
 use anyhow::Result;
 
+use crate::ast::build_js_ast;
 use crate::compiler::Context;
 use crate::config::Mode;
 use crate::load::{read_content, Content};
-use crate::plugin::{Plugin, PluginLoadParam};
+use crate::module::ModuleAst;
+use crate::plugin::{Plugin, PluginLoadParam, PluginParseParam};
 
 pub struct JavaScriptPlugin {}
 
@@ -34,6 +36,14 @@ impl Plugin for JavaScriptPlugin {
                 .replace("__HOST__", host);
             }
             return Ok(Some(Content::Js(content)));
+        }
+        Ok(None)
+    }
+
+    fn parse(&self, param: &PluginParseParam, context: &Arc<Context>) -> Result<Option<ModuleAst>> {
+        if let Content::Js(content) = param.content {
+            let ast = build_js_ast(&param.request.path, content, context)?;
+            return Ok(Some(ModuleAst::Script(ast)));
         }
         Ok(None)
     }
