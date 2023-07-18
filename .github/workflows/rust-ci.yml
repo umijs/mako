@@ -51,16 +51,16 @@ jobs:
           cargo test -v
       - name: build_fixture
         run: cargo run --bin mako examples/normal
-      - name: prepare-HMR-CI
-        working-directory: ./examples/with-dynamic-import
-        run: pnpm cypress install
-      - name: HMR-CI
-        run: pnpm --filter with-dynamic-import run e2e:ci
       - name: prepare-antd-CI
         working-directory: ./examples/with-antd
         run: pnpm cypress install
       - name: antd-CI
         run: pnpm --filter with-antd run e2e:ci
+      - name: prepare-HMR-CI
+        working-directory: ./examples/with-dynamic-import
+        run: pnpm cypress install
+      - name: HMR-CI
+        run: pnpm --filter with-dynamic-import run e2e:ci
 
   # build_benchmarks:
   #   runs-on: ubuntu-latest
