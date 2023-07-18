@@ -67,14 +67,14 @@ impl Compiler {
                     Some(pkg_name) => {
                         pkg_modules
                             .entry(pkg_name.clone())
-                            .or_insert(HashSet::new())
+                            .or_default()
                             .insert(m_id.clone());
 
                         to_remove.push(m_id.clone());
 
                         pkg_chunk_dependant
                             .entry(pkg_name)
-                            .or_insert(HashSet::new())
+                            .or_default()
                             .insert(chunk.id.clone());
                     }
                 }
