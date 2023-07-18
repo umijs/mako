@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::vec;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use rayon::prelude::*;
 use swc_common::DUMMY_SP;
 use swc_css_ast::Stylesheet;
@@ -58,8 +58,14 @@ impl Compiler {
             .map(|chunk| {
                 // build stmts
                 let module_ids = chunk.get_modules();
-                let (js_stmts, merged_css_ast) =
-                    modules_to_js_stmts(module_ids, &module_graph, &self.context);
+
+                let stmts_res = modules_to_js_stmts(module_ids, &module_graph, &self.context);
+
+                if stmts_res.is_err() {
+                    return Err(anyhow!("Chunk {} failed to generate js ast", chunk.id.id));
+                }
+
+                let (js_stmts, merged_css_ast) = stmts_res.unwrap();
 
                 // build js ast
                 let mut content = if matches!(chunk.chunk_type, crate::chunk::ChunkType::Entry) {
@@ -198,11 +204,14 @@ impl Compiler {
                         ast: ModuleAst::Css(merged_css_ast),
                     });
                 }
-                output
+                Ok(output)
             })
-            .flatten()
-            .collect();
-        Ok(chunks_ast)
+            .collect::<Result<Vec<_>>>();
+
+        match chunks_ast {
+            Ok(asts) => Ok(asts.into_iter().flatten().collect::<Vec<_>>()),
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -264,27 +273,35 @@ pub fn modules_to_js_stmts(
     module_ids: &HashSet<ModuleId>,
     module_graph: &std::sync::RwLockReadGuard<crate::module_graph::ModuleGraph>,
     context: &Arc<Context>,
-) -> (Vec<PropOrSpread>, Option<Stylesheet>) {
+) -> Result<(Vec<PropOrSpread>, Option<Stylesheet>)> {
     let mut js_stmts = vec![];
     let mut merged_css_ast = Stylesheet {
         span: DUMMY_SP,
         rules: vec![],
     };
     let mut has_css = false;
-    let mut module_ids: Vec<_> = module_ids.iter().collect();
-    module_ids.sort_by_key(|module_id| module_id.id.to_string());
-    module_ids.iter().for_each(|module_id| {
+
+    for module_id in module_ids {
         let module = module_graph.get_module(module_id).unwrap();
         if context.config.minify
             && matches!(context.config.mode, Mode::Production)
             && module.is_missing
         {
-            return;
+            continue;
         }
         let ast = module.info.as_ref().unwrap();
         let ast = &ast.ast;
         match ast {
             ModuleAst::Script(ast) => {
+                let mut stmts = Vec::new();
+                for n in ast.ast.body.iter() {
+                    match n.as_stmt() {
+                        None => return Err(anyhow!("not a stmt")),
+                        Some(stmt) => {
+                            stmts.push(stmt.clone());
+                        }
+                    }
+                }
                 // id: function(module, exports, require) {}
                 js_stmts.push(build_props(
                     module.id.generate(context).as_str(),
@@ -295,11 +312,7 @@ pub fn modules_to_js_stmts(
                             build_ident_param("exports"),
                             build_ident_param("require"),
                         ],
-                        ast.ast
-                            .body
-                            .iter()
-                            .map(|stmt| stmt.as_stmt().unwrap().clone())
-                            .collect(),
+                        stmts,
                     ))),
                 ));
             }
@@ -309,10 +322,10 @@ pub fn modules_to_js_stmts(
             }
             ModuleAst::None => {}
         }
-    });
+    }
     if has_css {
-        (js_stmts, Some(merged_css_ast))
+        Ok((js_stmts, Some(merged_css_ast)))
     } else {
-        (js_stmts, None)
+        Ok((js_stmts, None))
     }
 }
