@@ -64,7 +64,7 @@ pub enum ModuleIdStrategy {
 pub enum CodeSplittingStrategy {
     #[serde(rename = "bigVendor")]
     BigVendor,
-    #[serde(rename = "DepPerChunk")]
+    #[serde(rename = "depPerChunk")]
     DepPerChunk,
 }
 
