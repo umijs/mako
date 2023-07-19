@@ -105,6 +105,7 @@ impl Compiler {
         let (modified_module_ids, add_paths) = self
             .build_by_modify(modified, resolvers.clone())
             .map_err(|err| anyhow!("build_by_modify err:{:?}", err))?;
+
         added.extend(add_paths);
         debug!("added:{:?}", &added);
         update_result.modified.extend(modified_module_ids);

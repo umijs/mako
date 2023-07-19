@@ -221,6 +221,7 @@ mod tests {
     use super::{transform_css, transform_js};
     use crate::ast::{build_css_ast, build_js_ast, css_ast_to_code, js_ast_to_code};
     use crate::build::ModuleDeps;
+    use crate::chunk::{Chunk, ChunkType};
     use crate::chunk_graph::ChunkGraph;
     use crate::compiler::{Context, Meta};
     use crate::config::Config;
@@ -366,8 +367,8 @@ const foo = import('./foo');
         assert_eq!(
             code,
             r#"
-const foo = require.ensure([
-    "./foo"
+const foo = Promise.all([
+    require.ensure("./foo")
 ]).then(require.bind(require, "./foo"));
 
 //# sourceMappingURL=index.js.map
@@ -615,15 +616,20 @@ require("./bar");
             .insert("Buffer".into(), ("buffer".into(), "Buffer".into()));
 
         let root = PathBuf::from("/path/to/root");
+
+        let mut chunk_graph = ChunkGraph::new();
+        chunk_graph.add_chunk(Chunk::new("./foo".to_string().into(), ChunkType::Async));
+
         let context = Arc::new(Context {
             config,
             root: root.clone(),
             module_graph: RwLock::new(ModuleGraph::new()),
-            chunk_graph: RwLock::new(ChunkGraph::new()),
+            chunk_graph: RwLock::new(chunk_graph),
             assets_info: Mutex::new(HashMap::new()),
             meta: Meta::new(),
             plugin_driver: Default::default(),
         });
+
         let mut ast = build_js_ast(path, origin, &context).unwrap();
         transform_js(
             &mut ast.ast,
