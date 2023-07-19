@@ -46,6 +46,10 @@ import { parse } from 'semver';
     JSON.stringify(bundlerOkamPkg, null, 2) + '\n',
   );
 
+  // pnpm install to update lockfile
+  console.log('pnpm install');
+  await $`pnpm install`;
+
   // commit
   console.log('Commit');
   await $`git add ./`;

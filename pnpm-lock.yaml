@@ -253,7 +253,7 @@ importers:
   packages/bundler-okam:
     dependencies:
       '@okamjs/okam':
-        specifier: 0.0.3
+        specifier: 0.0.4
         version: link:../../crates/node
       '@swc/helpers':
         specifier: 0.5.1
