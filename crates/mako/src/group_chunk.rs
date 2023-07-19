@@ -236,12 +236,9 @@ fn read_pkg_name_from_pkg_json<T: AsRef<str>>(path: T) -> Option<String> {
     let path = path.as_ref();
 
     let (node_modules_root, name_part) = root_and_pkg_name(path)?;
+    let hash = hash_path(&node_modules_root);
 
-    let mut hasher: XxHash64 = Default::default();
-    hasher.write(node_modules_root.as_bytes());
-    let hash = hasher.finish();
-
-    Some(format!("{}@{:16X}", name_part, hash))
+    Some(format!("{}@{:8x}", name_part, hash))
 }
 
 #[cached(key = "String", convert = r#"{ String::from(p) }"#)]
