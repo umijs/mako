@@ -280,4 +280,18 @@ mod tests {
         let content = read_dist_file(&compiler);
         assert_display_snapshot!(content);
     }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_issues_271() {
+        let compiler = setup_compiler("test/build/tree-shaking_issues_271", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_jsx() {
+        let compiler = setup_compiler("test/build/tree-shaking_jsx", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
 }
