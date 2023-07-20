@@ -2,15 +2,15 @@ use std::collections::{HashMap, HashSet};
 use std::hash::Hasher;
 
 use petgraph::stable_graph::{DefaultIx, NodeIndex, StableDiGraph};
+use petgraph::Direction;
 use twox_hash::XxHash64;
 
-use crate::chunk::{Chunk, ChunkId};
-use crate::module::ModuleId;
+use crate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::module_graph::ModuleGraph;
 
 pub struct ChunkGraph {
     graph: StableDiGraph<Chunk, ()>,
-    id_index_map: HashMap<ModuleId, NodeIndex<DefaultIx>>,
+    id_index_map: HashMap<ChunkId, NodeIndex<DefaultIx>>,
 }
 
 impl ChunkGraph {
@@ -41,8 +41,19 @@ impl ChunkGraph {
         self.graph.node_weights().collect()
     }
 
+    pub fn mut_chunks(&mut self) -> Vec<&mut Chunk> {
+        self.graph.node_weights_mut().collect()
+    }
+
     pub fn get_chunk_by_name(&self, name: &String) -> Option<&Chunk> {
         self.graph.node_weights().find(|c| c.filename().eq(name))
+    }
+
+    pub fn chunk(&self, chunk_id: &ChunkId) -> Option<&Chunk> {
+        match self.id_index_map.get(chunk_id) {
+            Some(idx) => self.graph.node_weight(*idx),
+            None => None,
+        }
     }
 
     pub fn add_edge(&mut self, from: &ChunkId, to: &ChunkId) {
@@ -64,6 +75,15 @@ impl ChunkGraph {
             hasher.write_u64(c.hash(module_graph))
         }
         hasher.finish()
+    }
+
+    pub fn sync_dependencies_chunk(&self, chunk: &Chunk) -> Vec<ChunkId> {
+        let idx = self.id_index_map.get(&chunk.id).unwrap();
+        self.graph
+            .neighbors_directed(*idx, Direction::Outgoing)
+            .filter(|idx| matches!(self.graph[*idx].chunk_type, ChunkType::Sync))
+            .map(|idx| self.graph[idx].id.clone())
+            .collect::<Vec<ChunkId>>()
     }
 }
 

@@ -13,6 +13,11 @@ impl Compiler {
         export_statement: ExportStatement,
     ) {
         let module_graph = self.context.module_graph.write().unwrap();
+        let used_export: UsedExports = tree_shake_modules_map
+            .get_mut(tree_shaking_module_id)
+            .unwrap()
+            .used_exports
+            .clone();
         if let Some(source) = &export_statement.info.source {
             let exported_module_id = module_graph
                 .get_dependency_module_by_source(tree_shaking_module_id, source.clone());
@@ -27,36 +32,45 @@ impl Compiler {
 
             for specifier in &export_statement.info.specifiers {
                 match specifier {
-                    ExportSpecifier::All(used_ident) => {
-                        if let Some(used_ident) = used_ident {
-                            for ident in used_ident {
-                                if ident == "*" {
-                                    exported_tree_shaking_module.used_exports = UsedExports::All;
-                                } else {
-                                    exported_tree_shaking_module
-                                        .used_exports
-                                        .add_used_export(&strip_context(ident))
-                                }
+                    ExportSpecifier::All => {
+                        // 把*透传进去
+                        if let UsedExports::Partial(ref idents) = used_export {
+                            for ident in idents {
+                                exported_tree_shaking_module
+                                    .used_exports
+                                    .add_used_export(&ident);
                             }
                         } else {
                             exported_tree_shaking_module.used_exports = UsedExports::All;
                         }
                     }
-                    ExportSpecifier::Named { local, .. } => {
-                        if *local == "default" {
-                            exported_tree_shaking_module
-                                .used_exports
-                                .add_used_export(&UsedIdent::Default);
+                    ExportSpecifier::Named { exported, local } => {
+                        let used_ident = if strip_context(local) == "default" {
+                            UsedIdent::Default
                         } else {
+                            UsedIdent::SwcIdent(strip_context(local))
+                        };
+
+                        // export { default as foo } from './foo'
+                        if let Some(exported) = exported {
+                            // 当前文件如果有被用到的变量，才把目标模块的 default export 标记为 used
+                            if used_export.contains(&strip_context(exported)) {
+                                exported_tree_shaking_module
+                                    .used_exports
+                                    .add_used_export(&used_ident);
+                            }
+                            continue;
+                        }
+
+                        // 其余情况
+                        if used_export.contains(&strip_context(local)) {
                             exported_tree_shaking_module
                                 .used_exports
-                                .add_used_export(&UsedIdent::SwcIdent(strip_context(local)));
+                                .add_used_export(&used_ident);
                         }
                     }
                     ExportSpecifier::Default => {
-                        exported_tree_shaking_module
-                            .used_exports
-                            .add_used_export(&UsedIdent::Default);
+                        unreachable!("Export default not supported on source")
                     }
                     ExportSpecifier::Namespace(_) => {
                         exported_tree_shaking_module.used_exports = UsedExports::All;
@@ -100,7 +114,7 @@ impl Compiler {
                 }
                 crate::statement::ImportSpecifier::Named { local, imported } => {
                     if let Some(ident) = imported {
-                        if *ident == "default" {
+                        if strip_context(ident) == "default" {
                             imported_tree_shaking_module
                                 .used_exports
                                 .add_used_export(&UsedIdent::Default)
@@ -123,7 +137,7 @@ impl Compiler {
     }
 }
 
-fn strip_context(ident: &str) -> String {
+pub fn strip_context(ident: &str) -> String {
     let ident_split = ident.split('#').collect::<Vec<_>>();
     ident_split[0].to_string()
 }

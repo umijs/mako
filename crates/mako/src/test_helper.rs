@@ -1,14 +1,13 @@
-use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::Arc;
+
+use tracing_subscriber::EnvFilter;
 
 use crate::ast::{build_js_ast, js_ast_to_code};
-use crate::chunk_graph::ChunkGraph;
-use crate::compiler::{self, Compiler, Context, Meta};
+use crate::compiler::{self, Compiler};
 use crate::config::{Config, Mode};
 use crate::module::{Module, ModuleId, ModuleInfo};
-use crate::module_graph::ModuleGraph;
 
 #[macro_export]
 macro_rules! assert_display_snapshot {
@@ -44,20 +43,7 @@ macro_rules! assert_debug_snapshot {
 
 #[allow(dead_code)]
 pub fn create_mock_module(path: PathBuf, code: &str) -> Module {
-    let root = PathBuf::from("/path/to/root");
-    let ast = build_js_ast(
-        path.to_str().unwrap(),
-        code,
-        &Arc::new(Context {
-            config: Default::default(),
-            root,
-            module_graph: RwLock::new(ModuleGraph::new()),
-            chunk_graph: RwLock::new(ChunkGraph::new()),
-            assets_info: Mutex::new(HashMap::new()),
-            meta: Meta::new(),
-        }),
-    )
-    .unwrap();
+    let ast = build_js_ast(path.to_str().unwrap(), code, &Arc::new(Default::default())).unwrap();
     let module_id = ModuleId::from_path(path.clone());
     let info = ModuleInfo {
         ast: crate::module::ModuleAst::Script(ast),
@@ -72,13 +58,13 @@ pub fn create_mock_module(path: PathBuf, code: &str) -> Module {
 
 #[allow(dead_code)]
 pub fn setup_compiler(base: &str, cleanup: bool) -> Compiler {
-    // tracing_subscriber::fmt()
-    //     .with_env_filter(
-    //         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("mako=debug")),
-    //     )
-    //     .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
-    //     .without_time()
-    //     .init();
+    let _result = tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("mako=debug")),
+        )
+        // .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
+        // .without_time()
+        .try_init();
     let current_dir = std::env::current_dir().unwrap();
     let root = current_dir.join(base);
     if !root.parent().unwrap().exists() {

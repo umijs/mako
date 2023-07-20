@@ -1,4 +1,7 @@
 import React from 'react';
+import classNames from 'classnames';
+
+console.log(classNames({ lazy: 0 }));
 
 export default function LazyComponent() {
   const [text, setText] = React.useState('Initial State');

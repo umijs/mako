@@ -43,19 +43,13 @@ pub async fn build(
 
     let default_config = serde_json::to_string(&config).unwrap();
     let root = std::path::PathBuf::from(&root);
-    let mako_config = Config::new(&root, Some(&default_config), None);
+    let config = Config::new(&root, Some(&default_config), None).unwrap();
 
-    match mako_config {
-        Ok(config) => {
-            let compiler = Compiler::new(config, root.clone());
-            compiler.compile();
-
-            if watch {
-                let d = DevServer::new(root.clone(), Arc::new(compiler));
-                // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
-                d.serve().await;
-            }
-        }
-        Err(e) => println!("error: {:?}", e),
+    let compiler = Compiler::new(config, root.clone());
+    compiler.compile();
+    if watch {
+        let d = DevServer::new(root.clone(), Arc::new(compiler));
+        // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
+        d.serve().await;
     }
 }

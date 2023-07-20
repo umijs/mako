@@ -117,6 +117,12 @@ impl From<String> for ModuleId {
     }
 }
 
+impl From<&str> for ModuleId {
+    fn from(id: &str) -> Self {
+        Self { id: id.to_string() }
+    }
+}
+
 impl From<PathBuf> for ModuleId {
     fn from(path: PathBuf) -> Self {
         Self {
@@ -162,6 +168,7 @@ pub struct Module {
     pub is_entry: bool,
     pub info: Option<ModuleInfo>,
     pub side_effects: bool,
+    pub is_missing: bool,
 }
 #[allow(dead_code)]
 
@@ -172,6 +179,7 @@ impl Module {
             is_entry,
             info,
             side_effects: false,
+            is_missing: false,
         }
     }
 
@@ -183,6 +191,10 @@ impl Module {
     pub fn is_external(&self) -> bool {
         let info = self.info.as_ref().unwrap();
         info.external.is_some()
+    }
+
+    pub fn is_node_module(&self) -> bool {
+        self.id.id.contains("node_modules")
     }
 
     pub fn get_module_type(&self) -> ModuleType {

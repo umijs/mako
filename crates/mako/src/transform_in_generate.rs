@@ -22,7 +22,6 @@ use swc_ecma_transforms::modules::import_analysis::import_analyzer;
 use swc_ecma_transforms::modules::util::{Config, ImportInterop};
 use swc_ecma_visit::VisitMutWith;
 use swc_error_reporters::handler::try_with_handler;
-use tracing::debug;
 
 use crate::ast::{base64_encode, build_js_ast, css_ast_to_code, Ast};
 use crate::compiler::{Compiler, Context};
@@ -32,6 +31,7 @@ use crate::targets;
 use crate::transform_dep_replacer::DepReplacer;
 use crate::transform_dynamic_import::DynamicImport;
 use crate::transform_react::react_refresh_entry_prefix;
+use crate::unused_statement_sweep::UnusedStatementSweep;
 
 impl Compiler {
     pub fn transform_all(&self) -> Result<()> {
@@ -39,7 +39,6 @@ impl Compiler {
         let module_graph = context.module_graph.read().unwrap();
         let module_ids = module_graph.get_module_ids();
         drop(module_graph);
-        debug!("module ids: {:?}", module_ids);
         transform_modules(module_ids, context)?;
         Ok(())
     }
@@ -51,7 +50,6 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         let deps = module_graph.get_dependencies_info(module_id);
 
         let dep_map: HashMap<String, String> = deps
-            .clone()
             .into_iter()
             .map(|(id, dep, _)| (dep.source, id.generate(context)))
             .collect();
@@ -66,24 +64,22 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         let ast = &mut info.ast;
 
         if let ModuleAst::Script(ast) = ast {
-            transform_js_generate(context, ast, &dep_map, module.is_entry);
-            let dep_info_map: HashMap<String, (Dependency, ModuleInfo)> = deps
-                .into_iter()
-                .map(|(id, dep, module_info)| (id.generate(context), (dep, module_info)))
-                .collect();
-            // transform async module
-            if info.is_async {
-                transform_async_module(ast, dep_info_map, info.top_level_await);
+            transform_js_generate(&module.id, context, ast, &dep_map, module.is_entry);
+        }
+
+        // 通过开关控制是否单独提取css文件
+        if !context.config.extract_css {
+            if let ModuleAst::Css(ast) = ast {
+                let ast = transform_css(ast, &path, dep_map, context);
+                info.set_ast(ModuleAst::Script(ast));
             }
-        } else if let ModuleAst::Css(ast) = ast {
-            let ast = transform_css(ast, &path, dep_map, context);
-            info.set_ast(ModuleAst::Script(ast));
         }
     });
     Ok(())
 }
 
 pub fn transform_js_generate(
+    id: &ModuleId,
     context: &Arc<Context>,
     ast: &mut Ast,
     dep_map: &HashMap<String, String>,
@@ -100,6 +96,19 @@ pub fn transform_js_generate(
                         HANDLER.set(handler, || {
                             let unresolved_mark = ast.unresolved_mark;
                             let top_level_mark = ast.top_level_mark;
+                            // let (code, ..) = js_ast_to_code(&ast.ast, context, "foo").unwrap();
+                            // print!("{}", code);
+                            {
+                                if context.config.minify
+                                    && matches!(context.config.mode, Mode::Production)
+                                {
+                                    let comments =
+                                        context.meta.script.output_comments.read().unwrap();
+                                    let mut unused_statement_sweep =
+                                        UnusedStatementSweep::new(id, &comments);
+                                    ast.ast.visit_mut_with(&mut unused_statement_sweep);
+                                }
+                            }
 
                             let import_interop = ImportInterop::Swc;
                             // FIXME: 执行两轮 import_analyzer + inject_helpers，第一轮是为了 module_graph，第二轮是为了依赖替换
@@ -156,6 +165,7 @@ pub fn transform_js_generate(
                                     .unwrap()
                                     .get_swc_comments(),
                             )));
+
                             Ok(())
                         })
                     })
@@ -525,6 +535,7 @@ fn transform_css(
     let content = content.replace("__CSS__", code.as_str());
     let require_code: Vec<String> = dep_map
         .values()
+        .filter(|val| val.ends_with(".css"))
         .map(|val| format!("require(\"{}\");\n", val))
         .collect();
     let content = format!("{}{}", require_code.join(""), content);
@@ -537,14 +548,10 @@ fn transform_css(
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
-    use std::path::PathBuf;
-    use std::sync::{Arc, Mutex, RwLock};
+    use std::sync::Arc;
 
     use super::transform_css;
     use crate::ast::{build_css_ast, js_ast_to_code};
-    use crate::chunk_graph::ChunkGraph;
-    use crate::compiler::{Context, Meta};
-    use crate::module_graph::ModuleGraph;
 
     #[test]
     fn test_transform_css() {
@@ -604,15 +611,7 @@ document.head.appendChild(style);
         dep_map: HashMap<String, String>,
     ) -> (String, String) {
         let path = if let Some(p) = path { p } else { "test.tsx" };
-        let root = PathBuf::from("/path/to/root");
-        let context = Arc::new(Context {
-            config: Default::default(),
-            root,
-            module_graph: RwLock::new(ModuleGraph::new()),
-            chunk_graph: RwLock::new(ChunkGraph::new()),
-            assets_info: Mutex::new(HashMap::new()),
-            meta: Meta::new(),
-        });
+        let context = Arc::new(Default::default());
         let mut ast = build_css_ast(path, content, &context).unwrap();
         let ast = transform_css(&mut ast, path, dep_map, &context);
         let (code, _sourcemap) = js_ast_to_code(&ast.ast, &context, "index.js").unwrap();

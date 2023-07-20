@@ -1,7 +1,6 @@
-use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
-use std::hash::{Hash, Hasher};
-use std::path::Path;
+use std::hash::Hasher;
+use std::path::{Component, Path};
 
 use twox_hash::XxHash64;
 
@@ -15,6 +14,8 @@ pub enum ChunkType {
     Runtime,
     Entry,
     Async,
+    // mean that the chunk is not async, but it's a dependency of an async chunk
+    Sync,
 }
 
 pub struct Chunk {
@@ -28,7 +29,7 @@ pub struct Chunk {
 impl Chunk {
     pub fn new(id: ChunkId, chunk_type: ChunkType) -> Self {
         Self {
-            modules: HashSet::from([id.clone()]),
+            modules: HashSet::new(),
             id,
             chunk_type,
             content: None,
@@ -49,12 +50,24 @@ impl Chunk {
                     .to_string();
                 format!("{}.js", basename)
             }
-            // foo/bar.tsx -> bar-{hash}-async.js
-            ChunkType::Async => {
+            // foo/bar.tsx -> foo_bar_tsx-async.js
+            ChunkType::Async | ChunkType::Sync => {
                 let path = Path::new(&self.id.id);
-                let hash = hash_path(path);
-                let filename = path.file_stem().unwrap().to_string_lossy();
-                format!("{}-{}-async.js", &filename, hash)
+
+                let name = path
+                    .components()
+                    .filter(|c| !matches!(c, Component::RootDir | Component::CurDir))
+                    .map(|c| match c {
+                        Component::ParentDir => "@".to_string(),
+                        Component::Prefix(_) => "@".to_string(),
+                        Component::RootDir => "".to_string(),
+                        Component::CurDir => "".to_string(),
+                        Component::Normal(seg) => seg.to_string_lossy().replace('.', "_"),
+                    })
+                    .collect::<Vec<String>>()
+                    .join("_");
+
+                format!("{}-async.js", name)
             }
         }
     }
@@ -65,6 +78,14 @@ impl Chunk {
 
     pub fn get_modules(&self) -> &HashSet<ModuleId> {
         &self.modules
+    }
+
+    pub fn mut_modules(&mut self) -> &mut HashSet<ModuleId> {
+        &mut self.modules
+    }
+
+    pub fn remove_module(&mut self, module_id: &ModuleId) {
+        self.modules.remove(module_id);
     }
 
     pub fn has_module(&self, module_id: &ModuleId) -> bool {
@@ -87,13 +108,6 @@ impl Chunk {
     }
 }
 
-fn hash_path<P: AsRef<std::path::Path>>(path: P) -> u64 {
-    let path_str = path.as_ref().to_str().expect("Path is not valid UTF-8");
-    let mut hasher = DefaultHasher::new();
-    path_str.hash(&mut hasher);
-    hasher.finish()
-}
-
 #[cfg(test)]
 mod tests {
     use crate::chunk::{Chunk, ChunkType};
@@ -104,8 +118,8 @@ mod tests {
         let chunk = Chunk::new(ModuleId::new("foo/bar.tsx".into()), ChunkType::Entry);
         assert_eq!(chunk.filename(), "bar.js");
 
-        let chunk = Chunk::new(ModuleId::new("foo/bar.tsx".into()), ChunkType::Async);
-        assert_eq!(chunk.filename(), "bar-15149280808876942159-async.js");
+        let chunk = Chunk::new(ModuleId::new("./foo/bar.tsx".into()), ChunkType::Async);
+        assert_eq!(chunk.filename(), "foo_bar_tsx-async.js");
 
         let chunk = Chunk::new(ModuleId::new("foo/bar.tsx".into()), ChunkType::Runtime);
         assert_eq!(chunk.filename(), "runtime.js");

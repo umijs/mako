@@ -105,6 +105,7 @@ impl Compiler {
         let (modified_module_ids, add_paths) = self
             .build_by_modify(modified, resolvers.clone())
             .map_err(|err| anyhow!("build_by_modify err:{:?}", err))?;
+
         added.extend(add_paths);
         debug!("added:{:?}", &added);
         update_result.modified.extend(modified_module_ids);
@@ -120,13 +121,10 @@ impl Compiler {
         update_result.added.extend(added_module_ids);
         debug!("update_result:{:?}", &update_result);
 
-        // 对有修改的模块执行一次 transform
-        self.transform_for_change(&update_result)?;
-
         Result::Ok(update_result)
     }
 
-    fn transform_for_change(&self, update_result: &UpdateResult) -> Result<()> {
+    pub fn transform_for_change(&self, update_result: &UpdateResult) -> Result<()> {
         let mut changes: Vec<ModuleId> = vec![];
         for module_id in &update_result.added {
             changes.push(module_id.clone());
@@ -231,18 +229,8 @@ impl Compiler {
             let from_module_id = ModuleId::from_path(path);
 
             // TODO: 如果当前被删除的module还在被人依赖的话， 就报个错
-            let mut deps_module_ids = vec![];
             let mut module_graph = self.context.module_graph.write().unwrap();
-            module_graph
-                .get_dependencies(&from_module_id)
-                .into_iter()
-                .for_each(|(module_id, _)| {
-                    deps_module_ids.push(module_id.clone());
-                });
-            for to_module_id in deps_module_ids {
-                module_graph.remove_dependency(&from_module_id, &to_module_id);
-            }
-            module_graph.remove_module(&from_module_id);
+            module_graph.remove_module_and_deps(&from_module_id);
             removed_module_ids.insert(from_module_id);
         }
         removed_module_ids
@@ -424,6 +412,8 @@ export const foo = 1;
 
         assert_display_snapshot!(&result);
         {
+            compiler.generate_hot_update_chunks(result, 0).unwrap();
+
             let module_graph = compiler.context.module_graph.read().unwrap();
             let code = module_to_jscode(&compiler, &ModuleId::from_path(target_path));
             assert_display_snapshot!(&module_graph);

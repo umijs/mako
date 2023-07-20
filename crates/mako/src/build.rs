@@ -98,7 +98,7 @@ impl Compiler {
                     // current module
                     let module_id = module.id.clone();
                     // 只有处理 entry 时，module 会不存在于 module_graph 里
-                    // 否则，module 会存在于 module_graph 里，只需要补充 info 信息即可
+                    // 否则，module 肯定已存在于 module_graph 里，只需要补充 info 信息即可
                     if task.is_entry {
                         added_module_ids.insert(module_id.clone());
                         module_graph.add_module(module);
@@ -206,12 +206,13 @@ impl Compiler {
     ) -> Result<(Module, ModuleDeps, Task)> {
         let mut dependencies = Vec::new();
         let module_id = ModuleId::new(task.path.clone());
+        let request = parse_path(&task.path)?;
 
         // load
-        let content = load(&task.path, task.is_entry, &context)?;
+        let content = load(&request, task.is_entry, &context)?;
 
         // parse
-        let mut ast = parse(&content, &task.path, &context)?;
+        let mut ast = parse(&content, &request, &context)?;
 
         // transform & resolve
         // TODO: 支持同时有多个 resolve error
@@ -249,28 +250,30 @@ impl Compiler {
 
             let id = ModuleId::new(target.clone());
             let module_graph = context.module_graph.read().unwrap();
-            let mut targets: Vec<&ModuleId> = module_graph.get_targets(&id);
 
-            // 循环找 target
-            while !targets.is_empty() {
-                let target_module_id = targets[0].clone();
-                targets = module_graph.get_targets(&target_module_id);
-                source = target.clone();
-                target = target_module_id.id;
-                // 拼接引用堆栈 string
-                err = format!("{}  -> Resolve \"{}\" from \"{}\" \n", err, source, target);
+            //  当 entry resolve 文件失败时，get_targets 自身会失败
+            if module_graph.get_module(&id).is_some() {
+                let mut targets: Vec<&ModuleId> = module_graph.get_targets(&id);
+                // 循环找 target
+                while !targets.is_empty() {
+                    let target_module_id = targets[0].clone();
+                    targets = module_graph.get_targets(&target_module_id);
+                    source = target.clone();
+                    target = target_module_id.id;
+                    // 拼接引用堆栈 string
+                    err = format!("{}  -> Resolve \"{}\" from \"{}\" \n", err, source, target);
 
-                if target_map.contains_key(&target) {
-                    // 存在循环依赖
-                    err = format!("{}  -> \"{}\" 中存在循环依赖", err, target);
-                    break;
-                } else {
-                    target_map.insert(target.clone(), 1);
+                    if target_map.contains_key(&target) {
+                        // 存在循环依赖
+                        err = format!("{}  -> \"{}\" 中存在循环依赖", err, target);
+                        break;
+                    } else {
+                        target_map.insert(target.clone(), 1);
+                    }
                 }
+                // 调整格式
+                err = format!("{} \n", err);
             }
-            // 调整格式
-            err = format!("{} \n", err);
-
             return Err(anyhow::anyhow!(err));
         }
 
@@ -338,13 +341,78 @@ fn get_entries(root: &Path, config: &Config) -> Option<Vec<std::path::PathBuf>> 
     None
 }
 
+fn parse_path(path: &str) -> Result<FileRequest> {
+    let mut iter = path.split('?');
+    let path = iter.next().unwrap();
+    let query = iter.next().unwrap_or("");
+    let mut query_vec = vec![];
+    for pair in query.split('&') {
+        if pair.contains('=') {
+            let mut it = pair.split('=').take(2);
+            let kv = match (it.next(), it.next()) {
+                (Some(k), Some(v)) => (k.to_string(), v.to_string()),
+                _ => continue,
+            };
+            query_vec.push(kv);
+        } else if !pair.is_empty() {
+            query_vec.push((pair.to_string(), "".to_string()));
+        }
+    }
+    Ok(FileRequest {
+        path: path.to_string(),
+        query: query_vec,
+    })
+}
+
+#[derive(Debug)]
+pub struct FileRequest {
+    pub path: String,
+    pub query: Vec<(String, String)>,
+}
+
+impl FileRequest {
+    pub fn has_query(&self, key: &str) -> bool {
+        self.query.iter().any(|(k, _)| *k == key)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use petgraph::prelude::EdgeRef;
     use petgraph::visit::IntoEdgeReferences;
 
+    use super::parse_path;
     use crate::compiler;
     use crate::config::Config;
+
+    #[test]
+    fn test_parse_path() {
+        let result = parse_path("foo").unwrap();
+        assert_eq!(result.path, "foo");
+        assert_eq!(result.query, vec![]);
+
+        let result = parse_path("foo?bar=1&hoo=2").unwrap();
+        assert_eq!(result.path, "foo");
+        assert_eq!(
+            result.query.get(0).unwrap(),
+            &("bar".to_string(), "1".to_string())
+        );
+        assert_eq!(
+            result.query.get(1).unwrap(),
+            &("hoo".to_string(), "2".to_string())
+        );
+        assert!(result.has_query("bar"));
+        assert!(result.has_query("hoo"));
+        assert!(!result.has_query("foo"));
+
+        let result = parse_path("foo?bar").unwrap();
+        assert_eq!(result.path, "foo");
+        assert_eq!(
+            result.query.get(0).unwrap(),
+            &("bar".to_string(), "".to_string())
+        );
+        assert!(result.has_query("bar"));
+    }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_build_normal() {

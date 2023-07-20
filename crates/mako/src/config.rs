@@ -60,6 +60,14 @@ pub enum ModuleIdStrategy {
     Named,
 }
 
+#[derive(Deserialize, Clone, Copy, Debug)]
+pub enum CodeSplittingStrategy {
+    #[serde(rename = "bigVendor")]
+    BigVendor,
+    #[serde(rename = "depPerChunk")]
+    DepPerChunk,
+}
+
 #[derive(Deserialize, Debug)]
 pub struct Config {
     pub entry: HashMap<String, PathBuf>,
@@ -81,6 +89,9 @@ pub struct Config {
     pub hmr: bool,
     pub hmr_port: String,
     pub hmr_host: String,
+    pub code_splitting: CodeSplittingStrategy,
+    // temp flag
+    pub extract_css: bool,
 }
 
 const CONFIG_FILE: &str = "mako.config.json";
@@ -103,7 +114,9 @@ const DEFAULT_CONFIG: &str = r#"
     "hmr": true,
     "hmr_host": "127.0.0.1",
     "hmr_port": "3000",
-    "module_id_strategy": "named"
+    "module_id_strategy": "named",
+    "code_splitting": "bigVendor",
+    "extract_css": false
 }
 "#;
 
@@ -160,8 +173,6 @@ impl Config {
             if config.public_path != "runtime" && !config.public_path.ends_with('/') {
                 panic!("public_path must end with '/' or be 'runtime'");
             }
-
-            Config::config_node_polyfill(config);
 
             // let entry_length = cc.entry.len();
             // if entry_length != 1 {

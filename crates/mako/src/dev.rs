@@ -9,6 +9,7 @@ use tokio::sync::broadcast::{Receiver, Sender};
 use tokio::sync::mpsc::unbounded_channel;
 use tokio::task::JoinHandle;
 use tokio::try_join;
+use tracing::debug;
 use tungstenite::Message;
 
 use crate::compiler;
@@ -203,6 +204,12 @@ impl ProjectWatch {
 
                             let next_full_hash = next_full_hash.unwrap();
 
+                            debug!(
+                                "Updated: {:?} {:?} {}",
+                                next_full_hash,
+                                last_full_hash,
+                                next_full_hash == *last_full_hash
+                            );
                             if next_full_hash == *last_full_hash {
                                 // no need to continue
                                 return;
@@ -211,7 +218,6 @@ impl ProjectWatch {
                             }
 
                             if tx.receiver_count() > 0 {
-                                //TODO: send the next hash to runtime
                                 tx.send(WsMessage {
                                     hash: next_full_hash,
                                 })
@@ -229,8 +235,10 @@ impl ProjectWatch {
             while (build_rx.recv().await).is_some() {
                 // Then try to receive all remaining messages immediately.
                 while build_rx.try_recv().is_ok() {}
-                let chunk_asts = c.generate_chunks_ast().unwrap();
-                c.emit_dev_chunks(chunk_asts).unwrap();
+
+                if let Err(e) = c.emit_dev_chunks() {
+                    debug!("Error in build: {:?}, will rebuild soon", e);
+                }
             }
         });
 

@@ -287,7 +287,11 @@ function createRuntime(makoModules, entryModuleId) {
   requireModule.ensure = ensure;
   // __WASM_REQUIRE_SUPPORT
   // __REQUIRE_ASYNC_MODULE_SUPPORT
+  // __BEFORE_ENTRY
+
   requireModule(entryModuleId);
+
+  // __AFTER_ENTRY
 
   return {
     requireModule,

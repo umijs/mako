@@ -9,6 +9,8 @@ use crate::chunk_graph::ChunkGraph;
 use crate::comments::Comments;
 use crate::config::Config;
 use crate::module_graph::ModuleGraph;
+use crate::plugin::PluginDriver;
+use crate::plugins;
 
 pub struct Context {
     pub module_graph: RwLock<ModuleGraph>,
@@ -17,6 +19,7 @@ pub struct Context {
     pub config: Config,
     pub root: PathBuf,
     pub meta: Meta,
+    pub plugin_driver: PluginDriver,
 }
 
 impl Default for Context {
@@ -28,6 +31,7 @@ impl Default for Context {
             chunk_graph: RwLock::new(ChunkGraph::new()),
             assets_info: Mutex::new(HashMap::new()),
             meta: Meta::new(),
+            plugin_driver: Default::default(),
         }
     }
 }
@@ -85,9 +89,9 @@ impl CssMeta {
 }
 
 impl Context {
-    pub fn emit_assets(&self, k: String, v: String) {
+    pub fn emit_assets(&self, origin_path: String, output_path: String) {
         let mut assets_info = self.assets_info.lock().unwrap();
-        assets_info.insert(k, v);
+        assets_info.insert(origin_path, output_path);
         drop(assets_info);
     }
 }
@@ -99,6 +103,24 @@ pub struct Compiler {
 impl Compiler {
     pub fn new(config: Config, root: PathBuf) -> Self {
         assert!(root.is_absolute(), "root path must be absolute");
+
+        let plugin_driver = PluginDriver::new(vec![
+            // features
+            Arc::new(plugins::node_polyfill::NodePolyfillPlugin {}),
+            // file types
+            Arc::new(plugins::css::CSSPlugin {}),
+            Arc::new(plugins::javascript::JavaScriptPlugin {}),
+            Arc::new(plugins::json::JSONPlugin {}),
+            Arc::new(plugins::svg::SVGPlugin {}),
+            Arc::new(plugins::toml::TOMLPlugin {}),
+            Arc::new(plugins::wasm::WASMPlugin {}),
+            Arc::new(plugins::xml::XMLPlugin {}),
+            Arc::new(plugins::yaml::YAMLPlugin {}),
+            Arc::new(plugins::assets::AssetsPlugin {}),
+        ]);
+        let mut config = config;
+        plugin_driver.modify_config(&mut config).unwrap();
+
         Self {
             context: Arc::new(Context {
                 config,
@@ -107,6 +129,7 @@ impl Compiler {
                 chunk_graph: RwLock::new(ChunkGraph::new()),
                 assets_info: Mutex::new(HashMap::new()),
                 meta: Meta::new(),
+                plugin_driver,
             }),
         }
     }
@@ -148,7 +171,7 @@ mod tests {
             !files.join(",").contains(&".png".to_string()),
             "small.png is inlined"
         );
-        assert_eq!(files.len(), 3, "index.js, index.js.map, xxx.jpg");
+        assert!(files.len() > 3, "index.js, index.js.map, xxx.jpg");
         let index_js_content = file_contents.get("index.js").unwrap();
         assert!(
             index_js_content.contains("data:image/png;base64,"),
@@ -211,6 +234,51 @@ mod tests {
             index_js_content.contains("display: -ms-flexbox;"),
             "ie 10 prefixer"
         );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_load() {
+        let (files, file_contents) = compile("test/compile/load");
+        println!("{:?}", files);
+        let index_js_content = file_contents.get("index.js").unwrap();
+        assert!(
+            index_js_content.contains("\"foo\": \"json\""),
+            "json loader"
+        );
+        assert!(
+            index_js_content.contains("\"foo\": \"json5\""),
+            "json5 loader"
+        );
+        assert!(
+            index_js_content.contains("\"foo\": \"toml\""),
+            "toml loader"
+        );
+        assert!(
+            index_js_content.contains("\"$value\": \"foo\""),
+            "xml loader"
+        );
+        assert!(
+            index_js_content.contains("\"foo\": \"yaml\""),
+            "yaml loader"
+        );
+        assert!(
+            index_js_content.contains(".foo {\n  color: red;\n}"),
+            "css loader"
+        );
+        assert!(index_js_content.contains(".jpg\");\n}"), "big.jpg in css");
+        assert!(
+            index_js_content.contains(".big {\n  background: url(\""),
+            "small.png in css"
+        );
+        assert!(
+            index_js_content.contains("big.jpg\": function("),
+            "include big.jpg in js"
+        );
+        assert!(
+            index_js_content.contains("small.png\": function("),
+            "include small.png in js"
+        );
+        // TODO: svg
     }
 
     fn compile(base: &str) -> (Vec<String>, HashMap<String, String>) {

@@ -10,7 +10,6 @@ use tracing::debug;
 
 use crate::compiler::Context;
 use crate::config::{Config, Platform};
-use crate::css_modules::is_mako_css_modules;
 use crate::module::{Dependency, ResolveType};
 
 #[derive(Debug, Error)]
@@ -59,9 +58,6 @@ fn do_resolve(
     };
     if let Some(external) = external {
         Ok((source.to_string(), Some(external)))
-    } else if is_mako_css_modules(source) {
-        // css_modules has resolved and mako_css_modules cannot be resolved since the suffix
-        Ok((source.to_string(), None))
     } else {
         let path = PathBuf::from(path);
         // 所有的 path 都是文件，所以 parent() 肯定是其所在目录
@@ -69,7 +65,10 @@ fn do_resolve(
         debug!("parent: {:?}, source: {:?}", parent, source);
         let result = resolver.resolve(parent, source);
         if let Ok(ResolveResult::Resource(resource)) = result {
-            let path = resource.path.to_string_lossy().to_string();
+            let mut path = resource.path.to_string_lossy().to_string();
+            if resource.query.is_some() {
+                path = format!("{}{}", path, resource.query.as_ref().unwrap());
+            }
             Ok((path, None))
         } else {
             Err(anyhow!(ResolveError::ResolveError {

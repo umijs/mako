@@ -44,7 +44,7 @@ const router = createHashRouter([
 
 function App() {
   return (
-    <div>
+    <div data-test-id="app">
       <RouterProvider router={router} />
     </div>
   );

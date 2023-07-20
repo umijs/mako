@@ -1,14 +1,23 @@
 {
   "scripts": {
     "prepare": "husky install",
-    "rome:format": "rome format --write ."
+    "rome:format": "rome format --write .",
+    "release": "esno scripts/release.ts",
+    "release:bundler-okam": "cd packages/bundler-okam && npm publish"
   },
   "license": "MIT",
   "devDependencies": {
     "@swc/helpers": "0.5.1",
+    "@types/node": "^20.4.2",
+    "@types/semver": "^7.5.0",
+    "esno": "^0.17.0",
     "husky": "^8.0.3",
     "node-libs-browser-okam": "2.2.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "react-refresh": "^0.14.0",
-    "rome": "^12.0.0"
+    "rome": "^12.0.0",
+    "semver": "^7.5.4",
+    "zx": "^7.2.3"
   }
 }

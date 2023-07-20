@@ -1,16 +1,19 @@
 use std::collections::HashMap;
 
 use swc_ecma_visit::VisitMutWith;
+use tracing::debug;
 
 use crate::compiler::Compiler;
 use crate::module::ModuleId;
-use crate::tree_shaking_module::TreeShakingModule;
+use crate::tree_shaking_module::{ModuleSystem, TreeShakingModule};
 use crate::unused_statement_marker::UnusedStatementMarker;
 
 impl Compiler {
     pub fn tree_shaking(&self) {
         // 拓扑排序
         let (entry_modules, sorted_modules, cycle_modules) = self.make_toposort();
+        debug!("entry_modules: {:?}", &entry_modules);
+        debug!("cycle_modules: {:?}", &cycle_modules);
 
         // 入口模块设置为副作用模块
         self.markup_entry_modules_as_side_effects(entry_modules);
@@ -29,17 +32,75 @@ impl Compiler {
                 .get_mut(&tree_shaking_module_id)
                 .unwrap();
 
-            // FIXME: 先默认是 esm 模块
+            debug!(
+                "tree_shaking module: [{}]{}",
+                tree_shaking_module.side_effects, &tree_shaking_module_id.id,
+            );
+            debug!(
+                "    - used_exports: {:?}",
+                &tree_shaking_module.used_exports
+            );
 
-            // 包含副作用的模块
-            if tree_shaking_module.side_effects {
-                {
+            if matches!(tree_shaking_module.module_system, ModuleSystem::ESModule) {
+                // 包含副作用的模块
+                if tree_shaking_module.side_effects {
+                    {
+                        {
+                            let imports = tree_shaking_module.imports();
+                            let exports = tree_shaking_module.exports();
+
+                            // 分析使用情况
+                            for import in imports {
+                                debug!("    - import: {:?}", &import);
+                                self.analyze_import_statement(
+                                    tree_shaking_module_map,
+                                    &tree_shaking_module_id,
+                                    import,
+                                );
+                            }
+
+                            for export in exports {
+                                debug!("    - export: {:?}", &export);
+                                self.analyze_export_statement(
+                                    tree_shaking_module_map,
+                                    &tree_shaking_module_id,
+                                    export,
+                                );
+                            }
+                        };
+                    }
+                } else {
+                    // 不包含副作用的模块，执行 tree shaking
+                    let tree_shaking_module = tree_shaking_module_map
+                        .get_mut(&tree_shaking_module_id)
+                        .unwrap();
+
+                    let mut module_graph = self.context.module_graph.write().unwrap();
+                    let module = module_graph
+                        .get_module_mut(&tree_shaking_module.id)
+                        .unwrap();
+                    let ast = module.info.as_mut().unwrap().ast.as_script_mut();
+
+                    // 通过 tree_shaking_module 进行无用的标记
+                    let mut comments = self.context.meta.script.output_comments.write().unwrap();
+                    let mut marker = UnusedStatementMarker::new(tree_shaking_module, &mut comments);
+                    ast.visit_mut_with(&mut marker);
+                    drop(module_graph);
+                    drop(comments);
+
+                    // 当前模块没有被使用到的导出，删除当前模块
+                    if tree_shaking_module.used_exports.is_empty() {
+                        modules_to_remove.push(tree_shaking_module_id.clone());
+                        continue;
+                    }
+
                     {
                         let imports = tree_shaking_module.imports();
                         let exports = tree_shaking_module.exports();
 
                         // 分析使用情况
                         for import in imports {
+                            debug!("    - import: {:?}", &import);
                             self.analyze_import_statement(
                                 tree_shaking_module_map,
                                 &tree_shaking_module_id,
@@ -48,6 +109,7 @@ impl Compiler {
                         }
 
                         for export in exports {
+                            debug!("    - export: {:?}", &export);
                             self.analyze_export_statement(
                                 tree_shaking_module_map,
                                 &tree_shaking_module_id,
@@ -56,57 +118,10 @@ impl Compiler {
                         }
                     };
                 }
-            } else {
-                // 不包含副作用的模块，执行 tree shaking
-                let tree_shaking_module = tree_shaking_module_map
-                    .get_mut(&tree_shaking_module_id)
-                    .unwrap();
-
-                // 当前模块没有被使用到的导出，删除当前模块
-                if tree_shaking_module.used_exports.is_empty() {
-                    modules_to_remove.push(tree_shaking_module_id.clone());
-                    continue;
-                }
-
-                let mut module_graph = self.context.module_graph.write().unwrap();
-                let module = module_graph
-                    .get_module_mut(&tree_shaking_module.id)
-                    .unwrap();
-                let ast = module.info.as_mut().unwrap().ast.as_script_mut();
-
-                // 通过 tree_shaking_module 进行无用的标记
-                let mut comments = self.context.meta.script.output_comments.write().unwrap();
-                let mut marker = UnusedStatementMarker::new(tree_shaking_module, &mut comments);
-                ast.visit_mut_with(&mut marker);
-                drop(module_graph);
-                drop(comments);
-
-                {
-                    let this = self;
-                    let imports = tree_shaking_module.imports();
-                    let exports = tree_shaking_module.exports();
-
-                    // 分析使用情况
-                    for import in imports {
-                        this.analyze_import_statement(
-                            tree_shaking_module_map,
-                            &tree_shaking_module_id,
-                            import,
-                        );
-                    }
-
-                    for export in exports {
-                        this.analyze_export_statement(
-                            tree_shaking_module_map,
-                            &tree_shaking_module_id,
-                            export,
-                        );
-                    }
-                };
             }
         }
 
-        // TODO: 增加minify阶段的删除功能
+        self.cleanup_no_used_export_module(modules_to_remove);
     }
 
     fn make_toposort(&self) -> (Vec<ModuleId>, Vec<ModuleId>, Vec<Vec<ModuleId>>) {
@@ -131,6 +146,15 @@ impl Compiler {
                 let module = module_graph.get_module_mut(&module_id).unwrap();
                 module.side_effects = true;
             }
+        }
+    }
+
+    #[allow(dead_code)]
+    fn cleanup_no_used_export_module(&self, modules_to_remove: Vec<ModuleId>) {
+        let mut module_graph = self.context.module_graph.write().unwrap();
+        debug!("modules_to_remove: {:?}", &modules_to_remove);
+        for module_id in modules_to_remove {
+            module_graph.mark_missing_module(&module_id, &self.context);
         }
     }
 
@@ -186,6 +210,86 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_tree_shaking() {
         let compiler = setup_compiler("test/build/tree-shaking", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_reexport() {
+        let compiler = setup_compiler("test/build/tree-shaking_reexport", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_named_reexport() {
+        let compiler = setup_compiler("test/build/tree-shaking_named_reexport", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_export_namespace() {
+        let compiler = setup_compiler("test/build/tree-shaking_export_namespace", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_named_export() {
+        let compiler = setup_compiler("test/build/tree-shaking_named_export", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_fn() {
+        let compiler = setup_compiler("test/build/tree-shaking_fn", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_side_effect() {
+        let compiler = setup_compiler("test/build/tree-shaking_side_effect", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_class() {
+        let compiler = setup_compiler("test/build/tree-shaking_class", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_exported() {
+        let compiler = setup_compiler("test/build/tree-shaking_exported", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_export_default() {
+        let compiler = setup_compiler("test/build/tree-shaking_export_default", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_issues_271() {
+        let compiler = setup_compiler("test/build/tree-shaking_issues_271", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler);
+        assert_display_snapshot!(content);
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_jsx() {
+        let compiler = setup_compiler("test/build/tree-shaking_jsx", false);
         compiler.compile();
         let content = read_dist_file(&compiler);
         assert_display_snapshot!(content);
