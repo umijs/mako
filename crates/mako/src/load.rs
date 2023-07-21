@@ -65,7 +65,7 @@ pub fn load(request: &FileRequest, is_entry: bool, context: &Arc<Context>) -> Re
         }));
     }
 
-    let content = context.plugin_driver.load(
+    let content: Option<Content> = context.plugin_driver.load(
         &PluginLoadParam {
             path: path.to_string(),
             is_entry,
@@ -86,7 +86,7 @@ pub fn handle_asset<T: AsRef<str>>(context: &Arc<Context>, path: T) -> Result<St
 
     if file_size > context.config.inline_limit.try_into().unwrap() {
         let final_file_name = content_hash(path_str)? + "." + ext_name(path_str).unwrap();
-        context.emit_assets(path_string, final_file_name.clone());
+        context.emit_assets(path_string, final_file_name.clone(), Some(file_size));
         Ok(final_file_name)
     } else {
         let base64 =
@@ -107,7 +107,7 @@ fn ext_name(path: &str) -> Option<&str> {
     None
 }
 
-fn file_size(path: &str) -> Result<u64> {
+pub fn file_size(path: &str) -> Result<u64> {
     let metadata = std::fs::metadata(path)?;
     Ok(metadata.len())
 }

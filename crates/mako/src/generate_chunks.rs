@@ -20,6 +20,7 @@ use crate::module::{ModuleAst, ModuleId};
 pub struct OutputAst {
     pub path: String,
     pub ast: ModuleAst,
+    pub chunk_id: String,
 }
 
 impl Compiler {
@@ -191,11 +192,13 @@ impl Compiler {
                 output.push(OutputAst {
                     path: filename,
                     ast: ModuleAst::Script(js_ast),
+                    chunk_id: chunk.id.id.clone(),
                 });
                 if let Some(merged_css_ast) = merged_css_ast {
                     output.push(OutputAst {
                         path: css_filename,
                         ast: ModuleAst::Css(merged_css_ast),
+                        chunk_id: chunk.id.id.clone(),
                     });
                 }
                 output

@@ -1,6 +1,7 @@
 #![feature(box_patterns)]
 
 use std::sync::Arc;
+use std::time::Instant;
 
 use clap::Parser;
 use tracing::debug;
@@ -37,6 +38,7 @@ mod resolve;
 mod sourcemap;
 mod statement;
 mod statement_graph;
+mod stats;
 mod targets;
 #[cfg(test)]
 mod test_helper;
@@ -83,8 +85,16 @@ async fn main() {
     debug!("config: {:?}", config);
 
     // compiler
+    let t_comiler = Instant::now();
     let compiler = compiler::Compiler::new(config, root.clone());
     compiler.compile();
+    let t_comiler = t_comiler.elapsed();
+    println!("compiler time: {:?}", t_comiler);
+
+    println!(
+        "stats_info: {:?}",
+        compiler.context.stats_info.lock().unwrap().assets
+    );
 
     if cli.watch {
         let d = crate::dev::DevServer::new(root.clone(), Arc::new(compiler));

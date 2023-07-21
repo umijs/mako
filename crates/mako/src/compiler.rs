@@ -8,9 +8,11 @@ use swc_common::{Globals, SourceMap};
 use crate::chunk_graph::ChunkGraph;
 use crate::comments::Comments;
 use crate::config::Config;
+use crate::load::file_size;
 use crate::module_graph::ModuleGraph;
 use crate::plugin::PluginDriver;
 use crate::plugins;
+use crate::stats::StatsInfo;
 
 pub struct Context {
     pub module_graph: RwLock<ModuleGraph>,
@@ -20,6 +22,7 @@ pub struct Context {
     pub root: PathBuf,
     pub meta: Meta,
     pub plugin_driver: PluginDriver,
+    pub stats_info: Mutex<StatsInfo>,
 }
 
 impl Default for Context {
@@ -32,6 +35,8 @@ impl Default for Context {
             assets_info: Mutex::new(HashMap::new()),
             meta: Meta::new(),
             plugin_driver: Default::default(),
+            // 产物信息放在上下文里是否合适
+            stats_info: Mutex::new(StatsInfo::new()),
         }
     }
 }
@@ -89,9 +94,29 @@ impl CssMeta {
 }
 
 impl Context {
-    pub fn emit_assets(&self, origin_path: String, output_path: String) {
+    pub fn emit_assets(&self, origin_path: String, output_path: String, size: Option<u64>) {
         let mut assets_info = self.assets_info.lock().unwrap();
-        assets_info.insert(origin_path, output_path);
+        assets_info.insert(origin_path.clone(), output_path.clone());
+        // 将静态资源产物信息存入 stats_info
+        let mut stats_info = self.stats_info.lock().unwrap();
+        if let Some(..) = size {
+            stats_info.add_assets(
+                size.unwrap(),
+                output_path.clone(),
+                "".to_string(),
+                self.config.output.path.join(output_path),
+            );
+        } else {
+            // 目前只有 wasm 走这个逻辑
+            let path = self.root.join(origin_path);
+            let file_size = file_size(path.to_str().unwrap()).unwrap();
+            stats_info.add_assets(
+                file_size,
+                output_path.clone(),
+                "".to_string(),
+                self.config.output.path.join(output_path),
+            );
+        }
         drop(assets_info);
     }
 }
@@ -130,13 +155,14 @@ impl Compiler {
                 assets_info: Mutex::new(HashMap::new()),
                 meta: Meta::new(),
                 plugin_driver,
+                stats_info: Mutex::new(StatsInfo::new()),
             }),
         }
     }
 
     pub fn compile(&self) {
         self.build();
-        let result = self.generate();
+        let result: Result<(), anyhow::Error> = self.generate();
         match result {
             Ok(_) => {}
             Err(e) => {

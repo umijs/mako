@@ -34,6 +34,7 @@ pub async fn build(
     hmr?: boolean;
     hmr_port?: string;
     hmr_host?: string;
+    stats?: boolean;
 }"#)]
     config: serde_json::Value,
     watch: bool,

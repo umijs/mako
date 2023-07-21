@@ -628,6 +628,7 @@ require("./bar");
             assets_info: Mutex::new(HashMap::new()),
             meta: Meta::new(),
             plugin_driver: Default::default(),
+            stats_info: Mutex::new(Default::default()),
         });
         let mut ast = build_js_ast(path, origin, &context).unwrap();
         transform_js(

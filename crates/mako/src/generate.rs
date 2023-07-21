@@ -1,8 +1,9 @@
 use std::collections::HashSet;
 use std::fs;
+use std::path::PathBuf;
 use std::time::Instant;
 
-use anyhow::Result;
+use anyhow::{Ok, Result};
 use rayon::prelude::*;
 use serde::Serialize;
 use tracing::{debug, info};
@@ -71,34 +72,47 @@ impl Compiler {
                 })?;
         }
         let t_minify = t_minify.elapsed();
+        // stats
 
         // ast to code and sourcemap, then write
         let t_ast_to_code_and_write = Instant::now();
         info!("ast to code and write");
-        chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
-            match &file.ast {
-                ModuleAst::Script(ast) => {
-                    // ast to code
-                    let (js_code, js_sourcemap) =
-                        js_ast_to_code(&ast.ast, &self.context, &file.path)?;
-                    // generate code and sourcemap files
-                    let output = &config.output.path.join(&file.path);
-                    fs::write(output, js_code).unwrap();
-                    if matches!(self.context.config.devtool, DevtoolConfig::SourceMap) {
-                        fs::write(format!("{}.map", output.display()), js_sourcemap).unwrap();
+        chunk_asts
+            .par_iter()
+            .try_for_each(|file: &OutputAst| -> Result<()> {
+                match &file.ast {
+                    ModuleAst::Script(ast) => {
+                        // ast to code
+                        let (js_code, js_sourcemap) =
+                            js_ast_to_code(&ast.ast, &self.context, &file.path)?;
+                        // generate code and sourcemap files
+                        self.write_to_dist_with_stats(
+                            file.path.clone(),
+                            js_code,
+                            file.chunk_id.clone(),
+                        );
+                        if matches!(self.context.config.devtool, DevtoolConfig::SourceMap) {
+                            self.write_to_dist_with_stats(
+                                format!("{}.map", file.path.clone()),
+                                js_sourcemap,
+                                "".to_string(),
+                            );
+                        }
                     }
+                    // TODO: Sourcemap part
+                    ModuleAst::Css(ast) => {
+                        // ast to code
+                        let (css_code, _sourcemap) = css_ast_to_code(ast, &self.context);
+                        self.write_to_dist_with_stats(
+                            file.path.clone(),
+                            css_code,
+                            file.chunk_id.clone(),
+                        );
+                    }
+                    _ => (),
                 }
-                // TODO: Sourcemap part
-                ModuleAst::Css(ast) => {
-                    // ast to code
-                    let (css_code, _sourcemap) = css_ast_to_code(ast, &self.context);
-                    let output = &config.output.path.join(&file.path);
-                    fs::write(output, css_code).unwrap();
-                }
-                _ => (),
-            }
-            Ok(())
-        })?;
+                Ok(())
+            })?;
         let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
 
         // write assets
@@ -329,9 +343,20 @@ impl Compiler {
         filename: P,
         content: C,
     ) {
-        let to = self.context.config.output.path.join(filename);
+        let to: PathBuf = self.context.config.output.path.join(filename);
 
         std::fs::write(to, content).unwrap();
+    }
+    // 写入产物前记录 content 大小
+    pub fn write_to_dist_with_stats(&self, filename: String, content: String, chunk_id: String) {
+        let to: PathBuf = self.context.config.output.path.join(filename.clone());
+        let size = content.len() as u64;
+        self.context
+            .stats_info
+            .lock()
+            .unwrap()
+            .add_assets(size, filename, chunk_id, to.clone());
+        fs::write(to, content).unwrap();
     }
 }
 

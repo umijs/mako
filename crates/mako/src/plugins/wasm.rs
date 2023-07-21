@@ -18,7 +18,7 @@ impl Plugin for WASMPlugin {
         if matches!(param.ext_name.as_str(), "wasm") {
             let final_file_name =
                 content_hash(param.path.as_str())? + "." + param.ext_name.as_str();
-            context.emit_assets(param.path.clone(), final_file_name.clone());
+            context.emit_assets(param.path.clone(), final_file_name.clone(), None);
             return Ok(Some(Content::Js(format!(
                 "module.exports = require._interopreRequireWasm(exports, \"{}\")",
                 final_file_name

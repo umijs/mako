@@ -77,6 +77,7 @@ pub struct Config {
     pub platform: Platform,
     pub module_id_strategy: ModuleIdStrategy,
     pub define: HashMap<String, Value>,
+    pub stats: bool,
     // temp solution
     pub hmr: bool,
     pub hmr_port: String,
@@ -101,6 +102,7 @@ const DEFAULT_CONFIG: &str = r#"
     "inline_limit": 10000,
     "targets": { "chrome": 80 },
     "define": {},
+    "stats": false,
     "platform": "browser",
     "hmr": true,
     "hmr_host": "127.0.0.1",
