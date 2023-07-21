@@ -130,14 +130,21 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
             ])
         },
         main_fields: if is_browser {
-            vec![
-                "browser".to_string(),
-                "module".to_string(),
-                "main".to_string(),
-            ]
+            if resolver_type == ResolverType::Cjs {
+                vec!["browser".to_string(), "main".to_string()]
+            } else {
+                vec![
+                    "browser".to_string(),
+                    "module".to_string(),
+                    "main".to_string(),
+                ]
+            }
+        } else if resolver_type == ResolverType::Cjs {
+            vec!["main".to_string()]
         } else {
             vec!["module".to_string(), "main".to_string()]
         },
+        browser_field: true,
         ..Default::default()
     })
 }
@@ -168,6 +175,12 @@ mod tests {
     fn test_resolve_dep() {
         let x = resolve("test/resolve/normal", None, None, "index.ts", "foo");
         assert_eq!(x, ("node_modules/foo/index.js".to_string(), None));
+    }
+
+    #[test]
+    fn test_resolve_dep_browser_fields() {
+        let x = resolve("test/resolve/browser_fields", None, None, "index.ts", "foo");
+        assert_eq!(x, ("node_modules/foo/cjs-browser.js".to_string(), None));
     }
 
     #[test]

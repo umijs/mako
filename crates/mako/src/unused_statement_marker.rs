@@ -57,6 +57,16 @@ impl VisitMut for UnusedStatementMarker<'_, '_> {
         }
     }
 
+    fn visit_mut_export_default_expr(
+        &mut self,
+        default_expr: &mut swc_ecma_ast::ExportDefaultExpr,
+    ) {
+        if !self.tree_shaking_module.used_exports.contains(&"default") {
+            debug!("add unused comment to default fn");
+            self.comments.add_unused_comment(default_expr.span.lo)
+        }
+    }
+
     fn visit_mut_export_default_decl(
         &mut self,
         default_decl: &mut swc_ecma_ast::ExportDefaultDecl,

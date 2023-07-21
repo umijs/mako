@@ -62,6 +62,14 @@ Lint.
 $ cargo lint
 ```
 
+Release.
+
+```bash
+$ npm run release
+# After released successful, you need to release bundler-okam manually.
+$ npm run release:bundler-okam
+```
+
 Upgrade dependencies.
 
 ```bash

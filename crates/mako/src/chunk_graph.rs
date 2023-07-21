@@ -49,6 +49,13 @@ impl ChunkGraph {
         self.graph.node_weights().find(|c| c.filename().eq(name))
     }
 
+    pub fn chunk(&self, chunk_id: &ChunkId) -> Option<&Chunk> {
+        match self.id_index_map.get(chunk_id) {
+            Some(idx) => self.graph.node_weight(*idx),
+            None => None,
+        }
+    }
+
     pub fn add_edge(&mut self, from: &ChunkId, to: &ChunkId) {
         let from = self.id_index_map.get(from).unwrap();
         let to = self.id_index_map.get(to).unwrap();

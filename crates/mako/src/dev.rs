@@ -9,6 +9,7 @@ use tokio::sync::broadcast::{Receiver, Sender};
 use tokio::sync::mpsc::unbounded_channel;
 use tokio::task::JoinHandle;
 use tokio::try_join;
+use tracing::debug;
 use tungstenite::Message;
 
 use crate::compiler;
@@ -148,7 +149,12 @@ impl DevServer {
             }
         });
 
-        let _ = try_join!(watch_handler, dev_server_handle, build_handle);
+        // build_handle 必须在 dev_server_handle 之前
+        // 否则会导致 build_handle 无法收到前几个消息，原因未知
+        let join_error = try_join!(watch_handler, build_handle, dev_server_handle);
+        if let Err(e) = join_error {
+            eprintln!("Error in dev server: {:?}", e);
+        }
     }
 }
 
@@ -203,6 +209,12 @@ impl ProjectWatch {
 
                             let next_full_hash = next_full_hash.unwrap();
 
+                            debug!(
+                                "Updated: {:?} {:?} {}",
+                                next_full_hash,
+                                last_full_hash,
+                                next_full_hash == *last_full_hash
+                            );
                             if next_full_hash == *last_full_hash {
                                 // no need to continue
                                 return;
@@ -210,15 +222,20 @@ impl ProjectWatch {
                                 *last_full_hash = next_full_hash;
                             }
 
+                            debug!("receiver count: {}", tx.receiver_count());
                             if tx.receiver_count() > 0 {
-                                //TODO: send the next hash to runtime
                                 tx.send(WsMessage {
                                     hash: next_full_hash,
                                 })
                                 .unwrap();
                             }
 
-                            let _ = build_tx.send(());
+                            let x = build_tx.send(());
+                            if x.is_err() {
+                                debug!("build_tx send error {}", x.err().unwrap());
+                            } else {
+                                debug!("build_tx send ok");
+                            }
                         }
                     }
                 }
@@ -227,10 +244,13 @@ impl ProjectWatch {
 
         let build_handle = tokio::spawn(async move {
             while (build_rx.recv().await).is_some() {
+                debug!("build_rx recv ok");
                 // Then try to receive all remaining messages immediately.
                 while build_rx.try_recv().is_ok() {}
-                let chunk_asts = c.generate_chunks_ast().unwrap();
-                c.emit_dev_chunks(chunk_asts).unwrap();
+
+                if let Err(e) = c.emit_dev_chunks() {
+                    debug!("Error in build: {:?}, will rebuild soon", e);
+                }
             }
         });
 

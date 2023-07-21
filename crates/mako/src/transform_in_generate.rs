@@ -16,7 +16,6 @@ use swc_ecma_transforms::modules::import_analysis::import_analyzer;
 use swc_ecma_transforms::modules::util::{Config, ImportInterop};
 use swc_ecma_visit::VisitMutWith;
 use swc_error_reporters::handler::try_with_handler;
-use tracing::debug;
 
 use crate::ast::{base64_encode, build_js_ast, css_ast_to_code, Ast};
 use crate::compiler::{Compiler, Context};
@@ -34,7 +33,6 @@ impl Compiler {
         let module_graph = context.module_graph.read().unwrap();
         let module_ids = module_graph.get_module_ids();
         drop(module_graph);
-        debug!("module ids: {:?}", module_ids);
         transform_modules(module_ids, context)?;
         Ok(())
     }

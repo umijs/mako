@@ -97,7 +97,7 @@ impl Compiler {
                     // current module
                     let module_id = module.id.clone();
                     // 只有处理 entry 时，module 会不存在于 module_graph 里
-                    // 否则，module 会存在于 module_graph 里，只需要补充 info 信息即可
+                    // 否则，module 肯定已存在于 module_graph 里，只需要补充 info 信息即可
                     if task.is_entry {
                         added_module_ids.insert(module_id.clone());
                         module_graph.add_module(module);
@@ -252,31 +252,28 @@ impl Compiler {
             let module_graph = context.module_graph.read().unwrap();
 
             //  当 entry resolve 文件失败时，get_targets 自身会失败
-            if module_graph.get_module(&id).is_none() {
-                return Err(anyhow::anyhow!(err));
-            }
+            if module_graph.get_module(&id).is_some() {
+                let mut targets: Vec<&ModuleId> = module_graph.get_targets(&id);
+                // 循环找 target
+                while !targets.is_empty() {
+                    let target_module_id = targets[0].clone();
+                    targets = module_graph.get_targets(&target_module_id);
+                    source = target.clone();
+                    target = target_module_id.id;
+                    // 拼接引用堆栈 string
+                    err = format!("{}  -> Resolve \"{}\" from \"{}\" \n", err, source, target);
 
-            let mut targets: Vec<&ModuleId> = module_graph.get_targets(&id);
-            // 循环找 target
-            while !targets.is_empty() {
-                let target_module_id = targets[0].clone();
-                targets = module_graph.get_targets(&target_module_id);
-                source = target.clone();
-                target = target_module_id.id;
-                // 拼接引用堆栈 string
-                err = format!("{}  -> Resolve \"{}\" from \"{}\" \n", err, source, target);
-
-                if target_map.contains_key(&target) {
-                    // 存在循环依赖
-                    err = format!("{}  -> \"{}\" 中存在循环依赖", err, target);
-                    break;
-                } else {
-                    target_map.insert(target.clone(), 1);
+                    if target_map.contains_key(&target) {
+                        // 存在循环依赖
+                        err = format!("{}  -> \"{}\" 中存在循环依赖", err, target);
+                        break;
+                    } else {
+                        target_map.insert(target.clone(), 1);
+                    }
                 }
+                // 调整格式
+                err = format!("{} \n", err);
             }
-            // 调整格式
-            err = format!("{} \n", err);
-
             return Err(anyhow::anyhow!(err));
         }
 

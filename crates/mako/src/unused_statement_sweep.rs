@@ -45,24 +45,25 @@ impl VisitMut for UnusedStatementSweep<'_> {
         }
     }
 
-    fn visit_mut_import_decl(&mut self, import_decl: &mut swc_ecma_ast::ImportDecl) {
-        let mut removed = vec![];
-        for (index, specifier) in import_decl.specifiers.iter().enumerate() {
-            if let swc_ecma_ast::ImportSpecifier::Named(named_specifier) = specifier {
-                if self.comments.has_unused(named_specifier.span) {
-                    removed.push(index);
-                }
-            }
-        }
-        removed.reverse();
-        for index in removed {
-            import_decl.specifiers.remove(index);
-            self.removed_item_count += 1;
-        }
-        if import_decl.specifiers.is_empty() {
-            self.need_removed_module_item = true;
-        }
-    }
+    // TODO: 目前 jsx 会被删除掉，等待解决
+    // fn visit_mut_import_decl(&mut self, import_decl: &mut swc_ecma_ast::ImportDecl) {
+    //     let mut removed = vec![];
+    //     for (index, specifier) in import_decl.specifiers.iter().enumerate() {
+    //         if let swc_ecma_ast::ImportSpecifier::Named(named_specifier) = specifier {
+    //             if self.comments.has_unused(named_specifier.span) {
+    //                 removed.push(index);
+    //             }
+    //         }
+    //     }
+    //     removed.reverse();
+    //     for index in removed {
+    //         import_decl.specifiers.remove(index);
+    //         self.removed_item_count += 1;
+    //     }
+    //     if import_decl.specifiers.is_empty() {
+    //         self.need_removed_module_item = true;
+    //     }
+    // }
 
     fn visit_mut_export_specifiers(&mut self, specifiers: &mut Vec<swc_ecma_ast::ExportSpecifier>) {
         let mut removed = vec![];
@@ -80,6 +81,16 @@ impl VisitMut for UnusedStatementSweep<'_> {
         }
         if specifiers.is_empty() {
             self.need_removed_module_item = true;
+        }
+    }
+
+    fn visit_mut_export_default_expr(
+        &mut self,
+        default_expr: &mut swc_ecma_ast::ExportDefaultExpr,
+    ) {
+        if self.comments.has_unused(default_expr.span) {
+            self.need_removed_module_item = true;
+            self.removed_item_count += 1;
         }
     }
 
