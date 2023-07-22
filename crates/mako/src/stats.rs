@@ -164,10 +164,7 @@ pub fn create_stats_info(compile_time: u128, compiler: Compiler) -> StatsJsonMap
         .iter()
         .map(|chunk| {
             let modules = chunk.get_modules();
-            let entry = match chunk.chunk_type {
-                ChunkType::Entry => true,
-                _ => false,
-            };
+            let entry = matches!(chunk.chunk_type, ChunkType::Entry);
             let id = chunk.id.id.clone();
             let chunk_modules: Vec<StatsJsonModuleItem> = modules
                 .iter()
