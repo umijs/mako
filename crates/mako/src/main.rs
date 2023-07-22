@@ -1,12 +1,11 @@
 #![feature(box_patterns)]
-#[macro_use]
 extern crate prettytable;
 
 use std::sync::Arc;
 use std::time::Instant;
 
 use clap::Parser;
-use prettytable::{Cell, Row, Table};
+use prettytable::{row, Cell, Row, Table};
 use tracing::{debug, info};
 
 use crate::logger::init_logger;
@@ -93,29 +92,29 @@ async fn main() {
     let compiler = compiler::Compiler::new(config, root.clone());
     compiler.compile();
     let t_comiler = t_comiler.elapsed();
-    info!("compiler success: {:?}", t_comiler);
+    info!("compiler success: {:?}ms", t_comiler.as_millis());
 
     if cli.watch {
         let d = crate::dev::DevServer::new(root.clone(), Arc::new(compiler));
         // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
         d.serve().await;
     } else {
-        let _stats = create_stats_info(t_comiler.as_millis(), compiler);
-        // println!("stats: {}", serde_json::to_string_pretty(&stats).unwrap());
+        // 开启 stats 时，生成 json 文件
+        if compiler.context.config.stats {
+            create_stats_info(t_comiler.as_millis(), &compiler);
+        }
 
-        // Create the table
+        // 输出产物信息
         let mut table = Table::new();
+        table.add_row(row![Fb -> "ASSET", Fb -> "SIZE"]);
 
-        // Add a row per time
-        table.add_row(row!["ABC", "DEFG", "HIJKLMN"]);
-        table.add_row(row!["foobar", "bar", "foo"]);
-        // A more complicated way to add a row:
-        table.add_row(Row::new(vec![
-            Cell::new("foobar2"),
-            Cell::new("bar2"),
-            Cell::new("foo2"),
-        ]));
-
+        let assets = &compiler.context.stats_info.lock().unwrap().assets;
+        for asset in assets {
+            table.add_row(Row::new(vec![
+                Cell::new(&asset.name),
+                Cell::new(&asset.size.to_string()),
+            ]));
+        }
         // Print the table to stdout
         table.printstd();
     }

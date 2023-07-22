@@ -1,4 +1,5 @@
 {
   "inline_limit": 0,
-  "code_splitting": "depPerChunk"
+  "code_splitting": "depPerChunk",
+  "stats": true
 }

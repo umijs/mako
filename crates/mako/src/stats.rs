@@ -1,10 +1,14 @@
+extern crate prettytable;
+
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
+use tracing::info;
 
 use crate::chunk::ChunkType;
 use crate::compiler::Compiler;
@@ -117,7 +121,7 @@ impl Default for StatsInfo {
 }
 
 #[allow(dead_code)]
-pub fn create_stats_info(compile_time: u128, compiler: Compiler) -> StatsJsonMap {
+pub fn create_stats_info(compile_time: u128, compiler: &Compiler) {
     let mut stats_map = StatsJsonMap::new();
     let context = compiler.context.clone();
     // 获取当前时间
@@ -205,5 +209,12 @@ pub fn create_stats_info(compile_time: u128, compiler: Compiler) -> StatsJsonMap
 
     stats_map.modules = modules;
 
-    stats_map
+    print_stats(stats_map, compiler);
+}
+
+pub fn print_stats(stats: StatsJsonMap, compiler: &Compiler) {
+    let path = &compiler.context.root.join("stats.json");
+    let stats_json = serde_json::to_string_pretty(&stats).unwrap();
+    fs::write(path, stats_json).unwrap();
+    info!("stats.json has been created in {:?}", path);
 }
