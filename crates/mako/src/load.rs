@@ -65,7 +65,7 @@ pub fn load(request: &FileRequest, is_entry: bool, context: &Arc<Context>) -> Re
         }));
     }
 
-    let content: Option<Content> = context.plugin_driver.load(
+    let content = context.plugin_driver.load(
         &PluginLoadParam {
             path: path.to_string(),
             is_entry,

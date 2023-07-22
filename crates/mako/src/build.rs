@@ -208,9 +208,6 @@ impl Compiler {
         // load
         let content = load(&request, task.is_entry, &context)?;
 
-        // 记录文件大小
-        // context.stats_info.lock().unwrap().add_file_content(task.path.clone(), content.len());
-
         // parse
         let mut ast = parse(&content, &request, &context)?;
 

@@ -162,7 +162,7 @@ impl Compiler {
 
     pub fn compile(&self) {
         self.build();
-        let result: Result<(), anyhow::Error> = self.generate();
+        let result = self.generate();
         match result {
             Ok(_) => {}
             Err(e) => {

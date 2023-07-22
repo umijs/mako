@@ -350,7 +350,7 @@ impl Compiler {
         filename: P,
         content: C,
     ) {
-        let to: PathBuf = self.context.config.output.path.join(filename);
+        let to = self.context.config.output.path.join(filename);
 
         std::fs::write(to, content).unwrap();
     }
