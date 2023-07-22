@@ -73,6 +73,18 @@ pub fn load(request: &FileRequest, is_entry: bool, context: &Arc<Context>) -> Re
         },
         context,
     )?;
+
+    // 把文件大小记录到 context
+    match content.as_ref().unwrap() {
+        Content::Js(content) | Content::Css(content) | Content::Assets(Asset { content, .. }) => {
+            context
+                .stats_info
+                .lock()
+                .unwrap()
+                .add_file_content(path.to_string(), content.len() as u64);
+        }
+    }
+
     Ok(content.unwrap())
 }
 

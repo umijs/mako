@@ -1,3 +1,4 @@
 {
-  "inline_limit": 0
+  "inline_limit": 0,
+  "code_splitting": "depPerChunk"
 }

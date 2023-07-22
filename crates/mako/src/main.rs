@@ -1,12 +1,16 @@
 #![feature(box_patterns)]
+#[macro_use]
+extern crate prettytable;
 
 use std::sync::Arc;
 use std::time::Instant;
 
 use clap::Parser;
-use tracing::debug;
+use prettytable::{Cell, Row, Table};
+use tracing::{debug, info};
 
 use crate::logger::init_logger;
+use crate::stats::create_stats_info;
 
 mod analyze_deps;
 mod analyze_statement;
@@ -89,16 +93,30 @@ async fn main() {
     let compiler = compiler::Compiler::new(config, root.clone());
     compiler.compile();
     let t_comiler = t_comiler.elapsed();
-    println!("compiler time: {:?}", t_comiler);
-
-    println!(
-        "stats_info: {:?}",
-        compiler.context.stats_info.lock().unwrap().assets
-    );
+    info!("compiler success: {:?}", t_comiler);
 
     if cli.watch {
         let d = crate::dev::DevServer::new(root.clone(), Arc::new(compiler));
         // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
         d.serve().await;
+    } else {
+        let _stats = create_stats_info(t_comiler.as_millis(), compiler);
+        // println!("stats: {}", serde_json::to_string_pretty(&stats).unwrap());
+
+        // Create the table
+        let mut table = Table::new();
+
+        // Add a row per time
+        table.add_row(row!["ABC", "DEFG", "HIJKLMN"]);
+        table.add_row(row!["foobar", "bar", "foo"]);
+        // A more complicated way to add a row:
+        table.add_row(Row::new(vec![
+            Cell::new("foobar2"),
+            Cell::new("bar2"),
+            Cell::new("foo2"),
+        ]));
+
+        // Print the table to stdout
+        table.printstd();
     }
 }

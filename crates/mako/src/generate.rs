@@ -75,42 +75,40 @@ impl Compiler {
         // ast to code and sourcemap, then write
         let t_ast_to_code_and_write = Instant::now();
         info!("ast to code and write");
-        chunk_asts
-            .par_iter()
-            .try_for_each(|file: &OutputAst| -> Result<()> {
-                match &file.ast {
-                    ModuleAst::Script(ast) => {
-                        // ast to code
-                        let (js_code, js_sourcemap) =
-                            js_ast_to_code(&ast.ast, &self.context, &file.path)?;
-                        // generate code and sourcemap files
+        chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
+            match &file.ast {
+                ModuleAst::Script(ast) => {
+                    // ast to code
+                    let (js_code, js_sourcemap) =
+                        js_ast_to_code(&ast.ast, &self.context, &file.path)?;
+                    // generate code and sourcemap files
+                    self.write_to_dist_with_stats(
+                        file.path.clone(),
+                        js_code,
+                        file.chunk_id.clone(),
+                    );
+                    if matches!(self.context.config.devtool, DevtoolConfig::SourceMap) {
                         self.write_to_dist_with_stats(
-                            file.path.clone(),
-                            js_code,
-                            file.chunk_id.clone(),
-                        );
-                        if matches!(self.context.config.devtool, DevtoolConfig::SourceMap) {
-                            self.write_to_dist_with_stats(
-                                format!("{}.map", file.path.clone()),
-                                js_sourcemap,
-                                "".to_string(),
-                            );
-                        }
-                    }
-                    // TODO: Sourcemap part
-                    ModuleAst::Css(ast) => {
-                        // ast to code
-                        let (css_code, _sourcemap) = css_ast_to_code(ast, &self.context);
-                        self.write_to_dist_with_stats(
-                            file.path.clone(),
-                            css_code,
-                            file.chunk_id.clone(),
+                            format!("{}.map", file.path.clone()),
+                            js_sourcemap,
+                            "".to_string(),
                         );
                     }
-                    _ => (),
                 }
-                Ok(())
-            })?;
+                // TODO: Sourcemap part
+                ModuleAst::Css(ast) => {
+                    // ast to code
+                    let (css_code, _sourcemap) = css_ast_to_code(ast, &self.context);
+                    self.write_to_dist_with_stats(
+                        file.path.clone(),
+                        css_code,
+                        file.chunk_id.clone(),
+                    );
+                }
+                _ => (),
+            }
+            Ok(())
+        })?;
         let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
 
         // write assets
