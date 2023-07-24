@@ -29,6 +29,10 @@ impl Plugin for NodePolyfillPlugin {
         config
             .providers
             .insert("Buffer".into(), ("buffer".into(), "Buffer".into()));
+        config.providers.insert(
+            "global".into(),
+            ("node-libs-browser-okam/polyfill/global".into(), "".into()),
+        );
         Ok(())
     }
 }
