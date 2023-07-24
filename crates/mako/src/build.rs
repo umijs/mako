@@ -229,7 +229,6 @@ impl Compiler {
                 Err(_) => {
                     // 获取 本次引用 和 上一级引用 路径
                     dep_resolve_err = Some((task.path.clone(), dep.source));
-                    // return dependencies.clone();
                 }
             }
         }
