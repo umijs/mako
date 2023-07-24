@@ -201,7 +201,6 @@ impl Compiler {
         task: Task,
         resolvers: Arc<Resolvers>,
     ) -> Result<(Module, ModuleDeps, Task)> {
-        let mut dependencies = Vec::new();
         let module_id = ModuleId::new(task.path.clone());
         let request = parse_path(&task.path)?;
 
@@ -211,27 +210,29 @@ impl Compiler {
         // parse
         let mut ast = parse(&content, &request, &context)?;
 
-        // transform & resolve
+        // transform
+        transform(&mut ast, &context, &task)?;
+
+        // alanyze deps
+        let deps = analyze_deps(&ast);
+
+        // resolve
         // TODO: 支持同时有多个 resolve error
         let mut dep_resolve_err = None;
-        transform(&mut ast, &context, &task, &mut |ast| {
-            let deps = analyze_deps(ast);
-            // resolve
-            for dep in deps {
-                let ret = resolve(&task.path, &dep, &resolvers, &context);
-                match ret {
-                    Ok((x, y)) => {
-                        dependencies.push((x, y, dep.clone()));
-                    }
-                    Err(_) => {
-                        // 获取 本次引用 和 上一级引用 路径
-                        dep_resolve_err = Some((task.path.clone(), dep.source));
-                        return dependencies.clone();
-                    }
+        let mut dependencies = Vec::new();
+        for dep in deps {
+            let ret = resolve(&task.path, &dep, &resolvers, &context);
+            match ret {
+                Ok((x, y)) => {
+                    dependencies.push((x, y, dep.clone()));
+                }
+                Err(_) => {
+                    // 获取 本次引用 和 上一级引用 路径
+                    dep_resolve_err = Some((task.path.clone(), dep.source));
+                    // return dependencies.clone();
                 }
             }
-            dependencies.clone()
-        })?;
+        }
         if let Some(e) = dep_resolve_err {
             // resolve 报错时的 target 和 source
             let mut source = e.1;
@@ -274,6 +275,7 @@ impl Compiler {
             return Err(anyhow::anyhow!(err));
         }
 
+        // create module info
         let info = ModuleInfo {
             ast,
             path: task.path.clone(),

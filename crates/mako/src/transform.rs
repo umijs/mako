@@ -10,7 +10,6 @@ use swc_common::errors::HANDLER;
 use swc_common::sync::Lrc;
 use swc_common::{Mark, DUMMY_SP, GLOBALS};
 use swc_css_ast::Stylesheet;
-use swc_css_visit::VisitMutWith;
 use swc_ecma_ast::{
     ArrayLit, Bool, Expr, ExprOrSpread, Ident, KeyValueProp, Lit, Module, Null, Number, ObjectLit,
     Prop, PropName, PropOrSpread, Str,
@@ -25,34 +24,26 @@ use swc_ecma_transforms::{resolver, Assumptions};
 use swc_ecma_visit::{Fold, VisitMutWith as CssVisitMutWith};
 use swc_error_reporters::handler::try_with_handler;
 
-use crate::ast::Ast;
-use crate::build::{ModuleDeps, Task};
+use crate::build::Task;
 use crate::compiler::Context;
 use crate::config::Mode;
 use crate::module::ModuleAst;
 use crate::targets;
-use crate::transform_css_handler::CssHandler;
 use crate::transform_env_replacer::EnvReplacer;
 use crate::transform_optimizer::Optimizer;
 use crate::transform_provide::Provide;
 use crate::transform_react::mako_react;
 
-pub fn transform(
-    ast: &mut ModuleAst,
-    context: &Arc<Context>,
-    task: &Task,
-    get_deps: &mut dyn for<'r> FnMut(&'r ModuleAst) -> ModuleDeps,
-) -> Result<()> {
+pub fn transform(ast: &mut ModuleAst, context: &Arc<Context>, task: &Task) -> Result<()> {
     match ast {
         ModuleAst::Script(ast) => transform_js(
             &mut ast.ast,
             context,
             task,
-            get_deps,
             ast.top_level_mark,
             ast.unresolved_mark,
         ),
-        ModuleAst::Css(ast) => transform_css(ast, context, get_deps),
+        ModuleAst::Css(ast) => transform_css(ast, context),
         _ => Ok(()),
     }
 }
@@ -117,7 +108,6 @@ fn transform_js(
     ast: &mut Module,
     context: &Arc<Context>,
     task: &Task,
-    get_deps: &mut dyn for<'r> FnMut(&'r ModuleAst) -> ModuleDeps,
     top_level_mark: Mark,
     unresolved_mark: Mark,
 ) -> Result<()> {
@@ -180,13 +170,6 @@ fn transform_js(
                         &mut FeatureFlag::default(),
                     );
                     ast.body = preset_env.fold_module(ast.clone()).body;
-
-                    // 在 cjs 执行前调用 hook，用于收集依赖
-                    let _deps = get_deps(&ModuleAst::Script(Ast {
-                        ast: ast.clone(),
-                        top_level_mark,
-                        unresolved_mark,
-                    }));
                     Ok(())
                 })
             })
@@ -194,22 +177,8 @@ fn transform_js(
     })
 }
 
-fn transform_css(
-    ast: &mut Stylesheet,
-    context: &Arc<Context>,
-    get_deps: &mut dyn for<'r> FnMut(&'r ModuleAst) -> ModuleDeps,
-) -> Result<()> {
-    let dep_map = get_dep_map(get_deps(&ModuleAst::Css(ast.clone())));
-    // remove @import and handle url()
-    let mut css_handler = CssHandler { dep_map, context };
-    ast.visit_mut_with(&mut css_handler);
+fn transform_css(_ast: &mut Stylesheet, _context: &Arc<Context>) -> Result<()> {
     Ok(())
-}
-
-fn get_dep_map(deps: ModuleDeps) -> HashMap<String, String> {
-    deps.into_iter()
-        .map(|(path, _, dep)| (dep.source, path))
-        .collect::<HashMap<_, _>>()
 }
 
 #[cfg(test)]
@@ -218,14 +187,13 @@ mod tests {
     use std::path::PathBuf;
     use std::sync::{Arc, Mutex, RwLock};
 
-    use super::{transform_css, transform_js};
-    use crate::ast::{build_css_ast, build_js_ast, css_ast_to_code, js_ast_to_code};
-    use crate::build::ModuleDeps;
+    use super::transform_js;
+    use crate::ast::{build_js_ast, js_ast_to_code};
     use crate::chunk::{Chunk, ChunkType};
     use crate::chunk_graph::ChunkGraph;
     use crate::compiler::{Context, Meta};
     use crate::config::Config;
-    use crate::module::{Dependency, ModuleId, ResolveType};
+    use crate::module::ModuleId;
     use crate::module_graph::ModuleGraph;
     use crate::transform_in_generate::transform_js_generate;
 
@@ -563,42 +531,6 @@ require("./bar");
         );
     }
 
-    #[test]
-    fn test_transform_css_url() {
-        let code = r#"
-@import "should_be_removed.css";
-@import "http://should-not-be-removed";
-.foo { background: url("url.png"); }
-        "#
-        .trim();
-        let deps = Vec::from([(
-            "replace.png".to_string(),
-            None,
-            Dependency {
-                source: "url.png".to_string(),
-                resolve_type: ResolveType::Css,
-                order: 0,
-            },
-        )]);
-        let code = transform_css_code(code, None, deps);
-        println!(">> CODE\n{}", code);
-        assert_eq!(
-            code,
-            r#"
-@import "http://should-not-be-removed";
-.foo {
-  background: url("replace.png");
-}
-        "#
-            .trim()
-        );
-    }
-
-    #[allow(dead_code)]
-    fn test_parse_error() {
-        // TODO
-    }
-
     fn transform_js_code(
         origin: &str,
         path: Option<&str>,
@@ -638,21 +570,6 @@ require("./bar");
                 path: root.join(path).to_string_lossy().to_string(),
                 is_entry: false,
             },
-            &mut |_| {
-                if origin.contains("require(\"foo\");") {
-                    Vec::from([(
-                        "bar".to_string(),
-                        None,
-                        Dependency {
-                            source: "foo".to_string(),
-                            resolve_type: ResolveType::Require,
-                            order: 0,
-                        },
-                    )])
-                } else {
-                    Vec::new()
-                }
-            },
             ast.top_level_mark,
             ast.unresolved_mark,
         )
@@ -668,20 +585,5 @@ require("./bar");
         let code = code.replace("\"use strict\";", "");
         let code = code.trim().to_string();
         (code, _sourcemap)
-    }
-
-    fn transform_css_code(origin: &str, path: Option<&str>, deps: ModuleDeps) -> String {
-        let path = path.unwrap_or("test.css");
-
-        let root = PathBuf::from("/path/to/root");
-        let context = Arc::new(Context {
-            root,
-            ..Default::default()
-        });
-        let mut ast = build_css_ast(path, origin, &context).unwrap();
-        transform_css(&mut ast, &context, &mut |_| deps.clone()).unwrap();
-        let (code, _) = css_ast_to_code(&ast, &context);
-
-        code.trim().to_string()
     }
 }
