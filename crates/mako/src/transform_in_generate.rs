@@ -22,6 +22,7 @@ use crate::compiler::{Compiler, Context};
 use crate::config::{DevtoolConfig, Mode};
 use crate::module::{ModuleAst, ModuleId};
 use crate::targets;
+use crate::transform_css_handler::CssHandler;
 use crate::transform_dep_replacer::DepReplacer;
 use crate::transform_dynamic_import::DynamicImport;
 use crate::transform_react::react_refresh_entry_prefix;
@@ -175,6 +176,13 @@ fn transform_css(
     dep_map: HashMap<String, String>,
     context: &Arc<Context>,
 ) -> Ast {
+    // replace deps
+    let mut css_handler = CssHandler {
+        dep_map: dep_map.clone(),
+        context,
+    };
+    ast.visit_mut_with(&mut css_handler);
+
     // prefixer
     let mut prefixer = swc_css_prefixer::prefixer(swc_css_prefixer::options::Options {
         env: Some(targets::swc_preset_env_targets_from_map(

@@ -1,0 +1,3 @@
+@import "./foo.css";
+@import "http://should-not-be-removed";
+.foo { background: url("./small.png"); }

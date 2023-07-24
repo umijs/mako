@@ -180,6 +180,21 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
+    async fn test_css_deps() {
+        let (files, file_contents) = compile("test/compile/css-deps");
+        println!("{:?}", files);
+        let index_js_content = file_contents.get("index.js").unwrap();
+        assert!(
+            index_js_content.contains("require(\"./foo.css\")"),
+            "should require deps"
+        );
+        assert!(
+            index_js_content.contains("let css = `@import \"http://should-not-be-removed\";"),
+            "should keep remote imports"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_css_inline_limit() {
         let (files, file_contents) = compile("test/compile/css-inline-limit");
         println!("{:?}", files);
