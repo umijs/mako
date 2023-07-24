@@ -1,7 +1,6 @@
 extern crate prettytable;
 
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -12,6 +11,7 @@ use tracing::info;
 
 use crate::chunk::ChunkType;
 use crate::compiler::Compiler;
+use crate::load::file_size;
 
 #[derive(Debug)]
 pub struct AssetsInfo {
@@ -25,8 +25,6 @@ pub struct AssetsInfo {
 pub struct StatsInfo {
     // 产物信息
     pub assets: Vec<AssetsInfo>,
-    // 代码文件大小
-    pub file_content: HashMap<String, u64>,
 }
 #[derive(Clone, Serialize)]
 pub enum StatsJsonType {
@@ -93,10 +91,7 @@ impl StatsJsonMap {
 
 impl StatsInfo {
     pub fn new() -> Self {
-        Self {
-            assets: vec![],
-            file_content: HashMap::new(),
-        }
+        Self { assets: vec![] }
     }
 
     pub fn add_assets(&mut self, size: u64, name: String, chunk_id: String, path: PathBuf) {
@@ -107,10 +102,6 @@ impl StatsInfo {
             chunk_id,
             path,
         });
-    }
-
-    pub fn add_file_content(&mut self, path: String, size: u64) {
-        self.file_content.entry(path).or_insert(size);
     }
 }
 
@@ -142,7 +133,24 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) {
     stats_map.root_path = root_path;
     stats_map.output_path = output_path;
 
-    let stats_info = context.stats_info.lock().unwrap();
+    let mut stats_info = context.stats_info.lock().unwrap();
+
+    // 把 context 中的静态资源信息加入到 stats_info 中
+    compiler
+        .context
+        .assets_info
+        .lock()
+        .unwrap()
+        .iter()
+        .for_each(|asset| {
+            let size = file_size(asset.0).unwrap();
+            stats_info.add_assets(
+                size,
+                asset.1.clone(),
+                "".to_string(),
+                compiler.context.config.output.path.join(asset.1.clone()),
+            );
+        });
 
     // 获取 assets
     stats_map.assets = stats_info
@@ -174,7 +182,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) {
                 .iter()
                 .map(|module| {
                     let id = module.id.clone();
-                    let size = *stats_info.file_content.get(&id).unwrap();
+                    let size = file_size(&id).unwrap();
                     let module = StatsJsonModuleItem {
                         module_type: StatsJsonType::Module("module".to_string()),
                         size,
@@ -217,4 +225,19 @@ pub fn print_stats(stats: StatsJsonMap, compiler: &Compiler) {
     let stats_json = serde_json::to_string_pretty(&stats).unwrap();
     fs::write(path, stats_json).unwrap();
     info!("stats.json has been created in {:?}", path);
+}
+
+#[allow(dead_code)]
+// 文件大小转换
+pub fn human_readable_size(size: u64) -> String {
+    let units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+    let mut size = size as f64;
+    let mut i = 0;
+
+    while size >= 1024.0 && i < units.len() - 1 {
+        size /= 1024.0;
+        i += 1;
+    }
+
+    format!("{:.2} {}", size, units[i])
 }

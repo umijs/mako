@@ -74,17 +74,6 @@ pub fn load(request: &FileRequest, is_entry: bool, context: &Arc<Context>) -> Re
         context,
     )?;
 
-    // 把文件大小记录到 context
-    match content.as_ref().unwrap() {
-        Content::Js(content) | Content::Css(content) | Content::Assets(Asset { content, .. }) => {
-            context
-                .stats_info
-                .lock()
-                .unwrap()
-                .add_file_content(path.to_string(), content.len() as u64);
-        }
-    }
-
     Ok(content.unwrap())
 }
 
@@ -98,7 +87,7 @@ pub fn handle_asset<T: AsRef<str>>(context: &Arc<Context>, path: T) -> Result<St
 
     if file_size > context.config.inline_limit.try_into().unwrap() {
         let final_file_name = content_hash(path_str)? + "." + ext_name(path_str).unwrap();
-        context.emit_assets(path_string, final_file_name.clone(), Some(file_size));
+        context.emit_assets(path_string, final_file_name.clone());
         Ok(final_file_name)
     } else {
         let base64 =

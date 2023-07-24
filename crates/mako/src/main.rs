@@ -5,11 +5,11 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use clap::Parser;
-use prettytable::{row, Cell, Row, Table};
+use prettytable::{color, Attr, Cell, Row, Table};
 use tracing::{debug, info};
 
 use crate::logger::init_logger;
-use crate::stats::create_stats_info;
+use crate::stats::{create_stats_info, human_readable_size};
 
 mod analyze_deps;
 mod analyze_statement;
@@ -106,14 +106,20 @@ async fn main() {
 
         // 输出产物信息
         let mut table = Table::new();
-        table.add_row(row![Fb -> "ASSET", Fb -> "SIZE"]);
+
+        table.add_row(Row::new(vec![
+            Cell::new("FILE")
+                .with_style(Attr::Bold)
+                .with_style(Attr::ForegroundColor(color::BLUE)),
+            Cell::new("SIZE")
+                .with_style(Attr::Bold)
+                .with_style(Attr::ForegroundColor(color::BLUE)),
+        ]));
 
         let assets = &compiler.context.stats_info.lock().unwrap().assets;
         for asset in assets {
-            table.add_row(Row::new(vec![
-                Cell::new(&asset.name),
-                Cell::new(&asset.size.to_string()),
-            ]));
+            let size = human_readable_size(asset.size);
+            table.add_row(Row::new(vec![Cell::new(&asset.name), Cell::new(&size)]));
         }
         // Print the table to stdout
         table.printstd();
