@@ -285,6 +285,9 @@ importers:
       node-libs-browser-okam:
         specifier: 2.2.2
         version: 2.2.2
+      react-error-overlay:
+        specifier: 6.0.9
+        version: 6.0.9
       react-refresh:
         specifier: ^0.14.0
         version: 0.14.0
@@ -11848,7 +11851,6 @@ packages:
 
   /react-error-overlay@6.0.9:
     resolution: {integrity: sha512-nQTTcUu+ATDbrSD1BZHr5kgSD4oF8OFjxun8uAaL8RwPBacGBNPf/yAuVVdx17N8XNzRDMrZ9XcKZHCjPW+9ew==}
-    dev: true
 
   /react-fast-compare@3.2.2:
     resolution: {integrity: sha512-nsO+KSNgo1SbJqJEYRE9ERzo7YtYbou/OqjSQKxV7jcKox7+usiUVZOAC+XnDOABXggQTno0Y1CpVnuWEc1boQ==}
