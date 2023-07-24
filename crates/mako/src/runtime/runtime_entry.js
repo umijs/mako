@@ -85,6 +85,11 @@ function createRuntime(makoModules, entryModuleId) {
           const item = queue.pop();
           const module = modulesRegistry[item];
           if (!module) continue;
+
+          if (module.hot._main) {
+            location.reload();
+          }
+
           if (module.hot._selfAccepted) {
             continue;
           }
@@ -132,6 +137,8 @@ function createRuntime(makoModules, entryModuleId) {
       runtime(requireModule);
     };
     const createModuleHotObject = (moduleId, me) => {
+      const _main = currentChildModule !== moduleId;
+
       const hot = {
         _acceptedDependencies: {},
         _declinedDependencies: {},
@@ -141,8 +148,10 @@ function createRuntime(makoModules, entryModuleId) {
         _disposeHandlers: [],
         _requireSelf: function () {
           currentParents = me.parents.slice();
+          currentChildModule = _main ? undefined : moduleId;
           requireModule(moduleId);
         },
+        _main,
         active: true,
         accept() {
           this._selfAccepted = true;
@@ -185,6 +194,7 @@ function createRuntime(makoModules, entryModuleId) {
           return applyHotUpdate(update);
         },
       };
+      currentChildModule = undefined;
       return hot;
     };
 
@@ -311,7 +321,7 @@ function createRuntime(makoModules, entryModuleId) {
   };
 }
 
-const runtime = createRuntime({}, 'main');
+const runtime = createRuntime({}, '_%main%_');
 globalThis.jsonpCallback = runtime._jsonpCallback;
 globalThis.modulesRegistry = runtime._modulesRegistry;
 globalThis.makoModuleHotUpdate = runtime._makoModuleHotUpdate;

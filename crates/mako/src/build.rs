@@ -286,7 +286,7 @@ impl Compiler {
     }
 }
 
-fn get_entries(root: &Path, config: &Config) -> Option<Vec<std::path::PathBuf>> {
+pub fn get_entries(root: &Path, config: &Config) -> Option<Vec<std::path::PathBuf>> {
     let entry = &config.entry;
     if entry.is_empty() {
         let file_paths = vec!["src/index.tsx", "src/index.ts", "index.tsx", "index.ts"];
