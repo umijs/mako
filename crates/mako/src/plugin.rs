@@ -53,7 +53,7 @@ impl PluginDriver {
     }
     pub fn load(&self, param: &PluginLoadParam, context: &Arc<Context>) -> Result<Option<Content>> {
         for plugin in &self.plugins {
-            let ret: Option<Content> = plugin.load(param, context)?;
+            let ret = plugin.load(param, context)?;
             if ret.is_some() {
                 return Ok(ret);
             }

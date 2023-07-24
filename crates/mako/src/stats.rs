@@ -41,7 +41,6 @@ pub struct StatsJsonAssetsItem {
     pub assets_type: StatsJsonType,
     pub size: u64,
     pub name: String,
-    pub chunk_id: String,
     pub path: PathBuf,
 }
 
@@ -160,7 +159,6 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) {
             assets_type: StatsJsonType::Asset(asset.assets_type.clone()),
             size: asset.size,
             name: asset.name.clone(),
-            chunk_id: asset.chunk_id.clone(),
             path: asset.path.clone(),
         })
         .collect();

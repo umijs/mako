@@ -3,7 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use anyhow::{Ok, Result};
+use anyhow::Result;
 use rayon::prelude::*;
 use serde::Serialize;
 use tracing::{debug, info};
