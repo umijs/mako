@@ -7,7 +7,7 @@ use anyhow::{anyhow, Ok, Result};
 use rayon::prelude::*;
 use tracing::debug;
 
-use crate::build::Task;
+use crate::build::{get_entries, Task};
 use crate::compiler::Compiler;
 use crate::module::{Dependency, Module, ModuleId};
 use crate::resolve::{get_resolvers, Resolvers};
@@ -145,11 +145,18 @@ impl Compiler {
             .par_iter()
             .map(|entry| {
                 // first build
+
+                let is_entry = {
+                    // there must be a entry, so unwrap is safe
+                    let entries = get_entries(&self.context.root, &self.context.config).unwrap();
+                    entries.contains(entry)
+                };
+
                 let (module, dependencies, _) = Compiler::build_module(
                     self.context.clone(),
                     Task {
                         path: entry.to_string_lossy().to_string(),
-                        is_entry: false,
+                        is_entry,
                     },
                     resolvers.clone(),
                 )?;

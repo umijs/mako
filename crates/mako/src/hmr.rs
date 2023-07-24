@@ -152,7 +152,6 @@ globalThis.makoModuleHotUpdate('./index.ts', {
                     }
                 }
                 socket.addEventListener('message', (rawMessage)=>{
-                    console.log(rawMessage);
                     const msg = JSON.parse(rawMessage.data);
                     latestHash = msg.hash;
                     if (!updating) {

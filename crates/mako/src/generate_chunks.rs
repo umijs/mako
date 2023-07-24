@@ -107,7 +107,7 @@ impl Compiler {
                 } else {
                     include_str!("runtime/runtime_chunk.js").to_string()
                 };
-                content = content.replace("main", chunk.id.generate(&self.context).as_str());
+                content = content.replace("_%main%_", chunk.id.generate(&self.context).as_str());
                 let file_name = if matches!(chunk.chunk_type, crate::chunk::ChunkType::Entry) {
                     "mako_internal_runtime_entry.js"
                 } else {
