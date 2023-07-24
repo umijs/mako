@@ -19,7 +19,10 @@ function createRuntime(makoModules, entryModuleId) {
         factory: makoModules[moduleId],
         require: requireModule,
       };
-      hmrHandler(execOptions);
+
+      requireModule.i.forEach((interceptor) => {
+        interceptor(execOptions);
+      });
       execOptions.factory(
         execOptions.module,
         execOptions.module.exports,
@@ -33,165 +36,173 @@ function createRuntime(makoModules, entryModuleId) {
     return module.exports;
   }
 
-  // hmr
-  let currentParents = [];
-  let currentChildModule;
-  const hmrHandler = (options) => {
-    const orginRequire = options.require;
-    options.module.hot = createModuleHotObject(options.id, options.module);
-    // for refresh module.meta.hot API style
-    options.module.meta = { hot: options.module.hot };
-    options.module.parents = currentParents;
-    currentParents = [];
-    options.module.children = [];
-    options.require = createHmrRequire(options.require, options.id);
-    options.require.currentHash = () => {
-      return orginRequire._h;
-    };
-  };
-  const createHmrRequire = (require, moduleId) => {
-    const me = modulesRegistry[moduleId];
-    if (!me) return require;
-    const fn = (request) => {
-      if (me.hot.active) {
-        if (modulesRegistry[request]) {
-          const parents = modulesRegistry[request].parents;
-          if (!parents.includes(moduleId)) {
-            parents.push(moduleId);
+  // module execution interceptor
+  requireModule.i = [];
+
+  // hmr runtime plugin
+  !(function () {
+    let currentParents = [];
+    let currentChildModule;
+
+    const createHmrRequire = (require, moduleId) => {
+      const me = modulesRegistry[moduleId];
+      if (!me) return require;
+      const fn = (request) => {
+        if (me.hot.active) {
+          if (modulesRegistry[request]) {
+            const parents = modulesRegistry[request].parents;
+            if (!parents.includes(moduleId)) {
+              parents.push(moduleId);
+            }
+          } else {
+            currentParents = [moduleId];
+            currentChildModule = request;
+          }
+          if (!me.children.includes(request)) {
+            me.children.push(request);
           }
         } else {
-          currentParents = [moduleId];
-          currentChildModule = request;
+          // TODO
         }
-        if (!me.children.includes(request)) {
-          me.children.push(request);
-        }
-      } else {
-        // TODO
-      }
-      return require(request);
+        return require(request);
+      };
+      // TODO: fn.ensure 需要确保依赖关系
+      Object.assign(fn, require);
+      return fn;
     };
-    // TODO: fn.ensure 需要确保依赖关系
-    Object.assign(fn, require);
-    return fn;
-  };
 
-  const applyHotUpdate = (chunkId, update, runtime) => {
-    const { modules, removedModules } = update;
+    const applyHotUpdate = (chunkId, update, runtime) => {
+      const { modules, removedModules } = update;
 
-    // get outdated modules
-    const outdatedModules = [];
-    for (const moduleId of Object.keys(modules)) {
-      if (!modulesRegistry[moduleId]) continue;
-      if (outdatedModules.includes(moduleId)) continue;
-      outdatedModules.push(moduleId);
-      const queue = [moduleId];
-      while (queue.length) {
-        const item = queue.pop();
-        const module = modulesRegistry[item];
-        if (!module) continue;
+      // get outdated modules
+      const outdatedModules = [];
+      for (const moduleId of Object.keys(modules)) {
+        if (!modulesRegistry[moduleId]) continue;
+        if (outdatedModules.includes(moduleId)) continue;
+        outdatedModules.push(moduleId);
+        const queue = [moduleId];
+        while (queue.length) {
+          const item = queue.pop();
+          const module = modulesRegistry[item];
+          if (!module) continue;
+          if (module.hot._selfAccepted) {
+            continue;
+          }
+          for (const parentModule of module.parents) {
+            if (outdatedModules.includes(parentModule)) continue;
+            outdatedModules.push(parentModule);
+            queue.push(parentModule);
+          }
+        }
+      }
+
+      // get self accepted modules
+      const outdatedSelfAcceptedModules = [];
+      for (const moduleId of outdatedModules) {
+        const module = modulesRegistry[moduleId];
         if (module.hot._selfAccepted) {
-          continue;
-        }
-        for (const parentModule of module.parents) {
-          if (outdatedModules.includes(parentModule)) continue;
-          outdatedModules.push(parentModule);
-          queue.push(parentModule);
+          outdatedSelfAcceptedModules.push(module);
         }
       }
-    }
 
-    // get self accepted modules
-    const outdatedSelfAcceptedModules = [];
-    for (const moduleId of outdatedModules) {
-      const module = modulesRegistry[moduleId];
-      if (module.hot._selfAccepted) {
-        outdatedSelfAcceptedModules.push(module);
-      }
-    }
-
-    // dispose
-    for (const moduleId of outdatedModules) {
-      const module = modulesRegistry[moduleId];
-      for (const handler of module.hot._disposeHandlers) {
-        handler();
-      }
-      module.hot.active = false;
-      delete modulesRegistry[moduleId];
-      for (const childModule of module.children) {
-        const child = modulesRegistry[childModule];
-        if (!child) continue;
-        const idx = child.parents.indexOf(moduleId);
-        if (idx !== -1) {
-          child.parents.splice(idx, 1);
+      // dispose
+      for (const moduleId of outdatedModules) {
+        const module = modulesRegistry[moduleId];
+        for (const handler of module.hot._disposeHandlers) {
+          handler();
+        }
+        module.hot.active = false;
+        delete modulesRegistry[moduleId];
+        for (const childModule of module.children) {
+          const child = modulesRegistry[childModule];
+          if (!child) continue;
+          const idx = child.parents.indexOf(moduleId);
+          if (idx !== -1) {
+            child.parents.splice(idx, 1);
+          }
         }
       }
-    }
 
-    // apply
-    registerModules(modules);
-    for (const module of outdatedSelfAcceptedModules) {
-      module.hot._requireSelf();
-    }
+      // apply
+      registerModules(modules);
+      for (const module of outdatedSelfAcceptedModules) {
+        module.hot._requireSelf();
+      }
 
-    runtime(requireModule);
-  };
-  const createModuleHotObject = (moduleId, me) => {
-    const hot = {
-      _acceptedDependencies: {},
-      _declinedDependencies: {},
-      _selfAccepted: false,
-      _selfDeclined: false,
-      _selfInvalidated: false,
-      _disposeHandlers: [],
-      _requireSelf: function () {
-        currentParents = me.parents.slice();
-        requireModule(moduleId);
-      },
-      active: true,
-      accept() {
-        this._selfAccepted = true;
-      },
-      dispose(callback) {
-        this._disposeHandlers.push(callback);
-      },
-      invalidate() {},
-      check() {
-        const current_hash = requireModule.currentHash();
-
-        return fetch(`/${current_hash}.hot-update.json`)
-          .then((res) => {
-            return res.json();
-          })
-          .then((update) => {
-            return Promise.all(
-              update.c.map((chunk) => {
-                let parts = chunk.split('.');
-                let l = parts.length;
-                let left = parts.slice(0, parts.length - 1).join('.');
-
-                let ext = parts[l - 1];
-
-                const hotChunkName = [
-                  left,
-                  current_hash,
-                  'hot-update',
-                  ext,
-                ].join('.');
-
-                return new Promise((done) => {
-                  load(`/${hotChunkName}`, done);
-                });
-              }),
-            );
-          });
-      },
-      apply(update) {
-        return applyHotUpdate(update);
-      },
+      runtime(requireModule);
     };
-    return hot;
-  };
+    const createModuleHotObject = (moduleId, me) => {
+      const hot = {
+        _acceptedDependencies: {},
+        _declinedDependencies: {},
+        _selfAccepted: false,
+        _selfDeclined: false,
+        _selfInvalidated: false,
+        _disposeHandlers: [],
+        _requireSelf: function () {
+          currentParents = me.parents.slice();
+          requireModule(moduleId);
+        },
+        active: true,
+        accept() {
+          this._selfAccepted = true;
+        },
+        dispose(callback) {
+          this._disposeHandlers.push(callback);
+        },
+        invalidate() {},
+        check() {
+          const current_hash = requireModule.currentHash();
+
+          return fetch(`/${current_hash}.hot-update.json`)
+            .then((res) => {
+              return res.json();
+            })
+            .then((update) => {
+              return Promise.all(
+                update.c.map((chunk) => {
+                  let parts = chunk.split('.');
+                  let l = parts.length;
+                  let left = parts.slice(0, parts.length - 1).join('.');
+
+                  let ext = parts[l - 1];
+
+                  const hotChunkName = [
+                    left,
+                    current_hash,
+                    'hot-update',
+                    ext,
+                  ].join('.');
+
+                  return new Promise((done) => {
+                    load(`/${hotChunkName}`, done);
+                  });
+                }),
+              );
+            });
+        },
+        apply(update) {
+          return applyHotUpdate(update);
+        },
+      };
+      return hot;
+    };
+
+    requireModule.i.push((options) => {
+      const orginRequire = options.require;
+      options.module.hot = createModuleHotObject(options.id, options.module);
+      // for refresh module.meta.hot API style
+      options.module.meta = { hot: options.module.hot };
+      options.module.parents = currentParents;
+      currentParents = [];
+      options.module.children = [];
+      options.require = createHmrRequire(options.require, options.id);
+      options.require.currentHash = () => {
+        return orginRequire._h;
+      };
+    });
+    requireModule.applyHotUpdate = applyHotUpdate;
+  })();
 
   // chunk and async load
   const installedChunks = {};
@@ -296,7 +307,7 @@ function createRuntime(makoModules, entryModuleId) {
     requireModule,
     _modulesRegistry: modulesRegistry,
     _jsonpCallback: jsonpCallback,
-    _makoModuleHotUpdate: applyHotUpdate,
+    _makoModuleHotUpdate: requireModule.applyHotUpdate,
   };
 }
 
