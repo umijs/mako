@@ -31,6 +31,19 @@ pub fn is_url_ignored(url: &str) -> bool {
     url.starts_with("http://") || url.starts_with("https://") || url.starts_with("data:")
 }
 
+pub fn handle_css_url(url: String) -> String {
+    let mut url = url;
+    // @import "~foo" => "foo"
+    if url.starts_with('~') {
+        url = url[1..].to_string();
+    }
+    // @import "foo" => "./foo"
+    else if !url.starts_with("./") && !url.starts_with("../") {
+        url = format!("./{}", url);
+    }
+    url
+}
+
 struct DepCollectVisitor {
     dependencies: Vec<Dependency>,
     dep_strs: Vec<String>,
@@ -58,11 +71,12 @@ impl DepCollectVisitor {
             self.order += 1;
         }
     }
-
     fn handle_css_url(&mut self, url: String) {
-        if !is_url_ignored(&url) {
-            self.bind_dependency(url, ResolveType::Css);
+        if is_url_ignored(&url) {
+            return;
         }
+        let url = handle_css_url(url);
+        self.bind_dependency(url, ResolveType::Css);
     }
 }
 
