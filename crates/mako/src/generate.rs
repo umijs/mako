@@ -70,7 +70,6 @@ impl Compiler {
                 })?;
         }
         let t_minify = t_minify.elapsed();
-        // stats
 
         // ast to code and sourcemap, then write
         let t_ast_to_code_and_write = Instant::now();
