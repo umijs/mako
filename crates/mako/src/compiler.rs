@@ -180,6 +180,30 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
+    async fn test_css_deps() {
+        let (files, file_contents) = compile("test/compile/css-deps");
+        println!("{:?}", files);
+        let index_js_content = file_contents.get("index.js").unwrap();
+        assert!(
+            index_js_content.contains("require(\"./foo.css\")"),
+            "should require deps"
+        );
+        let index_js_content = file_contents.get("index.js").unwrap();
+        assert!(
+            index_js_content.contains("require(\"./bar.css\")"),
+            "should handle none-relative path as relative deps"
+        );
+        assert!(
+            index_js_content.contains("let css = `@import \"http://should-not-be-removed\";"),
+            "should keep remote imports"
+        );
+        assert!(
+            index_js_content.contains("background: url(\"data:image/png;base64,"),
+            "should handle none-relative path as relative deps for background url"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_css_inline_limit() {
         let (files, file_contents) = compile("test/compile/css-inline-limit");
         println!("{:?}", files);

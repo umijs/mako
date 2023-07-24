@@ -22,6 +22,7 @@ use crate::compiler::{Compiler, Context};
 use crate::config::{DevtoolConfig, Mode};
 use crate::module::{ModuleAst, ModuleId};
 use crate::targets;
+use crate::transform_css_handler::CssHandler;
 use crate::transform_dep_replacer::DepReplacer;
 use crate::transform_dynamic_import::DynamicImport;
 use crate::transform_react::react_refresh_entry_prefix;
@@ -44,8 +45,13 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         let deps = module_graph.get_dependencies(module_id);
 
         let dep_map: HashMap<String, String> = deps
+            .clone()
             .into_iter()
             .map(|(id, dep)| (dep.source.clone(), id.generate(context)))
+            .collect();
+        let assets_map: HashMap<String, String> = deps
+            .into_iter()
+            .map(|(id, dep)| (dep.source.clone(), id.id.clone()))
             .collect();
         drop(module_graph);
 
@@ -64,7 +70,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         // 通过开关控制是否单独提取css文件
         if !context.config.extract_css {
             if let ModuleAst::Css(ast) = ast {
-                let ast = transform_css(ast, &path, dep_map, context);
+                let ast = transform_css(ast, &path, dep_map, assets_map, context);
                 info.set_ast(ModuleAst::Script(ast));
             }
         }
@@ -173,8 +179,16 @@ fn transform_css(
     ast: &mut swc_css_ast::Stylesheet,
     path: &str,
     dep_map: HashMap<String, String>,
+    assets_map: HashMap<String, String>,
     context: &Arc<Context>,
 ) -> Ast {
+    // replace deps
+    let mut css_handler = CssHandler {
+        assets_map,
+        context,
+    };
+    ast.visit_mut_with(&mut css_handler);
+
     // prefixer
     let mut prefixer = swc_css_prefixer::prefixer(swc_css_prefixer::options::Options {
         env: Some(targets::swc_preset_env_targets_from_map(
@@ -299,7 +313,7 @@ document.head.appendChild(style);
         let path = if let Some(p) = path { p } else { "test.tsx" };
         let context = Arc::new(Default::default());
         let mut ast = build_css_ast(path, content, &context).unwrap();
-        let ast = transform_css(&mut ast, path, dep_map, &context);
+        let ast = transform_css(&mut ast, path, dep_map.clone(), dep_map, &context);
         let (code, _sourcemap) = js_ast_to_code(&ast.ast, &context, "index.js").unwrap();
         let code = code.trim().to_string();
         (code, _sourcemap)

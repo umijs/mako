@@ -18,7 +18,7 @@
   "devDependencies": {
     "classnames": "^2.3.2",
     "cypress": "^12.17.0",
-    "react-error-overlay": "^6.0.9",
+    "react-error-overlay": "6.0.9",
     "react-refresh": "^0.14.0",
     "start-server-and-test": "^2.0.0"
   }
