@@ -1,11 +1,10 @@
-extern crate prettytable;
-
 use std::cell::RefCell;
 use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use colored::*;
 use serde::Serialize;
 use tracing::info;
 
@@ -238,4 +237,33 @@ pub fn human_readable_size(size: u64) -> String {
     }
 
     format!("{:.2} {}", size, units[i])
+}
+
+fn pad_string(text: &str, max_length: usize) -> String {
+    let mut padded_text = format!("  {}", String::from(text));
+    let pad_length = max_length - text.chars().count();
+
+    padded_text.push_str(&" ".repeat(pad_length));
+    padded_text
+}
+
+#[allow(dead_code)]
+pub fn log_assets(compiler: &Compiler) {
+    let assets = &compiler.context.stats_info.lock().unwrap().assets;
+    let length = 15;
+    let mut s = "\n".to_string();
+    let dist = "dist/".truecolor(133, 133, 133);
+
+    for asset in assets {
+        let size = human_readable_size(asset.size);
+        s = format!(
+            "{}{} {}{}\n",
+            s,
+            pad_string(&size, length),
+            dist.clone(),
+            asset.name.blue().bold()
+        );
+    }
+
+    println!("{}", s);
 }
