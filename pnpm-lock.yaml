@@ -32,6 +32,9 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.2.0(react@18.2.0)
+      react-error-overlay:
+        specifier: 6.0.0
+        version: 6.0.0
       react-refresh:
         specifier: ^0.14.0
         version: 0.14.0
@@ -214,6 +217,9 @@ importers:
       cypress:
         specifier: ^12.17.0
         version: 12.17.0
+      react-error-overlay:
+        specifier: 6.0.9
+        version: 6.0.9
       react-refresh:
         specifier: ^0.14.0
         version: 0.14.0
@@ -279,6 +285,9 @@ importers:
       node-libs-browser-okam:
         specifier: 2.2.4
         version: 2.2.4
+      react-error-overlay:
+        specifier: 6.0.9
+        version: 6.0.9
       react-refresh:
         specifier: ^0.14.0
         version: 0.14.0
@@ -11866,9 +11875,12 @@ packages:
       react: 18.2.0
       scheduler: 0.23.0
 
+  /react-error-overlay@6.0.0:
+    resolution: {integrity: sha512-oHf3b1J2Pxu03apiHvP21qBCkj6fG6A3c3ahya3fX0VXEZUTzIRLwZI9eZ/6cuOO+kvnzdVdGBxZlo+Tjh+hfQ==}
+    dev: true
+
   /react-error-overlay@6.0.9:
     resolution: {integrity: sha512-nQTTcUu+ATDbrSD1BZHr5kgSD4oF8OFjxun8uAaL8RwPBacGBNPf/yAuVVdx17N8XNzRDMrZ9XcKZHCjPW+9ew==}
-    dev: true
 
   /react-fast-compare@3.2.2:
     resolution: {integrity: sha512-nsO+KSNgo1SbJqJEYRE9ERzo7YtYbou/OqjSQKxV7jcKox7+usiUVZOAC+XnDOABXggQTno0Y1CpVnuWEc1boQ==}

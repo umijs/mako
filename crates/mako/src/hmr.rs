@@ -67,7 +67,7 @@ impl Compiler {
 
 #[cfg(test)]
 mod tests {
-
+    use crate::assert_debug_snapshot;
     use crate::compiler::Compiler;
     use crate::config::Config;
     use crate::transform_in_generate::transform_modules;
@@ -89,91 +89,8 @@ mod tests {
             "",
         );
         println!("{}", js_code);
-        assert_eq!(
-            js_code.trim(),
-            r#"
-globalThis.makoModuleHotUpdate('./index.ts', {
-    modules: {
-        "./bar_1.ts": function(module, exports, require) {
-            "use strict";
-            Object.defineProperty(exports, "__esModule", {
-                value: true
-            });
-            require("./foo.ts");
-        },
-        "./bar_2.ts": function(module, exports, require) {
-            "use strict";
-            Object.defineProperty(exports, "__esModule", {
-                value: true
-            });
-            require("./foo.ts");
-        },
-        "./foo.ts": function(module, exports, require) {
-            "use strict";
-            Object.defineProperty(exports, "__esModule", {
-                value: true
-            });
-            Object.defineProperty(exports, "default", {
-                enumerable: true,
-                get: function() {
-                    return _default;
-                }
-            });
-            var _default = 1;
-        },
-        "./index.ts": function(module, exports, require) {
-            const RefreshRuntime = require("../../../../../node_modules/.pnpm/react-refresh@0.14.0/node_modules/react-refresh/runtime.js");
-            RefreshRuntime.injectIntoGlobalHook(window);
-            window.$RefreshReg$ = ()=>{};
-            window.$RefreshSig$ = ()=>(type)=>type;
-            "use strict";
-            Object.defineProperty(exports, "__esModule", {
-                value: true
-            });
-            require("../../../../../node_modules/.pnpm/react-refresh@0.14.0/node_modules/react-refresh/runtime.js");
-            require("./bar_1.ts");
-            require("./bar_2.ts");
-            require("./hoo");
-            (function() {
-                const socket = new WebSocket('ws://127.0.0.1:3000/__/hmr-ws');
-                let latestHash = '';
-                let updating = false;
-                function runHotUpdate() {
-                    if (latestHash !== require.currentHash()) {
-                        updating = true;
-                        return module.hot.check().then(()=>{
-                            updating = false;
-                            return runHotUpdate();
-                        }).catch((e)=>{
-                            console.error('[HMR] HMR check failed', e);
-                        });
-                    } else {
-                        return Promise.resolve();
-                    }
-                }
-                socket.addEventListener('message', (rawMessage)=>{
-                    const msg = JSON.parse(rawMessage.data);
-                    latestHash = msg.hash;
-                    if (!updating) {
-                        runHotUpdate();
-                    }
-                });
-            })();
-        },
-        "./hoo": function(module, exports, require) {
-            "use strict";
-            module.exports = hoo;
-        }
-    }
-}, function(runtime) {
-    runtime._h = '42';
-    ;
-});
 
-//# sourceMappingURL=index.js.map
-        "#
-            .trim()
-        );
+        assert_debug_snapshot!(js_code.trim());
     }
 
     fn create_compiler(base: &str) -> Compiler {
