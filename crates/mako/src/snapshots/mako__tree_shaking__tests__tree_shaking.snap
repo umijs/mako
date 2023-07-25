@@ -186,70 +186,84 @@ function createRuntime(makoModules, entryModuleId) {
         });
         requireModule.applyHotUpdate = applyHotUpdate;
     })();
-    const installedChunks = {};
-    const ensure = (chunkId)=>{
-        let data = installedChunks[chunkId];
-        if (data === 0) return Promise.resolve();
-        if (data) {
-            return data[2];
-        } else {
-            const promise = new Promise((resolve, reject)=>{
-                data = installedChunks[chunkId] = [
-                    resolve,
-                    reject
-                ];
-            });
-            data[2] = promise;
-            const url = chunksIdToUrlMap[chunkId];
-            const error = new Error();
-            const onLoadEnd = (event)=>{
-                data = installedChunks[chunkId];
-                if (data !== 0) installedChunks[chunkId] = undefined;
-                if (data) {
-                    const errorType = event?.type;
-                    const src = event?.target?.src;
-                    error.message = `Loading chunk ${chunkId} failed. (${errorType} : ${src})`;
-                    error.name = 'ChunkLoadError';
-                    error.type = errorType;
-                    data[1](error);
-                }
-            };
-            load(url, onLoadEnd, `chunk-${chunkId}`);
-            return promise;
-        }
-    };
-    const inProgress = {};
-    const load = (url, done, key)=>{
-        if (inProgress[url]) {
-            return inProgress[url].push(done);
-        }
-        const script = document.createElement('script');
-        script.timeout = 120;
-        script.src = url;
-        inProgress[url] = [
-            done
-        ];
-        const onLoadEnd = (prev, event)=>{
-            clearTimeout(timeout);
-            const doneFns = inProgress[url];
-            delete inProgress[url];
-            script.parentNode?.removeChild(script);
-            if (doneFns) {
-                doneFns.forEach(function(fn) {
-                    return fn(event);
-                });
-            }
-            if (prev) return prev(event);
+    !(function() {
+        requireModule.f = {};
+        requireModule.ensure = function(chunkId) {
+            return Promise.all(Object.keys(requireModule.f).reduce(function(promises, key) {
+                requireModule.f[key](chunkId, promises);
+                return promises;
+            }, []));
         };
-        const timeout = setTimeout(onLoadEnd.bind(null, undefined, {
-            type: 'timeout',
-            target: script
-        }), 120000);
-        script.onerror = onLoadEnd.bind(null, script.onerror);
-        script.onload = onLoadEnd.bind(null, script.onload);
-        document.head.appendChild(script);
-    };
+    })();
+    !(function() {
+        const installedChunks = (requireModule.jsonpInstalled = {});
+        requireModule.f.jsonp = (chunkId, promises)=>{
+            let data = installedChunks[chunkId];
+            if (data === 0) return;
+            if (data) {
+                promises.push(data[2]);
+            } else {
+                const promise = new Promise((resolve, reject)=>{
+                    data = installedChunks[chunkId] = [
+                        resolve,
+                        reject
+                    ];
+                });
+                promises.push((data[2] = promise));
+                const url = chunksIdToUrlMap[chunkId];
+                const error = new Error();
+                const onLoadEnd = (event)=>{
+                    data = installedChunks[chunkId];
+                    if (data !== 0) installedChunks[chunkId] = undefined;
+                    if (data) {
+                        const errorType = event?.type;
+                        const src = event?.target?.src;
+                        error.message = `Loading chunk ${chunkId} failed. (${errorType} : ${src})`;
+                        error.name = 'ChunkLoadError';
+                        error.type = errorType;
+                        data[1](error);
+                    }
+                };
+                requireModule.l(url, onLoadEnd, `chunk-${chunkId}`);
+                return promise;
+            }
+        };
+    })();
+    !(function() {
+        const inProgress = {};
+        requireModule.l = (url, done, key)=>{
+            if (inProgress[url]) {
+                return inProgress[url].push(done);
+            }
+            const script = document.createElement('script');
+            script.timeout = 120;
+            script.src = url;
+            inProgress[url] = [
+                done
+            ];
+            const onLoadEnd = (prev, event)=>{
+                clearTimeout(timeout);
+                const doneFns = inProgress[url];
+                delete inProgress[url];
+                script.parentNode?.removeChild(script);
+                if (doneFns) {
+                    doneFns.forEach(function(fn) {
+                        return fn(event);
+                    });
+                }
+                if (prev) return prev(event);
+            };
+            const timeout = setTimeout(onLoadEnd.bind(null, undefined, {
+                type: 'timeout',
+                target: script
+            }), 120000);
+            script.onerror = onLoadEnd.bind(null, script.onerror);
+            script.onload = onLoadEnd.bind(null, script.onload);
+            document.head.appendChild(script);
+        };
+    })();
     const jsonpCallback = (data)=>{
+        const installedChunks = requireModule.jsonpInstalled;
         const chunkIds = data[0];
         const modules = data[1];
         if (chunkIds.some((id)=>installedChunks[id] !== 0)) {
@@ -271,9 +285,8 @@ function createRuntime(makoModules, entryModuleId) {
     requireModule.currentHash = ()=>{
         return requireModule._h;
     };
-    requireModule.ensure = ensure;
     Promise.all([
-        ensure("./all_vendors")
+        requireModule.ensure("./all_vendors")
     ]).then(()=>{
         requireModule(entryModuleId);
     });
