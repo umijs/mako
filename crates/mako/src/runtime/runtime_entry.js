@@ -39,7 +39,7 @@ function createRuntime(makoModules, entryModuleId) {
   // module execution interceptor
   requireModule.i = [];
 
-  // hmr runtime plugin
+  // mako/runtime/hmr plugin
   !(function () {
     let currentParents = [];
     let currentChildModule;
@@ -214,73 +214,99 @@ function createRuntime(makoModules, entryModuleId) {
     requireModule.applyHotUpdate = applyHotUpdate;
   })();
 
-  // chunk and async load
-  const installedChunks = {};
-  const ensure = (chunkId) => {
-    let data = installedChunks[chunkId];
-    if (data === 0) return Promise.resolve();
-    if (data) {
-      // [resolve, reject, promise]
-      return data[2];
-    } else {
-      const promise = new Promise((resolve, reject) => {
-        data = installedChunks[chunkId] = [resolve, reject];
-      });
-      data[2] = promise;
-      // TODO: support public path
-      // const url = `/${chunkId}.async.js`;
-      const url = chunksIdToUrlMap[chunkId];
-      const error = new Error();
-      const onLoadEnd = (event) => {
-        data = installedChunks[chunkId];
-        if (data !== 0) installedChunks[chunkId] = undefined;
-        if (data) {
-          const errorType = event?.type;
-          const src = event?.target?.src;
-          error.message = `Loading chunk ${chunkId} failed. (${errorType} : ${src})`;
-          error.name = 'ChunkLoadError';
-          error.type = errorType;
-          data[1](error);
-        }
-      };
-      // load
-      load(url, onLoadEnd, `chunk-${chunkId}`);
-      return promise;
-    }
-  };
-
-  const inProgress = {};
-  const load = (url, done, key) => {
-    if (inProgress[url]) {
-      return inProgress[url].push(done);
-    }
-    const script = document.createElement('script');
-    script.timeout = 120;
-    script.src = url;
-    inProgress[url] = [done];
-    const onLoadEnd = (prev, event) => {
-      clearTimeout(timeout);
-      const doneFns = inProgress[url];
-      delete inProgress[url];
-      script.parentNode?.removeChild(script);
-      if (doneFns) {
-        doneFns.forEach(function (fn) {
-          return fn(event);
-        });
-      }
-      if (prev) return prev(event);
+  /* mako/runtime/ensure chunk */
+  !(function () {
+    requireModule.f = {};
+    // This file contains only the entry chunk.
+    // The chunk loading function for additional chunks
+    requireModule.ensure = function (chunkId) {
+      return Promise.all(
+        Object.keys(requireModule.f).reduce(function (promises, key) {
+          requireModule.f[key](chunkId, promises);
+          return promises;
+        }, []),
+      );
     };
-    // May not be needed, already has timeout attributes
-    const timeout = setTimeout(
-      onLoadEnd.bind(null, undefined, { type: 'timeout', target: script }),
-      120000,
-    );
-    script.onerror = onLoadEnd.bind(null, script.onerror);
-    script.onload = onLoadEnd.bind(null, script.onload);
-    document.head.appendChild(script);
-  };
+  })();
+
+  // mako/runtime/ensure chunk */
+  !(function () {
+    const installedChunks = (requireModule.jsonpInstalled = {});
+
+    requireModule.f.jsonp = (chunkId, promises) => {
+      let data = installedChunks[chunkId];
+      if (data === 0) return;
+
+      if (data) {
+        //     0       1        2
+        // [resolve, reject, promise]
+        promises.push(data[2]);
+      } else {
+        const promise = new Promise((resolve, reject) => {
+          data = installedChunks[chunkId] = [resolve, reject];
+        });
+        promises.push((data[2] = promise));
+        // TODO: support public path
+        // const url = `/${chunkId}.async.js`;
+        const url = chunksIdToUrlMap[chunkId];
+        const error = new Error();
+        const onLoadEnd = (event) => {
+          data = installedChunks[chunkId];
+          if (data !== 0) installedChunks[chunkId] = undefined;
+          if (data) {
+            const errorType = event?.type;
+            const src = event?.target?.src;
+            error.message = `Loading chunk ${chunkId} failed. (${errorType} : ${src})`;
+            error.name = 'ChunkLoadError';
+            error.type = errorType;
+            data[1](error);
+          }
+        };
+        // load
+        requireModule.l(url, onLoadEnd, `chunk-${chunkId}`);
+        return promise;
+      }
+    };
+  })();
+  // chunk and async load
+
+  /* mako/runtime/load script */
+  !(function () {
+    const inProgress = {};
+    requireModule.l = (url, done, key) => {
+      if (inProgress[url]) {
+        return inProgress[url].push(done);
+      }
+      const script = document.createElement('script');
+      script.timeout = 120;
+      script.src = url;
+      inProgress[url] = [done];
+      const onLoadEnd = (prev, event) => {
+        clearTimeout(timeout);
+        const doneFns = inProgress[url];
+        delete inProgress[url];
+        script.parentNode?.removeChild(script);
+        if (doneFns) {
+          doneFns.forEach(function (fn) {
+            return fn(event);
+          });
+        }
+        if (prev) return prev(event);
+      };
+      // May not be needed, already has timeout attributes
+      const timeout = setTimeout(
+        onLoadEnd.bind(null, undefined, { type: 'timeout', target: script }),
+        120000,
+      );
+      script.onerror = onLoadEnd.bind(null, script.onerror);
+      script.onload = onLoadEnd.bind(null, script.onload);
+      document.head.appendChild(script);
+    };
+  })();
 
   const jsonpCallback = (data) => {
+    const installedChunks = requireModule.jsonpInstalled;
+
     const chunkIds = data[0];
     const modules = data[1];
     if (chunkIds.some((id) => installedChunks[id] !== 0)) {
@@ -305,7 +331,6 @@ function createRuntime(makoModules, entryModuleId) {
     return requireModule._h;
   };
 
-  requireModule.ensure = ensure;
   // __WASM_REQUIRE_SUPPORT
   // __BEFORE_ENTRY
 
