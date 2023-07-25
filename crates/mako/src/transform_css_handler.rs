@@ -59,17 +59,10 @@ impl VisitMut for CssHandler<'_> {
                     return;
                 }
                 let url = handle_css_url(url.to_string());
-                println!(
-                    "self.dep_map: {:?}, url: {}, exists: {}",
-                    self.assets_map,
-                    &url,
-                    self.assets_map.get(&url).is_some()
-                );
                 if let Some(replacement) = self.assets_map.get(&url) {
                     // CSS url() 里的资源是 css visit 时 handle 的
                     let asset_content = handle_asset(self.context, replacement);
                     s.value = asset_content.unwrap_or_else(|_| replacement.clone()).into();
-                    println!("s.value: {}", &s.value);
                     s.raw = None;
                 }
             }

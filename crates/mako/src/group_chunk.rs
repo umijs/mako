@@ -203,10 +203,6 @@ impl Compiler {
             }
         }
 
-        // TODO:
-        // 这里我删除了 bind chunk to module 的逻辑
-        // 因为还没有看到在哪里会用到
-
         (chunk, dynamic_entries)
     }
 }

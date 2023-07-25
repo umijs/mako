@@ -256,12 +256,14 @@ pub fn log_assets(compiler: &Compiler) {
 
     for asset in assets {
         let size = human_readable_size(asset.size);
-        s = format!(
-            "{}{} {}{}\n",
-            s,
-            pad_string(&size, length),
-            dist.clone(),
-            asset.name.blue().bold()
+        s.push_str(
+            format!(
+                "{} {}{}\n",
+                pad_string(&size, length),
+                dist.clone(),
+                asset.name.blue().bold()
+            )
+            .as_str(),
         );
     }
 
