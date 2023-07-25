@@ -31,6 +31,7 @@ mod resolve;
 mod sourcemap;
 mod statement;
 mod statement_graph;
+mod stats;
 mod targets;
 #[cfg(test)]
 mod test_helper;

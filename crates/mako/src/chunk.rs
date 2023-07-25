@@ -21,7 +21,7 @@ pub enum ChunkType {
 pub struct Chunk {
     pub id: ChunkId,
     pub chunk_type: ChunkType,
-    modules: HashSet<ModuleId>,
+    pub modules: HashSet<ModuleId>,
     pub content: Option<String>,
     pub source_map: Option<String>,
 }

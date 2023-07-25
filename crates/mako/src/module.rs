@@ -94,6 +94,7 @@ impl ModuleId {
     }
 
     pub fn generate(&self, context: &Arc<Context>) -> String {
+        // TODO: 如果是 Hashed 的话，stats 拿不到原始的 chunk_id
         generate_module_id(self.id.clone(), context)
     }
 

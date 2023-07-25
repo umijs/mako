@@ -73,6 +73,7 @@ pub fn load(request: &FileRequest, is_entry: bool, context: &Arc<Context>) -> Re
         },
         context,
     )?;
+
     Ok(content.unwrap())
 }
 
@@ -107,7 +108,7 @@ fn ext_name(path: &str) -> Option<&str> {
     None
 }
 
-fn file_size(path: &str) -> Result<u64> {
+pub fn file_size(path: &str) -> Result<u64> {
     let metadata = std::fs::metadata(path)?;
     Ok(metadata.len())
 }

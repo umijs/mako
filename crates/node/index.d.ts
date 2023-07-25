@@ -25,6 +25,7 @@ export function build(
     hmr?: boolean;
     hmr_port?: string;
     hmr_host?: string;
+    stats?: boolean;
   },
   watch: boolean,
 ): Promise<void>;

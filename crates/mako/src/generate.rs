@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::fs;
+use std::path::PathBuf;
 use std::time::Instant;
 
 use anyhow::Result;
@@ -80,18 +81,28 @@ impl Compiler {
                     let (js_code, js_sourcemap) =
                         js_ast_to_code(&ast.ast, &self.context, &file.path)?;
                     // generate code and sourcemap files
-                    let output = &config.output.path.join(&file.path);
-                    fs::write(output, js_code).unwrap();
+                    self.write_to_dist_with_stats(
+                        file.path.clone(),
+                        js_code,
+                        file.chunk_id.clone(),
+                    );
                     if matches!(self.context.config.devtool, DevtoolConfig::SourceMap) {
-                        fs::write(format!("{}.map", output.display()), js_sourcemap).unwrap();
+                        self.write_to_dist_with_stats(
+                            format!("{}.map", file.path.clone()),
+                            js_sourcemap,
+                            "".to_string(),
+                        );
                     }
                 }
                 // TODO: Sourcemap part
                 ModuleAst::Css(ast) => {
                     // ast to code
                     let (css_code, _sourcemap) = css_ast_to_code(ast, &self.context);
-                    let output = &config.output.path.join(&file.path);
-                    fs::write(output, css_code).unwrap();
+                    self.write_to_dist_with_stats(
+                        file.path.clone(),
+                        css_code,
+                        file.chunk_id.clone(),
+                    );
                 }
                 _ => (),
             }
@@ -341,6 +352,17 @@ impl Compiler {
         let to = self.context.config.output.path.join(filename);
 
         std::fs::write(to, content).unwrap();
+    }
+    // 写入产物前记录 content 大小
+    pub fn write_to_dist_with_stats(&self, filename: String, content: String, chunk_id: String) {
+        let to: PathBuf = self.context.config.output.path.join(filename.clone());
+        let size = content.len() as u64;
+        self.context
+            .stats_info
+            .lock()
+            .unwrap()
+            .add_assets(size, filename, chunk_id, to.clone());
+        fs::write(to, content).unwrap();
     }
 }
 

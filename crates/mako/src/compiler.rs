@@ -11,6 +11,7 @@ use crate::config::Config;
 use crate::module_graph::ModuleGraph;
 use crate::plugin::PluginDriver;
 use crate::plugins;
+use crate::stats::StatsInfo;
 
 pub struct Context {
     pub module_graph: RwLock<ModuleGraph>,
@@ -20,6 +21,7 @@ pub struct Context {
     pub root: PathBuf,
     pub meta: Meta,
     pub plugin_driver: PluginDriver,
+    pub stats_info: Mutex<StatsInfo>,
 }
 
 impl Default for Context {
@@ -32,6 +34,8 @@ impl Default for Context {
             assets_info: Mutex::new(HashMap::new()),
             meta: Meta::new(),
             plugin_driver: Default::default(),
+            // 产物信息放在上下文里是否合适
+            stats_info: Mutex::new(StatsInfo::new()),
         }
     }
 }
@@ -130,6 +134,7 @@ impl Compiler {
                 assets_info: Mutex::new(HashMap::new()),
                 meta: Meta::new(),
                 plugin_driver,
+                stats_info: Mutex::new(StatsInfo::new()),
             }),
         }
     }

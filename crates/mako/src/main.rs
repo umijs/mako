@@ -1,11 +1,13 @@
 #![feature(box_patterns)]
 
 use std::sync::Arc;
+use std::time::Instant;
 
 use clap::Parser;
-use tracing::debug;
+use tracing::{debug, info};
 
 use crate::logger::init_logger;
+use crate::stats::{create_stats_info, log_assets};
 
 mod analyze_deps;
 mod analyze_statement;
@@ -37,6 +39,7 @@ mod resolve;
 mod sourcemap;
 mod statement;
 mod statement_graph;
+mod stats;
 mod targets;
 #[cfg(test)]
 mod test_helper;
@@ -83,12 +86,23 @@ async fn main() {
     debug!("config: {:?}", config);
 
     // compiler
+    let t_comiler = Instant::now();
     let compiler = compiler::Compiler::new(config, root.clone());
     compiler.compile();
+    let t_comiler = t_comiler.elapsed();
+    info!("compiler success: {:?}ms", t_comiler.as_millis());
 
     if cli.watch {
         let d = crate::dev::DevServer::new(root.clone(), Arc::new(compiler));
         // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
         d.serve().await;
+    } else {
+        // 开启 stats 时，生成 json 文件
+        if compiler.context.config.stats {
+            create_stats_info(t_comiler.as_millis(), &compiler);
+        }
+
+        // 打印产物信息
+        log_assets(&compiler);
     }
 }
