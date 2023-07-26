@@ -2,9 +2,8 @@
   "name": "@alipay/umi-bundler-okam",
   "version": "0.0.0-alpha.4",
   "dependencies": {
-    "@okamjs/okam": "0.0.5",
+    "@okamjs/okam": "0.0.6",
     "@swc/helpers": "0.5.1",
-
     "chalk": "^4.1.2",
     "compression": "^1.7.4",
     "connect-history-api-fallback": "^2.0.0",
