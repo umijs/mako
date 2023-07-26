@@ -20,7 +20,7 @@ function createRuntime(makoModules, entryModuleId) {
         require: requireModule,
       };
 
-      requireModule.i.forEach((interceptor) => {
+      requireModule.requireInterceptors.forEach((interceptor) => {
         interceptor(execOptions);
       });
       execOptions.factory(
@@ -37,7 +37,7 @@ function createRuntime(makoModules, entryModuleId) {
   }
 
   // module execution interceptor
-  requireModule.i = [];
+  requireModule.requireInterceptors = [];
 
   // mako/runtime/hmr plugin
   !(function () {
@@ -184,7 +184,7 @@ function createRuntime(makoModules, entryModuleId) {
                   ].join('.');
 
                   return new Promise((done) => {
-                    load(`/${hotChunkName}`, done);
+                    requireModule.loadScript(`/${hotChunkName}`, done);
                   });
                 }),
               );
@@ -198,7 +198,7 @@ function createRuntime(makoModules, entryModuleId) {
       return hot;
     };
 
-    requireModule.i.push((options) => {
+    requireModule.requireInterceptors.push((options) => {
       const orginRequire = options.require;
       options.module.hot = createModuleHotObject(options.id, options.module);
       // for refresh module.meta.hot API style
@@ -216,24 +216,27 @@ function createRuntime(makoModules, entryModuleId) {
 
   /* mako/runtime/ensure chunk */
   !(function () {
-    requireModule.f = {};
+    requireModule.chunkEnsures = {};
     // This file contains only the entry chunk.
     // The chunk loading function for additional chunks
     requireModule.ensure = function (chunkId) {
       return Promise.all(
-        Object.keys(requireModule.f).reduce(function (promises, key) {
-          requireModule.f[key](chunkId, promises);
+        Object.keys(requireModule.chunkEnsures).reduce(function (
+          promises,
+          key,
+        ) {
+          requireModule.chunkEnsures[key](chunkId, promises);
           return promises;
         }, []),
       );
     };
   })();
 
-  // mako/runtime/ensure chunk */
+  /* mako/runtime/ensure load js Chunk */
   !(function () {
     const installedChunks = (requireModule.jsonpInstalled = {});
 
-    requireModule.f.jsonp = (chunkId, promises) => {
+    requireModule.chunkEnsures.jsonp = (chunkId, promises) => {
       let data = installedChunks[chunkId];
       if (data === 0) return;
 
@@ -263,7 +266,7 @@ function createRuntime(makoModules, entryModuleId) {
           }
         };
         // load
-        requireModule.l(url, onLoadEnd, `chunk-${chunkId}`);
+        requireModule.loadScript(url, onLoadEnd, `chunk-${chunkId}`);
         return promise;
       }
     };
@@ -273,7 +276,7 @@ function createRuntime(makoModules, entryModuleId) {
   /* mako/runtime/load script */
   !(function () {
     const inProgress = {};
-    requireModule.l = (url, done, key) => {
+    requireModule.loadScript = (url, done, key) => {
       if (inProgress[url]) {
         return inProgress[url].push(done);
       }

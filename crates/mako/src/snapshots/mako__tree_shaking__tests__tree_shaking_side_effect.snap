@@ -23,7 +23,7 @@ function createRuntime(makoModules, entryModuleId) {
                 factory: makoModules[moduleId],
                 require: requireModule
             };
-            requireModule.i.forEach((interceptor)=>{
+            requireModule.requireInterceptors.forEach((interceptor)=>{
                 interceptor(execOptions);
             });
             execOptions.factory(execOptions.module, execOptions.module.exports, execOptions.require);
@@ -33,7 +33,7 @@ function createRuntime(makoModules, entryModuleId) {
         }
         return module.exports;
     }
-    requireModule.i = [];
+    requireModule.requireInterceptors = [];
     !(function() {
         let currentParents = [];
         let currentChildModule;
@@ -158,7 +158,7 @@ function createRuntime(makoModules, entryModuleId) {
                                 ext
                             ].join('.');
                             return new Promise((done)=>{
-                                load(`/${hotChunkName}`, done);
+                                requireModule.loadScript(`/${hotChunkName}`, done);
                             });
                         }));
                     });
@@ -170,7 +170,7 @@ function createRuntime(makoModules, entryModuleId) {
             currentChildModule = undefined;
             return hot;
         };
-        requireModule.i.push((options)=>{
+        requireModule.requireInterceptors.push((options)=>{
             const orginRequire = options.require;
             options.module.hot = createModuleHotObject(options.id, options.module);
             options.module.meta = {
@@ -187,17 +187,17 @@ function createRuntime(makoModules, entryModuleId) {
         requireModule.applyHotUpdate = applyHotUpdate;
     })();
     !(function() {
-        requireModule.f = {};
+        requireModule.chunkEnsures = {};
         requireModule.ensure = function(chunkId) {
-            return Promise.all(Object.keys(requireModule.f).reduce(function(promises, key) {
-                requireModule.f[key](chunkId, promises);
+            return Promise.all(Object.keys(requireModule.chunkEnsures).reduce(function(promises, key) {
+                requireModule.chunkEnsures[key](chunkId, promises);
                 return promises;
             }, []));
         };
     })();
     !(function() {
         const installedChunks = (requireModule.jsonpInstalled = {});
-        requireModule.f.jsonp = (chunkId, promises)=>{
+        requireModule.chunkEnsures.jsonp = (chunkId, promises)=>{
             let data = installedChunks[chunkId];
             if (data === 0) return;
             if (data) {
@@ -224,14 +224,14 @@ function createRuntime(makoModules, entryModuleId) {
                         data[1](error);
                     }
                 };
-                requireModule.l(url, onLoadEnd, `chunk-${chunkId}`);
+                requireModule.loadScript(url, onLoadEnd, `chunk-${chunkId}`);
                 return promise;
             }
         };
     })();
     !(function() {
         const inProgress = {};
-        requireModule.l = (url, done, key)=>{
+        requireModule.loadScript = (url, done, key)=>{
             if (inProgress[url]) {
                 return inProgress[url].push(done);
             }
