@@ -93,7 +93,7 @@ impl Compiler {
                     if !chunks_ids.is_empty() {
                         let ensures = chunks_ids
                             .into_iter()
-                            .map(|id| format!("ensure(\"{}\")", id))
+                            .map(|id| format!("requireModule.ensure(\"{}\")", id))
                             .collect::<Vec<String>>()
                             .join(", ");
 
