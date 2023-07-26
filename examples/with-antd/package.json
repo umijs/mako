@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "cargo run -- $PWD --mode production && http-server ./dist -c-1 --silent",
+    "e2e:ci": "start-server-and-test start 8080 test",
+    "test": "cypress run"
   },
   "keywords": [],
   "author": "pshu",
@@ -21,6 +23,9 @@
     "react-router-dom": "^6.10.0",
     "valtio": "^1.10.4",
     "styled-components": "^5.3.10",
-    "@tanstack/react-query": "^5.0.0-alpha.21"
+    "@tanstack/react-query": "^5.0.0-alpha.21",
+    "cypress": "^12.17.0",
+    "start-server-and-test": "^2.0.0",
+    "http-server": "^14.1.1"
   }
 }

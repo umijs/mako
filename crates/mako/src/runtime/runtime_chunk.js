@@ -1,1 +1,1 @@
-globalThis.jsonpCallback([['main'], {}]);
+globalThis.jsonpCallback([['_%main%_'], {}]);

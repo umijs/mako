@@ -2,22 +2,25 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::vec;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use rayon::prelude::*;
 use swc_common::{Span, DUMMY_SP, GLOBALS};
+use swc_css_ast::Stylesheet;
 use swc_ecma_ast::{
     ArrayLit, BindingIdent, BlockStmt, CallExpr, Callee, Decl, Expr, ExprOrSpread, ExprStmt,
     FnExpr, Function, Ident, KeyValueProp, MemberExpr, MemberProp, ModuleItem, ObjectLit, Param,
     Pat, Prop, PropName, PropOrSpread, Stmt, Str, VarDecl,
 };
 
-use crate::ast::{build_js_ast, Ast};
+use crate::ast::build_js_ast;
 use crate::compiler::{Compiler, Context};
+use crate::config::Mode;
 use crate::module::{ModuleAst, ModuleId};
 
 pub struct OutputAst {
     pub path: String,
-    pub js_ast: Ast,
+    pub ast: ModuleAst,
+    pub chunk_id: String,
 }
 
 impl Compiler {
@@ -51,12 +54,19 @@ impl Compiler {
             chunks_map_str.join("\n")
         );
 
-        chunks
+        let chunks_ast = chunks
             .par_iter()
             .map(|chunk| {
                 // build stmts
                 let module_ids = chunk.get_modules();
-                let js_stmts = modules_to_js_stmts(module_ids, &module_graph, &self.context);
+
+                let stmts_res = modules_to_js_stmts(module_ids, &module_graph, &self.context);
+
+                if stmts_res.is_err() {
+                    return Err(anyhow!("Chunk {} failed to generate js ast", chunk.id.id));
+                }
+
+                let (js_stmts, merged_css_ast) = stmts_res.unwrap();
 
                 // build js ast
                 let mut content = if matches!(chunk.chunk_type, crate::chunk::ChunkType::Entry) {
@@ -83,7 +93,7 @@ impl Compiler {
                     if !chunks_ids.is_empty() {
                         let ensures = chunks_ids
                             .into_iter()
-                            .map(|id| format!("ensure(\"{}\")", id))
+                            .map(|id| format!("requireModule.ensure(\"{}\")", id))
                             .collect::<Vec<String>>()
                             .join(", ");
 
@@ -98,7 +108,7 @@ impl Compiler {
                 } else {
                     include_str!("runtime/runtime_chunk.js").to_string()
                 };
-                content = content.replace("main", chunk.id.generate(&self.context).as_str());
+                content = content.replace("_%main%_", chunk.id.generate(&self.context).as_str());
                 let file_name = if matches!(chunk.chunk_type, crate::chunk::ChunkType::Entry) {
                     "mako_internal_runtime_entry.js"
                 } else {
@@ -182,13 +192,29 @@ impl Compiler {
                 }
 
                 let filename = chunk.filename();
+                let css_filename = format!("{}.css", filename.strip_suffix(".js").unwrap_or(""));
 
-                Ok(OutputAst {
+                let mut output = vec![];
+                output.push(OutputAst {
                     path: filename,
-                    js_ast,
-                })
+                    ast: ModuleAst::Script(js_ast),
+                    chunk_id: chunk.id.id.clone(),
+                });
+                if let Some(merged_css_ast) = merged_css_ast {
+                    output.push(OutputAst {
+                        path: css_filename,
+                        ast: ModuleAst::Css(merged_css_ast),
+                        chunk_id: chunk.id.id.clone(),
+                    });
+                }
+                Ok(output)
             })
-            .collect::<Result<Vec<OutputAst>>>()
+            .collect::<Result<Vec<_>>>();
+
+        match chunks_ast {
+            Ok(asts) => Ok(asts.into_iter().flatten().collect::<Vec<_>>()),
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -243,60 +269,79 @@ pub fn modules_to_js_stmts(
     module_ids: &HashSet<ModuleId>,
     module_graph: &std::sync::RwLockReadGuard<crate::module_graph::ModuleGraph>,
     context: &Arc<Context>,
-) -> Vec<PropOrSpread> {
+) -> Result<(Vec<PropOrSpread>, Option<Stylesheet>)> {
     let mut js_stmts = vec![];
+    let mut merged_css_ast = Stylesheet {
+        span: DUMMY_SP,
+        rules: vec![],
+    };
+    let mut has_css = false;
+
     let mut module_ids: Vec<_> = module_ids.iter().collect();
     module_ids.sort_by_key(|module_id| module_id.id.to_string());
+
     let mut comments = context.meta.script.output_comments.write().unwrap();
 
-    GLOBALS.set(&context.meta.script.globals, || {
-        module_ids.iter().for_each(|module_id| {
-            let module = module_graph.get_module(module_id).unwrap();
-            let ast = module.info.as_ref().unwrap();
-            let ast = &ast.ast;
-            match ast {
-                ModuleAst::Script(ast) => {
-                    // id: function(module, exports, require) {}
+    for module_id in module_ids {
+        let module = module_graph.get_module(module_id).unwrap();
+        if context.config.minify
+            && matches!(context.config.mode, Mode::Production)
+            && module.is_missing
+        {
+            continue;
+        }
+        let ast = module.info.as_ref().unwrap();
+        let ast = &ast.ast;
+        match ast {
+            ModuleAst::Script(ast) => {
+                let mut stmts = Vec::new();
+                for n in ast.ast.body.iter() {
+                    match n.as_stmt() {
+                        None => {
+                            return Err(anyhow!("Error: {:?} not a stmt in {}", n, module.id.id))
+                        }
+                        Some(stmt) => {
+                            stmts.push(stmt.clone());
+                        }
+                    }
+                }
 
-                    let span = Span::dummy_with_cmt();
-
+                let span = Span::dummy_with_cmt();
+                GLOBALS.set(&context.meta.script.globals, || {
                     comments.add_import_source_comment(module.id.id.clone(), span.lo);
+                });
 
-                    let key = swc_ecma_ast::PropName::Str(Str {
-                        span,
-                        value: module.id.generate(context).into(),
-                        raw: None,
-                    });
+                let property_key = swc_ecma_ast::PropName::Str(Str {
+                    span,
+                    value: module.id.generate(context).into(),
+                    raw: None,
+                });
 
-                    let origin_stats: Vec<Stmt> = ast
-                        .ast
-                        .body
-                        .iter()
-                        .map(|stmt| stmt.as_stmt().unwrap().clone())
-                        .collect();
-
-                    js_stmts.push(build_props(
-                        key,
-                        Box::new(Expr::Fn(build_fn_expr(
-                            None,
-                            vec![
-                                build_ident_param("module"),
-                                build_ident_param("exports"),
-                                build_ident_param("require"),
-                            ],
-                            origin_stats,
-                        ))),
-                    ));
-                }
-                ModuleAst::Css(_ast) => {
-                    // TODO:
-                    // 目前 transform_all 之后，css 的 ast 会变成 js 的 ast，所以这里不需要处理
-                    // 之后如果要支持提取独立的 css 文件，会需要在这里进行处理
-                }
-                ModuleAst::None => {}
+                // id: function(module, exports, require) {}
+                js_stmts.push(build_props(
+                    property_key,
+                    Box::new(Expr::Fn(build_fn_expr(
+                        None,
+                        vec![
+                            build_ident_param("module"),
+                            build_ident_param("exports"),
+                            build_ident_param("require"),
+                        ],
+                        stmts,
+                    ))),
+                ));
             }
-        });
-    });
+            ModuleAst::Css(ast) => {
+                has_css = true;
+                merged_css_ast.rules.extend(ast.rules.clone());
+            }
+            ModuleAst::None => {}
+        }
+    }
 
-    js_stmts
+    if has_css {
+        Ok((js_stmts, Some(merged_css_ast)))
+    } else {
+        Ok((js_stmts, None))
+    }
 }

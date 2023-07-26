@@ -10,6 +10,19 @@ impl Comments {
         &self.0
     }
 
+    pub fn add_unused_module_comment(&mut self, pos: BytePos) {
+        let mut leading = self.0.leading.entry(pos).or_default();
+        let unused_comment = swc_common::comments::Comment {
+            kind: swc_common::comments::CommentKind::Block,
+            span: DUMMY_SP,
+            text: atom!("#__UNUSED_MODULE__"),
+        };
+
+        if !leading.iter().any(|c| c.text == unused_comment.text) {
+            leading.push(unused_comment);
+        }
+    }
+
     pub fn add_unused_comment(&mut self, pos: BytePos) {
         let mut leading = self.0.leading.entry(pos).or_default();
         let unused_comment = swc_common::comments::Comment {
@@ -42,6 +55,14 @@ impl Comments {
     #[allow(dead_code)]
     pub fn has_unused(&self, span: Span) -> bool {
         self.has_flag(span, "UNUSED")
+    }
+
+    /**
+     * Check for `/*#__UNUSED_MODULE__*/`
+     */
+    #[allow(dead_code)]
+    pub fn has_unused_module(&self, span: Span) -> bool {
+        self.has_flag(span, "UNUSED_MODULE")
     }
 
     /**

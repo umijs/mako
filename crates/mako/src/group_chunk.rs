@@ -1,12 +1,19 @@
 use std::cell::RefCell;
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::hash::Hasher;
+use std::path::Path;
 use std::rc::Rc;
 
+use anyhow::Result;
+use cached::proc_macro::cached;
+use serde::Deserialize;
 use tracing::info;
+use twox_hash::XxHash64;
 
 use crate::bfs::{Bfs, NextResult};
-use crate::chunk::{Chunk, ChunkType};
+use crate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::compiler::Compiler;
+use crate::config::{CodeSplittingStrategy, Mode};
 use crate::module::{ModuleId, ResolveType};
 
 impl Compiler {
@@ -17,7 +24,69 @@ impl Compiler {
     pub fn group_chunk(&self) {
         self.group_main_chunk();
 
-        self.group_big_vendor_chunk();
+        match self.context.config.code_splitting {
+            CodeSplittingStrategy::BigVendor => {
+                self.group_big_vendor_chunk();
+            }
+            CodeSplittingStrategy::DepPerChunk => {
+                self.group_dep_per_chunk();
+            }
+        }
+    }
+
+    pub fn group_dep_per_chunk(&self) {
+        let mut chunk_graph = self.context.chunk_graph.write().unwrap();
+
+        let entries = chunk_graph.mut_chunks();
+
+        let mut pkg_modules: HashMap<String, HashSet<ModuleId>> = HashMap::new();
+        let mut pkg_chunk_dependant: HashMap<String, HashSet<ChunkId>> = HashMap::new();
+
+        for chunk in entries {
+            let mut to_remove = vec![];
+            for m_id in chunk.get_modules().iter().collect::<Vec<&ModuleId>>() {
+                let pkg_name = match self.context.config.mode {
+                    Mode::Development => read_pkg_name_from_pkg_json(&m_id.id),
+                    Mode::Production => guess_pkg_name_from_path(&m_id.id),
+                };
+
+                match pkg_name {
+                    None => continue,
+                    Some(pkg_name) => {
+                        pkg_modules
+                            .entry(pkg_name.clone())
+                            .or_default()
+                            .insert(m_id.clone());
+
+                        to_remove.push(m_id.clone());
+
+                        pkg_chunk_dependant
+                            .entry(pkg_name)
+                            .or_default()
+                            .insert(chunk.id.clone());
+                    }
+                }
+            }
+
+            for m_id in to_remove {
+                chunk.remove_module(&m_id);
+            }
+        }
+
+        for (pkg_name, modules) in pkg_modules {
+            let mut chunk = Chunk::new(pkg_name.clone().into(), ChunkType::Sync);
+
+            for m_id in modules {
+                chunk.add_module(m_id);
+            }
+            chunk_graph.add_chunk(chunk);
+
+            let dependant_chunks = pkg_chunk_dependant.get(&pkg_name).unwrap();
+
+            for dep_chunk in dependant_chunks {
+                chunk_graph.add_edge(dep_chunk, &pkg_name.clone().into());
+            }
+        }
     }
 
     pub fn group_main_chunk(&self) {
@@ -134,10 +203,73 @@ impl Compiler {
             }
         }
 
-        // TODO:
-        // 这里我删除了 bind chunk to module 的逻辑
-        // 因为还没有看到在哪里会用到
-
         (chunk, dynamic_entries)
     }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+struct PackageJson {
+    name: String,
+    version: String,
+}
+
+fn guess_pkg_name_from_path<T: AsRef<str>>(path: T) -> Option<String> {
+    let path = path.as_ref();
+
+    let (node_modules_root, name_part) = root_and_pkg_name(path)?;
+
+    let pkg_path = Path::new(&node_modules_root)
+        .join(name_part)
+        .join("package.json");
+
+    match load_pkg_json(pkg_path.to_str()?) {
+        Ok(pkg) => Some(format!("{}@{}", pkg.name, pkg.version)),
+        Err(_) => None,
+    }
+}
+
+fn read_pkg_name_from_pkg_json<T: AsRef<str>>(path: T) -> Option<String> {
+    let path = path.as_ref();
+
+    let (node_modules_root, name_part) = root_and_pkg_name(path)?;
+    let hash = hash_path(&node_modules_root);
+
+    Some(format!("{}@{:8x}", name_part, hash))
+}
+
+#[cached(key = "String", convert = r#"{ String::from(p) }"#)]
+fn hash_path(p: &str) -> u64 {
+    let mut hasher: XxHash64 = Default::default();
+    hasher.write(p.as_bytes());
+    hasher.finish()
+}
+
+fn guess_pkg_name(name: String) -> Option<String> {
+    let parts: Vec<&str> = name.split('/').collect();
+
+    if parts.is_empty() {
+        return None;
+    }
+
+    if parts[0].starts_with('@') && parts.len() > 1 {
+        Some(format!("{}/{}", parts[0], parts[1]))
+    } else {
+        Some(parts[0].to_string())
+    }
+}
+
+#[cached(result = true, key = "String", convert = r#"{ String::from(p) }"#)]
+fn load_pkg_json(p: &str) -> Result<PackageJson> {
+    let file = std::fs::File::open(p)?;
+    let reader = std::io::BufReader::new(file);
+    let pkg_json: PackageJson = serde_json::from_reader(reader)?;
+    Ok(pkg_json)
+}
+
+fn root_and_pkg_name(path: &str) -> Option<(String, String)> {
+    let node_modules_root = path.rfind("/node_modules/").map(|idx| &path[0..idx + 14])?;
+
+    let right_parts = path.rfind("/node_modules/").map(|idx| &path[idx + 14..])?;
+    let name_part = guess_pkg_name(right_parts.to_string())?;
+    Some((node_modules_root.to_string(), name_part))
 }

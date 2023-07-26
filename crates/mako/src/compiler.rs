@@ -11,6 +11,7 @@ use crate::config::Config;
 use crate::module_graph::ModuleGraph;
 use crate::plugin::PluginDriver;
 use crate::plugins;
+use crate::stats::StatsInfo;
 
 pub struct Context {
     pub module_graph: RwLock<ModuleGraph>,
@@ -20,6 +21,7 @@ pub struct Context {
     pub root: PathBuf,
     pub meta: Meta,
     pub plugin_driver: PluginDriver,
+    pub stats_info: Mutex<StatsInfo>,
 }
 
 impl Default for Context {
@@ -32,6 +34,8 @@ impl Default for Context {
             assets_info: Mutex::new(HashMap::new()),
             meta: Meta::new(),
             plugin_driver: Default::default(),
+            // 产物信息放在上下文里是否合适
+            stats_info: Mutex::new(StatsInfo::new()),
         }
     }
 }
@@ -130,6 +134,7 @@ impl Compiler {
                 assets_info: Mutex::new(HashMap::new()),
                 meta: Meta::new(),
                 plugin_driver,
+                stats_info: Mutex::new(StatsInfo::new()),
             }),
         }
     }
@@ -180,6 +185,30 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
+    async fn test_css_deps() {
+        let (files, file_contents) = compile("test/compile/css-deps");
+        println!("{:?}", files);
+        let index_js_content = file_contents.get("index.js").unwrap();
+        assert!(
+            index_js_content.contains("require(\"./foo.css\")"),
+            "should require deps"
+        );
+        let index_js_content = file_contents.get("index.js").unwrap();
+        assert!(
+            index_js_content.contains("require(\"./bar.css\")"),
+            "should handle none-relative path as relative deps"
+        );
+        assert!(
+            index_js_content.contains("let css = `@import \"http://should-not-be-removed\";"),
+            "should keep remote imports"
+        );
+        assert!(
+            index_js_content.contains("background: url(\"data:image/png;base64,"),
+            "should handle none-relative path as relative deps for background url"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_css_inline_limit() {
         let (files, file_contents) = compile("test/compile/css-inline-limit");
         println!("{:?}", files);
@@ -195,6 +224,17 @@ mod tests {
         assert!(
             index_js_content.contains("data:image/png;base64,"),
             "small.png is inlined"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_css_issue_247() {
+        let (files, file_contents) = compile("test/compile/css-issue-247");
+        println!("{:?}", files);
+        let index_js_content = file_contents.get("index.js").unwrap();
+        assert!(
+            !index_js_content.contains("umi.png"),
+            "css only assets should be removed"
         );
     }
 
@@ -234,6 +274,51 @@ mod tests {
             index_js_content.contains("display: -ms-flexbox;"),
             "ie 10 prefixer"
         );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_load() {
+        let (files, file_contents) = compile("test/compile/load");
+        println!("{:?}", files);
+        let index_js_content = file_contents.get("index.js").unwrap();
+        assert!(
+            index_js_content.contains("\"foo\": \"json\""),
+            "json loader"
+        );
+        assert!(
+            index_js_content.contains("\"foo\": \"json5\""),
+            "json5 loader"
+        );
+        assert!(
+            index_js_content.contains("\"foo\": \"toml\""),
+            "toml loader"
+        );
+        assert!(
+            index_js_content.contains("\"$value\": \"foo\""),
+            "xml loader"
+        );
+        assert!(
+            index_js_content.contains("\"foo\": \"yaml\""),
+            "yaml loader"
+        );
+        assert!(
+            index_js_content.contains(".foo {\n  color: red;\n}"),
+            "css loader"
+        );
+        assert!(index_js_content.contains(".jpg\");\n}"), "big.jpg in css");
+        assert!(
+            index_js_content.contains(".big {\n  background: url(\""),
+            "small.png in css"
+        );
+        assert!(
+            index_js_content.contains("big.jpg\": function("),
+            "include big.jpg in js"
+        );
+        assert!(
+            index_js_content.contains("small.png\": function("),
+            "include small.png in js"
+        );
+        // TODO: svg
     }
 
     fn compile(base: &str) -> (Vec<String>, HashMap<String, String>) {

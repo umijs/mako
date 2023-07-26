@@ -4,16 +4,19 @@ use swc_ecma_visit::{VisitMut, VisitMutWith};
 use tracing::debug;
 
 use crate::comments::Comments;
+use crate::module::ModuleId;
 
 pub struct UnusedStatementSweep<'a> {
+    module_id: ModuleId,
     pub comments: &'a Comments,
     need_removed_module_item: bool,
     pub removed_item_count: usize,
 }
 
 impl<'a> UnusedStatementSweep<'a> {
-    pub fn new(comments: &'a Comments) -> Self {
+    pub fn new(module_id: &ModuleId, comments: &'a Comments) -> Self {
         Self {
+            module_id: module_id.clone(),
             comments,
             need_removed_module_item: false,
             removed_item_count: 0,
@@ -22,6 +25,15 @@ impl<'a> UnusedStatementSweep<'a> {
 }
 
 impl VisitMut for UnusedStatementSweep<'_> {
+    fn visit_mut_module(&mut self, n: &mut swc_ecma_ast::Module) {
+        if self.comments.has_unused_module(n.span) {
+            debug!("remove module {}", self.module_id.id);
+            n.take();
+        } else {
+            n.visit_mut_children_with(self);
+        }
+    }
+
     fn visit_mut_module_item(&mut self, decl: &mut ModuleItem) {
         self.need_removed_module_item = false;
 
@@ -32,7 +44,26 @@ impl VisitMut for UnusedStatementSweep<'_> {
             decl.take();
         }
     }
-    // TODO: import specifiers removed
+
+    // TODO: 目前 jsx 会被删除掉，等待解决
+    // fn visit_mut_import_decl(&mut self, import_decl: &mut swc_ecma_ast::ImportDecl) {
+    //     let mut removed = vec![];
+    //     for (index, specifier) in import_decl.specifiers.iter().enumerate() {
+    //         if let swc_ecma_ast::ImportSpecifier::Named(named_specifier) = specifier {
+    //             if self.comments.has_unused(named_specifier.span) {
+    //                 removed.push(index);
+    //             }
+    //         }
+    //     }
+    //     removed.reverse();
+    //     for index in removed {
+    //         import_decl.specifiers.remove(index);
+    //         self.removed_item_count += 1;
+    //     }
+    //     if import_decl.specifiers.is_empty() {
+    //         self.need_removed_module_item = true;
+    //     }
+    // }
 
     fn visit_mut_export_specifiers(&mut self, specifiers: &mut Vec<swc_ecma_ast::ExportSpecifier>) {
         let mut removed = vec![];
@@ -52,6 +83,27 @@ impl VisitMut for UnusedStatementSweep<'_> {
             self.need_removed_module_item = true;
         }
     }
+
+    fn visit_mut_export_default_expr(
+        &mut self,
+        default_expr: &mut swc_ecma_ast::ExportDefaultExpr,
+    ) {
+        if self.comments.has_unused(default_expr.span) {
+            self.need_removed_module_item = true;
+            self.removed_item_count += 1;
+        }
+    }
+
+    fn visit_mut_export_default_decl(
+        &mut self,
+        default_decl: &mut swc_ecma_ast::ExportDefaultDecl,
+    ) {
+        if self.comments.has_unused(default_decl.span) {
+            self.need_removed_module_item = true;
+            self.removed_item_count += 1;
+        }
+    }
+
     fn visit_mut_export_decl(&mut self, export_decl: &mut ExportDecl) {
         match &mut export_decl.decl {
             Decl::Var(var_decl) => {

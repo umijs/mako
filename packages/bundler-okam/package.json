@@ -2,15 +2,16 @@
   "name": "@alipay/umi-bundler-okam",
   "version": "0.0.0-alpha.4",
   "dependencies": {
-    "@okamjs/okam": "0.0.3",
+    "@okamjs/okam": "0.0.6",
     "@swc/helpers": "0.5.1",
-    "node-libs-browser-okam": "2.2.2",
-    "react-refresh": "^0.14.0",
-    "rimraf": "5.0.1",
-    "express": "^4.18.2",
     "chalk": "^4.1.2",
-    "connect-history-api-fallback": "^2.0.0",
     "compression": "^1.7.4",
-    "cors": "^2.8.5"
+    "connect-history-api-fallback": "^2.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "node-libs-browser-okam": "2.2.4",
+    "react-error-overlay": "6.0.9",
+    "react-refresh": "^0.14.0",
+    "rimraf": "5.0.1"
   }
 }
