@@ -306,30 +306,30 @@ pub fn modules_to_js_stmts(
                     }
                 }
 
-                let span = Span::dummy_with_cmt();
                 GLOBALS.set(&context.meta.script.globals, || {
+                    let span = Span::dummy_with_cmt();
                     comments.add_import_source_comment(module.id.id.clone(), span.lo);
-                });
 
-                let property_key = swc_ecma_ast::PropName::Str(Str {
-                    span,
-                    value: module.id.generate(context).into(),
-                    raw: None,
-                });
+                    let property_key = PropName::Str(Str {
+                        span,
+                        value: module.id.generate(context).into(),
+                        raw: None,
+                    });
 
-                // id: function(module, exports, require) {}
-                js_stmts.push(build_props(
-                    property_key,
-                    Box::new(Expr::Fn(build_fn_expr(
-                        None,
-                        vec![
-                            build_ident_param("module"),
-                            build_ident_param("exports"),
-                            build_ident_param("require"),
-                        ],
-                        stmts,
-                    ))),
-                ));
+                    // id: function(module, exports, require) {}
+                    js_stmts.push(build_props(
+                        property_key,
+                        Box::new(Expr::Fn(build_fn_expr(
+                            None,
+                            vec![
+                                build_ident_param("module"),
+                                build_ident_param("exports"),
+                                build_ident_param("require"),
+                            ],
+                            stmts,
+                        ))),
+                    ));
+                });
             }
             ModuleAst::Css(ast) => {
                 has_css = true;
