@@ -298,14 +298,14 @@ function createRuntime(makoModules, entryModuleId) {
     };
 }
 const runtime = createRuntime({
-    "./index.tsx": function(module, exports, require) {
+    /*./index.tsx*/ "./index.tsx": function(module, exports, require) {
         "use strict";
         Object.defineProperty(exports, "__esModule", {
             value: true
         });
         var _interop_require_default = require("../../../../../node_modules/.pnpm/@swc+helpers@0.5.1/node_modules/@swc/helpers/esm/_interop_require_default.js");
         var _jsxruntime = require("../../../../../node_modules/.pnpm/react@18.2.0/node_modules/react/jsx-runtime.js");
-        var _react = _interop_require_default._(require("../../../../../node_modules/.pnpm/react@18.2.0/node_modules/react/index.js"));
+        var _react = _interop_require_default._(require(/*react*/ "../../../../../node_modules/.pnpm/react@18.2.0/node_modules/react/index.js"));
         function Foo() {
             return (0, _jsxruntime.jsx)("div", {
                 children: "123"

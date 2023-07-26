@@ -298,7 +298,7 @@ function createRuntime(makoModules, entryModuleId) {
     };
 }
 const runtime = createRuntime({
-    "./1.ts": function(module, exports, require) {
+    /*./1.ts*/ "./1.ts": function(module, exports, require) {
         "use strict";
         Object.defineProperty(exports, "__esModule", {
             value: true
@@ -321,11 +321,11 @@ const runtime = createRuntime({
             }
         });
         var _interop_require_default = require("../../../../../node_modules/.pnpm/@swc+helpers@0.5.1/node_modules/@swc/helpers/esm/_interop_require_default.js");
-        var _2 = _interop_require_default._(require("./2.ts"));
-        var _3 = _interop_require_default._(require("./3.ts"));
-        var _4 = _interop_require_default._(require("./4.ts"));
+        var _2 = _interop_require_default._(require(/*./2*/ "./2.ts"));
+        var _3 = _interop_require_default._(require(/*./3*/ "./3.ts"));
+        var _4 = _interop_require_default._(require(/*./4*/ "./4.ts"));
     },
-    "./2.ts": function(module, exports, require) {
+    /*./2.ts*/ "./2.ts": function(module, exports, require) {
         "use strict";
         Object.defineProperty(exports, "__esModule", {
             value: true
@@ -338,7 +338,7 @@ const runtime = createRuntime({
         });
         function foo() {}
     },
-    "./3.ts": function(module, exports, require) {
+    /*./3.ts*/ "./3.ts": function(module, exports, require) {
         "use strict";
         Object.defineProperty(exports, "__esModule", {
             value: true
@@ -360,7 +360,7 @@ const runtime = createRuntime({
         function bar() {}
         function xx() {}
     },
-    "./4.ts": function(module, exports, require) {
+    /*./4.ts*/ "./4.ts": function(module, exports, require) {
         "use strict";
         Object.defineProperty(exports, "__esModule", {
             value: true
@@ -373,13 +373,13 @@ const runtime = createRuntime({
         });
         function zoo() {}
     },
-    "./index.ts": function(module, exports, require) {
+    /*./index.ts*/ "./index.ts": function(module, exports, require) {
         "use strict";
         Object.defineProperty(exports, "__esModule", {
             value: true
         });
-        var _1 = require("./1.ts");
-        var _3 = require("./3.ts");
+        var _1 = require(/*./1*/ "./1.ts");
+        var _3 = require(/*./3*/ "./3.ts");
         console.log(_1.foo, _3.xx);
     }
 }, './index.ts');
