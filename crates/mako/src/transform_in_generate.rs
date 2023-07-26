@@ -140,7 +140,10 @@ pub fn transform_js_generate(
                             };
                             ast.ast.visit_mut_with(&mut dep_replacer);
 
-                            let mut dynamic_import = DynamicImport { context, comments: &mut comments };
+                            let mut dynamic_import = DynamicImport {
+                                context,
+                                comments: &mut comments,
+                            };
                             ast.ast.visit_mut_with(&mut dynamic_import);
 
                             ast.ast.visit_mut_with(&mut hygiene_with_config(

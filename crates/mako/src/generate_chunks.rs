@@ -4,12 +4,11 @@ use std::vec;
 
 use anyhow::Result;
 use rayon::prelude::*;
-use swc_common::comments::{Comment, CommentKind};
-use swc_common::{Spanned, DUMMY_SP, DUMMY_SP};
+use swc_common::{Span, DUMMY_SP, GLOBALS};
 use swc_ecma_ast::{
-    ArrayLit, BindingIdent, BlockStmt, CallExpr, CallExpr, Callee, Decl, Expr, Expr, ExprOrSpread,
-    ExprStmt, FnExpr, Function, Ident, KeyValueProp, MemberExpr, MemberProp, ModuleItem, ObjectLit,
-    Param, Pat, Prop, PropName, PropOrSpread, Stmt, Str, VarDecl, Lit,
+    ArrayLit, BindingIdent, BlockStmt, CallExpr, Callee, Decl, Expr, ExprOrSpread, ExprStmt,
+    FnExpr, Function, Ident, KeyValueProp, MemberExpr, MemberProp, ModuleItem, ObjectLit, Param,
+    Pat, Prop, PropName, PropOrSpread, Stmt, Str, VarDecl,
 };
 
 use crate::ast::{build_js_ast, Ast};
@@ -250,50 +249,54 @@ pub fn modules_to_js_stmts(
     module_ids.sort_by_key(|module_id| module_id.id.to_string());
     let mut comments = context.meta.script.output_comments.write().unwrap();
 
-    module_ids.iter().for_each(|module_id| {
-        let module = module_graph.get_module(module_id).unwrap();
-        let ast = module.info.as_ref().unwrap();
-        let ast = &ast.ast;
-        match ast {
-            ModuleAst::Script(ast) => {
-                // id: function(module, exports, require) {}
-                // 生成 define('module_id' 的位置
-                let key = swc_ecma_ast::PropName::Str(Str {
-                    span: DUMMY_SP,
-                    value: module.id.generate(context).into(),
-                    raw: None,
-                });
+    GLOBALS.set(&context.meta.script.globals, || {
+        module_ids.iter().for_each(|module_id| {
+            let module = module_graph.get_module(module_id).unwrap();
+            let ast = module.info.as_ref().unwrap();
+            let ast = &ast.ast;
+            match ast {
+                ModuleAst::Script(ast) => {
+                    // id: function(module, exports, require) {}
 
-                let origin_stats: Vec<Stmt> = ast
-                    .ast
-                    .body
-                    .iter()
-                    .map(|stmt| stmt.as_stmt().unwrap().clone())
-                    .collect();
+                    let span = Span::dummy_with_cmt();
 
-                // 加注释
-                comments.add_import_source_comment(module.id.id.clone(), key.span_hi());
+                    comments.add_import_source_comment(module.id.id.clone(), span.lo);
 
-                js_stmts.push(build_props(
-                    key,
-                    Box::new(Expr::Fn(build_fn_expr(
-                        None,
-                        vec![
-                            build_ident_param("module"),
-                            build_ident_param("exports"),
-                            build_ident_param("require"),
-                        ],
-                        origin_stats,
-                    ))),
-                ));
+                    let key = swc_ecma_ast::PropName::Str(Str {
+                        span,
+                        value: module.id.generate(context).into(),
+                        raw: None,
+                    });
+
+                    let origin_stats: Vec<Stmt> = ast
+                        .ast
+                        .body
+                        .iter()
+                        .map(|stmt| stmt.as_stmt().unwrap().clone())
+                        .collect();
+
+                    js_stmts.push(build_props(
+                        key,
+                        Box::new(Expr::Fn(build_fn_expr(
+                            None,
+                            vec![
+                                build_ident_param("module"),
+                                build_ident_param("exports"),
+                                build_ident_param("require"),
+                            ],
+                            origin_stats,
+                        ))),
+                    ));
+                }
+                ModuleAst::Css(_ast) => {
+                    // TODO:
+                    // 目前 transform_all 之后，css 的 ast 会变成 js 的 ast，所以这里不需要处理
+                    // 之后如果要支持提取独立的 css 文件，会需要在这里进行处理
+                }
+                ModuleAst::None => {}
             }
-            ModuleAst::Css(_ast) => {
-                // TODO:
-                // 目前 transform_all 之后，css 的 ast 会变成 js 的 ast，所以这里不需要处理
-                // 之后如果要支持提取独立的 css 文件，会需要在这里进行处理
-            }
-            ModuleAst::None => {}
-        }
+        });
     });
+
     js_stmts
 }

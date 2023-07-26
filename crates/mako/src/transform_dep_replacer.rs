@@ -25,10 +25,8 @@ impl VisitMut for DepReplacer<'_, '_> {
                 } = &mut call_expr.args[0]
                 {
                     // mark import resource as comment
-                    self.comments.add_import_source_comment(
-                        source.value.to_string(),
-                        source.span.lo,
-                    );
+                    self.comments
+                        .add_import_source_comment(source.value.to_string(), source.span.lo);
 
                     self.replace_source(source);
                 }

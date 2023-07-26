@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use swc_common::{DUMMY_SP, Spanned};
+use swc_common::{Span, DUMMY_SP, GLOBALS};
 use swc_ecma_ast::{
     ArrayLit, CallExpr, Callee, Expr, ExprOrSpread, Ident, Lit, MemberExpr, MemberProp,
 };
@@ -27,9 +27,18 @@ impl VisitMut for DynamicImport<'_, '_> {
                 {
                     let module_id =
                         generate_module_id(source.value.clone().to_string(), self.context);
+
+                    let span = Span::dummy_with_cmt();
+                    GLOBALS.set(&self.context.meta.script.globals, || {
+                        self.comments.add_import_source_comment(
+                            format!("import(\"{}\")", source.value),
+                            span.lo,
+                        );
+                    });
+
                     // require.ensure(["id"]).then(require.bind(require, "id"))
                     *expr = Expr::Call(CallExpr {
-                        span: DUMMY_SP,
+                        span,
                         callee: Callee::Expr(Box::new(Expr::Member(MemberExpr {
                             span: DUMMY_SP,
                             obj: Box::new(Expr::Call(CallExpr {
@@ -103,12 +112,6 @@ impl VisitMut for DynamicImport<'_, '_> {
                         }],
                         type_args: None,
                     });
-
-                    // 这里加不成功
-                    self.comments.add_import_source_comment(
-                        "import()".to_owned(),
-                        expr.span_lo(),
-                    );
                 }
             }
         }
@@ -120,7 +123,7 @@ impl VisitMut for DynamicImport<'_, '_> {
 mod tests {
     use std::sync::Arc;
 
-    use swc_common::{Globals, GLOBALS};
+    use swc_common::GLOBALS;
     use swc_ecma_visit::VisitMutWith;
 
     use super::DynamicImport;
@@ -151,10 +154,13 @@ require.ensure([
         let path = if let Some(p) = path { p } else { "test.tsx" };
         let context = Arc::new(Default::default());
         let mut ast = build_js_ast(path, origin, &context).unwrap();
+        let mut comments = context.meta.script.output_comments.write().unwrap();
 
-        let globals = Globals::default();
-        GLOBALS.set(&globals, || {
-            let mut dyanmic_import = DynamicImport { context: &context };
+        GLOBALS.set(&context.meta.script.globals, || {
+            let mut dyanmic_import = DynamicImport {
+                context: &context,
+                comments: &mut comments,
+            };
             ast.ast.visit_mut_with(&mut dyanmic_import);
         });
 
