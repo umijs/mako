@@ -1,0 +1,5 @@
+{
+  "platform": "node",
+  "hmr": false,
+  "public_path": "https://umijs.com/"
+}

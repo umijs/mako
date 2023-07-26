@@ -16,6 +16,7 @@ use crate::ast::build_js_ast;
 use crate::compiler::{Compiler, Context};
 use crate::config::Mode;
 use crate::module::{ModuleAst, ModuleId};
+use crate::public_path::runtime_public_path;
 
 pub struct OutputAst {
     pub path: String,
@@ -30,19 +31,14 @@ impl Compiler {
         let module_graph = self.context.module_graph.read().unwrap();
         let chunk_graph = self.context.chunk_graph.write().unwrap();
 
-        let public_path = self.context.config.public_path.clone();
-        let public_path = if public_path == "runtime" {
-            "globalThis.publicPath".to_string()
-        } else {
-            format!("\"{}\"", public_path)
-        };
+        let public_path = runtime_public_path(&self.context.config);
         let chunks = chunk_graph.get_chunks();
         // TODO: remove this
         let chunks_map_str: Vec<String> = chunks
             .iter()
             .map(|chunk| {
                 format!(
-                    "chunksIdToUrlMap[\"{}\"] = `${{{}}}{}`;",
+                    "chunksIdToUrlMap[\"{}\"] = `${{\"{}\"}}{}`;",
                     chunk.id.generate(&self.context),
                     public_path,
                     chunk.filename()

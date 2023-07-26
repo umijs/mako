@@ -1,0 +1,5 @@
+h1 {
+  background-image: url('./assets/person.svg') 200px no-repeat;
+  background-size: 20px 20px;
+  font-family: 'Open Sans';
+}

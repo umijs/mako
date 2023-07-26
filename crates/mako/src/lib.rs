@@ -27,6 +27,7 @@ mod module_graph;
 mod parse;
 mod plugin;
 mod plugins;
+mod public_path;
 mod resolve;
 mod sourcemap;
 mod statement;
