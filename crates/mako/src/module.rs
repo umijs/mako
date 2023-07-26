@@ -46,23 +46,27 @@ fn md5_hash(source_str: &str, lens: usize) -> String {
     hash[..lens].to_string()
 }
 
+pub fn relative_to_root(module_path: String, root: &PathBuf) -> String {
+    let absolute_path = PathBuf::from(module_path);
+    let relative_path = diff_paths(&absolute_path, root).unwrap_or(absolute_path);
+    // diff_paths result always starts with ".."/"." or not
+    if relative_path.starts_with("..") || relative_path.starts_with(".") {
+        relative_path.to_string_lossy().to_string()
+    } else {
+        PathBuf::from(".")
+            .join(relative_path)
+            .to_string_lossy()
+            .to_string()
+    }
+}
+
 pub fn generate_module_id(origin_module_id: String, context: &Arc<Context>) -> String {
     match context.config.module_id_strategy {
         ModuleIdStrategy::Hashed => md5_hash(&origin_module_id, 4),
         ModuleIdStrategy::Named => {
             // readable ids for debugging usage
             // relative path to `&context.root`
-            let absolute_path = PathBuf::from(origin_module_id);
-            let relative_path = diff_paths(&absolute_path, &context.root).unwrap_or(absolute_path);
-            // diff_paths result always starts with ".."/"." or not
-            if relative_path.starts_with("..") || relative_path.starts_with(".") {
-                relative_path.to_string_lossy().to_string()
-            } else {
-                PathBuf::from(".")
-                    .join(relative_path)
-                    .to_string_lossy()
-                    .to_string()
-            }
+            relative_to_root(origin_module_id, &context.root)
         }
     }
 }

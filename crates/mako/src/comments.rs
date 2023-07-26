@@ -1,4 +1,5 @@
 use swc_atoms::{atom, Atom};
+use swc_common::comments::{self, Comment};
 use swc_common::{BytePos, Span, DUMMY_SP};
 use swc_node_comments::SwcComments;
 
@@ -12,8 +13,8 @@ impl Comments {
 
     pub fn add_unused_module_comment(&mut self, pos: BytePos) {
         let mut leading = self.0.leading.entry(pos).or_default();
-        let unused_comment = swc_common::comments::Comment {
-            kind: swc_common::comments::CommentKind::Block,
+        let unused_comment = Comment {
+            kind: comments::CommentKind::Block,
             span: DUMMY_SP,
             text: atom!("#__UNUSED_MODULE__"),
         };
@@ -25,8 +26,8 @@ impl Comments {
 
     pub fn add_unused_comment(&mut self, pos: BytePos) {
         let mut leading = self.0.leading.entry(pos).or_default();
-        let unused_comment = swc_common::comments::Comment {
-            kind: swc_common::comments::CommentKind::Block,
+        let unused_comment = Comment {
+            kind: comments::CommentKind::Block,
             span: DUMMY_SP,
             text: atom!("#__UNUSED__"),
         };
@@ -37,12 +38,13 @@ impl Comments {
     }
 
     pub fn add_import_source_comment(&mut self, source_import_string: String, pos: BytePos) {
-        let mut leading = self.0.leading.entry(pos).or_default();
-        let import_source_comment = swc_common::comments::Comment {
-            kind: swc_common::comments::CommentKind::Block,
+        let import_source_comment = Comment {
+            kind: comments::CommentKind::Block,
             span: DUMMY_SP,
             text: Atom::from(source_import_string),
         };
+
+        let mut leading = self.0.leading.entry(pos).or_default();
 
         if !leading.iter().any(|c| c.text == import_source_comment.text) {
             leading.push(import_source_comment);

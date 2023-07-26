@@ -15,7 +15,7 @@ use swc_ecma_ast::{
 use crate::ast::build_js_ast;
 use crate::compiler::{Compiler, Context};
 use crate::config::Mode;
-use crate::module::{ModuleAst, ModuleId};
+use crate::module::{relative_to_root, ModuleAst, ModuleId};
 
 pub struct OutputAst {
     pub path: String,
@@ -308,7 +308,10 @@ pub fn modules_to_js_stmts(
 
                 GLOBALS.set(&context.meta.script.globals, || {
                     let span = Span::dummy_with_cmt();
-                    comments.add_import_source_comment(module.id.id.clone(), span.lo);
+                    comments.add_import_source_comment(
+                        relative_to_root(module.id.id.clone(), &context.root),
+                        span.hi,
+                    );
 
                     let property_key = PropName::Str(Str {
                         span,
