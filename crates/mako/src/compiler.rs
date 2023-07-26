@@ -228,6 +228,17 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
+    async fn test_css_issue_247() {
+        let (files, file_contents) = compile("test/compile/css-issue-247");
+        println!("{:?}", files);
+        let index_js_content = file_contents.get("index.js").unwrap();
+        assert!(
+            !index_js_content.contains("umi.png"),
+            "css only assets should be removed"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_css_modules() {
         let (files, file_contents) = compile("test/compile/css-modules");
         println!("{:?}", files);

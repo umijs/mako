@@ -211,10 +211,10 @@ impl Compiler {
         let mut ast = parse(&content, &request, &context)?;
 
         // transform
-        transform(&mut ast, &context, &task)?;
+        transform(&mut ast, &context, &task, &resolvers)?;
 
-        // alanyze deps
-        let deps = analyze_deps(&ast);
+        // analyze deps
+        let deps = analyze_deps(&ast)?;
 
         // resolve
         // TODO: 支持同时有多个 resolve error
@@ -416,7 +416,7 @@ mod tests {
         let (module_ids, references) = build("test/build/css");
         assert_eq!(
             module_ids.join(","),
-            "foo.css,index.css,index.ts,umi-logo.png".to_string()
+            "foo.css,index.css,index.ts".to_string()
         );
         assert_eq!(
             references
@@ -424,7 +424,7 @@ mod tests {
                 .map(|(source, target)| { format!("{} -> {}", source, target) })
                 .collect::<Vec<String>>()
                 .join(","),
-            "index.css -> foo.css,index.css -> umi-logo.png,index.ts -> index.css".to_string()
+            "index.css -> foo.css,index.ts -> index.css".to_string()
         );
     }
 
