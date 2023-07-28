@@ -26,3 +26,6 @@ import { ReactComponent } from './umi.svg';
 console.log(ReactComponent);
 import x1, { ReactComponent as x2 } from './umi.svg';
 console.log(x1, x2);
+
+import Md from './foo.md';
+console.log(Md);

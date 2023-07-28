@@ -5,6 +5,7 @@ import toml, { title } from './index.toml';
 import yaml, { pi } from './index.yaml';
 import xml from './index.xml';
 import wasm from './add.wasm';
+import Md from './index.md';
 
 const num1 = 10;
 const num2 = 20;
@@ -42,6 +43,10 @@ function App() {
       <div>
         <h2>Test import .xml file</h2>
         <pre>{JSON.stringify(xml, null, 2)}</pre>
+      </div>
+      <div>
+        <Md />
+        <pre>The md is</pre>
       </div>
     </div>
   );

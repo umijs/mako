@@ -1490,6 +1490,7 @@ dependencies = [
  "hyper-tungstenite",
  "insta",
  "md5",
+ "mdxjs",
  "mime_guess",
  "nodejs-resolver",
  "notify",
@@ -1532,6 +1533,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "markdown"
+version = "1.0.0-alpha.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f557389e7cdb1e3574c43d82965f0d933fff789c6ea2779cb0e9e72ec4b1224e"
+dependencies = [
+ "unicode-id",
+]
+
+[[package]]
 name = "matchers"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1545,6 +1555,16 @@ name = "md5"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "490cc448043f947bae3cbee9c203358d62dbee0db12107a74be5c30ccfd09771"
+
+[[package]]
+name = "mdxjs"
+version = "0.1.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "334329b79f2a86b4e432a4f9911df72e4b7dff1164dfa3027bc7f91d60391d8f"
+dependencies = [
+ "markdown",
+ "swc_core 0.79.14",
+]
 
 [[package]]
 name = "memchr"
@@ -2771,7 +2791,7 @@ dependencies = [
  "linked_hash_set",
  "regex",
  "serde",
- "swc_core",
+ "swc_core 0.74.6",
  "swc_xml",
 ]
 
@@ -2949,6 +2969,22 @@ dependencies = [
  "swc_ecma_parser 0.132.6",
  "swc_ecma_transforms_base 0.125.1",
  "swc_ecma_visit 0.88.5",
+ "vergen",
+]
+
+[[package]]
+name = "swc_core"
+version = "0.79.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ac072ebc8e6bdaae0a0f93fa2ba2dc922a24ffbe9f58bd27f28109627e5cb3e"
+dependencies = [
+ "swc_atoms 0.5.7",
+ "swc_common 0.31.17",
+ "swc_ecma_ast 0.107.1",
+ "swc_ecma_codegen 0.142.2",
+ "swc_ecma_parser 0.137.2",
+ "swc_ecma_transforms_base 0.130.2",
+ "swc_ecma_visit 0.93.1",
  "vergen",
 ]
 

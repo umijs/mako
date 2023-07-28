@@ -115,6 +115,7 @@ impl Compiler {
             Arc::new(plugins::css::CSSPlugin {}),
             Arc::new(plugins::javascript::JavaScriptPlugin {}),
             Arc::new(plugins::json::JSONPlugin {}),
+            Arc::new(plugins::md::MdPlugin {}),
             Arc::new(plugins::svg::SVGPlugin {}),
             Arc::new(plugins::toml::TOMLPlugin {}),
             Arc::new(plugins::wasm::WASMPlugin {}),
@@ -284,6 +285,10 @@ mod tests {
         assert!(
             index_js_content.contains("\"foo\": \"json\""),
             "json loader"
+        );
+        assert!(
+            index_js_content.contains("var _default = MDXContent;"),
+            "md loader"
         );
         assert!(
             index_js_content.contains("\"foo\": \"json5\""),
