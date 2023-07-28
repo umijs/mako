@@ -151,7 +151,7 @@ fn member_call(obj: Expr, member_prop: MemberProp, args: Vec<ExprOrSpread>) -> E
 mod tests {
     use std::sync::Arc;
 
-    use swc_common::GLOBALS;
+    use swc_common::{Globals, GLOBALS};
     use swc_ecma_visit::VisitMutWith;
 
     use super::DynamicImport;
@@ -190,9 +190,11 @@ Promise.all([
         context.chunk_graph.write().unwrap().add_chunk(chunk);
 
         let mut ast = build_js_ast(path, origin, &context).unwrap();
-        let mut comments = context.meta.script.output_comments.write().unwrap();
+        let globals = Globals::new();
 
-        GLOBALS.set(&context.meta.script.globals, || {
+        GLOBALS.set(&globals, || {
+            let mut comments = context.meta.script.output_comments.write().unwrap();
+
             let mut dyanmic_import = DynamicImport {
                 context: &context,
                 comments: &mut comments,
