@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use swc_common::{Span, DUMMY_SP, GLOBALS};
 use swc_ecma_ast::{
-    ArrayLit, CallExpr, Callee, Expr, ExprOrSpread, Ident, Lit, MemberExpr, MemberProp,
+    ArrayLit, CallExpr, Callee, Expr, ExprOrSpread, Ident, Lit, MemberExpr, MemberProp, Str,
 };
 use swc_ecma_visit::{VisitMut, VisitMutWith};
 
@@ -43,10 +43,8 @@ impl VisitMut for DynamicImport<'_, '_> {
 
                     let span = Span::dummy_with_cmt();
                     GLOBALS.set(&self.context.meta.script.globals, || {
-                        self.comments.add_import_source_comment(
-                            format!("import(\"{}\")", source.value),
-                            span.lo,
-                        );
+                        self.comments
+                            .add_import_source_comment(source.value.to_string(), span.lo);
                     });
 
                     let to_ensure_elems = chunk_ids
@@ -61,7 +59,6 @@ impl VisitMut for DynamicImport<'_, '_> {
                                         spread: None,
                                         expr: Box::new(Expr::Lit(Lit::Str(c_id.clone().into()))),
                                     }],
-                                    span,
                                 )),
                             })
                         })
@@ -89,10 +86,13 @@ impl VisitMut for DynamicImport<'_, '_> {
                             },
                             ExprOrSpread {
                                 spread: None,
-                                expr: Box::new(Expr::Lit(Lit::Str(resolved_source.into()))),
+                                expr: Box::new(Expr::Lit(Lit::Str(Str {
+                                    span,
+                                    raw: None,
+                                    value: resolved_source.into(),
+                                }))),
                             },
                         ],
-                        DUMMY_SP,
                     );
 
                     *expr = member_call(
@@ -102,7 +102,6 @@ impl VisitMut for DynamicImport<'_, '_> {
                             spread: None,
                             expr: Box::new(require_call),
                         }],
-                        DUMMY_SP,
                     );
                 }
             }
@@ -132,13 +131,12 @@ fn promise_all(promises: ExprOrSpread) -> Expr {
         Expr::Ident(id("Promise")),
         member_prop("all"),
         vec![promises],
-        DUMMY_SP,
     )
 }
 
-fn member_call(obj: Expr, member_prop: MemberProp, args: Vec<ExprOrSpread>, span: Span) -> Expr {
+fn member_call(obj: Expr, member_prop: MemberProp, args: Vec<ExprOrSpread>) -> Expr {
     Expr::Call(CallExpr {
-        span,
+        span: DUMMY_SP,
         callee: Callee::Expr(Box::new(Expr::Member(MemberExpr {
             span: DUMMY_SP,
             obj: Box::new(obj),
@@ -174,7 +172,7 @@ import("./foo");
             r#"
 Promise.all([
     require.ensure("./foo")
-]).then(require.bind(require, "./foo"));
+]).then(require.bind(require, /*./foo*/ "./foo"));
 
 //# sourceMappingURL=index.js.map
             "#

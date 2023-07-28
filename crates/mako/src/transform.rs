@@ -284,7 +284,7 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 var _interop_require_default = require("@swc/helpers/_/_interop_require_default");
-var _foo = _interop_require_default._(require("foo"));
+var _foo = _interop_require_default._(require(/*foo*/ "foo"));
 _foo.default;
 const b;
 
@@ -309,7 +309,7 @@ foo;
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-var _foo = require("./foo");
+var _foo = require(/*./foo*/ "./foo");
 _foo.foo;
 
 //# sourceMappingURL=index.js.map
@@ -334,7 +334,7 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 var _interop_require_wildcard = require("@swc/helpers/_/_interop_require_wildcard");
-var _foo = _interop_require_wildcard._(require("./foo"));
+var _foo = _interop_require_wildcard._(require(/*./foo*/ "./foo"));
 _foo.bar;
 
 //# sourceMappingURL=index.js.map
@@ -356,7 +356,7 @@ const foo = import('./foo');
             r#"
 const foo = Promise.all([
     require.ensure("./foo")
-]).then(require.bind(require, "./foo"));
+]).then(require.bind(require, /*./foo*/ "./foo"));
 
 //# sourceMappingURL=index.js.map
         "#
@@ -414,7 +414,7 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 var _interop_require_default = require("@swc/helpers/_/_interop_require_default");
-var _react = _interop_require_default._(require("react"));
+var _react = _interop_require_default._(require(/*react*/ "react"));
 
 //# sourceMappingURL=index.js.map
         "#
@@ -542,7 +542,7 @@ require("foo");
         assert_eq!(
             code,
             r#"
-require("./bar");
+require(/*foo*/ "./bar");
 
 //# sourceMappingURL=index.js.map
         "#
