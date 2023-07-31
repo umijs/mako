@@ -188,6 +188,7 @@ impl Compiler {
                         path: resolved_path,
                         external: Some(external),
                         raw_hash: 0,
+                        missing_deps: Default::default(),
                     }),
                 )
             }
@@ -280,6 +281,7 @@ impl Compiler {
             path: task.path.clone(),
             external: None,
             raw_hash: content.raw_hash(),
+            missing_deps: Default::default(),
         };
         let module = Module::new(module_id, task.is_entry, Some(info));
 

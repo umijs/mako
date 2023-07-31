@@ -121,7 +121,7 @@ pub fn module_to_jscode(compiler: &Compiler, module_id: &ModuleId) -> String {
     }
 }
 
-pub fn transform_ast_with(module: &mut SwcModule, visitor: &mut Box<dyn VisitMut>) -> String {
+pub fn transform_ast_with<T: VisitMut>(module: &mut SwcModule, visitor: &mut T) -> String {
     module.visit_mut_with(visitor);
     emit_js(module)
 }

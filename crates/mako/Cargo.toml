@@ -70,3 +70,4 @@ colored = "2"
 
 [dev-dependencies]
 insta = { version = "1.30.0", features = ["yaml"] }
+maplit = "1.0.2"

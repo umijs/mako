@@ -17,10 +17,11 @@ use crate::compiler::Context;
 use crate::module::{generate_module_id, ResolveType};
 
 pub struct DepReplacer<'a> {
-    pub to_replace: &'a DependenciesToReplace,
+    pub to_replace: DependenciesToReplace,
     pub context: &'a Arc<Context>,
 }
 
+#[derive(Debug, Clone)]
 pub struct DependenciesToReplace {
     pub resolved: HashMap<String, String>,
     pub missing: HashMap<String, ResolveType>,
@@ -159,9 +160,41 @@ impl DepReplacer<'_> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    use maplit::hashmap;
+    use swc_common::GLOBALS;
+    use swc_ecma_visit::VisitMut;
+
+    use crate::ast::build_js_ast;
+    use crate::compiler::Context;
+    use crate::test_helper::transform_ast_with;
+    use crate::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
 
     #[test]
-    fn test() {
-        println!("let it go");
+    fn test_simple_replace() {
+        let context: Arc<Context> = Arc::new(Default::default());
+
+        GLOBALS.set(&context.meta.script.globals, || {
+            let mut ast = build_js_ast("index.jsx",
+                                       r#"require("react")"#
+                                       , &context.clone()).unwrap();
+
+            let to_replace  = DependenciesToReplace {
+                resolved: hashmap! {"react".to_string()=> "/root/node_modules/react/index.js".to_string()},
+                missing: HashMap::new(),
+            };
+
+            let cloned = context.clone();
+            let mut visitor: Box<dyn VisitMut> = Box::new(DepReplacer {
+                to_replace,
+                context: &cloned,
+            });
+
+            dbg!(&transform_ast_with(&mut ast.ast, &mut visitor));
+
+
+        });
     }
 }
