@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -50,6 +51,7 @@ pub fn create_mock_module(path: PathBuf, code: &str) -> Module {
         path: path.to_string_lossy().to_string(),
         external: None,
         raw_hash: 0,
+        missing_deps: HashMap::new(),
     };
     Module::new(module_id, false, Some(info))
 }

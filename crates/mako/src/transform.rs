@@ -195,6 +195,7 @@ mod tests {
     use crate::config::Config;
     use crate::module::ModuleId;
     use crate::module_graph::ModuleGraph;
+    use crate::transform_dep_replacer::DependenciesToReplace;
     use crate::transform_in_generate::transform_js_generate;
 
     #[test]
@@ -579,7 +580,10 @@ require("./bar");
             &ModuleId::new("test".to_string()),
             &context,
             &mut ast,
-            &dep,
+            &DependenciesToReplace {
+                resolved: dep,
+                missing: HashMap::new(),
+            },
             false,
         );
         let (code, _sourcemap) = js_ast_to_code(&ast.ast, &context, "index.js").unwrap();
