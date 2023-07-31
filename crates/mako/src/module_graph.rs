@@ -166,12 +166,12 @@ impl ModuleGraph {
         deps
     }
 
-    pub fn get_targets(&self, module_id: &ModuleId) -> Vec<&ModuleId> {
+    pub fn dependant_module_ids(&self, module_id: &ModuleId) -> Vec<ModuleId> {
         let mut edges = self.get_edges(module_id, Direction::Incoming);
-        let mut targets: Vec<&ModuleId> = vec![];
+        let mut targets: Vec<ModuleId> = vec![];
         while let Some((_, node_index)) = edges.next(&self.graph) {
             let module = self.graph.node_weight(node_index).unwrap();
-            targets.push(&module.id);
+            targets.push(module.id.clone());
         }
 
         targets
