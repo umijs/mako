@@ -17,7 +17,7 @@ use crate::compiler::Context;
 use crate::module::{generate_module_id, ResolveType};
 
 pub struct DepReplacer<'a> {
-    pub to_replace: DependenciesToReplace,
+    pub to_replace: &'a DependenciesToReplace,
     pub context: &'a Arc<Context>,
 }
 
@@ -167,8 +167,10 @@ mod tests {
     use swc_common::GLOBALS;
     use swc_ecma_visit::VisitMut;
 
+    use crate::assert_display_snapshot;
     use crate::ast::build_js_ast;
     use crate::compiler::Context;
+    use crate::module::ResolveType;
     use crate::test_helper::transform_ast_with;
     use crate::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
 
@@ -188,13 +190,62 @@ mod tests {
 
             let cloned = context.clone();
             let mut visitor: Box<dyn VisitMut> = Box::new(DepReplacer {
-                to_replace,
+                to_replace: &to_replace,
                 context: &cloned,
             });
 
-            dbg!(&transform_ast_with(&mut ast.ast, &mut visitor));
+            assert_display_snapshot!(transform_ast_with(&mut ast.ast, &mut visitor));
+        });
+    }
 
+    #[test]
+    fn test_replace_missing_dep() {
+        let context: Arc<Context> = Arc::new(Default::default());
 
+        GLOBALS.set(&context.meta.script.globals, || {
+            let mut ast =
+                build_js_ast("index.jsx", r#"require("react")"#, &context.clone()).unwrap();
+
+            let to_replace = DependenciesToReplace {
+                resolved: HashMap::new(),
+                missing: hashmap! {"react".to_string()=> ResolveType::Import},
+            };
+
+            let cloned = context.clone();
+            let mut visitor: Box<dyn VisitMut> = Box::new(DepReplacer {
+                to_replace: &to_replace,
+                context: &cloned,
+            });
+
+            assert_display_snapshot!(transform_ast_with(&mut ast.ast, &mut visitor));
+        });
+    }
+
+    #[test]
+    fn test_replace_top_level_missing_dep_in_try() {
+        let context: Arc<Context> = Arc::new(Default::default());
+
+        GLOBALS.set(&context.meta.script.globals, || {
+            let mut ast = build_js_ast(
+                "index.jsx",
+                r#"
+                                       try {require("react")}catch(e){}"#,
+                &context.clone(),
+            )
+            .unwrap();
+
+            let to_replace = DependenciesToReplace {
+                resolved: HashMap::new(),
+                missing: hashmap! {"react".to_string()=> ResolveType::Import},
+            };
+
+            let cloned = context.clone();
+            let mut visitor: Box<dyn VisitMut> = Box::new(DepReplacer {
+                to_replace: &to_replace,
+                context: &cloned,
+            });
+
+            assert_display_snapshot!(transform_ast_with(&mut ast.ast, &mut visitor));
         });
     }
 }

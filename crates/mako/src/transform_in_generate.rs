@@ -64,18 +64,18 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         let ast = &mut info.ast;
 
         let deps_to_replace = DependenciesToReplace {
-            resolved: resolved_deps.clone(),
+            resolved: resolved_deps,
             missing: info.missing_deps.clone(),
         };
 
         if let ModuleAst::Script(ast) = ast {
-            transform_js_generate(&module.id, context, ast, deps_to_replace, module.is_entry);
+            transform_js_generate(&module.id, context, ast, &deps_to_replace, module.is_entry);
         }
 
         // 通过开关控制是否单独提取css文件
         if !context.config.extract_css {
             if let ModuleAst::Css(ast) = ast {
-                let ast = transform_css(ast, &path, resolved_deps, assets_map, context);
+                let ast = transform_css(ast, &path, deps_to_replace.resolved, assets_map, context);
                 info.set_ast(ModuleAst::Script(ast));
             }
         }
@@ -87,7 +87,7 @@ pub fn transform_js_generate(
     id: &ModuleId,
     context: &Arc<Context>,
     ast: &mut Ast,
-    dep_map: DependenciesToReplace,
+    dep_map: &DependenciesToReplace,
     is_entry: bool,
 ) {
     let is_dev = matches!(context.config.mode, Mode::Development);

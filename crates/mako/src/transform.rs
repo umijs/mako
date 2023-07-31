@@ -599,7 +599,7 @@ require("./bar");
             &ModuleId::new("test".to_string()),
             &context,
             &mut ast,
-            DependenciesToReplace {
+            &DependenciesToReplace {
                 resolved: dep,
                 missing: HashMap::new(),
             },
