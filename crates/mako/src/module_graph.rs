@@ -52,6 +52,7 @@ impl ModuleGraph {
             .and_then(|i| self.graph.node_weight(*i))
     }
 
+    #[allow(dead_code)]
     pub fn remove_module_and_deps(&mut self, module_id: &ModuleId) -> Module {
         let mut deps_module_ids = vec![];
         self.get_dependencies(module_id)
@@ -65,6 +66,7 @@ impl ModuleGraph {
         self.remove_module(module_id)
     }
 
+    #[allow(dead_code)]
     pub fn remove_module(&mut self, module_id: &ModuleId) -> Module {
         let index = self
             .id_index_map
