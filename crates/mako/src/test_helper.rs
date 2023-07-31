@@ -3,6 +3,12 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use swc_common::sync::Lrc;
+use swc_common::SourceMap;
+use swc_ecma_ast::Module as SwcModule;
+use swc_ecma_codegen::text_writer::JsWriter;
+use swc_ecma_codegen::Emitter;
+use swc_ecma_visit::{VisitMut, VisitMutWith};
 use tracing_subscriber::EnvFilter;
 
 use crate::ast::{build_js_ast, js_ast_to_code};
@@ -113,4 +119,28 @@ pub fn module_to_jscode(compiler: &Compiler, module_id: &ModuleId) -> String {
         crate::module::ModuleAst::Css(_) => todo!(),
         crate::module::ModuleAst::None => todo!(),
     }
+}
+
+pub fn transform_ast_with(module: &mut SwcModule, visitor: &mut Box<dyn VisitMut>) -> String {
+    module.visit_mut_with(visitor);
+    emit_js(module)
+}
+
+fn emit_js(module: &SwcModule) -> String {
+    let cm: Lrc<SourceMap> = Default::default();
+    let mut buf = Vec::new();
+
+    {
+        let writer = Box::new(JsWriter::new(cm.clone(), "\n", &mut buf, None));
+        let mut emitter = Emitter {
+            cfg: Default::default(),
+            comments: None,
+            cm,
+            wr: writer,
+        };
+        // This may return an error if it fails to write
+        emitter.emit_module(module).unwrap();
+    }
+
+    String::from_utf8(buf).unwrap().trim().to_string()
 }

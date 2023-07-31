@@ -10,6 +10,7 @@ use swc_common::errors::HANDLER;
 use swc_common::sync::Lrc;
 use swc_common::{Mark, DUMMY_SP, GLOBALS};
 use swc_css_ast::Stylesheet;
+use swc_css_visit::VisitMutWith;
 use swc_ecma_ast::{
     ArrayLit, Bool, Expr, ExprOrSpread, Ident, KeyValueProp, Lit, Module, Null, Number, ObjectLit,
     Prop, PropName, PropOrSpread, Str,
@@ -28,13 +29,20 @@ use crate::build::Task;
 use crate::compiler::Context;
 use crate::config::Mode;
 use crate::module::ModuleAst;
+use crate::resolve::Resolvers;
 use crate::targets;
+use crate::transform_css_url_replacer::CSSUrlReplacer;
 use crate::transform_env_replacer::EnvReplacer;
 use crate::transform_optimizer::Optimizer;
 use crate::transform_provide::Provide;
 use crate::transform_react::mako_react;
 
-pub fn transform(ast: &mut ModuleAst, context: &Arc<Context>, task: &Task) -> Result<()> {
+pub fn transform(
+    ast: &mut ModuleAst,
+    context: &Arc<Context>,
+    task: &Task,
+    resolvers: &Resolvers,
+) -> Result<()> {
     match ast {
         ModuleAst::Script(ast) => transform_js(
             &mut ast.ast,
@@ -43,7 +51,7 @@ pub fn transform(ast: &mut ModuleAst, context: &Arc<Context>, task: &Task) -> Re
             ast.top_level_mark,
             ast.unresolved_mark,
         ),
-        ModuleAst::Css(ast) => transform_css(ast, context),
+        ModuleAst::Css(ast) => transform_css(ast, context, task, resolvers),
         _ => Ok(()),
     }
 }
@@ -177,7 +185,18 @@ fn transform_js(
     })
 }
 
-fn transform_css(_ast: &mut Stylesheet, _context: &Arc<Context>) -> Result<()> {
+fn transform_css(
+    ast: &mut Stylesheet,
+    context: &Arc<Context>,
+    task: &Task,
+    resolvers: &Resolvers,
+) -> Result<()> {
+    let mut css_handler = CSSUrlReplacer {
+        resolvers,
+        path: &task.path,
+        context,
+    };
+    ast.visit_mut_with(&mut css_handler);
     Ok(())
 }
 
