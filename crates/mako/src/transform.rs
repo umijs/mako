@@ -239,7 +239,7 @@ const App = ()=>(0, _jsxdevruntime.jsxDEV)(_jsxdevruntime.Fragment, {
             fileName: "test.tsx",
             lineNumber: 1,
             columnNumber: 21
-        }, void 0)
+        }, this)
     }, void 0, false);
 
 //# sourceMappingURL=index.js.map
