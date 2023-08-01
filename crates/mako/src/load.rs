@@ -53,6 +53,8 @@ pub enum LoadError {
     ReadFileSizeError { path: String },
     #[error("To svgr error: {path:?}, reason: {reason:?}")]
     ToSvgrError { path: String, reason: String },
+    #[error("Compile md error: {path:?}, reason: {reason:?}")]
+    CompileMdError { path: String, reason: String },
 }
 
 pub fn load(request: &FileRequest, is_entry: bool, context: &Arc<Context>) -> Result<Content> {

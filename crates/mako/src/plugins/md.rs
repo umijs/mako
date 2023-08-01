@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use mdxjs::{compile, Options};
 
 use crate::compiler::Context;
 use crate::config::Mode;
-use crate::load::{read_content, Content};
+use crate::load::{read_content, Content, LoadError};
 use crate::plugin::{Plugin, PluginLoadParam};
 
 pub struct MdPlugin {}
@@ -22,7 +22,15 @@ impl Plugin for MdPlugin {
                 development: matches!(context.config.mode, Mode::Development),
                 ..Default::default()
             };
-            let js_string = compile(&md_string, &options).unwrap();
+            let js_string = match compile(&md_string, &options) {
+                Ok(js_string) => js_string,
+                Err(reason) => {
+                    return Err(anyhow!(LoadError::CompileMdError {
+                        path: param.path.to_string(),
+                        reason,
+                    }));
+                }
+            };
             return Ok(Some(Content::Js(js_string)));
         }
         Ok(None)
