@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -32,6 +33,7 @@ pub struct ModuleInfo {
     pub path: String,
     pub external: Option<String>,
     pub raw_hash: u64,
+    pub missing_deps: HashMap<String, ResolveType>,
 }
 
 impl ModuleInfo {

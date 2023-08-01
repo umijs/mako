@@ -2,8 +2,14 @@ function createRuntime(makoModules, entryModuleId) {
   const modulesRegistry = {};
 
   function requireModule(moduleId) {
-    if (modulesRegistry[moduleId] !== undefined) {
-      return modulesRegistry[moduleId].exports;
+    const cachedModule = modulesRegistry[moduleId];
+
+    if (cachedModule !== undefined) {
+      if (cachedModule.error) {
+        throw cachedModule.error;
+      }
+
+      return cachedModule.exports;
     }
 
     const module = {
@@ -23,14 +29,15 @@ function createRuntime(makoModules, entryModuleId) {
       requireModule.requireInterceptors.forEach((interceptor) => {
         interceptor(execOptions);
       });
-      execOptions.factory(
+      execOptions.factory.call(
+        execOptions.module.exports,
         execOptions.module,
         execOptions.module.exports,
         execOptions.require,
       );
     } catch (e) {
-      console.error(`Error require module '${moduleId}':`, e);
-      delete modulesRegistry[moduleId];
+      modulesRegistry[moduleId].error = e;
+      throw e;
     }
 
     return module.exports;
