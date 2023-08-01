@@ -1489,6 +1489,7 @@ dependencies = [
  "hyper-staticfile",
  "hyper-tungstenite",
  "insta",
+ "maplit",
  "md5",
  "mdxjs",
  "mime_guess",
@@ -1533,7 +1534,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "maplit"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
 name = "markdown"
+
+[[package]]
 version = "1.0.0-alpha.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f557389e7cdb1e3574c43d82965f0d933fff789c6ea2779cb0e9e72ec4b1224e"

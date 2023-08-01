@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -56,6 +57,7 @@ pub fn create_mock_module(path: PathBuf, code: &str) -> Module {
         path: path.to_string_lossy().to_string(),
         external: None,
         raw_hash: 0,
+        missing_deps: HashMap::new(),
     };
     Module::new(module_id, false, Some(info))
 }
@@ -119,7 +121,7 @@ pub fn module_to_jscode(compiler: &Compiler, module_id: &ModuleId) -> String {
     }
 }
 
-pub fn transform_ast_with(module: &mut SwcModule, visitor: &mut Box<dyn VisitMut>) -> String {
+pub fn transform_ast_with<T: VisitMut>(module: &mut SwcModule, visitor: &mut T) -> String {
     module.visit_mut_with(visitor);
     emit_js(module)
 }

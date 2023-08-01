@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt;
+use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -14,6 +15,7 @@ use crate::resolve::{get_resolvers, Resolvers};
 use crate::transform_in_generate::transform_modules;
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub enum UpdateType {
     Add,
     Remove,
@@ -98,8 +100,10 @@ impl Compiler {
         }
 
         // 先做删除
-        let removed_module_ids = self.build_by_remove(removed);
+        let (removed_module_ids, affected_module_ids) = self.build_by_remove(removed);
         update_result.removed.extend(removed_module_ids);
+
+        modified.extend(affected_module_ids.into_iter().map(|i| i.to_path()));
 
         // 分析修改的模块，结果中会包含新增的模块
         let (modified_module_ids, add_paths) = self
@@ -230,17 +234,18 @@ impl Compiler {
         self.build_module_graph_by_task_queue(&mut add_queue, resolvers)
     }
 
-    fn build_by_remove(&self, removed: Vec<PathBuf>) -> HashSet<ModuleId> {
+    fn build_by_remove(&self, removed: Vec<PathBuf>) -> (HashSet<ModuleId>, HashSet<ModuleId>) {
         let mut removed_module_ids = HashSet::new();
+        let mut affected_module_ids = HashSet::new();
         for path in removed {
             let from_module_id = ModuleId::from_path(path);
 
-            // TODO: 如果当前被删除的module还在被人依赖的话， 就报个错
-            let mut module_graph = self.context.module_graph.write().unwrap();
-            module_graph.remove_module_and_deps(&from_module_id);
+            let module_graph = self.context.module_graph.write().unwrap();
+            let dependants = module_graph.dependant_module_ids(&from_module_id);
+            affected_module_ids.extend(dependants);
             removed_module_ids.insert(from_module_id);
         }
-        removed_module_ids
+        (removed_module_ids, affected_module_ids)
     }
 }
 

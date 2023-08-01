@@ -52,6 +52,7 @@ impl ModuleGraph {
             .and_then(|i| self.graph.node_weight(*i))
     }
 
+    #[allow(dead_code)]
     pub fn remove_module_and_deps(&mut self, module_id: &ModuleId) -> Module {
         let mut deps_module_ids = vec![];
         self.get_dependencies(module_id)
@@ -65,6 +66,7 @@ impl ModuleGraph {
         self.remove_module(module_id)
     }
 
+    #[allow(dead_code)]
     pub fn remove_module(&mut self, module_id: &ModuleId) -> Module {
         let index = self
             .id_index_map
@@ -166,12 +168,12 @@ impl ModuleGraph {
         deps
     }
 
-    pub fn get_targets(&self, module_id: &ModuleId) -> Vec<&ModuleId> {
+    pub fn dependant_module_ids(&self, module_id: &ModuleId) -> Vec<ModuleId> {
         let mut edges = self.get_edges(module_id, Direction::Incoming);
-        let mut targets: Vec<&ModuleId> = vec![];
+        let mut targets: Vec<ModuleId> = vec![];
         while let Some((_, node_index)) = edges.next(&self.graph) {
             let module = self.graph.node_weight(node_index).unwrap();
-            targets.push(&module.id);
+            targets.push(module.id.clone());
         }
 
         targets

@@ -188,6 +188,7 @@ impl Compiler {
                         path: resolved_path,
                         external: Some(external),
                         raw_hash: 0,
+                        missing_deps: HashMap::new(),
                     }),
                 )
             }
@@ -220,6 +221,7 @@ impl Compiler {
         // TODO: 支持同时有多个 resolve error
         let mut dep_resolve_err = None;
         let mut dependencies = Vec::new();
+        let mut missing_dependencies = HashMap::new();
         for dep in deps {
             let ret = resolve(&task.path, &dep, &resolvers, &context);
             match ret {
@@ -228,50 +230,54 @@ impl Compiler {
                 }
                 Err(_) => {
                     // 获取 本次引用 和 上一级引用 路径
-                    dep_resolve_err = Some((task.path.clone(), dep.source));
+                    missing_dependencies.insert(dep.source.clone(), dep.resolve_type.clone());
+                    dep_resolve_err = Some((task.path.clone(), dep.source, dep.resolve_type));
                 }
             }
         }
-        if let Some(e) = dep_resolve_err {
-            // resolve 报错时的 target 和 source
-            let mut source = e.1;
-            let mut target = e.0;
-            // 使用 hasMap 记录循环依赖
-            let mut target_map: HashMap<String, i32> = HashMap::new();
-            target_map.insert(target.clone(), 1);
 
-            let mut err: String = format!(
-                "\n\nResolve Error: Resolve \"{}\" failed from \"{}\" \n",
-                source, target
-            );
+        if context.config.mode == crate::config::Mode::Production {
+            if let Some(e) = dep_resolve_err {
+                // resolve 报错时的 target 和 source
+                let mut source = e.1;
+                let mut target = e.0;
+                // 使用 hasMap 记录循环依赖
+                let mut target_map: HashMap<String, i32> = HashMap::new();
+                target_map.insert(target.clone(), 1);
 
-            let id = ModuleId::new(target.clone());
-            let module_graph = context.module_graph.read().unwrap();
+                let mut err: String = format!(
+                    "\n\nResolve Error: Resolve \"{}\" failed from \"{}\" \n",
+                    source, target
+                );
 
-            //  当 entry resolve 文件失败时，get_targets 自身会失败
-            if module_graph.get_module(&id).is_some() {
-                let mut targets: Vec<&ModuleId> = module_graph.get_targets(&id);
-                // 循环找 target
-                while !targets.is_empty() {
-                    let target_module_id = targets[0].clone();
-                    targets = module_graph.get_targets(&target_module_id);
-                    source = target.clone();
-                    target = target_module_id.id;
-                    // 拼接引用堆栈 string
-                    err = format!("{}  -> Resolve \"{}\" from \"{}\" \n", err, source, target);
+                let id = ModuleId::new(target.clone());
+                let module_graph = context.module_graph.read().unwrap();
 
-                    if target_map.contains_key(&target) {
-                        // 存在循环依赖
-                        err = format!("{}  -> \"{}\" 中存在循环依赖", err, target);
-                        break;
-                    } else {
-                        target_map.insert(target.clone(), 1);
+                //  当 entry resolve 文件失败时，get_targets 自身会失败
+                if module_graph.get_module(&id).is_some() {
+                    let mut targets: Vec<ModuleId> = module_graph.dependant_module_ids(&id);
+                    // 循环找 target
+                    while !targets.is_empty() {
+                        let target_module_id = targets[0].clone();
+                        targets = module_graph.dependant_module_ids(&target_module_id);
+                        source = target.clone();
+                        target = target_module_id.id;
+                        // 拼接引用堆栈 string
+                        err = format!("{}  -> Resolve \"{}\" from \"{}\" \n", err, source, target);
+
+                        if target_map.contains_key(&target) {
+                            // 存在循环依赖
+                            err = format!("{}  -> \"{}\" 中存在循环依赖", err, target);
+                            break;
+                        } else {
+                            target_map.insert(target.clone(), 1);
+                        }
                     }
+                    // 调整格式
+                    err = format!("{} \n", err);
                 }
-                // 调整格式
-                err = format!("{} \n", err);
+                return Err(anyhow::anyhow!(err));
             }
-            return Err(anyhow::anyhow!(err));
         }
 
         // create module info
@@ -280,6 +286,7 @@ impl Compiler {
             path: task.path.clone(),
             external: None,
             raw_hash: content.raw_hash(),
+            missing_deps: missing_dependencies,
         };
         let module = Module::new(module_id, task.is_entry, Some(info));
 
