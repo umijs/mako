@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use anyhow::Result;
+use fs::create_dir_all;
 use rayon::prelude::*;
 use serde::Serialize;
 use tracing::{debug, info};
@@ -17,6 +18,64 @@ use crate::update::UpdateResult;
 
 impl Compiler {
     pub fn generate(&self) -> Result<()> {
+        self.transform_all()?;
+
+        let mg = self.context.module_graph.read().unwrap();
+
+        let ids = mg.get_module_ids();
+
+        let root: PathBuf = self.context.root.clone();
+        let src_root = root.join("src").to_str().unwrap().to_string();
+
+        dbg!(&self.context.config.output.path);
+
+        let _output = self.context.config.output.path.canonicalize().unwrap();
+
+        for id in ids {
+            let module = mg.get_module(&id).expect("module not exits");
+
+            let info = module.info.as_ref().expect("module info missing");
+
+            match &info.ast {
+                ModuleAst::Script(js_ast) => {
+                    if module.id.id.ends_with(".json") {
+                        // nothing
+                        // todo: generate resolved AJSON
+                    } else {
+                        let (code, _) = js_ast_to_code(&js_ast.ast, &self.context, "a.js")?;
+
+                        let target = if info.path.contains("node_modules") {
+                            let relative_path: PathBuf = info.path.clone().into();
+                            let relative_path =
+                                relative_path.strip_prefix(&root).unwrap_or_else(|_| {
+                                    panic!("{:?} not starts with {}", relative_path, src_root)
+                                });
+                            relative_path.with_extension("js")
+                        } else {
+                            let relative_path: PathBuf = info.path.clone().into();
+                            let relative_path =
+                                relative_path.strip_prefix(&src_root).unwrap_or_else(|_| {
+                                    panic!("{:?} not starts with {}", relative_path, src_root)
+                                });
+                            relative_path.with_extension("js")
+                        };
+
+                        dbg!(&target);
+
+                        self.write_to_dist(target, code);
+                    }
+                }
+                ModuleAst::Css(_style) => {}
+                ModuleAst::None => {
+                    //  nothing
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn generate2(&self) -> Result<()> {
         info!("generate");
         let t_generate = Instant::now();
         let t_tree_shaking = Instant::now();
@@ -351,7 +410,10 @@ impl Compiler {
     ) {
         let to = self.context.config.output.path.join(filename);
 
-        std::fs::write(to, content).unwrap();
+        let parent = to.parent().unwrap();
+        create_dir_all(parent).unwrap();
+
+        fs::write(to, content).unwrap();
     }
     // 写入产物前记录 content 大小
     pub fn write_to_dist_with_stats(&self, filename: String, content: String, chunk_id: String) {

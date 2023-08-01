@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Result;
+use pathdiff::diff_paths;
 use swc_common::errors::HANDLER;
 use swc_common::GLOBALS;
 use swc_css_visit::VisitMutWith as CSSVisitMutWith;
@@ -44,10 +45,38 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         let module_graph = context.module_graph.read().unwrap();
         let deps = module_graph.get_dependencies(module_id);
 
+        let base: PathBuf = module_id.id.clone().into();
+        let base = base.parent().unwrap();
+
         let dep_map: HashMap<String, String> = deps
             .clone()
             .into_iter()
-            .map(|(id, dep)| (dep.source.clone(), id.generate(context)))
+            // .map(|(id, dep)| (dep.source.clone(), id.generate(context)))
+            .map(|(id, dep)| {
+                let is_from_src = module_id.id.contains("/src/");
+                let is_to_npm = id.id.contains("node_modules");
+
+                let mut rel_path = diff_paths(&id.id, base).unwrap().with_extension("js");
+
+                println!("from {:?} relative to {:?}", &module_id.id, &id.id);
+
+                if is_from_src && is_to_npm {
+                    dbg!(&rel_path);
+                    rel_path = rel_path.strip_prefix("../").unwrap().to_path_buf()
+                }
+
+                let replacement: String = {
+                    let mut to_path = rel_path.to_str().unwrap().to_string();
+                    if to_path.starts_with('.') {
+                        to_path
+                    } else {
+                        to_path.insert_str(0, "./");
+                        to_path
+                    }
+                };
+
+                (dep.source.clone(), replacement)
+            })
             .collect();
         let assets_map: HashMap<String, String> = deps
             .into_iter()

@@ -6,7 +6,6 @@ use swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::analyze_deps::{is_commonjs_require, is_dynamic_import};
 use crate::compiler::Context;
-use crate::module::generate_module_id;
 
 pub struct DepReplacer<'a> {
     pub dep_map: HashMap<String, String>,
@@ -35,7 +34,8 @@ impl DepReplacer<'_> {
         if let Some(replacement) = self.dep_map.get(&source.value.to_string()) {
             let span = source.span;
 
-            let module_id_string = generate_module_id(replacement.clone(), self.context);
+            let module_id_string = replacement.clone();
+            //generate_module_id(replacement.clone(), self.context);
 
             // NOTE: JsWord 有缓存，直接设置 value 的方式在这种情况下不会生效
             // if (process.env.NODE_ENV === 'development') { require("./foo") }

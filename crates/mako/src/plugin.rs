@@ -9,6 +9,7 @@ use crate::config::Config;
 use crate::load::Content;
 use crate::module::ModuleAst;
 
+#[derive(Debug)]
 pub struct PluginLoadParam {
     pub path: String,
     pub is_entry: bool,
@@ -33,6 +34,10 @@ pub trait Plugin: Any + Send + Sync {
         _param: &PluginParseParam,
         _context: &Arc<Context>,
     ) -> Result<Option<ModuleAst>> {
+        Ok(None)
+    }
+
+    fn generate(&self, _context: &Arc<Context>) -> Result<Option<()>> {
         Ok(None)
     }
 }
@@ -69,6 +74,16 @@ impl PluginDriver {
             let ret = plugin.parse(param, context)?;
             if ret.is_some() {
                 return Ok(ret);
+            }
+        }
+        Ok(None)
+    }
+
+    pub fn generate(&self, context: &Arc<Context>) -> Result<Option<()>> {
+        for plugin in &self.plugins {
+            let ret = plugin.generate(context)?;
+            if ret.is_some() {
+                return Ok(Some(()));
             }
         }
         Ok(None)

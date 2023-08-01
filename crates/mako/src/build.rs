@@ -221,6 +221,10 @@ impl Compiler {
         let mut dep_resolve_err = None;
         let mut dependencies = Vec::new();
         for dep in deps {
+            if dep.source.starts_with("@internal/") {
+                continue;
+            }
+
             let ret = resolve(&task.path, &dep, &resolvers, &context);
             match ret {
                 Ok((x, y)) => {

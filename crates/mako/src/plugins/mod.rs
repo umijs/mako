@@ -1,5 +1,6 @@
 pub mod assets;
 pub mod css;
+pub mod generate;
 pub mod javascript;
 pub mod json;
 pub mod node_polyfill;

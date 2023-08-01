@@ -115,6 +115,7 @@ impl Compiler {
             Arc::new(plugins::css::CSSPlugin {}),
             Arc::new(plugins::javascript::JavaScriptPlugin {}),
             Arc::new(plugins::json::JSONPlugin {}),
+            Arc::new(plugins::json::APPXJSONPlugin {}),
             Arc::new(plugins::svg::SVGPlugin {}),
             Arc::new(plugins::toml::TOMLPlugin {}),
             Arc::new(plugins::wasm::WASMPlugin {}),
