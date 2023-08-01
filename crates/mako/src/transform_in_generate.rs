@@ -122,6 +122,7 @@ pub fn transform_js_generate(
                                     // NOTE: 这里后面要调整为注入自定义require
                                     ignore_dynamic: true,
                                     preserve_import_meta: true,
+                                    // TODO: 在 esm 时设置为 false
                                     allow_top_level_this: true,
                                     ..Default::default()
                                 },
