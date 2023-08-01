@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use base64::engine::{general_purpose, Engine};
-use swc_css_ast::Stylesheet;
+use swc_css_ast::{AtRule, AtRulePrelude, ImportHref, Rule, Str, Stylesheet, UrlValue};
 use swc_css_modules::{compile, CssClassName, TransformConfig, TransformResult};
 use swc_css_visit::VisitMutWith;
 
@@ -30,6 +30,7 @@ impl Plugin for CSSPlugin {
         if let Content::Css(content) = param.content {
             // return Ok(Some(ModuleAst::Css(param.request.clone())));
             let mut ast = build_css_ast(&param.request.path, content, context)?;
+            import_url_to_href(&mut ast);
             let has_modules_query = param.request.has_query("modules");
             let is_css_modules_path = param.request.path.ends_with(".module.css");
             // parse css module as js
@@ -124,6 +125,36 @@ export default {{{}}}
 "#,
         path, export_names
     )
+}
+
+// Why do this?
+// 为了修复 @import url() 会把 css 当 asset 处理，返回 base64 的问题
+// 把 @import url() 转成 @import 之后，所有 url() 就都是 rule 里的了
+// e.g. @import url("foo") => @import "foo"
+fn import_url_to_href(ast: &mut Stylesheet) {
+    ast.rules.iter_mut().for_each(|rule| {
+        if let Rule::AtRule(box AtRule {
+            prelude: Some(box AtRulePrelude::ImportPrelude(preclude)),
+            ..
+        }) = rule
+        {
+            if let box ImportHref::Url(url) = &mut preclude.href {
+                let href_string = url
+                    .value
+                    .as_ref()
+                    .map(|box value| match value {
+                        UrlValue::Str(str) => str.value.to_string(),
+                        UrlValue::Raw(raw) => raw.value.to_string(),
+                    })
+                    .unwrap_or_default();
+                preclude.href = Box::new(ImportHref::Str(Str {
+                    span: url.span,
+                    value: href_string.into(),
+                    raw: None,
+                }));
+            }
+        }
+    });
 }
 
 #[cfg(test)]
