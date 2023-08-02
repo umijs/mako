@@ -1,3 +1,4 @@
+use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -17,6 +18,10 @@ impl VisitMut for CssHandler<'_> {
     // remove @import,
     // http(s) will not be removed
     fn visit_mut_stylesheet(&mut self, n: &mut Stylesheet) {
+        // move all @import to the top of other rules
+        n.rules.sort_by_key(|rule| Reverse(rule.is_at_rule() as i8));
+
+        // filter non-url @import
         n.rules = n
             .rules
             .take()
