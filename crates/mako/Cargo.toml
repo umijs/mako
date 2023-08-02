@@ -71,3 +71,4 @@ mdxjs = "0.1.14"
 
 [dev-dependencies]
 insta = { version = "1.30.0", features = ["yaml"] }
+maplit = "1.0.2"
