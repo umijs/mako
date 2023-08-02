@@ -305,6 +305,47 @@ document.head.appendChild(style);
         );
     }
 
+    #[test]
+    fn test_transform_css_import_hoist() {
+        let code = r#"
+@import "https://example.com/first.css";
+.foo { color: red; }
+@import "https://example.com/foo.css";
+.bar { color: blue; }
+@import "https://example.com/bar.css";
+.other { color: green; }
+@import "https://example.com/other.css";
+        "#
+        .trim();
+        let (code, _cm) = transform_css_code(code, None, HashMap::from([]));
+        println!(">> CODE\n{}", code);
+        assert_eq!(
+            code,
+            r#"
+let css = `@import "https://example.com/first.css";
+@import "https://example.com/foo.css";
+@import "https://example.com/bar.css";
+@import "https://example.com/other.css";
+.foo {
+  color: red;
+}
+.bar {
+  color: blue;
+}
+.other {
+  color: green;
+}
+/*# sourceMappingURL=test.tsx.map*/`;
+let style = document.createElement('style');
+style.innerHTML = css;
+document.head.appendChild(style);
+
+//# sourceMappingURL=index.js.map
+        "#
+            .trim()
+        );
+    }
+
     fn transform_css_code(
         content: &str,
         path: Option<&str>,
