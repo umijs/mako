@@ -7,7 +7,6 @@ use clap::Parser;
 use tracing::{debug, info};
 
 use crate::logger::init_logger;
-use crate::stats::{create_stats_info, log_assets};
 
 mod analyze_deps;
 mod analyze_statement;
@@ -97,13 +96,5 @@ async fn main() {
         let d = crate::dev::DevServer::new(root.clone(), Arc::new(compiler));
         // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
         d.serve().await;
-    } else {
-        // 开启 stats 时，生成 json 文件
-        if compiler.context.config.stats {
-            create_stats_info(t_comiler.as_millis(), &compiler);
-        }
-
-        // 打印产物信息
-        log_assets(&compiler);
     }
 }

@@ -8,6 +8,7 @@ use crate::compiler::Context;
 use crate::config::Config;
 use crate::load::Content;
 use crate::module::ModuleAst;
+use crate::stats::StatsJsonMap;
 
 pub struct PluginLoadParam {
     pub path: String,
@@ -33,6 +34,9 @@ pub trait Plugin: Any + Send + Sync {
         _param: &PluginParseParam,
         _context: &Arc<Context>,
     ) -> Result<Option<ModuleAst>> {
+        Ok(None)
+    }
+    fn build_success(&self, _stats: &StatsJsonMap, _context: &Arc<Context>) -> Result<Option<()>> {
         Ok(None)
     }
 }
@@ -70,6 +74,16 @@ impl PluginDriver {
             if ret.is_some() {
                 return Ok(ret);
             }
+        }
+        Ok(None)
+    }
+    pub fn build_success(
+        &self,
+        stats: &StatsJsonMap,
+        context: &Arc<Context>,
+    ) -> Result<Option<()>> {
+        for plugin in &self.plugins {
+            plugin.build_success(stats, context)?;
         }
         Ok(None)
     }
