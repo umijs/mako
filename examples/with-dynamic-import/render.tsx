@@ -24,8 +24,3 @@ function render() {
 
 console.log('start render');
 render();
-
-module.hot.accept();
-module.hot.dispose(() => {
-  root.unmount();
-});
