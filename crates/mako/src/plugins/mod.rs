@@ -2,6 +2,7 @@ pub mod assets;
 pub mod css;
 pub mod javascript;
 pub mod json;
+pub mod manifest;
 pub mod md;
 pub mod node_polyfill;
 pub mod svg;

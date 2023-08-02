@@ -25,7 +25,7 @@ pub struct StatsInfo {
     // 产物信息
     pub assets: Vec<AssetsInfo>,
 }
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Debug)]
 pub enum StatsJsonType {
     #[serde(rename = "type")]
     Asset(String),
@@ -34,7 +34,7 @@ pub enum StatsJsonType {
     #[serde(rename = "type")]
     Chunk(String),
 }
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct StatsJsonAssetsItem {
     #[serde(flatten)]
     pub assets_type: StatsJsonType,
@@ -43,7 +43,7 @@ pub struct StatsJsonAssetsItem {
     pub path: PathBuf,
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, Debug)]
 pub struct StatsJsonModuleItem {
     #[serde(flatten)]
     pub module_type: StatsJsonType,
@@ -51,7 +51,7 @@ pub struct StatsJsonModuleItem {
     pub module_id: String,
     pub chunk_id: String,
 }
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct StatsJsonChunkItem {
     #[serde(flatten)]
     pub chunk_type: StatsJsonType,
@@ -60,7 +60,7 @@ pub struct StatsJsonChunkItem {
     pub entry: bool,
     pub modules: Vec<StatsJsonModuleItem>,
 }
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct StatsJsonMap {
     hash: u64,
     time: u128,
@@ -109,8 +109,7 @@ impl Default for StatsInfo {
     }
 }
 
-#[allow(dead_code)]
-pub fn create_stats_info(compile_time: u128, compiler: &Compiler) {
+pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMap {
     let mut stats_map = StatsJsonMap::new();
     let context = compiler.context.clone();
     // 获取当前时间
@@ -211,20 +210,18 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) {
 
     // 获取 modules
     let modules: Vec<StatsJsonModuleItem> = modules_vec.borrow().iter().cloned().collect();
-
     stats_map.modules = modules;
 
-    print_stats(stats_map, compiler);
+    stats_map
 }
 
-pub fn print_stats(stats: StatsJsonMap, compiler: &Compiler) {
+pub fn write_stats(stats: &StatsJsonMap, compiler: &Compiler) {
     let path = &compiler.context.root.join("stats.json");
-    let stats_json = serde_json::to_string_pretty(&stats).unwrap();
+    let stats_json = serde_json::to_string_pretty(stats).unwrap();
     fs::write(path, stats_json).unwrap();
     info!("stats.json has been created in {:?}", path);
 }
 
-#[allow(dead_code)]
 // 文件大小转换
 pub fn human_readable_size(size: u64) -> String {
     let units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
@@ -247,7 +244,6 @@ fn pad_string(text: &str, max_length: usize) -> String {
     padded_text
 }
 
-#[allow(dead_code)]
 pub fn log_assets(compiler: &Compiler) {
     let assets = &compiler.context.stats_info.lock().unwrap().assets;
     let length = 15;

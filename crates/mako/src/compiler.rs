@@ -111,6 +111,7 @@ impl Compiler {
         let plugin_driver = PluginDriver::new(vec![
             // features
             Arc::new(plugins::node_polyfill::NodePolyfillPlugin {}),
+            Arc::new(plugins::manifest::ManifestPlugin {}),
             // file types
             Arc::new(plugins::css::CSSPlugin {}),
             Arc::new(plugins::javascript::JavaScriptPlugin {}),

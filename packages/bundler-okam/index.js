@@ -109,7 +109,8 @@ function checkConfig(config) {
 }
 
 function getOkamConfig(opts) {
-  const { alias, targets, publicPath, runtimePublicPath } = opts.config;
+  const { alias, targets, publicPath, runtimePublicPath, manifest } =
+    opts.config;
   const outputPath = path.join(opts.cwd, 'dist');
   // TODO:
   // 暂不支持 $ 结尾，等 resolve 支持后可以把这段去掉
@@ -140,5 +141,6 @@ function getOkamConfig(opts) {
     targets: targets || {
       chrome: 80,
     },
+    manifest: !!manifest,
   };
 }
