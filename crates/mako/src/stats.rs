@@ -176,6 +176,11 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
             let id = chunk.id.id.clone();
             let chunk_modules: Vec<StatsJsonModuleItem> = modules
                 .iter()
+                .filter(|module| {
+                    // ?modules 是虚拟模块，暂不记录
+                    // TODO: 支持虚拟模块属性，同时增加 content 以用于 size 计算等用途
+                    !module.id.contains("?modules")
+                })
                 .map(|module| {
                     let id = module.id.clone();
                     let size = file_size(&id).unwrap();
