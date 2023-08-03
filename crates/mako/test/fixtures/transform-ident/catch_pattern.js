@@ -1,0 +1,4 @@
+try {
+} catch (message) {
+  message;
+}
