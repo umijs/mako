@@ -16,6 +16,7 @@ pub struct DetectUnDeclGlobals {
     is_ignoring: bool,
 }
 
+#[allow(unused)]
 impl DetectUnDeclGlobals {
     pub fn new() -> Self {
         Self {
