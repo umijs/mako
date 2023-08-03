@@ -1,0 +1,2 @@
+try { }
+catch ({ message }) { message; }
