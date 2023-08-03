@@ -16,6 +16,8 @@ use crate::module::{Dependency, Module, ModuleAst, ModuleId, ModuleInfo};
 use crate::parse::parse;
 use crate::resolve::{get_resolvers, resolve, Resolvers};
 use crate::transform::transform;
+use crate::transform_after_resolve::transform_after_resolve;
+use crate::transform_dep_replacer::DependenciesToReplace;
 
 #[derive(Debug)]
 pub struct Task {
@@ -218,15 +220,25 @@ impl Compiler {
         let deps = analyze_deps(&ast)?;
 
         // resolve
-        // TODO: 支持同时有多个 resolve error
         let mut dep_resolve_err = None;
         let mut dependencies = Vec::new();
+        let mut resolved_deps = HashMap::<String, String>::new();
+        let mut resolved_deps_by_path = HashMap::<String, i32>::new();
         let mut missing_dependencies = HashMap::new();
         for dep in deps {
             let ret = resolve(&task.path, &dep, &resolvers, &context);
             match ret {
-                Ok((x, y)) => {
-                    dependencies.push((x, y, dep.clone()));
+                Ok((path, external)) => {
+                    dependencies.push((path.clone(), external, dep.clone()));
+                    let id = ModuleId::new(path);
+                    let id_str = id.generate(&context);
+                    resolved_deps.insert(dep.source.clone(), id.generate(&context));
+                    let count = if resolved_deps_by_path.get(&id_str).is_none() {
+                        1
+                    } else {
+                        resolved_deps_by_path.get(&id_str).unwrap() + 1
+                    };
+                    resolved_deps_by_path.insert(id_str.clone(), count);
                 }
                 Err(_) => {
                     // 获取 本次引用 和 上一级引用 路径
@@ -279,6 +291,24 @@ impl Compiler {
                 return Err(anyhow::anyhow!(err));
             }
         }
+
+        // transform to replace deps
+        // ref: https://github.com/umijs/mako/issues/311
+        let mut filtered_resolved_deps = HashMap::new();
+        resolved_deps.iter().for_each(|(source, path)| {
+            if resolved_deps_by_path.get(path).is_none() {
+                return;
+            }
+            let v = *resolved_deps_by_path.get(path).unwrap();
+            if v > 1 {
+                filtered_resolved_deps.insert(source.clone(), path.clone());
+            }
+        });
+        let deps_to_replace = DependenciesToReplace {
+            missing: HashMap::new(),
+            resolved: filtered_resolved_deps,
+        };
+        transform_after_resolve(&mut ast, &context, &task, &deps_to_replace)?;
 
         // create module info
         let info = ModuleInfo {
