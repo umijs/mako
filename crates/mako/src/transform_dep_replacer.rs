@@ -6,8 +6,8 @@ use swc_common::DUMMY_SP;
 use swc_ecma_ast::Expr::Call;
 use swc_ecma_ast::{
     AssignExpr, AssignOp, BindingIdent, BlockStmt, CallExpr, Callee, Decl, Expr, ExprOrSpread,
-    ExprStmt, FnExpr, Function, Ident, Lit, MemberExpr, MemberProp, NewExpr, Pat, PatOrExpr, Stmt,
-    Str, ThrowStmt, VarDecl, VarDeclKind, VarDeclarator,
+    ExprStmt, FnExpr, Function, Ident, ImportDecl, Lit, MemberExpr, MemberProp, NewExpr, Pat,
+    PatOrExpr, Stmt, Str, ThrowStmt, VarDecl, VarDeclKind, VarDeclarator,
 };
 use swc_ecma_utils::quote_ident;
 use swc_ecma_visit::{VisitMut, VisitMutWith};
@@ -114,6 +114,10 @@ fn miss_throw_stmt<T: AsRef<str>>(source: T) -> Expr {
 }
 
 impl VisitMut for DepReplacer<'_> {
+    fn visit_mut_import_decl(&mut self, import_decl: &mut ImportDecl) {
+        self.replace_source(&mut import_decl.src);
+    }
+
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Call(call_expr) = expr {
             if is_commonjs_require(call_expr) || is_dynamic_import(call_expr) {

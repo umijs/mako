@@ -43,6 +43,7 @@ mod targets;
 #[cfg(test)]
 mod test_helper;
 mod transform;
+mod transform_after_resolve;
 mod transform_css_handler;
 mod transform_css_url_replacer;
 mod transform_dep_replacer;
