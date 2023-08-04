@@ -159,9 +159,15 @@ pub fn js_ast_to_code(
         };
         emitter.emit_module(ast)?;
     }
-    // source map
-    let src_buf = build_source_map(&source_map_buf, cm);
-    let sourcemap = String::from_utf8(src_buf).unwrap();
+
+    let sourcemap = match context.config.devtool {
+        DevtoolConfig::SourceMap | DevtoolConfig::InlineSourceMap => {
+            let src_buf = build_source_map(&source_map_buf, cm);
+            String::from_utf8(src_buf).unwrap()
+        }
+        DevtoolConfig::None => "".to_string(),
+    };
+
     if matches!(context.config.devtool, DevtoolConfig::SourceMap) {
         // separate sourcemap file
         buf.append(
