@@ -13,9 +13,9 @@ impl Plugin for ManifestPlugin {
         "manifest"
     }
 
-    fn build_success(&self, stats: &StatsJsonMap, context: &Arc<Context>) -> Result<Option<()>> {
+    fn build_success(&self, _stats: &StatsJsonMap, context: &Arc<Context>) -> Result<Option<()>> {
         if context.config.manifest {
-            println!("stats: {:?}", stats);
+            // println!("stats: {:?}", stats);
         }
         Ok(None)
     }

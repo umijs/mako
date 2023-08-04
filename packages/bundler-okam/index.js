@@ -109,7 +109,7 @@ function checkConfig(config) {
 }
 
 function getOkamConfig(opts) {
-  const { alias, targets, publicPath, runtimePublicPath, manifest } =
+  const { alias, targets, publicPath, runtimePublicPath, manifest, mdx } =
     opts.config;
   const outputPath = path.join(opts.cwd, 'dist');
   // TODO:
@@ -145,5 +145,6 @@ function getOkamConfig(opts) {
       chrome: 80,
     },
     manifest: !!manifest,
+    mdx: !!mdx,
   };
 }
