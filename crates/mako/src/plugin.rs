@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 use crate::build::FileRequest;
 use crate::compiler::Context;
@@ -86,6 +86,6 @@ impl PluginDriver {
                 return Ok(Some(()));
             }
         }
-        Ok(None)
+        Err(anyhow!("None of the plugins generate content"))
     }
 }
