@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use clap::ValueEnum;
 use serde::Deserialize;
 use serde_json::Value;
+use thiserror::Error;
 
 #[derive(Deserialize, Debug)]
 pub struct OutputConfig {
@@ -170,11 +171,12 @@ impl Config {
                 config.output.path = root.join(config.output.path.to_string_lossy().to_string());
             }
 
-            // set NODE_ENV to mode
+            let mode = format!("\"{}\"", config.mode.to_string());
+
             config
                 .define
                 .entry("NODE_ENV".to_string())
-                .or_insert_with(|| serde_json::Value::String(config.mode.to_string()));
+                .or_insert_with(|| serde_json::Value::String(mode));
 
             if config.public_path != "runtime" && !config.public_path.ends_with('/') {
                 panic!("public_path must end with '/' or be 'runtime'");
@@ -202,6 +204,12 @@ impl Default for Config {
         let c = c.build().unwrap();
         c.try_deserialize::<Config>().unwrap()
     }
+}
+
+#[derive(Error, Debug)]
+pub enum ConfigError {
+    #[error("define value '{0}' is not a Expression")]
+    InvalidateDefineConfig(String),
 }
 
 #[cfg(test)]
