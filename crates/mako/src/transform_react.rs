@@ -237,7 +237,7 @@ mod tests {
                 )
             ));
 
-            transform_ast_with(&mut ast.ast, &mut visitor)
+            transform_ast_with(&mut ast.ast, &mut visitor, &context.meta.script.cm)
         })
     }
 }

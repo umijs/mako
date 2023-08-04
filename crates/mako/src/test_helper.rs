@@ -119,13 +119,16 @@ pub fn module_to_jscode(compiler: &Compiler, module_id: &ModuleId) -> String {
     }
 }
 
-pub fn transform_ast_with(module: &mut SwcModule, visitor: &mut Box<dyn VisitMut>) -> String {
+pub fn transform_ast_with(
+    module: &mut SwcModule,
+    visitor: &mut dyn VisitMut,
+    cm: &Lrc<SourceMap>,
+) -> String {
     module.visit_mut_with(visitor);
-    emit_js(module)
+    emit_js(module, cm)
 }
 
-fn emit_js(module: &SwcModule) -> String {
-    let cm: Lrc<SourceMap> = Default::default();
+fn emit_js(module: &SwcModule, cm: &Arc<SourceMap>) -> String {
     let mut buf = Vec::new();
 
     {
@@ -133,7 +136,7 @@ fn emit_js(module: &SwcModule) -> String {
         let mut emitter = Emitter {
             cfg: Default::default(),
             comments: None,
-            cm,
+            cm: cm.clone(),
             wr: writer,
         };
         // This may return an error if it fails to write

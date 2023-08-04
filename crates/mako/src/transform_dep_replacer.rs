@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use swc_ecma_ast::{Expr, ExprOrSpread, Lit, Str};
+use swc_ecma_ast::{Expr, ExprOrSpread, Lit, NamedExport, Str};
 use swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::analyze_deps::{is_commonjs_require, is_dynamic_import};
@@ -27,6 +27,16 @@ impl VisitMut for DepReplacer<'_> {
         }
         expr.visit_mut_children_with(self);
     }
+
+    fn visit_mut_import_decl(&mut self, import_decl: &mut swc_ecma_ast::ImportDecl) {
+        self.replace_source(&mut import_decl.src);
+    }
+
+    fn visit_mut_named_export(&mut self, n: &mut NamedExport) {
+        if let Some(ref mut src) = n.src {
+            self.replace_source(src.as_mut());
+        }
+    }
 }
 
 impl DepReplacer<'_> {
@@ -41,7 +51,54 @@ impl DepReplacer<'_> {
             // if (process.env.NODE_ENV === 'development') { require("./foo") }
             *source = Str::from(module_id_string);
             // 保持原来的 span，不确定不加的话会不会导致 sourcemap 错误
+
             source.span = span;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use maplit::hashmap;
+    use swc_common::GLOBALS;
+
+    use crate::assert_display_snapshot;
+    use crate::ast::build_js_ast;
+    use crate::compiler::Context;
+    use crate::test_helper::transform_ast_with;
+    use crate::transform_dep_replacer::DepReplacer;
+
+    #[test]
+    fn test_import_replace() {
+        assert_display_snapshot!(transform_code("import x from 'x'"));
+    }
+
+    #[test]
+    fn test_export_from_replace() {
+        assert_display_snapshot!(transform_code("export {x} from 'x'"));
+    }
+
+    #[test]
+    fn test_dynamic_import_from_replace() {
+        assert_display_snapshot!(transform_code("const x = import('x')"));
+    }
+
+    fn transform_code(code: &str) -> String {
+        let context: Arc<Context> = Arc::new(Default::default());
+
+        GLOBALS.set(&context.meta.script.globals, || {
+            let mut ast = build_js_ast("test.js", code, &context).unwrap();
+
+            let mut visitor = DepReplacer {
+                dep_map: hashmap! {
+                    "x".to_string() => "/x/index.js".to_string()
+                },
+                context: &context,
+            };
+
+            transform_ast_with(&mut ast.ast, &mut visitor, &context.meta.script.cm)
+        })
     }
 }
