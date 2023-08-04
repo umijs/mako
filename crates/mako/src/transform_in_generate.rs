@@ -321,6 +321,7 @@ document.head.appendChild(style);
 .bar { color: blue; }
 @import "https://example.com/bar.css";
 .other { color: green; }
+@media print {}
 @import "https://example.com/other.css";
         "#
         .trim();
@@ -342,6 +343,7 @@ let css = `@import "https://example.com/first.css";
 .other {
   color: green;
 }
+@media print {}
 /*# sourceMappingURL=test.tsx.map*/`;
 let style = document.createElement('style');
 style.innerHTML = css;
