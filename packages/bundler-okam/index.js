@@ -134,6 +134,9 @@ function getOkamConfig(opts) {
         'react-refresh': path.dirname(
           require.resolve('react-refresh/package.json'),
         ),
+        'react-error-overlay': path.dirname(
+          require.resolve('react-error-overlay/package.json'),
+        ),
       },
     },
     mode: 'development',
