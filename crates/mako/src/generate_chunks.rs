@@ -1,8 +1,8 @@
-use std::collections::HashSet;
 use std::sync::Arc;
 use std::vec;
 
 use anyhow::{anyhow, Result};
+use indexmap::IndexSet;
 use rayon::prelude::*;
 use swc_common::DUMMY_SP;
 use swc_css_ast::Stylesheet;
@@ -273,7 +273,7 @@ fn build_props(key_str: &str, value: Box<Expr>) -> PropOrSpread {
 }
 
 pub fn modules_to_js_stmts(
-    module_ids: &HashSet<ModuleId>,
+    module_ids: &IndexSet<ModuleId>,
     module_graph: &std::sync::RwLockReadGuard<crate::module_graph::ModuleGraph>,
     context: &Arc<Context>,
 ) -> Result<(Vec<PropOrSpread>, Option<Stylesheet>)> {
@@ -284,8 +284,7 @@ pub fn modules_to_js_stmts(
     };
     let mut has_css = false;
 
-    let mut module_ids: Vec<_> = module_ids.iter().collect();
-    module_ids.sort_by_key(|module_id| module_id.id.to_string());
+    let module_ids: Vec<_> = module_ids.iter().collect();
 
     for module_id in module_ids {
         let module = module_graph.get_module(module_id).unwrap();

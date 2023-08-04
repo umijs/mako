@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::cmp::Ordering::Equal;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::hash::Hasher;
 use std::path::Path;
@@ -184,23 +185,36 @@ impl Compiler {
 
         let chunk_id = entry_module_id.generate(&self.context);
         let mut chunk = Chunk::new(chunk_id.into(), chunk_type);
-        chunk.add_module(entry_module_id.clone());
+        let mut visited_level_map = HashMap::from([(entry_module_id.id.clone(), 1)]);
+        let mut visited_modules = vec![];
 
         let module_graph = self.context.module_graph.read().unwrap();
         while !bfs.done() {
             match bfs.next_node() {
                 NextResult::Visited => continue,
                 NextResult::First(head) => {
-                    chunk.add_module(head.clone());
+                    let level = *visited_level_map.get(&head.id).unwrap();
+
                     for (dep_module_id, dep) in module_graph.get_dependencies(head) {
                         if dep.resolve_type == ResolveType::DynamicImport {
                             dynamic_entries.push(dep_module_id.clone());
                         } else {
                             bfs.visit(dep_module_id);
+                            visited_level_map.insert(dep_module_id.id.clone(), level + 1);
                         }
                     }
+                    // record visited module and its level
+                    visited_modules.push((head.clone(), level));
                 }
             }
+        }
+
+        // sort modules by dfs order
+        visited_modules.sort_by(|a, b| if a.0 == b.0 { Equal } else { a.0.cmp(&b.0) });
+
+        // add modules to chunk as dfs order
+        for (module_id, _) in visited_modules {
+            chunk.add_module(module_id);
         }
 
         (chunk, dynamic_entries)
