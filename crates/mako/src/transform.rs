@@ -22,7 +22,7 @@ use swc_ecma_transforms::modules::import_analysis::import_analyzer;
 use swc_ecma_transforms::modules::util::ImportInterop;
 use swc_ecma_transforms::typescript::strip_with_jsx;
 use swc_ecma_transforms::{resolver, Assumptions};
-use swc_ecma_visit::{Fold, VisitMut, VisitMutWith as CssVisitMutWith};
+use swc_ecma_visit::{Fold, VisitMutWith as CssVisitMutWith};
 use swc_error_reporters::handler::try_with_handler;
 
 use crate::build::Task;
@@ -35,7 +35,7 @@ use crate::transform_css_url_replacer::CSSUrlReplacer;
 use crate::transform_env_replacer::EnvReplacer;
 use crate::transform_optimizer::Optimizer;
 use crate::transform_provide::Provide;
-use crate::transform_react::{mako_react, PrefixCode};
+use crate::transform_react::mako_react;
 
 pub fn transform(
     ast: &mut ModuleAst,
@@ -112,29 +112,6 @@ fn build_env_map(env_map: HashMap<String, Value>) -> AHashMap<JsWord, Expr> {
     map
 }
 
-struct GlobalThisPolyfill {
-    ident_name: String,
-    met_identifier: bool,
-}
-
-impl GlobalThisPolyfill {
-    pub fn new(ident_name: String) -> Self {
-        Self {
-            met_identifier: false,
-            ident_name,
-        }
-    }
-}
-
-impl VisitMut for GlobalThisPolyfill {
-    fn visit_mut_ident(&mut self, ident: &mut Ident) {
-        // fn visit_ident(&mut self, ident: &Ident) {
-        if ident.sym == self.ident_name {
-            self.met_identifier = true;
-        }
-    }
-}
-
 fn transform_js(
     ast: &mut Module,
     context: &Arc<Context>,
@@ -156,22 +133,6 @@ fn transform_js(
             HELPERS.set(&Helpers::new(true), || {
                 HANDLER.set(handler, || {
                     let import_interop = ImportInterop::Swc;
-
-                    let mut v = GlobalThisPolyfill::new("globalThis".to_string());
-                    ast.visit_mut_with(&mut v);
-
-                    if v.met_identifier {
-                        println!("{} has globalThis", &task.path);
-
-                        let mut prefix = PrefixCode {
-                            code: format!(r#"var globalThis = require("/_virtual/_minifish-polyfill-global.js").__minifish_global__)"#),
-                            context: context.clone(),
-                        };
-
-                        ast.visit_mut_with(&mut prefix);
-                    }
-
-
 
                     ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
                     ast.visit_mut_with(&mut strip_with_jsx(
@@ -575,7 +536,7 @@ require("foo");
         let (code, _sourcemap) = transform_js_code(
             code,
             None,
-            HashMap::from([("foo".to_string(), "bar".to_string())]),
+            HashMap::from([("foo".to_string(), "./bar".to_string())]),
         );
         println!(">> CODE\n{}", code);
         assert_eq!(
