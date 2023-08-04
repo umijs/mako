@@ -1,6 +1,3 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-
 use swc_common::util::take::Take;
 use swc_css_ast::{AtRule, AtRulePrelude, ImportHref, Rule, Stylesheet, UrlValue};
 use swc_css_visit::{VisitMut, VisitMutWith};
