@@ -215,6 +215,7 @@ mod tests {
 .bar { color: blue; }
 @import "https://example.com/bar.css";
 .other { color: green; }
+@media print {}
 @import "https://example.com/other.css";
         "#
         .trim();
@@ -234,7 +235,8 @@ mod tests {
 }
 .other {
   color: green;
-}"#
+}
+@media print {}"#
             .trim()
         );
     }
