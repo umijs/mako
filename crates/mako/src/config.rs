@@ -171,7 +171,7 @@ impl Config {
                 config.output.path = root.join(config.output.path.to_string_lossy().to_string());
             }
 
-            let mode = format!("\"{}\"", config.mode.to_string());
+            let mode = format!("\"{}\"", config.mode);
 
             config
                 .define
