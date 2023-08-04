@@ -4,10 +4,14 @@ use std::path::{Path, PathBuf};
 use clap::ValueEnum;
 use serde::Deserialize;
 use serde_json::Value;
+use swc_ecma_ast::EsVersion;
 
 #[derive(Deserialize, Debug)]
 pub struct OutputConfig {
     pub path: PathBuf,
+    pub mode: OutputMode,
+    #[serde(rename(deserialize = "esVersion"))]
+    pub es_version: EsVersion,
 }
 
 #[derive(Deserialize, Debug)]
@@ -24,6 +28,14 @@ pub enum Mode {
     Development,
     #[serde(rename = "production")]
     Production,
+}
+
+#[derive(Deserialize, Debug, PartialEq, Eq, ValueEnum, Clone)]
+pub enum OutputMode {
+    #[serde(rename = "bundle")]
+    Bundle,
+    #[serde(rename = "bundleless")]
+    Bundleless,
 }
 
 // TODO:
@@ -103,7 +115,7 @@ const CONFIG_FILE: &str = "mako.config.json";
 const DEFAULT_CONFIG: &str = r#"
 {
     "entry": {},
-    "output": { "path": "dist" },
+    "output": { "path": "dist", "mode": "bundle", "esVersion": "es2022" },
     "resolve": { "alias": {}, "extensions": ["js", "jsx", "ts", "tsx"] },
     "mode": "development",
     "minify": true,

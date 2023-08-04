@@ -144,6 +144,8 @@ pub fn js_ast_to_code(
         let mut emitter = Emitter {
             cfg: JsCodegenConfig {
                 minify: context.config.minify && matches!(context.config.mode, Mode::Production),
+                target: context.config.output.es_version,
+                ascii_only: true,
                 ..Default::default()
             },
             cm: cm.clone(),
