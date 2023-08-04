@@ -16,6 +16,7 @@ use crate::ast::build_js_ast;
 use crate::compiler::{Compiler, Context};
 use crate::config::Mode;
 use crate::module::{ModuleAst, ModuleId};
+use crate::transform_in_generate::transform_css_generate;
 
 pub struct OutputAst {
     pub path: String,
@@ -278,11 +279,7 @@ pub fn modules_to_js_stmts(
     context: &Arc<Context>,
 ) -> Result<(Vec<PropOrSpread>, Option<Stylesheet>)> {
     let mut js_stmts = vec![];
-    let mut merged_css_ast = Stylesheet {
-        span: DUMMY_SP,
-        rules: vec![],
-    };
-    let mut has_css = false;
+    let mut merged_css_modules: Vec<(String, Stylesheet)> = vec![];
 
     let module_ids: Vec<_> = module_ids.iter().collect();
 
@@ -324,13 +321,45 @@ pub fn modules_to_js_stmts(
                 ));
             }
             ModuleAst::Css(ast) => {
-                has_css = true;
-                merged_css_ast.rules.extend(ast.rules.clone());
+                // also push an empty css module to js_stmts
+                // to make sure require('./xxxx.css') not throw error
+                js_stmts.push(build_props(
+                    module.id.generate(context).as_str(),
+                    Box::new(Expr::Fn(build_fn_expr(
+                        None,
+                        vec![
+                            build_ident_param("module"),
+                            build_ident_param("exports"),
+                            build_ident_param("require"),
+                        ],
+                        vec![],
+                    ))),
+                ));
+
+                // only apply the last css module if chunk depend on it multiple times
+                // make sure the rules order is correct
+                if let Some(index) = merged_css_modules
+                    .iter()
+                    .position(|(id, _)| id.eq(&module.id.id))
+                {
+                    merged_css_modules.remove(index);
+                }
+                merged_css_modules.push((module.id.id.clone(), ast.clone()));
             }
             ModuleAst::None => {}
         }
     }
-    if has_css {
+    if !merged_css_modules.is_empty() {
+        let mut merged_css_ast = Stylesheet {
+            span: DUMMY_SP,
+            rules: vec![],
+        };
+
+        for (_, ast) in merged_css_modules {
+            merged_css_ast.rules.extend(ast.rules);
+        }
+
+        transform_css_generate(&mut merged_css_ast, context);
         Ok((js_stmts, Some(merged_css_ast)))
     } else {
         Ok((js_stmts, None))
