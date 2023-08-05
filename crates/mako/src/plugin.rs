@@ -23,12 +23,15 @@ pub struct PluginParseParam<'a> {
 
 pub trait Plugin: Any + Send + Sync {
     fn name(&self) -> &str;
+
     fn modify_config(&self, _config: &mut Config) -> Result<()> {
         Ok(())
     }
+
     fn load(&self, _param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
         Ok(None)
     }
+
     fn parse(
         &self,
         _param: &PluginParseParam,
@@ -50,12 +53,14 @@ impl PluginDriver {
     pub fn new(plugins: Vec<Arc<dyn Plugin>>) -> Self {
         Self { plugins }
     }
+
     pub fn modify_config(&self, config: &mut Config) -> Result<()> {
         for plugin in &self.plugins {
             plugin.modify_config(config)?;
         }
         Ok(())
     }
+
     pub fn load(&self, param: &PluginLoadParam, context: &Arc<Context>) -> Result<Option<Content>> {
         for plugin in &self.plugins {
             let ret = plugin.load(param, context)?;
