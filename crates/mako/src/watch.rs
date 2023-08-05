@@ -2,13 +2,14 @@ use std::path::PathBuf;
 
 use futures::channel::mpsc::channel;
 use futures::{SinkExt, StreamExt};
-use notify::event::{DataChange, ModifyKind};
+use notify::event::{CreateKind, DataChange, ModifyKind};
 use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 
 use crate::update::UpdateType;
 
 #[derive(Debug)]
 pub enum WatchEvent {
+    Added(Vec<PathBuf>),
     Modified(Vec<PathBuf>),
     #[allow(dead_code)]
     Removed(Vec<PathBuf>),
@@ -24,6 +25,10 @@ impl From<WatchEvent> for Vec<(PathBuf, UpdateType)> {
             WatchEvent::Removed(paths) => paths
                 .into_iter()
                 .map(|path| (path, UpdateType::Remove))
+                .collect(),
+            WatchEvent::Added(paths) => paths
+                .into_iter()
+                .map(|path| (path, UpdateType::Add))
                 .collect(),
         }
     }
@@ -82,16 +87,18 @@ where
             Ok(event) => match event.kind {
                 EventKind::Any => {}
                 EventKind::Access(_) => {}
-                EventKind::Create(_) => {
-                    // a new create file trigger both Create and Modify Event
+                EventKind::Create(CreateKind::File) => {
+                    func(crate::watch::WatchEvent::Added(event.paths));
                 }
+                EventKind::Create(_) => {}
+
                 EventKind::Modify(ModifyKind::Data(DataChange::Any)) => {
                     println!("{:?}", event);
                     func(crate::watch::WatchEvent::Modified(event.paths));
                 }
                 EventKind::Modify(_) => {}
                 EventKind::Remove(_) => {
-                    println!("{:?}", event);
+                    func(crate::watch::WatchEvent::Removed(event.paths));
                 }
                 EventKind::Other => {}
             },

@@ -16,6 +16,8 @@ use crate::module::{Dependency, Module, ModuleAst, ModuleId, ModuleInfo};
 use crate::parse::parse;
 use crate::resolve::{get_resolvers, resolve, Resolvers};
 use crate::transform::transform;
+use crate::transform_after_resolve::transform_after_resolve;
+use crate::transform_dep_replacer::DependenciesToReplace;
 
 #[derive(Debug)]
 pub struct Task {
@@ -188,6 +190,7 @@ impl Compiler {
                         path: resolved_path,
                         external: Some(external),
                         raw_hash: 0,
+                        missing_deps: HashMap::new(),
                     }),
                 )
             }
@@ -217,9 +220,11 @@ impl Compiler {
         let deps = analyze_deps(&ast)?;
 
         // resolve
-        // TODO: 支持同时有多个 resolve error
         let mut dep_resolve_err = None;
         let mut dependencies = Vec::new();
+        let mut resolved_deps = HashMap::<String, String>::new();
+        let mut resolved_deps_by_path = HashMap::<String, i32>::new();
+        let mut missing_dependencies = HashMap::new();
         for dep in deps {
             if dep.source.starts_with("@xinternal/") || dep.source.contains("/_virtual/") {
                 continue;
@@ -227,56 +232,87 @@ impl Compiler {
 
             let ret = resolve(&task.path, &dep, &resolvers, &context);
             match ret {
-                Ok((x, y)) => {
-                    dependencies.push((x, y, dep.clone()));
+                Ok((path, external)) => {
+                    dependencies.push((path.clone(), external, dep.clone()));
+                    let id = ModuleId::new(path);
+                    let id_str = id.generate(&context);
+                    resolved_deps.insert(dep.source.clone(), id.generate(&context));
+                    let count = if resolved_deps_by_path.get(&id_str).is_none() {
+                        1
+                    } else {
+                        resolved_deps_by_path.get(&id_str).unwrap() + 1
+                    };
+                    resolved_deps_by_path.insert(id_str.clone(), count);
                 }
                 Err(_) => {
                     // 获取 本次引用 和 上一级引用 路径
-                    dep_resolve_err = Some((task.path.clone(), dep.source));
+                    missing_dependencies.insert(dep.source.clone(), dep.resolve_type.clone());
+                    dep_resolve_err = Some((task.path.clone(), dep.source, dep.resolve_type));
                 }
             }
         }
-        if let Some(e) = dep_resolve_err {
-            // resolve 报错时的 target 和 source
-            let mut source = e.1;
-            let mut target = e.0;
-            // 使用 hasMap 记录循环依赖
-            let mut target_map: HashMap<String, i32> = HashMap::new();
-            target_map.insert(target.clone(), 1);
 
-            let mut err: String = format!(
-                "\n\nResolve Error: Resolve \"{}\" failed from \"{}\" \n",
-                source, target
-            );
+        if context.config.mode == crate::config::Mode::Production {
+            if let Some(e) = dep_resolve_err {
+                // resolve 报错时的 target 和 source
+                let mut source = e.1;
+                let mut target = e.0;
+                // 使用 hasMap 记录循环依赖
+                let mut target_map: HashMap<String, i32> = HashMap::new();
+                target_map.insert(target.clone(), 1);
 
-            let id = ModuleId::new(target.clone());
-            let module_graph = context.module_graph.read().unwrap();
+                let mut err: String = format!(
+                    "\n\nResolve Error: Resolve \"{}\" failed from \"{}\" \n",
+                    source, target
+                );
 
-            //  当 entry resolve 文件失败时，get_targets 自身会失败
-            if module_graph.get_module(&id).is_some() {
-                let mut targets: Vec<&ModuleId> = module_graph.get_targets(&id);
-                // 循环找 target
-                while !targets.is_empty() {
-                    let target_module_id = targets[0].clone();
-                    targets = module_graph.get_targets(&target_module_id);
-                    source = target.clone();
-                    target = target_module_id.id;
-                    // 拼接引用堆栈 string
-                    err = format!("{}  -> Resolve \"{}\" from \"{}\" \n", err, source, target);
+                let id = ModuleId::new(target.clone());
+                let module_graph = context.module_graph.read().unwrap();
 
-                    if target_map.contains_key(&target) {
-                        // 存在循环依赖
-                        err = format!("{}  -> \"{}\" 中存在循环依赖", err, target);
-                        break;
-                    } else {
-                        target_map.insert(target.clone(), 1);
+                //  当 entry resolve 文件失败时，get_targets 自身会失败
+                if module_graph.get_module(&id).is_some() {
+                    let mut targets: Vec<ModuleId> = module_graph.dependant_module_ids(&id);
+                    // 循环找 target
+                    while !targets.is_empty() {
+                        let target_module_id = targets[0].clone();
+                        targets = module_graph.dependant_module_ids(&target_module_id);
+                        source = target.clone();
+                        target = target_module_id.id;
+                        // 拼接引用堆栈 string
+                        err = format!("{}  -> Resolve \"{}\" from \"{}\" \n", err, source, target);
+
+                        if target_map.contains_key(&target) {
+                            // 存在循环依赖
+                            err = format!("{}  -> \"{}\" 中存在循环依赖", err, target);
+                            break;
+                        } else {
+                            target_map.insert(target.clone(), 1);
+                        }
                     }
+                    // 调整格式
+                    err = format!("{} \n", err);
                 }
-                // 调整格式
-                err = format!("{} \n", err);
+                return Err(anyhow::anyhow!(err));
             }
-            return Err(anyhow::anyhow!(err));
         }
+
+        // transform to replace deps
+        // ref: https://github.com/umijs/mako/issues/311
+        let mut filtered_resolved_deps = HashMap::new();
+        resolved_deps.iter().for_each(|(source, path)| {
+            if resolved_deps_by_path.get(path).is_none() {
+                return;
+            }
+            let v = *resolved_deps_by_path.get(path).unwrap();
+            if v > 1 {
+                filtered_resolved_deps.insert(source.clone(), path.clone());
+            }
+        });
+        let deps_to_replace = DependenciesToReplace {
+            missing: HashMap::new(),
+            resolved: filtered_resolved_deps,
+        };
+        transform_after_resolve(&mut ast, &context, &task, &deps_to_replace)?;
 
         // create module info
         let info = ModuleInfo {
@@ -284,6 +320,7 @@ impl Compiler {
             path: task.path.clone(),
             external: None,
             raw_hash: content.raw_hash(),
+            missing_deps: missing_dependencies,
         };
         let module = Module::new(module_id, task.is_entry, Some(info));
 

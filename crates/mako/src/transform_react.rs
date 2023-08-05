@@ -107,9 +107,9 @@ pub fn react_refresh_entry_prefix(context: &Arc<Context>) -> Box<dyn VisitMut> {
         context: context.clone(),
         code: r#"
 const RefreshRuntime = require('react-refresh');
-RefreshRuntime.injectIntoGlobalHook(window)
-window.$RefreshReg$ = () => {}
-window.$RefreshSig$ = () => (type) => type
+RefreshRuntime.injectIntoGlobalHook(window);
+window.$RefreshReg$ = () => {};
+window.$RefreshSig$ = () => (type) => type;
 "#
         .to_string(),
     })

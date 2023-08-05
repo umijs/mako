@@ -13,6 +13,7 @@ use crate::compiler::Compiler;
 use crate::config::{DevtoolConfig, Mode, OutputMode};
 use crate::minify::minify_js;
 use crate::module::ModuleAst;
+use crate::stats::{create_stats_info, log_assets, write_stats};
 use crate::update::UpdateResult;
 
 impl Compiler {
@@ -122,14 +123,17 @@ impl Compiler {
         // write assets
         let t_write_assets = Instant::now();
         info!("write assets");
-        let assets_info = &(*self.context.assets_info.lock().unwrap());
-        for (k, v) in assets_info {
-            let asset_path = &self.context.root.join(k);
-            let asset_output_path = &config.output.path.join(v);
-            if asset_path.exists() {
-                fs::copy(asset_path, asset_output_path)?;
-            } else {
-                panic!("asset not found: {}", asset_path.display());
+        // why {} block? unlock assets_info
+        {
+            let assets_info = &(*self.context.assets_info.lock().unwrap());
+            for (k, v) in assets_info {
+                let asset_path = &self.context.root.join(k);
+                let asset_output_path = &config.output.path.join(v);
+                if asset_path.exists() {
+                    fs::copy(asset_path, asset_output_path)?;
+                } else {
+                    panic!("asset not found: {}", asset_path.display());
+                }
             }
         }
         let t_write_assets = t_write_assets.elapsed();
@@ -139,6 +143,20 @@ impl Compiler {
         info!("copy");
         self.copy()?;
         let t_copy = t_copy.elapsed();
+
+        // generate stats
+        let stats = create_stats_info(0, self);
+        if self.context.config.stats {
+            write_stats(&stats, self);
+        }
+
+        // build_success hook
+        self.context
+            .plugin_driver
+            .build_success(&stats, &self.context)?;
+
+        // log assets
+        log_assets(self);
 
         info!("generate done in {}ms", t_generate.elapsed().as_millis());
         info!("  - tree shaking: {}ms", t_tree_shaking.as_millis());

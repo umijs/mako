@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use swc_common::util::take::Take;
-use swc_css_ast::{AtRulePrelude, ImportHref, Rule, Stylesheet, UrlValue};
+use swc_css_ast::{AtRule, AtRulePrelude, ImportHref, Rule, Stylesheet, UrlValue};
 use swc_css_visit::{VisitMut, VisitMutWith};
 
 use crate::analyze_deps::is_url_ignored;
@@ -17,6 +17,26 @@ impl VisitMut for CssHandler<'_> {
     // remove @import,
     // http(s) will not be removed
     fn visit_mut_stylesheet(&mut self, n: &mut Stylesheet) {
+        // move all @import to the top of other rules
+        n.rules.sort_by_key(|rule| {
+            let mut ret: i8 = 1;
+
+            if let Rule::AtRule {
+                0:
+                    box AtRule {
+                        prelude: Some(box AtRulePrelude::ImportPrelude(_)),
+                        ..
+                    },
+                ..
+            } = rule
+            {
+                ret = 0;
+            }
+
+            ret
+        });
+
+        // filter non-url @import
         n.rules = n
             .rules
             .take()

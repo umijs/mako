@@ -21,6 +21,7 @@ pub async fn build(
        alias?: Record<string, string>;
        extensions?: string[];
     };
+    manifest?: boolean;
     mode?: "development" | "production";
     define?: Record<string, string>;
     devtool?: "source-map" | "inline-source-map";

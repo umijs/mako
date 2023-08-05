@@ -23,7 +23,7 @@ use crate::config::{Config, Mode};
 use crate::load::{read_content, Content};
 use crate::module::{ModuleAst, ModuleId};
 use crate::plugin::{Plugin, PluginLoadParam};
-use crate::transform_dep_replacer::DepReplacer;
+use crate::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
 use crate::transform_dynamic_import::DynamicImport;
 use crate::transform_in_generate::transform_css;
 use crate::transform_react::PrefixCode;
@@ -144,7 +144,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
             .unwrap()
             .to_path_buf();
 
-        let dep_map: HashMap<String, String> = deps
+        let resolved_deps: HashMap<String, String> = deps
             .clone()
             .into_iter()
             // .map(|(id, dep)| (dep.source.clone(), id.generate(context)))
@@ -182,14 +182,19 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         let path = info.path.clone();
         let ast = &mut info.ast;
 
+        let deps_to_replace = DependenciesToReplace {
+            resolved: resolved_deps.clone(),
+            missing: info.missing_deps.clone(),
+        };
+
         if let ModuleAst::Script(ast) = ast {
-            transform_js_generate(&module.id, context, ast, &dep_map, module.is_entry);
+            transform_js_generate(&module.id, context, ast, &deps_to_replace, module.is_entry);
         }
 
         // 通过开关控制是否单独提取css文件
         if !context.config.extract_css {
             if let ModuleAst::Css(ast) = ast {
-                let ast = transform_css(ast, &path, dep_map, assets_map, context);
+                let ast = transform_css(ast, &path, resolved_deps, assets_map, context);
                 info.set_ast(ModuleAst::Script(ast));
             }
         }
@@ -201,7 +206,7 @@ pub fn transform_js_generate(
     id: &ModuleId,
     context: &Arc<Context>,
     ast: &mut Ast,
-    dep_map: &HashMap<String, String>,
+    dep_map: &DependenciesToReplace,
     _is_entry: bool,
 ) {
     let _is_dev = matches!(context.config.mode, Mode::Development);
@@ -266,7 +271,7 @@ pub fn transform_js_generate(
                             // ast.ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
 
                             let mut dep_replacer = DepReplacer {
-                                dep_map: dep_map.clone(),
+                                to_replace: dep_map,
                                 context,
                             };
                             ast.ast.visit_mut_with(&mut dep_replacer);

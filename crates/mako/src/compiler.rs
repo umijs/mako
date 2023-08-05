@@ -111,10 +111,12 @@ impl Compiler {
         let mut plugins: Vec<Arc<dyn Plugin>> = vec![
             // features
             Arc::new(plugins::node_polyfill::NodePolyfillPlugin {}),
+            Arc::new(plugins::manifest::ManifestPlugin {}),
             // file types
             Arc::new(plugins::css::CSSPlugin {}),
             Arc::new(plugins::javascript::JavaScriptPlugin {}),
             Arc::new(plugins::json::JSONPlugin {}),
+            Arc::new(plugins::md::MdPlugin {}),
             Arc::new(plugins::svg::SVGPlugin {}),
             Arc::new(plugins::toml::TOMLPlugin {}),
             Arc::new(plugins::wasm::WASMPlugin {}),
@@ -297,6 +299,10 @@ mod tests {
             "json loader"
         );
         assert!(
+            index_js_content.contains("var _default = MDXContent;"),
+            "md loader"
+        );
+        assert!(
             index_js_content.contains("\"foo\": \"json5\""),
             "json5 loader"
         );
@@ -330,6 +336,18 @@ mod tests {
             "include small.png in js"
         );
         // TODO: svg
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_issue_311_single_dep_with_multiple_sources() {
+        let (files, file_contents) =
+            compile("test/compile/issue-311-single-dep-with-multiple-sources");
+        println!("{:?}", files);
+        let index_js_content = file_contents.get("index.js").unwrap();
+        assert!(
+            !index_js_content.contains("require('./axios/foo');"),
+            "should replace single dep with multiple sources"
+        );
     }
 
     fn compile(base: &str) -> (Vec<String>, HashMap<String, String>) {

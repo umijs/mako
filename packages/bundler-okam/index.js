@@ -109,7 +109,8 @@ function checkConfig(config) {
 }
 
 function getOkamConfig(opts) {
-  const { alias, targets, publicPath, runtimePublicPath } = opts.config;
+  const { alias, targets, publicPath, runtimePublicPath, manifest, mdx } =
+    opts.config;
   const outputPath = path.join(opts.cwd, 'dist');
   // TODO:
   // 暂不支持 $ 结尾，等 resolve 支持后可以把这段去掉
@@ -133,6 +134,9 @@ function getOkamConfig(opts) {
         'react-refresh': path.dirname(
           require.resolve('react-refresh/package.json'),
         ),
+        'react-error-overlay': path.dirname(
+          require.resolve('react-error-overlay/package.json'),
+        ),
       },
     },
     mode: 'development',
@@ -140,5 +144,7 @@ function getOkamConfig(opts) {
     targets: targets || {
       chrome: 80,
     },
+    manifest: !!manifest,
+    mdx: !!mdx,
   };
 }

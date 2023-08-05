@@ -1,20 +1,13 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Result;
-use serde_json::Value;
-use swc_atoms::JsWord;
-use swc_common::collections::AHashMap;
 use swc_common::comments::NoopComments;
 use swc_common::errors::HANDLER;
 use swc_common::sync::Lrc;
-use swc_common::{Mark, DUMMY_SP, GLOBALS};
+use swc_common::{Mark, GLOBALS};
 use swc_css_ast::Stylesheet;
 use swc_css_visit::VisitMutWith;
-use swc_ecma_ast::{
-    ArrayLit, Bool, Expr, ExprOrSpread, Ident, KeyValueProp, Lit, Module, Null, Number, ObjectLit,
-    Prop, PropName, PropOrSpread, Str,
-};
+use swc_ecma_ast::Module;
 use swc_ecma_preset_env::{self as swc_preset_env};
 use swc_ecma_transforms::feature::FeatureFlag;
 use swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
@@ -32,7 +25,7 @@ use crate::module::ModuleAst;
 use crate::resolve::Resolvers;
 use crate::targets;
 use crate::transform_css_url_replacer::CSSUrlReplacer;
-use crate::transform_env_replacer::EnvReplacer;
+use crate::transform_env_replacer::{build_env_map, EnvReplacer};
 use crate::transform_optimizer::Optimizer;
 use crate::transform_provide::Provide;
 use crate::transform_react::mako_react;
@@ -56,62 +49,6 @@ pub fn transform(
     }
 }
 
-fn get_env_expr(v: Value) -> Expr {
-    match v {
-        Value::String(v) => Expr::Lit(Lit::Str(Str {
-            span: DUMMY_SP,
-            raw: None,
-            value: v.into(),
-        })),
-        Value::Bool(v) => Expr::Lit(Lit::Bool(Bool {
-            span: DUMMY_SP,
-            value: v,
-        })),
-        Value::Number(v) => Expr::Lit(Lit::Num(Number {
-            span: DUMMY_SP,
-            raw: None,
-            value: v.as_f64().unwrap(),
-        })),
-        Value::Array(val) => {
-            let mut elems = vec![];
-            for item in val.iter() {
-                elems.push(Some(ExprOrSpread {
-                    spread: None,
-                    expr: Box::new(get_env_expr(item.clone())),
-                }));
-            }
-            Expr::Array(ArrayLit {
-                span: DUMMY_SP,
-                elems,
-            })
-        }
-        Value::Null => Expr::Lit(Lit::Null(Null { span: DUMMY_SP })),
-        Value::Object(val) => {
-            let mut props = vec![];
-            for (key, value) in val.iter() {
-                let prop = PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                    key: PropName::Ident(Ident::new(key.clone().into(), DUMMY_SP)),
-                    value: Box::new(get_env_expr(value.clone())),
-                })));
-                props.push(prop);
-            }
-            Expr::Object(ObjectLit {
-                span: DUMMY_SP,
-                props,
-            })
-        }
-    }
-}
-
-fn build_env_map(env_map: HashMap<String, Value>) -> AHashMap<JsWord, Expr> {
-    let mut map = AHashMap::default();
-    env_map.into_iter().for_each(|(k, v)| {
-        let expr = get_env_expr(v);
-        map.insert(k.into(), expr);
-    });
-    map
-}
-
 fn transform_js(
     ast: &mut Module,
     context: &Arc<Context>,
@@ -122,12 +59,13 @@ fn transform_js(
     let cm = context.meta.script.cm.clone();
     let mode = &context.config.mode.to_string();
     let mut define = context.config.define.clone();
+
     define
         .entry("NODE_ENV".to_string())
-        .or_insert_with(|| mode.clone().into());
+        .or_insert_with(|| format!("\"{}\"", mode).into());
     let _is_dev = matches!(context.config.mode, Mode::Development);
 
-    let env_map = build_env_map(define);
+    let env_map = build_env_map(define, context)?;
     GLOBALS.set(&context.meta.script.globals, || {
         try_with_handler(cm.clone(), Default::default(), |handler| {
             HELPERS.set(&Helpers::new(true), || {
@@ -214,6 +152,7 @@ mod tests {
     use crate::config::Config;
     use crate::module::ModuleId;
     use crate::module_graph::ModuleGraph;
+    use crate::transform_dep_replacer::DependenciesToReplace;
     use crate::transform_in_generate::transform_js_generate;
 
     #[test]
@@ -238,7 +177,7 @@ const App = ()=>(0, _jsxdevruntime.jsxDEV)(_jsxdevruntime.Fragment, {
             fileName: "test.tsx",
             lineNumber: 1,
             columnNumber: 21
-        }, void 0)
+        }, this)
     }, void 0, false);
 
 //# sourceMappingURL=index.js.map
@@ -598,7 +537,10 @@ require("./bar");
             &ModuleId::new("test".to_string()),
             &context,
             &mut ast,
-            &dep,
+            &DependenciesToReplace {
+                resolved: dep,
+                missing: HashMap::new(),
+            },
             false,
         );
         let (code, _sourcemap) = js_ast_to_code(&ast.ast, &context, "index.js").unwrap();

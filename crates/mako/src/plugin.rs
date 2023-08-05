@@ -8,6 +8,7 @@ use crate::compiler::Context;
 use crate::config::Config;
 use crate::load::Content;
 use crate::module::ModuleAst;
+use crate::stats::StatsJsonMap;
 
 #[derive(Debug)]
 pub struct PluginLoadParam {
@@ -41,6 +42,10 @@ pub trait Plugin: Any + Send + Sync {
     }
 
     fn generate(&self, _context: &Arc<Context>) -> Result<Option<()>> {
+        Ok(None)
+    }
+
+    fn build_success(&self, _stats: &StatsJsonMap, _context: &Arc<Context>) -> Result<Option<()>> {
         Ok(None)
     }
 }
@@ -92,5 +97,16 @@ impl PluginDriver {
             }
         }
         Err(anyhow!("None of the plugins generate content"))
+    }
+
+    pub fn build_success(
+        &self,
+        stats: &StatsJsonMap,
+        context: &Arc<Context>,
+    ) -> Result<Option<()>> {
+        for plugin in &self.plugins {
+            plugin.build_success(stats, context)?;
+        }
+        Ok(None)
     }
 }
