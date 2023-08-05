@@ -19,18 +19,30 @@ use swc_error_reporters::handler::try_with_handler;
 
 use crate::ast::{js_ast_to_code, Ast};
 use crate::compiler::Context;
-use crate::config::Mode;
+use crate::config::{Config, Mode};
+use crate::load::{read_content, Content};
 use crate::module::{ModuleAst, ModuleId};
-use crate::plugin::Plugin;
+use crate::plugin::{Plugin, PluginLoadParam};
 use crate::transform_dep_replacer::DepReplacer;
 use crate::transform_dynamic_import::DynamicImport;
 use crate::transform_in_generate::transform_css;
 use crate::transform_react::PrefixCode;
 use crate::unused_statement_sweep::UnusedStatementSweep;
 
-pub struct MinifishGenerator {}
+pub struct MinifishCompiler {
+    minifish_map: HashMap<String, String>,
+}
 
-impl MinifishGenerator {
+impl MinifishCompiler {
+    pub fn new(_: &Config, root: &PathBuf) -> Self {
+        let map_file = root.join("_apcJsonContentMap.json");
+
+        let content = read_content(map_file).unwrap();
+
+        let minifish_map = serde_json::from_str::<HashMap<String, String>>(&content).unwrap();
+
+        Self { minifish_map }
+    }
     pub fn transform_all(&self, context: &Arc<Context>) -> Result<()> {
         let module_graph = context.module_graph.read().unwrap();
         let module_ids = module_graph.get_module_ids();
@@ -59,9 +71,28 @@ impl MinifishGenerator {
     }
 }
 
-impl Plugin for MinifishGenerator {
+impl Plugin for MinifishCompiler {
     fn name(&self) -> &str {
         "minifish_generator"
+    }
+
+    fn load(&self, param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
+        if matches!(param.ext_name.as_str(), "json" | "json5") {
+            let root = _context.root.clone();
+            let to: PathBuf = param.path.clone().into();
+
+            let relative = to
+                .strip_prefix(root)
+                .unwrap_or_else(|_| panic!("{:?} not under project root", to))
+                .to_str()
+                .unwrap();
+
+            return match self.minifish_map.get(relative) {
+                Some(js_content) => Ok(Some(Content::Js(js_content.to_string()))),
+                None => Ok(None),
+            };
+        }
+        Ok(None)
     }
 
     fn generate(&self, context: &Arc<Context>) -> Result<Option<()>> {
@@ -152,7 +183,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         let ast = &mut info.ast;
 
         if let ModuleAst::Script(ast) = ast {
-            transform_js_generate2(&module.id, context, ast, &dep_map, module.is_entry);
+            transform_js_generate(&module.id, context, ast, &dep_map, module.is_entry);
         }
 
         // 通过开关控制是否单独提取css文件
@@ -166,7 +197,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
     Ok(())
 }
 
-pub fn transform_js_generate2(
+pub fn transform_js_generate(
     id: &ModuleId,
     context: &Arc<Context>,
     ast: &mut Ast,
