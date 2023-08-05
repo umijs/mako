@@ -221,7 +221,7 @@ impl Compiler {
         let mut dep_resolve_err = None;
         let mut dependencies = Vec::new();
         for dep in deps {
-            if dep.source.starts_with("@internal/") || dep.source.starts_with("/_virtual/") {
+            if dep.source.starts_with("@xinternal/") || dep.source.contains("/_virtual/") {
                 continue;
             }
 
