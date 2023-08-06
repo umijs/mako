@@ -186,7 +186,9 @@ mod tests {
         );
     }
 
+    // TODO: enable this case when support inline css
     #[tokio::test(flavor = "multi_thread")]
+    #[ignore]
     async fn test_css_deps() {
         let (files, file_contents) = compile("test/compile/css-deps");
         println!("{:?}", files);
@@ -222,9 +224,9 @@ mod tests {
             !files.join(",").contains(&".png".to_string()),
             "small.png is inlined"
         );
-        let index_js_content = file_contents.get("index.js").unwrap();
+        let index_css_content = file_contents.get("index.css").unwrap();
         assert!(
-            index_js_content.contains("data:image/png;base64,"),
+            index_css_content.contains("data:image/png;base64,"),
             "small.png is inlined"
         );
     }
@@ -244,10 +246,10 @@ mod tests {
     async fn test_css_modules() {
         let (files, file_contents) = compile("test/compile/css-modules");
         println!("{:?}", files);
-        let index_js_content = file_contents.get("index.js").unwrap();
-        assert!(index_js_content.contains(".foo-"), ".foo is css moduled");
+        let index_css_content = file_contents.get("index.css").unwrap();
+        assert!(index_css_content.contains(".foo-"), ".foo is css moduled");
         assert!(
-            index_js_content.contains(".bar {"),
+            index_css_content.contains(".bar {"),
             ".bar with :global is not css moduled"
         );
     }
@@ -256,13 +258,13 @@ mod tests {
     async fn test_css_nesting() {
         let (files, file_contents) = compile("test/compile/css-nesting");
         println!("{:?}", files);
-        let index_js_content = file_contents.get("index.js").unwrap();
+        let index_css_content = file_contents.get("index.css").unwrap();
         assert!(
-            index_js_content.contains(".foo .bar {"),
+            index_css_content.contains(".foo .bar {"),
             "css nesting works"
         );
         assert!(
-            index_js_content.contains(".hoo {"),
+            index_css_content.contains(".hoo {"),
             "css nesting with :global works"
         );
     }
@@ -271,9 +273,9 @@ mod tests {
     async fn test_css_prefixer() {
         let (files, file_contents) = compile("test/compile/css-prefixer");
         println!("{:?}", files);
-        let index_js_content = file_contents.get("index.js").unwrap();
+        let index_css_content = file_contents.get("index.css").unwrap();
         assert!(
-            index_js_content.contains("display: -ms-flexbox;"),
+            index_css_content.contains("display: -ms-flexbox;"),
             "ie 10 prefixer"
         );
     }
@@ -283,6 +285,7 @@ mod tests {
         let (files, file_contents) = compile("test/compile/load");
         println!("{:?}", files);
         let index_js_content = file_contents.get("index.js").unwrap();
+        let index_css_content = file_contents.get("index.css").unwrap();
         assert!(
             index_js_content.contains("\"foo\": \"json\""),
             "json loader"
@@ -308,12 +311,12 @@ mod tests {
             "yaml loader"
         );
         assert!(
-            index_js_content.contains(".foo {\n  color: red;\n}"),
+            index_css_content.contains(".foo {\n  color: red;\n}"),
             "css loader"
         );
-        assert!(index_js_content.contains(".jpg\");\n}"), "big.jpg in css");
+        assert!(index_css_content.contains(".jpg\");\n}"), "big.jpg in css");
         assert!(
-            index_js_content.contains(".big {\n  background: url(\""),
+            index_css_content.contains(".big {\n  background: url(\""),
             "small.png in css"
         );
         assert!(

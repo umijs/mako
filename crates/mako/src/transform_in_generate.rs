@@ -237,7 +237,7 @@ mod tests {
   color: green;
 }
 @media print {}"#
-            .trim()
+                .trim()
         );
     }
 
