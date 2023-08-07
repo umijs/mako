@@ -366,4 +366,67 @@ mod tests {
         }
         (files, file_contents)
     }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_css_merge_in_css() {
+        let (files, file_contents) = compile("test/compile/css-merge-in-css");
+        println!("{:?}", files);
+        let index_css_content = file_contents.get("index.css").unwrap();
+
+        assert_eq!(
+            index_css_content,
+            r#".a {
+  color: red;
+}
+.c {
+  color: green;
+}
+.b {
+  color: blue;
+}"#,
+            "css merge in css works"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_css_merge_in_js() {
+        let (files, file_contents) = compile("test/compile/css-merge-in-js");
+        println!("{:?}", files);
+        let index_css_content = file_contents.get("index.css").unwrap();
+
+        assert_eq!(
+            index_css_content,
+            r#".a {
+  color: red;
+}
+.b {
+  color: blue;
+}
+.c {
+  color: green;
+}"#,
+            "css merge in js works"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_css_merge_mixed() {
+        let (files, file_contents) = compile("test/compile/css-merge-mixed");
+        println!("{:?}", files);
+        let index_css_content = file_contents.get("index.css").unwrap();
+
+        assert_eq!(
+            index_css_content,
+            r#".a {
+  color: red;
+}
+.c {
+  color: green;
+}
+.b {
+  color: blue;
+}"#,
+            "css merge mixed works"
+        );
+    }
 }
