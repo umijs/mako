@@ -14,6 +14,7 @@ use crate::config::Config;
 use crate::load::load;
 use crate::module::{Dependency, Module, ModuleAst, ModuleId, ModuleInfo};
 use crate::parse::parse;
+use crate::plugin::PluginDepAnalyzeParam;
 use crate::resolve::{get_resolvers, resolve, Resolvers};
 use crate::transform::transform;
 use crate::transform_after_resolve::transform_after_resolve;
@@ -216,8 +217,14 @@ impl Compiler {
         // transform
         transform(&mut ast, &context, &task, &resolvers)?;
 
-        // analyze deps
         let deps = analyze_deps(&ast)?;
+        let mut deps_analyze_param = PluginDepAnalyzeParam { deps, ast: &ast };
+        // analyze deps
+        context
+            .plugin_driver
+            .analyze_deps(&mut deps_analyze_param)?;
+
+        let deps = deps_analyze_param.deps;
 
         // resolve
         let mut dep_resolve_err = None;
@@ -226,10 +233,6 @@ impl Compiler {
         let mut resolved_deps_by_path = HashMap::<String, i32>::new();
         let mut missing_dependencies = HashMap::new();
         for dep in deps {
-            if dep.source.starts_with("@xinternal/") || dep.source.contains("/_virtual/") {
-                continue;
-            }
-
             let ret = resolve(&task.path, &dep, &resolvers, &context);
             match ret {
                 Ok((path, external)) => {

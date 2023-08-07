@@ -1,3 +1,4 @@
+pub mod analyze_deps;
 pub mod assets;
 pub mod css;
 pub mod generate;

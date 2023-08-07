@@ -7,7 +7,7 @@ use crate::build::FileRequest;
 use crate::compiler::Context;
 use crate::config::Config;
 use crate::load::Content;
-use crate::module::ModuleAst;
+use crate::module::{Dependency, ModuleAst};
 use crate::stats::StatsJsonMap;
 
 #[derive(Debug)]
@@ -20,6 +20,11 @@ pub struct PluginLoadParam {
 pub struct PluginParseParam<'a> {
     pub request: &'a FileRequest,
     pub content: &'a Content,
+}
+
+pub struct PluginDepAnalyzeParam<'a> {
+    pub ast: &'a ModuleAst,
+    pub deps: Vec<Dependency>,
 }
 
 pub trait Plugin: Any + Send + Sync {
@@ -39,6 +44,10 @@ pub trait Plugin: Any + Send + Sync {
         _context: &Arc<Context>,
     ) -> Result<Option<ModuleAst>> {
         Ok(None)
+    }
+
+    fn analyze_deps(&self, _ast: &mut PluginDepAnalyzeParam) -> Result<()> {
+        Ok(())
     }
 
     fn generate(&self, _context: &Arc<Context>) -> Result<Option<()>> {
@@ -87,6 +96,13 @@ impl PluginDriver {
             }
         }
         Ok(None)
+    }
+
+    pub fn analyze_deps(&self, param: &mut PluginDepAnalyzeParam) -> Result<()> {
+        for plugin in &self.plugins {
+            plugin.analyze_deps(param)?;
+        }
+        Ok(())
     }
 
     pub fn generate(&self, context: &Arc<Context>) -> Result<Option<()>> {
