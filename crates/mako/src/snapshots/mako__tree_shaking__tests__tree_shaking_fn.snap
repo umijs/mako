@@ -3,8 +3,8 @@ source: crates/mako/src/tree_shaking.rs
 expression: content
 ---
 const chunksIdToUrlMap = {};
-chunksIdToUrlMap["./index.ts"] = `${"/"}index.js`;
-chunksIdToUrlMap["./all_vendors"] = `${"/"}all_vendors-async.js`;
+chunksIdToUrlMap["./index.ts"] = `index.js`;
+chunksIdToUrlMap["./all_vendors"] = `all_vendors-async.js`;
 function createRuntime(makoModules, entryModuleId) {
     const modulesRegistry = {};
     function requireModule(moduleId) {
@@ -38,6 +38,9 @@ function createRuntime(makoModules, entryModuleId) {
         return module.exports;
     }
     requireModule.requireInterceptors = [];
+    !function() {
+        requireModule.publicPath = "/";
+    }();
     !(function() {
         let currentParents = [];
         let currentChildModule;
@@ -147,7 +150,7 @@ function createRuntime(makoModules, entryModuleId) {
                 invalidate () {},
                 check () {
                     const current_hash = requireModule.currentHash();
-                    return fetch(`/${current_hash}.hot-update.json`).then((res)=>{
+                    return fetch(`${requireModule.publicPath}${current_hash}.hot-update.json`).then((res)=>{
                         return res.json();
                     }).then((update)=>{
                         return Promise.all(update.c.map((chunk)=>{
@@ -162,7 +165,8 @@ function createRuntime(makoModules, entryModuleId) {
                                 ext
                             ].join('.');
                             return new Promise((done)=>{
-                                requireModule.loadScript(`/${hotChunkName}`, done);
+                                const url = `${requireModule.publicPath}${hotChunkName}`;
+                                requireModule.loadScript(url, done);
                             });
                         }));
                     });
@@ -214,7 +218,7 @@ function createRuntime(makoModules, entryModuleId) {
                     ];
                 });
                 promises.push((data[2] = promise));
-                const url = chunksIdToUrlMap[chunkId];
+                const url = requireModule.publicPath + chunksIdToUrlMap[chunkId];
                 const error = new Error();
                 const onLoadEnd = (event)=>{
                     data = installedChunks[chunkId];
