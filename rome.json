@@ -2,8 +2,7 @@
   "formatter": {
     "enabled": true,
     "ignore": [
-      "./examples/**/dist/*", "./.vscode/**", "node_modules/**", "target/**",
-      "./crates/mako/test/fixtures/**"
+      "./examples/**/dist/*", "./.vscode/**", "node_modules/**", "target/**"
     ],
     "indentStyle": "space",
     "indentSize": 2,

@@ -1,4 +1,0 @@
-try {
-} catch (message) {
-  message;
-}
