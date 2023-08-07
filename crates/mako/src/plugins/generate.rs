@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fs;
 use std::fs::create_dir_all;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -34,7 +34,7 @@ pub struct MinifishCompiler {
 }
 
 impl MinifishCompiler {
-    pub fn new(_: &Config, root: &PathBuf) -> Self {
+    pub fn new(_: &Config, root: &Path) -> Self {
         let map_file = root.join("_apcJsonContentMap.json");
 
         let content = read_content(map_file).unwrap();
@@ -332,7 +332,7 @@ pub fn to_dist_path<P: AsRef<str>>(abs_path: P, context: &Arc<Context>) -> PathB
 
         output.join(relative_path)
     } else {
-        abs_path.as_ref().clone().into()
+        abs_path.as_ref().to_string().into()
     }
 }
 
