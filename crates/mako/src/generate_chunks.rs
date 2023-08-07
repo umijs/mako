@@ -21,6 +21,7 @@ pub struct OutputAst {
     pub path: String,
     pub ast: ModuleAst,
     pub chunk_id: String,
+    pub realname: String,
 }
 
 impl Compiler {
@@ -192,19 +193,23 @@ impl Compiler {
                 }
 
                 let filename = chunk.filename();
+                let realname = chunk.realname();
                 let css_filename = format!("{}.css", filename.strip_suffix(".js").unwrap_or(""));
+                let css_realname = format!("{}.css", realname.strip_suffix(".js").unwrap_or(""));
 
                 let mut output = vec![];
                 output.push(OutputAst {
                     path: filename,
                     ast: ModuleAst::Script(js_ast),
                     chunk_id: chunk.id.id.clone(),
+                    realname,
                 });
                 if let Some(merged_css_ast) = merged_css_ast {
                     output.push(OutputAst {
                         path: css_filename,
                         ast: ModuleAst::Css(merged_css_ast),
                         chunk_id: chunk.id.id.clone(),
+                        realname: css_realname,
                     });
                 }
                 Ok(output)

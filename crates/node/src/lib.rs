@@ -22,6 +22,10 @@ pub async fn build(
        extensions?: string[];
     };
     manifest?: boolean;
+    manifest_config?: {
+        file_name: string;
+        base_path: string;
+    };
     mode?: "development" | "production";
     define?: Record<string, string>;
     devtool?: "source-map" | "inline-source-map";

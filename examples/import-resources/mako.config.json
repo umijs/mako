@@ -2,5 +2,6 @@
   "inline_limit": 0,
   "code_splitting": "depPerChunk",
   "stats": true,
-  "mdx": true
+  "mdx": true,
+  "manifest": true
 }

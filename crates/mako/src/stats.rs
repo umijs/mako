@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::cmp::Ordering;
 use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -12,13 +13,26 @@ use crate::chunk::ChunkType;
 use crate::compiler::Compiler;
 use crate::load::file_size;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct AssetsInfo {
     pub assets_type: String,
     pub size: u64,
     pub name: String,
     pub chunk_id: String,
     pub path: PathBuf,
+    pub realname: String,
+}
+
+impl Ord for AssetsInfo {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.name.cmp(&other.name)
+    }
+}
+
+impl PartialOrd for AssetsInfo {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 #[derive(Debug)]
 pub struct StatsInfo {
@@ -92,13 +106,21 @@ impl StatsInfo {
         Self { assets: vec![] }
     }
 
-    pub fn add_assets(&mut self, size: u64, name: String, chunk_id: String, path: PathBuf) {
+    pub fn add_assets(
+        &mut self,
+        size: u64,
+        name: String,
+        realname: String,
+        chunk_id: String,
+        path: PathBuf,
+    ) {
         self.assets.push(AssetsInfo {
             assets_type: "asset".to_string(),
             size,
             name,
             chunk_id,
             path,
+            realname,
         });
     }
 }
@@ -144,6 +166,13 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
             stats_info.add_assets(
                 size,
                 asset.1.clone(),
+                // /Users/yuyuehui/rust/mako/examples/import-resources/add.wasm -> add.wasm
+                PathBuf::from(asset.0)
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string(),
                 "".to_string(),
                 compiler.context.config.output.path.join(asset.1.clone()),
             );
@@ -188,6 +217,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
                         module_type: StatsJsonType::Module("module".to_string()),
                         size,
                         module_id: id,
+                        // TODO: 现在是从每个 chunk 中找到包含的 module, 所以 chunk_id 是单个, 但是一个 module 有可能存在于多个 chunk 中, 后续需要把 chunk_id 改成 Vec
                         chunk_id: chunk.id.id.clone(),
                     };
 
@@ -250,7 +280,9 @@ fn pad_string(text: &str, max_length: usize) -> String {
 }
 
 pub fn log_assets(compiler: &Compiler) {
-    let assets = &compiler.context.stats_info.lock().unwrap().assets;
+    let assets = &mut compiler.context.stats_info.lock().unwrap().assets;
+    // 按照产物名称排序
+    assets.sort();
     let length = 15;
     let mut s = "\n".to_string();
     let dist = "dist/".truecolor(133, 133, 133);
