@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::cmp::Ordering::Equal;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::hash::Hasher;
 use std::path::Path;
@@ -185,35 +184,37 @@ impl Compiler {
 
         let chunk_id = entry_module_id.generate(&self.context);
         let mut chunk = Chunk::new(chunk_id.into(), chunk_type);
-        let mut visited_level_map = HashMap::from([(entry_module_id.id.clone(), 1)]);
-        let mut visited_modules = vec![];
+        let mut visited_modules: Vec<ModuleId> = vec![entry_module_id.clone()];
 
         let module_graph = self.context.module_graph.read().unwrap();
         while !bfs.done() {
             match bfs.next_node() {
                 NextResult::Visited => continue,
                 NextResult::First(head) => {
-                    let level = *visited_level_map.get(&head.id).unwrap();
+                    let parent_index = visited_modules
+                        .iter()
+                        .position(|m| m.id == head.id)
+                        .unwrap_or(0);
+                    let mut normal_deps = vec![];
 
                     for (dep_module_id, dep) in module_graph.get_dependencies(head) {
                         if dep.resolve_type == ResolveType::DynamicImport {
                             dynamic_entries.push(dep_module_id.clone());
                         } else {
                             bfs.visit(dep_module_id);
-                            visited_level_map.insert(dep_module_id.id.clone(), level + 1);
+                            // collect normal deps for current head
+                            normal_deps.push(dep_module_id.clone());
                         }
                     }
-                    // record visited module and its level
-                    visited_modules.push((head.clone(), level));
+
+                    // insert normal deps before head, so that we can keep the dfs order
+                    visited_modules.splice(parent_index..parent_index, normal_deps);
                 }
             }
         }
 
-        // sort modules by dfs order
-        visited_modules.sort_by(|a, b| if a.0 == b.0 { Equal } else { a.0.cmp(&b.0) });
-
         // add modules to chunk as dfs order
-        for (module_id, _) in visited_modules {
+        for module_id in visited_modules {
             chunk.add_module(module_id);
         }
 

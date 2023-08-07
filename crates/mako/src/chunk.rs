@@ -73,7 +73,11 @@ impl Chunk {
     }
 
     pub fn add_module(&mut self, module_id: ModuleId) {
-        self.modules.insert(module_id);
+        if let (pos, false) = self.modules.insert_full(module_id.clone()) {
+            // module already exists, move it to the back
+            self.modules.shift_remove_index(pos);
+            self.modules.insert(module_id);
+        }
     }
 
     pub fn get_modules(&self) -> &IndexSet<ModuleId> {
