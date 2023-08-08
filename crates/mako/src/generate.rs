@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use anyhow::Result;
+use indexmap::IndexSet;
 use rayon::prelude::*;
 use serde::Serialize;
 use tracing::{debug, info};
@@ -12,7 +13,7 @@ use crate::ast::{css_ast_to_code, js_ast_to_code};
 use crate::compiler::Compiler;
 use crate::config::{DevtoolConfig, Mode};
 use crate::minify::minify_js;
-use crate::module::ModuleAst;
+use crate::module::{ModuleAst, ModuleId};
 use crate::stats::{create_stats_info, log_assets, write_stats};
 use crate::update::UpdateResult;
 
@@ -326,8 +327,10 @@ impl Compiler {
         let cg = self.context.chunk_graph.read().unwrap();
         for chunk_name in &modified_chunks {
             if let Some(chunk) = cg.get_chunk_by_name(chunk_name) {
+                let modified_ids: IndexSet<ModuleId> =
+                    IndexSet::from_iter(updated_modules.modified.iter().cloned());
                 let (code, ..) =
-                    self.generate_hmr_chunk(chunk, &updated_modules.modified, current_full_hash)?;
+                    self.generate_hmr_chunk(chunk, &modified_ids, current_full_hash)?;
                 // TODO the final format should be {name}.{full_hash}.hot-update.{ext}
                 self.write_to_dist(to_hot_update_chunk_name(chunk_name, last_full_hash), code);
             }
