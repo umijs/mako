@@ -217,9 +217,9 @@ impl Compiler {
         // transform
         transform(&mut ast, &context, &task, &resolvers)?;
 
+        // analyze deps
         let deps = analyze_deps(&ast)?;
         let mut deps_analyze_param = PluginDepAnalyzeParam { deps, ast: &ast };
-        // analyze deps
         context
             .plugin_driver
             .analyze_deps(&mut deps_analyze_param)?;
