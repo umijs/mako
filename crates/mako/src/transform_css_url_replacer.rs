@@ -39,7 +39,7 @@ impl VisitMut for CSSUrlReplacer<'_> {
         };
         let resolved = resolve::resolve(self.path, &dep, self.resolvers, self.context);
         if let Ok((resolved_path, _)) = resolved {
-            let asset_content = handle_asset(self.context, &resolved_path);
+            let asset_content = handle_asset(self.context, &resolved_path, false);
             let asset_content = asset_content.unwrap_or_else(|_| resolved_path.clone());
             match n.value {
                 Some(box UrlValue::Str(ref mut s)) => {
