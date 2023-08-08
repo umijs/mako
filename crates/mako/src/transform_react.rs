@@ -13,8 +13,8 @@ use crate::compiler::Context;
 use crate::config::Mode;
 
 pub struct PrefixCode {
-    code: String,
-    context: Arc<Context>,
+    pub code: String,
+    pub context: Arc<Context>,
 }
 
 pub fn mako_react(
@@ -237,7 +237,7 @@ mod tests {
                 )
             ));
 
-            transform_ast_with(&mut ast.ast, &mut visitor)
+            transform_ast_with(&mut ast.ast, &mut visitor, &context.meta.script.cm)
         })
     }
 }

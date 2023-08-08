@@ -8,6 +8,7 @@ license = "MIT"
 [[bin]]
 name = "mako"
 path = "src/main.rs"
+test = false
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }

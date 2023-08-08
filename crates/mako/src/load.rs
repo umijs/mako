@@ -106,8 +106,9 @@ pub fn handle_asset<T: AsRef<str>>(
     }
 }
 
-pub fn read_content(path: &str) -> Result<String> {
-    std::fs::read_to_string(path).with_context(|| format!("read file error: {}", path))
+pub fn read_content<P: AsRef<Path>>(path: P) -> Result<String> {
+    std::fs::read_to_string(path.as_ref())
+        .with_context(|| format!("read file error: {:?}", path.as_ref()))
 }
 
 fn ext_name(path: &str) -> Option<&str> {

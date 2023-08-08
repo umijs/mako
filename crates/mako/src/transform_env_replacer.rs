@@ -258,7 +258,7 @@ mod tests {
     use crate::compiler::Context;
     use crate::transform_env_replacer::build_env_map;
 
-    #[should_panic = "define value 'for(;;)console.log()' is not a Expression"]
+    #[should_panic = "define value 'for(;;)console.log()' is not an Expression"]
     #[test]
     fn test_wrong_define_value() {
         let context: Arc<Context> = Arc::new(Default::default());
@@ -272,7 +272,7 @@ mod tests {
         .unwrap();
     }
 
-    #[should_panic = "define value 'for(;;)console.log()' is not a Expression"]
+    #[should_panic = "define value 'for(;;)console.log()' is not an Expression"]
     #[test]
     fn test_nested_wrong_define_value() {
         let context: Arc<Context> = Arc::new(Default::default());

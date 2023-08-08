@@ -4,11 +4,15 @@ use std::path::{Path, PathBuf};
 use clap::ValueEnum;
 use serde::Deserialize;
 use serde_json::Value;
+use swc_ecma_ast::EsVersion;
 use thiserror::Error;
 
 #[derive(Deserialize, Debug)]
 pub struct OutputConfig {
     pub path: PathBuf,
+    pub mode: OutputMode,
+    #[serde(rename(deserialize = "esVersion"))]
+    pub es_version: EsVersion,
 }
 
 #[derive(Deserialize, Debug)]
@@ -25,6 +29,14 @@ pub enum Mode {
     Development,
     #[serde(rename = "production")]
     Production,
+}
+
+#[derive(Deserialize, Debug, PartialEq, Eq, ValueEnum, Clone)]
+pub enum OutputMode {
+    #[serde(rename = "bundle")]
+    Bundle,
+    #[serde(rename = "minifish")]
+    MinifishPrebuild,
 }
 
 // TODO:
@@ -51,6 +63,8 @@ pub enum DevtoolConfig {
     /// Generate inline sourcemap
     #[serde(rename = "inline-source-map")]
     InlineSourceMap,
+    #[serde(rename = "none")]
+    None,
 }
 
 #[derive(Deserialize, Clone, Copy, Debug)]
@@ -102,7 +116,7 @@ const CONFIG_FILE: &str = "mako.config.json";
 const DEFAULT_CONFIG: &str = r#"
 {
     "entry": {},
-    "output": { "path": "dist" },
+    "output": { "path": "dist", "mode": "bundle", "esVersion": "es2022" },
     "resolve": { "alias": {}, "extensions": ["js", "jsx", "ts", "tsx"] },
     "mode": "development",
     "minify": true,
@@ -208,7 +222,7 @@ impl Default for Config {
 
 #[derive(Error, Debug)]
 pub enum ConfigError {
-    #[error("define value '{0}' is not a Expression")]
+    #[error("define value '{0}' is not an Expression")]
     InvalidateDefineConfig(String),
 }
 

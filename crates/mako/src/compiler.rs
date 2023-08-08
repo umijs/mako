@@ -7,9 +7,9 @@ use swc_common::{Globals, SourceMap};
 
 use crate::chunk_graph::ChunkGraph;
 use crate::comments::Comments;
-use crate::config::Config;
+use crate::config::{Config, OutputMode};
 use crate::module_graph::ModuleGraph;
-use crate::plugin::PluginDriver;
+use crate::plugin::{Plugin, PluginDriver};
 use crate::plugins;
 use crate::stats::StatsInfo;
 
@@ -108,7 +108,7 @@ impl Compiler {
     pub fn new(config: Config, root: PathBuf) -> Self {
         assert!(root.is_absolute(), "root path must be absolute");
 
-        let plugin_driver = PluginDriver::new(vec![
+        let mut plugins: Vec<Arc<dyn Plugin>> = vec![
             // features
             Arc::new(plugins::node_polyfill::NodePolyfillPlugin {}),
             Arc::new(plugins::manifest::ManifestPlugin {}),
@@ -124,8 +124,24 @@ impl Compiler {
             Arc::new(plugins::yaml::YAMLPlugin {}),
             Arc::new(plugins::assets::AssetsPlugin {}),
             Arc::new(plugins::runtime::MakoRuntime {}),
-        ]);
+        ];
+
         let mut config = config;
+
+        if config.output.mode == OutputMode::MinifishPrebuild {
+            plugins.insert(
+                0,
+                Arc::new(plugins::minifish_compiler::MinifishCompiler::new(
+                    &config, &root,
+                )),
+            );
+            plugins.push(Arc::new(
+                plugins::minifish_analyze_deps::MinifishDepsAnalyze {},
+            ));
+        }
+
+        let plugin_driver = PluginDriver::new(plugins);
+
         plugin_driver.modify_config(&mut config).unwrap();
 
         Self {

@@ -88,6 +88,7 @@ pub fn transform_js_generate(
                             let top_level_mark = ast.top_level_mark;
                             // let (code, ..) = js_ast_to_code(&ast.ast, context, "foo").unwrap();
                             // print!("{}", code);
+
                             {
                                 if context.config.minify
                                     && matches!(context.config.mode, Mode::Production)
