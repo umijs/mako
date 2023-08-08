@@ -270,6 +270,48 @@ function createRuntime(makoModules, entryModuleId) {
             document.head.appendChild(script);
         };
     })();
+    !(function() {
+        const installedChunks = (requireModule.cssInstalled = {});
+        const cssChunksIdToUrlMap = {};
+        requireModule.chunkEnsures.css = (chunkId, promises)=>{
+            if (installedChunks[chunkId]) {
+                promises.push(installedChunks[chunkId]);
+            } else if (installedChunks[chunkId] !== 0 && cssChunksIdToUrlMap[chunkId]) {
+                installedChunks[chunkId] = new Promise((resolve, reject)=>{
+                    const url = cssChunksIdToUrlMap[chunkId];
+                    const fullUrl = requireModule.publicPath + url;
+                    if (document.querySelector(`link[href="${url}"], link[href="${fullUrl}"]`)) {
+                        resolve();
+                    } else {
+                        const link = document.createElement('link');
+                        link.rel = 'stylesheet';
+                        link.type = 'text/css';
+                        link.href = url;
+                        link.onerror = link.onload = function(event) {
+                            link.onerror = link.onload = null;
+                            if (event.type === 'load') {
+                                installedChunks[chunkId] = 0;
+                                resolve();
+                            } else {
+                                delete installedChunks[chunkId];
+                                const errorType = event?.type;
+                                const realHref = event?.target?.href;
+                                const err = new Error('Loading CSS chunk ' + chunkId + ' failed.\n(' + realHref + ')');
+                                err.code = 'CSS_CHUNK_LOAD_FAILED';
+                                err.type = errorType;
+                                err.request = realHref;
+                                link.parentNode.removeChild(link);
+                                reject(err);
+                            }
+                        };
+                        document.head.appendChild(link);
+                    }
+                });
+                promises.push(installedChunks[chunkId]);
+                return promises;
+            }
+        };
+    })();
     const jsonpCallback = (data)=>{
         const installedChunks = requireModule.jsonpInstalled;
         const chunkIds = data[0];

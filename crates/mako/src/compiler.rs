@@ -430,4 +430,16 @@ mod tests {
             "css merge mixed works"
         );
     }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_css_async_chunk() {
+        let (files, file_contents) = compile("test/compile/css-async-chunk");
+        println!("{:?}", files);
+        let index_js_content = file_contents.get("index.js").unwrap();
+
+        assert!(
+            index_js_content.contains("cssChunksIdToUrlMap[\"./a.ts\"]"),
+            "css async chunk works"
+        );
+    }
 }
