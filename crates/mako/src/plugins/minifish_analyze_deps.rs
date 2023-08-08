@@ -2,9 +2,9 @@ use anyhow::Result;
 
 use crate::plugin::{Plugin, PluginDepAnalyzeParam};
 
-pub struct DepsAnalyze {}
+pub struct MinifishDepsAnalyze {}
 
-impl Plugin for DepsAnalyze {
+impl Plugin for MinifishDepsAnalyze {
     fn name(&self) -> &str {
         "mini_deps_analyze"
     }

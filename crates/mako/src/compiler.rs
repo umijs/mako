@@ -133,7 +133,9 @@ impl Compiler {
                 0,
                 Arc::new(plugins::generate::MinifishCompiler::new(&config, &root)),
             );
-            plugins.push(Arc::new(plugins::analyze_deps::DepsAnalyze {}));
+            plugins.push(Arc::new(
+                plugins::minifish_analyze_deps::MinifishDepsAnalyze {},
+            ));
         }
 
         let plugin_driver = PluginDriver::new(plugins);
