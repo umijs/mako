@@ -145,7 +145,7 @@ pub fn js_ast_to_code(
             cfg: JsCodegenConfig {
                 minify: context.config.minify && matches!(context.config.mode, Mode::Production),
                 target: context.config.output.es_version,
-                ascii_only: true,
+                // ascii_only: true, not working with lodash
                 ..Default::default()
             },
             cm: cm.clone(),
