@@ -110,8 +110,6 @@ pub struct Config {
     pub code_splitting: CodeSplittingStrategy,
     // temp flag
     pub extract_css: bool,
-
-    pub minifish_map: HashMap<String, String>,
 }
 
 const CONFIG_FILE: &str = "mako.config.json";
@@ -139,8 +137,7 @@ const DEFAULT_CONFIG: &str = r#"
     "hmr_port": "3000",
     "module_id_strategy": "named",
     "code_splitting": "bigVendor",
-    "extract_css": false,
-    "minifish_map": {}
+    "extract_css": false
 }
 "#;
 
