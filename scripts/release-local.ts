@@ -1,6 +1,4 @@
 import 'zx/globals';
-import { parse } from 'semver';
-import * as process from 'process';
 
 (async () => {
   // Check branch
