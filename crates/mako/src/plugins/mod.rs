@@ -7,6 +7,7 @@ pub mod json;
 pub mod manifest;
 pub mod md;
 pub mod node_polyfill;
+pub mod runtime;
 pub mod svg;
 pub mod toml;
 pub mod wasm;

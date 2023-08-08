@@ -3,8 +3,8 @@ source: crates/mako/src/tree_shaking.rs
 expression: content
 ---
 const chunksIdToUrlMap = {};
-chunksIdToUrlMap["./index.ts"] = `${"/"}index.js`;
-chunksIdToUrlMap["./all_vendors"] = `${"/"}all_vendors-async.js`;
+chunksIdToUrlMap["./index.ts"] = `index.js`;
+chunksIdToUrlMap["./all_vendors"] = `all_vendors-async.js`;
 function createRuntime(makoModules, entryModuleId) {
     const modulesRegistry = {};
     function requireModule(moduleId) {
@@ -38,6 +38,9 @@ function createRuntime(makoModules, entryModuleId) {
         return module.exports;
     }
     requireModule.requireInterceptors = [];
+    !function() {
+        requireModule.publicPath = "/";
+    }();
     !(function() {
         let currentParents = [];
         let currentChildModule;
@@ -147,7 +150,7 @@ function createRuntime(makoModules, entryModuleId) {
                 invalidate () {},
                 check () {
                     const current_hash = requireModule.currentHash();
-                    return fetch(`/${current_hash}.hot-update.json`).then((res)=>{
+                    return fetch(`${requireModule.publicPath}${current_hash}.hot-update.json`).then((res)=>{
                         return res.json();
                     }).then((update)=>{
                         return Promise.all(update.c.map((chunk)=>{
@@ -162,7 +165,8 @@ function createRuntime(makoModules, entryModuleId) {
                                 ext
                             ].join('.');
                             return new Promise((done)=>{
-                                requireModule.loadScript(`/${hotChunkName}`, done);
+                                const url = `${requireModule.publicPath}${hotChunkName}`;
+                                requireModule.loadScript(url, done);
                             });
                         }));
                     });
@@ -214,7 +218,7 @@ function createRuntime(makoModules, entryModuleId) {
                     ];
                 });
                 promises.push((data[2] = promise));
-                const url = chunksIdToUrlMap[chunkId];
+                const url = requireModule.publicPath + chunksIdToUrlMap[chunkId];
                 const error = new Error();
                 const onLoadEnd = (event)=>{
                     data = installedChunks[chunkId];
@@ -302,6 +306,32 @@ function createRuntime(makoModules, entryModuleId) {
     };
 }
 const runtime = createRuntime({
+    "./2.ts": function(module, exports, require) {
+        "use strict";
+        Object.defineProperty(exports, "__esModule", {
+            value: true
+        });
+        Object.defineProperty(exports, "default", {
+            enumerable: true,
+            get: function() {
+                return foo;
+            }
+        });
+        function foo() {}
+    },
+    "./4.ts": function(module, exports, require) {
+        "use strict";
+        Object.defineProperty(exports, "__esModule", {
+            value: true
+        });
+        Object.defineProperty(exports, /*#__UNUSED_MODULE__*/ "default", {
+            enumerable: true,
+            get: function() {
+                return zoo;
+            }
+        });
+        function zoo() {}
+    },
     "./1.ts": function(module, exports, require) {
         "use strict";
         Object.defineProperty(exports, "__esModule", {
@@ -329,19 +359,6 @@ const runtime = createRuntime({
         var _3 = _interop_require_default._(require("./3.ts"));
         var _4 = _interop_require_default._(require("./4.ts"));
     },
-    "./2.ts": function(module, exports, require) {
-        "use strict";
-        Object.defineProperty(exports, "__esModule", {
-            value: true
-        });
-        Object.defineProperty(exports, "default", {
-            enumerable: true,
-            get: function() {
-                return foo;
-            }
-        });
-        function foo() {}
-    },
     "./3.ts": function(module, exports, require) {
         "use strict";
         Object.defineProperty(exports, "__esModule", {
@@ -363,19 +380,6 @@ const runtime = createRuntime({
         });
         function bar() {}
         function xx() {}
-    },
-    "./4.ts": function(module, exports, require) {
-        "use strict";
-        Object.defineProperty(exports, "__esModule", {
-            value: true
-        });
-        Object.defineProperty(exports, /*#__UNUSED_MODULE__*/ "default", {
-            enumerable: true,
-            get: function() {
-                return zoo;
-            }
-        });
-        function zoo() {}
     },
     "./index.ts": function(module, exports, require) {
         "use strict";

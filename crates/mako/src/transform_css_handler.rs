@@ -1,19 +1,12 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-
 use swc_common::util::take::Take;
 use swc_css_ast::{AtRule, AtRulePrelude, ImportHref, Rule, Stylesheet, UrlValue};
 use swc_css_visit::{VisitMut, VisitMutWith};
 
 use crate::analyze_deps::is_url_ignored;
-use crate::compiler::Context;
 
-pub struct CssHandler<'a> {
-    pub assets_map: HashMap<String, String>,
-    pub context: &'a Arc<Context>,
-}
+pub struct CssHandler;
 
-impl VisitMut for CssHandler<'_> {
+impl VisitMut for CssHandler {
     // remove @import,
     // http(s) will not be removed
     fn visit_mut_stylesheet(&mut self, n: &mut Stylesheet) {

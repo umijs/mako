@@ -25,7 +25,6 @@ use crate::module::{ModuleAst, ModuleId};
 use crate::plugin::{Plugin, PluginLoadParam};
 use crate::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
 use crate::transform_dynamic_import::DynamicImport;
-use crate::transform_in_generate::transform_css;
 use crate::transform_react::PrefixCode;
 use crate::unused_statement_sweep::UnusedStatementSweep;
 
@@ -168,7 +167,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
                 (dep.source.clone(), replacement)
             })
             .collect();
-        let assets_map: HashMap<String, String> = deps
+        let _assets_map: HashMap<String, String> = deps
             .into_iter()
             .map(|(id, dep)| (dep.source.clone(), id.id.clone()))
             .collect();
@@ -179,24 +178,15 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         let mut module_graph = context.module_graph.write().unwrap();
         let module = module_graph.get_module_mut(module_id).unwrap();
         let info = module.info.as_mut().unwrap();
-        let path = info.path.clone();
         let ast = &mut info.ast;
 
         let deps_to_replace = DependenciesToReplace {
-            resolved: resolved_deps.clone(),
+            resolved: resolved_deps,
             missing: info.missing_deps.clone(),
         };
 
         if let ModuleAst::Script(ast) = ast {
             transform_js_generate(&module.id, context, ast, &deps_to_replace, module.is_entry);
-        }
-
-        // 通过开关控制是否单独提取css文件
-        if !context.config.extract_css {
-            if let ModuleAst::Css(ast) = ast {
-                let ast = transform_css(ast, &path, resolved_deps, assets_map, context);
-                info.set_ast(ModuleAst::Script(ast));
-            }
         }
     });
     Ok(())

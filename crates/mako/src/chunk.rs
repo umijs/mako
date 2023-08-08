@@ -1,7 +1,7 @@
-use std::collections::HashSet;
 use std::hash::Hasher;
 use std::path::{Component, Path};
 
+use indexmap::IndexSet;
 use twox_hash::XxHash64;
 
 use crate::module::ModuleId;
@@ -21,7 +21,7 @@ pub enum ChunkType {
 pub struct Chunk {
     pub id: ChunkId,
     pub chunk_type: ChunkType,
-    pub modules: HashSet<ModuleId>,
+    pub modules: IndexSet<ModuleId>,
     pub content: Option<String>,
     pub source_map: Option<String>,
 }
@@ -29,7 +29,7 @@ pub struct Chunk {
 impl Chunk {
     pub fn new(id: ChunkId, chunk_type: ChunkType) -> Self {
         Self {
-            modules: HashSet::new(),
+            modules: IndexSet::new(),
             id,
             chunk_type,
             content: None,
@@ -73,19 +73,23 @@ impl Chunk {
     }
 
     pub fn add_module(&mut self, module_id: ModuleId) {
-        self.modules.insert(module_id);
+        if let (pos, false) = self.modules.insert_full(module_id.clone()) {
+            // module already exists, move it to the back
+            self.modules.shift_remove_index(pos);
+            self.modules.insert(module_id);
+        }
     }
 
-    pub fn get_modules(&self) -> &HashSet<ModuleId> {
+    pub fn get_modules(&self) -> &IndexSet<ModuleId> {
         &self.modules
     }
 
-    pub fn mut_modules(&mut self) -> &mut HashSet<ModuleId> {
+    pub fn mut_modules(&mut self) -> &mut IndexSet<ModuleId> {
         &mut self.modules
     }
 
     pub fn remove_module(&mut self, module_id: &ModuleId) {
-        self.modules.remove(module_id);
+        self.modules.shift_remove(module_id);
     }
 
     pub fn has_module(&self, module_id: &ModuleId) -> bool {
