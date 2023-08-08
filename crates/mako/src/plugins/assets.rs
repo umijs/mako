@@ -21,7 +21,7 @@ impl Plugin for AssetsPlugin {
             }));
         }
 
-        let asset_content = handle_asset(context, param.path.as_str())?;
+        let asset_content = handle_asset(context, param.path.as_str(), true)?;
         Ok(Some(Content::Js(format!(
             "module.exports = \"{}\";",
             asset_content
