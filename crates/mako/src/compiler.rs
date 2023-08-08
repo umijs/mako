@@ -123,6 +123,7 @@ impl Compiler {
             Arc::new(plugins::xml::XMLPlugin {}),
             Arc::new(plugins::yaml::YAMLPlugin {}),
             Arc::new(plugins::assets::AssetsPlugin {}),
+            Arc::new(plugins::runtime::MakoRuntime {}),
         ]);
         let mut config = config;
         plugin_driver.modify_config(&mut config).unwrap();

@@ -46,6 +46,8 @@ function createRuntime(makoModules, entryModuleId) {
   // module execution interceptor
   requireModule.requireInterceptors = [];
 
+  // __inject_runtime_code__
+
   // mako/runtime/hmr plugin
   !(function () {
     let currentParents = [];
@@ -170,7 +172,9 @@ function createRuntime(makoModules, entryModuleId) {
         check() {
           const current_hash = requireModule.currentHash();
 
-          return fetch(`/${current_hash}.hot-update.json`)
+          return fetch(
+            `${requireModule.publicPath}${current_hash}.hot-update.json`,
+          )
             .then((res) => {
               return res.json();
             })
@@ -191,7 +195,8 @@ function createRuntime(makoModules, entryModuleId) {
                   ].join('.');
 
                   return new Promise((done) => {
-                    requireModule.loadScript(`/${hotChunkName}`, done);
+                    const url = `${requireModule.publicPath}${hotChunkName}`;
+                    requireModule.loadScript(url, done);
                   });
                 }),
               );
@@ -256,9 +261,7 @@ function createRuntime(makoModules, entryModuleId) {
           data = installedChunks[chunkId] = [resolve, reject];
         });
         promises.push((data[2] = promise));
-        // TODO: support public path
-        // const url = `/${chunkId}.async.js`;
-        const url = chunksIdToUrlMap[chunkId];
+        const url = requireModule.publicPath + chunksIdToUrlMap[chunkId];
         const error = new Error();
         const onLoadEnd = (event) => {
           data = installedChunks[chunkId];

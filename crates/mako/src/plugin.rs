@@ -39,6 +39,10 @@ pub trait Plugin: Any + Send + Sync {
     fn build_success(&self, _stats: &StatsJsonMap, _context: &Arc<Context>) -> Result<Option<()>> {
         Ok(None)
     }
+
+    fn runtime_plugins(&self, _context: &Arc<Context>) -> Result<Vec<String>> {
+        Ok(Vec::new())
+    }
 }
 
 #[derive(Default)]
@@ -86,5 +90,13 @@ impl PluginDriver {
             plugin.build_success(stats, context)?;
         }
         Ok(None)
+    }
+
+    pub fn runtime_plugins_code(&self, context: &Arc<Context>) -> Result<String> {
+        let mut plugins = Vec::new();
+        for plugin in &self.plugins {
+            plugins.append(&mut plugin.runtime_plugins(context)?);
+        }
+        Ok(plugins.join("\n"))
     }
 }

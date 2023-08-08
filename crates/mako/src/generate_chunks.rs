@@ -31,21 +31,14 @@ impl Compiler {
         let module_graph = self.context.module_graph.read().unwrap();
         let chunk_graph = self.context.chunk_graph.write().unwrap();
 
-        let public_path = self.context.config.public_path.clone();
-        let public_path = if public_path == "runtime" {
-            "globalThis.publicPath".to_string()
-        } else {
-            format!("\"{}\"", public_path)
-        };
         let chunks = chunk_graph.get_chunks();
         // TODO: remove this
         let chunks_map_str: Vec<String> = chunks
             .iter()
             .map(|chunk| {
                 format!(
-                    "chunksIdToUrlMap[\"{}\"] = `${{{}}}{}`;",
+                    "chunksIdToUrlMap[\"{}\"] = `{}`;",
                     chunk.id.generate(&self.context),
-                    public_path,
                     chunk.filename()
                 )
             })
@@ -89,7 +82,14 @@ impl Compiler {
                                 .any(|info| info.ends_with(".wasm"))
                         )
                     )
-                    .replace("_%full_hash%_", &full_hash.to_string());
+                    .replace("_%full_hash%_", &full_hash.to_string())
+                    .replace(
+                        "// __inject_runtime_code__",
+                        &self
+                            .context
+                            .plugin_driver
+                            .runtime_plugins_code(&self.context)?,
+                    );
 
                     if !chunks_ids.is_empty() {
                         let ensures = chunks_ids
