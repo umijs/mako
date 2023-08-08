@@ -48,6 +48,41 @@ impl Compiler {
             chunks_map_str.join("\n")
         );
 
+        let css_chunks_map_str: Vec<String> = {
+            chunks
+                .iter()
+                .filter_map(|chunk| match chunk.chunk_type {
+                    crate::chunk::ChunkType::Async => {
+                        let module_ids = chunk.get_modules();
+                        let module_ids: Vec<_> = module_ids.iter().collect();
+
+                        for module_id in module_ids {
+                            let module = module_graph.get_module(module_id).unwrap();
+
+                            if let Some(info) = module.info.as_ref() {
+                                match &info.ast {
+                                    ModuleAst::Css(_) => {
+                                        return Some(format!(
+                                            "cssChunksIdToUrlMap[\"{}\"] = `{}`;",
+                                            chunk.id.generate(&self.context),
+                                            get_css_chunk_filename(chunk.filename()),
+                                        ));
+                                    }
+                                    _ => continue,
+                                }
+                            }
+                        }
+                        None
+                    }
+                    _ => None,
+                })
+                .collect()
+        };
+        let css_chunks_map_str = format!(
+            "const cssChunksIdToUrlMap = {{}};\n{}",
+            css_chunks_map_str.join("\n")
+        );
+
         let chunks_ast = chunks
             .par_iter()
             .map(|chunk| {
@@ -89,7 +124,8 @@ impl Compiler {
                             .context
                             .plugin_driver
                             .runtime_plugins_code(&self.context)?,
-                    );
+                    )
+                    .replace("// __CSS_CHUNKS_URL_MAP", &css_chunks_map_str.to_string());
 
                     if !chunks_ids.is_empty() {
                         let ensures = chunks_ids
@@ -193,7 +229,7 @@ impl Compiler {
                 }
 
                 let filename = chunk.filename();
-                let css_filename = format!("{}.css", filename.strip_suffix(".js").unwrap_or(""));
+                let css_filename = get_css_chunk_filename(filename.clone());
 
                 let mut output = vec![];
                 output.push(OutputAst {
@@ -217,6 +253,13 @@ impl Compiler {
             Err(e) => Err(e),
         }
     }
+}
+
+fn get_css_chunk_filename(js_chunk_filename: String) -> String {
+    format!(
+        "{}.css",
+        js_chunk_filename.strip_suffix(".js").unwrap_or("")
+    )
 }
 
 fn compile_runtime_entry(has_wasm: bool) -> String {
