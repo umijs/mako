@@ -128,10 +128,12 @@ impl Compiler {
 
         let mut config = config;
 
-        if config.output.mode == OutputMode::Bundleless {
+        if config.output.mode == OutputMode::MinifishPrebuild {
             plugins.insert(
                 0,
-                Arc::new(plugins::generate::MinifishCompiler::new(&config, &root)),
+                Arc::new(plugins::minifish_compiler::MinifishCompiler::new(
+                    &config, &root,
+                )),
             );
             plugins.push(Arc::new(
                 plugins::minifish_analyze_deps::MinifishDepsAnalyze {},

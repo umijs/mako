@@ -1,11 +1,11 @@
 pub mod assets;
 pub mod css;
-pub mod generate;
 pub mod javascript;
 pub mod json;
 pub mod manifest;
 pub mod md;
 pub mod minifish_analyze_deps;
+pub mod minifish_compiler;
 pub mod node_polyfill;
 pub mod runtime;
 pub mod svg;

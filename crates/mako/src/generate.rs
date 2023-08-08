@@ -18,14 +18,14 @@ use crate::stats::{create_stats_info, log_assets, write_stats};
 use crate::update::UpdateResult;
 
 impl Compiler {
-    pub fn generate_bundleless(&self) -> Result<()> {
+    pub fn generate_with_plugin_driver(&self) -> Result<()> {
         self.context.plugin_driver.generate(&self.context)?;
         Ok(())
     }
 
     pub fn generate(&self) -> Result<()> {
-        if self.context.config.output.mode == OutputMode::Bundleless {
-            return self.generate_bundleless();
+        if self.context.config.output.mode == OutputMode::MinifishPrebuild {
+            return self.generate_with_plugin_driver();
         }
 
         info!("generate");

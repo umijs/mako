@@ -35,8 +35,8 @@ pub enum Mode {
 pub enum OutputMode {
     #[serde(rename = "bundle")]
     Bundle,
-    #[serde(rename = "bundleless")]
-    Bundleless,
+    #[serde(rename = "minifish")]
+    MinifishPrebuild,
 }
 
 // TODO:
