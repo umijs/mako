@@ -96,7 +96,6 @@ pub fn handle_asset<T: AsRef<str>>(context: &Arc<Context>, path: T) -> Result<St
             ext_name(path_str).unwrap()
         );
 
-        println!("final_file_name: {}", final_file_name);
         context.emit_assets(path_string, final_file_name.clone());
         Ok(final_file_name)
     } else {
