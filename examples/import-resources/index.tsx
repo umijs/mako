@@ -6,6 +6,7 @@ import yaml, { pi } from './index.yaml';
 import xml from './index.xml';
 import wasm from './add.wasm';
 import Md from './index.md';
+import MailchimpUnsplash from './mailchimp-unsplash.jpg';
 
 const num1 = 10;
 const num2 = 20;
@@ -22,6 +23,13 @@ function App() {
 
   return (
     <div>
+      <div>
+        <img
+          style={{ width: 200 }}
+          src={MailchimpUnsplash}
+          alt='unsplash big image'
+        />
+      </div>
       <h2>
         Test import .wasm file async: {num1} + {num2} = {sum}
       </h2>

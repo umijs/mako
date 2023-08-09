@@ -72,43 +72,6 @@ impl Chunk {
         }
     }
 
-    // filename 用来记录的是 chunk的输出的文件名，而 realname 记录的是 chunk 的真实名字
-    // TODO: 先复制一份，后续合并重复代码，因为 filename 后续大概率会有逻辑改动，比如加上 hash 值?
-    pub fn realname(&self) -> String {
-        match self.chunk_type {
-            ChunkType::Runtime => "runtime.js".into(),
-            // foo/bar.tsx -> bar.js
-            ChunkType::Entry => {
-                let id = self.id.id.clone();
-                let basename = Path::new(&id)
-                    .file_stem()
-                    .unwrap()
-                    .to_string_lossy()
-                    .to_string();
-                format!("{}.js", basename)
-            }
-            // foo/bar.tsx -> foo_bar_tsx-async.js
-            ChunkType::Async | ChunkType::Sync => {
-                let path = Path::new(&self.id.id);
-
-                let name = path
-                    .components()
-                    .filter(|c| !matches!(c, Component::RootDir | Component::CurDir))
-                    .map(|c| match c {
-                        Component::ParentDir => "@".to_string(),
-                        Component::Prefix(_) => "@".to_string(),
-                        Component::RootDir => "".to_string(),
-                        Component::CurDir => "".to_string(),
-                        Component::Normal(seg) => seg.to_string_lossy().replace('.', "_"),
-                    })
-                    .collect::<Vec<String>>()
-                    .join("_");
-
-                format!("{}.js", name)
-            }
-        }
-    }
-
     pub fn add_module(&mut self, module_id: ModuleId) {
         self.modules.insert(module_id);
     }

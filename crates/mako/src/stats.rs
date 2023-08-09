@@ -20,7 +20,6 @@ pub struct AssetsInfo {
     pub name: String,
     pub chunk_id: String,
     pub path: PathBuf,
-    pub realname: String,
 }
 
 impl Ord for AssetsInfo {
@@ -106,21 +105,13 @@ impl StatsInfo {
         Self { assets: vec![] }
     }
 
-    pub fn add_assets(
-        &mut self,
-        size: u64,
-        name: String,
-        realname: String,
-        chunk_id: String,
-        path: PathBuf,
-    ) {
+    pub fn add_assets(&mut self, size: u64, name: String, chunk_id: String, path: PathBuf) {
         self.assets.push(AssetsInfo {
             assets_type: "asset".to_string(),
             size,
             name,
             chunk_id,
             path,
-            realname,
         });
     }
 }
@@ -166,13 +157,6 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
             stats_info.add_assets(
                 size,
                 asset.1.clone(),
-                // /Users/yuyuehui/rust/mako/examples/import-resources/add.wasm -> add.wasm
-                PathBuf::from(asset.0)
-                    .file_name()
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-                    .to_string(),
                 "".to_string(),
                 compiler.context.config.output.path.join(asset.1.clone()),
             );

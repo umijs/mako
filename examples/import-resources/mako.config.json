@@ -3,5 +3,9 @@
   "code_splitting": "depPerChunk",
   "stats": true,
   "mdx": true,
-  "manifest": true
+  "manifest": true,
+  "manifest_config": {
+    "file_name": "manifest.json",
+    "base_path": "aaa"
+  }
 }

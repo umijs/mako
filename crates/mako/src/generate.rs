@@ -84,14 +84,12 @@ impl Compiler {
                     // generate code and sourcemap files
                     self.write_to_dist_with_stats(
                         file.path.clone(),
-                        file.realname.clone(),
                         js_code,
                         file.chunk_id.clone(),
                     );
                     if matches!(self.context.config.devtool, DevtoolConfig::SourceMap) {
                         self.write_to_dist_with_stats(
                             format!("{}.map", file.path.clone()),
-                            format!("{}.map", file.realname.clone()),
                             js_sourcemap,
                             "".to_string(),
                         );
@@ -103,7 +101,6 @@ impl Compiler {
                     let (css_code, _sourcemap) = css_ast_to_code(ast, &self.context);
                     self.write_to_dist_with_stats(
                         file.path.clone(),
-                        file.realname.clone(),
                         css_code,
                         file.chunk_id.clone(),
                     );
@@ -375,22 +372,14 @@ impl Compiler {
         std::fs::write(to, content).unwrap();
     }
     // 写入产物前记录 content 大小
-    pub fn write_to_dist_with_stats(
-        &self,
-        filename: String,
-        realname: String,
-        content: String,
-        chunk_id: String,
-    ) {
+    pub fn write_to_dist_with_stats(&self, filename: String, content: String, chunk_id: String) {
         let to: PathBuf = self.context.config.output.path.join(filename.clone());
         let size = content.len() as u64;
-        self.context.stats_info.lock().unwrap().add_assets(
-            size,
-            filename,
-            realname,
-            chunk_id,
-            to.clone(),
-        );
+        self.context
+            .stats_info
+            .lock()
+            .unwrap()
+            .add_assets(size, filename, chunk_id, to.clone());
         fs::write(to, content).unwrap();
     }
 }

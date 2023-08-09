@@ -3,6 +3,7 @@ use std::fs;
 use std::sync::Arc;
 
 use anyhow::Result;
+use regex::Regex;
 use serde_json;
 
 use crate::compiler::Context;
@@ -26,19 +27,17 @@ impl Plugin for ManifestPlugin {
                 .get("file_name")
                 .unwrap()
                 .clone();
-            let mut base_path = context
+            let base_path = context
                 .config
                 .manifest_config
                 .get("base_path")
                 .unwrap()
                 .clone();
 
-            if !base_path.is_empty() && !base_path.ends_with('/') {
-                base_path.push('/');
-            }
+            let path = normalize_path(base_path);
 
             for asset in assets {
-                let key = format!("{}{}", base_path, asset.realname);
+                let key = format!("{}{}", path, remove_key_hash(&asset.name));
                 manifest.insert(key, asset.name.clone());
             }
 
@@ -50,4 +49,19 @@ impl Plugin for ManifestPlugin {
         }
         Ok(None)
     }
+}
+
+fn normalize_path(mut path: String) -> String {
+    if !path.is_empty() && !path.ends_with('/') {
+        path.push('/');
+    }
+
+    path
+}
+
+fn remove_key_hash(key: &String) -> String {
+    // 需要确定是使用 md5 算法产生的 hash 才能保证是 32 长度
+    let reg = Regex::new(r"[a-fA-F0-9]{32}\.?").unwrap();
+    let val = reg.replace_all(key, "").to_string();
+    val
 }
