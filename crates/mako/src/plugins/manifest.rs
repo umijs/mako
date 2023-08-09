@@ -59,7 +59,7 @@ fn normalize_path(mut path: String) -> String {
     path
 }
 
-fn remove_key_hash(key: &String) -> String {
+fn remove_key_hash(key: &str) -> String {
     // 需要确定是使用 md5 算法产生的 hash 才能保证是 32 长度
     let reg = Regex::new(r"[a-fA-F0-9]{32}\.?").unwrap();
     let val = reg.replace_all(key, "").to_string();
