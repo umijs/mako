@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use futures::channel::mpsc::channel;
 use futures::{SinkExt, StreamExt};
-use notify::event::{CreateKind, DataChange, ModifyKind};
+use notify::event::{CreateKind, DataChange, ModifyKind, RenameMode};
 use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 
 use crate::update::UpdateType;
@@ -58,7 +58,9 @@ where
     )
     .unwrap();
 
-    watcher.watch(root, RecursiveMode::NonRecursive).unwrap();
+    // why comment this?
+    // ref: #339
+    // watcher.watch(root, RecursiveMode::NonRecursive).unwrap();
 
     std::fs::read_dir(root).unwrap().for_each(|entry| {
         let entry = entry.unwrap();
@@ -73,6 +75,7 @@ where
             if path_str.contains("node_modules")
                 || path_str.contains(".git")
                 || path_str.contains("dist")
+                || path_str.contains(".DS_Store")
             {
                 return;
             }
@@ -93,8 +96,10 @@ where
                 EventKind::Create(_) => {}
 
                 EventKind::Modify(ModifyKind::Data(DataChange::Any)) => {
-                    println!("{:?}", event);
                     func(crate::watch::WatchEvent::Modified(event.paths));
+                }
+                EventKind::Modify(ModifyKind::Name(RenameMode::Any)) => {
+                    func(crate::watch::WatchEvent::Removed(event.paths));
                 }
                 EventKind::Modify(_) => {}
                 EventKind::Remove(_) => {
