@@ -59,7 +59,7 @@ import 'zx/globals';
   );
 
   // build macOs *.node
-
+  await $`rm ./crates/node/*.node`;
   await $`pnpm --filter @okamjs/okam run build:mac:x86`;
   await $`pnpm --filter @okamjs/okam run build:mac:aarch`;
   await $`strip -x ./crates/node/*.node`;
@@ -69,8 +69,9 @@ import 'zx/globals';
   // --no-git-checks because .npmignore modified
   // --ignore-scripts because we don't publish optional pkg
   await $`pnpm --filter @okamjs/okam --no-git-checks publish --ignore-scripts --tag ${tag} --access public`;
+  await $`tnpm sync @okamjs/okam`;
 
-  await `git checkout crates/node/.npmignore`;
+  await $`git checkout crates/node/.npmignore`;
 
   // commit
   console.log('Commit');
