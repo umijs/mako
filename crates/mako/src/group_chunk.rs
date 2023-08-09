@@ -184,23 +184,38 @@ impl Compiler {
 
         let chunk_id = entry_module_id.generate(&self.context);
         let mut chunk = Chunk::new(chunk_id.into(), chunk_type);
-        chunk.add_module(entry_module_id.clone());
+        let mut visited_modules: Vec<ModuleId> = vec![entry_module_id.clone()];
 
         let module_graph = self.context.module_graph.read().unwrap();
         while !bfs.done() {
             match bfs.next_node() {
                 NextResult::Visited => continue,
                 NextResult::First(head) => {
-                    chunk.add_module(head.clone());
+                    let parent_index = visited_modules
+                        .iter()
+                        .position(|m| m.id == head.id)
+                        .unwrap_or(0);
+                    let mut normal_deps = vec![];
+
                     for (dep_module_id, dep) in module_graph.get_dependencies(head) {
                         if dep.resolve_type == ResolveType::DynamicImport {
                             dynamic_entries.push(dep_module_id.clone());
                         } else {
                             bfs.visit(dep_module_id);
+                            // collect normal deps for current head
+                            normal_deps.push(dep_module_id.clone());
                         }
                     }
+
+                    // insert normal deps before head, so that we can keep the dfs order
+                    visited_modules.splice(parent_index..parent_index, normal_deps);
                 }
             }
+        }
+
+        // add modules to chunk as dfs order
+        for module_id in visited_modules {
+            chunk.add_module(module_id);
         }
 
         (chunk, dynamic_entries)

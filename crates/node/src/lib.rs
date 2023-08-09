@@ -16,7 +16,7 @@ pub async fn build(
     #[napi(ts_arg_type = r#"
 {
     entry?: Record<string, string>;
-    output?: {path: string};
+    output?: {path: string; mode: "bundle" | "minifish" ;  esVersion?: string, };
     resolve?: {
        alias?: Record<string, string>;
        extensions?: string[];
@@ -28,7 +28,7 @@ pub async fn build(
     };
     mode?: "development" | "production";
     define?: Record<string, string>;
-    devtool?: "source-map" | "inline-source-map";
+    devtool?: "source-map" | "inline-source-map" | "none";
     externals?: Record<string, string>;
     copy?: string[];
     providers?: Record<string, string[]>;

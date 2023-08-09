@@ -3,8 +3,8 @@ source: crates/mako/src/tree_shaking.rs
 expression: content
 ---
 const chunksIdToUrlMap = {};
-chunksIdToUrlMap["./index.tsx"] = `${"/"}index.js`;
-chunksIdToUrlMap["./all_vendors"] = `${"/"}all_vendors-async.js`;
+chunksIdToUrlMap["./index.tsx"] = `index.js`;
+chunksIdToUrlMap["./all_vendors"] = `all_vendors-async.js`;
 function createRuntime(makoModules, entryModuleId) {
     const modulesRegistry = {};
     function requireModule(moduleId) {
@@ -38,6 +38,9 @@ function createRuntime(makoModules, entryModuleId) {
         return module.exports;
     }
     requireModule.requireInterceptors = [];
+    !function() {
+        requireModule.publicPath = "/";
+    }();
     !(function() {
         let currentParents = [];
         let currentChildModule;
@@ -147,7 +150,7 @@ function createRuntime(makoModules, entryModuleId) {
                 invalidate () {},
                 check () {
                     const current_hash = requireModule.currentHash();
-                    return fetch(`/${current_hash}.hot-update.json`).then((res)=>{
+                    return fetch(`${requireModule.publicPath}${current_hash}.hot-update.json`).then((res)=>{
                         return res.json();
                     }).then((update)=>{
                         return Promise.all(update.c.map((chunk)=>{
@@ -162,7 +165,8 @@ function createRuntime(makoModules, entryModuleId) {
                                 ext
                             ].join('.');
                             return new Promise((done)=>{
-                                requireModule.loadScript(`/${hotChunkName}`, done);
+                                const url = `${requireModule.publicPath}${hotChunkName}`;
+                                requireModule.loadScript(url, done);
                             });
                         }));
                     });
@@ -214,7 +218,7 @@ function createRuntime(makoModules, entryModuleId) {
                     ];
                 });
                 promises.push((data[2] = promise));
-                const url = chunksIdToUrlMap[chunkId];
+                const url = requireModule.publicPath + chunksIdToUrlMap[chunkId];
                 const error = new Error();
                 const onLoadEnd = (event)=>{
                     data = installedChunks[chunkId];
@@ -264,6 +268,48 @@ function createRuntime(makoModules, entryModuleId) {
             script.onerror = onLoadEnd.bind(null, script.onerror);
             script.onload = onLoadEnd.bind(null, script.onload);
             document.head.appendChild(script);
+        };
+    })();
+    !(function() {
+        const installedChunks = (requireModule.cssInstalled = {});
+        const cssChunksIdToUrlMap = {};
+        requireModule.chunkEnsures.css = (chunkId, promises)=>{
+            if (installedChunks[chunkId]) {
+                promises.push(installedChunks[chunkId]);
+            } else if (installedChunks[chunkId] !== 0 && cssChunksIdToUrlMap[chunkId]) {
+                installedChunks[chunkId] = new Promise((resolve, reject)=>{
+                    const url = cssChunksIdToUrlMap[chunkId];
+                    const fullUrl = requireModule.publicPath + url;
+                    if (document.querySelector(`link[href="${url}"], link[href="${fullUrl}"]`)) {
+                        resolve();
+                    } else {
+                        const link = document.createElement('link');
+                        link.rel = 'stylesheet';
+                        link.type = 'text/css';
+                        link.href = url;
+                        link.onerror = link.onload = function(event) {
+                            link.onerror = link.onload = null;
+                            if (event.type === 'load') {
+                                installedChunks[chunkId] = 0;
+                                resolve();
+                            } else {
+                                delete installedChunks[chunkId];
+                                const errorType = event?.type;
+                                const realHref = event?.target?.href;
+                                const err = new Error('Loading CSS chunk ' + chunkId + ' failed.\n(' + realHref + ')');
+                                err.code = 'CSS_CHUNK_LOAD_FAILED';
+                                err.type = errorType;
+                                err.request = realHref;
+                                link.parentNode.removeChild(link);
+                                reject(err);
+                            }
+                        };
+                        document.head.appendChild(link);
+                    }
+                });
+                promises.push(installedChunks[chunkId]);
+                return promises;
+            }
         };
     })();
     const jsonpCallback = (data)=>{

@@ -6,7 +6,7 @@ use swc_common::DUMMY_SP;
 use swc_ecma_ast::Expr::Call;
 use swc_ecma_ast::{
     AssignExpr, AssignOp, BindingIdent, BlockStmt, CallExpr, Callee, Decl, Expr, ExprOrSpread,
-    ExprStmt, FnExpr, Function, Ident, ImportDecl, Lit, MemberExpr, MemberProp, NewExpr, Pat,
+    ExprStmt, FnExpr, Function, Ident, Lit, MemberExpr, MemberProp, NamedExport, NewExpr, Pat,
     PatOrExpr, Stmt, Str, ThrowStmt, VarDecl, VarDeclKind, VarDeclarator,
 };
 use swc_ecma_utils::quote_ident;
@@ -14,7 +14,7 @@ use swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::analyze_deps::{is_commonjs_require, is_dynamic_import};
 use crate::compiler::Context;
-use crate::module::{generate_module_id, ResolveType};
+use crate::module::ResolveType;
 
 pub struct DepReplacer<'a> {
     pub to_replace: &'a DependenciesToReplace,
@@ -114,10 +114,6 @@ fn miss_throw_stmt<T: AsRef<str>>(source: T) -> Expr {
 }
 
 impl VisitMut for DepReplacer<'_> {
-    fn visit_mut_import_decl(&mut self, import_decl: &mut ImportDecl) {
-        self.replace_source(&mut import_decl.src);
-    }
-
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Call(call_expr) = expr {
             if is_commonjs_require(call_expr) || is_dynamic_import(call_expr) {
@@ -144,6 +140,16 @@ impl VisitMut for DepReplacer<'_> {
         }
         expr.visit_mut_children_with(self);
     }
+
+    fn visit_mut_import_decl(&mut self, import_decl: &mut swc_ecma_ast::ImportDecl) {
+        self.replace_source(&mut import_decl.src);
+    }
+
+    fn visit_mut_named_export(&mut self, n: &mut NamedExport) {
+        if let Some(ref mut src) = n.src {
+            self.replace_source(src.as_mut());
+        }
+    }
 }
 
 impl DepReplacer<'_> {
@@ -151,12 +157,14 @@ impl DepReplacer<'_> {
         if let Some(replacement) = self.to_replace.resolved.get(&source.value.to_string()) {
             let span = source.span;
 
-            let module_id_string = generate_module_id(replacement.clone(), self.context);
+            let module_id_string = replacement.clone();
+            //generate_module_id(replacement.clone(), self.context);
 
             // NOTE: JsWord 有缓存，直接设置 value 的方式在这种情况下不会生效
             // if (process.env.NODE_ENV === 'development') { require("./foo") }
             *source = Str::from(module_id_string);
             // 保持原来的 span，不确定不加的话会不会导致 sourcemap 错误
+
             source.span = span;
         }
     }
@@ -198,7 +206,7 @@ mod tests {
                 context: &cloned,
             });
 
-            assert_display_snapshot!(transform_ast_with(&mut ast.ast, &mut visitor));
+            assert_display_snapshot!(transform_ast_with(&mut ast.ast, &mut visitor, &context.meta.script.cm));
         });
     }
 
@@ -221,7 +229,11 @@ mod tests {
                 context: &cloned,
             });
 
-            assert_display_snapshot!(transform_ast_with(&mut ast.ast, &mut visitor));
+            assert_display_snapshot!(transform_ast_with(
+                &mut ast.ast,
+                &mut visitor,
+                &context.meta.script.cm
+            ));
         });
     }
 
@@ -249,7 +261,46 @@ mod tests {
                 context: &cloned,
             });
 
-            assert_display_snapshot!(transform_ast_with(&mut ast.ast, &mut visitor));
+            assert_display_snapshot!(transform_ast_with(
+                &mut ast.ast,
+                &mut visitor,
+                &context.meta.script.cm
+            ));
         });
+    }
+
+    #[test]
+    fn test_import_replace() {
+        assert_display_snapshot!(transform_code("import x from 'x'"));
+    }
+
+    #[test]
+    fn test_export_from_replace() {
+        assert_display_snapshot!(transform_code("export {x} from 'x'"));
+    }
+
+    #[test]
+    fn test_dynamic_import_from_replace() {
+        assert_display_snapshot!(transform_code("const x = import('x')"));
+    }
+
+    fn transform_code(code: &str) -> String {
+        let context: Arc<Context> = Arc::new(Default::default());
+
+        GLOBALS.set(&context.meta.script.globals, || {
+            let mut ast = build_js_ast("test.js", code, &context).unwrap();
+
+            let mut visitor = DepReplacer {
+                to_replace: &DependenciesToReplace {
+                    resolved: hashmap! {
+                        "x".to_string() => "/x/index.js".to_string()
+                    },
+                    missing: hashmap! {},
+                },
+                context: &context,
+            };
+
+            transform_ast_with(&mut ast.ast, &mut visitor, &context.meta.script.cm)
+        })
     }
 }

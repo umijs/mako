@@ -8,6 +8,7 @@ license = "MIT"
 [[bin]]
 name = "mako"
 path = "src/main.rs"
+test = false
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
@@ -69,7 +70,7 @@ cached = "0.44.0"
 colored = "2"
 mdxjs = "0.1.14"
 regex = "1.9.3"
-
+indexmap = "2.0.0"
 [dev-dependencies]
 insta = { version = "1.30.0", features = ["yaml"] }
 maplit = "1.0.2"

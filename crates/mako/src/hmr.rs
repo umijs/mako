@@ -1,6 +1,5 @@
-use std::collections::HashSet;
-
 use anyhow::Result;
+use indexmap::IndexSet;
 use swc_ecma_ast::{
     CallExpr, Expr, ExprOrSpread, ExprStmt, KeyValueProp, ModuleItem, ObjectLit, Prop,
     PropOrSpread, Stmt,
@@ -16,7 +15,7 @@ impl Compiler {
     pub fn generate_hmr_chunk(
         &self,
         chunk: &Chunk,
-        module_ids: &HashSet<ModuleId>,
+        module_ids: &IndexSet<ModuleId>,
         current_hash: u64,
     ) -> Result<(String, String)> {
         let module_graph = &self.context.module_graph.read().unwrap();

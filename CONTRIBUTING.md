@@ -70,6 +70,15 @@ $ npm run release
 $ npm run release:bundler-okam
 ```
 
+Release Dev Version.
+
+Only *canary* and *dev* tags are allowed to be published to npm.
+
+```bash
+pnpm esno scripts/release-dev.ts
+```
+[Ref](https://github.com/umijs/mako/pull/335)
+
 Upgrade dependencies.
 
 ```bash

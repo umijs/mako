@@ -36,11 +36,7 @@ pub struct ModuleInfo {
     pub missing_deps: HashMap<String, ResolveType>,
 }
 
-impl ModuleInfo {
-    pub fn set_ast(&mut self, ast: ModuleAst) {
-        self.ast = ast;
-    }
-}
+impl ModuleInfo {}
 
 fn md5_hash(source_str: &str, lens: usize) -> String {
     let digest = md5::compute(source_str);

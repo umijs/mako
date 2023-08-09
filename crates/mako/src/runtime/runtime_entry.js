@@ -46,6 +46,8 @@ function createRuntime(makoModules, entryModuleId) {
   // module execution interceptor
   requireModule.requireInterceptors = [];
 
+  // __inject_runtime_code__
+
   // mako/runtime/hmr plugin
   !(function () {
     let currentParents = [];
@@ -170,7 +172,9 @@ function createRuntime(makoModules, entryModuleId) {
         check() {
           const current_hash = requireModule.currentHash();
 
-          return fetch(`/${current_hash}.hot-update.json`)
+          return fetch(
+            `${requireModule.publicPath}${current_hash}.hot-update.json`,
+          )
             .then((res) => {
               return res.json();
             })
@@ -191,7 +195,8 @@ function createRuntime(makoModules, entryModuleId) {
                   ].join('.');
 
                   return new Promise((done) => {
-                    requireModule.loadScript(`/${hotChunkName}`, done);
+                    const url = `${requireModule.publicPath}${hotChunkName}`;
+                    requireModule.loadScript(url, done);
                   });
                 }),
               );
@@ -256,9 +261,7 @@ function createRuntime(makoModules, entryModuleId) {
           data = installedChunks[chunkId] = [resolve, reject];
         });
         promises.push((data[2] = promise));
-        // TODO: support public path
-        // const url = `/${chunkId}.async.js`;
-        const url = chunksIdToUrlMap[chunkId];
+        const url = requireModule.publicPath + chunksIdToUrlMap[chunkId];
         const error = new Error();
         const onLoadEnd = (event) => {
           data = installedChunks[chunkId];
@@ -311,6 +314,74 @@ function createRuntime(makoModules, entryModuleId) {
       script.onerror = onLoadEnd.bind(null, script.onerror);
       script.onload = onLoadEnd.bind(null, script.onload);
       document.head.appendChild(script);
+    };
+  })();
+  /* mako/runtime/ensure load css chunk */
+  !(function () {
+    const installedChunks = (requireModule.cssInstalled = {});
+    // __CSS_CHUNKS_URL_MAP
+
+    requireModule.chunkEnsures.css = (chunkId, promises) => {
+      if (installedChunks[chunkId]) {
+        // still pending, avoid duplicate promises
+        promises.push(installedChunks[chunkId]);
+      } else if (
+        installedChunks[chunkId] !== 0 &&
+        cssChunksIdToUrlMap[chunkId]
+      ) {
+        // load chunk and save promise
+        installedChunks[chunkId] = new Promise((resolve, reject) => {
+          const url = cssChunksIdToUrlMap[chunkId];
+          const fullUrl = requireModule.publicPath + url;
+
+          if (
+            document.querySelector(
+              `link[href="${url}"], link[href="${fullUrl}"]`,
+            )
+          ) {
+            // already loaded
+            resolve();
+          } else {
+            // load new css chunk
+            const link = document.createElement('link');
+
+            link.rel = 'stylesheet';
+            link.type = 'text/css';
+            link.href = url;
+            link.onerror = link.onload = function (event) {
+              // avoid mem leaks, from webpack
+              link.onerror = link.onload = null;
+
+              if (event.type === 'load') {
+                // finished loading css chunk
+                installedChunks[chunkId] = 0;
+                resolve();
+              } else {
+                // throw error and reset state
+                delete installedChunks[chunkId];
+                const errorType = event?.type;
+                const realHref = event?.target?.href;
+                const err = new Error(
+                  'Loading CSS chunk ' +
+                    chunkId +
+                    ' failed.\n(' +
+                    realHref +
+                    ')',
+                );
+
+                err.code = 'CSS_CHUNK_LOAD_FAILED';
+                err.type = errorType;
+                err.request = realHref;
+                link.parentNode.removeChild(link);
+                reject(err);
+              }
+            };
+            document.head.appendChild(link);
+          }
+        });
+        promises.push(installedChunks[chunkId]);
+        return promises;
+      }
     };
   })();
 

@@ -475,7 +475,7 @@ require("foo");
         let (code, _sourcemap) = transform_js_code(
             code,
             None,
-            HashMap::from([("foo".to_string(), "bar".to_string())]),
+            HashMap::from([("foo".to_string(), "./bar".to_string())]),
         );
         println!(">> CODE\n{}", code);
         assert_eq!(

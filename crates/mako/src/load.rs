@@ -80,7 +80,11 @@ pub fn load(request: &FileRequest, is_entry: bool, context: &Arc<Context>) -> Re
 }
 
 // 统一处理各类 asset，将其转为 base64 or 静态资源
-pub fn handle_asset<T: AsRef<str>>(context: &Arc<Context>, path: T) -> Result<String> {
+pub fn handle_asset<T: AsRef<str>>(
+    context: &Arc<Context>,
+    path: T,
+    inject_public_path: bool,
+) -> Result<String> {
     let path_str = path.as_ref();
     let path_string = path_str.to_string();
     let file_size = file_size(path_str).with_context(|| LoadError::ReadFileSizeError {
@@ -97,7 +101,11 @@ pub fn handle_asset<T: AsRef<str>>(context: &Arc<Context>, path: T) -> Result<St
         );
 
         context.emit_assets(path_string, final_file_name.clone());
-        Ok(final_file_name)
+        if inject_public_path {
+            Ok(format!("`${{require.publicPath}}{}`", final_file_name))
+        } else {
+            Ok(final_file_name)
+        }
     } else {
         let base64 =
             to_base64(path_str).with_context(|| LoadError::ToBase64Error { path: path_string })?;
@@ -105,8 +113,9 @@ pub fn handle_asset<T: AsRef<str>>(context: &Arc<Context>, path: T) -> Result<St
     }
 }
 
-pub fn read_content(path: &str) -> Result<String> {
-    std::fs::read_to_string(path).with_context(|| format!("read file error: {}", path))
+pub fn read_content<P: AsRef<Path>>(path: P) -> Result<String> {
+    std::fs::read_to_string(path.as_ref())
+        .with_context(|| format!("read file error: {:?}", path.as_ref()))
 }
 
 // 获取文件名称

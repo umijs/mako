@@ -1488,6 +1488,7 @@ dependencies = [
  "hyper",
  "hyper-staticfile",
  "hyper-tungstenite",
+ "indexmap 2.0.0",
  "insta",
  "maplit",
  "md5",
