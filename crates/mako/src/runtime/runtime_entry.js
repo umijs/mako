@@ -53,6 +53,8 @@ function createRuntime(makoModules, entryModuleId) {
     let currentParents = [];
     let currentChildModule;
 
+    requireModule.hmrC = {};
+
     const createHmrRequire = (require, moduleId) => {
       const me = modulesRegistry[moduleId];
       if (!me) return require;
@@ -80,7 +82,7 @@ function createRuntime(makoModules, entryModuleId) {
       return fn;
     };
 
-    const applyHotUpdate = (chunkId, update, runtime) => {
+    const applyHotUpdate = (_chunkId, update) => {
       const { modules, removedModules } = update;
 
       // get outdated modules
@@ -142,8 +144,6 @@ function createRuntime(makoModules, entryModuleId) {
       for (const module of outdatedSelfAcceptedModules) {
         module.hot._requireSelf();
       }
-
-      runtime(requireModule);
     };
     const createModuleHotObject = (moduleId, me) => {
       const _main = currentChildModule !== moduleId;
@@ -210,6 +210,15 @@ function createRuntime(makoModules, entryModuleId) {
       return hot;
     };
 
+    requireModule.hmrC.jsonp = (chunkId, update, promises) => {
+      promises.push(
+        new Promise((resolve) => {
+          applyHotUpdate(chunkId, update);
+          resolve();
+        }),
+      );
+    };
+
     requireModule.requireInterceptors.push((options) => {
       const orginRequire = options.require;
       options.module.hot = createModuleHotObject(options.id, options.module);
@@ -223,7 +232,16 @@ function createRuntime(makoModules, entryModuleId) {
         return orginRequire._h;
       };
     });
-    requireModule.applyHotUpdate = applyHotUpdate;
+    requireModule.applyHotUpdate = (chunkId, update, runtime) => {
+      runtime(requireModule);
+
+      return Promise.all(
+        Object.keys(requireModule.hmrC).reduce(function (promises, key) {
+          requireModule.hmrC[key](chunkId, update, promises);
+          return promises;
+        }, []),
+      );
+    };
   })();
 
   /* mako/runtime/ensure chunk */
@@ -321,6 +339,58 @@ function createRuntime(makoModules, entryModuleId) {
     const installedChunks = (requireModule.cssInstalled = {});
     // __CSS_CHUNKS_URL_MAP
 
+    function findStylesheet(url) {
+      return Array.from(
+        document.querySelectorAll('link[href][rel=stylesheet]'),
+      ).find((link) => {
+        // why not use link.href?
+        // because link.href contains hostname
+        const [linkUrl] = link.getAttribute('href').split('?');
+
+        return linkUrl === url || linkUrl === requireModule.publicPath + url;
+      });
+    }
+
+    function createStylesheet(chunkId, url, oldTag, resolve, reject) {
+      const link = document.createElement('link');
+
+      link.rel = 'stylesheet';
+      link.type = 'text/css';
+      link.href = url;
+      link.onerror = link.onload = function (event) {
+        // avoid mem leaks, from webpack
+        link.onerror = link.onload = null;
+
+        if (event.type === 'load') {
+          // finished loading css chunk
+          installedChunks[chunkId] = 0;
+          resolve();
+        } else {
+          // throw error and reset state
+          delete installedChunks[chunkId];
+          const errorType = event?.type;
+          const realHref = event?.target?.href;
+          const err = new Error(
+            'Loading CSS chunk ' + chunkId + ' failed.\n(' + realHref + ')',
+          );
+
+          err.code = 'CSS_CHUNK_LOAD_FAILED';
+          err.type = errorType;
+          err.request = realHref;
+          link.parentNode.removeChild(link);
+          reject(err);
+        }
+      };
+
+      if (oldTag) {
+        oldTag.parentNode.insertBefore(link, oldTag.nextSibling);
+      } else {
+        document.head.appendChild(link);
+      }
+
+      return link;
+    }
+
     requireModule.chunkEnsures.css = (chunkId, promises) => {
       if (installedChunks[chunkId]) {
         // still pending, avoid duplicate promises
@@ -334,53 +404,47 @@ function createRuntime(makoModules, entryModuleId) {
           const url = cssChunksIdToUrlMap[chunkId];
           const fullUrl = requireModule.publicPath + url;
 
-          if (
-            document.querySelector(
-              `link[href="${url}"], link[href="${fullUrl}"]`,
-            )
-          ) {
+          if (findStylesheet(url)) {
             // already loaded
             resolve();
           } else {
             // load new css chunk
-            const link = document.createElement('link');
-
-            link.rel = 'stylesheet';
-            link.type = 'text/css';
-            link.href = url;
-            link.onerror = link.onload = function (event) {
-              // avoid mem leaks, from webpack
-              link.onerror = link.onload = null;
-
-              if (event.type === 'load') {
-                // finished loading css chunk
-                installedChunks[chunkId] = 0;
-                resolve();
-              } else {
-                // throw error and reset state
-                delete installedChunks[chunkId];
-                const errorType = event?.type;
-                const realHref = event?.target?.href;
-                const err = new Error(
-                  'Loading CSS chunk ' +
-                    chunkId +
-                    ' failed.\n(' +
-                    realHref +
-                    ')',
-                );
-
-                err.code = 'CSS_CHUNK_LOAD_FAILED';
-                err.type = errorType;
-                err.request = realHref;
-                link.parentNode.removeChild(link);
-                reject(err);
-              }
-            };
-            document.head.appendChild(link);
+            createStylesheet(chunkId, fullUrl, null, resolve, reject);
           }
         });
         promises.push(installedChunks[chunkId]);
         return promises;
+      }
+    };
+
+    requireModule.hmrC.css = (chunkId, _update, promises) => {
+      if (cssChunksIdToUrlMap[chunkId]) {
+        promises.push(
+          new Promise((resolve, reject) => {
+            let url = cssChunksIdToUrlMap[chunkId];
+            const fullUrl = requireModule.publicPath + url;
+            const oldLink = findStylesheet(url);
+
+            if (oldLink) {
+              // preload new link before unload old link
+              const newLink = createStylesheet(
+                chunkId,
+                `${fullUrl}?${Date.now()}`,
+                oldLink,
+                () => {
+                  newLink.rel = 'stylesheet';
+                  newLink.as = null;
+                  oldLink.parentNode.removeChild(oldLink);
+                  resolve();
+                },
+                reject,
+              );
+
+              newLink.rel = 'prereload';
+              newLink.as = 'style';
+            }
+          }),
+        );
       }
     };
   })();
