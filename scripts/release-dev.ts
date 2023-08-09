@@ -69,7 +69,6 @@ import 'zx/globals';
   // --no-git-checks because .npmignore modified
   // --ignore-scripts because we don't publish optional pkg
   await $`pnpm --filter @okamjs/okam --no-git-checks publish --ignore-scripts --tag ${tag} --access public`;
-  await $`tnpm sync @okamjs/okam`;
 
   await $`git checkout crates/node/.npmignore`;
 
