@@ -217,6 +217,7 @@ impl Compiler {
         // transform
         transform(&mut ast, &context, &task, &resolvers)?;
 
+        // 在此之前需要把所有依赖都和模块关联起来，并且需要使用 resolved source
         // analyze deps
         let deps = analyze_deps(&ast)?;
         let mut deps_analyze_param = PluginDepAnalyzeParam { deps, ast: &ast };
@@ -230,22 +231,22 @@ impl Compiler {
         let mut dep_resolve_err = None;
         let mut dependencies = Vec::new();
         let mut resolved_deps = HashMap::<String, String>::new();
-        let mut resolved_deps_by_path = HashMap::<String, i32>::new();
+        let mut resolved_deps_group_by_path = HashMap::<String, Vec<String>>::new();
+
         let mut missing_dependencies = HashMap::new();
         for dep in deps {
             let ret = resolve(&task.path, &dep, &resolvers, &context);
             match ret {
-                Ok((path, external)) => {
-                    dependencies.push((path.clone(), external, dep.clone()));
-                    let id = ModuleId::new(path);
+                Ok((resolved, external)) => {
+                    dependencies.push((resolved.clone(), external, dep.clone()));
+                    let id = ModuleId::new(resolved);
                     let id_str = id.generate(&context);
                     resolved_deps.insert(dep.source.clone(), id.generate(&context));
-                    let count = if resolved_deps_by_path.get(&id_str).is_none() {
-                        1
-                    } else {
-                        resolved_deps_by_path.get(&id_str).unwrap() + 1
-                    };
-                    resolved_deps_by_path.insert(id_str.clone(), count);
+
+                    let sources = resolved_deps_group_by_path
+                        .entry(id_str.clone())
+                        .or_default();
+                    sources.push(dep.source.clone());
                 }
                 Err(_) => {
                     // 获取 本次引用 和 上一级引用 路径
@@ -301,19 +302,18 @@ impl Compiler {
 
         // transform to replace deps
         // ref: https://github.com/umijs/mako/issues/311
-        let mut filtered_resolved_deps = HashMap::new();
-        resolved_deps.iter().for_each(|(source, path)| {
-            if resolved_deps_by_path.get(path).is_none() {
-                return;
-            }
-            let v = *resolved_deps_by_path.get(path).unwrap();
-            if v > 1 {
-                filtered_resolved_deps.insert(source.clone(), path.clone());
-            }
+        let mut source_to_source_map = HashMap::new();
+
+        resolved_deps_group_by_path.iter().for_each(|(_, sources)| {
+            let first = sources.get(0).unwrap();
+            sources.iter().skip(1).for_each(|s| {
+                source_to_source_map.insert(s.clone(), first.clone());
+            })
         });
+
         let deps_to_replace = DependenciesToReplace {
             missing: HashMap::new(),
-            resolved: filtered_resolved_deps,
+            resolved: source_to_source_map,
         };
         transform_after_resolve(&mut ast, &context, &task, &deps_to_replace)?;
 
