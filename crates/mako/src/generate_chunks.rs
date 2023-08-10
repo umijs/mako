@@ -52,7 +52,7 @@ impl Compiler {
             chunks
                 .iter()
                 .filter_map(|chunk| match chunk.chunk_type {
-                    crate::chunk::ChunkType::Async => {
+                    crate::chunk::ChunkType::Async | crate::chunk::ChunkType::Entry => {
                         let module_ids = chunk.get_modules();
                         let module_ids: Vec<_> = module_ids.iter().collect();
 
@@ -62,11 +62,22 @@ impl Compiler {
                             if let Some(info) = module.info.as_ref() {
                                 match &info.ast {
                                     ModuleAst::Css(_) => {
-                                        return Some(format!(
+                                        let str = format!(
                                             "cssChunksIdToUrlMap[\"{}\"] = `{}`;",
                                             chunk.id.generate(&self.context),
                                             get_css_chunk_filename(chunk.filename()),
-                                        ));
+                                        );
+
+                                        match chunk.chunk_type {
+                                            crate::chunk::ChunkType::Entry => {
+                                                return Some(format!(
+                                                    "installedChunks['{}'] = 0;\n{}",
+                                                    chunk.id.generate(&self.context),
+                                                    str,
+                                                ))
+                                            }
+                                            _ => return Some(str),
+                                        }
                                     }
                                     _ => continue,
                                 }
