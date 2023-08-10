@@ -230,23 +230,25 @@ impl Compiler {
         // resolve
         let mut dep_resolve_err = None;
         let mut dependencies = Vec::new();
-        let mut resolved_deps = HashMap::<String, String>::new();
         let mut resolved_deps_group_by_path = HashMap::<String, Vec<String>>::new();
 
         let mut missing_dependencies = HashMap::new();
+
         for dep in deps {
             let ret = resolve(&task.path, &dep, &resolvers, &context);
             match ret {
                 Ok((resolved, external)) => {
-                    dependencies.push((resolved.clone(), external, dep.clone()));
-                    let id = ModuleId::new(resolved);
+                    let id = ModuleId::new(resolved.clone());
                     let id_str = id.generate(&context);
-                    resolved_deps.insert(dep.source.clone(), id.generate(&context));
 
                     let sources = resolved_deps_group_by_path
                         .entry(id_str.clone())
                         .or_default();
                     sources.push(dep.source.clone());
+
+                    if sources.len() == 1 {
+                        dependencies.push((resolved.clone(), external, dep.clone()));
+                    }
                 }
                 Err(_) => {
                     // 获取 本次引用 和 上一级引用 路径
