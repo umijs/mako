@@ -244,7 +244,7 @@ impl Compiler {
 
                     let used_source = resolved_deps_to_source
                         .entry(id_str.clone())
-                        .or_insert(dep.source.clone());
+                        .or_insert_with(|| dep.source.clone());
 
                     if dep.source.eq(used_source) {
                         dependencies.push((resolved.clone(), external, dep.clone()));
