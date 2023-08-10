@@ -1,6 +1,6 @@
 {
   "name": "@okamjs/okam",
-  "version": "0.0.7-dev.20230809.1",
+  "version": "0.0.7-dev.20230809.3",
   "main": "index.js",
   "types": "index.d.ts",
   "napi": {
@@ -28,6 +28,8 @@
   "scripts": {
     "artifacts": "napi artifacts",
     "build": "napi build --platform --release",
+    "build:mac:x86": "napi build --platform --release --target x86_64-apple-darwin",
+    "build:mac:aarch": "napi build --platform --release --target aarch64-apple-darwin",
     "build:debug": "napi build --platform",
     "prepublishOnly": "napi prepublish -t npm",
     "test": "ava",

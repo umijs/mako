@@ -2,7 +2,8 @@
   "formatter": {
     "enabled": true,
     "ignore": [
-      "./examples/**/dist/*", "./.vscode/**", "node_modules/**", "target/**"
+      "./examples/**/dist/*", "./.vscode/**", "node_modules/**", "target/**",
+      "./crates/node/index.js", "./crates/node/index.d.ts"
     ],
     "indentStyle": "space",
     "indentSize": 2,
