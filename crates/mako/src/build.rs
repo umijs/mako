@@ -230,7 +230,8 @@ impl Compiler {
         // resolve
         let mut dep_resolve_err = None;
         let mut dependencies = Vec::new();
-        let mut resolved_deps_group_by_path = HashMap::<String, Vec<String>>::new();
+        let mut resolved_deps_to_source = HashMap::<String, String>::new();
+        let mut duplicated_source_to_source_map = HashMap::new();
 
         let mut missing_dependencies = HashMap::new();
 
@@ -241,13 +242,15 @@ impl Compiler {
                     let id = ModuleId::new(resolved.clone());
                     let id_str = id.generate(&context);
 
-                    let sources = resolved_deps_group_by_path
+                    let used_source = resolved_deps_to_source
                         .entry(id_str.clone())
-                        .or_default();
-                    sources.push(dep.source.clone());
+                        .or_insert(dep.source.clone());
 
-                    if sources.len() == 1 {
+                    if dep.source.eq(used_source) {
                         dependencies.push((resolved.clone(), external, dep.clone()));
+                    } else {
+                        duplicated_source_to_source_map
+                            .insert(dep.source.clone(), used_source.clone());
                     }
                 }
                 Err(_) => {
@@ -304,20 +307,13 @@ impl Compiler {
 
         // transform to replace deps
         // ref: https://github.com/umijs/mako/issues/311
-        let mut source_to_source_map = HashMap::new();
-
-        resolved_deps_group_by_path.iter().for_each(|(_, sources)| {
-            let first = sources.get(0).unwrap();
-            sources.iter().skip(1).for_each(|s| {
-                source_to_source_map.insert(s.clone(), first.clone());
-            })
-        });
-
-        let deps_to_replace = DependenciesToReplace {
-            missing: HashMap::new(),
-            resolved: source_to_source_map,
-        };
-        transform_after_resolve(&mut ast, &context, &task, &deps_to_replace)?;
+        if !duplicated_source_to_source_map.is_empty() {
+            let deps_to_replace = DependenciesToReplace {
+                missing: HashMap::new(),
+                resolved: duplicated_source_to_source_map,
+            };
+            transform_after_resolve(&mut ast, &context, &task, &deps_to_replace)?;
+        }
 
         // create module info
         let info = ModuleInfo {
