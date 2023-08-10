@@ -80,6 +80,7 @@ async fn main() {
     } else {
         std::env::current_dir().unwrap().join(cli.root)
     };
+    let root = root.canonicalize().unwrap();
 
     // config
     let mut config = config::Config::new(&root, None, None).unwrap();

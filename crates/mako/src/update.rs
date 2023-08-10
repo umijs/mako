@@ -72,7 +72,7 @@ impl Compiler {
 
         let resolvers = Arc::new(get_resolvers(&self.context.config));
 
-        // watch 到变化的文件，如果不在在前的 module graph 中，需过滤掉
+        // watch 到变化的文件，如果不在之前的 module graph 中，需过滤掉
         let paths: Vec<(PathBuf, UpdateType)> = {
             let module_graph = self.context.module_graph.read().unwrap();
             paths
