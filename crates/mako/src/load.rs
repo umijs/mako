@@ -92,7 +92,14 @@ pub fn handle_asset<T: AsRef<str>>(
     })?;
 
     if file_size > context.config.inline_limit.try_into().unwrap() {
-        let final_file_name = content_hash(path_str)? + "." + ext_name(path_str).unwrap();
+        // add.png => add.hash.png, 不然产生的 manifest 里把 hash 值去掉后就没有文件名称了
+        let final_file_name = format!(
+            "{}.{}.{}",
+            file_name(path_str).unwrap(),
+            content_hash(path_str)?,
+            ext_name(path_str).unwrap()
+        );
+
         context.emit_assets(path_string, final_file_name.clone());
         if inject_public_path {
             Ok(format!("`${{require.publicPath}}{}`", final_file_name))
@@ -109,6 +116,15 @@ pub fn handle_asset<T: AsRef<str>>(
 pub fn read_content<P: AsRef<Path>>(path: P) -> Result<String> {
     std::fs::read_to_string(path.as_ref())
         .with_context(|| format!("read file error: {:?}", path.as_ref()))
+}
+
+// 获取文件名称
+pub fn file_name(path: &str) -> Option<&str> {
+    let name = Path::new(path).file_stem();
+    if let Some(name) = name {
+        return name.to_str();
+    }
+    None
 }
 
 fn ext_name(path: &str) -> Option<&str> {

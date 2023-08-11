@@ -2,5 +2,10 @@
   "inline_limit": 0,
   "code_splitting": "depPerChunk",
   "stats": true,
-  "mdx": true
+  "mdx": true,
+  "manifest": true,
+  "manifest_config": {
+    "file_name": "manifest.json",
+    "base_path": "aaa"
+  }
 }
