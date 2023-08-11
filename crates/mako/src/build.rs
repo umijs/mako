@@ -217,6 +217,7 @@ impl Compiler {
         // transform
         transform(&mut ast, &context, &task, &resolvers)?;
 
+        // 在此之前需要把所有依赖都和模块关联起来，并且需要使用 resolved source
         // analyze deps
         let deps = analyze_deps(&ast)?;
         let mut deps_analyze_param = PluginDepAnalyzeParam { deps, ast: &ast };
@@ -229,23 +230,28 @@ impl Compiler {
         // resolve
         let mut dep_resolve_err = None;
         let mut dependencies = Vec::new();
-        let mut resolved_deps = HashMap::<String, String>::new();
-        let mut resolved_deps_by_path = HashMap::<String, i32>::new();
+        let mut resolved_deps_to_source = HashMap::<String, String>::new();
+        let mut duplicated_source_to_source_map = HashMap::new();
+
         let mut missing_dependencies = HashMap::new();
+
         for dep in deps {
             let ret = resolve(&task.path, &dep, &resolvers, &context);
             match ret {
-                Ok((path, external)) => {
-                    dependencies.push((path.clone(), external, dep.clone()));
-                    let id = ModuleId::new(path);
+                Ok((resolved, external)) => {
+                    let id = ModuleId::new(resolved.clone());
                     let id_str = id.generate(&context);
-                    resolved_deps.insert(dep.source.clone(), id.generate(&context));
-                    let count = if resolved_deps_by_path.get(&id_str).is_none() {
-                        1
+
+                    let used_source = resolved_deps_to_source
+                        .entry(id_str.clone())
+                        .or_insert_with(|| dep.source.clone());
+
+                    if dep.source.eq(used_source) {
+                        dependencies.push((resolved.clone(), external, dep.clone()));
                     } else {
-                        resolved_deps_by_path.get(&id_str).unwrap() + 1
-                    };
-                    resolved_deps_by_path.insert(id_str.clone(), count);
+                        duplicated_source_to_source_map
+                            .insert(dep.source.clone(), used_source.clone());
+                    }
                 }
                 Err(_) => {
                     // 获取 本次引用 和 上一级引用 路径
@@ -301,21 +307,13 @@ impl Compiler {
 
         // transform to replace deps
         // ref: https://github.com/umijs/mako/issues/311
-        let mut filtered_resolved_deps = HashMap::new();
-        resolved_deps.iter().for_each(|(source, path)| {
-            if resolved_deps_by_path.get(path).is_none() {
-                return;
-            }
-            let v = *resolved_deps_by_path.get(path).unwrap();
-            if v > 1 {
-                filtered_resolved_deps.insert(source.clone(), path.clone());
-            }
-        });
-        let deps_to_replace = DependenciesToReplace {
-            missing: HashMap::new(),
-            resolved: filtered_resolved_deps,
-        };
-        transform_after_resolve(&mut ast, &context, &task, &deps_to_replace)?;
+        if !duplicated_source_to_source_map.is_empty() {
+            let deps_to_replace = DependenciesToReplace {
+                missing: HashMap::new(),
+                resolved: duplicated_source_to_source_map,
+            };
+            transform_after_resolve(&mut ast, &context, &task, &deps_to_replace)?;
+        }
 
         // create module info
         let info = ModuleInfo {

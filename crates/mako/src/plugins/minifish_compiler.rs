@@ -1,20 +1,21 @@
 use std::collections::HashMap;
-use std::fs;
 use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::{fs, io};
 
 use anyhow::Result;
+use cached::proc_macro::cached;
 use pathdiff::diff_paths;
+use rayon::prelude::*;
 use swc_common::errors::HANDLER;
 use swc_common::GLOBALS;
-use swc_ecma_ast::Ident;
 use swc_ecma_transforms::fixer;
 use swc_ecma_transforms::helpers::{Helpers, HELPERS};
 use swc_ecma_transforms::hygiene::hygiene_with_config;
 use swc_ecma_transforms::modules::import_analysis::import_analyzer;
 use swc_ecma_transforms::modules::util::ImportInterop;
-use swc_ecma_visit::{VisitMut, VisitMutWith};
+use swc_ecma_visit::VisitMutWith;
 use swc_error_reporters::handler::try_with_handler;
 
 use crate::ast::{js_ast_to_code, Ast};
@@ -25,7 +26,6 @@ use crate::module::{ModuleAst, ModuleId};
 use crate::plugin::{Plugin, PluginLoadParam};
 use crate::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
 use crate::transform_dynamic_import::DynamicImport;
-use crate::transform_react::PrefixCode;
 use crate::unused_statement_sweep::UnusedStatementSweep;
 
 pub struct MinifishCompiler {
@@ -63,11 +63,13 @@ impl MinifishCompiler {
             .join(filename)
             .with_extension("js");
 
-        let parent = to.parent().unwrap();
-        // TODO try tokio fs later
-        create_dir_all(parent).unwrap();
         fs::write(to, content).unwrap();
     }
+}
+
+#[cached(result = true, key = "String", convert = r#"{ format!("{}", path) }"#)]
+fn create_dir_all_with_cache(path: &str) -> io::Result<()> {
+    create_dir_all(path)
 }
 
 impl Plugin for MinifishCompiler {
@@ -103,7 +105,13 @@ impl Plugin for MinifishCompiler {
 
         let _output = context.config.output.path.canonicalize().unwrap();
 
+        // TODO try tokio fs later
         ids.iter().for_each(|id| {
+            let target = to_dist_path(&id.id, context);
+            create_dir_all_with_cache(target.parent().unwrap().to_str().unwrap()).unwrap();
+        });
+
+        ids.par_iter().for_each(|id| {
             let module = mg.get_module(id).expect("module not exits");
 
             let info = module.info.as_ref().expect("module info missing");
@@ -213,35 +221,6 @@ pub fn transform_js_generate(
                             // let (code, ..) = js_ast_to_code(&ast.ast, context, "foo").unwrap();
                             // print!("{}", code);
 
-                            let mut v = GlobalThisPolyfill::new("globalThis".to_string());
-                            ast.ast.visit_mut_with(&mut v);
-
-                            if v.met_identifier {
-                                let out = context.config.output.path.canonicalize().unwrap();
-
-                                let virtual_path =
-                                    out.join("_virtual/_minifish-polyfill-global.js");
-
-                                let virtual_source = diff_paths(
-                                    virtual_path,
-                                    to_dist_path(&id.id, context).parent().unwrap(),
-                                )
-                                .unwrap()
-                                .to_str()
-                                .unwrap()
-                                .to_string();
-
-                                let mut prefix = PrefixCode {
-                                    code: format!(
-                                        r#"var globalThis = require("{}").__minifish_global__)"#,
-                                        virtual_source
-                                    ),
-                                    context: context.clone(),
-                                };
-
-                                ast.ast.visit_mut_with(&mut prefix);
-                            }
-
                             {
                                 if context.config.minify
                                     && matches!(context.config.mode, Mode::Production)
@@ -309,42 +288,17 @@ pub fn to_dist_path<P: AsRef<str>>(abs_path: P, context: &Arc<Context>) -> PathB
         .to_str()
         .unwrap()
         .to_string();
-    let output = context.config.output.path.clone().canonicalize().unwrap();
 
     let str = abs_path.as_ref();
 
     if str.contains(&src_root) {
         let relative_path = diff_paths(str, &src_root).unwrap();
-
-        output.join(relative_path)
+        context.config.output.path.join(relative_path)
     } else if str.contains(&npm_root) {
         let relative_path = diff_paths(str, &context.root).unwrap();
 
-        output.join(relative_path)
+        context.config.output.path.join(relative_path)
     } else {
         abs_path.as_ref().to_string().into()
-    }
-}
-
-struct GlobalThisPolyfill {
-    ident_name: String,
-    met_identifier: bool,
-}
-
-impl GlobalThisPolyfill {
-    pub fn new(ident_name: String) -> Self {
-        Self {
-            met_identifier: false,
-            ident_name,
-        }
-    }
-}
-
-impl VisitMut for GlobalThisPolyfill {
-    fn visit_mut_ident(&mut self, ident: &mut Ident) {
-        // fn visit_ident(&mut self, ident: &Ident) {
-        if ident.sym == self.ident_name {
-            self.met_identifier = true;
-        }
     }
 }

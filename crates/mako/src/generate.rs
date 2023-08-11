@@ -1,21 +1,31 @@
 use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Instant;
 
 use anyhow::Result;
+use cached::proc_macro::cached;
 use indexmap::IndexSet;
 use rayon::prelude::*;
 use serde::Serialize;
 use tracing::{debug, info};
 
 use crate::ast::{css_ast_to_code, js_ast_to_code};
-use crate::compiler::Compiler;
+use crate::compiler::{Compiler, Context};
 use crate::config::{DevtoolConfig, Mode, OutputMode};
+use crate::generate_chunks::OutputAst;
 use crate::minify::minify_js;
 use crate::module::{ModuleAst, ModuleId};
 use crate::stats::{create_stats_info, log_assets, write_stats};
 use crate::update::UpdateResult;
+
+#[derive(Clone)]
+pub struct EmitFile {
+    pub filename: String,
+    pub content: String,
+    pub chunk_id: String,
+}
 
 impl Compiler {
     pub fn generate_with_plugin_driver(&self) -> Result<()> {
@@ -86,37 +96,10 @@ impl Compiler {
         let t_ast_to_code_and_write = Instant::now();
         info!("ast to code and write");
         chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
-            match &file.ast {
-                ModuleAst::Script(ast) => {
-                    // ast to code
-                    let (js_code, js_sourcemap) =
-                        js_ast_to_code(&ast.ast, &self.context, &file.path)?;
-                    // generate code and sourcemap files
-                    self.write_to_dist_with_stats(
-                        file.path.clone(),
-                        js_code,
-                        file.chunk_id.clone(),
-                    );
-                    if matches!(self.context.config.devtool, DevtoolConfig::SourceMap) {
-                        self.write_to_dist_with_stats(
-                            format!("{}.map", file.path.clone()),
-                            js_sourcemap,
-                            "".to_string(),
-                        );
-                    }
-                }
-                // TODO: Sourcemap part
-                ModuleAst::Css(ast) => {
-                    // ast to code
-                    let (css_code, _sourcemap) = css_ast_to_code(ast, &self.context);
-                    self.write_to_dist_with_stats(
-                        file.path.clone(),
-                        css_code,
-                        file.chunk_id.clone(),
-                    );
-                }
-                _ => (),
+            for file in get_chunk_emit_files(file, &self.context)? {
+                self.write_to_dist_with_stats(file);
             }
+
             Ok(())
         })?;
         let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
@@ -198,23 +181,10 @@ impl Compiler {
         let t_ast_to_code_and_write = Instant::now();
         info!("ast to code and write");
         chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
-            match &file.ast {
-                ModuleAst::Script(ast) => {
-                    // ast to code
-                    let (js_code, js_sourcemap) =
-                        js_ast_to_code(&ast.ast, &self.context, &file.path)?;
-                    // generate code and sourcemap files
-                    let output = &config.output.path.join(&file.path);
-                    fs::write(output, js_code).unwrap();
-                    if matches!(self.context.config.devtool, DevtoolConfig::SourceMap) {
-                        fs::write(format!("{}.map", output.display()), js_sourcemap).unwrap();
-                    }
-                }
-                ModuleAst::Css(_ast) => {
-                    // TODO: css chunk
-                }
-                _ => (),
+            for file in get_chunk_emit_files(file, &self.context)? {
+                self.write_to_dist_with_stats(file);
             }
+
             Ok(())
         })?;
         let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
@@ -384,15 +354,16 @@ impl Compiler {
         std::fs::write(to, content).unwrap();
     }
     // 写入产物前记录 content 大小
-    pub fn write_to_dist_with_stats(&self, filename: String, content: String, chunk_id: String) {
-        let to: PathBuf = self.context.config.output.path.join(filename.clone());
-        let size = content.len() as u64;
-        self.context
-            .stats_info
-            .lock()
-            .unwrap()
-            .add_assets(size, filename, chunk_id, to.clone());
-        fs::write(to, content).unwrap();
+    pub fn write_to_dist_with_stats(&self, file: EmitFile) {
+        let to: PathBuf = self.context.config.output.path.join(file.filename.clone());
+        let size = file.content.len() as u64;
+        self.context.stats_info.lock().unwrap().add_assets(
+            size,
+            file.filename,
+            file.chunk_id,
+            to.clone(),
+        );
+        fs::write(to, file.content).unwrap();
     }
 }
 
@@ -405,6 +376,49 @@ fn to_hot_update_chunk_name(chunk_name: &String, hash: u64) -> String {
             format!("{left}.{hash}.hot-update.{ext}")
         }
     }
+}
+
+#[cached(
+    result = true,
+    key = "String",
+    // TODO: use different hash for js and css in the same chunk
+    convert = r#"{ format!("{}-{}", context.chunk_graph.read().unwrap().get_chunk_by_id(&file.chunk_id).unwrap().hash(&context.module_graph.read().unwrap()).to_string(), file.path) }"#
+)]
+fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<EmitFile>> {
+    let mut files = vec![];
+
+    match &file.ast {
+        ModuleAst::Script(ast) => {
+            // ast to code
+            let (js_code, js_sourcemap) = js_ast_to_code(&ast.ast, context, &file.path)?;
+            // generate code and sourcemap files
+            files.push(EmitFile {
+                filename: file.path.clone(),
+                content: js_code,
+                chunk_id: file.chunk_id.clone(),
+            });
+            if matches!(context.config.devtool, DevtoolConfig::SourceMap) {
+                files.push(EmitFile {
+                    filename: format!("{}.map", file.path.clone()),
+                    content: js_sourcemap,
+                    chunk_id: "".to_string(),
+                });
+            }
+        }
+        // TODO: Sourcemap part
+        ModuleAst::Css(ast) => {
+            // ast to code
+            let (css_code, _sourcemap) = css_ast_to_code(ast, context);
+            files.push(EmitFile {
+                filename: file.path.clone(),
+                content: css_code,
+                chunk_id: file.chunk_id.clone(),
+            });
+        }
+        _ => (),
+    }
+
+    Ok(files)
 }
 
 #[derive(Serialize)]

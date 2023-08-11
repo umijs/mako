@@ -6,7 +6,6 @@ use hyper::header::CONTENT_TYPE;
 use hyper::http::HeaderValue;
 use hyper::Server;
 use tokio::sync::broadcast::{Receiver, Sender};
-use tokio::sync::mpsc::unbounded_channel;
 use tokio::task::JoinHandle;
 use tokio::try_join;
 use tracing::debug;
@@ -32,7 +31,7 @@ impl DevServer {
     }
 
     pub async fn serve(&self) {
-        let (watch_handler, build_handle) = self.watcher.start();
+        let watch_handler = self.watcher.start();
 
         async fn serve_websocket(
             websocket: hyper_tungstenite::HyperWebsocket,
@@ -151,7 +150,7 @@ impl DevServer {
 
         // build_handle 必须在 dev_server_handle 之前
         // 否则会导致 build_handle 无法收到前几个消息，原因未知
-        let join_error = try_join!(watch_handler, build_handle, dev_server_handle);
+        let join_error = try_join!(watch_handler, dev_server_handle);
         if let Err(e) = join_error {
             eprintln!("Error in dev server: {:?}", e);
         }
@@ -179,17 +178,16 @@ impl ProjectWatch {
         }
     }
 
-    pub fn start(&self) -> (JoinHandle<()>, JoinHandle<()>) {
+    pub fn start(&self) -> JoinHandle<()> {
         let c = self.compiler.clone();
         let root = self.root.clone();
         let tx = self.tx.clone();
 
         let mut last_full_hash = Box::new(c.full_hash());
 
-        let (build_tx, mut build_rx) = unbounded_channel::<()>();
-
         let watch_compiler = c.clone();
-        let watch_handle = tokio::spawn(async move {
+
+        tokio::spawn(async move {
             watch(&root, |events| {
                 let res = watch_compiler.update(events.into());
 
@@ -222,6 +220,11 @@ impl ProjectWatch {
                                 *last_full_hash = next_full_hash;
                             }
 
+                            if let Err(e) = c.emit_dev_chunks() {
+                                debug!("Error in build: {:?}, will rebuild soon", e);
+                                return;
+                            }
+
                             debug!("receiver count: {}", tx.receiver_count());
                             if tx.receiver_count() > 0 {
                                 tx.send(WsMessage {
@@ -229,32 +232,11 @@ impl ProjectWatch {
                                 })
                                 .unwrap();
                             }
-
-                            let x = build_tx.send(());
-                            if x.is_err() {
-                                debug!("build_tx send error {}", x.err().unwrap());
-                            } else {
-                                debug!("build_tx send ok");
-                            }
                         }
                     }
                 }
             });
-        });
-
-        let build_handle = tokio::spawn(async move {
-            while (build_rx.recv().await).is_some() {
-                debug!("build_rx recv ok");
-                // Then try to receive all remaining messages immediately.
-                while build_rx.try_recv().is_ok() {}
-
-                if let Err(e) = c.emit_dev_chunks() {
-                    debug!("Error in build: {:?}, will rebuild soon", e);
-                }
-            }
-        });
-
-        (watch_handle, build_handle)
+        })
     }
 
     pub fn clone_receiver(&self) -> Receiver<WsMessage> {
