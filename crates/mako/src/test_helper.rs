@@ -58,6 +58,8 @@ pub fn create_mock_module(path: PathBuf, code: &str) -> Module {
         external: None,
         raw_hash: 0,
         missing_deps: HashMap::new(),
+        top_level_await: false,
+        is_async: false,
     };
     Module::new(module_id, false, Some(info))
 }

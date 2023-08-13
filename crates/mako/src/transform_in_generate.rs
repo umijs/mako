@@ -30,7 +30,9 @@ impl Compiler {
     pub fn transform_all(&self) -> Result<()> {
         let context = &self.context;
         let module_graph = context.module_graph.read().unwrap();
-        let module_ids = module_graph.get_module_ids();
+        // Reversed after topo sorting, in order to better handle async module
+        let (mut module_ids, _) = module_graph.toposort();
+        module_ids.reverse();
         drop(module_graph);
         transform_modules(module_ids, context)?;
         Ok(())
@@ -41,7 +43,18 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
     module_ids.iter().for_each(|module_id| {
         let module_graph = context.module_graph.read().unwrap();
         let deps = module_graph.get_dependencies(module_id);
-
+        // whether to have async deps
+        let has_async_deps = {
+            deps.iter().any(|(module_id, _)| {
+                module_graph
+                    .get_module(module_id)
+                    .unwrap()
+                    .info
+                    .as_ref()
+                    .unwrap()
+                    .is_async
+            })
+        };
         let resolved_deps: HashMap<String, String> = deps
             .clone()
             .into_iter()
@@ -54,6 +67,10 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         let mut module_graph = context.module_graph.write().unwrap();
         let module = module_graph.get_module_mut(module_id).unwrap();
         let info = module.info.as_mut().unwrap();
+        // a module with async deps is an async module
+        if !info.is_async && has_async_deps {
+            info.is_async = true;
+        }
         let ast = &mut info.ast;
 
         let deps_to_replace = DependenciesToReplace {

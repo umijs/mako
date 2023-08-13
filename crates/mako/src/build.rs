@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use anyhow::Result;
+use swc_ecma_utils::contains_top_level_await;
 use tokio::sync::mpsc::error::TryRecvError;
 use tracing::info;
 
@@ -11,7 +12,7 @@ use crate::analyze_deps::analyze_deps;
 use crate::ast::build_js_ast;
 use crate::compiler::{Compiler, Context};
 use crate::config::Config;
-use crate::load::load;
+use crate::load::{ext_name, load};
 use crate::module::{Dependency, Module, ModuleAst, ModuleId, ModuleInfo};
 use crate::parse::parse;
 use crate::plugin::PluginDepAnalyzeParam;
@@ -192,6 +193,8 @@ impl Compiler {
                         external: Some(external),
                         raw_hash: 0,
                         missing_deps: HashMap::new(),
+                        top_level_await: false,
+                        is_async: false,
                     }),
                 )
             }
@@ -315,6 +318,17 @@ impl Compiler {
             transform_after_resolve(&mut ast, &context, &task, &deps_to_replace)?;
         }
 
+        // whether to contains top-level await
+        let top_level_await = {
+            if let ModuleAst::Script(ast) = &ast {
+                contains_top_level_await(&ast.ast)
+            } else {
+                false
+            }
+        };
+
+        let is_wasm = ext_name(&task.path).unwrap() == "wasm";
+
         // create module info
         let info = ModuleInfo {
             ast,
@@ -322,6 +336,8 @@ impl Compiler {
             external: None,
             raw_hash: content.raw_hash(),
             missing_deps: missing_dependencies,
+            top_level_await,
+            is_async: top_level_await || is_wasm,
         };
         let module = Module::new(module_id, task.is_entry, Some(info));
 
