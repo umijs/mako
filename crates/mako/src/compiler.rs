@@ -400,7 +400,8 @@ mod tests {
 }
 .b {
   color: blue;
-}"#,
+}
+/*# sourceMappingURL=index.css.map*/"#,
             "css merge in css works"
         );
     }
@@ -421,7 +422,8 @@ mod tests {
 }
 .c {
   color: green;
-}"#,
+}
+/*# sourceMappingURL=index.css.map*/"#,
             "css merge in js works"
         );
     }
@@ -442,7 +444,8 @@ mod tests {
 }
 .b {
   color: blue;
-}"#,
+}
+/*# sourceMappingURL=index.css.map*/"#,
             "css merge mixed works"
         );
     }

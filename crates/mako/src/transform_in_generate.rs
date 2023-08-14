@@ -202,8 +202,9 @@ mod tests {
             code,
             r#".foo {
   color: red;
-}"#
-            .trim()
+}
+/*# sourceMappingURL=test.css.map*/"#
+                .trim()
         );
     }
 
@@ -237,7 +238,8 @@ mod tests {
 .other {
   color: green;
 }
-@media print {}"#
+@media print {}
+/*# sourceMappingURL=test.css.map*/"#
                 .trim()
         );
     }
