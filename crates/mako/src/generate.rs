@@ -405,15 +405,21 @@ fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<
                 });
             }
         }
-        // TODO: Sourcemap part
         ModuleAst::Css(ast) => {
             // ast to code
-            let (css_code, _sourcemap) = css_ast_to_code(ast, context);
+            let (css_code, css_sourcemap) = css_ast_to_code(ast, context, &file.path);
             files.push(EmitFile {
                 filename: file.path.clone(),
                 content: css_code,
                 chunk_id: file.chunk_id.clone(),
             });
+            if matches!(context.config.devtool, DevtoolConfig::SourceMap) {
+                files.push(EmitFile {
+                    filename: format!("{}.map", file.path.clone()),
+                    content: css_sourcemap,
+                    chunk_id: "".to_string(),
+                });
+            }
         }
         _ => (),
     }

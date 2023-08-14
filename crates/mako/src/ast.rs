@@ -190,7 +190,11 @@ pub fn js_ast_to_code(
     Ok((code, sourcemap))
 }
 
-pub fn css_ast_to_code(ast: &Stylesheet, context: &Arc<Context>) -> (String, String) {
+pub fn css_ast_to_code(
+    ast: &Stylesheet,
+    context: &Arc<Context>,
+    filename: &str,
+) -> (String, String) {
     let mut css_code = String::new();
     let mut source_map = Vec::new();
     let css_writer = BasicCssWriter::new(
@@ -207,6 +211,20 @@ pub fn css_ast_to_code(ast: &Stylesheet, context: &Arc<Context>) -> (String, Str
     gen.emit(&ast).unwrap();
     let src_buf = build_source_map(&source_map, context.meta.css.cm.clone());
     let sourcemap = String::from_utf8(src_buf).unwrap();
+
+    if matches!(context.config.devtool, DevtoolConfig::SourceMap) {
+        // separate sourcemap file
+        css_code.push_str(format!("\n/*# sourceMappingURL={filename}.map*/").as_str());
+    } else if matches!(context.config.devtool, DevtoolConfig::InlineSourceMap) {
+        // inline sourcemap
+        css_code.push_str(
+            format!(
+                "\n/*# sourceMappingURL=data:application/json;charset=utf-8;base64,{}*/",
+                base64_encode(&sourcemap)
+            )
+            .as_str(),
+        );
+    }
     (css_code, sourcemap)
 }
 
