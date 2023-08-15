@@ -38,11 +38,7 @@ impl VisitMut for AsyncModule<'_> {
                                         let source = value.to_string();
                                         if self.async_deps.iter().any(|dep| dep.source == source) {
                                             let ident_name: BindingIdent = Ident::new(
-                                                format!(
-                                                    "{}{}__",
-                                                    ASYNC_IMPORTED_MODULE, self.last_dep_pos
-                                                )
-                                                .into(),
+                                                format!("{}{}__", ASYNC_IMPORTED_MODULE, i).into(),
                                                 DUMMY_SP,
                                             )
                                             .into();
@@ -70,10 +66,8 @@ impl VisitMut for AsyncModule<'_> {
                     Stmt::Decl(Decl::Var(var_decl)) => {
                         for decl in &var_decl.decls {
                             if let Some(box Expr::Call(call_expr)) = &decl.init {
-                                if let Callee::Expr(box Expr::Ident(swc_ecma_ast::Ident {
-                                    sym,
-                                    ..
-                                })) = &call_expr.callee
+                                if let Callee::Expr(box Expr::Ident(Ident { sym, .. })) =
+                                    &call_expr.callee
                                 {
                                     if sym == "require" {
                                         if let Expr::Lit(Lit::Str(Str { value, .. })) =
@@ -90,6 +84,56 @@ impl VisitMut for AsyncModule<'_> {
                                                     self.async_deps_idents
                                                         .push(binding_ident.clone());
                                                     self.last_dep_pos = i;
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else if let Callee::Expr(box Expr::Member(MemberExpr {
+                                    obj,
+                                    prop,
+                                    ..
+                                })) = &call_expr.callee
+                                {
+                                    if let Some(Ident { sym, .. }) = obj.clone().ident() {
+                                        if &sym == "_interop_require_default"
+                                            || &sym == "_interop_require_wildcard"
+                                        {
+                                            if let Some(Ident { sym, .. }) = prop.clone().ident() {
+                                                if &sym == "_" {
+                                                    if let Expr::Call(call_expr) =
+                                                        &*call_expr.args[0].expr
+                                                    {
+                                                        if let Callee::Expr(box Expr::Ident(
+                                                            Ident { sym, .. },
+                                                        )) = &call_expr.callee
+                                                        {
+                                                            if sym == "require" {
+                                                                if let Expr::Lit(Lit::Str(Str {
+                                                                    value,
+                                                                    ..
+                                                                })) = &*call_expr.args[0].expr
+                                                                {
+                                                                    let source = value.to_string();
+                                                                    if self.async_deps.iter().any(
+                                                                        |dep| dep.source == source,
+                                                                    ) {
+                                                                        // filter the async deps
+                                                                        if let Pat::Ident(
+                                                                            binding_ident,
+                                                                        ) = &decl.name
+                                                                        {
+                                                                            self.async_deps_idents
+                                                                                .push(
+                                                                                    binding_ident
+                                                                                        .clone(),
+                                                                                );
+                                                                            self.last_dep_pos = i;
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
                                                 }
                                             }
                                         }

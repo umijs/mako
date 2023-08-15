@@ -15,6 +15,9 @@ var wrapDeps = (deps) =>
   deps.map((dep) => {
     if (dep !== null && typeof dep === 'object') {
       if (dep[makoQueues]) return dep;
+      if (dep.default) {
+        dep = dep.default;
+      }
       if (dep.then) {
         var queue = [];
         queue.d = 0;
