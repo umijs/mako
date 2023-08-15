@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Instant;
 
+use colored::Colorize;
 use futures::{SinkExt, StreamExt};
 use hyper::header::CONTENT_TYPE;
 use hyper::http::HeaderValue;
@@ -197,8 +199,14 @@ impl ProjectWatch {
                     }
                     Ok(res) => {
                         if res.is_updated() {
+                            println!("Compiling...");
+                            let t_compiler = Instant::now();
                             let next_full_hash =
                                 watch_compiler.generate_hot_update_chunks(res, *last_full_hash);
+                            println!(
+                                "Hot rebuilt in {}",
+                                format!("{}ms", t_compiler.elapsed().as_millis()).bold()
+                            );
 
                             if let Err(e) = next_full_hash {
                                 eprintln!("Error in watch: {:?}", e);
@@ -224,6 +232,10 @@ impl ProjectWatch {
                                 debug!("Error in build: {:?}, will rebuild soon", e);
                                 return;
                             }
+                            println!(
+                                "Full rebuilt in {}",
+                                format!("{}ms", t_compiler.elapsed().as_millis()).bold()
+                            );
 
                             debug!("receiver count: {}", tx.receiver_count());
                             if tx.receiver_count() > 0 {
