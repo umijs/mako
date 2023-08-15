@@ -25,7 +25,7 @@ use crate::config::{DevtoolConfig, Mode};
 use crate::sourcemap::build_source_map;
 
 #[derive(Debug, Error)]
-#[error("parse error: {error_message:?} in {resolved_path:?}")]
+#[error("{error_message:?}")]
 struct ParseError {
     resolved_path: String,
     error_message: String,
@@ -73,7 +73,7 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
     let mut parser = Parser::new_from(lexer);
 
     let wr = Box::<LockedWriter>::default();
-    let emitter: PrettyEmitter = PrettyEmitter::new(
+    let emitter = PrettyEmitter::new(
         context.meta.script.cm.clone(),
         wr.clone(),
         GraphicalReportHandler::new().with_context_lines(3),
@@ -86,13 +86,13 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
     // parse to ast
     let ast = parser.parse_module().map_err(|e| {
         let mut span = e.into_diagnostic(&handler);
-        span.note(format!("Parse file failed: {}", path).as_str());
+        // span.note(format!("Parse file failed: {}", path).as_str());
         span.emit();
         let s = &**wr.0.lock().unwrap();
-        eprintln!("{}", s);
+        // eprintln!("{}", s);
         anyhow!(ParseError {
             resolved_path: path.to_string(),
-            error_message: "Parse file failed".to_string(),
+            error_message: s.to_string(),
         })
     })?;
 

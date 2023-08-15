@@ -194,8 +194,19 @@ impl ProjectWatch {
                 let res = watch_compiler.update(events.into());
 
                 match res {
-                    Err(e) => {
-                        eprintln!("Error in watch: {:?}", e);
+                    Err(err) => {
+                        // unescape
+                        let mut err = err
+                            .to_string()
+                            .replace("\\n", "\n")
+                            .replace("\\u{1b}", "\u{1b}")
+                            .replace("\\\\", "\\");
+                        // remove first char and last char
+                        if err.starts_with('"') && err.ends_with('"') {
+                            err = err[1..err.len() - 1].to_string();
+                        }
+                        eprintln!("{}", "Build failed.".to_string().red());
+                        eprintln!("{}", err);
                     }
                     Ok(res) => {
                         if res.is_updated() {

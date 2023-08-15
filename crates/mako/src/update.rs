@@ -108,7 +108,7 @@ impl Compiler {
         // 分析修改的模块，结果中会包含新增的模块
         let (modified_module_ids, add_paths) = self
             .build_by_modify(modified, resolvers.clone())
-            .map_err(|err| anyhow!("build_by_modify err:{:?}", err))?;
+            .map_err(|err| anyhow!(err))?;
 
         added.extend(add_paths);
         debug!("added:{:?}", &added);
