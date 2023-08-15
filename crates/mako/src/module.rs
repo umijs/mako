@@ -27,7 +27,7 @@ pub enum ResolveType {
     Css,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ModuleInfo {
     pub ast: ModuleAst,
     pub path: String,
@@ -130,7 +130,7 @@ impl From<PathBuf> for ModuleId {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ModuleAst {
     Script(Ast),
     Css(swc_css_ast::Stylesheet),

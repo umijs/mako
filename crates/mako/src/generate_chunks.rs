@@ -125,7 +125,14 @@ impl Compiler {
                                 .lock()
                                 .unwrap()
                                 .values()
-                                .any(|info| info.ends_with(".wasm"))
+                                .any(|info| info.ends_with(".wasm")),
+                            self.context
+                                .module_graph
+                                .read()
+                                .unwrap()
+                                .modules()
+                                .iter()
+                                .any(|module| module.info.as_ref().unwrap().is_async),
                         )
                     )
                     .replace("_%full_hash%_", &full_hash.to_string())
@@ -273,16 +280,25 @@ fn get_css_chunk_filename(js_chunk_filename: String) -> String {
     )
 }
 
-fn compile_runtime_entry(has_wasm: bool) -> String {
+fn compile_runtime_entry(has_wasm: bool, has_async: bool) -> String {
     let runtime_entry_content_str = include_str!("runtime/runtime_entry.js");
-    runtime_entry_content_str.replace(
-        "// __WASM_REQUIRE_SUPPORT",
-        if has_wasm {
-            include_str!("runtime/runtime_wasm.js")
-        } else {
-            ""
-        },
-    )
+    runtime_entry_content_str
+        .replace(
+            "// __WASM_REQUIRE_SUPPORT",
+            if has_wasm {
+                include_str!("runtime/runtime_wasm.js")
+            } else {
+                ""
+            },
+        )
+        .replace(
+            "// __REQUIRE_ASYNC_MODULE_SUPPORT",
+            if has_async {
+                include_str!("runtime/runtime_async.js")
+            } else {
+                ""
+            },
+        )
 }
 
 fn build_ident_param(ident: &str) -> Param {

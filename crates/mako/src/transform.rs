@@ -541,6 +541,9 @@ require("./bar");
                 resolved: dep,
                 missing: HashMap::new(),
             },
+            &vec![],
+            false,
+            false,
             false,
         );
         let (code, _sourcemap) = js_ast_to_code(&ast.ast, &context, "index.js").unwrap();

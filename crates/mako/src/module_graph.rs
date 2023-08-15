@@ -9,7 +9,7 @@ use petgraph::visit::IntoEdgeReferences;
 use petgraph::Direction;
 
 use crate::compiler::Context;
-use crate::module::{Dependency, Module, ModuleId};
+use crate::module::{Dependency, Module, ModuleId, ModuleInfo};
 
 pub struct ModuleGraph {
     id_index_map: HashMap<ModuleId, NodeIndex<DefaultIx>>,
@@ -50,6 +50,10 @@ impl ModuleGraph {
         self.id_index_map
             .get(module_id)
             .and_then(|i| self.graph.node_weight(*i))
+    }
+
+    pub fn modules(&self) -> Vec<&Module> {
+        self.graph.node_weights().collect()
     }
 
     #[allow(dead_code)]
@@ -165,6 +169,25 @@ impl ModuleGraph {
             deps.push((&module.id, dependency));
         }
         deps.sort_by_key(|(_, dep)| dep.order);
+        deps
+    }
+
+    pub fn get_dependencies_info(
+        &self,
+        module_id: &ModuleId,
+    ) -> Vec<(ModuleId, Dependency, ModuleInfo)> {
+        let mut edges = self.get_edges(module_id, Direction::Outgoing);
+        let mut deps = vec![];
+        while let Some((edge_index, node_index)) = edges.next(&self.graph) {
+            let dependency = self.graph.edge_weight(edge_index).unwrap();
+            let module = self.graph.node_weight(node_index).unwrap();
+            deps.push((
+                module.id.clone(),
+                dependency.clone(),
+                module.info.clone().unwrap(),
+            ));
+        }
+        deps.sort_by_key(|(_, dep, _)| dep.order);
         deps
     }
 
