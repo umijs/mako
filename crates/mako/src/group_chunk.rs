@@ -7,7 +7,7 @@ use std::rc::Rc;
 use anyhow::Result;
 use cached::proc_macro::cached;
 use serde::Deserialize;
-use tracing::info;
+use tracing::debug;
 use twox_hash::XxHash64;
 
 use crate::bfs::{Bfs, NextResult};
@@ -90,7 +90,7 @@ impl Compiler {
     }
 
     pub fn group_main_chunk(&self) {
-        info!("group_chunk");
+        debug!("group_chunk");
 
         let visited = Rc::new(RefCell::new(HashSet::new()));
         let mut edges = vec![];

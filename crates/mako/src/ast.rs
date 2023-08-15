@@ -7,7 +7,7 @@ use base64::engine::general_purpose;
 use base64::Engine;
 use pathdiff::diff_paths;
 use swc_common::errors::Handler;
-use swc_common::{FileName, Mark, GLOBALS};
+use swc_common::{FileName, Mark, Span, Spanned, GLOBALS};
 use swc_css_ast::Stylesheet;
 use swc_css_codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};
 use swc_css_codegen::{CodeGenerator, CodegenConfig, Emit};
@@ -25,7 +25,7 @@ use crate::config::{DevtoolConfig, Mode};
 use crate::sourcemap::build_source_map;
 
 #[derive(Debug, Error)]
-#[error("parse error: {error_message:?} in {resolved_path:?}")]
+#[error("{error_message:?}")]
 struct ParseError {
     resolved_path: String,
     error_message: String,
@@ -72,27 +72,16 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
     );
     let mut parser = Parser::new_from(lexer);
 
-    let wr = Box::<LockedWriter>::default();
-    let emitter: PrettyEmitter = PrettyEmitter::new(
-        context.meta.script.cm.clone(),
-        wr.clone(),
-        GraphicalReportHandler::new().with_context_lines(3),
-        PrettyEmitterConfig {
-            skip_filename: false,
-        },
-    );
-    let handler = Handler::with_emitter(true, false, Box::new(emitter));
-
     // parse to ast
     let ast = parser.parse_module().map_err(|e| {
-        let mut span = e.into_diagnostic(&handler);
-        span.note(format!("Parse file failed: {}", path).as_str());
-        span.emit();
-        let s = &**wr.0.lock().unwrap();
-        eprintln!("{}", s);
+        let error_message = generate_code_frame(
+            e.span(),
+            e.kind().msg().to_string().as_str(),
+            context.meta.script.cm.clone(),
+        );
         anyhow!(ParseError {
             resolved_path: path.to_string(),
-            error_message: "Parse file failed".to_string(),
+            error_message,
         })
     })?;
 
@@ -230,6 +219,27 @@ pub fn css_ast_to_code(
 
 pub fn base64_encode(raw: &str) -> String {
     general_purpose::STANDARD.encode(raw)
+}
+
+use swc_common::sync::Lrc;
+use swc_common::SourceMap;
+
+pub fn generate_code_frame(span: Span, message: &str, cm: Lrc<SourceMap>) -> String {
+    let wr = Box::<LockedWriter>::default();
+    let emitter = PrettyEmitter::new(
+        cm,
+        wr.clone(),
+        GraphicalReportHandler::new().with_context_lines(3),
+        PrettyEmitterConfig {
+            skip_filename: false,
+        },
+    );
+    let handler = Handler::with_emitter(true, false, Box::new(emitter));
+    let mut db = handler.struct_span_err(span, message);
+    // span.note(format!("Parse file failed: {}", path).as_str());
+    db.emit();
+    let s = &**wr.0.lock().unwrap();
+    s.to_string()
 }
 
 #[derive(Clone, Default)]

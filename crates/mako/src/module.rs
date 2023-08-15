@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use base64::engine::{general_purpose, Engine};
 use pathdiff::diff_paths;
+use swc_common::Span;
 
 use crate::ast::Ast;
 use crate::compiler::Context;
@@ -15,6 +16,7 @@ pub struct Dependency {
     pub source: String,
     pub resolve_type: ResolveType,
     pub order: usize,
+    pub span: Option<Span>,
 }
 
 #[derive(Eq, Hash, PartialEq, Debug, Clone)]

@@ -1,14 +1,16 @@
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::fmt;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use anyhow::Result;
+use colored::Colorize;
 use tokio::sync::mpsc::error::TryRecvError;
-use tracing::info;
+use tracing::debug;
 
 use crate::analyze_deps::analyze_deps;
-use crate::ast::build_js_ast;
+use crate::ast::{build_js_ast, generate_code_frame};
 use crate::compiler::{Compiler, Context};
 use crate::config::Config;
 use crate::load::load;
@@ -30,18 +32,22 @@ pub type ModuleDeps = Vec<(String, Option<String>, Dependency)>;
 
 impl Compiler {
     pub fn build(&self) {
-        info!("build");
+        debug!("build");
         let t_build = Instant::now();
-        self.build_module_graph();
+        let module_ids = self.build_module_graph();
         let t_build = t_build.elapsed();
         // build chunk map 应该放 generate 阶段
         // 和 chunk 相关的都属于 generate
-
-        info!("build done in {}ms", t_build.as_millis());
+        println!(
+            "{} modules transformed in {}ms.",
+            module_ids.len(),
+            t_build.as_millis()
+        );
+        debug!("build done in {}ms", t_build.as_millis());
     }
 
-    fn build_module_graph(&self) {
-        info!("build module graph");
+    fn build_module_graph(&self) -> HashSet<ModuleId> {
+        debug!("build module graph");
 
         let entries =
             get_entries(&self.context.root, &self.context.config).expect("entry not found");
@@ -58,7 +64,7 @@ impl Compiler {
             });
         }
 
-        self.build_module_graph_by_task_queue(&mut queue, resolvers);
+        self.build_module_graph_by_task_queue(&mut queue, resolvers)
     }
 
     pub fn build_module_graph_by_task_queue(
@@ -92,7 +98,19 @@ impl Compiler {
                     let (module, deps, task) = match ret {
                         Ok(ret) => ret,
                         Err(err) => {
-                            panic!("build module failed: {:?}", err);
+                            // unescape
+                            let mut err = err
+                                .to_string()
+                                .replace("\\n", "\n")
+                                .replace("\\u{1b}", "\u{1b}")
+                                .replace("\\\\", "\\");
+                            // remove first char and last char
+                            if err.starts_with('"') && err.ends_with('"') {
+                                err = err[1..err.len() - 1].to_string();
+                            }
+                            eprintln!("{}", "Build failed.".to_string().red());
+                            eprintln!("{}", err);
+                            panic!("build module failed");
                         }
                     };
                     let t = Instant::now();
@@ -149,8 +167,8 @@ impl Compiler {
                 }
                 Err(TryRecvError::Empty) => {
                     if active_task_count == 0 {
-                        info!("build time in main thread: {}ms", t_main_thread / 1000);
-                        info!("module count: {}", module_count);
+                        debug!("build time in main thread: {}ms", t_main_thread / 1000);
+                        debug!("module count: {}", module_count);
                         break;
                     }
                 }
@@ -256,7 +274,8 @@ impl Compiler {
                 Err(_) => {
                     // 获取 本次引用 和 上一级引用 路径
                     missing_dependencies.insert(dep.source.clone(), dep.resolve_type.clone());
-                    dep_resolve_err = Some((task.path.clone(), dep.source, dep.resolve_type));
+                    dep_resolve_err =
+                        Some((task.path.clone(), dep.source, dep.resolve_type, dep.span));
                 }
             }
         }
@@ -264,43 +283,45 @@ impl Compiler {
         if context.config.mode == crate::config::Mode::Production {
             if let Some(e) = dep_resolve_err {
                 // resolve 报错时的 target 和 source
-                let mut source = e.1;
-                let mut target = e.0;
+                let target = e.0;
+                let source = e.1;
+                let span = e.3;
                 // 使用 hasMap 记录循环依赖
                 let mut target_map: HashMap<String, i32> = HashMap::new();
-                target_map.insert(target.clone(), 1);
+                target_map.insert(target, 1);
 
-                let mut err: String = format!(
-                    "\n\nResolve Error: Resolve \"{}\" failed from \"{}\" \n",
-                    source, target
-                );
+                let mut err = format!("Module not found: Can't resolve '{}'", source);
 
-                let id = ModuleId::new(target.clone());
-                let module_graph = context.module_graph.read().unwrap();
-
-                //  当 entry resolve 文件失败时，get_targets 自身会失败
-                if module_graph.get_module(&id).is_some() {
-                    let mut targets: Vec<ModuleId> = module_graph.dependant_module_ids(&id);
-                    // 循环找 target
-                    while !targets.is_empty() {
-                        let target_module_id = targets[0].clone();
-                        targets = module_graph.dependant_module_ids(&target_module_id);
-                        source = target.clone();
-                        target = target_module_id.id;
-                        // 拼接引用堆栈 string
-                        err = format!("{}  -> Resolve \"{}\" from \"{}\" \n", err, source, target);
-
-                        if target_map.contains_key(&target) {
-                            // 存在循环依赖
-                            err = format!("{}  -> \"{}\" 中存在循环依赖", err, target);
-                            break;
-                        } else {
-                            target_map.insert(target.clone(), 1);
-                        }
-                    }
-                    // 调整格式
-                    err = format!("{} \n", err);
+                if let Some(span) = span {
+                    err = generate_code_frame(span, &err, context.meta.script.cm.clone());
                 }
+
+                // let id = ModuleId::new(target.clone());
+                // let module_graph = context.module_graph.read().unwrap();
+
+                // //  当 entry resolve 文件失败时，get_targets 自身会失败
+                // if module_graph.get_module(&id).is_some() {
+                //     let mut targets: Vec<ModuleId> = module_graph.dependant_module_ids(&id);
+                //     // 循环找 target
+                //     while !targets.is_empty() {
+                //         let target_module_id = targets[0].clone();
+                //         targets = module_graph.dependant_module_ids(&target_module_id);
+                //         source = target.clone();
+                //         target = target_module_id.id;
+                //         // 拼接引用堆栈 string
+                //         err = format!("{}  -> Resolve \"{}\" from \"{}\" \n", err, source, target);
+
+                //         if target_map.contains_key(&target) {
+                //             // 存在循环依赖
+                //             err = format!("{}  -> \"{}\" 中存在循环依赖", err, target);
+                //             break;
+                //         } else {
+                //             target_map.insert(target.clone(), 1);
+                //         }
+                //     }
+                //     // 调整格式
+                //     err = format!("{} \n", err);
+                // }
                 return Err(anyhow::anyhow!(err));
             }
         }
@@ -521,5 +542,15 @@ mod tests {
         }
 
         (module_ids, references)
+    }
+}
+
+#[derive(Clone, Default)]
+struct LockedWriter(Arc<Mutex<String>>);
+
+impl fmt::Write for LockedWriter {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.0.lock().unwrap().push_str(s);
+        Ok(())
     }
 }

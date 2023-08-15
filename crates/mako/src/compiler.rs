@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
+use std::time::Instant;
 
+use colored::Colorize;
 use swc_common::sync::Lrc;
 use swc_common::{Globals, SourceMap};
 
@@ -83,6 +85,10 @@ pub struct CssMeta {
     pub globals: Globals,
 }
 
+pub struct CompileOptions {
+    pub watch: bool,
+}
+
 impl CssMeta {
     fn new() -> Self {
         Self {
@@ -158,11 +164,38 @@ impl Compiler {
         }
     }
 
-    pub fn compile(&self) {
+    pub fn compile(&self, compile_options: Option<CompileOptions>) {
+        let compile_options = if let Some(compile_options) = compile_options {
+            compile_options
+        } else {
+            CompileOptions { watch: false }
+        };
+        let t_compiler = Instant::now();
+        let is_prod = self.context.config.mode == crate::config::Mode::Production;
+        let message = format!(
+            "Building with {} for {}...",
+            "mako".to_string().cyan(),
+            if is_prod { "production" } else { "development" }
+        )
+        .green();
+        println!("{}", message);
         self.build();
         let result = self.generate();
+        let t_compiler = t_compiler.elapsed();
         match result {
-            Ok(_) => {}
+            Ok(_) => {
+                println!(
+                    "{}",
+                    format!(
+                        "✓ Built in {}",
+                        format!("{}ms", t_compiler.as_millis()).bold()
+                    )
+                    .green()
+                );
+                if !compile_options.watch {
+                    println!("{}", "Complete!".bold());
+                }
+            }
             Err(e) => {
                 panic!("generate failed: {:?}", e);
             }
@@ -364,7 +397,7 @@ mod tests {
         let root = current_dir.join(base);
         let config = Config::new(&root, None, None).unwrap();
         let compiler = Compiler::new(config, root.clone());
-        compiler.compile();
+        compiler.compile(None);
         let dist = root.join("dist");
         let files = std::fs::read_dir(dist.clone())
             .unwrap()
