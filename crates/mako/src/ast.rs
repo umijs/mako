@@ -31,7 +31,7 @@ struct ParseError {
     error_message: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Ast {
     pub ast: Module,
     pub unresolved_mark: Mark,
