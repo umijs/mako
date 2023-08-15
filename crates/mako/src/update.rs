@@ -311,7 +311,7 @@ export default async function () {
                 ),
             ],
         );
-        compiler.compile();
+        compiler.compile(None);
         {
             let module_graph = compiler.context.module_graph.read().unwrap();
             assert_display_snapshot!(&module_graph);
@@ -383,7 +383,7 @@ export default async function () {
                 ),
             ],
         );
-        compiler.compile();
+        compiler.compile(None);
         {
             let module_graph = compiler.context.module_graph.read().unwrap();
             let code = module_to_jscode(&compiler, &ModuleId::from_path(target_path.clone()));

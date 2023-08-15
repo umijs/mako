@@ -5,7 +5,7 @@ use std::time::Instant;
 
 use anyhow::Result;
 use tokio::sync::mpsc::error::TryRecvError;
-use tracing::info;
+use tracing::debug;
 
 use crate::analyze_deps::analyze_deps;
 use crate::ast::build_js_ast;
@@ -30,18 +30,22 @@ pub type ModuleDeps = Vec<(String, Option<String>, Dependency)>;
 
 impl Compiler {
     pub fn build(&self) {
-        info!("build");
+        debug!("build");
         let t_build = Instant::now();
-        self.build_module_graph();
+        let module_ids = self.build_module_graph();
         let t_build = t_build.elapsed();
         // build chunk map 应该放 generate 阶段
         // 和 chunk 相关的都属于 generate
-
-        info!("build done in {}ms", t_build.as_millis());
+        println!(
+            "{} modules transformed in {}ms.",
+            module_ids.len(),
+            t_build.as_millis()
+        );
+        debug!("build done in {}ms", t_build.as_millis());
     }
 
-    fn build_module_graph(&self) {
-        info!("build module graph");
+    fn build_module_graph(&self) -> HashSet<ModuleId> {
+        debug!("build module graph");
 
         let entries =
             get_entries(&self.context.root, &self.context.config).expect("entry not found");
@@ -58,7 +62,7 @@ impl Compiler {
             });
         }
 
-        self.build_module_graph_by_task_queue(&mut queue, resolvers);
+        self.build_module_graph_by_task_queue(&mut queue, resolvers)
     }
 
     pub fn build_module_graph_by_task_queue(
@@ -149,8 +153,8 @@ impl Compiler {
                 }
                 Err(TryRecvError::Empty) => {
                     if active_task_count == 0 {
-                        info!("build time in main thread: {}ms", t_main_thread / 1000);
-                        info!("module count: {}", module_count);
+                        debug!("build time in main thread: {}ms", t_main_thread / 1000);
+                        debug!("module count: {}", module_count);
                         break;
                     }
                 }

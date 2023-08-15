@@ -9,7 +9,7 @@ use cached::proc_macro::cached;
 use indexmap::IndexSet;
 use rayon::prelude::*;
 use serde::Serialize;
-use tracing::{debug, info};
+use tracing::debug;
 
 use crate::ast::{css_ast_to_code, js_ast_to_code};
 use crate::compiler::{Compiler, Context};
@@ -38,11 +38,11 @@ impl Compiler {
             return self.generate_with_plugin_driver();
         }
 
-        info!("generate");
+        debug!("generate");
         let t_generate = Instant::now();
         let t_tree_shaking = Instant::now();
         if matches!(self.context.config.mode, Mode::Production) {
-            info!("tree_shaking");
+            debug!("tree_shaking");
             self.tree_shaking();
         }
         let t_tree_shaking = t_tree_shaking.elapsed();
@@ -53,7 +53,7 @@ impl Compiler {
         // 为啥单独提前 transform modules？
         // 因为放 chunks 的循环里，一个 module 可能存在于多个 chunk 里，可能会被编译多遍
         let t_transform_modules = Instant::now();
-        info!("transform all modules");
+        debug!("transform all modules");
         self.transform_all()?;
         let t_transform_modules = t_transform_modules.elapsed();
 
@@ -65,13 +65,13 @@ impl Compiler {
 
         // generate chunks
         let t_generate_chunks = Instant::now();
-        info!("generate chunks");
+        debug!("generate chunks");
         let mut chunk_asts = self.generate_chunks_ast()?;
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         // minify
         let t_minify = Instant::now();
-        info!("minify");
+        debug!("minify");
         if self.context.config.minify {
             chunk_asts
                 .par_iter_mut()
@@ -94,7 +94,7 @@ impl Compiler {
 
         // ast to code and sourcemap, then write
         let t_ast_to_code_and_write = Instant::now();
-        info!("ast to code and write");
+        debug!("ast to code and write");
         chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
             for file in get_chunk_emit_files(file, &self.context)? {
                 self.write_to_dist_with_stats(file);
@@ -106,7 +106,7 @@ impl Compiler {
 
         // write assets
         let t_write_assets = Instant::now();
-        info!("write assets");
+        debug!("write assets");
         // why {} block? unlock assets_info
         {
             let assets_info = &(*self.context.assets_info.lock().unwrap());
@@ -124,7 +124,7 @@ impl Compiler {
 
         // copy
         let t_copy = Instant::now();
-        info!("copy");
+        debug!("copy");
         self.copy()?;
         let t_copy = t_copy.elapsed();
 
@@ -142,27 +142,27 @@ impl Compiler {
         // log assets
         log_assets(self);
 
-        info!("generate done in {}ms", t_generate.elapsed().as_millis());
-        info!("  - tree shaking: {}ms", t_tree_shaking.as_millis());
-        info!("  - group chunks: {}ms", t_group_chunks.as_millis());
-        info!(
+        debug!("generate done in {}ms", t_generate.elapsed().as_millis());
+        debug!("  - tree shaking: {}ms", t_tree_shaking.as_millis());
+        debug!("  - group chunks: {}ms", t_group_chunks.as_millis());
+        debug!(
             "  - transform modules: {}ms",
             t_transform_modules.as_millis()
         );
-        info!("  - generate chunks: {}ms", t_generate_chunks.as_millis());
-        info!("  - minify: {}ms", t_minify.as_millis());
-        info!(
+        debug!("  - generate chunks: {}ms", t_generate_chunks.as_millis());
+        debug!("  - minify: {}ms", t_minify.as_millis());
+        debug!(
             "  - ast to code and write: {}ms",
             t_ast_to_code_and_write.as_millis()
         );
-        info!("  - write assets: {}ms", t_write_assets.as_millis());
-        info!("  - copy: {}ms", t_copy.as_millis());
+        debug!("  - write assets: {}ms", t_write_assets.as_millis());
+        debug!("  - copy: {}ms", t_copy.as_millis());
 
         Ok(())
     }
 
     pub fn emit_dev_chunks(&self) -> Result<()> {
-        info!("generate(hmr-fullbuild)");
+        debug!("generate(hmr-fullbuild)");
 
         let t_generate = Instant::now();
 
@@ -179,7 +179,7 @@ impl Compiler {
 
         // ast to code and sourcemap, then write
         let t_ast_to_code_and_write = Instant::now();
-        info!("ast to code and write");
+        debug!("ast to code and write");
         chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
             for file in get_chunk_emit_files(file, &self.context)? {
                 self.write_to_dist_with_stats(file);
@@ -191,7 +191,7 @@ impl Compiler {
 
         // write assets
         let t_write_assets = Instant::now();
-        info!("write assets");
+        debug!("write assets");
         let assets_info = &(*self.context.assets_info.lock().unwrap());
         for (k, v) in assets_info {
             let asset_path = &self.context.root.join(k);
@@ -206,23 +206,23 @@ impl Compiler {
 
         // copy
         let t_copy = Instant::now();
-        info!("copy");
+        debug!("copy");
         self.copy()?;
         let t_copy = t_copy.elapsed();
 
         let t_generate = t_generate.elapsed();
 
-        info!(
+        debug!(
             "generate(hmr-fullbuild) done in {}ms",
             t_generate.as_millis()
         );
-        info!("  - generate chunks: {}ms", t_generate_chunks.as_millis());
-        info!(
+        debug!("  - generate chunks: {}ms", t_generate_chunks.as_millis());
+        debug!(
             "  - ast to code and write: {}ms",
             t_ast_to_code_and_write.as_millis()
         );
-        info!("  - write assets: {}ms", t_write_assets.as_millis());
-        info!("  - copy: {}ms", t_copy.as_millis());
+        debug!("  - write assets: {}ms", t_write_assets.as_millis());
+        debug!("  - copy: {}ms", t_copy.as_millis());
 
         Ok(())
     }
@@ -233,14 +233,14 @@ impl Compiler {
         updated_modules: UpdateResult,
         last_full_hash: u64,
     ) -> Result<u64> {
-        info!("generate_hot_update_chunks start");
+        debug!("generate_hot_update_chunks start");
 
         let last_chunk_names: HashSet<String> = {
             let chunk_graph = self.context.chunk_graph.read().unwrap();
             chunk_graph.chunk_names()
         };
 
-        info!("hot-update:generate");
+        debug!("hot-update:generate");
 
         let t_generate = Instant::now();
         let t_group_chunks = Instant::now();
@@ -325,21 +325,21 @@ impl Compiler {
             .unwrap(),
         );
 
-        info!(
+        debug!(
             "generate(hmr) done in {}ms",
             t_generate.elapsed().as_millis()
         );
-        info!("  - group chunks: {}ms", t_group_chunks.as_millis());
-        info!(
+        debug!("  - group chunks: {}ms", t_group_chunks.as_millis());
+        debug!(
             "  - transform modules: {}ms",
             t_transform_modules.as_millis()
         );
-        info!("  - calculate hash: {}ms", t_calculate_hash.as_millis());
-        info!(
+        debug!("  - calculate hash: {}ms", t_calculate_hash.as_millis());
+        debug!(
             "  - generate hmr chunk: {}ms",
             t_generate_hmr_chunk.as_millis()
         );
-        info!("  - next full hash: {}", current_full_hash);
+        debug!("  - next full hash: {}", current_full_hash);
 
         Ok(current_full_hash)
     }
