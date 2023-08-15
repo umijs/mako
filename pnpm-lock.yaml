@@ -262,8 +262,8 @@ importers:
   packages/bundler-okam:
     dependencies:
       '@okamjs/okam':
-        specifier: 0.0.7-dev.20230809.1
-        version: 0.0.7-dev.20230809.1
+        specifier: 0.0.7-dev.20230809.3
+        version: link:../../crates/node
       '@swc/helpers':
         specifier: 0.5.1
         version: 0.5.1
@@ -3312,22 +3312,6 @@ packages:
     requiresBuild: true
     dev: false
     optional: true
-
-  /@okamjs/okam@0.0.7-dev.20230809.1:
-    resolution: {integrity: sha512-tvRSNIpgi3AHFazlcNoMsRFxTobdNtIuVNZbU5UOI0vQTeHzdppoenN66GE/jmQfveaZxpaC8SuFg+5DtexAXg==}
-    engines: {node: '>= 10'}
-    optionalDependencies:
-      '@okamjs/okam-darwin-arm64': 0.0.1-alpha.2
-      '@okamjs/okam-darwin-x64': 0.0.1-alpha.2
-      '@okamjs/okam-linux-arm-gnueabihf': 0.0.1-alpha.2
-      '@okamjs/okam-linux-arm64-gnu': 0.0.1-alpha.2
-      '@okamjs/okam-linux-arm64-musl': 0.0.1-alpha.2
-      '@okamjs/okam-linux-x64-gnu': 0.0.1-alpha.2
-      '@okamjs/okam-linux-x64-musl': 0.0.1-alpha.2
-      '@okamjs/okam-win32-arm64-msvc': 0.0.1-alpha.2
-      '@okamjs/okam-win32-ia32-msvc': 0.0.1-alpha.2
-      '@okamjs/okam-win32-x64-msvc': 0.0.1-alpha.2
-    dev: false
 
   /@pkgjs/parseargs@0.11.0:
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
