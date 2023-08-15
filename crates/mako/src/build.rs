@@ -6,13 +6,11 @@ use std::time::Instant;
 
 use anyhow::Result;
 use colored::Colorize;
-use swc_common::errors::Handler;
-use swc_error_reporters::{GraphicalReportHandler, PrettyEmitter, PrettyEmitterConfig};
 use tokio::sync::mpsc::error::TryRecvError;
 use tracing::debug;
 
 use crate::analyze_deps::analyze_deps;
-use crate::ast::build_js_ast;
+use crate::ast::{build_js_ast, generate_code_frame};
 use crate::compiler::{Compiler, Context};
 use crate::config::Config;
 use crate::load::load;
@@ -295,22 +293,7 @@ impl Compiler {
                 let mut err = format!("Module not found: Can't resolve '{}'", source);
 
                 if let Some(span) = span {
-                    let wr = Box::<LockedWriter>::default();
-                    let emitter = PrettyEmitter::new(
-                        context.meta.script.cm.clone(),
-                        wr.clone(),
-                        GraphicalReportHandler::new().with_context_lines(3),
-                        PrettyEmitterConfig {
-                            skip_filename: false,
-                        },
-                    );
-                    let handler = Handler::with_emitter(true, false, Box::new(emitter));
-                    // let db = DiagnosticBuilder::new(&handler, swc_common::errors::Level::Error, &err);
-                    let mut db = handler.struct_span_err(span, &err);
-                    db.emit();
-                    let s = &**wr.0.lock().unwrap();
-                    err = s.to_string();
-                    // eprintln!("{}", s);
+                    err = generate_code_frame(span, &err, context.meta.script.cm.clone());
                 }
 
                 // let id = ModuleId::new(target.clone());
