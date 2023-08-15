@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Instant;
 
+use colored::Colorize;
 use futures::{SinkExt, StreamExt};
 use hyper::header::CONTENT_TYPE;
 use hyper::http::HeaderValue;
@@ -192,13 +194,30 @@ impl ProjectWatch {
                 let res = watch_compiler.update(events.into());
 
                 match res {
-                    Err(e) => {
-                        eprintln!("Error in watch: {:?}", e);
+                    Err(err) => {
+                        // unescape
+                        let mut err = err
+                            .to_string()
+                            .replace("\\n", "\n")
+                            .replace("\\u{1b}", "\u{1b}")
+                            .replace("\\\\", "\\");
+                        // remove first char and last char
+                        if err.starts_with('"') && err.ends_with('"') {
+                            err = err[1..err.len() - 1].to_string();
+                        }
+                        eprintln!("{}", "Build failed.".to_string().red());
+                        eprintln!("{}", err);
                     }
                     Ok(res) => {
                         if res.is_updated() {
+                            println!("Compiling...");
+                            let t_compiler = Instant::now();
                             let next_full_hash =
                                 watch_compiler.generate_hot_update_chunks(res, *last_full_hash);
+                            println!(
+                                "Hot rebuilt in {}",
+                                format!("{}ms", t_compiler.elapsed().as_millis()).bold()
+                            );
 
                             if let Err(e) = next_full_hash {
                                 eprintln!("Error in watch: {:?}", e);
@@ -224,6 +243,10 @@ impl ProjectWatch {
                                 debug!("Error in build: {:?}, will rebuild soon", e);
                                 return;
                             }
+                            println!(
+                                "Full rebuilt in {}",
+                                format!("{}ms", t_compiler.elapsed().as_millis()).bold()
+                            );
 
                             debug!("receiver count: {}", tx.receiver_count());
                             if tx.receiver_count() > 0 {

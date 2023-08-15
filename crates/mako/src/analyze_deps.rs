@@ -59,13 +59,19 @@ impl DepCollectVisitor {
             order: 1,
         }
     }
-    fn bind_dependency(&mut self, source: String, resolve_type: ResolveType) {
+    fn bind_dependency(
+        &mut self,
+        source: String,
+        resolve_type: ResolveType,
+        span: Option<swc_common::Span>,
+    ) {
         if !self.dep_strs.contains(&source) {
             self.dep_strs.push(source.clone());
             self.dependencies.push(Dependency {
                 source,
                 order: self.order,
                 resolve_type,
+                span,
             });
             self.order += 1;
         }
@@ -75,7 +81,7 @@ impl DepCollectVisitor {
             return;
         }
         let url = handle_css_url(url);
-        self.bind_dependency(url, ResolveType::Css);
+        self.bind_dependency(url, ResolveType::Css, None);
     }
 }
 
@@ -87,17 +93,20 @@ impl Visit for DepCollectVisitor {
                     return;
                 }
                 let src = import.src.value.to_string();
-                self.bind_dependency(src, ResolveType::Import);
+                self.bind_dependency(src, ResolveType::Import, Some(import.src.span));
             }
             ModuleDecl::ExportNamed(export) => {
                 if let Some(src) = &export.src {
-                    let src = src.value.to_string();
-                    self.bind_dependency(src, ResolveType::ExportNamed);
+                    self.bind_dependency(
+                        src.value.to_string(),
+                        ResolveType::ExportNamed,
+                        Some(src.span),
+                    );
                 }
             }
             ModuleDecl::ExportAll(export) => {
                 let src = export.src.value.to_string();
-                self.bind_dependency(src, ResolveType::ExportAll);
+                self.bind_dependency(src, ResolveType::ExportAll, Some(export.src.span));
             }
             _ => {}
         }
@@ -107,12 +116,12 @@ impl Visit for DepCollectVisitor {
     fn visit_call_expr(&mut self, expr: &CallExpr) {
         if is_commonjs_require(expr) {
             if let Some(src) = get_first_arg_str(expr) {
-                self.bind_dependency(src, ResolveType::Require);
+                self.bind_dependency(src, ResolveType::Require, Some(expr.span));
                 return;
             }
         } else if is_dynamic_import(expr) {
             if let Some(src) = get_first_arg_str(expr) {
-                self.bind_dependency(src, ResolveType::DynamicImport);
+                self.bind_dependency(src, ResolveType::DynamicImport, Some(expr.span));
                 return;
             }
         }

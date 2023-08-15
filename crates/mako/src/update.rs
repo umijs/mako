@@ -108,7 +108,7 @@ impl Compiler {
         // 分析修改的模块，结果中会包含新增的模块
         let (modified_module_ids, add_paths) = self
             .build_by_modify(modified, resolvers.clone())
-            .map_err(|err| anyhow!("build_by_modify err:{:?}", err))?;
+            .map_err(|err| anyhow!(err))?;
 
         added.extend(add_paths);
         debug!("added:{:?}", &added);
@@ -311,7 +311,7 @@ export default async function () {
                 ),
             ],
         );
-        compiler.compile();
+        compiler.compile(None);
         {
             let module_graph = compiler.context.module_graph.read().unwrap();
             assert_display_snapshot!(&module_graph);
@@ -383,7 +383,7 @@ export default async function () {
                 ),
             ],
         );
-        compiler.compile();
+        compiler.compile(None);
         {
             let module_graph = compiler.context.module_graph.read().unwrap();
             let code = module_to_jscode(&compiler, &ModuleId::from_path(target_path.clone()));
