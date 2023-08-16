@@ -6,8 +6,8 @@ use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use colored::*;
+use pathdiff::diff_paths;
 use serde::Serialize;
-use tracing::info;
 
 use crate::chunk::ChunkType;
 use crate::compiler::Compiler;
@@ -238,7 +238,6 @@ pub fn write_stats(stats: &StatsJsonMap, compiler: &Compiler) {
     let path = &compiler.context.root.join("stats.json");
     let stats_json = serde_json::to_string_pretty(stats).unwrap();
     fs::write(path, stats_json).unwrap();
-    info!("stats.json has been created in {:?}", path);
 }
 
 // 文件大小转换
@@ -267,21 +266,72 @@ pub fn log_assets(compiler: &Compiler) {
     let assets = &mut compiler.context.stats_info.lock().unwrap().assets;
     // 按照产物名称排序
     assets.sort();
-    let length = 15;
     let mut s = "\n".to_string();
-    let dist = "dist/".truecolor(133, 133, 133);
+    // 产物路径需要按照 output.path 来
+    let abs_path = &compiler.context.root;
+    let output_path = &compiler.context.config.output.path;
+    let dist_path = diff_paths(output_path, abs_path).unwrap_or(output_path.clone());
+    let mut path_str = dist_path.to_str().unwrap().to_string();
+    if !path_str.ends_with('/') {
+        path_str.push('/');
+    }
+    let dist = path_str.truecolor(133, 133, 133);
 
+    // 最长的文件名字, 后续保持输出整齐
+    let mut max_length_name = String::new();
+    // 记录 name size map_size 的数组
+    let mut assets_vec: Vec<(String, u64, u64)> = vec![];
+
+    // 生成 (name, size, map_size) 的 vec
     for asset in assets {
-        let size = human_readable_size(asset.size);
-        s.push_str(
-            format!(
-                "{} {}{}\n",
-                pad_string(&size, length),
-                dist.clone(),
-                asset.name.blue().bold()
-            )
-            .as_str(),
-        );
+        let name = asset.name.clone();
+        // 记录较长的名字
+        if name.chars().count() > max_length_name.chars().count() {
+            max_length_name = name.clone();
+        }
+
+        // 如果是 .map 文件判断是否是上一个的文件的 sourceMap
+        // 前面排序过了, sourceMap 一定 js/css 在后面
+        if name.ends_with(".map") {
+            let len = assets_vec.len();
+            if let Some(last) = assets_vec.get_mut(len - 1) {
+                if name == format!("{}.map", last.0) {
+                    *last = (last.0.clone(), last.1, asset.size);
+                }
+            }
+        } else {
+            assets_vec.push((asset.name.clone(), asset.size, 0));
+        }
+    }
+
+    for asset in assets_vec {
+        let file_name = format!("{}{}", dist, asset.0);
+        let length = format!("{}{}", dist, max_length_name).chars().count() + 5;
+        // 没有 map 的输出
+        if asset.2 == 0 {
+            let size = human_readable_size(asset.1);
+            s.push_str(
+                format!(
+                    "{} {}\n",
+                    pad_string(&file_name, length),
+                    pad_string(&size, 10),
+                )
+                .as_str(),
+            );
+        } else {
+            // 有 map 的输出, | map: map_size
+            let size = human_readable_size(asset.1);
+            let map_size = human_readable_size(asset.2);
+            s.push_str(
+                format!(
+                    "{} {} | map:  {}\n",
+                    pad_string(&file_name, length),
+                    pad_string(&size, 10),
+                    map_size
+                )
+                .as_str(),
+            );
+        }
     }
 
     println!("{}", s);

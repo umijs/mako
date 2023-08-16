@@ -7,5 +7,8 @@
   "manifest_config": {
     "file_name": "manifest.json",
     "base_path": "aaa"
+  },
+  "output": {
+    "path": "dist/assets"
   }
 }
