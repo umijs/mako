@@ -1,3 +1,4 @@
+use std::hash::Hasher;
 use std::sync::Arc;
 use std::vec;
 
@@ -11,17 +12,19 @@ use swc_ecma_ast::{
     FnExpr, Function, Ident, KeyValueProp, MemberExpr, MemberProp, ModuleItem, ObjectLit, Param,
     Pat, Prop, PropOrSpread, Stmt, Str, VarDecl,
 };
+use twox_hash::XxHash64;
 
 use crate::ast::build_js_ast;
 use crate::compiler::{Compiler, Context};
 use crate::config::Mode;
-use crate::module::{ModuleAst, ModuleId};
+use crate::module::{ModuleAst, ModuleId, ModuleType};
 use crate::transform_in_generate::transform_css_generate;
 
 pub struct OutputAst {
     pub path: String,
     pub ast: ModuleAst,
     pub chunk_id: String,
+    pub module_hash: u64,
 }
 
 impl Compiler {
@@ -247,12 +250,14 @@ impl Compiler {
                     path: filename,
                     ast: ModuleAst::Script(js_ast),
                     chunk_id: chunk.id.id.clone(),
+                    module_hash: get_related_module_hash(&chunk, &module_graph, false),
                 });
                 if let Some(merged_css_ast) = merged_css_ast {
                     output.push(OutputAst {
                         path: css_filename,
                         ast: ModuleAst::Css(merged_css_ast),
                         chunk_id: chunk.id.id.clone(),
+                        module_hash: get_related_module_hash(&chunk, &module_graph, true),
                     });
                 }
                 Ok(output)
@@ -271,6 +276,32 @@ fn get_css_chunk_filename(js_chunk_filename: String) -> String {
         "{}.css",
         js_chunk_filename.strip_suffix(".js").unwrap_or("")
     )
+}
+
+pub fn get_related_module_hash(
+    chunk: &crate::chunk::Chunk,
+    module_graph: &std::sync::RwLockReadGuard<crate::module_graph::ModuleGraph>,
+    is_css_ast: bool,
+) -> u64 {
+    let mut sorted_module_ids = chunk
+        .get_modules()
+        .iter()
+        .cloned()
+        .collect::<Vec<ModuleId>>();
+    sorted_module_ids.sort_by_key(|m| m.id.clone());
+
+    let mut hash: XxHash64 = Default::default();
+
+    for id in sorted_module_ids {
+        let m = module_graph.get_module(&id).unwrap();
+        let m_type = m.get_module_type();
+
+        if matches!(m_type, ModuleType::Css) == is_css_ast {
+            hash.write_u64(m.info.as_ref().unwrap().raw_hash);
+        }
+    }
+
+    hash.finish()
 }
 
 fn compile_runtime_entry(has_wasm: bool) -> String {

@@ -49,9 +49,9 @@ impl ChunkGraph {
         self.graph.node_weights().find(|c| c.filename().eq(name))
     }
 
-    pub fn get_chunk_by_id(&self, id: &String) -> Option<&Chunk> {
-        self.graph.node_weights().find(|c| c.id.id.eq(id))
-    }
+    // pub fn get_chunk_by_id(&self, id: &String) -> Option<&Chunk> {
+    //     self.graph.node_weights().find(|c| c.id.id.eq(id))
+    // }
 
     pub fn chunk(&self, chunk_id: &ChunkId) -> Option<&Chunk> {
         match self.id_index_map.get(chunk_id) {

@@ -381,12 +381,11 @@ fn to_hot_update_chunk_name(chunk_name: &String, hash: u64) -> String {
 #[cached(
     result = true,
     key = "String",
-    // TODO: use different hash for js and css in the same chunk
-    convert = r#"{ format!("{}-{}", context.chunk_graph.read().unwrap().get_chunk_by_id(&file.chunk_id).unwrap().hash(&context.module_graph.read().unwrap()).to_string(), file.path) }"#
+    convert = r#"{ format!("{}-{}", file.module_hash, file.path) }"#
 )]
 fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<EmitFile>> {
+    info!("the changing file is {}", &file.path);
     let mut files = vec![];
-
     match &file.ast {
         ModuleAst::Script(ast) => {
             // ast to code
