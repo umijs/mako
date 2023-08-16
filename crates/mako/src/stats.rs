@@ -270,7 +270,7 @@ pub fn log_assets(compiler: &Compiler) {
     // 产物路径需要按照 output.path 来
     let abs_path = &compiler.context.root;
     let output_path = &compiler.context.config.output.path;
-    let dist_path = diff_paths(output_path, abs_path).unwrap_or(output_path.clone());
+    let dist_path = diff_paths(output_path, abs_path).unwrap_or_else(|| output_path.clone());
     let mut path_str = dist_path.to_str().unwrap().to_string();
     if !path_str.ends_with('/') {
         path_str.push('/');
