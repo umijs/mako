@@ -202,8 +202,9 @@ mod tests {
             code,
             r#".foo {
   color: red;
-}"#
-            .trim()
+}
+/*# sourceMappingURL=test.css.map*/"#
+                .trim()
         );
     }
 
@@ -237,7 +238,8 @@ mod tests {
 .other {
   color: green;
 }
-@media print {}"#
+@media print {}
+/*# sourceMappingURL=test.css.map*/"#
                 .trim()
         );
     }
@@ -247,7 +249,7 @@ mod tests {
         let context = Arc::new(Default::default());
         let mut ast = build_css_ast(path, content, &context).unwrap();
         transform_css_generate(&mut ast, &context);
-        let (code, _sourcemap) = css_ast_to_code(&ast, &context);
+        let (code, _sourcemap) = css_ast_to_code(&ast, &context, "test.css");
         let code = code.trim().to_string();
         (code, _sourcemap)
     }

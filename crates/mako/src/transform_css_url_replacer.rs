@@ -36,6 +36,7 @@ impl VisitMut for CSSUrlReplacer<'_> {
             source: url,
             resolve_type: crate::module::ResolveType::Css,
             order: 0,
+            span: None,
         };
         let resolved = resolve::resolve(self.path, &dep, self.resolvers, self.context);
         if let Ok((resolved_path, _)) = resolved {

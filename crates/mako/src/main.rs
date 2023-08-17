@@ -1,10 +1,9 @@
 #![feature(box_patterns)]
 
 use std::sync::Arc;
-use std::time::Instant;
 
 use clap::Parser;
-use tracing::{debug, info};
+use tracing::debug;
 
 use crate::logger::init_logger;
 
@@ -88,11 +87,8 @@ async fn main() {
     debug!("config: {:?}", config);
 
     // compiler
-    let t_comiler = Instant::now();
     let compiler = compiler::Compiler::new(config, root.clone());
-    compiler.compile();
-    let t_comiler = t_comiler.elapsed();
-    info!("compiler success: {:?}ms", t_comiler.as_millis());
+    compiler.compile(Some(compiler::CompileOptions { watch: cli.watch }));
 
     if cli.watch {
         let d = crate::dev::DevServer::new(root.clone(), Arc::new(compiler));
