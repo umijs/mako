@@ -254,19 +254,24 @@ pub fn human_readable_size(size: u64) -> String {
     format!("{:.2} {}", size, units[i])
 }
 
-fn pad_string(text: &str, max_length: usize) -> String {
-    let mut padded_text = format!("  {}", String::from(text));
+fn pad_string(text: &str, max_length: usize, front: bool) -> String {
+    let mut padded_text = String::from(text);
     let pad_length = max_length - text.chars().count();
-
-    padded_text.push_str(&" ".repeat(pad_length));
-    padded_text
+    if front {
+        let mut s = String::new();
+        s.push_str(&" ".repeat(pad_length));
+        s.push_str(text);
+        s
+    } else {
+        padded_text.push_str(&" ".repeat(pad_length));
+        padded_text
+    }
 }
 
 pub fn log_assets(compiler: &Compiler) {
     let assets = &mut compiler.context.stats_info.lock().unwrap().assets;
     // 按照产物名称排序
     assets.sort();
-    let mut s = "\n".to_string();
     // 产物路径需要按照 output.path 来
     let abs_path = &compiler.context.root;
     let output_path = &compiler.context.config.output.path;
@@ -275,16 +280,19 @@ pub fn log_assets(compiler: &Compiler) {
     if !path_str.ends_with('/') {
         path_str.push('/');
     }
-    let dist = path_str.truecolor(133, 133, 133);
+    let dist = path_str.truecolor(128, 128, 128);
 
-    // 最长的文件名字, 后续保持输出整齐
+    // 最长的文件名字, size长度, map_size长度, 后续保持输出整齐
     let mut max_length_name = String::new();
+    let mut max_size = 0;
+    let mut max_map_size = 0;
     // 记录 name size map_size 的数组
     let mut assets_vec: Vec<(String, u64, u64)> = vec![];
 
     // 生成 (name, size, map_size) 的 vec
     for asset in assets {
         let name = asset.name.clone();
+        let size_length = human_readable_size(asset.size).chars().count();
         // 记录较长的名字
         if name.chars().count() > max_length_name.chars().count() {
             max_length_name = name.clone();
@@ -296,25 +304,44 @@ pub fn log_assets(compiler: &Compiler) {
             let len = assets_vec.len();
             if let Some(last) = assets_vec.get_mut(len - 1) {
                 if name == format!("{}.map", last.0) {
+                    // 记录较长的 map_size
+                    if size_length > max_map_size {
+                        max_map_size = size_length;
+                    }
                     *last = (last.0.clone(), last.1, asset.size);
+                    continue;
                 }
             }
-        } else {
-            assets_vec.push((asset.name.clone(), asset.size, 0));
         }
+        // 记录较长的 size
+        if size_length > max_size {
+            max_size = size_length;
+        }
+        assets_vec.push((asset.name.clone(), asset.size, 0));
     }
 
+    // 输出 stats
+    let mut s = String::new();
     for asset in assets_vec {
         let file_name = format!("{}{}", dist, asset.0);
-        let length = format!("{}{}", dist, max_length_name).chars().count() + 5;
+        let length = format!("{}{}", dist, max_length_name).chars().count() + 2;
+        let file_name_str: String = pad_string(&file_name, length, false);
+        let color_file_name_str = match file_name {
+            // cyan
+            s if s.ends_with(".js") => file_name_str.truecolor(0, 255, 255),
+            // magenta
+            s if s.ends_with(".css") => file_name_str.truecolor(255, 0, 255),
+            // green
+            _ => file_name_str.truecolor(0, 255, 0),
+        };
         // 没有 map 的输出
         if asset.2 == 0 {
             let size = human_readable_size(asset.1);
             s.push_str(
                 format!(
                     "{} {}\n",
-                    pad_string(&file_name, length),
-                    pad_string(&size, 10),
+                    color_file_name_str,
+                    pad_string(&size, max_size, true),
                 )
                 .as_str(),
             );
@@ -324,15 +351,16 @@ pub fn log_assets(compiler: &Compiler) {
             let map_size = human_readable_size(asset.2);
             s.push_str(
                 format!(
-                    "{} {} | map:  {}\n",
-                    pad_string(&file_name, length),
-                    pad_string(&size, 10),
-                    map_size
+                    "{} {} {}  {}\n",
+                    color_file_name_str,
+                    pad_string(&size, max_size, true),
+                    "\u{FF5C} map:".truecolor(128, 128, 128),
+                    pad_string(&map_size, max_map_size, true).truecolor(128, 128, 128)
                 )
                 .as_str(),
             );
         }
     }
 
-    println!("{}", s);
+    println!("{}", s.trim_end_matches('\n'));
 }
