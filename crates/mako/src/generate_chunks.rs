@@ -284,24 +284,14 @@ pub fn get_related_module_hash(
     module_graph: &std::sync::RwLockReadGuard<crate::module_graph::ModuleGraph>,
     is_css_ast: bool,
 ) -> u64 {
-    let mut sorted_module_ids = chunk
-        .get_modules()
-        .iter()
-        .cloned()
-        .collect::<Vec<ModuleId>>();
-    sorted_module_ids.sort_by_key(|m| m.id.clone());
-
     let mut hash: XxHash64 = Default::default();
 
-    for id in sorted_module_ids {
-        let m = module_graph.get_module(&id).unwrap();
+    for id in chunk.get_modules().iter() {
+        let m = module_graph.get_module(id).unwrap();
         let m_type = m.get_module_type();
 
         if matches!(m_type, ModuleType::Css) == is_css_ast {
             hash.write_u64(m.info.as_ref().unwrap().raw_hash);
-            // module 的 raw_hash 根据 content 计算而来，内容相同时 raw_hash 可能重复
-            // 所以在计算 hash 时加入 module id，保证得到的 hash 是唯一的
-            hash.write(m.id.id.as_bytes());
         }
     }
     hash.finish()
