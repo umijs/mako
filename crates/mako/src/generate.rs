@@ -384,7 +384,6 @@ fn to_hot_update_chunk_name(chunk_name: &String, hash: u64) -> String {
     convert = r#"{ format!("{}-{}", file.module_hash, file.path) }"#
 )]
 fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<EmitFile>> {
-    info!("the changing file is {}", &file.path);
     let mut files = vec![];
     match &file.ast {
         ModuleAst::Script(ast) => {
