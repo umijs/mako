@@ -4,6 +4,7 @@ pub mod javascript;
 pub mod json;
 pub mod manifest;
 pub mod md;
+pub mod meta;
 pub mod minifish_analyze_deps;
 pub mod minifish_compiler;
 pub mod node_polyfill;

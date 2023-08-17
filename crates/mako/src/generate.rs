@@ -30,6 +30,12 @@ pub struct EmitFile {
 impl Compiler {
     pub fn generate_with_plugin_driver(&self) -> Result<()> {
         self.context.plugin_driver.generate(&self.context)?;
+
+        let stats = create_stats_info(0, self);
+
+        self.context
+            .plugin_driver
+            .build_success(&stats, &self.context)?;
         Ok(())
     }
 

@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use base64::engine::{general_purpose, Engine};
 use pathdiff::diff_paths;
+use serde::Serialize;
 use swc_common::Span;
 
 use crate::ast::Ast;
@@ -19,13 +20,19 @@ pub struct Dependency {
     pub span: Option<Span>,
 }
 
-#[derive(Eq, Hash, PartialEq, Debug, Clone)]
+#[derive(Eq, Hash, PartialEq, Debug, Clone, Serialize, Copy)]
 pub enum ResolveType {
+    #[serde(rename = "import")]
     Import,
+    #[serde(rename = "exportNamed")]
     ExportNamed,
+    #[serde(rename = "exportAll")]
     ExportAll,
+    #[serde(rename = "require")]
     Require,
+    #[serde(rename = "dynamicImport")]
     DynamicImport,
+    #[serde(rename = "css")]
     Css,
 }
 
