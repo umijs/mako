@@ -68,11 +68,11 @@ impl DevServer {
 
             Ok(())
         }
-        let arc_watcher = Arc::new(self.watcher.clone());
+        let arc_watcher = self.watcher.clone();
         let compiler = self.compiler.clone();
         let handle_request = move |req: hyper::Request<hyper::Body>| {
             let for_fn = compiler.clone();
-            let r = arc_watcher.clone_receiver();
+            let w = arc_watcher.clone();
             async move {
                 let path = req.uri().path().strip_prefix('/').unwrap_or("");
 
@@ -86,7 +86,8 @@ impl DevServer {
                                 hyper_tungstenite::upgrade(req, None).unwrap();
 
                             tokio::spawn(async move {
-                                if let Err(e) = serve_websocket(websocket, r).await {
+                                if let Err(e) = serve_websocket(websocket, w.clone_receiver()).await
+                                {
                                     eprintln!("Error in websocket connection: {}", e);
                                 }
                             });
@@ -258,7 +259,8 @@ impl ProjectWatch {
                         }
                     }
                 }
-            });
+            })
+            .await;
         })
     }
 
