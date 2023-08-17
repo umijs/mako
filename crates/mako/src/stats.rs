@@ -242,8 +242,9 @@ pub fn write_stats(stats: &StatsJsonMap, compiler: &Compiler) {
 
 // 文件大小转换
 pub fn human_readable_size(size: u64) -> String {
-    let units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
-    let mut size = size as f64;
+    let units = ["KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+    // 把 B 转为 KB
+    let mut size = (size as f64) / 1024.0;
     let mut i = 0;
 
     while size >= 1024.0 && i < units.len() - 1 {
@@ -351,10 +352,10 @@ pub fn log_assets(compiler: &Compiler) {
             let map_size = human_readable_size(asset.2);
             s.push_str(
                 format!(
-                    "{} {} {}  {}\n",
+                    "{} {} {} {}\n",
                     color_file_name_str,
                     pad_string(&size, max_size, true),
-                    "\u{FF5C} map:".truecolor(128, 128, 128),
+                    "│ map:".truecolor(128, 128, 128),
                     pad_string(&map_size, max_map_size, true).truecolor(128, 128, 128)
                 )
                 .as_str(),
