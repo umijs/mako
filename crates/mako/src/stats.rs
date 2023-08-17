@@ -274,7 +274,7 @@ fn pad_string(text: &str, max_length: usize, front: bool) -> String {
     }
 }
 
-pub fn log_assets(compiler: &Compiler) {
+pub fn print_stats(compiler: &Compiler) {
     let assets = &mut compiler.context.stats_info.lock().unwrap().assets;
     // 按照产物名称排序
     assets.sort();

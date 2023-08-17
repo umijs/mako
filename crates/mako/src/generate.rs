@@ -17,7 +17,7 @@ use crate::config::{DevtoolConfig, Mode, OutputMode};
 use crate::generate_chunks::OutputAst;
 use crate::minify::minify_js;
 use crate::module::{ModuleAst, ModuleId};
-use crate::stats::{create_stats_info, log_assets, write_stats};
+use crate::stats::{create_stats_info, print_stats, write_stats};
 use crate::update::UpdateResult;
 
 #[derive(Clone)]
@@ -27,13 +27,17 @@ pub struct EmitFile {
     pub chunk_id: String,
 }
 
+pub struct GenerateOptions {
+    pub watch: bool,
+}
+
 impl Compiler {
     pub fn generate_with_plugin_driver(&self) -> Result<()> {
         self.context.plugin_driver.generate(&self.context)?;
         Ok(())
     }
 
-    pub fn generate(&self) -> Result<()> {
+    pub fn generate(&self, options: GenerateOptions) -> Result<()> {
         if self.context.config.output.mode == OutputMode::MinifishPrebuild {
             return self.generate_with_plugin_driver();
         }
@@ -130,7 +134,7 @@ impl Compiler {
 
         // generate stats
         let stats = create_stats_info(0, self);
-        if self.context.config.stats {
+        if self.context.config.stats && !options.watch {
             write_stats(&stats, self);
         }
 
@@ -139,8 +143,10 @@ impl Compiler {
             .plugin_driver
             .build_success(&stats, &self.context)?;
 
-        // log assets
-        log_assets(self);
+        // print stats
+        if !options.watch {
+            print_stats(self);
+        }
 
         debug!("generate done in {}ms", t_generate.elapsed().as_millis());
         debug!("  - tree shaking: {}ms", t_tree_shaking.as_millis());
