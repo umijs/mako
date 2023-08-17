@@ -81,6 +81,8 @@ pub enum CodeSplittingStrategy {
     BigVendor,
     #[serde(rename = "depPerChunk")]
     DepPerChunk,
+    #[serde(rename = "none")]
+    None,
 }
 
 #[derive(Deserialize, Debug)]
@@ -108,6 +110,7 @@ pub struct Config {
     pub hmr: bool,
     pub hmr_port: String,
     pub hmr_host: String,
+    #[serde(rename(deserialize = "codeSplitting"))]
     pub code_splitting: CodeSplittingStrategy,
     // temp flag
     pub extract_css: bool,
@@ -138,7 +141,7 @@ const DEFAULT_CONFIG: &str = r#"
     "hmr_host": "127.0.0.1",
     "hmr_port": "3000",
     "module_id_strategy": "named",
-    "code_splitting": "bigVendor",
+    "codeSplitting": "bigVendor",
     "extract_css": false
 }
 "#;

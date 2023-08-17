@@ -31,6 +31,9 @@ impl Compiler {
             CodeSplittingStrategy::DepPerChunk => {
                 self.group_dep_per_chunk();
             }
+            CodeSplittingStrategy::None => {
+                // do nothing, use the main chunk only
+            }
         }
     }
 
