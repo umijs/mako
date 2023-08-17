@@ -24,7 +24,7 @@ pub struct OutputAst {
     pub path: String,
     pub ast: ModuleAst,
     pub chunk_id: String,
-    pub module_hash: u64,
+    pub ast_module_hash: u64,
 }
 
 impl Compiler {
@@ -250,14 +250,14 @@ impl Compiler {
                     path: filename,
                     ast: ModuleAst::Script(js_ast),
                     chunk_id: chunk.id.id.clone(),
-                    module_hash: get_related_module_hash(chunk, &module_graph, false),
+                    ast_module_hash: get_related_module_hash(chunk, &module_graph, false),
                 });
                 if let Some(merged_css_ast) = merged_css_ast {
                     output.push(OutputAst {
                         path: css_filename,
                         ast: ModuleAst::Css(merged_css_ast),
                         chunk_id: chunk.id.id.clone(),
-                        module_hash: get_related_module_hash(chunk, &module_graph, true),
+                        ast_module_hash: get_related_module_hash(chunk, &module_graph, true),
                     });
                 }
                 Ok(output)

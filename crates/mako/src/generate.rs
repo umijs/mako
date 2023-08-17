@@ -381,7 +381,7 @@ fn to_hot_update_chunk_name(chunk_name: &String, hash: u64) -> String {
 #[cached(
     result = true,
     key = "String",
-    convert = r#"{ format!("{}-{}", file.module_hash, file.path) }"#
+    convert = r#"{ format!("{}-{}", file.ast_module_hash, file.path) }"#
 )]
 fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<EmitFile>> {
     let mut files = vec![];
