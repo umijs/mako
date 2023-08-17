@@ -250,14 +250,14 @@ impl Compiler {
                     path: filename,
                     ast: ModuleAst::Script(js_ast),
                     chunk_id: chunk.id.id.clone(),
-                    module_hash: get_related_module_hash(&chunk, &module_graph, false),
+                    module_hash: get_related_module_hash(chunk, &module_graph, false),
                 });
                 if let Some(merged_css_ast) = merged_css_ast {
                     output.push(OutputAst {
                         path: css_filename,
                         ast: ModuleAst::Css(merged_css_ast),
                         chunk_id: chunk.id.id.clone(),
-                        module_hash: get_related_module_hash(&chunk, &module_graph, true),
+                        module_hash: get_related_module_hash(chunk, &module_graph, true),
                     });
                 }
                 Ok(output)
@@ -278,6 +278,7 @@ fn get_css_chunk_filename(js_chunk_filename: String) -> String {
     )
 }
 
+// 给 OutPutAst 计算 hash 值，get_chunk_emit_files 时会根据此 hash 值做缓存
 pub fn get_related_module_hash(
     chunk: &crate::chunk::Chunk,
     module_graph: &std::sync::RwLockReadGuard<crate::module_graph::ModuleGraph>,
@@ -298,9 +299,11 @@ pub fn get_related_module_hash(
 
         if matches!(m_type, ModuleType::Css) == is_css_ast {
             hash.write_u64(m.info.as_ref().unwrap().raw_hash);
+            // module 的 raw_hash 根据 content 计算而来，内容相同时 raw_hash 可能重复
+            // 所以在计算 hash 时加入 module id，保证得到的 hash 是唯一的
+            hash.write(m.id.id.as_bytes());
         }
     }
-
     hash.finish()
 }
 
