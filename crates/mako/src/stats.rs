@@ -333,12 +333,9 @@ pub fn print_stats(compiler: &Compiler) {
         let length = format!("{}{}", dist, max_length_name).chars().count() + 2;
         let file_name_str: String = pad_string(&file_name, length, false);
         let color_file_name_str = match file_name {
-            // cyan
-            s if s.ends_with(".js") => file_name_str.truecolor(0, 255, 255),
-            // magenta
-            s if s.ends_with(".css") => file_name_str.truecolor(255, 0, 255),
-            // green
-            _ => file_name_str.truecolor(0, 255, 0),
+            s if s.ends_with(".js") => file_name_str.cyan(),
+            s if s.ends_with(".css") => file_name_str.magenta(),
+            _ => file_name_str.green(),
         };
         // 没有 map 的输出
         if asset.2 == 0 {
@@ -359,7 +356,9 @@ pub fn print_stats(compiler: &Compiler) {
                 format!(
                     "{} {} {} {}\n",
                     color_file_name_str,
-                    pad_string(&size, max_size, true),
+                    pad_string(&size, max_size, true)
+                        .truecolor(128, 128, 128)
+                        .bold(),
                     "│ map:".truecolor(128, 128, 128),
                     pad_string(&map_size, max_map_size, true).truecolor(128, 128, 128)
                 )
