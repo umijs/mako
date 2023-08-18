@@ -1,4 +1,4 @@
 {
-  "codeSplitting": "depPerChunk",
+  "code_splitting": "depPerChunk",
   "externals": {}
 }
