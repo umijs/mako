@@ -1,3 +1,4 @@
+use std::hash::Hasher;
 use std::sync::Arc;
 use std::vec;
 
@@ -11,17 +12,19 @@ use swc_ecma_ast::{
     FnExpr, Function, Ident, KeyValueProp, MemberExpr, MemberProp, ModuleItem, ObjectLit, Param,
     Pat, Prop, PropOrSpread, Stmt, Str, VarDecl,
 };
+use twox_hash::XxHash64;
 
 use crate::ast::build_js_ast;
 use crate::compiler::{Compiler, Context};
 use crate::config::Mode;
-use crate::module::{ModuleAst, ModuleId};
+use crate::module::{ModuleAst, ModuleId, ModuleType};
 use crate::transform_in_generate::transform_css_generate;
 
 pub struct OutputAst {
     pub path: String,
     pub ast: ModuleAst,
     pub chunk_id: String,
+    pub ast_module_hash: u64,
 }
 
 impl Compiler {
@@ -247,12 +250,14 @@ impl Compiler {
                     path: filename,
                     ast: ModuleAst::Script(js_ast),
                     chunk_id: chunk.id.id.clone(),
+                    ast_module_hash: get_related_module_hash(chunk, &module_graph, false),
                 });
                 if let Some(merged_css_ast) = merged_css_ast {
                     output.push(OutputAst {
                         path: css_filename,
                         ast: ModuleAst::Css(merged_css_ast),
                         chunk_id: chunk.id.id.clone(),
+                        ast_module_hash: get_related_module_hash(chunk, &module_graph, true),
                     });
                 }
                 Ok(output)
@@ -271,6 +276,35 @@ fn get_css_chunk_filename(js_chunk_filename: String) -> String {
         "{}.css",
         js_chunk_filename.strip_suffix(".js").unwrap_or("")
     )
+}
+
+// 给 output_ast 计算 hash 值，get_chunk_emit_files 时会根据此 hash 值做缓存
+pub fn get_related_module_hash(
+    chunk: &crate::chunk::Chunk,
+    module_graph: &std::sync::RwLockReadGuard<crate::module_graph::ModuleGraph>,
+    is_css_ast: bool,
+) -> u64 {
+    let mut hash: XxHash64 = Default::default();
+    let mut module_ids_used = chunk
+        .get_modules()
+        .iter()
+        .cloned()
+        .collect::<Vec<ModuleId>>();
+    // 因为存在 code splitting，可能存在用户引入依赖的顺序发生改变但依赖背后的 module 没有改变的情况
+    // 此时 js chunk 不需要重新生成，所以在计算 ast_module_hash 针对 js 的场景先对 module 做轮排序
+    if !is_css_ast {
+        module_ids_used.sort_by_key(|m| m.id.clone());
+    }
+
+    for id in module_ids_used {
+        let m = module_graph.get_module(&id).unwrap();
+        let m_type = m.get_module_type();
+
+        if matches!(m_type, ModuleType::Css) == is_css_ast {
+            hash.write_u64(m.info.as_ref().unwrap().raw_hash);
+        }
+    }
+    hash.finish()
 }
 
 fn compile_runtime_entry(has_wasm: bool) -> String {

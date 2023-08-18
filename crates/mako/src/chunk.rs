@@ -104,7 +104,6 @@ impl Chunk {
 
         for id in sorted_module_ids {
             let m = mg.get_module(&id).unwrap();
-
             hash.write_u64(m.info.as_ref().unwrap().raw_hash);
         }
 
