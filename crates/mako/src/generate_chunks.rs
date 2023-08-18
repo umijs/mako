@@ -278,16 +278,26 @@ fn get_css_chunk_filename(js_chunk_filename: String) -> String {
     )
 }
 
-// 给 OutPutAst 计算 hash 值，get_chunk_emit_files 时会根据此 hash 值做缓存
+// 给 output_ast 计算 hash 值，get_chunk_emit_files 时会根据此 hash 值做缓存
 pub fn get_related_module_hash(
     chunk: &crate::chunk::Chunk,
     module_graph: &std::sync::RwLockReadGuard<crate::module_graph::ModuleGraph>,
     is_css_ast: bool,
 ) -> u64 {
     let mut hash: XxHash64 = Default::default();
+    let mut module_ids_used = chunk
+        .get_modules()
+        .iter()
+        .cloned()
+        .collect::<Vec<ModuleId>>();
+    // 因为存在 code splitting，可能存在用户引入依赖的顺序发生改变但依赖背后的 module 没有改变的情况
+    // 此时 js chunk 不需要重新生成，所以在计算 ast_module_hash 针对 js 的场景先对 module 做轮排序
+    if !is_css_ast {
+        module_ids_used.sort_by_key(|m| m.id.clone());
+    }
 
-    for id in chunk.get_modules().iter() {
-        let m = module_graph.get_module(id).unwrap();
+    for id in module_ids_used {
+        let m = module_graph.get_module(&id).unwrap();
         let m_type = m.get_module_type();
 
         if matches!(m_type, ModuleType::Css) == is_css_ast {
