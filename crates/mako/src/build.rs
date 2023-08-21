@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::fmt;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Instant;
 
 use anyhow::Result;
@@ -558,15 +557,5 @@ mod tests {
         }
 
         (module_ids, references)
-    }
-}
-
-#[derive(Clone, Default)]
-struct LockedWriter(Arc<Mutex<String>>);
-
-impl fmt::Write for LockedWriter {
-    fn write_str(&mut self, s: &str) -> fmt::Result {
-        self.0.lock().unwrap().push_str(s);
-        Ok(())
     }
 }

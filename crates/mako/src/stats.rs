@@ -6,8 +6,8 @@ use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use colored::*;
+use pathdiff::diff_paths;
 use serde::Serialize;
-use tracing::info;
 
 use crate::chunk::ChunkType;
 use crate::compiler::Compiler;
@@ -196,7 +196,12 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
                 })
                 .map(|module| {
                     let id = module.id.clone();
-                    let size = file_size(&id).unwrap();
+                    // 去拿 module 的文件 size 时，有可能 module 不存在，size 则设为 0
+                    // 场景: xlsx 中引入了 fs 模块
+                    let size = match file_size(&id) {
+                        Ok(size) => size,
+                        Err(..) => 0,
+                    };
                     let module = StatsJsonModuleItem {
                         module_type: StatsJsonType::Module("module".to_string()),
                         size,
@@ -238,13 +243,13 @@ pub fn write_stats(stats: &StatsJsonMap, compiler: &Compiler) {
     let path = &compiler.context.root.join("stats.json");
     let stats_json = serde_json::to_string_pretty(stats).unwrap();
     fs::write(path, stats_json).unwrap();
-    info!("stats.json has been created in {:?}", path);
 }
 
 // 文件大小转换
 pub fn human_readable_size(size: u64) -> String {
-    let units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
-    let mut size = size as f64;
+    let units = ["KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+    // 把 B 转为 KB
+    let mut size = (size as f64) / 1024.0;
     let mut i = 0;
 
     while size >= 1024.0 && i < units.len() - 1 {
@@ -255,34 +260,112 @@ pub fn human_readable_size(size: u64) -> String {
     format!("{:.2} {}", size, units[i])
 }
 
-fn pad_string(text: &str, max_length: usize) -> String {
-    let mut padded_text = format!("  {}", String::from(text));
+fn pad_string(text: &str, max_length: usize, front: bool) -> String {
+    let mut padded_text = String::from(text);
     let pad_length = max_length - text.chars().count();
-
-    padded_text.push_str(&" ".repeat(pad_length));
-    padded_text
+    if front {
+        let mut s = String::new();
+        s.push_str(&" ".repeat(pad_length));
+        s.push_str(text);
+        s
+    } else {
+        padded_text.push_str(&" ".repeat(pad_length));
+        padded_text
+    }
 }
 
-pub fn log_assets(compiler: &Compiler) {
+pub fn print_stats(compiler: &Compiler) {
     let assets = &mut compiler.context.stats_info.lock().unwrap().assets;
     // 按照产物名称排序
     assets.sort();
-    let length = 15;
-    let mut s = "\n".to_string();
-    let dist = "dist/".truecolor(133, 133, 133);
+    // 产物路径需要按照 output.path 来
+    let abs_path = &compiler.context.root;
+    let output_path = &compiler.context.config.output.path;
+    let dist_path = diff_paths(output_path, abs_path).unwrap_or_else(|| output_path.clone());
+    let mut path_str = dist_path.to_str().unwrap().to_string();
+    if !path_str.ends_with('/') {
+        path_str.push('/');
+    }
+    let dist = path_str.truecolor(128, 128, 128);
 
+    // 最长的文件名字, size长度, map_size长度, 后续保持输出整齐
+    let mut max_length_name = String::new();
+    let mut max_size = 0;
+    let mut max_map_size = 0;
+    // 记录 name size map_size 的数组
+    let mut assets_vec: Vec<(String, u64, u64)> = vec![];
+
+    // 生成 (name, size, map_size) 的 vec
     for asset in assets {
-        let size = human_readable_size(asset.size);
-        s.push_str(
-            format!(
-                "{} {}{}\n",
-                pad_string(&size, length),
-                dist.clone(),
-                asset.name.blue().bold()
-            )
-            .as_str(),
-        );
+        let name = asset.name.clone();
+        let size_length = human_readable_size(asset.size).chars().count();
+        // 记录较长的名字
+        if name.chars().count() > max_length_name.chars().count() {
+            max_length_name = name.clone();
+        }
+
+        // 如果是 .map 文件判断是否是上一个的文件的 sourceMap
+        // 前面排序过了, sourceMap 一定 js/css 在后面
+        if name.ends_with(".map") {
+            let len = assets_vec.len();
+            if let Some(last) = assets_vec.get_mut(len - 1) {
+                if name == format!("{}.map", last.0) {
+                    // 记录较长的 map_size
+                    if size_length > max_map_size {
+                        max_map_size = size_length;
+                    }
+                    *last = (last.0.clone(), last.1, asset.size);
+                    continue;
+                }
+            }
+        }
+        // 记录较长的 size
+        if size_length > max_size {
+            max_size = size_length;
+        }
+        assets_vec.push((asset.name.clone(), asset.size, 0));
     }
 
-    println!("{}", s);
+    // 输出 stats
+    let mut s = String::new();
+    for asset in assets_vec {
+        let file_name = format!("{}{}", dist, asset.0);
+        let length = format!("{}{}", dist, max_length_name).chars().count() + 2;
+        let file_name_str: String = pad_string(&file_name, length, false);
+        let color_file_name_str = match file_name {
+            s if s.ends_with(".js") => file_name_str.cyan(),
+            s if s.ends_with(".css") => file_name_str.magenta(),
+            _ => file_name_str.green(),
+        };
+        // 没有 map 的输出
+        if asset.2 == 0 {
+            let size = human_readable_size(asset.1);
+            s.push_str(
+                format!(
+                    "{} {}\n",
+                    color_file_name_str,
+                    pad_string(&size, max_size, true),
+                )
+                .as_str(),
+            );
+        } else {
+            // 有 map 的输出, | map: map_size
+            let size = human_readable_size(asset.1);
+            let map_size = human_readable_size(asset.2);
+            s.push_str(
+                format!(
+                    "{} {} {} {}\n",
+                    color_file_name_str,
+                    pad_string(&size, max_size, true)
+                        .truecolor(128, 128, 128)
+                        .bold(),
+                    "│ map:".truecolor(128, 128, 128),
+                    pad_string(&map_size, max_map_size, true).truecolor(128, 128, 128)
+                )
+                .as_str(),
+            );
+        }
+    }
+
+    println!("{}", s.trim_end_matches('\n'));
 }
