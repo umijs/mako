@@ -317,4 +317,13 @@ mod tests {
         )
         .unwrap();
     }
+
+    #[test]
+    fn test_config_deserialize() {
+        let current_dir = std::env::current_dir().unwrap();
+        let config = Config::new(&current_dir.join("test/config/deserialize"), None, None).unwrap();
+        let file_name = config.manifest_config.get("file_name");
+        assert_eq!(config.hmr_port, "4000");
+        assert_eq!(file_name.unwrap().as_str(), "test.json");
+    }
 }

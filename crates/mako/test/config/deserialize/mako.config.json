@@ -1,0 +1,7 @@
+{
+  "manifestConfig": {
+    "fileName": "test.json",
+    "basePath": "testPath"
+  },
+  "hmrPort": "4000"
+}
