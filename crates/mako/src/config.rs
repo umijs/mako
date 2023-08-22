@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use clap::ValueEnum;
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 use serde_json::Value;
 use swc_ecma_ast::EsVersion;
 use thiserror::Error;
@@ -89,6 +89,8 @@ pub struct Config {
     pub output: OutputConfig,
     pub resolve: ResolveConfig,
     pub manifest: bool,
+    #[serde(rename = "manifestConfig")]
+    #[serde(deserialize_with = "deserialize_key_to_snake_style")]
     pub manifest_config: HashMap<String, String>,
     pub mode: Mode,
     pub minify: bool,
@@ -96,20 +98,27 @@ pub struct Config {
     pub externals: HashMap<String, String>,
     pub providers: Providers,
     pub copy: Vec<String>,
+    #[serde(rename = "publicPath")]
     pub public_path: String,
+    #[serde(rename = "inlineLimit")]
     pub inline_limit: usize,
     pub targets: HashMap<String, usize>,
     pub platform: Platform,
+    #[serde(rename = "moduleIdStrategy")]
     pub module_id_strategy: ModuleIdStrategy,
     pub define: HashMap<String, Value>,
     pub stats: bool,
     pub mdx: bool,
     // temp solution
     pub hmr: bool,
+    #[serde(rename = "hmrPort")]
     pub hmr_port: String,
+    #[serde(rename = "hmrHost")]
     pub hmr_host: String,
+    #[serde(rename = "codeSplitting")]
     pub code_splitting: CodeSplittingStrategy,
     // temp flag
+    #[serde(rename = "extractCss")]
     pub extract_css: bool,
 }
 
@@ -125,21 +134,21 @@ const DEFAULT_CONFIG: &str = r#"
     "externals": {},
     "copy": ["public"],
     "providers": {},
-    "public_path": "/",
-    "inline_limit": 10000,
+    "publicPath": "/",
+    "inlineLimit": 10000,
     "targets": { "chrome": 80 },
     "define": {},
     "manifest": false,
-    "manifest_config": { "file_name": "asset-manifest.json", "base_path": "" },
+    "manifestConfig": { "fileName": "asset-manifest.json", "basePath": "" },
     "stats": false,
     "mdx": false,
     "platform": "browser",
     "hmr": true,
-    "hmr_host": "127.0.0.1",
-    "hmr_port": "3000",
-    "module_id_strategy": "named",
-    "code_splitting": "bigVendor",
-    "extract_css": false
+    "hmrHost": "127.0.0.1",
+    "hmrPort": "3000",
+    "moduleIdStrategy": "named",
+    "codeSplitting": "bigVendor",
+    "extractCss": false
 }
 "#;
 
@@ -222,6 +231,37 @@ impl Default for Config {
     }
 }
 
+// 将驼峰风格转化成蛇形风格
+fn from_camel_case_to_snake_case(camel_case_str: &str) -> String {
+    let mut result = String::new();
+    for (index, char) in camel_case_str.char_indices() {
+        if char.is_uppercase() {
+            if index > 0 {
+                result.push('_');
+            }
+            result.extend(char.to_lowercase());
+        } else {
+            result.push(char);
+        }
+    }
+    result
+}
+
+// 自定义序列化函数，提供给 serde 消费
+fn deserialize_key_to_snake_style<'de, D>(
+    deserializer: D,
+) -> Result<HashMap<String, String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let camel_case_map: HashMap<String, String> = HashMap::deserialize(deserializer)?;
+    let snake_case_map: HashMap<String, String> = camel_case_map
+        .into_iter()
+        .map(|(k, v)| (from_camel_case_to_snake_case(&k), v))
+        .collect();
+    Ok(snake_case_map)
+}
+
 #[derive(Error, Debug)]
 pub enum ConfigError {
     #[error("define value '{0}' is not an Expression")]
@@ -273,7 +313,7 @@ mod tests {
         Config::new(
             &current_dir.join("test/config/normal"),
             None,
-            Some(r#"{"public_path":"abc"}"#),
+            Some(r#"{"publicPath":"abc"}"#),
         )
         .unwrap();
     }
