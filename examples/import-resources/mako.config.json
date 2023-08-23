@@ -10,5 +10,6 @@
   },
   "output": {
     "path": "dist/assets"
-  }
+  },
+  "hash": true
 }

@@ -401,14 +401,15 @@ fn get_chunk_emit_files(
     hash: bool,
 ) -> Result<Vec<EmitFile>> {
     let mut files = vec![];
+    let need_hash = context.config.hash && hash;
     match &file.ast {
         ModuleAst::Script(ast) => {
             // ast to code
             let (js_code, js_sourcemap) = js_ast_to_code(&ast.ast, context, &file.path)?;
             // 计算 hash 值
-            let hashname = match hash {
+            let hashname = match need_hash {
                 true => hash_file_name(file.path.clone(), get_content_hash(js_code.clone())),
-                _ => String::from(""),
+                _ => file.path.clone(),
             };
             // generate code and sourcemap files
             files.push(EmitFile {
@@ -430,9 +431,9 @@ fn get_chunk_emit_files(
             // ast to code
             let (css_code, css_sourcemap) = css_ast_to_code(ast, context, &file.path);
             // 计算 hash 值
-            let hashname = match hash {
+            let hashname = match need_hash {
                 true => hash_file_name(file.path.clone(), get_content_hash(css_code.clone())),
-                _ => String::from(""),
+                _ => file.path.clone(),
             };
             files.push(EmitFile {
                 filename: file.path.clone(),
