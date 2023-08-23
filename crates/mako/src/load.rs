@@ -4,7 +4,7 @@ use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Context as AnyHowContext, Ok, Result};
+use anyhow::{anyhow, Context as AnyHowContext, Result};
 use base64::alphabet::STANDARD;
 use base64::{engine, Engine};
 use thiserror::Error;
