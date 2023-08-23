@@ -16,6 +16,14 @@ pub struct OutputConfig {
 }
 
 #[derive(Deserialize, Debug)]
+pub struct ManifestConfig {
+    #[serde(rename(deserialize = "fileName"))]
+    pub file_name: String,
+    #[serde(rename(deserialize = "basePath"))]
+    pub base_path: String,
+}
+
+#[derive(Deserialize, Debug)]
 pub struct ResolveConfig {
     pub alias: HashMap<String, String>,
     pub extensions: Vec<String>,
@@ -89,27 +97,35 @@ pub struct Config {
     pub output: OutputConfig,
     pub resolve: ResolveConfig,
     pub manifest: bool,
-    pub manifest_config: HashMap<String, String>,
+    #[serde(rename = "manifestConfig")]
+    pub manifest_config: ManifestConfig,
     pub mode: Mode,
     pub minify: bool,
     pub devtool: DevtoolConfig,
     pub externals: HashMap<String, String>,
     pub providers: Providers,
     pub copy: Vec<String>,
+    #[serde(rename = "publicPath")]
     pub public_path: String,
+    #[serde(rename = "inlineLimit")]
     pub inline_limit: usize,
     pub targets: HashMap<String, usize>,
     pub platform: Platform,
+    #[serde(rename = "moduleIdStrategy")]
     pub module_id_strategy: ModuleIdStrategy,
     pub define: HashMap<String, Value>,
     pub stats: bool,
     pub mdx: bool,
     // temp solution
     pub hmr: bool,
+    #[serde(rename = "hmrPort")]
     pub hmr_port: String,
+    #[serde(rename = "hmrHost")]
     pub hmr_host: String,
+    #[serde(rename = "codeSplitting")]
     pub code_splitting: CodeSplittingStrategy,
     // temp flag
+    #[serde(rename = "extractCSS")]
     pub extract_css: bool,
     pub hash: bool,
 }
@@ -126,23 +142,23 @@ const DEFAULT_CONFIG: &str = r#"
     "externals": {},
     "copy": ["public"],
     "providers": {},
-    "public_path": "/",
-    "inline_limit": 10000,
+    "publicPath": "/",
+    "inlineLimit": 10000,
     "targets": { "chrome": 80 },
     "define": {},
     "manifest": false,
-    "manifest_config": { "file_name": "asset-manifest.json", "base_path": "" },
+    "manifestConfig": { "fileName": "asset-manifest.json", "basePath": "" },
     "stats": false,
     "mdx": false,
     "platform": "browser",
     "hmr": true,
-    "hmr_host": "127.0.0.1",
-    "hmr_port": "3000",
-    "module_id_strategy": "named",
-    "code_splitting": "bigVendor",
-    "extract_css": false,
+    "hmrHost": "127.0.0.1",
+    "hmrPort": "3000",
+    "moduleIdStrategy": "named",
+    "codeSplitting": "bigVendor",
+    "extractCSS": false,
     "hash": false
-} 
+}
 "#;
 
 // TODO:
@@ -275,7 +291,7 @@ mod tests {
         Config::new(
             &current_dir.join("test/config/normal"),
             None,
-            Some(r#"{"public_path":"abc"}"#),
+            Some(r#"{"publicPath":"abc"}"#),
         )
         .unwrap();
     }
