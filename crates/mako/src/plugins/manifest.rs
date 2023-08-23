@@ -18,23 +18,11 @@ impl Plugin for ManifestPlugin {
     }
 
     fn build_success(&self, _stats: &StatsJsonMap, context: &Arc<Context>) -> Result<Option<()>> {
-        println!("start: {:?}", context.config);
-        println!("boolean: {}", context.config.manifest);
         if context.config.manifest {
             let assets = &context.stats_info.lock().unwrap().assets;
             let mut manifest: BTreeMap<String, String> = BTreeMap::new();
-            let file_name = context
-                .config
-                .manifest_config
-                .get("file_name")
-                .unwrap()
-                .clone();
-            let base_path = context
-                .config
-                .manifest_config
-                .get("base_path")
-                .unwrap()
-                .clone();
+            let file_name = context.config.manifest_config.file_name.clone();
+            let base_path = context.config.manifest_config.base_path.clone();
 
             let path = normalize_path(base_path);
 

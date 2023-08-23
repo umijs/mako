@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use clap::ValueEnum;
-use serde::{Deserialize, Deserializer};
+use serde::Deserialize;
 use serde_json::Value;
 use swc_ecma_ast::EsVersion;
 use thiserror::Error;
@@ -13,6 +13,14 @@ pub struct OutputConfig {
     pub mode: OutputMode,
     #[serde(rename(deserialize = "esVersion"))]
     pub es_version: EsVersion,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ManifestConfig {
+    #[serde(rename(deserialize = "fileName"))]
+    pub file_name: String,
+    #[serde(rename(deserialize = "basePath"))]
+    pub base_path: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -90,8 +98,7 @@ pub struct Config {
     pub resolve: ResolveConfig,
     pub manifest: bool,
     #[serde(rename = "manifestConfig")]
-    #[serde(deserialize_with = "deserialize_key_to_snake_style")]
-    pub manifest_config: HashMap<String, String>,
+    pub manifest_config: ManifestConfig,
     pub mode: Mode,
     pub minify: bool,
     pub devtool: DevtoolConfig,
@@ -118,7 +125,7 @@ pub struct Config {
     #[serde(rename = "codeSplitting")]
     pub code_splitting: CodeSplittingStrategy,
     // temp flag
-    #[serde(rename = "extractCss")]
+    #[serde(rename = "extractCSS")]
     pub extract_css: bool,
 }
 
@@ -148,7 +155,7 @@ const DEFAULT_CONFIG: &str = r#"
     "hmrPort": "3000",
     "moduleIdStrategy": "named",
     "codeSplitting": "bigVendor",
-    "extractCss": false
+    "extractCSS": false
 }
 "#;
 
@@ -231,37 +238,6 @@ impl Default for Config {
     }
 }
 
-// 将驼峰风格转化成蛇形风格
-fn from_camel_case_to_snake_case(camel_case_str: &str) -> String {
-    let mut result = String::new();
-    for (index, char) in camel_case_str.char_indices() {
-        if char.is_uppercase() {
-            if index > 0 {
-                result.push('_');
-            }
-            result.extend(char.to_lowercase());
-        } else {
-            result.push(char);
-        }
-    }
-    result
-}
-
-// 自定义序列化函数，提供给 serde 消费
-fn deserialize_key_to_snake_style<'de, D>(
-    deserializer: D,
-) -> Result<HashMap<String, String>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let camel_case_map: HashMap<String, String> = HashMap::deserialize(deserializer)?;
-    let snake_case_map: HashMap<String, String> = camel_case_map
-        .into_iter()
-        .map(|(k, v)| (from_camel_case_to_snake_case(&k), v))
-        .collect();
-    Ok(snake_case_map)
-}
-
 #[derive(Error, Debug)]
 pub enum ConfigError {
     #[error("define value '{0}' is not an Expression")]
@@ -316,14 +292,5 @@ mod tests {
             Some(r#"{"publicPath":"abc"}"#),
         )
         .unwrap();
-    }
-
-    #[test]
-    fn test_config_deserialize() {
-        let current_dir = std::env::current_dir().unwrap();
-        let config = Config::new(&current_dir.join("test/config/deserialize"), None, None).unwrap();
-        let file_name = config.manifest_config.get("file_name");
-        assert_eq!(config.hmr_port, "4000");
-        assert_eq!(file_name.unwrap().as_str(), "test.json");
     }
 }
