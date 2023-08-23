@@ -15,6 +15,7 @@ use crate::ast::{css_ast_to_code, js_ast_to_code};
 use crate::compiler::{Compiler, Context};
 use crate::config::{DevtoolConfig, Mode, OutputMode};
 use crate::generate_chunks::OutputAst;
+use crate::load::{get_content_hash, hash_file_name};
 use crate::minify::minify_js;
 use crate::module::{ModuleAst, ModuleId};
 use crate::stats::{create_stats_info, print_stats, write_stats};
@@ -25,6 +26,7 @@ pub struct EmitFile {
     pub filename: String,
     pub content: String,
     pub chunk_id: String,
+    pub hashname: String,
 }
 
 pub struct GenerateOptions {
@@ -100,7 +102,7 @@ impl Compiler {
         let t_ast_to_code_and_write = Instant::now();
         debug!("ast to code and write");
         chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
-            for file in get_chunk_emit_files(file, &self.context)? {
+            for file in get_chunk_emit_files(file, &self.context, true)? {
                 self.write_to_dist_with_stats(file);
             }
 
@@ -187,7 +189,7 @@ impl Compiler {
         let t_ast_to_code_and_write = Instant::now();
         debug!("ast to code and write");
         chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
-            for file in get_chunk_emit_files(file, &self.context)? {
+            for file in get_chunk_emit_files(file, &self.context, false)? {
                 self.write_to_dist_with_stats(file);
             }
 
@@ -359,15 +361,17 @@ impl Compiler {
 
         std::fs::write(to, content).unwrap();
     }
-    // 写入产物前记录 content 大小
+    // 写入产物前记录 content 大小, 并加上 hash 值
     pub fn write_to_dist_with_stats(&self, file: EmitFile) {
-        let to: PathBuf = self.context.config.output.path.join(file.filename.clone());
+        let to: PathBuf = self.context.config.output.path.join(file.hashname.clone());
+        let path = self.context.config.output.path.join(file.filename.clone());
         let size = file.content.len() as u64;
         self.context.stats_info.lock().unwrap().add_assets(
             size,
             file.filename,
             file.chunk_id,
-            to.clone(),
+            path,
+            file.hashname,
         );
         fs::write(to, file.content).unwrap();
     }
@@ -389,21 +393,34 @@ fn to_hot_update_chunk_name(chunk_name: &String, hash: u64) -> String {
     key = "String",
     convert = r#"{ format!("{}-{}", file.ast_module_hash, file.path) }"#
 )]
-fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<EmitFile>> {
+// build时，需要产生 hash 值, dev 时不需要 hash 置为 false
+// 需要在这里提前记录 js 和 map 的 hash，因为 map 是不单独计算 hash 值的，继承的是 js 的 hash 值
+fn get_chunk_emit_files(
+    file: &OutputAst,
+    context: &Arc<Context>,
+    hash: bool,
+) -> Result<Vec<EmitFile>> {
     let mut files = vec![];
     match &file.ast {
         ModuleAst::Script(ast) => {
             // ast to code
             let (js_code, js_sourcemap) = js_ast_to_code(&ast.ast, context, &file.path)?;
+            // 计算 hash 值
+            let hashname = match hash {
+                true => hash_file_name(file.path.clone(), get_content_hash(js_code.clone())),
+                _ => String::from(""),
+            };
             // generate code and sourcemap files
             files.push(EmitFile {
                 filename: file.path.clone(),
                 content: js_code,
                 chunk_id: file.chunk_id.clone(),
+                hashname: hashname.clone(),
             });
             if matches!(context.config.devtool, DevtoolConfig::SourceMap) {
                 files.push(EmitFile {
                     filename: format!("{}.map", file.path.clone()),
+                    hashname: format!("{}.map", hashname),
                     content: js_sourcemap,
                     chunk_id: "".to_string(),
                 });
@@ -412,14 +429,21 @@ fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<
         ModuleAst::Css(ast) => {
             // ast to code
             let (css_code, css_sourcemap) = css_ast_to_code(ast, context, &file.path);
+            // 计算 hash 值
+            let hashname = match hash {
+                true => hash_file_name(file.path.clone(), get_content_hash(css_code.clone())),
+                _ => String::from(""),
+            };
             files.push(EmitFile {
                 filename: file.path.clone(),
+                hashname: hashname.clone(),
                 content: css_code,
                 chunk_id: file.chunk_id.clone(),
             });
             if matches!(context.config.devtool, DevtoolConfig::SourceMap) {
                 files.push(EmitFile {
                     filename: format!("{}.map", file.path.clone()),
+                    hashname: format!("{}.map", hashname),
                     content: css_sourcemap,
                     chunk_id: "".to_string(),
                 });

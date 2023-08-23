@@ -37,8 +37,8 @@ impl Plugin for ManifestPlugin {
             let path = normalize_path(base_path);
 
             for asset in assets {
-                let key = format!("{}{}", path, remove_key_hash(&asset.name));
-                manifest.insert(key, asset.name.clone());
+                let key = format!("{}{}", path, remove_key_hash(&asset.hashname));
+                manifest.insert(key, asset.hashname.clone());
             }
 
             let manifest_json = serde_json::to_string_pretty(&manifest)?;

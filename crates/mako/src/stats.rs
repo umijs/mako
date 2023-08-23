@@ -14,10 +14,12 @@ use crate::compiler::Compiler;
 use crate::load::file_size;
 
 #[derive(Debug, PartialEq, Eq)]
+// name 用在 stats.json 中, hashname 用在产物描述和 manifest 中
 pub struct AssetsInfo {
     pub assets_type: String,
     pub size: u64,
     pub name: String,
+    pub hashname: String,
     pub chunk_id: String,
     pub path: PathBuf,
 }
@@ -105,13 +107,21 @@ impl StatsInfo {
         Self { assets: vec![] }
     }
 
-    pub fn add_assets(&mut self, size: u64, name: String, chunk_id: String, path: PathBuf) {
+    pub fn add_assets(
+        &mut self,
+        size: u64,
+        name: String,
+        chunk_id: String,
+        path: PathBuf,
+        hashname: String,
+    ) {
         self.assets.push(AssetsInfo {
             assets_type: "asset".to_string(),
             size,
             name,
             chunk_id,
             path,
+            hashname,
         });
     }
 }
@@ -159,6 +169,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
                 asset.1.clone(),
                 "".to_string(),
                 compiler.context.config.output.path.join(asset.1.clone()),
+                asset.1.clone(),
             );
         });
 
@@ -297,7 +308,7 @@ pub fn print_stats(compiler: &Compiler) {
 
     // 生成 (name, size, map_size) 的 vec
     for asset in assets {
-        let name = asset.name.clone();
+        let name = asset.hashname.clone();
         let size_length = human_readable_size(asset.size).chars().count();
         // 记录较长的名字
         if name.chars().count() > max_length_name.chars().count() {
@@ -323,7 +334,7 @@ pub fn print_stats(compiler: &Compiler) {
         if size_length > max_size {
             max_size = size_length;
         }
-        assets_vec.push((asset.name.clone(), asset.size, 0));
+        assets_vec.push((asset.hashname.clone(), asset.size, 0));
     }
 
     // 输出 stats

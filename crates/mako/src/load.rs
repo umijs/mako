@@ -181,3 +181,16 @@ pub fn content_hash(file_path: &str) -> Result<String> {
     let digest = context.compute();
     Ok(format!("{:x}", digest))
 }
+
+pub fn get_content_hash(content: String) -> String {
+    let digest = md5::compute(content);
+    format!("{:x}", digest)
+}
+
+pub fn hash_file_name(file_name: String, hash: String) -> String {
+    let path = Path::new(&file_name);
+    let file_stem = path.file_stem().unwrap().to_str().unwrap();
+    let file_extension = path.extension().unwrap().to_str().unwrap();
+
+    format!("{}.{}.{}", file_stem, hash, file_extension)
+}
