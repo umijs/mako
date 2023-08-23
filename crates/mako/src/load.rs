@@ -4,7 +4,7 @@ use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Context as AnyHowContext, Result};
+use anyhow::{anyhow, Context as AnyHowContext, Ok, Result};
 use base64::alphabet::STANDARD;
 use base64::{engine, Engine};
 use thiserror::Error;
@@ -179,12 +179,14 @@ pub fn content_hash(file_path: &str) -> Result<String> {
         buf.consume(part_len);
     }
     let digest = context.compute();
-    Ok(format!("{:x}", digest))
+    let hash = format!("{:x}", digest);
+    Ok(hash_to_8(hash))
 }
 
 pub fn get_content_hash(content: String) -> String {
     let digest = md5::compute(content);
-    format!("{:x}", digest)
+    let hash = format!("{:x}", digest);
+    hash_to_8(hash)
 }
 
 pub fn hash_file_name(file_name: String, hash: String) -> String {
@@ -193,4 +195,9 @@ pub fn hash_file_name(file_name: String, hash: String) -> String {
     let file_extension = path.extension().unwrap().to_str().unwrap();
 
     format!("{}.{}.{}", file_stem, hash, file_extension)
+}
+
+pub fn hash_to_8(hash: String) -> String {
+    let hash_8 = &hash[0..8];
+    hash_8.to_string()
 }
