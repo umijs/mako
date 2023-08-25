@@ -397,17 +397,12 @@ fn to_hot_update_chunk_name(chunk_name: &String, hash: u64) -> String {
 // 需要在这里提前记录 js 和 map 的 hash，因为 map 是不单独计算 hash 值的，继承的是 js 的 hash 值
 fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<EmitFile>> {
     let mut files = vec![];
-    // dev 环境不产生 hash 值, production 环境取用户配置
-    let need_hash = match context.config.mode {
-        Mode::Development => false,
-        Mode::Production => context.config.hash,
-    };
     match &file.ast {
         ModuleAst::Script(ast) => {
             // ast to code
             let (js_code, js_sourcemap) = js_ast_to_code(&ast.ast, context, &file.path)?;
             // 计算 hash 值
-            let hashname = match need_hash {
+            let hashname = match context.config.hash {
                 true => hash_file_name(file.path.clone(), get_content_hash(js_code.clone())),
                 _ => file.path.clone(),
             };
@@ -431,7 +426,7 @@ fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<
             // ast to code
             let (css_code, css_sourcemap) = css_ast_to_code(ast, context, &file.path);
             // 计算 hash 值
-            let hashname = match need_hash {
+            let hashname = match context.config.hash {
                 true => hash_file_name(file.path.clone(), get_content_hash(css_code.clone())),
                 _ => file.path.clone(),
             };

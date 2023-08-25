@@ -5,6 +5,7 @@ use std::sync::Arc;
 use clap::Parser;
 use tracing::debug;
 
+use crate::config::Mode;
 use crate::logger::init_logger;
 
 mod analyze_deps;
@@ -83,7 +84,14 @@ async fn main() {
 
     // config
     let mut config = config::Config::new(&root, None, None).unwrap();
+
     config.mode = cli.mode;
+
+    // dev 环境下不产生 hash, prod 环境下根据用户配置
+    if config.mode == Mode::Development {
+        config.hash = false;
+    }
+
     debug!("config: {:?}", config);
 
     // compiler
