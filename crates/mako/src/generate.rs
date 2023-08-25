@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -15,7 +15,7 @@ use crate::ast::{css_ast_to_code, js_ast_to_code};
 use crate::compiler::{Compiler, Context};
 use crate::config::{DevtoolConfig, Mode, OutputMode};
 use crate::generate_chunks::OutputAst;
-use crate::load::{get_content_hash, hash_file_name};
+use crate::load::file_content_hash;
 use crate::minify::minify_js;
 use crate::module::{ModuleAst, ModuleId};
 use crate::stats::{create_stats_info, print_stats, write_stats};
@@ -403,7 +403,7 @@ fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<
             let (js_code, js_sourcemap) = js_ast_to_code(&ast.ast, context, &file.path)?;
             // 计算 hash 值
             let hashname = match context.config.hash {
-                true => hash_file_name(file.path.clone(), get_content_hash(js_code.clone())),
+                true => hash_file_name(file.path.clone(), file_content_hash(js_code.clone())),
                 _ => file.path.clone(),
             };
             // generate code and sourcemap files
@@ -427,7 +427,7 @@ fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<
             let (css_code, css_sourcemap) = css_ast_to_code(ast, context, &file.path);
             // 计算 hash 值
             let hashname = match context.config.hash {
-                true => hash_file_name(file.path.clone(), get_content_hash(css_code.clone())),
+                true => hash_file_name(file.path.clone(), file_content_hash(css_code.clone())),
                 _ => file.path.clone(),
             };
             files.push(EmitFile {
@@ -449,6 +449,14 @@ fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<
     }
 
     Ok(files)
+}
+
+fn hash_file_name(file_name: String, hash: String) -> String {
+    let path = Path::new(&file_name);
+    let file_stem = path.file_stem().unwrap().to_str().unwrap();
+    let file_extension = path.extension().unwrap().to_str().unwrap();
+
+    format!("{}.{}.{}", file_stem, hash, file_extension)
 }
 
 #[derive(Serialize)]

@@ -183,18 +183,10 @@ pub fn content_hash(file_path: &str) -> Result<String> {
     Ok(hash_to_8(hash))
 }
 
-pub fn get_content_hash(content: String) -> String {
+pub fn file_content_hash(content: String) -> String {
     let digest = md5::compute(content);
     let hash = format!("{:x}", digest);
     hash_to_8(hash)
-}
-
-pub fn hash_file_name(file_name: String, hash: String) -> String {
-    let path = Path::new(&file_name);
-    let file_stem = path.file_stem().unwrap().to_str().unwrap();
-    let file_extension = path.extension().unwrap().to_str().unwrap();
-
-    format!("{}.{}.{}", file_stem, hash, file_extension)
 }
 
 pub fn hash_to_8(hash: String) -> String {
