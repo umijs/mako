@@ -527,6 +527,7 @@ require("./bar");
             &context,
             &crate::build::Task {
                 path: root.join(path).to_string_lossy().to_string(),
+                parent_resource: None,
                 is_entry: false,
             },
             ast.top_level_mark,

@@ -10,6 +10,7 @@ use swc_common::Span;
 use crate::ast::Ast;
 use crate::compiler::Context;
 use crate::config::ModuleIdStrategy;
+use crate::resolve::ResolverResource;
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct Dependency {
@@ -29,16 +30,15 @@ pub enum ResolveType {
     Css,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ModuleInfo {
     pub ast: ModuleAst,
     pub path: String,
     pub external: Option<String>,
     pub raw_hash: u64,
     pub missing_deps: HashMap<String, ResolveType>,
+    pub resolved_resource: Option<ResolverResource>,
 }
-
-impl ModuleInfo {}
 
 fn md5_hash(source_str: &str, lens: usize) -> String {
     let digest = md5::compute(source_str);
@@ -130,7 +130,7 @@ impl From<PathBuf> for ModuleId {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ModuleAst {
     Script(Ast),
     Css(swc_css_ast::Stylesheet),
@@ -161,7 +161,7 @@ impl ModuleType {
     }
 }
 #[allow(dead_code)]
-
+#[derive(Clone)]
 pub struct Module {
     pub id: ModuleId,
     pub is_entry: bool,

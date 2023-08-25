@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::vec;
 
 use anyhow::{anyhow, Result};
-use nodejs_resolver::{AliasMap, Options, ResolveResult, Resolver};
+use nodejs_resolver::{AliasMap, Options, ResolveResult, Resolver, Resource};
 use thiserror::Error;
 use tracing::debug;
 
@@ -29,12 +29,48 @@ pub struct Resolvers {
     esm: Resolver,
 }
 
+#[derive(Debug, Clone)]
+pub struct ExternalResource {
+    pub source: String,
+    pub external: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct ResolvedResource(pub Resource);
+
+#[derive(Debug, Clone)]
+pub enum ResolverResource {
+    External(ExternalResource),
+    Resolved(ResolvedResource),
+}
+
+impl ResolverResource {
+    pub fn get_resolved_path(&self) -> String {
+        match self {
+            ResolverResource::External(ExternalResource { source, .. }) => source.to_string(),
+            ResolverResource::Resolved(ResolvedResource(resource)) => {
+                let mut path = resource.path.to_string_lossy().to_string();
+                if resource.query.is_some() {
+                    path = format!("{}{}", path, resource.query.as_ref().unwrap());
+                }
+                path
+            }
+        }
+    }
+    pub fn get_external(&self) -> Option<String> {
+        match self {
+            ResolverResource::External(ExternalResource { external, .. }) => Some(external.clone()),
+            ResolverResource::Resolved(_) => None,
+        }
+    }
+}
+
 pub fn resolve(
     path: &str,
     dep: &Dependency,
     resolvers: &Resolvers,
     context: &Arc<Context>,
-) -> Result<(String, Option<String>)> {
+) -> Result<ResolverResource> {
     let resolver = if dep.resolve_type == ResolveType::Require {
         &resolvers.cjs
     } else {
@@ -50,14 +86,17 @@ fn do_resolve(
     source: &str,
     resolver: &Resolver,
     externals: Option<&HashMap<String, String>>,
-) -> Result<(String, Option<String>)> {
+) -> Result<ResolverResource> {
     let external = if let Some(externals) = externals {
         externals.get(&source.to_string()).cloned()
     } else {
         None
     };
     if let Some(external) = external {
-        Ok((source.to_string(), Some(external)))
+        Ok(ResolverResource::External(ExternalResource {
+            source: source.to_string(),
+            external,
+        }))
     } else {
         let path = PathBuf::from(path);
         // 所有的 path 都是文件，所以 parent() 肯定是其所在目录
@@ -65,11 +104,7 @@ fn do_resolve(
         debug!("parent: {:?}, source: {:?}", parent, source);
         let result = resolver.resolve(parent, source);
         if let Ok(ResolveResult::Resource(resource)) = result {
-            let mut path = resource.path.to_string_lossy().to_string();
-            if resource.query.is_some() {
-                path = format!("{}{}", path, resource.query.as_ref().unwrap());
-            }
-            Ok((path, None))
+            Ok(ResolverResource::Resolved(ResolvedResource(resource)))
         } else {
             Err(anyhow!(ResolveError::ResolveError {
                 path: source.to_string(),
@@ -231,13 +266,15 @@ mod tests {
             config.resolve.alias = alias_config;
         }
         let resolver = super::get_resolver(&config, ResolverType::Cjs);
-        let (path, external) = super::do_resolve(
+        let resource = super::do_resolve(
             &fixture.join(path).to_string_lossy(),
             source,
             &resolver,
             externals,
         )
         .unwrap();
+        let path = resource.get_resolved_path();
+        let external = resource.get_external();
         println!("> path: {:?}, {:?}", path, external);
         let path = path.replace(format!("{}/", fixture.to_str().unwrap()).as_str(), "");
         (path, external)
