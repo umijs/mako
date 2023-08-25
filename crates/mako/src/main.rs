@@ -30,6 +30,7 @@ mod logger;
 mod minify;
 mod module;
 mod module_graph;
+mod module_side_effects_flag;
 mod parse;
 mod plugin;
 mod plugins;
