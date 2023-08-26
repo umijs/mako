@@ -5,6 +5,7 @@ use tracing::debug;
 
 use crate::compiler::Compiler;
 use crate::module::ModuleId;
+use crate::reexport_statement_cleanup::ReexportStatementCleanup;
 use crate::tree_shaking_module::{ModuleSystem, TreeShakingModule, UsedExports};
 use crate::unused_statement_marker::UnusedStatementMarker;
 use crate::unused_statement_sweep::UnusedStatementSweep;
@@ -20,7 +21,8 @@ impl Compiler {
         self.markup_entry_modules_as_side_effects(entry_modules);
 
         // 循环依赖模块设置为副作用
-        self.markup_cycle_modules_as_side_effects(cycle_modules);
+        // NOTE: 目前暂时没有发现循环依赖走 treeShaking 产生的问题，暂时先放弃打标
+        // self.markup_cycle_modules_as_side_effects(cycle_modules);
 
         let (tree_shaking_module_ids, mut tree_shaking_module_map) =
             self.create_tree_shaking_module_map(sorted_modules);
@@ -32,10 +34,15 @@ impl Compiler {
             let tree_shaking_module = tree_shaking_module_map
                 .get_mut(tree_shaking_module_id)
                 .unwrap();
-
+            let module_graph = self.context.module_graph.read().unwrap();
+            let module = module_graph.get_module(&tree_shaking_module.id).unwrap();
+            let module_is_side_effects = module.info.as_ref().unwrap().get_side_effects_flag();
+            drop(module_graph);
             debug!(
-                "tree_shaking module: [{}] {}",
-                tree_shaking_module.side_effects, &tree_shaking_module_id.id,
+                "tree_shaking module: [side_effects:{}/{}] {}",
+                module_is_side_effects,
+                tree_shaking_module.side_effects,
+                &tree_shaking_module_id.id,
             );
             debug!(
                 "    - used_exports: {:?}",
@@ -81,6 +88,13 @@ impl Compiler {
                         .get_module_mut(&tree_shaking_module.id)
                         .unwrap();
                     let ast = module.info.as_mut().unwrap().ast.as_script_mut();
+
+                    // 针对 reexport 场景做清理，只有配置没有副作用的模块才可以
+                    if !module_is_side_effects {
+                        let mut reexport_cleanup =
+                            ReexportStatementCleanup::new(tree_shaking_module);
+                        ast.visit_mut_with(&mut reexport_cleanup);
+                    }
 
                     // 通过 tree_shaking_module 进行无用的标记
                     let mut comments = self.context.meta.script.output_comments.write().unwrap();
@@ -171,7 +185,7 @@ impl Compiler {
             module.side_effects = true;
         }
     }
-
+    #[allow(dead_code)]
     fn markup_cycle_modules_as_side_effects(&self, cycle_modules: Vec<Vec<ModuleId>>) {
         let mut module_graph = self.context.module_graph.write().unwrap();
         for cycle_module in cycle_modules {

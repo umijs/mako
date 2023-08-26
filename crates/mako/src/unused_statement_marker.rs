@@ -8,7 +8,7 @@ use crate::comments::Comments;
 use crate::defined_ident_collector::DefinedIdentCollector;
 use crate::statement::{self, ExportSpecifier, ImportSpecifier, StatementId, StatementType};
 use crate::tree_shaking_analyze::strip_context;
-use crate::tree_shaking_module::{TreeShakingModule, UsedIdent};
+use crate::tree_shaking_module::{should_skip, TreeShakingModule, UsedIdent};
 /**
  * 针对没有使用到的 export、import 语句进行标记
  */
@@ -32,7 +32,7 @@ impl<'a, 'b> UnusedStatementMarker<'a, 'b> {
 impl VisitMut for UnusedStatementMarker<'_, '_> {
     // 清理空模块，打上注释
     fn visit_mut_module(&mut self, module: &mut swc_ecma_ast::Module) {
-        if self.tree_shaking_module.should_skip() {
+        if should_skip(&self.tree_shaking_module.id.id) {
             debug!("skip module {:?}", &self.tree_shaking_module.id);
             return;
         }

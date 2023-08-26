@@ -28,6 +28,7 @@ pub mod module_side_effects_flag;
 mod parse;
 mod plugin;
 mod plugins;
+mod reexport_statement_cleanup;
 mod resolve;
 mod sourcemap;
 mod statement;

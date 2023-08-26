@@ -240,15 +240,8 @@ impl ModuleGraph {
 
         (result, cyclic)
     }
-}
 
-impl fmt::Display for ModuleGraph {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut nodes = self
-            .graph
-            .node_weights()
-            .map(|node| &node.id.id)
-            .collect::<Vec<_>>();
+    pub fn get_reference(&self) -> Vec<String> {
         let mut references = self
             .graph
             .edge_references()
@@ -258,8 +251,20 @@ impl fmt::Display for ModuleGraph {
                 format!("{} -> {}", source, target)
             })
             .collect::<Vec<_>>();
-        nodes.sort_by_key(|id| id.to_string());
         references.sort_by_key(|id| id.to_string());
+        references
+    }
+}
+
+impl fmt::Display for ModuleGraph {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut nodes = self
+            .graph
+            .node_weights()
+            .map(|node| &node.id.id)
+            .collect::<Vec<_>>();
+        let references = self.get_reference();
+        nodes.sort_by_key(|id| id.to_string());
         write!(
             f,
             "graph\n nodes:{:?} \n references:{:?}",
