@@ -117,13 +117,7 @@ impl TreeShakingModule {
     }
 
     pub fn update_statement(&mut self, module: &Module) {
-        let (module_system, statement_graph) = init_statement_graph(module);
-        if module_system != self.module_system {
-            panic!(
-                "module system not match: {:?} != {:?}",
-                module_system, self.module_system
-            );
-        }
+        let (_, statement_graph) = init_statement_graph(module);
         self.statement_graph = statement_graph;
     }
 
