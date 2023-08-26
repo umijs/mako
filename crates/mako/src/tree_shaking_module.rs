@@ -81,8 +81,7 @@ impl From<UsedIdentHashMap> for Vec<(StatementId, HashSet<UsedIdent>)> {
         vec
     }
 }
-
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ModuleSystem {
     CommonJS,
     ESModule,
@@ -100,32 +99,7 @@ pub struct TreeShakingModule {
 
 impl TreeShakingModule {
     pub fn new(module: &Module) -> Self {
-        let ast = &module.info.as_ref().unwrap().ast;
-
-        let mut module_system = ModuleSystem::CommonJS;
-        let statement_graph = match ast {
-            crate::module::ModuleAst::Script(module) => {
-                let is_esm = module
-                    .ast
-                    .body
-                    .iter()
-                    .any(|s| matches!(s, swc_ecma_ast::ModuleItem::ModuleDecl(_)));
-                if is_esm {
-                    module_system = ModuleSystem::ESModule;
-                    StatementGraph::new(&module.ast)
-                } else {
-                    StatementGraph::empty()
-                }
-            }
-            crate::module::ModuleAst::Css(_) => {
-                module_system = ModuleSystem::Custom;
-                StatementGraph::empty()
-            }
-            crate::module::ModuleAst::None => {
-                module_system = ModuleSystem::Custom;
-                StatementGraph::empty()
-            }
-        };
+        let (module_system, statement_graph) = init_statement_graph(module);
 
         let used_exports = if module.side_effects {
             UsedExports::All
@@ -140,6 +114,30 @@ impl TreeShakingModule {
             statement_graph,
             module_system,
         }
+    }
+
+    pub fn update_statement(&mut self, module: &Module) {
+        let (module_system, statement_graph) = init_statement_graph(module);
+        if module_system != self.module_system {
+            panic!(
+                "module system not match: {:?} != {:?}",
+                module_system, self.module_system
+            );
+        }
+        self.statement_graph = statement_graph;
+    }
+
+    pub fn should_skip(&self) -> bool {
+        vec![
+            "@swc/helpers/esm/_interop_require_default",
+            "@swc/helpers/esm/_interop_require_wildcard",
+            "@swc/helpers/esm/_export_star",
+            "@swc/helpers/_/_interop_require_default",
+            "@swc/helpers/_/_interop_require_wildcard",
+            "@swc/helpers/_/_export_star",
+        ]
+        .into_iter()
+        .any(|id| self.id.id.contains(id))
     }
 
     #[allow(dead_code)]
@@ -345,6 +343,36 @@ impl TreeShakingModule {
     }
 }
 
+fn init_statement_graph(module: &Module) -> (ModuleSystem, StatementGraph) {
+    let ast = &module.info.as_ref().unwrap().ast;
+
+    let mut module_system = ModuleSystem::CommonJS;
+    let statement_graph = match ast {
+        crate::module::ModuleAst::Script(module) => {
+            let is_esm = module
+                .ast
+                .body
+                .iter()
+                .any(|s| matches!(s, swc_ecma_ast::ModuleItem::ModuleDecl(_)));
+            if is_esm {
+                module_system = ModuleSystem::ESModule;
+                StatementGraph::new(&module.ast)
+            } else {
+                StatementGraph::empty()
+            }
+        }
+        crate::module::ModuleAst::Css(_) => {
+            module_system = ModuleSystem::Custom;
+            StatementGraph::empty()
+        }
+        crate::module::ModuleAst::None => {
+            module_system = ModuleSystem::Custom;
+            StatementGraph::empty()
+        }
+    };
+    (module_system, statement_graph)
+}
+
 impl fmt::Display for TreeShakingModule {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.statement_graph.fmt(f)
@@ -510,4 +538,7 @@ export function ruleset () {
             tree_shaking_module.get_used_export_statement().into();
         assert_debug_snapshot!(&used);
     }
+
+    #[test]
+    fn t2() {}
 }

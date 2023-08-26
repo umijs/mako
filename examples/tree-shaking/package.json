@@ -1,0 +1,6 @@
+{
+  "name": "tree-shaking",
+  "dependencies": {
+    "antd": "^5.8.4"
+  }
+}

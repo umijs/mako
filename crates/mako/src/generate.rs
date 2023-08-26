@@ -45,11 +45,14 @@ impl Compiler {
         debug!("generate");
         let t_generate = Instant::now();
         let t_tree_shaking = Instant::now();
-        if matches!(self.context.config.mode, Mode::Production) {
-            debug!("tree_shaking");
-            self.tree_shaking();
-        }
+        debug!("tree_shaking");
+        let shaking_module_ids = self.tree_shaking();
         let t_tree_shaking = t_tree_shaking.elapsed();
+        println!(
+            "{} modules removed in {}ms.",
+            shaking_module_ids.len(),
+            t_tree_shaking.as_millis()
+        );
         let t_group_chunks = Instant::now();
         self.group_chunk();
         let t_group_chunks = t_group_chunks.elapsed();

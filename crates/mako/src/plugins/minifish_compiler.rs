@@ -26,7 +26,6 @@ use crate::module::{ModuleAst, ModuleId};
 use crate::plugin::{Plugin, PluginLoadParam};
 use crate::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
 use crate::transform_dynamic_import::DynamicImport;
-use crate::unused_statement_sweep::UnusedStatementSweep;
 
 pub struct MinifishCompiler {
     minifish_map: HashMap<String, String>,
@@ -201,7 +200,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
 }
 
 pub fn transform_js_generate(
-    id: &ModuleId,
+    _id: &ModuleId,
     context: &Arc<Context>,
     ast: &mut Ast,
     dep_map: &DependenciesToReplace,
@@ -221,17 +220,17 @@ pub fn transform_js_generate(
                             // let (code, ..) = js_ast_to_code(&ast.ast, context, "foo").unwrap();
                             // print!("{}", code);
 
-                            {
-                                if context.config.minify
-                                    && matches!(context.config.mode, Mode::Production)
-                                {
-                                    let comments =
-                                        context.meta.script.output_comments.read().unwrap();
-                                    let mut unused_statement_sweep =
-                                        UnusedStatementSweep::new(id, &comments);
-                                    ast.ast.visit_mut_with(&mut unused_statement_sweep);
-                                }
-                            }
+                            // {
+                            //     if context.config.minify
+                            //         && matches!(context.config.mode, Mode::Production)
+                            //     {
+                            //         let comments =
+                            //             context.meta.script.output_comments.read().unwrap();
+                            //         let mut unused_statement_sweep =
+                            //             UnusedStatementSweep::new(id, &comments);
+                            //         ast.ast.visit_mut_with(&mut unused_statement_sweep);
+                            //     }
+                            // }
 
                             let import_interop = ImportInterop::Swc;
                             // FIXME: 执行两轮 import_analyzer + inject_helpers，第一轮是为了 module_graph，第二轮是为了依赖替换
