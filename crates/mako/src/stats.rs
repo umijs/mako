@@ -258,13 +258,13 @@ pub fn write_stats(stats: &StatsJsonMap, compiler: &Compiler) {
 
 // 文件大小转换
 pub fn human_readable_size(size: u64) -> String {
-    let units = ["KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+    let units = ["kB", "mB", "gB"];
     // 把 B 转为 KB
-    let mut size = (size as f64) / 1024.0;
+    let mut size = (size as f64) / 1000.0;
     let mut i = 0;
 
-    while size >= 1024.0 && i < units.len() - 1 {
-        size /= 1024.0;
+    while size >= 1000.0 && i < units.len() - 1 {
+        size /= 1000.0;
         i += 1;
     }
 
