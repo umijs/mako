@@ -99,10 +99,9 @@ pub fn setup_compiler(base: &str, cleanup: bool) -> Compiler {
     compiler::Compiler::new(config, root)
 }
 
-pub fn read_dist_file(compiler: &Compiler) -> String {
+pub fn read_dist_file(compiler: &Compiler, path: &str) -> String {
     let cwd_path = &compiler.context.root;
-
-    fs::read_to_string(cwd_path.join("dist/index.js")).unwrap()
+    fs::read_to_string(cwd_path.join(path)).unwrap()
 }
 
 pub fn setup_files(compiler: &Compiler, extra_files: Vec<(String, String)>) {
