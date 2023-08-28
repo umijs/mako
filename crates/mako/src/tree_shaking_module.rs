@@ -81,8 +81,7 @@ impl From<UsedIdentHashMap> for Vec<(StatementId, HashSet<UsedIdent>)> {
         vec
     }
 }
-
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ModuleSystem {
     CommonJS,
     ESModule,
@@ -98,34 +97,33 @@ pub struct TreeShakingModule {
     statement_graph: StatementGraph,
 }
 
+#[derive(Debug)]
+pub struct UsedReExportHashMap(HashMap<StatementId, Option<Vec<StatementId>>>);
+
+impl UsedReExportHashMap {
+    pub fn is_all_re_export(&self) -> bool {
+        self.0.iter().all(|(_, v)| v.is_some())
+    }
+    pub fn get_all_used_statement_ids(&self) -> HashSet<StatementId> {
+        let mut ids = HashSet::new();
+        self.0
+            .iter()
+            .for_each(|(export_statement_id, import_statement)| {
+                ids.insert(*export_statement_id);
+
+                if let Some(import_statement) = import_statement {
+                    import_statement.iter().for_each(|import_statement_id| {
+                        ids.insert(*import_statement_id);
+                    })
+                }
+            });
+        ids
+    }
+}
+
 impl TreeShakingModule {
     pub fn new(module: &Module) -> Self {
-        let ast = &module.info.as_ref().unwrap().ast;
-
-        let mut module_system = ModuleSystem::CommonJS;
-        let statement_graph = match ast {
-            crate::module::ModuleAst::Script(module) => {
-                let is_esm = module
-                    .ast
-                    .body
-                    .iter()
-                    .any(|s| matches!(s, swc_ecma_ast::ModuleItem::ModuleDecl(_)));
-                if is_esm {
-                    module_system = ModuleSystem::ESModule;
-                    StatementGraph::new(&module.ast)
-                } else {
-                    StatementGraph::empty()
-                }
-            }
-            crate::module::ModuleAst::Css(_) => {
-                module_system = ModuleSystem::Custom;
-                StatementGraph::empty()
-            }
-            crate::module::ModuleAst::None => {
-                module_system = ModuleSystem::Custom;
-                StatementGraph::empty()
-            }
-        };
+        let (module_system, statement_graph) = init_statement_graph(module);
 
         let used_exports = if module.side_effects {
             UsedExports::All
@@ -142,8 +140,13 @@ impl TreeShakingModule {
         }
     }
 
+    pub fn update_statement(&mut self, module: &Module) {
+        let (_, statement_graph) = init_statement_graph(module);
+        self.statement_graph = statement_graph;
+    }
+
     #[allow(dead_code)]
-    fn get_statements(&self) -> Vec<&StatementType> {
+    pub fn get_statements(&self) -> Vec<&StatementType> {
         self.statement_graph.get_statements()
     }
 
@@ -159,6 +162,55 @@ impl TreeShakingModule {
             }
         }
         imports
+    }
+
+    pub fn get_used_re_exports(&self) -> UsedReExportHashMap {
+        let mut used_export_statement_hashmap = HashMap::new();
+        let mut keys = HashSet::new();
+        self.get_used_export_ident()
+            .into_iter()
+            .for_each(|(_, id)| {
+                used_export_statement_hashmap.entry(id).or_default();
+                keys.insert(id);
+            });
+
+        for statement_id in keys {
+            let statement = self.get_statement(&statement_id);
+            if let StatementType::Export(statement) = &statement {
+                // export from '.xxx';
+                if statement.info.source.is_some() {
+                    used_export_statement_hashmap.insert(statement.id, Some(vec![]));
+                    continue;
+                }
+
+                let deps = self.statement_graph.get_dependencies(&statement.id);
+
+                // import { f } from 'xxx'
+                // export { f }
+                let all_deps_is_import = deps
+                    .iter()
+                    .all(|(dep_statement, ..)| matches!(dep_statement, StatementType::Import(_)));
+                if all_deps_is_import {
+                    let import_statements = deps
+                        .iter()
+                        .map(|(dep_statement, ..)| {
+                            if let StatementType::Import(import_statement) = dep_statement {
+                                import_statement.id
+                            } else {
+                                unreachable!()
+                            }
+                        })
+                        .collect::<Vec<_>>();
+                    used_export_statement_hashmap.insert(statement.id, Some(import_statements));
+                    continue;
+                }
+
+                used_export_statement_hashmap.insert(statement.id, None);
+            } else {
+                unreachable!();
+            }
+        }
+        UsedReExportHashMap(used_export_statement_hashmap)
     }
 
     pub fn exports(&self) -> Vec<ExportStatement> {
@@ -225,7 +277,7 @@ impl TreeShakingModule {
     /**
      * 当前模块内到处的 identifiers
      */
-    pub fn get_used_export_ident(&self) -> Vec<(UsedIdent, usize)> {
+    pub fn get_used_export_ident(&self) -> Vec<(UsedIdent, StatementId)> {
         match &self.used_exports {
             UsedExports::All => {
                 // all exported identifiers are used
@@ -345,10 +397,54 @@ impl TreeShakingModule {
     }
 }
 
+fn init_statement_graph(module: &Module) -> (ModuleSystem, StatementGraph) {
+    let ast = &module.info.as_ref().unwrap().ast;
+
+    let mut module_system = ModuleSystem::CommonJS;
+    let statement_graph = match ast {
+        crate::module::ModuleAst::Script(module) => {
+            let is_esm = module
+                .ast
+                .body
+                .iter()
+                .any(|s| matches!(s, swc_ecma_ast::ModuleItem::ModuleDecl(_)));
+            if is_esm {
+                module_system = ModuleSystem::ESModule;
+                StatementGraph::new(&module.ast)
+            } else {
+                StatementGraph::empty()
+            }
+        }
+        crate::module::ModuleAst::Css(_) => {
+            module_system = ModuleSystem::Custom;
+            StatementGraph::empty()
+        }
+        crate::module::ModuleAst::None => {
+            module_system = ModuleSystem::Custom;
+            StatementGraph::empty()
+        }
+    };
+    (module_system, statement_graph)
+}
+
 impl fmt::Display for TreeShakingModule {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.statement_graph.fmt(f)
     }
+}
+
+// FIXME: 找一个靠谱的方式
+pub fn should_skip(url: &str) -> bool {
+    vec![
+        "@swc/helpers/esm/_interop_require_default",
+        "@swc/helpers/esm/_interop_require_wildcard",
+        "@swc/helpers/esm/_export_star",
+        "@swc/helpers/_/_interop_require_default",
+        "@swc/helpers/_/_interop_require_wildcard",
+        "@swc/helpers/_/_export_star",
+    ]
+    .into_iter()
+    .any(|id| url.contains(id))
 }
 
 #[cfg(test)]
@@ -358,7 +454,7 @@ mod tests {
 
     use super::TreeShakingModule;
     use crate::test_helper::create_mock_module;
-    use crate::tree_shaking_module::UsedIdent;
+    use crate::tree_shaking_module::{UsedExports, UsedIdent};
     use crate::{assert_debug_snapshot, assert_display_snapshot};
 
     #[test]
@@ -509,5 +605,35 @@ export function ruleset () {
         let used: Vec<(usize, HashSet<UsedIdent>)> =
             tree_shaking_module.get_used_export_statement().into();
         assert_debug_snapshot!(&used);
+    }
+
+    #[test]
+    fn reexport_test() {
+        let module = create_mock_module(
+            PathBuf::from("/path/to/test.tsx"),
+            r#"
+export * from './f1';
+
+export { default } from './f2';
+
+export { f } from './f3';
+
+export { f as b } from './f4';
+
+export { default as c } from './f5';
+
+import { d } from './f6';
+export { d };
+
+import { g } from './f7';
+import { e } from './f8';
+export { e, g };
+"#,
+        );
+        let mut tree_shaking_module = TreeShakingModule::new(&module);
+        tree_shaking_module.used_exports = UsedExports::All;
+        let re_exports = tree_shaking_module.get_used_re_exports();
+        assert!(re_exports.is_all_re_export());
+        assert_eq!(re_exports.get_all_used_statement_ids().len(), 10);
     }
 }

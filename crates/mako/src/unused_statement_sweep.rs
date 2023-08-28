@@ -35,6 +35,7 @@ impl VisitMut for UnusedStatementSweep<'_> {
     }
 
     fn visit_mut_module_item(&mut self, decl: &mut ModuleItem) {
+        let old = self.need_removed_module_item;
         self.need_removed_module_item = false;
 
         decl.visit_mut_children_with(self);
@@ -43,6 +44,7 @@ impl VisitMut for UnusedStatementSweep<'_> {
             debug!("remove module item: {:?}", decl);
             decl.take();
         }
+        self.need_removed_module_item = old;
     }
 
     // TODO: 目前 jsx 会被删除掉，等待解决

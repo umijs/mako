@@ -1,0 +1,8 @@
+{
+  "mode": "production",
+  "stats": true,
+  "entry": {
+    "index": "./index.js"
+  },
+  "hmr": false
+}

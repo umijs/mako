@@ -16,7 +16,6 @@ use twox_hash::XxHash64;
 
 use crate::ast::build_js_ast;
 use crate::compiler::{Compiler, Context};
-use crate::config::Mode;
 use crate::module::{ModuleAst, ModuleId, ModuleType};
 use crate::transform_in_generate::transform_css_generate;
 
@@ -389,12 +388,6 @@ pub fn modules_to_js_stmts(
 
     for module_id in module_ids {
         let module = module_graph.get_module(module_id).unwrap();
-        if context.config.minify
-            && matches!(context.config.mode, Mode::Production)
-            && module.is_missing
-        {
-            continue;
-        }
         let ast = module.info.as_ref().unwrap();
         let ast = &ast.ast;
         match ast {

@@ -14,10 +14,12 @@ use crate::compiler::Compiler;
 use crate::load::file_size;
 
 #[derive(Debug, PartialEq, Eq)]
+// name 记录实际 filename , 用在 stats.json 中, hashname 用在产物描述和 manifest 中
 pub struct AssetsInfo {
     pub assets_type: String,
     pub size: u64,
     pub name: String,
+    pub hashname: String,
     pub chunk_id: String,
     pub path: PathBuf,
 }
@@ -105,13 +107,21 @@ impl StatsInfo {
         Self { assets: vec![] }
     }
 
-    pub fn add_assets(&mut self, size: u64, name: String, chunk_id: String, path: PathBuf) {
+    pub fn add_assets(
+        &mut self,
+        size: u64,
+        name: String,
+        chunk_id: String,
+        path: PathBuf,
+        hashname: String,
+    ) {
         self.assets.push(AssetsInfo {
             assets_type: "asset".to_string(),
             size,
             name,
             chunk_id,
             path,
+            hashname,
         });
     }
 }
@@ -159,6 +169,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
                 asset.1.clone(),
                 "".to_string(),
                 compiler.context.config.output.path.join(asset.1.clone()),
+                asset.1.clone(),
             );
         });
 
@@ -247,13 +258,13 @@ pub fn write_stats(stats: &StatsJsonMap, compiler: &Compiler) {
 
 // 文件大小转换
 pub fn human_readable_size(size: u64) -> String {
-    let units = ["KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+    let units = ["kB", "mB", "gB"];
     // 把 B 转为 KB
-    let mut size = (size as f64) / 1024.0;
+    let mut size = (size as f64) / 1000.0;
     let mut i = 0;
 
-    while size >= 1024.0 && i < units.len() - 1 {
-        size /= 1024.0;
+    while size >= 1000.0 && i < units.len() - 1 {
+        size /= 1000.0;
         i += 1;
     }
 
@@ -297,7 +308,7 @@ pub fn print_stats(compiler: &Compiler) {
 
     // 生成 (name, size, map_size) 的 vec
     for asset in assets {
-        let name = asset.name.clone();
+        let name = asset.hashname.clone();
         let size_length = human_readable_size(asset.size).chars().count();
         // 记录较长的名字
         if name.chars().count() > max_length_name.chars().count() {
@@ -323,7 +334,7 @@ pub fn print_stats(compiler: &Compiler) {
         if size_length > max_size {
             max_size = size_length;
         }
-        assets_vec.push((asset.name.clone(), asset.size, 0));
+        assets_vec.push((asset.hashname.clone(), asset.size, 0));
     }
 
     // 输出 stats
