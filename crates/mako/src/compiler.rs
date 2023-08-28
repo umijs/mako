@@ -339,7 +339,7 @@ mod tests {
         println!("{:?}", files);
         let index_js_content = file_contents.get("index.js").unwrap();
         assert!(
-            index_js_content.contains("let Foo = (0, _decorate._)(["),
+            index_js_content.contains("Foo = (0, _ts_decorate._)(["),
             "legacy decorator"
         );
     }
