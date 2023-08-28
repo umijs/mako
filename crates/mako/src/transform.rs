@@ -118,8 +118,9 @@ fn transform_js(
                     let mut folders = chain!(
                         preset_env,
                         // support decorator
+                        // TODO: support config
                         decorators(decorators::Config {
-                            legacy: false,
+                            legacy: true,
                             emit_metadata: false,
                             ..Default::default()
                         })
