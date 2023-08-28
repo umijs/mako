@@ -230,7 +230,8 @@ mod tests {
                     &context,
                     &Task {
                         is_entry: task.is_entry,
-                        path: task.path.to_string()
+                        path: task.path.to_string(),
+                        parent_resource: None,
                     },
                     &Mark::new(),
                     &Mark::new(),

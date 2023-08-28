@@ -39,7 +39,8 @@ impl VisitMut for CSSUrlReplacer<'_> {
             span: None,
         };
         let resolved = resolve::resolve(self.path, &dep, self.resolvers, self.context);
-        if let Ok((resolved_path, _)) = resolved {
+        if let Ok(resource) = resolved {
+            let resolved_path = resource.get_resolved_path();
             let asset_content = handle_asset(self.context, &resolved_path, false);
             let asset_content = asset_content.unwrap_or_else(|_| resolved_path.clone());
             match n.value {

@@ -161,6 +161,7 @@ impl Compiler {
                     Task {
                         path: entry.to_string_lossy().to_string(),
                         is_entry,
+                        parent_resource: None,
                     },
                     resolvers.clone(),
                 )?;
@@ -176,10 +177,11 @@ impl Compiler {
 
                 let mut add_modules: HashMap<ModuleId, Module> = HashMap::new();
                 let mut target_dependencies: Vec<(ModuleId, Dependency)> = vec![];
-                dependencies.into_iter().for_each(|(path, external, dep)| {
-                    let module_id = ModuleId::new(path.clone());
+                dependencies.into_iter().for_each(|(resource, dep)| {
+                    let resolved_path = resource.get_resolved_path();
+                    let module_id = ModuleId::new(resolved_path);
                     // TODO: handle error
-                    let module = self.create_module(external, path, &module_id).unwrap();
+                    let module = self.create_module(&resource, &module_id).unwrap();
                     target_dependencies.push((module_id.clone(), dep));
                     add_modules.insert(module_id, module);
                 });
@@ -228,6 +230,7 @@ impl Compiler {
             add_queue.push_back(Task {
                 path: path.to_string_lossy().to_string(),
                 is_entry: false,
+                parent_resource: None,
             })
         }
 
