@@ -11,3 +11,4 @@
 .idea
 **/cypress/videos/
 **/cypress/screenshots/
+stats.json
