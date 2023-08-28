@@ -334,6 +334,17 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
+    async fn test_es_decorator() {
+        let (files, file_contents) = compile("test/compile/es-decorator");
+        println!("{:?}", files);
+        let index_js_content = file_contents.get("index.js").unwrap();
+        assert!(
+            index_js_content.contains("let Foo = (0, _decorate._)(["),
+            "legacy decorator"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_load() {
         let (files, file_contents) = compile("test/compile/load");
         println!("{:?}", files);
