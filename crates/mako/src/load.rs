@@ -179,5 +179,17 @@ pub fn content_hash(file_path: &str) -> Result<String> {
         buf.consume(part_len);
     }
     let digest = context.compute();
-    Ok(format!("{:x}", digest))
+    let hash = format!("{:x}", digest);
+    Ok(hash_to_8(hash))
+}
+
+pub fn file_content_hash(content: String) -> String {
+    let digest = md5::compute(content);
+    let hash = format!("{:x}", digest);
+    hash_to_8(hash)
+}
+
+pub fn hash_to_8(hash: String) -> String {
+    let hash_8 = &hash[0..8];
+    hash_8.to_string()
 }

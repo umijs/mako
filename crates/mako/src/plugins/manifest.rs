@@ -27,8 +27,8 @@ impl Plugin for ManifestPlugin {
             let path = normalize_path(base_path);
 
             for asset in assets {
-                let key = format!("{}{}", path, remove_key_hash(&asset.name));
-                manifest.insert(key, asset.name.clone());
+                let key = format!("{}{}", path, remove_key_hash(&asset.hashname));
+                manifest.insert(key, asset.hashname.clone());
             }
 
             let manifest_json = serde_json::to_string_pretty(&manifest)?;
@@ -50,8 +50,7 @@ fn normalize_path(mut path: String) -> String {
 }
 
 fn remove_key_hash(key: &str) -> String {
-    // 需要确定是使用 md5 算法产生的 hash 才能保证是 32 长度
-    let reg = Regex::new(r"[a-fA-F0-9]{32}\.?").unwrap();
+    let reg = Regex::new(r"[a-fA-F0-9]{8}\.?").unwrap();
     let val = reg.replace_all(key, "").to_string();
     val
 }
