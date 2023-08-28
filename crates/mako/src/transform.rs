@@ -4,7 +4,7 @@ use anyhow::Result;
 use swc_common::comments::NoopComments;
 use swc_common::errors::HANDLER;
 use swc_common::sync::Lrc;
-use swc_common::{Mark, GLOBALS};
+use swc_common::{chain, Mark, GLOBALS};
 use swc_css_ast::Stylesheet;
 use swc_css_visit::VisitMutWith;
 use swc_ecma_ast::Module;
@@ -13,6 +13,7 @@ use swc_ecma_transforms::feature::FeatureFlag;
 use swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
 use swc_ecma_transforms::modules::import_analysis::import_analyzer;
 use swc_ecma_transforms::modules::util::ImportInterop;
+use swc_ecma_transforms::proposals::decorators;
 use swc_ecma_transforms::typescript::strip_with_jsx;
 use swc_ecma_transforms::{resolver, Assumptions};
 use swc_ecma_visit::{Fold, VisitMutWith as CssVisitMutWith};
@@ -90,7 +91,6 @@ fn transform_js(
                     ));
 
                     ast.visit_mut_with(&mut import_analyzer(import_interop, true));
-                    ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
 
                     let mut env_replacer = EnvReplacer::new(Lrc::new(env_map));
                     ast.visit_mut_with(&mut env_replacer);
@@ -102,7 +102,7 @@ fn transform_js(
                     ast.visit_mut_with(&mut optimizer);
 
                     // TODO: polyfill
-                    let mut preset_env = swc_preset_env::preset_env(
+                    let preset_env = swc_preset_env::preset_env(
                         unresolved_mark,
                         Some(NoopComments),
                         swc_preset_env::Config {
@@ -115,7 +115,22 @@ fn transform_js(
                         Assumptions::default(),
                         &mut FeatureFlag::default(),
                     );
-                    ast.body = preset_env.fold_module(ast.clone()).body;
+                    let mut folders = chain!(
+                        preset_env,
+                        // support decorator
+                        // TODO: support config
+                        decorators(decorators::Config {
+                            legacy: true,
+                            emit_metadata: false,
+                            ..Default::default()
+                        })
+                    );
+                    ast.body = folders.fold_module(ast.clone()).body;
+
+                    // inject helpers must after decorators
+                    // since decorators will use helpers
+                    ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
+
                     Ok(())
                 })
             })
