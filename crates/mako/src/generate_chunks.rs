@@ -334,14 +334,11 @@ fn compile_runtime_entry(has_wasm: bool, has_async: bool) -> String {
         )
 }
 
-fn build_ident_param(ident: &str) -> Param {
+fn build_ident_param(ident: Ident) -> Param {
     Param {
         span: DUMMY_SP,
         decorators: vec![],
-        pat: Pat::Ident(BindingIdent {
-            id: Ident::new(ident.into(), DUMMY_SP),
-            type_ann: None,
-        }),
+        pat: Pat::Ident(ident.into()),
     }
 }
 
@@ -409,9 +406,9 @@ pub fn modules_to_js_stmts(
                     Box::new(Expr::Fn(build_fn_expr(
                         None,
                         vec![
-                            build_ident_param("module"),
-                            build_ident_param("exports"),
-                            build_ident_param("require"),
+                            build_ident_param(context.meta.script.module_ident.clone()),
+                            build_ident_param(context.meta.script.exports_ident.clone()),
+                            build_ident_param(context.meta.script.require_ident.clone()),
                         ],
                         stmts,
                     ))),
@@ -425,9 +422,9 @@ pub fn modules_to_js_stmts(
                     Box::new(Expr::Fn(build_fn_expr(
                         None,
                         vec![
-                            build_ident_param("module"),
-                            build_ident_param("exports"),
-                            build_ident_param("require"),
+                            build_ident_param(context.meta.script.module_ident.clone()),
+                            build_ident_param(context.meta.script.exports_ident.clone()),
+                            build_ident_param(context.meta.script.require_ident.clone()),
                         ],
                         vec![],
                     ))),

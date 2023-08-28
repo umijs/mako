@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use swc_common::DUMMY_SP;
 use swc_ecma_ast::{
     ArrayLit, ArrowExpr, AssignExpr, AssignOp, AwaitExpr, BindingIdent, BlockStmt, BlockStmtOrExpr,
@@ -7,6 +9,7 @@ use swc_ecma_ast::{
 };
 use swc_ecma_visit::VisitMut;
 
+use crate::compiler::Context;
 use crate::module::Dependency;
 
 const ASYNC_DEPS_IDENT: &str = "__mako_async_dependencies__";
@@ -17,6 +20,7 @@ pub struct AsyncModule<'a> {
     pub async_deps_idents: Vec<BindingIdent>,
     pub last_dep_pos: usize,
     pub top_level_await: bool,
+    pub context: &'a Arc<Context>,
 }
 
 impl VisitMut for AsyncModule<'_> {
@@ -278,20 +282,20 @@ impl VisitMut for AsyncModule<'_> {
             span: DUMMY_SP,
             expr: Box::new(Expr::Call(CallExpr {
                 span: DUMMY_SP,
-                callee: Callee::Expr(Box::new(Expr::Ident(Ident {
+                callee: Callee::Expr(Box::new(Expr::Member(MemberExpr {
                     span: DUMMY_SP,
-                    sym: "require._async".into(),
-                    optional: false,
+                    obj: Box::new(Expr::Ident(self.context.meta.script.require_ident.clone())),
+                    prop: MemberProp::Ident(Ident {
+                        span: DUMMY_SP,
+                        sym: "_async".into(),
+                        optional: false,
+                    }),
                 }))),
                 type_args: None,
                 args: vec![
                     ExprOrSpread {
                         spread: None,
-                        expr: Box::new(Expr::Ident(Ident {
-                            span: DUMMY_SP,
-                            sym: "module".into(),
-                            optional: false,
-                        })),
+                        expr: Box::new(Expr::Ident(self.context.meta.script.module_ident.clone())),
                     },
                     ExprOrSpread {
                         spread: None,

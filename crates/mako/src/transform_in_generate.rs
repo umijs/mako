@@ -149,6 +149,7 @@ pub fn transform_js_generate(
                                     async_deps_idents: Vec::new(),
                                     last_dep_pos: 0,
                                     top_level_await,
+                                    context,
                                 };
                                 ast.ast.visit_mut_with(&mut async_module);
                             }
