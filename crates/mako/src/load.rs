@@ -83,6 +83,8 @@ pub fn load(request: &FileRequest, is_entry: bool, context: &Arc<Context>) -> Re
 pub fn handle_asset<T: AsRef<str>>(
     context: &Arc<Context>,
     path: T,
+    // inject_public_path means it's used in javascript
+    // so it will return an expression
     inject_public_path: bool,
 ) -> Result<String> {
     let path_str = path.as_ref();
@@ -109,7 +111,11 @@ pub fn handle_asset<T: AsRef<str>>(
     } else {
         let base64 =
             to_base64(path_str).with_context(|| LoadError::ToBase64Error { path: path_string })?;
-        Ok(base64)
+        if inject_public_path {
+            Ok(format!("\"{}\"", base64))
+        } else {
+            Ok(base64)
+        }
     }
 }
 
