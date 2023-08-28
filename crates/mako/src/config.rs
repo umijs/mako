@@ -89,6 +89,8 @@ pub enum CodeSplittingStrategy {
     BigVendor,
     #[serde(rename = "depPerChunk")]
     DepPerChunk,
+    #[serde(rename = "none")]
+    None,
 }
 
 #[derive(Deserialize, Debug)]

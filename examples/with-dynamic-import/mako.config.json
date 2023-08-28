@@ -1,4 +1,4 @@
 {
-  "publicPath": "/",
-  "codeSplitting": "depPerChunk"
+  "public_path": "/",
+  "code_splitting": "none"
 }
