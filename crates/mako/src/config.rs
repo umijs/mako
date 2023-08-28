@@ -89,6 +89,8 @@ pub enum CodeSplittingStrategy {
     BigVendor,
     #[serde(rename = "depPerChunk")]
     DepPerChunk,
+    #[serde(rename = "none")]
+    None,
 }
 
 #[derive(Deserialize, Debug)]
@@ -127,6 +129,7 @@ pub struct Config {
     // temp flag
     #[serde(rename = "extractCSS")]
     pub extract_css: bool,
+    pub hash: bool,
 }
 
 const CONFIG_FILE: &str = "mako.config.json";
@@ -155,7 +158,8 @@ const DEFAULT_CONFIG: &str = r#"
     "hmrPort": "3000",
     "moduleIdStrategy": "named",
     "codeSplitting": "bigVendor",
-    "extractCSS": false
+    "extractCSS": false,
+    "hash": false
 }
 "#;
 

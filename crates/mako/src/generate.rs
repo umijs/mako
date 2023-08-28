@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -15,6 +15,7 @@ use crate::ast::{css_ast_to_code, js_ast_to_code};
 use crate::compiler::{Compiler, Context};
 use crate::config::{DevtoolConfig, Mode, OutputMode};
 use crate::generate_chunks::OutputAst;
+use crate::load::file_content_hash;
 use crate::minify::minify_js;
 use crate::module::{ModuleAst, ModuleId};
 use crate::stats::{create_stats_info, print_stats, write_stats};
@@ -25,6 +26,7 @@ pub struct EmitFile {
     pub filename: String,
     pub content: String,
     pub chunk_id: String,
+    pub hashname: String,
 }
 
 pub struct GenerateOptions {
@@ -362,15 +364,17 @@ impl Compiler {
 
         std::fs::write(to, content).unwrap();
     }
-    // 写入产物前记录 content 大小
+    // 写入产物前记录 content 大小, 并加上 hash 值
     pub fn write_to_dist_with_stats(&self, file: EmitFile) {
-        let to: PathBuf = self.context.config.output.path.join(file.filename.clone());
+        let to: PathBuf = self.context.config.output.path.join(file.hashname.clone());
+        let path = self.context.config.output.path.join(file.filename.clone());
         let size = file.content.len() as u64;
         self.context.stats_info.lock().unwrap().add_assets(
             size,
             file.filename,
             file.chunk_id,
-            to.clone(),
+            path,
+            file.hashname,
         );
         fs::write(to, file.content).unwrap();
     }
@@ -392,21 +396,30 @@ fn to_hot_update_chunk_name(chunk_name: &String, hash: u64) -> String {
     key = "String",
     convert = r#"{ format!("{}-{}", file.ast_module_hash, file.path) }"#
 )]
+
+// 需要在这里提前记录 js 和 map 的 hash，因为 map 是不单独计算 hash 值的，继承的是 js 的 hash 值
 fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<EmitFile>> {
     let mut files = vec![];
     match &file.ast {
         ModuleAst::Script(ast) => {
             // ast to code
             let (js_code, js_sourcemap) = js_ast_to_code(&ast.ast, context, &file.path)?;
+            // 计算 hash 值
+            let hashname = match context.config.hash {
+                true => hash_file_name(file.path.clone(), file_content_hash(js_code.clone())),
+                _ => file.path.clone(),
+            };
             // generate code and sourcemap files
             files.push(EmitFile {
                 filename: file.path.clone(),
                 content: js_code,
                 chunk_id: file.chunk_id.clone(),
+                hashname: hashname.clone(),
             });
             if matches!(context.config.devtool, DevtoolConfig::SourceMap) {
                 files.push(EmitFile {
                     filename: format!("{}.map", file.path.clone()),
+                    hashname: format!("{}.map", hashname),
                     content: js_sourcemap,
                     chunk_id: "".to_string(),
                 });
@@ -415,14 +428,21 @@ fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<
         ModuleAst::Css(ast) => {
             // ast to code
             let (css_code, css_sourcemap) = css_ast_to_code(ast, context, &file.path);
+            // 计算 hash 值
+            let hashname = match context.config.hash {
+                true => hash_file_name(file.path.clone(), file_content_hash(css_code.clone())),
+                _ => file.path.clone(),
+            };
             files.push(EmitFile {
                 filename: file.path.clone(),
+                hashname: hashname.clone(),
                 content: css_code,
                 chunk_id: file.chunk_id.clone(),
             });
             if matches!(context.config.devtool, DevtoolConfig::SourceMap) {
                 files.push(EmitFile {
                     filename: format!("{}.map", file.path.clone()),
+                    hashname: format!("{}.map", hashname),
                     content: css_sourcemap,
                     chunk_id: "".to_string(),
                 });
@@ -432,6 +452,14 @@ fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<
     }
 
     Ok(files)
+}
+
+fn hash_file_name(file_name: String, hash: String) -> String {
+    let path = Path::new(&file_name);
+    let file_stem = path.file_stem().unwrap().to_str().unwrap();
+    let file_extension = path.extension().unwrap().to_str().unwrap();
+
+    format!("{}.{}.{}", file_stem, hash, file_extension)
 }
 
 #[derive(Serialize)]
