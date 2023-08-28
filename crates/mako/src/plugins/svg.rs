@@ -40,7 +40,7 @@ impl Plugin for SVGPlugin {
             };
             let default_svg = handle_asset(context, param.path.as_str(), true)?;
             return Ok(Some(Content::Js(format!(
-                "{}\nexport default \"{}\";",
+                "{}\nexport default {};",
                 svgr_code, default_svg
             ))));
         }
