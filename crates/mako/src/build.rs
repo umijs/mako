@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::fmt;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Instant;
 
 use anyhow::Result;
@@ -17,7 +16,7 @@ use crate::load::load;
 use crate::module::{Dependency, Module, ModuleAst, ModuleId, ModuleInfo};
 use crate::parse::parse;
 use crate::plugin::PluginDepAnalyzeParam;
-use crate::resolve::{get_resolvers, resolve, Resolvers};
+use crate::resolve::{get_resolvers, resolve, ResolverResource, Resolvers};
 use crate::transform::transform;
 use crate::transform_after_resolve::transform_after_resolve;
 use crate::transform_dep_replacer::DependenciesToReplace;
@@ -25,10 +24,11 @@ use crate::transform_dep_replacer::DependenciesToReplace;
 #[derive(Debug)]
 pub struct Task {
     pub path: String,
+    pub parent_resource: Option<ResolverResource>,
     pub is_entry: bool,
 }
 
-pub type ModuleDeps = Vec<(String, Option<String>, Dependency)>;
+pub type ModuleDeps = Vec<(ResolverResource, Dependency)>;
 
 impl Compiler {
     pub fn build(&self) {
@@ -60,6 +60,7 @@ impl Compiler {
         for entry in entries {
             queue.push_back(Task {
                 path: entry.to_str().unwrap().to_string(),
+                parent_resource: None,
                 is_entry: true,
             });
         }
@@ -128,23 +129,21 @@ impl Compiler {
                     }
 
                     // deps
-                    deps.iter().for_each(|dep| {
-                        let resolved_path = dep.0.clone();
-                        let is_external = dep.1.is_some();
+                    deps.iter().for_each(|(resource, dep)| {
+                        let resolved_path = resource.get_resolved_path();
+                        let external = resource.get_external();
+                        let is_external = external.is_some();
                         let dep_module_id = ModuleId::new(resolved_path.clone());
-                        let dependency = dep.2.clone();
+                        let dependency = dep.clone();
 
                         if !module_graph.has_module(&dep_module_id) {
-                            let module = self.create_module(
-                                dep.1.clone(),
-                                resolved_path.clone(),
-                                &dep_module_id,
-                            );
+                            let module = self.create_module(resource, &dep_module_id);
                             match module {
                                 Ok(module) => {
                                     if !is_external {
                                         queue.push_back(Task {
                                             path: resolved_path,
+                                            parent_resource: Some(resource.clone()),
                                             // parent_module_id: None,
                                             is_entry: false,
                                         });
@@ -182,10 +181,11 @@ impl Compiler {
 
     pub fn create_module(
         &self,
-        external: Option<String>,
-        resolved_path: String,
+        resource: &ResolverResource,
         dep_module_id: &ModuleId,
     ) -> Result<Module> {
+        let external = resource.get_external();
+        let resolved_path = resource.get_resolved_path();
         let module = match external {
             Some(external) => {
                 // support empty external
@@ -209,6 +209,7 @@ impl Compiler {
                         path: resolved_path,
                         external: Some(external),
                         raw_hash: 0,
+                        resolved_resource: Some(resource.clone()),
                         missing_deps: HashMap::new(),
                     }),
                 )
@@ -247,7 +248,7 @@ impl Compiler {
 
         // resolve
         let mut dep_resolve_err = None;
-        let mut dependencies = Vec::new();
+        let mut dependencies_resource = Vec::new();
         let mut resolved_deps_to_source = HashMap::<String, String>::new();
         let mut duplicated_source_to_source_map = HashMap::new();
 
@@ -256,7 +257,9 @@ impl Compiler {
         for dep in deps {
             let ret = resolve(&task.path, &dep, &resolvers, &context);
             match ret {
-                Ok((resolved, external)) => {
+                Ok(resolved_resource) => {
+                    let resolved = resolved_resource.get_resolved_path();
+                    let _external = resolved_resource.get_external();
                     let id = ModuleId::new(resolved.clone());
                     let id_str = id.generate(&context);
 
@@ -265,7 +268,7 @@ impl Compiler {
                         .or_insert_with(|| dep.source.clone());
 
                     if dep.source.eq(used_source) {
-                        dependencies.push((resolved.clone(), external, dep.clone()));
+                        dependencies_resource.push((resolved_resource, dep.clone()));
                     } else {
                         duplicated_source_to_source_map
                             .insert(dep.source.clone(), used_source.clone());
@@ -343,10 +346,11 @@ impl Compiler {
             external: None,
             raw_hash: content.raw_hash(),
             missing_deps: missing_dependencies,
+            resolved_resource: task.parent_resource.clone(),
         };
         let module = Module::new(module_id, task.is_entry, Some(info));
 
-        Ok((module, dependencies, task))
+        Ok((module, dependencies_resource, task))
     }
 }
 
@@ -542,15 +546,5 @@ mod tests {
         }
 
         (module_ids, references)
-    }
-}
-
-#[derive(Clone, Default)]
-struct LockedWriter(Arc<Mutex<String>>);
-
-impl fmt::Write for LockedWriter {
-    fn write_str(&mut self, s: &str) -> fmt::Result {
-        self.0.lock().unwrap().push_str(s);
-        Ok(())
     }
 }

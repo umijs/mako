@@ -17,7 +17,7 @@ use crate::config::{DevtoolConfig, Mode, OutputMode};
 use crate::generate_chunks::OutputAst;
 use crate::minify::minify_js;
 use crate::module::{ModuleAst, ModuleId};
-use crate::stats::{create_stats_info, log_assets, write_stats};
+use crate::stats::{create_stats_info, print_stats, write_stats};
 use crate::update::UpdateResult;
 
 #[derive(Clone)]
@@ -27,13 +27,17 @@ pub struct EmitFile {
     pub chunk_id: String,
 }
 
+pub struct GenerateOptions {
+    pub watch: bool,
+}
+
 impl Compiler {
     pub fn generate_with_plugin_driver(&self) -> Result<()> {
         self.context.plugin_driver.generate(&self.context)?;
         Ok(())
     }
 
-    pub fn generate(&self) -> Result<()> {
+    pub fn generate(&self, options: GenerateOptions) -> Result<()> {
         if self.context.config.output.mode == OutputMode::MinifishPrebuild {
             return self.generate_with_plugin_driver();
         }
@@ -41,11 +45,14 @@ impl Compiler {
         debug!("generate");
         let t_generate = Instant::now();
         let t_tree_shaking = Instant::now();
-        if matches!(self.context.config.mode, Mode::Production) {
-            debug!("tree_shaking");
-            self.tree_shaking();
-        }
+        debug!("tree_shaking");
+        let shaking_module_ids = self.tree_shaking();
         let t_tree_shaking = t_tree_shaking.elapsed();
+        println!(
+            "{} modules removed in {}ms.",
+            shaking_module_ids.len(),
+            t_tree_shaking.as_millis()
+        );
         let t_group_chunks = Instant::now();
         self.group_chunk();
         let t_group_chunks = t_group_chunks.elapsed();
@@ -130,7 +137,7 @@ impl Compiler {
 
         // generate stats
         let stats = create_stats_info(0, self);
-        if self.context.config.stats {
+        if self.context.config.stats && !options.watch {
             write_stats(&stats, self);
         }
 
@@ -139,8 +146,10 @@ impl Compiler {
             .plugin_driver
             .build_success(&stats, &self.context)?;
 
-        // log assets
-        log_assets(self);
+        // print stats
+        if !options.watch {
+            print_stats(self);
+        }
 
         debug!("generate done in {}ms", t_generate.elapsed().as_millis());
         debug!("  - tree shaking: {}ms", t_tree_shaking.as_millis());
@@ -381,12 +390,10 @@ fn to_hot_update_chunk_name(chunk_name: &String, hash: u64) -> String {
 #[cached(
     result = true,
     key = "String",
-    // TODO: use different hash for js and css in the same chunk
-    convert = r#"{ format!("{}-{}", context.chunk_graph.read().unwrap().get_chunk_by_id(&file.chunk_id).unwrap().hash(&context.module_graph.read().unwrap()).to_string(), file.path) }"#
+    convert = r#"{ format!("{}-{}", file.ast_module_hash, file.path) }"#
 )]
 fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<EmitFile>> {
     let mut files = vec![];
-
     match &file.ast {
         ModuleAst::Script(ast) => {
             // ast to code

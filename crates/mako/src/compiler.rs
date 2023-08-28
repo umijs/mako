@@ -10,6 +10,7 @@ use swc_common::{Globals, SourceMap};
 use crate::chunk_graph::ChunkGraph;
 use crate::comments::Comments;
 use crate::config::{Config, OutputMode};
+use crate::generate::GenerateOptions;
 use crate::module_graph::ModuleGraph;
 use crate::plugin::{Plugin, PluginDriver};
 use crate::plugins;
@@ -172,15 +173,17 @@ impl Compiler {
         };
         let t_compiler = Instant::now();
         let is_prod = self.context.config.mode == crate::config::Mode::Production;
-        let message = format!(
+        let building_with_message = format!(
             "Building with {} for {}...",
             "mako".to_string().cyan(),
             if is_prod { "production" } else { "development" }
         )
         .green();
-        println!("{}", message);
+        println!("{}", building_with_message);
         self.build();
-        let result = self.generate();
+        let result = self.generate(GenerateOptions {
+            watch: compile_options.watch,
+        });
         let t_compiler = t_compiler.elapsed();
         match result {
             Ok(_) => {

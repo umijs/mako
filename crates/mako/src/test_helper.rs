@@ -57,9 +57,18 @@ pub fn create_mock_module(path: PathBuf, code: &str) -> Module {
         path: path.to_string_lossy().to_string(),
         external: None,
         raw_hash: 0,
+        resolved_resource: None,
         missing_deps: HashMap::new(),
     };
     Module::new(module_id, false, Some(info))
+}
+
+pub fn get_module(compiler: &Compiler, path: &str) -> Module {
+    let module_graph = compiler.context.module_graph.read().unwrap();
+    let cwd_path = &compiler.context.root;
+    let module_id = ModuleId::from(cwd_path.join(path));
+    let module = module_graph.get_module(&module_id).unwrap();
+    module.clone()
 }
 
 #[allow(dead_code)]
@@ -90,10 +99,9 @@ pub fn setup_compiler(base: &str, cleanup: bool) -> Compiler {
     compiler::Compiler::new(config, root)
 }
 
-pub fn read_dist_file(compiler: &Compiler) -> String {
+pub fn read_dist_file(compiler: &Compiler, path: &str) -> String {
     let cwd_path = &compiler.context.root;
-
-    fs::read_to_string(cwd_path.join("dist/index.js")).unwrap()
+    fs::read_to_string(cwd_path.join(path)).unwrap()
 }
 
 pub fn setup_files(compiler: &Compiler, extra_files: Vec<(String, String)>) {

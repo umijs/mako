@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt;
-use std::sync::Arc;
 
 use petgraph::graph::{DefaultIx, NodeIndex};
 use petgraph::prelude::EdgeRef;
@@ -8,7 +7,6 @@ use petgraph::stable_graph::{StableDiGraph, WalkNeighbors};
 use petgraph::visit::IntoEdgeReferences;
 use petgraph::Direction;
 
-use crate::compiler::Context;
 use crate::module::{Dependency, Module, ModuleId};
 
 pub struct ModuleGraph {
@@ -86,11 +84,6 @@ impl ModuleGraph {
             .node_weights()
             .map(|node| node.id.clone())
             .collect()
-    }
-
-    pub fn mark_missing_module(&mut self, module_id: &ModuleId, _context: &Arc<Context>) {
-        let module = self.get_module_mut(module_id).unwrap();
-        module.is_missing = true;
     }
 
     pub fn replace_module(&mut self, module: Module) {

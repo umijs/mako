@@ -32,6 +32,10 @@ impl<'a, 'b> UnusedStatementMarker<'a, 'b> {
 impl VisitMut for UnusedStatementMarker<'_, '_> {
     // 清理空模块，打上注释
     fn visit_mut_module(&mut self, module: &mut swc_ecma_ast::Module) {
+        if self.tree_shaking_module.should_skip() {
+            debug!("skip module {:?}", &self.tree_shaking_module.id);
+            return;
+        }
         if self.tree_shaking_module.used_exports.is_empty() {
             self.comments.add_unused_module_comment(module.span.lo);
         } else {

@@ -1,9 +1,8 @@
 use std::path::PathBuf;
 
-use futures::channel::mpsc::channel;
-use futures::{SinkExt, StreamExt};
 use notify::event::{CreateKind, DataChange, ModifyKind, RenameMode};
 use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use tokio::sync::mpsc::channel;
 
 use crate::update::UpdateType;
 
@@ -34,25 +33,21 @@ impl From<WatchEvent> for Vec<(PathBuf, UpdateType)> {
     }
 }
 
-pub fn watch<T>(root: &PathBuf, func: T)
+pub async fn watch<T>(root: &PathBuf, func: T)
 where
     T: FnMut(WatchEvent),
 {
-    futures::executor::block_on(async {
-        watch_async(root, func).await;
-    });
+    watch_async(root, func).await;
 }
 
 pub async fn watch_async<T>(root: &PathBuf, mut func: T)
 where
     T: FnMut(WatchEvent),
 {
-    let (mut tx, mut rx) = channel(2);
+    let (tx, mut rx) = channel(2);
     let mut watcher = RecommendedWatcher::new(
         move |res| {
-            futures::executor::block_on(async {
-                tx.send(res).await.unwrap();
-            })
+            tx.blocking_send(res).unwrap();
         },
         notify::Config::default(),
     )
@@ -85,7 +80,7 @@ where
         }
     });
 
-    while let Some(res) = rx.next().await {
+    while let Some(res) = rx.recv().await {
         match res {
             Ok(event) => match event.kind {
                 EventKind::Any => {}

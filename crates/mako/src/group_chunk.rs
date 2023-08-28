@@ -6,6 +6,7 @@ use std::rc::Rc;
 
 use anyhow::Result;
 use cached::proc_macro::cached;
+use indexmap::IndexSet;
 use serde::Deserialize;
 use tracing::debug;
 use twox_hash::XxHash64;
@@ -40,10 +41,13 @@ impl Compiler {
     pub fn group_dep_per_chunk(&self) {
         let mut chunk_graph = self.context.chunk_graph.write().unwrap();
 
-        let entries = chunk_graph.mut_chunks();
+        let mut entries = chunk_graph.mut_chunks();
 
-        let mut pkg_modules: HashMap<String, HashSet<ModuleId>> = HashMap::new();
-        let mut pkg_chunk_dependant: HashMap<String, HashSet<ChunkId>> = HashMap::new();
+        let mut pkg_modules: HashMap<String, IndexSet<ModuleId>> = HashMap::new();
+        let mut pkg_chunk_dependant: HashMap<String, IndexSet<ChunkId>> = HashMap::new();
+
+        // keep module order stable for each splitting
+        entries.sort_by_key(|c| c.id.id.clone());
 
         for chunk in entries {
             let mut to_remove = vec![];
@@ -144,13 +148,16 @@ impl Compiler {
     fn group_big_vendor_chunk(&self) {
         // big vendors chunk policy
         let mut chunk_graph = self.context.chunk_graph.write().unwrap();
-        let chunks = chunk_graph.mut_chunks();
+        let mut chunks = chunk_graph.mut_chunks();
         let mut big_vendor_chunk = Chunk::new("all_vendors".into(), ChunkType::Sync);
 
         let mut entries = Vec::new();
 
+        // keep module order stable for each splitting
+        chunks.sort_by_key(|c| c.id.id.clone());
+
         for c in chunks {
-            let mut vendors_to_move = HashSet::new();
+            let mut vendors_to_move = IndexSet::new();
 
             for m in c
                 .mut_modules()
