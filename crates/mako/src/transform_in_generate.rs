@@ -18,8 +18,9 @@ use swc_error_reporters::handler::try_with_handler;
 use crate::ast::Ast;
 use crate::compiler::{Compiler, Context};
 use crate::config::Mode;
-use crate::module::{ModuleAst, ModuleId};
+use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
 use crate::targets;
+use crate::transform_async_module::AsyncModule;
 use crate::transform_css_handler::CssHandler;
 use crate::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
 use crate::transform_dynamic_import::DynamicImport;
@@ -29,7 +30,9 @@ impl Compiler {
     pub fn transform_all(&self) -> Result<()> {
         let context = &self.context;
         let module_graph = context.module_graph.read().unwrap();
-        let module_ids = module_graph.get_module_ids();
+        // Reversed after topo sorting, in order to better handle async module
+        let (mut module_ids, _) = module_graph.toposort();
+        module_ids.reverse();
         drop(module_graph);
         transform_modules(module_ids, context)?;
         Ok(())
@@ -39,12 +42,19 @@ impl Compiler {
 pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> Result<()> {
     module_ids.iter().for_each(|module_id| {
         let module_graph = context.module_graph.read().unwrap();
-        let deps = module_graph.get_dependencies(module_id);
-
-        let resolved_deps: HashMap<String, String> = deps
+        let deps = module_graph.get_dependencies_info(module_id);
+        // whether to have async deps
+        let async_deps: Vec<Dependency> = deps
             .clone()
             .into_iter()
-            .map(|(id, dep)| (dep.source.clone(), id.generate(context)))
+            .filter(|(_, dep, info)| {
+                matches!(dep.resolve_type, ResolveType::Import) && info.is_async
+            })
+            .map(|(_, dep, _)| dep)
+            .collect();
+        let resolved_deps: HashMap<String, String> = deps
+            .into_iter()
+            .map(|(id, dep, _)| (dep.source, id.generate(context)))
             .collect();
         drop(module_graph);
 
@@ -53,6 +63,10 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         let mut module_graph = context.module_graph.write().unwrap();
         let module = module_graph.get_module_mut(module_id).unwrap();
         let info = module.info.as_mut().unwrap();
+        // a module with async deps need to be polluted into async module
+        if !info.is_async && !async_deps.is_empty() {
+            info.is_async = true;
+        }
         let ast = &mut info.ast;
 
         let deps_to_replace = DependenciesToReplace {
@@ -61,19 +75,43 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         };
 
         if let ModuleAst::Script(ast) = ast {
-            transform_js_generate(&module.id, context, ast, &deps_to_replace, module.is_entry);
+            transform_js_generate(TransformJsParam {
+                _id: &module.id,
+                context,
+                ast,
+                dep_map: &deps_to_replace,
+                async_deps: &async_deps,
+                is_entry: module.is_entry,
+                is_async: info.is_async,
+                top_level_await: info.top_level_await,
+            });
         }
     });
     Ok(())
 }
 
-pub fn transform_js_generate(
-    _id: &ModuleId,
-    context: &Arc<Context>,
-    ast: &mut Ast,
-    dep_map: &DependenciesToReplace,
-    is_entry: bool,
-) {
+pub struct TransformJsParam<'a> {
+    pub _id: &'a ModuleId,
+    pub context: &'a Arc<Context>,
+    pub ast: &'a mut Ast,
+    pub dep_map: &'a DependenciesToReplace,
+    pub async_deps: &'a Vec<Dependency>,
+    pub is_entry: bool,
+    pub is_async: bool,
+    pub top_level_await: bool,
+}
+
+pub fn transform_js_generate(transform_js_param: TransformJsParam) {
+    let TransformJsParam {
+        _id,
+        context,
+        ast,
+        dep_map,
+        async_deps,
+        is_entry,
+        is_async,
+        top_level_await,
+    } = transform_js_param;
     let is_dev = matches!(context.config.mode, Mode::Development);
     GLOBALS
         .set(&context.meta.script.globals, || {
@@ -115,6 +153,18 @@ pub fn transform_js_generate(
                                         .get_swc_comments(),
                                 ),
                             ));
+
+                            // transform async module
+                            if is_async {
+                                let mut async_module = AsyncModule {
+                                    async_deps,
+                                    async_deps_idents: Vec::new(),
+                                    last_dep_pos: 0,
+                                    top_level_await,
+                                    context,
+                                };
+                                ast.ast.visit_mut_with(&mut async_module);
+                            }
 
                             if is_entry && is_dev {
                                 ast.ast
