@@ -11,7 +11,6 @@ use swc_ecma_ast::Ident;
 use crate::chunk_graph::ChunkGraph;
 use crate::comments::Comments;
 use crate::config::{Config, OutputMode};
-use crate::generate::GenerateOptions;
 use crate::module_graph::ModuleGraph;
 use crate::plugin::{Plugin, PluginDriver};
 use crate::plugins;
@@ -23,16 +22,23 @@ pub struct Context {
     pub assets_info: Mutex<HashMap<String, String>>,
     pub modules_with_missing_deps: RwLock<Vec<String>>,
     pub config: Config,
+    pub args: Args,
     pub root: PathBuf,
     pub meta: Meta,
     pub plugin_driver: PluginDriver,
     pub stats_info: Mutex<StatsInfo>,
 }
 
+#[derive(Default)]
+pub struct Args {
+    pub watch: bool,
+}
+
 impl Default for Context {
     fn default() -> Self {
         Self {
             config: Default::default(),
+            args: Args { watch: false },
             root: PathBuf::from(""),
             module_graph: RwLock::new(ModuleGraph::new()),
             chunk_graph: RwLock::new(ChunkGraph::new()),
@@ -104,10 +110,6 @@ pub struct CssMeta {
     pub globals: Globals,
 }
 
-pub struct CompileOptions {
-    pub watch: bool,
-}
-
 impl CssMeta {
     fn new() -> Self {
         Self {
@@ -130,7 +132,7 @@ pub struct Compiler {
 }
 
 impl Compiler {
-    pub fn new(config: Config, root: PathBuf) -> Self {
+    pub fn new(config: Config, root: PathBuf, args: Args) -> Self {
         assert!(root.is_absolute(), "root path must be absolute");
 
         let mut plugins: Vec<Arc<dyn Plugin>> = vec![
@@ -173,6 +175,7 @@ impl Compiler {
         Self {
             context: Arc::new(Context {
                 config,
+                args,
                 root,
                 module_graph: RwLock::new(ModuleGraph::new()),
                 chunk_graph: RwLock::new(ChunkGraph::new()),
@@ -185,12 +188,7 @@ impl Compiler {
         }
     }
 
-    pub fn compile(&self, compile_options: Option<CompileOptions>) {
-        let compile_options = if let Some(compile_options) = compile_options {
-            compile_options
-        } else {
-            CompileOptions { watch: false }
-        };
+    pub fn compile(&self) {
         let t_compiler = Instant::now();
         let is_prod = self.context.config.mode == crate::config::Mode::Production;
         let building_with_message = format!(
@@ -201,9 +199,7 @@ impl Compiler {
         .green();
         println!("{}", building_with_message);
         self.build();
-        let result = self.generate(GenerateOptions {
-            watch: compile_options.watch,
-        });
+        let result = self.generate();
         let t_compiler = t_compiler.elapsed();
         match result {
             Ok(_) => {
@@ -215,7 +211,7 @@ impl Compiler {
                     )
                     .green()
                 );
-                if !compile_options.watch {
+                if !self.context.args.watch {
                     println!("{}", "Complete!".bold());
                 }
             }
@@ -430,8 +426,8 @@ mod tests {
         let current_dir = std::env::current_dir().unwrap();
         let root = current_dir.join(base);
         let config = Config::new(&root, None, None).unwrap();
-        let compiler = Compiler::new(config, root.clone());
-        compiler.compile(None);
+        let compiler = Compiler::new(config, root.clone(), Default::default());
+        compiler.compile();
         let dist = root.join("dist");
         let files = std::fs::read_dir(dist.clone())
             .unwrap()

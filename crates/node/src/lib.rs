@@ -5,7 +5,7 @@ extern crate napi_derive;
 
 use std::sync::Arc;
 
-use mako::compiler::{CompileOptions, Compiler};
+use mako::compiler::{Args, Compiler};
 use mako::config::Config;
 use mako::dev::DevServer;
 use mako::logger::init_logger;
@@ -52,8 +52,8 @@ pub async fn build(
     let root = std::path::PathBuf::from(&root);
     let config = Config::new(&root, Some(&default_config), None).unwrap();
 
-    let compiler = Compiler::new(config, root.clone());
-    compiler.compile(Some(CompileOptions { watch }));
+    let compiler = Compiler::new(config, root.clone(), Args { watch });
+    compiler.compile();
     if watch {
         let d = DevServer::new(root.clone(), Arc::new(compiler));
         // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling

@@ -3,6 +3,9 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use glob::glob;
+use notify::event::{CreateKind, DataChange, ModifyKind, RenameMode};
+use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use tokio::sync::mpsc::channel;
 use tracing::debug;
 
 use crate::compiler::Context;
@@ -11,17 +14,67 @@ use crate::stats::StatsJsonMap;
 
 pub struct CopyPlugin {}
 
+impl CopyPlugin {
+    fn watch(context: &Arc<Context>) {
+        let context = context.clone();
+        tokio::spawn(async move {
+            let (tx, mut rx) = channel(2);
+            let mut watcher = RecommendedWatcher::new(
+                move |res| {
+                    tx.blocking_send(res).unwrap();
+                },
+                notify::Config::default(),
+            )
+            .unwrap();
+            for src in context.config.copy.iter() {
+                let src = context.root.join(src);
+                debug!("watch {:?}", src);
+                let mode = if src.is_dir() {
+                    RecursiveMode::Recursive
+                } else {
+                    RecursiveMode::NonRecursive
+                };
+                watcher.watch(src.as_path(), mode).unwrap();
+            }
+            while let Some(res) = rx.recv().await {
+                match res {
+                    Ok(event) => {
+                        if let EventKind::Create(CreateKind::File)
+                        | EventKind::Modify(ModifyKind::Data(DataChange::Any))
+                        | EventKind::Modify(ModifyKind::Name(RenameMode::Any)) = event.kind
+                        {
+                            CopyPlugin::copy(&context).unwrap();
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("watch error: {:?}", e);
+                    }
+                }
+            }
+        });
+    }
+
+    fn copy(context: &Arc<Context>) -> Result<()> {
+        debug!("copy");
+        let dest = context.config.output.path.as_path();
+        for src in context.config.copy.iter() {
+            let src = context.root.join(src);
+            debug!("copy {:?} to {:?}", src, dest);
+            copy(src.as_path(), dest)?;
+        }
+        Ok(())
+    }
+}
+
 impl Plugin for CopyPlugin {
     fn name(&self) -> &str {
         "copy"
     }
 
     fn build_success(&self, _stats: &StatsJsonMap, context: &Arc<Context>) -> Result<Option<()>> {
-        let dest = context.config.output.path.as_path();
-        for src in context.config.copy.iter() {
-            let src = context.root.join(src);
-            debug!("copy {:?} to {:?}", src, dest);
-            copy(src.as_path(), dest)?;
+        CopyPlugin::copy(context)?;
+        if context.args.watch {
+            CopyPlugin::watch(context);
         }
         Ok(None)
     }

@@ -5,6 +5,7 @@ use std::sync::Arc;
 use clap::Parser;
 use tracing::debug;
 
+use crate::compiler::Args;
 use crate::config::Mode;
 use crate::logger::init_logger;
 
@@ -97,8 +98,8 @@ async fn main() {
     debug!("config: {:?}", config);
 
     // compiler
-    let compiler = compiler::Compiler::new(config, root.clone());
-    compiler.compile(Some(compiler::CompileOptions { watch: cli.watch }));
+    let compiler = compiler::Compiler::new(config, root.clone(), Args { watch: cli.watch });
+    compiler.compile();
 
     if cli.watch {
         let d = crate::dev::DevServer::new(root.clone(), Arc::new(compiler));

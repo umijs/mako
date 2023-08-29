@@ -98,7 +98,7 @@ pub fn setup_compiler(base: &str, cleanup: bool) -> Compiler {
     config.minify = false;
     config.mode = Mode::Production;
 
-    compiler::Compiler::new(config, root)
+    compiler::Compiler::new(config, root, Default::default())
 }
 
 pub fn read_dist_file(compiler: &Compiler, path: &str) -> String {

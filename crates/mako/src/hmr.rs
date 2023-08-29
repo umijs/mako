@@ -96,6 +96,6 @@ mod tests {
         let current_dir = std::env::current_dir().unwrap();
         let root = current_dir.join(base);
         let config = Config::new(&root, None, None).unwrap();
-        Compiler::new(config, root)
+        Compiler::new(config, root, Default::default())
     }
 }
