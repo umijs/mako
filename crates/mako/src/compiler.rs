@@ -21,6 +21,7 @@ pub struct Context {
     pub module_graph: RwLock<ModuleGraph>,
     pub chunk_graph: RwLock<ChunkGraph>,
     pub assets_info: Mutex<HashMap<String, String>>,
+    pub modules_with_missing_deps: RwLock<Vec<String>>,
     pub config: Config,
     pub root: PathBuf,
     pub meta: Meta,
@@ -36,6 +37,7 @@ impl Default for Context {
             module_graph: RwLock::new(ModuleGraph::new()),
             chunk_graph: RwLock::new(ChunkGraph::new()),
             assets_info: Mutex::new(HashMap::new()),
+            modules_with_missing_deps: RwLock::new(Vec::new()),
             meta: Meta::new(),
             plugin_driver: Default::default(),
             // 产物信息放在上下文里是否合适
@@ -174,6 +176,7 @@ impl Compiler {
                 module_graph: RwLock::new(ModuleGraph::new()),
                 chunk_graph: RwLock::new(ChunkGraph::new()),
                 assets_info: Mutex::new(HashMap::new()),
+                modules_with_missing_deps: RwLock::new(Vec::new()),
                 meta: Meta::new(),
                 plugin_driver,
                 stats_info: Mutex::new(StatsInfo::new()),

@@ -531,6 +531,7 @@ require("./bar");
             module_graph: RwLock::new(ModuleGraph::new()),
             chunk_graph: RwLock::new(chunk_graph),
             assets_info: Mutex::new(HashMap::new()),
+            modules_with_missing_deps: RwLock::new(Vec::new()),
             meta: Meta::new(),
             plugin_driver: Default::default(),
             stats_info: Mutex::new(Default::default()),

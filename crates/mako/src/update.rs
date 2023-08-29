@@ -11,7 +11,7 @@ use tracing::debug;
 use crate::build::{get_entries, Task};
 use crate::compiler::Compiler;
 use crate::module::{Dependency, Module, ModuleId};
-use crate::resolve::{get_resolvers, Resolvers};
+use crate::resolve::{self, get_resolvers, Resolvers};
 use crate::transform_in_generate::transform_modules;
 
 #[allow(dead_code)]
@@ -69,8 +69,49 @@ removed:{:?}
 impl Compiler {
     pub fn update(&self, paths: Vec<(PathBuf, UpdateType)>) -> Result<UpdateResult> {
         let mut update_result: UpdateResult = Default::default();
-
         let resolvers = Arc::new(get_resolvers(&self.context.config));
+
+        let mut modified = vec![];
+        let mut removed = vec![];
+        let mut added = vec![];
+
+        let mut has_added = false;
+        for (path, update_type) in &paths {
+            if matches!(update_type, UpdateType::Add) {
+                debug!("has added {}", path.to_string_lossy());
+                has_added = true;
+                break;
+            }
+        }
+
+        // try to resolve modules with missing deps
+        // if found, add to modified queue
+        if has_added {
+            let mut modules_with_missing_deps =
+                self.context.modules_with_missing_deps.write().unwrap();
+            let mut module_graph = self.context.module_graph.write().unwrap();
+            for module_id in modules_with_missing_deps.clone().iter() {
+                let id = ModuleId::new(module_id.clone());
+                let module = module_graph.get_module_mut(&id).unwrap();
+                let missing_deps = module.info.clone().unwrap().missing_deps;
+                for (_source, dep) in missing_deps {
+                    let resolved = resolve::resolve(module_id, &dep, &resolvers, &self.context);
+                    if resolved.is_ok() {
+                        debug!(
+                            "missing deps resolved {:?} from {:?}",
+                            dep.source, module_id
+                        );
+                        modified.push(PathBuf::from(module_id.clone()));
+                        let info = module.info.as_mut().unwrap();
+                        info.missing_deps.remove(&dep.source);
+                        if info.missing_deps.is_empty() {
+                            debug!("remove {} from modules_with_missing_deps", module_id);
+                            modules_with_missing_deps.retain(|x| x == module_id);
+                        }
+                    }
+                }
+            }
+        }
 
         // watch 到变化的文件，如果不在之前的 module graph 中，需过滤掉
         let paths: Vec<(PathBuf, UpdateType)> = {
@@ -82,9 +123,6 @@ impl Compiler {
         };
 
         // 先分组
-        let mut modified = vec![];
-        let mut removed = vec![];
-        let mut added = vec![];
         for (path, update_type) in paths {
             match update_type {
                 UpdateType::Add => {

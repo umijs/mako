@@ -117,6 +117,15 @@ impl Compiler {
                     };
                     let t = Instant::now();
 
+                    // record modules with missing deps
+                    if !module.info.clone().unwrap().missing_deps.is_empty() {
+                        self.context
+                            .modules_with_missing_deps
+                            .write()
+                            .unwrap()
+                            .push(module.id.id.clone());
+                    }
+
                     // current module
                     let module_id = module.id.clone();
                     // 只有处理 entry 时，module 会不存在于 module_graph 里
@@ -279,7 +288,7 @@ impl Compiler {
                 }
                 Err(_) => {
                     // 获取 本次引用 和 上一级引用 路径
-                    missing_dependencies.insert(dep.source.clone(), dep.resolve_type.clone());
+                    missing_dependencies.insert(dep.source.clone(), dep.clone());
                     dep_resolve_err =
                         Some((task.path.clone(), dep.source, dep.resolve_type, dep.span));
                 }
