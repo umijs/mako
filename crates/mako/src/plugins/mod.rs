@@ -1,4 +1,5 @@
 pub mod assets;
+pub mod copy;
 pub mod css;
 pub mod javascript;
 pub mod json;

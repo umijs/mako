@@ -75,9 +75,10 @@ Release Dev Version.
 Only *canary* and *dev* tags are allowed to be published to npm.
 
 ```bash
-cd crates/node
-pnpm esno scripts/release-dev.ts
+$ cd crates/node
+$ pnpm esno scripts/release-dev.ts
 ```
+
 [Ref](https://github.com/umijs/mako/pull/335)
 
 Upgrade dependencies.
