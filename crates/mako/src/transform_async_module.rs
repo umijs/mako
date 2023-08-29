@@ -25,7 +25,7 @@ pub struct AsyncModule<'a> {
 
 impl VisitMut for AsyncModule<'_> {
     fn visit_mut_module_items(&mut self, module_items: &mut Vec<ModuleItem>) {
-        // 收集所有 async deps 的标识符, 同时记录最后一个 import 语句的位置
+        // Collect the idents of all async deps, while recording the position of the last import statement
         for (i, module_item) in module_items.iter_mut().enumerate() {
             if let ModuleItem::Stmt(stmt) = module_item {
                 match stmt {
@@ -152,7 +152,7 @@ impl VisitMut for AsyncModule<'_> {
         }
 
         if !self.async_deps_idents.is_empty() {
-            // 在最后一个 import 语句后面插入一行代码: `var __mako_async_dependencies__ = handleAsyncDeps([async1, async2]);`
+            // Insert code after the last import statement: `var __mako_async_dependencies__ = handleAsyncDeps([async1, async2]);`
             module_items.insert(
                 self.last_dep_pos + 1,
                 ModuleItem::Stmt(Stmt::Decl(Decl::Var(Box::new(VarDecl {
@@ -199,7 +199,7 @@ impl VisitMut for AsyncModule<'_> {
                 })))),
             );
 
-            // 插入代码: `[async1, async2] = __mako_async_dependencies__.then ? (await __mako_async_dependencies__)() : __mako_async_dependencies__;`
+            // Insert code: `[async1, async2] = __mako_async_dependencies__.then ? (await __mako_async_dependencies__)() : __mako_async_dependencies__;`
             module_items.insert(
                 self.last_dep_pos + 2,
                 ModuleItem::Stmt(Stmt::Expr(ExprStmt {
@@ -262,7 +262,7 @@ impl VisitMut for AsyncModule<'_> {
             );
         }
 
-        // 插入代码 `asyncResult()`
+        // Insert code: `asyncResult()`
         module_items.push(ModuleItem::Stmt(Stmt::Expr(ExprStmt {
             span: DUMMY_SP,
             expr: Box::new(Expr::Call(CallExpr {
@@ -277,7 +277,7 @@ impl VisitMut for AsyncModule<'_> {
             })),
         })));
 
-        // wrap async module with `require._async(module, async (handleAsyncDeps, asyncResult) => { });`
+        // Wrap async module with `require._async(module, async (handleAsyncDeps, asyncResult) => { });`
         *module_items = vec![ModuleItem::Stmt(Stmt::Expr(ExprStmt {
             span: DUMMY_SP,
             expr: Box::new(Expr::Call(CallExpr {

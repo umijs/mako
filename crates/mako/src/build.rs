@@ -342,7 +342,7 @@ impl Compiler {
             transform_after_resolve(&mut ast, &context, &task, &deps_to_replace)?;
         }
 
-        // whether to contains top-level await
+        // whether to contains top-level-await
         let top_level_await = {
             if let ModuleAst::Script(ast) = &ast {
                 contains_top_level_await(&ast.ast)
@@ -350,8 +350,6 @@ impl Compiler {
                 false
             }
         };
-
-        let is_wasm = ext_name(&task.path).unwrap() == "wasm";
 
         // create module info
         let info = ModuleInfo {
@@ -361,13 +359,18 @@ impl Compiler {
             raw_hash: content.raw_hash(),
             missing_deps: missing_dependencies,
             top_level_await,
-            is_async: top_level_await || is_wasm,
+            is_async: top_level_await || is_async_module(&task.path),
             resolved_resource: task.parent_resource.clone(),
         };
         let module = Module::new(module_id, task.is_entry, Some(info));
 
         Ok((module, dependencies_resource, task))
     }
+}
+
+fn is_async_module(path: &str) -> bool {
+    // wasm should be treated as an async module
+    ["wasm"].contains(&ext_name(path).unwrap())
 }
 
 pub fn get_entries(root: &Path, config: &Config) -> Option<Vec<std::path::PathBuf>> {

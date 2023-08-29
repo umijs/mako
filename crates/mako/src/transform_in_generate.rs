@@ -63,7 +63,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         let mut module_graph = context.module_graph.write().unwrap();
         let module = module_graph.get_module_mut(module_id).unwrap();
         let info = module.info.as_mut().unwrap();
-        // a module with async deps is an async module
+        // a module with async deps need to be polluted into async module
         if !info.is_async && !async_deps.is_empty() {
             info.is_async = true;
         }

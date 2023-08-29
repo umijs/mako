@@ -69,6 +69,7 @@ pub struct ScriptMeta {
     pub origin_comments: RwLock<Comments>,
     pub output_comments: RwLock<Comments>,
     pub globals: Globals,
+    // These idents may be used in other places, such as transform_async_module
     pub module_ident: Ident,
     pub exports_ident: Ident,
     pub require_ident: Ident,
