@@ -1,20 +1,29 @@
 use std::path::Path;
+use std::sync::Arc;
 
 use anyhow::Result;
 use glob::glob;
+use tracing::debug;
 
-use crate::compiler::Compiler;
+use crate::compiler::Context;
+use crate::plugin::Plugin;
+use crate::stats::StatsJsonMap;
 
-impl Compiler {
-    // TODO:
-    // copy 的文件在 watch 模式下，不应该每次都 copy，而是应该只 copy 发生变化的文件
-    pub fn copy(&self) -> Result<()> {
-        let dest = self.context.config.output.path.as_path();
-        for src in self.context.config.copy.iter() {
-            let src = self.context.root.join(src);
+pub struct CopyPlugin {}
+
+impl Plugin for CopyPlugin {
+    fn name(&self) -> &str {
+        "copy"
+    }
+
+    fn build_success(&self, _stats: &StatsJsonMap, context: &Arc<Context>) -> Result<Option<()>> {
+        let dest = context.config.output.path.as_path();
+        for src in context.config.copy.iter() {
+            let src = context.root.join(src);
+            debug!("copy {:?} to {:?}", src, dest);
             copy(src.as_path(), dest)?;
         }
-        Ok(())
+        Ok(None)
     }
 }
 

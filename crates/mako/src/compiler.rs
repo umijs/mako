@@ -137,6 +137,7 @@ impl Compiler {
             // features
             Arc::new(plugins::node_polyfill::NodePolyfillPlugin {}),
             Arc::new(plugins::manifest::ManifestPlugin {}),
+            Arc::new(plugins::copy::CopyPlugin {}),
             // file types
             Arc::new(plugins::css::CSSPlugin {}),
             Arc::new(plugins::javascript::JavaScriptPlugin {}),

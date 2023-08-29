@@ -131,12 +131,6 @@ impl Compiler {
         }
         let t_write_assets = t_write_assets.elapsed();
 
-        // copy
-        let t_copy = Instant::now();
-        debug!("copy");
-        self.copy()?;
-        let t_copy = t_copy.elapsed();
-
         // generate stats
         let stats = create_stats_info(0, self);
         if self.context.config.stats && !options.watch {
@@ -167,7 +161,6 @@ impl Compiler {
             t_ast_to_code_and_write.as_millis()
         );
         debug!("  - write assets: {}ms", t_write_assets.as_millis());
-        debug!("  - copy: {}ms", t_copy.as_millis());
 
         Ok(())
     }
@@ -215,12 +208,6 @@ impl Compiler {
         }
         let t_write_assets = t_write_assets.elapsed();
 
-        // copy
-        let t_copy = Instant::now();
-        debug!("copy");
-        self.copy()?;
-        let t_copy = t_copy.elapsed();
-
         let t_generate = t_generate.elapsed();
 
         debug!(
@@ -233,7 +220,6 @@ impl Compiler {
             t_ast_to_code_and_write.as_millis()
         );
         debug!("  - write assets: {}ms", t_write_assets.as_millis());
-        debug!("  - copy: {}ms", t_copy.as_millis());
 
         Ok(())
     }
