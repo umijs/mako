@@ -345,3 +345,81 @@ impl VisitMut for AsyncModule<'_> {
         }))];
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use swc_common::{Globals, DUMMY_SP, GLOBALS};
+    use swc_ecma_visit::VisitMutWith;
+
+    use super::AsyncModule;
+    use crate::ast::{build_js_ast, js_ast_to_code};
+    use crate::chunk::{Chunk, ChunkType};
+    use crate::compiler::Context;
+    use crate::module::{Dependency, ResolveType};
+
+    #[test]
+    fn test_async_module() {
+        let code = r#"
+const _async = require('./async');
+_async.add(1, 2);
+        "#
+        .trim();
+        let (code, _) = transform_code(code, None);
+        println!(">> CODE\n{}", code);
+        assert_eq!(
+            code,
+            r#"
+require._async(module, async (handleAsyncDeps, asyncResult)=>{
+    const _async = require('./async');
+    var __mako_async_dependencies__ = handleAsyncDeps([
+        _async
+    ]);
+    [
+        _async
+    ] = __mako_async_dependencies__.then ? (await __mako_async_dependencies__)() : __mako_async_dependencies__;
+    _async.add(1, 2);
+    asyncResult();
+}, 1);
+
+//# sourceMappingURL=index.js.map
+            "#
+            .trim()
+        );
+    }
+
+    fn transform_code(origin: &str, path: Option<&str>) -> (String, String) {
+        let path = if let Some(p) = path { p } else { "test.tsx" };
+        let context: Arc<Context> = Arc::new(Default::default());
+
+        let mut chunk = Chunk::new("./async".to_string().into(), ChunkType::Entry);
+        chunk.add_module("./async".to_string().into());
+
+        context.chunk_graph.write().unwrap().add_chunk(chunk);
+
+        let mut ast = build_js_ast(path, origin, &context).unwrap();
+
+        let globals = Globals::default();
+        GLOBALS.set(&globals, || {
+            let mut async_module = AsyncModule {
+                async_deps: &vec![Dependency {
+                    resolve_type: ResolveType::Import,
+                    source: String::from("./async"),
+                    span: Some(DUMMY_SP),
+                    order: 1,
+                }],
+                async_deps_idents: Vec::new(),
+                last_dep_pos: 0,
+                top_level_await: true,
+                context: &context,
+            };
+            ast.ast.visit_mut_with(&mut async_module);
+        });
+
+        let (code, _sourcemap) = js_ast_to_code(&ast.ast, &context, "index.js").unwrap();
+        let code = code.replace("\"use strict\";", "");
+        let code = code.trim().to_string();
+        (code, _sourcemap)
+    }
+}
