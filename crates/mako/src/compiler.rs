@@ -5,7 +5,8 @@ use std::time::Instant;
 
 use colored::Colorize;
 use swc_common::sync::Lrc;
-use swc_common::{Globals, SourceMap};
+use swc_common::{Globals, SourceMap, DUMMY_SP};
+use swc_ecma_ast::Ident;
 
 use crate::chunk_graph::ChunkGraph;
 use crate::comments::Comments;
@@ -68,6 +69,10 @@ pub struct ScriptMeta {
     pub origin_comments: RwLock<Comments>,
     pub output_comments: RwLock<Comments>,
     pub globals: Globals,
+    // These idents may be used in other places, such as transform_async_module
+    pub module_ident: Ident,
+    pub exports_ident: Ident,
+    pub require_ident: Ident,
 }
 
 impl ScriptMeta {
@@ -77,7 +82,18 @@ impl ScriptMeta {
             origin_comments: Default::default(),
             output_comments: Default::default(),
             globals: Globals::default(),
+            module_ident: build_ident("module"),
+            exports_ident: build_ident("exports"),
+            require_ident: build_ident("require"),
         }
+    }
+}
+
+fn build_ident(ident: &str) -> Ident {
+    Ident {
+        span: DUMMY_SP,
+        sym: ident.into(),
+        optional: false,
     }
 }
 

@@ -477,6 +477,7 @@ function createRuntime(makoModules, entryModuleId) {
   };
 
   // __WASM_REQUIRE_SUPPORT
+  // __REQUIRE_ASYNC_MODULE_SUPPORT
   // __BEFORE_ENTRY
 
   requireModule(entryModuleId);

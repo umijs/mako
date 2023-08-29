@@ -127,7 +127,14 @@ impl Compiler {
                                 .lock()
                                 .unwrap()
                                 .values()
-                                .any(|info| info.ends_with(".wasm"))
+                                .any(|info| info.ends_with(".wasm")),
+                            self.context
+                                .module_graph
+                                .read()
+                                .unwrap()
+                                .modules()
+                                .iter()
+                                .any(|module| module.info.as_ref().unwrap().is_async),
                         )
                     )
                     .replace("_%full_hash%_", &full_hash.to_string())
@@ -306,26 +313,32 @@ pub fn get_related_module_hash(
     hash.finish()
 }
 
-fn compile_runtime_entry(has_wasm: bool) -> String {
+fn compile_runtime_entry(has_wasm: bool, has_async: bool) -> String {
     let runtime_entry_content_str = include_str!("runtime/runtime_entry.js");
-    runtime_entry_content_str.replace(
-        "// __WASM_REQUIRE_SUPPORT",
-        if has_wasm {
-            include_str!("runtime/runtime_wasm.js")
-        } else {
-            ""
-        },
-    )
+    runtime_entry_content_str
+        .replace(
+            "// __WASM_REQUIRE_SUPPORT",
+            if has_wasm {
+                include_str!("runtime/runtime_wasm.js")
+            } else {
+                ""
+            },
+        )
+        .replace(
+            "// __REQUIRE_ASYNC_MODULE_SUPPORT",
+            if has_async {
+                include_str!("runtime/runtime_async.js")
+            } else {
+                ""
+            },
+        )
 }
 
-fn build_ident_param(ident: &str) -> Param {
+fn build_ident_param(ident: Ident) -> Param {
     Param {
         span: DUMMY_SP,
         decorators: vec![],
-        pat: Pat::Ident(BindingIdent {
-            id: Ident::new(ident.into(), DUMMY_SP),
-            type_ann: None,
-        }),
+        pat: Pat::Ident(ident.into()),
     }
 }
 
@@ -393,9 +406,9 @@ pub fn modules_to_js_stmts(
                     Box::new(Expr::Fn(build_fn_expr(
                         None,
                         vec![
-                            build_ident_param("module"),
-                            build_ident_param("exports"),
-                            build_ident_param("require"),
+                            build_ident_param(context.meta.script.module_ident.clone()),
+                            build_ident_param(context.meta.script.exports_ident.clone()),
+                            build_ident_param(context.meta.script.require_ident.clone()),
                         ],
                         stmts,
                     ))),
@@ -409,9 +422,9 @@ pub fn modules_to_js_stmts(
                     Box::new(Expr::Fn(build_fn_expr(
                         None,
                         vec![
-                            build_ident_param("module"),
-                            build_ident_param("exports"),
-                            build_ident_param("require"),
+                            build_ident_param(context.meta.script.module_ident.clone()),
+                            build_ident_param(context.meta.script.exports_ident.clone()),
+                            build_ident_param(context.meta.script.require_ident.clone()),
                         ],
                         vec![],
                     ))),

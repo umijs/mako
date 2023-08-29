@@ -5,6 +5,7 @@ use std::time::Instant;
 
 use anyhow::Result;
 use colored::Colorize;
+use swc_ecma_utils::contains_top_level_await;
 use tokio::sync::mpsc::error::TryRecvError;
 use tracing::debug;
 
@@ -12,7 +13,7 @@ use crate::analyze_deps::analyze_deps;
 use crate::ast::{build_js_ast, generate_code_frame};
 use crate::compiler::{Compiler, Context};
 use crate::config::Config;
-use crate::load::load;
+use crate::load::{ext_name, load};
 use crate::module::{Dependency, Module, ModuleAst, ModuleId, ModuleInfo};
 use crate::parse::parse;
 use crate::plugin::PluginDepAnalyzeParam;
@@ -211,6 +212,8 @@ impl Compiler {
                         raw_hash: 0,
                         resolved_resource: Some(resource.clone()),
                         missing_deps: HashMap::new(),
+                        top_level_await: false,
+                        is_async: false,
                     }),
                 )
             }
@@ -339,6 +342,15 @@ impl Compiler {
             transform_after_resolve(&mut ast, &context, &task, &deps_to_replace)?;
         }
 
+        // whether to contains top-level-await
+        let top_level_await = {
+            if let ModuleAst::Script(ast) = &ast {
+                contains_top_level_await(&ast.ast)
+            } else {
+                false
+            }
+        };
+
         // create module info
         let info = ModuleInfo {
             ast,
@@ -346,12 +358,19 @@ impl Compiler {
             external: None,
             raw_hash: content.raw_hash(),
             missing_deps: missing_dependencies,
+            top_level_await,
+            is_async: top_level_await || is_async_module(&task.path),
             resolved_resource: task.parent_resource.clone(),
         };
         let module = Module::new(module_id, task.is_entry, Some(info));
 
         Ok((module, dependencies_resource, task))
     }
+}
+
+fn is_async_module(path: &str) -> bool {
+    // wasm should be treated as an async module
+    ["wasm"].contains(&ext_name(path).unwrap())
 }
 
 pub fn get_entries(root: &Path, config: &Config) -> Option<Vec<std::path::PathBuf>> {

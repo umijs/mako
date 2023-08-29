@@ -133,7 +133,7 @@ pub fn file_name(path: &str) -> Option<&str> {
     None
 }
 
-fn ext_name(path: &str) -> Option<&str> {
+pub fn ext_name(path: &str) -> Option<&str> {
     let ext = Path::new(path).extension();
     if let Some(ext) = ext {
         return ext.to_str();
