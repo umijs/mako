@@ -36,7 +36,7 @@ pub struct ModuleInfo {
     pub path: String,
     pub external: Option<String>,
     pub raw_hash: u64,
-    pub missing_deps: HashMap<String, ResolveType>,
+    pub missing_deps: HashMap<String, Dependency>,
     pub resolved_resource: Option<ResolverResource>,
 }
 

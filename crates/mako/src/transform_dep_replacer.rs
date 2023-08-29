@@ -14,7 +14,7 @@ use swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::analyze_deps::{is_commonjs_require, is_dynamic_import};
 use crate::compiler::Context;
-use crate::module::ResolveType;
+use crate::module::Dependency;
 
 pub struct DepReplacer<'a> {
     pub to_replace: &'a DependenciesToReplace,
@@ -24,7 +24,7 @@ pub struct DepReplacer<'a> {
 #[derive(Debug, Clone)]
 pub struct DependenciesToReplace {
     pub resolved: HashMap<String, String>,
-    pub missing: HashMap<String, ResolveType>,
+    pub missing: HashMap<String, Dependency>,
 }
 
 fn miss_throw_stmt<T: AsRef<str>>(source: T) -> Expr {
@@ -182,7 +182,7 @@ mod tests {
     use crate::assert_display_snapshot;
     use crate::ast::build_js_ast;
     use crate::compiler::Context;
-    use crate::module::ResolveType;
+    use crate::module::{Dependency, ResolveType};
     use crate::test_helper::transform_ast_with;
     use crate::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
 
@@ -220,7 +220,12 @@ mod tests {
 
             let to_replace = DependenciesToReplace {
                 resolved: HashMap::new(),
-                missing: hashmap! {"react".to_string()=> ResolveType::Import},
+                missing: hashmap! {"react".to_string() => Dependency {
+                    resolve_type: ResolveType::Import,
+                    source: "react".to_string(),
+                    span: None,
+                    order: 0,
+                }},
             };
 
             let cloned = context.clone();
@@ -252,7 +257,12 @@ mod tests {
 
             let to_replace = DependenciesToReplace {
                 resolved: HashMap::new(),
-                missing: hashmap! {"react".to_string()=> ResolveType::Import},
+                missing: hashmap! {"react".to_string() => Dependency {
+                    resolve_type: ResolveType::Import,
+                    source: "react".to_string(),
+                    span: None,
+                    order: 0,
+                }},
             };
 
             let cloned = context.clone();
