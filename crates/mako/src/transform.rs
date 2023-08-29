@@ -168,7 +168,7 @@ mod tests {
     use crate::module::ModuleId;
     use crate::module_graph::ModuleGraph;
     use crate::transform_dep_replacer::DependenciesToReplace;
-    use crate::transform_in_generate::transform_js_generate;
+    use crate::transform_in_generate::{transform_js_generate, TransformJsParam};
 
     #[test]
     fn test_react() {
@@ -549,19 +549,19 @@ require("./bar");
             ast.unresolved_mark,
         )
         .unwrap();
-        transform_js_generate(
-            &ModuleId::new("test".to_string()),
-            &context,
-            &mut ast,
-            &DependenciesToReplace {
+        transform_js_generate(TransformJsParam {
+            _id: &ModuleId::new("test".to_string()),
+            context: &context,
+            ast: &mut ast,
+            dep_map: &DependenciesToReplace {
                 resolved: dep,
                 missing: HashMap::new(),
             },
-            &vec![],
-            false,
-            false,
-            false,
-        );
+            async_deps: &vec![],
+            is_entry: false,
+            is_async: false,
+            top_level_await: false,
+        });
         let (code, _sourcemap) = js_ast_to_code(&ast.ast, &context, "index.js").unwrap();
         let code = code.replace("\"use strict\";", "");
         let code = code.trim().to_string();

@@ -75,31 +75,43 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         };
 
         if let ModuleAst::Script(ast) = ast {
-            transform_js_generate(
-                &module.id,
+            transform_js_generate(TransformJsParam {
+                _id: &module.id,
                 context,
                 ast,
-                &deps_to_replace,
-                &async_deps,
-                module.is_entry,
-                info.is_async,
-                info.top_level_await,
-            );
+                dep_map: &deps_to_replace,
+                async_deps: &async_deps,
+                is_entry: module.is_entry,
+                is_async: info.is_async,
+                top_level_await: info.top_level_await,
+            });
         }
     });
     Ok(())
 }
 
-pub fn transform_js_generate(
-    _id: &ModuleId,
-    context: &Arc<Context>,
-    ast: &mut Ast,
-    dep_map: &DependenciesToReplace,
-    async_deps: &Vec<Dependency>,
-    is_entry: bool,
-    is_async: bool,
-    top_level_await: bool,
-) {
+pub struct TransformJsParam<'a> {
+    pub _id: &'a ModuleId,
+    pub context: &'a Arc<Context>,
+    pub ast: &'a mut Ast,
+    pub dep_map: &'a DependenciesToReplace,
+    pub async_deps: &'a Vec<Dependency>,
+    pub is_entry: bool,
+    pub is_async: bool,
+    pub top_level_await: bool,
+}
+
+pub fn transform_js_generate(transform_js_param: TransformJsParam) {
+    let TransformJsParam {
+        _id,
+        context,
+        ast,
+        dep_map,
+        async_deps,
+        is_entry,
+        is_async,
+        top_level_await,
+    } = transform_js_param;
     let is_dev = matches!(context.config.mode, Mode::Development);
     GLOBALS
         .set(&context.meta.script.globals, || {
