@@ -105,7 +105,11 @@ impl Compiler {
                 let stmts_res = modules_to_js_stmts(module_ids, &module_graph, &self.context);
 
                 if stmts_res.is_err() {
-                    return Err(anyhow!("Chunk {} failed to generate js ast", chunk.id.id));
+                    return Err(anyhow!(
+                        "Chunk {} failed to generate js ast {:?}",
+                        chunk.id.id,
+                        stmts_res.err().unwrap()
+                    ));
                 }
 
                 let (js_stmts, merged_css_ast) = stmts_res.unwrap();
