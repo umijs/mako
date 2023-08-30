@@ -21,8 +21,8 @@ impl Compiler {
         self.markup_entry_modules_as_side_effects(entry_modules);
 
         // 循环依赖模块设置为副作用
-        // NOTE: 目前暂时没有发现循环依赖走 treeShaking 产生的问题，暂时先放弃打标
-        // self.markup_cycle_modules_as_side_effects(cycle_modules);
+        // 场景比如：在 app.ts 里使用 umi 的 createGlobalStyle 时
+        self.markup_cycle_modules_as_side_effects(cycle_modules);
 
         let (tree_shaking_module_ids, mut tree_shaking_module_map) =
             self.create_tree_shaking_module_map(sorted_modules);
