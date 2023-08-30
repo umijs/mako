@@ -4,6 +4,7 @@ use std::rc::Rc;
 use std::vec;
 
 use indexmap::IndexSet;
+use nodejs_resolver::Resource;
 use tracing::debug;
 
 use crate::bfs::{Bfs, NextResult};
@@ -12,6 +13,7 @@ use crate::chunk_graph::ChunkGraph;
 use crate::compiler::Compiler;
 use crate::config::CodeSplittingStrategy;
 use crate::module::{Module, ModuleId, ModuleInfo, ResolveType};
+use crate::resolve::{ResolvedResource, ResolverResource};
 
 impl Compiler {
     // TODO:
@@ -49,18 +51,28 @@ impl Compiler {
         for chunk in entries {
             let mut to_remove = vec![];
             for m_id in chunk.get_modules().iter().collect::<Vec<&ModuleId>>() {
-                let pkg_name = if let Some(Module {
-                    info: Some(ModuleInfo { pkg: Some(pkg), .. }),
-                    ..
-                }) = module_graph.get_module(m_id)
-                {
-                    Some(format!(
-                        "{}@{}",
-                        pkg.get("name").unwrap().as_str().unwrap(),
-                        pkg.get("version").unwrap().as_str().unwrap()
-                    ))
-                } else {
-                    None
+                let pkg_name = match module_graph.get_module(m_id) {
+                    Some(Module {
+                        info:
+                            Some(ModuleInfo {
+                                path: module_path,
+                                resolved_resource:
+                                    Some(ResolverResource::Resolved(ResolvedResource(Resource {
+                                        description: Some(module_desc),
+                                        ..
+                                    }))),
+                                ..
+                            }),
+                        ..
+                    }) if module_path.contains("node_modules") => {
+                        let pkg = module_desc.data().raw();
+                        Some(format!(
+                            "{}@{}",
+                            pkg.get("name").unwrap().as_str().unwrap(),
+                            pkg.get("version").unwrap().as_str().unwrap()
+                        ))
+                    }
+                    _ => None,
                 };
 
                 match pkg_name {

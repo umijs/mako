@@ -5,7 +5,6 @@ use std::sync::Arc;
 
 use base64::engine::{general_purpose, Engine};
 use pathdiff::diff_paths;
-use serde_json::Value;
 use swc_common::Span;
 
 use crate::ast::Ast;
@@ -44,7 +43,6 @@ pub struct ModuleInfo {
     /// The purpose of distinguishing top_level_await and is_async is to adapt to runtime_async
     pub is_async: bool,
     pub resolved_resource: Option<ResolverResource>,
-    pub pkg: Option<Value>,
 }
 
 fn md5_hash(source_str: &str, lens: usize) -> String {
