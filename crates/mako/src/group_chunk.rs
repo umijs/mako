@@ -1,23 +1,19 @@
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::hash::Hasher;
-use std::path::Path;
 use std::rc::Rc;
 use std::vec;
 
-use anyhow::Result;
-use cached::proc_macro::cached;
 use indexmap::IndexSet;
-use serde::Deserialize;
+use nodejs_resolver::Resource;
 use tracing::debug;
-use twox_hash::XxHash64;
 
 use crate::bfs::{Bfs, NextResult};
 use crate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::chunk_graph::ChunkGraph;
 use crate::compiler::Compiler;
-use crate::config::{CodeSplittingStrategy, Mode};
-use crate::module::{ModuleId, ResolveType};
+use crate::config::CodeSplittingStrategy;
+use crate::module::{Module, ModuleId, ModuleInfo, ResolveType};
+use crate::resolve::{ResolvedResource, ResolverResource};
 
 impl Compiler {
     // TODO:
@@ -41,6 +37,7 @@ impl Compiler {
     }
 
     pub fn group_dep_per_chunk(&self) {
+        let module_graph = self.context.module_graph.read().unwrap();
         let mut chunk_graph = self.context.chunk_graph.write().unwrap();
 
         let mut entries = chunk_graph.mut_chunks();
@@ -54,9 +51,28 @@ impl Compiler {
         for chunk in entries {
             let mut to_remove = vec![];
             for m_id in chunk.get_modules().iter().collect::<Vec<&ModuleId>>() {
-                let pkg_name = match self.context.config.mode {
-                    Mode::Development => read_pkg_name_from_pkg_json(&m_id.id),
-                    Mode::Production => guess_pkg_name_from_path(&m_id.id),
+                let pkg_name = match module_graph.get_module(m_id) {
+                    Some(Module {
+                        info:
+                            Some(ModuleInfo {
+                                path: module_path,
+                                resolved_resource:
+                                    Some(ResolverResource::Resolved(ResolvedResource(Resource {
+                                        description: Some(module_desc),
+                                        ..
+                                    }))),
+                                ..
+                            }),
+                        ..
+                    }) if module_path.contains("node_modules") => {
+                        let pkg = module_desc.data().raw();
+                        Some(format!(
+                            "{}@{}",
+                            pkg.get("name").unwrap().as_str().unwrap(),
+                            pkg.get("version").unwrap().as_str().unwrap()
+                        ))
+                    }
+                    _ => None,
                 };
 
                 match pkg_name {
@@ -250,71 +266,4 @@ impl Compiler {
 
         (chunk, dynamic_entries)
     }
-}
-
-#[derive(Debug, Deserialize, Clone)]
-struct PackageJson {
-    name: String,
-    version: String,
-}
-
-fn guess_pkg_name_from_path<T: AsRef<str>>(path: T) -> Option<String> {
-    let path = path.as_ref();
-
-    let (node_modules_root, name_part) = root_and_pkg_name(path)?;
-
-    let pkg_path = Path::new(&node_modules_root)
-        .join(name_part)
-        .join("package.json");
-
-    match load_pkg_json(pkg_path.to_str()?) {
-        Ok(pkg) => Some(format!("{}@{}", pkg.name, pkg.version)),
-        Err(_) => None,
-    }
-}
-
-fn read_pkg_name_from_pkg_json<T: AsRef<str>>(path: T) -> Option<String> {
-    let path = path.as_ref();
-
-    let (node_modules_root, name_part) = root_and_pkg_name(path)?;
-    let hash = hash_path(&node_modules_root);
-
-    Some(format!("{}@{:8x}", name_part, hash))
-}
-
-#[cached(key = "String", convert = r#"{ String::from(p) }"#)]
-fn hash_path(p: &str) -> u64 {
-    let mut hasher: XxHash64 = Default::default();
-    hasher.write(p.as_bytes());
-    hasher.finish()
-}
-
-fn guess_pkg_name(name: String) -> Option<String> {
-    let parts: Vec<&str> = name.split('/').collect();
-
-    if parts.is_empty() {
-        return None;
-    }
-
-    if parts[0].starts_with('@') && parts.len() > 1 {
-        Some(format!("{}/{}", parts[0], parts[1]))
-    } else {
-        Some(parts[0].to_string())
-    }
-}
-
-#[cached(result = true, key = "String", convert = r#"{ String::from(p) }"#)]
-fn load_pkg_json(p: &str) -> Result<PackageJson> {
-    let file = std::fs::File::open(p)?;
-    let reader = std::io::BufReader::new(file);
-    let pkg_json: PackageJson = serde_json::from_reader(reader)?;
-    Ok(pkg_json)
-}
-
-fn root_and_pkg_name(path: &str) -> Option<(String, String)> {
-    let node_modules_root = path.rfind("/node_modules/").map(|idx| &path[0..idx + 14])?;
-
-    let right_parts = path.rfind("/node_modules/").map(|idx| &path[idx + 14..])?;
-    let name_part = guess_pkg_name(right_parts.to_string())?;
-    Some((node_modules_root.to_string(), name_part))
 }
