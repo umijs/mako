@@ -528,7 +528,7 @@ mod tests {
         let pnpm_dir = current_dir.join("node_modules/.pnpm");
         let root = current_dir.join(base);
         let config = Config::new(&root, None, None).unwrap();
-        let compiler = compiler::Compiler::new(config, root.clone());
+        let compiler = compiler::Compiler::new(config, root.clone(), Default::default());
         compiler.build();
         let module_graph = compiler.context.module_graph.read().unwrap();
         let mut module_ids: Vec<String> = module_graph

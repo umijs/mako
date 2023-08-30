@@ -527,6 +527,7 @@ require("./bar");
 
         let context = Arc::new(Context {
             config,
+            args: Default::default(),
             root: root.clone(),
             module_graph: RwLock::new(ModuleGraph::new()),
             chunk_graph: RwLock::new(chunk_graph),

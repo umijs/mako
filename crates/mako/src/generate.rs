@@ -29,17 +29,13 @@ pub struct EmitFile {
     pub hashname: String,
 }
 
-pub struct GenerateOptions {
-    pub watch: bool,
-}
-
 impl Compiler {
     pub fn generate_with_plugin_driver(&self) -> Result<()> {
         self.context.plugin_driver.generate(&self.context)?;
         Ok(())
     }
 
-    pub fn generate(&self, options: GenerateOptions) -> Result<()> {
+    pub fn generate(&self) -> Result<()> {
         if self.context.config.output.mode == OutputMode::MinifishPrebuild {
             return self.generate_with_plugin_driver();
         }
@@ -133,7 +129,7 @@ impl Compiler {
 
         // generate stats
         let stats = create_stats_info(0, self);
-        if self.context.config.stats && !options.watch {
+        if self.context.config.stats && !self.context.args.watch {
             write_stats(&stats, self);
         }
 
@@ -143,7 +139,7 @@ impl Compiler {
             .build_success(&stats, &self.context)?;
 
         // print stats
-        if !options.watch {
+        if !self.context.args.watch {
             print_stats(self);
         }
 

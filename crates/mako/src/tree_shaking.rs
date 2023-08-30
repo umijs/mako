@@ -260,7 +260,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_tree_shaking() {
         let compiler = setup_compiler("test/build/tree-shaking", false);
-        compiler.compile(None);
+        compiler.compile();
         let content = read_dist_file(&compiler, "dist/index.js");
         assert_display_snapshot!(content);
     }
@@ -268,7 +268,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_tree_shaking_reexport() {
         let compiler = setup_compiler("test/build/tree-shaking_reexport", false);
-        compiler.compile(None);
+        compiler.compile();
         let content = read_dist_file(&compiler, "dist/index.js");
         assert_display_snapshot!(content);
     }
@@ -276,7 +276,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_tree_shaking_named_reexport() {
         let compiler = setup_compiler("test/build/tree-shaking_named_reexport", false);
-        compiler.compile(None);
+        compiler.compile();
         let content = read_dist_file(&compiler, "dist/index.js");
         assert_display_snapshot!(content);
     }
@@ -284,70 +284,70 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_tree_shaking_export_namespace() {
         let compiler = setup_compiler("test/build/tree-shaking_export_namespace", false);
-        compiler.compile(None);
+        compiler.compile();
         let content = read_dist_file(&compiler, "dist/index.js");
         assert_display_snapshot!(content);
     }
     #[tokio::test(flavor = "multi_thread")]
     async fn test_tree_shaking_named_export() {
         let compiler = setup_compiler("test/build/tree-shaking_named_export", false);
-        compiler.compile(None);
+        compiler.compile();
         let content = read_dist_file(&compiler, "dist/index.js");
         assert_display_snapshot!(content);
     }
     #[tokio::test(flavor = "multi_thread")]
     async fn test_tree_shaking_fn() {
         let compiler = setup_compiler("test/build/tree-shaking_fn", false);
-        compiler.compile(None);
+        compiler.compile();
         let content = read_dist_file(&compiler, "dist/index.js");
         assert_display_snapshot!(content);
     }
     #[tokio::test(flavor = "multi_thread")]
     async fn test_tree_shaking_side_effect() {
         let compiler = setup_compiler("test/build/tree-shaking_side_effect", false);
-        compiler.compile(None);
+        compiler.compile();
         let content = read_dist_file(&compiler, "dist/index.js");
         assert_display_snapshot!(content);
     }
     #[tokio::test(flavor = "multi_thread")]
     async fn test_tree_shaking_class() {
         let compiler = setup_compiler("test/build/tree-shaking_class", false);
-        compiler.compile(None);
+        compiler.compile();
         let content = read_dist_file(&compiler, "dist/index.js");
         assert_display_snapshot!(content);
     }
     #[tokio::test(flavor = "multi_thread")]
     async fn test_tree_shaking_exported() {
         let compiler = setup_compiler("test/build/tree-shaking_exported", false);
-        compiler.compile(None);
+        compiler.compile();
         let content = read_dist_file(&compiler, "dist/index.js");
         assert_display_snapshot!(content);
     }
     #[tokio::test(flavor = "multi_thread")]
     async fn test_tree_shaking_export_default() {
         let compiler = setup_compiler("test/build/tree-shaking_export_default", false);
-        compiler.compile(None);
+        compiler.compile();
         let content = read_dist_file(&compiler, "dist/index.js");
         assert_display_snapshot!(content);
     }
     #[tokio::test(flavor = "multi_thread")]
     async fn test_tree_shaking_issues_271() {
         let compiler = setup_compiler("test/build/tree-shaking_issues_271", false);
-        compiler.compile(None);
+        compiler.compile();
         let content = read_dist_file(&compiler, "dist/index.js");
         assert_display_snapshot!(content);
     }
     #[tokio::test(flavor = "multi_thread")]
     async fn test_tree_shaking_jsx() {
         let compiler = setup_compiler("test/build/tree-shaking_jsx", false);
-        compiler.compile(None);
+        compiler.compile();
         let content = read_dist_file(&compiler, "dist/index.js");
         assert_display_snapshot!(content);
     }
     #[tokio::test(flavor = "multi_thread")]
     async fn test_tree_shaking_dynamic_import() {
         let compiler = setup_compiler("test/build/tree-shaking_dynamic-import", false);
-        compiler.compile(None);
+        compiler.compile();
         let content = read_dist_file(&compiler, "dist/index.js");
         assert_display_snapshot!(content);
         let content = read_dist_file(&compiler, "dist/a_ts-async.js");
