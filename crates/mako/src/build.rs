@@ -424,6 +424,7 @@ fn parse_path(path: &str) -> Result<FileRequest> {
         query: query_vec,
     })
 }
+
 #[derive(Debug)]
 pub struct FileRequest {
     pub path: String,
