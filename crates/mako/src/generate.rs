@@ -16,7 +16,7 @@ use crate::compiler::{Compiler, Context};
 use crate::config::{DevtoolConfig, Mode, OutputMode};
 use crate::generate_chunks::OutputAst;
 use crate::load::file_content_hash;
-use crate::minify::minify_js;
+use crate::minify::{minify_css, minify_js};
 use crate::module::{ModuleAst, ModuleId};
 use crate::stats::{create_stats_info, print_stats, write_stats};
 use crate::update::UpdateResult;
@@ -92,7 +92,7 @@ impl Compiler {
                                 minify_js(ast, &self.context)?;
                             }
                             ModuleAst::Css(ast) => {
-                                swc_css_minifier::minify(ast, Default::default());
+                                minify_css(ast, &self.context)?;
                             }
                             _ => (),
                         }

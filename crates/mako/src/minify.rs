@@ -3,6 +3,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use swc_common::errors::HANDLER;
 use swc_common::GLOBALS;
+use swc_css_ast::Stylesheet;
 use swc_ecma_minifier::optimize;
 use swc_ecma_minifier::option::{ExtraOptions, MinifyOptions};
 use swc_ecma_transforms::helpers::{Helpers, HELPERS};
@@ -71,5 +72,18 @@ pub fn minify_js(ast: &mut Ast, context: &Arc<Context>) -> Result<()> {
                 })
             },
         )
+    })
+}
+
+pub fn minify_css(stylesheet: &mut Stylesheet, context: &Arc<Context>) -> Result<()> {
+    GLOBALS.set(&context.meta.css.globals, || {
+        try_with_handler(context.meta.css.cm.clone(), Default::default(), |handler| {
+            HELPERS.set(&Helpers::new(true), || {
+                HANDLER.set(handler, || {
+                    swc_css_minifier::minify(stylesheet, Default::default());
+                    Ok(())
+                })
+            })
+        })
     })
 }
