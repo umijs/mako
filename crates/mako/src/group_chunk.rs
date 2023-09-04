@@ -1,19 +1,15 @@
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashSet, VecDeque};
 use std::rc::Rc;
 use std::vec;
 
-use indexmap::IndexSet;
-use nodejs_resolver::Resource;
 use tracing::debug;
 
 use crate::bfs::{Bfs, NextResult};
-use crate::chunk::{Chunk, ChunkId, ChunkType};
+use crate::chunk::{Chunk, ChunkType};
 use crate::chunk_graph::ChunkGraph;
 use crate::compiler::Compiler;
-use crate::config::CodeSplittingStrategy;
-use crate::module::{Module, ModuleId, ModuleInfo, ResolveType};
-use crate::resolve::{ResolvedResource, ResolverResource};
+use crate::module::{ModuleId, ResolveType};
 
 impl Compiler {
     // TODO:
@@ -21,100 +17,6 @@ impl Compiler {
     // - 支持各种 chunk 拆分策略，比如把所有 node_modules 下的包按 package name 拆
 
     pub fn group_chunk(&self) {
-        self.group_main_chunk();
-
-        match self.context.config.code_splitting {
-            CodeSplittingStrategy::BigVendors => {
-                self.group_big_vendor_chunk();
-            }
-            CodeSplittingStrategy::DepPerChunk => {
-                self.group_dep_per_chunk();
-            }
-            CodeSplittingStrategy::None => {
-                // do nothing, use the main chunk only
-            }
-        }
-    }
-
-    pub fn group_dep_per_chunk(&self) {
-        let module_graph = self.context.module_graph.read().unwrap();
-        let mut chunk_graph = self.context.chunk_graph.write().unwrap();
-
-        let mut entries = chunk_graph.mut_chunks();
-
-        let mut pkg_modules: HashMap<String, IndexSet<ModuleId>> = HashMap::new();
-        let mut pkg_chunk_dependant: HashMap<String, IndexSet<ChunkId>> = HashMap::new();
-
-        // keep module order stable for each splitting
-        entries.sort_by_key(|c| c.id.id.clone());
-
-        for chunk in entries {
-            let mut to_remove = vec![];
-            for m_id in chunk.get_modules().iter().collect::<Vec<&ModuleId>>() {
-                let pkg_name = match module_graph.get_module(m_id) {
-                    Some(Module {
-                        info:
-                            Some(ModuleInfo {
-                                path: module_path,
-                                resolved_resource:
-                                    Some(ResolverResource::Resolved(ResolvedResource(Resource {
-                                        description: Some(module_desc),
-                                        ..
-                                    }))),
-                                ..
-                            }),
-                        ..
-                    }) if module_path.contains("node_modules") => {
-                        let pkg = module_desc.data().raw();
-                        Some(format!(
-                            "{}@{}",
-                            pkg.get("name").unwrap().as_str().unwrap(),
-                            pkg.get("version").unwrap().as_str().unwrap()
-                        ))
-                    }
-                    _ => None,
-                };
-
-                match pkg_name {
-                    None => continue,
-                    Some(pkg_name) => {
-                        pkg_modules
-                            .entry(pkg_name.clone())
-                            .or_default()
-                            .insert(m_id.clone());
-
-                        to_remove.push(m_id.clone());
-
-                        pkg_chunk_dependant
-                            .entry(pkg_name)
-                            .or_default()
-                            .insert(chunk.id.clone());
-                    }
-                }
-            }
-
-            for m_id in to_remove {
-                chunk.remove_module(&m_id);
-            }
-        }
-
-        for (pkg_name, modules) in pkg_modules {
-            let mut chunk = Chunk::new(pkg_name.clone().into(), ChunkType::Sync);
-
-            for m_id in modules {
-                chunk.add_module(m_id);
-            }
-            chunk_graph.add_chunk(chunk);
-
-            let dependant_chunks = pkg_chunk_dependant.get(&pkg_name).unwrap();
-
-            for dep_chunk in dependant_chunks {
-                chunk_graph.add_edge(dep_chunk, &pkg_name.clone().into());
-            }
-        }
-    }
-
-    pub fn group_main_chunk(&self) {
         debug!("group_chunk");
 
         let visited = Rc::new(RefCell::new(HashSet::new()));
@@ -166,45 +68,6 @@ impl Compiler {
 
         for (from, to) in &edges {
             chunk_graph.add_edge(from, to);
-        }
-    }
-
-    fn group_big_vendor_chunk(&self) {
-        // big vendors chunk policy
-        let mut chunk_graph = self.context.chunk_graph.write().unwrap();
-        let mut chunks = chunk_graph.mut_chunks();
-        let mut big_vendor_chunk = Chunk::new("all_vendors".into(), ChunkType::Sync);
-
-        let mut entries = Vec::new();
-
-        // keep module order stable for each splitting
-        chunks.sort_by_key(|c| c.id.id.clone());
-
-        for c in chunks {
-            let mut vendors_to_move = IndexSet::new();
-
-            for m in c
-                .mut_modules()
-                .iter()
-                .filter(|&m| m.id.contains("node_modules"))
-            {
-                vendors_to_move.insert(m.clone());
-                big_vendor_chunk.add_module(m.clone())
-            }
-
-            for m in &vendors_to_move {
-                c.remove_module(m);
-            }
-
-            if matches!(c.chunk_type, ChunkType::Entry) {
-                entries.push(c.id.clone());
-            }
-        }
-
-        let to_chunk = big_vendor_chunk.id.clone();
-        chunk_graph.add_chunk(big_vendor_chunk);
-        for entry in entries {
-            chunk_graph.add_edge(&entry, &to_chunk);
         }
     }
 

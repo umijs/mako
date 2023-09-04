@@ -84,10 +84,6 @@ impl Chunk {
         &self.modules
     }
 
-    pub fn mut_modules(&mut self) -> &mut IndexSet<ModuleId> {
-        &mut self.modules
-    }
-
     pub fn remove_module(&mut self, module_id: &ModuleId) {
         self.modules.shift_remove(module_id);
     }
