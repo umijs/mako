@@ -81,6 +81,13 @@ impl From<UsedIdentHashMap> for Vec<(StatementId, HashSet<UsedIdent>)> {
         vec
     }
 }
+
+impl UsedIdentHashMap {
+    pub fn has_stmt_by_id(&self, statement_id: &StatementId) -> bool {
+        self.0.contains_key(statement_id)
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum ModuleSystem {
     CommonJS,
@@ -93,6 +100,7 @@ pub struct TreeShakingModule {
     pub id: ModuleId,
     pub used_exports: UsedExports,
     pub side_effects: bool,
+    pub side_effects_flag: bool,
     pub module_system: ModuleSystem,
     statement_graph: StatementGraph,
 }
@@ -101,9 +109,11 @@ pub struct TreeShakingModule {
 pub struct UsedReExportHashMap(HashMap<StatementId, Option<Vec<StatementId>>>);
 
 impl UsedReExportHashMap {
+    #[allow(dead_code)]
     pub fn is_all_re_export(&self) -> bool {
         self.0.iter().all(|(_, v)| v.is_some())
     }
+    #[allow(dead_code)]
     pub fn get_all_used_statement_ids(&self) -> HashSet<StatementId> {
         let mut ids = HashSet::new();
         self.0
@@ -131,10 +141,13 @@ impl TreeShakingModule {
             UsedExports::Partial(vec![])
         };
 
+        let side_effects_flag = module.info.as_ref().unwrap().get_side_effects_flag();
+
         Self {
             id: module.id.clone(),
             used_exports,
             side_effects: module.side_effects,
+            side_effects_flag,
             statement_graph,
             module_system,
         }
@@ -164,6 +177,7 @@ impl TreeShakingModule {
         imports
     }
 
+    #[allow(dead_code)]
     pub fn get_used_re_exports(&self) -> UsedReExportHashMap {
         let mut used_export_statement_hashmap = HashMap::new();
         let mut keys = HashSet::new();
@@ -176,39 +190,9 @@ impl TreeShakingModule {
 
         for statement_id in keys {
             let statement = self.get_statement(&statement_id);
-            if let StatementType::Export(statement) = &statement {
-                // export from '.xxx';
-                if statement.info.source.is_some() {
-                    used_export_statement_hashmap.insert(statement.id, Some(vec![]));
-                    continue;
-                }
+            let deps = self.statement_graph.get_dependencies(&statement_id);
 
-                let deps = self.statement_graph.get_dependencies(&statement.id);
-
-                // import { f } from 'xxx'
-                // export { f }
-                let all_deps_is_import = deps
-                    .iter()
-                    .all(|(dep_statement, ..)| matches!(dep_statement, StatementType::Import(_)));
-                if all_deps_is_import {
-                    let import_statements = deps
-                        .iter()
-                        .map(|(dep_statement, ..)| {
-                            if let StatementType::Import(import_statement) = dep_statement {
-                                import_statement.id
-                            } else {
-                                unreachable!()
-                            }
-                        })
-                        .collect::<Vec<_>>();
-                    used_export_statement_hashmap.insert(statement.id, Some(import_statements));
-                    continue;
-                }
-
-                used_export_statement_hashmap.insert(statement.id, None);
-            } else {
-                unreachable!();
-            }
+            let _f = is_re_export(statement, &mut used_export_statement_hashmap, deps);
         }
         UsedReExportHashMap(used_export_statement_hashmap)
     }
@@ -235,20 +219,83 @@ impl TreeShakingModule {
                 stmt_used_ident_map.entry(*stmt_id).or_default();
             used_idents.insert(used_ident.clone());
         }
-        for stmt in self.statement_graph.get_statements() {
-            // 当前 statement 是自执行，或者当前 statement 已经被使用到了
-            if stmt.get_is_self_executed()
-                || matches!(stmt, StatementType::Stmt { .. })
-                || (used_exports_ident
-                    .iter()
-                    .any(|(_, id)| *id == stmt.get_id()))
-            {
+        let all_stmts = self.statement_graph.get_statements();
+
+        // 使用到的导出
+        let mut recheck_ids = vec![];
+        let mut re_export_ids = vec![];
+        for (_, id) in &used_exports_ident {
+            let stmt = self.statement_graph.get_statement(id);
+            let deps = self.statement_graph.get_dependencies(id);
+
+            // 当前导出是 reexport
+            if is_re_export(stmt, &mut HashMap::new(), deps) {
+                re_export_ids.push(id);
+            }
+
+            // 查找当前的依赖变量
+            let mut visited = HashSet::new();
+            recheck_ids.push(*id);
+            self.analyze_statement_used_ident(&mut stmt_used_ident_map, stmt, &mut visited);
+        }
+
+        // 当前模块是 sideEffectFlag == false 并且 全都是 reexport 的场景，直接返回
+        let is_all_reexport = re_export_ids.len() == used_exports_ident.len();
+        if !self.side_effects_flag && is_all_reexport {
+            return UsedIdentHashMap(stmt_used_ident_map);
+        }
+
+        let used_export_available_ids = stmt_used_ident_map.keys().copied().collect::<HashSet<_>>();
+
+        let mut final_used_available_ids = used_export_available_ids.clone();
+
+        // 检查副作用导出
+        for stmt in &all_stmts {
+            let is_final_side_effects_flag = stmt.get_is_self_executed();
+            if is_final_side_effects_flag {
                 let mut visited = HashSet::new();
-                self.analyze_statement_used_ident(&mut stmt_used_ident_map, stmt, &mut visited);
+                let mut current_used_ident_map = HashMap::new();
+                self.analyze_statement_used_ident(&mut current_used_ident_map, stmt, &mut visited);
+
+                let side_effects_available_ids = current_used_ident_map
+                    .keys()
+                    .copied()
+                    .collect::<HashSet<_>>();
+
+                // 副作用的依赖链和导出的依赖链有交集，则把副作用依赖链合并进去
+                if !side_effects_available_ids
+                    .intersection(&used_export_available_ids)
+                    .collect::<HashSet<_>>()
+                    .is_empty()
+                {
+                    final_used_available_ids.extend(side_effects_available_ids)
+                }
+
+                stmt_used_ident_map.extend(current_used_ident_map);
+            }
+        }
+        for stmt in all_stmts {
+            let id = stmt.get_id();
+            if !final_used_available_ids.contains(&id) {
+                stmt_used_ident_map.remove(&id);
             }
         }
         UsedIdentHashMap(stmt_used_ident_map)
     }
+
+    // fn get_available_ids(&self, recheck_ids: Vec<usize>) -> HashSet<usize> {
+    //     let (ref_stmt_ids, cycled_ids) = self.statement_graph.toposort(&recheck_ids);
+    //     let mut available_ids = HashSet::new();
+    //     for id in ref_stmt_ids {
+    //         available_ids.insert(id);
+    //     }
+    //     for ids in cycled_ids {
+    //         for id in ids {
+    //             available_ids.insert(id);
+    //         }
+    //     }
+    //     available_ids
+    // }
 
     fn analyze_statement_used_ident(
         &self,
@@ -262,9 +309,8 @@ impl TreeShakingModule {
         visited.insert(stmt.get_id());
 
         stmt_used_ident_map.entry(stmt.get_id()).or_default();
-        for (dep_statement, referred_idents, ..) in
-            self.statement_graph.get_dependencies(&stmt.get_id())
-        {
+        let deps = self.statement_graph.get_dependencies(&stmt.get_id());
+        for (dep_statement, referred_idents, ..) in deps {
             let used_idents = stmt_used_ident_map
                 .entry(dep_statement.get_id())
                 .or_default();
@@ -394,6 +440,45 @@ impl TreeShakingModule {
         } else {
             split1[0] == split2[0]
         }
+    }
+}
+
+fn is_re_export(
+    statement: &StatementType,
+    used_export_statement_hashmap: &mut HashMap<usize, Option<Vec<usize>>>,
+    deps: Vec<(&StatementType, HashSet<String>, usize)>,
+) -> bool {
+    if let StatementType::Export(statement) = &statement {
+        // export from '.xxx';
+        if statement.info.source.is_some() {
+            used_export_statement_hashmap.insert(statement.id, Some(vec![]));
+            return true;
+        }
+
+        // import { f } from 'xxx'
+        // export { f }
+        let all_deps_is_import = deps
+            .iter()
+            .all(|(dep_statement, ..)| matches!(dep_statement, StatementType::Import(_)));
+        if all_deps_is_import {
+            let import_statements = deps
+                .iter()
+                .map(|(dep_statement, ..)| {
+                    if let StatementType::Import(import_statement) = dep_statement {
+                        import_statement.id
+                    } else {
+                        unreachable!()
+                    }
+                })
+                .collect::<Vec<_>>();
+            used_export_statement_hashmap.insert(statement.id, Some(import_statements));
+            return true;
+        }
+
+        used_export_statement_hashmap.insert(statement.id, None);
+        false
+    } else {
+        unreachable!();
     }
 }
 
@@ -635,5 +720,86 @@ export { e, g };
         let re_exports = tree_shaking_module.get_used_re_exports();
         assert!(re_exports.is_all_re_export());
         assert_eq!(re_exports.get_all_used_statement_ids().len(), 10);
+    }
+
+    #[test]
+    fn used_export_test_1() {
+        let module = create_mock_module(
+            PathBuf::from("/path/to/test.tsx"),
+            r#"
+function He() {}
+
+['x'].forEach(function (key) {
+    He[key] = He(key)
+});
+
+function foo() {}
+
+export default He;
+"#,
+        );
+        let mut tree_shaking_module = TreeShakingModule::new(&module);
+        tree_shaking_module.used_exports.add_used_export(&"default");
+        tree_shaking_module.side_effects_flag = false;
+        let used: Vec<(usize, HashSet<UsedIdent>)> =
+            tree_shaking_module.get_used_export_statement().into();
+        assert_debug_snapshot!(&used);
+    }
+
+    #[test]
+    fn used_export_test_2() {
+        let module = create_mock_module(
+            PathBuf::from("/path/to/test.tsx"),
+            r#"
+function first() {}
+function He() {
+    first();
+}
+
+function bar() {}
+
+['x'].forEach(function (key) {
+    bar();
+});
+
+['x'].forEach(function (key) {
+    foo();
+});
+
+function foo() {
+    first();
+}
+
+export default He;
+"#,
+        );
+        let mut tree_shaking_module = TreeShakingModule::new(&module);
+        tree_shaking_module.used_exports.add_used_export(&"default");
+        tree_shaking_module.side_effects_flag = false;
+        let used: Vec<(usize, HashSet<UsedIdent>)> =
+            tree_shaking_module.get_used_export_statement().into();
+        assert_debug_snapshot!(&used);
+    }
+
+    #[test]
+    fn used_export_test_3() {
+        let module = create_mock_module(
+            PathBuf::from("/path/to/test.tsx"),
+            r#"
+function He() {}
+
+['x'].forEach(function (key) {
+    He[key] = He(key)
+});
+
+export default function foo() {};
+"#,
+        );
+        let mut tree_shaking_module = TreeShakingModule::new(&module);
+        tree_shaking_module.used_exports.add_used_export(&"default");
+        tree_shaking_module.side_effects_flag = false;
+        let used: Vec<(usize, HashSet<UsedIdent>)> =
+            tree_shaking_module.get_used_export_statement().into();
+        assert_debug_snapshot!(&used);
     }
 }

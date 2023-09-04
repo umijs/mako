@@ -1,0 +1,12 @@
+---
+source: crates/mako/src/tree_shaking_module.rs
+expression: "&used"
+---
+[
+    (
+        2,
+        {
+            Default,
+        },
+    ),
+]

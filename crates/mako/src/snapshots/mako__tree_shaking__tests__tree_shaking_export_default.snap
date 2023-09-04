@@ -375,7 +375,7 @@ function createRuntime(makoModules, entryModuleId) {
             makoModules[id] = modules[id];
         }
     };
-    requireModule._h = '16327734169929279472';
+    requireModule._h = '13780429864821022195';
     requireModule.currentHash = ()=>{
         return requireModule._h;
     };
@@ -426,66 +426,31 @@ const runtime = createRuntime({
         });
         function foo() {}
     },
-    "./4.ts": function(module, exports, require) {
-        "use strict";
-        Object.defineProperty(exports, "__esModule", {
-            value: true
-        });
-        Object.defineProperty(exports, /*#__UNUSED_MODULE__*/ "default", {
-            enumerable: true,
-            get: function() {
-                return zoo;
-            }
-        });
-        function zoo() {}
-    },
     "./1.ts": function(module, exports, require) {
         "use strict";
         Object.defineProperty(exports, "__esModule", {
             value: true
         });
-        function _export(target, all) {
-            for(var name in all)Object.defineProperty(target, name, {
-                enumerable: true,
-                get: all[name]
-            });
-        }
-        _export(exports, {
-            foo: function() {
+        Object.defineProperty(exports, "foo", {
+            enumerable: true,
+            get: function() {
                 return _2.default;
-            },
-            bar: function() {
-                return _3.default;
-            },
-            zoo: function() {
-                return _4.default;
             }
         });
         var _interop_require_default = require("../../../../../node_modules/.pnpm/@swc+helpers@0.5.1/node_modules/@swc/helpers/esm/_interop_require_default.js");
         var _2 = _interop_require_default._(require("./2.ts"));
-        var _3 = _interop_require_default._(require("./3.ts"));
-        var _4 = _interop_require_default._(require("./4.ts"));
     },
     "./3.ts": function(module, exports, require) {
         "use strict";
         Object.defineProperty(exports, "__esModule", {
             value: true
         });
-        function _export(target, all) {
-            for(var name in all)Object.defineProperty(target, name, {
-                enumerable: true,
-                get: all[name]
-            });
-        }
-        _export(exports, {
-            /*#__UNUSED__*/ default: function() {
-                return bar;
-            },
-            xx: function() {
+        Object.defineProperty(exports, "xx", {
+            enumerable: true,
+            get: function() {
                 return xx;
             }
         });
-        function bar() {}
         function xx() {}
     },
     "./index.ts": function(module, exports, require) {
