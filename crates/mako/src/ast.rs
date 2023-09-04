@@ -73,24 +73,32 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
     let mut parser = Parser::new_from(lexer);
 
     // parse to ast
-    let ast = parser.parse_module().map_err(|e| {
-        let error_message = generate_code_frame(
-            e.span(),
-            e.kind().msg().to_string().as_str(),
-            context.meta.script.cm.clone(),
-        );
-        anyhow!(ParseError {
+    let ast = parser.parse_module();
+    let mut ast_errors = parser.take_errors();
+    if ast.is_err() {
+        ast_errors.push(ast.clone().unwrap_err());
+    }
+    if !ast_errors.is_empty() {
+        let mut error_message = vec![];
+        for err in ast_errors {
+            error_message.push(generate_code_frame(
+                err.span(),
+                err.kind().msg().to_string().as_str(),
+                context.meta.script.cm.clone(),
+            ));
+        }
+        return Err(anyhow!(ParseError {
             resolved_path: path.to_string(),
-            error_message,
-        })
-    })?;
+            error_message: error_message.join("\n"),
+        }));
+    }
 
     // top level mark、unresolved mark 需要持久化起来，后续的 transform 需要用到
     GLOBALS.set(&context.meta.script.globals, || {
         let top_level_mark = Mark::new();
         let unresolved_mark = Mark::new();
         Ok(Ast {
-            ast,
+            ast: ast.unwrap(),
             unresolved_mark,
             top_level_mark,
         })
@@ -111,12 +119,28 @@ pub fn build_css_ast(path: &str, content: &str, context: &Arc<Context>) -> Resul
     };
     let lexer = swc_css_parser::lexer::Lexer::new(StringInput::from(&*fm), config);
     let mut parser = swc_css_parser::parser::Parser::new(lexer, config);
-    parser.parse_all().map_err(|e| {
-        anyhow!(ParseError {
+    let parse_result = parser.parse_all();
+
+    let mut parse_errors = parser.take_errors();
+    if parse_result.is_err() {
+        parse_errors.push(parse_result.clone().unwrap_err());
+    };
+    if !parse_errors.is_empty() {
+        let mut error_message = vec![];
+        for err in parse_errors {
+            error_message.push(generate_code_frame(
+                (*err.clone().into_inner()).0,
+                err.message().to_string().as_str(),
+                context.meta.css.cm.clone(),
+            ));
+        }
+        Err(anyhow!(ParseError {
             resolved_path: path.to_string(),
-            error_message: format!("{:?}", e),
-        })
-    })
+            error_message: error_message.join("\n"),
+        }))
+    } else {
+        Ok(parse_result.unwrap())
+    }
 }
 
 pub fn js_ast_to_code(
