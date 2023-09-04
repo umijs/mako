@@ -31,7 +31,7 @@ pub fn mako_react(
         task.path.ends_with(".jsx") || task.path.ends_with(".tsx") || task.path.ends_with(".svg");
 
     if !is_jsx {
-        return if task.is_entry && is_dev {
+        return if task.is_entry && use_refresh {
             Box::new(chain!(react_refresh_inject_runtime_only(context), noop()))
         } else {
             Box::new(noop())
