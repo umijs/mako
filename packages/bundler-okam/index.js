@@ -119,6 +119,21 @@ function getOkamConfig(opts) {
       alias[key.slice(0, -1)] = alias[key];
     }
   });
+  // Normalize codeSplitting config
+  let codeSplitting = 'none';
+  if (opts.config.codeSplitting.jsStrategy) {
+    if (
+      ['bigVendors', 'depPerChunk'].includes(
+        opts.config.codeSplitting.jsStrategy,
+      )
+    ) {
+      codeSplitting = opts.config.codeSplitting.jsStrategy;
+    } else {
+      throw new Error(
+        'codeSplitting.jsStrategy must be bigVendors or depPerChunk',
+      );
+    }
+  }
   return {
     entry: opts.entry,
     output: { path: outputPath },
@@ -146,5 +161,6 @@ function getOkamConfig(opts) {
     },
     manifest: !!manifest,
     mdx: !!mdx,
+    codeSplitting,
   };
 }
