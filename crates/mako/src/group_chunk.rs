@@ -14,7 +14,6 @@ use crate::module::{ModuleId, ResolveType};
 impl Compiler {
     // TODO:
     // - 多个 entry 之间的 chunk 共享
-    // - 支持各种 chunk 拆分策略，比如把所有 node_modules 下的包按 package name 拆
 
     pub fn group_chunk(&self) {
         debug!("group_chunk");
