@@ -56,6 +56,7 @@ pub fn create_mock_module(path: PathBuf, code: &str) -> Module {
         ast: crate::module::ModuleAst::Script(ast),
         path: path.to_string_lossy().to_string(),
         external: None,
+        raw: code.to_string(),
         raw_hash: 0,
         resolved_resource: None,
         missing_deps: HashMap::new(),
