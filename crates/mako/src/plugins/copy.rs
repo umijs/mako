@@ -28,13 +28,15 @@ impl CopyPlugin {
             .unwrap();
             for src in context.config.copy.iter() {
                 let src = context.root.join(src);
-                debug!("watch {:?}", src);
-                let mode = if src.is_dir() {
-                    RecursiveMode::Recursive
-                } else {
-                    RecursiveMode::NonRecursive
-                };
-                watcher.watch(src.as_path(), mode).unwrap();
+                if src.exists() {
+                    debug!("watch {:?}", src);
+                    let mode = if src.is_dir() {
+                        RecursiveMode::Recursive
+                    } else {
+                        RecursiveMode::NonRecursive
+                    };
+                    watcher.watch(src.as_path(), mode).unwrap();
+                }
             }
             while let Some(res) = rx.recv().await {
                 match res {
