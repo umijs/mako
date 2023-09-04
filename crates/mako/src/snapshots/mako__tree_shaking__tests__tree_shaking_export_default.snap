@@ -4,7 +4,6 @@ expression: content
 ---
 const chunksIdToUrlMap = {};
 chunksIdToUrlMap["./index.ts"] = `index.js`;
-chunksIdToUrlMap["./all_vendors"] = `all_vendors-async.js`;
 function createRuntime(makoModules, entryModuleId) {
     const modulesRegistry = {};
     function requireModule(moduleId) {
@@ -376,15 +375,11 @@ function createRuntime(makoModules, entryModuleId) {
             makoModules[id] = modules[id];
         }
     };
-    requireModule._h = '15739737842050274303';
+    requireModule._h = '16327734169929279472';
     requireModule.currentHash = ()=>{
         return requireModule._h;
     };
-    Promise.all([
-        requireModule.ensure("./all_vendors")
-    ]).then(()=>{
-        requireModule(entryModuleId);
-    });
+    requireModule(entryModuleId);
     return {
         requireModule,
         _modulesRegistry: modulesRegistry,
@@ -393,6 +388,31 @@ function createRuntime(makoModules, entryModuleId) {
     };
 }
 const runtime = createRuntime({
+    "../../../../../node_modules/.pnpm/@swc+helpers@0.5.1/node_modules/@swc/helpers/esm/_interop_require_default.js": function(module, exports, require) {
+        "use strict";
+        Object.defineProperty(exports, "__esModule", {
+            value: true
+        });
+        function _export(target, all) {
+            for(var name in all)Object.defineProperty(target, name, {
+                enumerable: true,
+                get: all[name]
+            });
+        }
+        _export(exports, {
+            _interop_require_default: function() {
+                return _interop_require_default;
+            },
+            _: function() {
+                return _interop_require_default;
+            }
+        });
+        function _interop_require_default(obj) {
+            return obj && obj.__esModule ? obj : {
+                default: obj
+            };
+        }
+    },
     "./2.ts": function(module, exports, require) {
         "use strict";
         Object.defineProperty(exports, "__esModule", {

@@ -157,7 +157,7 @@ const DEFAULT_CONFIG: &str = r#"
     "hmrHost": "127.0.0.1",
     "hmrPort": "3000",
     "moduleIdStrategy": "named",
-    "codeSplitting": "bigVendor",
+    "codeSplitting": "none",
     "extractCSS": false,
     "hash": false
 }

@@ -4,7 +4,6 @@ expression: content
 ---
 const chunksIdToUrlMap = {};
 chunksIdToUrlMap["./index.ts"] = `index.js`;
-chunksIdToUrlMap["./all_vendors"] = `all_vendors-async.js`;
 function createRuntime(makoModules, entryModuleId) {
     const modulesRegistry = {};
     function requireModule(moduleId) {
@@ -376,15 +375,11 @@ function createRuntime(makoModules, entryModuleId) {
             makoModules[id] = modules[id];
         }
     };
-    requireModule._h = '17319903057077462737';
+    requireModule._h = '10583840495989605204';
     requireModule.currentHash = ()=>{
         return requireModule._h;
     };
-    Promise.all([
-        requireModule.ensure("./all_vendors")
-    ]).then(()=>{
-        requireModule(entryModuleId);
-    });
+    requireModule(entryModuleId);
     return {
         requireModule,
         _modulesRegistry: modulesRegistry,
@@ -393,6 +388,39 @@ function createRuntime(makoModules, entryModuleId) {
     };
 }
 const runtime = createRuntime({
+    "../../../../../node_modules/.pnpm/@swc+helpers@0.5.1/node_modules/@swc/helpers/esm/_export_star.js": function(module, exports, require) {
+        "use strict";
+        Object.defineProperty(exports, "__esModule", {
+            value: true
+        });
+        function _export(target, all) {
+            for(var name in all)Object.defineProperty(target, name, {
+                enumerable: true,
+                get: all[name]
+            });
+        }
+        _export(exports, {
+            _export_star: function() {
+                return _export_star;
+            },
+            _: function() {
+                return _export_star;
+            }
+        });
+        function _export_star(from, to) {
+            Object.keys(from).forEach(function(k) {
+                if (k !== "default" && !Object.prototype.hasOwnProperty.call(to, k)) {
+                    Object.defineProperty(to, k, {
+                        enumerable: true,
+                        get: function() {
+                            return from[k];
+                        }
+                    });
+                }
+            });
+            return from;
+        }
+    },
     "./1.ts": function(module, exports, require) {
         "use strict";
         Object.defineProperty(exports, "__esModule", {

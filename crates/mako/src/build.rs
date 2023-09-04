@@ -91,7 +91,13 @@ impl Compiler {
                     let rs = rs.clone();
                     async move {
                         let ret = Compiler::build_module(context, task, resolvers);
-                        rs.send(ret).expect("send task failed");
+                        let send_ret = rs.send(ret);
+                        if send_ret.is_err() {
+                            debug!(
+                                "send task error in build_module_graph_by_task_queue {:?}",
+                                send_ret.err()
+                            );
+                        }
                     }
                 });
             }
