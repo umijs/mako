@@ -121,7 +121,7 @@ function getOkamConfig(opts) {
   });
   // Normalize codeSplitting config
   let codeSplitting = 'none';
-  if (opts.config.codeSplitting.jsStrategy) {
+  if (opts.config.codeSplitting?.jsStrategy) {
     if (
       ['bigVendors', 'depPerChunk'].includes(
         opts.config.codeSplitting.jsStrategy,

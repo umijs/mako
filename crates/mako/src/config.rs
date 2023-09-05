@@ -85,8 +85,8 @@ pub enum ModuleIdStrategy {
 
 #[derive(Deserialize, Clone, Copy, Debug)]
 pub enum CodeSplittingStrategy {
-    #[serde(rename = "bigVendor")]
-    BigVendor,
+    #[serde(rename = "bigVendors")]
+    BigVendors,
     #[serde(rename = "depPerChunk")]
     DepPerChunk,
     #[serde(rename = "none")]
