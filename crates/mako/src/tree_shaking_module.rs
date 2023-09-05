@@ -719,6 +719,7 @@ function He() {}
     He[key] = He(key)
 });
 
+// 删除
 function foo() {}
 
 export default He;
@@ -742,8 +743,10 @@ function He() {
     first();
 }
 
+// 删除
 function bar() {}
 
+// 删除
 ['x'].forEach(function (key) {
     bar();
 });
@@ -772,8 +775,10 @@ export default He;
         let module = create_mock_module(
             PathBuf::from("/path/to/test.tsx"),
             r#"
+// 删除
 function He() {}
 
+// 删除
 ['x'].forEach(function (key) {
     He[key] = He(key)
 });
@@ -796,7 +801,9 @@ export default function foo() {};
             r#"
 import { a } from 'a';
 
+// 删除
 function b() {}
+// 删除
 b.a = a;
 
 export { a };
