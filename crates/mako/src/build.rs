@@ -227,6 +227,7 @@ impl Compiler {
                         raw_hash: 0,
                         resolved_resource: Some(resource.clone()),
                         missing_deps: HashMap::new(),
+                        ignored_deps: vec![],
                         top_level_await: false,
                         is_async: false,
                     }),
@@ -270,12 +271,18 @@ impl Compiler {
         let mut resolved_deps_to_source = HashMap::<String, String>::new();
         let mut duplicated_source_to_source_map = HashMap::new();
 
-        let mut missing_dependencies = HashMap::new();
+        let mut missing_deps = HashMap::new();
+        let mut ignored_deps = Vec::new();
 
         for dep in deps {
             let ret = resolve(&task.path, &dep, &resolvers, &context);
             match ret {
                 Ok(resolved_resource) => {
+                    if matches!(resolved_resource, ResolverResource::Ignored) {
+                        ignored_deps.push(dep.source.clone());
+                        continue;
+                    }
+
                     let resolved = resolved_resource.get_resolved_path();
                     let _external = resolved_resource.get_external();
                     let id = ModuleId::new(resolved.clone());
@@ -294,7 +301,7 @@ impl Compiler {
                 }
                 Err(_) => {
                     // 获取 本次引用 和 上一级引用 路径
-                    missing_dependencies.insert(dep.source.clone(), dep.clone());
+                    missing_deps.insert(dep.source.clone(), dep.clone());
                     dep_resolve_err =
                         Some((task.path.clone(), dep.source, dep.resolve_type, dep.span));
                 }
@@ -353,6 +360,7 @@ impl Compiler {
             let deps_to_replace = DependenciesToReplace {
                 missing: HashMap::new(),
                 resolved: duplicated_source_to_source_map,
+                ignored: vec![],
             };
             transform_after_resolve(&mut ast, &context, &task, &deps_to_replace)?;
         }
@@ -372,7 +380,8 @@ impl Compiler {
             path: task.path.clone(),
             external: None,
             raw_hash: content.raw_hash(),
-            missing_deps: missing_dependencies,
+            missing_deps,
+            ignored_deps,
             top_level_await,
             is_async: top_level_await || is_async_module(&task.path),
             resolved_resource: task.parent_resource.clone(),

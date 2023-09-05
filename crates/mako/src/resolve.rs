@@ -42,6 +42,7 @@ pub struct ResolvedResource(pub Resource);
 pub enum ResolverResource {
     External(ExternalResource),
     Resolved(ResolvedResource),
+    Ignored,
 }
 
 impl ResolverResource {
@@ -55,12 +56,14 @@ impl ResolverResource {
                 }
                 path
             }
+            ResolverResource::Ignored => "".to_string(),
         }
     }
     pub fn get_external(&self) -> Option<String> {
         match self {
             ResolverResource::External(ExternalResource { external, .. }) => Some(external.clone()),
             ResolverResource::Resolved(_) => None,
+            ResolverResource::Ignored => None,
         }
     }
 }
@@ -103,8 +106,16 @@ fn do_resolve(
         let parent = path.parent().unwrap();
         debug!("parent: {:?}, source: {:?}", parent, source);
         let result = resolver.resolve(parent, source);
-        if let Ok(ResolveResult::Resource(resource)) = result {
-            Ok(ResolverResource::Resolved(ResolvedResource(resource)))
+        if let Ok(result) = result {
+            match result {
+                ResolveResult::Resource(resource) => {
+                    Ok(ResolverResource::Resolved(ResolvedResource(resource)))
+                }
+                ResolveResult::Ignored => {
+                    debug!("resolve ignored: {:?}", source);
+                    Ok(ResolverResource::Ignored)
+                }
+            }
         } else {
             Err(anyhow!(ResolveError::ResolveError {
                 path: source.to_string(),

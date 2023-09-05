@@ -8,6 +8,7 @@ chunksIdToUrlMap["./a.ts"] = `a_ts-async.js`;
 function createRuntime(makoModules, entryModuleId) {
     const modulesRegistry = {};
     function requireModule(moduleId) {
+        if (moduleId === '$$IGNORED$$') return;
         const cachedModule = modulesRegistry[moduleId];
         if (cachedModule !== undefined) {
             if (cachedModule.error) {
