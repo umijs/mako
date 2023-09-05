@@ -24,7 +24,7 @@ impl Compiler {
         self.group_main_chunk();
 
         match self.context.config.code_splitting {
-            CodeSplittingStrategy::BigVendor => {
+            CodeSplittingStrategy::BigVendors => {
                 self.group_big_vendor_chunk();
             }
             CodeSplittingStrategy::DepPerChunk => {
