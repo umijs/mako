@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
@@ -189,6 +190,9 @@ impl Compiler {
     }
 
     pub fn compile(&self) {
+        // 先清空 dist 目录
+        self.clean_dist();
+
         let t_compiler = Instant::now();
         let is_prod = self.context.config.mode == crate::config::Mode::Production;
         let building_with_message = format!(
@@ -225,6 +229,14 @@ impl Compiler {
         let cg = self.context.chunk_graph.read().unwrap();
         let mg = self.context.module_graph.read().unwrap();
         cg.full_hash(&mg)
+    }
+
+    pub fn clean_dist(&self) {
+        // compiler 前清除 dist，如果后续 dev 环境不在 output_path 里，需要再补上 dev 的逻辑
+        let output_path = &self.context.config.output.path;
+        if fs::metadata(output_path).is_ok() {
+            fs::remove_dir_all(output_path).unwrap();
+        }
     }
 }
 
