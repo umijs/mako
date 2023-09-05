@@ -190,6 +190,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         let deps_to_replace = DependenciesToReplace {
             resolved: resolved_deps,
             missing: info.missing_deps.clone(),
+            ignored: vec![],
         };
 
         if let ModuleAst::Script(ast) = ast {

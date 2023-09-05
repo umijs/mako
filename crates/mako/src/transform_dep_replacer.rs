@@ -25,6 +25,7 @@ pub struct DepReplacer<'a> {
 pub struct DependenciesToReplace {
     pub resolved: HashMap<String, String>,
     pub missing: HashMap<String, Dependency>,
+    pub ignored: Vec<String>,
 }
 
 fn miss_throw_stmt<T: AsRef<str>>(source: T) -> Expr {
@@ -154,19 +155,18 @@ impl VisitMut for DepReplacer<'_> {
 
 impl DepReplacer<'_> {
     fn replace_source(&mut self, source: &mut Str) {
-        if let Some(replacement) = self.to_replace.resolved.get(&source.value.to_string()) {
-            let span = source.span;
+        let to_replace =
+            if let Some(replacement) = self.to_replace.resolved.get(&source.value.to_string()) {
+                replacement.clone()
+            } else if self.to_replace.ignored.contains(&source.value.to_string()) {
+                "$$IGNORED$$".to_string()
+            } else {
+                return;
+            };
 
-            let module_id_string = replacement.clone();
-            //generate_module_id(replacement.clone(), self.context);
-
-            // NOTE: JsWord 有缓存，直接设置 value 的方式在这种情况下不会生效
-            // if (process.env.NODE_ENV === 'development') { require("./foo") }
-            *source = Str::from(module_id_string);
-            // 保持原来的 span，不确定不加的话会不会导致 sourcemap 错误
-
-            source.span = span;
-        }
+        let span = source.span;
+        *source = Str::from(to_replace);
+        source.span = span;
     }
 }
 
@@ -198,6 +198,7 @@ mod tests {
             let to_replace  = DependenciesToReplace {
                 resolved: hashmap! {"react".to_string()=> "/root/node_modules/react/index.js".to_string()},
                 missing: HashMap::new(),
+                ignored: vec![],
             };
 
             let cloned = context.clone();
@@ -226,6 +227,7 @@ mod tests {
                     span: None,
                     order: 0,
                 }},
+                ignored: vec![],
             };
 
             let cloned = context.clone();
@@ -263,6 +265,7 @@ mod tests {
                     span: None,
                     order: 0,
                 }},
+                ignored: vec![],
             };
 
             let cloned = context.clone();
@@ -306,6 +309,7 @@ mod tests {
                         "x".to_string() => "/x/index.js".to_string()
                     },
                     missing: hashmap! {},
+                    ignored: vec![],
                 },
                 context: &context,
             };

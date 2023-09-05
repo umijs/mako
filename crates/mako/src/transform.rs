@@ -558,6 +558,7 @@ require("./bar");
             dep_map: &DependenciesToReplace {
                 resolved: dep,
                 missing: HashMap::new(),
+                ignored: vec![],
             },
             async_deps: &vec![],
             is_entry: false,
