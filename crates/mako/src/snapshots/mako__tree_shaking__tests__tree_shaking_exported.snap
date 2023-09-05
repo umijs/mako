@@ -393,18 +393,10 @@ const runtime = createRuntime({
         Object.defineProperty(exports, "__esModule", {
             value: true
         });
-        function _export(target, all) {
-            for(var name in all)Object.defineProperty(target, name, {
-                enumerable: true,
-                get: all[name]
-            });
-        }
-        _export(exports, {
-            foo2: function() {
+        Object.defineProperty(exports, "foo2", {
+            enumerable: true,
+            get: function() {
                 return foo;
-            },
-            bar2: function() {
-                return /*#__UNUSED__*/ bar;
             }
         });
         function foo() {}

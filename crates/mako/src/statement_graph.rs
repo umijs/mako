@@ -144,6 +144,7 @@ impl fmt::Display for StatementGraph {
                         defined_ident,
                         used_ident,
                         is_self_executed,
+                        ..
                     } => (
                         *id,
                         format!(

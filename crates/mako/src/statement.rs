@@ -76,24 +76,9 @@ pub enum StatementType {
 impl StatementType {
     pub fn get_id(&self) -> StatementId {
         match self {
-            StatementType::Import(ImportStatement {
-                id,
-                info: _,
-                is_self_executed: _,
-                defined_ident: _,
-            }) => *id,
-            StatementType::Export(ExportStatement {
-                id,
-                info: _,
-                defined_ident: _,
-                used_ident: _,
-            }) => *id,
-            StatementType::Stmt {
-                id,
-                defined_ident: _,
-                used_ident: _,
-                is_self_executed: _,
-            } => *id,
+            StatementType::Import(ImportStatement { id, .. }) => *id,
+            StatementType::Export(ExportStatement { id, .. }) => *id,
+            StatementType::Stmt { id, .. } => *id,
         }
     }
 
@@ -113,46 +98,16 @@ impl StatementType {
 
     pub fn get_defined_ident(&self) -> &HashSet<String> {
         match self {
-            StatementType::Import(ImportStatement {
-                id: _,
-                info: _,
-                is_self_executed: _,
-                defined_ident,
-            }) => defined_ident,
-            StatementType::Export(ExportStatement {
-                id: _,
-                info: _,
-                defined_ident,
-                used_ident: _,
-            }) => defined_ident,
-            StatementType::Stmt {
-                id: _,
-                defined_ident,
-                used_ident: _,
-                is_self_executed: _,
-            } => defined_ident,
+            StatementType::Import(ImportStatement { defined_ident, .. }) => defined_ident,
+            StatementType::Export(ExportStatement { defined_ident, .. }) => defined_ident,
+            StatementType::Stmt { defined_ident, .. } => defined_ident,
         }
     }
     pub fn get_used_ident(&self) -> Option<&HashSet<String>> {
         match self {
-            StatementType::Import(ImportStatement {
-                id: _,
-                info: _,
-                is_self_executed: _,
-                defined_ident: _,
-            }) => None,
-            StatementType::Export(ExportStatement {
-                id: _,
-                info: _,
-                defined_ident: _,
-                used_ident,
-            }) => Option::Some(used_ident),
-            StatementType::Stmt {
-                id: _,
-                defined_ident: _,
-                used_ident,
-                is_self_executed: _,
-            } => Option::Some(used_ident),
+            StatementType::Import(ImportStatement { .. }) => None,
+            StatementType::Export(ExportStatement { used_ident, .. }) => Option::Some(used_ident),
+            StatementType::Stmt { used_ident, .. } => Option::Some(used_ident),
         }
     }
 }

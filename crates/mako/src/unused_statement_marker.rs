@@ -8,7 +8,7 @@ use crate::comments::Comments;
 use crate::defined_ident_collector::DefinedIdentCollector;
 use crate::statement::{self, ExportSpecifier, ImportSpecifier, StatementId, StatementType};
 use crate::tree_shaking_analyze::strip_context;
-use crate::tree_shaking_module::{should_skip, TreeShakingModule, UsedIdent};
+use crate::tree_shaking_module::{should_skip, TreeShakingModule, UsedIdent, UsedIdentHashMap};
 /**
  * 针对没有使用到的 export、import 语句进行标记
  */
@@ -19,8 +19,12 @@ pub struct UnusedStatementMarker<'a, 'b> {
 }
 
 impl<'a, 'b> UnusedStatementMarker<'a, 'b> {
-    pub fn new(tree_shaking_module: &'a TreeShakingModule, comments: &'b mut Comments) -> Self {
-        let used_export_statement = tree_shaking_module.get_used_export_statement().into();
+    pub fn new(
+        tree_shaking_module: &'a TreeShakingModule,
+        used_export_statement: UsedIdentHashMap,
+        comments: &'b mut Comments,
+    ) -> Self {
+        let used_export_statement = used_export_statement.into();
         Self {
             tree_shaking_module,
             used_export_statement,
@@ -114,6 +118,9 @@ impl VisitMut for UnusedStatementMarker<'_, '_> {
     }
 
     fn visit_mut_import_decl(&mut self, import_decl: &mut ImportDecl) {
+        if should_skip(&import_decl.src.value) {
+            return;
+        }
         // 清理没有用到的 specifier
         for specifier in &import_decl.specifiers {
             if let swc_ecma_ast::ImportSpecifier::Named(named_specifier) = specifier {
