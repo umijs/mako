@@ -190,6 +190,9 @@ impl Compiler {
     }
 
     pub fn compile(&self) {
+        // 先清空 dist 目录
+        self.clean_dist();
+
         let t_compiler = Instant::now();
         let is_prod = self.context.config.mode == crate::config::Mode::Production;
         let building_with_message = format!(
