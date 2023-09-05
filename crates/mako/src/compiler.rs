@@ -231,7 +231,7 @@ impl Compiler {
     pub fn clean_dist(&self) {
         // compiler 前清除 dist，如果后续 dev 环境不在 output_path 里，需要再补上 dev 的逻辑
         let output_path = &self.context.config.output.path;
-        if let Ok(_) = fs::metadata(output_path) {
+        if fs::metadata(output_path).is_ok() {
             fs::remove_dir_all(output_path).unwrap();
         }
     }
