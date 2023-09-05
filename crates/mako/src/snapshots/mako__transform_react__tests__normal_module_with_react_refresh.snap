@@ -1,6 +1,6 @@
 ---
 source: crates/mako/src/transform_react.rs
-expression: "transform_ast_with(&mut ast.ast, &mut visitor)"
+expression: "transform(TransformTask {\n        code: \"export default function R(){return <h1></h1>}\".to_string(),\n        is_entry: false,\n        path: \"index.jsx\".to_string(),\n    })"
 ---
 import * as RefreshRuntime from 'react-refresh';
 var prevRefreshReg;
@@ -24,5 +24,19 @@ var _c;
 $RefreshReg$(_c, "R");
 window.$RefreshReg$ = prevRefreshReg;
 window.$RefreshSig$ = prevRefreshSig;
-module.meta.hot.accept();
-RefreshRuntime.performReactRefresh();
+function $RefreshIsReactComponentLike$(moduleExports) {
+    if (RefreshRuntime.isLikelyComponentType(moduleExports.default || moduleExports)) {
+        return true;
+    }
+    var hasComponentExports = false;
+    for(var key in moduleExports){
+        if (!RefreshRuntime.isLikelyComponentType(moduleExports[key])) {
+            hasComponentExports = true;
+        }
+    }
+    return hasComponentExports;
+}
+if ($RefreshIsReactComponentLike$(module.exports)) {
+    module.meta.hot.accept();
+    RefreshRuntime.performReactRefresh();
+}

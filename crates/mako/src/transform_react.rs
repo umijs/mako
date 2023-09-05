@@ -150,8 +150,22 @@ pub fn react_refresh_module_postfix(context: &Arc<Context>) -> Box<dyn VisitMut>
         code: r#"
 window.$RefreshReg$ = prevRefreshReg;
 window.$RefreshSig$ = prevRefreshSig;
-module.meta.hot.accept();
-RefreshRuntime.performReactRefresh();
+function $RefreshIsReactComponentLike$(moduleExports) {
+  if (RefreshRuntime.isLikelyComponentType(moduleExports.default || moduleExports)) {
+    return true;
+  }
+  var hasComponentExports = false;
+  for (var key in moduleExports) {
+    if (!RefreshRuntime.isLikelyComponentType(moduleExports[key])) {
+      hasComponentExports = true;
+    }
+  }
+  return hasComponentExports;
+}
+if ($RefreshIsReactComponentLike$(module.exports)) {
+    module.meta.hot.accept();
+    RefreshRuntime.performReactRefresh();
+}
 "#
         .to_string(),
     })
