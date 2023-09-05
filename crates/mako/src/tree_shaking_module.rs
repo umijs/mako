@@ -283,20 +283,6 @@ impl TreeShakingModule {
         UsedIdentHashMap(stmt_used_ident_map)
     }
 
-    // fn get_available_ids(&self, recheck_ids: Vec<usize>) -> HashSet<usize> {
-    //     let (ref_stmt_ids, cycled_ids) = self.statement_graph.toposort(&recheck_ids);
-    //     let mut available_ids = HashSet::new();
-    //     for id in ref_stmt_ids {
-    //         available_ids.insert(id);
-    //     }
-    //     for ids in cycled_ids {
-    //         for id in ids {
-    //             available_ids.insert(id);
-    //         }
-    //     }
-    //     available_ids
-    // }
-
     fn analyze_statement_used_ident(
         &self,
         stmt_used_ident_map: &mut HashMap<usize, HashSet<UsedIdent>>,
@@ -797,6 +783,27 @@ export default function foo() {};
         );
         let mut tree_shaking_module = TreeShakingModule::new(&module);
         tree_shaking_module.used_exports.add_used_export(&"default");
+        tree_shaking_module.side_effects_flag = false;
+        let used: Vec<(usize, HashSet<UsedIdent>)> =
+            tree_shaking_module.get_used_export_statement().into();
+        assert_debug_snapshot!(&used);
+    }
+
+    #[test]
+    fn used_export_test_4() {
+        let module = create_mock_module(
+            PathBuf::from("/path/to/test.tsx"),
+            r#"
+import { a } from 'a';
+
+function b() {}
+b.a = a;
+
+export { a };
+"#,
+        );
+        let mut tree_shaking_module = TreeShakingModule::new(&module);
+        tree_shaking_module.used_exports.add_used_export(&"a");
         tree_shaking_module.side_effects_flag = false;
         let used: Vec<(usize, HashSet<UsedIdent>)> =
             tree_shaking_module.get_used_export_statement().into();
