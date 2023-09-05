@@ -179,13 +179,13 @@ impl Config {
         // default config
         let c = c.add_source(config::File::from_str(
             DEFAULT_CONFIG,
-            config::FileFormat::Json,
+            config::FileFormat::Json5,
         ));
         // default config from args
         let c = if let Some(default_config) = default_config {
             c.add_source(config::File::from_str(
                 default_config,
-                config::FileFormat::Json,
+                config::FileFormat::Json5,
             ))
         } else {
             c
@@ -194,7 +194,10 @@ impl Config {
         let c = c.add_source(config::File::with_name(abs_config_file).required(false));
         // cli config
         let c = if let Some(cli_config) = cli_config {
-            c.add_source(config::File::from_str(cli_config, config::FileFormat::Json))
+            c.add_source(config::File::from_str(
+                cli_config,
+                config::FileFormat::Json5,
+            ))
         } else {
             c
         };
@@ -235,7 +238,7 @@ impl Default for Config {
         let c = config::Config::builder();
         let c = c.add_source(config::File::from_str(
             DEFAULT_CONFIG,
-            config::FileFormat::Json,
+            config::FileFormat::Json5,
         ));
         let c = c.build().unwrap();
         c.try_deserialize::<Config>().unwrap()
