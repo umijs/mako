@@ -99,6 +99,7 @@ async fn main() {
 
     // compiler
     let compiler = compiler::Compiler::new(config, root.clone(), Args { watch: cli.watch });
+    compiler.clean_dist();
     compiler.compile();
 
     if cli.watch {

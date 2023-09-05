@@ -53,6 +53,7 @@ pub async fn build(
     let config = Config::new(&root, Some(&default_config), None).unwrap();
 
     let compiler = Compiler::new(config, root.clone(), Args { watch });
+    compiler.clean_dist();
     compiler.compile();
     if watch {
         let d = DevServer::new(root.clone(), Arc::new(compiler));
