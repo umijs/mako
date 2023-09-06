@@ -3,7 +3,7 @@
     "enabled": true,
     "ignore": [
       "./examples/**/dist/*", "./.vscode/**", "node_modules/**", "target/**",
-      "./crates/node/index.js", "./crates/node/index.d.ts"
+      "./crates/node/index.js", "./crates/node/index.d.ts", "./test/**/dist/*"
     ],
     "indentStyle": "space",
     "indentSize": 2,

@@ -9,6 +9,7 @@ use crate::module_graph::ModuleGraph;
 
 pub type ChunkId = ModuleId;
 
+#[derive(PartialEq, Eq)]
 pub enum ChunkType {
     #[allow(dead_code)]
     Runtime,
@@ -82,10 +83,6 @@ impl Chunk {
 
     pub fn get_modules(&self) -> &IndexSet<ModuleId> {
         &self.modules
-    }
-
-    pub fn mut_modules(&mut self) -> &mut IndexSet<ModuleId> {
-        &mut self.modules
     }
 
     pub fn remove_module(&mut self, module_id: &ModuleId) {
