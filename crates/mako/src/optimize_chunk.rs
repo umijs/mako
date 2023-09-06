@@ -210,7 +210,7 @@ impl Compiler {
         // continue split chunk if chunk size is greater than max_size
         let mut extra_optimize_infos = vec![];
         let module_graph = self.context.module_graph.read().unwrap();
-        for mut info in &mut *optimize_chunks_infos {
+        for info in &mut *optimize_chunks_infos {
             let mut split_chunk_count = 0;
             let mut chunk_size = *chunk_size_map.get(&info.group_options.name).unwrap();
 
@@ -348,7 +348,7 @@ impl Compiler {
         chunk_type: &ChunkType,
     ) -> bool {
         match allow_chunks {
-            OptimizeAllowChunks::Entry => chunk_type == &ChunkType::Entry,
+            OptimizeAllowChunks::Entry => matches!(chunk_type, &ChunkType::Entry(_)),
             OptimizeAllowChunks::Async => chunk_type == &ChunkType::Async,
         }
     }

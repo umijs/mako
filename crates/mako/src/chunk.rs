@@ -9,11 +9,11 @@ use crate::module_graph::ModuleGraph;
 
 pub type ChunkId = ModuleId;
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq)]
 pub enum ChunkType {
     #[allow(dead_code)]
     Runtime,
-    Entry,
+    Entry(ModuleId),
     Async,
     // mean that the chunk is not async, but it's a dependency of an async chunk
     Sync,
@@ -39,10 +39,10 @@ impl Chunk {
     }
 
     pub fn filename(&self) -> String {
-        match self.chunk_type {
+        match &self.chunk_type {
             ChunkType::Runtime => "runtime.js".into(),
             // foo/bar.tsx -> bar.js
-            ChunkType::Entry => {
+            ChunkType::Entry(_) => {
                 let id = self.id.id.clone();
                 let basename = Path::new(&id)
                     .file_stem()
@@ -85,6 +85,10 @@ impl Chunk {
         &self.modules
     }
 
+    pub fn mut_modules(&mut self) -> &mut IndexSet<ModuleId> {
+        &mut self.modules
+    }
+
     pub fn remove_module(&mut self, module_id: &ModuleId) {
         self.modules.shift_remove(module_id);
     }
@@ -115,7 +119,8 @@ mod tests {
 
     #[test]
     fn test_filename() {
-        let chunk = Chunk::new(ModuleId::new("foo/bar.tsx".into()), ChunkType::Entry);
+        let module_id = ModuleId::new("foo/bar.tsx".into());
+        let chunk = Chunk::new(module_id.clone(), ChunkType::Entry(module_id));
         assert_eq!(chunk.filename(), "bar.js");
 
         let chunk = Chunk::new(ModuleId::new("./foo/bar.tsx".into()), ChunkType::Async);
