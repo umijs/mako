@@ -28,6 +28,14 @@ pub enum Content {
 }
 
 impl Content {
+    pub fn raw(&self) -> String {
+        match self {
+            Content::Js(content)
+            | Content::Css(content)
+            | Content::Assets(Asset { content, .. }) => content.clone(),
+        }
+    }
+
     pub fn raw_hash(&self) -> u64 {
         let mut hasher: XxHash64 = Default::default();
         match self {

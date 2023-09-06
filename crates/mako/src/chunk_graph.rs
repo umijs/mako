@@ -41,10 +41,6 @@ impl ChunkGraph {
         self.graph.node_weights().collect()
     }
 
-    pub fn mut_chunks(&mut self) -> Vec<&mut Chunk> {
-        self.graph.node_weights_mut().collect()
-    }
-
     pub fn get_chunk_by_name(&self, name: &String) -> Option<&Chunk> {
         self.graph.node_weights().find(|c| c.filename().eq(name))
     }
@@ -56,6 +52,13 @@ impl ChunkGraph {
     pub fn chunk(&self, chunk_id: &ChunkId) -> Option<&Chunk> {
         match self.id_index_map.get(chunk_id) {
             Some(idx) => self.graph.node_weight(*idx),
+            None => None,
+        }
+    }
+
+    pub fn mut_chunk(&mut self, chunk_id: &ChunkId) -> Option<&mut Chunk> {
+        match self.id_index_map.get(chunk_id) {
+            Some(idx) => self.graph.node_weight_mut(*idx),
             None => None,
         }
     }
@@ -88,6 +91,20 @@ impl ChunkGraph {
             .filter(|idx| matches!(self.graph[*idx].chunk_type, ChunkType::Sync))
             .map(|idx| self.graph[idx].id.clone())
             .collect::<Vec<ChunkId>>()
+    }
+
+    pub fn entry_dependencies_chunk(&self, chunk: &Chunk) -> Vec<ChunkId> {
+        let idx = self.id_index_map.get(&chunk.id).unwrap();
+        self.graph
+            .neighbors_directed(*idx, Direction::Incoming)
+            .filter(|idx| matches!(self.graph[*idx].chunk_type, ChunkType::Entry))
+            .map(|idx| self.graph[idx].id.clone())
+            .collect::<Vec<ChunkId>>()
+    }
+
+    pub fn remove_chunk(&mut self, chunk_id: &ChunkId) {
+        let idx = self.id_index_map.remove(chunk_id).unwrap();
+        self.graph.remove_node(idx);
     }
 }
 
