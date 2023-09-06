@@ -1,8 +1,10 @@
 use regex::Regex;
 
-use crate::chunk::{Chunk, ChunkType};
+use crate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::compiler::Compiler;
+use crate::module::ModuleId;
 
+#[derive(Clone)]
 pub enum OptimizeAllowChunks {
     // All,
     Entry,
@@ -14,6 +16,7 @@ pub struct OptimizeChunkOptions {
     pub groups: Vec<OptimizeChunkGroup>,
 }
 
+#[derive(Clone)]
 pub struct OptimizeChunkGroup {
     pub name: String,
     pub allow_chunks: OptimizeAllowChunks,
@@ -24,9 +27,31 @@ pub struct OptimizeChunkGroup {
     pub priority: Option<i8>,
 }
 
+pub struct OptimizeChunksInfo {
+    pub group_options: OptimizeChunkGroup,
+    pub chunk_modules: Vec<OptimizeChunkModule>,
+}
+
+pub struct OptimizeChunkModule {
+    pub module_id: ModuleId,
+    pub chunk_ids: Vec<ChunkId>,
+}
+
 impl Compiler {
     pub fn optimize_chunk(&self) {
         if let Some(optimize_options) = self.get_optimize_chunk_options() {
+            // stage: prepare
+            let mut optimize_chunks_infos = optimize_options
+                .groups
+                .iter()
+                .map(|group| OptimizeChunksInfo {
+                    group_options: group.clone(),
+                    chunk_modules: vec![],
+                })
+                .collect::<Vec<_>>();
+
+            optimize_chunks_infos.sort_by_key(|o| -o.group_options.priority.unwrap_or(0));
+
             // stage: deasync
             self.merge_minimal_async_chunks(&optimize_options);
         }
@@ -71,6 +96,8 @@ impl Compiler {
             chunk_graph.remove_chunk(&chunk_id);
         }
     }
+
+    /* the following is util methods */
 
     fn get_chunk_size(&self, chunk: &Chunk) -> usize {
         let module_graph = self.context.module_graph.read().unwrap();
