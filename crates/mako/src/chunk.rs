@@ -9,6 +9,7 @@ use crate::module_graph::ModuleGraph;
 
 pub type ChunkId = ModuleId;
 
+#[derive(PartialEq, Eq)]
 pub enum ChunkType {
     #[allow(dead_code)]
     Runtime,
