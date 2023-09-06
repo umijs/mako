@@ -67,6 +67,9 @@ impl Compiler {
 
             // stage: size
             self.optimize_chunk_size(&mut optimize_chunks_infos);
+
+            // stage: apply
+            self.apply_optimize_infos(&optimize_chunks_infos);
         }
     }
 
@@ -297,6 +300,44 @@ impl Compiler {
 
         // add extra optimize infos
         optimize_chunks_infos.extend(extra_optimize_infos);
+    }
+
+    fn apply_optimize_infos(&self, optimize_chunks_infos: &Vec<OptimizeChunksInfo>) {
+        let mut edges = HashMap::new();
+        let mut chunk_graph = self.context.chunk_graph.write().unwrap();
+        for info in optimize_chunks_infos {
+            // create new chunk
+            let info_chunk_id = ChunkId {
+                id: info.group_options.name.clone(),
+            };
+            let info_chunk = Chunk {
+                modules: info
+                    .chunk_modules
+                    .iter()
+                    .map(|cm| cm.module_id.clone())
+                    .collect::<IndexSet<_>>(),
+                id: info_chunk_id.clone(),
+                chunk_type: ChunkType::Sync,
+                content: None,
+                source_map: None,
+            };
+            chunk_graph.add_chunk(info_chunk);
+
+            // remove modules from original chunks and add edge to new chunk
+            for chunk_module in &info.chunk_modules {
+                for chunk_id in &chunk_module.chunk_ids {
+                    let chunk = chunk_graph.mut_chunk(chunk_id).unwrap();
+
+                    chunk.remove_module(&chunk_module.module_id);
+                    edges.insert(chunk_id.clone(), info_chunk_id.clone());
+                }
+            }
+
+            // add edge to original chunks
+            for (from, to) in edges.iter() {
+                chunk_graph.add_edge(from, to);
+            }
+        }
     }
 
     /* the following is util methods */
