@@ -92,14 +92,23 @@ pub enum CodeSplittingStrategy {
     #[serde(rename = "none")]
     None,
 }
+#[derive(Deserialize, Clone, Copy, Debug)]
+pub enum TreeShakeStrategy {
+    #[serde(rename = "basic")]
+    Basic,
+    #[serde(rename = "advance")]
+    Advance,
+    #[serde(rename = "none")]
+    None,
+}
 
 #[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct Config {
     pub entry: HashMap<String, PathBuf>,
     pub output: OutputConfig,
     pub resolve: ResolveConfig,
     pub manifest: bool,
-    #[serde(rename = "manifestConfig")]
     pub manifest_config: ManifestConfig,
     pub mode: Mode,
     pub minify: bool,
@@ -107,29 +116,24 @@ pub struct Config {
     pub externals: HashMap<String, String>,
     pub providers: Providers,
     pub copy: Vec<String>,
-    #[serde(rename = "publicPath")]
     pub public_path: String,
-    #[serde(rename = "inlineLimit")]
     pub inline_limit: usize,
     pub targets: HashMap<String, usize>,
     pub platform: Platform,
-    #[serde(rename = "moduleIdStrategy")]
     pub module_id_strategy: ModuleIdStrategy,
     pub define: HashMap<String, Value>,
     pub stats: bool,
     pub mdx: bool,
     // temp solution
     pub hmr: bool,
-    #[serde(rename = "hmrPort")]
     pub hmr_port: String,
-    #[serde(rename = "hmrHost")]
     pub hmr_host: String,
-    #[serde(rename = "codeSplitting")]
     pub code_splitting: CodeSplittingStrategy,
     // temp flag
     #[serde(rename = "extractCSS")]
     pub extract_css: bool,
     pub hash: bool,
+    pub tree_shake: TreeShakeStrategy,
 }
 
 const CONFIG_FILE: &str = "mako.config.json";
@@ -159,7 +163,8 @@ const DEFAULT_CONFIG: &str = r#"
     "moduleIdStrategy": "named",
     "codeSplitting": "bigVendor",
     "extractCSS": false,
-    "hash": false
+    "hash": false,
+    "treeShake": "advance"
 }
 "#;
 

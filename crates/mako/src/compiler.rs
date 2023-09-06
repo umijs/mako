@@ -152,6 +152,7 @@ impl Compiler {
             Arc::new(plugins::yaml::YAMLPlugin {}),
             Arc::new(plugins::assets::AssetsPlugin {}),
             Arc::new(plugins::runtime::MakoRuntime {}),
+            Arc::new(plugins::farm_tree_shake::FarmTreeShake {}),
         ];
 
         let mut config = config;

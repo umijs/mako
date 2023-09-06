@@ -36,4 +36,12 @@ impl MakoRuntime {
             public_path
         )
     }
+
+    fn helper_runtime() {
+        let _helpers = [
+            "@swc/helpers/_/_interop_require_default",
+            "@swc/helpers/_/_interop_require_wildcard",
+            "@swc/helpers/_/_export_star",
+        ];
+    }
 }

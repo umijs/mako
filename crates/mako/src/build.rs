@@ -258,6 +258,10 @@ impl Compiler {
 
         let deps = deps_analyze_param.deps;
 
+        if task.path.contains("s/antd/es/button/index.js") {
+            dbg!(&deps);
+        }
+
         // resolve
         let mut dep_resolve_err = None;
         let mut dependencies_resource = Vec::new();

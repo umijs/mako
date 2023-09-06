@@ -81,6 +81,14 @@ fn transform_js(
                         top_level_mark,
                     ));
 
+                    // ast.visit_mut_with(&mut dce(
+                    //     DceConfig {
+                    //         top_level: false,
+                    //         ..Default::default()
+                    //     },
+                    //     unresolved_mark,
+                    // ));
+                    //
                     // indent.span needed in mako_react refresh, so it must be after resolver visitor
                     ast.visit_mut_with(&mut mako_react(
                         cm,

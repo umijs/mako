@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use base64::engine::{general_purpose, Engine};
 use pathdiff::diff_paths;
-use swc_common::Span;
+use swc_common::{Mark, Span};
 
 use crate::ast::Ast;
 use crate::compiler::Context;
@@ -151,9 +151,18 @@ impl ModuleAst {
             panic!("ModuleAst is not Script")
         }
     }
+
+    pub fn script_marks(&self) -> (Mark, Mark) {
+        if let Self::Script(script) = self {
+            (script.top_level_mark, script.unresolved_mark)
+        } else {
+            panic!("ModuleAst is not Script")
+        }
+    }
 }
 
 #[allow(dead_code)]
+#[derive(PartialEq)]
 pub enum ModuleType {
     Script,
     Css,
@@ -181,7 +190,7 @@ impl Module {
             id,
             is_entry,
             info,
-            side_effects: false,
+            side_effects: is_entry,
         }
     }
 

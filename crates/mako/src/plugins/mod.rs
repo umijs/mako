@@ -1,6 +1,7 @@
 pub mod assets;
 pub mod copy;
 pub mod css;
+pub mod farm_tree_shake;
 pub mod javascript;
 pub mod json;
 pub mod manifest;
