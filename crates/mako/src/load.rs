@@ -55,6 +55,8 @@ pub enum LoadError {
     ToSvgrError { path: String, reason: String },
     #[error("Compile md error: {path:?}, reason: {reason:?}")]
     CompileMdError { path: String, reason: String },
+    #[error("Compile less error: {path:?}, reason: {reason:?}")]
+    CompileLessError { path: String, reason: String },
 }
 
 pub fn load(request: &FileRequest, is_entry: bool, context: &Arc<Context>) -> Result<Content> {
