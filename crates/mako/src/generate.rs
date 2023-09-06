@@ -303,13 +303,16 @@ impl Compiler {
         let t_generate_hmr_chunk = Instant::now();
         let cg = self.context.chunk_graph.read().unwrap();
         for chunk_name in &modified_chunks {
+            let filename = to_hot_update_chunk_name(chunk_name, last_full_hash);
+
             if let Some(chunk) = cg.get_chunk_by_name(chunk_name) {
                 let modified_ids: IndexSet<ModuleId> =
                     IndexSet::from_iter(updated_modules.modified.iter().cloned());
-                let (code, ..) =
-                    self.generate_hmr_chunk(chunk, &modified_ids, current_full_hash)?;
+                let (code, sourcemap) =
+                    self.generate_hmr_chunk(chunk, &filename, &modified_ids, current_full_hash)?;
                 // TODO the final format should be {name}.{full_hash}.hot-update.{ext}
-                self.write_to_dist(to_hot_update_chunk_name(chunk_name, last_full_hash), code);
+                self.write_to_dist(&filename, code);
+                self.write_to_dist(format!("{}.map", &filename), sourcemap);
             }
         }
         let t_generate_hmr_chunk = t_generate_hmr_chunk.elapsed();
