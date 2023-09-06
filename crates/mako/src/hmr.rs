@@ -15,6 +15,7 @@ impl Compiler {
     pub fn generate_hmr_chunk(
         &self,
         chunk: &Chunk,
+        filename: &str,
         module_ids: &IndexSet<ModuleId>,
         current_hash: u64,
     ) -> Result<(String, String)> {
@@ -27,7 +28,6 @@ impl Compiler {
                 "__runtime_code__",
                 &format!("runtime._h='{}';", current_hash),
             );
-        let filename = &chunk.filename();
         // TODO: handle error
         let mut js_ast = build_js_ast(filename, content.as_str(), &self.context)
             .unwrap()
@@ -82,7 +82,9 @@ mod tests {
         let chunk = chunks[0];
         let module_ids = chunk.get_modules();
         transform_modules(module_ids.iter().cloned().collect(), &compiler.context).unwrap();
-        let (js_code, _js_sourcemap) = compiler.generate_hmr_chunk(chunk, module_ids, 42).unwrap();
+        let (js_code, _js_sourcemap) = compiler
+            .generate_hmr_chunk(chunk, "index.js", module_ids, 42)
+            .unwrap();
         let js_code = js_code.replace(
             compiler.context.root.to_string_lossy().to_string().as_str(),
             "",
