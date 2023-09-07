@@ -166,7 +166,7 @@ pub fn is_commonjs_require(call_expr: &CallExpr) -> bool {
     }
 }
 
-fn get_first_arg_str(call_expr: &CallExpr) -> Option<String> {
+pub fn get_first_arg_str(call_expr: &CallExpr) -> Option<String> {
     if let Some(arg) = call_expr.args.first() {
         if let box Expr::Lit(Lit::Str(str_)) = &arg.expr {
             return Some(str_.value.to_string());

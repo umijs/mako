@@ -30,6 +30,7 @@ use crate::transform_env_replacer::{build_env_map, EnvReplacer};
 use crate::transform_optimizer::Optimizer;
 use crate::transform_provide::Provide;
 use crate::transform_react::mako_react;
+use crate::transform_try_resolve::TryResolve;
 
 pub fn transform(
     ast: &mut ModuleAst,
@@ -44,6 +45,7 @@ pub fn transform(
             task,
             ast.top_level_mark,
             ast.unresolved_mark,
+            resolvers,
         ),
         ModuleAst::Css(ast) => transform_css(ast, context, task, resolvers),
         _ => Ok(()),
@@ -56,6 +58,7 @@ fn transform_js(
     task: &Task,
     top_level_mark: Mark,
     unresolved_mark: Mark,
+    resolvers: &Resolvers,
 ) -> Result<()> {
     let cm = context.meta.script.cm.clone();
     let mode = &context.config.mode.to_string();
@@ -94,6 +97,13 @@ fn transform_js(
 
                     let mut env_replacer = EnvReplacer::new(Lrc::new(env_map));
                     ast.visit_mut_with(&mut env_replacer);
+
+                    let mut try_resolve = TryResolve {
+                        path: task.path.clone(),
+                        resolvers,
+                        context,
+                    };
+                    ast.visit_mut_with(&mut try_resolve);
 
                     let mut provide = Provide::new(context.config.providers.clone());
                     ast.visit_mut_with(&mut provide);
@@ -167,6 +177,7 @@ mod tests {
     use crate::config::Config;
     use crate::module::ModuleId;
     use crate::module_graph::ModuleGraph;
+    use crate::resolve::get_resolvers;
     use crate::transform_dep_replacer::DependenciesToReplace;
     use crate::transform_in_generate::{transform_js_generate, TransformJsParam};
 
@@ -521,6 +532,7 @@ require("./bar");
             .insert("Buffer".into(), ("buffer".into(), "Buffer".into()));
 
         let root = PathBuf::from("/path/to/root");
+        let resolvers = get_resolvers(&config);
 
         let mut chunk_graph = ChunkGraph::new();
         chunk_graph.add_chunk(Chunk::new("./foo".to_string().into(), ChunkType::Async));
@@ -549,6 +561,7 @@ require("./bar");
             },
             ast.top_level_mark,
             ast.unresolved_mark,
+            &resolvers,
         )
         .unwrap();
         transform_js_generate(TransformJsParam {
