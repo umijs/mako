@@ -309,12 +309,15 @@ impl Compiler {
                 let (code, ..) =
                     self.generate_hmr_chunk(chunk, &modified_ids, current_full_hash)?;
                 // TODO the final format should be {name}.{full_hash}.hot-update.{ext}
-                self.write_to_dist(to_hot_update_chunk_name(chunk_name, last_full_hash), code);
+                self.write_to_hot_update_dir(
+                    to_hot_update_chunk_name(chunk_name, last_full_hash),
+                    code,
+                );
             }
         }
         let t_generate_hmr_chunk = t_generate_hmr_chunk.elapsed();
 
-        self.write_to_dist(
+        self.write_to_hot_update_dir(
             format!("{}.hot-update.json", last_full_hash),
             serde_json::to_string(&HotUpdateManifest {
                 removed_chunks,
@@ -342,15 +345,28 @@ impl Compiler {
         Ok(current_full_hash)
     }
 
-    pub fn write_to_dist<P: AsRef<std::path::Path>, C: AsRef<[u8]>>(
+    // pub fn write_to_dist<P: AsRef<std::path::Path>, C: AsRef<[u8]>>(
+    //     &self,
+    //     filename: P,
+    //     content: C,
+    // ) {
+    //     let to = self.context.config.output.path.join(filename);
+
+    //     std::fs::write(to, content).unwrap();
+    // }
+
+    pub fn write_to_hot_update_dir<P: AsRef<std::path::Path>, C: AsRef<[u8]>>(
         &self,
         filename: P,
         content: C,
     ) {
-        let to = self.context.config.output.path.join(filename);
-
-        std::fs::write(to, content).unwrap();
+        let hmr_dir = self.context.root.join("node_modules/.mako/hot_update");
+        if !hmr_dir.exists() {
+            fs::create_dir_all(&hmr_dir).unwrap();
+        }
+        std::fs::write(hmr_dir.join(filename), content).unwrap();
     }
+
     // 写入产物前记录 content 大小, 并加上 hash 值
     pub fn write_to_dist_with_stats(&self, file: EmitFile) {
         let to: PathBuf = self.context.config.output.path.join(file.hashname.clone());
