@@ -30,8 +30,7 @@ impl VisitMut for TryResolve<'_> {
                 {
                     if is_commonjs_require(call_expr) {
                         let first_arg = get_first_arg_str(call_expr);
-                        if first_arg.is_some() {
-                            let source = first_arg.unwrap();
+                        if let Some(source) = first_arg {
                             let result = resolve::resolve(
                                 self.path.as_str(),
                                 &Dependency {
