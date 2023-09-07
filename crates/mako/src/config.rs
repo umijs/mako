@@ -96,8 +96,8 @@ pub enum CodeSplittingStrategy {
 pub enum TreeShakeStrategy {
     #[serde(rename = "basic")]
     Basic,
-    #[serde(rename = "advance")]
-    Advance,
+    #[serde(rename = "advanced")]
+    Advanced,
     #[serde(rename = "none")]
     None,
 }

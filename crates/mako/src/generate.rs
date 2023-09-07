@@ -58,7 +58,7 @@ impl Compiler {
                     let t_tree_shaking = t_tree_shaking.elapsed();
                     println!("basic optimize in {}ms.", t_tree_shaking.as_millis());
                 }
-                TreeShakeStrategy::Advance => {
+                TreeShakeStrategy::Advanced => {
                     let shaking_module_ids = self.tree_shaking();
                     let t_tree_shaking = t_tree_shaking.elapsed();
                     println!(
