@@ -167,7 +167,7 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) {
                                 ast.ast.visit_mut_with(&mut async_module);
                             }
 
-                            if is_entry && is_dev && context.config.hmr {
+                            if is_entry && is_dev && context.args.watch && context.config.hmr {
                                 ast.ast
                                     .visit_mut_with(&mut react_refresh_entry_prefix(context));
                             }
