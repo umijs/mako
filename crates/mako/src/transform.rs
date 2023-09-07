@@ -98,12 +98,15 @@ fn transform_js(
                     let mut env_replacer = EnvReplacer::new(Lrc::new(env_map));
                     ast.visit_mut_with(&mut env_replacer);
 
-                    let mut try_resolve = TryResolve {
-                        path: task.path.clone(),
-                        resolvers,
-                        context,
-                    };
-                    ast.visit_mut_with(&mut try_resolve);
+                    // watch 模式下全部会走 missing 然后转 throw error，无需提前转换
+                    if !context.args.watch {
+                        let mut try_resolve = TryResolve {
+                            path: task.path.clone(),
+                            resolvers,
+                            context,
+                        };
+                        ast.visit_mut_with(&mut try_resolve);
+                    }
 
                     let mut provide = Provide::new(context.config.providers.clone());
                     ast.visit_mut_with(&mut provide);
