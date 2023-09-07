@@ -54,7 +54,7 @@ impl Compiler {
             chunks
                 .iter()
                 .filter_map(|chunk| match chunk.chunk_type {
-                    crate::chunk::ChunkType::Async | crate::chunk::ChunkType::Entry => {
+                    crate::chunk::ChunkType::Async | crate::chunk::ChunkType::Entry(_) => {
                         let module_ids = chunk.get_modules();
                         let module_ids: Vec<_> = module_ids.iter().collect();
 
@@ -71,7 +71,7 @@ impl Compiler {
                                         );
 
                                         match chunk.chunk_type {
-                                            crate::chunk::ChunkType::Entry => {
+                                            crate::chunk::ChunkType::Entry(_) => {
                                                 return Some(format!(
                                                     "installedChunks['{}'] = 0;\n{}",
                                                     chunk.id.generate(&self.context),
@@ -115,62 +115,65 @@ impl Compiler {
                 let (js_stmts, merged_css_ast) = stmts_res.unwrap();
 
                 // build js ast
-                let mut content = if matches!(chunk.chunk_type, crate::chunk::ChunkType::Entry) {
-                    let chunks_ids = chunk_graph
-                        .sync_dependencies_chunk(chunk)
-                        .into_iter()
-                        .map(|chunk| chunk.generate(&self.context))
-                        .collect::<Vec<String>>();
-
-                    let code = format!(
-                        "{}\n{}",
-                        chunks_map_str,
-                        compile_runtime_entry(
-                            self.context
-                                .assets_info
-                                .lock()
-                                .unwrap()
-                                .values()
-                                .any(|info| info.ends_with(".wasm")),
-                            self.context
-                                .module_graph
-                                .read()
-                                .unwrap()
-                                .modules()
-                                .iter()
-                                .any(|module| module.info.as_ref().unwrap().is_async),
-                        )
-                    )
-                    .replace("_%full_hash%_", &full_hash.to_string())
-                    .replace(
-                        "// __inject_runtime_code__",
-                        &self
-                            .context
-                            .plugin_driver
-                            .runtime_plugins_code(&self.context)?,
-                    )
-                    .replace("// __CSS_CHUNKS_URL_MAP", &css_chunks_map_str.to_string());
-
-                    if !chunks_ids.is_empty() {
-                        let ensures = chunks_ids
+                let content = match &chunk.chunk_type {
+                    crate::chunk::ChunkType::Entry(module_id) => {
+                        let chunks_ids = chunk_graph
+                            .sync_dependencies_chunk(chunk)
                             .into_iter()
-                            .map(|id| format!("requireModule.ensure(\"{}\")", id))
-                            .collect::<Vec<String>>()
-                            .join(", ");
+                            .map(|chunk| chunk.generate(&self.context))
+                            .collect::<Vec<String>>();
 
-                        code.replace(
-                            "// __BEFORE_ENTRY",
-                            format!("Promise.all([{}]).then(()=>{{", ensures).as_str(),
+                        let code = format!(
+                            "{}\n{}",
+                            chunks_map_str,
+                            compile_runtime_entry(
+                                self.context
+                                    .assets_info
+                                    .lock()
+                                    .unwrap()
+                                    .values()
+                                    .any(|info| info.ends_with(".wasm")),
+                                self.context
+                                    .module_graph
+                                    .read()
+                                    .unwrap()
+                                    .modules()
+                                    .iter()
+                                    .any(|module| module.info.as_ref().unwrap().is_async),
+                            )
                         )
-                        .replace("// __AFTER_ENTRY", "});")
-                    } else {
-                        code
+                        .replace("_%full_hash%_", &full_hash.to_string())
+                        .replace(
+                            "// __inject_runtime_code__",
+                            &self
+                                .context
+                                .plugin_driver
+                                .runtime_plugins_code(&self.context)?,
+                        )
+                        .replace("// __CSS_CHUNKS_URL_MAP", &css_chunks_map_str.to_string())
+                        .replace("_%main%_", module_id.generate(&self.context).as_str());
+
+                        if !chunks_ids.is_empty() {
+                            let ensures = chunks_ids
+                                .into_iter()
+                                .map(|id| format!("requireModule.ensure(\"{}\")", id))
+                                .collect::<Vec<String>>()
+                                .join(", ");
+
+                            code.replace(
+                                "// __BEFORE_ENTRY",
+                                format!("Promise.all([{}]).then(()=>{{", ensures).as_str(),
+                            )
+                            .replace("// __AFTER_ENTRY", "});")
+                        } else {
+                            code
+                        }
                     }
-                } else {
-                    include_str!("runtime/runtime_chunk.js").to_string()
+                    _ => include_str!("runtime/runtime_chunk.js")
+                        .to_string()
+                        .replace("_%main%_", chunk.id.generate(&self.context).as_str()),
                 };
-                content = content.replace("_%main%_", chunk.id.generate(&self.context).as_str());
-                let file_name = if matches!(chunk.chunk_type, crate::chunk::ChunkType::Entry) {
+                let file_name = if matches!(chunk.chunk_type, crate::chunk::ChunkType::Entry(_)) {
                     "mako_internal_runtime_entry.js"
                 } else {
                     "mako_internal_runtime_chunk.js"
@@ -178,7 +181,7 @@ impl Compiler {
                 // TODO: handle error
                 let mut js_ast = build_js_ast(file_name, content.as_str(), &self.context).unwrap();
                 for stmt in &mut js_ast.ast.body {
-                    // const runtime = createRuntime({}, 'main');
+                    // const runtime = createRuntime({ }, 'main');
                     if let ModuleItem::Stmt(Stmt::Decl(Decl::Var(box VarDecl { decls, .. }))) = stmt
                     {
                         if decls.len() != 1 {
