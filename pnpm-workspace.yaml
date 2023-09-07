@@ -2,3 +2,4 @@ packages:
   - 'examples/*'
   - 'crates/node'
   - 'packages/*'
+  - 'crates/mako/test/compile/auto-code-splitting'

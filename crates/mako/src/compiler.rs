@@ -143,6 +143,7 @@ impl Compiler {
             Arc::new(plugins::copy::CopyPlugin {}),
             // file types
             Arc::new(plugins::css::CSSPlugin {}),
+            Arc::new(plugins::less::LessPlugin {}),
             Arc::new(plugins::javascript::JavaScriptPlugin {}),
             Arc::new(plugins::json::JSONPlugin {}),
             Arc::new(plugins::md::MdPlugin {}),
@@ -534,6 +535,28 @@ mod tests {
         assert!(
             index_js_content.contains("cssChunksIdToUrlMap[\"./a.ts\"]"),
             "css async chunk works"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_auto_code_splitting() {
+        let (files, _file_contents) = compile("test/compile/auto-code-splitting");
+        println!("{:?}", files);
+
+        assert!(
+            !files.contains(&"should-be-merge_ts-async.js".to_string()),
+            "minimal async chunk should be merged"
+        );
+
+        assert!(
+            files.contains(&"vendors-async.js".to_string()),
+            "entry dependencies should be split to vendors"
+        );
+
+        assert!(
+            files.contains(&"vendors_dynamic_0-async.js".to_string())
+                && files.contains(&"vendors_dynamic_1-async.js".to_string()),
+            "big vendors should be split again"
         );
     }
 }

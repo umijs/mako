@@ -35,6 +35,7 @@ pub struct ModuleInfo {
     pub ast: ModuleAst,
     pub path: String,
     pub external: Option<String>,
+    pub raw: String,
     pub raw_hash: u64,
     pub missing_deps: HashMap<String, Dependency>,
     pub ignored_deps: Vec<String>,
@@ -207,6 +208,12 @@ impl Module {
             ModuleAst::Css(_) => ModuleType::Css,
             ModuleAst::None => todo!(),
         }
+    }
+
+    pub fn get_module_size(&self) -> usize {
+        let info = self.info.as_ref().unwrap();
+
+        info.raw.as_bytes().len()
     }
 }
 

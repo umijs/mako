@@ -60,6 +60,10 @@ impl Compiler {
         self.group_chunk();
         let t_group_chunks = t_group_chunks.elapsed();
 
+        let t_optimize_chunks = Instant::now();
+        self.optimize_chunk();
+        let t_optimize_chunks = t_optimize_chunks.elapsed();
+
         // 为啥单独提前 transform modules？
         // 因为放 chunks 的循环里，一个 module 可能存在于多个 chunk 里，可能会被编译多遍
         let t_transform_modules = Instant::now();
@@ -151,6 +155,7 @@ impl Compiler {
         debug!("generate done in {}ms", t_generate.elapsed().as_millis());
         debug!("  - tree shaking: {}ms", t_tree_shaking.as_millis());
         debug!("  - group chunks: {}ms", t_group_chunks.as_millis());
+        debug!("  - optimize chunks: {}ms", t_optimize_chunks.as_millis());
         debug!(
             "  - transform modules: {}ms",
             t_transform_modules.as_millis()
@@ -246,6 +251,10 @@ impl Compiler {
         self.group_chunk();
         let t_group_chunks = t_group_chunks.elapsed();
 
+        let t_optimize_chunks = Instant::now();
+        self.optimize_chunk();
+        let t_optimize_chunks = t_optimize_chunks.elapsed();
+
         let t_transform_modules = Instant::now();
         self.transform_for_change(&updated_modules)?;
         let t_transform_modules = t_transform_modules.elapsed();
@@ -303,16 +312,16 @@ impl Compiler {
         let t_generate_hmr_chunk = Instant::now();
         let cg = self.context.chunk_graph.read().unwrap();
         for chunk_name in &modified_chunks {
+            let filename = to_hot_update_chunk_name(chunk_name, last_full_hash);
+
             if let Some(chunk) = cg.get_chunk_by_name(chunk_name) {
                 let modified_ids: IndexSet<ModuleId> =
                     IndexSet::from_iter(updated_modules.modified.iter().cloned());
-                let (code, ..) =
-                    self.generate_hmr_chunk(chunk, &modified_ids, current_full_hash)?;
+                let (code, sourcemap) =
+                    self.generate_hmr_chunk(chunk, &filename, &modified_ids, current_full_hash)?;
                 // TODO the final format should be {name}.{full_hash}.hot-update.{ext}
-                self.write_to_hot_update_dir(
-                    to_hot_update_chunk_name(chunk_name, last_full_hash),
-                    code,
-                );
+                self.write_to_hot_update_dir(&filename, code);
+                self.write_to_hot_update_dir(format!("{}.map", &filename), sourcemap);
             }
         }
         let t_generate_hmr_chunk = t_generate_hmr_chunk.elapsed();
@@ -331,6 +340,7 @@ impl Compiler {
             t_generate.elapsed().as_millis()
         );
         debug!("  - group chunks: {}ms", t_group_chunks.as_millis());
+        debug!("  - optimize chunks: {}ms", t_optimize_chunks.as_millis());
         debug!(
             "  - transform modules: {}ms",
             t_transform_modules.as_millis()
