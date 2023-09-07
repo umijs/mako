@@ -186,6 +186,7 @@ fn noop() -> Box<dyn VisitMut> {
 
 #[cfg(test)]
 mod tests {
+
     use std::sync::Arc;
 
     use swc_common::{chain, Mark, GLOBALS};
@@ -195,7 +196,7 @@ mod tests {
     use crate::assert_display_snapshot;
     use crate::ast::build_js_ast;
     use crate::build::Task;
-    use crate::compiler::Context;
+    use crate::compiler::{Args, Context};
     use crate::test_helper::transform_ast_with;
     use crate::transform_react::mako_react;
 
@@ -233,7 +234,10 @@ mod tests {
     }
 
     fn transform(task: TransformTask) -> String {
-        let context: Arc<Context> = Arc::new(Default::default());
+        let context: Arc<Context> = Arc::new(Context {
+            args: Args { watch: true },
+            ..Default::default()
+        });
 
         GLOBALS.set(&context.meta.script.globals, || {
             let mut ast = build_js_ast("index.jsx", &task.code, &context).unwrap();
