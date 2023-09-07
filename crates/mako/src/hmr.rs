@@ -67,7 +67,7 @@ impl Compiler {
 #[cfg(test)]
 mod tests {
     use crate::assert_debug_snapshot;
-    use crate::compiler::Compiler;
+    use crate::compiler::{Args, Compiler};
     use crate::config::Config;
     use crate::transform_in_generate::transform_modules;
 
@@ -98,6 +98,6 @@ mod tests {
         let current_dir = std::env::current_dir().unwrap();
         let root = current_dir.join(base);
         let config = Config::new(&root, None, None).unwrap();
-        Compiler::new(config, root, Default::default())
+        Compiler::new(config, root, Args { watch: true })
     }
 }
