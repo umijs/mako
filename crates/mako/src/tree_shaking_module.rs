@@ -321,11 +321,18 @@ impl TreeShakingModule {
                             ExportSpecifier::Default => {
                                 used_ident.push((UsedIdent::Default, export_statement.id));
                             }
-                            ExportSpecifier::Named { local, .. } => {
-                                used_ident.push((
-                                    UsedIdent::SwcIdent(local.clone()),
-                                    export_statement.id,
-                                ));
+                            ExportSpecifier::Named { local, exported } => {
+                                if let Some(exported) = exported {
+                                    used_ident.push((
+                                        UsedIdent::SwcIdent(exported.clone()),
+                                        export_statement.id,
+                                    ));
+                                } else {
+                                    used_ident.push((
+                                        UsedIdent::SwcIdent(local.clone()),
+                                        export_statement.id,
+                                    ));
+                                }
                             }
                             ExportSpecifier::Namespace(ns) => {
                                 used_ident
@@ -811,6 +818,23 @@ export { a };
         );
         let mut tree_shaking_module = TreeShakingModule::new(&module);
         tree_shaking_module.used_exports.add_used_export(&"a");
+        tree_shaking_module.side_effects_flag = false;
+        let used: Vec<(usize, HashSet<UsedIdent>)> =
+            tree_shaking_module.get_used_export_statement().into();
+        assert_debug_snapshot!(&used);
+    }
+
+    #[test]
+    fn used_export_test_5() {
+        let module = create_mock_module(
+            PathBuf::from("/path/to/test.tsx"),
+            r#"
+export { default as b } from 'b';
+export { default as a } from 'a';
+"#,
+        );
+        let mut tree_shaking_module = TreeShakingModule::new(&module);
+        tree_shaking_module.used_exports = UsedExports::All;
         tree_shaking_module.side_effects_flag = false;
         let used: Vec<(usize, HashSet<UsedIdent>)> =
             tree_shaking_module.get_used_export_statement().into();
