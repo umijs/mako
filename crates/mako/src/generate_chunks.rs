@@ -169,7 +169,9 @@ impl Compiler {
                             code
                         }
                     }
-                    _ => include_str!("runtime/runtime_chunk.js").to_string(),
+                    _ => include_str!("runtime/runtime_chunk.js")
+                        .to_string()
+                        .replace("_%main%_", chunk.id.generate(&self.context).as_str()),
                 };
                 let file_name = if matches!(chunk.chunk_type, crate::chunk::ChunkType::Entry(_)) {
                     "mako_internal_runtime_entry.js"
@@ -179,7 +181,7 @@ impl Compiler {
                 // TODO: handle error
                 let mut js_ast = build_js_ast(file_name, content.as_str(), &self.context).unwrap();
                 for stmt in &mut js_ast.ast.body {
-                    // const runtime = createRuntime({}, 'main');
+                    // const runtime = createRuntime({ }, 'main');
                     if let ModuleItem::Stmt(Stmt::Decl(Decl::Var(box VarDecl { decls, .. }))) = stmt
                     {
                         if decls.len() != 1 {
