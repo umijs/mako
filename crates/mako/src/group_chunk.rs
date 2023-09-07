@@ -26,8 +26,12 @@ impl Compiler {
 
         let entries = module_graph.get_entry_modules();
         for entry in entries {
-            let (chunk, dynamic_dependencies) =
-                self.create_chunk(&entry, ChunkType::Entry, &mut chunk_graph, vec![]);
+            let (chunk, dynamic_dependencies) = self.create_chunk(
+                &entry,
+                ChunkType::Entry(entry.clone()),
+                &mut chunk_graph,
+                vec![],
+            );
             let chunk_name = chunk.filename();
             visited.borrow_mut().insert(chunk.id.clone());
             edges.extend(
