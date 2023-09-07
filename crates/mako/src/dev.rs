@@ -192,7 +192,16 @@ impl ProjectWatch {
 
         tokio::spawn(async move {
             watch(&root, |events| {
+                println!("Compiling...");
                 let res = watch_compiler.update(events.into());
+                let has_no_missing_deps = {
+                    watch_compiler
+                        .context
+                        .modules_with_missing_deps
+                        .read()
+                        .unwrap()
+                        .is_empty()
+                };
 
                 match res {
                     Err(err) => {
@@ -211,14 +220,16 @@ impl ProjectWatch {
                     }
                     Ok(res) => {
                         if res.is_updated() {
-                            println!("Compiling...");
                             let t_compiler = Instant::now();
                             let next_full_hash =
                                 watch_compiler.generate_hot_update_chunks(res, *last_full_hash);
-                            println!(
-                                "Hot rebuilt in {}",
-                                format!("{}ms", t_compiler.elapsed().as_millis()).bold()
-                            );
+
+                            if has_no_missing_deps {
+                                println!(
+                                    "Hot rebuilt in {}",
+                                    format!("{}ms", t_compiler.elapsed().as_millis()).bold()
+                                );
+                            }
 
                             if let Err(e) = next_full_hash {
                                 eprintln!("Error in watch: {:?}", e);
@@ -244,10 +255,12 @@ impl ProjectWatch {
                                 debug!("Error in build: {:?}, will rebuild soon", e);
                                 return;
                             }
-                            println!(
-                                "Full rebuilt in {}",
-                                format!("{}ms", t_compiler.elapsed().as_millis()).bold()
-                            );
+                            if has_no_missing_deps {
+                                println!(
+                                    "Full rebuilt in {}",
+                                    format!("{}ms", t_compiler.elapsed().as_millis()).bold()
+                                );
+                            }
 
                             debug!("receiver count: {}", tx.receiver_count());
                             if tx.receiver_count() > 0 {

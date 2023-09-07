@@ -204,6 +204,21 @@ impl Compiler {
                     resolvers.clone(),
                 )?;
 
+                // update modules_with_missing_deps
+                if module.info.clone().unwrap().missing_deps.is_empty() {
+                    self.context
+                        .modules_with_missing_deps
+                        .write()
+                        .unwrap()
+                        .retain(|id| id != &module.id.id);
+                } else {
+                    self.context
+                        .modules_with_missing_deps
+                        .write()
+                        .unwrap()
+                        .push(module.id.id.clone());
+                }
+
                 // diff
                 let module_graph = self.context.module_graph.read().unwrap();
                 let current_dependencies: Vec<(ModuleId, Dependency)> = module_graph

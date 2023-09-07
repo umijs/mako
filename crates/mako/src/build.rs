@@ -124,12 +124,20 @@ impl Compiler {
                     let t = Instant::now();
 
                     // record modules with missing deps
-                    if !module.info.clone().unwrap().missing_deps.is_empty() {
-                        self.context
-                            .modules_with_missing_deps
-                            .write()
-                            .unwrap()
-                            .push(module.id.id.clone());
+                    if self.context.args.watch {
+                        if module.info.clone().unwrap().missing_deps.is_empty() {
+                            self.context
+                                .modules_with_missing_deps
+                                .write()
+                                .unwrap()
+                                .retain(|id| id != &module.id.id);
+                        } else {
+                            self.context
+                                .modules_with_missing_deps
+                                .write()
+                                .unwrap()
+                                .push(module.id.id.clone());
+                        }
                     }
 
                     // current module
