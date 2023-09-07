@@ -2,6 +2,9 @@ use swc_ecma_ast::{ImportDecl, ImportSpecifier, Module as SwcModule, ModuleExpor
 use swc_ecma_visit::{VisitMut, VisitMutWith, VisitWith};
 
 use crate::plugins::farm_tree_shake::module::TreeShakeModule;
+use crate::plugins::farm_tree_shake::statement_graph::analyze_imports_and_exports::{
+    analyze_imports_and_exports, StatementInfo,
+};
 use crate::plugins::farm_tree_shake::statement_graph::defined_idents_collector::DefinedIdentsCollector;
 use crate::plugins::farm_tree_shake::statement_graph::{
     ExportInfo, ExportSpecifierInfo, ImportInfo,
@@ -26,8 +29,11 @@ pub fn remove_useless_stmts(
     for (stmt_id, used_defined_idents) in &used_stmts {
         let module_item = &mut swc_module.body[*stmt_id];
 
-        let (import_info, export_info, ..) =
-      crate::plugins::farm_tree_shake::statement_graph::analyze_imports_and_exports::analyze_imports_and_exports(stmt_id, module_item, Some(used_defined_idents.clone()));
+        let StatementInfo {
+            import_info,
+            export_info,
+            ..
+        } = analyze_imports_and_exports(stmt_id, module_item, Some(used_defined_idents.clone()));
 
         if let Some(import_info) = import_info {
             used_import_infos.push(import_info.clone());
@@ -124,33 +130,30 @@ pub struct UselessExportStmtRemover {
 
 impl VisitMut for UselessExportStmtRemover {
     fn visit_mut_export_decl(&mut self, export_decl: &mut swc_ecma_ast::ExportDecl) {
-        match &mut export_decl.decl {
-            swc_ecma_ast::Decl::Var(var_decl) => {
-                let mut decls_to_remove = vec![];
+        if let swc_ecma_ast::Decl::Var(var_decl) = &mut export_decl.decl {
+            let mut decls_to_remove = vec![];
 
-                for (index, decl) in var_decl.decls.iter_mut().enumerate() {
-                    if !self.export_info.specifiers.iter().any(|export_specifier| {
-                        match export_specifier {
-                            ExportSpecifierInfo::Named { local, .. } => {
-                                let mut defined_idents_collector = DefinedIdentsCollector::new();
-                                decl.name.visit_with(&mut defined_idents_collector);
+            for (index, decl) in var_decl.decls.iter_mut().enumerate() {
+                if !self.export_info.specifiers.iter().any(
+                    |export_specifier| match export_specifier {
+                        ExportSpecifierInfo::Named { local, .. } => {
+                            let mut defined_idents_collector = DefinedIdentsCollector::new();
+                            decl.name.visit_with(&mut defined_idents_collector);
 
-                                defined_idents_collector.defined_idents.contains(local)
-                            }
-                            _ => false,
+                            defined_idents_collector.defined_idents.contains(local)
                         }
-                    }) {
-                        decls_to_remove.push(index);
-                    }
-                }
-
-                decls_to_remove.reverse();
-
-                for index in decls_to_remove {
-                    var_decl.decls.remove(index);
+                        _ => false,
+                    },
+                ) {
+                    decls_to_remove.push(index);
                 }
             }
-            _ => {}
+
+            decls_to_remove.reverse();
+
+            for index in decls_to_remove {
+                var_decl.decls.remove(index);
+            }
         }
     }
 

@@ -7,18 +7,20 @@ use super::defined_idents_collector::DefinedIdentsCollector;
 use super::used_idents_collector::{self, UsedIdentsCollector};
 use super::{ExportInfo, ExportSpecifierInfo, ImportInfo, ImportSpecifierInfo, StatementId};
 
+pub struct StatementInfo {
+    pub import_info: Option<ImportInfo>,
+    pub export_info: Option<ExportInfo>,
+    pub defined_idents: HashSet<String>,
+    pub used_idents: HashSet<String>,
+    pub defined_idents_map: HashMap<String, HashSet<String>>,
+    pub is_self_executed: bool,
+}
+
 pub fn analyze_imports_and_exports(
     id: &StatementId,
     stmt: &ModuleItem,
     used_defined_idents: Option<HashSet<String>>,
-) -> (
-    Option<ImportInfo>,
-    Option<ExportInfo>,
-    HashSet<String>,
-    HashSet<String>,
-    HashMap<String, HashSet<String>>,
-    bool,
-) {
+) -> StatementInfo {
     let mut defined_idents = HashSet::new();
     let mut used_idents = HashSet::new();
     let mut defined_idents_map = HashMap::new();
@@ -354,12 +356,12 @@ pub fn analyze_imports_and_exports(
     },
   };
 
-    (
-        imports,
-        exports,
+    StatementInfo {
+        import_info: imports,
+        export_info: exports,
         defined_idents,
         used_idents,
         defined_idents_map,
         is_self_executed,
-    )
+    }
 }

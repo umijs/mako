@@ -288,7 +288,7 @@ fn add_used_exports_by_export_info(
     }
 }
 
-fn strip_context(ident: &String) -> String {
+fn strip_context(ident: &str) -> String {
     let ident_split = ident.split('#').collect::<Vec<_>>();
     ident_split[0].to_string()
 }

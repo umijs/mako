@@ -10,6 +10,7 @@ pub(crate) mod used_idents_collector;
 use analyze_imports_and_exports::analyze_imports_and_exports;
 
 use crate::plugins::farm_tree_shake::module::UsedIdent;
+use crate::plugins::farm_tree_shake::statement_graph::analyze_imports_and_exports::StatementInfo;
 
 pub type StatementId = usize;
 
@@ -68,14 +69,14 @@ pub struct Statement {
 
 impl Statement {
     pub fn new(id: StatementId, stmt: &ModuleItem) -> Self {
-        let (
+        let StatementInfo {
             import_info,
             export_info,
             defined_idents,
             used_idents,
             defined_idents_map,
             is_self_executed,
-        ) = analyze_imports_and_exports(&id, stmt, None);
+        } = analyze_imports_and_exports(&id, stmt, None);
 
         // transform defined_idents_map from HashMap<Ident, Vec<Ident>> to HashMap<String, Ident> using ToString
         let defined_idents_map = defined_idents_map
@@ -169,6 +170,7 @@ impl StatementGraph {
         &self.g[*node]
     }
 
+    #[allow(dead_code)]
     pub fn stmt_mut(&mut self, id: &StatementId) -> &mut Statement {
         let node = self.id_index_map.get(id).unwrap();
         &mut self.g[*node]
@@ -190,6 +192,7 @@ impl StatementGraph {
         self.g.node_indices().map(|i| &self.g[i]).collect()
     }
 
+    #[allow(dead_code)]
     pub fn edges(&self) -> Vec<(&Statement, &Statement, &StatementGraphEdge)> {
         self.g
             .edge_indices()

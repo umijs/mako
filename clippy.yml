@@ -1,1 +1,2 @@
 msrv = "1.51"
+disallowed-lints = ["or_fun_call"]

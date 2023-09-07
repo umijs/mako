@@ -321,7 +321,7 @@ impl TreeShakeModule {
     }
 }
 
-fn is_ident_equal(ident1: &String, ident2: &String) -> bool {
+fn is_ident_equal(ident1: &str, ident2: &str) -> bool {
     let split1 = ident1.split('#').collect::<Vec<_>>();
     let split2 = ident2.split('#').collect::<Vec<_>>();
 
