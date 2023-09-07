@@ -140,25 +140,20 @@ impl TreeShakeModule {
         let mut stmt_used_idents_map = HashMap::new();
 
         for (used_ident, stmt_id) in used_exports_idents {
-            let used_idents = stmt_used_idents_map
-                .entry(stmt_id)
-                .or_insert(HashSet::new());
+            let used_idents: &mut HashSet<UsedIdent> =
+                stmt_used_idents_map.entry(stmt_id).or_default();
             used_idents.insert(used_ident);
         }
 
         {
             for stmt in self.stmt_graph.stmts() {
                 if stmt.is_self_executed {
-                    stmt_used_idents_map
-                        .entry(stmt.id)
-                        .or_insert(HashSet::new());
+                    stmt_used_idents_map.entry(stmt.id).or_default();
 
                     let dep_stmts = self.stmt_graph.dependencies(&stmt.id);
 
                     for (dep_stmt, referred_idents) in dep_stmts {
-                        let used_idents = stmt_used_idents_map
-                            .entry(dep_stmt.id)
-                            .or_insert(HashSet::new());
+                        let used_idents = stmt_used_idents_map.entry(dep_stmt.id).or_default();
                         used_idents.extend(referred_idents.into_iter().map(UsedIdent::SwcIdent));
                     }
                     // stmt.used_idents.iter().for_each(|used_ident| {
