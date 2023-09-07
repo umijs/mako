@@ -3,6 +3,7 @@ pub mod copy;
 pub mod css;
 pub mod javascript;
 pub mod json;
+pub mod less;
 pub mod manifest;
 pub mod md;
 pub mod minifish_analyze_deps;
