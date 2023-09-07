@@ -23,7 +23,11 @@ impl Plugin for JavaScriptPlugin {
         ) {
             let mut content = read_content(param.path.as_str())?;
             // TODO: use array entry instead
-            if param.is_entry && context.config.hmr && context.config.mode == Mode::Development {
+            if param.is_entry
+                && context.config.hmr
+                && context.config.mode == Mode::Development
+                && context.args.watch
+            {
                 let port = &context.config.hmr_port.to_string();
                 let host = &context.config.hmr_host.to_string();
                 let host = if host == "0.0.0.0" { "127.0.0.1" } else { host };
