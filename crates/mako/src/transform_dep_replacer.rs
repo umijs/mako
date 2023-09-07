@@ -28,7 +28,7 @@ pub struct DependenciesToReplace {
     pub ignored: Vec<String>,
 }
 
-fn miss_throw_stmt<T: AsRef<str>>(source: T) -> Expr {
+pub fn miss_throw_stmt<T: AsRef<str>>(source: T) -> Expr {
     let fn_expr = Expr::Fn(FnExpr {
         ident: Some(quote_ident!("makoMissingModule")),
         function: Box::new(Function {
