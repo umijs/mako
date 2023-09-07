@@ -60,14 +60,7 @@ pub fn generate_module_id(origin_module_id: String, context: &Arc<Context>) -> S
             let absolute_path = PathBuf::from(origin_module_id);
             let relative_path = diff_paths(&absolute_path, &context.root).unwrap_or(absolute_path);
             // diff_paths result always starts with ".."/"." or not
-            if relative_path.starts_with("..") || relative_path.starts_with(".") {
-                relative_path.to_string_lossy().to_string()
-            } else {
-                PathBuf::from(".")
-                    .join(relative_path)
-                    .to_string_lossy()
-                    .to_string()
-            }
+            relative_path.to_string_lossy().to_string()
         }
     }
 }
