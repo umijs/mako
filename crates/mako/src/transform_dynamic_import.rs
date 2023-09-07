@@ -176,7 +176,7 @@ Promise.all([
         let path = if let Some(p) = path { p } else { "test.tsx" };
         let context: Arc<Context> = Arc::new(Default::default());
 
-        let mut chunk = Chunk::new("./foo".to_string().into(), ChunkType::Async);
+        let mut chunk = Chunk::new("./foo".to_string().into(), ChunkType::Async, None);
         chunk.add_module("./foo".to_string().into());
 
         context.chunk_graph.write().unwrap().add_chunk(chunk);

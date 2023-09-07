@@ -24,16 +24,18 @@ pub struct Chunk {
     pub modules: IndexSet<ModuleId>,
     pub content: Option<String>,
     pub source_map: Option<String>,
+    pub entry_id: Option<ModuleId>,
 }
 
 impl Chunk {
-    pub fn new(id: ChunkId, chunk_type: ChunkType) -> Self {
+    pub fn new(id: ChunkId, chunk_type: ChunkType, entry_id: Option<ModuleId>) -> Self {
         Self {
             modules: IndexSet::new(),
             id,
             chunk_type,
             content: None,
             source_map: None,
+            entry_id,
         }
     }
 
@@ -118,13 +120,22 @@ mod tests {
 
     #[test]
     fn test_filename() {
-        let chunk = Chunk::new(ModuleId::new("foo/bar.tsx".into()), ChunkType::Entry);
+        let module_id = ModuleId::new("foo/bar.tsx".into());
+        let chunk = Chunk::new(module_id.clone(), ChunkType::Entry, Some(module_id));
         assert_eq!(chunk.filename(), "bar.js");
 
-        let chunk = Chunk::new(ModuleId::new("./foo/bar.tsx".into()), ChunkType::Async);
+        let chunk = Chunk::new(
+            ModuleId::new("./foo/bar.tsx".into()),
+            ChunkType::Async,
+            None,
+        );
         assert_eq!(chunk.filename(), "foo_bar_tsx-async.js");
 
-        let chunk = Chunk::new(ModuleId::new("foo/bar.tsx".into()), ChunkType::Runtime);
+        let chunk = Chunk::new(
+            ModuleId::new("foo/bar.tsx".into()),
+            ChunkType::Runtime,
+            None,
+        );
         assert_eq!(chunk.filename(), "runtime.js");
     }
 }

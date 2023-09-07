@@ -62,6 +62,7 @@ impl ChunkGraph {
 
     pub fn add_edge(&mut self, from: &ChunkId, to: &ChunkId) {
         let from = self.id_index_map.get(from).unwrap();
+        dbg!(&to);
         let to = self.id_index_map.get(to).unwrap();
         self.graph.add_edge(*from, *to, ());
     }

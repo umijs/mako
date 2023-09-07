@@ -160,7 +160,6 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
 
     // remove the unused modules
     for module_id in modules_to_remove {
-        println!("renmove {}", module_id.id);
         module_graph.remove_module(&module_id);
     }
 

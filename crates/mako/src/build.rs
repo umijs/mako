@@ -258,10 +258,6 @@ impl Compiler {
 
         let deps = deps_analyze_param.deps;
 
-        if task.path.contains("s/antd/es/button/index.js") {
-            dbg!(&deps);
-        }
-
         // resolve
         let mut dep_resolve_err = None;
         let mut dependencies_resource = Vec::new();
@@ -271,7 +267,7 @@ impl Compiler {
         let mut missing_dependencies = HashMap::new();
 
         for dep in deps {
-            let ret = resolve(&task.path, &dep, &resolvers, &context);
+            let ret = resolve(&task.path, &dep, &context.resolvers, &context);
             match ret {
                 Ok(resolved_resource) => {
                     let resolved = resolved_resource.get_resolved_path();

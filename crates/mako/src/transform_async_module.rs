@@ -357,7 +357,7 @@ mod tests {
     use crate::ast::{build_js_ast, js_ast_to_code};
     use crate::chunk::{Chunk, ChunkType};
     use crate::compiler::Context;
-    use crate::module::{Dependency, ResolveType};
+    use crate::module::{Dependency, ModuleId, ResolveType};
 
     #[test]
     fn test_async_module() {
@@ -393,7 +393,11 @@ require._async(module, async (handleAsyncDeps, asyncResult)=>{
         let path = if let Some(p) = path { p } else { "test.tsx" };
         let context: Arc<Context> = Arc::new(Default::default());
 
-        let mut chunk = Chunk::new("./async".to_string().into(), ChunkType::Entry);
+        let mut chunk = Chunk::new(
+            "".to_string().into(),
+            ChunkType::Entry,
+            Some(ModuleId::new("".to_string())),
+        );
         chunk.add_module("./async".to_string().into());
 
         context.chunk_graph.write().unwrap().add_chunk(chunk);

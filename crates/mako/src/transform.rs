@@ -11,8 +11,6 @@ use swc_ecma_ast::Module;
 use swc_ecma_preset_env::{self as swc_preset_env};
 use swc_ecma_transforms::feature::FeatureFlag;
 use swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
-use swc_ecma_transforms::modules::import_analysis::import_analyzer;
-use swc_ecma_transforms::modules::util::ImportInterop;
 use swc_ecma_transforms::proposals::decorators;
 use swc_ecma_transforms::typescript::strip_with_jsx;
 use swc_ecma_transforms::{resolver, Assumptions};
@@ -71,8 +69,6 @@ fn transform_js(
         try_with_handler(cm.clone(), Default::default(), |handler| {
             HELPERS.set(&Helpers::new(true), || {
                 HANDLER.set(handler, || {
-                    let import_interop = ImportInterop::Swc;
-
                     ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
                     ast.visit_mut_with(&mut strip_with_jsx(
                         cm.clone(),
@@ -81,15 +77,6 @@ fn transform_js(
                         top_level_mark,
                     ));
 
-                    // ast.visit_mut_with(&mut dce(
-                    //     DceConfig {
-                    //         top_level: false,
-                    //         ..Default::default()
-                    //     },
-                    //     unresolved_mark,
-                    // ));
-                    //
-                    // indent.span needed in mako_react refresh, so it must be after resolver visitor
                     ast.visit_mut_with(&mut mako_react(
                         cm,
                         context,
@@ -97,8 +84,6 @@ fn transform_js(
                         &top_level_mark,
                         &unresolved_mark,
                     ));
-
-                    ast.visit_mut_with(&mut import_analyzer(import_interop, true));
 
                     let mut env_replacer = EnvReplacer::new(Lrc::new(env_map));
                     ast.visit_mut_with(&mut env_replacer);
@@ -175,6 +160,7 @@ mod tests {
     use crate::config::Config;
     use crate::module::ModuleId;
     use crate::module_graph::ModuleGraph;
+    use crate::resolve::get_resolvers;
     use crate::transform_dep_replacer::DependenciesToReplace;
     use crate::transform_in_generate::{transform_js_generate, TransformJsParam};
 
@@ -531,7 +517,13 @@ require("./bar");
         let root = PathBuf::from("/path/to/root");
 
         let mut chunk_graph = ChunkGraph::new();
-        chunk_graph.add_chunk(Chunk::new("./foo".to_string().into(), ChunkType::Async));
+        chunk_graph.add_chunk(Chunk::new(
+            "./foo".to_string().into(),
+            ChunkType::Async,
+            None,
+        ));
+
+        let resolvers = get_resolvers(&config);
 
         let context = Arc::new(Context {
             config,
@@ -544,6 +536,7 @@ require("./bar");
             meta: Meta::new(),
             plugin_driver: Default::default(),
             stats_info: Mutex::new(Default::default()),
+            resolvers,
         });
 
         let mut ast = build_js_ast(path, origin, &context).unwrap();

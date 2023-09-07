@@ -15,11 +15,10 @@ use swc_ecma_transforms::modules::util::{Config, ImportInterop};
 use swc_ecma_visit::VisitMutWith;
 use swc_error_reporters::handler::try_with_handler;
 
-use crate::ast::{js_ast_to_code, Ast};
+use crate::ast::Ast;
 use crate::compiler::{Compiler, Context};
 use crate::config::Mode;
 use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
-use crate::resolve::{get_resolvers, resolve, ResolverResource};
 use crate::targets;
 use crate::transform_async_module::AsyncModule;
 use crate::transform_css_handler::CssHandler;
@@ -41,26 +40,6 @@ impl Compiler {
 }
 
 pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> Result<()> {
-    let res = resolve(
-        context.root.join("index.js").to_str().unwrap(),
-        &Dependency {
-            source: "@swc/helpers/_/_interop_require_default".to_string(),
-            resolve_type: ResolveType::Import,
-            span: None,
-            order: 0,
-        },
-        &get_resolvers(&context.config),
-        context,
-    )
-    .unwrap();
-
-    let _helper = match res {
-        ResolverResource::External(_) => {
-            panic!("@swc/helper should never external");
-        }
-        ResolverResource::Resolved(resolved) => resolved.0.path.to_str().unwrap().to_string(),
-    };
-
     module_ids.iter().for_each(|module_id| {
         let module_graph = context.module_graph.read().unwrap();
         let deps = module_graph.get_dependencies_info(module_id);
@@ -73,19 +52,11 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
             })
             .map(|(_, dep, _)| dep)
             .collect();
-        let resolved_deps: HashMap<String, String> = deps
+        let mut resolved_deps: HashMap<String, String> = deps
             .into_iter()
             .map(|(id, dep, _)| (dep.source, id.generate(context)))
             .collect();
-
-        if module_id.id.contains("antd/es/button/index.js") {
-            dbg!(&module_id.id);
-            dbg!(&resolved_deps);
-        }
-        // resolved_deps.insert(
-        //     "@swc/helpers/_/_interop_require_default".to_string(),
-        //     ModuleId::new(helper.clone()).generate(context),
-        // );
+        insert_swc_helper_replace(&mut resolved_deps, context);
 
         drop(module_graph);
 
@@ -119,6 +90,19 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         }
     });
     Ok(())
+}
+
+fn insert_swc_helper_replace(map: &mut HashMap<String, String>, context: &Arc<Context>) {
+    let helpers = vec![
+        "@swc/helpers/_/_interop_require_default",
+        "@swc/helpers/_/_interop_require_wildcard",
+        "@swc/helpers/_/_export_star",
+    ];
+
+    helpers.into_iter().for_each(|h| {
+        let m_id: ModuleId = h.to_string().into();
+        map.insert(m_id.id.clone(), m_id.generate(context));
+    });
 }
 
 pub struct TransformJsParam<'a> {
@@ -155,14 +139,7 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) {
                             let unresolved_mark = ast.unresolved_mark;
                             let top_level_mark = ast.top_level_mark;
 
-                            if _id.id.contains("antd/es/button/index.js") {
-                                let (code, ..) = js_ast_to_code(&ast.ast, context, "foo").unwrap();
-                                print!("{}", code);
-                                dbg!(&dep_map);
-                            }
-
                             let import_interop = ImportInterop::Swc;
-                            // FIXME: 执行两轮 import_analyzer + inject_helpers，第一轮是为了 module_graph，第二轮是为了依赖替换
                             ast.ast
                                 .visit_mut_with(&mut import_analyzer(import_interop, true));
                             ast.ast.visit_mut_with(&mut inject_helpers(unresolved_mark));

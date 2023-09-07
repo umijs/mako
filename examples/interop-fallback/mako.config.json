@@ -1,4 +1,4 @@
 {
-  "minifiy": false,
+  "minify": false,
   "codeSplitting": "none"
 }

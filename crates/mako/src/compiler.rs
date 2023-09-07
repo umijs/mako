@@ -14,6 +14,7 @@ use crate::config::{Config, OutputMode};
 use crate::module_graph::ModuleGraph;
 use crate::plugin::{Plugin, PluginDriver};
 use crate::plugins;
+use crate::resolve::{get_resolvers, Resolvers};
 use crate::stats::StatsInfo;
 
 pub struct Context {
@@ -27,6 +28,7 @@ pub struct Context {
     pub meta: Meta,
     pub plugin_driver: PluginDriver,
     pub stats_info: Mutex<StatsInfo>,
+    pub resolvers: Resolvers,
 }
 
 #[derive(Default)]
@@ -36,6 +38,9 @@ pub struct Args {
 
 impl Default for Context {
     fn default() -> Self {
+        let config: Config = Default::default();
+        let resolvers = get_resolvers(&config);
+
         Self {
             config: Default::default(),
             args: Args { watch: false },
@@ -48,6 +53,7 @@ impl Default for Context {
             plugin_driver: Default::default(),
             // 产物信息放在上下文里是否合适
             stats_info: Mutex::new(StatsInfo::new()),
+            resolvers,
         }
     }
 }
@@ -173,6 +179,7 @@ impl Compiler {
 
         plugin_driver.modify_config(&mut config).unwrap();
 
+        let resolvers = get_resolvers(&config);
         Self {
             context: Arc::new(Context {
                 config,
@@ -185,6 +192,7 @@ impl Compiler {
                 meta: Meta::new(),
                 plugin_driver,
                 stats_info: Mutex::new(StatsInfo::new()),
+                resolvers,
             }),
         }
     }

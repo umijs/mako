@@ -99,7 +99,7 @@ impl Compiler {
         }
 
         for (pkg_name, modules) in pkg_modules {
-            let mut chunk = Chunk::new(pkg_name.clone().into(), ChunkType::Sync);
+            let mut chunk = Chunk::new(pkg_name.clone().into(), ChunkType::Sync, None);
 
             for m_id in modules {
                 chunk.add_module(m_id);
@@ -173,7 +173,7 @@ impl Compiler {
         // big vendors chunk policy
         let mut chunk_graph = self.context.chunk_graph.write().unwrap();
         let mut chunks = chunk_graph.mut_chunks();
-        let mut big_vendor_chunk = Chunk::new("all_vendors".into(), ChunkType::Sync);
+        let mut big_vendor_chunk = Chunk::new("all_vendors".into(), ChunkType::Sync, None);
 
         let mut entries = Vec::new();
 
@@ -219,7 +219,13 @@ impl Compiler {
         let mut bfs = Bfs::new(VecDeque::from(vec![entry_module_id]), Default::default());
 
         let chunk_id = entry_module_id.generate(&self.context);
-        let mut chunk = Chunk::new(chunk_id.into(), chunk_type);
+
+        let entry_id = match chunk_type {
+            ChunkType::Entry => Some(entry_module_id.clone()),
+            _ => None,
+        };
+
+        let mut chunk = Chunk::new(chunk_id.into(), chunk_type, entry_id);
         let mut visited_modules: Vec<ModuleId> = vec![entry_module_id.clone()];
 
         let module_graph = self.context.module_graph.read().unwrap();

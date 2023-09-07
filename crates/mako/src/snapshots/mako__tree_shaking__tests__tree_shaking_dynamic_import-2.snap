@@ -4,16 +4,16 @@ expression: content
 ---
 globalThis.jsonpCallback([
     [
-        './a.ts'
+        'a.ts'
     ],
     {
-        "./a.css": function(module, exports, require) {},
-        "./a.ts": function(module, exports, require) {
+        "a.css": function(module, exports, require) {},
+        "a.ts": function(module, exports, require) {
             "use strict";
             Object.defineProperty(exports, "__esModule", {
                 value: true
             });
-            require("./a.css");
+            require("a.css");
         }
     }
 ]);

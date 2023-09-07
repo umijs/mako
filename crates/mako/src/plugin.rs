@@ -137,7 +137,7 @@ impl PluginDriver {
     pub fn runtime_plugins_code(&self, context: &Arc<Context>) -> Result<String> {
         let mut plugins = Vec::new();
         for plugin in &self.plugins {
-            plugins.append(&mut plugin.runtime_plugins(context)?);
+            plugins.extend(plugin.runtime_plugins(context)?);
         }
         Ok(plugins.join("\n"))
     }

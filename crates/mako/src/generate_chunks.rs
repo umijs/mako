@@ -149,7 +149,16 @@ impl Compiler {
                             .plugin_driver
                             .runtime_plugins_code(&self.context)?,
                     )
-                    .replace("// __CSS_CHUNKS_URL_MAP", &css_chunks_map_str.to_string());
+                    .replace("// __CSS_CHUNKS_URL_MAP", &css_chunks_map_str.to_string())
+                    .replace(
+                        "_%main%_",
+                        chunk
+                            .entry_id
+                            .as_ref()
+                            .unwrap()
+                            .generate(&self.context)
+                            .as_str(),
+                    );
 
                     if !chunks_ids.is_empty() {
                         let ensures = chunks_ids
@@ -346,7 +355,7 @@ fn build_ident_param(ident: Ident) -> Param {
     }
 }
 
-fn build_fn_expr(ident: Option<Ident>, params: Vec<Param>, stmts: Vec<Stmt>) -> FnExpr {
+pub fn build_fn_expr(ident: Option<Ident>, params: Vec<Param>, stmts: Vec<Stmt>) -> FnExpr {
     let func = Function {
         span: DUMMY_SP,
         params,
@@ -366,7 +375,7 @@ fn build_fn_expr(ident: Option<Ident>, params: Vec<Param>, stmts: Vec<Stmt>) -> 
     }
 }
 
-fn build_props(key_str: &str, value: Box<Expr>) -> PropOrSpread {
+pub fn build_props(key_str: &str, value: Box<Expr>) -> PropOrSpread {
     PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
         key: swc_ecma_ast::PropName::Str(Str {
             span: DUMMY_SP,
