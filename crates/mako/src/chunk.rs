@@ -85,6 +85,7 @@ impl Chunk {
         &self.modules
     }
 
+    #[allow(dead_code)]
     pub fn mut_modules(&mut self) -> &mut IndexSet<ModuleId> {
         &mut self.modules
     }
