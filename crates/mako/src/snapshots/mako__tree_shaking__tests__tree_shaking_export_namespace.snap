@@ -4,10 +4,10 @@ expression: content
 ---
 const chunksIdToUrlMap = {};
 chunksIdToUrlMap["index.ts"] = `index.js`;
-chunksIdToUrlMap["all_vendors"] = `all_vendors-async.js`;
 function createRuntime(makoModules, entryModuleId) {
     const modulesRegistry = {};
     function requireModule(moduleId) {
+        if (moduleId === '$$IGNORED$$') return;
         const cachedModule = modulesRegistry[moduleId];
         if (cachedModule !== undefined) {
             if (cachedModule.error) {
@@ -373,7 +373,7 @@ function createRuntime(makoModules, entryModuleId) {
             makoModules[id] = modules[id];
         }
     };
-    requireModule._h = '13105465558242188001';
+    requireModule._h = '8996481773465824202';
     requireModule.currentHash = ()=>{
         return requireModule._h;
     };
@@ -490,11 +490,7 @@ function createRuntime(makoModules, entryModuleId) {
             }
         });
     }();
-    Promise.all([
-        requireModule.ensure("all_vendors")
-    ]).then(()=>{
-        requireModule(entryModuleId);
-    });
+    requireModule(entryModuleId);
     return {
         requireModule,
         _modulesRegistry: modulesRegistry,

@@ -29,15 +29,23 @@ impl VisitMut for DynamicImport<'_> {
 
                     let chunk_graph = &self.context.chunk_graph.read().unwrap();
 
-                    let chunk = chunk_graph.chunk(&chunk_id).unwrap();
+                    let chunk = chunk_graph.chunk(&chunk_id);
 
-                    let mut chunk_ids = chunk_graph
-                        .sync_dependencies_chunk(chunk)
-                        .iter()
-                        .map(|chunk_id| generate_module_id(chunk_id.id.clone(), self.context))
-                        .collect::<Vec<_>>();
-
-                    chunk_ids.push(chunk.id.id.clone());
+                    let chunk_ids = match chunk {
+                        Some(chunk) => {
+                            let mut ids = chunk_graph
+                                .sync_dependencies_chunk(chunk)
+                                .iter()
+                                .map(|chunk_id| {
+                                    generate_module_id(chunk_id.id.clone(), self.context)
+                                })
+                                .collect::<Vec<_>>();
+                            ids.push(chunk.id.id.clone());
+                            ids
+                        }
+                        // None means the original chunk has been optimized to entry chunk
+                        None => vec![],
+                    };
 
                     let to_ensure_elems = chunk_ids
                         .iter()
@@ -176,7 +184,7 @@ Promise.all([
         let path = if let Some(p) = path { p } else { "test.tsx" };
         let context: Arc<Context> = Arc::new(Default::default());
 
-        let mut chunk = Chunk::new("./foo".to_string().into(), ChunkType::Async, None);
+        let mut chunk = Chunk::new("./foo".to_string().into(), ChunkType::Async);
         chunk.add_module("./foo".to_string().into());
 
         context.chunk_graph.write().unwrap().add_chunk(chunk);

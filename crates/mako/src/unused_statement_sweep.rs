@@ -35,7 +35,7 @@ impl VisitMut for UnusedStatementSweep<'_> {
     }
 
     fn visit_mut_module_item(&mut self, decl: &mut ModuleItem) {
-        let old = self.need_removed_module_item;
+        let old_removed_module_item = self.need_removed_module_item;
         self.need_removed_module_item = false;
 
         decl.visit_mut_children_with(self);
@@ -44,28 +44,28 @@ impl VisitMut for UnusedStatementSweep<'_> {
             debug!("remove module item: {:?}", decl);
             decl.take();
         }
-        self.need_removed_module_item = old;
+        self.need_removed_module_item = old_removed_module_item;
     }
 
     // TODO: 目前 jsx 会被删除掉，等待解决
-    // fn visit_mut_import_decl(&mut self, import_decl: &mut swc_ecma_ast::ImportDecl) {
-    //     let mut removed = vec![];
-    //     for (index, specifier) in import_decl.specifiers.iter().enumerate() {
-    //         if let swc_ecma_ast::ImportSpecifier::Named(named_specifier) = specifier {
-    //             if self.comments.has_unused(named_specifier.span) {
-    //                 removed.push(index);
-    //             }
-    //         }
-    //     }
-    //     removed.reverse();
-    //     for index in removed {
-    //         import_decl.specifiers.remove(index);
-    //         self.removed_item_count += 1;
-    //     }
-    //     if import_decl.specifiers.is_empty() {
-    //         self.need_removed_module_item = true;
-    //     }
-    // }
+    fn visit_mut_import_decl(&mut self, import_decl: &mut swc_ecma_ast::ImportDecl) {
+        let mut removed = vec![];
+        for (index, specifier) in import_decl.specifiers.iter().enumerate() {
+            if let swc_ecma_ast::ImportSpecifier::Named(named_specifier) = specifier {
+                if self.comments.has_unused(named_specifier.span) {
+                    removed.push(index);
+                }
+            }
+        }
+        removed.reverse();
+        for index in removed {
+            import_decl.specifiers.remove(index);
+            self.removed_item_count += 1;
+        }
+        if import_decl.specifiers.is_empty() {
+            self.need_removed_module_item = true;
+        }
+    }
 
     fn visit_mut_export_specifiers(&mut self, specifiers: &mut Vec<swc_ecma_ast::ExportSpecifier>) {
         let mut removed = vec![];

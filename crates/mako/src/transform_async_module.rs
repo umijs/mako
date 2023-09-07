@@ -393,11 +393,8 @@ require._async(module, async (handleAsyncDeps, asyncResult)=>{
         let path = if let Some(p) = path { p } else { "test.tsx" };
         let context: Arc<Context> = Arc::new(Default::default());
 
-        let mut chunk = Chunk::new(
-            "".to_string().into(),
-            ChunkType::Entry,
-            Some(ModuleId::new("".to_string())),
-        );
+        let module_id: ModuleId = "./async".to_string().into();
+        let mut chunk = Chunk::new("./async".to_string().into(), ChunkType::Entry(module_id));
         chunk.add_module("./async".to_string().into());
 
         context.chunk_graph.write().unwrap().add_chunk(chunk);

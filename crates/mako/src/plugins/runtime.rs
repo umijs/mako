@@ -156,6 +156,7 @@ impl MakoRuntime {
             dep_map: &DependenciesToReplace {
                 resolved: Default::default(),
                 missing: Default::default(),
+                ignored: vec![],
             },
             async_deps: &Vec::<Dependency>::new(),
             _id: &module_id,

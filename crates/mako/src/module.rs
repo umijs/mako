@@ -35,8 +35,10 @@ pub struct ModuleInfo {
     pub ast: ModuleAst,
     pub path: String,
     pub external: Option<String>,
+    pub raw: String,
     pub raw_hash: u64,
     pub missing_deps: HashMap<String, Dependency>,
+    pub ignored_deps: Vec<String>,
     /// Modules with top-level-await
     pub top_level_await: bool,
     /// The top-level-await module must be an async module, in addition, for example, wasm is also an async module
@@ -208,6 +210,12 @@ impl Module {
             ModuleAst::Css(_) => ModuleType::Css,
             ModuleAst::None => todo!(),
         }
+    }
+
+    pub fn get_module_size(&self) -> usize {
+        let info = self.info.as_ref().unwrap();
+
+        info.raw.as_bytes().len()
     }
 }
 

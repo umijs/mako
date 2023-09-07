@@ -4,10 +4,10 @@ expression: content
 ---
 const chunksIdToUrlMap = {};
 chunksIdToUrlMap["index.ts"] = `index.js`;
-chunksIdToUrlMap["all_vendors"] = `all_vendors-async.js`;
 function createRuntime(makoModules, entryModuleId) {
     const modulesRegistry = {};
     function requireModule(moduleId) {
+        if (moduleId === '$$IGNORED$$') return;
         const cachedModule = modulesRegistry[moduleId];
         if (cachedModule !== undefined) {
             if (cachedModule.error) {
@@ -373,7 +373,7 @@ function createRuntime(makoModules, entryModuleId) {
             makoModules[id] = modules[id];
         }
     };
-    requireModule._h = '4570151504778838626';
+    requireModule._h = '3297149836493596667';
     requireModule.currentHash = ()=>{
         return requireModule._h;
     };
@@ -490,11 +490,7 @@ function createRuntime(makoModules, entryModuleId) {
             }
         });
     }();
-    Promise.all([
-        requireModule.ensure("all_vendors")
-    ]).then(()=>{
-        requireModule(entryModuleId);
-    });
+    requireModule(entryModuleId);
     return {
         requireModule,
         _modulesRegistry: modulesRegistry,
@@ -508,22 +504,13 @@ const runtime = createRuntime({
         Object.defineProperty(exports, "__esModule", {
             value: true
         });
-        function _export(target, all) {
-            for(var name in all)Object.defineProperty(target, name, {
-                enumerable: true,
-                get: all[name]
-            });
-        }
-        _export(exports, {
-            foo: function() {
+        Object.defineProperty(exports, "foo", {
+            enumerable: true,
+            get: function() {
                 return foo;
-            },
-            /*#__UNUSED__*/ bar: function() {
-                return bar;
             }
         });
         const foo = 1;
-        const bar = 1;
     },
     "2.ts": function(module, exports, require) {
         "use strict";

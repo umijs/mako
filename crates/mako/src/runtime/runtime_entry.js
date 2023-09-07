@@ -2,6 +2,7 @@ function createRuntime(makoModules, entryModuleId) {
   const modulesRegistry = {};
 
   function requireModule(moduleId) {
+    if (moduleId === '$$IGNORED$$') return;
     const cachedModule = modulesRegistry[moduleId];
 
     if (cachedModule !== undefined) {

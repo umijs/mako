@@ -74,6 +74,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         let deps_to_replace = DependenciesToReplace {
             resolved: resolved_deps,
             missing: info.missing_deps.clone(),
+            ignored: info.ignored_deps.clone(),
         };
 
         if let ModuleAst::Script(ast) = ast {
@@ -179,7 +180,7 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) {
                                 ast.ast.visit_mut_with(&mut async_module);
                             }
 
-                            if is_entry && is_dev {
+                            if is_entry && is_dev && context.args.watch && context.config.hmr {
                                 ast.ast
                                     .visit_mut_with(&mut react_refresh_entry_prefix(context));
                             }

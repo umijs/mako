@@ -31,7 +31,7 @@ pub async fn build(
     devtool?: "source-map" | "inline-source-map" | "none";
     externals?: Record<string, string>;
     copy?: string[];
-    code_splitting: "bigVendor" | "depPerChunk" | "none";
+    code_splitting: "bigVendors" | "depPerChunk" | "none";
     providers?: Record<string, string[]>;
     public_path?: string;
     inline_limit?: number;

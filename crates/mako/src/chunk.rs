@@ -9,10 +9,11 @@ use crate::module_graph::ModuleGraph;
 
 pub type ChunkId = ModuleId;
 
+#[derive(PartialEq, Eq)]
 pub enum ChunkType {
     #[allow(dead_code)]
     Runtime,
-    Entry,
+    Entry(ModuleId),
     Async,
     // mean that the chunk is not async, but it's a dependency of an async chunk
     Sync,
@@ -24,26 +25,24 @@ pub struct Chunk {
     pub modules: IndexSet<ModuleId>,
     pub content: Option<String>,
     pub source_map: Option<String>,
-    pub entry_id: Option<ModuleId>,
 }
 
 impl Chunk {
-    pub fn new(id: ChunkId, chunk_type: ChunkType, entry_id: Option<ModuleId>) -> Self {
+    pub fn new(id: ChunkId, chunk_type: ChunkType) -> Self {
         Self {
             modules: IndexSet::new(),
             id,
             chunk_type,
             content: None,
             source_map: None,
-            entry_id,
         }
     }
 
     pub fn filename(&self) -> String {
-        match self.chunk_type {
+        match &self.chunk_type {
             ChunkType::Runtime => "runtime.js".into(),
             // foo/bar.tsx -> bar.js
-            ChunkType::Entry => {
+            ChunkType::Entry(_) => {
                 let id = self.id.id.clone();
                 let basename = Path::new(&id)
                     .file_stem()
@@ -86,6 +85,7 @@ impl Chunk {
         &self.modules
     }
 
+    #[allow(dead_code)]
     pub fn mut_modules(&mut self) -> &mut IndexSet<ModuleId> {
         &mut self.modules
     }
@@ -121,21 +121,13 @@ mod tests {
     #[test]
     fn test_filename() {
         let module_id = ModuleId::new("foo/bar.tsx".into());
-        let chunk = Chunk::new(module_id.clone(), ChunkType::Entry, Some(module_id));
+        let chunk = Chunk::new(module_id.clone(), ChunkType::Entry(module_id));
         assert_eq!(chunk.filename(), "bar.js");
 
-        let chunk = Chunk::new(
-            ModuleId::new("./foo/bar.tsx".into()),
-            ChunkType::Async,
-            None,
-        );
+        let chunk = Chunk::new(ModuleId::new("./foo/bar.tsx".into()), ChunkType::Async);
         assert_eq!(chunk.filename(), "foo_bar_tsx-async.js");
 
-        let chunk = Chunk::new(
-            ModuleId::new("foo/bar.tsx".into()),
-            ChunkType::Runtime,
-            None,
-        );
+        let chunk = Chunk::new(ModuleId::new("foo/bar.tsx".into()), ChunkType::Runtime);
         assert_eq!(chunk.filename(), "runtime.js");
     }
 }

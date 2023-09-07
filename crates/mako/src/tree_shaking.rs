@@ -5,8 +5,8 @@ use tracing::debug;
 
 use crate::compiler::Compiler;
 use crate::module::ModuleId;
-use crate::reexport_statement_cleanup::ReexportStatementCleanup;
 use crate::tree_shaking_module::{ModuleSystem, TreeShakingModule, UsedExports};
+use crate::unused_statement_cleanup::UnusedStatementCleanup;
 use crate::unused_statement_marker::UnusedStatementMarker;
 use crate::unused_statement_sweep::UnusedStatementSweep;
 
@@ -89,24 +89,21 @@ impl Compiler {
                         .unwrap();
                     let ast = module.info.as_mut().unwrap().ast.as_script_mut();
 
-                    // 针对 reexport 场景做清理，只有配置没有副作用的模块才可以
-                    if !module_is_side_effects {
-                        let mut reexport_cleanup =
-                            ReexportStatementCleanup::new(tree_shaking_module);
-                        ast.visit_mut_with(&mut reexport_cleanup);
-                    }
+                    let unused = tree_shaking_module.get_used_export_statement();
+                    // 吧没有用到的 stmt 删除
+                    let mut reexport_cleanup =
+                        UnusedStatementCleanup::new(&tree_shaking_module.id, &unused);
+                    ast.visit_mut_with(&mut reexport_cleanup);
 
                     // 通过 tree_shaking_module 进行无用的标记
                     let mut comments = self.context.meta.script.output_comments.write().unwrap();
-                    let mut marker = UnusedStatementMarker::new(tree_shaking_module, &mut comments);
+                    let mut marker =
+                        UnusedStatementMarker::new(tree_shaking_module, unused, &mut comments);
                     ast.visit_mut_with(&mut marker);
 
-                    if self.context.config.minify {
-                        let mut sweep =
-                            UnusedStatementSweep::new(&tree_shaking_module.id, &comments);
-                        ast.visit_mut_with(&mut sweep);
-                        tree_shaking_module.update_statement(module);
-                    }
+                    let mut sweep = UnusedStatementSweep::new(&tree_shaking_module.id, &comments);
+                    ast.visit_mut_with(&mut sweep);
+                    tree_shaking_module.update_statement(module);
 
                     drop(module_graph);
                     drop(comments);
@@ -201,10 +198,8 @@ impl Compiler {
         let mut module_graph = self.context.module_graph.write().unwrap();
         debug!("modules_to_remove: {:?}", &modules_to_remove);
 
-        if self.context.config.minify {
-            for module_id in modules_to_remove {
-                module_graph.remove_module_and_deps(module_id);
-            }
+        for module_id in modules_to_remove {
+            module_graph.remove_module_and_deps(module_id);
         }
     }
 

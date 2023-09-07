@@ -15,6 +15,7 @@ impl Compiler {
     pub fn generate_hmr_chunk(
         &self,
         chunk: &Chunk,
+        filename: &str,
         module_ids: &IndexSet<ModuleId>,
         current_hash: u64,
     ) -> Result<(String, String)> {
@@ -27,7 +28,6 @@ impl Compiler {
                 "__runtime_code__",
                 &format!("runtime._h='{}';", current_hash),
             );
-        let filename = &chunk.filename();
         // TODO: handle error
         let mut js_ast = build_js_ast(filename, content.as_str(), &self.context)
             .unwrap()
@@ -67,7 +67,7 @@ impl Compiler {
 #[cfg(test)]
 mod tests {
     use crate::assert_debug_snapshot;
-    use crate::compiler::Compiler;
+    use crate::compiler::{Args, Compiler};
     use crate::config::Config;
     use crate::transform_in_generate::transform_modules;
 
@@ -82,7 +82,9 @@ mod tests {
         let chunk = chunks[0];
         let module_ids = chunk.get_modules();
         transform_modules(module_ids.iter().cloned().collect(), &compiler.context).unwrap();
-        let (js_code, _js_sourcemap) = compiler.generate_hmr_chunk(chunk, module_ids, 42).unwrap();
+        let (js_code, _js_sourcemap) = compiler
+            .generate_hmr_chunk(chunk, "index.js", module_ids, 42)
+            .unwrap();
         let js_code = js_code.replace(
             compiler.context.root.to_string_lossy().to_string().as_str(),
             "",
@@ -96,6 +98,6 @@ mod tests {
         let current_dir = std::env::current_dir().unwrap();
         let root = current_dir.join(base);
         let config = Config::new(&root, None, None).unwrap();
-        Compiler::new(config, root, Default::default())
+        Compiler::new(config, root, Args { watch: true })
     }
 }

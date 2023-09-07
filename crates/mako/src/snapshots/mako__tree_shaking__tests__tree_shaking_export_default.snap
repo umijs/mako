@@ -4,10 +4,10 @@ expression: content
 ---
 const chunksIdToUrlMap = {};
 chunksIdToUrlMap["index.ts"] = `index.js`;
-chunksIdToUrlMap["all_vendors"] = `all_vendors-async.js`;
 function createRuntime(makoModules, entryModuleId) {
     const modulesRegistry = {};
     function requireModule(moduleId) {
+        if (moduleId === '$$IGNORED$$') return;
         const cachedModule = modulesRegistry[moduleId];
         if (cachedModule !== undefined) {
             if (cachedModule.error) {
@@ -373,7 +373,7 @@ function createRuntime(makoModules, entryModuleId) {
             makoModules[id] = modules[id];
         }
     };
-    requireModule._h = '5494074319675122702';
+    requireModule._h = '7936721012928292824';
     requireModule.currentHash = ()=>{
         return requireModule._h;
     };
@@ -490,11 +490,7 @@ function createRuntime(makoModules, entryModuleId) {
             }
         });
     }();
-    Promise.all([
-        requireModule.ensure("all_vendors")
-    ]).then(()=>{
-        requireModule(entryModuleId);
-    });
+    requireModule(entryModuleId);
     return {
         requireModule,
         _modulesRegistry: modulesRegistry,
@@ -516,66 +512,31 @@ const runtime = createRuntime({
         });
         function foo() {}
     },
-    "4.ts": function(module, exports, require) {
-        "use strict";
-        Object.defineProperty(exports, "__esModule", {
-            value: true
-        });
-        Object.defineProperty(exports, /*#__UNUSED_MODULE__*/ "default", {
-            enumerable: true,
-            get: function() {
-                return zoo;
-            }
-        });
-        function zoo() {}
-    },
     "1.ts": function(module, exports, require) {
         "use strict";
         Object.defineProperty(exports, "__esModule", {
             value: true
         });
-        function _export(target, all) {
-            for(var name in all)Object.defineProperty(target, name, {
-                enumerable: true,
-                get: all[name]
-            });
-        }
-        _export(exports, {
-            foo: function() {
+        Object.defineProperty(exports, "foo", {
+            enumerable: true,
+            get: function() {
                 return _2.default;
-            },
-            bar: function() {
-                return _3.default;
-            },
-            zoo: function() {
-                return _4.default;
             }
         });
         var _interop_require_default = require("@swc/helpers/_/_interop_require_default");
         var _2 = _interop_require_default._(require("2.ts"));
-        var _3 = _interop_require_default._(require("3.ts"));
-        var _4 = _interop_require_default._(require("4.ts"));
     },
     "3.ts": function(module, exports, require) {
         "use strict";
         Object.defineProperty(exports, "__esModule", {
             value: true
         });
-        function _export(target, all) {
-            for(var name in all)Object.defineProperty(target, name, {
-                enumerable: true,
-                get: all[name]
-            });
-        }
-        _export(exports, {
-            /*#__UNUSED__*/ default: function() {
-                return bar;
-            },
-            xx: function() {
+        Object.defineProperty(exports, "xx", {
+            enumerable: true,
+            get: function() {
                 return xx;
             }
         });
-        function bar() {}
         function xx() {}
     },
     "index.ts": function(module, exports, require) {

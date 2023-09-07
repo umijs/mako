@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
@@ -148,6 +149,7 @@ impl Compiler {
             Arc::new(plugins::copy::CopyPlugin {}),
             // file types
             Arc::new(plugins::css::CSSPlugin {}),
+            Arc::new(plugins::less::LessPlugin {}),
             Arc::new(plugins::javascript::JavaScriptPlugin {}),
             Arc::new(plugins::json::JSONPlugin {}),
             Arc::new(plugins::md::MdPlugin {}),
@@ -198,6 +200,9 @@ impl Compiler {
     }
 
     pub fn compile(&self) {
+        // 先清空 dist 目录
+        self.clean_dist();
+
         let t_compiler = Instant::now();
         let is_prod = self.context.config.mode == crate::config::Mode::Production;
         let building_with_message = format!(
@@ -235,6 +240,14 @@ impl Compiler {
         let mg = self.context.module_graph.read().unwrap();
         cg.full_hash(&mg)
     }
+
+    pub fn clean_dist(&self) {
+        // compiler 前清除 dist，如果后续 dev 环境不在 output_path 里，需要再补上 dev 的逻辑
+        let output_path = &self.context.config.output.path;
+        if fs::metadata(output_path).is_ok() {
+            fs::remove_dir_all(output_path).unwrap();
+        }
+    }
 }
 
 #[cfg(test)]
@@ -256,7 +269,7 @@ mod tests {
             !files.join(",").contains(&".png".to_string()),
             "small.png is inlined"
         );
-        assert!(files.len() > 3, "index.js, index.js.map, xxx.jpg");
+        assert!(files.len() == 3, "index.js, index.js.map, xxx.jpg");
         let index_js_content = file_contents.get("index.js").unwrap();
         assert!(
             index_js_content.contains("data:image/png;base64,"),
@@ -528,9 +541,33 @@ mod tests {
         println!("{:?}", files);
         let index_js_content = file_contents.get("index.js").unwrap();
 
+        println!("{}", index_js_content);
+
         assert!(
-            index_js_content.contains("cssChunksIdToUrlMap[\"./a.ts\"]"),
+            index_js_content.contains("cssChunksIdToUrlMap[\"a.ts\"]"),
             "css async chunk works"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_auto_code_splitting() {
+        let (files, _file_contents) = compile("test/compile/auto-code-splitting");
+        println!("{:?}", files);
+
+        assert!(
+            !files.contains(&"should-be-merge_ts-async.js".to_string()),
+            "minimal async chunk should be merged"
+        );
+
+        assert!(
+            files.contains(&"vendors-async.js".to_string()),
+            "entry dependencies should be split to vendors"
+        );
+
+        assert!(
+            files.contains(&"vendors_dynamic_0-async.js".to_string())
+                && files.contains(&"vendors_dynamic_1-async.js".to_string()),
+            "big vendors should be split again"
         );
     }
 }

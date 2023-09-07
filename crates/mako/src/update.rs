@@ -297,21 +297,29 @@ pub struct Diff {
 }
 
 // 对比两颗 Dependency 的差异
-fn diff(right: Vec<(ModuleId, Dependency)>, left: Vec<(ModuleId, Dependency)>) -> Diff {
-    let right: HashSet<(ModuleId, Dependency)> = right.into_iter().collect();
-    let left: HashSet<(ModuleId, Dependency)> = left.into_iter().collect();
-    let removed = right
-        .difference(&left)
-        .collect::<HashSet<_>>()
-        .into_iter()
-        .map(|dep| (*dep).clone())
-        .collect();
-    let added = left
-        .difference(&right)
-        .collect::<HashSet<_>>()
-        .into_iter()
-        .map(|dep| (*dep).clone())
-        .collect();
+fn diff(origin: Vec<(ModuleId, Dependency)>, target: Vec<(ModuleId, Dependency)>) -> Diff {
+    let origin_module_ids = origin
+        .iter()
+        .map(|(module_id, _dep)| module_id)
+        .collect::<HashSet<_>>();
+    let target_module_ids = target
+        .iter()
+        .map(|(module_id, _dep)| module_id)
+        .collect::<HashSet<_>>();
+    let mut added: HashSet<(ModuleId, Dependency)> = HashSet::new();
+    let mut removed: HashSet<(ModuleId, Dependency)> = HashSet::new();
+    target
+        .iter()
+        .filter(|(module_id, _dep)| !origin_module_ids.contains(module_id))
+        .for_each(|(module_id, dep)| {
+            added.insert((module_id.clone(), dep.clone()));
+        });
+    origin
+        .iter()
+        .filter(|(module_id, _dep)| !target_module_ids.contains(module_id))
+        .for_each(|(module_id, dep)| {
+            removed.insert((module_id.clone(), dep.clone()));
+        });
     Diff { added, removed }
 }
 

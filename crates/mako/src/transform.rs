@@ -220,7 +220,7 @@ const Foo = "foo";
 import { X } from 'foo';
 import x from 'foo';
 x;
-const b: X;
+const b: X = 1;
         "#
         .trim();
         let (code, _) = transform_js_code(code, None, HashMap::new());
@@ -234,7 +234,7 @@ Object.defineProperty(exports, "__esModule", {
 var _interop_require_default = require("@swc/helpers/_/_interop_require_default");
 var _foo = _interop_require_default._(require("foo"));
 _foo.default;
-const b;
+const b = 1;
 
 //# sourceMappingURL=index.js.map
         "#
@@ -517,11 +517,7 @@ require("./bar");
         let root = PathBuf::from("/path/to/root");
 
         let mut chunk_graph = ChunkGraph::new();
-        chunk_graph.add_chunk(Chunk::new(
-            "./foo".to_string().into(),
-            ChunkType::Async,
-            None,
-        ));
+        chunk_graph.add_chunk(Chunk::new("./foo".to_string().into(), ChunkType::Async));
 
         let resolvers = get_resolvers(&config);
 
@@ -559,6 +555,7 @@ require("./bar");
             dep_map: &DependenciesToReplace {
                 resolved: dep,
                 missing: HashMap::new(),
+                ignored: vec![],
             },
             async_deps: &vec![],
             is_entry: false,
