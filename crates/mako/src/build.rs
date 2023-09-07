@@ -309,48 +309,50 @@ impl Compiler {
             }
         }
 
-        if context.config.mode == crate::config::Mode::Production {
-            if let Some(e) = dep_resolve_err {
-                // resolve 报错时的 target 和 source
-                let target = e.0;
-                let source = e.1;
-                let span = e.3;
-                // 使用 hasMap 记录循环依赖
-                let mut target_map: HashMap<String, i32> = HashMap::new();
-                target_map.insert(target, 1);
+        if let Some(e) = dep_resolve_err {
+            // resolve 报错时的 target 和 source
+            let target = e.0;
+            let source = e.1;
+            let span = e.3;
+            // 使用 hasMap 记录循环依赖
+            let mut target_map: HashMap<String, i32> = HashMap::new();
+            target_map.insert(target, 1);
 
-                let mut err = format!("Module not found: Can't resolve '{}'", source);
+            let mut err = format!("Module not found: Can't resolve '{}'", source);
 
-                if let Some(span) = span {
-                    err = generate_code_frame(span, &err, context.meta.script.cm.clone());
-                }
+            if let Some(span) = span {
+                err = generate_code_frame(span, &err, context.meta.script.cm.clone());
+            }
 
-                // let id = ModuleId::new(target.clone());
-                // let module_graph = context.module_graph.read().unwrap();
+            // let id = ModuleId::new(target.clone());
+            // let module_graph = context.module_graph.read().unwrap();
 
-                // //  当 entry resolve 文件失败时，get_targets 自身会失败
-                // if module_graph.get_module(&id).is_some() {
-                //     let mut targets: Vec<ModuleId> = module_graph.dependant_module_ids(&id);
-                //     // 循环找 target
-                //     while !targets.is_empty() {
-                //         let target_module_id = targets[0].clone();
-                //         targets = module_graph.dependant_module_ids(&target_module_id);
-                //         source = target.clone();
-                //         target = target_module_id.id;
-                //         // 拼接引用堆栈 string
-                //         err = format!("{}  -> Resolve \"{}\" from \"{}\" \n", err, source, target);
+            // //  当 entry resolve 文件失败时，get_targets 自身会失败
+            // if module_graph.get_module(&id).is_some() {
+            //     let mut targets: Vec<ModuleId> = module_graph.dependant_module_ids(&id);
+            //     // 循环找 target
+            //     while !targets.is_empty() {
+            //         let target_module_id = targets[0].clone();
+            //         targets = module_graph.dependant_module_ids(&target_module_id);
+            //         source = target.clone();
+            //         target = target_module_id.id;
+            //         // 拼接引用堆栈 string
+            //         err = format!("{}  -> Resolve \"{}\" from \"{}\" \n", err, source, target);
 
-                //         if target_map.contains_key(&target) {
-                //             // 存在循环依赖
-                //             err = format!("{}  -> \"{}\" 中存在循环依赖", err, target);
-                //             break;
-                //         } else {
-                //             target_map.insert(target.clone(), 1);
-                //         }
-                //     }
-                //     // 调整格式
-                //     err = format!("{} \n", err);
-                // }
+            //         if target_map.contains_key(&target) {
+            //             // 存在循环依赖
+            //             err = format!("{}  -> \"{}\" 中存在循环依赖", err, target);
+            //             break;
+            //         } else {
+            //             target_map.insert(target.clone(), 1);
+            //         }
+            //     }
+            //     // 调整格式
+            //     err = format!("{} \n", err);
+            // }
+            if context.args.watch {
+                eprintln!("{}", err);
+            } else {
                 return Err(anyhow::anyhow!(err));
             }
         }
