@@ -8,6 +8,7 @@ use crate::compiler::Context;
 use crate::config::Config;
 use crate::load::Content;
 use crate::module::{Dependency, ModuleAst};
+use crate::module_graph::ModuleGraph;
 use crate::stats::StatsJsonMap;
 
 #[derive(Debug)]
@@ -61,6 +62,9 @@ pub trait Plugin: Any + Send + Sync {
 
     fn runtime_plugins(&self, _context: &Arc<Context>) -> Result<Vec<String>> {
         Ok(Vec::new())
+    }
+    fn optimize_module_graph(&self, _module_graph: &mut ModuleGraph) -> Result<()> {
+        Ok(())
     }
 }
 
@@ -134,8 +138,16 @@ impl PluginDriver {
     pub fn runtime_plugins_code(&self, context: &Arc<Context>) -> Result<String> {
         let mut plugins = Vec::new();
         for plugin in &self.plugins {
-            plugins.append(&mut plugin.runtime_plugins(context)?);
+            plugins.extend(plugin.runtime_plugins(context)?);
         }
         Ok(plugins.join("\n"))
+    }
+
+    pub fn optimize_module_graph(&self, module_graph: &mut ModuleGraph) -> Result<()> {
+        for p in &self.plugins {
+            p.optimize_module_graph(module_graph)?;
+        }
+
+        Ok(())
     }
 }
