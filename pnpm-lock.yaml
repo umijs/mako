@@ -33,8 +33,8 @@ importers:
         specifier: 18.2.0
         version: 18.2.0(react@18.2.0)
       react-error-overlay:
-        specifier: 6.0.0
-        version: 6.0.0
+        specifier: 6.0.11
+        version: 6.0.11
       react-refresh:
         specifier: ^0.14.0
         version: 0.14.0
@@ -12929,8 +12929,8 @@ packages:
       react: 18.2.0
       scheduler: 0.23.0
 
-  /react-error-overlay@6.0.0:
-    resolution: {integrity: sha512-oHf3b1J2Pxu03apiHvP21qBCkj6fG6A3c3ahya3fX0VXEZUTzIRLwZI9eZ/6cuOO+kvnzdVdGBxZlo+Tjh+hfQ==}
+  /react-error-overlay@6.0.11:
+    resolution: {integrity: sha512-/6UZ2qgEyH2aqzYZgQPxEnz33NJ2gNsnHA2o5+o4wW9bLM/JYQitNP9xPhsXwC08hMMovfGe/8retsdDsczPRg==}
     dev: true
 
   /react-error-overlay@6.0.9:

@@ -58,7 +58,7 @@ impl DevServer {
             });
 
             while let Some(message) = ws_recv.next().await {
-                if let Message::Close(_) = message.unwrap() {
+                if let Ok(Message::Close(_)) = message {
                     break;
                 }
             }
