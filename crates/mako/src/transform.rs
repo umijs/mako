@@ -528,7 +528,6 @@ require("./bar");
             .insert("Buffer".into(), ("buffer".into(), "Buffer".into()));
 
         let root = PathBuf::from("/path/to/root");
-        let resolvers = get_resolvers(&config);
 
         let mut chunk_graph = ChunkGraph::new();
         chunk_graph.add_chunk(Chunk::new("./foo".to_string().into(), ChunkType::Async));
@@ -560,7 +559,7 @@ require("./bar");
             },
             ast.top_level_mark,
             ast.unresolved_mark,
-            &resolvers,
+            &context.resolvers,
         )
         .unwrap();
         transform_js_generate(TransformJsParam {
