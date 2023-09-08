@@ -11,10 +11,11 @@ use crate::module::{Dependency, ModuleAst};
 use crate::stats::StatsJsonMap;
 
 #[derive(Debug)]
-pub struct PluginLoadParam {
+pub struct PluginLoadParam<'a> {
     pub path: String,
     pub is_entry: bool,
     pub ext_name: String,
+    pub request: &'a FileRequest,
 }
 
 pub struct PluginParseParam<'a> {
