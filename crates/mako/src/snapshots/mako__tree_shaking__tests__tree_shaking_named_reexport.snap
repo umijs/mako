@@ -3,7 +3,7 @@ source: crates/mako/src/tree_shaking.rs
 expression: content
 ---
 const chunksIdToUrlMap = {};
-chunksIdToUrlMap["./index.ts"] = `index.js`;
+chunksIdToUrlMap["index.ts"] = `index.js`;
 function createRuntime(makoModules, entryModuleId) {
     const modulesRegistry = {};
     function requireModule(moduleId) {
@@ -38,9 +38,6 @@ function createRuntime(makoModules, entryModuleId) {
         return module.exports;
     }
     requireModule.requireInterceptors = [];
-    !function() {
-        requireModule.publicPath = "/";
-    }();
     !(function() {
         let currentParents = [];
         let currentChildModule;
@@ -380,6 +377,119 @@ function createRuntime(makoModules, entryModuleId) {
     requireModule.currentHash = ()=>{
         return requireModule._h;
     };
+    !function() {
+        requireModule.publicPath = "/";
+    }();
+    !function() {
+        registerModules({
+            "@swc/helpers/_/_interop_require_default": function(module, exports, require) {
+                "use strict";
+                Object.defineProperty(exports, "__esModule", {
+                    value: true
+                });
+                function _export(target, all) {
+                    for(var name in all)Object.defineProperty(target, name, {
+                        enumerable: true,
+                        get: all[name]
+                    });
+                }
+                _export(exports, {
+                    _interop_require_default: function() {
+                        return _interop_require_default;
+                    },
+                    _: function() {
+                        return _interop_require_default;
+                    }
+                });
+                function _interop_require_default(obj) {
+                    return obj && obj.__esModule ? obj : {
+                        default: obj
+                    };
+                }
+            },
+            "@swc/helpers/_/_interop_require_wildcard": function(module, exports, require) {
+                "use strict";
+                Object.defineProperty(exports, "__esModule", {
+                    value: true
+                });
+                function _export(target, all) {
+                    for(var name in all)Object.defineProperty(target, name, {
+                        enumerable: true,
+                        get: all[name]
+                    });
+                }
+                _export(exports, {
+                    _interop_require_wildcard: function() {
+                        return _interop_require_wildcard;
+                    },
+                    _: function() {
+                        return _interop_require_wildcard;
+                    }
+                });
+                function _getRequireWildcardCache(nodeInterop) {
+                    if (typeof WeakMap !== "function") return null;
+                    var cacheBabelInterop = new WeakMap();
+                    var cacheNodeInterop = new WeakMap();
+                    return (_getRequireWildcardCache = function(nodeInterop) {
+                        return nodeInterop ? cacheNodeInterop : cacheBabelInterop;
+                    })(nodeInterop);
+                }
+                function _interop_require_wildcard(obj, nodeInterop) {
+                    if (!nodeInterop && obj && obj.__esModule) return obj;
+                    if (obj === null || typeof obj !== "object" && typeof obj !== "function") return {
+                        default: obj
+                    };
+                    var cache = _getRequireWildcardCache(nodeInterop);
+                    if (cache && cache.has(obj)) return cache.get(obj);
+                    var newObj = {};
+                    var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor;
+                    for(var key in obj){
+                        if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) {
+                            var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null;
+                            if (desc && (desc.get || desc.set)) Object.defineProperty(newObj, key, desc);
+                            else newObj[key] = obj[key];
+                        }
+                    }
+                    newObj.default = obj;
+                    if (cache) cache.set(obj, newObj);
+                    return newObj;
+                }
+            },
+            "@swc/helpers/_/_export_star": function(module, exports, require) {
+                "use strict";
+                Object.defineProperty(exports, "__esModule", {
+                    value: true
+                });
+                function _export(target, all) {
+                    for(var name in all)Object.defineProperty(target, name, {
+                        enumerable: true,
+                        get: all[name]
+                    });
+                }
+                _export(exports, {
+                    _export_star: function() {
+                        return _export_star;
+                    },
+                    _: function() {
+                        return _export_star;
+                    }
+                });
+                function _export_star(from, to) {
+                    Object.keys(from).forEach(function(k) {
+                        if (k !== "default" && !Object.prototype.hasOwnProperty.call(to, k)) {
+                            Object.defineProperty(to, k, {
+                                enumerable: true,
+                                get: function() {
+                                    return from[k];
+                                }
+                            });
+                        }
+                    });
+                    return from;
+                }
+            }
+        });
+    }();
     requireModule(entryModuleId);
     return {
         requireModule,
@@ -389,7 +499,7 @@ function createRuntime(makoModules, entryModuleId) {
     };
 }
 const runtime = createRuntime({
-    "./1.ts": function(module, exports, require) {
+    "1.ts": function(module, exports, require) {
         "use strict";
         Object.defineProperty(exports, "__esModule", {
             value: true
@@ -402,7 +512,7 @@ const runtime = createRuntime({
         });
         const foo = 1;
     },
-    "./2.ts": function(module, exports, require) {
+    "2.ts": function(module, exports, require) {
         "use strict";
         Object.defineProperty(exports, "__esModule", {
             value: true
@@ -413,17 +523,17 @@ const runtime = createRuntime({
                 return _1.foo;
             }
         });
-        var _1 = require("./1.ts");
+        var _1 = require("1.ts");
     },
-    "./index.ts": function(module, exports, require) {
+    "index.ts": function(module, exports, require) {
         "use strict";
         Object.defineProperty(exports, "__esModule", {
             value: true
         });
-        var _2 = require("./2.ts");
+        var _2 = require("2.ts");
         console.log(_2.foo);
     }
-}, './index.ts');
+}, 'index.ts');
 globalThis.jsonpCallback = runtime._jsonpCallback;
 globalThis.modulesRegistry = runtime._modulesRegistry;
 globalThis.makoModuleHotUpdate = runtime._makoModuleHotUpdate;

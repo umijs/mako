@@ -284,7 +284,7 @@ impl Compiler {
         let mut ignored_deps = Vec::new();
 
         for dep in deps {
-            let ret = resolve(&task.path, &dep, &resolvers, &context);
+            let ret = resolve(&task.path, &dep, &context.resolvers, &context);
             match ret {
                 Ok(resolved_resource) => {
                     if matches!(resolved_resource, ResolverResource::Ignored) {

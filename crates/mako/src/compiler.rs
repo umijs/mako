@@ -15,6 +15,7 @@ use crate::config::{Config, OutputMode};
 use crate::module_graph::ModuleGraph;
 use crate::plugin::{Plugin, PluginDriver};
 use crate::plugins;
+use crate::resolve::{get_resolvers, Resolvers};
 use crate::stats::StatsInfo;
 
 pub struct Context {
@@ -28,6 +29,7 @@ pub struct Context {
     pub meta: Meta,
     pub plugin_driver: PluginDriver,
     pub stats_info: Mutex<StatsInfo>,
+    pub resolvers: Resolvers,
 }
 
 #[derive(Default)]
@@ -37,6 +39,9 @@ pub struct Args {
 
 impl Default for Context {
     fn default() -> Self {
+        let config: Config = Default::default();
+        let resolvers = get_resolvers(&config);
+
         Self {
             config: Default::default(),
             args: Args { watch: false },
@@ -49,6 +54,7 @@ impl Default for Context {
             plugin_driver: Default::default(),
             // 产物信息放在上下文里是否合适
             stats_info: Mutex::new(StatsInfo::new()),
+            resolvers,
         }
     }
 }
@@ -154,6 +160,7 @@ impl Compiler {
             Arc::new(plugins::yaml::YAMLPlugin {}),
             Arc::new(plugins::assets::AssetsPlugin {}),
             Arc::new(plugins::runtime::MakoRuntime {}),
+            Arc::new(plugins::farm_tree_shake::FarmTreeShake {}),
         ];
 
         let mut config = config;
@@ -174,6 +181,7 @@ impl Compiler {
 
         plugin_driver.modify_config(&mut config).unwrap();
 
+        let resolvers = get_resolvers(&config);
         Self {
             context: Arc::new(Context {
                 config,
@@ -186,6 +194,7 @@ impl Compiler {
                 meta: Meta::new(),
                 plugin_driver,
                 stats_info: Mutex::new(StatsInfo::new()),
+                resolvers,
             }),
         }
     }
@@ -533,7 +542,7 @@ mod tests {
         let index_js_content = file_contents.get("index.js").unwrap();
 
         assert!(
-            index_js_content.contains("cssChunksIdToUrlMap[\"./a.ts\"]"),
+            index_js_content.contains("cssChunksIdToUrlMap[\"a.ts\"]"),
             "css async chunk works"
         );
     }

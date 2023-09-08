@@ -1,0 +1,191 @@
+use swc_ecma_ast::{ImportDecl, ImportSpecifier, Module as SwcModule, ModuleExportName};
+use swc_ecma_visit::{VisitMut, VisitMutWith, VisitWith};
+
+use crate::plugins::farm_tree_shake::module::TreeShakeModule;
+use crate::plugins::farm_tree_shake::statement_graph::analyze_imports_and_exports::{
+    analyze_imports_and_exports, StatementInfo,
+};
+use crate::plugins::farm_tree_shake::statement_graph::defined_idents_collector::DefinedIdentsCollector;
+use crate::plugins::farm_tree_shake::statement_graph::{
+    ExportInfo, ExportSpecifierInfo, ImportInfo,
+};
+
+pub fn remove_useless_stmts(
+    tree_shake_module: &mut TreeShakeModule,
+    swc_module: &mut SwcModule,
+) -> (Vec<ImportInfo>, Vec<ExportInfo>) {
+    // analyze the statement graph start from the used statements
+    let mut used_stmts = tree_shake_module
+        .used_statements()
+        .into_iter()
+        .collect::<Vec<_>>();
+    // sort used_stmts
+    used_stmts.sort_by_key(|a| a.0);
+
+    let mut used_import_infos = vec![];
+    let mut used_export_from_infos = vec![];
+
+    // remove unused specifiers in export statement and import statement
+    for (stmt_id, used_defined_idents) in &used_stmts {
+        let module_item = &mut swc_module.body[*stmt_id];
+
+        let StatementInfo {
+            import_info,
+            export_info,
+            ..
+        } = analyze_imports_and_exports(stmt_id, module_item, Some(used_defined_idents.clone()));
+
+        if let Some(import_info) = import_info {
+            used_import_infos.push(import_info.clone());
+
+            let mut remover = UselessImportStmtsRemover { import_info };
+
+            module_item.visit_mut_with(&mut remover);
+        }
+
+        if let Some(mut export_info) = export_info {
+            if export_info.specifiers.is_empty() {
+                continue;
+            }
+
+            // if this export statement is export * from 'xxx'
+            if export_info.source.is_some()
+                && matches!(export_info.specifiers[0], ExportSpecifierInfo::All(_))
+            {
+                export_info.specifiers[0] = ExportSpecifierInfo::All(Some(
+                    used_defined_idents.clone().into_iter().collect(),
+                ));
+                used_export_from_infos.push(export_info.clone());
+            } else {
+                if export_info.source.is_some() {
+                    used_export_from_infos.push(export_info.clone());
+                }
+
+                let mut remover = UselessExportStmtRemover { export_info };
+
+                module_item.visit_mut_with(&mut remover);
+            }
+        }
+    }
+
+    let mut stmts_to_remove = vec![];
+    // TODO recognize the self-executed statements and preserve all the related statements
+
+    let used_stmts_indexes = used_stmts
+        .iter()
+        .map(|(index, _)| index)
+        .collect::<Vec<_>>();
+
+    // remove the unused statements from the module
+    for (index, _) in swc_module.body.iter().enumerate() {
+        if !used_stmts_indexes.contains(&&index) {
+            stmts_to_remove.push(index);
+        }
+    }
+
+    // remove from the end to the start
+    stmts_to_remove.reverse();
+
+    for stmt in stmts_to_remove {
+        swc_module.body.remove(stmt);
+    }
+
+    (used_import_infos, used_export_from_infos)
+}
+
+pub struct UselessImportStmtsRemover {
+    import_info: ImportInfo,
+}
+
+impl VisitMut for UselessImportStmtsRemover {
+    fn visit_mut_import_decl(&mut self, import_decl: &mut ImportDecl) {
+        let mut specifiers_to_remove = vec![];
+
+        for (index, specifier) in import_decl.specifiers.iter().enumerate() {
+            if let ImportSpecifier::Named(named_specifier) = specifier {
+                if !self.
+                    import_info.specifiers
+          .iter()
+          .any(|specifier| match specifier {
+            crate::plugins::farm_tree_shake::statement_graph::ImportSpecifierInfo::Named { local, .. } => named_specifier.local.to_string() == *local,
+            _ => false,
+          })
+        {
+          specifiers_to_remove.push(index);
+        }
+            }
+        }
+
+        specifiers_to_remove.reverse();
+
+        for index in specifiers_to_remove {
+            import_decl.specifiers.remove(index);
+        }
+    }
+}
+
+pub struct UselessExportStmtRemover {
+    export_info: ExportInfo,
+}
+
+impl VisitMut for UselessExportStmtRemover {
+    fn visit_mut_export_decl(&mut self, export_decl: &mut swc_ecma_ast::ExportDecl) {
+        if let swc_ecma_ast::Decl::Var(var_decl) = &mut export_decl.decl {
+            let mut decls_to_remove = vec![];
+
+            for (index, decl) in var_decl.decls.iter_mut().enumerate() {
+                if !self.export_info.specifiers.iter().any(
+                    |export_specifier| match export_specifier {
+                        ExportSpecifierInfo::Named { local, .. } => {
+                            let mut defined_idents_collector = DefinedIdentsCollector::new();
+                            decl.name.visit_with(&mut defined_idents_collector);
+
+                            defined_idents_collector.defined_idents.contains(local)
+                        }
+                        _ => false,
+                    },
+                ) {
+                    decls_to_remove.push(index);
+                }
+            }
+
+            decls_to_remove.reverse();
+
+            for index in decls_to_remove {
+                var_decl.decls.remove(index);
+            }
+        }
+    }
+
+    fn visit_mut_export_specifiers(&mut self, specifiers: &mut Vec<swc_ecma_ast::ExportSpecifier>) {
+        let mut specifiers_to_remove = vec![];
+
+        for (index, specifier) in specifiers.iter().enumerate() {
+            if !self
+                .export_info
+                .specifiers
+                .iter()
+                .any(|export_specifier| match export_specifier {
+                    ExportSpecifierInfo::Named { local, .. } => match specifier {
+                        swc_ecma_ast::ExportSpecifier::Named(named_specifier) => {
+                            match &named_specifier.orig {
+                                ModuleExportName::Ident(ident) => ident.to_string() == *local,
+                                _ => false,
+                            }
+                        }
+                        _ => false,
+                    },
+                    _ => false,
+                })
+            {
+                specifiers_to_remove.push(index);
+            }
+        }
+
+        specifiers_to_remove.reverse();
+
+        for index in specifiers_to_remove {
+            specifiers.remove(index);
+        }
+    }
+}
