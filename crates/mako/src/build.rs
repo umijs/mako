@@ -12,7 +12,7 @@ use tracing::debug;
 use crate::analyze_deps::analyze_deps;
 use crate::ast::{build_js_ast, generate_code_frame};
 use crate::compiler::{Compiler, Context};
-use crate::config::Config;
+use crate::config::{Config, Mode};
 use crate::load::{ext_name, load};
 use crate::module::{Dependency, Module, ModuleAst, ModuleId, ModuleInfo};
 use crate::parse::parse;
@@ -59,8 +59,15 @@ impl Compiler {
         let resolvers = Arc::new(get_resolvers(&self.context.config));
         let mut queue: VecDeque<Task> = VecDeque::new();
         for entry in entries {
+            let mut entry = entry.to_str().unwrap().to_string();
+            if self.context.config.hmr
+                && self.context.config.mode == Mode::Development
+                && self.context.args.watch
+            {
+                entry = format!("{}?hmr", entry);
+            }
             queue.push_back(Task {
-                path: entry.to_str().unwrap().to_string(),
+                path: entry,
                 parent_resource: None,
                 is_entry: true,
             });

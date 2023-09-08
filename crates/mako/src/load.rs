@@ -82,6 +82,7 @@ pub fn load(request: &FileRequest, is_entry: bool, context: &Arc<Context>) -> Re
             path: path.to_string(),
             is_entry,
             ext_name: ext_name(path).unwrap().to_string(),
+            request,
         },
         context,
     )?;
