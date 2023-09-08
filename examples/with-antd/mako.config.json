@@ -2,5 +2,5 @@
   "externals": {},
   "treeShake": "advanced",
   "minify": true,
-  "moduleIdStrategy": "hashed"
+  "moduleIdStrategy": "named"
 }
