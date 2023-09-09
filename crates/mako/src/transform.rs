@@ -511,6 +511,49 @@ require("./bar");
         );
     }
 
+    #[test]
+    fn test_optimize_if() {
+        let code = r#"
+if(1 == 1) { console.log("1"); } else { console.log("2"); }
+
+if(1 == 2) { console.log("1"); } else if (1 == 1) { console.log("2"); } else { console.log("3"); }
+
+if(1 == 2) { console.log("1"); } else if (1 == 2) { console.log("2"); } else { console.log("3"); }
+
+if(true) { console.log("1"); } else { console.log("2"); }
+
+if(a) { 1 } else { 2 }
+        "#
+        .trim();
+        let (code, _sourcemap) = transform_js_code(
+            code,
+            None,
+            HashMap::from([("foo".to_string(), "./bar".to_string())]),
+        );
+        println!(">> CODE\n{}", code);
+        assert_eq!(
+            code,
+            r#"
+{
+    console.log("1");
+}{
+    console.log("2");
+}{
+    console.log("3");
+}{
+    console.log("1");
+}if (a) {
+    1;
+} else {
+    2;
+}
+
+//# sourceMappingURL=index.js.map
+        "#
+            .trim()
+        );
+    }
+
     fn transform_js_code(
         origin: &str,
         path: Option<&str>,
