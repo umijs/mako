@@ -1,6 +1,8 @@
 use std::collections::{HashMap, HashSet};
 use std::{fmt, vec};
 
+use tracing::Level;
+
 use crate::module::{Module, ModuleId};
 use crate::statement::{
     ExportSpecifier, ExportStatement, ImportStatement, StatementId, StatementType,
@@ -210,6 +212,7 @@ impl TreeShakingModule {
     /**
      * 获取使用到的所有导出的 statement
      */
+    #[tracing::instrument(ret(level = Level::DEBUG),skip(self))]
     pub fn get_used_export_statement(&self) -> UsedIdentHashMap {
         let used_exports_ident = self.get_used_export_ident();
         let mut stmt_used_ident_map: HashMap<StatementId, HashSet<UsedIdent>> = HashMap::new();
@@ -309,6 +312,7 @@ impl TreeShakingModule {
     /**
      * 当前模块内到处的 identifiers
      */
+    #[tracing::instrument(ret(level = Level::DEBUG),skip(self))]
     pub fn get_used_export_ident(&self) -> Vec<(UsedIdent, StatementId)> {
         match &self.used_exports {
             UsedExports::All => {
