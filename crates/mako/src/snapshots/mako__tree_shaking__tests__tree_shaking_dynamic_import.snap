@@ -163,7 +163,7 @@ function createRuntime(makoModules, entryModuleId) {
                                 ext
                             ].join('.');
                             return new Promise((done)=>{
-                                const url = `hot_update/${hotChunkName}`;
+                                const url = `/hot_update/${hotChunkName}`;
                                 requireModule.loadScript(url, done);
                             });
                         }));
