@@ -1,6 +1,8 @@
 use std::collections::{HashMap, HashSet};
 use std::{fmt, vec};
 
+use tracing::Level;
+
 use crate::module::{Module, ModuleId};
 use crate::statement::{
     ExportSpecifier, ExportStatement, ImportStatement, StatementId, StatementType,
@@ -210,6 +212,7 @@ impl TreeShakingModule {
     /**
      * 获取使用到的所有导出的 statement
      */
+    #[tracing::instrument(ret(level = Level::DEBUG),skip(self))]
     pub fn get_used_export_statement(&self) -> UsedIdentHashMap {
         let used_exports_ident = self.get_used_export_ident();
         let mut stmt_used_ident_map: HashMap<StatementId, HashSet<UsedIdent>> = HashMap::new();
@@ -222,7 +225,6 @@ impl TreeShakingModule {
         let all_stmts = self.statement_graph.get_statements();
 
         // 使用到的导出
-        let mut recheck_ids = vec![];
         let mut re_export_ids = vec![];
         for (_, id) in &used_exports_ident {
             let stmt = self.statement_graph.get_statement(id);
@@ -235,7 +237,6 @@ impl TreeShakingModule {
 
             // 查找当前的依赖变量
             let mut visited = HashSet::new();
-            recheck_ids.push(*id);
             self.analyze_statement_used_ident(&mut stmt_used_ident_map, stmt, &mut visited);
         }
 
@@ -262,11 +263,13 @@ impl TreeShakingModule {
                     .copied()
                     .collect::<HashSet<_>>();
 
-                // 副作用的依赖链和导出的依赖链有交集，则把副作用依赖链合并进去
-                if !side_effects_available_ids
-                    .intersection(&used_export_available_ids)
-                    .collect::<HashSet<_>>()
-                    .is_empty()
+                // 1. 自执行的 import "./xxx"; 必须保留
+                // 2. 副作用的依赖链和导出的依赖链有交集，则把副作用依赖链合并进去
+                if matches!(stmt, StatementType::Import(_))
+                    || !side_effects_available_ids
+                        .intersection(&used_export_available_ids)
+                        .collect::<HashSet<_>>()
+                        .is_empty()
                 {
                     final_used_available_ids.extend(side_effects_available_ids)
                 }
@@ -309,6 +312,7 @@ impl TreeShakingModule {
     /**
      * 当前模块内到处的 identifiers
      */
+    #[tracing::instrument(ret(level = Level::DEBUG),skip(self))]
     pub fn get_used_export_ident(&self) -> Vec<(UsedIdent, StatementId)> {
         match &self.used_exports {
             UsedExports::All => {
@@ -836,6 +840,23 @@ export { default as a } from 'a';
         let mut tree_shaking_module = TreeShakingModule::new(&module);
         tree_shaking_module.used_exports = UsedExports::All;
         tree_shaking_module.side_effects_flag = false;
+        let used: Vec<(usize, HashSet<UsedIdent>)> =
+            tree_shaking_module.get_used_export_statement().into();
+        assert_debug_snapshot!(&used);
+    }
+    #[test]
+    fn used_export_test_6() {
+        let module = create_mock_module(
+            PathBuf::from("/path/to/test.tsx"),
+            r#"
+import './c';
+import './b';
+export default function foo(){}
+"#,
+        );
+        let mut tree_shaking_module = TreeShakingModule::new(&module);
+        tree_shaking_module.used_exports.add_used_export(&"default");
+        tree_shaking_module.side_effects_flag = true;
         let used: Vec<(usize, HashSet<UsedIdent>)> =
             tree_shaking_module.get_used_export_statement().into();
         assert_debug_snapshot!(&used);

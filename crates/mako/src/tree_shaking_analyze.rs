@@ -104,6 +104,7 @@ impl Compiler {
         if import_statement.is_self_executed {
             imported_tree_shaking_module.side_effects = true;
             imported_tree_shaking_module.used_exports = UsedExports::All;
+            return;
         }
 
         for specifier in &import_statement.info.specifiers {
