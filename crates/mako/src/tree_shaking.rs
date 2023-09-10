@@ -138,8 +138,17 @@ impl Compiler {
                         }
                     };
                 }
-            }
+            } else {
+                let module_graph = self.context.module_graph.read().unwrap();
+                for (dep_id, _) in module_graph.get_dependencies(tree_shaking_module_id) {
+                    let dep_tree_shake_module = tree_shaking_module_map.get_mut(dep_id);
 
+                    if let Some(dep_tree_shake_module) = dep_tree_shake_module {
+                        dep_tree_shake_module.used_exports = UsedExports::All;
+                    }
+                }
+                drop(module_graph);
+            }
             // 处理 dynamic import 的情况，把他们都设置成为具备副作用
             self.markup_module_dynamic_import_deps_as_side_effects(
                 tree_shaking_module_id,
@@ -346,6 +355,13 @@ mod tests {
         let content = read_dist_file(&compiler, "dist/index.js");
         assert_display_snapshot!(content);
         let content = read_dist_file(&compiler, "dist/a_ts-async.js");
+        assert_display_snapshot!(content);
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_style() {
+        let compiler = setup_compiler("test/build/tree-shaking_style", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler, "dist/index.js");
         assert_display_snapshot!(content);
     }
 }
