@@ -52,10 +52,12 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
             })
             .map(|(_, dep, _)| dep)
             .collect();
-        let resolved_deps: HashMap<String, String> = deps
+        let mut resolved_deps: HashMap<String, String> = deps
             .into_iter()
             .map(|(id, dep, _)| (dep.source, id.generate(context)))
             .collect();
+        insert_swc_helper_replace(&mut resolved_deps, context);
+
         drop(module_graph);
 
         // let deps: Vec<(&ModuleId, &crate::module::Dependency)> =
@@ -91,6 +93,19 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
     Ok(())
 }
 
+fn insert_swc_helper_replace(map: &mut HashMap<String, String>, context: &Arc<Context>) {
+    let helpers = vec![
+        "@swc/helpers/_/_interop_require_default",
+        "@swc/helpers/_/_interop_require_wildcard",
+        "@swc/helpers/_/_export_star",
+    ];
+
+    helpers.into_iter().for_each(|h| {
+        let m_id: ModuleId = h.to_string().into();
+        map.insert(m_id.id.clone(), m_id.generate(context));
+    });
+}
+
 pub struct TransformJsParam<'a> {
     pub _id: &'a ModuleId,
     pub context: &'a Arc<Context>,
@@ -124,14 +139,12 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) {
                         HANDLER.set(handler, || {
                             let unresolved_mark = ast.unresolved_mark;
                             let top_level_mark = ast.top_level_mark;
-                            // let (code, ..) = js_ast_to_code(&ast.ast, context, "foo").unwrap();
-                            // print!("{}", code);
 
                             let import_interop = ImportInterop::Swc;
-                            // FIXME: 执行两轮 import_analyzer + inject_helpers，第一轮是为了 module_graph，第二轮是为了依赖替换
                             ast.ast
                                 .visit_mut_with(&mut import_analyzer(import_interop, true));
                             ast.ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
+
                             ast.ast.visit_mut_with(&mut common_js(
                                 unresolved_mark,
                                 Config {

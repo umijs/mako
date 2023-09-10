@@ -19,8 +19,8 @@ impl Compiler {
             .used_exports
             .clone();
         if let Some(source) = &export_statement.info.source {
-            let exported_module_id = module_graph
-                .get_dependency_module_by_source(tree_shaking_module_id, source.clone());
+            let exported_module_id =
+                module_graph.get_dependency_module_by_source(tree_shaking_module_id, source);
             let exported_module = module_graph.get_module(exported_module_id).unwrap();
 
             if exported_module.is_external() {
@@ -88,7 +88,7 @@ impl Compiler {
     ) {
         let module_graph = self.context.module_graph.write().unwrap();
         let imported_module_id = module_graph
-            .get_dependency_module_by_source(tree_shaking_module_id, import_statement.info.source);
+            .get_dependency_module_by_source(tree_shaking_module_id, &import_statement.info.source);
         let imported_module = module_graph.get_module(imported_module_id).unwrap();
 
         if imported_module.is_external() || !imported_module.get_module_type().is_script() {
@@ -104,6 +104,7 @@ impl Compiler {
         if import_statement.is_self_executed {
             imported_tree_shaking_module.side_effects = true;
             imported_tree_shaking_module.used_exports = UsedExports::All;
+            return;
         }
 
         for specifier in &import_statement.info.specifiers {

@@ -59,7 +59,7 @@ impl DevServer {
             });
 
             while let Some(message) = ws_recv.next().await {
-                if let Message::Close(_) = message.unwrap() {
+                if let Ok(Message::Close(_)) = message {
                     break;
                 }
             }
@@ -115,8 +115,6 @@ impl DevServer {
                     }
                 };
 
-                println!("req path is /{:?}", path);
-
                 match path {
                     "__/hmr-ws" => {
                         if hyper_tungstenite::is_upgrade_request(&req) {
@@ -141,7 +139,6 @@ impl DevServer {
                         }
                     }
                     _ if path.starts_with("hot_update") => {
-                        println!("命中了");
                         get_serve_response(static_serve_hmr.serve(req).await)
                     }
                     _ => {

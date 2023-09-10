@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::fs;
+use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
@@ -13,7 +14,7 @@ use tracing::debug;
 
 use crate::ast::{css_ast_to_code, js_ast_to_code};
 use crate::compiler::{Compiler, Context};
-use crate::config::{DevtoolConfig, Mode, OutputMode};
+use crate::config::{DevtoolConfig, Mode, OutputMode, TreeShakeStrategy};
 use crate::generate_chunks::OutputAst;
 use crate::load::file_content_hash;
 use crate::minify::{minify_css, minify_js};
@@ -47,13 +48,29 @@ impl Compiler {
         // Disable tree shaking in watch mode temporarily
         // ref: https://github.com/umijs/mako/issues/396
         if !self.context.args.watch {
-            let shaking_module_ids = self.tree_shaking();
-            let t_tree_shaking = t_tree_shaking.elapsed();
-            println!(
-                "{} modules removed in {}ms.",
-                shaking_module_ids.len(),
-                t_tree_shaking.as_millis()
-            );
+            match self.context.config.tree_shake {
+                TreeShakeStrategy::Basic => {
+                    let mut module_graph = self.context.module_graph.write().unwrap();
+
+                    self.context
+                        .plugin_driver
+                        .optimize_module_graph(module_graph.deref_mut())?;
+                    let t_tree_shaking = t_tree_shaking.elapsed();
+                    println!("basic optimize in {}ms.", t_tree_shaking.as_millis());
+                }
+                TreeShakeStrategy::Advanced => {
+                    let shaking_module_ids = self.tree_shaking();
+                    let t_tree_shaking = t_tree_shaking.elapsed();
+                    println!(
+                        "{} modules removed in {}ms.",
+                        shaking_module_ids.len(),
+                        t_tree_shaking.as_millis()
+                    );
+                }
+                TreeShakeStrategy::None => {
+                    // do nothing
+                }
+            }
         }
         let t_tree_shaking = t_tree_shaking.elapsed();
         let t_group_chunks = Instant::now();

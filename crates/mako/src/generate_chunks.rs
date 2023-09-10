@@ -349,7 +349,7 @@ fn build_ident_param(ident: Ident) -> Param {
     }
 }
 
-fn build_fn_expr(ident: Option<Ident>, params: Vec<Param>, stmts: Vec<Stmt>) -> FnExpr {
+pub fn build_fn_expr(ident: Option<Ident>, params: Vec<Param>, stmts: Vec<Stmt>) -> FnExpr {
     let func = Function {
         span: DUMMY_SP,
         params,
@@ -369,7 +369,7 @@ fn build_fn_expr(ident: Option<Ident>, params: Vec<Param>, stmts: Vec<Stmt>) -> 
     }
 }
 
-fn build_props(key_str: &str, value: Box<Expr>) -> PropOrSpread {
+pub fn build_props(key_str: &str, value: Box<Expr>) -> PropOrSpread {
     PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
         key: swc_ecma_ast::PropName::Str(Str {
             span: DUMMY_SP,

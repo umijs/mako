@@ -4,7 +4,6 @@ use anyhow::Result;
 
 use crate::ast::build_js_ast;
 use crate::compiler::Context;
-use crate::config::Mode;
 use crate::load::{read_content, Content};
 use crate::module::ModuleAst;
 use crate::plugin::{Plugin, PluginLoadParam, PluginParseParam};
@@ -21,24 +20,22 @@ impl Plugin for JavaScriptPlugin {
             param.ext_name.as_str(),
             "js" | "jsx" | "ts" | "tsx" | "cjs" | "mjs"
         ) {
-            let mut content = read_content(param.path.as_str())?;
-            // TODO: use array entry instead
-            if param.is_entry
-                && context.config.hmr
-                && context.config.mode == Mode::Development
-                && context.args.watch
-            {
+            if param.is_entry && param.request.has_query("hmr") {
                 let port = &context.config.hmr_port.to_string();
                 let host = &context.config.hmr_host.to_string();
                 let host = if host == "0.0.0.0" { "127.0.0.1" } else { host };
-                content = format!(
+                let content = format!("require(\"{}\");", param.path.as_str());
+                let content = format!(
                     "{}\n{}\n",
+                    include_str!("../runtime/runtime_hmr_entry.js"),
                     content,
-                    include_str!("../runtime/runtime_hmr_entry.js")
                 )
                 .replace("__PORT__", port)
                 .replace("__HOST__", host);
+                return Ok(Some(Content::Js(content)));
             }
+
+            let content = read_content(param.path.as_str())?;
             return Ok(Some(Content::Js(content)));
         }
         Ok(None)

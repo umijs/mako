@@ -95,7 +95,8 @@ impl Compiler {
                 let module = module_graph.get_module_mut(&id).unwrap();
                 let missing_deps = module.info.clone().unwrap().missing_deps;
                 for (_source, dep) in missing_deps {
-                    let resolved = resolve::resolve(module_id, &dep, &resolvers, &self.context);
+                    let resolved =
+                        resolve::resolve(module_id, &dep, &self.context.resolvers, &self.context);
                     if resolved.is_ok() {
                         debug!(
                             "missing deps resolved {:?} from {:?}",
