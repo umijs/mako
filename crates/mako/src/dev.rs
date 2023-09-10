@@ -1,3 +1,4 @@
+use std::io::Error as IoError;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
@@ -79,6 +80,43 @@ impl DevServer {
                 let static_serve =
                     hyper_staticfile::Static::new(for_fn.context.config.output.path.clone());
 
+                let static_serve_hmr =
+                    hyper_staticfile::Static::new(for_fn.context.root.join("node_modules/.mako"));
+
+                let get_serve_response = |serve_result: Result<
+                    hyper::Response<hyper::Body>,
+                    IoError,
+                >| {
+                    match serve_result {
+                        Ok(mut res) => {
+                            if let Some(content_type) = res.headers().get(CONTENT_TYPE).cloned() {
+                                if let Ok(c_str) = content_type.to_str() {
+                                    if c_str.contains("javascript") || c_str.contains("text") {
+                                        res.headers_mut()
+                                            .insert(
+                                                CONTENT_TYPE,
+                                                HeaderValue::from_str(&format!(
+                                                    "{c_str}; charset=utf-8"
+                                                ))
+                                                .unwrap(),
+                                            )
+                                            .unwrap();
+                                    }
+                                }
+                            }
+                            Ok(res)
+                        }
+                        Err(_) => Ok::<_, hyper::Error>(
+                            hyper::Response::builder()
+                                .status(hyper::StatusCode::NOT_FOUND)
+                                .body(hyper::Body::from("404 - Page not found"))
+                                .unwrap(),
+                        ),
+                    }
+                };
+
+                println!("req path is /{:?}", path);
+
                 match path {
                     "__/hmr-ws" => {
                         if hyper_tungstenite::is_upgrade_request(&req) {
@@ -102,35 +140,13 @@ impl DevServer {
                             )
                         }
                     }
+                    _ if path.starts_with("hot_update") => {
+                        println!("命中了");
+                        get_serve_response(static_serve_hmr.serve(req).await)
+                    }
                     _ => {
                         // try chunk content in memory first, else use dist content
-                        match static_serve.serve(req).await {
-                            Ok(mut res) => {
-                                if let Some(content_type) = res.headers().get(CONTENT_TYPE).cloned()
-                                {
-                                    if let Ok(c_str) = content_type.to_str() {
-                                        if c_str.contains("javascript") || c_str.contains("text") {
-                                            res.headers_mut()
-                                                .insert(
-                                                    CONTENT_TYPE,
-                                                    HeaderValue::from_str(&format!(
-                                                        "{c_str}; charset=utf-8"
-                                                    ))
-                                                    .unwrap(),
-                                                )
-                                                .unwrap();
-                                        }
-                                    }
-                                }
-                                Ok(res)
-                            }
-                            Err(_) => Ok::<_, hyper::Error>(
-                                hyper::Response::builder()
-                                    .status(hyper::StatusCode::NOT_FOUND)
-                                    .body(hyper::Body::from("404 - Page not found"))
-                                    .unwrap(),
-                            ),
-                        }
+                        get_serve_response(static_serve.serve(req).await)
                     }
                 }
             }
