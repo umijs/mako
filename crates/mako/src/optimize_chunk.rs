@@ -99,17 +99,28 @@ impl Compiler {
 
         // update chunk_graph
         let mut chunk_graph = self.context.chunk_graph.write().unwrap();
+        let mut merged_modules = vec![];
 
         for (chunk_id, entry_chunk_id, chunk_modules) in async_to_entry.clone() {
             let entry_chunk = chunk_graph.mut_chunk(&entry_chunk_id).unwrap();
 
             // merge modules to entry chunk
             for m in chunk_modules {
-                entry_chunk.add_module(m);
+                entry_chunk.add_module(m.clone());
+                merged_modules.push(m);
             }
 
             // remove original async chunks
             chunk_graph.remove_chunk(&chunk_id);
+        }
+
+        // remove merged modules from other async chunks
+        let mut chunks = chunk_graph.mut_chunks();
+
+        for chunk in chunks.iter_mut() {
+            if chunk.chunk_type == ChunkType::Async {
+                chunk.modules.retain(|m| !merged_modules.contains(m));
+            }
         }
     }
 
@@ -374,7 +385,7 @@ impl Compiler {
                         min_size: 20000,
                         max_size: 5000000,
                         test: Regex::new(r"[/\\]node_modules[/\\]").ok(),
-                        priority: None,
+                        priority: Some(-10),
                     },
                     OptimizeChunkGroup {
                         name: "vendors_dynamic".to_string(),
@@ -383,7 +394,17 @@ impl Compiler {
                         min_size: 20000,
                         max_size: 5000000,
                         test: Regex::new(r"[/\\]node_modules[/\\]").ok(),
-                        priority: None,
+                        priority: Some(-10),
+                    },
+                    OptimizeChunkGroup {
+                        name: "common_dynamic".to_string(),
+                        allow_chunks: OptimizeAllowChunks::Async,
+                        min_chunks: 2,
+                        // always split, to avoid multi-instance risk
+                        min_size: 1,
+                        max_size: 5000000,
+                        test: None,
+                        priority: Some(-20),
                     },
                 ],
             }),

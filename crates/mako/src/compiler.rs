@@ -569,7 +569,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_auto_code_splitting() {
-        let (files, _file_contents) = compile("test/compile/auto-code-splitting");
+        let (files, file_contents) = compile("test/compile/auto-code-splitting");
         println!("{:?}", files);
 
         assert!(
@@ -586,6 +586,17 @@ mod tests {
             files.contains(&"vendors_dynamic_0-async.js".to_string())
                 && files.contains(&"vendors_dynamic_1-async.js".to_string()),
             "big vendors should be split again"
+        );
+
+        assert!(
+            file_contents["index.js"].contains("\"context.ts\":")
+              && !file_contents["should-be-split_ts-async.js"].contains("\"context.ts\":"),
+            "async chunk should reuse modules that already merged into entry with another minimal async chunk"
+        );
+
+        assert!(
+            files.contains(&"common_dynamic-async.js".to_string()),
+            "common async modules should be split"
         );
     }
 }
