@@ -105,7 +105,12 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
     })
 }
 
-pub fn build_css_ast(path: &str, content: &str, context: &Arc<Context>) -> Result<Stylesheet> {
+pub fn build_css_ast(
+    path: &str,
+    content: &str,
+    context: &Arc<Context>,
+    css_modules: bool,
+) -> Result<Stylesheet> {
     let absolute_path = PathBuf::from(path);
     let relative_path =
         diff_paths(&absolute_path, &context.config.output.path).unwrap_or(absolute_path);
@@ -115,6 +120,7 @@ pub fn build_css_ast(path: &str, content: &str, context: &Arc<Context>) -> Resul
         .cm
         .new_source_file(FileName::Real(relative_path), content.to_string());
     let config = ParserConfig {
+        css_modules,
         ..Default::default()
     };
     let lexer = swc_css_parser::lexer::Lexer::new(StringInput::from(&*fm), config);

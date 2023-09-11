@@ -29,10 +29,11 @@ impl Plugin for CSSPlugin {
     fn parse(&self, param: &PluginParseParam, context: &Arc<Context>) -> Result<Option<ModuleAst>> {
         if let Content::Css(content) = param.content {
             // return Ok(Some(ModuleAst::Css(param.request.clone())));
-            let mut ast = build_css_ast(&param.request.path, content, context)?;
-            import_url_to_href(&mut ast);
             let has_modules_query = param.request.has_query("modules");
             let is_css_modules_path = param.request.path.ends_with(".module.css");
+            let mut ast =
+                build_css_ast(&param.request.path, content, context, is_css_modules_path)?;
+            import_url_to_href(&mut ast);
             // parse css module as js
             if is_css_modules_path && !has_modules_query {
                 let code = generate_code_for_css_modules(&param.request.path, &mut ast);
@@ -118,6 +119,9 @@ fn generate_code_for_css_modules(path: &str, ast: &mut Stylesheet) -> String {
         .map(|(name, classes)| format!("\"{}\": `{}`", name, classes.join(" ").trim()))
         .collect::<Vec<String>>()
         .join(",");
+
+    println!("export_names: {:#?}", export_names);
+
     format!(
         r#"
 import "{}?modules";
@@ -201,7 +205,7 @@ export default {"b": `b-KOXpblx_ a`,"c": `c-WTxpkVWA c`,"a": `a-hlnPCer-`}
 
     fn generate(code: &str) -> String {
         let path = "/test/path";
-        let mut ast = build_css_ast(path, code, &Arc::new(Default::default())).unwrap();
+        let mut ast = build_css_ast(path, code, &Arc::new(Default::default()), true).unwrap();
 
         generate_code_for_css_modules(path, &mut ast)
     }

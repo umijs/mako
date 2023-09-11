@@ -19,7 +19,6 @@
     }
 }
 
-/* 暂不支持 */
-/* :global(.a) {
+:global(.e) {
     color: red;
-} */
+}
