@@ -120,8 +120,6 @@ fn generate_code_for_css_modules(path: &str, ast: &mut Stylesheet) -> String {
         .collect::<Vec<String>>()
         .join(",");
 
-    println!("export_names: {:#?}", export_names);
-
     format!(
         r#"
 import "{}?modules";

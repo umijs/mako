@@ -121,6 +121,7 @@ pub fn build_css_ast(
         .new_source_file(FileName::Real(relative_path), content.to_string());
     let config = ParserConfig {
         css_modules,
+        legacy_ie: true,
         ..Default::default()
     };
     let lexer = swc_css_parser::lexer::Lexer::new(StringInput::from(&*fm), config);
