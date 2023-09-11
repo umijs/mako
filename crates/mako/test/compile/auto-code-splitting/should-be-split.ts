@@ -5,8 +5,9 @@ import * as component from '@ant-design/pro-components';
 // @ts-ignore
 import * as lodash from 'lodash';
 import * as axios from 'axios';
+import context from './context';
 
-console.log(React, antd, icons, lodash, axios, component);
+console.log(React, antd, icons, lodash, axios, component, context);
 
 export default {
   React,
