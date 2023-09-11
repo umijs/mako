@@ -47,11 +47,6 @@ impl VisitMut for Px2Rem<'_> {
         self.current_decl = None;
     }
     fn visit_mut_length(&mut self, n: &mut Length) {
-        println!("visit_mut_length current_decl: {:?}", self.current_decl);
-        println!(
-            "visit_mut_length config: {:?}",
-            self.context.config.px2rem_config
-        );
         if n.unit.value.to_string() == "px" && self.should_transform() {
             n.value.value /= self.context.config.px2rem_config.root;
             n.value.raw = None;
