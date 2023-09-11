@@ -1,7 +1,10 @@
 use anyhow::Result;
+use swc_common::collections::AHashSet;
+use swc_common::sync::Lrc;
 use swc_css_ast::{ImportHref, UrlValue};
 use swc_css_visit::VisitWith as CSSVisitWith;
-use swc_ecma_ast::{CallExpr, Callee, Expr, Import, Lit, ModuleDecl};
+use swc_ecma_ast::{CallExpr, Callee, Expr, Id, Import, Lit, Module, ModuleDecl};
+use swc_ecma_utils::collect_decls;
 use swc_ecma_visit::{Visit, VisitWith};
 
 use crate::module::{Dependency, ModuleAst, ResolveType};
@@ -44,6 +47,7 @@ pub fn handle_css_url(url: String) -> String {
 }
 
 struct DepCollectVisitor {
+    bindings: Lrc<AHashSet<Id>>,
     dependencies: Vec<Dependency>,
     dep_strs: Vec<String>,
     order: usize,
@@ -52,6 +56,7 @@ struct DepCollectVisitor {
 impl DepCollectVisitor {
     fn new() -> Self {
         Self {
+            bindings: Default::default(),
             dependencies: vec![],
             dep_strs: vec![],
             // start with 1
@@ -86,6 +91,10 @@ impl DepCollectVisitor {
 }
 
 impl Visit for DepCollectVisitor {
+    fn visit_module(&mut self, module: &Module) {
+        self.bindings = Lrc::new(collect_decls(module));
+        module.visit_children_with(self);
+    }
     fn visit_module_decl(&mut self, n: &ModuleDecl) {
         match n {
             ModuleDecl::Import(import) => {
@@ -114,7 +123,7 @@ impl Visit for DepCollectVisitor {
         n.visit_children_with(self);
     }
     fn visit_call_expr(&mut self, expr: &CallExpr) {
-        if is_commonjs_require(expr) {
+        if is_commonjs_require(expr, Some(&self.bindings)) {
             if let Some(src) = get_first_arg_str(expr) {
                 self.bind_dependency(src, ResolveType::Require, Some(expr.span));
                 return;
@@ -158,9 +167,19 @@ pub fn is_dynamic_import(call_expr: &CallExpr) -> bool {
     matches!(&call_expr.callee, Callee::Import(Import { .. }))
 }
 
-pub fn is_commonjs_require(call_expr: &CallExpr) -> bool {
-    if let Callee::Expr(box Expr::Ident(swc_ecma_ast::Ident { sym, .. })) = &call_expr.callee {
-        sym == "require"
+pub fn is_commonjs_require(call_expr: &CallExpr, bindings: Option<&Lrc<AHashSet<Id>>>) -> bool {
+    if let Callee::Expr(box Expr::Ident(swc_ecma_ast::Ident { sym, span, .. })) = &call_expr.callee
+    {
+        let is_require = sym == "require";
+        if !is_require {
+            return false;
+        }
+        let has_binding = if let Some(bindings) = bindings {
+            bindings.contains(&(sym.clone(), span.ctxt))
+        } else {
+            false
+        };
+        !has_binding
     } else {
         false
     }
