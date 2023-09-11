@@ -593,5 +593,10 @@ mod tests {
               && !file_contents["should-be-split_ts-async.js"].contains("\"context.ts\":"),
             "async chunk should reuse modules that already merged into entry with another minimal async chunk"
         );
+
+        assert!(
+            files.contains(&"common_dynamic-async.js".to_string()),
+            "common async modules should be split"
+        );
     }
 }

@@ -385,7 +385,7 @@ impl Compiler {
                         min_size: 20000,
                         max_size: 5000000,
                         test: Regex::new(r"[/\\]node_modules[/\\]").ok(),
-                        priority: None,
+                        priority: Some(-10),
                     },
                     OptimizeChunkGroup {
                         name: "vendors_dynamic".to_string(),
@@ -394,7 +394,17 @@ impl Compiler {
                         min_size: 20000,
                         max_size: 5000000,
                         test: Regex::new(r"[/\\]node_modules[/\\]").ok(),
-                        priority: None,
+                        priority: Some(-10),
+                    },
+                    OptimizeChunkGroup {
+                        name: "common_dynamic".to_string(),
+                        allow_chunks: OptimizeAllowChunks::Async,
+                        min_chunks: 2,
+                        // always split, to avoid multi-instance risk
+                        min_size: 1,
+                        max_size: 5000000,
+                        test: None,
+                        priority: Some(-20),
                     },
                 ],
             }),
