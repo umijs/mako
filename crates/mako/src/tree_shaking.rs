@@ -150,10 +150,7 @@ impl Compiler {
                 drop(module_graph);
             }
             // 处理 dynamic import 的情况，把他们都设置成为具备副作用
-            self.markup_module_dynamic_import_deps_as_side_effects(
-                tree_shaking_module_id,
-                tree_shaking_module_map,
-            );
+            self.markup_module_by_resolve_type(tree_shaking_module_id, tree_shaking_module_map);
         }
 
         self.cleanup_no_used_export_module(&modules_to_remove);
@@ -161,7 +158,8 @@ impl Compiler {
         modules_to_remove
     }
 
-    fn markup_module_dynamic_import_deps_as_side_effects(
+    // Require & DynamicImport 的模块先标记为 UsedExports::All，后续可以优化
+    fn markup_module_by_resolve_type(
         &self,
         tree_shaking_module_id: &ModuleId,
         tree_shaking_module_map: &mut HashMap<ModuleId, TreeShakingModule>,
@@ -171,6 +169,9 @@ impl Compiler {
             if matches!(edge.resolve_type, crate::module::ResolveType::DynamicImport) {
                 let tree_shake_module = tree_shaking_module_map.get_mut(dep).unwrap();
                 tree_shake_module.side_effects = true;
+                tree_shake_module.used_exports = UsedExports::All;
+            } else if matches!(edge.resolve_type, crate::module::ResolveType::Require) {
+                let tree_shake_module = tree_shaking_module_map.get_mut(dep).unwrap();
                 tree_shake_module.used_exports = UsedExports::All;
             }
         }
@@ -360,6 +361,13 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_tree_shaking_style() {
         let compiler = setup_compiler("test/build/tree-shaking_style", false);
+        compiler.compile();
+        let content = read_dist_file(&compiler, "dist/index.js");
+        assert_display_snapshot!(content);
+    }
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_tree_shaking_require_esm() {
+        let compiler = setup_compiler("test/build/tree-shaking_require_esm", false);
         compiler.compile();
         let content = read_dist_file(&compiler, "dist/index.js");
         assert_display_snapshot!(content);
