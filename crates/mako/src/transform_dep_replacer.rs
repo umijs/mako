@@ -1,15 +1,12 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use swc_atoms::js_word;
 use swc_common::DUMMY_SP;
-use swc_ecma_ast::Expr::Call;
 use swc_ecma_ast::{
-    AssignExpr, AssignOp, BindingIdent, BlockStmt, CallExpr, Callee, Decl, Expr, ExprOrSpread,
-    ExprStmt, FnExpr, Function, Ident, Lit, MemberExpr, MemberProp, NamedExport, NewExpr, Pat,
-    PatOrExpr, Stmt, Str, ThrowStmt, VarDecl, VarDeclKind, VarDeclarator,
+    AssignOp, BlockStmt, Expr, ExprOrSpread, FnExpr, Function, Lit, NamedExport, Stmt, Str,
+    ThrowStmt, VarDeclKind,
 };
-use swc_ecma_utils::quote_ident;
+use swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
 use swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::analyze_deps::{is_commonjs_require, is_dynamic_import};
@@ -29,6 +26,24 @@ pub struct DependenciesToReplace {
 }
 
 pub fn miss_throw_stmt<T: AsRef<str>>(source: T) -> Expr {
+    // var e = new Error("Cannot find module '{source}'")
+    let decl_error = quote_ident!("Error")
+        .into_new_expr(
+            DUMMY_SP,
+            Some(vec![quote_str!(format!(
+                "Cannot find module '{}'",
+                source.as_ref()
+            ))
+            .as_arg()]),
+        )
+        .into_var_decl(VarDeclKind::Var, quote_ident!("e").into());
+
+    // e.code = "MODULE_NOT_FOUND"
+    let assign_error = quote_str!("MODULE_NOT_FOUND")
+        .make_assign_to(AssignOp::Assign, member_expr!(DUMMY_SP, e.code).into())
+        .into_stmt();
+
+    // function() { ...; throw e }
     let fn_expr = Expr::Fn(FnExpr {
         ident: Some(quote_ident!("makoMissingModule")),
         function: Box::new(Function {
@@ -39,56 +54,11 @@ pub fn miss_throw_stmt<T: AsRef<str>>(source: T) -> Expr {
             body: Some(BlockStmt {
                 span: DUMMY_SP,
                 stmts: vec![
-                    Stmt::Decl(Decl::Var(Box::new(VarDecl {
-                        span: DUMMY_SP,
-                        kind: VarDeclKind::Var,
-                        declare: false,
-                        decls: vec![VarDeclarator {
-                            span: DUMMY_SP,
-                            name: Pat::Ident(BindingIdent {
-                                id: quote_ident!("e"),
-                                type_ann: None,
-                            }),
-                            init: Some(Box::new(Expr::New(NewExpr {
-                                span: DUMMY_SP,
-                                callee: Box::new(Expr::Ident(Ident::new(
-                                    js_word!("Error"),
-                                    DUMMY_SP,
-                                ))),
-                                args: Some(vec![ExprOrSpread {
-                                    spread: None,
-                                    expr: Box::new(Expr::Lit(Lit::Str(Str {
-                                        span: DUMMY_SP,
-                                        value: format!("Cannot find module '{}'", source.as_ref())
-                                            .into(),
-                                        raw: None,
-                                    }))),
-                                }]),
-                                type_args: None,
-                            }))),
-                            definite: false,
-                        }],
-                    }))),
-                    Stmt::Expr(ExprStmt {
-                        span: DUMMY_SP,
-                        expr: Box::new(Expr::Assign(AssignExpr {
-                            span: DUMMY_SP,
-                            left: PatOrExpr::Expr(Box::new(Expr::Member(MemberExpr {
-                                span: DUMMY_SP,
-                                obj: Box::new(Expr::Ident(quote_ident!("e"))),
-                                prop: MemberProp::Ident(quote_ident!("code")),
-                            }))),
-                            op: AssignOp::Assign,
-                            right: Box::new(Expr::Lit(Lit::Str(Str {
-                                span: DUMMY_SP,
-                                value: "MODULE_NOT_FOUND".into(),
-                                raw: None,
-                            }))),
-                        })),
-                    }),
+                    decl_error.into(),
+                    assign_error,
                     Stmt::Throw(ThrowStmt {
                         span: DUMMY_SP,
-                        arg: Box::new(Expr::Ident(quote_ident!("e"))),
+                        arg: quote_ident!("e").into(),
                     }),
                 ],
             }),
@@ -98,20 +68,11 @@ pub fn miss_throw_stmt<T: AsRef<str>>(source: T) -> Expr {
         }),
     });
 
-    Call(CallExpr {
-        span: DUMMY_SP,
-        callee: Callee::Expr(Box::new(Expr::Ident(quote_ident!("Object")))),
-        args: vec![ExprOrSpread {
-            spread: None,
-            expr: Box::new(Call(CallExpr {
-                span: DUMMY_SP,
-                args: vec![],
-                callee: Callee::Expr(Box::new(fn_expr)),
-                type_args: None,
-            })),
-        }],
-        type_args: None,
-    })
+    // (function() { ...; throw e;})()
+    let iife = fn_expr.as_iife();
+
+    // Object((function() { ...; throw e;})())
+    quote_ident!("Object").as_call(DUMMY_SP, vec![iife.as_arg()])
 }
 
 impl VisitMut for DepReplacer<'_> {
