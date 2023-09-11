@@ -9,7 +9,7 @@ use swc_ecma_ast::Module as SwcModule;
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
 use swc_ecma_visit::{VisitMut, VisitMutWith};
-use tracing_subscriber::EnvFilter;
+use tracing::Level;
 
 use crate::ast::{build_js_ast, js_ast_to_code};
 use crate::compiler::{self, Compiler};
@@ -50,6 +50,8 @@ macro_rules! assert_debug_snapshot {
 
 #[allow(dead_code)]
 pub fn create_mock_module(path: PathBuf, code: &str) -> Module {
+    setup_logger();
+
     let ast = build_js_ast(path.to_str().unwrap(), code, &Arc::new(Default::default())).unwrap();
     let module_id = ModuleId::from_path(path.clone());
     let info = ModuleInfo {
@@ -77,13 +79,7 @@ pub fn get_module(compiler: &Compiler, path: &str) -> Module {
 
 #[allow(dead_code)]
 pub fn setup_compiler(base: &str, cleanup: bool) -> Compiler {
-    let _result = tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("mako=debug")),
-        )
-        // .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
-        // .without_time()
-        .try_init();
+    setup_logger();
     let current_dir = std::env::current_dir().unwrap();
     let root = current_dir.join(base);
     if !root.parent().unwrap().exists() {
@@ -101,6 +97,14 @@ pub fn setup_compiler(base: &str, cleanup: bool) -> Compiler {
     config.mode = Mode::Production;
 
     compiler::Compiler::new(config, root, Default::default())
+}
+
+pub fn setup_logger() {
+    let _result = tracing_subscriber::fmt()
+        .with_max_level(Level::DEBUG)
+        // .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
+        // .without_time()
+        .try_init();
 }
 
 pub fn read_dist_file(compiler: &Compiler, path: &str) -> String {

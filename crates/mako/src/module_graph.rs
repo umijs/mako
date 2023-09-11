@@ -195,14 +195,25 @@ impl ModuleGraph {
         targets
     }
 
+    pub fn dependence_module_ids(&self, module_id: &ModuleId) -> Vec<ModuleId> {
+        let mut edges = self.get_edges(module_id, Direction::Outgoing);
+        let mut targets: Vec<ModuleId> = vec![];
+        while let Some((_, node_index)) = edges.next(&self.graph) {
+            let module = self.graph.node_weight(node_index).unwrap();
+            targets.push(module.id.clone());
+        }
+
+        targets
+    }
+
     pub fn get_dependency_module_by_source(
         &self,
         module_id: &ModuleId,
-        source: String,
+        source: &String,
     ) -> &ModuleId {
         let deps = self.get_dependencies(module_id);
         for (module_id, dep) in deps {
-            if source == dep.source {
+            if *source == dep.source {
                 return module_id;
             }
         }

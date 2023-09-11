@@ -1,3 +1,6 @@
 {
-  "externals": {}
+  "externals": {},
+  "treeShake": "advanced",
+  "minify": true,
+  "moduleIdStrategy": "named"
 }

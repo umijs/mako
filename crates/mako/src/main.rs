@@ -55,6 +55,7 @@ mod transform_env_replacer;
 mod transform_in_generate;
 mod transform_optimizer;
 mod transform_provide;
+mod transform_px2rem;
 mod transform_react;
 mod transform_try_resolve;
 mod tree_shaking;

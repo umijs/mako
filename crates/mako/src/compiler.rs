@@ -15,6 +15,7 @@ use crate::config::{Config, OutputMode};
 use crate::module_graph::ModuleGraph;
 use crate::plugin::{Plugin, PluginDriver};
 use crate::plugins;
+use crate::resolve::{get_resolvers, Resolvers};
 use crate::stats::StatsInfo;
 
 pub struct Context {
@@ -28,6 +29,7 @@ pub struct Context {
     pub meta: Meta,
     pub plugin_driver: PluginDriver,
     pub stats_info: Mutex<StatsInfo>,
+    pub resolvers: Resolvers,
 }
 
 #[derive(Default)]
@@ -37,6 +39,9 @@ pub struct Args {
 
 impl Default for Context {
     fn default() -> Self {
+        let config: Config = Default::default();
+        let resolvers = get_resolvers(&config);
+
         Self {
             config: Default::default(),
             args: Args { watch: false },
@@ -49,6 +54,7 @@ impl Default for Context {
             plugin_driver: Default::default(),
             // 产物信息放在上下文里是否合适
             stats_info: Mutex::new(StatsInfo::new()),
+            resolvers,
         }
     }
 }
@@ -154,6 +160,7 @@ impl Compiler {
             Arc::new(plugins::yaml::YAMLPlugin {}),
             Arc::new(plugins::assets::AssetsPlugin {}),
             Arc::new(plugins::runtime::MakoRuntime {}),
+            Arc::new(plugins::farm_tree_shake::FarmTreeShake {}),
         ];
 
         let mut config = config;
@@ -174,6 +181,7 @@ impl Compiler {
 
         plugin_driver.modify_config(&mut config).unwrap();
 
+        let resolvers = get_resolvers(&config);
         Self {
             context: Arc::new(Context {
                 config,
@@ -186,6 +194,7 @@ impl Compiler {
                 meta: Meta::new(),
                 plugin_driver,
                 stats_info: Mutex::new(StatsInfo::new()),
+                resolvers,
             }),
         }
     }
@@ -367,6 +376,26 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
+    async fn test_css_px2rem() {
+        let (files, file_contents) = compile("test/compile/css-px2rem");
+        println!("{:?}", files);
+        let index_css_content = file_contents.get("index.css").unwrap();
+        assert!(
+            index_css_content.contains("margin: 0 0 20px;"),
+            "prop_black_list should works"
+        );
+        assert!(index_css_content.contains("font-size: 0.32rem;"), "normal");
+        assert!(
+            index_css_content.contains("@media (min-width: 5rem) {"),
+            "media query should be transformed"
+        );
+        assert!(
+            index_css_content.contains("content: \"16px\";"),
+            "content string should not be transformed"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_es_decorator() {
         let (files, file_contents) = compile("test/compile/es-decorator");
         println!("{:?}", files);
@@ -537,14 +566,14 @@ mod tests {
         let index_js_content = file_contents.get("index.js").unwrap();
 
         assert!(
-            index_js_content.contains("cssChunksIdToUrlMap[\"./a.ts\"]"),
+            index_js_content.contains("cssChunksIdToUrlMap[\"a.ts\"]"),
             "css async chunk works"
         );
     }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_auto_code_splitting() {
-        let (files, _file_contents) = compile("test/compile/auto-code-splitting");
+        let (files, file_contents) = compile("test/compile/auto-code-splitting");
         println!("{:?}", files);
 
         assert!(
@@ -561,6 +590,17 @@ mod tests {
             files.contains(&"vendors_dynamic_0-async.js".to_string())
                 && files.contains(&"vendors_dynamic_1-async.js".to_string()),
             "big vendors should be split again"
+        );
+
+        assert!(
+            file_contents["index.js"].contains("\"context.ts\":")
+              && !file_contents["should-be-split_ts-async.js"].contains("\"context.ts\":"),
+            "async chunk should reuse modules that already merged into entry with another minimal async chunk"
+        );
+
+        assert!(
+            files.contains(&"common_dynamic-async.js".to_string()),
+            "common async modules should be split"
         );
     }
 }

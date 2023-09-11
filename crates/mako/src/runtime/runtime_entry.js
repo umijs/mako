@@ -47,8 +47,6 @@ function createRuntime(makoModules, entryModuleId) {
   // module execution interceptor
   requireModule.requireInterceptors = [];
 
-  // __inject_runtime_code__
-
   // mako/runtime/hmr plugin
   !(function () {
     let currentParents = [];
@@ -476,6 +474,8 @@ function createRuntime(makoModules, entryModuleId) {
   requireModule.currentHash = () => {
     return requireModule._h;
   };
+
+  // __inject_runtime_code__
 
   // __WASM_REQUIRE_SUPPORT
   // __REQUIRE_ASYNC_MODULE_SUPPORT
