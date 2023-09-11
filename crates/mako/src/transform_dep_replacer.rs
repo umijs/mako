@@ -26,6 +26,7 @@ pub struct DependenciesToReplace {
 }
 
 pub fn miss_throw_stmt<T: AsRef<str>>(source: T) -> Expr {
+    // var e = new Error("Cannot find module '{source}'")
     let decl_error = quote_ident!("Error")
         .into_new_expr(
             DUMMY_SP,
@@ -37,10 +38,12 @@ pub fn miss_throw_stmt<T: AsRef<str>>(source: T) -> Expr {
         )
         .into_var_decl(VarDeclKind::Var, quote_ident!("e").into());
 
+    // e.code = "MODULE_NOT_FOUND"
     let assign_error = quote_str!("MODULE_NOT_FOUND")
         .make_assign_to(AssignOp::Assign, member_expr!(DUMMY_SP, e.code).into())
         .into_stmt();
 
+    // function() { ...; throw e }
     let fn_expr = Expr::Fn(FnExpr {
         ident: Some(quote_ident!("makoMissingModule")),
         function: Box::new(Function {
@@ -65,8 +68,10 @@ pub fn miss_throw_stmt<T: AsRef<str>>(source: T) -> Expr {
         }),
     });
 
+    // (function() { ...; throw e;})()
     let iife = fn_expr.as_iife();
 
+    // Object((function() { ...; throw e;})())
     quote_ident!("Object").as_call(DUMMY_SP, vec![iife.as_arg()])
 }
 
