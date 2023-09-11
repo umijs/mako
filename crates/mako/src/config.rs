@@ -100,6 +100,19 @@ pub enum TreeShakeStrategy {
     None,
 }
 
+#[derive(Deserialize, Clone, Debug)]
+pub struct Px2RemConfig {
+    pub root: f64,
+    #[serde(rename = "propBlackList")]
+    pub prop_black_list: Vec<String>,
+    #[serde(rename = "propWhiteList")]
+    pub prop_white_list: Vec<String>,
+    #[serde(rename = "selectorBlackList")]
+    pub selector_black_list: Vec<String>,
+    #[serde(rename = "selectorWhiteList")]
+    pub selector_white_list: Vec<String>,
+}
+
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
@@ -127,6 +140,9 @@ pub struct Config {
     pub hmr_port: String,
     pub hmr_host: String,
     pub code_splitting: CodeSplittingStrategy,
+    pub px2rem: bool,
+    #[serde(rename = "px2remConfig")]
+    pub px2rem_config: Px2RemConfig,
     // temp flag
     #[serde(rename = "extractCSS")]
     pub extract_css: bool,
@@ -162,6 +178,8 @@ const DEFAULT_CONFIG: &str = r#"
     "codeSplitting": "none",
     "extractCSS": false,
     "hash": false,
+    "px2rem": false,
+    "px2remConfig": { "root": 100, "propBlackList": [], "propWhiteList": [], "selectorBlackList": [], "selectorWhiteList": [] },
     "treeShake": "advanced"
 }
 "#;

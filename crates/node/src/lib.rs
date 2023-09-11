@@ -22,24 +22,32 @@ pub async fn build(
        extensions?: string[];
     };
     manifest?: boolean;
-    manifest_config?: {
-        file_name: string;
-        base_path: string;
+    manifestConfig?: {
+        fileName: string;
+        basePath: string;
     };
     mode?: "development" | "production";
     define?: Record<string, string>;
     devtool?: "source-map" | "inline-source-map" | "none";
     externals?: Record<string, string>;
     copy?: string[];
-    code_splitting: "bigVendors" | "depPerChunk" | "none";
+    code_splitting: "auto" | "none";
     providers?: Record<string, string[]>;
-    public_path?: string;
-    inline_limit?: number;
+    publicPath?: string;
+    inlineLimit?: number;
     targets?: Record<string, number>;
     platform?: "node" | "browser";
     hmr?: boolean;
-    hmr_port?: string;
-    hmr_host?: string;
+    hmrPort?: string;
+    hmrHost?: string;
+    px2rem?: boolean;
+    px2remConfig?: {
+        root: number;
+        propBlackList: string[];
+        propWhiteList: string[];
+        selectorBlackList: string[];
+        selectorWhiteList: string[];
+    };
     stats?: boolean;
 }"#)]
     config: serde_json::Value,

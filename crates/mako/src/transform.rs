@@ -27,6 +27,7 @@ use crate::transform_css_url_replacer::CSSUrlReplacer;
 use crate::transform_env_replacer::{build_env_map, EnvReplacer};
 use crate::transform_optimizer::Optimizer;
 use crate::transform_provide::Provide;
+use crate::transform_px2rem::Px2Rem;
 use crate::transform_react::mako_react;
 use crate::transform_try_resolve::TryResolve;
 
@@ -156,6 +157,15 @@ fn transform_css(
         context,
     };
     ast.visit_mut_with(&mut css_handler);
+    if context.config.px2rem {
+        let mut px2rem = Px2Rem {
+            path: &task.path,
+            context,
+            current_decl: None,
+            current_selector: None,
+        };
+        ast.visit_mut_with(&mut px2rem);
+    }
     Ok(())
 }
 
