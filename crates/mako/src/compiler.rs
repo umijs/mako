@@ -372,6 +372,26 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
+    async fn test_css_px2rem() {
+        let (files, file_contents) = compile("test/compile/css-px2rem");
+        println!("{:?}", files);
+        let index_css_content = file_contents.get("index.css").unwrap();
+        assert!(
+            index_css_content.contains("margin: 0 0 20px;"),
+            "prop_black_list should works"
+        );
+        assert!(index_css_content.contains("font-size: 0.32rem;"), "normal");
+        assert!(
+            index_css_content.contains("@media (min-width: 5rem) {"),
+            "media query should be transformed"
+        );
+        assert!(
+            index_css_content.contains("content: \"16px\";"),
+            "content string should not be transformed"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_es_decorator() {
         let (files, file_contents) = compile("test/compile/es-decorator");
         println!("{:?}", files);
