@@ -16,5 +16,6 @@
   },
   "publishConfig": {
     "registry": "https://registry.antgroup-inc.cn"
-  }
+  },
+  "repository": "git@github.com:umijs/mako.git"
 }
