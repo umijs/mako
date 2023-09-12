@@ -181,9 +181,26 @@ impl Compiler {
 
     fn build_by_modify(
         &self,
-        modified: Vec<PathBuf>,
+        mut modified: Vec<PathBuf>,
         resolvers: Arc<Resolvers>,
     ) -> Result<(HashSet<ModuleId>, Vec<PathBuf>)> {
+        let module_graph = self.context.module_graph.read().unwrap();
+        let modules = module_graph.modules();
+
+        // concat related query modules for modified paths
+        // for example: concat a.module.css?modules for a.module.css
+        for module in modules
+            .iter()
+            .filter(|module| module.id.id.contains("?modules"))
+        {
+            let origin_id = module.id.id.split('?').next().unwrap();
+
+            if modified.contains(&PathBuf::from(origin_id)) {
+                modified.push(PathBuf::from(module.id.id.clone()));
+            }
+        }
+        drop(module_graph);
+
         let result = modified
             .par_iter()
             .map(|entry| {
