@@ -1,9 +1,14 @@
+use std::cell::RefCell;
+use std::ops::DerefMut;
+
 use anyhow::Result;
 
 use crate::module::{ModuleAst, ModuleId, ModuleType, ResolveType};
 use crate::module_graph::ModuleGraph;
 use crate::plugins::farm_tree_shake::module::{TreeShakeModule, UsedExports};
-use crate::plugins::farm_tree_shake::statement_graph::{ExportInfo, ImportInfo};
+use crate::plugins::farm_tree_shake::statement_graph::{
+    ExportInfo, ExportSpecifierInfo, ImportInfo,
+};
 use crate::plugins::farm_tree_shake::{module, remove_useless_stmts, statement_graph};
 use crate::tree_shaking_module::ModuleSystem;
 
@@ -60,24 +65,71 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
 
         let tree_shake_module = TreeShakeModule::new(module);
         tree_shake_modules_ids.push(tree_shake_module.module_id.clone());
-        tree_shake_modules_map.insert(tree_shake_module.module_id.clone(), tree_shake_module);
+        tree_shake_modules_map.insert(
+            tree_shake_module.module_id.clone(),
+            RefCell::new(tree_shake_module),
+        );
+    }
+
+    // fill tree shake module all exported ident in reversed opo-sort order
+    for module_id in tree_shake_modules_ids.iter().rev() {
+        let mut tsm = tree_shake_modules_map.get(module_id).unwrap().borrow_mut();
+
+        for exp_info in tsm.exports() {
+            if let Some(source) = exp_info.source {
+                for sp_info in exp_info.specifiers {
+                    match sp_info {
+                        ExportSpecifierInfo::All(_) => {
+                            let dependent_id =
+                                module_graph.get_dependency_module_by_source(module_id, &source);
+
+                            if let Some(rc) = tree_shake_modules_map.get(dependent_id) {
+                                let dependence_module = rc.borrow();
+
+                                let to_extend = dependence_module.all_exports.clone();
+
+                                tsm.stmt_graph.stmt_mut(&exp_info.stmt_id).export_info =
+                                    Some(ExportInfo {
+                                        source: Some(source.clone()),
+                                        specifiers: vec![ExportSpecifierInfo::All(Some(
+                                            to_extend.clone().into_iter().collect::<Vec<_>>(),
+                                        ))],
+                                        stmt_id: exp_info.stmt_id,
+                                    });
+
+                                tsm.all_exports.extend(to_extend.into_iter());
+                            }
+                        }
+                        _ => {
+                            tsm.all_exports.extend(sp_info.to_idents());
+                        }
+                    }
+                }
+            } else {
+                for exp_sp in exp_info.specifiers {
+                    let idents = exp_sp.to_idents();
+                    tsm.all_exports.extend(idents);
+                }
+            }
+        }
     }
 
     let mut modules_to_remove = vec![];
 
     // traverse the tree_shake_modules
     for tree_shake_module_id in tree_shake_modules_ids {
-        let tree_shake_module = tree_shake_modules_map
-            .get_mut(&tree_shake_module_id)
-            .unwrap();
+        let mut tree_shake_module = tree_shake_modules_map
+            .get(&tree_shake_module_id)
+            .unwrap()
+            .borrow_mut();
 
         // if module is not esm, mark all imported modules as [UsedExports::All]
         if !matches!(tree_shake_module.module_system, ModuleSystem::ESModule) {
             for (dep_id, _) in module_graph.get_dependencies(&tree_shake_module_id) {
-                let dep_tree_shake_module = tree_shake_modules_map.get_mut(dep_id);
+                let dep_tree_shake_module = tree_shake_modules_map.get(dep_id);
 
                 if let Some(dep_tree_shake_module) = dep_tree_shake_module {
-                    dep_tree_shake_module.used_exports = UsedExports::All;
+                    dep_tree_shake_module.borrow_mut().used_exports = UsedExports::All;
                 }
             }
         } else {
@@ -88,7 +140,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
 
                 for import_info in &imports {
                     add_used_exports_by_import_info(
-                        &mut tree_shake_modules_map,
+                        &tree_shake_modules_map,
                         &*module_graph,
                         &tree_shake_module_id,
                         import_info,
@@ -97,17 +149,14 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
 
                 for export_info in &exports {
                     add_used_exports_by_export_info(
-                        &mut tree_shake_modules_map,
+                        &tree_shake_modules_map,
                         &*module_graph,
                         &tree_shake_module_id,
+                        tree_shake_module.side_effects,
                         export_info,
                     );
                 }
             } else {
-                let tree_shake_module = tree_shake_modules_map
-                    .get_mut(&tree_shake_module_id)
-                    .unwrap();
-
                 if tree_shake_module.used_exports.is_empty() {
                     // if the module's used_exports is empty, means this module is not used and should be removed
                     modules_to_remove.push(tree_shake_module_id.clone());
@@ -123,13 +172,13 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
                     // remove useless statements and useless imports/exports identifiers, then all preserved import info and export info will be added to the used_exports.
                     let (used_imports, used_exports_from) =
                         remove_useless_stmts::remove_useless_stmts(
-                            tree_shake_module,
+                            tree_shake_module.deref_mut(),
                             &mut swc_module.ast,
                         );
 
                     for import_info in used_imports {
                         add_used_exports_by_import_info(
-                            &mut tree_shake_modules_map,
+                            &tree_shake_modules_map,
                             &*module_graph,
                             &tree_shake_module_id,
                             &import_info,
@@ -138,9 +187,10 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
 
                     for export_info in used_exports_from {
                         add_used_exports_by_export_info(
-                            &mut tree_shake_modules_map,
+                            &tree_shake_modules_map,
                             &*module_graph,
                             &tree_shake_module_id,
+                            tree_shake_module.side_effects,
                             &export_info,
                         );
                     }
@@ -151,7 +201,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
         // add all dynamic imported dependencies as [UsedExports::All]
         for (dep, edge) in module_graph.get_dependencies(&tree_shake_module_id) {
             if matches!(edge.resolve_type, ResolveType::DynamicImport) {
-                let tree_shake_module = tree_shake_modules_map.get_mut(dep).unwrap();
+                let mut tree_shake_module = tree_shake_modules_map.get(dep).unwrap().borrow_mut();
                 tree_shake_module.side_effects = true;
                 tree_shake_module.used_exports = UsedExports::All;
             }
@@ -168,7 +218,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
 
 // Add all imported to used_exports
 fn add_used_exports_by_import_info(
-    tree_shake_modules_map: &mut std::collections::HashMap<ModuleId, TreeShakeModule>,
+    tree_shake_modules_map: &std::collections::HashMap<ModuleId, RefCell<TreeShakeModule>>,
     module_graph: &ModuleGraph,
     tree_shake_module_id: &ModuleId,
     import_info: &ImportInfo,
@@ -185,11 +235,12 @@ fn add_used_exports_by_import_info(
         return;
     }
 
-    let imported_tree_shake_module = tree_shake_modules_map
-        .get_mut(imported_module_id)
+    let mut imported_tree_shake_module = tree_shake_modules_map
+        .get(imported_module_id)
         .unwrap_or_else(|| {
             panic!("imported module not found: {:?}", imported_module_id);
-        });
+        })
+        .borrow_mut();
 
     if import_info.specifiers.is_empty() {
         imported_tree_shake_module.used_exports = UsedExports::All;
@@ -230,9 +281,10 @@ fn add_used_exports_by_import_info(
 
 /// All all exported to used_exports
 fn add_used_exports_by_export_info(
-    tree_shake_modules_map: &mut std::collections::HashMap<ModuleId, TreeShakeModule>,
+    tree_shake_modules_map: &std::collections::HashMap<ModuleId, RefCell<TreeShakeModule>>,
     module_graph: &ModuleGraph,
     tree_shake_module_id: &ModuleId,
+    has_side_effects: bool,
     export_info: &ExportInfo,
 ) {
     if let Some(source) = &export_info.source {
@@ -244,8 +296,10 @@ fn add_used_exports_by_export_info(
             return;
         };
 
-        let exported_tree_shake_module =
-            tree_shake_modules_map.get_mut(exported_module_id).unwrap();
+        let mut exported_tree_shake_module = tree_shake_modules_map
+            .get(exported_module_id)
+            .unwrap()
+            .borrow_mut();
 
         for sp in &export_info.specifiers {
             match sp {
@@ -269,11 +323,13 @@ fn add_used_exports_by_export_info(
                         .add_used_export(&module::UsedIdent::Default);
                 }
                 statement_graph::ExportSpecifierInfo::All(used_idents) => {
-                    if let Some(used_idents) = used_idents {
+                    if has_side_effects {
+                        exported_tree_shake_module.used_exports = module::UsedExports::All
+                    } else if let Some(used_idents) = used_idents {
                         for ident in used_idents {
                             if ident == "*" {
                                 exported_tree_shake_module.used_exports = module::UsedExports::All;
-                            } else {
+                            } else if exported_tree_shake_module.all_exports.contains(ident) {
                                 exported_tree_shake_module
                                     .used_exports
                                     .add_used_export(&strip_context(ident));
@@ -288,7 +344,7 @@ fn add_used_exports_by_export_info(
     }
 }
 
-fn strip_context(ident: &str) -> String {
+pub fn strip_context(ident: &str) -> String {
     let ident_split = ident.split('#').collect::<Vec<_>>();
     ident_split[0].to_string()
 }

@@ -10,6 +10,7 @@ pub(crate) mod used_idents_collector;
 use analyze_imports_and_exports::analyze_imports_and_exports;
 
 use crate::plugins::farm_tree_shake::module::UsedIdent;
+use crate::plugins::farm_tree_shake::shake::strip_context;
 use crate::plugins::farm_tree_shake::statement_graph::analyze_imports_and_exports::StatementInfo;
 
 pub type StatementId = usize;
@@ -45,6 +46,29 @@ pub enum ExportSpecifierInfo {
     Default,
     // export * as foo from 'foo';
     Namespace(String),
+}
+
+impl ExportSpecifierInfo {
+    pub fn to_idents(&self) -> Vec<String> {
+        match self {
+            ExportSpecifierInfo::All(_what) => {
+                vec![]
+            }
+            ExportSpecifierInfo::Named { local, exported } => {
+                if let Some(exp) = exported {
+                    vec![strip_context(exp)]
+                } else {
+                    vec![strip_context(local)]
+                }
+            }
+            ExportSpecifierInfo::Default => {
+                vec!["default".to_string()]
+            }
+            ExportSpecifierInfo::Namespace(ns) => {
+                vec![strip_context(ns)]
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

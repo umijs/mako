@@ -49,13 +49,31 @@ jobs:
         if: ${{ matrix.rust == 'stable' || matrix.rust == 'beta' || matrix.rust == 'nightly-2022-09-23' }}
         run: >
           cargo test -v
+
       - name: build_fixture
         run: cargo run --bin mako examples/normal
       - name: prepare-antd-CI
         working-directory: ./examples/with-antd
         run: pnpm cypress install
-      - name: antd-CI
+
+      - name: build_fixture
+        run: cargo run --bin mako examples/normal
+      - name: antd-CI-advanced
         run: pnpm --filter with-antd run e2e:ci
+
+      - name: Set Mako TreeShake to basic strategy
+        uses: sergeysova/jq-action@v2
+        with:
+          cmd: jq '.treeShake="basic"' ./examples/with-antd/mako.config.json > tmp.json
+      - name: Update Mako config file
+        run: |
+          mv tmp.json  ./examples/with-antd/mako.config.json
+          cat ./examples/with-antd/mako.config.json
+      - name: build_fixture
+        run: cargo run --bin mako examples/normal
+      - name: antd-CI-basic
+        run: pnpm --filter with-antd run e2e:ci
+
       - name: prepare-HMR-CI
         working-directory: ./examples/with-dynamic-import
         run: pnpm cypress install
