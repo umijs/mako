@@ -9,7 +9,7 @@ use swc_ecma_ast::Module as SwcModule;
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
 use swc_ecma_visit::{VisitMut, VisitMutWith};
-use tracing::Level;
+use tracing_subscriber::EnvFilter;
 
 use crate::ast::{build_js_ast, js_ast_to_code};
 use crate::compiler::{self, Compiler};
@@ -101,7 +101,8 @@ pub fn setup_compiler(base: &str, cleanup: bool) -> Compiler {
 
 pub fn setup_logger() {
     let _result = tracing_subscriber::fmt()
-        .with_max_level(Level::DEBUG)
+        .with_env_filter(EnvFilter::from_default_env())
+        // .with_max_level(Level::DEBUG)
         // .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
         // .without_time()
         .try_init();
