@@ -180,7 +180,7 @@ const DEFAULT_CONFIG: &str = r#"
     "hash": false,
     "px2rem": false,
     "px2remConfig": { "root": 100, "propBlackList": [], "propWhiteList": [], "selectorBlackList": [], "selectorWhiteList": [] },
-    "treeShake": "advanced"
+    "treeShake": "basic"
 }
 "#;
 
