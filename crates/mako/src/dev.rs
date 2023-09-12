@@ -1,4 +1,3 @@
-use std::io::Error as IoError;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
@@ -83,38 +82,6 @@ impl DevServer {
                 let static_serve_hmr =
                     hyper_staticfile::Static::new(for_fn.context.root.join("node_modules/.mako"));
 
-                let get_serve_response = |serve_result: Result<
-                    hyper::Response<hyper::Body>,
-                    IoError,
-                >| {
-                    match serve_result {
-                        Ok(mut res) => {
-                            if let Some(content_type) = res.headers().get(CONTENT_TYPE).cloned() {
-                                if let Ok(c_str) = content_type.to_str() {
-                                    if c_str.contains("javascript") || c_str.contains("text") {
-                                        res.headers_mut()
-                                            .insert(
-                                                CONTENT_TYPE,
-                                                HeaderValue::from_str(&format!(
-                                                    "{c_str}; charset=utf-8"
-                                                ))
-                                                .unwrap(),
-                                            )
-                                            .unwrap();
-                                    }
-                                }
-                            }
-                            Ok(res)
-                        }
-                        Err(_) => Ok::<_, hyper::Error>(
-                            hyper::Response::builder()
-                                .status(hyper::StatusCode::NOT_FOUND)
-                                .body(hyper::Body::from("404 - Page not found"))
-                                .unwrap(),
-                        ),
-                    }
-                };
-
                 match path {
                     "__/hmr-ws" => {
                         if hyper_tungstenite::is_upgrade_request(&req) {
@@ -138,12 +105,59 @@ impl DevServer {
                             )
                         }
                     }
-                    _ if path.starts_with("hot_update") => {
-                        get_serve_response(static_serve_hmr.serve(req).await)
-                    }
                     _ => {
-                        // try chunk content in memory first, else use dist content
-                        get_serve_response(static_serve.serve(req).await)
+                        // clone 一份 req，用于做 hmr 的匹配
+                        let uri_cloned = req.uri().clone();
+                        let herders_cloned = req.headers().clone();
+                        let mut req_cloned = hyper::Request::builder()
+                            .method(hyper::Method::GET)
+                            .uri(uri_cloned)
+                            .body(hyper::Body::empty())
+                            .unwrap();
+                        req_cloned.headers_mut().extend(herders_cloned);
+
+                        // 先匹配静态资源请求，用完整的 req
+                        let static_serve_result = static_serve.serve(req).await;
+                        let serve_result = match static_serve_result {
+                            Ok(res) => {
+                                // 如果 404 了，再匹配下 hmr 的路径
+                                if res.status() == hyper::StatusCode::NOT_FOUND {
+                                    static_serve_hmr.serve(req_cloned).await
+                                } else {
+                                    Ok(res)
+                                }
+                            }
+                            _ => static_serve_result,
+                        };
+
+                        // 后续处理
+                        match serve_result {
+                            Ok(mut res) => {
+                                if let Some(content_type) = res.headers().get(CONTENT_TYPE).cloned()
+                                {
+                                    if let Ok(c_str) = content_type.to_str() {
+                                        if c_str.contains("javascript") || c_str.contains("text") {
+                                            res.headers_mut()
+                                                .insert(
+                                                    CONTENT_TYPE,
+                                                    HeaderValue::from_str(&format!(
+                                                        "{c_str}; charset=utf-8"
+                                                    ))
+                                                    .unwrap(),
+                                                )
+                                                .unwrap();
+                                        }
+                                    }
+                                }
+                                Ok(res)
+                            }
+                            Err(_) => Ok::<_, hyper::Error>(
+                                hyper::Response::builder()
+                                    .status(hyper::StatusCode::NOT_FOUND)
+                                    .body(hyper::Body::from("404 - Page not found"))
+                                    .unwrap(),
+                            ),
+                        }
                     }
                 }
             }
