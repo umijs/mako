@@ -174,7 +174,6 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
         });
 
     // 获取 assets
-    println!("{:?}", stats_info.assets);
     stats_map.assets = stats_info
         .assets
         .iter()
