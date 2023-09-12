@@ -174,13 +174,14 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
         });
 
     // 获取 assets
+    println!("{:?}", stats_info.assets);
     stats_map.assets = stats_info
         .assets
         .iter()
         .map(|asset| StatsJsonAssetsItem {
             assets_type: StatsJsonType::Asset(asset.assets_type.clone()),
             size: asset.size,
-            name: asset.name.clone(),
+            name: asset.hashname.clone(),
             path: asset.path.clone(),
         })
         .collect();

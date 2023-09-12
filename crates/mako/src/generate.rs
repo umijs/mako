@@ -384,13 +384,12 @@ impl Compiler {
     // 写入产物前记录 content 大小, 并加上 hash 值
     pub fn write_to_dist_with_stats(&self, file: EmitFile) {
         let to: PathBuf = self.context.config.output.path.join(file.hashname.clone());
-        let path = self.context.config.output.path.join(file.filename.clone());
         let size = file.content.len() as u64;
         self.context.stats_info.lock().unwrap().add_assets(
             size,
             file.filename,
             file.chunk_id,
-            path,
+            to.clone(),
             file.hashname,
         );
         fs::write(to, file.content).unwrap();
