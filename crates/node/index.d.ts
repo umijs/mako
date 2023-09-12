@@ -39,4 +39,5 @@ selectorBlackList: string[];
 selectorWhiteList: string[];
 };
 stats?: boolean;
+hash?: boolean;
 }, watch: boolean): Promise<void>
