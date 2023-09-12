@@ -62,6 +62,7 @@ pub struct TreeShakeModule {
     // used exports will be analyzed when tree shaking
     pub used_exports: UsedExports,
     pub module_system: ModuleSystem,
+    pub all_exports: HashSet<String>,
 }
 
 impl TreeShakeModule {
@@ -107,6 +108,7 @@ impl TreeShakeModule {
             used_exports,
             side_effects: module.side_effects,
             module_system,
+            all_exports: Default::default(),
         }
     }
 
@@ -253,10 +255,9 @@ impl TreeShakeModule {
                                 is_ident_equal(ident, exported_ident)
                             }
                             ExportSpecifierInfo::Namespace(ns) => is_ident_equal(ident, ns),
-                            ExportSpecifierInfo::All(_) => {
-                                /* Deal with All later */
-                                false
-                            }
+                            ExportSpecifierInfo::All(exported_idents) => exported_idents
+                                .as_ref()
+                                .map_or(false, |all_idents| all_idents.contains(ident)),
                         })
                     });
 
@@ -291,18 +292,23 @@ impl TreeShakeModule {
                                         ));
                                     }
                                 }
-                                ExportSpecifierInfo::All(_) => unreachable!(),
+                                ExportSpecifierInfo::All(_) => used_idents.push((
+                                    UsedIdent::InExportAll(ident.clone()),
+                                    export_info.stmt_id,
+                                )),
                             }
                         }
                     } else {
                         // if export info is not found, and there are ExportSpecifierInfo::All, then the ident may be exported by `export * from 'xxx'`
                         for export_info in self.exports() {
-                            if export_info
-                                .specifiers
-                                .iter()
-                                .any(|sp| matches!(sp, ExportSpecifierInfo::All(_)))
-                            {
+                            if export_info.specifiers.iter().any(|sp| match sp {
+                                ExportSpecifierInfo::All(exported_idents) => exported_idents
+                                    .as_ref()
+                                    .map_or(false, |all_idents| all_idents.contains(ident)),
+                                _ => false,
+                            }) {
                                 let stmt_id = export_info.stmt_id;
+
                                 used_idents
                                     .push((UsedIdent::InExportAll(ident.to_string()), stmt_id));
                             }
