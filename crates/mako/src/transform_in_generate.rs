@@ -298,7 +298,7 @@ mod tests {
     fn transform_css_code(content: &str, path: Option<&str>) -> (String, String) {
         let path = if let Some(p) = path { p } else { "test.tsx" };
         let context = Arc::new(Default::default());
-        let mut ast = build_css_ast(path, content, &context).unwrap();
+        let mut ast = build_css_ast(path, content, &context, false).unwrap();
         transform_css_generate(&mut ast, &context);
         let (code, _sourcemap) = css_ast_to_code(&ast, &context, "test.css");
         let code = code.trim().to_string();

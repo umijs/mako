@@ -343,6 +343,10 @@ mod tests {
             index_css_content.contains(".bar {"),
             ".bar with :global is not css moduled"
         );
+        assert!(
+            index_css_content.contains(".e {"),
+            ".e with :global is not css moduled"
+        );
     }
 
     #[tokio::test(flavor = "multi_thread")]
