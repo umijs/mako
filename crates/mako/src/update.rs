@@ -189,7 +189,10 @@ impl Compiler {
 
         // concat related query modules for modified paths
         // for example: concat a.module.css?modules for a.module.css
-        for module in modules.iter().filter(|module| module.id.id.contains('?')) {
+        for module in modules
+            .iter()
+            .filter(|module| module.id.id.contains("?modules"))
+        {
             let origin_id = module.id.id.split('?').next().unwrap();
 
             if modified.contains(&PathBuf::from(origin_id)) {
