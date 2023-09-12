@@ -92,7 +92,11 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
                                     Some(ExportInfo {
                                         source: Some(source.clone()),
                                         specifiers: vec![ExportSpecifierInfo::All(Some(
-                                            to_extend.clone().into_iter().collect::<Vec<_>>(),
+                                            to_extend
+                                                .clone()
+                                                .into_iter()
+                                                .filter(|id| id != "default")
+                                                .collect::<Vec<_>>(),
                                         ))],
                                         stmt_id: exp_info.stmt_id,
                                     });
