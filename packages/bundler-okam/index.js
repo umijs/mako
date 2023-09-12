@@ -1,4 +1,5 @@
 const path = require('path');
+const fs = require('fs');
 const assert = require('assert');
 
 exports.build = async function (opts) {
@@ -21,13 +22,24 @@ exports.build = async function (opts) {
   const okamConfig = getOkamConfig(opts);
   const mode = process.argv.includes('--dev') ? 'development' : 'production';
   okamConfig.mode = mode;
+  okamConfig.manifest = true;
+  okamConfig.hash = !!opts.config.hash;
 
   const { build } = require('@okamjs/okam');
   await build(cwd, okamConfig, false);
 
-  // FIXME: mock stats
+  // TODO: use stats
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(cwd, 'dist', 'asset-manifest.json')),
+  );
+  const assets = Object.keys(manifest)
+    .filter((key) => !key.endsWith('.map'))
+    .reduce((obj, key) => {
+      obj[manifest[key]] = 1;
+      return obj;
+    }, {});
   const stats = {
-    compilation: { assets: { 'umi.js': 'umi.js' } },
+    compilation: { assets },
     hasErrors: () => false,
   };
   onBuildComplete({
@@ -109,7 +121,7 @@ function checkConfig(config) {
 }
 
 function getOkamConfig(opts) {
-  const { alias, targets, publicPath, runtimePublicPath, manifest, mdx } =
+  const { alias, targets, publicPath, runtimePublicPath, manifest, mdx, hash } =
     opts.config;
   const outputPath = path.join(opts.cwd, 'dist');
   // TODO:

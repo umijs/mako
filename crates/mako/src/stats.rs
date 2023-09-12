@@ -251,7 +251,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
 }
 
 pub fn write_stats(stats: &StatsJsonMap, compiler: &Compiler) {
-    let path = &compiler.context.root.join("stats.json");
+    let path = &compiler.context.config.output.path.join("stats.json");
     let stats_json = serde_json::to_string_pretty(stats).unwrap();
     fs::write(path, stats_json).unwrap();
 }
