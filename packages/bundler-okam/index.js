@@ -59,7 +59,7 @@ exports.dev = async function (opts) {
   // before middlewares
   (opts.beforeMiddlewares || []).forEach((m) => app.use(m));
   // serve dist files
-  app.use(express.static(path.join(opts.cwd, 'node_modules/.mako')));
+  app.use(express.static(path.join(opts.cwd, 'node_modules/.mako/hot_update')));
   app.use(express.static(path.join(opts.cwd, 'dist')));
   // TODO: proxy
   // opts.config.proxy

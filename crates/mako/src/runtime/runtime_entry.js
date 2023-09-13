@@ -170,7 +170,7 @@ function createRuntime(makoModules, entryModuleId) {
         invalidate() {},
         check() {
           const current_hash = requireModule.currentHash();
-          return fetch(`/hot_update/${current_hash}.hot-update.json`)
+          return fetch(`/${current_hash}.hot-update.json`)
             .then((res) => {
               return res.json();
             })
@@ -191,7 +191,7 @@ function createRuntime(makoModules, entryModuleId) {
                   ].join('.');
 
                   return new Promise((done) => {
-                    const url = `/hot_update/${hotChunkName}`;
+                    const url = `/${hotChunkName}`;
                     requireModule.loadScript(url, done);
                   });
                 }),

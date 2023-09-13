@@ -79,8 +79,9 @@ impl DevServer {
                 let static_serve =
                     hyper_staticfile::Static::new(for_fn.context.config.output.path.clone());
 
-                let static_serve_hmr =
-                    hyper_staticfile::Static::new(for_fn.context.root.join("node_modules/.mako"));
+                let static_serve_hmr = hyper_staticfile::Static::new(
+                    for_fn.context.root.join("node_modules/.mako/hot_update"),
+                );
 
                 match path {
                     "__/hmr-ws" => {
@@ -116,18 +117,18 @@ impl DevServer {
                             .unwrap();
                         req_cloned.headers_mut().extend(herders_cloned);
 
-                        // 先匹配静态资源请求，用完整的 req
-                        let static_serve_result = static_serve.serve(req).await;
-                        let serve_result = match static_serve_result {
+                        // 先匹配 hmr 请求静态资源请求，用复制的 req
+                        let static_serve_hmr_result = static_serve_hmr.serve(req_cloned).await;
+                        let serve_result = match static_serve_hmr_result {
                             Ok(res) => {
-                                // 如果 404 了，再匹配下 hmr 的路径
-                                if res.status() == hyper::StatusCode::NOT_FOUND {
-                                    static_serve_hmr.serve(req_cloned).await
-                                } else {
+                                // 如果未匹配上，则匹配静态资源 serve
+                                if res.status() == hyper::StatusCode::OK {
                                     Ok(res)
+                                } else {
+                                    static_serve.serve(req).await
                                 }
                             }
-                            _ => static_serve_result,
+                            _ => static_serve.serve(req).await,
                         };
 
                         // 后续处理
