@@ -83,9 +83,9 @@ impl Optimizer {
             _ => None,
         };
 
-        compared.and_then(|b| match op {
-            op!("==") | op!("===") => Some(b),
-            op!("!=") | op!("!==") => Some(!b),
+        compared.and_then(|is_equal| match op {
+            op!("==") | op!("===") => Some(is_equal),
+            op!("!=") | op!("!==") => Some(!is_equal),
             _ => None,
         })
     }
