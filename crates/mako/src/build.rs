@@ -429,7 +429,7 @@ pub fn get_entries(root: &Path, config: &Config) -> Option<Vec<std::path::PathBu
     } else {
         let vals = entry
             .values()
-            .map(|v| root.join(v))
+            .map(|v| root.join(v).canonicalize().unwrap())
             .collect::<Vec<std::path::PathBuf>>();
         return Some(vals);
     }
