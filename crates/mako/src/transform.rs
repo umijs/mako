@@ -530,6 +530,8 @@ if(1 == 2) { console.log("1"); } else if (1 == 1) { console.log("2"); } else { c
 
 if(1 == 2) { console.log("1"); } else if (1 == 2) { console.log("2"); } else { console.log("3"); }
 
+if(null === null) { console.log("null==null optimized"); } else {"ooops"}
+
 if(true) { console.log("1"); } else { console.log("2"); }
 
 if(a) { 1 } else { 2 }
@@ -543,13 +545,14 @@ if(a) { 1 } else { 2 }
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
-            r#"
-{
+            r#"{
     console.log("1");
 }{
     console.log("2");
 }{
     console.log("3");
+}{
+    console.log("null==null optimized");
 }{
     console.log("1");
 }if (a) {
@@ -559,7 +562,41 @@ if(a) { 1 } else { 2 }
 }
 
 //# sourceMappingURL=index.js.map
-        "#
+"#
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_non_optimize_if() {
+        let code = r#"
+if(1 == 'a') { "should keep" }
+
+if(null == undefined) { "should keep" }
+
+if(/x/ === /x/) { "should keep" }
+"#
+        .trim();
+        let (code, _sourcemap) = transform_js_code(
+            code,
+            None,
+            HashMap::from([("foo".to_string(), "./bar".to_string())]),
+        );
+        println!(">> CODE\n{}", code);
+        assert_eq!(
+            code,
+            r#"if (1 == 'a') {
+    "should keep";
+}
+if (null == undefined) {
+    "should keep";
+}
+if (/x/ === /x/) {
+    "should keep";
+}
+
+//# sourceMappingURL=index.js.map
+"#
             .trim()
         );
     }
