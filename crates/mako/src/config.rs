@@ -242,13 +242,23 @@ impl Config {
                 panic!("public_path must end with '/' or be 'runtime'");
             }
 
-            // let entry_length = cc.entry.len();
-            // if entry_length != 1 {
-            //     panic!(
-            //         "Only one entry is allowed, but {} entries are found",
-            //         entry_length
-            //     );
-            // }
+            if config.entry.is_empty() {
+                let file_paths = vec!["src/index.tsx", "src/index.ts", "index.tsx", "index.ts"];
+                for file_path in file_paths {
+                    let file_path = root.join(file_path);
+                    if file_path.exists() {
+                        config.entry.insert("index".to_string(), file_path);
+                        break;
+                    }
+                }
+            }
+
+            config.entry = config
+                .entry
+                .clone()
+                .into_iter()
+                .map(|(k, v)| (k, root.join(v).canonicalize().unwrap()))
+                .collect();
         }
         ret
     }

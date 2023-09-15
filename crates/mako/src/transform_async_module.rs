@@ -394,7 +394,10 @@ require._async(module, async (handleAsyncDeps, asyncResult)=>{
         let context: Arc<Context> = Arc::new(Default::default());
 
         let module_id: ModuleId = "./async".to_string().into();
-        let mut chunk = Chunk::new("./async".to_string().into(), ChunkType::Entry(module_id));
+        let mut chunk = Chunk::new(
+            "./async".to_string().into(),
+            ChunkType::Entry(module_id, "async".to_string()),
+        );
         chunk.add_module("./async".to_string().into());
 
         context.chunk_graph.write().unwrap().add_chunk(chunk);

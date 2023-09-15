@@ -359,7 +359,7 @@ impl Compiler {
         chunk_type: &ChunkType,
     ) -> bool {
         match allow_chunks {
-            OptimizeAllowChunks::Entry => matches!(chunk_type, &ChunkType::Entry(_)),
+            OptimizeAllowChunks::Entry => matches!(chunk_type, &ChunkType::Entry(_, _)),
             OptimizeAllowChunks::Async => chunk_type == &ChunkType::Async,
         }
     }

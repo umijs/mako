@@ -54,7 +54,7 @@ impl Compiler {
             chunks
                 .iter()
                 .filter_map(|chunk| match chunk.chunk_type {
-                    crate::chunk::ChunkType::Async | crate::chunk::ChunkType::Entry(_) => {
+                    crate::chunk::ChunkType::Async | crate::chunk::ChunkType::Entry(_, _) => {
                         let module_ids = chunk.get_modules();
                         let module_ids: Vec<_> = module_ids.iter().collect();
 
@@ -71,7 +71,7 @@ impl Compiler {
                                         );
 
                                         match chunk.chunk_type {
-                                            crate::chunk::ChunkType::Entry(_) => {
+                                            crate::chunk::ChunkType::Entry(_, _) => {
                                                 return Some(format!(
                                                     "installedChunks['{}'] = 0;\n{}",
                                                     chunk.id.generate(&self.context),
@@ -116,7 +116,7 @@ impl Compiler {
 
                 // build js ast
                 let content = match &chunk.chunk_type {
-                    crate::chunk::ChunkType::Entry(module_id) => {
+                    crate::chunk::ChunkType::Entry(module_id, _) => {
                         let chunks_ids = chunk_graph
                             .sync_dependencies_chunk(chunk)
                             .into_iter()
@@ -173,7 +173,8 @@ impl Compiler {
                         .to_string()
                         .replace("_%main%_", chunk.id.generate(&self.context).as_str()),
                 };
-                let file_name = if matches!(chunk.chunk_type, crate::chunk::ChunkType::Entry(_)) {
+                let file_name = if matches!(chunk.chunk_type, crate::chunk::ChunkType::Entry(_, _))
+                {
                     "mako_internal_runtime_entry.js"
                 } else {
                     "mako_internal_runtime_chunk.js"
