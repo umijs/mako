@@ -170,7 +170,12 @@ function createRuntime(makoModules, entryModuleId) {
         invalidate() {},
         check() {
           const current_hash = requireModule.currentHash();
-          return fetch(`/${current_hash}.hot-update.json`)
+          const publicPath = requireModule.publicPath;
+          return fetch(
+            `${
+              publicPath?.startsWith('/') ? '' : '/'
+            }${publicPath}${current_hash}.hot-update.json`,
+          )
             .then((res) => {
               return res.json();
             })
@@ -191,7 +196,7 @@ function createRuntime(makoModules, entryModuleId) {
                   ].join('.');
 
                   return new Promise((done) => {
-                    const url = `/${hotChunkName}`;
+                    const url = `${requireModule.publicPath}${hotChunkName}`;
                     requireModule.loadScript(url, done);
                   });
                 }),
@@ -306,7 +311,8 @@ function createRuntime(makoModules, entryModuleId) {
       }
       const script = document.createElement('script');
       script.timeout = 120;
-      script.src = url;
+      // 不以 '/' 开头时，会被认为相对路径、然后加上当前 path 去请求
+      script.src = url?.startsWith('/') ? url : `/${url}`;
       inProgress[url] = [done];
       const onLoadEnd = (prev, event) => {
         clearTimeout(timeout);
@@ -352,7 +358,7 @@ function createRuntime(makoModules, entryModuleId) {
 
       link.rel = 'stylesheet';
       link.type = 'text/css';
-      link.href = url;
+      link.href = url?.startsWith('/') ? url : `/${url}`;
       link.onerror = link.onload = function (event) {
         // avoid mem leaks, from webpack
         link.onerror = link.onload = null;

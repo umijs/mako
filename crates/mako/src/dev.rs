@@ -7,6 +7,7 @@ use futures::{SinkExt, StreamExt};
 use hyper::header::CONTENT_TYPE;
 use hyper::http::HeaderValue;
 use hyper::Server;
+use regex::Regex;
 use tokio::sync::broadcast::{Receiver, Sender};
 use tokio::task::JoinHandle;
 use tokio::try_join;
@@ -70,7 +71,7 @@ impl DevServer {
         }
         let arc_watcher = self.watcher.clone();
         let compiler = self.compiler.clone();
-        let handle_request = move |req: hyper::Request<hyper::Body>| {
+        let handle_request = move |mut req: hyper::Request<hyper::Body>| {
             let for_fn = compiler.clone();
             let w = arc_watcher.clone();
             async move {
@@ -82,6 +83,11 @@ impl DevServer {
                 let static_serve_hmr = hyper_staticfile::Static::new(
                     for_fn.context.root.join("node_modules/.mako/hot_update"),
                 );
+
+                let public_path = for_fn.context.config.public_path.clone();
+                let public_path_without_prefix_as_str = public_path
+                    .strip_prefix('/')
+                    .unwrap_or(public_path.as_str());
 
                 match path {
                     "__/hmr-ws" => {
@@ -106,10 +112,21 @@ impl DevServer {
                             )
                         }
                     }
-                    _ => {
+                    _ if path.starts_with(public_path_without_prefix_as_str) => {
+                        // 如果用户设置了 public_path，修改一下原始 req，手动复制 req 担心掉属性
+                        if public_path.as_str() != "/" {
+                            let public_path_re =
+                                Regex::new(public_path_without_prefix_as_str).unwrap();
+                            let uri_str = public_path_re
+                                .replacen(req.uri().to_string().as_str(), 1, "")
+                                .to_string();
+                            let uri_cloned = uri_str.as_str().parse::<hyper::Uri>().unwrap();
+                            *req.uri_mut() = uri_cloned;
+                        };
+
                         // clone 一份 req，用于做 hmr 的匹配
-                        let uri_cloned = req.uri().clone();
                         let herders_cloned = req.headers().clone();
+                        let uri_cloned = req.uri().clone();
                         let mut req_cloned = hyper::Request::builder()
                             .method(hyper::Method::GET)
                             .uri(uri_cloned)
@@ -121,7 +138,6 @@ impl DevServer {
                         let static_serve_hmr_result = static_serve_hmr.serve(req_cloned).await;
                         let serve_result = match static_serve_hmr_result {
                             Ok(res) => {
-                                // 如果未匹配上，则匹配静态资源 serve
                                 if res.status() == hyper::StatusCode::OK {
                                     Ok(res)
                                 } else {
@@ -160,6 +176,12 @@ impl DevServer {
                             ),
                         }
                     }
+                    _ => Ok::<_, hyper::Error>(
+                        hyper::Response::builder()
+                            .status(hyper::StatusCode::NOT_FOUND)
+                            .body(hyper::Body::from("404 - Page not found"))
+                            .unwrap(),
+                    ),
                 }
             }
         };

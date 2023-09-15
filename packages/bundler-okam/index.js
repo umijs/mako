@@ -42,6 +42,7 @@ exports.dev = async function (opts) {
   checkConfig(opts.config);
   const express = require('express');
   const app = express();
+  const okamConfig = getOkamConfig(opts);
   // cros
   app.use(
     require('cors')({
@@ -58,9 +59,18 @@ exports.dev = async function (opts) {
   }
   // before middlewares
   (opts.beforeMiddlewares || []).forEach((m) => app.use(m));
+  const publicPathFromUmi = opts.config.publicPath || '/';
+  const publicPathFromMako = okamConfig.public_path || '/';
+  // 优先取来自 mako.config 的 public
+  const publicPath =
+    [publicPathFromMako, publicPathFromUmi].find((item) => item !== '/') || '/';
+
   // serve dist files
-  app.use(express.static(path.join(opts.cwd, 'node_modules/.mako/hot_update')));
-  app.use(express.static(path.join(opts.cwd, 'dist')));
+  app.use(
+    publicPath,
+    express.static(path.join(opts.cwd, 'node_modules/.mako/hot_update')),
+  );
+  app.use(publicPath, express.static(path.join(opts.cwd, 'dist')));
   // TODO: proxy
   // opts.config.proxy
   // after middlewares
@@ -85,7 +95,6 @@ exports.dev = async function (opts) {
   });
   // okam dev
   const { build } = require('@okamjs/okam');
-  const okamConfig = getOkamConfig(opts);
   okamConfig.hmr = true;
   // TODO: detect port
   okamConfig.hmr_port = String(opts.port + 1);
@@ -156,7 +165,7 @@ function getOkamConfig(opts) {
       },
     },
     mode: 'development',
-    public_path: runtimePublicPath ? 'runtime' : publicPath || '/',
+    publicPath: runtimePublicPath ? 'runtime' : publicPath || '/',
     targets: targets || {
       chrome: 80,
     },
