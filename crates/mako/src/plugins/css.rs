@@ -30,7 +30,8 @@ impl Plugin for CSSPlugin {
         if let Content::Css(content) = param.content {
             // return Ok(Some(ModuleAst::Css(param.request.clone())));
             let has_modules_query = param.request.has_query("modules");
-            let is_css_modules_path = param.request.path.ends_with(".module.css");
+            let is_css_modules_path = param.request.path.ends_with(".module.css")
+                || param.request.path.ends_with(".module.less");
             let mut ast =
                 build_css_ast(&param.request.path, content, context, is_css_modules_path)?;
             import_url_to_href(&mut ast);
