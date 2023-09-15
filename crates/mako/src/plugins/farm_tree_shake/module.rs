@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::module::{Module, ModuleId};
+use crate::module::{ModuleAst, ModuleId};
 use crate::plugins::farm_tree_shake::statement_graph::{
     ExportInfo, ExportSpecifierInfo, ImportInfo, StatementGraph, StatementId,
 };
@@ -63,21 +63,22 @@ pub struct TreeShakeModule {
     pub used_exports: UsedExports,
     pub module_system: ModuleSystem,
     pub all_exports: HashSet<String>,
+    pub in_cycle: bool,
+    pub will_removed: bool,
 }
 
 impl TreeShakeModule {
-    pub fn new(module: &Module) -> Self {
-        let module_info = module.info.as_ref().unwrap();
-
+    pub fn new(module: &ModuleAst, side_effects: bool, id: &ModuleId) -> Self {
         // 1. generate statement graph
         let mut module_system = ModuleSystem::CommonJS;
-        let stmt_graph = match &module_info.ast {
+        let stmt_graph = match &module {
             crate::module::ModuleAst::Script(module) => {
                 let is_esm = module
                     .ast
                     .body
                     .iter()
                     .any(|s| matches!(s, swc_ecma_ast::ModuleItem::ModuleDecl(_)));
+
                 if is_esm {
                     module_system = ModuleSystem::ESModule;
                     StatementGraph::new(&module.ast)
@@ -96,19 +97,21 @@ impl TreeShakeModule {
         };
 
         // 2. set default used exports
-        let used_exports = if module.side_effects {
+        let used_exports = if side_effects {
             UsedExports::All
         } else {
             UsedExports::Partial(vec![])
         };
 
         Self {
-            module_id: module.id.clone(),
+            module_id: id.clone(),
             stmt_graph,
             used_exports,
-            side_effects: module.side_effects,
+            side_effects,
             module_system,
             all_exports: Default::default(),
+            in_cycle: false,
+            will_removed: false,
         }
     }
 

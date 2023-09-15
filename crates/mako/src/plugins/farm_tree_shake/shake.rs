@@ -25,10 +25,21 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
     let (topo_sorted_modules, cyclic_modules) = { module_graph.toposort() };
 
     // mark cyclic modules as side_effects
-    for chain in cyclic_modules {
+    for chain in cyclic_modules.iter() {
+        // println!("chain.length {}", chain.len());
+        // println!(
+        //     "  {}",
+        //     chain
+        //         .iter()
+        //         .map(|id| { id.id.clone() })
+        //         .collect::<Vec<_>>()
+        //         .join(" -> ")
+        // );
+
         for module_id in chain {
-            let module = module_graph.get_module_mut(&module_id).unwrap();
+            let module = module_graph.get_module_mut(module_id).unwrap();
             module.side_effects = true;
+            module.in_cycle = true;
         }
     }
 
@@ -38,7 +49,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
     let mut tree_shake_modules_ids = vec![];
     let mut tree_shake_modules_map = std::collections::HashMap::new();
 
-    for module_id in topo_sorted_modules {
+    for module_id in topo_sorted_modules.clone() {
         let module = module_graph.get_module(&module_id).unwrap();
 
         let module_type = module.get_module_type();
@@ -63,7 +74,18 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
             continue;
         };
 
-        let tree_shake_module = TreeShakeModule::new(module);
+        let mut tree_shake_module = TreeShakeModule::new(
+            &module.info.as_ref().unwrap().ast.clone(),
+            module.side_effects,
+            &module_id,
+        );
+
+        if module.in_cycle {
+            tree_shake_module.in_cycle = module.in_cycle;
+            tree_shake_module.side_effects = false;
+            tree_shake_module.used_exports = UsedExports::Partial(vec![]);
+        }
+
         tree_shake_modules_ids.push(tree_shake_module.module_id.clone());
         tree_shake_modules_map.insert(
             tree_shake_module.module_id.clone(),
@@ -71,7 +93,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
         );
     }
 
-    // fill tree shake module all exported ident in reversed opo-sort order
+    // fill tree shake module all exported ident in reversed topo-sort order
     for module_id in tree_shake_modules_ids.iter().rev() {
         let mut tsm = tree_shake_modules_map.get(module_id).unwrap().borrow_mut();
 
@@ -118,10 +140,8 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
         }
     }
 
-    let mut modules_to_remove = vec![];
-
-    // traverse the tree_shake_modules
-    for tree_shake_module_id in tree_shake_modules_ids {
+    // for cycle loop
+    for tree_shake_module_id in tree_shake_modules_ids.clone() {
         let mut tree_shake_module = tree_shake_modules_map
             .get(&tree_shake_module_id)
             .unwrap()
@@ -162,8 +182,279 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
                 }
             } else {
                 if tree_shake_module.used_exports.is_empty() {
+                    // delete later
+
+                    println!(" no-used {}", tree_shake_module.module_id.id);
+
+                    continue;
+                }
+
+                let module = module_graph
+                    .get_module_mut(&tree_shake_module.module_id)
+                    .unwrap();
+
+                let ast = &mut module.info.as_mut().unwrap().ast;
+
+                if let ModuleAst::Script(swc_module) = ast {
+                    let mut module_ast = swc_module.ast.clone();
+
+                    // remove useless statements and useless imports/exports identifiers, then all preserved import info and export info will be added to the used_exports.
+                    let (used_imports, used_exports_from) =
+                        remove_useless_stmts::remove_useless_stmts(
+                            tree_shake_module.deref_mut(),
+                            &mut module_ast,
+                        );
+
+                    if tree_shake_module_id
+                        .id
+                        .contains("/.pnpm/react@18.2.0/node_modules/react/index.js")
+                    {
+                        dbg!(&module_ast);
+                    }
+
+                    for import_info in used_imports {
+                        add_used_exports_by_import_info(
+                            &tree_shake_modules_map,
+                            &*module_graph,
+                            &tree_shake_module_id,
+                            &import_info,
+                        );
+                    }
+
+                    for export_info in used_exports_from {
+                        add_used_exports_by_export_info(
+                            &tree_shake_modules_map,
+                            &*module_graph,
+                            &tree_shake_module_id,
+                            tree_shake_module.side_effects,
+                            &export_info,
+                        );
+                    }
+                }
+            }
+        }
+
+        // add all dynamic imported dependencies as [UsedExports::All]
+        for (dep, edge) in module_graph.get_dependencies(&tree_shake_module_id) {
+            if matches!(edge.resolve_type, ResolveType::DynamicImport) {
+                let mut tree_shake_module = tree_shake_modules_map.get(dep).unwrap().borrow_mut();
+                tree_shake_module.side_effects = true;
+                tree_shake_module.used_exports = UsedExports::All;
+            }
+        }
+    }
+
+    /*
+     ____    ____    ____    ____    ____
+    |___ \  |___ \  |___ \  |___ \  |___ \
+      __) |   __) |   __) |   __) |   __) |
+     / __/   / __/   / __/   / __/   / __/
+    |_____| |_____| |_____| |_____| |_____|
+
+    */
+    let old_tree_shake_modules_map = tree_shake_modules_map;
+
+    let mut tree_shake_modules_ids = vec![];
+    let mut tree_shake_modules_map = std::collections::HashMap::new();
+
+    for module_id in topo_sorted_modules {
+        let module = module_graph.get_module(&module_id).unwrap();
+
+        let module_type = module.get_module_type();
+
+        // skip non script modules and external modules
+        if module_type != ModuleType::Script || module.is_external() {
+            if module_type != ModuleType::Script && !module.is_external() {
+                // mark all non script modules' script dependencies as side_effects
+                for dep_id in module_graph.dependence_module_ids(&module_id) {
+                    let dep_module = module_graph.get_module_mut(&dep_id).unwrap();
+
+                    let dep_module_type = dep_module.get_module_type();
+
+                    if dep_module_type != ModuleType::Script {
+                        continue;
+                    }
+
+                    dep_module.side_effects = true;
+                }
+            }
+
+            continue;
+        };
+
+        let mut tree_shake_module = TreeShakeModule::new(
+            &module.info.as_ref().unwrap().ast,
+            module.side_effects,
+            &module_id,
+        );
+
+        if module.in_cycle {
+            tree_shake_module.in_cycle = module.in_cycle;
+            tree_shake_module.side_effects = false;
+            tree_shake_module.used_exports = UsedExports::Partial(vec![]);
+        }
+
+        tree_shake_modules_ids.push(tree_shake_module.module_id.clone());
+        tree_shake_modules_map.insert(
+            tree_shake_module.module_id.clone(),
+            RefCell::new(tree_shake_module),
+        );
+    }
+
+    // fill tree shake module all exported ident in reversed topo-sort order
+    for module_id in tree_shake_modules_ids.iter().rev() {
+        let mut tsm = tree_shake_modules_map.get(module_id).unwrap().borrow_mut();
+
+        for exp_info in tsm.exports() {
+            if let Some(source) = exp_info.source {
+                for sp_info in exp_info.specifiers {
+                    match sp_info {
+                        ExportSpecifierInfo::All(_) => {
+                            let dependent_id =
+                                module_graph.get_dependency_module_by_source(module_id, &source);
+
+                            if let Some(rc) = tree_shake_modules_map.get(dependent_id) {
+                                let dependence_module = rc.borrow();
+
+                                let to_extend = dependence_module.all_exports.clone();
+
+                                tsm.stmt_graph.stmt_mut(&exp_info.stmt_id).export_info =
+                                    Some(ExportInfo {
+                                        source: Some(source.clone()),
+                                        specifiers: vec![ExportSpecifierInfo::All(Some(
+                                            to_extend
+                                                .clone()
+                                                .into_iter()
+                                                .filter(|id| id != "default")
+                                                .collect::<Vec<_>>(),
+                                        ))],
+                                        stmt_id: exp_info.stmt_id,
+                                    });
+
+                                tsm.all_exports.extend(to_extend.into_iter());
+                            }
+                        }
+                        _ => {
+                            tsm.all_exports.extend(sp_info.to_idents());
+                        }
+                    }
+                }
+            } else {
+                for exp_sp in exp_info.specifiers {
+                    let idents = exp_sp.to_idents();
+                    tsm.all_exports.extend(idents);
+                }
+            }
+        }
+    }
+
+    let mut modules_to_remove: Vec<ModuleId> = vec![];
+
+    // traverse the tree_shake_modules
+    for tree_shake_module_id in tree_shake_modules_ids {
+        let mut tree_shake_module = tree_shake_modules_map
+            .get(&tree_shake_module_id)
+            .unwrap()
+            .borrow_mut();
+
+        let old_tree_shake_module = old_tree_shake_modules_map
+            .get(&tree_shake_module_id)
+            .unwrap()
+            .borrow();
+
+        // if module is not esm, mark all imported modules as [UsedExports::All]
+        if !matches!(tree_shake_module.module_system, ModuleSystem::ESModule) {
+            for (dep_id, _) in module_graph.get_dependencies(&tree_shake_module_id) {
+                let dep_tree_shake_module = tree_shake_modules_map.get(dep_id);
+
+                if let Some(dep_tree_shake_module) = dep_tree_shake_module {
+                    dep_tree_shake_module.borrow_mut().used_exports = UsedExports::All;
+                }
+            }
+        } else {
+            if old_tree_shake_module.in_cycle {
+                // find circles
+                let belonged_cycles = cyclic_modules
+                    .iter()
+                    .filter(|cycle| cycle.contains(&tree_shake_module_id))
+                    .collect::<Vec<_>>();
+
+                if old_tree_shake_module.used_exports.is_empty()
+                    && tree_shake_module.used_exports.is_empty()
+                {
+                    println!(
+                        "a single cycle detected for  {}, length: {}",
+                        tree_shake_module.module_id.id,
+                        belonged_cycles.len()
+                    );
+
+                    if belonged_cycles.len() == 1 {
+                        let all_empty = belonged_cycles[0]
+                            .iter()
+                            .filter(|id| id.id != tree_shake_module_id.id)
+                            .all(|id| {
+                                old_tree_shake_modules_map
+                                    .get(id)
+                                    .unwrap()
+                                    .borrow()
+                                    .used_exports
+                                    .is_empty()
+                            });
+
+                        if all_empty {
+                            modules_to_remove.push(tree_shake_module_id.clone());
+
+                            println!("to remove {}", tree_shake_module_id.id);
+                            continue;
+                        }
+                    }
+                } else {
+                    tree_shake_module.side_effects = true;
+                    tree_shake_module.in_cycle = false;
+                    tree_shake_module.used_exports = UsedExports::All;
+
+                    for cycle in belonged_cycles {
+                        cycle
+                            .iter()
+                            .filter(|id| id.id != tree_shake_module_id.id)
+                            .for_each(|id| {
+                                let mut m = tree_shake_modules_map.get(id).unwrap().borrow_mut();
+
+                                m.used_exports = UsedExports::All;
+                                m.side_effects = true;
+                                m.in_cycle = false;
+                            })
+                    }
+                }
+            }
+
+            if tree_shake_module.side_effects {
+                let imports = tree_shake_module.imports();
+                let exports = tree_shake_module.exports();
+
+                for import_info in &imports {
+                    add_used_exports_by_import_info(
+                        &tree_shake_modules_map,
+                        &*module_graph,
+                        &tree_shake_module_id,
+                        import_info,
+                    );
+                }
+
+                for export_info in &exports {
+                    add_used_exports_by_export_info(
+                        &tree_shake_modules_map,
+                        &*module_graph,
+                        &tree_shake_module_id,
+                        tree_shake_module.side_effects,
+                        export_info,
+                    );
+                }
+            } else {
+                if tree_shake_module.used_exports.is_empty() {
                     // if the module's used_exports is empty, means this module is not used and should be removed
                     modules_to_remove.push(tree_shake_module_id.clone());
+                    println!("to remove {}", tree_shake_module_id.id);
                     continue;
                 }
 
@@ -174,6 +465,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
 
                 if let ModuleAst::Script(swc_module) = ast {
                     // remove useless statements and useless imports/exports identifiers, then all preserved import info and export info will be added to the used_exports.
+
                     let (used_imports, used_exports_from) =
                         remove_useless_stmts::remove_useless_stmts(
                             tree_shake_module.deref_mut(),
@@ -201,6 +493,8 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
                 }
             }
         }
+
+        // if module is esm and the module has side effects, add imported identifiers to [UsedExports::Partial] of the imported modules
 
         // add all dynamic imported dependencies as [UsedExports::All]
         for (dep, edge) in module_graph.get_dependencies(&tree_shake_module_id) {

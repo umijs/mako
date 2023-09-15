@@ -166,6 +166,7 @@ pub struct Module {
     pub is_entry: bool,
     pub info: Option<ModuleInfo>,
     pub side_effects: bool,
+    pub in_cycle: bool,
 }
 #[allow(dead_code)]
 
@@ -176,6 +177,7 @@ impl Module {
             is_entry,
             info,
             side_effects: is_entry,
+            in_cycle: false,
         }
     }
 
