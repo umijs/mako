@@ -30,6 +30,16 @@ impl Plugin for LessPlugin {
                     }));
                 }
             };
+            if !output.status.success() {
+                let mut reason = String::from_utf8_lossy(&output.stderr).to_string();
+                if reason.contains("could not determine executable to run") {
+                    reason = "lessc is not found, please install less dependency".to_string();
+                }
+                return Err(anyhow!(LoadError::CompileLessError {
+                    path: param.path.to_string(),
+                    reason,
+                }));
+            }
             let css_content = String::from_utf8_lossy(&output.stdout);
             return Ok(Some(Content::Css(css_content.into())));
         }
