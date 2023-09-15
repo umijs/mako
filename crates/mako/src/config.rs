@@ -75,6 +75,11 @@ pub enum DevtoolConfig {
     None,
 }
 
+#[derive(Deserialize, Debug)]
+pub struct LessConfig {
+    pub theme: HashMap<String, String>,
+}
+
 #[derive(Deserialize, Clone, Copy, Debug)]
 pub enum ModuleIdStrategy {
     #[serde(rename = "hashed")]
@@ -135,6 +140,7 @@ pub struct Config {
     pub define: HashMap<String, Value>,
     pub stats: bool,
     pub mdx: bool,
+    pub less: LessConfig,
     // temp solution
     pub hmr: bool,
     pub hmr_port: String,
@@ -165,6 +171,7 @@ const DEFAULT_CONFIG: &str = r#"
     "publicPath": "/",
     "inlineLimit": 10000,
     "targets": { "chrome": 80 },
+    "less": { "theme": {} },
     "define": {},
     "manifest": false,
     "manifestConfig": { "fileName": "asset-manifest.json", "basePath": "" },

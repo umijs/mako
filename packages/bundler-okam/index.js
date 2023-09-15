@@ -121,8 +121,15 @@ function checkConfig(config) {
 }
 
 function getOkamConfig(opts) {
-  const { alias, targets, publicPath, runtimePublicPath, manifest, mdx, hash } =
-    opts.config;
+  const {
+    alias,
+    targets,
+    publicPath,
+    runtimePublicPath,
+    manifest,
+    mdx,
+    theme,
+  } = opts.config;
   const outputPath = path.join(opts.cwd, 'dist');
   // TODO:
   // 暂不支持 $ 结尾，等 resolve 支持后可以把这段去掉
@@ -174,5 +181,8 @@ function getOkamConfig(opts) {
     manifest: !!manifest,
     mdx: !!mdx,
     codeSplitting,
+    less: {
+      theme,
+    },
   };
 }

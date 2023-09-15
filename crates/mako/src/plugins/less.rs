@@ -19,7 +19,18 @@ impl Plugin for LessPlugin {
             // compile less to css
             let mut cmd = Command::new("npx");
             cmd.current_dir(context.root.clone());
-            cmd.args(["lessc", &param.path]);
+            let theme = context.config.less.theme.clone();
+            let vars = theme
+                .iter()
+                .map(|(k, v)| format!("{}={}", k, v))
+                .collect::<Vec<String>>()
+                .join("&");
+            cmd.args([
+                "lessc",
+                "--js",
+                format!("--modify-var={}", vars).as_str(),
+                &param.path,
+            ]);
 
             let output = match cmd.output() {
                 Ok(output) => output,
