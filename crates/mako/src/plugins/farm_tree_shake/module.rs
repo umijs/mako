@@ -1,5 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
+use swc_ecma_ast::Module as SwcModule;
+
 use crate::module::{Module, ModuleId};
 use crate::plugins::farm_tree_shake::statement_graph::{
     ExportInfo, ExportSpecifierInfo, ImportInfo, StatementGraph, StatementId,
@@ -32,17 +34,29 @@ impl ToString for UsedIdent {
 #[derive(Debug, Clone)]
 pub enum UsedExports {
     All,
-    Partial(Vec<String>),
+    Partial(HashSet<String>),
 }
 
 impl UsedExports {
-    pub fn add_used_export(&mut self, used_export: &dyn ToString) {
+    pub fn add_used_export(&mut self, used_export: &dyn ToString) -> bool {
         match self {
             UsedExports::All => {
                 *self = UsedExports::All;
+                false
             }
             UsedExports::Partial(self_used_exports) => {
-                self_used_exports.push(used_export.to_string())
+                self_used_exports.insert(used_export.to_string())
+            }
+        }
+    }
+
+    pub fn use_all(&mut self) -> bool {
+        match self {
+            UsedExports::All => false,
+            UsedExports::Partial(_) => {
+                *self = UsedExports::All;
+                // fixme : case partial used all exports
+                true
             }
         }
     }
@@ -63,10 +77,12 @@ pub struct TreeShakeModule {
     pub used_exports: UsedExports,
     pub module_system: ModuleSystem,
     pub all_exports: HashSet<String>,
+    pub topo_order: usize,
+    pub updated_ast: Option<SwcModule>,
 }
 
 impl TreeShakeModule {
-    pub fn new(module: &Module) -> Self {
+    pub fn new(module: &Module, order: usize) -> Self {
         let module_info = module.info.as_ref().unwrap();
 
         // 1. generate statement graph
@@ -99,7 +115,7 @@ impl TreeShakeModule {
         let used_exports = if module.side_effects {
             UsedExports::All
         } else {
-            UsedExports::Partial(vec![])
+            UsedExports::Partial(Default::default())
         };
 
         Self {
@@ -109,6 +125,8 @@ impl TreeShakeModule {
             side_effects: module.side_effects,
             module_system,
             all_exports: Default::default(),
+            topo_order: order,
+            updated_ast: None,
         }
     }
 
