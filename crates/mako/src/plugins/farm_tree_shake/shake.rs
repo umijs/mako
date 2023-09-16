@@ -142,8 +142,6 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
         } else {
             // if module is esm and the module has side effects, add imported identifiers to [UsedExports::Partial] of the imported modules
             if tree_shake_module.side_effects {
-                println!(" {current_index} has side_effects");
-
                 let imports = tree_shake_module.imports();
                 let exports = tree_shake_module.exports();
 
@@ -177,8 +175,6 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
                 if tree_shake_module.used_exports.is_empty() {
                     // if the module's used_exports is empty, means this module is not used and will be removed
                     current_index = next_index;
-
-                    println!(" {current_index} fall to continue");
 
                     continue;
                 }
@@ -268,7 +264,6 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
 
         if tsm.used_exports.is_empty() {
             module_graph.remove_module(&module_id);
-            // println!("removed  {}", module_id.id);
         } else if let Some(swc_module) = &tsm.updated_ast {
             module_graph
                 .get_module_mut(&module_id)
