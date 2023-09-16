@@ -13,33 +13,25 @@ use crate::plugins::farm_tree_shake::{module, remove_useless_stmts, statement_gr
 use crate::tree_shaking_module::ModuleSystem;
 
 /// tree shake useless modules and code, steps:
-/// 1. topo sort the module_graph, the cyclic modules will be marked as side_effects
-/// 2. generate tree_shake_modules based on the topo sorted modules
+/// 1. topo sort the module_graph, the cyclic modules treat as no side_effects
+/// 2. generate tree_shake_modules based on the topo sorted order
+/// 3. reserve traverse the tree_shake_modules to fill all_exports
 /// 3. traverse the tree_shake_modules
-///   3.1 mark entry modules as side_effects
-///   3.2 if module is commonjs, mark all imported modules as [UsedExports::All]
+///   3.2 if module is commonjs, mark all imported modules as [UsedExports::All] by calling `.use_all()`
 ///   3.3 else if module is esm and the module has side effects, add imported identifiers to [UsedExports::Partial] of the imported modules
+///     if add imported identifiers to previous modules, traverse smallest index tree_shake_modules again
 ///   3.4 else if module is esm and the module has no side effects, analyze the used statement based on the statement graph
+///     if add imported identifiers to previous modules, traverse smallest index tree_shake_modules again
+/// 4. remove used module and update tree-shaked AST into module graph
 pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
-    // topo sort the module_graph, the cyclic modules will be marked as side_effects
-    let (topo_sorted_modules, cyclic_modules) = { module_graph.toposort() };
-
-    // mark cyclic modules as side_effects
-    for chain in cyclic_modules {
-        for module_id in chain {
-            let module = module_graph.get_module_mut(&module_id).unwrap();
-            module.side_effects = true;
-        }
-    }
-
-    // mark entry modules as side_effects
-    // entry side_effects marked in new stage
+    let (topo_sorted_modules, _cyclic_modules) = { module_graph.toposort() };
 
     let mut tree_shake_modules_ids = vec![];
     let mut tree_shake_modules_map = std::collections::HashMap::new();
 
-    for module_id in topo_sorted_modules {
-        let module = module_graph.get_module(&module_id).unwrap();
+    let mut order: usize = 0;
+    for module_id in topo_sorted_modules.iter() {
+        let module = module_graph.get_module(module_id).unwrap();
 
         let module_type = module.get_module_type();
 
@@ -47,7 +39,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
         if module_type != ModuleType::Script || module.is_external() {
             if module_type != ModuleType::Script && !module.is_external() {
                 // mark all non script modules' script dependencies as side_effects
-                for dep_id in module_graph.dependence_module_ids(&module_id) {
+                for dep_id in module_graph.dependence_module_ids(module_id) {
                     let dep_module = module_graph.get_module_mut(&dep_id).unwrap();
 
                     let dep_module_type = dep_module.get_module_type();
@@ -63,7 +55,12 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
             continue;
         };
 
-        let tree_shake_module = TreeShakeModule::new(module);
+        if module_id.id.contains("node-libs-browser-okam") || module_id.id.contains("-okam/") {
+            continue;
+        }
+
+        let tree_shake_module = TreeShakeModule::new(module, order);
+        order += 1;
         tree_shake_modules_ids.push(tree_shake_module.module_id.clone());
         tree_shake_modules_map.insert(
             tree_shake_module.module_id.clone(),
@@ -118,52 +115,71 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
         }
     }
 
-    let mut modules_to_remove = vec![];
-
     // traverse the tree_shake_modules
-    for tree_shake_module_id in tree_shake_modules_ids {
+    let mut current_index: usize = 0;
+    let len = tree_shake_modules_ids.len();
+    while current_index < len {
+        let mut next_index = current_index + 1;
+
+        let tree_shake_module_id = &tree_shake_modules_ids[current_index];
+
         let mut tree_shake_module = tree_shake_modules_map
-            .get(&tree_shake_module_id)
+            .get(tree_shake_module_id)
             .unwrap()
             .borrow_mut();
 
         // if module is not esm, mark all imported modules as [UsedExports::All]
         if !matches!(tree_shake_module.module_system, ModuleSystem::ESModule) {
-            for (dep_id, _) in module_graph.get_dependencies(&tree_shake_module_id) {
-                let dep_tree_shake_module = tree_shake_modules_map.get(dep_id);
+            for (dep_id, _) in module_graph.get_dependencies(tree_shake_module_id) {
+                if let Some(ref_cell) = tree_shake_modules_map.get(dep_id) {
+                    let mut dep_module = ref_cell.borrow_mut();
 
-                if let Some(dep_tree_shake_module) = dep_tree_shake_module {
-                    dep_tree_shake_module.borrow_mut().used_exports = UsedExports::All;
+                    if dep_module.used_exports.use_all() && dep_module.topo_order < next_index {
+                        next_index = dep_module.topo_order;
+                    }
                 }
             }
         } else {
             // if module is esm and the module has side effects, add imported identifiers to [UsedExports::Partial] of the imported modules
             if tree_shake_module.side_effects {
+                println!(" {current_index} has side_effects");
+
                 let imports = tree_shake_module.imports();
                 let exports = tree_shake_module.exports();
 
                 for import_info in &imports {
-                    add_used_exports_by_import_info(
+                    if let Some(order) = add_used_exports_by_import_info(
                         &tree_shake_modules_map,
                         &*module_graph,
-                        &tree_shake_module_id,
+                        tree_shake_module_id,
                         import_info,
-                    );
+                    ) {
+                        if order < next_index {
+                            next_index = order;
+                        }
+                    }
                 }
 
                 for export_info in &exports {
-                    add_used_exports_by_export_info(
+                    if let Some(order) = add_used_exports_by_export_info(
                         &tree_shake_modules_map,
                         &*module_graph,
-                        &tree_shake_module_id,
+                        tree_shake_module_id,
                         tree_shake_module.side_effects,
                         export_info,
-                    );
+                    ) {
+                        if order < next_index {
+                            next_index = order;
+                        }
+                    }
                 }
             } else {
                 if tree_shake_module.used_exports.is_empty() {
-                    // if the module's used_exports is empty, means this module is not used and should be removed
-                    modules_to_remove.push(tree_shake_module_id.clone());
+                    // if the module's used_exports is empty, means this module is not used and will be removed
+                    current_index = next_index;
+
+                    println!(" {current_index} fall to continue");
+
                     continue;
                 }
 
@@ -174,59 +190,109 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
 
                 if let ModuleAst::Script(swc_module) = ast {
                     // remove useless statements and useless imports/exports identifiers, then all preserved import info and export info will be added to the used_exports.
+
+                    let mut shadow = swc_module.ast.clone();
+
                     let (used_imports, used_exports_from) =
                         remove_useless_stmts::remove_useless_stmts(
                             tree_shake_module.deref_mut(),
-                            &mut swc_module.ast,
+                            &mut shadow,
                         );
 
+                    tree_shake_module.updated_ast = Some(shadow);
+
                     for import_info in used_imports {
-                        add_used_exports_by_import_info(
+                        if let Some(order) = add_used_exports_by_import_info(
                             &tree_shake_modules_map,
                             &*module_graph,
-                            &tree_shake_module_id,
+                            tree_shake_module_id,
                             &import_info,
-                        );
+                        ) {
+                            if next_index > order {
+                                next_index = order;
+                            }
+                        }
                     }
 
                     for export_info in used_exports_from {
-                        add_used_exports_by_export_info(
+                        if let Some(order) = add_used_exports_by_export_info(
                             &tree_shake_modules_map,
                             &*module_graph,
-                            &tree_shake_module_id,
+                            tree_shake_module_id,
                             tree_shake_module.side_effects,
                             &export_info,
-                        );
+                        ) {
+                            if next_index > order {
+                                next_index = order;
+                            }
+                        }
                     }
                 }
             }
         }
 
         // add all dynamic imported dependencies as [UsedExports::All]
-        for (dep, edge) in module_graph.get_dependencies(&tree_shake_module_id) {
-            if matches!(edge.resolve_type, ResolveType::DynamicImport) {
-                let mut tree_shake_module = tree_shake_modules_map.get(dep).unwrap().borrow_mut();
-                tree_shake_module.side_effects = true;
-                tree_shake_module.used_exports = UsedExports::All;
+        for (dep, edge) in module_graph.get_dependencies(tree_shake_module_id) {
+            match edge.resolve_type {
+                ResolveType::DynamicImport => {
+                    let mut tree_shake_module =
+                        tree_shake_modules_map.get(dep).unwrap().borrow_mut();
+                    if tree_shake_module.used_exports.use_all()
+                        && tree_shake_module.topo_order < next_index
+                    {
+                        next_index = tree_shake_module.topo_order;
+                    }
+
+                    tree_shake_module.side_effects = true;
+                }
+                ResolveType::Require => {
+                    if let Some(ref_cell) = tree_shake_modules_map.get(dep) {
+                        let mut tree_shake_module = ref_cell.borrow_mut();
+
+                        if tree_shake_module.used_exports.use_all()
+                            && tree_shake_module.topo_order < next_index
+                        {
+                            next_index = tree_shake_module.topo_order;
+                        }
+                    }
+                }
+                _ => {}
             }
         }
+
+        current_index = next_index;
     }
 
-    // remove the unused modules
-    for module_id in modules_to_remove {
-        module_graph.remove_module(&module_id);
+    for (module_id, tsm) in tree_shake_modules_map {
+        let tsm = tsm.borrow();
+
+        if tsm.used_exports.is_empty() {
+            module_graph.remove_module(&module_id);
+            // println!("removed  {}", module_id.id);
+        } else if let Some(swc_module) = &tsm.updated_ast {
+            module_graph
+                .get_module_mut(&module_id)
+                .unwrap()
+                .info
+                .as_mut()
+                .unwrap()
+                .ast
+                .as_script_mut()
+                .body = swc_module.body.clone();
+        }
     }
 
     Ok(())
 }
 
 // Add all imported to used_exports
+// returns (added, imported_module_topo_order)
 fn add_used_exports_by_import_info(
     tree_shake_modules_map: &std::collections::HashMap<ModuleId, RefCell<TreeShakeModule>>,
     module_graph: &ModuleGraph,
     tree_shake_module_id: &ModuleId,
     import_info: &ImportInfo,
-) {
+) -> Option<usize> {
     let imported_module_id =
         module_graph.get_dependency_module_by_source(tree_shake_module_id, &import_info.source);
     let imported_module = module_graph.get_module(imported_module_id).unwrap();
@@ -236,7 +302,7 @@ fn add_used_exports_by_import_info(
     let is_js = matches!(info.ast, ModuleAst::Script(_));
 
     if info.external.is_some() || !is_js {
-        return;
+        return None;
     }
 
     let mut imported_tree_shake_module = tree_shake_modules_map
@@ -247,10 +313,12 @@ fn add_used_exports_by_import_info(
         .borrow_mut();
 
     if import_info.specifiers.is_empty() {
-        imported_tree_shake_module.used_exports = UsedExports::All;
+        imported_tree_shake_module.used_exports.use_all();
         imported_tree_shake_module.side_effects = true;
-        return;
+        return Some(imported_tree_shake_module.topo_order);
     }
+
+    let mut added = false;
 
     for sp in &import_info.specifiers {
         match sp {
@@ -260,26 +328,32 @@ fn add_used_exports_by_import_info(
             statement_graph::ImportSpecifierInfo::Named { local, imported } => {
                 if let Some(ident) = imported {
                     if *ident == "default" {
-                        imported_tree_shake_module
+                        added |= imported_tree_shake_module
                             .used_exports
                             .add_used_export(&module::UsedIdent::Default);
                     } else {
-                        imported_tree_shake_module
+                        added |= imported_tree_shake_module
                             .used_exports
                             .add_used_export(&module::UsedIdent::SwcIdent(strip_context(ident)));
                     }
                 } else {
-                    imported_tree_shake_module
+                    added |= imported_tree_shake_module
                         .used_exports
                         .add_used_export(&module::UsedIdent::SwcIdent(strip_context(local)));
                 }
             }
             statement_graph::ImportSpecifierInfo::Default(_) => {
-                imported_tree_shake_module
+                added |= imported_tree_shake_module
                     .used_exports
                     .add_used_export(&module::UsedIdent::Default);
             }
         }
+    }
+
+    if added {
+        Some(imported_tree_shake_module.topo_order)
+    } else {
+        None
     }
 }
 
@@ -290,14 +364,14 @@ fn add_used_exports_by_export_info(
     tree_shake_module_id: &ModuleId,
     has_side_effects: bool,
     export_info: &ExportInfo,
-) {
+) -> Option<usize> {
     if let Some(source) = &export_info.source {
         let exported_module_id =
             module_graph.get_dependency_module_by_source(tree_shake_module_id, source);
         let exported_module = module_graph.get_module(exported_module_id).unwrap();
 
         if exported_module.is_external() {
-            return;
+            return None;
         };
 
         let mut exported_tree_shake_module = tree_shake_modules_map
@@ -305,47 +379,55 @@ fn add_used_exports_by_export_info(
             .unwrap()
             .borrow_mut();
 
+        let mut added = false;
+
         for sp in &export_info.specifiers {
             match sp {
                 statement_graph::ExportSpecifierInfo::Namespace(_) => {
-                    exported_tree_shake_module.used_exports = module::UsedExports::All;
+                    added |= exported_tree_shake_module.used_exports.use_all();
                 }
                 statement_graph::ExportSpecifierInfo::Named { local, .. } => {
                     if local == &"default".to_string() {
-                        exported_tree_shake_module
+                        added |= exported_tree_shake_module
                             .used_exports
                             .add_used_export(&module::UsedIdent::Default);
                     } else {
-                        exported_tree_shake_module
+                        added |= exported_tree_shake_module
                             .used_exports
                             .add_used_export(&module::UsedIdent::SwcIdent(strip_context(local)));
                     }
                 }
                 statement_graph::ExportSpecifierInfo::Default => {
-                    exported_tree_shake_module
+                    added |= exported_tree_shake_module
                         .used_exports
                         .add_used_export(&module::UsedIdent::Default);
                 }
                 statement_graph::ExportSpecifierInfo::All(used_idents) => {
                     if has_side_effects {
-                        exported_tree_shake_module.used_exports = module::UsedExports::All
+                        added |= exported_tree_shake_module.used_exports.use_all();
                     } else if let Some(used_idents) = used_idents {
                         for ident in used_idents {
                             if ident == "*" {
-                                exported_tree_shake_module.used_exports = module::UsedExports::All;
+                                added |= exported_tree_shake_module.used_exports.use_all();
                             } else if exported_tree_shake_module.all_exports.contains(ident) {
-                                exported_tree_shake_module
+                                added |= exported_tree_shake_module
                                     .used_exports
                                     .add_used_export(&strip_context(ident));
                             }
                         }
                     } else {
-                        exported_tree_shake_module.used_exports = module::UsedExports::All;
+                        added |= exported_tree_shake_module.used_exports.use_all();
                     }
                 }
             }
         }
+        return if added {
+            Some(exported_tree_shake_module.topo_order)
+        } else {
+            None
+        };
     }
+    None
 }
 
 pub fn strip_context(ident: &str) -> String {
