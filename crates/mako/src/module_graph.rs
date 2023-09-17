@@ -60,11 +60,11 @@ impl ModuleGraph {
         let mut deps_module_ids = vec![];
         self.get_dependencies(module_id)
             .into_iter()
-            .for_each(|(module_id, _)| {
-                deps_module_ids.push(module_id.clone());
+            .for_each(|(module_id, dep)| {
+                deps_module_ids.push((module_id.clone(), dep.clone()));
             });
-        for to_module_id in deps_module_ids {
-            self.remove_dependency(module_id, &to_module_id);
+        for (to_module_id, dep) in deps_module_ids {
+            self.remove_dependency(module_id, &to_module_id, &dep);
         }
         self.remove_module(module_id)
     }
@@ -104,7 +104,7 @@ impl ModuleGraph {
         self.graph.node_weights_mut().collect()
     }
 
-    pub fn remove_dependency(&mut self, from: &ModuleId, to: &ModuleId) {
+    pub fn remove_dependency(&mut self, from: &ModuleId, to: &ModuleId, dep: &Dependency) {
         let from_index = self.id_index_map.get(from).unwrap_or_else(|| {
             panic!(
                 r#"from node "{}" does not exist in the module graph when remove edge"#,
@@ -128,8 +128,12 @@ impl ModuleGraph {
                     from.id, to.id
                 )
             });
+        let deps = self.graph.edge_weight_mut(edge).unwrap();
+        deps.remove(dep);
 
-        self.graph.remove_edge(edge);
+        if deps.is_empty() {
+            self.graph.remove_edge(edge);
+        }
     }
 
     pub fn add_dependency(&mut self, from: &ModuleId, to: &ModuleId, edge: Dependency) {
