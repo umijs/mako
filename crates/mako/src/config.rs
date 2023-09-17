@@ -220,8 +220,10 @@ impl Config {
                 .entry("NODE_ENV".to_string())
                 .or_insert_with(|| serde_json::Value::String(mode));
 
-            if config.public_path != "runtime" && !config.public_path.ends_with('/') {
-                panic!("public_path must end with '/' or be 'runtime'");
+            if config.public_path != "runtime"
+                && (!config.public_path.ends_with('/') || !config.public_path.starts_with('/'))
+            {
+                panic!("publicPath must end with '/' and start with '/' or be 'runtime'");
             }
 
             // let entry_length = cc.entry.len();

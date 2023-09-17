@@ -172,9 +172,7 @@ function createRuntime(makoModules, entryModuleId) {
           const current_hash = requireModule.currentHash();
           const publicPath = requireModule.publicPath;
           return fetch(
-            `${
-              publicPath?.startsWith('/') ? '' : '/'
-            }${publicPath}${current_hash}.hot-update.json`,
+            `${requireModule.publicPath}${current_hash}.hot-update.json`,
           )
             .then((res) => {
               return res.json();
@@ -311,8 +309,7 @@ function createRuntime(makoModules, entryModuleId) {
       }
       const script = document.createElement('script');
       script.timeout = 120;
-      // 不以 '/' 开头时，会被认为相对路径、然后加上当前 path 去请求
-      script.src = url?.startsWith('/') ? url : `/${url}`;
+      script.src = url;
       inProgress[url] = [done];
       const onLoadEnd = (prev, event) => {
         clearTimeout(timeout);
@@ -358,7 +355,7 @@ function createRuntime(makoModules, entryModuleId) {
 
       link.rel = 'stylesheet';
       link.type = 'text/css';
-      link.href = url?.startsWith('/') ? url : `/${url}`;
+      link.href = url;
       link.onerror = link.onload = function (event) {
         // avoid mem leaks, from webpack
         link.onerror = link.onload = null;
