@@ -1,3 +1,4 @@
+import { c } from './a';
 function a() {}
 
 function b(old: boolean = false) {
@@ -9,3 +10,4 @@ function b(old: boolean = false) {
 }
 
 b();
+c();

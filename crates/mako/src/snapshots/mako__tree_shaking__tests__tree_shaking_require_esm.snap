@@ -373,7 +373,7 @@ function createRuntime(makoModules, entryModuleId) {
             makoModules[id] = modules[id];
         }
     };
-    requireModule._h = '6296124933993608767';
+    requireModule._h = '13650861669967734802';
     requireModule.currentHash = ()=>{
         return requireModule._h;
     };
@@ -525,6 +525,19 @@ const runtime = createRuntime({
         });
         function c() {}
     },
+    "d.ts": function(module, exports, require) {
+        "use strict";
+        Object.defineProperty(exports, "__esModule", {
+            value: true
+        });
+        Object.defineProperty(exports, "default", {
+            enumerable: true,
+            get: function() {
+                return d;
+            }
+        });
+        function d() {}
+    },
     "a.ts": function(module, exports, require) {
         "use strict";
         Object.defineProperty(exports, "__esModule", {
@@ -542,14 +555,22 @@ const runtime = createRuntime({
             },
             c: function() {
                 return _c.default;
+            },
+            d: function() {
+                return _d.default;
             }
         });
         var _interop_require_default = require("@swc/helpers/_/_interop_require_default");
         var _b = _interop_require_default._(require("b.ts"));
         var _c = _interop_require_default._(require("c.ts"));
+        var _d = _interop_require_default._(require("d.ts"));
     },
     "index.ts": function(module, exports, require) {
         "use strict";
+        Object.defineProperty(exports, "__esModule", {
+            value: true
+        });
+        var _a = require("a.ts");
         function a() {}
         function b(old = false) {
             if (old === true) {
@@ -559,6 +580,7 @@ const runtime = createRuntime({
             return a;
         }
         b();
+        (0, _a.c)();
     }
 }, 'index.ts');
 globalThis.jsonpCallback = runtime._jsonpCallback;
