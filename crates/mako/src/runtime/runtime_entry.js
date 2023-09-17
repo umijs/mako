@@ -170,7 +170,6 @@ function createRuntime(makoModules, entryModuleId) {
         invalidate() {},
         check() {
           const current_hash = requireModule.currentHash();
-          const publicPath = requireModule.publicPath;
           return fetch(
             `${requireModule.publicPath}${current_hash}.hot-update.json`,
           )

@@ -295,7 +295,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "public_path must end with '/' or be 'runtime'")]
+    #[should_panic(expected = "publicPath must end with '/' and start with '/' or be 'runtime'")]
     fn test_config_invalid_public_path() {
         let current_dir = std::env::current_dir().unwrap();
         Config::new(

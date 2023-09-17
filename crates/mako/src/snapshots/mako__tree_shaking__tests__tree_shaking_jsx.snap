@@ -147,8 +147,7 @@ function createRuntime(makoModules, entryModuleId) {
                 invalidate () {},
                 check () {
                     const current_hash = requireModule.currentHash();
-                    const publicPath = requireModule.publicPath;
-                    return fetch(`${publicPath?.startsWith('/') ? '' : '/'}${publicPath}${current_hash}.hot-update.json`).then((res)=>{
+                    return fetch(`${requireModule.publicPath}${current_hash}.hot-update.json`).then((res)=>{
                         return res.json();
                     }).then((update)=>{
                         return Promise.all(update.c.map((chunk)=>{
@@ -255,7 +254,7 @@ function createRuntime(makoModules, entryModuleId) {
             }
             const script = document.createElement('script');
             script.timeout = 120;
-            script.src = url?.startsWith('/') ? url : `/${url}`;
+            script.src = url;
             inProgress[url] = [
                 done
             ];
@@ -293,7 +292,7 @@ function createRuntime(makoModules, entryModuleId) {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
             link.type = 'text/css';
-            link.href = url?.startsWith('/') ? url : `/${url}`;
+            link.href = url;
             link.onerror = link.onload = function(event) {
                 link.onerror = link.onload = null;
                 if (event.type === 'load') {
