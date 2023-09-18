@@ -220,10 +220,8 @@ impl Config {
                 .entry("NODE_ENV".to_string())
                 .or_insert_with(|| serde_json::Value::String(mode));
 
-            if config.public_path != "runtime"
-                && (!config.public_path.ends_with('/') || !config.public_path.starts_with('/'))
-            {
-                panic!("publicPath must end with '/' and start with '/' or be 'runtime'");
+            if config.public_path != "runtime" && !config.public_path.ends_with('/') {
+                panic!("public_path must end with '/' or be 'runtime'");
             }
 
             // let entry_length = cc.entry.len();
@@ -295,7 +293,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "publicPath must end with '/' and start with '/' or be 'runtime'")]
+    #[should_panic(expected = "public_path must end with '/' or be 'runtime'")]
     fn test_config_invalid_public_path() {
         let current_dir = std::env::current_dir().unwrap();
         Config::new(

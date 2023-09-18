@@ -84,10 +84,10 @@ impl DevServer {
                     for_fn.context.root.join("node_modules/.mako/hot_update"),
                 );
 
+                // 去除 publicPath 头尾 /
                 let public_path = for_fn.context.config.public_path.clone();
-                let public_path_without_prefix_as_str = public_path
-                    .strip_prefix('/')
-                    .unwrap_or(public_path.as_str());
+                let public_path_without_fix =
+                    public_path.trim_start_matches('/').trim_end_matches('/');
 
                 match path {
                     "__/hmr-ws" => {
@@ -112,11 +112,10 @@ impl DevServer {
                             )
                         }
                     }
-                    _ if path.starts_with(public_path_without_prefix_as_str) => {
+                    _ if path.starts_with(public_path_without_fix) => {
                         // 如果用户设置了 public_path，修改一下原始 req，手动复制 req 担心掉属性
-                        if public_path.as_str() != "/" {
-                            let public_path_re =
-                                Regex::new(public_path_without_prefix_as_str).unwrap();
+                        if !public_path.is_empty() {
+                            let public_path_re = Regex::new(public_path_without_fix).unwrap();
                             let uri_str = public_path_re
                                 .replacen(req.uri().to_string().as_str(), 1, "")
                                 .to_string();
