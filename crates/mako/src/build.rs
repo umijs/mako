@@ -16,7 +16,7 @@ use crate::config::{Config, Mode};
 use crate::load::{ext_name, load};
 use crate::module::{Dependency, Module, ModuleAst, ModuleId, ModuleInfo};
 use crate::parse::parse;
-use crate::plugin::PluginDepAnalyzeParam;
+use crate::plugin::{PluginCheckAstParam, PluginDepAnalyzeParam};
 use crate::resolve::{get_resolvers, resolve, ResolverResource, Resolvers};
 use crate::transform::transform;
 
@@ -265,6 +265,11 @@ impl Compiler {
 
         // parse
         let mut ast = parse(&content, &request, &context)?;
+
+        // check ast
+        context
+            .plugin_driver
+            .check_ast(&PluginCheckAstParam { ast: &ast }, &context)?;
 
         // transform
         transform(&mut ast, &context, &task, &resolvers)?;
