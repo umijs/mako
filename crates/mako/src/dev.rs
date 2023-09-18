@@ -6,6 +6,8 @@ use colored::Colorize;
 use futures::{SinkExt, StreamExt};
 use hyper::header::CONTENT_TYPE;
 use hyper::http::HeaderValue;
+use hyper::server::conn::AddrIncoming;
+use hyper::server::Builder;
 use hyper::Server;
 use tokio::sync::broadcast::{Receiver, Sender};
 use tokio::task::JoinHandle;
@@ -18,6 +20,21 @@ use crate::compiler::Compiler;
 use crate::watch::watch;
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
+
+fn bind_idle_port(port: u16) -> Builder<AddrIncoming> {
+    let mut port = port;
+    // 循环调用 try_bind, err 继续寻找端口, ok 返回实例
+    loop {
+        match Server::try_bind(&([127, 0, 0, 1], port).into()) {
+            Ok(builder) => {
+                return builder;
+            }
+            Err(_) => {
+                port += 1;
+            }
+        }
+    }
+}
 
 pub struct DevServer {
     watcher: Arc<ProjectWatch>,
@@ -142,11 +159,9 @@ impl DevServer {
 
         let port = self.compiler.context.config.hmr_port.clone();
         let port = port.parse::<u16>().unwrap();
+
         let dev_server_handle = tokio::spawn(async move {
-            if let Err(_e) = Server::bind(&([127, 0, 0, 1], port).into())
-                .serve(dev_service)
-                .await
-            {
+            if let Err(_e) = bind_idle_port(port).serve(dev_service).await {
                 println!("done");
             }
         });
