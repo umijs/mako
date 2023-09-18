@@ -13,6 +13,7 @@ use crate::compiler::Context;
 use crate::module::ModuleAst;
 use crate::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
 
+#[allow(dead_code)]
 pub fn transform_after_resolve(
     ast: &mut ModuleAst,
     context: &Arc<Context>,
@@ -32,6 +33,7 @@ pub fn transform_after_resolve(
     }
 }
 
+#[allow(dead_code)]
 fn transform_js(
     ast: &mut Module,
     context: &Arc<Context>,

@@ -19,8 +19,6 @@ use crate::parse::parse;
 use crate::plugin::PluginDepAnalyzeParam;
 use crate::resolve::{get_resolvers, resolve, ResolverResource, Resolvers};
 use crate::transform::transform;
-use crate::transform_after_resolve::transform_after_resolve;
-use crate::transform_dep_replacer::DependenciesToReplace;
 
 #[derive(Debug)]
 pub struct Task {
@@ -284,8 +282,8 @@ impl Compiler {
         // resolve
         let mut dep_resolve_err = None;
         let mut dependencies_resource = Vec::new();
-        let mut resolved_deps_to_source = HashMap::<String, String>::new();
-        let mut duplicated_source_to_source_map = HashMap::new();
+        let _resolved_deps_to_source = HashMap::<String, String>::new();
+        // let mut duplicated_source_to_source_map = HashMap::new();
 
         let mut missing_deps = HashMap::new();
         let mut ignored_deps = Vec::new();
@@ -301,19 +299,19 @@ impl Compiler {
 
                     let resolved = resolved_resource.get_resolved_path();
                     let _external = resolved_resource.get_external();
-                    let id = ModuleId::new(resolved.clone());
-                    let id_str = id.generate(&context);
+                    let _id = ModuleId::new(resolved.clone());
+                    // let id_str = id.generate(&context);
 
-                    let used_source = resolved_deps_to_source
-                        .entry(id_str.clone())
-                        .or_insert_with(|| dep.source.clone());
+                    // let used_source = resolved_deps_to_source
+                    //     .entry(id_str.clone())
+                    //     .or_insert_with(|| dep.source.clone());
 
-                    if dep.source.eq(used_source) {
-                        dependencies_resource.push((resolved_resource, dep.clone()));
-                    } else {
-                        duplicated_source_to_source_map
-                            .insert(dep.source.clone(), used_source.clone());
-                    }
+                    dependencies_resource.push((resolved_resource, dep.clone()));
+                    // if dep.source.eq(used_source) {
+                    // } else {
+                    //     // duplicated_source_to_source_map
+                    //     //     .insert(dep.source.clone(), used_source.clone());
+                    // }
                 }
                 Err(_) => {
                     // 获取 本次引用 和 上一级引用 路径
@@ -374,14 +372,14 @@ impl Compiler {
 
         // transform to replace deps
         // ref: https://github.com/umijs/mako/issues/311
-        if !duplicated_source_to_source_map.is_empty() {
-            let deps_to_replace = DependenciesToReplace {
-                missing: HashMap::new(),
-                resolved: duplicated_source_to_source_map,
-                ignored: vec![],
-            };
-            transform_after_resolve(&mut ast, &context, &task, &deps_to_replace)?;
-        }
+        // if !duplicated_source_to_source_map.is_empty() {
+        //     let deps_to_replace = DependenciesToReplace {
+        //         missing: HashMap::new(),
+        //         resolved: duplicated_source_to_source_map,
+        //         ignored: vec![],
+        //     };
+        //     transform_after_resolve(&mut ast, &context, &task, &deps_to_replace)?;
+        // }
 
         // whether to contains top-level-await
         let top_level_await = {
