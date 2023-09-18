@@ -6,6 +6,7 @@ use std::vec;
 use tracing::debug;
 
 use crate::bfs::{Bfs, NextResult};
+use crate::build::parse_path;
 use crate::chunk::{Chunk, ChunkType};
 use crate::chunk_graph::ChunkGraph;
 use crate::compiler::Compiler;
@@ -26,9 +27,21 @@ impl Compiler {
 
         let entries = module_graph.get_entry_modules();
         for entry in entries {
+            let mut entry_chunk_name = "index";
+
+            for (key, value) in &self.context.config.entry {
+                // hmr entry id has query '?hmr'
+                if parse_path(&value.to_string_lossy()).unwrap().path
+                    == parse_path(&entry.id).unwrap().path
+                {
+                    entry_chunk_name = key;
+                    break;
+                }
+            }
+
             let (chunk, dynamic_dependencies) = self.create_chunk(
                 &entry,
-                ChunkType::Entry(entry.clone()),
+                ChunkType::Entry(entry.clone(), entry_chunk_name.to_string()),
                 &mut chunk_graph,
                 vec![],
             );

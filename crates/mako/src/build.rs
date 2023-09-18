@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::path::Path;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -12,7 +12,7 @@ use tracing::debug;
 use crate::analyze_deps::analyze_deps;
 use crate::ast::{build_js_ast, generate_code_frame};
 use crate::compiler::{Compiler, Context};
-use crate::config::{Config, Mode};
+use crate::config::Mode;
 use crate::load::{ext_name, load};
 use crate::module::{Dependency, Module, ModuleAst, ModuleId, ModuleInfo};
 use crate::parse::parse;
@@ -48,8 +48,8 @@ impl Compiler {
     fn build_module_graph(&self) -> HashSet<ModuleId> {
         debug!("build module graph");
 
-        let entries =
-            get_entries(&self.context.root, &self.context.config).expect("entry not found");
+        let entries: Vec<&PathBuf> = self.context.config.entry.values().collect();
+
         if entries.is_empty() {
             panic!("entry not found");
         }
@@ -419,27 +419,7 @@ fn is_async_module(path: &str) -> bool {
     ["wasm"].contains(&ext_name(path).unwrap())
 }
 
-pub fn get_entries(root: &Path, config: &Config) -> Option<Vec<std::path::PathBuf>> {
-    let entry = &config.entry;
-    if entry.is_empty() {
-        let file_paths = vec!["src/index.tsx", "src/index.ts", "index.tsx", "index.ts"];
-        for file_path in file_paths {
-            let file_path = root.join(file_path);
-            if file_path.exists() {
-                return Some(vec![file_path]);
-            }
-        }
-    } else {
-        let vals = entry
-            .values()
-            .map(|v| root.join(v).canonicalize().unwrap())
-            .collect::<Vec<std::path::PathBuf>>();
-        return Some(vals);
-    }
-    None
-}
-
-fn parse_path(path: &str) -> Result<FileRequest> {
+pub fn parse_path(path: &str) -> Result<FileRequest> {
     let mut iter = path.split('?');
     let path = iter.next().unwrap();
     let query = iter.next().unwrap_or("");

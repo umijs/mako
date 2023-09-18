@@ -8,7 +8,7 @@ use anyhow::{anyhow, Ok, Result};
 use rayon::prelude::*;
 use tracing::debug;
 
-use crate::build::{get_entries, Task};
+use crate::build::Task;
 use crate::compiler::Compiler;
 use crate::module::{Dependency, Module, ModuleId};
 use crate::resolve::{self, get_resolvers, Resolvers};
@@ -208,8 +208,8 @@ impl Compiler {
 
                 let is_entry = {
                     // there must be a entry, so unwrap is safe
-                    let entries = get_entries(&self.context.root, &self.context.config).unwrap();
-                    entries.contains(entry)
+                    let mut entries = self.context.config.entry.values();
+                    entries.any(|e| e.eq(entry))
                 };
 
                 let (module, dependencies, _) = Compiler::build_module(
@@ -365,14 +365,10 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_build() {
-        let compiler = setup_compiler("test/build/tmp/single", true);
+        let compiler = setup_compiler("test/build/tmp/single", false);
         setup_files(
             &compiler,
             vec![
-                (
-                    "mako.config.json".into(),
-                    r#"{"mode": "production"}"#.into(),
-                ),
                 (
                     "index.ts".into(),
                     r#"
@@ -436,15 +432,11 @@ export const foo = 1;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_update_multi() {
-        let compiler = setup_compiler("test/build/tmp/multi", true);
+        let compiler = setup_compiler("test/build/tmp/multi", false);
         let target_path = compiler.context.root.join("index.ts");
         setup_files(
             &compiler,
             vec![
-                (
-                    "mako.config.json".into(),
-                    r#"{"mode": "production"}"#.into(),
-                ),
                 (
                     "index.ts".into(),
                     r#"
