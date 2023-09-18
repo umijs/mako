@@ -1,0 +1,1 @@
+{ "mode": "production", "entry": { "index": "index.ts" } }

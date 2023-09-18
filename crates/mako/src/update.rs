@@ -365,14 +365,10 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_build() {
-        let compiler = setup_compiler("test/build/tmp/single", true);
+        let compiler = setup_compiler("test/build/tmp/single", false);
         setup_files(
             &compiler,
             vec![
-                (
-                    "mako.config.json".into(),
-                    r#"{"mode": "production"}"#.into(),
-                ),
                 (
                     "index.ts".into(),
                     r#"
@@ -436,15 +432,11 @@ export const foo = 1;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_update_multi() {
-        let compiler = setup_compiler("test/build/tmp/multi", true);
+        let compiler = setup_compiler("test/build/tmp/multi", false);
         let target_path = compiler.context.root.join("index.ts");
         setup_files(
             &compiler,
             vec![
-                (
-                    "mako.config.json".into(),
-                    r#"{"mode": "production"}"#.into(),
-                ),
                 (
                     "index.ts".into(),
                     r#"
