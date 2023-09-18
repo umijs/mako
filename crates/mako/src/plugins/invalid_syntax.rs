@@ -50,7 +50,8 @@ impl<'a> Visit for InvalidSyntaxVisitor<'a> {
     }
     fn visit_ident(&mut self, n: &swc_ecma_ast::Ident) {
         let bindings = self.bindings.clone();
-        let is_webpack_prefix = n.sym.starts_with("__webpack_");
+        // why keep __webpack_nonce__? since styled-components is using it
+        let is_webpack_prefix = n.sym.starts_with("__webpack_") && &n.sym != "__webpack_nonce__";
         let has_binding = if let Some(bindings) = bindings {
             bindings.contains(&(n.sym.clone(), n.span.ctxt))
         } else {
