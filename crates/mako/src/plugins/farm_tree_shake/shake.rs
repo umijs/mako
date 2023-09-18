@@ -55,10 +55,6 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
             continue;
         };
 
-        if module_id.id.contains("node-libs-browser-okam") || module_id.id.contains("-okam/") {
-            continue;
-        }
-
         let tree_shake_module = TreeShakeModule::new(module, order);
         order += 1;
         tree_shake_modules_ids.push(tree_shake_module.module_id.clone());
