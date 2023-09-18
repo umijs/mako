@@ -6,7 +6,7 @@ use swc_common::errors::HANDLER;
 use swc_common::sync::Lrc;
 use swc_common::{chain, Mark, GLOBALS};
 use swc_css_ast::Stylesheet;
-use swc_css_visit::VisitMutWith;
+use swc_css_visit::VisitMutWith as CssVisitMutWith;
 use swc_ecma_ast::Module;
 use swc_ecma_preset_env::{self as swc_preset_env};
 use swc_ecma_transforms::feature::FeatureFlag;
@@ -14,7 +14,7 @@ use swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
 use swc_ecma_transforms::proposals::decorators;
 use swc_ecma_transforms::typescript::strip_with_jsx;
 use swc_ecma_transforms::{resolver, Assumptions};
-use swc_ecma_visit::{Fold, VisitMutWith as CssVisitMutWith};
+use swc_ecma_visit::{Fold, VisitMutWith};
 use swc_error_reporters::handler::try_with_handler;
 use swc_preset_env::{Feature, FeatureOrModule};
 
@@ -22,6 +22,7 @@ use crate::build::Task;
 use crate::compiler::Context;
 use crate::config::Mode;
 use crate::module::ModuleAst;
+use crate::plugin::PluginTransformJsParam;
 use crate::resolve::Resolvers;
 use crate::targets;
 use crate::transform_css_url_replacer::CSSUrlReplacer;
@@ -140,6 +141,13 @@ fn transform_js(
                     // inject helpers must after decorators
                     // since decorators will use helpers
                     ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
+
+                    // plugin transform
+                    context.plugin_driver.transform_js(
+                        &PluginTransformJsParam { handler },
+                        ast,
+                        context,
+                    )?;
 
                     Ok(())
                 })
