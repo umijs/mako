@@ -16,6 +16,7 @@ use swc_ecma_transforms::typescript::strip_with_jsx;
 use swc_ecma_transforms::{resolver, Assumptions};
 use swc_ecma_visit::{Fold, VisitMutWith as CssVisitMutWith};
 use swc_error_reporters::handler::try_with_handler;
+use swc_preset_env::{Feature, FeatureOrModule};
 
 use crate::build::Task;
 use crate::compiler::Context;
@@ -117,6 +118,8 @@ fn transform_js(
                             targets: Some(targets::swc_preset_env_targets_from_map(
                                 context.config.targets.clone(),
                             )),
+                            // ref: https://github.com/umijs/mako/issues/371
+                            include: vec![FeatureOrModule::Feature(Feature::ClassProperties)],
                             ..Default::default()
                         },
                         Assumptions::default(),
@@ -599,6 +602,21 @@ if (/x/ === /x/) {
 "#
             .trim()
         );
+    }
+
+    #[test]
+    fn test_private_property_assign() {
+        // test will not panic
+        let code = r#"
+        class A {
+            #a: number;
+            b() {
+                this.#a ||= 1;
+            }
+        }
+"#
+        .trim();
+        let (_code, _sourcemap) = transform_js_code(code, None, HashMap::from([]));
     }
 
     fn transform_js_code(
