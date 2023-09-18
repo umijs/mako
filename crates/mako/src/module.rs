@@ -57,7 +57,7 @@ fn md5_hash(source_str: &str, lens: usize) -> String {
 
 pub fn generate_module_id(origin_module_id: String, context: &Arc<Context>) -> String {
     match context.config.module_id_strategy {
-        ModuleIdStrategy::Hashed => md5_hash(&origin_module_id, 4),
+        ModuleIdStrategy::Hashed => md5_hash(&origin_module_id, 8),
         ModuleIdStrategy::Named => {
             // readable ids for debugging usage
             let absolute_path = PathBuf::from(origin_module_id);
