@@ -78,6 +78,8 @@ pub enum DevtoolConfig {
 #[derive(Deserialize, Debug)]
 pub struct LessConfig {
     pub theme: HashMap<String, String>,
+    #[serde(rename(deserialize = "lesscPath"))]
+    pub lessc_path: String,
 }
 
 #[derive(Deserialize, Clone, Copy, Debug)]
@@ -171,7 +173,7 @@ const DEFAULT_CONFIG: &str = r#"
     "publicPath": "/",
     "inlineLimit": 10000,
     "targets": { "chrome": 80 },
-    "less": { "theme": {} },
+    "less": { "theme": {}, "lesscPath": "" },
     "define": {},
     "manifest": false,
     "manifestConfig": { "fileName": "asset-manifest.json", "basePath": "" },
