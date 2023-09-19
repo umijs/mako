@@ -103,7 +103,6 @@ exports.dev = async function (opts) {
         opts.host !== '0.0.0.0' && opts.host,
       ].filter(Boolean),
     );
-    console.log('httpsOpts', httpsOpts);
     server = await createHttpsServer(app, httpsOpts);
   } else {
     server = http.createServer(app);
@@ -118,7 +117,6 @@ exports.dev = async function (opts) {
   const { build } = require('@okamjs/okam');
   const okamConfig = getOkamConfig(opts);
   okamConfig.hmr = true;
-  // TODO: detect port
   okamConfig.hmr_port = String(opts.port + 1);
   okamConfig.hmr_host = opts.host;
   await build(opts.cwd, okamConfig, true);
