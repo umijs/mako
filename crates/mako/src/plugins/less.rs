@@ -36,13 +36,9 @@ fn compile_less(param: &PluginLoadParam, _content: &str, context: &Arc<Context>)
     let theme = context.config.less.theme.clone();
     let mut args = Vec::from(["lessc".to_string(), "--js".to_string()]);
     if !theme.is_empty() {
-        let vars = theme
-            .iter()
-            .map(|(k, v)| format!("{}={}", k, v))
-            .collect::<Vec<String>>()
-            .join("&");
-        let modify_vars = format!("--modify-var={}", vars);
-        args.push(modify_vars);
+        theme.iter().for_each(|(k, v)| {
+            args.push(format!("--modify-var={}=\'{}\'", k, v));
+        });
     }
     args.push(param.path.to_string());
     cmd.args(args);
