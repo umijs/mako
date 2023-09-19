@@ -2,11 +2,11 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use clap::ValueEnum;
+use colored::Colorize;
 use serde::Deserialize;
 use serde_json::Value;
 use swc_ecma_ast::EsVersion;
 use thiserror::Error;
-use tracing::warn;
 
 #[derive(Deserialize, Debug)]
 pub struct OutputConfig {
@@ -242,7 +242,14 @@ impl Config {
             let node_env_config_opt = config.define.get("NODE_ENV");
             if let Some(node_env_config) = node_env_config_opt {
                 if node_env_config.as_str() != Some(config.mode.to_string().as_str()) {
-                    warn!("The configuration of NODE_ENV conflicts with current mode and will be overwritten.")
+                    let warn_message = format!(
+                        "{}: The configuration of {} conflicts with current {} and will be overwritten as {} ",
+                        "warning".to_string().yellow(),
+                        "NODE_ENV".to_string().yellow(),
+                        "mode".to_string().yellow(),
+                        config.mode.to_string().red()
+                    );
+                    println!("{}", warn_message);
                 }
             }
 
