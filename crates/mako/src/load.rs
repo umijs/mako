@@ -200,6 +200,7 @@ pub fn content_hash(file_path: &str) -> Result<String> {
     Ok(hash_to_8(hash))
 }
 
+#[allow(dead_code)]
 pub fn file_content_hash(content: String) -> String {
     let digest = md5::compute(content);
     let hash = format!("{:x}", digest);
