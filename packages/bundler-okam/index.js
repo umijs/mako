@@ -1,7 +1,8 @@
 const path = require('path');
 const fs = require('fs');
 const assert = require('assert');
-const { createProxy } = require('@umijs/bundler-utils');
+const { createProxy, createHttpsServer } = require('@umijs/bundler-utils');
+const { lodash } = require('@umijs/utils');
 
 exports.build = async function (opts) {
   assert(opts, 'opts should be supplied');
@@ -88,9 +89,25 @@ exports.dev = async function (opts) {
       index: '/',
     }),
   );
-  // TODO: https
-  // opts.config.https
-  const server = require('http').createServer(app);
+  // create server
+  let server;
+  const httpsOpts = opts.config.https;
+  if (httpsOpts) {
+    httpsOpts.hosts ||= lodash.uniq(
+      [
+        ...(httpsOpts.hosts || []),
+        // always add localhost, 127.0.0.1, ip and host
+        '127.0.0.1',
+        'localhost',
+        opts.ip,
+        opts.host !== '0.0.0.0' && opts.host,
+      ].filter(Boolean),
+    );
+    console.log('httpsOpts', httpsOpts);
+    server = await createHttpsServer(app, httpsOpts);
+  } else {
+    server = http.createServer(app);
+  }
   const port = opts.port || 8000;
   server.listen(port, () => {
     const protocol = opts.config.https ? 'https:' : 'http:';
