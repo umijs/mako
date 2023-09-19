@@ -41,6 +41,7 @@ Test.
 
 ```bash
 $ cargo test
+$ cargo insta review
 ```
 
 Coverage.
