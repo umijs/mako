@@ -1,6 +1,7 @@
 const path = require('path');
 const fs = require('fs');
 const assert = require('assert');
+const { createProxy } = require('@umijs/bundler-utils');
 
 exports.build = async function (opts) {
   assert(opts, 'opts should be supplied');
@@ -72,8 +73,10 @@ exports.dev = async function (opts) {
   (opts.beforeMiddlewares || []).forEach((m) => app.use(m));
   // serve dist files
   app.use(express.static(path.join(opts.cwd, 'dist')));
-  // TODO: proxy
-  // opts.config.proxy
+  // proxy
+  if (opts.config.proxy) {
+    createProxy(opts.config.proxy, app);
+  }
   // after middlewares
   (opts.afterMiddlewares || []).forEach((m) => {
     // TODO: FIXME
