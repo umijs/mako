@@ -1,6 +1,6 @@
 {
   "name": "@okamjs/okam",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "main": "index.js",
   "types": "index.d.ts",
   "napi": {
