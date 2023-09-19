@@ -192,7 +192,7 @@ function getOkamConfig(opts) {
       },
     },
     mode: 'development',
-    public_path: runtimePublicPath ? 'runtime' : publicPath || '/',
+    publicPath: runtimePublicPath ? 'runtime' : publicPath || '/',
     targets: targets || {
       chrome: 80,
     },
@@ -201,6 +201,10 @@ function getOkamConfig(opts) {
     codeSplitting,
     less: {
       theme,
+      lesscPath: path.join(
+        path.dirname(require.resolve('less/package.json')),
+        'bin/lessc',
+      ),
     },
   };
 }
