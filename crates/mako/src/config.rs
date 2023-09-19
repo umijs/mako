@@ -6,6 +6,7 @@ use serde::Deserialize;
 use serde_json::Value;
 use swc_ecma_ast::EsVersion;
 use thiserror::Error;
+use tracing::warn;
 
 #[derive(Deserialize, Debug)]
 pub struct OutputConfig {
@@ -238,12 +239,17 @@ impl Config {
                 config.output.path = root.join(config.output.path.to_string_lossy().to_string());
             }
 
-            let mode = format!("\"{}\"", config.mode);
+            let node_env_config_opt = config.define.get("NODE_ENV");
+            if let Some(node_env_config) = node_env_config_opt {
+                if node_env_config.as_str() != Some(config.mode.to_string().as_str()) {
+                    warn!("The configuration of NODE_ENV conflicts with current mode and will be overwritten.")
+                }
+            }
 
+            let mode = format!("\"{}\"", config.mode);
             config
                 .define
-                .entry("NODE_ENV".to_string())
-                .or_insert_with(|| serde_json::Value::String(mode));
+                .insert("NODE_ENV".to_string(), serde_json::Value::String(mode));
 
             if config.public_path != "runtime" && !config.public_path.ends_with('/') {
                 panic!("public_path must end with '/' or be 'runtime'");
@@ -325,6 +331,21 @@ mod tests {
         .unwrap();
         println!("{:?}", config);
         assert_eq!(config.platform, Platform::Browser);
+    }
+
+    #[test]
+    fn test_node_env_conflicts_with_mode() {
+        let current_dir = std::env::current_dir().unwrap();
+        let config = Config::new(
+            &current_dir.join("test/config/node-env"),
+            None,
+            Some(r#"{"mode":"development"}"#),
+        )
+        .unwrap();
+        assert_eq!(
+            config.define.get("NODE_ENV"),
+            Some(&serde_json::Value::String("\"development\"".to_string()))
+        );
     }
 
     #[test]
