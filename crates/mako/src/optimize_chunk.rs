@@ -35,7 +35,7 @@ pub struct OptimizeChunkGroup {
 
 pub struct OptimizeChunksInfo {
     pub group_options: OptimizeChunkGroup,
-    pub module_to_chunks: HashMap<ModuleId, Vec<ChunkId>>,
+    pub module_to_chunks: IndexMap<ModuleId, Vec<ChunkId>>,
 }
 
 #[derive(PartialEq, Eq, Clone)]
@@ -53,7 +53,7 @@ impl Compiler {
                 .iter()
                 .map(|group| OptimizeChunksInfo {
                     group_options: group.clone(),
-                    module_to_chunks: HashMap::new(),
+                    module_to_chunks: IndexMap::new(),
                 })
                 .collect::<Vec<_>>();
 
@@ -270,7 +270,7 @@ impl Compiler {
                 // split new chunks until chunk size is less than max_size and there has more than 1 package can be split
                 while chunk_size > info.group_options.max_size && package_size_map.len() > 1 {
                     let mut new_chunk_size = 0;
-                    let mut new_module_to_chunks = HashMap::new();
+                    let mut new_module_to_chunks = IndexMap::new();
 
                     // collect modules by package name until chunk size is very to max_size
                     while !package_size_map.is_empty()
@@ -324,8 +324,8 @@ impl Compiler {
             let info_chunk = Chunk {
                 modules: info
                     .module_to_chunks
-                    .iter()
-                    .map(|cm| cm.0.clone())
+                    .keys()
+                    .cloned()
                     .collect::<IndexSet<_>>(),
                 id: info_chunk_id.clone(),
                 chunk_type: ChunkType::Sync,
