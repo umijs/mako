@@ -99,10 +99,7 @@ impl Compiler {
                 })
                 .collect()
         };
-        let css_chunks_map_str = format!(
-            "const cssChunksIdToUrlMap = {{}};\n{}",
-            css_chunks_map_str.join("\n")
-        );
+        let css_chunks_map_str = css_chunks_map_str.join("\n");
 
         let chunks_ast = chunks
             .par_iter()
