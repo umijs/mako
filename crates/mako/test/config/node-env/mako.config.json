@@ -1,0 +1,5 @@
+{
+  "define": {
+    "NODE_ENV": "production"
+  }
+}
