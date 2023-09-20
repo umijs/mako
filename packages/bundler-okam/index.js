@@ -160,7 +160,7 @@ function getOkamConfig(opts) {
       alias[key.slice(0, -1)] = alias[key];
     }
   });
-  return {
+  const okamConfig = {
     entry: opts.entry,
     output: { path: outputPath },
     resolve: {
@@ -196,4 +196,11 @@ function getOkamConfig(opts) {
       ),
     },
   };
+
+  if (process.env['DUMP_MAKO_CONFIG']) {
+    const configFile = path.join(process.cwd(), 'mako.config.json');
+    fs.writeFileSync(configFile, JSON.stringify(okamConfig, null, 2));
+  }
+
+  return okamConfig;
 }
