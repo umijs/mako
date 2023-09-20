@@ -4,6 +4,7 @@ use std::string::String;
 use indexmap::{IndexMap, IndexSet};
 use nodejs_resolver::Resource;
 use regex::Regex;
+use tracing::debug;
 
 use crate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::compiler::Compiler;
@@ -46,6 +47,7 @@ pub struct OptimizeChunkModule {
 
 impl Compiler {
     pub fn optimize_chunk(&self) {
+        debug!("optimize chunk");
         if let Some(optimize_options) = self.get_optimize_chunk_options() {
             // stage: prepare
             let mut optimize_chunks_infos = optimize_options
