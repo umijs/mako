@@ -142,6 +142,20 @@ impl Compiler {
         });
         for (module_id, chunk_id, chunk_type) in modules_in_chunk {
             for optimize_info in &mut *optimize_chunks_infos {
+                // save chunk to optimize info if module already exists in current info
+                if let Some(module_to_chunk) = optimize_info.module_to_chunks.get_mut(module_id) {
+                    module_to_chunk.push(chunk_id.clone());
+                    break;
+                }
+
+                // otherwise, check conditions to decide whether to add module to optimize info
+                // check allow chunks
+                if !self
+                    .check_chunk_type_allow(&optimize_info.group_options.allow_chunks, chunk_type)
+                {
+                    continue;
+                }
+
                 // check test regex
                 if let Some(test) = &optimize_info.group_options.test {
                     if !test.is_match(&module_id.id.to_string()) {
@@ -150,37 +164,28 @@ impl Compiler {
                 }
 
                 // check min shared count of chunks
-                if optimize_info.group_options.min_chunks > 0
+                if optimize_info.group_options.min_chunks > 1
                     && chunks
                         .iter()
                         .filter(|chunk| {
-                            self.check_chunk_type_allow(
-                                &optimize_info.group_options.allow_chunks,
-                                &chunk.chunk_type,
-                            ) && chunk.has_module(module_id)
+                            chunk.has_module(module_id)
+                                && self.check_chunk_type_allow(
+                                    &optimize_info.group_options.allow_chunks,
+                                    &chunk.chunk_type,
+                                )
                         })
+                        .take(optimize_info.group_options.min_chunks)
                         .count()
-                        < optimize_info.group_options.min_chunks
+                        != optimize_info.group_options.min_chunks
                 {
                     continue;
                 }
 
-                // check allow chunks
-                if self
-                    .check_chunk_type_allow(&optimize_info.group_options.allow_chunks, chunk_type)
-                {
-                    // save module to optimize info
-                    if let Some(module_to_chunk) = optimize_info.module_to_chunks.get_mut(module_id)
-                    {
-                        module_to_chunk.push(chunk_id.clone());
-                    } else {
-                        optimize_info
-                            .module_to_chunks
-                            .insert(module_id.clone(), vec![chunk_id.clone()]);
-                    }
-                    // only add to one group
-                    break;
-                }
+                // add new module_to_chunk map to optimize info
+                optimize_info
+                    .module_to_chunks
+                    .insert(module_id.clone(), vec![chunk_id.clone()]);
+                break;
             }
         }
     }
