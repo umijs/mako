@@ -1,3 +1,4 @@
+
 (async () => {
-  await import('./chunk-2.ts');
+    await import('./chunk-2.ts');
 })();
