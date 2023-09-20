@@ -27,9 +27,11 @@
   },
   "scripts": {
     "artifacts": "napi artifacts",
+    "artifacts:local": "napi artifacts --dir . --dist npm",
     "build": "napi build --platform --release",
     "build:mac:x86": "napi build --platform --release --target x86_64-apple-darwin",
     "build:mac:aarch": "napi build --platform --release --target aarch64-apple-darwin",
+    "build:linux:x86": "napi build --platform --release --target x86_64-unknown-linux-gnu",
     "build:debug": "napi build --platform",
     "prepublishOnly": "napi prepublish -t npm",
     "test": "ava",
@@ -37,15 +39,8 @@
     "version": "napi version"
   },
   "optionalDependencies": {
-    "@okamjs/okam-win32-x64-msvc": "0.0.1-alpha.2",
-    "@okamjs/okam-darwin-x64": "0.0.1-alpha.2",
-    "@okamjs/okam-linux-x64-gnu": "0.0.1-alpha.2",
-    "@okamjs/okam-darwin-arm64": "0.0.1-alpha.2",
-    "@okamjs/okam-linux-arm64-gnu": "0.0.1-alpha.2",
-    "@okamjs/okam-linux-arm64-musl": "0.0.1-alpha.2",
-    "@okamjs/okam-win32-arm64-msvc": "0.0.1-alpha.2",
-    "@okamjs/okam-linux-arm-gnueabihf": "0.0.1-alpha.2",
-    "@okamjs/okam-linux-x64-musl": "0.0.1-alpha.2",
-    "@okamjs/okam-win32-ia32-msvc": "0.0.1-alpha.2"
+    "@okamjs/okam-darwin-arm64": "0.0.15",
+    "@okamjs/okam-darwin-x64": "0.0.15",
+    "@okamjs/okam-linux-x64-gnu": "0.0.15"
   }
 }
