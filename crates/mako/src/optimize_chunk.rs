@@ -35,7 +35,7 @@ pub struct OptimizeChunkGroup {
 
 pub struct OptimizeChunksInfo {
     pub group_options: OptimizeChunkGroup,
-    pub chunk_modules: Vec<OptimizeChunkModule>,
+    pub module_to_chunks: HashMap<ModuleId, Vec<ChunkId>>,
 }
 
 #[derive(PartialEq, Eq, Clone)]
@@ -53,7 +53,7 @@ impl Compiler {
                 .iter()
                 .map(|group| OptimizeChunksInfo {
                     group_options: group.clone(),
-                    chunk_modules: vec![],
+                    module_to_chunks: HashMap::new(),
                 })
                 .collect::<Vec<_>>();
 
@@ -140,7 +140,6 @@ impl Compiler {
             );
             acc
         });
-
         for (module_id, chunk_id, chunk_type) in modules_in_chunk {
             for optimize_info in &mut *optimize_chunks_infos {
                 // check test regex
@@ -171,17 +170,13 @@ impl Compiler {
                     .check_chunk_type_allow(&optimize_info.group_options.allow_chunks, chunk_type)
                 {
                     // save module to optimize info
-                    if let Some(chunk_module) = optimize_info
-                        .chunk_modules
-                        .iter_mut()
-                        .find(|cm| cm.module_id.id == module_id.id)
+                    if let Some(module_to_chunk) = optimize_info.module_to_chunks.get_mut(module_id)
                     {
-                        chunk_module.chunk_ids.push(chunk_id.clone());
+                        module_to_chunk.push(chunk_id.clone());
                     } else {
-                        optimize_info.chunk_modules.push(OptimizeChunkModule {
-                            module_id: module_id.clone(),
-                            chunk_ids: vec![chunk_id.clone()],
-                        });
+                        optimize_info
+                            .module_to_chunks
+                            .insert(module_id.clone(), vec![chunk_id.clone()]);
                     }
                     // only add to one group
                     break;
@@ -196,9 +191,9 @@ impl Compiler {
             .map(|info| {
                 let info_chunk = &Chunk {
                     modules: info
-                        .chunk_modules
-                        .iter()
-                        .map(|cm| cm.module_id.clone())
+                        .module_to_chunks
+                        .keys()
+                        .cloned()
                         .collect::<IndexSet<_>>(),
                     id: ChunkId { id: "".to_string() },
                     chunk_type: ChunkType::Sync,
@@ -226,12 +221,12 @@ impl Compiler {
             let mut chunk_size = *chunk_size_map.get(&info.group_options.name).unwrap();
 
             if chunk_size > info.group_options.max_size {
-                let chunk_modules = &info.chunk_modules;
+                let chunk_modules = &info.module_to_chunks;
                 // group size by package name
                 let mut package_size_map = chunk_modules.iter().fold(
-                    IndexMap::<String, (usize, Vec<OptimizeChunkModule>)>::new(),
-                    |mut size_map, cm| {
-                        let pkg_name = match module_graph.get_module(&cm.module_id) {
+                    IndexMap::<String, (usize, HashMap<ModuleId, Vec<ChunkId>>)>::new(),
+                    |mut size_map, mtc| {
+                        let pkg_name = match module_graph.get_module(mtc.0) {
                             Some(Module {
                                 info:
                                     Some(ModuleInfo {
@@ -251,17 +246,17 @@ impl Compiler {
                         .map(|n| n.as_str().unwrap())
                         .unwrap_or("unknown");
 
-                        let module_size = module_graph
-                            .get_module(&cm.module_id)
-                            .unwrap()
-                            .get_module_size();
+                        let module_size = module_graph.get_module(mtc.0).unwrap().get_module_size();
 
                         // add module size to package size
                         if let Some((item, modules)) = size_map.get_mut(pkg_name) {
                             *item += module_size;
-                            modules.push(cm.clone());
+                            modules.insert(mtc.0.clone(), mtc.1.clone());
                         } else {
-                            size_map.insert(pkg_name.to_string(), (module_size, vec![cm.clone()]));
+                            size_map.insert(
+                                pkg_name.to_string(),
+                                (module_size, HashMap::from([(mtc.0.clone(), mtc.1.clone())])),
+                            );
                         }
                         size_map
                     },
@@ -270,7 +265,7 @@ impl Compiler {
                 // split new chunks until chunk size is less than max_size and there has more than 1 package can be split
                 while chunk_size > info.group_options.max_size && package_size_map.len() > 1 {
                     let mut new_chunk_size = 0;
-                    let mut new_chunk_modules = vec![];
+                    let mut new_module_to_chunks = HashMap::new();
 
                     // collect modules by package name until chunk size is very to max_size
                     while !package_size_map.is_empty()
@@ -280,7 +275,7 @@ impl Compiler {
                         let (_, (size, modules)) = package_size_map.swap_remove_index(0).unwrap();
 
                         new_chunk_size += size;
-                        new_chunk_modules.append(&mut modules.clone());
+                        new_module_to_chunks.extend(modules);
                     }
 
                     // clone group options for new chunk
@@ -293,11 +288,11 @@ impl Compiler {
                     split_chunk_count += 1;
 
                     // move modules to new chunk
-                    info.chunk_modules
-                        .retain(|cm| !new_chunk_modules.contains(cm));
+                    info.module_to_chunks
+                        .retain(|module_id, _| !new_module_to_chunks.contains_key(module_id));
                     extra_optimize_infos.push(OptimizeChunksInfo {
                         group_options: new_chunk_group_options,
-                        chunk_modules: new_chunk_modules,
+                        module_to_chunks: new_module_to_chunks,
                     });
                 }
 
@@ -323,9 +318,9 @@ impl Compiler {
             };
             let info_chunk = Chunk {
                 modules: info
-                    .chunk_modules
+                    .module_to_chunks
                     .iter()
-                    .map(|cm| cm.module_id.clone())
+                    .map(|cm| cm.0.clone())
                     .collect::<IndexSet<_>>(),
                 id: info_chunk_id.clone(),
                 chunk_type: ChunkType::Sync,
@@ -335,11 +330,11 @@ impl Compiler {
             chunk_graph.add_chunk(info_chunk);
 
             // remove modules from original chunks and add edge to new chunk
-            for chunk_module in &info.chunk_modules {
-                for chunk_id in &chunk_module.chunk_ids {
+            for (module_id, chunk_ids) in &info.module_to_chunks {
+                for chunk_id in chunk_ids {
                     let chunk = chunk_graph.mut_chunk(chunk_id).unwrap();
 
-                    chunk.remove_module(&chunk_module.module_id);
+                    chunk.remove_module(module_id);
                     edges.insert(chunk_id.clone(), info_chunk_id.clone());
                 }
             }
