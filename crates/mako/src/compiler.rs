@@ -161,6 +161,8 @@ impl Compiler {
             Arc::new(plugins::assets::AssetsPlugin {}),
             Arc::new(plugins::runtime::MakoRuntime {}),
             Arc::new(plugins::farm_tree_shake::FarmTreeShake {}),
+            Arc::new(plugins::invalid_syntax::InvalidSyntaxPlugin {}),
+            Arc::new(plugins::hmr_runtime::HMRRuntimePlugin {}),
         ];
 
         let mut config = config;

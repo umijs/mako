@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::path::Path;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -12,15 +12,13 @@ use tracing::debug;
 use crate::analyze_deps::analyze_deps;
 use crate::ast::{build_js_ast, generate_code_frame};
 use crate::compiler::{Compiler, Context};
-use crate::config::{Config, Mode};
+use crate::config::Mode;
 use crate::load::{ext_name, load};
 use crate::module::{Dependency, Module, ModuleAst, ModuleId, ModuleInfo};
 use crate::parse::parse;
-use crate::plugin::PluginDepAnalyzeParam;
+use crate::plugin::{PluginCheckAstParam, PluginDepAnalyzeParam};
 use crate::resolve::{get_resolvers, resolve, ResolverResource, Resolvers};
 use crate::transform::transform;
-use crate::transform_after_resolve::transform_after_resolve;
-use crate::transform_dep_replacer::DependenciesToReplace;
 
 #[derive(Debug)]
 pub struct Task {
@@ -50,8 +48,8 @@ impl Compiler {
     fn build_module_graph(&self) -> HashSet<ModuleId> {
         debug!("build module graph");
 
-        let entries =
-            get_entries(&self.context.root, &self.context.config).expect("entry not found");
+        let entries: Vec<&PathBuf> = self.context.config.entry.values().collect();
+
         if entries.is_empty() {
             panic!("entry not found");
         }
@@ -268,6 +266,11 @@ impl Compiler {
         // parse
         let mut ast = parse(&content, &request, &context)?;
 
+        // check ast
+        context
+            .plugin_driver
+            .check_ast(&PluginCheckAstParam { ast: &ast }, &context)?;
+
         // transform
         transform(&mut ast, &context, &task, &resolvers)?;
 
@@ -284,8 +287,8 @@ impl Compiler {
         // resolve
         let mut dep_resolve_err = None;
         let mut dependencies_resource = Vec::new();
-        let mut resolved_deps_to_source = HashMap::<String, String>::new();
-        let mut duplicated_source_to_source_map = HashMap::new();
+        let _resolved_deps_to_source = HashMap::<String, String>::new();
+        // let mut duplicated_source_to_source_map = HashMap::new();
 
         let mut missing_deps = HashMap::new();
         let mut ignored_deps = Vec::new();
@@ -301,19 +304,19 @@ impl Compiler {
 
                     let resolved = resolved_resource.get_resolved_path();
                     let _external = resolved_resource.get_external();
-                    let id = ModuleId::new(resolved.clone());
-                    let id_str = id.generate(&context);
+                    let _id = ModuleId::new(resolved.clone());
+                    // let id_str = id.generate(&context);
 
-                    let used_source = resolved_deps_to_source
-                        .entry(id_str.clone())
-                        .or_insert_with(|| dep.source.clone());
+                    // let used_source = resolved_deps_to_source
+                    //     .entry(id_str.clone())
+                    //     .or_insert_with(|| dep.source.clone());
 
-                    if dep.source.eq(used_source) {
-                        dependencies_resource.push((resolved_resource, dep.clone()));
-                    } else {
-                        duplicated_source_to_source_map
-                            .insert(dep.source.clone(), used_source.clone());
-                    }
+                    dependencies_resource.push((resolved_resource, dep.clone()));
+                    // if dep.source.eq(used_source) {
+                    // } else {
+                    //     // duplicated_source_to_source_map
+                    //     //     .insert(dep.source.clone(), used_source.clone());
+                    // }
                 }
                 Err(_) => {
                     // 获取 本次引用 和 上一级引用 路径
@@ -374,14 +377,14 @@ impl Compiler {
 
         // transform to replace deps
         // ref: https://github.com/umijs/mako/issues/311
-        if !duplicated_source_to_source_map.is_empty() {
-            let deps_to_replace = DependenciesToReplace {
-                missing: HashMap::new(),
-                resolved: duplicated_source_to_source_map,
-                ignored: vec![],
-            };
-            transform_after_resolve(&mut ast, &context, &task, &deps_to_replace)?;
-        }
+        // if !duplicated_source_to_source_map.is_empty() {
+        //     let deps_to_replace = DependenciesToReplace {
+        //         missing: HashMap::new(),
+        //         resolved: duplicated_source_to_source_map,
+        //         ignored: vec![],
+        //     };
+        //     transform_after_resolve(&mut ast, &context, &task, &deps_to_replace)?;
+        // }
 
         // whether to contains top-level-await
         let top_level_await = {
@@ -416,27 +419,7 @@ fn is_async_module(path: &str) -> bool {
     ["wasm"].contains(&ext_name(path).unwrap())
 }
 
-pub fn get_entries(root: &Path, config: &Config) -> Option<Vec<std::path::PathBuf>> {
-    let entry = &config.entry;
-    if entry.is_empty() {
-        let file_paths = vec!["src/index.tsx", "src/index.ts", "index.tsx", "index.ts"];
-        for file_path in file_paths {
-            let file_path = root.join(file_path);
-            if file_path.exists() {
-                return Some(vec![file_path]);
-            }
-        }
-    } else {
-        let vals = entry
-            .values()
-            .map(|v| root.join(v))
-            .collect::<Vec<std::path::PathBuf>>();
-        return Some(vals);
-    }
-    None
-}
-
-fn parse_path(path: &str) -> Result<FileRequest> {
+pub fn parse_path(path: &str) -> Result<FileRequest> {
     let mut iter = path.split('?');
     let path = iter.next().unwrap();
     let query = iter.next().unwrap_or("");

@@ -16,7 +16,6 @@ use crate::ast::{css_ast_to_code, js_ast_to_code};
 use crate::compiler::{Compiler, Context};
 use crate::config::{DevtoolConfig, Mode, OutputMode, TreeShakeStrategy};
 use crate::generate_chunks::OutputAst;
-use crate::load::file_content_hash;
 use crate::minify::{minify_css, minify_js};
 use crate::module::{ModuleAst, ModuleId};
 use crate::stats::{create_stats_info, print_stats, write_stats};
@@ -421,9 +420,10 @@ fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<
             // ast to code
             let (js_code, js_sourcemap) = js_ast_to_code(&ast.ast, context, &file.path)?;
             // 计算 hash 值
-            let hashname = match context.config.hash {
-                true => hash_file_name(file.path.clone(), file_content_hash(js_code.clone())),
-                _ => file.path.clone(),
+            let hashname = if context.config.hash {
+                postfix_hash(&file.path, file.ast_module_hash)
+            } else {
+                file.path.clone()
             };
             // generate code and sourcemap files
             files.push(EmitFile {
@@ -445,20 +445,21 @@ fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<
             // ast to code
             let (css_code, css_sourcemap) = css_ast_to_code(ast, context, &file.path);
             // 计算 hash 值
-            let hashname = match context.config.hash {
-                true => hash_file_name(file.path.clone(), file_content_hash(css_code.clone())),
-                _ => file.path.clone(),
+            let hashed_name = if context.config.hash {
+                postfix_hash(&file.path, file.ast_module_hash)
+            } else {
+                file.path.clone()
             };
             files.push(EmitFile {
                 filename: file.path.clone(),
-                hashname: hashname.clone(),
+                hashname: hashed_name.clone(),
                 content: css_code,
                 chunk_id: file.chunk_id.clone(),
             });
             if matches!(context.config.devtool, DevtoolConfig::SourceMap) {
                 files.push(EmitFile {
                     filename: format!("{}.map", file.path.clone()),
-                    hashname: format!("{}.map", hashname),
+                    hashname: format!("{}.map", hashed_name),
                     content: css_sourcemap,
                     chunk_id: "".to_string(),
                 });
@@ -470,10 +471,20 @@ fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<
     Ok(files)
 }
 
+#[allow(dead_code)]
 fn hash_file_name(file_name: String, hash: String) -> String {
     let path = Path::new(&file_name);
     let file_stem = path.file_stem().unwrap().to_str().unwrap();
     let file_extension = path.extension().unwrap().to_str().unwrap();
+
+    format!("{}.{}.{}", file_stem, hash, file_extension)
+}
+
+fn postfix_hash(file_name: &String, hash: u64) -> String {
+    let path = Path::new(file_name);
+    let file_stem = path.file_stem().unwrap().to_str().unwrap();
+    let file_extension = path.extension().unwrap().to_str().unwrap();
+    let hash = &format!("{:08x}", hash)[0..8];
 
     format!("{}.{}.{}", file_stem, hash, file_extension)
 }

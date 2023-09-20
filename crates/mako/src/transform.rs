@@ -6,7 +6,7 @@ use swc_common::errors::HANDLER;
 use swc_common::sync::Lrc;
 use swc_common::{chain, Mark, GLOBALS};
 use swc_css_ast::Stylesheet;
-use swc_css_visit::VisitMutWith;
+use swc_css_visit::VisitMutWith as CssVisitMutWith;
 use swc_ecma_ast::Module;
 use swc_ecma_preset_env::{self as swc_preset_env};
 use swc_ecma_transforms::feature::FeatureFlag;
@@ -14,13 +14,15 @@ use swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
 use swc_ecma_transforms::proposals::decorators;
 use swc_ecma_transforms::typescript::strip_with_jsx;
 use swc_ecma_transforms::{resolver, Assumptions};
-use swc_ecma_visit::{Fold, VisitMutWith as CssVisitMutWith};
+use swc_ecma_visit::{Fold, VisitMutWith};
 use swc_error_reporters::handler::try_with_handler;
+use swc_preset_env::{Feature, FeatureOrModule};
 
 use crate::build::Task;
 use crate::compiler::Context;
 use crate::config::Mode;
 use crate::module::ModuleAst;
+use crate::plugin::PluginTransformJsParam;
 use crate::resolve::Resolvers;
 use crate::targets;
 use crate::transform_css_url_replacer::CSSUrlReplacer;
@@ -117,6 +119,8 @@ fn transform_js(
                             targets: Some(targets::swc_preset_env_targets_from_map(
                                 context.config.targets.clone(),
                             )),
+                            // ref: https://github.com/umijs/mako/issues/371
+                            include: vec![FeatureOrModule::Feature(Feature::ClassProperties)],
                             ..Default::default()
                         },
                         Assumptions::default(),
@@ -137,6 +141,13 @@ fn transform_js(
                     // inject helpers must after decorators
                     // since decorators will use helpers
                     ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
+
+                    // plugin transform
+                    context.plugin_driver.transform_js(
+                        &PluginTransformJsParam { handler },
+                        ast,
+                        context,
+                    )?;
 
                     Ok(())
                 })
@@ -530,6 +541,8 @@ if(1 == 2) { console.log("1"); } else if (1 == 1) { console.log("2"); } else { c
 
 if(1 == 2) { console.log("1"); } else if (1 == 2) { console.log("2"); } else { console.log("3"); }
 
+if(null === null) { console.log("null==null optimized"); } else {"ooops"}
+
 if(true) { console.log("1"); } else { console.log("2"); }
 
 if(a) { 1 } else { 2 }
@@ -543,13 +556,14 @@ if(a) { 1 } else { 2 }
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
-            r#"
-{
+            r#"{
     console.log("1");
 }{
     console.log("2");
 }{
     console.log("3");
+}{
+    console.log("null==null optimized");
 }{
     console.log("1");
 }if (a) {
@@ -559,9 +573,58 @@ if(a) { 1 } else { 2 }
 }
 
 //# sourceMappingURL=index.js.map
-        "#
+"#
             .trim()
         );
+    }
+
+    #[test]
+    fn test_non_optimize_if() {
+        let code = r#"
+if(1 == 'a') { "should keep" }
+
+if(null == undefined) { "should keep" }
+
+if(/x/ === /x/) { "should keep" }
+"#
+        .trim();
+        let (code, _sourcemap) = transform_js_code(
+            code,
+            None,
+            HashMap::from([("foo".to_string(), "./bar".to_string())]),
+        );
+        println!(">> CODE\n{}", code);
+        assert_eq!(
+            code,
+            r#"if (1 == 'a') {
+    "should keep";
+}
+if (null == undefined) {
+    "should keep";
+}
+if (/x/ === /x/) {
+    "should keep";
+}
+
+//# sourceMappingURL=index.js.map
+"#
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_private_property_assign() {
+        // test will not panic
+        let code = r#"
+        class A {
+            #a: number;
+            b() {
+                this.#a ||= 1;
+            }
+        }
+"#
+        .trim();
+        let (_code, _sourcemap) = transform_js_code(code, None, HashMap::from([]));
     }
 
     fn transform_js_code(

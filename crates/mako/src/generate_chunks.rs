@@ -1,4 +1,3 @@
-use std::hash::Hasher;
 use std::sync::Arc;
 use std::vec;
 
@@ -12,11 +11,10 @@ use swc_ecma_ast::{
     FnExpr, Function, Ident, KeyValueProp, MemberExpr, MemberProp, ModuleItem, ObjectLit, Param,
     Pat, Prop, PropOrSpread, Stmt, Str, VarDecl,
 };
-use twox_hash::XxHash64;
 
 use crate::ast::build_js_ast;
 use crate::compiler::{Compiler, Context};
-use crate::module::{ModuleAst, ModuleId, ModuleType};
+use crate::module::{ModuleAst, ModuleId};
 use crate::transform_in_generate::transform_css_generate;
 
 pub struct OutputAst {
@@ -33,6 +31,8 @@ impl Compiler {
         let module_graph = self.context.module_graph.read().unwrap();
         let chunk_graph = self.context.chunk_graph.write().unwrap();
 
+        let use_hash = self.context.config.hash;
+
         let chunks = chunk_graph.get_chunks();
         // TODO: remove this
         let chunks_map_str: Vec<String> = chunks
@@ -41,7 +41,11 @@ impl Compiler {
                 format!(
                     "chunksIdToUrlMap[\"{}\"] = `{}`;",
                     chunk.id.generate(&self.context),
-                    chunk.filename()
+                    if use_hash {
+                        chunk.js_chunk_name_with_hash(&module_graph)
+                    } else {
+                        chunk.filename()
+                    }
                 )
             })
             .collect();
@@ -54,7 +58,7 @@ impl Compiler {
             chunks
                 .iter()
                 .filter_map(|chunk| match chunk.chunk_type {
-                    crate::chunk::ChunkType::Async | crate::chunk::ChunkType::Entry(_) => {
+                    crate::chunk::ChunkType::Async | crate::chunk::ChunkType::Entry(_, _) => {
                         let module_ids = chunk.get_modules();
                         let module_ids: Vec<_> = module_ids.iter().collect();
 
@@ -67,11 +71,15 @@ impl Compiler {
                                         let str = format!(
                                             "cssChunksIdToUrlMap[\"{}\"] = `{}`;",
                                             chunk.id.generate(&self.context),
-                                            get_css_chunk_filename(chunk.filename()),
+                                            if use_hash {
+                                                chunk.css_chunk_name_with_hash(&module_graph)
+                                            } else {
+                                                get_css_chunk_filename(chunk.filename())
+                                            }
                                         );
 
                                         match chunk.chunk_type {
-                                            crate::chunk::ChunkType::Entry(_) => {
+                                            crate::chunk::ChunkType::Entry(_, _) => {
                                                 return Some(format!(
                                                     "installedChunks['{}'] = 0;\n{}",
                                                     chunk.id.generate(&self.context),
@@ -91,10 +99,7 @@ impl Compiler {
                 })
                 .collect()
         };
-        let css_chunks_map_str = format!(
-            "const cssChunksIdToUrlMap = {{}};\n{}",
-            css_chunks_map_str.join("\n")
-        );
+        let css_chunks_map_str = css_chunks_map_str.join("\n");
 
         let chunks_ast = chunks
             .par_iter()
@@ -116,7 +121,7 @@ impl Compiler {
 
                 // build js ast
                 let content = match &chunk.chunk_type {
-                    crate::chunk::ChunkType::Entry(module_id) => {
+                    crate::chunk::ChunkType::Entry(module_id, _) => {
                         let chunks_ids = chunk_graph
                             .sync_dependencies_chunk(chunk)
                             .into_iter()
@@ -173,7 +178,8 @@ impl Compiler {
                         .to_string()
                         .replace("_%main%_", chunk.id.generate(&self.context).as_str()),
                 };
-                let file_name = if matches!(chunk.chunk_type, crate::chunk::ChunkType::Entry(_)) {
+                let file_name = if matches!(chunk.chunk_type, crate::chunk::ChunkType::Entry(_, _))
+                {
                     "mako_internal_runtime_entry.js"
                 } else {
                     "mako_internal_runtime_chunk.js"
@@ -263,14 +269,14 @@ impl Compiler {
                     path: filename,
                     ast: ModuleAst::Script(js_ast),
                     chunk_id: chunk.id.id.clone(),
-                    ast_module_hash: get_related_module_hash(chunk, &module_graph, false),
+                    ast_module_hash: chunk.js_hash(&module_graph),
                 });
                 if let Some(merged_css_ast) = merged_css_ast {
                     output.push(OutputAst {
                         path: css_filename,
                         ast: ModuleAst::Css(merged_css_ast),
                         chunk_id: chunk.id.id.clone(),
-                        ast_module_hash: get_related_module_hash(chunk, &module_graph, true),
+                        ast_module_hash: chunk.css_hash(&module_graph),
                     });
                 }
                 Ok(output)
@@ -289,35 +295,6 @@ fn get_css_chunk_filename(js_chunk_filename: String) -> String {
         "{}.css",
         js_chunk_filename.strip_suffix(".js").unwrap_or("")
     )
-}
-
-// 给 output_ast 计算 hash 值，get_chunk_emit_files 时会根据此 hash 值做缓存
-pub fn get_related_module_hash(
-    chunk: &crate::chunk::Chunk,
-    module_graph: &std::sync::RwLockReadGuard<crate::module_graph::ModuleGraph>,
-    is_css_ast: bool,
-) -> u64 {
-    let mut hash: XxHash64 = Default::default();
-    let mut module_ids_used = chunk
-        .get_modules()
-        .iter()
-        .cloned()
-        .collect::<Vec<ModuleId>>();
-    // 因为存在 code splitting，可能存在用户引入依赖的顺序发生改变但依赖背后的 module 没有改变的情况
-    // 此时 js chunk 不需要重新生成，所以在计算 ast_module_hash 针对 js 的场景先对 module 做轮排序
-    if !is_css_ast {
-        module_ids_used.sort_by_key(|m| m.id.clone());
-    }
-
-    for id in module_ids_used {
-        let m = module_graph.get_module(&id).unwrap();
-        let m_type = m.get_module_type();
-
-        if matches!(m_type, ModuleType::Css) == is_css_ast {
-            hash.write_u64(m.info.as_ref().unwrap().raw_hash);
-        }
-    }
-    hash.finish()
 }
 
 fn compile_runtime_entry(has_wasm: bool, has_async: bool) -> String {

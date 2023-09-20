@@ -8,7 +8,7 @@ use anyhow::{anyhow, Ok, Result};
 use rayon::prelude::*;
 use tracing::debug;
 
-use crate::build::{get_entries, Task};
+use crate::build::Task;
 use crate::compiler::Compiler;
 use crate::module::{Dependency, Module, ModuleId};
 use crate::resolve::{self, get_resolvers, Resolvers};
@@ -181,9 +181,26 @@ impl Compiler {
 
     fn build_by_modify(
         &self,
-        modified: Vec<PathBuf>,
+        mut modified: Vec<PathBuf>,
         resolvers: Arc<Resolvers>,
     ) -> Result<(HashSet<ModuleId>, Vec<PathBuf>)> {
+        let module_graph = self.context.module_graph.read().unwrap();
+        let modules = module_graph.modules();
+
+        // concat related query modules for modified paths
+        // for example: concat a.module.css?modules for a.module.css
+        for module in modules
+            .iter()
+            .filter(|module| module.id.id.contains("?modules"))
+        {
+            let origin_id = module.id.id.split('?').next().unwrap();
+
+            if modified.contains(&PathBuf::from(origin_id)) {
+                modified.push(PathBuf::from(module.id.id.clone()));
+            }
+        }
+        drop(module_graph);
+
         let result = modified
             .par_iter()
             .map(|entry| {
@@ -191,8 +208,8 @@ impl Compiler {
 
                 let is_entry = {
                     // there must be a entry, so unwrap is safe
-                    let entries = get_entries(&self.context.root, &self.context.config).unwrap();
-                    entries.contains(entry)
+                    let mut entries = self.context.config.entry.values();
+                    entries.any(|e| e.eq(entry))
                 };
 
                 let (module, dependencies, _) = Compiler::build_module(
@@ -252,8 +269,8 @@ impl Compiler {
         let mut module_graph = self.context.module_graph.write().unwrap();
         for (module, add, remove, mut add_modules) in result {
             // remove bind dependency
-            for (remove_module_id, _) in remove {
-                module_graph.remove_dependency(&module.id, &remove_module_id)
+            for (remove_module_id, dep) in remove {
+                module_graph.remove_dependency(&module.id, &remove_module_id, &dep);
             }
 
             // add bind dependency
@@ -348,14 +365,10 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_build() {
-        let compiler = setup_compiler("test/build/tmp/single", true);
+        let compiler = setup_compiler("test/build/tmp/single", false);
         setup_files(
             &compiler,
             vec![
-                (
-                    "mako.config.json".into(),
-                    r#"{"mode": "production"}"#.into(),
-                ),
                 (
                     "index.ts".into(),
                     r#"
@@ -419,15 +432,11 @@ export const foo = 1;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_update_multi() {
-        let compiler = setup_compiler("test/build/tmp/multi", true);
+        let compiler = setup_compiler("test/build/tmp/multi", false);
         let target_path = compiler.context.root.join("index.ts");
         setup_files(
             &compiler,
             vec![
-                (
-                    "mako.config.json".into(),
-                    r#"{"mode": "production"}"#.into(),
-                ),
                 (
                     "index.ts".into(),
                     r#"

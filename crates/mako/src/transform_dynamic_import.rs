@@ -23,9 +23,9 @@ impl VisitMut for DynamicImport<'_> {
                     ..
                 } = &mut call_expr.args[0]
                 {
+                    // note: the source is replaced !
                     let resolved_source = source.value.clone().to_string();
-                    let chunk_id: ModuleId =
-                        generate_module_id(resolved_source.clone(), self.context).into();
+                    let chunk_id: ModuleId = resolved_source.clone().into();
 
                     let chunk_graph = &self.context.chunk_graph.read().unwrap();
 
@@ -40,7 +40,7 @@ impl VisitMut for DynamicImport<'_> {
                                     generate_module_id(chunk_id.id.clone(), self.context)
                                 })
                                 .collect::<Vec<_>>();
-                            ids.push(chunk.id.id.clone());
+                            ids.push(chunk.id.generate(self.context));
                             ids
                         }
                         // None means the original chunk has been optimized to entry chunk

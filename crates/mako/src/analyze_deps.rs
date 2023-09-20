@@ -49,7 +49,6 @@ pub fn handle_css_url(url: String) -> String {
 struct DepCollectVisitor {
     bindings: Lrc<AHashSet<Id>>,
     dependencies: Vec<Dependency>,
-    dep_strs: Vec<String>,
     order: usize,
 }
 
@@ -58,7 +57,6 @@ impl DepCollectVisitor {
         Self {
             bindings: Default::default(),
             dependencies: vec![],
-            dep_strs: vec![],
             // start with 1
             // 0 for swc helpers
             order: 1,
@@ -70,16 +68,13 @@ impl DepCollectVisitor {
         resolve_type: ResolveType,
         span: Option<swc_common::Span>,
     ) {
-        if !self.dep_strs.contains(&source) {
-            self.dep_strs.push(source.clone());
-            self.dependencies.push(Dependency {
-                source,
-                order: self.order,
-                resolve_type,
-                span,
-            });
-            self.order += 1;
-        }
+        self.dependencies.push(Dependency {
+            source,
+            order: self.order,
+            resolve_type,
+            span,
+        });
+        self.order += 1;
     }
     fn handle_css_url(&mut self, url: String) {
         if is_url_ignored(&url) {

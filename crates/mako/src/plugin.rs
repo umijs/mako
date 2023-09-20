@@ -2,6 +2,8 @@ use std::any::Any;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
+use swc_common::errors::Handler;
+use swc_ecma_ast::Module;
 
 use crate::build::FileRequest;
 use crate::compiler::Context;
@@ -22,6 +24,14 @@ pub struct PluginLoadParam<'a> {
 pub struct PluginParseParam<'a> {
     pub request: &'a FileRequest,
     pub content: &'a Content,
+}
+
+pub struct PluginCheckAstParam<'a> {
+    pub ast: &'a ModuleAst,
+}
+
+pub struct PluginTransformJsParam<'a> {
+    pub handler: &'a Handler,
 }
 
 pub struct PluginDepAnalyzeParam<'a> {
@@ -48,6 +58,19 @@ pub trait Plugin: Any + Send + Sync {
         Ok(None)
     }
 
+    fn check_ast(&self, _param: &PluginCheckAstParam, _context: &Arc<Context>) -> Result<()> {
+        Ok(())
+    }
+
+    fn transform_js(
+        &self,
+        _param: &PluginTransformJsParam,
+        _ast: &mut Module,
+        _context: &Arc<Context>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
     fn analyze_deps(&self, _ast: &mut PluginDepAnalyzeParam) -> Result<()> {
         Ok(())
     }
@@ -63,6 +86,7 @@ pub trait Plugin: Any + Send + Sync {
     fn runtime_plugins(&self, _context: &Arc<Context>) -> Result<Vec<String>> {
         Ok(Vec::new())
     }
+
     fn optimize_module_graph(&self, _module_graph: &mut ModuleGraph) -> Result<()> {
         Ok(())
     }
@@ -93,6 +117,7 @@ impl PluginDriver {
         }
         Ok(None)
     }
+
     pub fn parse(
         &self,
         param: &PluginParseParam,
@@ -105,6 +130,25 @@ impl PluginDriver {
             }
         }
         Ok(None)
+    }
+
+    pub fn check_ast(&self, param: &PluginCheckAstParam, context: &Arc<Context>) -> Result<()> {
+        for plugin in &self.plugins {
+            plugin.check_ast(param, context)?;
+        }
+        Ok(())
+    }
+
+    pub fn transform_js(
+        &self,
+        param: &PluginTransformJsParam,
+        ast: &mut Module,
+        context: &Arc<Context>,
+    ) -> Result<()> {
+        for plugin in &self.plugins {
+            plugin.transform_js(param, ast, context)?;
+        }
+        Ok(())
     }
 
     pub fn analyze_deps(&self, param: &mut PluginDepAnalyzeParam) -> Result<()> {

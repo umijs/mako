@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -11,6 +11,8 @@ use crate::ast::Ast;
 use crate::compiler::Context;
 use crate::config::ModuleIdStrategy;
 use crate::resolve::ResolverResource;
+
+pub type Dependencies = HashSet<Dependency>;
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct Dependency {
@@ -55,7 +57,7 @@ fn md5_hash(source_str: &str, lens: usize) -> String {
 
 pub fn generate_module_id(origin_module_id: String, context: &Arc<Context>) -> String {
     match context.config.module_id_strategy {
-        ModuleIdStrategy::Hashed => md5_hash(&origin_module_id, 4),
+        ModuleIdStrategy::Hashed => md5_hash(&origin_module_id, 8),
         ModuleIdStrategy::Named => {
             // readable ids for debugging usage
             let absolute_path = PathBuf::from(origin_module_id);

@@ -7,11 +7,12 @@ use petgraph::stable_graph::{StableDiGraph, WalkNeighbors};
 use petgraph::visit::IntoEdgeReferences;
 use petgraph::Direction;
 
-use crate::module::{Dependency, Module, ModuleId, ModuleInfo};
+use crate::module::{Dependencies, Dependency, Module, ModuleId, ModuleInfo};
 
+#[derive(Debug)]
 pub struct ModuleGraph {
     id_index_map: HashMap<ModuleId, NodeIndex<DefaultIx>>,
-    pub graph: StableDiGraph<Module, Dependency>,
+    pub graph: StableDiGraph<Module, Dependencies>,
     entries: HashSet<ModuleId>,
 }
 
@@ -59,11 +60,11 @@ impl ModuleGraph {
         let mut deps_module_ids = vec![];
         self.get_dependencies(module_id)
             .into_iter()
-            .for_each(|(module_id, _)| {
-                deps_module_ids.push(module_id.clone());
+            .for_each(|(module_id, dep)| {
+                deps_module_ids.push((module_id.clone(), dep.clone()));
             });
-        for to_module_id in deps_module_ids {
-            self.remove_dependency(module_id, &to_module_id);
+        for (to_module_id, dep) in deps_module_ids {
+            self.remove_dependency(module_id, &to_module_id, &dep);
         }
         self.remove_module(module_id)
     }
@@ -103,7 +104,7 @@ impl ModuleGraph {
         self.graph.node_weights_mut().collect()
     }
 
-    pub fn remove_dependency(&mut self, from: &ModuleId, to: &ModuleId) {
+    pub fn remove_dependency(&mut self, from: &ModuleId, to: &ModuleId, dep: &Dependency) {
         let from_index = self.id_index_map.get(from).unwrap_or_else(|| {
             panic!(
                 r#"from node "{}" does not exist in the module graph when remove edge"#,
@@ -127,8 +128,12 @@ impl ModuleGraph {
                     from.id, to.id
                 )
             });
+        let deps = self.graph.edge_weight_mut(edge).unwrap();
+        deps.remove(dep);
 
-        self.graph.remove_edge(edge);
+        if deps.is_empty() {
+            self.graph.remove_edge(edge);
+        }
     }
 
     pub fn add_dependency(&mut self, from: &ModuleId, to: &ModuleId, edge: Dependency) {
@@ -140,7 +145,15 @@ impl ModuleGraph {
             .id_index_map
             .get(to)
             .unwrap_or_else(|| panic!("module_id {:?} not found in the module graph", to));
-        self.graph.update_edge(*from, *to, edge);
+        let dep = self.graph.find_edge(*from, *to);
+        if let Some(dep) = dep {
+            let edges = self.graph.edge_weight_mut(dep).unwrap();
+            edges.insert(edge);
+        } else {
+            let mut edges = Dependencies::new();
+            edges.insert(edge);
+            self.graph.update_edge(*from, *to, edges);
+        }
     }
 
     // 公共方法抽出, InComing 找 targets, Outing 找 dependencies
@@ -157,9 +170,11 @@ impl ModuleGraph {
         let mut edges = self.get_edges(module_id, Direction::Outgoing);
         let mut deps: Vec<(&ModuleId, &Dependency)> = vec![];
         while let Some((edge_index, node_index)) = edges.next(&self.graph) {
-            let dependency = self.graph.edge_weight(edge_index).unwrap();
+            let dependencies = self.graph.edge_weight(edge_index).unwrap();
             let module = self.graph.node_weight(node_index).unwrap();
-            deps.push((&module.id, dependency));
+            dependencies.iter().for_each(|dep| {
+                deps.push((&module.id, dep));
+            })
         }
         deps.sort_by_key(|(_, dep)| dep.order);
         deps
@@ -172,13 +187,11 @@ impl ModuleGraph {
         let mut edges = self.get_edges(module_id, Direction::Outgoing);
         let mut deps = vec![];
         while let Some((edge_index, node_index)) = edges.next(&self.graph) {
-            let dependency = self.graph.edge_weight(edge_index).unwrap();
+            let dependencies = self.graph.edge_weight(edge_index).unwrap();
             let module = self.graph.node_weight(node_index).unwrap();
-            deps.push((
-                module.id.clone(),
-                dependency.clone(),
-                module.info.clone().unwrap(),
-            ));
+            dependencies.iter().for_each(|dep| {
+                deps.push((module.id.clone(), dep.clone(), module.info.clone().unwrap()));
+            })
         }
         deps.sort_by_key(|(_, dep, _)| dep.order);
         deps
