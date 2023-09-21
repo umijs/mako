@@ -41,7 +41,7 @@ impl MakoRuntime {
     fn public_path(&self, context: &Arc<Context>) -> String {
         let public_path = context.config.public_path.clone();
         let public_path = if public_path == "runtime" {
-            "(typeof globalThis !== 'undefined' ? globalThis : window).publicPath || '/'"
+            "(typeof globalThis !== 'undefined' ? globalThis : self).publicPath || '/'"
                 .to_string()
         } else {
             format!("\"{}\"", public_path)
