@@ -276,8 +276,9 @@ impl Compiler {
 
                     // collect modules by package name until chunk size is very to max_size
                     while !package_size_map.is_empty()
-                        && new_chunk_size + package_size_map.get_index(0).unwrap().1 .0
-                            < info.group_options.max_size
+                        && (new_chunk_size == 0
+                            || new_chunk_size + package_size_map.get_index(0).unwrap().1 .0
+                                < info.group_options.max_size)
                     {
                         let (_, (size, modules)) = package_size_map.swap_remove_index(0).unwrap();
 
