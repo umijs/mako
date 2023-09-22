@@ -102,20 +102,18 @@ impl Compiler {
         // minify
         let t_minify = Instant::now();
         debug!("minify");
-        if self.context.config.minify {
+        if self.context.config.minify && matches!(self.context.config.mode, Mode::Production) {
             chunk_asts
                 .par_iter_mut()
                 .try_for_each(|file| -> Result<()> {
-                    if matches!(self.context.config.mode, Mode::Production) {
-                        match &mut file.ast {
-                            ModuleAst::Script(ast) => {
-                                minify_js(ast, &self.context)?;
-                            }
-                            ModuleAst::Css(ast) => {
-                                minify_css(ast, &self.context)?;
-                            }
-                            _ => (),
+                    match &mut file.ast {
+                        ModuleAst::Script(ast) => {
+                            minify_js(ast, &self.context)?;
                         }
+                        ModuleAst::Css(ast) => {
+                            minify_css(ast, &self.context)?;
+                        }
+                        _ => (),
                     }
                     Ok(())
                 })?;
