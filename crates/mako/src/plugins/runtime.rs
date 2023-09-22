@@ -194,7 +194,7 @@ impl MakoRuntime {
             .into(),
         };
 
-        let obj_prop = build_props(&module_id.generate(context), Box::new(factor_decl.into()));
+        let obj_prop = build_props(&module_id.generate(context), factor_decl.into());
 
         Ok(obj_prop)
     }
