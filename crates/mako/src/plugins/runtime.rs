@@ -3,8 +3,8 @@ use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use swc_common::DUMMY_SP as span;
 use swc_ecma_ast::{
-    BlockStmt, Expr, FnExpr, Function, Module, ModuleItem, ObjectLit, PropOrSpread, Stmt,
-    UnaryExpr, UnaryOp,
+    BlockStmt, FnExpr, Function, Module, ModuleItem, ObjectLit, PropOrSpread, Stmt, UnaryExpr,
+    UnaryOp,
 };
 use swc_ecma_utils::{quote_ident, ExprFactory, StmtOrModuleItem};
 
@@ -76,28 +76,28 @@ impl MakoRuntime {
                 UnaryExpr {
                     op: UnaryOp::Bang,
                     span,
-                    arg: Box::new(Expr::Call(
-                        FnExpr {
-                            ident: None,
-                            function: Box::new(Function {
-                                params: vec![],
-                                decorators: vec![],
+                    arg: FnExpr {
+                        ident: None,
+                        function: Function {
+                            params: vec![],
+                            decorators: vec![],
+                            span,
+                            body: Some(BlockStmt {
                                 span,
-                                body: Some(BlockStmt {
-                                    span,
-                                    stmts: vec![quote_ident!("registerModules")
-                                        // registerModules({})
-                                        .as_call(span, vec![obj_expr.as_arg()])
-                                        .into_stmt()],
-                                }),
-                                is_generator: false,
-                                is_async: false,
-                                type_params: None,
-                                return_type: None,
+                                stmts: vec![quote_ident!("registerModules")
+                                    // registerModules({})
+                                    .as_call(span, vec![obj_expr.as_arg()])
+                                    .into_stmt()],
                             }),
+                            is_generator: false,
+                            is_async: false,
+                            type_params: None,
+                            return_type: None,
                         }
-                        .as_iife(),
-                    )),
+                        .into(),
+                    }
+                    .as_iife()
+                    .into(),
                 }
                 .into_stmt(),
             )],
@@ -177,7 +177,7 @@ impl MakoRuntime {
 
         let factor_decl = FnExpr {
             ident: None,
-            function: Box::new(Function {
+            function: Function {
                 params: vec![
                     quote_ident!("module").into(),
                     quote_ident!("exports").into(),
@@ -190,13 +190,11 @@ impl MakoRuntime {
                 type_params: None,
                 body: Some(BlockStmt { stmts, span }),
                 is_generator: false,
-            }),
+            }
+            .into(),
         };
 
-        let obj_prop = build_props(
-            &module_id.generate(context),
-            Box::new(Expr::Fn(factor_decl)),
-        );
+        let obj_prop = build_props(&module_id.generate(context), Box::new(factor_decl.into()));
 
         Ok(obj_prop)
     }
