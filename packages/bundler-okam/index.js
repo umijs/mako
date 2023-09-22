@@ -184,6 +184,19 @@ function getOkamConfig(opts) {
       alias[key.slice(0, -1)] = alias[key];
     }
   });
+  const define = {};
+  if (opts.config.define) {
+    for (const key of Object.keys(opts.config.define)) {
+      // mako 的 define 会先去判断 process.env.xxx，再去判断 xxx
+      // 这里传 process.env.xxx 反而不会生效
+      // TODO: 待 mako 改成和 umi/webpack 的方式一致之后，可以把这段去掉
+      if (key.startsWith('process.env.')) {
+        define[key.replace(/^process\.env\./, '')] = opts.config.define[key];
+      } else {
+        define[key] = JSON.stringify(opts.config.define[key]);
+      }
+    }
+  }
   const okamConfig = {
     entry: opts.entry,
     output: { path: outputPath },
@@ -223,6 +236,7 @@ function getOkamConfig(opts) {
       ),
     },
     minify: jsMinifier === 'none' ? false : true,
+    define,
   };
 
   if (process.env.DUMP_MAKO_CONFIG) {
