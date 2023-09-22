@@ -53,7 +53,9 @@ fn compile_less(param: &PluginLoadParam, _content: &str, context: &Arc<Context>)
     } else {
         args.push(lessc_path);
     }
-    args.push("--js".to_string());
+    if context.config.less.javascript_enabled {
+        args.push("--js".to_string());
+    }
     if !theme.is_empty() {
         theme.iter().for_each(|(k, v)| {
             args.push(format!("--modify-var={}=\'{}\'", k, v));

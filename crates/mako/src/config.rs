@@ -81,6 +81,8 @@ pub struct LessConfig {
     pub theme: HashMap<String, String>,
     #[serde(rename(deserialize = "lesscPath"))]
     pub lessc_path: String,
+    #[serde(rename(deserialize = "javascriptEnabled"))]
+    pub javascript_enabled: bool,
 }
 
 #[derive(Deserialize, Clone, Copy, Debug)]
@@ -174,7 +176,7 @@ const DEFAULT_CONFIG: &str = r#"
     "publicPath": "/",
     "inlineLimit": 10000,
     "targets": { "chrome": 80 },
-    "less": { "theme": {}, "lesscPath": "" },
+    "less": { "theme": {}, "lesscPath": "", javascriptEnabled: true },
     "define": {},
     "manifest": false,
     "manifestConfig": { "fileName": "asset-manifest.json", "basePath": "" },

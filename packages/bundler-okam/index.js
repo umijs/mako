@@ -140,6 +140,27 @@ function getDevBanner(protocol, host, port, ip) {
 
 function checkConfig(config) {
   assert(!config.mfsu, 'mfsu is not supported in okam bundler');
+
+  // 暂不支持 { from, to } 格式
+  const { copy } = config;
+  if (copy) {
+    for (const item of copy) {
+      assert(
+        typeof item === 'string',
+        `copy config item must be string in okam bundler, but got ${item}`,
+      );
+    }
+  }
+
+  // 暂不支持 legacy
+  if (config.legacy) {
+    throw new Error('legacy is not supported in okam bundler');
+  }
+
+  // 暂不支持多 entry 的场景
+  if (config.mpa) {
+    throw new Error('mpa is not supported in okam bundler');
+  }
 }
 
 function getOkamConfig(opts) {
@@ -150,7 +171,10 @@ function getOkamConfig(opts) {
     runtimePublicPath,
     manifest,
     mdx,
-    theme,
+    lessLoader,
+    codeSplitting,
+    devtool,
+    jsMinifier,
   } = opts.config;
   const outputPath = path.join(opts.cwd, 'dist');
   // TODO:
@@ -186,18 +210,22 @@ function getOkamConfig(opts) {
       chrome: 80,
     },
     manifest: !!manifest,
+    manifestConfig: manifest || {},
     mdx: !!mdx,
-    codeSplitting: 'auto',
+    codeSplitting: codeSplitting === false ? 'none' : 'auto',
+    devtool: devtool === false ? 'none' : 'source-map',
     less: {
-      theme,
+      theme: lessLoader.modifyVars,
+      javascriptEnabled: lessLoader.javascriptEnabled,
       lesscPath: path.join(
         path.dirname(require.resolve('less/package.json')),
         'bin/lessc',
       ),
     },
+    minify: jsMinifier === 'none' ? false : true,
   };
 
-  if (process.env['DUMP_MAKO_CONFIG']) {
+  if (process.env.DUMP_MAKO_CONFIG) {
     const configFile = path.join(process.cwd(), 'mako.config.json');
     fs.writeFileSync(configFile, JSON.stringify(okamConfig, null, 2));
   }
