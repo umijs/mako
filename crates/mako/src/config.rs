@@ -264,6 +264,17 @@ impl Config {
                 panic!("public_path must end with '/' or be 'runtime'");
             }
 
+            // 暂不支持 remote external
+            // 如果 config.externals 中有值是以「script 」开头，则 panic 报错
+            for v in config.externals.values() {
+                if v.starts_with("script ") {
+                    panic!(
+                        "remote external is not supported yet, but we found {}",
+                        v.to_string().red()
+                    );
+                }
+            }
+
             if config.entry.is_empty() {
                 let file_paths = vec!["src/index.tsx", "src/index.ts", "index.tsx", "index.ts"];
                 for file_path in file_paths {
