@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "cargo run -r -- $PWD --mode production && http-server ./dist -c-1 --silent",
+    "start": "cargo run -- $PWD --mode production && http-server ./dist -c-1 --silent",
     "e2e:ci": "start-server-and-test start 8080 test",
     "test": "cypress run"
   },

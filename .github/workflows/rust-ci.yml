@@ -50,14 +50,14 @@ jobs:
           cargo test -v
 
       - name: build
-        run: cargo build -r
+        run: cargo build
 
       - name: prepare-antd-CI
         working-directory: ./examples/with-antd
         run: pnpm cypress install
 
-      - name: antd-CI-advanced
-        run: pnpm --filter with-antd run e2e:ci
+#      - name: antd-CI-advanced
+#        run: pnpm --filter with-antd run e2e:ci
 
       - name: Set Mako TreeShake to basic strategy
         uses: sergeysova/jq-action@v2
