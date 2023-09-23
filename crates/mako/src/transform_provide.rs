@@ -43,78 +43,78 @@ impl VisitMut for Provide {
             let has_binding = self.bindings.contains(&(sym.clone(), span.ctxt));
             let provider = self.providers.get(&sym.to_string());
             if !has_binding && provider.is_some() {
-                let (from, key) = provider.unwrap();
-
-                // require("provider")
-                let require_call = Expr::Call(CallExpr {
-                    span: *span,
-                    callee: Callee::Expr(Box::new(Expr::Ident(Ident {
+                if let Some((from, key)) = provider {
+                    // require("provider")
+                    let require_call = Expr::Call(CallExpr {
                         span: *span,
-                        sym: "require".into(),
-                        optional: false,
-                    }))),
-                    args: vec![ExprOrSpread {
-                        spread: None,
-                        expr: Box::new(Expr::Lit(Lit::Str(Str {
-                            span: DUMMY_SP,
-                            value: JsWord::from(from.clone()),
-                            raw: None,
+                        callee: Callee::Expr(Box::new(Expr::Ident(Ident {
+                            span: *span,
+                            sym: "require".into(),
+                            optional: false,
                         }))),
-                    }],
-                    type_args: None,
-                });
-
-                let require_decl = {
-                    if key.is_empty() {
-                        // const process = require('process');
-                        VarDeclarator {
-                            span: *span,
-                            name: Pat::Ident(BindingIdent {
-                                id: Ident {
-                                    span: *span,
-                                    sym: from.as_str().into(),
-                                    optional: false,
-                                },
-                                type_ann: None,
-                            }),
-                            init: Some(Box::new(require_call)),
-                            definite: false,
-                        }
-                    } else {
-                        // const Buffer = require("buffer").Buffer;
-                        VarDeclarator {
-                            span: *span,
-                            name: Pat::Ident(BindingIdent {
-                                id: Ident {
-                                    span: *span,
-                                    sym: key.as_str().into(),
-                                    optional: false,
-                                },
-                                type_ann: None,
-                            }),
-                            init: Some(Box::new(Expr::Member(MemberExpr {
-                                obj: Box::new(require_call),
+                        args: vec![ExprOrSpread {
+                            spread: None,
+                            expr: Box::new(Expr::Lit(Lit::Str(Str {
                                 span: DUMMY_SP,
-                                prop: MemberProp::Ident(Ident {
-                                    span: *span,
-                                    sym: key.as_str().into(),
-                                    optional: false,
-                                }),
+                                value: JsWord::from(from.clone()),
+                                raw: None,
                             }))),
-                            definite: false,
-                        }
-                    }
-                };
+                        }],
+                        type_args: None,
+                    });
 
-                self.var_decls.borrow_mut().insert(
-                    key.clone(),
-                    ModuleItem::Stmt(Stmt::Decl(Decl::Var(Box::new(VarDecl {
-                        span: *span,
-                        kind: VarDeclKind::Const,
-                        declare: false,
-                        decls: vec![require_decl],
-                    })))),
-                );
+                    let require_decl = {
+                        if key.is_empty() {
+                            // const process = require('process');
+                            VarDeclarator {
+                                span: *span,
+                                name: Pat::Ident(BindingIdent {
+                                    id: Ident {
+                                        span: *span,
+                                        sym: from.as_str().into(),
+                                        optional: false,
+                                    },
+                                    type_ann: None,
+                                }),
+                                init: Some(Box::new(require_call)),
+                                definite: false,
+                            }
+                        } else {
+                            // const Buffer = require("buffer").Buffer;
+                            VarDeclarator {
+                                span: *span,
+                                name: Pat::Ident(BindingIdent {
+                                    id: Ident {
+                                        span: *span,
+                                        sym: key.as_str().into(),
+                                        optional: false,
+                                    },
+                                    type_ann: None,
+                                }),
+                                init: Some(Box::new(Expr::Member(MemberExpr {
+                                    obj: Box::new(require_call),
+                                    span: DUMMY_SP,
+                                    prop: MemberProp::Ident(Ident {
+                                        span: *span,
+                                        sym: key.as_str().into(),
+                                        optional: false,
+                                    }),
+                                }))),
+                                definite: false,
+                            }
+                        }
+                    };
+
+                    self.var_decls.borrow_mut().insert(
+                        key.clone(),
+                        ModuleItem::Stmt(Stmt::Decl(Decl::Var(Box::new(VarDecl {
+                            span: *span,
+                            kind: VarDeclKind::Const,
+                            declare: false,
+                            decls: vec![require_decl],
+                        })))),
+                    );
+                }
             }
         }
 

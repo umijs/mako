@@ -362,11 +362,7 @@ function foo() {
         .trim();
         let (code, _) = transform_js_code(code, None, HashMap::new());
         println!(">> CODE\n{}", code);
-        assert_eq!(
-            code,
-            r#"
-const process = require("process");
-const Buffer = require("buffer").Buffer;
+        let common = r#"
 console.log(process);
 console.log(process.env);
 Buffer.from('foo');
@@ -377,10 +373,22 @@ function foo() {
     Buffer.from('foo');
 }
 
-//# sourceMappingURL=index.js.map
+//# sourceMappingURL=index.js.map"#
+            .trim();
+        let require1 = r#"
+const Buffer = require("buffer").Buffer;
+const process = require("process");
         "#
-            .trim()
-        );
+        .trim();
+        let require2 = r#"
+const process = require("process");
+const Buffer = require("buffer").Buffer;
+        "#
+        .trim();
+        // 内部使用 RandomState hashmap，require 的顺序有两种可能
+        let result = code == format!("{}\n{}", require1, common)
+            || code == format!("{}\n{}", require2, common);
+        assert!(result);
     }
 
     #[test]
