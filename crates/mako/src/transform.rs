@@ -365,15 +365,11 @@ function foo() {
         assert_eq!(
             code,
             r#"
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-var _interop_require_default = require("@swc/helpers/_/_interop_require_default");
-var _process = _interop_require_default._(require("process"));
-var _buffer = require("buffer");
-console.log(_process.default);
-console.log(_process.default.env);
-_buffer.Buffer.from('foo');
+const process = require("process");
+const Buffer = require("buffer").Buffer;
+console.log(process);
+console.log(process.env);
+Buffer.from('foo');
 function foo() {
     let process = 1;
     console.log(process);
