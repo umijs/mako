@@ -46,9 +46,9 @@ impl VisitMut for Provide {
                 if let Some((from, key)) = provider {
                     // require("provider")
                     let require_call = Expr::Call(CallExpr {
-                        span: *span,
+                        span: DUMMY_SP,
                         callee: Callee::Expr(Box::new(Expr::Ident(Ident {
-                            span: *span,
+                            span: DUMMY_SP,
                             sym: "require".into(),
                             optional: false,
                         }))),
@@ -71,7 +71,7 @@ impl VisitMut for Provide {
                                 name: Pat::Ident(BindingIdent {
                                     id: Ident {
                                         span: *span,
-                                        sym: from.as_str().into(),
+                                        sym: sym.clone(),
                                         optional: false,
                                     },
                                     type_ann: None,
