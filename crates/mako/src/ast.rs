@@ -165,6 +165,7 @@ pub fn js_ast_to_code(
             cfg: JsCodegenConfig {
                 minify: context.config.minify && matches!(context.config.mode, Mode::Production),
                 target: context.config.output.es_version,
+                ascii_only: true,
                 // ascii_only: true, not working with lodash
                 ..Default::default()
             },
@@ -280,5 +281,36 @@ impl fmt::Write for LockedWriter {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.0.lock().unwrap().push_str(s);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+    use std::sync::Arc;
+
+    use crate::assert_debug_snapshot;
+    use crate::ast::js_ast_to_code;
+    use crate::compiler::Context;
+    use crate::config::DevtoolConfig;
+    use crate::test_helper::create_mock_module;
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_chinese_ascii() {
+        let module = create_mock_module(
+            PathBuf::from("/path/to/test"),
+            r#"
+export const foo = "我是中文";
+"#,
+        );
+        let mut context = Context::default();
+        context.config.devtool = DevtoolConfig::None;
+        let (code, _) = js_ast_to_code(
+            module.info.unwrap().ast.as_script_mut(),
+            &Arc::new(context),
+            "testfile.js",
+        )
+        .unwrap();
+        assert_debug_snapshot!(code);
     }
 }
