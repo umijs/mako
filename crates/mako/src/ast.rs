@@ -162,13 +162,13 @@ pub fn js_ast_to_code(
     let swc_comments = comments.get_swc_comments();
     {
         let mut emitter = Emitter {
-            cfg: JsCodegenConfig {
-                minify: context.config.minify && matches!(context.config.mode, Mode::Production),
-                target: context.config.output.es_version,
-                ascii_only: true,
-                // ascii_only: true, not working with lodash
-                ..Default::default()
-            },
+            cfg: JsCodegenConfig::default()
+                .with_minify(
+                    context.config.minify && matches!(context.config.mode, Mode::Production),
+                )
+                .with_target(context.config.output.es_version)
+                .with_ascii_only(true)
+                .with_omit_last_semi(true),
             cm: cm.clone(),
             comments: Some(swc_comments),
             wr: Box::new(JsWriter::new(
@@ -301,6 +301,9 @@ mod tests {
             PathBuf::from("/path/to/test"),
             r#"
 export const foo = "我是中文";
+export const bar = {
+    中文: "xxx"
+}
 "#,
         );
         let mut context = Context::default();

@@ -2,4 +2,4 @@
 source: crates/mako/src/ast.rs
 expression: code
 ---
-"export const foo = \"\\u6211\\u662F\\u4E2D\\u6587\";\n"
+"export const foo = \"\\u6211\\u662F\\u4E2D\\u6587\";\nexport const bar = {\n    \"\\u4E2D\\u6587\": \"xxx\"\n};\n"
