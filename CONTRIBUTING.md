@@ -99,6 +99,13 @@ $ time ./target/release/mako examples/with-antd
 $ hyperfine --runs 10 "./target/release/mako examples/with-antd"
 ```
 
+Performance analysis with puffin.
+
+```bash
+$ cargo build --release
+$ MAKO_PROFILE=1 ./target/release/mako examples/normal --mode=production
+```
+
 Use mako in umi or bigfish.
 
 ```bash
