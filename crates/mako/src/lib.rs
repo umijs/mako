@@ -28,6 +28,7 @@ mod optimize_chunk;
 mod parse;
 mod plugin;
 mod plugins;
+mod profile_gui;
 mod resolve;
 mod sourcemap;
 mod statement;

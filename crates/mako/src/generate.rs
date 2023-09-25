@@ -50,7 +50,7 @@ impl Compiler {
             match self.context.config.tree_shake {
                 TreeShakeStrategy::Basic => {
                     let mut module_graph = self.context.module_graph.write().unwrap();
-
+                    puffin::profile_scope!("tree shake");
                     self.context
                         .plugin_driver
                         .optimize_module_graph(module_graph.deref_mut())?;
@@ -58,6 +58,7 @@ impl Compiler {
                     println!("basic optimize in {}ms.", t_tree_shaking.as_millis());
                 }
                 TreeShakeStrategy::Advanced => {
+                    puffin::profile_scope!("advanced tree shake");
                     let shaking_module_ids = self.tree_shaking();
                     let t_tree_shaking = t_tree_shaking.elapsed();
                     println!(
@@ -123,13 +124,16 @@ impl Compiler {
         // ast to code and sourcemap, then write
         let t_ast_to_code_and_write = Instant::now();
         debug!("ast to code and write");
-        chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
-            for file in get_chunk_emit_files(file, &self.context)? {
-                self.write_to_dist_with_stats(file);
-            }
+        {
+            puffin::profile_scope!("ast to code");
+            chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
+                for file in get_chunk_emit_files(file, &self.context)? {
+                    self.write_to_dist_with_stats(file);
+                }
 
-            Ok(())
-        })?;
+                Ok(())
+            })?;
+        }
         let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
 
         // write assets

@@ -39,6 +39,7 @@ pub fn transform(
     task: &Task,
     resolvers: &Resolvers,
 ) -> Result<()> {
+    puffin::profile_function!(&task.path);
     match ast {
         ModuleAst::Script(ast) => transform_js(
             &mut ast.ast,

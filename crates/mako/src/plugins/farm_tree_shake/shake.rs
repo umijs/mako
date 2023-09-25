@@ -24,7 +24,10 @@ use crate::tree_shaking_module::ModuleSystem;
 ///     if add imported identifiers to previous modules, traverse smallest index tree_shake_modules again
 /// 4. remove used module and update tree-shaked AST into module graph
 pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
-    let (topo_sorted_modules, _cyclic_modules) = { module_graph.toposort() };
+    let (topo_sorted_modules, _cyclic_modules) = {
+        puffin::profile_scope!("tree shake toposort");
+        module_graph.toposort()
+    };
 
     let mut tree_shake_modules_ids = vec![];
     let mut tree_shake_modules_map = std::collections::HashMap::new();
