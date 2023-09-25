@@ -74,6 +74,8 @@ pub fn resolve(
     resolvers: &Resolvers,
     context: &Arc<Context>,
 ) -> Result<ResolverResource> {
+    puffin::profile_function!();
+    puffin::profile_scope!("resolve", &dep.source);
     do_resolve(
         path,
         &dep.source,

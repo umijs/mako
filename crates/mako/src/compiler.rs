@@ -214,8 +214,14 @@ impl Compiler {
         )
         .green();
         println!("{}", building_with_message);
-        self.build();
-        let result = self.generate();
+        {
+            puffin::profile_scope!("Build Stage");
+            self.build();
+        }
+        let result = {
+            puffin::profile_scope!("Generate Stage");
+            self.generate()
+        };
         let t_compiler = t_compiler.elapsed();
         match result {
             Ok(_) => {
