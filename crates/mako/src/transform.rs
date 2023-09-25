@@ -144,7 +144,10 @@ fn transform_js(
 
                     // plugin transform
                     context.plugin_driver.transform_js(
-                        &PluginTransformJsParam { handler },
+                        &PluginTransformJsParam {
+                            handler,
+                            path: &task.path,
+                        },
                         ast,
                         context,
                     )?;
