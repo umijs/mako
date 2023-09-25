@@ -32,6 +32,7 @@ pub struct PluginCheckAstParam<'a> {
 
 pub struct PluginTransformJsParam<'a> {
     pub handler: &'a Handler,
+    pub path: &'a str,
 }
 
 pub struct PluginDepAnalyzeParam<'a> {
