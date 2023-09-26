@@ -25,6 +25,7 @@ pub struct Dependency {
 #[derive(Eq, Hash, PartialEq, Debug, Clone)]
 pub enum ResolveType {
     Import,
+    ImportCssAsModules,
     ExportNamed,
     ExportAll,
     Require,

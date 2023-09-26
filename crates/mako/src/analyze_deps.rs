@@ -97,7 +97,21 @@ impl Visit for DepCollectVisitor {
                     return;
                 }
                 let src = import.src.value.to_string();
-                self.bind_dependency(src, ResolveType::Import, Some(import.src.span));
+                // importfrom为cssmodule模块
+                // 测试了一下, 如果importcss, specifiers长度为0, importfrom, specifiers长度为1
+                if (import.specifiers.len() > 0
+                    && (src.ends_with(".css") || src.ends_with(".less")))
+                    && !src.ends_with("module.css")
+                    && !src.ends_with("module.less")
+                {
+                    self.bind_dependency(
+                        src,
+                        ResolveType::ImportCssAsModules,
+                        Some(import.src.span),
+                    );
+                } else {
+                    self.bind_dependency(src, ResolveType::Import, Some(import.src.span));
+                }
             }
             ModuleDecl::ExportNamed(export) => {
                 if let Some(src) = &export.src {

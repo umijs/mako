@@ -10,7 +10,7 @@ use tracing::debug;
 
 use crate::compiler::Context;
 use crate::config::{Config, Platform};
-use crate::module::Dependency;
+use crate::module::{Dependency, ResolveType};
 
 #[derive(Debug, Error)]
 enum ResolveError {
@@ -74,16 +74,22 @@ pub fn resolve(
     resolvers: &Resolvers,
     context: &Arc<Context>,
 ) -> Result<ResolverResource> {
+    let source = if dep.resolve_type == ResolveType::ImportCssAsModules {
+        // add "asmodule", treat importfromcss as css module
+        format!("{}?asmodule", dep.source)
+    } else {
+        dep.source.clone()
+    };
     do_resolve(
         path,
-        &dep.source,
+        &source,
         &resolvers.esm,
         Some(&context.config.externals),
     )
     .or_else(|_e| {
         do_resolve(
             path,
-            &dep.source,
+            &source,
             &resolvers.cjs,
             Some(&context.config.externals),
         )
