@@ -268,14 +268,14 @@ impl Compiler {
                 output.push(OutputAst {
                     path: filename,
                     ast: ModuleAst::Script(js_ast),
-                    chunk_id: chunk.id.id.clone(),
+                    chunk_id: chunk.id.generate(&self.context),
                     ast_module_hash: chunk.js_hash(&module_graph),
                 });
                 if let Some(merged_css_ast) = merged_css_ast {
                     output.push(OutputAst {
                         path: css_filename,
                         ast: ModuleAst::Css(merged_css_ast),
-                        chunk_id: chunk.id.id.clone(),
+                        chunk_id: chunk.id.generate(&self.context),
                         ast_module_hash: chunk.css_hash(&module_graph),
                     });
                 }
@@ -297,7 +297,7 @@ fn get_css_chunk_filename(js_chunk_filename: String) -> String {
     )
 }
 
-fn compile_runtime_entry(has_wasm: bool, has_async: bool) -> String {
+pub fn compile_runtime_entry(has_wasm: bool, has_async: bool) -> String {
     let runtime_entry_content_str = include_str!("runtime/runtime_entry.js");
     runtime_entry_content_str
         .replace(

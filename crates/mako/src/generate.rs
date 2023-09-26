@@ -5,17 +5,23 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use cached::proc_macro::cached;
 use indexmap::IndexSet;
 use rayon::prelude::*;
 use serde::Serialize;
+use swc_ecma_ast::{
+    BindingIdent, CallExpr, Callee, Decl, Expr, ExprOrSpread, ModuleItem, ObjectLit, Pat, Stmt,
+    VarDecl,
+};
 use tracing::debug;
 
-use crate::ast::{css_ast_to_code, js_ast_to_code};
+use crate::ast::{build_js_ast, css_ast_to_code, js_ast_to_code};
+use crate::chunk::ChunkType;
 use crate::compiler::{Compiler, Context};
 use crate::config::{DevtoolConfig, Mode, OutputMode, TreeShakeStrategy};
-use crate::generate_chunks::OutputAst;
+use crate::generate_chunks::{compile_runtime_entry, modules_to_js_stmts, OutputAst};
+use crate::load::file_content_hash;
 use crate::minify::{minify_css, minify_js};
 use crate::module::{ModuleAst, ModuleId};
 use crate::stats::{create_stats_info, print_stats, write_stats};
@@ -126,14 +132,200 @@ impl Compiler {
         debug!("ast to code and write");
         {
             puffin::profile_scope!("ast to code");
-            chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
-                for file in get_chunk_emit_files(file, &self.context)? {
-                    self.write_to_dist_with_stats(file);
+            let mut files = chunk_asts
+                .par_iter()
+                .map(|file| -> Result<_> { get_chunk_emit_files(file, &self.context) })
+                .collect::<Result<Vec<_>>>()?
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>();
+
+            if self.context.config.hash {
+                let cg = self.context.chunk_graph.read().unwrap();
+                let module_graph = self.context.module_graph.read().unwrap();
+
+                let mut entries = cg.get_chunks();
+                entries.retain(|&ch| matches!(ch.chunk_type, ChunkType::Entry(_, _)));
+
+                let mut css_chunks: Vec<String> = vec![];
+                let mut js_chunks: Vec<String> = vec!["chunksIdToUrlMap = {};".to_string()];
+
+                for f in &files {
+                    if f.filename.ends_with(".js") {
+                        js_chunks.push(format!(
+                            "chunksIdToUrlMap[\"{}\"] = `{}`;",
+                            f.chunk_id, f.hashname
+                        ))
+                    }
+
+                    if f.filename.ends_with(".css") {
+                        let str = format!(
+                            "cssChunksIdToUrlMap[\"{}\"] = `{}`;",
+                            f.chunk_id, f.hashname
+                        );
+                        css_chunks.push(str);
+                    }
                 }
 
-                Ok(())
-            })?;
+                dbg!(&css_chunks);
+                dbg!(&js_chunks);
+
+                dbg!(entries.len());
+
+                let full_hash = self.full_hash();
+
+                for chunk in entries {
+                    if let ChunkType::Entry(module_id, _) = &chunk.chunk_type {
+                        let module_ids = chunk.get_modules();
+
+                        let stmts_res =
+                            modules_to_js_stmts(module_ids, &module_graph, &self.context);
+
+                        if stmts_res.is_err() {
+                            return Err(anyhow!(
+                                "Chunk {} failed to generate js ast {:?}",
+                                chunk.id.id,
+                                stmts_res.err().unwrap()
+                            ));
+                        }
+
+                        let (js_stmts, _merged_css_ast) = stmts_res.unwrap();
+
+                        let module_generated_id = module_id.generate(&self.context);
+
+                        let chunks_ids = cg
+                            .sync_dependencies_chunk(chunk)
+                            .into_iter()
+                            .map(|chunk| chunk.generate(&self.context))
+                            .collect::<Vec<String>>();
+
+                        let chunks_map_str = js_chunks.join("\n");
+                        let css_chunks_map_str = format!(
+                            "{}\n{}\n",
+                            format!(
+                                "installedChunks['{}'] = 0;\n",
+                                chunk.id.generate(&self.context),
+                            ),
+                            css_chunks.join("\n")
+                        );
+
+                        let code = format!(
+                            "{}\n{}",
+                            chunks_map_str,
+                            compile_runtime_entry(
+                                self.context
+                                    .assets_info
+                                    .lock()
+                                    .unwrap()
+                                    .values()
+                                    .any(|info| info.ends_with(".wasm")),
+                                self.context
+                                    .module_graph
+                                    .read()
+                                    .unwrap()
+                                    .modules()
+                                    .iter()
+                                    .any(|module| module.info.as_ref().unwrap().is_async),
+                            )
+                        )
+                        .replace("_%full_hash%_", &full_hash.to_string())
+                        .replace(
+                            "// __inject_runtime_code__",
+                            &self
+                                .context
+                                .plugin_driver
+                                .runtime_plugins_code(&self.context)?,
+                        )
+                        .replace("// __CSS_CHUNKS_URL_MAP", &css_chunks_map_str.to_string())
+                        .replace("_%main%_", &module_generated_id);
+
+                        let content = if !chunks_ids.is_empty() {
+                            let ensures = chunks_ids
+                                .into_iter()
+                                .map(|id| format!("requireModule.ensure(\"{}\")", id))
+                                .collect::<Vec<String>>()
+                                .join(", ");
+
+                            code.replace(
+                                "// __BEFORE_ENTRY",
+                                format!("Promise.all([{}]).then(()=>{{", ensures).as_str(),
+                            )
+                            .replace("// __AFTER_ENTRY", "});")
+                        } else {
+                            code
+                        };
+
+                        let mut js_ast = build_js_ast(
+                            "mako_internal_runtime_entry.js",
+                            content.as_str(),
+                            &self.context,
+                        )
+                        .unwrap();
+
+                        for stmt in &mut js_ast.ast.body {
+                            // const runtime = createRuntime({ }, 'main');
+                            if let ModuleItem::Stmt(Stmt::Decl(Decl::Var(box VarDecl {
+                                decls,
+                                ..
+                            }))) = stmt
+                            {
+                                if decls.len() != 1 {
+                                    continue;
+                                }
+                                let decl = &mut decls[0];
+                                if let Pat::Ident(BindingIdent { id, .. }) = &decl.name {
+                                    if id.sym.to_string() != "runtime" {
+                                        continue;
+                                    }
+                                }
+                                if let Some(box Expr::Call(CallExpr {
+                                    args,
+                                    callee: Callee::Expr(box Expr::Ident(ident)),
+                                    ..
+                                })) = &mut decl.init
+                                {
+                                    if args.len() != 2 || ident.sym.to_string() != "createRuntime" {
+                                        continue;
+                                    }
+                                    if let ExprOrSpread {
+                                        expr: box Expr::Object(ObjectLit { props, .. }),
+                                        ..
+                                    } = &mut args[0]
+                                    {
+                                        props.extend(js_stmts);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        let filename = chunk.filename();
+                        let map_filename = format!("{}.map", filename);
+
+                        let (js_code, js_sourcemap) =
+                            js_ast_to_code(&js_ast.ast, &self.context, &filename)?;
+
+                        let generated_chunk_id = chunk.id.generate(&self.context);
+
+                        for f in &mut files {
+                            if f.chunk_id == generated_chunk_id && f.filename.ends_with(".js") {
+                                f.content = js_code.clone();
+                            }
+
+                            if matches!(self.context.config.devtool, DevtoolConfig::SourceMap)
+                                && f.filename == map_filename
+                            {
+                                f.content = js_sourcemap.clone()
+                            }
+                        }
+                    }
+                }
+            }
+
+            for f in files {
+                self.write_to_dist_with_stats(f);
+            }
         }
+
         let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
 
         // write assets
@@ -421,9 +613,11 @@ fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<
         ModuleAst::Script(ast) => {
             // ast to code
             let (js_code, js_sourcemap) = js_ast_to_code(&ast.ast, context, &file.path)?;
+
             // 计算 hash 值
             let hashname = if context.config.hash {
-                postfix_hash(&file.path, file.ast_module_hash)
+                let h = file_content_hash(&js_code);
+                hash_file_name(file.path.clone(), h)
             } else {
                 file.path.clone()
             };
@@ -448,7 +642,9 @@ fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<
             let (css_code, css_sourcemap) = css_ast_to_code(ast, context, &file.path);
             // 计算 hash 值
             let hashed_name = if context.config.hash {
-                postfix_hash(&file.path, file.ast_module_hash)
+                let h = file_content_hash(&css_code);
+
+                hash_file_name(file.path.clone(), h)
             } else {
                 file.path.clone()
             };
