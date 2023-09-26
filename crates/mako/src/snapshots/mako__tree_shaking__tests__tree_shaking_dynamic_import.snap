@@ -201,7 +201,6 @@ function createRuntime(makoModules, entryModuleId) {
     !function() {
         registerModules({
             "@swc/helpers/_/_interop_require_default": function(module, exports, require) {
-                "use strict";
                 Object.defineProperty(exports, "__esModule", {
                     value: true
                 });
@@ -226,7 +225,6 @@ function createRuntime(makoModules, entryModuleId) {
                 }
             },
             "@swc/helpers/_/_interop_require_wildcard": function(module, exports, require) {
-                "use strict";
                 Object.defineProperty(exports, "__esModule", {
                     value: true
                 });
@@ -274,7 +272,6 @@ function createRuntime(makoModules, entryModuleId) {
                 }
             },
             "@swc/helpers/_/_export_star": function(module, exports, require) {
-                "use strict";
                 Object.defineProperty(exports, "__esModule", {
                     value: true
                 });
@@ -502,7 +499,6 @@ function createRuntime(makoModules, entryModuleId) {
 }
 const runtime = createRuntime({
     "index.ts": function(module, exports, require) {
-        "use strict";
         Promise.all([
             require.ensure("a.ts")
         ]).then(require.bind(require, "a.ts")).then((r)=>console.log(r));
