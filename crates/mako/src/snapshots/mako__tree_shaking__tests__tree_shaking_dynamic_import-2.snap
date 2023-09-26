@@ -9,7 +9,6 @@ globalThis.jsonpCallback([
     {
         "a.css": function(module, exports, require) {},
         "a.ts": function(module, exports, require) {
-            "use strict";
             Object.defineProperty(exports, "__esModule", {
                 value: true
             });
