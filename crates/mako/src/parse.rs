@@ -14,6 +14,7 @@ pub fn parse(
     request: &FileRequest,
     context: &Arc<Context>,
 ) -> Result<ModuleAst> {
+    puffin::profile_function!(&request.path);
     debug!("parse {:?}", request);
     let ast = context
         .plugin_driver

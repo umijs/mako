@@ -74,26 +74,22 @@ pub fn resolve(
     resolvers: &Resolvers,
     context: &Arc<Context>,
 ) -> Result<ResolverResource> {
+    puffin::profile_function!();
+    puffin::profile_scope!("resolve", &dep.source);
+    let resolver = if dep.resolve_type == ResolveType::Require {
+        &resolvers.cjs
+    } else {
+        &resolvers.esm
+    };
+
     let source = if dep.resolve_type == ResolveType::ImportCssAsModules {
         // add "asmodule", treat importfromcss as css module
         format!("{}?asmodule", dep.source)
     } else {
         dep.source.clone()
     };
-    do_resolve(
-        path,
-        &source,
-        &resolvers.esm,
-        Some(&context.config.externals),
-    )
-    .or_else(|_e| {
-        do_resolve(
-            path,
-            &source,
-            &resolvers.cjs,
-            Some(&context.config.externals),
-        )
-    })
+
+    do_resolve(path, &source, resolver, Some(&context.config.externals))
 }
 
 // TODO:

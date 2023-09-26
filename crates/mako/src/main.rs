@@ -1,5 +1,6 @@
 #![feature(box_patterns)]
 
+use std::env;
 use std::sync::Arc;
 
 use clap::Parser;
@@ -8,6 +9,7 @@ use tracing::debug;
 use crate::compiler::Args;
 use crate::config::Mode;
 use crate::logger::init_logger;
+use crate::profile_gui::ProfileApp;
 
 mod analyze_deps;
 mod analyze_statement;
@@ -36,6 +38,7 @@ mod optimize_chunk;
 mod parse;
 mod plugin;
 mod plugins;
+mod profile_gui;
 mod resolve;
 mod sourcemap;
 mod statement;
@@ -102,10 +105,24 @@ async fn main() {
 
     // compiler
     let compiler = compiler::Compiler::new(config, root.clone(), Args { watch: cli.watch });
-    compiler.compile();
+    let compiler = Arc::new(compiler);
+
+    if env::var("MAKO_PROFILE").is_ok() {
+        // Turn on the profiler only if env `MAKO_PROFILE` exists. When the profiler is off the profiler scope macros only has an overhead of 1-2 ns (and some stack space);
+        puffin::set_scopes_on(true);
+        let native_options = Default::default();
+        let compiler = compiler.clone();
+        let _ = eframe::run_native(
+            "puffin egui eframe",
+            native_options,
+            Box::new(move |_cc| Box::new(ProfileApp::new(compiler))),
+        );
+    } else {
+        compiler.compile();
+    }
 
     if cli.watch {
-        let d = crate::dev::DevServer::new(root.clone(), Arc::new(compiler));
+        let d = crate::dev::DevServer::new(root.clone(), compiler);
         // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
         d.serve().await;
     }
