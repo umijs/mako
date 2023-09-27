@@ -28,8 +28,11 @@ pub fn mako_react(
     let use_refresh =
         is_dev && context.args.watch && context.config.hmr && !task.path.contains("/node_modules/");
 
-    let is_jsx =
-        task.path.ends_with(".jsx") || task.path.ends_with(".tsx") || task.path.ends_with(".svg");
+    let is_jsx = task.path.ends_with(".jsx")
+        || task.path.ends_with(".js")
+        || task.path.ends_with(".ts")
+        || task.path.ends_with(".tsx")
+        || task.path.ends_with(".svg");
 
     if !is_jsx {
         return if task.is_entry && use_refresh {
