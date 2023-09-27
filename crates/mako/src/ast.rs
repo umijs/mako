@@ -50,8 +50,11 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
     let comments = context.meta.script.origin_comments.read().unwrap();
     let is_ts = path.ends_with(".ts") || path.ends_with(".tsx");
     // treat svgr as jsx
-    let jsx = path.ends_with(".jsx") || path.ends_with(".svg");
-    let tsx = path.ends_with(".tsx");
+    let jsx = path.ends_with(".jsx")
+        || path.ends_with(".svg")
+        // exclude files under node_modules is for performance
+        || (path.ends_with(".js") && !path.contains("node_modules"));
+    let tsx = path.ends_with(".tsx") || path.ends_with(".ts");
     let syntax = if is_ts {
         Syntax::Typescript(TsConfig {
             decorators: true,
