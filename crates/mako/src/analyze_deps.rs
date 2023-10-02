@@ -100,7 +100,7 @@ impl Visit for DepCollectVisitor {
                 let src = import.src.value.to_string();
                 // importfrom为cssmodule模块
                 // 测试了一下, 如果importcss, specifiers长度为0, importfrom, specifiers长度为1
-                if (import.specifiers.len() > 0
+                if (!import.specifiers.is_empty()
                     && (src.ends_with(".css") || src.ends_with(".less")))
                     && !src.ends_with("module.css")
                     && !src.ends_with("module.less")
