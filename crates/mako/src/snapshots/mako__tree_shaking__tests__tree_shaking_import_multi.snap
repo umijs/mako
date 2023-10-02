@@ -199,7 +199,6 @@ function createRuntime(makoModules, entryModuleId) {
     !function() {
         registerModules({
             "@swc/helpers/_/_interop_require_default": function(module, exports, require) {
-                "use strict";
                 Object.defineProperty(exports, "__esModule", {
                     value: true
                 });
@@ -224,7 +223,6 @@ function createRuntime(makoModules, entryModuleId) {
                 }
             },
             "@swc/helpers/_/_interop_require_wildcard": function(module, exports, require) {
-                "use strict";
                 Object.defineProperty(exports, "__esModule", {
                     value: true
                 });
@@ -272,7 +270,6 @@ function createRuntime(makoModules, entryModuleId) {
                 }
             },
             "@swc/helpers/_/_export_star": function(module, exports, require) {
-                "use strict";
                 Object.defineProperty(exports, "__esModule", {
                     value: true
                 });
@@ -316,7 +313,6 @@ function createRuntime(makoModules, entryModuleId) {
 }
 const runtime = createRuntime({
     "c.ts": function(module, exports, require) {
-        "use strict";
         Object.defineProperty(exports, "__esModule", {
             value: true
         });
@@ -329,7 +325,6 @@ const runtime = createRuntime({
         function c() {}
     },
     "a.ts": function(module, exports, require) {
-        "use strict";
         Object.defineProperty(exports, "__esModule", {
             value: true
         });
@@ -343,7 +338,6 @@ const runtime = createRuntime({
         var _c = _interop_require_default._(require("c.ts"));
     },
     "index.ts": function(module, exports, require) {
-        "use strict";
         Object.defineProperty(exports, "__esModule", {
             value: true
         });

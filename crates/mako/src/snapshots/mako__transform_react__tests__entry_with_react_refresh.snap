@@ -2,5 +2,31 @@
 source: crates/mako/src/transform_react.rs
 expression: "transform(TransformTask {\n        is_entry: true,\n        path: \"index.js\".to_string(),\n        code: \"console.log('entry');\".to_string(),\n    })"
 ---
-import 'react-refresh';
+import * as RefreshRuntime from 'react-refresh';
+var prevRefreshReg;
+var prevRefreshSig;
+prevRefreshReg = window.$RefreshReg$;
+prevRefreshSig = window.$RefreshSig$;
+window.$RefreshReg$ = (type, id)=>{
+    RefreshRuntime.register(type, module.id + id);
+};
+window.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
 console.log('entry');
+window.$RefreshReg$ = prevRefreshReg;
+window.$RefreshSig$ = prevRefreshSig;
+function $RefreshIsReactComponentLike$(moduleExports) {
+    if (RefreshRuntime.isLikelyComponentType(moduleExports.default || moduleExports)) {
+        return true;
+    }
+    var hasComponentExports = false;
+    for(var key in moduleExports){
+        if (!RefreshRuntime.isLikelyComponentType(moduleExports[key])) {
+            hasComponentExports = true;
+        }
+    }
+    return hasComponentExports;
+}
+if ($RefreshIsReactComponentLike$(module.exports)) {
+    module.meta.hot.accept();
+    RefreshRuntime.performReactRefresh();
+}

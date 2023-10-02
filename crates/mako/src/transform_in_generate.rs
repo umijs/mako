@@ -156,6 +156,7 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) {
                                     preserve_import_meta: true,
                                     // TODO: 在 esm 时设置为 false
                                     allow_top_level_this: true,
+                                    strict_mode: false,
                                     ..Default::default()
                                 },
                                 FeatureFlag::empty(),
