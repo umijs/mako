@@ -27,6 +27,7 @@ use crate::resolve::Resolvers;
 use crate::targets;
 use crate::transform_css_url_replacer::CSSUrlReplacer;
 use crate::transform_env_replacer::{build_env_map, EnvReplacer};
+use crate::transform_import_css_in_js::ImportCssInJs;
 use crate::transform_optimizer::Optimizer;
 use crate::transform_provide::Provide;
 use crate::transform_px2rem::Px2Rem;
@@ -107,6 +108,9 @@ fn transform_js(
 
                     let mut provide = Provide::new(context.config.providers.clone());
                     ast.visit_mut_with(&mut provide);
+
+                    let mut import_css_in_js = ImportCssInJs {};
+                    ast.visit_mut_with(&mut import_css_in_js);
 
                     let mut optimizer = Optimizer {};
                     ast.visit_mut_with(&mut optimizer);
