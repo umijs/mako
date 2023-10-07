@@ -6,9 +6,13 @@ use tracing::debug;
 
 use crate::comments::Comments;
 use crate::tree_shaking::defined_ident_collector::DefinedIdentCollector;
-use crate::tree_shaking::statement::{self, ExportSpecifier, ImportSpecifier, StatementId, StatementType};
+use crate::tree_shaking::statement::{
+    self, ExportSpecifier, ImportSpecifier, StatementId, StatementType,
+};
 use crate::tree_shaking::tree_shaking_analyze::strip_context;
-use crate::tree_shaking::tree_shaking_module::{should_skip, TreeShakingModule, UsedIdent, UsedIdentHashMap};
+use crate::tree_shaking::tree_shaking_module::{
+    should_skip, TreeShakingModule, UsedIdent, UsedIdentHashMap,
+};
 /**
  * 针对没有使用到的 export、import 语句进行标记
  */

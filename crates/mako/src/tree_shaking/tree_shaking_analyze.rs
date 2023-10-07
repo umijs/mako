@@ -130,9 +130,11 @@ impl Compiler {
                             .add_used_export(&UsedIdent::SwcIdent(strip_context(local)))
                     }
                 }
-                crate::tree_shaking::statement::ImportSpecifier::Default(_) => imported_tree_shaking_module
-                    .used_exports
-                    .add_used_export(&UsedIdent::Default),
+                crate::tree_shaking::statement::ImportSpecifier::Default(_) => {
+                    imported_tree_shaking_module
+                        .used_exports
+                        .add_used_export(&UsedIdent::Default)
+                }
             }
         }
     }
