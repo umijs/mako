@@ -58,7 +58,9 @@ impl Compiler {
             chunks
                 .iter()
                 .filter_map(|chunk| match chunk.chunk_type {
-                    crate::chunk::ChunkType::Async | crate::chunk::ChunkType::Entry(_, _) => {
+                    crate::chunk::ChunkType::Async
+                    | crate::chunk::ChunkType::Entry(_, _)
+                    | crate::chunk::ChunkType::Sync => {
                         let module_ids = chunk.get_modules();
                         let module_ids: Vec<_> = module_ids.iter().collect();
 
