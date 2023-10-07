@@ -1,4 +1,4 @@
-function createRuntime(makoModules, entryModuleId) {
+function createRuntime(makoModules, deps, entryModuleId) {
   const modulesRegistry = {};
 
   function requireModule(moduleId) {
@@ -264,11 +264,18 @@ function createRuntime(makoModules, entryModuleId) {
 
   // __WASM_REQUIRE_SUPPORT
   // __REQUIRE_ASYNC_MODULE_SUPPORT
-  // __BEFORE_ENTRY
 
-  requireModule(entryModuleId);
-
-  // __AFTER_ENTRY
+  if (deps.length > 0) {
+    Promise.all(
+      deps.map(function (dep) {
+        return requireModule.ensure(dep);
+      }),
+    ).then(function () {
+      requireModule(entryModuleId);
+    });
+  } else {
+    requireModule(entryModuleId);
+  }
 
   return {
     requireModule,
@@ -278,7 +285,7 @@ function createRuntime(makoModules, entryModuleId) {
   };
 }
 
-const runtime = createRuntime({}, '_%main%_');
+const runtime = createRuntime(m, d, e);
 globalThis.jsonpCallback = runtime._jsonpCallback;
 globalThis.modulesRegistry = runtime._modulesRegistry;
 globalThis.makoModuleHotUpdate = runtime._makoModuleHotUpdate;
