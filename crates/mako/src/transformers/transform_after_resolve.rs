@@ -11,7 +11,7 @@ use swc_error_reporters::handler::try_with_handler;
 use crate::build::Task;
 use crate::compiler::Context;
 use crate::module::ModuleAst;
-use crate::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
+use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
 
 #[allow(dead_code)]
 pub fn transform_after_resolve(

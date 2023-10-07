@@ -20,11 +20,11 @@ use crate::compiler::{Compiler, Context};
 use crate::config::Mode;
 use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
 use crate::targets;
-use crate::transform_async_module::AsyncModule;
-use crate::transform_css_handler::CssHandler;
-use crate::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
-use crate::transform_dynamic_import::DynamicImport;
-use crate::transform_react::react_refresh_entry_prefix;
+use crate::transformers::transform_async_module::AsyncModule;
+use crate::transformers::transform_css_handler::CssHandler;
+use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
+use crate::transformers::transform_dynamic_import::DynamicImport;
+use crate::transformers::transform_react::react_refresh_entry_prefix;
 
 impl Compiler {
     pub fn transform_all(&self) -> Result<()> {

@@ -24,14 +24,14 @@ use crate::module::ModuleAst;
 use crate::plugin::PluginTransformJsParam;
 use crate::resolve::Resolvers;
 use crate::targets;
-use crate::transform_css_url_replacer::CSSUrlReplacer;
-use crate::transform_env_replacer::{build_env_map, EnvReplacer};
-use crate::transform_optimizer::Optimizer;
-use crate::transform_provide::Provide;
-use crate::transform_px2rem::Px2Rem;
-use crate::transform_react::mako_react;
-use crate::transform_try_resolve::TryResolve;
-use crate::transform_virtual_css_modules::VirtualCSSModules;
+use crate::transformers::transform_css_url_replacer::CSSUrlReplacer;
+use crate::transformers::transform_env_replacer::{build_env_map, EnvReplacer};
+use crate::transformers::transform_optimizer::Optimizer;
+use crate::transformers::transform_provide::Provide;
+use crate::transformers::transform_px2rem::Px2Rem;
+use crate::transformers::transform_react::mako_react;
+use crate::transformers::transform_try_resolve::TryResolve;
+use crate::transformers::transform_virtual_css_modules::VirtualCSSModules;
 
 pub fn transform(
     ast: &mut ModuleAst,
@@ -200,8 +200,8 @@ mod tests {
     use crate::module::ModuleId;
     use crate::module_graph::ModuleGraph;
     use crate::resolve::get_resolvers;
-    use crate::transform_dep_replacer::DependenciesToReplace;
     use crate::transform_in_generate::{transform_js_generate, TransformJsParam};
+    use crate::transformers::transform_dep_replacer::DependenciesToReplace;
 
     #[test]
     fn test_react() {

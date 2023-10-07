@@ -145,7 +145,7 @@ mod tests {
     use crate::compiler::Context;
     use crate::module::{Dependency, ResolveType};
     use crate::test_helper::transform_ast_with;
-    use crate::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
+    use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
 
     #[test]
     fn test_simple_replace() {

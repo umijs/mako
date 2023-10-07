@@ -24,8 +24,8 @@ use crate::config::{Config, Mode};
 use crate::load::{read_content, Content};
 use crate::module::{ModuleAst, ModuleId};
 use crate::plugin::{Plugin, PluginLoadParam};
-use crate::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
-use crate::transform_dynamic_import::DynamicImport;
+use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
+use crate::transformers::transform_dynamic_import::DynamicImport;
 
 pub struct MinifishCompiler {
     minifish_map: HashMap<String, String>,
