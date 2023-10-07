@@ -157,7 +157,7 @@ pub fn js_ast_to_code(
 ) -> Result<(String, String)> {
     let mut buf = vec![];
     let mut source_map_buf = Vec::new();
-    let cm = context.meta.script.cm.clone();
+    let cm = &context.meta.script.cm;
     let comments = context.meta.script.output_comments.read().unwrap();
     let swc_comments = comments.get_swc_comments();
     {
@@ -229,7 +229,7 @@ pub fn css_ast_to_code(
         },
     );
     gen.emit(&ast).unwrap();
-    let src_buf = build_source_map(&source_map, context.meta.css.cm.clone());
+    let src_buf = build_source_map(&source_map, &context.meta.css.cm);
     let sourcemap = String::from_utf8(src_buf).unwrap();
 
     if matches!(context.config.devtool, DevtoolConfig::SourceMap) {
