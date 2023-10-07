@@ -1,0 +1,20 @@
+---
+source: crates/mako/src/tree_shaking/tree_shaking.rs
+expression: content
+---
+globalThis.jsonpCallback([
+    [
+        'a.ts'
+    ],
+    {
+        "a.css": function(module, exports, require) {},
+        "a.ts": function(module, exports, require) {
+            Object.defineProperty(exports, "__esModule", {
+                value: true
+            });
+            require("a.css");
+        }
+    }
+]);
+
+//# sourceMappingURL=a_ts-async.js.map

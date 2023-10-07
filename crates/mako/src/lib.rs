@@ -2,7 +2,6 @@
 #![feature(hasher_prefixfree_extras)]
 
 mod analyze_deps;
-mod analyze_statement;
 mod ast;
 mod bfs;
 mod build;
@@ -12,7 +11,6 @@ mod cli;
 mod comments;
 pub mod compiler;
 pub mod config;
-mod defined_ident_collector;
 pub mod dev;
 mod generate;
 mod generate_chunks;
@@ -23,7 +21,6 @@ pub mod logger;
 mod minify;
 mod module;
 mod module_graph;
-pub mod module_side_effects_flag;
 mod optimize_chunk;
 mod parse;
 mod plugin;
@@ -31,8 +28,6 @@ mod plugins;
 mod profile_gui;
 mod resolve;
 mod sourcemap;
-mod statement;
-mod statement_graph;
 mod stats;
 mod targets;
 #[cfg(test)]
@@ -41,11 +36,5 @@ mod transform;
 mod transform_in_generate;
 mod transformers;
 mod tree_shaking;
-mod tree_shaking_analyze;
-mod tree_shaking_module;
-mod unused_statement_cleanup;
-mod unused_statement_marker;
-mod unused_statement_sweep;
 mod update;
-mod used_ident_collector;
 mod watch;

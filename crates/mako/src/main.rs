@@ -12,7 +12,6 @@ use crate::logger::init_logger;
 use crate::profile_gui::ProfileApp;
 
 mod analyze_deps;
-mod analyze_statement;
 mod ast;
 mod bfs;
 mod build;
@@ -22,7 +21,6 @@ mod cli;
 mod comments;
 mod compiler;
 mod config;
-mod defined_ident_collector;
 mod dev;
 mod generate;
 mod generate_chunks;
@@ -33,7 +31,6 @@ mod logger;
 mod minify;
 mod module;
 mod module_graph;
-mod module_side_effects_flag;
 mod optimize_chunk;
 mod parse;
 mod plugin;
@@ -41,8 +38,6 @@ mod plugins;
 mod profile_gui;
 mod resolve;
 mod sourcemap;
-mod statement;
-mod statement_graph;
 mod stats;
 mod targets;
 #[cfg(test)]
@@ -51,13 +46,7 @@ mod transform;
 mod transform_in_generate;
 mod transformers;
 mod tree_shaking;
-mod tree_shaking_analyze;
-mod tree_shaking_module;
-mod unused_statement_cleanup;
-mod unused_statement_marker;
-mod unused_statement_sweep;
 mod update;
-mod used_ident_collector;
 mod watch;
 
 #[tokio::main]
