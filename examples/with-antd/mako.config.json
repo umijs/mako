@@ -1,6 +1,6 @@
 {
   "externals": {},
-  "treeShake": "advanced",
+  "treeShake": "basic",
   "minify": true,
   "moduleIdStrategy": "named"
 }
