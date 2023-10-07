@@ -26,12 +26,12 @@ use crate::resolve::Resolvers;
 use crate::targets;
 use crate::transform_css_url_replacer::CSSUrlReplacer;
 use crate::transform_env_replacer::{build_env_map, EnvReplacer};
-use crate::transform_import_css_in_js::ImportCssInJs;
 use crate::transform_optimizer::Optimizer;
 use crate::transform_provide::Provide;
 use crate::transform_px2rem::Px2Rem;
 use crate::transform_react::mako_react;
 use crate::transform_try_resolve::TryResolve;
+use crate::transform_virtual_css_modules::VirtualCSSModules;
 
 pub fn transform(
     ast: &mut ModuleAst,
@@ -108,7 +108,7 @@ fn transform_js(
                     let mut provide = Provide::new(context.config.providers.clone());
                     ast.visit_mut_with(&mut provide);
 
-                    let mut import_css_in_js = ImportCssInJs { context };
+                    let mut import_css_in_js = VirtualCSSModules { context };
                     ast.visit_mut_with(&mut import_css_in_js);
 
                     let mut optimizer = Optimizer {};

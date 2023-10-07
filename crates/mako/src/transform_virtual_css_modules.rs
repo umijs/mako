@@ -5,7 +5,7 @@ use swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::compiler::Context;
 
-pub struct ImportCssInJs<'a> {
+pub struct VirtualCSSModules<'a> {
     pub context: &'a Arc<Context>,
 }
 
@@ -17,7 +17,7 @@ fn is_css_path(path: &str) -> bool {
     path.ends_with(".css") || path.ends_with(".less")
 }
 
-impl VisitMut for ImportCssInJs<'_> {
+impl VisitMut for VirtualCSSModules<'_> {
     fn visit_mut_import_decl(&mut self, import_decl: &mut ImportDecl) {
         if is_css_modules_path(&import_decl.src.value)
             || (self.context.config.auto_css_modules
@@ -30,7 +30,7 @@ impl VisitMut for ImportCssInJs<'_> {
     }
 }
 
-impl ImportCssInJs<'_> {
+impl VirtualCSSModules<'_> {
     fn replace_source(&mut self, source: &mut Str) {
         let to_replace = format!("{}?asmodule", &source.value.to_string());
         let span = source.span;
