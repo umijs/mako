@@ -67,9 +67,7 @@ impl Compiler {
                         t_tree_shaking.as_millis()
                     );
                 }
-                TreeShakeStrategy::None => {
-                    // do nothing
-                }
+                TreeShakeStrategy::None => {}
             }
         }
         let t_tree_shaking = t_tree_shaking.elapsed();

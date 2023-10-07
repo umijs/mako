@@ -10,7 +10,7 @@ use crate::plugins::farm_tree_shake::statement_graph::{
     ExportInfo, ExportSpecifierInfo, ImportInfo,
 };
 use crate::plugins::farm_tree_shake::{module, remove_useless_stmts, statement_graph};
-use crate::tree_shaking_module::ModuleSystem;
+use crate::tree_shaking::tree_shaking_module::ModuleSystem;
 
 /// tree shake useless modules and code, steps:
 /// 1. topo sort the module_graph, the cyclic modules treat as no side_effects

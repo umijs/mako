@@ -1,0 +1,85 @@
+---
+source: crates/mako/src/tree_shaking/tree_shaking_module.rs
+expression: "&tree_shaking_module.get_statements()"
+---
+[
+    Import(
+        ImportStatement {
+            id: 0,
+            info: ImportInfo {
+                source: "foo",
+                specifiers: [
+                    Named {
+                        local: "x#0",
+                        imported: None,
+                    },
+                ],
+                stmt_id: 0,
+            },
+            is_self_executed: false,
+            defined_ident: {
+                "x#0",
+            },
+        },
+    ),
+    Import(
+        ImportStatement {
+            id: 1,
+            info: ImportInfo {
+                source: "bar",
+                specifiers: [],
+                stmt_id: 1,
+            },
+            is_self_executed: true,
+            defined_ident: {},
+        },
+    ),
+    Stmt {
+        id: 2,
+        defined_ident: {
+            "f0#0",
+        },
+        used_ident: {},
+        is_self_executed: false,
+    },
+    Export(
+        ExportStatement {
+            id: 3,
+            info: ExportInfo {
+                source: None,
+                specifiers: [
+                    Named {
+                        local: "f1#0",
+                        exported: None,
+                    },
+                ],
+                stmt_id: 3,
+            },
+            defined_ident: {
+                "f1#0",
+            },
+            used_ident: {},
+        },
+    ),
+    Export(
+        ExportStatement {
+            id: 4,
+            info: ExportInfo {
+                source: None,
+                specifiers: [
+                    Named {
+                        local: "f2#0",
+                        exported: None,
+                    },
+                ],
+                stmt_id: 4,
+            },
+            defined_ident: {
+                "f2#0",
+            },
+            used_ident: {
+                "x#0",
+            },
+        },
+    ),
+]
