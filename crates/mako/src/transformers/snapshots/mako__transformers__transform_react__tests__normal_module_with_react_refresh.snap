@@ -1,5 +1,5 @@
 ---
-source: crates/mako/src/transform_react.rs
+source: crates/mako/src/transformers/transform_react.rs
 expression: "transform(TransformTask {\n        code: \"export default function R(){return <h1></h1>}\".to_string(),\n        is_entry: false,\n        path: \"index.jsx\".to_string(),\n    })"
 ---
 import * as RefreshRuntime from 'react-refresh';

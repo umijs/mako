@@ -18,8 +18,8 @@ use crate::module::{Dependency, ModuleAst, ResolveType};
 use crate::plugin::Plugin;
 use crate::resolve::resolve;
 use crate::transform::transform;
-use crate::transform_dep_replacer::DependenciesToReplace;
 use crate::transform_in_generate::{transform_js_generate, TransformJsParam};
+use crate::transformers::transform_dep_replacer::DependenciesToReplace;
 
 pub struct MakoRuntime {}
 

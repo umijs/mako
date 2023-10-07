@@ -7,7 +7,7 @@ use crate::analyze_deps::{get_first_arg_str, is_commonjs_require};
 use crate::compiler::Context;
 use crate::module::{Dependency, ResolveType};
 use crate::resolve::{self, Resolvers};
-use crate::transform_dep_replacer::miss_throw_stmt;
+use crate::transformers::transform_dep_replacer::miss_throw_stmt;
 
 pub struct TryResolve<'a> {
     pub path: String,

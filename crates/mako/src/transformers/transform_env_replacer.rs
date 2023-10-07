@@ -256,7 +256,7 @@ mod tests {
     use serde_json::json;
 
     use crate::compiler::Context;
-    use crate::transform_env_replacer::build_env_map;
+    use crate::transformers::transform_env_replacer::build_env_map;
 
     #[should_panic = "define value 'for(;;)console.log()' is not an Expression"]
     #[test]

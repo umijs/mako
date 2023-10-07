@@ -201,7 +201,7 @@ mod tests {
     use crate::build::Task;
     use crate::compiler::{Args, Context};
     use crate::test_helper::transform_ast_with;
-    use crate::transform_react::mako_react;
+    use crate::transformers::transform_react::mako_react;
 
     struct TransformTask {
         code: String,
