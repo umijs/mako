@@ -28,12 +28,14 @@ impl Plugin for CSSPlugin {
 
     fn parse(&self, param: &PluginParseParam, context: &Arc<Context>) -> Result<Option<ModuleAst>> {
         if let Content::Css(content) = param.content {
-            // return Ok(Some(ModuleAst::Css(param.request.clone())));
             let has_modules_query = param.request.has_query("modules");
             let has_asmodule_query = param.request.has_query("asmodule");
-            // let is_css_modules_path = param.request.path.ends_with(".module.css")
-            //     || param.request.path.ends_with(".module.less");
-            let mut ast = build_css_ast(&param.request.path, content, context, has_asmodule_query)?;
+            let mut ast = build_css_ast(
+                &param.request.path,
+                content,
+                context,
+                has_asmodule_query || has_modules_query,
+            )?;
             import_url_to_href(&mut ast);
             // parse css module as js
             if has_asmodule_query {

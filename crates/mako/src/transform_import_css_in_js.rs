@@ -13,8 +13,6 @@ fn is_css_path(path: &str) -> bool {
 
 impl VisitMut for ImportCssInJs {
     fn visit_mut_import_decl(&mut self, import_decl: &mut ImportDecl) {
-        // TODO: add config
-        // specifiers为空是普通的import, 否则为importfrom
         if is_css_modules_path(&import_decl.src.value)
             || (is_css_path(&import_decl.src.value) && !&import_decl.specifiers.is_empty())
         {
