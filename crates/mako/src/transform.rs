@@ -108,7 +108,7 @@ fn transform_js(
                     let mut provide = Provide::new(context.config.providers.clone());
                     ast.visit_mut_with(&mut provide);
 
-                    let mut import_css_in_js = ImportCssInJs {};
+                    let mut import_css_in_js = ImportCssInJs { context };
                     ast.visit_mut_with(&mut import_css_in_js);
 
                     let mut optimizer = Optimizer {};

@@ -237,6 +237,7 @@ function getOkamConfig(opts) {
     },
     minify: jsMinifier === 'none' ? false : true,
     define,
+    autoCSSModules: true,
   };
 
   if (process.env.DUMP_MAKO_CONFIG) {
