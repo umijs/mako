@@ -61,6 +61,7 @@ mod transform_provide;
 mod transform_px2rem;
 mod transform_react;
 mod transform_try_resolve;
+mod transform_virtual_css_modules;
 mod tree_shaking;
 mod tree_shaking_analyze;
 mod tree_shaking_module;

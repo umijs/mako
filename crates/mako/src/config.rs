@@ -159,6 +159,8 @@ pub struct Config {
     pub extract_css: bool,
     pub hash: bool,
     pub tree_shake: TreeShakeStrategy,
+    #[serde(rename = "autoCSSModules")]
+    pub auto_css_modules: bool,
 }
 
 const CONFIG_FILE: &str = "mako.config.json";
@@ -192,7 +194,8 @@ const DEFAULT_CONFIG: &str = r#"
     "hash": false,
     "px2rem": false,
     "px2remConfig": { "root": 100, "propBlackList": [], "propWhiteList": [], "selectorBlackList": [], "selectorWhiteList": [] },
-    "treeShake": "basic"
+    "treeShake": "basic",
+    "autoCSSModules": false
 }
 "#;
 

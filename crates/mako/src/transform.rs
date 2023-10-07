@@ -31,6 +31,7 @@ use crate::transform_provide::Provide;
 use crate::transform_px2rem::Px2Rem;
 use crate::transform_react::mako_react;
 use crate::transform_try_resolve::TryResolve;
+use crate::transform_virtual_css_modules::VirtualCSSModules;
 
 pub fn transform(
     ast: &mut ModuleAst,
@@ -106,6 +107,9 @@ fn transform_js(
 
                     let mut provide = Provide::new(context.config.providers.clone());
                     ast.visit_mut_with(&mut provide);
+
+                    let mut import_css_in_js = VirtualCSSModules { context };
+                    ast.visit_mut_with(&mut import_css_in_js);
 
                     let mut optimizer = Optimizer {};
                     ast.visit_mut_with(&mut optimizer);
