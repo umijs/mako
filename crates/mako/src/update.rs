@@ -15,7 +15,7 @@ use crate::resolve::{self, get_resolvers, Resolvers};
 use crate::transform_in_generate::transform_modules;
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum UpdateType {
     Add,
     Remove,
@@ -117,10 +117,22 @@ impl Compiler {
         // watch 到变化的文件，如果不在之前的 module graph 中，需过滤掉
         let paths: Vec<(PathBuf, UpdateType)> = {
             let module_graph = self.context.module_graph.read().unwrap();
-            paths
-                .into_iter()
-                .filter(|(p, _)| module_graph.has_module(&p.clone().into()))
-                .collect()
+            let mut new_paths = vec![];
+            paths.into_iter().for_each(|(p, update_type)| {
+                if module_graph.has_module(&p.clone().into()) {
+                    new_paths.push((p.clone(), update_type.clone()));
+                }
+                let p_str = p.to_string_lossy().to_string();
+                let is_css = p_str.ends_with(".css") || p_str.ends_with(".less");
+                if is_css {
+                    let with_as_module = format!("{}?asmodule", p_str);
+                    println!("with_as_module:{}", &with_as_module);
+                    if module_graph.has_module(&with_as_module.clone().into()) {
+                        new_paths.push((PathBuf::from(with_as_module), update_type));
+                    }
+                }
+            });
+            new_paths
         };
 
         // 先分组
@@ -187,6 +199,7 @@ impl Compiler {
         let module_graph = self.context.module_graph.read().unwrap();
         let modules = module_graph.modules();
 
+        // TODO: 考虑更好的实现方案
         // concat related query modules for modified paths
         // for example: concat a.module.css?modules for a.module.css
         for module in modules
@@ -194,8 +207,9 @@ impl Compiler {
             .filter(|module| module.id.id.contains("?modules"))
         {
             let origin_id = module.id.id.split('?').next().unwrap();
+            let css_modules_virtual_id = format!("{}?asmodule", origin_id);
 
-            if modified.contains(&PathBuf::from(origin_id)) {
+            if modified.contains(&PathBuf::from(css_modules_virtual_id)) {
                 modified.push(PathBuf::from(module.id.id.clone()));
             }
         }
