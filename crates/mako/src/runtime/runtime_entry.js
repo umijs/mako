@@ -171,11 +171,11 @@ function createRuntime(makoModules, deps, entryModuleId) {
 
         if (event.type === 'load') {
           // finished loading css chunk
-          installedChunks[chunkId] = 0;
+          cssInstalledChunks[chunkId] = 0;
           resolve();
         } else {
           // throw error and reset state
-          delete installedChunks[chunkId];
+          delete cssInstalledChunks[chunkId];
           const errorType = event?.type;
           const realHref = event?.target?.href;
           const err = new Error(
@@ -200,15 +200,15 @@ function createRuntime(makoModules, deps, entryModuleId) {
     };
 
     requireModule.chunkEnsures.css = (chunkId, promises) => {
-      if (installedChunks[chunkId]) {
+      if (cssInstalledChunks[chunkId]) {
         // still pending, avoid duplicate promises
-        promises.push(installedChunks[chunkId]);
+        promises.push(cssInstalledChunks[chunkId]);
       } else if (
-        installedChunks[chunkId] !== 0 &&
+        cssInstalledChunks[chunkId] !== 0 &&
         cssChunksIdToUrlMap[chunkId]
       ) {
         // load chunk and save promise
-        installedChunks[chunkId] = new Promise((resolve, reject) => {
+        cssInstalledChunks[chunkId] = new Promise((resolve, reject) => {
           const url = cssChunksIdToUrlMap[chunkId];
           const fullUrl = requireModule.publicPath + url;
 
@@ -226,7 +226,7 @@ function createRuntime(makoModules, deps, entryModuleId) {
             );
           }
         });
-        promises.push(installedChunks[chunkId]);
+        promises.push(cssInstalledChunks[chunkId]);
         return promises;
       }
     };
