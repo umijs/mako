@@ -25,6 +25,7 @@ use crate::plugin::PluginTransformJsParam;
 use crate::resolve::Resolvers;
 use crate::targets;
 use crate::transformers::transform_css_url_replacer::CSSUrlReplacer;
+use crate::transformers::transform_dynamic_import_to_require::DynamicImportToRequire;
 use crate::transformers::transform_env_replacer::{build_env_map, EnvReplacer};
 use crate::transformers::transform_optimizer::Optimizer;
 use crate::transformers::transform_provide::Provide;
@@ -112,6 +113,11 @@ fn transform_js(
 
                     let mut optimizer = Optimizer {};
                     ast.visit_mut_with(&mut optimizer);
+
+                    if context.config.dynamic_import_to_require {
+                        let mut dynamic_import_to_require = DynamicImportToRequire {};
+                        ast.visit_mut_with(&mut dynamic_import_to_require);
+                    }
 
                     // TODO: polyfill
                     let preset_env = swc_preset_env::preset_env(
