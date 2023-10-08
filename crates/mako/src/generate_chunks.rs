@@ -289,7 +289,7 @@ impl Compiler {
                 span: DUMMY_SP,
                 props: vec![prop.into()],
             }
-            .into_var_decl(VarDeclKind::Var, quote_ident!("installedChunks").into())
+            .into_var_decl(VarDeclKind::Var, quote_ident!("cssInstalledChunks").into())
             .into()
         };
 

@@ -138,9 +138,8 @@ function createRuntime(makoModules, deps, entryModuleId) {
     };
   })();
   /* mako/runtime/ensure load css chunk */
-  const cssChunksIdToUrlMap = {};
   !(function () {
-    const installedChunks = (requireModule.cssInstalled = {});
+    requireModule.cssInstalled = cssInstalledChunks;
     // __CSS_CHUNKS_URL_MAP
     requireModule.findStylesheet = function (url) {
       return Array.from(
