@@ -32,13 +32,6 @@ use crate::module_graph::ModuleGraph;
 use crate::sourcemap::build_source_map;
 use crate::transform_in_generate::transform_css_generate;
 
-pub struct OutputAst {
-    pub path: String,
-    pub ast: ModuleAst,
-    pub chunk_id: String,
-    pub ast_module_hash: u64,
-}
-
 pub struct ChunkPot {
     pub chunk_id: String,
     pub js_name: String,
@@ -120,23 +113,23 @@ impl ChunkPot {
 
 impl ChunkPot {
     pub fn from(chunk: &Chunk, mg: &ModuleGraph, context: &Arc<Context>) -> Result<Self> {
-        let ((module_map, js_hash), stylesheet) =
-            ChunkPot::modules_to_js_stmts(chunk.get_modules(), mg, context)?;
+        let (js_modules, stylesheet) = ChunkPot::split_modules(chunk.get_modules(), mg, context)?;
 
         Ok(ChunkPot {
             js_name: chunk.filename(),
             chunk_id: chunk.id.generate(context),
-            module_map,
-            js_hash,
-            stylesheet,
+            module_map: js_modules.module_map,
+            js_hash: js_modules.raw_hash,
+            stylesheet: stylesheet
+                .map(|css_modules| (css_modules.stylesheet, css_modules.raw_hash)),
         })
     }
 
-    fn modules_to_js_stmts(
+    fn split_modules(
         module_ids: &IndexSet<ModuleId>,
         module_graph: &ModuleGraph,
         context: &Arc<Context>,
-    ) -> Result<((HashMap<String, FnExpr>, u64), Option<(Stylesheet, u64)>)> {
+    ) -> Result<(JsModules, Option<CssModules>)> {
         let mut module_map: HashMap<String, FnExpr> = Default::default();
         let mut merged_css_modules: Vec<(String, Stylesheet)> = vec![];
 
@@ -172,27 +165,52 @@ impl ChunkPot {
             }
         }
 
-        let js_hash = hash_map_ordered_by_key(&module_raw_hash_map);
+        let raw_hash = hash_map_ordered_by_key(&module_raw_hash_map);
 
         if !merged_css_modules.is_empty() {
-            let mut merged_css_ast = Stylesheet {
+            let mut stylesheet = Stylesheet {
                 span: DUMMY_SP,
                 rules: vec![],
             };
 
             for (_, ast) in merged_css_modules {
-                merged_css_ast.rules.extend(ast.rules);
+                stylesheet.rules.extend(ast.rules);
             }
 
-            transform_css_generate(&mut merged_css_ast, context);
+            transform_css_generate(&mut stylesheet, context);
 
-            let css_hash = hash_vec(&css_raw_hashes);
+            let css_raw_hash = hash_vec(&css_raw_hashes);
 
-            Ok(((module_map, js_hash), Some((merged_css_ast, css_hash))))
+            Ok((
+                JsModules {
+                    module_map,
+                    raw_hash,
+                },
+                Some(CssModules {
+                    stylesheet,
+                    raw_hash: css_raw_hash,
+                }),
+            ))
         } else {
-            Ok(((module_map, js_hash), None))
+            Ok((
+                JsModules {
+                    module_map,
+                    raw_hash,
+                },
+                None,
+            ))
         }
     }
+}
+
+struct JsModules {
+    pub module_map: HashMap<String, FnExpr>,
+    raw_hash: u64,
+}
+
+struct CssModules {
+    stylesheet: Stylesheet,
+    raw_hash: u64,
 }
 
 fn hash_map_ordered_by_key(map: &HashMap<String, u64>) -> u64 {
@@ -221,7 +239,7 @@ fn hash_vec(v: &[u64]) -> u64 {
 
 pub enum ChunkFileType {
     JS,
-    CSS,
+    Css,
 }
 
 pub struct ChunkFile {
@@ -331,7 +349,7 @@ impl Compiler {
                 ChunkFileType::JS => {
                     js_chunk_props.push(prop_kv.into());
                 }
-                ChunkFileType::CSS => {
+                ChunkFileType::Css => {
                     css_chunk_map.push(prop_kv.into());
                 }
             }
@@ -386,7 +404,7 @@ impl Compiler {
                 chunk_id: pot.chunk_id.clone(),
                 file_name: get_css_chunk_filename(&pot.js_name),
                 source_map: css_source_map,
-                file_type: ChunkFileType::CSS,
+                file_type: ChunkFileType::Css,
                 hash: if self.context.config.hash {
                     Some(file_content_hash(&css_code))
                 } else {
@@ -434,7 +452,7 @@ impl Compiler {
                 source_map: css_source_map,
                 file_name: get_css_chunk_filename(&pot.js_name),
                 chunk_id: pot.chunk_id.clone(),
-                file_type: ChunkFileType::CSS,
+                file_type: ChunkFileType::Css,
             });
         }
 

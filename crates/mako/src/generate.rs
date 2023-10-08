@@ -2,21 +2,19 @@ use std::collections::HashSet;
 use std::fs;
 use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
-use cached::proc_macro::cached;
 use indexmap::IndexSet;
 use rayon::prelude::*;
 use serde::Serialize;
 use tracing::debug;
 
-use crate::ast::{base64_encode, css_ast_to_code, js_ast_to_code};
-use crate::compiler::{Compiler, Context};
+use crate::ast::base64_encode;
+use crate::compiler::Compiler;
 use crate::config::{Config, DevtoolConfig, OutputMode, TreeShakeStrategy};
-use crate::generate_chunks::{ChunkFile, ChunkFileType, OutputAst};
-use crate::module::{ModuleAst, ModuleId};
+use crate::generate_chunks::{ChunkFile, ChunkFileType};
+use crate::module::ModuleId;
 use crate::stats::{create_stats_info, print_stats, write_stats};
 use crate::update::UpdateResult;
 
@@ -202,7 +200,7 @@ impl Compiler {
                             chunk_file.source_map_disk_name()
                         )
                     }
-                    ChunkFileType::CSS => {
+                    ChunkFileType::Css => {
                         format!(
                             "\n/*# sourceMappingURL={}*/",
                             chunk_file.source_map_disk_name()
@@ -468,85 +466,11 @@ fn to_hot_update_chunk_name(chunk_name: &String, hash: u64) -> String {
     }
 }
 
-#[cached(
-    result = true,
-    key = "String",
-    convert = r#"{ format!("{}-{}", file.ast_module_hash, file.path) }"#
-)]
-
-// 需要在这里提前记录 js 和 map 的 hash，因为 map 是不单独计算 hash 值的，继承的是 js 的 hash 值
-fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<EmitFile>> {
-    let mut files = vec![];
-    match &file.ast {
-        ModuleAst::Script(ast) => {
-            // ast to code
-            let (js_code, js_sourcemap) = js_ast_to_code(&ast.ast, context, &file.path)?;
-            // 计算 hash 值
-            let hashname = if context.config.hash {
-                postfix_hash(&file.path, file.ast_module_hash)
-            } else {
-                file.path.clone()
-            };
-            // generate code and sourcemap files
-            files.push(EmitFile {
-                filename: file.path.clone(),
-                content: js_code,
-                chunk_id: file.chunk_id.clone(),
-                hashname: hashname.clone(),
-            });
-            if matches!(context.config.devtool, DevtoolConfig::SourceMap) {
-                files.push(EmitFile {
-                    filename: format!("{}.map", file.path.clone()),
-                    hashname: format!("{}.map", hashname),
-                    content: js_sourcemap,
-                    chunk_id: "".to_string(),
-                });
-            }
-        }
-        ModuleAst::Css(ast) => {
-            // ast to code
-            let (css_code, css_sourcemap) = css_ast_to_code(ast, context, &file.path);
-            // 计算 hash 值
-            let hashed_name = if context.config.hash {
-                postfix_hash(&file.path, file.ast_module_hash)
-            } else {
-                file.path.clone()
-            };
-            files.push(EmitFile {
-                filename: file.path.clone(),
-                hashname: hashed_name.clone(),
-                content: css_code,
-                chunk_id: file.chunk_id.clone(),
-            });
-            if matches!(context.config.devtool, DevtoolConfig::SourceMap) {
-                files.push(EmitFile {
-                    filename: format!("{}.map", file.path.clone()),
-                    hashname: format!("{}.map", hashed_name),
-                    content: css_sourcemap,
-                    chunk_id: "".to_string(),
-                });
-            }
-        }
-        _ => (),
-    }
-
-    Ok(files)
-}
-
 #[allow(dead_code)]
 pub fn hash_file_name(file_name: &String, hash: &String) -> String {
     let path = Path::new(&file_name);
     let file_stem = path.file_stem().unwrap().to_str().unwrap();
     let file_extension = path.extension().unwrap().to_str().unwrap();
-
-    format!("{}.{}.{}", file_stem, hash, file_extension)
-}
-
-fn postfix_hash(file_name: &String, hash: u64) -> String {
-    let path = Path::new(file_name);
-    let file_stem = path.file_stem().unwrap().to_str().unwrap();
-    let file_extension = path.extension().unwrap().to_str().unwrap();
-    let hash = &format!("{:08x}", hash)[0..8];
 
     format!("{}.{}.{}", file_stem, hash, file_extension)
 }
