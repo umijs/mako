@@ -304,6 +304,26 @@ impl Config {
                 .into_iter()
                 .map(|(k, v)| (k, root.join(v).canonicalize().unwrap()))
                 .collect();
+
+            // support relative alias
+            config.resolve.alias = config
+                .resolve
+                .alias
+                .clone()
+                .into_iter()
+                .map(|(k, v)| {
+                    let v = if v.starts_with('.') {
+                        root.join(v)
+                            .canonicalize()
+                            .unwrap()
+                            .to_string_lossy()
+                            .to_string()
+                    } else {
+                        v
+                    };
+                    (k, v)
+                })
+                .collect();
         }
         ret
     }
