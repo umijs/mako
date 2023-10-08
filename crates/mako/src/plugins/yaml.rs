@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use serde_yaml::{from_str as from_yaml_str, Value as YamlValue};
+use mako_core::serde_yaml::{from_str as from_yaml_str, Value as YamlValue};
 
 use crate::compiler::Context;
 use crate::load::{read_content, Content};

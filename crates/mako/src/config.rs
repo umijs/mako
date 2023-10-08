@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use clap::ValueEnum;
 use colored::Colorize;
+use mako_core::config;
 use serde::Deserialize;
 use serde_json::Value;
 use swc_ecma_ast::EsVersion;

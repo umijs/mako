@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::string::String;
 
 use indexmap::{IndexMap, IndexSet};
-use nodejs_resolver::Resource;
+use mako_core::nodejs_resolver::Resource;
 use regex::Regex;
 use tracing::debug;
 

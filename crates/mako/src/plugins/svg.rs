@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
+use mako_core::svgr_rs;
 
 use crate::compiler::Context;
 use crate::load::{handle_asset, read_content, Content, LoadError};
