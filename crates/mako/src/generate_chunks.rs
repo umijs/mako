@@ -48,25 +48,55 @@ pub struct ChunkPot {
 }
 
 impl ChunkPot {
+    pub fn to_module_object(&self) -> ObjectLit {
+        let mut sorted_kv = self
+            .module_map
+            .iter()
+            .map(|(k, v)| (k, v))
+            .collect::<Vec<_>>();
+        sorted_kv.sort_by_key(|(k, _)| *k);
+
+        let mut props = Vec::new();
+        for (module_id_str, fn_expr) in sorted_kv {
+            let pv: PropOrSpread = Prop::KeyValue(KeyValueProp {
+                key: quote_str!(module_id_str.clone()).into(),
+                value: fn_expr.clone().into(),
+            })
+            .into();
+
+            props.push(pv);
+        }
+
+        ObjectLit {
+            span: DUMMY_SP,
+            props,
+        }
+    }
+
     pub fn to_chunk_module(&self) -> SwcModule {
         // key: module id
         // value: module FnExpr
-        let props = self
+        let mut sorted_kv = self
             .module_map
             .iter()
-            .map(|(module_id_str, fn_expr)| {
-                Prop::KeyValue(KeyValueProp {
-                    key: quote_str!(module_id_str.clone()).into(),
-                    value: fn_expr.clone().into(),
-                })
-                .into()
-            })
-            .collect::<Vec<PropOrSpread>>();
+            .map(|(k, v)| (k, v))
+            .collect::<Vec<_>>();
 
-        let module_object = ObjectLit {
-            span: DUMMY_SP,
-            props,
-        };
+        sorted_kv.sort_by_key(|(k, _)| *k);
+
+        let mut props = Vec::new();
+
+        sorted_kv.into_iter().for_each(|(module_id_str, fn_expr)| {
+            let pv: PropOrSpread = Prop::KeyValue(KeyValueProp {
+                key: quote_str!(module_id_str.clone()).into(),
+                value: fn_expr.clone().into(),
+            })
+            .into();
+
+            props.push(pv);
+        });
+
+        let module_object = self.to_module_object();
 
         let jsonp_callback_stmt = <Expr as ExprFactory>::as_call(
             *member_expr!(DUMMY_SP, globalThis.jsonpCallback),
@@ -496,22 +526,10 @@ fn render_entry_chunk_js(
     )
     .unwrap();
 
-    let mut module_props: Vec<PropOrSpread> = vec![];
-
-    pot.module_map.iter().for_each(|(module_id, fn_expr)| {
-        let prop_kv = Prop::KeyValue(KeyValueProp {
-            key: quote_str!(module_id.clone()).into(),
-            value: fn_expr.clone().into(),
-        });
-        module_props.push(prop_kv.into());
-    });
-
-    let modules_lit: Stmt = ObjectLit {
-        span: DUMMY_SP,
-        props: module_props,
-    }
-    .into_var_decl(VarDeclKind::Var, quote_ident!("m").into())
-    .into();
+    let modules_lit: Stmt = pot
+        .to_module_object()
+        .into_var_decl(VarDeclKind::Var, quote_ident!("m").into())
+        .into();
 
     ast.ast.body.insert(0, modules_lit.into());
 

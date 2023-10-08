@@ -15,7 +15,7 @@ use tracing::debug;
 use crate::ast::{base64_encode, css_ast_to_code, js_ast_to_code};
 use crate::compiler::{Compiler, Context};
 use crate::config::{Config, DevtoolConfig, OutputMode, TreeShakeStrategy};
-use crate::generate_chunks::{ChunkFile, OutputAst};
+use crate::generate_chunks::{ChunkFile, ChunkFileType, OutputAst};
 use crate::module::{ModuleAst, ModuleId};
 use crate::stats::{create_stats_info, print_stats, write_stats};
 use crate::update::UpdateResult;
@@ -195,17 +195,27 @@ impl Compiler {
                     .unwrap();
                 }
 
-                let source_map_url_line = format!(
-                    "\n//# sourceMappingURL={}",
-                    chunk_file.source_map_disk_name()
-                );
+                let source_map_url_line = match chunk_file.file_type {
+                    ChunkFileType::JS => {
+                        format!(
+                            "\n//# sourceMappingURL={}",
+                            chunk_file.source_map_disk_name()
+                        )
+                    }
+                    ChunkFileType::CSS => {
+                        format!(
+                            "\n/*# sourceMappingURL={}*/",
+                            chunk_file.source_map_disk_name()
+                        )
+                    }
+                };
 
                 let mut code = Vec::new();
 
                 code.extend_from_slice(&chunk_file.content);
                 code.extend_from_slice(source_map_url_line.as_bytes());
 
-                let size = chunk_file.content.len() as u64;
+                let size = code.len() as u64;
                 self.context.stats_info.lock().unwrap().add_assets(
                     size,
                     chunk_file.file_name.clone(),
@@ -213,7 +223,7 @@ impl Compiler {
                     to.clone(),
                     chunk_file.disk_name(),
                 );
-                fs::write(to, &chunk_file.content).unwrap();
+                fs::write(to, &code).unwrap();
             }
             DevtoolConfig::InlineSourceMap => {
                 let source_map = &chunk_file.source_map;

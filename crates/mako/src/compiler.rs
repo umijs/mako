@@ -574,7 +574,7 @@ mod tests {
         let index_js_content = file_contents.get("index.js").unwrap();
 
         assert!(
-            index_js_content.contains("cssChunksIdToUrlMap[\"a.ts\"]"),
+            index_js_content.contains(r#""a.ts": "a_ts-async.css""#),
             "css async chunk works"
         );
     }

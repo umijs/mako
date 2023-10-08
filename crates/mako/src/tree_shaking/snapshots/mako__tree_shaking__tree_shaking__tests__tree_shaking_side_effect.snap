@@ -2,9 +2,51 @@
 source: crates/mako/src/tree_shaking/tree_shaking.rs
 expression: content
 ---
-const chunksIdToUrlMap = {};
-chunksIdToUrlMap["index.ts"] = `index.js`;
-function createRuntime(makoModules, entryModuleId) {
+var chunksIdToUrlMap = {};
+var cssChunksIdToUrlMap = {};
+var e = "index.ts";
+var d = [];
+var cssInstalledChunks = {
+    "index.ts": 0
+};
+var m = {
+    "1.ts": function(module, exports, require) {
+        Object.defineProperty(exports, "__esModule", {
+            value: true
+        });
+        function _export(target, all) {
+            for(var name in all)Object.defineProperty(target, name, {
+                enumerable: true,
+                get: all[name]
+            });
+        }
+        _export(exports, {
+            foo: function() {
+                return foo;
+            },
+            bar: function() {
+                return bar;
+            }
+        });
+        function foo() {}
+        const bar = 1;
+        foo();
+    },
+    "2.ts": function(module, exports, require) {
+        Object.defineProperty(exports, "__esModule", {
+            value: true
+        });
+        var _export_star = require("@swc/helpers/_/_export_star");
+        _export_star._(require("1.ts"), exports);
+    },
+    "index.ts": function(module, exports, require) {
+        Object.defineProperty(exports, "__esModule", {
+            value: true
+        });
+        require("2.ts");
+    }
+};
+function createRuntime(makoModules, deps, entryModuleId) {
     const modulesRegistry = {};
     function requireModule(moduleId) {
         if (moduleId === '$$IGNORED$$') return {};
@@ -114,9 +156,8 @@ function createRuntime(makoModules, entryModuleId) {
             document.head.appendChild(script);
         };
     })();
-    const cssChunksIdToUrlMap = {};
     !(function() {
-        const installedChunks = (requireModule.cssInstalled = {});
+        requireModule.cssInstalled = cssInstalledChunks;
         requireModule.findStylesheet = function(url) {
             return Array.from(document.querySelectorAll('link[href][rel=stylesheet]')).find((link)=>{
                 const [linkUrl] = link.getAttribute('href').split('?');
@@ -131,10 +172,10 @@ function createRuntime(makoModules, entryModuleId) {
             link.onerror = link.onload = function(event) {
                 link.onerror = link.onload = null;
                 if (event.type === 'load') {
-                    installedChunks[chunkId] = 0;
+                    cssInstalledChunks[chunkId] = 0;
                     resolve();
                 } else {
-                    delete installedChunks[chunkId];
+                    delete cssInstalledChunks[chunkId];
                     const errorType = event?.type;
                     const realHref = event?.target?.href;
                     const err = new Error('Loading CSS chunk ' + chunkId + ' failed.\n(' + realHref + ')');
@@ -153,10 +194,10 @@ function createRuntime(makoModules, entryModuleId) {
             return link;
         };
         requireModule.chunkEnsures.css = (chunkId, promises)=>{
-            if (installedChunks[chunkId]) {
-                promises.push(installedChunks[chunkId]);
-            } else if (installedChunks[chunkId] !== 0 && cssChunksIdToUrlMap[chunkId]) {
-                installedChunks[chunkId] = new Promise((resolve, reject)=>{
+            if (cssInstalledChunks[chunkId]) {
+                promises.push(cssInstalledChunks[chunkId]);
+            } else if (cssInstalledChunks[chunkId] !== 0 && cssChunksIdToUrlMap[chunkId]) {
+                cssInstalledChunks[chunkId] = new Promise((resolve, reject)=>{
                     const url = cssChunksIdToUrlMap[chunkId];
                     const fullUrl = requireModule.publicPath + url;
                     if (requireModule.findStylesheet(url)) {
@@ -165,7 +206,7 @@ function createRuntime(makoModules, entryModuleId) {
                         requireModule.createStylesheet(chunkId, fullUrl, null, resolve, reject);
                     }
                 });
-                promises.push(installedChunks[chunkId]);
+                promises.push(cssInstalledChunks[chunkId]);
                 return promises;
             }
         };
@@ -303,7 +344,15 @@ function createRuntime(makoModules, entryModuleId) {
             }
         });
     }();
-    requireModule(entryModuleId);
+    if (deps.length > 0) {
+        Promise.all(deps.map(function(dep) {
+            return requireModule.ensure(dep);
+        })).then(function() {
+            requireModule(entryModuleId);
+        });
+    } else {
+        requireModule(entryModuleId);
+    }
     return {
         requireModule,
         _modulesRegistry: modulesRegistry,
@@ -311,43 +360,7 @@ function createRuntime(makoModules, entryModuleId) {
         _makoModuleHotUpdate: requireModule.applyHotUpdate
     };
 }
-const runtime = createRuntime({
-    "1.ts": function(module, exports, require) {
-        Object.defineProperty(exports, "__esModule", {
-            value: true
-        });
-        function _export(target, all) {
-            for(var name in all)Object.defineProperty(target, name, {
-                enumerable: true,
-                get: all[name]
-            });
-        }
-        _export(exports, {
-            foo: function() {
-                return foo;
-            },
-            bar: function() {
-                return bar;
-            }
-        });
-        function foo() {}
-        const bar = 1;
-        foo();
-    },
-    "2.ts": function(module, exports, require) {
-        Object.defineProperty(exports, "__esModule", {
-            value: true
-        });
-        var _export_star = require("@swc/helpers/_/_export_star");
-        _export_star._(require("1.ts"), exports);
-    },
-    "index.ts": function(module, exports, require) {
-        Object.defineProperty(exports, "__esModule", {
-            value: true
-        });
-        require("2.ts");
-    }
-}, 'index.ts');
+const runtime = createRuntime(m, d, e);
 globalThis.jsonpCallback = runtime._jsonpCallback;
 globalThis.modulesRegistry = runtime._modulesRegistry;
 globalThis.makoModuleHotUpdate = runtime._makoModuleHotUpdate;
