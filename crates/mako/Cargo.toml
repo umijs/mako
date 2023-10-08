@@ -74,6 +74,7 @@ indexmap = "2.0.0"
 eframe = "0.22.0"
 puffin = "0.16.0"
 puffin_egui = "0.22.0"
+
 [dev-dependencies]
 insta = { version = "1.30.0", features = ["yaml"] }
 maplit = "1.0.2"

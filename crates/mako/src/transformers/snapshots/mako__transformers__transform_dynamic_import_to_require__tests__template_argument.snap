@@ -1,0 +1,7 @@
+---
+source: crates/mako/src/transformers/transform_dynamic_import_to_require.rs
+expression: "transform(r#\"\nimport(`1`);\nimport(tag`2`);\nimport(`3-${MODULE}`);\n            \"#)"
+---
+import(`1`);
+import(tag`2`);
+import(`3-${MODULE}`);
