@@ -74,3 +74,35 @@ impl VisitMut for Provide {
         expr.visit_mut_children_with(self);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_provide_normal() {
+        // TODO: fix binding test problem
+        crate::assert_display_snapshot!(transform(
+            r#"
+console.log(process);
+console.log(process.env);
+Buffer.from('foo');
+function foo() {
+    // let process = 1;
+    // console.log(process);
+    // let Buffer = 'b';
+    // Buffer.from('foo');
+}
+            "#,
+        ));
+    }
+
+    fn transform(code: &str) -> String {
+        let context = std::sync::Arc::new(Default::default());
+        let mut providers = HashMap::new();
+        providers.insert("process".into(), ("process".into(), "".into()));
+        providers.insert("Buffer".into(), ("buffer".into(), "Buffer".into()));
+        let mut visitor = super::Provide::new(providers);
+        crate::transformers::test_helper::transform_js_code(code, &mut visitor, &context)
+    }
+}
