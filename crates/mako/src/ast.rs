@@ -50,8 +50,11 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
     let comments = context.meta.script.origin_comments.read().unwrap();
     let is_ts = path.ends_with(".ts") || path.ends_with(".tsx");
     // treat svgr as jsx
-    let jsx = path.ends_with(".jsx") || path.ends_with(".svg");
-    let tsx = path.ends_with(".tsx");
+    let jsx = path.ends_with(".jsx")
+        || path.ends_with(".svg")
+        // exclude files under node_modules is for performance
+        || (path.ends_with(".js") && !path.contains("node_modules"));
+    let tsx = path.ends_with(".tsx") || path.ends_with(".ts");
     let syntax = if is_ts {
         Syntax::Typescript(TsConfig {
             decorators: true,
@@ -162,12 +165,13 @@ pub fn js_ast_to_code(
     let swc_comments = comments.get_swc_comments();
     {
         let mut emitter = Emitter {
-            cfg: JsCodegenConfig {
-                minify: context.config.minify && matches!(context.config.mode, Mode::Production),
-                target: context.config.output.es_version,
-                // ascii_only: true, not working with lodash
-                ..Default::default()
-            },
+            cfg: JsCodegenConfig::default()
+                .with_minify(
+                    context.config.minify && matches!(context.config.mode, Mode::Production),
+                )
+                .with_target(context.config.output.es_version)
+                .with_ascii_only(true)
+                .with_omit_last_semi(true),
             cm: cm.clone(),
             comments: Some(swc_comments),
             wr: Box::new(JsWriter::new(
@@ -280,5 +284,39 @@ impl fmt::Write for LockedWriter {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.0.lock().unwrap().push_str(s);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+    use std::sync::Arc;
+
+    use crate::assert_debug_snapshot;
+    use crate::ast::js_ast_to_code;
+    use crate::compiler::Context;
+    use crate::config::DevtoolConfig;
+    use crate::test_helper::create_mock_module;
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_chinese_ascii() {
+        let module = create_mock_module(
+            PathBuf::from("/path/to/test"),
+            r#"
+export const foo = "我是中文";
+export const bar = {
+    中文: "xxx"
+}
+"#,
+        );
+        let mut context = Context::default();
+        context.config.devtool = DevtoolConfig::None;
+        let (code, _) = js_ast_to_code(
+            module.info.unwrap().ast.as_script_mut(),
+            &Arc::new(context),
+            "testfile.js",
+        )
+        .unwrap();
+        assert_debug_snapshot!(code);
     }
 }

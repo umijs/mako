@@ -10,7 +10,7 @@ use tracing::debug;
 
 use crate::compiler::Context;
 use crate::config::{Config, Platform};
-use crate::module::Dependency;
+use crate::module::{Dependency, ResolveType};
 
 #[derive(Debug, Error)]
 enum ResolveError {
@@ -74,20 +74,14 @@ pub fn resolve(
     resolvers: &Resolvers,
     context: &Arc<Context>,
 ) -> Result<ResolverResource> {
-    do_resolve(
-        path,
-        &dep.source,
-        &resolvers.esm,
-        Some(&context.config.externals),
-    )
-    .or_else(|_e| {
-        do_resolve(
-            path,
-            &dep.source,
-            &resolvers.cjs,
-            Some(&context.config.externals),
-        )
-    })
+    puffin::profile_function!();
+    puffin::profile_scope!("resolve", &dep.source);
+    let resolver = if dep.resolve_type == ResolveType::Require {
+        &resolvers.cjs
+    } else {
+        &resolvers.esm
+    };
+    do_resolve(path, &dep.source, resolver, Some(&context.config.externals))
 }
 
 // TODO:

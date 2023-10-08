@@ -16,7 +16,6 @@ use swc_ecma_transforms::typescript::strip_with_jsx;
 use swc_ecma_transforms::{resolver, Assumptions};
 use swc_ecma_visit::{Fold, VisitMutWith};
 use swc_error_reporters::handler::try_with_handler;
-use swc_preset_env::{Feature, FeatureOrModule};
 
 use crate::build::Task;
 use crate::compiler::Context;
@@ -25,13 +24,14 @@ use crate::module::ModuleAst;
 use crate::plugin::PluginTransformJsParam;
 use crate::resolve::Resolvers;
 use crate::targets;
-use crate::transform_css_url_replacer::CSSUrlReplacer;
-use crate::transform_env_replacer::{build_env_map, EnvReplacer};
-use crate::transform_optimizer::Optimizer;
-use crate::transform_provide::Provide;
-use crate::transform_px2rem::Px2Rem;
-use crate::transform_react::mako_react;
-use crate::transform_try_resolve::TryResolve;
+use crate::transformers::transform_css_url_replacer::CSSUrlReplacer;
+use crate::transformers::transform_env_replacer::{build_env_map, EnvReplacer};
+use crate::transformers::transform_optimizer::Optimizer;
+use crate::transformers::transform_provide::Provide;
+use crate::transformers::transform_px2rem::Px2Rem;
+use crate::transformers::transform_react::mako_react;
+use crate::transformers::transform_try_resolve::TryResolve;
+use crate::transformers::transform_virtual_css_modules::VirtualCSSModules;
 
 pub fn transform(
     ast: &mut ModuleAst,
@@ -39,6 +39,7 @@ pub fn transform(
     task: &Task,
     resolvers: &Resolvers,
 ) -> Result<()> {
+    puffin::profile_function!(&task.path);
     match ast {
         ModuleAst::Script(ast) => transform_js(
             &mut ast.ast,
@@ -59,7 +60,7 @@ fn transform_js(
     task: &Task,
     top_level_mark: Mark,
     unresolved_mark: Mark,
-    resolvers: &Resolvers,
+    _resolvers: &Resolvers,
 ) -> Result<()> {
     let cm = context.meta.script.cm.clone();
     let mode = &context.config.mode.to_string();
@@ -98,7 +99,6 @@ fn transform_js(
                     if !context.args.watch {
                         let mut try_resolve = TryResolve {
                             path: task.path.clone(),
-                            resolvers,
                             context,
                         };
                         ast.visit_mut_with(&mut try_resolve);
@@ -106,6 +106,9 @@ fn transform_js(
 
                     let mut provide = Provide::new(context.config.providers.clone());
                     ast.visit_mut_with(&mut provide);
+
+                    let mut import_css_in_js = VirtualCSSModules { context };
+                    ast.visit_mut_with(&mut import_css_in_js);
 
                     let mut optimizer = Optimizer {};
                     ast.visit_mut_with(&mut optimizer);
@@ -119,8 +122,6 @@ fn transform_js(
                             targets: Some(targets::swc_preset_env_targets_from_map(
                                 context.config.targets.clone(),
                             )),
-                            // ref: https://github.com/umijs/mako/issues/371
-                            include: vec![FeatureOrModule::Feature(Feature::ClassProperties)],
                             ..Default::default()
                         },
                         Assumptions::default(),
@@ -144,7 +145,10 @@ fn transform_js(
 
                     // plugin transform
                     context.plugin_driver.transform_js(
-                        &PluginTransformJsParam { handler },
+                        &PluginTransformJsParam {
+                            handler,
+                            path: &task.path,
+                        },
                         ast,
                         context,
                     )?;
@@ -195,8 +199,8 @@ mod tests {
     use crate::module::ModuleId;
     use crate::module_graph::ModuleGraph;
     use crate::resolve::get_resolvers;
-    use crate::transform_dep_replacer::DependenciesToReplace;
     use crate::transform_in_generate::{transform_js_generate, TransformJsParam};
+    use crate::transformers::transform_dep_replacer::DependenciesToReplace;
 
     #[test]
     fn test_react() {

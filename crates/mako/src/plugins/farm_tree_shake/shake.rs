@@ -10,7 +10,7 @@ use crate::plugins::farm_tree_shake::statement_graph::{
     ExportInfo, ExportSpecifierInfo, ImportInfo,
 };
 use crate::plugins::farm_tree_shake::{module, remove_useless_stmts, statement_graph};
-use crate::tree_shaking_module::ModuleSystem;
+use crate::tree_shaking::tree_shaking_module::ModuleSystem;
 
 /// tree shake useless modules and code, steps:
 /// 1. topo sort the module_graph, the cyclic modules treat as no side_effects
@@ -24,7 +24,10 @@ use crate::tree_shaking_module::ModuleSystem;
 ///     if add imported identifiers to previous modules, traverse smallest index tree_shake_modules again
 /// 4. remove used module and update tree-shaked AST into module graph
 pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
-    let (topo_sorted_modules, _cyclic_modules) = { module_graph.toposort() };
+    let (topo_sorted_modules, _cyclic_modules) = {
+        puffin::profile_scope!("tree shake toposort");
+        module_graph.toposort()
+    };
 
     let mut tree_shake_modules_ids = vec![];
     let mut tree_shake_modules_map = std::collections::HashMap::new();

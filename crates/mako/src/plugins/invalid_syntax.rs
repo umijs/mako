@@ -15,13 +15,20 @@ impl Plugin for InvalidSyntaxPlugin {
 
     fn transform_js(
         &self,
-        _param: &crate::plugin::PluginTransformJsParam,
+        param: &crate::plugin::PluginTransformJsParam,
         ast: &mut swc_ecma_ast::Module,
         _context: &std::sync::Arc<crate::compiler::Context>,
     ) -> anyhow::Result<()> {
+        // 先用白名单的形式，等收集的场景多了之后再考虑通用方案
+        // 1、react-loadable/lib/index.js 里有用 __webpack_modules__ 来判断 isWebpackReady
+        // 2、...
+        if param.path.contains("node_modules") && param.path.contains("react-loadable") {
+            return Ok(());
+        }
         ast.visit_with(&mut InvalidSyntaxVisitor {
             bindings: None,
-            handler: _param.handler,
+            handler: param.handler,
+            path: param.path,
         });
         Ok(())
     }
@@ -30,6 +37,7 @@ impl Plugin for InvalidSyntaxPlugin {
 pub struct InvalidSyntaxVisitor<'a> {
     pub bindings: Option<Lrc<swc_common::collections::AHashSet<swc_ecma_ast::Id>>>,
     pub handler: &'a Handler,
+    pub path: &'a str,
 }
 
 impl<'a> Visit for InvalidSyntaxVisitor<'a> {

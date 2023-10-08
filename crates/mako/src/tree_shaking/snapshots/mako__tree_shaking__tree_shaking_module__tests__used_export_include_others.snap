@@ -1,0 +1,30 @@
+---
+source: crates/mako/src/tree_shaking/tree_shaking_module.rs
+expression: "&used"
+---
+[
+    (
+        0,
+        {
+            SwcIdent(
+                "proxyWithPersist#0",
+            ),
+        },
+    ),
+    (
+        1,
+        {
+            SwcIdent(
+                "todos#0",
+            ),
+        },
+    ),
+    (
+        2,
+        {
+            SwcIdent(
+                "Todos#0",
+            ),
+        },
+    ),
+]

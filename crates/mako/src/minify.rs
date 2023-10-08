@@ -15,6 +15,7 @@ use crate::ast::Ast;
 use crate::compiler::Context;
 
 pub fn minify_js(ast: &mut Ast, context: &Arc<Context>) -> Result<()> {
+    puffin::profile_function!();
     GLOBALS.set(&context.meta.script.globals, || {
         try_with_handler(
             context.meta.script.cm.clone(),
@@ -76,6 +77,7 @@ pub fn minify_js(ast: &mut Ast, context: &Arc<Context>) -> Result<()> {
 }
 
 pub fn minify_css(stylesheet: &mut Stylesheet, context: &Arc<Context>) -> Result<()> {
+    puffin::profile_function!();
     GLOBALS.set(&context.meta.css.globals, || {
         try_with_handler(context.meta.css.cm.clone(), Default::default(), |handler| {
             HELPERS.set(&Helpers::new(true), || {

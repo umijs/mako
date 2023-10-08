@@ -56,6 +56,12 @@ fn compile_less(param: &PluginLoadParam, _content: &str, context: &Arc<Context>)
     if context.config.less.javascript_enabled {
         args.push("--js".to_string());
     }
+    let mut alias_params = vec![];
+    context.config.resolve.alias.iter().for_each(|(k, v)| {
+        alias_params.push(format!("{}={}", k, v));
+    });
+    let alias_params = alias_params.join("&");
+    args.push(format!("--aliases-fork=\'{}\'", alias_params));
     if !theme.is_empty() {
         theme.iter().for_each(|(k, v)| {
             args.push(format!("--modify-var={}=\'{}\'", k, v));

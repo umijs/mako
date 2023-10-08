@@ -228,8 +228,8 @@ function getOkamConfig(opts) {
     codeSplitting: codeSplitting === false ? 'none' : 'auto',
     devtool: devtool === false ? 'none' : 'source-map',
     less: {
-      theme: lessLoader.modifyVars,
-      javascriptEnabled: lessLoader.javascriptEnabled,
+      theme: lessLoader?.modifyVars || {},
+      javascriptEnabled: lessLoader?.javascriptEnabled,
       lesscPath: path.join(
         path.dirname(require.resolve('less/package.json')),
         'bin/lessc',
@@ -237,6 +237,7 @@ function getOkamConfig(opts) {
     },
     minify: jsMinifier === 'none' ? false : true,
     define,
+    autoCSSModules: true,
   };
 
   if (process.env.DUMP_MAKO_CONFIG) {

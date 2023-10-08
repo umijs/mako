@@ -1,0 +1,5 @@
+---
+source: crates/mako/src/transformers/transform_dep_replacer.rs
+expression: "transform_code(\"const x = import('x')\")"
+---
+const x = import("/x/index.js");

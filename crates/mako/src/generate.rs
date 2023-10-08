@@ -49,7 +49,7 @@ impl Compiler {
             match self.context.config.tree_shake {
                 TreeShakeStrategy::Basic => {
                     let mut module_graph = self.context.module_graph.write().unwrap();
-
+                    puffin::profile_scope!("tree shake");
                     self.context
                         .plugin_driver
                         .optimize_module_graph(module_graph.deref_mut())?;
@@ -57,6 +57,7 @@ impl Compiler {
                     println!("basic optimize in {}ms.", t_tree_shaking.as_millis());
                 }
                 TreeShakeStrategy::Advanced => {
+                    puffin::profile_scope!("advanced tree shake");
                     let shaking_module_ids = self.tree_shaking();
                     let t_tree_shaking = t_tree_shaking.elapsed();
                     println!(
@@ -65,9 +66,7 @@ impl Compiler {
                         t_tree_shaking.as_millis()
                     );
                 }
-                TreeShakeStrategy::None => {
-                    // do nothing
-                }
+                TreeShakeStrategy::None => {}
             }
         }
         let t_tree_shaking = t_tree_shaking.elapsed();
