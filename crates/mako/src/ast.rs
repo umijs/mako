@@ -248,7 +248,7 @@ pub fn css_ast_to_code(
     (css_code, sourcemap)
 }
 
-pub fn base64_encode(raw: &str) -> String {
+pub fn base64_encode<T: AsRef<[u8]>>(raw: T) -> String {
     general_purpose::STANDARD.encode(raw)
 }
 
