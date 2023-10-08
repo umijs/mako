@@ -615,7 +615,7 @@ fn render_chunk_css(
     Ok((css_code.into(), source_map))
 }
 
-fn get_css_chunk_filename(js_chunk_filename: &String) -> String {
+fn get_css_chunk_filename(js_chunk_filename: &str) -> String {
     format!(
         "{}.css",
         js_chunk_filename.strip_suffix(".js").unwrap_or("")
