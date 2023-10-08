@@ -30,6 +30,10 @@ pub struct ResolveConfig {
     pub extensions: Vec<String>,
 }
 
+// format: HashMap<identifier, (import_source, specifier)>
+// e.g.
+// { "process": ("process", "") }
+// { "Buffer": ("buffer", "Buffer") }
 pub type Providers = HashMap<String, (String, String)>;
 
 #[derive(Deserialize, Debug, PartialEq, Eq, ValueEnum, Clone)]

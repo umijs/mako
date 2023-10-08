@@ -41,6 +41,7 @@ Test.
 
 ```bash
 $ cargo test
+$ cargo test transformers::transform_try_resolve::tests
 $ cargo insta review
 ```
 

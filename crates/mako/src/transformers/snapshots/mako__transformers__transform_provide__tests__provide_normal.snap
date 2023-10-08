@@ -1,0 +1,8 @@
+---
+source: crates/mako/src/transformers/transform_provide.rs
+expression: "transform(r#\"\nconsole.log(process);\nconsole.log(process.env);\nBuffer.from('foo');\nfunction foo() {\n    // let process = 1;\n    // console.log(process);\n    // let Buffer = 'b';\n    // Buffer.from('foo');\n}\n            \"#)"
+---
+console.log(require("process"));
+console.log(require("process").env);
+require("buffer").Buffer.from('foo');
+function foo() {}

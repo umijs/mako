@@ -60,7 +60,7 @@ fn transform_js(
     task: &Task,
     top_level_mark: Mark,
     unresolved_mark: Mark,
-    resolvers: &Resolvers,
+    _resolvers: &Resolvers,
 ) -> Result<()> {
     let cm = context.meta.script.cm.clone();
     let mode = &context.config.mode.to_string();
@@ -99,7 +99,6 @@ fn transform_js(
                     if !context.args.watch {
                         let mut try_resolve = TryResolve {
                             path: task.path.clone(),
-                            resolvers,
                             context,
                         };
                         ast.visit_mut_with(&mut try_resolve);

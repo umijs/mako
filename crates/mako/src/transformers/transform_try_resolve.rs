@@ -6,12 +6,11 @@ use swc_ecma_visit::{VisitMut, VisitMutWith};
 use crate::analyze_deps::{get_first_arg_str, is_commonjs_require};
 use crate::compiler::Context;
 use crate::module::{Dependency, ResolveType};
-use crate::resolve::{self, Resolvers};
+use crate::resolve;
 use crate::transformers::transform_dep_replacer::miss_throw_stmt;
 
 pub struct TryResolve<'a> {
     pub path: String,
-    pub resolvers: &'a Resolvers,
     pub context: &'a Arc<Context>,
 }
 
@@ -39,7 +38,7 @@ impl VisitMut for TryResolve<'_> {
                                     order: 0,
                                     span: None,
                                 },
-                                self.resolvers,
+                                &self.context.resolvers,
                                 self.context,
                             );
                             if result.is_err() {
@@ -54,5 +53,43 @@ impl VisitMut for TryResolve<'_> {
             }
         }
         stmt.visit_mut_children_with(self);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_try_require() {
+        crate::assert_display_snapshot!(transform(
+            r#"
+            try {
+                require('foo');
+            } catch (e) {
+                console.log(e);
+            }
+            "#,
+        ));
+    }
+
+    #[test]
+    fn test_try_import_do_not_resolve() {
+        crate::assert_display_snapshot!(transform(
+            r#"
+            try {
+                import('foo');
+            } catch (e) {
+                console.log(e);
+            }
+            "#,
+        ));
+    }
+
+    fn transform(code: &str) -> String {
+        let context = std::sync::Arc::new(Default::default());
+        let mut visitor = super::TryResolve {
+            path: "test.js".to_string(),
+            context: &context,
+        };
+        crate::transformers::test_helper::transform_js_code(code, &mut visitor, &context)
     }
 }

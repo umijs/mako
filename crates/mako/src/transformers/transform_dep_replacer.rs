@@ -145,6 +145,7 @@ mod tests {
     use crate::compiler::Context;
     use crate::module::{Dependency, ResolveType};
     use crate::test_helper::transform_ast_with;
+    use crate::transformers::test_helper::transform_js_code;
     use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
 
     #[test]
@@ -259,23 +260,17 @@ mod tests {
     }
 
     fn transform_code(code: &str) -> String {
-        let context: Arc<Context> = Arc::new(Default::default());
-
-        GLOBALS.set(&context.meta.script.globals, || {
-            let mut ast = build_js_ast("test.js", code, &context).unwrap();
-
-            let mut visitor = DepReplacer {
-                to_replace: &DependenciesToReplace {
-                    resolved: hashmap! {
-                        "x".to_string() => "/x/index.js".to_string()
-                    },
-                    missing: hashmap! {},
-                    ignored: vec![],
+        let context = Arc::new(Default::default());
+        let mut visitor = DepReplacer {
+            to_replace: &DependenciesToReplace {
+                resolved: hashmap! {
+                    "x".to_string() => "/x/index.js".to_string()
                 },
-                context: &context,
-            };
-
-            transform_ast_with(&mut ast.ast, &mut visitor, &context.meta.script.cm)
-        })
+                missing: hashmap! {},
+                ignored: vec![],
+            },
+            context: &context,
+        };
+        transform_js_code(code, &mut visitor, &context)
     }
 }

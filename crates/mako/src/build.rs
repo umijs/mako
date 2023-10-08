@@ -375,17 +375,6 @@ impl Compiler {
             }
         }
 
-        // transform to replace deps
-        // ref: https://github.com/umijs/mako/issues/311
-        // if !duplicated_source_to_source_map.is_empty() {
-        //     let deps_to_replace = DependenciesToReplace {
-        //         missing: HashMap::new(),
-        //         resolved: duplicated_source_to_source_map,
-        //         ignored: vec![],
-        //     };
-        //     transform_after_resolve(&mut ast, &context, &task, &deps_to_replace)?;
-        // }
-
         // whether to contains top-level-await
         let top_level_await = {
             if let ModuleAst::Script(ast) = &ast {
