@@ -1,8 +1,10 @@
 use std::collections::{HashMap, HashSet};
+use std::hash::Hasher;
 use std::sync::Arc;
 use std::vec;
 
 use anyhow::Result;
+use cached::proc_macro::cached;
 use indexmap::IndexSet;
 use rayon::prelude::*;
 use swc_common::{BytePos, LineCol, DUMMY_SP};
@@ -16,6 +18,7 @@ use swc_ecma_ast::{
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
 use swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
+use twox_hash::XxHash64;
 
 use crate::ast::build_js_ast;
 use crate::chunk::{Chunk, ChunkType};
@@ -39,11 +42,12 @@ pub struct ChunkPot {
     pub chunk_id: String,
     pub js_name: String,
     pub module_map: HashMap<String, FnExpr>,
-    pub stylesheet: Option<Stylesheet>,
+    pub js_hash: u64,
+    pub stylesheet: Option<(Stylesheet, u64)>,
 }
 
 impl ChunkPot {
-    pub fn into_chunk_module(&self) -> SwcModule {
+    pub fn to_chunk_module(&self) -> SwcModule {
         // key: module id
         // value: module FnExpr
         let props = self
@@ -85,13 +89,14 @@ impl ChunkPot {
 
 impl ChunkPot {
     pub fn from(chunk: &Chunk, mg: &ModuleGraph, context: &Arc<Context>) -> Result<Self> {
-        let (module_map, stylesheet) =
+        let ((module_map, js_hash), stylesheet) =
             ChunkPot::modules_to_js_stmts(chunk.get_modules(), mg, context)?;
 
         Ok(ChunkPot {
             js_name: chunk.filename(),
             chunk_id: chunk.id.generate(context),
             module_map,
+            js_hash,
             stylesheet,
         })
     }
@@ -100,20 +105,24 @@ impl ChunkPot {
         module_ids: &IndexSet<ModuleId>,
         module_graph: &ModuleGraph,
         context: &Arc<Context>,
-    ) -> Result<(HashMap<String, FnExpr>, Option<Stylesheet>)> {
+    ) -> Result<((HashMap<String, FnExpr>, u64), Option<(Stylesheet, u64)>)> {
         let mut module_map: HashMap<String, FnExpr> = Default::default();
         let mut merged_css_modules: Vec<(String, Stylesheet)> = vec![];
+
+        let mut module_raw_hash_map: HashMap<String, u64> = Default::default();
+        let mut css_raw_hashes = vec![];
 
         let module_ids: Vec<_> = module_ids.iter().collect();
 
         for module_id in module_ids {
             let module = module_graph.get_module(module_id).unwrap();
-            let ast = module.info.as_ref().unwrap();
-            let ast = &ast.ast;
+            let module_info = module.info.as_ref().unwrap();
+            let ast = &module_info.ast;
 
             let m = module.as_module_fn_expr()?;
 
             if let Some(fn_expr) = m {
+                module_raw_hash_map.insert(module.id.id.clone(), module_info.raw_hash);
                 module_map.insert(module.id.generate(context), fn_expr);
             }
 
@@ -125,10 +134,15 @@ impl ChunkPot {
                     .position(|(id, _)| id.eq(&module.id.id))
                 {
                     merged_css_modules.remove(index);
+                    css_raw_hashes.remove(index);
                 }
                 merged_css_modules.push((module.id.id.clone(), ast.clone()));
+                css_raw_hashes.push(module_info.raw_hash);
             }
         }
+
+        let js_hash = hash_map_ordered_by_key(&module_raw_hash_map);
+
         if !merged_css_modules.is_empty() {
             let mut merged_css_ast = Stylesheet {
                 span: DUMMY_SP,
@@ -140,11 +154,38 @@ impl ChunkPot {
             }
 
             transform_css_generate(&mut merged_css_ast, context);
-            Ok((module_map, Some(merged_css_ast)))
+
+            let css_hash = hash_vec(&css_raw_hashes);
+
+            Ok(((module_map, js_hash), Some((merged_css_ast, css_hash))))
         } else {
-            Ok((module_map, None))
+            Ok(((module_map, js_hash), None))
         }
     }
+}
+
+fn hash_map_ordered_by_key(map: &HashMap<String, u64>) -> u64 {
+    let mut hash: XxHash64 = Default::default();
+
+    let mut sorted = map.iter().map(|(k, v)| (k, v)).collect::<Vec<_>>();
+
+    sorted.sort_by_key(|(k, _)| *k);
+
+    sorted.iter().for_each(|(_, &v)| {
+        hash.write_u64(v);
+    });
+
+    hash.finish()
+}
+
+fn hash_vec(v: &[u64]) -> u64 {
+    let mut hash: XxHash64 = Default::default();
+
+    v.iter().for_each(|v| {
+        hash.write_u64(*v);
+    });
+
+    hash.finish()
 }
 
 pub enum ChunkFileType {
@@ -186,14 +227,14 @@ impl Compiler {
 
         let chunks = chunk_graph.get_chunks();
 
-        let chunk_files = chunks
+        let non_entry_chunk_files = chunks
             .par_iter()
             .filter(|chunk| !matches!(chunk.chunk_type, ChunkType::Entry(_, _)))
             .map(|chunk| {
                 // build stmts
                 let mut pot: ChunkPot = ChunkPot::from(chunk, &module_graph, &self.context)?;
 
-                self.render_normal_chunk(&mut pot)
+                self.to_normal_chunk_files(&mut pot)
             })
             .collect::<Result<Vec<_>>>()?
             .into_iter()
@@ -203,7 +244,7 @@ impl Compiler {
         let mut js_chunk_props: Vec<PropOrSpread> = vec![];
         let mut css_chunk_map: Vec<PropOrSpread> = vec![];
 
-        for f in chunk_files.iter() {
+        for f in non_entry_chunk_files.iter() {
             let prop_kv = Prop::KeyValue(KeyValueProp {
                 key: quote_str!(f.chunk_id.clone()).into(),
                 value: quote_str!(f.disk_name()).into(),
@@ -258,25 +299,7 @@ impl Compiler {
             .map(|&chunk| {
                 let mut pot = ChunkPot::from(chunk, &module_graph, &self.context)?;
 
-                let mut module_props: Vec<PropOrSpread> = vec![];
-
-                pot.module_map.iter().for_each(|(module_id, fn_expr)| {
-                    let prop_kv = Prop::KeyValue(KeyValueProp {
-                        key: quote_str!(module_id.clone()).into(),
-                        value: fn_expr.clone().into(),
-                    });
-                    module_props.push(prop_kv.into());
-                });
-
-                let modules_lit: Stmt = ObjectLit {
-                    span: DUMMY_SP,
-                    props: module_props,
-                }
-                .into_var_decl(VarDeclKind::Var, quote_ident!("m").into())
-                .into();
-
                 let mut before_stmts = vec![
-                    modules_lit,
                     js_chunk_map_dcl_stmt.clone(),
                     css_chunk_map_dcl_stmt.clone(),
                     init_install_css_chunk(&pot.chunk_id),
@@ -290,87 +313,29 @@ impl Compiler {
                     before_stmts.push(main_id_decl);
                 }
 
-                self.render_entry_chunk(&mut pot, before_stmts, chunk)
+                self.to_entry_chunk_files(&mut pot, before_stmts, chunk)
             })
             .collect::<Result<Vec<_>>>()?
             .into_iter()
             .flatten()
             .collect::<Vec<_>>();
 
-        entry_chunk_files.extend(chunk_files);
+        entry_chunk_files.extend(non_entry_chunk_files);
 
         Ok(entry_chunk_files)
     }
 
-    fn render_entry_chunk(
+    fn to_entry_chunk_files(
         &self,
         pot: &mut ChunkPot,
-        mut stmts: Vec<Stmt>,
+        stmts: Vec<Stmt>,
         chunk: &Chunk,
     ) -> Result<Vec<ChunkFile>> {
         let full_hash = self.full_hash();
-        let chunk_graph = self.context.chunk_graph.read().unwrap();
-
-        let dep_chunks_ids = chunk_graph
-            .sync_dependencies_chunk(chunk)
-            .into_iter()
-            .map(|chunk| chunk.generate(&self.context))
-            .collect::<HashSet<String>>()
-            .into_iter()
-            .map(|id| Some(quote_str!(id).as_arg()))
-            .collect::<Vec<_>>();
-
-        let dep_chunk_ids_decl_stmt: Stmt = ArrayLit {
-            span: DUMMY_SP,
-            elems: dep_chunks_ids,
-        }
-        .into_var_decl(VarDeclKind::Var, quote_ident!("d").into())
-        .into();
-
-        stmts.push(dep_chunk_ids_decl_stmt);
-
-        let runtime_content = compile_runtime_entry(
-            self.context
-                .assets_info
-                .lock()
-                .unwrap()
-                .values()
-                .any(|info| info.ends_with(".wasm")),
-            self.context
-                .module_graph
-                .read()
-                .unwrap()
-                .modules()
-                .iter()
-                .any(|module| module.info.as_ref().unwrap().is_async),
-        )
-        .replace("_%full_hash%_", &full_hash.to_string())
-        .replace(
-            "// __inject_runtime_code__",
-            &self
-                .context
-                .plugin_driver
-                .runtime_plugins_code(&self.context)?,
-        );
-
-        let mut ast = build_js_ast(
-            "mako_internal_runtime_entry.js",
-            runtime_content.as_str(),
-            &self.context,
-        )
-        .unwrap();
-
-        ast.ast
-            .body
-            .splice(0..0, stmts.into_iter().map(|s| s.into()));
-
         let mut files = vec![];
 
-        if self.context.config.minify && matches!(self.context.config.mode, Mode::Production) {
-            minify_js(&mut ast, &self.context)?;
-        }
-
-        let (code, source_map) = self.render_js(&ast.ast)?;
+        let (code, source_map) =
+            render_entry_chunk_js(pot, stmts, chunk, &self.context, full_hash)?;
 
         files.push(ChunkFile {
             chunk_id: pot.chunk_id.clone(),
@@ -385,32 +350,30 @@ impl Compiler {
             content: code,
         });
 
-        if let Some(stylesheet) = &mut pot.stylesheet {
-            let (code, source_map) = self.render_css(stylesheet)?;
+        if pot.stylesheet.is_some() {
+            let (css_code, css_source_map) = render_chunk_css(pot, &self.context)?;
 
             files.push(ChunkFile {
                 chunk_id: pot.chunk_id.clone(),
                 file_name: get_css_chunk_filename(&pot.js_name),
-                source_map,
+                source_map: css_source_map,
                 file_type: ChunkFileType::CSS,
                 hash: if self.context.config.hash {
-                    Some(file_content_hash(&code))
+                    Some(file_content_hash(&css_code))
                 } else {
                     None
                 },
-                content: code,
+                content: css_code,
             });
         }
 
         Ok(files)
     }
 
-    fn render_normal_chunk(&self, pot: &mut ChunkPot) -> Result<Vec<ChunkFile>> {
+    fn to_normal_chunk_files(&self, pot: &mut ChunkPot) -> Result<Vec<ChunkFile>> {
         let mut files = vec![];
 
-        let module = pot.into_chunk_module();
-
-        let (code, source_map) = self.render_js(&module)?;
+        let (code, source_map) = render_normal_chunk_js(pot, &self.context)?;
 
         let hash = if self.context.config.hash {
             Some(file_content_hash(&code))
@@ -427,8 +390,8 @@ impl Compiler {
             file_type: ChunkFileType::JS,
         });
 
-        if let Some(style) = &mut pot.stylesheet {
-            let (css_code, css_source_map) = self.render_css(style)?;
+        if pot.stylesheet.is_some() {
+            let (css_code, css_source_map) = render_chunk_css(pot, &self.context)?;
 
             let css_hash = if self.context.config.hash {
                 Some(file_content_hash(&css_code))
@@ -497,6 +460,178 @@ impl Compiler {
 
         Ok((buf, source_map_buf))
     }
+}
+
+#[cached(
+    result = true,
+    key = "String",
+    convert = r#"{format!("{}-{}",pot.js_hash, full_hash)}"#
+)]
+fn render_entry_chunk_js(
+    pot: &mut ChunkPot,
+    mut stmts: Vec<Stmt>,
+    chunk: &Chunk,
+    context: &Arc<Context>,
+    full_hash: u64,
+) -> Result<(Vec<u8>, Vec<(BytePos, LineCol)>)> {
+    let chunk_graph = context.chunk_graph.read().unwrap();
+
+    let dep_chunks_ids = chunk_graph
+        .sync_dependencies_chunk(chunk)
+        .into_iter()
+        .map(|chunk| chunk.generate(context))
+        .collect::<HashSet<String>>()
+        .into_iter()
+        .map(|id| Some(quote_str!(id).as_arg()))
+        .collect::<Vec<_>>();
+
+    let dep_chunk_ids_decl_stmt: Stmt = ArrayLit {
+        span: DUMMY_SP,
+        elems: dep_chunks_ids,
+    }
+    .into_var_decl(VarDeclKind::Var, quote_ident!("d").into())
+    .into();
+
+    stmts.push(dep_chunk_ids_decl_stmt);
+
+    let runtime_content = compile_runtime_entry(
+        context
+            .assets_info
+            .lock()
+            .unwrap()
+            .values()
+            .any(|info| info.ends_with(".wasm")),
+        context
+            .module_graph
+            .read()
+            .unwrap()
+            .modules()
+            .iter()
+            .any(|module| module.info.as_ref().unwrap().is_async),
+    )
+    .replace("_%full_hash%_", &full_hash.to_string())
+    .replace(
+        "// __inject_runtime_code__",
+        &context.plugin_driver.runtime_plugins_code(context)?,
+    );
+
+    let mut ast = build_js_ast(
+        "mako_internal_runtime_entry.js",
+        runtime_content.as_str(),
+        context,
+    )
+    .unwrap();
+
+    let mut module_props: Vec<PropOrSpread> = vec![];
+
+    pot.module_map.iter().for_each(|(module_id, fn_expr)| {
+        let prop_kv = Prop::KeyValue(KeyValueProp {
+            key: quote_str!(module_id.clone()).into(),
+            value: fn_expr.clone().into(),
+        });
+        module_props.push(prop_kv.into());
+    });
+
+    let modules_lit: Stmt = ObjectLit {
+        span: DUMMY_SP,
+        props: module_props,
+    }
+    .into_var_decl(VarDeclKind::Var, quote_ident!("m").into())
+    .into();
+
+    ast.ast.body.insert(0, modules_lit.into());
+
+    ast.ast
+        .body
+        .splice(0..0, stmts.into_iter().map(|s| s.into()));
+
+    if context.config.minify && matches!(context.config.mode, Mode::Production) {
+        minify_js(&mut ast, context)?;
+    }
+
+    let mut buf = vec![];
+    let mut source_map_buf = Vec::new();
+    let cm = context.meta.script.cm.clone();
+    let comments = context.meta.script.output_comments.read().unwrap();
+    let swc_comments = comments.get_swc_comments();
+
+    let mut emitter = Emitter {
+        cfg: JsCodegenConfig {
+            minify: context.config.minify && matches!(context.config.mode, Mode::Production),
+            target: context.config.output.es_version,
+            // ascii_only: true, not working with lodash
+            ..Default::default()
+        },
+        cm: cm.clone(),
+        comments: Some(swc_comments),
+        wr: Box::new(JsWriter::new(cm, "\n", &mut buf, Some(&mut source_map_buf))),
+    };
+    emitter.emit_module(&ast.ast)?;
+
+    Ok((buf, source_map_buf))
+}
+
+#[cached(result = true, key = "u64", convert = "{chunk_pot.js_hash}")]
+fn render_normal_chunk_js(
+    chunk_pot: &ChunkPot,
+    context: &Arc<Context>,
+) -> Result<(Vec<u8>, Vec<(BytePos, LineCol)>)> {
+    let mut buf = vec![];
+    let mut source_map_buf = Vec::new();
+    let cm = context.meta.script.cm.clone();
+    let comments = context.meta.script.output_comments.read().unwrap();
+    let swc_comments = comments.get_swc_comments();
+
+    let ast = chunk_pot.to_chunk_module();
+
+    let mut emitter = Emitter {
+        cfg: JsCodegenConfig {
+            minify: context.config.minify && matches!(context.config.mode, Mode::Production),
+            target: context.config.output.es_version,
+            // ascii_only: true, not working with lodash
+            ..Default::default()
+        },
+        cm: cm.clone(),
+        comments: Some(swc_comments),
+        wr: Box::new(JsWriter::new(cm, "\n", &mut buf, Some(&mut source_map_buf))),
+    };
+    emitter.emit_module(&ast)?;
+
+    Ok((buf, source_map_buf))
+}
+
+#[cached(
+    result = true,
+    key = "u64",
+    convert = "{chunk_pot.stylesheet.as_ref().unwrap().1}"
+)]
+fn render_chunk_css(
+    chunk_pot: &mut ChunkPot,
+    context: &Arc<Context>,
+) -> Result<(Vec<u8>, Vec<(BytePos, LineCol)>)> {
+    let mut css_code = String::new();
+    let mut source_map = Vec::new();
+    let css_writer = BasicCssWriter::new(
+        &mut css_code,
+        Some(&mut source_map),
+        BasicCssWriterConfig::default(),
+    );
+
+    let ast = &mut chunk_pot.stylesheet.as_mut().unwrap().0;
+
+    if context.config.minify && matches!(context.config.mode, Mode::Production) {
+        minify_css(ast, context)?;
+    }
+
+    let mut gen = CodeGenerator::new(
+        css_writer,
+        CodegenConfig {
+            minify: context.config.minify && matches!(context.config.mode, Mode::Production),
+        },
+    );
+    gen.emit(ast)?;
+
+    Ok((css_code.into(), source_map))
 }
 
 fn get_css_chunk_filename(js_chunk_filename: &String) -> String {
