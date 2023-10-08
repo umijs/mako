@@ -15,9 +15,8 @@ use tracing::debug;
 use crate::ast::{base64_encode, css_ast_to_code, js_ast_to_code};
 use crate::compiler::{Compiler, Context};
 use crate::config::{Config, DevtoolConfig, OutputMode, TreeShakeStrategy};
-use crate::generate_chunks::{ChunkFile, ChunkFileType, OutputAst};
+use crate::generate_chunks::{ChunkFile, OutputAst};
 use crate::module::{ModuleAst, ModuleId};
-use crate::sourcemap::build_source_map;
 use crate::stats::{create_stats_info, print_stats, write_stats};
 use crate::update::UpdateResult;
 
@@ -134,7 +133,7 @@ impl Compiler {
         // generate chunks
         let t_generate_chunks = Instant::now();
         debug!("generate chunks");
-        let chunk_asts = self.generate_chunks_ast()?;
+        let chunk_asts = self.generate_chunk_files()?;
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         // ast to code and sourcemap, then write
@@ -170,28 +169,13 @@ impl Compiler {
         ))
     }
 
-    fn render_source_map(&self, chunk_file: &ChunkFile) -> String {
-        match chunk_file.file_type {
-            ChunkFileType::JS => {
-                let cm = &self.context.meta.script.cm;
-                let src_buf = build_source_map(&chunk_file.source_map, cm);
-                String::from_utf8(src_buf).unwrap()
-            }
-            ChunkFileType::CSS => {
-                let cm = &self.context.meta.css.cm;
-                let src_buf = build_source_map(&chunk_file.source_map, cm);
-                String::from_utf8(src_buf).unwrap()
-            }
-        }
-    }
-
     pub fn emit_chunk_file(&self, chunk_file: &ChunkFile) {
         let to: PathBuf = self.context.config.output.path.join(chunk_file.disk_name());
 
         match self.context.config.devtool {
             DevtoolConfig::SourceMap => {
                 {
-                    let source_map = self.render_source_map(chunk_file);
+                    let source_map = &chunk_file.source_map;
 
                     let size = source_map.len() as u64;
                     self.context.stats_info.lock().unwrap().add_assets(
@@ -222,7 +206,7 @@ impl Compiler {
                 code.extend_from_slice(&chunk_file.content);
                 code.extend_from_slice(source_map_url_line.as_bytes());
 
-                let size = code.len() as u64;
+                let size = chunk_file.content.len() as u64;
                 self.context.stats_info.lock().unwrap().add_assets(
                     size,
                     chunk_file.file_name.clone(),
@@ -230,10 +214,10 @@ impl Compiler {
                     to.clone(),
                     chunk_file.disk_name(),
                 );
-                fs::write(to, code).unwrap();
+                fs::write(to, &chunk_file.content).unwrap();
             }
             DevtoolConfig::InlineSourceMap => {
-                let source_map = self.render_source_map(chunk_file);
+                let source_map = &chunk_file.source_map;
 
                 let mut code = Vec::new();
 
@@ -241,7 +225,7 @@ impl Compiler {
                 code.extend_from_slice(
                     format!(
                         "\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,{}",
-                        base64_encode(&source_map)
+                        base64_encode(source_map)
                     )
                     .as_bytes(),
                 );
@@ -284,7 +268,7 @@ impl Compiler {
         // generate chunks
 
         let t_generate_chunks = Instant::now();
-        let chunk_asts = self.generate_chunks_ast()?;
+        let chunk_asts = self.generate_chunk_files()?;
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         // ast to code and sourcemap, then write
