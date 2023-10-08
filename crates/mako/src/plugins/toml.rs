@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use toml::{from_str as from_toml_str, Value as TomlValue};
+use mako_core::toml::{from_str as from_toml_str, Value as TomlValue};
 
 use crate::compiler::Context;
 use crate::load::{read_content, Content};

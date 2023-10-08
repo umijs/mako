@@ -1,4 +1,4 @@
-use glob::Pattern;
+use mako_core::glob::Pattern;
 
 use crate::module::ModuleInfo;
 use crate::resolve::{ResolvedResource, ResolverResource};

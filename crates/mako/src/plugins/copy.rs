@@ -2,9 +2,9 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::Result;
-use glob::glob;
-use notify::event::{CreateKind, DataChange, ModifyKind, RenameMode};
-use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use mako_core::glob::glob;
+use mako_core::notify::event::{CreateKind, DataChange, ModifyKind, RenameMode};
+use mako_core::notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use tokio::sync::mpsc::channel;
 use tracing::debug;
 
@@ -23,7 +23,7 @@ impl CopyPlugin {
                 move |res| {
                     tx.blocking_send(res).unwrap();
                 },
-                notify::Config::default(),
+                mako_core::notify::Config::default(),
             )
             .unwrap();
             for src in context.config.copy.iter() {

@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::vec;
 
 use anyhow::{anyhow, Result};
-use nodejs_resolver::{AliasMap, Options, ResolveResult, Resolver, Resource};
+use mako_core::nodejs_resolver::{AliasMap, Options, ResolveResult, Resolver, Resource};
 use thiserror::Error;
 use tracing::debug;
 
