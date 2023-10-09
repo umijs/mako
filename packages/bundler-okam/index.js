@@ -1,6 +1,9 @@
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
 const assert = require('assert');
+const { createProxy, createHttpsServer } = require('@umijs/bundler-utils');
+const { lodash } = require('@umijs/utils');
 
 exports.build = async function (opts) {
   assert(opts, 'opts should be supplied');
@@ -24,6 +27,9 @@ exports.build = async function (opts) {
   okamConfig.mode = mode;
   okamConfig.manifest = true;
   okamConfig.hash = !!opts.config.hash;
+  if (okamConfig.hash) {
+    okamConfig.moduleIdStrategy = 'hashed';
+  }
 
   const { build } = require('@okamjs/okam');
   await build(cwd, okamConfig, false);
@@ -72,8 +78,10 @@ exports.dev = async function (opts) {
   (opts.beforeMiddlewares || []).forEach((m) => app.use(m));
   // serve dist files
   app.use(express.static(path.join(opts.cwd, 'dist')));
-  // TODO: proxy
-  // opts.config.proxy
+  // proxy
+  if (opts.config.proxy) {
+    createProxy(opts.config.proxy, app);
+  }
   // after middlewares
   (opts.afterMiddlewares || []).forEach((m) => {
     // TODO: FIXME
@@ -85,9 +93,24 @@ exports.dev = async function (opts) {
       index: '/',
     }),
   );
-  // TODO: https
-  // opts.config.https
-  const server = require('http').createServer(app);
+  // create server
+  let server;
+  const httpsOpts = opts.config.https;
+  if (httpsOpts) {
+    httpsOpts.hosts ||= lodash.uniq(
+      [
+        ...(httpsOpts.hosts || []),
+        // always add localhost, 127.0.0.1, ip and host
+        '127.0.0.1',
+        'localhost',
+        opts.ip,
+        opts.host !== '0.0.0.0' && opts.host,
+      ].filter(Boolean),
+    );
+    server = await createHttpsServer(app, httpsOpts);
+  } else {
+    server = http.createServer(app);
+  }
   const port = opts.port || 8000;
   server.listen(port, () => {
     const protocol = opts.config.https ? 'https:' : 'http:';
@@ -98,7 +121,6 @@ exports.dev = async function (opts) {
   const { build } = require('@okamjs/okam');
   const okamConfig = getOkamConfig(opts);
   okamConfig.hmr = true;
-  // TODO: detect port
   okamConfig.hmr_port = String(opts.port + 1);
   okamConfig.hmr_host = opts.host;
   await build(opts.cwd, okamConfig, true);
@@ -118,6 +140,27 @@ function getDevBanner(protocol, host, port, ip) {
 
 function checkConfig(config) {
   assert(!config.mfsu, 'mfsu is not supported in okam bundler');
+
+  // 暂不支持 { from, to } 格式
+  const { copy } = config;
+  if (copy) {
+    for (const item of copy) {
+      assert(
+        typeof item === 'string',
+        `copy config item must be string in okam bundler, but got ${item}`,
+      );
+    }
+  }
+
+  // 暂不支持 legacy
+  if (config.legacy) {
+    throw new Error('legacy is not supported in okam bundler');
+  }
+
+  // 暂不支持多 entry 的场景
+  if (config.mpa) {
+    throw new Error('mpa is not supported in okam bundler');
+  }
 }
 
 function getOkamConfig(opts) {
@@ -128,7 +171,10 @@ function getOkamConfig(opts) {
     runtimePublicPath,
     manifest,
     mdx,
-    theme,
+    lessLoader,
+    codeSplitting,
+    devtool,
+    jsMinifier,
   } = opts.config;
   const outputPath = path.join(opts.cwd, 'dist');
   // TODO:
@@ -138,22 +184,20 @@ function getOkamConfig(opts) {
       alias[key.slice(0, -1)] = alias[key];
     }
   });
-  // Normalize codeSplitting config
-  let codeSplitting = 'none';
-  if (opts.config.codeSplitting?.jsStrategy) {
-    if (
-      ['bigVendors', 'depPerChunk'].includes(
-        opts.config.codeSplitting.jsStrategy,
-      )
-    ) {
-      codeSplitting = opts.config.codeSplitting.jsStrategy;
-    } else {
-      throw new Error(
-        'codeSplitting.jsStrategy must be bigVendors or depPerChunk',
-      );
+  const define = {};
+  if (opts.config.define) {
+    for (const key of Object.keys(opts.config.define)) {
+      // mako 的 define 会先去判断 process.env.xxx，再去判断 xxx
+      // 这里传 process.env.xxx 反而不会生效
+      // TODO: 待 mako 改成和 umi/webpack 的方式一致之后，可以把这段去掉
+      if (key.startsWith('process.env.')) {
+        define[key.replace(/^process\.env\./, '')] = opts.config.define[key];
+      } else {
+        define[key] = JSON.stringify(opts.config.define[key]);
+      }
     }
   }
-  return {
+  const okamConfig = {
     entry: opts.entry,
     output: { path: outputPath },
     resolve: {
@@ -174,15 +218,32 @@ function getOkamConfig(opts) {
       },
     },
     mode: 'development',
-    public_path: runtimePublicPath ? 'runtime' : publicPath || '/',
+    publicPath: runtimePublicPath ? 'runtime' : publicPath || '/',
     targets: targets || {
       chrome: 80,
     },
     manifest: !!manifest,
+    manifestConfig: manifest || {},
     mdx: !!mdx,
-    codeSplitting,
+    codeSplitting: codeSplitting === false ? 'none' : 'auto',
+    devtool: devtool === false ? 'none' : 'source-map',
     less: {
-      theme,
+      theme: lessLoader?.modifyVars || {},
+      javascriptEnabled: lessLoader?.javascriptEnabled,
+      lesscPath: path.join(
+        path.dirname(require.resolve('less/package.json')),
+        'bin/lessc',
+      ),
     },
+    minify: jsMinifier === 'none' ? false : true,
+    define,
+    autoCSSModules: true,
   };
+
+  if (process.env.DUMP_MAKO_CONFIG) {
+    const configFile = path.join(process.cwd(), 'mako.config.json');
+    fs.writeFileSync(configFile, JSON.stringify(okamConfig, null, 2));
+  }
+
+  return okamConfig;
 }

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
-use mdxjs::{compile, Options};
+use mako_core::mdxjs::{compile, Options};
 
 use crate::compiler::Context;
 use crate::config::Mode;

@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use cached::proc_macro::cached;
+use tracing::debug;
 
 use crate::compiler::Context;
 use crate::load::{read_content, Content, LoadError};
@@ -31,21 +32,44 @@ impl Plugin for LessPlugin {
     convert = r#"{ format!("{}-{}", param.path, _content) }"#
 )]
 fn compile_less(param: &PluginLoadParam, _content: &str, context: &Arc<Context>) -> Result<String> {
-    let mut cmd = Command::new("npx");
+    let lessc_path = context.config.less.lessc_path.clone();
+    let installed_node = context.root.join("node_modules/.bin/node");
+    let mut cmd = if lessc_path.is_empty() {
+        Command::new("npx")
+    } else {
+        // use user specified node first
+        // tnpm will install node to node_modules/.bin/node
+        if installed_node.exists() {
+            Command::new(installed_node)
+        } else {
+            Command::new("node")
+        }
+    };
     cmd.current_dir(context.root.clone());
     let theme = context.config.less.theme.clone();
-    let mut args = Vec::from(["lessc".to_string(), "--js".to_string()]);
+    let mut args = Vec::from([]);
+    if lessc_path.is_empty() {
+        args.push("lessc".to_string());
+    } else {
+        args.push(lessc_path);
+    }
+    if context.config.less.javascript_enabled {
+        args.push("--js".to_string());
+    }
+    let mut alias_params = vec![];
+    context.config.resolve.alias.iter().for_each(|(k, v)| {
+        alias_params.push(format!("{}={}", k, v));
+    });
+    let alias_params = alias_params.join("&");
+    args.push(format!("--aliases-fork=\'{}\'", alias_params));
     if !theme.is_empty() {
-        let vars = theme
-            .iter()
-            .map(|(k, v)| format!("{}={}", k, v))
-            .collect::<Vec<String>>()
-            .join("&");
-        let modify_vars = format!("--modify-var={}", vars);
-        args.push(modify_vars);
+        theme.iter().for_each(|(k, v)| {
+            args.push(format!("--modify-var={}=\'{}\'", k, v));
+        });
     }
     args.push(param.path.to_string());
     cmd.args(args);
+    debug!("compile less: {:?}", cmd);
 
     let output = match cmd.output() {
         Ok(output) => output,

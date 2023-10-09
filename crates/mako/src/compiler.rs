@@ -162,6 +162,7 @@ impl Compiler {
             Arc::new(plugins::runtime::MakoRuntime {}),
             Arc::new(plugins::farm_tree_shake::FarmTreeShake {}),
             Arc::new(plugins::invalid_syntax::InvalidSyntaxPlugin {}),
+            Arc::new(plugins::hmr_runtime::HMRRuntimePlugin {}),
         ];
 
         let mut config = config;
@@ -213,8 +214,14 @@ impl Compiler {
         )
         .green();
         println!("{}", building_with_message);
-        self.build();
-        let result = self.generate();
+        {
+            puffin::profile_scope!("Build Stage");
+            self.build();
+        }
+        let result = {
+            puffin::profile_scope!("Generate Stage");
+            self.generate()
+        };
         let t_compiler = t_compiler.elapsed();
         match result {
             Ok(_) => {

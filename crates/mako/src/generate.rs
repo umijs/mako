@@ -16,7 +16,6 @@ use crate::ast::{css_ast_to_code, js_ast_to_code};
 use crate::compiler::{Compiler, Context};
 use crate::config::{DevtoolConfig, Mode, OutputMode, TreeShakeStrategy};
 use crate::generate_chunks::OutputAst;
-use crate::load::file_content_hash;
 use crate::minify::{minify_css, minify_js};
 use crate::module::{ModuleAst, ModuleId};
 use crate::stats::{create_stats_info, print_stats, write_stats};
@@ -51,7 +50,7 @@ impl Compiler {
             match self.context.config.tree_shake {
                 TreeShakeStrategy::Basic => {
                     let mut module_graph = self.context.module_graph.write().unwrap();
-
+                    puffin::profile_scope!("tree shake");
                     self.context
                         .plugin_driver
                         .optimize_module_graph(module_graph.deref_mut())?;
@@ -59,6 +58,7 @@ impl Compiler {
                     println!("basic optimize in {}ms.", t_tree_shaking.as_millis());
                 }
                 TreeShakeStrategy::Advanced => {
+                    puffin::profile_scope!("advanced tree shake");
                     let shaking_module_ids = self.tree_shaking();
                     let t_tree_shaking = t_tree_shaking.elapsed();
                     println!(
@@ -67,9 +67,7 @@ impl Compiler {
                         t_tree_shaking.as_millis()
                     );
                 }
-                TreeShakeStrategy::None => {
-                    // do nothing
-                }
+                TreeShakeStrategy::None => {}
             }
         }
         let t_tree_shaking = t_tree_shaking.elapsed();
@@ -103,20 +101,18 @@ impl Compiler {
         // minify
         let t_minify = Instant::now();
         debug!("minify");
-        if self.context.config.minify {
+        if self.context.config.minify && matches!(self.context.config.mode, Mode::Production) {
             chunk_asts
                 .par_iter_mut()
                 .try_for_each(|file| -> Result<()> {
-                    if matches!(self.context.config.mode, Mode::Production) {
-                        match &mut file.ast {
-                            ModuleAst::Script(ast) => {
-                                minify_js(ast, &self.context)?;
-                            }
-                            ModuleAst::Css(ast) => {
-                                minify_css(ast, &self.context)?;
-                            }
-                            _ => (),
+                    match &mut file.ast {
+                        ModuleAst::Script(ast) => {
+                            minify_js(ast, &self.context)?;
                         }
+                        ModuleAst::Css(ast) => {
+                            minify_css(ast, &self.context)?;
+                        }
+                        _ => (),
                     }
                     Ok(())
                 })?;
@@ -126,13 +122,16 @@ impl Compiler {
         // ast to code and sourcemap, then write
         let t_ast_to_code_and_write = Instant::now();
         debug!("ast to code and write");
-        chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
-            for file in get_chunk_emit_files(file, &self.context)? {
-                self.write_to_dist_with_stats(file);
-            }
+        {
+            puffin::profile_scope!("ast to code");
+            chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
+                for file in get_chunk_emit_files(file, &self.context)? {
+                    self.write_to_dist_with_stats(file);
+                }
 
-            Ok(())
-        })?;
+                Ok(())
+            })?;
+        }
         let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
 
         // write assets
@@ -421,9 +420,10 @@ fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<
             // ast to code
             let (js_code, js_sourcemap) = js_ast_to_code(&ast.ast, context, &file.path)?;
             // 计算 hash 值
-            let hashname = match context.config.hash {
-                true => hash_file_name(file.path.clone(), file_content_hash(js_code.clone())),
-                _ => file.path.clone(),
+            let hashname = if context.config.hash {
+                postfix_hash(&file.path, file.ast_module_hash)
+            } else {
+                file.path.clone()
             };
             // generate code and sourcemap files
             files.push(EmitFile {
@@ -445,20 +445,21 @@ fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<
             // ast to code
             let (css_code, css_sourcemap) = css_ast_to_code(ast, context, &file.path);
             // 计算 hash 值
-            let hashname = match context.config.hash {
-                true => hash_file_name(file.path.clone(), file_content_hash(css_code.clone())),
-                _ => file.path.clone(),
+            let hashed_name = if context.config.hash {
+                postfix_hash(&file.path, file.ast_module_hash)
+            } else {
+                file.path.clone()
             };
             files.push(EmitFile {
                 filename: file.path.clone(),
-                hashname: hashname.clone(),
+                hashname: hashed_name.clone(),
                 content: css_code,
                 chunk_id: file.chunk_id.clone(),
             });
             if matches!(context.config.devtool, DevtoolConfig::SourceMap) {
                 files.push(EmitFile {
                     filename: format!("{}.map", file.path.clone()),
-                    hashname: format!("{}.map", hashname),
+                    hashname: format!("{}.map", hashed_name),
                     content: css_sourcemap,
                     chunk_id: "".to_string(),
                 });
@@ -470,10 +471,20 @@ fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<
     Ok(files)
 }
 
+#[allow(dead_code)]
 fn hash_file_name(file_name: String, hash: String) -> String {
     let path = Path::new(&file_name);
     let file_stem = path.file_stem().unwrap().to_str().unwrap();
     let file_extension = path.extension().unwrap().to_str().unwrap();
+
+    format!("{}.{}.{}", file_stem, hash, file_extension)
+}
+
+fn postfix_hash(file_name: &String, hash: u64) -> String {
+    let path = Path::new(file_name);
+    let file_stem = path.file_stem().unwrap().to_str().unwrap();
+    let file_extension = path.extension().unwrap().to_str().unwrap();
+    let hash = &format!("{:08x}", hash)[0..8];
 
     format!("{}.{}.{}", file_stem, hash, file_extension)
 }

@@ -1,0 +1,30 @@
+---
+source: crates/mako/src/tree_shaking/tree_shaking_module.rs
+expression: "&used"
+---
+[
+    (
+        0,
+        {
+            SwcIdent(
+                "compile#0",
+            ),
+        },
+    ),
+    (
+        1,
+        {
+            SwcIdent(
+                "parse#0",
+            ),
+        },
+    ),
+    (
+        2,
+        {
+            SwcIdent(
+                "ruleset#0",
+            ),
+        },
+    ),
+]

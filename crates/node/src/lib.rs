@@ -50,6 +50,8 @@ pub async fn build(
     };
     stats?: boolean;
     hash?: boolean;
+    autoCssModules?: boolean;
+    dynamicImportToRequire?: boolean;
 }"#)]
     config: serde_json::Value,
     watch: bool,

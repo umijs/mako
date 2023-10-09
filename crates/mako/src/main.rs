@@ -1,5 +1,6 @@
 #![feature(box_patterns)]
 
+use std::env;
 use std::sync::Arc;
 
 use clap::Parser;
@@ -8,9 +9,9 @@ use tracing::debug;
 use crate::compiler::Args;
 use crate::config::Mode;
 use crate::logger::init_logger;
+use crate::profile_gui::ProfileApp;
 
 mod analyze_deps;
-mod analyze_statement;
 mod ast;
 mod bfs;
 mod build;
@@ -20,7 +21,6 @@ mod cli;
 mod comments;
 mod compiler;
 mod config;
-mod defined_ident_collector;
 mod dev;
 mod generate;
 mod generate_chunks;
@@ -31,41 +31,22 @@ mod logger;
 mod minify;
 mod module;
 mod module_graph;
-mod module_side_effects_flag;
 mod optimize_chunk;
 mod parse;
 mod plugin;
 mod plugins;
+mod profile_gui;
 mod resolve;
 mod sourcemap;
-mod statement;
-mod statement_graph;
 mod stats;
 mod targets;
 #[cfg(test)]
 mod test_helper;
 mod transform;
-mod transform_after_resolve;
-mod transform_async_module;
-mod transform_css_handler;
-mod transform_css_url_replacer;
-mod transform_dep_replacer;
-mod transform_dynamic_import;
-mod transform_env_replacer;
 mod transform_in_generate;
-mod transform_optimizer;
-mod transform_provide;
-mod transform_px2rem;
-mod transform_react;
-mod transform_try_resolve;
+mod transformers;
 mod tree_shaking;
-mod tree_shaking_analyze;
-mod tree_shaking_module;
-mod unused_statement_cleanup;
-mod unused_statement_marker;
-mod unused_statement_sweep;
 mod update;
-mod used_ident_collector;
 mod watch;
 
 #[tokio::main]
@@ -102,10 +83,24 @@ async fn main() {
 
     // compiler
     let compiler = compiler::Compiler::new(config, root.clone(), Args { watch: cli.watch });
-    compiler.compile();
+    let compiler = Arc::new(compiler);
+
+    if env::var("MAKO_PROFILE").is_ok() {
+        // Turn on the profiler only if env `MAKO_PROFILE` exists. When the profiler is off the profiler scope macros only has an overhead of 1-2 ns (and some stack space);
+        puffin::set_scopes_on(true);
+        let native_options = Default::default();
+        let compiler = compiler.clone();
+        let _ = eframe::run_native(
+            "puffin egui eframe",
+            native_options,
+            Box::new(move |_cc| Box::new(ProfileApp::new(compiler))),
+        );
+    } else {
+        compiler.compile();
+    }
 
     if cli.watch {
-        let d = crate::dev::DevServer::new(root.clone(), Arc::new(compiler));
+        let d = crate::dev::DevServer::new(root.clone(), compiler);
         // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
         d.serve().await;
     }

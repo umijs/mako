@@ -6,7 +6,7 @@ use crate::module::{Module, ModuleId};
 use crate::plugins::farm_tree_shake::statement_graph::{
     ExportInfo, ExportSpecifierInfo, ImportInfo, StatementGraph, StatementId,
 };
-use crate::tree_shaking_module::ModuleSystem;
+use crate::tree_shaking::tree_shaking_module::ModuleSystem;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum UsedIdent {

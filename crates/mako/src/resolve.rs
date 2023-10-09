@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::vec;
 
 use anyhow::{anyhow, Result};
-use nodejs_resolver::{AliasMap, Options, ResolveResult, Resolver, Resource};
+use mako_core::nodejs_resolver::{AliasMap, Options, ResolveResult, Resolver, Resource};
 use thiserror::Error;
 use tracing::debug;
 
@@ -74,6 +74,8 @@ pub fn resolve(
     resolvers: &Resolvers,
     context: &Arc<Context>,
 ) -> Result<ResolverResource> {
+    puffin::profile_function!();
+    puffin::profile_scope!("resolve", &dep.source);
     let resolver = if dep.resolve_type == ResolveType::Require {
         &resolvers.cjs
     } else {
