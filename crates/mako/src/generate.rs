@@ -4,7 +4,7 @@ use std::ops::DerefMut;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use indexmap::IndexSet;
 use rayon::prelude::*;
 use serde::Serialize;
@@ -12,7 +12,7 @@ use tracing::debug;
 
 use crate::ast::base64_encode;
 use crate::compiler::Compiler;
-use crate::config::{Config, DevtoolConfig, OutputMode, TreeShakeStrategy};
+use crate::config::{DevtoolConfig, OutputMode, TreeShakeStrategy};
 use crate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::module::ModuleId;
 use crate::stats::{create_stats_info, print_stats, write_stats};
@@ -89,8 +89,26 @@ impl Compiler {
             fs::create_dir_all(&config.output.path)?;
         }
 
-        let (t_generate_chunks, t_ast_to_code_and_write, t_write_assets) =
-            self.generate_chunk_disk_file(config)?;
+        let (t_generate_chunks, t_ast_to_code_and_write) = self.generate_chunk_disk_file()?;
+
+        // write assets
+        let t_write_assets = Instant::now();
+        debug!("write assets");
+        // why {} block? unlock assets_info
+        {
+            let assets_info = &(*self.context.assets_info.lock().unwrap());
+            for (k, v) in assets_info {
+                let asset_path = &self.context.root.join(k);
+                let asset_output_path = &config.output.path.join(v);
+                if asset_path.exists() {
+                    fs::copy(asset_path, asset_output_path)?;
+                } else {
+                    return Err(anyhow!("asset not found: {}", asset_path.display()));
+                }
+            }
+        }
+
+        let t_write_assets = t_write_assets.elapsed();
 
         // generate stats
         let stats = create_stats_info(0, self);
@@ -126,7 +144,7 @@ impl Compiler {
         Ok(())
     }
 
-    fn generate_chunk_disk_file(&self, config: &Config) -> Result<(Duration, Duration, Duration)> {
+    fn generate_chunk_disk_file(&self) -> Result<(Duration, Duration)> {
         // generate chunks
         let t_generate_chunks = Instant::now();
         debug!("generate chunks");
@@ -142,28 +160,7 @@ impl Compiler {
         })?;
         let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
 
-        // write assets
-        let t_write_assets = Instant::now();
-        debug!("write assets");
-        // why {} block? unlock assets_info
-        {
-            let assets_info = &(*self.context.assets_info.lock().unwrap());
-            for (k, v) in assets_info {
-                let asset_path = &self.context.root.join(k);
-                let asset_output_path = &config.output.path.join(v);
-                if asset_path.exists() {
-                    fs::copy(asset_path, asset_output_path)?;
-                } else {
-                    panic!("asset not found: {}", asset_path.display());
-                }
-            }
-        }
-
-        Ok((
-            t_generate_chunks,
-            t_ast_to_code_and_write,
-            t_write_assets.elapsed(),
-        ))
+        Ok((t_generate_chunks, t_ast_to_code_and_write))
     }
 
     pub fn emit_chunk_file(&self, chunk_file: &ChunkFile) {
