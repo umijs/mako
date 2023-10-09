@@ -281,7 +281,7 @@ impl Compiler {
         let (js_chunk_map_dcl_stmt, css_chunk_map_dcl_stmt) =
             Self::chunk_map_decls(&non_entry_chunk_files);
 
-        let mut entry_chunk_files = chunks
+        let mut all_chunk_files = chunks
             .par_iter()
             .filter(|chunk| matches!(chunk.chunk_type, ChunkType::Entry(_, _)))
             .map(|&chunk| {
@@ -294,7 +294,7 @@ impl Compiler {
 
                 if let ChunkType::Entry(module_id, _) = &chunk.chunk_type {
                     let main_id_decl: Stmt = quote_str!(module_id.generate(&self.context))
-                        .into_var_decl(VarDeclKind::Var, quote_ident!("e").into())
+                        .into_var_decl(VarDeclKind::Var, quote_ident!("e").into()) // e brief for entry_module_id
                         .into();
 
                     before_stmts.push(main_id_decl);
@@ -306,10 +306,9 @@ impl Compiler {
             .into_iter()
             .flatten()
             .collect::<Vec<_>>();
+        all_chunk_files.extend(non_entry_chunk_files);
 
-        entry_chunk_files.extend(non_entry_chunk_files);
-
-        Ok(entry_chunk_files)
+        Ok(all_chunk_files)
     }
 
     fn generate_non_entry_chunk_files(&self) -> Result<Vec<ChunkFile>> {
