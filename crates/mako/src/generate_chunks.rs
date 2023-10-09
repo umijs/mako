@@ -236,12 +236,13 @@ fn hash_vec(v: &[u64]) -> u64 {
 
     hash.finish()
 }
-
+#[derive(Clone)]
 pub enum ChunkFileType {
     JS,
     Css,
 }
 
+#[derive(Clone)]
 pub struct ChunkFile {
     pub content: Vec<u8>,
     pub source_map: Vec<u8>,
@@ -380,37 +381,13 @@ impl Compiler {
         let full_hash = self.full_hash();
         let mut files = vec![];
 
-        let (code, source_map) =
-            render_entry_chunk_js(pot, stmts, chunk, &self.context, full_hash)?;
+        let js_chunk_file = render_entry_chunk_js(pot, stmts, chunk, &self.context, full_hash)?;
 
-        files.push(ChunkFile {
-            chunk_id: pot.chunk_id.clone(),
-            file_name: pot.js_name.clone(),
-            source_map,
-            file_type: ChunkFileType::JS,
-            hash: if self.context.config.hash {
-                Some(file_content_hash(&code))
-            } else {
-                None
-            },
-            content: code,
-        });
+        files.push(js_chunk_file);
 
         if pot.stylesheet.is_some() {
-            let (css_code, css_source_map) = render_chunk_css(pot, &self.context)?;
-
-            files.push(ChunkFile {
-                chunk_id: pot.chunk_id.clone(),
-                file_name: get_css_chunk_filename(&pot.js_name),
-                source_map: css_source_map,
-                file_type: ChunkFileType::Css,
-                hash: if self.context.config.hash {
-                    Some(file_content_hash(&css_code))
-                } else {
-                    None
-                },
-                content: css_code,
-            });
+            let css_chunk_file = render_chunk_css(pot, &self.context)?;
+            files.push(css_chunk_file);
         }
 
         Ok(files)
@@ -419,40 +396,13 @@ impl Compiler {
     fn to_normal_chunk_files(&self, pot: &mut ChunkPot) -> Result<Vec<ChunkFile>> {
         let mut files = vec![];
 
-        let (code, source_map) = render_normal_chunk_js(pot, &self.context)?;
+        let js_chunk_file = render_normal_chunk_js(pot, &self.context)?;
 
-        let hash = if self.context.config.hash {
-            Some(file_content_hash(&code))
-        } else {
-            None
-        };
-
-        files.push(ChunkFile {
-            content: code,
-            hash,
-            source_map,
-            file_name: pot.js_name.clone(),
-            chunk_id: pot.chunk_id.clone(),
-            file_type: ChunkFileType::JS,
-        });
+        files.push(js_chunk_file);
 
         if pot.stylesheet.is_some() {
-            let (css_code, css_source_map) = render_chunk_css(pot, &self.context)?;
-
-            let css_hash = if self.context.config.hash {
-                Some(file_content_hash(&css_code))
-            } else {
-                None
-            };
-
-            files.push(ChunkFile {
-                content: css_code,
-                hash: css_hash,
-                source_map: css_source_map,
-                file_name: get_css_chunk_filename(&pot.js_name),
-                chunk_id: pot.chunk_id.clone(),
-                file_type: ChunkFileType::Css,
-            });
+            let css_chunk_file = render_chunk_css(pot, &self.context)?;
+            files.push(css_chunk_file);
         }
 
         Ok(files)
@@ -474,7 +424,7 @@ fn render_entry_chunk_js(
     chunk: &Chunk,
     context: &Arc<Context>,
     full_hash: u64,
-) -> Result<(Vec<u8>, Vec<u8>)> {
+) -> Result<ChunkFile> {
     let chunk_graph = context.chunk_graph.read().unwrap();
 
     let dep_chunks_ids = chunk_graph
@@ -579,14 +529,24 @@ fn render_entry_chunk_js(
     let cm = &context.meta.script.cm;
     let source_map_buf = build_source_map(&source_map_buf, cm);
 
-    Ok((buf, source_map_buf))
+    let hash = if context.config.hash {
+        Some(file_content_hash(&buf))
+    } else {
+        None
+    };
+
+    Ok(ChunkFile {
+        content: buf,
+        hash,
+        source_map: source_map_buf,
+        file_name: pot.js_name.clone(),
+        chunk_id: pot.chunk_id.clone(),
+        file_type: ChunkFileType::JS,
+    })
 }
 
 #[cached(result = true, key = "u64", convert = "{chunk_pot.js_hash}")]
-fn render_normal_chunk_js(
-    chunk_pot: &ChunkPot,
-    context: &Arc<Context>,
-) -> Result<(Vec<u8>, Vec<u8>)> {
+fn render_normal_chunk_js(chunk_pot: &ChunkPot, context: &Arc<Context>) -> Result<ChunkFile> {
     let mut buf = vec![];
     let mut source_map_buf = Vec::new();
     let cm = context.meta.script.cm.clone();
@@ -610,7 +570,20 @@ fn render_normal_chunk_js(
     let cm = &context.meta.script.cm;
     let source_map_buf = build_source_map(&source_map_buf, cm);
 
-    Ok((buf, source_map_buf))
+    let hash = if context.config.hash {
+        Some(file_content_hash(&buf))
+    } else {
+        None
+    };
+
+    Ok(ChunkFile {
+        content: buf,
+        hash,
+        source_map: source_map_buf,
+        file_name: chunk_pot.js_name.clone(),
+        chunk_id: chunk_pot.chunk_id.clone(),
+        file_type: ChunkFileType::JS,
+    })
 }
 
 #[cached(
@@ -618,10 +591,7 @@ fn render_normal_chunk_js(
     key = "u64",
     convert = "{chunk_pot.stylesheet.as_ref().unwrap().1}"
 )]
-fn render_chunk_css(
-    chunk_pot: &mut ChunkPot,
-    context: &Arc<Context>,
-) -> Result<(Vec<u8>, Vec<u8>)> {
+fn render_chunk_css(chunk_pot: &mut ChunkPot, context: &Arc<Context>) -> Result<ChunkFile> {
     let mut css_code = String::new();
     let mut source_map = Vec::new();
     let css_writer = BasicCssWriter::new(
@@ -647,7 +617,20 @@ fn render_chunk_css(
     let cm = &context.meta.css.cm;
     let source_map = build_source_map(&source_map, cm);
 
-    Ok((css_code.into(), source_map))
+    let css_hash = if context.config.hash {
+        Some(file_content_hash(&css_code))
+    } else {
+        None
+    };
+
+    Ok(ChunkFile {
+        content: css_code.into(),
+        hash: css_hash,
+        source_map,
+        file_name: get_css_chunk_filename(&chunk_pot.js_name),
+        chunk_id: chunk_pot.chunk_id.clone(),
+        file_type: ChunkFileType::Css,
+    })
 }
 
 fn get_css_chunk_filename(js_chunk_filename: &str) -> String {
