@@ -1,4 +1,4 @@
-function createRuntime(makoModules, entryModuleId) {
+function createRuntime(makoModules, deps, entryModuleId) {
   const modulesRegistry = {};
 
   function requireModule(moduleId) {
@@ -138,9 +138,8 @@ function createRuntime(makoModules, entryModuleId) {
     };
   })();
   /* mako/runtime/ensure load css chunk */
-  const cssChunksIdToUrlMap = {};
   !(function () {
-    const installedChunks = (requireModule.cssInstalled = {});
+    requireModule.cssInstalled = cssInstalledChunks;
     // __CSS_CHUNKS_URL_MAP
     requireModule.findStylesheet = function (url) {
       return Array.from(
@@ -172,11 +171,11 @@ function createRuntime(makoModules, entryModuleId) {
 
         if (event.type === 'load') {
           // finished loading css chunk
-          installedChunks[chunkId] = 0;
+          cssInstalledChunks[chunkId] = 0;
           resolve();
         } else {
           // throw error and reset state
-          delete installedChunks[chunkId];
+          delete cssInstalledChunks[chunkId];
           const errorType = event?.type;
           const realHref = event?.target?.href;
           const err = new Error(
@@ -201,15 +200,15 @@ function createRuntime(makoModules, entryModuleId) {
     };
 
     requireModule.chunkEnsures.css = (chunkId, promises) => {
-      if (installedChunks[chunkId]) {
+      if (cssInstalledChunks[chunkId]) {
         // still pending, avoid duplicate promises
-        promises.push(installedChunks[chunkId]);
+        promises.push(cssInstalledChunks[chunkId]);
       } else if (
-        installedChunks[chunkId] !== 0 &&
+        cssInstalledChunks[chunkId] !== 0 &&
         cssChunksIdToUrlMap[chunkId]
       ) {
         // load chunk and save promise
-        installedChunks[chunkId] = new Promise((resolve, reject) => {
+        cssInstalledChunks[chunkId] = new Promise((resolve, reject) => {
           const url = cssChunksIdToUrlMap[chunkId];
           const fullUrl = requireModule.publicPath + url;
 
@@ -227,7 +226,7 @@ function createRuntime(makoModules, entryModuleId) {
             );
           }
         });
-        promises.push(installedChunks[chunkId]);
+        promises.push(cssInstalledChunks[chunkId]);
         return promises;
       }
     };
@@ -264,11 +263,18 @@ function createRuntime(makoModules, entryModuleId) {
 
   // __WASM_REQUIRE_SUPPORT
   // __REQUIRE_ASYNC_MODULE_SUPPORT
-  // __BEFORE_ENTRY
 
-  requireModule(entryModuleId);
-
-  // __AFTER_ENTRY
+  if (deps.length > 0) {
+    Promise.all(
+      deps.map(function (dep) {
+        return requireModule.ensure(dep);
+      }),
+    ).then(function () {
+      requireModule(entryModuleId);
+    });
+  } else {
+    requireModule(entryModuleId);
+  }
 
   return {
     requireModule,
@@ -278,7 +284,7 @@ function createRuntime(makoModules, entryModuleId) {
   };
 }
 
-const runtime = createRuntime({}, '_%main%_');
+const runtime = createRuntime(m, d, e);
 globalThis.jsonpCallback = runtime._jsonpCallback;
 globalThis.modulesRegistry = runtime._modulesRegistry;
 globalThis.makoModuleHotUpdate = runtime._makoModuleHotUpdate;

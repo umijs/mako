@@ -202,7 +202,7 @@ pub fn content_hash(file_path: &str) -> Result<String> {
 }
 
 #[allow(dead_code)]
-pub fn file_content_hash(content: String) -> String {
+pub fn file_content_hash<T: AsRef<[u8]>>(content: T) -> String {
     let digest = md5::compute(content);
     let hash = format!("{:x}", digest);
     hash_to_8(hash)

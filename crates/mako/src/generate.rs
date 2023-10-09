@@ -1,23 +1,20 @@
 use std::collections::HashSet;
 use std::fs;
 use std::ops::DerefMut;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use std::time::Instant;
+use std::path::PathBuf;
+use std::time::{Duration, Instant};
 
-use anyhow::Result;
-use cached::proc_macro::cached;
+use anyhow::{anyhow, Result};
 use indexmap::IndexSet;
 use rayon::prelude::*;
 use serde::Serialize;
 use tracing::debug;
 
-use crate::ast::{css_ast_to_code, js_ast_to_code};
-use crate::compiler::{Compiler, Context};
-use crate::config::{DevtoolConfig, Mode, OutputMode, TreeShakeStrategy};
-use crate::generate_chunks::OutputAst;
-use crate::minify::{minify_css, minify_js};
-use crate::module::{ModuleAst, ModuleId};
+use crate::ast::base64_encode;
+use crate::compiler::Compiler;
+use crate::config::{DevtoolConfig, OutputMode, TreeShakeStrategy};
+use crate::generate_chunks::{ChunkFile, ChunkFileType};
+use crate::module::ModuleId;
 use crate::stats::{create_stats_info, print_stats, write_stats};
 use crate::update::UpdateResult;
 
@@ -92,47 +89,7 @@ impl Compiler {
             fs::create_dir_all(&config.output.path)?;
         }
 
-        // generate chunks
-        let t_generate_chunks = Instant::now();
-        debug!("generate chunks");
-        let mut chunk_asts = self.generate_chunks_ast()?;
-        let t_generate_chunks = t_generate_chunks.elapsed();
-
-        // minify
-        let t_minify = Instant::now();
-        debug!("minify");
-        if self.context.config.minify && matches!(self.context.config.mode, Mode::Production) {
-            chunk_asts
-                .par_iter_mut()
-                .try_for_each(|file| -> Result<()> {
-                    match &mut file.ast {
-                        ModuleAst::Script(ast) => {
-                            minify_js(ast, &self.context)?;
-                        }
-                        ModuleAst::Css(ast) => {
-                            minify_css(ast, &self.context)?;
-                        }
-                        _ => (),
-                    }
-                    Ok(())
-                })?;
-        }
-        let t_minify = t_minify.elapsed();
-
-        // ast to code and sourcemap, then write
-        let t_ast_to_code_and_write = Instant::now();
-        debug!("ast to code and write");
-        {
-            puffin::profile_scope!("ast to code");
-            chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
-                for file in get_chunk_emit_files(file, &self.context)? {
-                    self.write_to_dist_with_stats(file);
-                }
-
-                Ok(())
-            })?;
-        }
-        let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
+        let (t_generate_chunks, t_ast_to_code_and_write) = self.generate_chunk_disk_file()?;
 
         // write assets
         let t_write_assets = Instant::now();
@@ -146,10 +103,11 @@ impl Compiler {
                 if asset_path.exists() {
                     fs::copy(asset_path, asset_output_path)?;
                 } else {
-                    panic!("asset not found: {}", asset_path.display());
+                    return Err(anyhow!("asset not found: {}", asset_path.display()));
                 }
             }
         }
+
         let t_write_assets = t_write_assets.elapsed();
 
         // generate stats
@@ -177,7 +135,6 @@ impl Compiler {
             t_transform_modules.as_millis()
         );
         debug!("  - generate chunks: {}ms", t_generate_chunks.as_millis());
-        debug!("  - minify: {}ms", t_minify.as_millis());
         debug!(
             "  - ast to code and write: {}ms",
             t_ast_to_code_and_write.as_millis()
@@ -185,6 +142,120 @@ impl Compiler {
         debug!("  - write assets: {}ms", t_write_assets.as_millis());
 
         Ok(())
+    }
+
+    fn generate_chunk_disk_file(&self) -> Result<(Duration, Duration)> {
+        // generate chunks
+        let t_generate_chunks = Instant::now();
+        debug!("generate chunks");
+        let chunk_files = self.generate_chunk_files()?;
+        let t_generate_chunks = t_generate_chunks.elapsed();
+
+        // ast to code and sourcemap, then write
+        let t_ast_to_code_and_write = Instant::now();
+        debug!("ast to code and write");
+        chunk_files.par_iter().try_for_each(|file| -> Result<()> {
+            self.emit_chunk_file(file);
+            Ok(())
+        })?;
+        let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
+
+        Ok((t_generate_chunks, t_ast_to_code_and_write))
+    }
+
+    pub fn emit_chunk_file(&self, chunk_file: &ChunkFile) {
+        let to: PathBuf = self.context.config.output.path.join(chunk_file.disk_name());
+
+        match self.context.config.devtool {
+            DevtoolConfig::SourceMap => {
+                {
+                    let source_map = &chunk_file.source_map;
+
+                    let size = source_map.len() as u64;
+                    self.context.stats_info.lock().unwrap().add_assets(
+                        size,
+                        chunk_file.source_map_name(),
+                        chunk_file.chunk_id.clone(),
+                        to.clone(),
+                        chunk_file.source_map_disk_name(),
+                    );
+                    fs::write(
+                        self.context
+                            .config
+                            .output
+                            .path
+                            .join(chunk_file.source_map_disk_name()),
+                        source_map,
+                    )
+                    .unwrap();
+                }
+
+                let source_map_url_line = match chunk_file.file_type {
+                    ChunkFileType::JS => {
+                        format!(
+                            "\n//# sourceMappingURL={}",
+                            chunk_file.source_map_disk_name()
+                        )
+                    }
+                    ChunkFileType::Css => {
+                        format!(
+                            "\n/*# sourceMappingURL={}*/",
+                            chunk_file.source_map_disk_name()
+                        )
+                    }
+                };
+
+                let mut code = Vec::new();
+
+                code.extend_from_slice(&chunk_file.content);
+                code.extend_from_slice(source_map_url_line.as_bytes());
+
+                let size = code.len() as u64;
+                self.context.stats_info.lock().unwrap().add_assets(
+                    size,
+                    chunk_file.file_name.clone(),
+                    chunk_file.chunk_id.clone(),
+                    to.clone(),
+                    chunk_file.disk_name(),
+                );
+                fs::write(to, &code).unwrap();
+            }
+            DevtoolConfig::InlineSourceMap => {
+                let source_map = &chunk_file.source_map;
+
+                let mut code = Vec::new();
+
+                code.extend_from_slice(&chunk_file.content);
+                code.extend_from_slice(
+                    format!(
+                        "\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,{}",
+                        base64_encode(source_map)
+                    )
+                    .as_bytes(),
+                );
+
+                let size = code.len() as u64;
+                self.context.stats_info.lock().unwrap().add_assets(
+                    size,
+                    chunk_file.file_name.clone(),
+                    chunk_file.chunk_id.clone(),
+                    to.clone(),
+                    chunk_file.disk_name(),
+                );
+                fs::write(to, code).unwrap();
+            }
+            DevtoolConfig::None => {
+                self.context.stats_info.lock().unwrap().add_assets(
+                    chunk_file.content.len() as u64,
+                    chunk_file.file_name.clone(),
+                    chunk_file.chunk_id.clone(),
+                    to.clone(),
+                    chunk_file.disk_name(),
+                );
+
+                fs::write(to, &chunk_file.content).unwrap();
+            }
+        }
     }
 
     pub fn emit_dev_chunks(&self) -> Result<()> {
@@ -199,17 +270,16 @@ impl Compiler {
         }
 
         // generate chunks
+
         let t_generate_chunks = Instant::now();
-        let chunk_asts = self.generate_chunks_ast()?;
+        let chunk_files = self.generate_chunk_files()?;
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         // ast to code and sourcemap, then write
         let t_ast_to_code_and_write = Instant::now();
         debug!("ast to code and write");
-        chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
-            for file in get_chunk_emit_files(file, &self.context)? {
-                self.write_to_dist_with_stats(file);
-            }
+        chunk_files.par_iter().try_for_each(|file| -> Result<()> {
+            self.emit_chunk_file(file);
 
             Ok(())
         })?;
@@ -380,19 +450,6 @@ impl Compiler {
 
         std::fs::write(to, content).unwrap();
     }
-    // 写入产物前记录 content 大小, 并加上 hash 值
-    pub fn write_to_dist_with_stats(&self, file: EmitFile) {
-        let to: PathBuf = self.context.config.output.path.join(file.hashname.clone());
-        let size = file.content.len() as u64;
-        self.context.stats_info.lock().unwrap().add_assets(
-            size,
-            file.filename,
-            file.chunk_id,
-            to.clone(),
-            file.hashname,
-        );
-        fs::write(to, file.content).unwrap();
-    }
 }
 
 fn to_hot_update_chunk_name(chunk_name: &String, hash: u64) -> String {
@@ -404,89 +461,6 @@ fn to_hot_update_chunk_name(chunk_name: &String, hash: u64) -> String {
             format!("{left}.{hash}.hot-update.{ext}")
         }
     }
-}
-
-#[cached(
-    result = true,
-    key = "String",
-    convert = r#"{ format!("{}-{}", file.ast_module_hash, file.path) }"#
-)]
-
-// 需要在这里提前记录 js 和 map 的 hash，因为 map 是不单独计算 hash 值的，继承的是 js 的 hash 值
-fn get_chunk_emit_files(file: &OutputAst, context: &Arc<Context>) -> Result<Vec<EmitFile>> {
-    let mut files = vec![];
-    match &file.ast {
-        ModuleAst::Script(ast) => {
-            // ast to code
-            let (js_code, js_sourcemap) = js_ast_to_code(&ast.ast, context, &file.path)?;
-            // 计算 hash 值
-            let hashname = if context.config.hash {
-                postfix_hash(&file.path, file.ast_module_hash)
-            } else {
-                file.path.clone()
-            };
-            // generate code and sourcemap files
-            files.push(EmitFile {
-                filename: file.path.clone(),
-                content: js_code,
-                chunk_id: file.chunk_id.clone(),
-                hashname: hashname.clone(),
-            });
-            if matches!(context.config.devtool, DevtoolConfig::SourceMap) {
-                files.push(EmitFile {
-                    filename: format!("{}.map", file.path.clone()),
-                    hashname: format!("{}.map", hashname),
-                    content: js_sourcemap,
-                    chunk_id: "".to_string(),
-                });
-            }
-        }
-        ModuleAst::Css(ast) => {
-            // ast to code
-            let (css_code, css_sourcemap) = css_ast_to_code(ast, context, &file.path);
-            // 计算 hash 值
-            let hashed_name = if context.config.hash {
-                postfix_hash(&file.path, file.ast_module_hash)
-            } else {
-                file.path.clone()
-            };
-            files.push(EmitFile {
-                filename: file.path.clone(),
-                hashname: hashed_name.clone(),
-                content: css_code,
-                chunk_id: file.chunk_id.clone(),
-            });
-            if matches!(context.config.devtool, DevtoolConfig::SourceMap) {
-                files.push(EmitFile {
-                    filename: format!("{}.map", file.path.clone()),
-                    hashname: format!("{}.map", hashed_name),
-                    content: css_sourcemap,
-                    chunk_id: "".to_string(),
-                });
-            }
-        }
-        _ => (),
-    }
-
-    Ok(files)
-}
-
-#[allow(dead_code)]
-fn hash_file_name(file_name: String, hash: String) -> String {
-    let path = Path::new(&file_name);
-    let file_stem = path.file_stem().unwrap().to_str().unwrap();
-    let file_extension = path.extension().unwrap().to_str().unwrap();
-
-    format!("{}.{}.{}", file_stem, hash, file_extension)
-}
-
-fn postfix_hash(file_name: &String, hash: u64) -> String {
-    let path = Path::new(file_name);
-    let file_stem = path.file_stem().unwrap().to_str().unwrap();
-    let file_extension = path.extension().unwrap().to_str().unwrap();
-    let hash = &format!("{:08x}", hash)[0..8];
-
-    format!("{}.{}.{}", file_stem, hash, file_extension)
 }
 
 #[derive(Serialize)]

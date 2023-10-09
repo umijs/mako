@@ -15,7 +15,7 @@ impl SourceMapGenConfig for SwcSourceMapGenConfig {
     }
 }
 
-pub fn build_source_map(mappings: &[(BytePos, LineCol)], cm: Lrc<SourceMap>) -> Vec<u8> {
+pub fn build_source_map(mappings: &[(BytePos, LineCol)], cm: &Lrc<SourceMap>) -> Vec<u8> {
     let config = SwcSourceMapGenConfig;
 
     let mut src_buf = vec![];

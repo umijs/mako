@@ -3,9 +3,12 @@ use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use anyhow::anyhow;
 use base64::engine::{general_purpose, Engine};
 use pathdiff::diff_paths;
-use swc_common::Span;
+use swc_common::{Span, DUMMY_SP};
+use swc_ecma_ast::{BlockStmt, FnExpr, Function};
+use swc_ecma_utils::quote_ident;
 
 use crate::ast::Ast;
 use crate::compiler::Context;
@@ -209,10 +212,81 @@ impl Module {
 
         info.raw.as_bytes().len()
     }
+
+    // wrap module stmt into a function
+    // eg:
+    // function(module, exports, require) {
+    //   module stmt..
+    // }
+    pub fn as_module_fn_expr(&self) -> anyhow::Result<Option<FnExpr>> {
+        match &self.info.as_ref().unwrap().ast {
+            ModuleAst::Script(script) => {
+                let mut stmts = Vec::new();
+
+                for n in script.ast.body.iter() {
+                    match n.as_stmt() {
+                        None => return Err(anyhow!("Error: {:?} not a stmt in ", self.id.id)),
+                        Some(stmt) => {
+                            stmts.push(stmt.clone());
+                        }
+                    }
+                }
+
+                let func = Function {
+                    span: DUMMY_SP,
+                    params: vec![
+                        quote_ident!("module").into(),
+                        quote_ident!("exports").into(),
+                        quote_ident!("require").into(),
+                    ],
+                    decorators: vec![],
+                    body: Some(BlockStmt {
+                        span: DUMMY_SP,
+                        stmts,
+                    }),
+                    is_generator: false,
+                    is_async: false,
+                    type_params: None,
+                    return_type: None,
+                };
+                Ok(Some(FnExpr {
+                    ident: None,
+                    function: func.into(),
+                }))
+            }
+            //TODO:  css module will be removed in the future
+            ModuleAst::Css(_) => Ok(Some(empty_module_fn_expr())),
+            ModuleAst::None => Ok(None),
+        }
+    }
 }
 
 impl Debug for Module {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "Module id={}", self.id.id)
+    }
+}
+
+fn empty_module_fn_expr() -> FnExpr {
+    let func = Function {
+        span: DUMMY_SP,
+        params: vec![
+            quote_ident!("module").into(),
+            quote_ident!("exports").into(),
+            quote_ident!("require").into(),
+        ],
+        decorators: vec![],
+        body: Some(BlockStmt {
+            span: DUMMY_SP,
+            stmts: vec![],
+        }),
+        is_generator: false,
+        is_async: false,
+        type_params: None,
+        return_type: None,
+    };
+    FnExpr {
+        ident: None,
+        function: func.into(),
     }
 }
