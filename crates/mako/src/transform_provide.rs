@@ -1,12 +1,9 @@
-use swc_atoms::JsWord;
-use swc_common::collections::{AHashMap, AHashSet};
-use swc_common::sync::{Lock, Lrc};
+use indexmap::IndexMap;
+use swc_common::collections::AHashSet;
+use swc_common::sync::Lrc;
 use swc_common::DUMMY_SP;
-use swc_ecma_ast::{
-    BindingIdent, CallExpr, Callee, Decl, Expr, ExprOrSpread, Id, Ident, Lit, MemberExpr,
-    MemberProp, Module, ModuleItem, Pat, Stmt, Str, VarDecl, VarDeclKind, VarDeclarator,
-};
-use swc_ecma_utils::collect_decls;
+use swc_ecma_ast::{Expr, Id, Ident, MemberExpr, Module, ModuleItem, VarDeclKind};
+use swc_ecma_utils::{collect_decls, quote_ident, quote_str, ExprFactory};
 use swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::config::Providers;
@@ -14,7 +11,7 @@ use crate::config::Providers;
 pub struct Provide {
     bindings: Lrc<AHashSet<Id>>,
     providers: Providers,
-    var_decls: Lock<AHashMap<String, ModuleItem>>,
+    var_decls: IndexMap<String, ModuleItem>,
 }
 
 impl Provide {
@@ -32,10 +29,9 @@ impl VisitMut for Provide {
         self.bindings = Lrc::new(collect_decls(&*module));
         module.visit_mut_children_with(self);
 
-        module.body.splice(
-            0..0,
-            self.var_decls.borrow().iter().map(|(_, var)| var.clone()),
-        );
+        module
+            .body
+            .splice(0..0, self.var_decls.iter().map(|(_, var)| var.clone()));
     }
 
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
@@ -44,76 +40,36 @@ impl VisitMut for Provide {
             let provider = self.providers.get(&sym.to_string());
             if !has_binding && provider.is_some() {
                 if let Some((from, key)) = provider {
-                    // require("provider")
-                    let require_call = Expr::Call(CallExpr {
-                        span: DUMMY_SP,
-                        callee: Callee::Expr(Box::new(Expr::Ident(Ident {
-                            span: DUMMY_SP,
-                            sym: "require".into(),
-                            optional: false,
-                        }))),
-                        args: vec![ExprOrSpread {
-                            spread: None,
-                            expr: Box::new(Expr::Lit(Lit::Str(Str {
-                                span: DUMMY_SP,
-                                value: JsWord::from(from.clone()),
-                                raw: None,
-                            }))),
-                        }],
-                        type_args: None,
-                    });
-
-                    let require_decl = {
+                    let require_decl: ModuleItem = {
                         if key.is_empty() {
-                            // const process = require('process');
-                            VarDeclarator {
-                                span: *span,
-                                name: Pat::Ident(BindingIdent {
-                                    id: Ident {
-                                        span: *span,
-                                        sym: sym.clone(),
-                                        optional: false,
-                                    },
-                                    type_ann: None,
-                                }),
-                                init: Some(Box::new(require_call)),
-                                definite: false,
-                            }
+                            // eg: const process = require('process');
+                            quote_ident!("require")
+                                .as_call(DUMMY_SP, vec![quote_str!(from.as_str()).as_arg()])
+                                .into_var_decl(
+                                    VarDeclKind::Const,
+                                    quote_ident!(*span, sym.clone()).into(),
+                                )
+                                .into()
                         } else {
-                            // const Buffer = require("buffer").Buffer;
-                            VarDeclarator {
-                                span: *span,
-                                name: Pat::Ident(BindingIdent {
-                                    id: Ident {
-                                        span: *span,
-                                        sym: key.as_str().into(),
-                                        optional: false,
-                                    },
-                                    type_ann: None,
-                                }),
-                                init: Some(Box::new(Expr::Member(MemberExpr {
-                                    obj: Box::new(require_call),
-                                    span: DUMMY_SP,
-                                    prop: MemberProp::Ident(Ident {
-                                        span: *span,
-                                        sym: key.as_str().into(),
-                                        optional: false,
-                                    }),
-                                }))),
-                                definite: false,
-                            }
+                            // require("buffer")
+                            let require_expr = quote_ident!("require")
+                                .as_call(DUMMY_SP, vec![quote_str!(from.as_str()).as_arg()]);
+
+                            // eg const Buffer = require("buffer").Buffer;
+                            Expr::Member(MemberExpr {
+                                obj: require_expr.into(),
+                                span: DUMMY_SP,
+                                prop: quote_ident!(key.as_str()).into(),
+                            })
+                            .into_var_decl(
+                                VarDeclKind::Const,
+                                quote_ident!(*span, sym.clone()).into(),
+                            )
+                            .into()
                         }
                     };
 
-                    self.var_decls.borrow_mut().insert(
-                        key.clone(),
-                        ModuleItem::Stmt(Stmt::Decl(Decl::Var(Box::new(VarDecl {
-                            span: *span,
-                            kind: VarDeclKind::Const,
-                            declare: false,
-                            decls: vec![require_decl],
-                        })))),
-                    );
+                    self.var_decls.insert(key.clone(), require_decl);
                 }
             }
         }
