@@ -213,6 +213,11 @@ impl Module {
         info.raw.as_bytes().len()
     }
 
+    // wrap module stmt into a function
+    // eg:
+    // function(module, exports, require) {
+    //   module stmt..
+    // }
     pub fn as_module_fn_expr(&self) -> anyhow::Result<Option<FnExpr>> {
         match &self.info.as_ref().unwrap().ast {
             ModuleAst::Script(script) => {
@@ -249,6 +254,7 @@ impl Module {
                     function: func.into(),
                 }))
             }
+            //TODO:  css module will be removed in the future
             ModuleAst::Css(_) => Ok(Some(empty_module_fn_expr())),
             ModuleAst::None => Ok(None),
         }
