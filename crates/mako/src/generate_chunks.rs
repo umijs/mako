@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::hash::Hasher;
+use std::path::Path;
 use std::sync::Arc;
 use std::vec;
 
@@ -24,7 +25,6 @@ use crate::ast::build_js_ast;
 use crate::chunk::{Chunk, ChunkType};
 use crate::compiler::{Compiler, Context};
 use crate::config::Mode;
-use crate::generate::hash_file_name;
 use crate::load::file_content_hash;
 use crate::minify::{minify_css, minify_js};
 use crate::module::{ModuleAst, ModuleId};
@@ -748,4 +748,12 @@ fn to_array_lit(elems: Vec<ExprOrSpread>) -> ArrayLit {
         span: DUMMY_SP,
         elems: elems.into_iter().map(Some).collect::<Vec<_>>(),
     }
+}
+
+fn hash_file_name(file_name: &String, hash: &String) -> String {
+    let path = Path::new(&file_name);
+    let file_stem = path.file_stem().unwrap().to_str().unwrap();
+    let file_extension = path.extension().unwrap().to_str().unwrap();
+
+    format!("{}.{}.{}", file_stem, hash, file_extension)
 }

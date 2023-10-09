@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::fs;
 use std::ops::DerefMut;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
@@ -464,15 +464,6 @@ fn to_hot_update_chunk_name(chunk_name: &String, hash: u64) -> String {
             format!("{left}.{hash}.hot-update.{ext}")
         }
     }
-}
-
-#[allow(dead_code)]
-pub fn hash_file_name(file_name: &String, hash: &String) -> String {
-    let path = Path::new(&file_name);
-    let file_stem = path.file_stem().unwrap().to_str().unwrap();
-    let file_extension = path.extension().unwrap().to_str().unwrap();
-
-    format!("{}.{}.{}", file_stem, hash, file_extension)
 }
 
 #[derive(Serialize)]
