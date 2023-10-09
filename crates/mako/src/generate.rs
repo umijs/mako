@@ -130,13 +130,13 @@ impl Compiler {
         // generate chunks
         let t_generate_chunks = Instant::now();
         debug!("generate chunks");
-        let chunk_asts = self.generate_chunk_files()?;
+        let chunk_files = self.generate_chunk_files()?;
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         // ast to code and sourcemap, then write
         let t_ast_to_code_and_write = Instant::now();
         debug!("ast to code and write");
-        chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
+        chunk_files.par_iter().try_for_each(|file| -> Result<()> {
             self.emit_chunk_file(file);
             Ok(())
         })?;
@@ -275,13 +275,13 @@ impl Compiler {
         // generate chunks
 
         let t_generate_chunks = Instant::now();
-        let chunk_asts = self.generate_chunk_files()?;
+        let chunk_files = self.generate_chunk_files()?;
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         // ast to code and sourcemap, then write
         let t_ast_to_code_and_write = Instant::now();
         debug!("ast to code and write");
-        chunk_asts.par_iter().try_for_each(|file| -> Result<()> {
+        chunk_files.par_iter().try_for_each(|file| -> Result<()> {
             self.emit_chunk_file(file);
 
             Ok(())
