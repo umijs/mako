@@ -12,8 +12,8 @@ use swc_css_ast::Stylesheet;
 use swc_css_codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};
 use swc_css_codegen::{CodeGenerator, CodegenConfig, Emit};
 use swc_ecma_ast::{
-    ArrayLit, Expr, ExprOrSpread, FnExpr, KeyValueProp, Lit, Module as SwcModule, Number,
-    ObjectLit, Prop, PropOrSpread, Stmt, Str, VarDeclKind,
+    ArrayLit, BlockStmt, Expr, ExprOrSpread, FnExpr, Function, KeyValueProp, Lit,
+    Module as SwcModule, Number, ObjectLit, Prop, PropOrSpread, Stmt, Str, VarDeclKind,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
@@ -555,6 +555,8 @@ fn render_entry_chunk_js(
         .body
         .splice(0..0, stmts.into_iter().map(|s| s.into()));
 
+    ast.ast = wrap_in_iife(ast.ast);
+
     if context.config.minify && matches!(context.config.mode, Mode::Production) {
         minify_js(&mut ast, context)?;
     }
@@ -747,5 +749,36 @@ fn to_array_lit(elems: Vec<ExprOrSpread>) -> ArrayLit {
     ArrayLit {
         span: DUMMY_SP,
         elems: elems.into_iter().map(Some).collect::<Vec<_>>(),
+    }
+}
+
+fn wrap_in_iife(module: SwcModule) -> SwcModule {
+    let stmts = module
+        .body
+        .into_iter()
+        .map(|stmt| stmt.as_stmt().unwrap().clone())
+        .collect::<Vec<_>>();
+
+    let fnc: FnExpr = Function {
+        params: vec![],
+        decorators: vec![],
+        span: DUMMY_SP,
+        body: Some(BlockStmt {
+            span: DUMMY_SP,
+            stmts,
+        }),
+        is_generator: false,
+        is_async: false,
+        type_params: None,
+        return_type: None,
+    }
+    .into();
+
+    let stmt = fnc.wrap_with_paren().as_iife().into_stmt();
+
+    SwcModule {
+        body: vec![stmt.into()],
+        shebang: module.shebang,
+        span: module.span,
     }
 }
