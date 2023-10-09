@@ -24,7 +24,7 @@ use twox_hash::XxHash64;
 use crate::ast::build_js_ast;
 use crate::chunk::{Chunk, ChunkType};
 use crate::compiler::{Compiler, Context};
-use crate::config::Mode;
+use crate::config::{DevtoolConfig, Mode};
 use crate::load::file_content_hash;
 use crate::minify::{minify_css, minify_js};
 use crate::module::{ModuleAst, ModuleId};
@@ -436,6 +436,7 @@ fn render_entry_chunk_js(
         .map(|id| Some(quote_str!(id).as_arg()))
         .collect::<Vec<_>>();
 
+    // var d = [ ..all dep chunk ids ]
     let dep_chunk_ids_decl_stmt: Stmt = ArrayLit {
         span: DUMMY_SP,
         elems: dep_chunks_ids,
@@ -445,6 +446,7 @@ fn render_entry_chunk_js(
 
     stmts.push(dep_chunk_ids_decl_stmt);
 
+    // var cssInstalledChunks = { "chunk_id": 0 }
     let init_install_css_chunk: Stmt = {
         ObjectLit {
             span: DUMMY_SP,
@@ -508,26 +510,7 @@ fn render_entry_chunk_js(
         minify_js(&mut ast, context)?;
     }
 
-    let mut buf = vec![];
-    let mut source_map_buf = Vec::new();
-    let cm = context.meta.script.cm.clone();
-    let comments = context.meta.script.output_comments.read().unwrap();
-    let swc_comments = comments.get_swc_comments();
-
-    let mut emitter = Emitter {
-        cfg: JsCodegenConfig::default()
-            .with_minify(context.config.minify && matches!(context.config.mode, Mode::Production))
-            .with_target(context.config.output.es_version)
-            .with_ascii_only(true)
-            .with_omit_last_semi(true),
-        cm: cm.clone(),
-        comments: Some(swc_comments),
-        wr: Box::new(JsWriter::new(cm, "\n", &mut buf, Some(&mut source_map_buf))),
-    };
-    emitter.emit_module(&ast.ast)?;
-
-    let cm = &context.meta.script.cm;
-    let source_map_buf = build_source_map(&source_map_buf, cm);
+    let (buf, source_map_buf) = render_module_js(&ast.ast, context)?;
 
     let hash = if context.config.hash {
         Some(file_content_hash(&buf))
@@ -547,28 +530,9 @@ fn render_entry_chunk_js(
 
 #[cached(result = true, key = "u64", convert = "{chunk_pot.js_hash}")]
 fn render_normal_chunk_js(chunk_pot: &ChunkPot, context: &Arc<Context>) -> Result<ChunkFile> {
-    let mut buf = vec![];
-    let mut source_map_buf = Vec::new();
-    let cm = context.meta.script.cm.clone();
-    let comments = context.meta.script.output_comments.read().unwrap();
-    let swc_comments = comments.get_swc_comments();
-
     let ast = chunk_pot.to_chunk_module();
 
-    let mut emitter = Emitter {
-        cfg: JsCodegenConfig::default()
-            .with_minify(context.config.minify && matches!(context.config.mode, Mode::Production))
-            .with_target(context.config.output.es_version)
-            .with_ascii_only(true)
-            .with_omit_last_semi(true),
-        cm: cm.clone(),
-        comments: Some(swc_comments),
-        wr: Box::new(JsWriter::new(cm, "\n", &mut buf, Some(&mut source_map_buf))),
-    };
-    emitter.emit_module(&ast)?;
-
-    let cm = &context.meta.script.cm;
-    let source_map_buf = build_source_map(&source_map_buf, cm);
+    let (buf, source_map_buf) = render_module_js(&ast, context)?;
 
     let hash = if context.config.hash {
         Some(file_content_hash(&buf))
@@ -584,6 +548,36 @@ fn render_normal_chunk_js(chunk_pot: &ChunkPot, context: &Arc<Context>) -> Resul
         chunk_id: chunk_pot.chunk_id.clone(),
         file_type: ChunkFileType::JS,
     })
+}
+
+fn render_module_js(ast: &SwcModule, context: &Arc<Context>) -> Result<(Vec<u8>, Vec<u8>)> {
+    let mut buf = vec![];
+    let mut source_map_buf = Vec::new();
+    let cm = context.meta.script.cm.clone();
+    let comments = context.meta.script.output_comments.read().unwrap();
+    let swc_comments = comments.get_swc_comments();
+
+    let mut emitter = Emitter {
+        cfg: JsCodegenConfig::default()
+            .with_minify(context.config.minify && matches!(context.config.mode, Mode::Production))
+            .with_target(context.config.output.es_version)
+            .with_ascii_only(true)
+            .with_omit_last_semi(true),
+        cm: cm.clone(),
+        comments: Some(swc_comments),
+        wr: Box::new(JsWriter::new(cm, "\n", &mut buf, Some(&mut source_map_buf))),
+    };
+    emitter.emit_module(ast)?;
+
+    let cm = &context.meta.script.cm;
+    let source_map = match context.config.devtool {
+        DevtoolConfig::None => {
+            vec![]
+        }
+        _ => build_source_map(&source_map_buf, cm),
+    };
+
+    Ok((buf, source_map))
 }
 
 #[cached(
