@@ -91,6 +91,7 @@ impl ChunkPot {
 
         let module_object = self.to_module_object();
 
+        // globalThis.jsonpCallback([["module_id"], { module object }])
         let jsonp_callback_stmt = <Expr as ExprFactory>::as_call(
             *member_expr!(DUMMY_SP, globalThis.jsonpCallback),
             DUMMY_SP,
