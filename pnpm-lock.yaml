@@ -324,8 +324,8 @@ importers:
         specifier: ^4.2.0
         version: 4.2.0
       less-plugin-aliases-fork:
-        specifier: ^1.0.0
-        version: 1.0.0
+        specifier: ^1.0.1
+        version: 1.0.1
       node-libs-browser-okam:
         specifier: 2.2.4
         version: 2.2.4
@@ -9489,8 +9489,8 @@ packages:
     engines: {node: '> 0.8'}
     dev: true
 
-  /less-plugin-aliases-fork@1.0.0:
-    resolution: {integrity: sha512-ftYS4x+Itn4m3yIOFv98Top7yXTzWz1At8KefmYp91kniv7RWOCCole1iJdjs6+S1pmVBf866p2ObtrDATLMPA==}
+  /less-plugin-aliases-fork@1.0.1:
+    resolution: {integrity: sha512-uYIKsxITFFlv0iVPrd2Wazkn8bWGmEBwELeU1MlkYMyS9DlXVVZ30jG4NawH4FrKiDmqouIQb+dRi+1NCmXKDg==}
     dev: false
 
   /less@4.1.3:

@@ -61,10 +61,15 @@ fn compile_less(param: &PluginLoadParam, _content: &str, context: &Arc<Context>)
         alias_params.push(format!("{}={}", k, v));
     });
     let alias_params = alias_params.join("&");
-    args.push(format!("--aliases-fork=\'{}\'", alias_params));
+    args.push(format!("--aliases-fork={}", alias_params));
     if !theme.is_empty() {
         theme.iter().for_each(|(k, v)| {
-            args.push(format!("--modify-var={}=\'{}\'", k, v));
+            let v = if v.contains(' ') {
+                format!("\"{}\"", v)
+            } else {
+                v.to_string()
+            };
+            args.push(format!("--modify-var={}={}", k, v));
         });
     }
     args.push(param.path.to_string());
@@ -88,6 +93,12 @@ fn compile_less(param: &PluginLoadParam, _content: &str, context: &Arc<Context>)
         return Err(anyhow!(LoadError::CompileLessError {
             path: param.path.to_string(),
             reason,
+        }));
+    }
+    if !output.stderr.is_empty() {
+        return Err(anyhow!(LoadError::CompileLessError {
+            path: param.path.to_string(),
+            reason: String::from_utf8_lossy(&output.stderr).to_string(),
         }));
     }
     let css_content = String::from_utf8_lossy(&output.stdout);
