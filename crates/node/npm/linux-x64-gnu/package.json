@@ -1,6 +1,6 @@
 {
   "name": "@okamjs/okam-linux-x64-gnu",
-  "version": "0.0.18",
+  "version": "0.0.19",
   "os": [
     "linux"
   ],
