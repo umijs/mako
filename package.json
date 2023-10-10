@@ -3,7 +3,7 @@
     "prepare": "husky install",
     "rome:format": "rome format --write .",
     "release": "esno scripts/release.ts",
-    "release:bundler-okam": "cd packages/bundler-okam && tnpm publish"
+    "release:bundler-okam": "esno scripts/release-bundler-okam.ts"
   },
   "license": "MIT",
   "devDependencies": {
