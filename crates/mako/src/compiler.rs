@@ -163,6 +163,8 @@ impl Compiler {
             Arc::new(plugins::farm_tree_shake::FarmTreeShake {}),
             Arc::new(plugins::invalid_syntax::InvalidSyntaxPlugin {}),
             Arc::new(plugins::hmr_runtime::HMRRuntimePlugin {}),
+            Arc::new(plugins::wasm_runtime::WasmRuntimePlugin {}),
+            Arc::new(plugins::async_runtime::AsyncRuntimePlugin {}),
         ];
 
         let mut config = config;

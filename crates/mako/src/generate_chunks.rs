@@ -468,26 +468,12 @@ fn render_entry_chunk_js(
 
     stmts.push(init_install_css_chunk);
 
-    let runtime_content = compile_runtime_entry(
-        context
-            .assets_info
-            .lock()
-            .unwrap()
-            .values()
-            .any(|info| info.ends_with(".wasm")),
-        context
-            .module_graph
-            .read()
-            .unwrap()
-            .modules()
-            .iter()
-            .any(|module| module.info.as_ref().unwrap().is_async),
-    )
-    .replace("_%full_hash%_", &full_hash.to_string())
-    .replace(
-        "// __inject_runtime_code__",
-        &context.plugin_driver.runtime_plugins_code(context)?,
-    );
+    let runtime_content = include_str!("runtime/runtime_entry.js")
+        .replace("_%full_hash%_", &full_hash.to_string())
+        .replace(
+            "// __inject_runtime_code__",
+            &context.plugin_driver.runtime_plugins_code(context)?,
+        );
 
     let mut ast = build_js_ast(
         "mako_internal_runtime_entry.js",
@@ -633,27 +619,6 @@ fn get_css_chunk_filename(js_chunk_filename: &str) -> String {
         "{}.css",
         js_chunk_filename.strip_suffix(".js").unwrap_or("")
     )
-}
-
-fn compile_runtime_entry(has_wasm: bool, has_async: bool) -> String {
-    let runtime_entry_content_str = include_str!("runtime/runtime_entry.js");
-    runtime_entry_content_str
-        .replace(
-            "// __WASM_REQUIRE_SUPPORT",
-            if has_wasm {
-                include_str!("runtime/runtime_wasm.js")
-            } else {
-                ""
-            },
-        )
-        .replace(
-            "// __REQUIRE_ASYNC_MODULE_SUPPORT",
-            if has_async {
-                include_str!("runtime/runtime_async.js")
-            } else {
-                ""
-            },
-        )
 }
 
 pub fn build_props(key_str: &str, value: Box<Expr>) -> PropOrSpread {

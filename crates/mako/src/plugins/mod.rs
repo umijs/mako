@@ -1,4 +1,5 @@
 pub mod assets;
+pub mod async_runtime;
 pub mod copy;
 pub mod css;
 pub mod farm_tree_shake;
@@ -16,5 +17,6 @@ pub mod runtime;
 pub mod svg;
 pub mod toml;
 pub mod wasm;
+pub mod wasm_runtime;
 pub mod xml;
 pub mod yaml;
