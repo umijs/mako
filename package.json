@@ -3,6 +3,7 @@
     "prepare": "husky install",
     "rome:format": "rome format --write .",
     "release": "esno scripts/release.ts",
+    "release:okam": "pnpm --filter @okamjs/okam release",
     "release:bundler-okam": "esno scripts/release-bundler-okam.ts"
   },
   "license": "MIT",

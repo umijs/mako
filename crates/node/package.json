@@ -36,7 +36,8 @@
     "prepublishOnly": "napi prepublish -t npm",
     "test": "ava",
     "universal": "napi universal",
-    "version": "napi version"
+    "version": "napi version",
+    "release": "esno scripts/release.ts"
   },
   "optionalDependencies": {
     "@okamjs/okam-darwin-arm64": "0.0.19",

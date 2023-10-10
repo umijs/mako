@@ -25,6 +25,10 @@ import 'zx/globals';
   await $`git add ./`;
   await $`git commit -m "chore: bundler-okam@${bundlerOkamPkg.version}"`;
 
+  // git push
+  console.log('Push');
+  await $`git push origin master`;
+
   console.log('Done');
   console.log('Please run the following command to publish:');
   console.log('cd packages/bundler-okam && tnpm publish');
