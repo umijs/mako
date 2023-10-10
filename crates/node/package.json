@@ -1,6 +1,6 @@
 {
   "name": "@okamjs/okam",
-  "version": "0.0.17",
+  "version": "0.0.18",
   "main": "index.js",
   "types": "index.d.ts",
   "napi": {
@@ -39,8 +39,8 @@
     "version": "napi version"
   },
   "optionalDependencies": {
-    "@okamjs/okam-darwin-arm64": "0.0.15",
-    "@okamjs/okam-darwin-x64": "0.0.15",
-    "@okamjs/okam-linux-x64-gnu": "0.0.15"
+    "@okamjs/okam-darwin-arm64": "0.0.18",
+    "@okamjs/okam-darwin-x64": "0.0.18",
+    "@okamjs/okam-linux-x64-gnu": "0.0.18"
   }
 }
