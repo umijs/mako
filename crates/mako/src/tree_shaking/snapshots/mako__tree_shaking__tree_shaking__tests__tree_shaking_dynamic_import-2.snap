@@ -7,12 +7,11 @@ globalThis.jsonpCallback([
         "a.ts"
     ],
     {
-        "a.css": function(module, exports, require) {},
         "a.ts": function(module, exports, require) {
             Object.defineProperty(exports, "__esModule", {
                 value: true
             });
-            require("a.css");
+            "";
         }
     }
 ]);

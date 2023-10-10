@@ -35,11 +35,10 @@ var m = {
         Object.defineProperty(exports, "__esModule", {
             value: true
         });
-        require("style.css");
+        "";
         require("foo.tsx");
         console.log('ff');
-    },
-    "style.css": function(module, exports, require) {}
+    }
 };
 function createRuntime(makoModules, deps, entryModuleId) {
     const modulesRegistry = {};

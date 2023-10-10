@@ -97,6 +97,14 @@ impl VisitMut for DepReplacer<'_> {
                             self.replace_source(source);
                         }
                     }
+
+                    if source_string.ends_with(".css?modules") || source_string.ends_with(".css") {
+                        *expr = Expr::Lit(Lit::Str(Str {
+                            span: DUMMY_SP,
+                            value: "".into(),
+                            raw: None,
+                        }))
+                    }
                 }
             }
         }

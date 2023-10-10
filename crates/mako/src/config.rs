@@ -159,9 +159,6 @@ pub struct Config {
     pub px2rem: bool,
     #[serde(rename = "px2remConfig")]
     pub px2rem_config: Px2RemConfig,
-    // temp flag
-    #[serde(rename = "extractCSS")]
-    pub extract_css: bool,
     pub hash: bool,
     pub tree_shake: TreeShakeStrategy,
     #[serde(rename = "autoCSSModules")]
@@ -196,7 +193,6 @@ const DEFAULT_CONFIG: &str = r#"
     "hmrPort": "3000",
     "moduleIdStrategy": "named",
     "codeSplitting": "none",
-    "extractCSS": false,
     "hash": false,
     "px2rem": false,
     "px2remConfig": { "root": 100, "propBlackList": [], "propWhiteList": [], "selectorBlackList": [], "selectorWhiteList": [] },

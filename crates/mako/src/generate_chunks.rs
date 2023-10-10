@@ -147,8 +147,10 @@ impl ChunkPot {
             let m = module.as_module_fn_expr()?;
 
             if let Some(fn_expr) = m {
-                module_raw_hash_map.insert(module.id.id.clone(), module_info.raw_hash);
-                module_map.insert(module.id.generate(context), fn_expr);
+                if !module.id.id.ends_with(".css") && !module.id.id.ends_with(".css?modules") {
+                    module_raw_hash_map.insert(module.id.id.clone(), module_info.raw_hash);
+                    module_map.insert(module.id.generate(context), fn_expr);
+                }
             }
 
             if let ModuleAst::Css(ast) = ast {
