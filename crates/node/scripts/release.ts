@@ -68,6 +68,21 @@ import * as process from 'process';
   // --ignore-scripts because we don't publish optional pkg
   await $`npm publish --tag ${tag} --access public`;
 
+  // set new version to bundler-okam
+  console.log('Set new version to bundler-okam');
+  const bundlerOkamPkgPath = path.join(
+    __dirname,
+    '../../../packages/bundler-okam/package.json',
+  );
+  const bundlerOkamPkg = JSON.parse(
+    fs.readFileSync(bundlerOkamPkgPath, 'utf-8'),
+  );
+  bundlerOkamPkg.dependencies['@okamjs/okam'] = `${newVersion}`;
+  fs.writeFileSync(
+    bundlerOkamPkgPath,
+    JSON.stringify(bundlerOkamPkg, null, 2) + '\n',
+  );
+
   await $`git commit -a -m "release: ${nodePkg.name}@${newVersion}"`;
   // tag
   console.log('Tag');
