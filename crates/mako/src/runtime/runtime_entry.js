@@ -261,9 +261,6 @@ function createRuntime(makoModules, deps, entryModuleId) {
 
   // __inject_runtime_code__
 
-  // __WASM_REQUIRE_SUPPORT
-  // __REQUIRE_ASYNC_MODULE_SUPPORT
-
   if (deps.length > 0) {
     Promise.all(
       deps.map(function (dep) {
