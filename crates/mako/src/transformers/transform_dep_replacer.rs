@@ -98,12 +98,9 @@ impl VisitMut for DepReplacer<'_> {
                         }
                     }
 
+                    // remove `require('./xxx.css');`
                     if source_string.ends_with(".css?modules") || source_string.ends_with(".css") {
-                        *expr = Expr::Lit(Lit::Str(Str {
-                            span: DUMMY_SP,
-                            value: "".into(),
-                            raw: None,
-                        }))
+                        *expr = Expr::Lit(Lit::Str(quote_str!("")))
                     }
                 }
             }
