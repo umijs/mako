@@ -9,7 +9,6 @@ use tracing::debug;
 use crate::compiler::Args;
 use crate::config::Mode;
 use crate::logger::init_logger;
-use crate::profile_gui::ProfileApp;
 
 mod analyze_deps;
 mod ast;
@@ -88,13 +87,13 @@ async fn main() {
     if env::var("MAKO_PROFILE").is_ok() {
         // Turn on the profiler only if env `MAKO_PROFILE` exists. When the profiler is off the profiler scope macros only has an overhead of 1-2 ns (and some stack space);
         puffin::set_scopes_on(true);
-        let native_options = Default::default();
-        let compiler = compiler.clone();
-        let _ = eframe::run_native(
-            "puffin egui eframe",
-            native_options,
-            Box::new(move |_cc| Box::new(ProfileApp::new(compiler))),
-        );
+        // let native_options = Default::default();
+        // let compiler = compiler.clone();
+        // let _ = eframe::run_native(
+        //     "puffin egui eframe",
+        //     native_options,
+        //     Box::new(move |_cc| Box::new(ProfileApp::new(compiler))),
+        // );
     } else {
         compiler.compile();
     }

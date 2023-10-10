@@ -1,11 +1,12 @@
 use std::sync::Arc;
 
-use eframe::egui;
-
+// use eframe::egui;
 use crate::compiler::Compiler;
 
 pub struct ProfileApp {
+    #[allow(dead_code)]
     frame_counter: u64,
+    #[allow(dead_code)]
     compiler: Arc<Compiler>,
 }
 
@@ -19,16 +20,16 @@ impl ProfileApp {
     }
 }
 
-impl eframe::App for ProfileApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        puffin::GlobalProfiler::lock().new_frame(); // call once per frame!
+// impl eframe::App for ProfileApp {
+//     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+//         puffin::GlobalProfiler::lock().new_frame(); // call once per frame!
 
-        puffin_egui::profiler_window(ctx);
+//         puffin_egui::profiler_window(ctx);
 
-        if self.frame_counter == 0 {
-            self.compiler.compile();
-        }
+//         if self.frame_counter == 0 {
+//             self.compiler.compile();
+//         }
 
-        self.frame_counter = 1;
-    }
-}
+//         self.frame_counter = 1;
+//     }
+// }

@@ -40,4 +40,6 @@ selectorWhiteList: string[];
 };
 stats?: boolean;
 hash?: boolean;
+autoCssModules?: boolean;
+dynamicImportToRequire?: boolean;
 }, watch: boolean): Promise<void>
