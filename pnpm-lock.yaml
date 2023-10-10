@@ -72,14 +72,14 @@ importers:
   crates/node:
     optionalDependencies:
       '@okamjs/okam-darwin-arm64':
-        specifier: 0.0.15
-        version: 0.0.15
+        specifier: 0.0.18
+        version: 0.0.18
       '@okamjs/okam-darwin-x64':
-        specifier: 0.0.15
-        version: 0.0.15
+        specifier: 0.0.18
+        version: 0.0.18
       '@okamjs/okam-linux-x64-gnu':
-        specifier: 0.0.15
-        version: 0.0.15
+        specifier: 0.0.18
+        version: 0.0.18
     devDependencies:
       '@napi-rs/cli':
         specifier: ^2.14.8
@@ -294,7 +294,7 @@ importers:
   packages/bundler-okam:
     dependencies:
       '@okamjs/okam':
-        specifier: 0.0.17
+        specifier: 0.0.18
         version: link:../../crates/node
       '@swc/helpers':
         specifier: 0.5.1
@@ -3551,8 +3551,8 @@ packages:
       fastq: 1.15.0
     dev: true
 
-  /@okamjs/okam-darwin-arm64@0.0.15:
-    resolution: {integrity: sha512-09hj/SQNkYq4UnpRcXm5lPaL1rvx0F7mlIskeZJ5FBCYUCzEAcDcfYU/odrfN27kxOi2r69XctMggmLa5IeuVw==}
+  /@okamjs/okam-darwin-arm64@0.0.18:
+    resolution: {integrity: sha512-Dx8ZAsg+TxEIob4NvLArqHfVnlaIPSo1K8S2M5Mdl77H2oOrtFo+XePRP/zKrlDa2ZQJotcT+c42KACSriPM5A==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
@@ -3560,8 +3560,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-darwin-x64@0.0.15:
-    resolution: {integrity: sha512-9A7mgPORziB9r+snrm9w79vqopjLvSYXaDW+/zy120uZLqdLQzaTJgV8p687RSpP+b0CosIK4Fw7SmNy8wmYmQ==}
+  /@okamjs/okam-darwin-x64@0.0.18:
+    resolution: {integrity: sha512-AJ9EsC1ux9h9H/Em6tSq+KCGuTU994mey0X1hWWrheelAFFxXEfsrAj6HJHwOPsKTJNW56keAomcPqE28MU0pw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
@@ -3569,8 +3569,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-linux-x64-gnu@0.0.15:
-    resolution: {integrity: sha512-Ppfpnje4LQAKFvN5ze9me28ggv8YElOLFscsduEyZsuzZCjRcMFTim6Hxq6ByOEBP/wACiJILaXDqucHTNQJgA==}
+  /@okamjs/okam-linux-x64-gnu@0.0.18:
+    resolution: {integrity: sha512-BlAVgTTqtk8zZPkOHU4V0uC5BZZ3TgHSnkpE/XqMouZ696MTxwIexk5p8cnoMT23U9d+DFM2opS0OzECh2Bh6w==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
