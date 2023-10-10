@@ -40,7 +40,8 @@ impl Compiler {
 }
 
 pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> Result<()> {
-    puffin::profile_function!();
+    #[cfg(feature = "profile")]
+    mako_core::puffin::profile_function!();
     module_ids.iter().for_each(|module_id| {
         let module_graph = context.module_graph.read().unwrap();
         let deps = module_graph.get_dependencies_info(module_id);
@@ -119,7 +120,8 @@ pub struct TransformJsParam<'a> {
 }
 
 pub fn transform_js_generate(transform_js_param: TransformJsParam) {
-    puffin::profile_function!();
+    #[cfg(feature = "profile")]
+    mako_core::puffin::profile_function!();
     let TransformJsParam {
         _id,
         context,
@@ -223,7 +225,8 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) {
 }
 
 pub fn transform_css_generate(ast: &mut swc_css_ast::Stylesheet, context: &Arc<Context>) {
-    puffin::profile_function!();
+    #[cfg(feature = "profile")]
+    mako_core::puffin::profile_function!();
     // replace deps
     let mut css_handler = CssHandler {};
     ast.visit_mut_with(&mut css_handler);

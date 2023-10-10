@@ -217,11 +217,13 @@ impl Compiler {
         .green();
         println!("{}", building_with_message);
         {
-            puffin::profile_scope!("Build Stage");
+            #[cfg(feature = "profile")]
+            mako_core::puffin::profile_scope!("Build Stage");
             self.build();
         }
         let result = {
-            puffin::profile_scope!("Generate Stage");
+            #[cfg(feature = "profile")]
+            mako_core::puffin::profile_scope!("Generate Stage");
             self.generate()
         };
         let t_compiler = t_compiler.elapsed();

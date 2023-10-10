@@ -74,8 +74,10 @@ pub fn resolve(
     resolvers: &Resolvers,
     context: &Arc<Context>,
 ) -> Result<ResolverResource> {
-    puffin::profile_function!();
-    puffin::profile_scope!("resolve", &dep.source);
+    #[cfg(feature = "profile")]
+    mako_core::puffin::profile_function!();
+    #[cfg(feature = "profile")]
+    mako_core::puffin::profile_scope!("resolve", &dep.source);
     let resolver = if dep.resolve_type == ResolveType::Require {
         &resolvers.cjs
     } else {
