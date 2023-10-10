@@ -218,7 +218,7 @@ impl Module {
     // function(module, exports, require) {
     //   module stmt..
     // }
-    pub fn as_module_fn_expr(&self) -> anyhow::Result<Option<FnExpr>> {
+    pub fn to_module_fn_expr(&self) -> anyhow::Result<Option<FnExpr>> {
         match &self.info.as_ref().unwrap().ast {
             ModuleAst::Script(script) => {
                 let mut stmts = Vec::new();
