@@ -100,7 +100,7 @@ impl VisitMut for DepReplacer<'_> {
 
                     // remove `require('./xxx.css');`
                     if source_string.ends_with(".css?modules") || source_string.ends_with(".css") {
-                        *expr = Expr::Lit(Lit::Str(quote_str!("")))
+                        *expr = Expr::Lit(quote_str!("").into())
                     }
                 }
             }
