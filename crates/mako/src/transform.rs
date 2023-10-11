@@ -40,7 +40,7 @@ pub fn transform(
     task: &Task,
     resolvers: &Resolvers,
 ) -> Result<()> {
-    puffin::profile_function!(&task.path);
+    mako_core::mako_profile_function!();
     match ast {
         ModuleAst::Script(ast) => transform_js(
             &mut ast.ast,

@@ -47,7 +47,7 @@ pub struct OptimizeChunkModule {
 
 impl Compiler {
     pub fn optimize_chunk(&self) {
-        puffin::profile_function!();
+        mako_core::mako_profile_function!();
         debug!("optimize chunk");
         if let Some(optimize_options) = self.get_optimize_chunk_options() {
             // stage: prepare
