@@ -1,6 +1,6 @@
 {
   "name": "@okamjs/okam",
-  "version": "0.0.17",
+  "version": "0.0.19",
   "main": "index.js",
   "types": "index.d.ts",
   "napi": {
@@ -36,11 +36,12 @@
     "prepublishOnly": "napi prepublish -t npm",
     "test": "ava",
     "universal": "napi universal",
-    "version": "napi version"
+    "version": "napi version",
+    "release": "esno scripts/release.ts"
   },
   "optionalDependencies": {
-    "@okamjs/okam-darwin-arm64": "0.0.15",
-    "@okamjs/okam-darwin-x64": "0.0.15",
-    "@okamjs/okam-linux-x64-gnu": "0.0.15"
+    "@okamjs/okam-darwin-arm64": "0.0.19",
+    "@okamjs/okam-darwin-x64": "0.0.19",
+    "@okamjs/okam-linux-x64-gnu": "0.0.19"
   }
 }

@@ -25,7 +25,7 @@ use crate::tree_shaking::tree_shaking_module::ModuleSystem;
 /// 4. remove used module and update tree-shaked AST into module graph
 pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
     let (topo_sorted_modules, _cyclic_modules) = {
-        puffin::profile_scope!("tree shake toposort");
+        mako_core::mako_profile_scope!("tree shake toposort");
         module_graph.toposort()
     };
 

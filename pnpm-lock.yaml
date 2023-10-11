@@ -72,14 +72,14 @@ importers:
   crates/node:
     optionalDependencies:
       '@okamjs/okam-darwin-arm64':
-        specifier: 0.0.15
-        version: 0.0.15
+        specifier: 0.0.19
+        version: 0.0.19
       '@okamjs/okam-darwin-x64':
-        specifier: 0.0.15
-        version: 0.0.15
+        specifier: 0.0.19
+        version: 0.0.19
       '@okamjs/okam-linux-x64-gnu':
-        specifier: 0.0.15
-        version: 0.0.15
+        specifier: 0.0.19
+        version: 0.0.19
     devDependencies:
       '@napi-rs/cli':
         specifier: ^2.14.8
@@ -294,7 +294,7 @@ importers:
   packages/bundler-okam:
     dependencies:
       '@okamjs/okam':
-        specifier: 0.0.17
+        specifier: 0.0.19
         version: link:../../crates/node
       '@swc/helpers':
         specifier: 0.5.1
@@ -324,8 +324,8 @@ importers:
         specifier: ^4.2.0
         version: 4.2.0
       less-plugin-aliases-fork:
-        specifier: ^1.0.1
-        version: 1.0.1
+        specifier: ^1.0.2
+        version: 1.0.2
       node-libs-browser-okam:
         specifier: 2.2.4
         version: 2.2.4
@@ -3551,8 +3551,8 @@ packages:
       fastq: 1.15.0
     dev: true
 
-  /@okamjs/okam-darwin-arm64@0.0.15:
-    resolution: {integrity: sha512-09hj/SQNkYq4UnpRcXm5lPaL1rvx0F7mlIskeZJ5FBCYUCzEAcDcfYU/odrfN27kxOi2r69XctMggmLa5IeuVw==}
+  /@okamjs/okam-darwin-arm64@0.0.19:
+    resolution: {integrity: sha512-uB7d1e5ighLVOphghpKE3k4RqVjBvWY9jniBsCxKn+9nzgoGAQXxfI6hq4ZXsSTxgZIosXWgoMQurMCEwlkvoQ==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
@@ -3560,8 +3560,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-darwin-x64@0.0.15:
-    resolution: {integrity: sha512-9A7mgPORziB9r+snrm9w79vqopjLvSYXaDW+/zy120uZLqdLQzaTJgV8p687RSpP+b0CosIK4Fw7SmNy8wmYmQ==}
+  /@okamjs/okam-darwin-x64@0.0.19:
+    resolution: {integrity: sha512-w1Em8Gy1CRgh2C35FK3hpclMJLCY6wmMNbvVmqU9W5WeU5n9ArV2UhDDgs+cR9JwhDN2E1beqSeuWen6+ykmVw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
@@ -3569,8 +3569,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-linux-x64-gnu@0.0.15:
-    resolution: {integrity: sha512-Ppfpnje4LQAKFvN5ze9me28ggv8YElOLFscsduEyZsuzZCjRcMFTim6Hxq6ByOEBP/wACiJILaXDqucHTNQJgA==}
+  /@okamjs/okam-linux-x64-gnu@0.0.19:
+    resolution: {integrity: sha512-/tTUuVSLMGUJNwY5Qs6Kn4IzSp+umrYY4bMFHR00gVA3+cYkB/lp7LykVPHbvFVm+JxY0l4wadCakrDMbea2+g==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
@@ -9489,8 +9489,8 @@ packages:
     engines: {node: '> 0.8'}
     dev: true
 
-  /less-plugin-aliases-fork@1.0.1:
-    resolution: {integrity: sha512-uYIKsxITFFlv0iVPrd2Wazkn8bWGmEBwELeU1MlkYMyS9DlXVVZ30jG4NawH4FrKiDmqouIQb+dRi+1NCmXKDg==}
+  /less-plugin-aliases-fork@1.0.2:
+    resolution: {integrity: sha512-Woa4NLDzfiYlZmCZnnvD0PWB5Tv+XGJCMipGymgnmCivSmkOEH6sza1L2eQjXEC5btjpmuMNFBk8vqZ4jr4Dgg==}
     dev: false
 
   /less@4.1.3:

@@ -56,7 +56,7 @@ fn render_chunk_css(chunk_pot: &mut ChunkPot, context: &Arc<Context>) -> Result<
     let ast = &mut chunk_pot.stylesheet.as_mut().unwrap().0;
 
     {
-        puffin::profile_scope!("iter_chunk_css_modules:transform_css_generate");
+        mako_core::mako_profile_scope!("transform_css_generate");
         transform_css_generate(ast, context);
     }
 
@@ -265,7 +265,7 @@ impl<'cp> ChunkPot<'cp> {
         module_graph: &'a ModuleGraph,
         context: &'a Arc<Context>,
     ) -> Result<(JsModules<'a>, Option<CssModules>)> {
-        puffin::profile_function!();
+        mako_core::mako_profile_function!();
         let mut module_map: HashMap<String, (&Module, u64)> = Default::default();
         let mut merged_css_modules: Vec<(String, Stylesheet)> = vec![];
 
@@ -275,7 +275,7 @@ impl<'cp> ChunkPot<'cp> {
         let module_ids: Vec<_> = module_ids.iter().collect();
 
         for module_id in module_ids {
-            puffin::profile_scope!("split_modules:loop");
+            mako_core::mako_profile_scope!("split_modules:loop");
 
             let module = module_graph.get_module(module_id).unwrap();
             let module_info = module.info.as_ref().unwrap();
@@ -304,7 +304,7 @@ impl<'cp> ChunkPot<'cp> {
         let raw_hash = hash_map_ordered_by_key(&module_raw_hash_map);
 
         if !merged_css_modules.is_empty() {
-            puffin::profile_scope!("iter_chunk_css_modules");
+            mako_core::mako_profile_scope!("iter_chunk_css_modules");
 
             let mut stylesheet = Stylesheet {
                 span: DUMMY_SP,
@@ -464,7 +464,7 @@ fn to_module_line(
     _raw_hash: u64, // used for cache key
     module_id_str: &str,
 ) -> String {
-    puffin::profile_function!(module_id_str);
+    mako_core::mako_profile_function!(module_id_str);
 
     let mut buf = vec![];
     let mut source_map_buf = Vec::new();
@@ -591,7 +591,7 @@ fn render_dev_entry_chunk_js(
     context: &Arc<Context>,
     full_hash: u64,
 ) -> Result<ChunkFile> {
-    puffin::profile_function!();
+    mako_core::mako_profile_function!();
 
     let chunk_graph = context.chunk_graph.read().unwrap();
 
@@ -750,42 +750,11 @@ fn render_entry_chunk_js(
 
 #[once(result = true)]
 fn runtime_base_code(context: &Arc<Context>) -> Result<String> {
-    let has_wasm = context
-        .assets_info
-        .lock()
-        .unwrap()
-        .values()
-        .any(|info| info.ends_with(".wasm"));
-    let has_async = context
-        .module_graph
-        .read()
-        .unwrap()
-        .modules()
-        .iter()
-        .any(|module| module.info.as_ref().unwrap().is_async);
-
     let runtime_entry_content_str = include_str!("runtime/runtime_entry.js");
-    let content = runtime_entry_content_str
-        .replace(
-            "// __WASM_REQUIRE_SUPPORT",
-            if has_wasm {
-                include_str!("runtime/runtime_wasm.js")
-            } else {
-                ""
-            },
-        )
-        .replace(
-            "// __REQUIRE_ASYNC_MODULE_SUPPORT",
-            if has_async {
-                include_str!("runtime/runtime_async.js")
-            } else {
-                ""
-            },
-        )
-        .replace(
-            "// __inject_runtime_code__",
-            &context.plugin_driver.runtime_plugins_code(context)?,
-        );
+    let content = runtime_entry_content_str.replace(
+        "// __inject_runtime_code__",
+        &context.plugin_driver.runtime_plugins_code(context)?,
+    );
 
     Ok(content)
 }

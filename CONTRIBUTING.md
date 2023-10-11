@@ -103,8 +103,8 @@ $ hyperfine --runs 10 "./target/release/mako examples/with-antd"
 Performance analysis with puffin.
 
 ```bash
-$ cargo build --release
-$ MAKO_PROFILE=1 ./target/release/mako examples/normal --mode=production
+$ cargo build --release --features profile
+$ ./target/release/mako examples/normal --mode=production
 ```
 
 Use mako in umi or bigfish.
@@ -113,6 +113,39 @@ Use mako in umi or bigfish.
 $ OKAM=/PATH/TO/umijs/marko/packages/bundler-okam/index.js umi build --dev
 $ OKAM=/PATH/TO/umijs/marko/packages/bundler-okam/index.js max build --dev
 $ OKAM=/PATH/TO/umijs/marko/packages/bundler-okam/index.js bigfish build --dev
+```
+
+## Release Locally
+
+Prepare. Only need to do once.
+
+```bash
+# 安装交叉编译环境
+$ brew tap messense/macos-cross-toolchains
+$ brew install x86_64-unknown-linux-gnu
+# 支持编译 mac x86 和 linux x86
+$ rustup target add x86_64-apple-darwin
+$ rustup target add x86_64-unknown-linux-gnu
+# 用于去 linux x86 产物中的 debug 信息的镜像
+$ docker pull --platform linux/amd64 ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian
+```
+
+Release @okamjs/okam.
+
+```bash
+$ pnpm release:okam
+```
+
+Release @alipay/umi-bundler-okam.
+
+```bash
+$ pnpm release:bundler-okam
+```
+
+Then publish bundler-okam to tnpm.
+
+```bash
+$ cd packages/bundler-okam && tnpm publish
 ```
 
 ## Project Structure
