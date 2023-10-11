@@ -10,8 +10,7 @@ use swc_ecma_visit::{Visit, VisitWith};
 use crate::module::{Dependency, ModuleAst, ResolveType};
 
 pub fn analyze_deps(ast: &ModuleAst) -> Result<Vec<Dependency>> {
-    #[cfg(feature = "profile")]
-    mako_core::puffin::profile_function!();
+    mako_core::mako_profile_function!();
     match ast {
         ModuleAst::Script(ast) => analyze_deps_js(&ast.ast),
         ModuleAst::Css(ast) => analyze_deps_css(ast),

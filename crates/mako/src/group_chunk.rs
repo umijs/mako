@@ -17,8 +17,7 @@ impl Compiler {
     // - 多个 entry 之间的 chunk 共享
 
     pub fn group_chunk(&self) {
-        #[cfg(feature = "profile")]
-        mako_core::puffin::profile_function!();
+        mako_core::mako_profile_function!();
         debug!("group_chunk");
 
         let visited = Rc::new(RefCell::new(HashSet::new()));
@@ -96,8 +95,7 @@ impl Compiler {
         chunk_graph: &mut ChunkGraph,
         shared_chunk_names: Vec<String>,
     ) -> (Chunk, Vec<ModuleId>) {
-        #[cfg(feature = "profile")]
-        mako_core::puffin::profile_function!(&entry_module_id.id);
+        mako_core::mako_profile_function!(&entry_module_id.id);
         let mut dynamic_entries = vec![];
         let mut bfs = Bfs::new(VecDeque::from(vec![entry_module_id]), Default::default());
 

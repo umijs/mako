@@ -14,8 +14,7 @@ pub fn parse(
     request: &FileRequest,
     context: &Arc<Context>,
 ) -> Result<ModuleAst> {
-    #[cfg(feature = "profile")]
-    mako_core::puffin::profile_function!(&request.path);
+    mako_core::mako_profile_function!(&request.path);
     debug!("parse {:?}", request);
     let ast = context
         .plugin_driver

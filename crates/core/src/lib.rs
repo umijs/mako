@@ -14,3 +14,27 @@ pub use {
     swc_ecma_utils, swc_ecma_visit, swc_error_reporters, swc_node_comments, thiserror, tokio,
     tokio_tungstenite, toml, tracing, tracing_subscriber, tungstenite, twox_hash,
 };
+
+#[macro_export]
+macro_rules! mako_profile_scope {
+    ($id:expr) => {
+        #[cfg(feature = "profile")]
+        mako_core::puffin::profile_scope!($id);
+    };
+    ($id:expr, $data:expr) => {
+        #[cfg(feature = "profile")]
+        mako_core::puffin::profile_scope!($id, $data);
+    };
+}
+
+#[macro_export]
+macro_rules! mako_profile_function {
+    () => {
+        #[cfg(feature = "profile")]
+        mako_core::puffin::profile_function!();
+    };
+    ($data:expr) => {
+        #[cfg(feature = "profile")]
+        mako_core::puffin::profile_function!($data);
+    };
+}

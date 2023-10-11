@@ -48,8 +48,7 @@ impl Compiler {
                 TreeShakeStrategy::Basic => {
                     let mut module_graph = self.context.module_graph.write().unwrap();
 
-                    #[cfg(feature = "profile")]
-                    mako_core::puffin::profile_scope!("tree shake");
+                    mako_core::mako_profile_scope!("tree shake");
                     self.context
                         .plugin_driver
                         .optimize_module_graph(module_graph.deref_mut())?;
@@ -57,8 +56,7 @@ impl Compiler {
                     println!("basic optimize in {}ms.", t_tree_shaking.as_millis());
                 }
                 TreeShakeStrategy::Advanced => {
-                    #[cfg(feature = "profile")]
-                    mako_core::puffin::profile_scope!("advanced tree shake");
+                    mako_core::mako_profile_scope!("advanced tree shake");
                     let shaking_module_ids = self.tree_shaking();
                     let t_tree_shaking = t_tree_shaking.elapsed();
                     println!(
