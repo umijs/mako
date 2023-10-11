@@ -149,6 +149,7 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
             ".tsx".to_string(),
             ".mjs".to_string(),
             ".cjs".to_string(),
+            ".json".to_string(),
         ],
         condition_names: if is_browser {
             if resolver_type == ResolverType::Cjs {
