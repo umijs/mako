@@ -10,6 +10,7 @@ use crate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::compiler::Compiler;
 use crate::module::{Module, ModuleId, ModuleInfo};
 use crate::resolve::{ResolvedResource, ResolverResource};
+use crate::update::UpdateResult;
 
 #[derive(Clone)]
 pub enum OptimizeAllowChunks {
@@ -76,16 +77,21 @@ impl Compiler {
         }
     }
 
+    pub fn optimize_hot_update_chunk(&self, update_result: &UpdateResult) {
+        update_result;
+    }
+
     fn merge_minimal_async_chunks(&self, options: &OptimizeChunkOptions) {
         let mut async_to_entry = vec![];
         let chunk_graph = self.context.chunk_graph.read().unwrap();
         let chunks = chunk_graph.get_chunks();
 
         // find minimal async chunks to merge to entry chunk
+        // TODO: continue to merge deep-level async chunk
         for chunk in chunks {
             if chunk.chunk_type == ChunkType::Async && self.get_chunk_size(chunk) < options.min_size
             {
-                let entry_ids = chunk_graph.entry_dependencies_chunk(chunk);
+                let entry_ids = chunk_graph.entry_dependents_chunk(chunk);
 
                 // merge if there is only one entry chunk
                 // TODO: don't merge if entry chunk size is greater than max_size

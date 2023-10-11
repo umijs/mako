@@ -339,12 +339,11 @@ impl Compiler {
 
         let t_generate = Instant::now();
         let t_group_chunks = Instant::now();
-        // TODO 不需要重新构建 graph
-        self.group_chunk();
+        self.group_hot_update_chunk(&updated_modules);
         let t_group_chunks = t_group_chunks.elapsed();
 
         let t_optimize_chunks = Instant::now();
-        self.optimize_chunk();
+        self.optimize_hot_update_chunk(&updated_modules);
         let t_optimize_chunks = t_optimize_chunks.elapsed();
 
         let t_transform_modules = Instant::now();

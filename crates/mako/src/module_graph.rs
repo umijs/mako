@@ -180,6 +180,20 @@ impl ModuleGraph {
         deps
     }
 
+    pub fn get_dependents(&self, module_id: &ModuleId) -> Vec<(&ModuleId, &Dependency)> {
+        let mut edges = self.get_edges(module_id, Direction::Incoming);
+        let mut deps: Vec<(&ModuleId, &Dependency)> = vec![];
+        while let Some((edge_index, node_index)) = edges.next(&self.graph) {
+            let dependencies = self.graph.edge_weight(edge_index).unwrap();
+            let module = self.graph.node_weight(node_index).unwrap();
+            dependencies.iter().for_each(|dep| {
+                deps.push((&module.id, dep));
+            })
+        }
+        deps.sort_by_key(|(_, dep)| dep.order);
+        deps
+    }
+
     pub fn get_dependencies_info(
         &self,
         module_id: &ModuleId,
