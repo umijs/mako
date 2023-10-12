@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::hash::Hasher;
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use cached::instant::Instant;
 use cached::proc_macro::{cached, once};
 use cached::SizedCache;
@@ -104,7 +104,7 @@ fn render_dev_normal_chunk_js_with_cache(
     chunk_pot: &ChunkPot,
     context: &Arc<Context>,
 ) -> Result<ChunkFile> {
-    let buf: Vec<u8> = chunk_pot.to_chunk_module_content(context).into();
+    let buf: Vec<u8> = chunk_pot.to_chunk_module_content(context)?.into();
 
     let hash = if context.config.hash {
         Some(file_content_hash(&buf))
@@ -133,7 +133,7 @@ fn render_normal_chunk_js_with_cache(
     chunk_pot: &ChunkPot,
     context: &Arc<Context>,
 ) -> Result<ChunkFile> {
-    let module = chunk_pot.to_chunk_module();
+    let module = chunk_pot.to_chunk_module()?;
 
     let mut ast = GLOBALS.set(&context.meta.script.globals, || Ast {
         ast: module,
@@ -341,7 +341,7 @@ impl<'cp> ChunkPot<'cp> {
         }
     }
 
-    pub fn to_module_object(&self) -> ObjectLit {
+    pub fn to_module_object(&self) -> Result<ObjectLit> {
         let mut sorted_kv = self
             .module_map
             .iter()
@@ -352,7 +352,7 @@ impl<'cp> ChunkPot<'cp> {
         let mut props = Vec::new();
 
         for (module_id_str, module) in sorted_kv {
-            let fn_expr = module.0.to_module_fn_expr().unwrap().unwrap();
+            let fn_expr = module.0.to_module_fn_expr()?;
 
             let pv: PropOrSpread = Prop::KeyValue(KeyValueProp {
                 key: quote_str!(module_id_str.clone()).into(),
@@ -363,13 +363,13 @@ impl<'cp> ChunkPot<'cp> {
             props.push(pv);
         }
 
-        ObjectLit {
+        Ok(ObjectLit {
             span: DUMMY_SP,
             props,
-        }
+        })
     }
 
-    fn to_chunk_module_object_string(&self, context: &Arc<Context>) -> String {
+    fn to_chunk_module_object_string(&self, context: &Arc<Context>) -> Result<String> {
         mako_core::mako_profile_function!();
 
         let sorted_kv = {
@@ -393,25 +393,25 @@ impl<'cp> ChunkPot<'cp> {
             .map(|(module_id_str, module_and_hash)| {
                 to_module_line(module_and_hash.0, context, module_and_hash.1, module_id_str)
             })
-            .collect::<Vec<String>>()
+            .collect::<Result<Vec<String>>>()?
             .join("\n");
 
         {
             mako_core::mako_profile_scope!("wrap_in_brace");
-            format!(r#"{{ {} }}"#, module_defines)
+            Ok(format!(r#"{{ {} }}"#, module_defines))
         }
     }
 
-    pub fn to_chunk_module_content(&self, context: &Arc<Context>) -> String {
-        format!(
+    pub fn to_chunk_module_content(&self, context: &Arc<Context>) -> Result<String> {
+        Ok(format!(
             r#"globalThis.jsonpCallback([["{}"],
 {}]);"#,
             self.chunk_id,
-            self.to_chunk_module_object_string(context)
-        )
+            self.to_chunk_module_object_string(context)?
+        ))
     }
 
-    pub fn to_chunk_module(&self) -> SwcModule {
+    pub fn to_chunk_module(&self) -> Result<SwcModule> {
         // key: module id
         // value: module FnExpr
         let mut sorted_kv = self
@@ -424,21 +424,18 @@ impl<'cp> ChunkPot<'cp> {
 
         let mut props = Vec::new();
 
-        sorted_kv
-            .into_iter()
-            .for_each(|(module_id_str, module_hash_tuple)| {
-                let fn_expr = module_hash_tuple.0.to_module_fn_expr().unwrap().unwrap();
+        for (module_id_str, module_hash_tuple) in sorted_kv {
+            let fn_expr = module_hash_tuple.0.to_module_fn_expr()?;
+            let pv: PropOrSpread = Prop::KeyValue(KeyValueProp {
+                key: quote_str!(module_id_str.clone()).into(),
+                value: fn_expr.into(),
+            })
+            .into();
 
-                let pv: PropOrSpread = Prop::KeyValue(KeyValueProp {
-                    key: quote_str!(module_id_str.clone()).into(),
-                    value: fn_expr.into(),
-                })
-                .into();
+            props.push(pv);
+        }
 
-                props.push(pv);
-            });
-
-        let module_object = self.to_module_object();
+        let module_object = self.to_module_object()?;
 
         // globalThis.jsonpCallback([["module_id"], { module object }])
         let jsonp_callback_stmt = <Expr as ExprFactory>::as_call(
@@ -453,15 +450,16 @@ impl<'cp> ChunkPot<'cp> {
         )
         .into_stmt();
 
-        SwcModule {
+        Ok(SwcModule {
             body: vec![jsonp_callback_stmt.into()],
             shebang: None,
             span: DUMMY_SP,
-        }
+        })
     }
 }
 
 #[cached(
+    result = true,
     key = "String",
     type = "SizedCache<String , String>",
     create = "{ SizedCache::with_size(2000) }",
@@ -472,7 +470,7 @@ fn to_module_line(
     context: &Arc<Context>,
     _raw_hash: u64, // used for cache key
     module_id_str: &str,
-) -> String {
+) -> Result<String> {
     mako_core::mako_profile_function!(module_id_str);
 
     let _now = Instant::now();
@@ -499,9 +497,9 @@ fn to_module_line(
         )),
     };
 
-    let escaped = match &fn_expr.info.as_ref().unwrap().ast {
+    match &fn_expr.info.as_ref().unwrap().ast {
         ModuleAst::Script(ast) => {
-            emitter.emit_module(&ast.ast).unwrap();
+            emitter.emit_module(&ast.ast)?;
 
             let source_map = build_source_map(&source_map_buf, &cm);
 
@@ -517,20 +515,23 @@ fn to_module_line(
             ]
             .join("");
 
-            serde_json::to_string(&content).unwrap()
-        }
-        ModuleAst::Css(_) => "".to_string(),
-        ModuleAst::None => {
-            panic!("xxx")
-        }
-    };
+            let escaped = serde_json::to_string(&content)?;
 
-    format!(
-        r#""{}" : function (module, exports, require){{
+            Ok(format!(
+                r#""{}" : function (module, exports, require){{
     eval({})
   }},"#,
-        module_id_str, escaped
-    )
+                module_id_str, escaped
+            ))
+        }
+        ModuleAst::Css(_) => Ok(format!(
+            r#""{}" : function (module, exports, require){{
+  }},"#,
+            module_id_str,
+        )),
+
+        ModuleAst::None => Err(anyhow!("ModuleAst::None({}) not supported", module_id_str)),
+    }
 }
 
 struct JsModules<'a> {
@@ -653,7 +654,7 @@ fn render_dev_entry_chunk_js(
         runtime_base_code(context)?.replace("_%full_hash%_", &full_hash.to_string());
 
     let mut content: Vec<u8> =
-        format!("var m = {};", pot.to_chunk_module_object_string(context)).into();
+        format!("var m = {};", pot.to_chunk_module_object_string(context)?).into();
 
     {
         mako_core::mako_profile_scope!("assemble");
@@ -751,7 +752,7 @@ fn render_entry_chunk_js(
     .unwrap();
 
     let modules_lit: Stmt = pot
-        .to_module_object()
+        .to_module_object()?
         .into_var_decl(VarDeclKind::Var, quote_ident!("m").into())
         .into();
 

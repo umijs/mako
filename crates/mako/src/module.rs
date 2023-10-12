@@ -218,7 +218,7 @@ impl Module {
     // function(module, exports, require) {
     //   module stmt..
     // }
-    pub fn to_module_fn_expr(&self) -> anyhow::Result<Option<FnExpr>> {
+    pub fn to_module_fn_expr(&self) -> anyhow::Result<FnExpr> {
         match &self.info.as_ref().unwrap().ast {
             ModuleAst::Script(script) => {
                 let mut stmts = Vec::new();
@@ -249,14 +249,14 @@ impl Module {
                     type_params: None,
                     return_type: None,
                 };
-                Ok(Some(FnExpr {
+                Ok(FnExpr {
                     ident: None,
                     function: func.into(),
-                }))
+                })
             }
             //TODO:  css module will be removed in the future
-            ModuleAst::Css(_) => Ok(Some(empty_module_fn_expr())),
-            ModuleAst::None => Ok(None),
+            ModuleAst::Css(_) => Ok(empty_module_fn_expr()),
+            ModuleAst::None => Err(anyhow!("ModuleAst::None({}) cannot concert", self.id.id)),
         }
     }
 }

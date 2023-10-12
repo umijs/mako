@@ -180,14 +180,12 @@ pub fn modules_to_js_stmts(
         let ast = module.info.as_ref().unwrap();
         let ast = &ast.ast;
 
-        let m = module.to_module_fn_expr()?;
+        let fn_expr = module.to_module_fn_expr()?;
 
-        if let Some(fn_expr) = m {
-            js_stmts.push(build_props(
-                module.id.generate(context).as_str(),
-                fn_expr.into(),
-            ))
-        }
+        js_stmts.push(build_props(
+            module.id.generate(context).as_str(),
+            fn_expr.into(),
+        ));
 
         if let ModuleAst::Css(ast) = ast {
             // only apply the last css module if chunk depend on it multiple times
