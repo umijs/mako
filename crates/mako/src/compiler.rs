@@ -4,10 +4,11 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
 
-use colored::Colorize;
-use swc_common::sync::Lrc;
-use swc_common::{Globals, SourceMap, DUMMY_SP};
-use swc_ecma_ast::Ident;
+use mako_core::colored::Colorize;
+use mako_core::puffin;
+use mako_core::swc_common::sync::Lrc;
+use mako_core::swc_common::{Globals, SourceMap, DUMMY_SP};
+use mako_core::swc_ecma_ast::Ident;
 
 use crate::chunk_graph::ChunkGraph;
 use crate::comments::Comments;
@@ -263,6 +264,8 @@ impl Compiler {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
+
+    use mako_core::tokio;
 
     use super::Compiler;
     use crate::config::Config;

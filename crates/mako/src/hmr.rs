@@ -1,6 +1,6 @@
-use anyhow::Result;
-use indexmap::IndexSet;
-use swc_ecma_ast::{
+use mako_core::anyhow::Result;
+use mako_core::indexmap::IndexSet;
+use mako_core::swc_ecma_ast::{
     CallExpr, Expr, ExprOrSpread, ExprStmt, KeyValueProp, ModuleItem, ObjectLit, Prop,
     PropOrSpread, Stmt,
 };
@@ -66,6 +66,8 @@ impl Compiler {
 
 #[cfg(test)]
 mod tests {
+    use mako_core::tokio;
+
     use crate::assert_debug_snapshot;
     use crate::compiler::{Args, Compiler};
     use crate::config::Config;

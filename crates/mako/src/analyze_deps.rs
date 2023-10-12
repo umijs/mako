@@ -1,11 +1,12 @@
-use anyhow::Result;
-use swc_common::collections::AHashSet;
-use swc_common::sync::Lrc;
-use swc_css_ast::{ImportHref, UrlValue};
-use swc_css_visit::VisitWith as CSSVisitWith;
-use swc_ecma_ast::{CallExpr, Callee, Expr, Id, Import, Lit, Module, ModuleDecl};
-use swc_ecma_utils::collect_decls;
-use swc_ecma_visit::{Visit, VisitWith};
+use mako_core::anyhow::Result;
+use mako_core::swc_common::collections::AHashSet;
+use mako_core::swc_common::sync::Lrc;
+use mako_core::swc_css_ast::{ImportHref, UrlValue};
+use mako_core::swc_css_visit::VisitWith as CSSVisitWith;
+use mako_core::swc_ecma_ast::{CallExpr, Callee, Expr, Id, Import, Lit, Module, ModuleDecl};
+use mako_core::swc_ecma_utils::collect_decls;
+use mako_core::swc_ecma_visit::{Visit, VisitWith};
+use mako_core::{puffin, swc_common, swc_css_ast, swc_css_visit, swc_ecma_ast};
 
 use crate::module::{Dependency, ModuleAst, ResolveType};
 

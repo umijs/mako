@@ -4,11 +4,12 @@ use std::ops::DerefMut;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use anyhow::{anyhow, Result};
-use indexmap::IndexSet;
-use rayon::prelude::*;
-use serde::Serialize;
-use tracing::debug;
+use mako_core::anyhow::{anyhow, Result};
+use mako_core::indexmap::IndexSet;
+use mako_core::puffin;
+use mako_core::rayon::prelude::*;
+use mako_core::serde::Serialize;
+use mako_core::tracing::debug;
 
 use crate::ast::base64_encode;
 use crate::compiler::Compiler;

@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
-use anyhow::Result;
-use tracing::debug;
+use mako_core::anyhow::Result;
+use mako_core::puffin;
+use mako_core::tracing::debug;
 
 use crate::build::FileRequest;
 use crate::compiler::Context;

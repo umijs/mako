@@ -3,8 +3,9 @@
 use std::env;
 use std::sync::Arc;
 
-use clap::Parser;
-use tracing::debug;
+use mako_core::clap::Parser;
+use mako_core::tracing::debug;
+use mako_core::{puffin, tokio};
 
 use crate::compiler::Args;
 use crate::config::Mode;

@@ -61,7 +61,7 @@ toml = "0.7.6"
 serde_yaml = "0.9.22"
 serde-xml-rs = "0.6.0"
 svgr-rs = "0.1.3"
-cached = "0.44.0"
+cached = { workspace = true }
 colored = "2"
 mdxjs = "0.1.14"
 regex = "1.9.3"

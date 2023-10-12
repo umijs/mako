@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::Result;
+use mako_core::anyhow::Result;
 
 use crate::ast::build_js_ast;
 use crate::compiler::Context;

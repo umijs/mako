@@ -1,9 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::hash::Hasher;
 
-use petgraph::stable_graph::{DefaultIx, NodeIndex, StableDiGraph};
-use petgraph::Direction;
-use twox_hash::XxHash64;
+use mako_core::petgraph::stable_graph::{DefaultIx, NodeIndex, StableDiGraph};
+use mako_core::petgraph::Direction;
+use mako_core::twox_hash::XxHash64;
 
 use crate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::module_graph::ModuleGraph;

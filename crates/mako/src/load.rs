@@ -4,12 +4,13 @@ use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Context as AnyHowContext, Result};
-use base64::alphabet::STANDARD;
-use base64::{engine, Engine};
-use thiserror::Error;
-use tracing::debug;
-use twox_hash::XxHash64;
+use mako_core::anyhow::{anyhow, Context as AnyHowContext, Result};
+use mako_core::base64::alphabet::STANDARD;
+use mako_core::base64::{engine, Engine};
+use mako_core::thiserror::Error;
+use mako_core::tracing::debug;
+use mako_core::twox_hash::XxHash64;
+use mako_core::{md5, mime_guess, puffin};
 
 use crate::build::FileRequest;
 use crate::compiler::Context;

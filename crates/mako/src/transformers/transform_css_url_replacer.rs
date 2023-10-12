@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use swc_css_ast::{Url, UrlValue};
-use swc_css_visit::VisitMut;
+use mako_core::swc_css_ast::{Url, UrlValue};
+use mako_core::swc_css_visit::VisitMut;
 
 use crate::analyze_deps::{handle_css_url, is_url_ignored};
 use crate::compiler::Context;

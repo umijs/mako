@@ -4,9 +4,9 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Ok, Result};
-use rayon::prelude::*;
-use tracing::debug;
+use mako_core::anyhow::{anyhow, Ok, Result};
+use mako_core::rayon::prelude::*;
+use mako_core::tracing::debug;
 
 use crate::build::Task;
 use crate::compiler::Compiler;
@@ -371,6 +371,8 @@ fn diff(origin: Vec<(ModuleId, Dependency)>, target: Vec<(ModuleId, Dependency)>
 
 #[cfg(test)]
 mod tests {
+
+    use mako_core::tokio;
 
     use crate::module::ModuleId;
     use crate::test_helper::{module_to_jscode, setup_compiler, setup_files};

@@ -1,6 +1,6 @@
-use swc_common::DUMMY_SP;
-use swc_ecma_ast::{op, BinExpr, BinaryOp, Bool, EmptyStmt, Expr, IfStmt, Lit, Stmt};
-use swc_ecma_visit::{VisitMut, VisitMutWith};
+use mako_core::swc_common::DUMMY_SP;
+use mako_core::swc_ecma_ast::{op, BinExpr, BinaryOp, Bool, EmptyStmt, Expr, IfStmt, Lit, Stmt};
+use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
 pub struct Optimizer;
 

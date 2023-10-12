@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use swc_ecma_visit::VisitMutWith;
-use tracing::debug;
+use mako_core::swc_ecma_visit::VisitMutWith;
+use mako_core::tracing::debug;
 
 use crate::compiler::Compiler;
 use crate::module::ModuleId;
@@ -259,6 +259,8 @@ impl Compiler {
 
 #[cfg(test)]
 mod tests {
+    use mako_core::tokio;
+
     use crate::assert_display_snapshot;
     use crate::test_helper::{read_dist_file, setup_compiler};
 

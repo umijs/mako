@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
-use swc_css_ast::Length;
-use swc_css_visit::{VisitMut, VisitMutWith};
+use mako_core::swc_css_ast;
+use mako_core::swc_css_ast::Length;
+use mako_core::swc_css_visit::{VisitMut, VisitMutWith};
 
 use crate::compiler::Context;
 

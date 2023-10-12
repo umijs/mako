@@ -1,8 +1,9 @@
 use std::collections::HashSet;
 
-use swc_ecma_ast::{Decl, ExportDecl, ImportDecl, ModuleExportName, VarDeclarator};
-use swc_ecma_visit::{VisitMut, VisitMutWith, VisitWith};
-use tracing::debug;
+use mako_core::swc_ecma_ast;
+use mako_core::swc_ecma_ast::{Decl, ExportDecl, ImportDecl, ModuleExportName, VarDeclarator};
+use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith, VisitWith};
+use mako_core::tracing::debug;
 
 use crate::comments::Comments;
 use crate::tree_shaking::defined_ident_collector::DefinedIdentCollector;

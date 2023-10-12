@@ -1,6 +1,6 @@
-use swc_ecma_ast::{ModuleDecl, ModuleItem};
-use swc_ecma_visit::VisitMut;
-use tracing::debug;
+use mako_core::swc_ecma_ast::{Module, ModuleDecl, ModuleItem};
+use mako_core::swc_ecma_visit::VisitMut;
+use mako_core::tracing::debug;
 
 use crate::module::ModuleId;
 use crate::tree_shaking::tree_shaking_module::{should_skip, UsedIdentHashMap};
@@ -20,7 +20,7 @@ impl<'a> UnusedStatementCleanup<'a> {
 }
 
 impl VisitMut for UnusedStatementCleanup<'_> {
-    fn visit_mut_module(&mut self, module: &mut swc_ecma_ast::Module) {
+    fn visit_mut_module(&mut self, module: &mut Module) {
         if should_skip(&self.module_id.id) {
             return;
         }

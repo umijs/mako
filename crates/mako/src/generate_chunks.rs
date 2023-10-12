@@ -4,22 +4,22 @@ use std::path::Path;
 use std::sync::Arc;
 use std::vec;
 
-use anyhow::Result;
-use cached::proc_macro::cached;
-use indexmap::IndexSet;
-use rayon::prelude::*;
-use swc_common::DUMMY_SP;
-use swc_css_ast::Stylesheet;
-use swc_css_codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};
-use swc_css_codegen::{CodeGenerator, CodegenConfig, Emit};
-use swc_ecma_ast::{
+use mako_core::anyhow::Result;
+use mako_core::cached::proc_macro::cached;
+use mako_core::indexmap::IndexSet;
+use mako_core::rayon::prelude::*;
+use mako_core::swc_common::DUMMY_SP;
+use mako_core::swc_css_ast::Stylesheet;
+use mako_core::swc_css_codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};
+use mako_core::swc_css_codegen::{CodeGenerator, CodegenConfig, Emit};
+use mako_core::swc_ecma_ast::{
     ArrayLit, Expr, ExprOrSpread, FnExpr, KeyValueProp, Lit, Module as SwcModule, Number,
-    ObjectLit, Prop, PropOrSpread, Stmt, Str, VarDeclKind,
+    ObjectLit, Prop, PropName, PropOrSpread, Stmt, Str, VarDeclKind,
 };
-use swc_ecma_codegen::text_writer::JsWriter;
-use swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
-use swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
-use twox_hash::XxHash64;
+use mako_core::swc_ecma_codegen::text_writer::JsWriter;
+use mako_core::swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
+use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
+use mako_core::twox_hash::XxHash64;
 
 use crate::ast::build_js_ast;
 use crate::chunk::{Chunk, ChunkType};
@@ -623,7 +623,7 @@ fn get_css_chunk_filename(js_chunk_filename: &str) -> String {
 
 pub fn build_props(key_str: &str, value: Box<Expr>) -> PropOrSpread {
     PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-        key: swc_ecma_ast::PropName::Str(Str {
+        key: PropName::Str(Str {
             span: DUMMY_SP,
             value: key_str.into(),
             raw: None,

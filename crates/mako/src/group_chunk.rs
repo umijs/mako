@@ -3,7 +3,8 @@ use std::collections::{HashSet, VecDeque};
 use std::rc::Rc;
 use std::vec;
 
-use tracing::debug;
+use mako_core::puffin;
+use mako_core::tracing::debug;
 
 use crate::bfs::{Bfs, NextResult};
 use crate::build::parse_path;

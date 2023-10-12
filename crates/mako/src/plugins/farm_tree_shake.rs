@@ -1,4 +1,4 @@
-use anyhow::Result;
+use mako_core::anyhow::Result;
 
 use crate::module_graph::ModuleGraph;
 use crate::plugin::Plugin;

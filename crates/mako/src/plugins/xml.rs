@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use anyhow::Result;
-use serde_xml_rs::from_str as from_xml_str;
+use mako_core::anyhow::Result;
+use mako_core::serde_xml_rs::from_str as from_xml_str;
 
 use crate::compiler::Context;
 use crate::load::{read_content, Content};

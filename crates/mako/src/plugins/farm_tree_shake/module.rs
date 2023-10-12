@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use swc_ecma_ast::Module as SwcModule;
+use mako_core::swc_ecma_ast::{Module as SwcModule, ModuleItem};
 
 use crate::module::{Module, ModuleId};
 use crate::plugins::farm_tree_shake::statement_graph::{
@@ -93,7 +93,7 @@ impl TreeShakeModule {
                     .ast
                     .body
                     .iter()
-                    .any(|s| matches!(s, swc_ecma_ast::ModuleItem::ModuleDecl(_)));
+                    .any(|s| matches!(s, ModuleItem::ModuleDecl(_)));
                 if is_esm {
                     module_system = ModuleSystem::ESModule;
                     StatementGraph::new(&module.ast)

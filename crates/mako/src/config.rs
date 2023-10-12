@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use clap::ValueEnum;
-use colored::Colorize;
-use mako_core::config;
-use serde::Deserialize;
-use serde_json::Value;
-use swc_ecma_ast::EsVersion;
-use thiserror::Error;
+use mako_core::clap::ValueEnum;
+use mako_core::colored::Colorize;
+use mako_core::serde::Deserialize;
+use mako_core::serde_json::Value;
+use mako_core::swc_ecma_ast::EsVersion;
+use mako_core::thiserror::Error;
+use mako_core::{clap, config, thiserror};
 
 #[derive(Deserialize, Debug)]
 pub struct OutputConfig {
