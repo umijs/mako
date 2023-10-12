@@ -3,7 +3,6 @@ use std::string::String;
 
 use mako_core::indexmap::{IndexMap, IndexSet};
 use mako_core::nodejs_resolver::Resource;
-use mako_core::puffin;
 use mako_core::regex::Regex;
 use mako_core::tracing::debug;
 
@@ -48,7 +47,7 @@ pub struct OptimizeChunkModule {
 
 impl Compiler {
     pub fn optimize_chunk(&self) {
-        puffin::profile_function!();
+        mako_core::mako_profile_function!();
         debug!("optimize chunk");
         if let Some(optimize_options) = self.get_optimize_chunk_options() {
             // stage: prepare

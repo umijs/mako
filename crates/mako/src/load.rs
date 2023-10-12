@@ -10,7 +10,7 @@ use mako_core::base64::{engine, Engine};
 use mako_core::thiserror::Error;
 use mako_core::tracing::debug;
 use mako_core::twox_hash::XxHash64;
-use mako_core::{md5, mime_guess, puffin};
+use mako_core::{md5, mime_guess};
 
 use crate::build::FileRequest;
 use crate::compiler::Context;
@@ -69,7 +69,7 @@ pub enum LoadError {
 }
 
 pub fn load(request: &FileRequest, is_entry: bool, context: &Arc<Context>) -> Result<Content> {
-    puffin::profile_function!(&request.path);
+    mako_core::mako_profile_function!(&request.path);
     debug!("load: {:?}", request);
     let path = &request.path;
     let exists = Path::new(path).exists();

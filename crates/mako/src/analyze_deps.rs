@@ -6,12 +6,12 @@ use mako_core::swc_css_visit::VisitWith as CSSVisitWith;
 use mako_core::swc_ecma_ast::{CallExpr, Callee, Expr, Id, Import, Lit, Module, ModuleDecl};
 use mako_core::swc_ecma_utils::collect_decls;
 use mako_core::swc_ecma_visit::{Visit, VisitWith};
-use mako_core::{puffin, swc_common, swc_css_ast, swc_css_visit, swc_ecma_ast};
+use mako_core::{swc_common, swc_css_ast, swc_css_visit, swc_ecma_ast};
 
 use crate::module::{Dependency, ModuleAst, ResolveType};
 
 pub fn analyze_deps(ast: &ModuleAst) -> Result<Vec<Dependency>> {
-    puffin::profile_function!();
+    mako_core::mako_profile_function!();
     match ast {
         ModuleAst::Script(ast) => analyze_deps_js(&ast.ast),
         ModuleAst::Css(ast) => analyze_deps_css(ast),

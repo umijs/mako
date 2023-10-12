@@ -5,7 +5,6 @@ use std::vec;
 
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::nodejs_resolver::{AliasMap, Options, ResolveResult, Resolver, Resource};
-use mako_core::puffin;
 use mako_core::thiserror::Error;
 use mako_core::tracing::debug;
 
@@ -75,8 +74,8 @@ pub fn resolve(
     resolvers: &Resolvers,
     context: &Arc<Context>,
 ) -> Result<ResolverResource> {
-    puffin::profile_function!();
-    puffin::profile_scope!("resolve", &dep.source);
+    mako_core::mako_profile_function!();
+    mako_core::mako_profile_scope!("resolve", &dep.source);
     let resolver = if dep.resolve_type == ResolveType::Require {
         &resolvers.cjs
     } else {
@@ -150,6 +149,7 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
             ".tsx".to_string(),
             ".mjs".to_string(),
             ".cjs".to_string(),
+            ".json".to_string(),
         ],
         condition_names: if is_browser {
             if resolver_type == ResolverType::Cjs {

@@ -6,7 +6,6 @@ use std::time::{Duration, Instant};
 
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::indexmap::IndexSet;
-use mako_core::puffin;
 use mako_core::rayon::prelude::*;
 use mako_core::serde::Serialize;
 use mako_core::tracing::debug;
@@ -48,7 +47,8 @@ impl Compiler {
             match self.context.config.tree_shake {
                 TreeShakeStrategy::Basic => {
                     let mut module_graph = self.context.module_graph.write().unwrap();
-                    puffin::profile_scope!("tree shake");
+
+                    mako_core::mako_profile_scope!("tree shake");
                     self.context
                         .plugin_driver
                         .optimize_module_graph(module_graph.deref_mut())?;
@@ -56,7 +56,7 @@ impl Compiler {
                     println!("basic optimize in {}ms.", t_tree_shaking.as_millis());
                 }
                 TreeShakeStrategy::Advanced => {
-                    puffin::profile_scope!("advanced tree shake");
+                    mako_core::mako_profile_scope!("advanced tree shake");
                     let shaking_module_ids = self.tree_shaking();
                     let t_tree_shaking = t_tree_shaking.elapsed();
                     println!(

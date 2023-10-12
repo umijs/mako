@@ -5,7 +5,6 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
 
 use mako_core::colored::Colorize;
-use mako_core::puffin;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{Globals, SourceMap, DUMMY_SP};
 use mako_core::swc_ecma_ast::Ident;
@@ -218,11 +217,11 @@ impl Compiler {
         .green();
         println!("{}", building_with_message);
         {
-            puffin::profile_scope!("Build Stage");
+            mako_core::mako_profile_scope!("Build Stage");
             self.build();
         }
         let result = {
-            puffin::profile_scope!("Generate Stage");
+            mako_core::mako_profile_scope!("Generate Stage");
             self.generate()
         };
         let t_compiler = t_compiler.elapsed();

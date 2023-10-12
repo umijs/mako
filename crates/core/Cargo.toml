@@ -12,7 +12,7 @@ swc_ecma_parser = { version = "0.140.0" }
 swc_common = { version = "0.32.1", features = ["concurrent", "sourcemap"] }
 swc_ecma_visit = { version = "0.95.1" }
 swc_ecma_codegen = { version = "0.145.2" }
-swc_node_comments = { version = "0.19.1"}
+swc_node_comments = { version = "0.19.1" }
 swc_ecma_transforms = { version = "0.224.11", features = [
   "module",
   "typescript",
@@ -50,7 +50,7 @@ glob = "0.3.1"
 clap = { version = "4.3.11", features = ["derive"] }
 pathdiff = "0.2.1"
 anyhow = "1.0.71"
-hyper = { version = "0.14.27" , features= ["full"] }
+hyper = { version = "0.14.27", features = ["full"] }
 tungstenite = "0.19.0"
 tokio-tungstenite = "0.19.0"
 hyper-tungstenite = "0.10.0"
@@ -66,6 +66,9 @@ colored = "2"
 mdxjs = "0.1.14"
 regex = "1.9.3"
 indexmap = "2.0.0"
-# eframe = "0.22.0"
-puffin = "0.16.0"
-# puffin_egui = "0.22.0"
+eframe = { version = "0.22.0", optional = true }
+puffin = { version = "0.16.0", optional = true }
+puffin_egui = { version = "0.22.0", optional = true }
+
+[features]
+profile = ["dep:eframe", "dep:puffin", "dep:puffin_egui"]

@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-// use eframe::egui;
+#[cfg(feature = "profile")]
+use mako_core::eframe::egui;
+
 use crate::compiler::Compiler;
 
 pub struct ProfileApp {
@@ -20,16 +22,17 @@ impl ProfileApp {
     }
 }
 
-// impl eframe::App for ProfileApp {
-//     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-//         puffin::GlobalProfiler::lock().new_frame(); // call once per frame!
+#[cfg(feature = "profile")]
+impl mako_core::eframe::App for ProfileApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut mako_core::eframe::Frame) {
+        mako_core::puffin::GlobalProfiler::lock().new_frame(); // call once per frame!
 
-//         puffin_egui::profiler_window(ctx);
+        mako_core::puffin_egui::profiler_window(ctx);
 
-//         if self.frame_counter == 0 {
-//             self.compiler.compile();
-//         }
+        if self.frame_counter == 0 {
+            self.compiler.compile();
+        }
 
-//         self.frame_counter = 1;
-//     }
-// }
+        self.frame_counter += 1;
+    }
+}

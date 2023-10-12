@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use mako_core::anyhow::Result;
-use mako_core::puffin;
 use mako_core::swc_common::comments::NoopComments;
 use mako_core::swc_common::errors::HANDLER;
 use mako_core::swc_common::sync::Lrc;
@@ -41,7 +40,7 @@ pub fn transform(
     task: &Task,
     resolvers: &Resolvers,
 ) -> Result<()> {
-    puffin::profile_function!(&task.path);
+    mako_core::mako_profile_function!();
     match ast {
         ModuleAst::Script(ast) => transform_js(
             &mut ast.ast,

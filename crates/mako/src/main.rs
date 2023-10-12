@@ -1,15 +1,16 @@
 #![feature(box_patterns)]
 
-use std::env;
 use std::sync::Arc;
 
 use mako_core::clap::Parser;
+use mako_core::tokio;
 use mako_core::tracing::debug;
-use mako_core::{puffin, tokio};
 
 use crate::compiler::Args;
 use crate::config::Mode;
 use crate::logger::init_logger;
+#[cfg(feature = "profile")]
+use crate::profile_gui::ProfileApp;
 
 mod analyze_deps;
 mod ast;
@@ -35,6 +36,7 @@ mod optimize_chunk;
 mod parse;
 mod plugin;
 mod plugins;
+#[cfg(feature = "profile")]
 mod profile_gui;
 mod resolve;
 mod sourcemap;
@@ -85,19 +87,20 @@ async fn main() {
     let compiler = compiler::Compiler::new(config, root.clone(), Args { watch: cli.watch });
     let compiler = Arc::new(compiler);
 
-    if env::var("MAKO_PROFILE").is_ok() {
-        // Turn on the profiler only if env `MAKO_PROFILE` exists. When the profiler is off the profiler scope macros only has an overhead of 1-2 ns (and some stack space);
-        puffin::set_scopes_on(true);
-        // let native_options = Default::default();
-        // let compiler = compiler.clone();
-        // let _ = eframe::run_native(
-        //     "puffin egui eframe",
-        //     native_options,
-        //     Box::new(move |_cc| Box::new(ProfileApp::new(compiler))),
-        // );
-    } else {
-        compiler.compile();
+    #[cfg(feature = "profile")]
+    {
+        mako_core::puffin::set_scopes_on(true);
+        let native_options = Default::default();
+        let compiler = compiler.clone();
+        let _ = mako_core::eframe::run_native(
+            "puffin egui eframe",
+            native_options,
+            Box::new(move |_cc| Box::new(ProfileApp::new(compiler))),
+        );
     }
+
+    #[cfg(not(feature = "profile"))]
+    compiler.compile();
 
     if cli.watch {
         let d = crate::dev::DevServer::new(root.clone(), compiler);
