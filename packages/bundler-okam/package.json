@@ -16,7 +16,8 @@
     "node-libs-browser-okam": "2.2.4",
     "react-error-overlay": "6.0.9",
     "react-refresh": "^0.14.0",
-    "rimraf": "5.0.1"
+    "rimraf": "5.0.1",
+    "webpack-5-chain": "8.0.1"
   },
   "publishConfig": {
     "registry": "https://registry.antgroup-inc.cn"

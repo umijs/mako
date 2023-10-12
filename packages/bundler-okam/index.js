@@ -22,7 +22,7 @@ exports.build = async function (opts) {
     rimraf.sync(outputPath);
   }
 
-  const okamConfig = getOkamConfig(opts);
+  const okamConfig = await getOkamConfig(opts);
   const mode = process.argv.includes('--dev') ? 'development' : 'production';
   okamConfig.mode = mode;
   okamConfig.manifest = true;
@@ -119,7 +119,7 @@ exports.dev = async function (opts) {
   });
   // okam dev
   const { build } = require('@okamjs/okam');
-  const okamConfig = getOkamConfig(opts);
+  const okamConfig = await getOkamConfig(opts);
   okamConfig.hmr = true;
   okamConfig.hmr_port = String(opts.port + 1);
   okamConfig.hmr_host = opts.host;
@@ -163,7 +163,23 @@ function checkConfig(config) {
   }
 }
 
-function getOkamConfig(opts) {
+async function getOkamConfig(opts) {
+  const WebpackConfig = require('webpack-5-chain');
+  const webpackChainConfig = new WebpackConfig();
+  await opts.chainWebpack(webpackChainConfig);
+  if (opts.config.chainWebpack) {
+    opts.config.chainWebpack(webpackChainConfig);
+  }
+  const webpackConfig = webpackChainConfig.toConfig();
+  let umd = 'none';
+  if (
+    webpackConfig.output &&
+    webpackConfig.output.libraryTarget === 'umd' &&
+    webpackConfig.output.library
+  ) {
+    umd = webpackConfig.output.library;
+  }
+
   const {
     alias,
     targets,
@@ -196,6 +212,10 @@ function getOkamConfig(opts) {
         define[key] = JSON.stringify(opts.config.define[key]);
       }
     }
+  }
+  let minify = jsMinifier === 'none' ? false : true;
+  if (process.env.COMPRESS === 'none') {
+    minify = false;
   }
   const okamConfig = {
     entry: opts.entry,
@@ -235,9 +255,10 @@ function getOkamConfig(opts) {
         'bin/lessc',
       ),
     },
-    minify: jsMinifier === 'none' ? false : true,
+    minify,
     define,
     autoCSSModules: true,
+    umd,
   };
 
   if (process.env.DUMP_MAKO_CONFIG) {
