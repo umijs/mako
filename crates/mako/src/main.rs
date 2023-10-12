@@ -19,6 +19,7 @@ mod bfs;
 mod build;
 mod chunk;
 mod chunk_graph;
+mod chunk_pot;
 mod cli;
 mod comments;
 mod compiler;

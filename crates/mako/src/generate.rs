@@ -260,6 +260,8 @@ impl Compiler {
     }
 
     pub fn emit_dev_chunks(&self) -> Result<()> {
+        mako_core::mako_profile_function!("emit_dev_chunks");
+
         debug!("generate(hmr-fullbuild)");
 
         let t_generate = Instant::now();
@@ -279,11 +281,14 @@ impl Compiler {
         // ast to code and sourcemap, then write
         let t_ast_to_code_and_write = Instant::now();
         debug!("ast to code and write");
-        chunk_files.par_iter().try_for_each(|file| -> Result<()> {
-            self.emit_chunk_file(file);
+        {
+            mako_core::mako_profile_scope!("write dev chunk files");
+            chunk_files.par_iter().try_for_each(|file| -> Result<()> {
+                self.emit_chunk_file(file);
 
-            Ok(())
-        })?;
+                Ok(())
+            })?;
+        }
         let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
 
         // write assets
