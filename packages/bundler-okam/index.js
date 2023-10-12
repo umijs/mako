@@ -171,7 +171,6 @@ async function getOkamConfig(opts) {
     opts.config.chainWebpack(webpackChainConfig);
   }
   const webpackConfig = webpackChainConfig.toConfig();
-  console.log('webpackConfig', webpackConfig);
   let umd = 'none';
   if (
     webpackConfig.output &&
@@ -180,8 +179,6 @@ async function getOkamConfig(opts) {
   ) {
     umd = webpackConfig.output.library;
   }
-
-  console.log('>>>>>>>>>>>> umd', umd);
 
   const {
     alias,
