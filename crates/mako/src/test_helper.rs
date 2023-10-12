@@ -96,7 +96,7 @@ pub fn setup_compiler(base: &str, cleanup: bool) -> Compiler {
     config.minify = false;
     config.mode = Mode::Production;
 
-    compiler::Compiler::new(config, root, Default::default())
+    compiler::Compiler::new(config, root, Default::default()).unwrap()
 }
 
 pub fn setup_logger() {

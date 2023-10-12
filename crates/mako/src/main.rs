@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use anyhow::Result;
 use clap::Parser;
 use tracing::debug;
 
@@ -51,7 +52,7 @@ mod update;
 mod watch;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     // logger
     init_logger();
 
@@ -83,7 +84,7 @@ async fn main() {
     debug!("config: {:?}", config);
 
     // compiler
-    let compiler = compiler::Compiler::new(config, root.clone(), Args { watch: cli.watch });
+    let compiler = compiler::Compiler::new(config, root.clone(), Args { watch: cli.watch })?;
     let compiler = Arc::new(compiler);
 
     #[cfg(feature = "profile")]
@@ -99,11 +100,12 @@ async fn main() {
     }
 
     #[cfg(not(feature = "profile"))]
-    compiler.compile();
+    compiler.compile()?;
 
     if cli.watch {
         let d = crate::dev::DevServer::new(root.clone(), compiler);
         // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
         d.serve().await;
     }
+    Ok(())
 }
