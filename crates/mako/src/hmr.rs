@@ -77,7 +77,7 @@ mod tests {
     async fn test_generate_hmr_chunk() {
         let compiler = create_compiler("test/dev/normal");
 
-        compiler.build();
+        compiler.build().unwrap();
         compiler.group_chunk();
         let chunk_graph = &compiler.context.chunk_graph.read().unwrap();
         let chunks = chunk_graph.get_chunks();
@@ -100,6 +100,6 @@ mod tests {
         let current_dir = std::env::current_dir().unwrap();
         let root = current_dir.join(base);
         let config = Config::new(&root, None, None).unwrap();
-        Compiler::new(config, root, Args { watch: true })
+        Compiler::new(config, root, Args { watch: true }).unwrap()
     }
 }

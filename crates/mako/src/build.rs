@@ -3,12 +3,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
-use mako_core::anyhow::Result;
+use mako_core::anyhow::{anyhow, Result};
 use mako_core::colored::Colorize;
 use mako_core::swc_ecma_utils::contains_top_level_await;
+use mako_core::thiserror::Error;
 use mako_core::tokio::sync::mpsc::error::TryRecvError;
 use mako_core::tracing::debug;
-use mako_core::{anyhow, tokio};
+use mako_core::{anyhow, thiserror, tokio};
 
 use crate::analyze_deps::analyze_deps;
 use crate::ast::{build_js_ast, generate_code_frame};
@@ -21,6 +22,10 @@ use crate::plugin::{PluginCheckAstParam, PluginDepAnalyzeParam};
 use crate::resolve::{get_resolvers, resolve, ResolverResource, Resolvers};
 use crate::transform::transform;
 
+#[derive(Debug, Error)]
+#[error("{0}")]
+pub struct GenericError(String);
+
 #[derive(Debug)]
 pub struct Task {
     pub path: String,
@@ -31,10 +36,10 @@ pub struct Task {
 pub type ModuleDeps = Vec<(ResolverResource, Dependency)>;
 
 impl Compiler {
-    pub fn build(&self) {
+    pub fn build(&self) -> Result<()> {
         debug!("build");
         let t_build = Instant::now();
-        let module_ids = self.build_module_graph();
+        let module_ids = self.build_module_graph()?;
         let t_build = t_build.elapsed();
         // build chunk map 应该放 generate 阶段
         // 和 chunk 相关的都属于 generate
@@ -44,9 +49,10 @@ impl Compiler {
             t_build.as_millis()
         );
         debug!("build done in {}ms", t_build.as_millis());
+        Ok(())
     }
 
-    fn build_module_graph(&self) -> HashSet<ModuleId> {
+    fn build_module_graph(&self) -> Result<HashSet<ModuleId>> {
         debug!("build module graph");
 
         let entries: Vec<&PathBuf> = self.context.config.entry.values().collect();
@@ -79,13 +85,14 @@ impl Compiler {
         &self,
         queue: &mut VecDeque<Task>,
         resolvers: Arc<Resolvers>,
-    ) -> HashSet<ModuleId> {
+    ) -> Result<HashSet<ModuleId>> {
         let (rs, mut rr) =
             tokio::sync::mpsc::unbounded_channel::<Result<(Module, ModuleDeps, Task)>>();
         let mut active_task_count: usize = 0;
         let mut t_main_thread: usize = 0;
         let mut module_count: usize = 0;
         let mut added_module_ids = HashSet::new();
+        let mut errors = vec![];
         tokio::task::block_in_place(|| loop {
             let mut module_graph = self.context.module_graph.write().unwrap();
             while let Some(task) = queue.pop_front() {
@@ -123,8 +130,8 @@ impl Compiler {
                                 err = err[1..err.len() - 1].to_string();
                             }
                             eprintln!("{}", "Build failed.".to_string().red());
-                            eprintln!("{}", err);
-                            panic!("build module failed");
+                            errors.push(err);
+                            break;
                         }
                     };
                     let t = Instant::now();
@@ -206,7 +213,10 @@ impl Compiler {
                 }
             }
         });
-        added_module_ids
+        if !errors.is_empty() {
+            return Err(anyhow!(GenericError(errors.join(", "))));
+        }
+        Ok(added_module_ids)
     }
 
     pub fn create_module(
@@ -536,8 +546,8 @@ mod tests {
         let pnpm_dir = current_dir.join("node_modules/.pnpm");
         let root = current_dir.join(base);
         let config = Config::new(&root, None, None).unwrap();
-        let compiler = compiler::Compiler::new(config, root.clone(), Default::default());
-        compiler.build();
+        let compiler = compiler::Compiler::new(config, root.clone(), Default::default()).unwrap();
+        compiler.build().unwrap();
         let module_graph = compiler.context.module_graph.read().unwrap();
         let mut module_ids: Vec<String> = module_graph
             .graph
