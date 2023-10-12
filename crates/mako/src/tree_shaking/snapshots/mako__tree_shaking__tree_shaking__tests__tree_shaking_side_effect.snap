@@ -344,16 +344,18 @@ function createRuntime(makoModules, deps, entryModuleId) {
             }
         });
     }();
+    let exports = null;
     if (deps.length > 0) {
-        Promise.all(deps.map(function(dep) {
+        exports = Promise.all(deps.map(function(dep) {
             return requireModule.ensure(dep);
         })).then(function() {
-            requireModule(entryModuleId);
+            return requireModule(entryModuleId);
         });
     } else {
-        requireModule(entryModuleId);
+        exports = requireModule(entryModuleId);
     }
     return {
+        exports,
         requireModule,
         _modulesRegistry: modulesRegistry,
         _jsonpCallback: jsonpCallback,
@@ -361,8 +363,8 @@ function createRuntime(makoModules, deps, entryModuleId) {
     };
 }
 const runtime = createRuntime(m, d, e);
-globalThis.jsonpCallback = runtime._jsonpCallback;
-globalThis.modulesRegistry = runtime._modulesRegistry;
-globalThis.makoModuleHotUpdate = runtime._makoModuleHotUpdate;
+(typeof globalThis !== 'undefined' ? globalThis : self).jsonpCallback = runtime._jsonpCallback;
+(typeof globalThis !== 'undefined' ? globalThis : self).modulesRegistry = runtime._modulesRegistry;
+(typeof globalThis !== 'undefined' ? globalThis : self).makoModuleHotUpdate = runtime._makoModuleHotUpdate;
 
 //# sourceMappingURL=index.js.map
