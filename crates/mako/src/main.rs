@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use clap::Parser;
+use tokio::sync::Notify;
 use tracing::debug;
 
 use crate::compiler::Args;
@@ -88,8 +89,14 @@ async fn main() {
 
     #[cfg(feature = "profile")]
     {
+        let notify = Arc::new(Notify::new());
+        let to_be_notify = notify.clone();
+
         tokio::spawn(async move {
             let compiler = compiler.clone();
+
+            to_be_notify.notified().await;
+
             compiler.compile();
 
             if cli.watch {
@@ -103,7 +110,7 @@ async fn main() {
         let _ = mako_core::eframe::run_native(
             "puffin egui eframe",
             native_options,
-            Box::new(move |_cc| Box::new(ProfileApp {})),
+            Box::new(move |_cc| Box::new(ProfileApp::new(notify))),
         );
     }
 
