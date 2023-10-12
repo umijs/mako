@@ -38,15 +38,15 @@ pub struct ChunkPot<'a> {
     pub js_name: String,
     pub module_map: HashMap<String, (&'a Module, u64)>,
     pub js_hash: u64,
-    pub stylesheet: Option<(Stylesheet, u64)>,
+    stylesheet: Option<CssModules<'a>>,
 }
 
 #[cached(
     result = true,
     key = "u64",
-    convert = "{chunk_pot.stylesheet.as_ref().unwrap().1}"
+    convert = "{chunk_pot.stylesheet.as_ref().unwrap().raw_hash}"
 )]
-fn render_chunk_css(chunk_pot: &mut ChunkPot, context: &Arc<Context>) -> Result<ChunkFile> {
+fn render_chunk_css(chunk_pot: &ChunkPot, context: &Arc<Context>) -> Result<ChunkFile> {
     let mut css_code = String::new();
     let mut source_map = Vec::new();
     let css_writer = BasicCssWriter::new(
@@ -55,15 +55,24 @@ fn render_chunk_css(chunk_pot: &mut ChunkPot, context: &Arc<Context>) -> Result<
         BasicCssWriterConfig::default(),
     );
 
-    let ast = &mut chunk_pot.stylesheet.as_mut().unwrap().0;
+    let ast = &mut chunk_pot.stylesheet.as_ref().unwrap();
+
+    let mut stylesheet = Stylesheet {
+        span: DUMMY_SP,
+        rules: ast
+            .stylesheets
+            .iter()
+            .flat_map(|stylesheet| stylesheet.rules.clone())
+            .collect(),
+    };
 
     {
         mako_core::mako_profile_scope!("transform_css_generate");
-        transform_css_generate(ast, context);
+        transform_css_generate(&mut stylesheet, context);
     }
 
     if context.config.minify && matches!(context.config.mode, Mode::Production) {
-        minify_css(ast, context)?;
+        minify_css(&mut stylesheet, context)?;
     }
 
     let mut gen = CodeGenerator::new(
@@ -72,7 +81,7 @@ fn render_chunk_css(chunk_pot: &mut ChunkPot, context: &Arc<Context>) -> Result<
             minify: context.config.minify && matches!(context.config.mode, Mode::Production),
         },
     );
-    gen.emit(ast)?;
+    gen.emit(&stylesheet)?;
 
     let cm = &context.meta.css.cm;
     let source_map = build_source_map(&source_map, cm);
@@ -176,12 +185,11 @@ impl<'cp> ChunkPot<'cp> {
             chunk_id: chunk.id.generate(context),
             module_map: js_modules.module_map,
             js_hash: js_modules.raw_hash,
-            stylesheet: stylesheet
-                .map(|css_modules| (css_modules.stylesheet, css_modules.raw_hash)),
+            stylesheet,
         })
     }
 
-    pub fn to_dev_normal_chunk_files(&mut self, context: &Arc<Context>) -> Result<Vec<ChunkFile>> {
+    pub fn to_dev_normal_chunk_files(&self, context: &Arc<Context>) -> Result<Vec<ChunkFile>> {
         let mut files = vec![];
 
         let js_chunk_file = render_dev_normal_chunk_js_with_cache(self, context)?;
@@ -196,7 +204,7 @@ impl<'cp> ChunkPot<'cp> {
         Ok(files)
     }
 
-    pub fn to_normal_chunk_files(&mut self, context: &Arc<Context>) -> Result<Vec<ChunkFile>> {
+    pub fn to_normal_chunk_files(&self, context: &Arc<Context>) -> Result<Vec<ChunkFile>> {
         let mut files = vec![];
 
         let js_chunk_file = render_normal_chunk_js_with_cache(self, context)?;
@@ -212,7 +220,7 @@ impl<'cp> ChunkPot<'cp> {
     }
 
     pub fn to_dev_entry_chunk_files(
-        &mut self,
+        &self,
         context: &Arc<Context>,
         js_map: &HashMap<String, String>,
         css_map: &HashMap<String, String>,
@@ -245,7 +253,7 @@ impl<'cp> ChunkPot<'cp> {
     }
 
     pub fn to_entry_chunk_files(
-        &mut self,
+        &self,
         context: &Arc<Context>,
         js_map: &HashMap<String, String>,
         css_map: &HashMap<String, String>,
@@ -269,10 +277,10 @@ impl<'cp> ChunkPot<'cp> {
         module_ids: &'a IndexSet<ModuleId>,
         module_graph: &'a ModuleGraph,
         context: &'a Arc<Context>,
-    ) -> Result<(JsModules<'a>, Option<CssModules>)> {
+    ) -> Result<(JsModules<'a>, Option<CssModules<'a>>)> {
         mako_core::mako_profile_function!();
         let mut module_map: HashMap<String, (&Module, u64)> = Default::default();
-        let mut merged_css_modules: Vec<(String, Stylesheet)> = vec![];
+        let mut merged_css_modules: Vec<(String, &Stylesheet)> = vec![];
 
         let mut module_raw_hash_map: HashMap<String, u64> = Default::default();
         let mut css_raw_hashes = vec![];
@@ -299,7 +307,7 @@ impl<'cp> ChunkPot<'cp> {
                 {
                     merged_css_modules.remove(index);
                 }
-                merged_css_modules.push((module.id.id.clone(), ast.clone()));
+                merged_css_modules.push((module.id.id.clone(), ast));
                 css_raw_hashes.push(module_info.raw_hash);
             }
         }
@@ -309,13 +317,10 @@ impl<'cp> ChunkPot<'cp> {
         if !merged_css_modules.is_empty() {
             mako_core::mako_profile_scope!("iter_chunk_css_modules");
 
-            let mut stylesheet = Stylesheet {
-                span: DUMMY_SP,
-                rules: vec![],
-            };
+            let mut stylesheets = vec![];
 
             for (_, ast) in merged_css_modules {
-                stylesheet.rules.extend(ast.rules);
+                stylesheets.push(ast);
             }
 
             let css_raw_hash = hash_vec(&css_raw_hashes);
@@ -326,7 +331,7 @@ impl<'cp> ChunkPot<'cp> {
                     raw_hash,
                 },
                 Some(CssModules {
-                    stylesheet,
+                    stylesheets,
                     raw_hash: css_raw_hash,
                 }),
             ))
@@ -539,8 +544,8 @@ struct JsModules<'a> {
     raw_hash: u64,
 }
 
-struct CssModules {
-    stylesheet: Stylesheet,
+struct CssModules<'a> {
+    stylesheets: Vec<&'a Stylesheet>,
     raw_hash: u64,
 }
 

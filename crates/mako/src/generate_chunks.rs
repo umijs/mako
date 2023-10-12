@@ -117,7 +117,7 @@ impl Compiler {
             .par_iter()
             .filter(|chunk| !matches!(chunk.chunk_type, ChunkType::Entry(_, _)))
             .map(|chunk| {
-                let mut pot: ChunkPot = ChunkPot::from(chunk, &module_graph, &self.context)?;
+                let pot: ChunkPot = ChunkPot::from(chunk, &module_graph, &self.context)?;
 
                 if self.context.args.watch {
                     pot.to_dev_normal_chunk_files(&self.context)
