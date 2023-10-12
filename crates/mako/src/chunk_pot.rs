@@ -294,9 +294,8 @@ impl<'cp> ChunkPot<'cp> {
 
             if let ModuleAst::Script(_) = ast {
                 module_raw_hash_map.insert(module.id.id.clone(), module_info.raw_hash);
+                module_map.insert(module.id.generate(context), (module, module_info.raw_hash));
             }
-
-            module_map.insert(module.id.generate(context), (module, module_info.raw_hash));
 
             if let ModuleAst::Css(ast) = ast {
                 // only apply the last css module if chunk depend on it multiple times
