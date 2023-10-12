@@ -1,23 +1,24 @@
+#[cfg(feature = "profile")]
 use std::sync::Arc;
 
 #[cfg(feature = "profile")]
 use mako_core::eframe::egui;
+#[cfg(feature = "profile")]
+use mako_core::tokio::sync::Notify;
 
-use crate::compiler::Compiler;
-
+#[cfg(feature = "profile")]
 pub struct ProfileApp {
-    #[allow(dead_code)]
-    frame_counter: u64,
-    #[allow(dead_code)]
-    compiler: Arc<Compiler>,
+    notified: bool,
+    notify: Arc<Notify>,
 }
 
+#[cfg(feature = "profile")]
 impl ProfileApp {
     #[allow(dead_code)]
-    pub fn new(compiler: Arc<Compiler>) -> Self {
+    pub fn new(notify: Arc<Notify>) -> Self {
         Self {
-            frame_counter: 0,
-            compiler,
+            notified: false,
+            notify,
         }
     }
 }
@@ -27,12 +28,10 @@ impl mako_core::eframe::App for ProfileApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut mako_core::eframe::Frame) {
         mako_core::puffin::GlobalProfiler::lock().new_frame(); // call once per frame!
 
-        mako_core::puffin_egui::profiler_window(ctx);
-
-        if self.frame_counter == 0 {
-            self.compiler.compile().unwrap();
+        if !self.notified {
+            self.notified = true;
+            self.notify.notify_one();
         }
-
-        self.frame_counter += 1;
+        mako_core::puffin_egui::profiler_window(ctx);
     }
 }

@@ -5,6 +5,8 @@ use std::sync::Arc;
 use mako_core::anyhow::Result;
 use mako_core::clap::Parser;
 use mako_core::tokio;
+#[cfg(feature = "profile")]
+use mako_core::tokio::sync::Notify;
 use mako_core::tracing::debug;
 
 use crate::compiler::Args;
@@ -91,23 +93,39 @@ async fn main() -> Result<()> {
 
     #[cfg(feature = "profile")]
     {
+        let notify = Arc::new(Notify::new());
+        let to_be_notify = notify.clone();
+
+        tokio::spawn(async move {
+            let compiler = compiler.clone();
+
+            to_be_notify.notified().await;
+
+            compiler.compile().unwrap();
+
+            if cli.watch {
+                let d = crate::dev::DevServer::new(root.clone(), compiler.clone());
+                d.serve().await;
+            }
+        });
+
         mako_core::puffin::set_scopes_on(true);
         let native_options = Default::default();
-        let compiler = compiler.clone();
         let _ = mako_core::eframe::run_native(
             "puffin egui eframe",
             native_options,
-            Box::new(move |_cc| Box::new(ProfileApp::new(compiler))),
+            Box::new(move |_cc| Box::new(ProfileApp::new(notify))),
         );
     }
 
     #[cfg(not(feature = "profile"))]
-    compiler.compile()?;
-
-    if cli.watch {
-        let d = crate::dev::DevServer::new(root.clone(), compiler);
-        // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
-        d.serve().await;
+    {
+        compiler.compile()?;
+        if cli.watch {
+            let d = crate::dev::DevServer::new(root.clone(), compiler);
+            // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
+            d.serve().await;
+        }
     }
     Ok(())
 }
