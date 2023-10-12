@@ -88,22 +88,32 @@ async fn main() {
 
     #[cfg(feature = "profile")]
     {
+        tokio::spawn(async move {
+            let compiler = compiler.clone();
+            compiler.compile();
+
+            if cli.watch {
+                let d = crate::dev::DevServer::new(root.clone(), compiler.clone());
+                d.serve().await;
+            }
+        });
+
         mako_core::puffin::set_scopes_on(true);
         let native_options = Default::default();
-        let compiler = compiler.clone();
         let _ = mako_core::eframe::run_native(
             "puffin egui eframe",
             native_options,
-            Box::new(move |_cc| Box::new(ProfileApp::new(compiler))),
+            Box::new(move |_cc| Box::new(ProfileApp {})),
         );
     }
 
     #[cfg(not(feature = "profile"))]
-    compiler.compile();
-
-    if cli.watch {
-        let d = crate::dev::DevServer::new(root.clone(), compiler);
-        // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
-        d.serve().await;
+    {
+        compiler.compile();
+        if cli.watch {
+            let d = crate::dev::DevServer::new(root.clone(), compiler);
+            // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
+            d.serve().await;
+        }
     }
 }
