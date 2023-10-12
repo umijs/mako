@@ -3,9 +3,11 @@ use std::hash::Hasher;
 use std::sync::Arc;
 
 use anyhow::Result;
+use cached::instant::Instant;
 use cached::proc_macro::{cached, once};
 use cached::SizedCache;
 use indexmap::IndexSet;
+use rayon::prelude::*;
 use swc_common::{Mark, DUMMY_SP, GLOBALS};
 use swc_css_ast::Stylesheet;
 use swc_css_codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};
@@ -19,7 +21,7 @@ use swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
 use swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
 use twox_hash::XxHash64;
 
-use crate::ast::{build_js_ast, Ast};
+use crate::ast::{base64_encode, build_js_ast, Ast};
 use crate::chunk::{Chunk, ChunkType};
 use crate::compiler::Context;
 use crate::config::{DevtoolConfig, Mode};
@@ -217,6 +219,8 @@ impl<'cp> ChunkPot<'cp> {
         chunk: &Chunk,
         full_hash: u64,
     ) -> Result<Vec<ChunkFile>> {
+        mako_core::mako_profile_function!();
+
         let mut lines = vec![];
         lines.push(format!(
             "var chunksIdToUrlMap= {};",
@@ -232,6 +236,7 @@ impl<'cp> ChunkPot<'cp> {
         let mut files = vec![js_chunk_file];
 
         if self.stylesheet.is_some() {
+            mako_core::mako_profile_scope!("CssChunk");
             let css_chunk_file = render_chunk_css(self, context)?;
             files.push(css_chunk_file);
         }
@@ -275,8 +280,6 @@ impl<'cp> ChunkPot<'cp> {
         let module_ids: Vec<_> = module_ids.iter().collect();
 
         for module_id in module_ids {
-            mako_core::mako_profile_scope!("split_modules:loop");
-
             let module = module_graph.get_module(module_id).unwrap();
             let module_info = module.info.as_ref().unwrap();
             let ast = &module_info.ast;
@@ -367,30 +370,36 @@ impl<'cp> ChunkPot<'cp> {
     }
 
     fn to_chunk_module_object_string(&self, context: &Arc<Context>) -> String {
-        // key: module id
-        // value: module FnExpr
+        mako_core::mako_profile_function!();
 
-        let mut sorted_kv = self
-            .module_map
-            .iter()
-            .map(|(k, v)| (k, v))
-            .collect::<Vec<_>>();
+        let sorted_kv = {
+            mako_core::mako_profile_scope!("collect_&_sort");
 
-        if context.config.hash {
-            sorted_kv.sort_by_key(|(k, _)| *k);
-        }
+            let mut sorted_kv = self
+                .module_map
+                .iter()
+                .map(|(k, v)| (k, v))
+                .collect::<Vec<_>>();
+
+            if context.config.hash {
+                sorted_kv.sort_by_key(|(k, _)| *k);
+            }
+
+            sorted_kv
+        };
 
         let module_defines = sorted_kv
-            .iter()
+            .par_iter()
             .map(|(module_id_str, module_and_hash)| {
                 to_module_line(module_and_hash.0, context, module_and_hash.1, module_id_str)
             })
             .collect::<Vec<String>>()
             .join("\n");
 
-        let s = format!(r#"{{ {} }}"#, module_defines);
-
-        s
+        {
+            mako_core::mako_profile_scope!("wrap_in_brace");
+            format!(r#"{{ {} }}"#, module_defines)
+        }
     }
 
     pub fn to_chunk_module_content(&self, context: &Arc<Context>) -> String {
@@ -466,6 +475,8 @@ fn to_module_line(
 ) -> String {
     mako_core::mako_profile_function!(module_id_str);
 
+    let _now = Instant::now();
+
     let mut buf = vec![];
     let mut source_map_buf = Vec::new();
     let cm = context.meta.script.cm.clone();
@@ -480,24 +491,46 @@ fn to_module_line(
             .with_omit_last_semi(true),
         cm: cm.clone(),
         comments: Some(swc_comments),
-        wr: Box::new(JsWriter::new(cm, "\n", &mut buf, Some(&mut source_map_buf))),
+        wr: Box::new(JsWriter::new(
+            cm.clone(),
+            "\n",
+            &mut buf,
+            Some(&mut source_map_buf),
+        )),
     };
 
-    let stmt = fn_expr.to_module_fn_expr().unwrap().unwrap().into_stmt();
+    let escaped = match &fn_expr.info.as_ref().unwrap().ast {
+        ModuleAst::Script(ast) => {
+            emitter.emit_module(&ast.ast).unwrap();
 
-    let swc_module = SwcModule {
-        shebang: None,
-        span: DUMMY_SP,
-        body: vec![stmt.into()],
+            let source_map = build_source_map(&source_map_buf, &cm);
+
+            let content = String::from_utf8_lossy(&buf);
+
+            let content = vec![
+                content,
+                format!(
+                    "//# sourceMappingURL=data:application/json;charset=utf-8;base64,{}",
+                    base64_encode(source_map)
+                )
+                .into(),
+            ]
+            .join("");
+
+            serde_json::to_string(&content).unwrap()
+        }
+        ModuleAst::Css(_) => "".to_string(),
+        ModuleAst::None => {
+            panic!("xxx")
+        }
     };
 
-    // fixme no unwrap
-    emitter.emit_module(&swc_module).unwrap();
-
-    let l = buf.len();
-    let content = String::from_utf8_lossy(&buf[0..l - 2]);
-
-    format!(r#""{}" : {} ,"#, module_id_str, content)
+    format!(
+        r#""{}" : function (module, exports, require){{
+    eval({})
+  }},"#,
+        module_id_str, escaped
+    )
 }
 
 struct JsModules<'a> {
@@ -622,9 +655,11 @@ fn render_dev_entry_chunk_js(
     let mut content: Vec<u8> =
         format!("var m = {};", pot.to_chunk_module_object_string(context)).into();
 
-    content.extend(stmts.join("\n").into_bytes());
-    content.extend(runtime_content.into_bytes());
-
+    {
+        mako_core::mako_profile_scope!("assemble");
+        content.extend(stmts.join("\n").into_bytes());
+        content.extend(runtime_content.into_bytes());
+    }
     Ok(ChunkFile {
         content,
         hash: None,

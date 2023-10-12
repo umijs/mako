@@ -52,6 +52,8 @@ impl ChunkFile {
 
 impl Compiler {
     pub fn generate_chunk_files(&self) -> Result<Vec<ChunkFile>> {
+        mako_core::mako_profile_function!();
+
         let module_graph = self.context.module_graph.read().unwrap();
         let chunk_graph = self.context.chunk_graph.read().unwrap();
 
@@ -95,6 +97,8 @@ impl Compiler {
         chunk: &Chunk,
         full_hash: u64,
     ) -> Result<Vec<ChunkFile>> {
+        mako_core::mako_profile_function!();
+
         if self.context.args.watch {
             pot.to_dev_entry_chunk_files(&self.context, js_map, css_map, chunk, full_hash)
         } else {
@@ -103,6 +107,7 @@ impl Compiler {
     }
 
     fn generate_non_entry_chunk_files(&self) -> Result<Vec<ChunkFile>> {
+        mako_core::mako_profile_function!();
         let module_graph = self.context.module_graph.read().unwrap();
         let chunk_graph = self.context.chunk_graph.read().unwrap();
 
