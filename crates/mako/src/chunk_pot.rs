@@ -790,11 +790,15 @@ fn render_entry_chunk_js(
 // need a better cache key
 fn runtime_base_code(context: &Arc<Context>) -> Result<String> {
     let runtime_entry_content_str = include_str!("runtime/runtime_entry.js");
-    let content = runtime_entry_content_str.replace(
+    let mut content = runtime_entry_content_str.replace(
         "// __inject_runtime_code__",
         &context.plugin_driver.runtime_plugins_code(context)?,
     );
-
+    if context.config.umd != "none" {
+        let umd_runtime = include_str!("runtime/runtime_umd.js");
+        let umd_runtime = umd_runtime.replace("_%umd_name%_", &context.config.umd);
+        content.push_str(&umd_runtime);
+    }
     Ok(content)
 }
 

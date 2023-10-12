@@ -164,6 +164,7 @@ pub struct Config {
     #[serde(rename = "autoCSSModules")]
     pub auto_css_modules: bool,
     pub dynamic_import_to_require: bool,
+    pub umd: String,
 }
 
 const CONFIG_FILE: &str = "mako.config.json";
@@ -198,7 +199,8 @@ const DEFAULT_CONFIG: &str = r#"
     "px2remConfig": { "root": 100, "propBlackList": [], "propWhiteList": [], "selectorBlackList": [], "selectorWhiteList": [] },
     "treeShake": "basic",
     "autoCSSModules": false,
-    "dynamicImportToRequire": false
+    "dynamicImportToRequire": false,
+    "umd": "none"
 }
 "#;
 
