@@ -144,10 +144,9 @@ impl ChunkPot {
             let module_info = module.info.as_ref().unwrap();
             let ast = &module_info.ast;
 
-            let m = module.as_module_fn_expr()?;
-
-            if let Some(fn_expr) = m {
-                if !module.id.id.ends_with(".css") && !module.id.id.ends_with(".css?modules") {
+            if !module.id.id.ends_with(".css") && !module.id.id.ends_with(".css?modules") {
+                let m = module.as_module_fn_expr()?;
+                if let Some(fn_expr) = m {
                     module_raw_hash_map.insert(module.id.id.clone(), module_info.raw_hash);
                     module_map.insert(module.id.generate(context), fn_expr);
                 }
