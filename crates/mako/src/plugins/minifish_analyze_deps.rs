@@ -1,4 +1,4 @@
-use anyhow::Result;
+use mako_core::anyhow::Result;
 
 use crate::plugin::{Plugin, PluginDepAnalyzeParam};
 

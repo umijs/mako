@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use swc_ecma_ast::{ImportDecl, Str};
-use swc_ecma_visit::{VisitMut, VisitMutWith};
+use mako_core::swc_ecma_ast::{ImportDecl, Str};
+use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::compiler::Context;
 

@@ -1,6 +1,6 @@
-use anyhow::Result;
-use indexmap::IndexSet;
-use swc_ecma_ast::{
+use mako_core::anyhow::Result;
+use mako_core::indexmap::IndexSet;
+use mako_core::swc_ecma_ast::{
     CallExpr, Expr, ExprOrSpread, ExprStmt, KeyValueProp, ModuleItem, ObjectLit, Prop,
     PropOrSpread, Stmt,
 };
@@ -66,6 +66,8 @@ impl Compiler {
 
 #[cfg(test)]
 mod tests {
+    use mako_core::tokio;
+
     use crate::assert_debug_snapshot;
     use crate::compiler::{Args, Compiler};
     use crate::config::Config;
@@ -75,7 +77,7 @@ mod tests {
     async fn test_generate_hmr_chunk() {
         let compiler = create_compiler("test/dev/normal");
 
-        compiler.build();
+        compiler.build().unwrap();
         compiler.group_chunk();
         let chunk_graph = &compiler.context.chunk_graph.read().unwrap();
         let chunks = chunk_graph.get_chunks();
@@ -98,6 +100,6 @@ mod tests {
         let current_dir = std::env::current_dir().unwrap();
         let root = current_dir.join(base);
         let config = Config::new(&root, None, None).unwrap();
-        Compiler::new(config, root, Args { watch: true })
+        Compiler::new(config, root, Args { watch: true }).unwrap()
     }
 }

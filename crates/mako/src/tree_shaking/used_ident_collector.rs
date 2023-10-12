@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
-use swc_ecma_ast::{Decl, Ident};
-use swc_ecma_visit::{Visit, VisitWith};
+use mako_core::swc_ecma_ast::{Decl, Ident};
+use mako_core::swc_ecma_visit::{Visit, VisitWith};
 
 use crate::tree_shaking::defined_ident_collector::DefinedIdentCollector;
 

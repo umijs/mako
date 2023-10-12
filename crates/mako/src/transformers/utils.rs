@@ -1,5 +1,5 @@
-use swc_common::DUMMY_SP;
-use swc_ecma_ast::{
+use mako_core::swc_common::DUMMY_SP;
+use mako_core::swc_ecma_ast::{
     ArrowExpr, BlockStmtOrExpr, CallExpr, Callee, Expr, ExprOrSpread, Ident, Lit, MemberExpr,
     MemberProp, Pat,
 };

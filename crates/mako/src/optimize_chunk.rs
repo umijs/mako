@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::string::String;
 
-use indexmap::{IndexMap, IndexSet};
+use mako_core::indexmap::{IndexMap, IndexSet};
 use mako_core::nodejs_resolver::Resource;
-use regex::Regex;
-use tracing::debug;
+use mako_core::regex::Regex;
+use mako_core::tracing::debug;
 
 use crate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::compiler::Compiler;

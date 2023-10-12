@@ -2,9 +2,12 @@
 
 use std::sync::Arc;
 
-use clap::Parser;
-use tokio::sync::Notify;
-use tracing::debug;
+use mako_core::anyhow::Result;
+use mako_core::clap::Parser;
+use mako_core::tokio;
+#[cfg(feature = "profile")]
+use mako_core::tokio::sync::Notify;
+use mako_core::tracing::debug;
 
 use crate::compiler::Args;
 use crate::config::Mode;
@@ -52,7 +55,7 @@ mod update;
 mod watch;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     // logger
     init_logger();
 
@@ -84,7 +87,7 @@ async fn main() {
     debug!("config: {:?}", config);
 
     // compiler
-    let compiler = compiler::Compiler::new(config, root.clone(), Args { watch: cli.watch });
+    let compiler = compiler::Compiler::new(config, root.clone(), Args { watch: cli.watch })?;
     let compiler = Arc::new(compiler);
 
     #[cfg(feature = "profile")]
@@ -97,7 +100,7 @@ async fn main() {
 
             to_be_notify.notified().await;
 
-            compiler.compile();
+            compiler.compile().unwrap();
 
             if cli.watch {
                 let d = crate::dev::DevServer::new(root.clone(), compiler.clone());
@@ -116,11 +119,12 @@ async fn main() {
 
     #[cfg(not(feature = "profile"))]
     {
-        compiler.compile();
+        compiler.compile()?;
         if cli.watch {
             let d = crate::dev::DevServer::new(root.clone(), compiler);
             // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
             d.serve().await;
         }
     }
+    Ok(())
 }

@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use swc_common::comments::NoopComments;
-use swc_common::sync::Lrc;
-use swc_common::{chain, Mark, SourceMap};
-use swc_ecma_ast::Module;
-use swc_ecma_transforms::react::{react, Options, RefreshOptions, Runtime};
-use swc_ecma_visit::{VisitMut, VisitMutWith};
+use mako_core::swc_common::comments::NoopComments;
+use mako_core::swc_common::sync::Lrc;
+use mako_core::swc_common::{chain, Mark, SourceMap};
+use mako_core::swc_ecma_ast::Module;
+use mako_core::swc_ecma_transforms::react::{react, Options, RefreshOptions, Runtime};
+use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::ast::build_js_ast;
 use crate::build::Task;
@@ -192,9 +192,9 @@ mod tests {
 
     use std::sync::Arc;
 
-    use swc_common::{chain, Mark, GLOBALS};
-    use swc_ecma_transforms::resolver;
-    use swc_ecma_visit::VisitMut;
+    use mako_core::swc_common::{chain, Mark, GLOBALS};
+    use mako_core::swc_ecma_transforms::resolver;
+    use mako_core::swc_ecma_visit::VisitMut;
 
     use crate::assert_display_snapshot;
     use crate::ast::build_js_ast;

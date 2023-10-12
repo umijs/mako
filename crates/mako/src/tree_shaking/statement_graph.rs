@@ -1,9 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
-use petgraph::stable_graph::{NodeIndex, StableDiGraph};
-use petgraph::visit::{EdgeRef, IntoEdgeReferences};
-use swc_ecma_ast::Module;
+use mako_core::petgraph::stable_graph::{NodeIndex, StableDiGraph};
+use mako_core::petgraph::visit::{EdgeRef, IntoEdgeReferences};
+use mako_core::swc_ecma_ast::Module;
 
 use crate::tree_shaking::analyze_statement::analyze_statement;
 use crate::tree_shaking::statement::{StatementId, StatementType};

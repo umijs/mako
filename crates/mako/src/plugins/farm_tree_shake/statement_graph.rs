@@ -1,7 +1,8 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use petgraph::stable_graph::NodeIndex;
-use swc_ecma_ast::{Module as SwcModule, ModuleItem};
+use mako_core::petgraph;
+use mako_core::petgraph::stable_graph::NodeIndex;
+use mako_core::swc_ecma_ast::{Module as SwcModule, ModuleItem};
 
 pub(crate) mod analyze_imports_and_exports;
 pub(crate) mod defined_idents_collector;

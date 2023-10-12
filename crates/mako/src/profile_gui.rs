@@ -1,8 +1,10 @@
+#[cfg(feature = "profile")]
 use std::sync::Arc;
 
 #[cfg(feature = "profile")]
 use mako_core::eframe::egui;
-use tokio::sync::Notify;
+#[cfg(feature = "profile")]
+use mako_core::tokio::sync::Notify;
 
 #[cfg(feature = "profile")]
 pub struct ProfileApp {
