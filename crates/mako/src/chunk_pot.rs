@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use cached::instant::Instant;
-use cached::proc_macro::{cached, once};
+use cached::proc_macro::cached;
 use cached::SizedCache;
 use indexmap::IndexSet;
 use rayon::prelude::*;
@@ -691,6 +691,19 @@ fn render_entry_chunk_js(
 ) -> Result<ChunkFile> {
     let mut stmts = vec![];
 
+    let (js_map_stmt, css_map_stmt) = chunk_map_decls(js_map, css_map);
+
+    stmts.push(js_map_stmt);
+    stmts.push(css_map_stmt);
+
+    if let ChunkType::Entry(module_id, _) = &chunk.chunk_type {
+        let main_id_decl: Stmt = quote_str!(module_id.generate(context))
+            .into_var_decl(VarDeclKind::Var, quote_ident!("e").into()) // e brief for entry_module_id
+            .into();
+
+        stmts.push(main_id_decl);
+    }
+
     let chunk_graph = context.chunk_graph.read().unwrap();
 
     let dep_chunks_ids = chunk_graph
@@ -732,19 +745,6 @@ fn render_entry_chunk_js(
     };
 
     stmts.push(init_install_css_chunk);
-
-    let (js_map_stmt, css_map_stmt) = chunk_map_decls(js_map, css_map);
-
-    stmts.push(js_map_stmt);
-    stmts.push(css_map_stmt);
-
-    if let ChunkType::Entry(module_id, _) = &chunk.chunk_type {
-        let main_id_decl: Stmt = quote_str!(module_id.generate(context))
-            .into_var_decl(VarDeclKind::Var, quote_ident!("e").into()) // e brief for entry_module_id
-            .into();
-
-        stmts.push(main_id_decl);
-    }
 
     let runtime_content =
         runtime_base_code(context)?.replace("_%full_hash%_", &full_hash.to_string());
@@ -789,7 +789,8 @@ fn render_entry_chunk_js(
     })
 }
 
-#[once(result = true)]
+// #[once(result = true)]
+// need a better cache key
 fn runtime_base_code(context: &Arc<Context>) -> Result<String> {
     let runtime_entry_content_str = include_str!("runtime/runtime_entry.js");
     let content = runtime_entry_content_str.replace(

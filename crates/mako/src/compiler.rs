@@ -142,6 +142,8 @@ impl Compiler {
     pub fn new(config: Config, root: PathBuf, args: Args) -> Self {
         assert!(root.is_absolute(), "root path must be absolute");
 
+        dbg!(args.watch);
+
         let mut plugins: Vec<Arc<dyn Plugin>> = vec![
             // features
             Arc::new(plugins::node_polyfill::NodePolyfillPlugin {}),
