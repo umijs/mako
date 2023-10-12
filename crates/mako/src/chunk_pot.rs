@@ -634,7 +634,7 @@ fn render_dev_entry_chunk_js(
     let dep_chunks_ids = chunk_graph
         .sync_dependencies_chunk(chunk)
         .into_iter()
-        .map(|chunk| chunk.generate(context))
+        .map(|chunk| format!(r#""{}""#, chunk.generate(context)))
         .collect::<HashSet<String>>()
         .into_iter()
         .collect::<Vec<_>>();
