@@ -1,7 +1,8 @@
 use std::collections::HashSet;
 
-use swc_ecma_ast::{ModuleExportName, ModuleItem};
-use swc_ecma_visit::VisitWith;
+use mako_core::swc_ecma_ast;
+use mako_core::swc_ecma_ast::{ModuleExportName, ModuleItem};
+use mako_core::swc_ecma_visit::VisitWith;
 
 use crate::tree_shaking::defined_ident_collector::DefinedIdentCollector;
 use crate::tree_shaking::statement::{

@@ -3,10 +3,10 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::vec;
 
-use anyhow::{anyhow, Result};
+use mako_core::anyhow::{anyhow, Result};
 use mako_core::nodejs_resolver::{AliasMap, Options, ResolveResult, Resolver, Resource};
-use thiserror::Error;
-use tracing::debug;
+use mako_core::thiserror::Error;
+use mako_core::tracing::debug;
 
 use crate::compiler::Context;
 use crate::config::{Config, Platform};
@@ -149,6 +149,7 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
             ".tsx".to_string(),
             ".mjs".to_string(),
             ".cjs".to_string(),
+            ".json".to_string(),
         ],
         condition_names: if is_browser {
             if resolver_type == ResolverType::Cjs {

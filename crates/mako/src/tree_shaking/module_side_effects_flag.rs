@@ -53,12 +53,14 @@ fn match_glob_pattern(pattern: &str, path: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use mako_core::tokio;
+
     use crate::test_helper::{get_module, setup_compiler};
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_side_effects_flag() {
         let compiler = setup_compiler("test/build/side-effects-flag", false);
-        compiler.compile();
+        compiler.compile().unwrap();
         let foo = get_module(&compiler, "node_modules/foo/index.ts");
         let bar = get_module(&compiler, "node_modules/bar/index.ts");
         let zzz = get_module(&compiler, "node_modules/zzz/index.ts");

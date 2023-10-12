@@ -1,7 +1,8 @@
-use swc_common::util::take::Take;
-use swc_ecma_ast::{Decl, ExportDecl, ModuleItem};
-use swc_ecma_visit::{VisitMut, VisitMutWith};
-use tracing::debug;
+use mako_core::swc_common::util::take::Take;
+use mako_core::swc_ecma_ast;
+use mako_core::swc_ecma_ast::{Decl, ExportDecl, ModuleItem};
+use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+use mako_core::tracing::debug;
 
 use crate::comments::Comments;
 use crate::module::ModuleId;

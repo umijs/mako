@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::Result;
+use mako_core::anyhow::Result;
 use mako_core::toml::{from_str as from_toml_str, Value as TomlValue};
 
 use crate::compiler::Context;

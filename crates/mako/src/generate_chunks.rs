@@ -3,12 +3,12 @@ use std::path::Path;
 use std::sync::Arc;
 use std::vec;
 
-use anyhow::Result;
-use indexmap::IndexSet;
-use rayon::prelude::*;
-use swc_common::DUMMY_SP;
-use swc_css_ast::Stylesheet;
-use swc_ecma_ast::{Expr, KeyValueProp, Prop, PropOrSpread, Str};
+use mako_core::anyhow::Result;
+use mako_core::indexmap::IndexSet;
+use mako_core::rayon::prelude::*;
+use mako_core::swc_common::DUMMY_SP;
+use mako_core::swc_css_ast::Stylesheet;
+use mako_core::swc_ecma_ast::{Expr, KeyValueProp, Prop, PropName, PropOrSpread, Str};
 
 use crate::chunk::{Chunk, ChunkType};
 use crate::chunk_pot::ChunkPot;
@@ -156,7 +156,7 @@ impl Compiler {
 
 pub fn build_props(key_str: &str, value: Box<Expr>) -> PropOrSpread {
     PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-        key: swc_ecma_ast::PropName::Str(Str {
+        key: PropName::Str(Str {
             span: DUMMY_SP,
             value: key_str.into(),
             raw: None,

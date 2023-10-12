@@ -4,9 +4,9 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Ok, Result};
-use rayon::prelude::*;
-use tracing::debug;
+use mako_core::anyhow::{anyhow, Ok, Result};
+use mako_core::rayon::prelude::*;
+use mako_core::tracing::debug;
 
 use crate::build::Task;
 use crate::compiler::Compiler;
@@ -166,7 +166,7 @@ impl Compiler {
         update_result.modified.extend(modified_module_ids);
 
         // 最后做添加
-        let added_module_ids = self.build_by_add(&added, resolvers);
+        let added_module_ids = self.build_by_add(&added, resolvers)?;
         update_result.added.extend(
             added
                 .into_iter()
@@ -309,7 +309,11 @@ impl Compiler {
         Result::Ok((modified_module_ids, added))
     }
 
-    fn build_by_add(&self, added: &Vec<PathBuf>, resolvers: Arc<Resolvers>) -> HashSet<ModuleId> {
+    fn build_by_add(
+        &self,
+        added: &Vec<PathBuf>,
+        resolvers: Arc<Resolvers>,
+    ) -> Result<HashSet<ModuleId>> {
         let mut add_queue: VecDeque<Task> = VecDeque::new();
         for path in added {
             add_queue.push_back(Task {
@@ -372,6 +376,8 @@ fn diff(origin: Vec<(ModuleId, Dependency)>, target: Vec<(ModuleId, Dependency)>
 #[cfg(test)]
 mod tests {
 
+    use mako_core::tokio;
+
     use crate::module::ModuleId;
     use crate::test_helper::{module_to_jscode, setup_compiler, setup_files};
     use crate::update::UpdateType;
@@ -403,7 +409,7 @@ export default async function () {
                 ),
             ],
         );
-        compiler.compile();
+        compiler.compile().unwrap();
         {
             let module_graph = compiler.context.module_graph.read().unwrap();
             assert_display_snapshot!(&module_graph);
@@ -471,7 +477,7 @@ export default async function () {
                 ),
             ],
         );
-        compiler.compile();
+        compiler.compile().unwrap();
         {
             let module_graph = compiler.context.module_graph.read().unwrap();
             let code = module_to_jscode(&compiler, &ModuleId::from_path(target_path.clone()));

@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
-use swc_ecma_ast::{ObjectPatProp, Pat};
-use swc_ecma_visit::{Visit, VisitWith};
+use mako_core::swc_ecma_ast::{ObjectPatProp, Pat};
+use mako_core::swc_ecma_visit::{Visit, VisitWith};
 
 use super::used_idents_collector::UsedIdentsCollector;
 

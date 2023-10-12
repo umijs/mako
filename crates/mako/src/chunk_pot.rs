@@ -1,25 +1,25 @@
 use std::collections::{HashMap, HashSet};
 use std::hash::Hasher;
 use std::sync::Arc;
+use std::vec;
 
-use anyhow::{anyhow, Result};
-use cached::instant::Instant;
 use cached::proc_macro::cached;
-use cached::SizedCache;
-use indexmap::IndexSet;
-use rayon::prelude::*;
-use swc_common::{Mark, DUMMY_SP, GLOBALS};
-use swc_css_ast::Stylesheet;
-use swc_css_codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};
-use swc_css_codegen::{CodeGenerator, CodegenConfig, Emit};
-use swc_ecma_ast::{
+use mako_core::anyhow::{anyhow, Result};
+use mako_core::cached::SizedCache;
+use mako_core::indexmap::IndexSet;
+use mako_core::rayon::prelude::*;
+use mako_core::swc_common::{Mark, DUMMY_SP, GLOBALS};
+use mako_core::swc_css_ast::Stylesheet;
+use mako_core::swc_css_codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};
+use mako_core::swc_css_codegen::{CodeGenerator, CodegenConfig, Emit};
+use mako_core::swc_ecma_ast::{
     ArrayLit, Expr, ExprOrSpread, KeyValueProp, Lit, Module as SwcModule, Number, ObjectLit, Prop,
     PropOrSpread, Stmt, VarDeclKind,
 };
-use swc_ecma_codegen::text_writer::JsWriter;
-use swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
-use swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
-use twox_hash::XxHash64;
+use mako_core::swc_ecma_codegen::text_writer::JsWriter;
+use mako_core::swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
+use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
+use mako_core::twox_hash::XxHash64;
 
 use crate::ast::{base64_encode, build_js_ast, Ast};
 use crate::chunk::{Chunk, ChunkType};
@@ -477,8 +477,6 @@ fn to_module_line(
     module_id_str: &str,
 ) -> Result<String> {
     mako_core::mako_profile_function!(module_id_str);
-
-    let _now = Instant::now();
 
     let mut buf = vec![];
     let mut source_map_buf = Vec::new();

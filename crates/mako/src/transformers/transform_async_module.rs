@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
-use swc_common::DUMMY_SP;
-use swc_ecma_ast::{
+use mako_core::swc_common::DUMMY_SP;
+use mako_core::swc_ecma_ast::{
     ArrayLit, ArrowExpr, AssignExpr, AssignOp, AwaitExpr, BindingIdent, BlockStmt, BlockStmtOrExpr,
     CallExpr, Callee, CondExpr, Decl, Expr, ExprOrSpread, ExprStmt, Ident, Lit, MemberExpr,
     MemberProp, ModuleItem, ParenExpr, Pat, PatOrExpr, Stmt, Str, VarDecl, VarDeclKind,
     VarDeclarator,
 };
-use swc_ecma_visit::VisitMut;
+use mako_core::swc_ecma_visit::VisitMut;
 
 use crate::compiler::Context;
 use crate::module::Dependency;
@@ -350,8 +350,8 @@ impl VisitMut for AsyncModule<'_> {
 mod tests {
     use std::sync::Arc;
 
-    use swc_common::{Globals, DUMMY_SP, GLOBALS};
-    use swc_ecma_visit::VisitMutWith;
+    use mako_core::swc_common::{Globals, DUMMY_SP, GLOBALS};
+    use mako_core::swc_ecma_visit::VisitMutWith;
 
     use super::AsyncModule;
     use crate::ast::{build_js_ast, js_ast_to_code};

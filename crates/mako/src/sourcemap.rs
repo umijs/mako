@@ -1,11 +1,11 @@
-use swc_common::source_map::SourceMapGenConfig;
-use swc_common::sync::Lrc;
-use swc_common::{BytePos, FileName, LineCol, SourceMap};
+use mako_core::swc_common::source_map::SourceMapGenConfig;
+use mako_core::swc_common::sync::Lrc;
+use mako_core::swc_common::{BytePos, FileName, LineCol, SourceMap};
 
 pub struct SwcSourceMapGenConfig;
 
 impl SourceMapGenConfig for SwcSourceMapGenConfig {
-    fn file_name_to_source(&self, f: &swc_common::FileName) -> String {
+    fn file_name_to_source(&self, f: &FileName) -> String {
         f.to_string()
     }
 

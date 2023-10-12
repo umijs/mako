@@ -1,11 +1,11 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
-use petgraph::graph::{DefaultIx, NodeIndex};
-use petgraph::prelude::EdgeRef;
-use petgraph::stable_graph::{StableDiGraph, WalkNeighbors};
-use petgraph::visit::IntoEdgeReferences;
-use petgraph::Direction;
+use mako_core::petgraph::graph::{DefaultIx, NodeIndex};
+use mako_core::petgraph::prelude::EdgeRef;
+use mako_core::petgraph::stable_graph::{StableDiGraph, WalkNeighbors};
+use mako_core::petgraph::visit::IntoEdgeReferences;
+use mako_core::petgraph::Direction;
 
 use crate::module::{Dependencies, Dependency, Module, ModuleId, ModuleInfo};
 

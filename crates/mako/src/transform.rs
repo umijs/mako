@@ -1,21 +1,21 @@
 use std::sync::Arc;
 
-use anyhow::Result;
-use swc_common::comments::NoopComments;
-use swc_common::errors::HANDLER;
-use swc_common::sync::Lrc;
-use swc_common::{chain, Mark, GLOBALS};
-use swc_css_ast::Stylesheet;
-use swc_css_visit::VisitMutWith as CssVisitMutWith;
-use swc_ecma_ast::Module;
-use swc_ecma_preset_env::{self as swc_preset_env};
-use swc_ecma_transforms::feature::FeatureFlag;
-use swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
-use swc_ecma_transforms::proposals::decorators;
-use swc_ecma_transforms::typescript::strip_with_jsx;
-use swc_ecma_transforms::{resolver, Assumptions};
-use swc_ecma_visit::{Fold, VisitMutWith};
-use swc_error_reporters::handler::try_with_handler;
+use mako_core::anyhow::Result;
+use mako_core::swc_common::comments::NoopComments;
+use mako_core::swc_common::errors::HANDLER;
+use mako_core::swc_common::sync::Lrc;
+use mako_core::swc_common::{chain, Mark, GLOBALS};
+use mako_core::swc_css_ast::Stylesheet;
+use mako_core::swc_css_visit::VisitMutWith as CssVisitMutWith;
+use mako_core::swc_ecma_ast::Module;
+use mako_core::swc_ecma_preset_env::{self as swc_preset_env};
+use mako_core::swc_ecma_transforms::feature::FeatureFlag;
+use mako_core::swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
+use mako_core::swc_ecma_transforms::proposals::decorators;
+use mako_core::swc_ecma_transforms::typescript::strip_with_jsx;
+use mako_core::swc_ecma_transforms::{resolver, Assumptions};
+use mako_core::swc_ecma_visit::{Fold, VisitMutWith};
+use mako_core::swc_error_reporters::handler::try_with_handler;
 
 use crate::build::Task;
 use crate::compiler::Context;

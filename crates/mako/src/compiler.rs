@@ -4,10 +4,11 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
 
-use colored::Colorize;
-use swc_common::sync::Lrc;
-use swc_common::{Globals, SourceMap, DUMMY_SP};
-use swc_ecma_ast::Ident;
+use mako_core::anyhow::Result;
+use mako_core::colored::Colorize;
+use mako_core::swc_common::sync::Lrc;
+use mako_core::swc_common::{Globals, SourceMap, DUMMY_SP};
+use mako_core::swc_ecma_ast::Ident;
 
 use crate::chunk_graph::ChunkGraph;
 use crate::comments::Comments;
@@ -139,7 +140,7 @@ pub struct Compiler {
 }
 
 impl Compiler {
-    pub fn new(config: Config, root: PathBuf, args: Args) -> Self {
+    pub fn new(config: Config, root: PathBuf, args: Args) -> Result<Self> {
         assert!(root.is_absolute(), "root path must be absolute");
 
         let mut plugins: Vec<Arc<dyn Plugin>> = vec![
@@ -183,10 +184,10 @@ impl Compiler {
 
         let plugin_driver = PluginDriver::new(plugins);
 
-        plugin_driver.modify_config(&mut config).unwrap();
+        plugin_driver.modify_config(&mut config)?;
 
         let resolvers = get_resolvers(&config);
-        Self {
+        Ok(Self {
             context: Arc::new(Context {
                 config,
                 args,
@@ -200,10 +201,10 @@ impl Compiler {
                 stats_info: Mutex::new(StatsInfo::new()),
                 resolvers,
             }),
-        }
+        })
     }
 
-    pub fn compile(&self) {
+    pub fn compile(&self) -> Result<()> {
         // 先清空 dist 目录
         self.clean_dist();
 
@@ -218,30 +219,28 @@ impl Compiler {
         println!("{}", building_with_message);
         {
             mako_core::mako_profile_scope!("Build Stage");
-            self.build();
+            self.build()?;
         }
         let result = {
             mako_core::mako_profile_scope!("Generate Stage");
             self.generate()
         };
         let t_compiler = t_compiler.elapsed();
-        match result {
-            Ok(_) => {
-                println!(
-                    "{}",
-                    format!(
-                        "✓ Built in {}",
-                        format!("{}ms", t_compiler.as_millis()).bold()
-                    )
-                    .green()
-                );
-                if !self.context.args.watch {
-                    println!("{}", "Complete!".bold());
-                }
+        if result.is_ok() {
+            println!(
+                "{}",
+                format!(
+                    "✓ Built in {}",
+                    format!("{}ms", t_compiler.as_millis()).bold()
+                )
+                .green()
+            );
+            if !self.context.args.watch {
+                println!("{}", "Complete!".bold());
             }
-            Err(e) => {
-                panic!("generate failed: {:?}", e);
-            }
+            Ok(())
+        } else {
+            result
         }
     }
 
@@ -263,6 +262,8 @@ impl Compiler {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
+
+    use mako_core::tokio;
 
     use super::Compiler;
     use crate::config::Config;
@@ -482,8 +483,8 @@ mod tests {
         let current_dir = std::env::current_dir().unwrap();
         let root = current_dir.join(base);
         let config = Config::new(&root, None, None).unwrap();
-        let compiler = Compiler::new(config, root.clone(), Default::default());
-        compiler.compile();
+        let compiler = Compiler::new(config, root.clone(), Default::default()).unwrap();
+        compiler.compile().unwrap();
         let dist = root.join("dist");
         let files = std::fs::read_dir(dist.clone())
             .unwrap()

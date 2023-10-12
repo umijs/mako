@@ -3,12 +3,13 @@ use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use anyhow::anyhow;
-use base64::engine::{general_purpose, Engine};
-use pathdiff::diff_paths;
-use swc_common::{Span, DUMMY_SP};
-use swc_ecma_ast::{BlockStmt, FnExpr, Function};
-use swc_ecma_utils::quote_ident;
+use mako_core::anyhow::{anyhow, Result};
+use mako_core::base64::engine::{general_purpose, Engine};
+use mako_core::pathdiff::diff_paths;
+use mako_core::swc_common::{Span, DUMMY_SP};
+use mako_core::swc_ecma_ast::{BlockStmt, FnExpr, Function, Module as SwcModule};
+use mako_core::swc_ecma_utils::quote_ident;
+use mako_core::{md5, swc_css_ast};
 
 use crate::ast::Ast;
 use crate::compiler::Context;
@@ -142,7 +143,7 @@ pub enum ModuleAst {
 }
 
 impl ModuleAst {
-    pub fn as_script_mut(&mut self) -> &mut swc_ecma_ast::Module {
+    pub fn as_script_mut(&mut self) -> &mut SwcModule {
         if let Self::Script(script) = self {
             &mut script.ast
         } else {
@@ -218,7 +219,7 @@ impl Module {
     // function(module, exports, require) {
     //   module stmt..
     // }
-    pub fn to_module_fn_expr(&self) -> anyhow::Result<FnExpr> {
+    pub fn to_module_fn_expr(&self) -> Result<FnExpr> {
         match &self.info.as_ref().unwrap().ast {
             ModuleAst::Script(script) => {
                 let mut stmts = Vec::new();

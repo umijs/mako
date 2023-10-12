@@ -1,9 +1,9 @@
 use std::any::Any;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
-use swc_common::errors::Handler;
-use swc_ecma_ast::Module;
+use mako_core::anyhow::{anyhow, Result};
+use mako_core::swc_common::errors::Handler;
+use mako_core::swc_ecma_ast::Module;
 
 use crate::build::FileRequest;
 use crate::compiler::Context;

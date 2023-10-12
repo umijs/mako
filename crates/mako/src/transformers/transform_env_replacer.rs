@@ -1,19 +1,19 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
-use serde_json::Value;
-use swc_atoms::{js_word, JsWord};
-use swc_common::collections::{AHashMap, AHashSet};
-use swc_common::sync::Lrc;
-use swc_common::DUMMY_SP;
-use swc_ecma_ast::{
+use mako_core::anyhow::{anyhow, Result};
+use mako_core::serde_json::Value;
+use mako_core::swc_atoms::{js_word, JsWord};
+use mako_core::swc_common::collections::{AHashMap, AHashSet};
+use mako_core::swc_common::sync::Lrc;
+use mako_core::swc_common::DUMMY_SP;
+use mako_core::swc_ecma_ast::{
     ArrayLit, Bool, ComputedPropName, Expr, ExprOrSpread, Id, Ident, KeyValueProp, Lit, MemberExpr,
     MemberProp, MetaPropExpr, MetaPropKind, Module, ModuleItem, Null, Number, ObjectLit, Prop,
     PropName, PropOrSpread, Stmt, Str,
 };
-use swc_ecma_utils::{collect_decls, ExprExt};
-use swc_ecma_visit::{VisitMut, VisitMutWith};
+use mako_core::swc_ecma_utils::{collect_decls, ExprExt};
+use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::ast::build_js_ast;
 use crate::compiler::Context;
@@ -252,8 +252,8 @@ fn get_env_expr(v: Value, context: &Arc<Context>) -> Result<Expr> {
 mod tests {
     use std::sync::Arc;
 
+    use mako_core::serde_json::json;
     use maplit::hashmap;
-    use serde_json::json;
 
     use crate::compiler::Context;
     use crate::transformers::transform_env_replacer::build_env_map;

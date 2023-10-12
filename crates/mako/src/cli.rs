@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
-use clap::Parser;
+use mako_core::clap;
+use mako_core::clap::Parser;
 
 use crate::config::Mode;
 

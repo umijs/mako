@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use swc_common::DUMMY_SP;
-use swc_ecma_ast::{ArrayLit, Expr, ExprOrSpread, Lit};
-use swc_ecma_visit::{VisitMut, VisitMutWith};
+use mako_core::swc_common::DUMMY_SP;
+use mako_core::swc_ecma_ast::{ArrayLit, Expr, ExprOrSpread, Lit};
+use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use super::utils::{id, member_call, member_prop, promise_all, require_ensure};
 use crate::analyze_deps::is_dynamic_import;
@@ -104,8 +104,8 @@ impl VisitMut for DynamicImport<'_> {
 mod tests {
     use std::sync::Arc;
 
-    use swc_common::{Globals, GLOBALS};
-    use swc_ecma_visit::VisitMutWith;
+    use mako_core::swc_common::{Globals, GLOBALS};
+    use mako_core::swc_ecma_visit::VisitMutWith;
 
     use super::DynamicImport;
     use crate::ast::{build_js_ast, js_ast_to_code};

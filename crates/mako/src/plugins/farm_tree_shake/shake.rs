@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::ops::DerefMut;
 
-use anyhow::Result;
+use mako_core::anyhow::Result;
 
 use crate::module::{ModuleAst, ModuleId, ModuleType, ResolveType};
 use crate::module_graph::ModuleGraph;

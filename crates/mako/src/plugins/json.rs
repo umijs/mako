@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::Result;
+use mako_core::anyhow::Result;
 
 use crate::compiler::Context;
 use crate::load::{read_content, Content};

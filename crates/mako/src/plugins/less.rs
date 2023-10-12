@@ -1,9 +1,9 @@
 use std::process::Command;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
-use cached::proc_macro::cached;
-use tracing::debug;
+use mako_core::anyhow::{anyhow, Result};
+use mako_core::cached::proc_macro::cached;
+use mako_core::tracing::debug;
 
 use crate::compiler::Context;
 use crate::load::{read_content, Content, LoadError};

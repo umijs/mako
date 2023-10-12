@@ -30,7 +30,7 @@ impl mako_core::eframe::App for ProfileApp {
         mako_core::puffin_egui::profiler_window(ctx);
 
         if self.frame_counter == 0 {
-            self.compiler.compile();
+            self.compiler.compile().unwrap();
         }
 
         self.frame_counter += 1;

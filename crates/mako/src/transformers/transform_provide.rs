@@ -1,10 +1,10 @@
-use indexmap::IndexMap;
-use swc_common::collections::AHashSet;
-use swc_common::sync::Lrc;
-use swc_common::DUMMY_SP;
-use swc_ecma_ast::{Expr, Id, Ident, MemberExpr, Module, ModuleItem, VarDeclKind};
-use swc_ecma_utils::{collect_decls, quote_ident, quote_str, ExprFactory};
-use swc_ecma_visit::{VisitMut, VisitMutWith};
+use mako_core::indexmap::IndexMap;
+use mako_core::swc_common::collections::AHashSet;
+use mako_core::swc_common::sync::Lrc;
+use mako_core::swc_common::DUMMY_SP;
+use mako_core::swc_ecma_ast::{Expr, Id, Ident, MemberExpr, Module, ModuleItem, VarDeclKind};
+use mako_core::swc_ecma_utils::{collect_decls, quote_ident, quote_str, ExprFactory};
+use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::config::Providers;
 

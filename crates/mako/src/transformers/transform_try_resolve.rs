@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use swc_ecma_ast::{BlockStmt, Expr, ExprOrSpread, ExprStmt, Stmt, TryStmt};
-use swc_ecma_visit::{VisitMut, VisitMutWith};
+use mako_core::swc_ecma_ast::{BlockStmt, Expr, ExprOrSpread, ExprStmt, Stmt, TryStmt};
+use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::analyze_deps::{get_first_arg_str, is_commonjs_require};
 use crate::compiler::Context;

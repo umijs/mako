@@ -9,6 +9,7 @@ use mako::compiler::{Args, Compiler};
 use mako::config::{Config, Mode};
 use mako::dev::DevServer;
 use mako::logger::init_logger;
+use napi::Status;
 
 #[napi]
 pub async fn build(
@@ -55,7 +56,7 @@ pub async fn build(
 }"#)]
     config: serde_json::Value,
     watch: bool,
-) {
+) -> napi::Result<()> {
     // logger
     init_logger();
 
@@ -68,11 +69,15 @@ pub async fn build(
         config.hash = false;
     }
 
-    let compiler = Compiler::new(config, root.clone(), Args { watch });
-    compiler.compile();
+    let compiler = Compiler::new(config, root.clone(), Args { watch })
+        .map_err(|e| napi::Error::new(Status::GenericFailure, format!("{}", e)))?;
+    compiler
+        .compile()
+        .map_err(|e| napi::Error::new(Status::GenericFailure, format!("{}", e)))?;
     if watch {
         let d = DevServer::new(root.clone(), Arc::new(compiler));
         // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
         d.serve().await;
     }
+    Ok(())
 }

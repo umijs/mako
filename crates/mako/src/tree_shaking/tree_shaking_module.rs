@@ -1,7 +1,8 @@
 use std::collections::{HashMap, HashSet};
 use std::{fmt, vec};
 
-use tracing::Level;
+use mako_core::tracing::Level;
+use mako_core::{swc_ecma_ast, tracing};
 
 use crate::module::{Module, ModuleId};
 use crate::tree_shaking::statement::{
