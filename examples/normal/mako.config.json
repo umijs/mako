@@ -1,6 +1,5 @@
 {
   "devtool": "source-map",
-  "extractCSS": true,
   "stats": true,
   "hash": true
 }
