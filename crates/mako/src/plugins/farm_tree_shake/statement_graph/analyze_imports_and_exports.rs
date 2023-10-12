@@ -1,7 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
-use swc_ecma_ast::{ModuleExportName, ModuleItem};
-use swc_ecma_visit::VisitWith;
+use mako_core::swc_ecma_ast;
+use mako_core::swc_ecma_ast::{ModuleExportName, ModuleItem};
+use mako_core::swc_ecma_visit::VisitWith;
 
 use super::defined_idents_collector::DefinedIdentsCollector;
 use super::used_idents_collector::{self, UsedIdentsCollector};

@@ -2,18 +2,19 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
-use colored::Colorize;
-use futures::{SinkExt, StreamExt};
-use hyper::header::CONTENT_TYPE;
-use hyper::http::HeaderValue;
-use hyper::server::conn::AddrIncoming;
-use hyper::server::Builder;
-use hyper::Server;
-use tokio::sync::broadcast::{Receiver, Sender};
-use tokio::task::JoinHandle;
-use tokio::try_join;
-use tracing::debug;
-use tungstenite::Message;
+use mako_core::colored::Colorize;
+use mako_core::futures::{SinkExt, StreamExt};
+use mako_core::hyper::header::CONTENT_TYPE;
+use mako_core::hyper::http::HeaderValue;
+use mako_core::hyper::server::conn::AddrIncoming;
+use mako_core::hyper::server::Builder;
+use mako_core::hyper::{Body, Request, Server};
+use mako_core::tokio::sync::broadcast::{Receiver, Sender};
+use mako_core::tokio::task::JoinHandle;
+use mako_core::tokio::try_join;
+use mako_core::tracing::debug;
+use mako_core::tungstenite::Message;
+use mako_core::{hyper, hyper_staticfile, hyper_tungstenite, tokio};
 
 use crate::compiler;
 use crate::compiler::Compiler;
@@ -87,7 +88,7 @@ impl DevServer {
         }
         let arc_watcher = self.watcher.clone();
         let compiler = self.compiler.clone();
-        let handle_request = move |req: hyper::Request<hyper::Body>| {
+        let handle_request = move |req: Request<Body>| {
             let for_fn = compiler.clone();
             let w = arc_watcher.clone();
             async move {

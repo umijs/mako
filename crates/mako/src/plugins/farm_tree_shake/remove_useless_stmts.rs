@@ -1,5 +1,8 @@
-use swc_ecma_ast::{ImportDecl, ImportSpecifier, Module as SwcModule, ModuleExportName};
-use swc_ecma_visit::{VisitMut, VisitMutWith, VisitWith};
+use mako_core::swc_ecma_ast::{
+    Decl, ExportDecl, ExportSpecifier, ImportDecl, ImportSpecifier, Module as SwcModule,
+    ModuleExportName,
+};
+use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith, VisitWith};
 
 use crate::plugins::farm_tree_shake::module::TreeShakeModule;
 use crate::plugins::farm_tree_shake::statement_graph::analyze_imports_and_exports::{
@@ -129,8 +132,8 @@ pub struct UselessExportStmtRemover {
 }
 
 impl VisitMut for UselessExportStmtRemover {
-    fn visit_mut_export_decl(&mut self, export_decl: &mut swc_ecma_ast::ExportDecl) {
-        if let swc_ecma_ast::Decl::Var(var_decl) = &mut export_decl.decl {
+    fn visit_mut_export_decl(&mut self, export_decl: &mut ExportDecl) {
+        if let Decl::Var(var_decl) = &mut export_decl.decl {
             let mut decls_to_remove = vec![];
 
             for (index, decl) in var_decl.decls.iter_mut().enumerate() {
@@ -157,7 +160,7 @@ impl VisitMut for UselessExportStmtRemover {
         }
     }
 
-    fn visit_mut_export_specifiers(&mut self, specifiers: &mut Vec<swc_ecma_ast::ExportSpecifier>) {
+    fn visit_mut_export_specifiers(&mut self, specifiers: &mut Vec<ExportSpecifier>) {
         let mut specifiers_to_remove = vec![];
 
         for (index, specifier) in specifiers.iter().enumerate() {
@@ -167,12 +170,10 @@ impl VisitMut for UselessExportStmtRemover {
                 .iter()
                 .any(|export_specifier| match export_specifier {
                     ExportSpecifierInfo::Named { local, .. } => match specifier {
-                        swc_ecma_ast::ExportSpecifier::Named(named_specifier) => {
-                            match &named_specifier.orig {
-                                ModuleExportName::Ident(ident) => ident.to_string() == *local,
-                                _ => false,
-                            }
-                        }
+                        ExportSpecifier::Named(named_specifier) => match &named_specifier.orig {
+                            ModuleExportName::Ident(ident) => ident.to_string() == *local,
+                            _ => false,
+                        },
                         _ => false,
                     },
                     _ => false,

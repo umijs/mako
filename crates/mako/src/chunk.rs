@@ -1,8 +1,8 @@
 use std::hash::Hasher;
 use std::path::{Component, Path};
 
-use indexmap::IndexSet;
-use twox_hash::XxHash64;
+use mako_core::indexmap::IndexSet;
+use mako_core::twox_hash::XxHash64;
 
 use crate::module::ModuleId;
 use crate::module_graph::ModuleGraph;

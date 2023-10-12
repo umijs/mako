@@ -1,15 +1,16 @@
 use std::sync::Arc;
 
-use anyhow::Result;
-use swc_common::errors::HANDLER;
-use swc_common::GLOBALS;
-use swc_css_ast::Stylesheet;
-use swc_ecma_minifier::optimize;
-use swc_ecma_minifier::option::{ExtraOptions, MinifyOptions};
-use swc_ecma_transforms::helpers::{Helpers, HELPERS};
-use swc_ecma_transforms::{fixer, resolver};
-use swc_ecma_visit::VisitMutWith;
-use swc_error_reporters::handler::try_with_handler;
+use mako_core::anyhow::Result;
+use mako_core::swc_common::errors::HANDLER;
+use mako_core::swc_common::GLOBALS;
+use mako_core::swc_css_ast::Stylesheet;
+use mako_core::swc_css_minifier;
+use mako_core::swc_ecma_minifier::optimize;
+use mako_core::swc_ecma_minifier::option::{ExtraOptions, MinifyOptions};
+use mako_core::swc_ecma_transforms::helpers::{Helpers, HELPERS};
+use mako_core::swc_ecma_transforms::{fixer, resolver};
+use mako_core::swc_ecma_visit::VisitMutWith;
+use mako_core::swc_error_reporters::handler::try_with_handler;
 
 use crate::ast::Ast;
 use crate::compiler::Context;

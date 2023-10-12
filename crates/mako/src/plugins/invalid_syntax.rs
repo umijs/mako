@@ -1,8 +1,9 @@
-use swc_common::errors::Handler;
-use swc_common::sync::Lrc;
-use swc_ecma_ast::{Expr, MemberExpr, MemberProp, Module};
-use swc_ecma_utils::collect_decls;
-use swc_ecma_visit::{Visit, VisitWith};
+use mako_core::swc_common::errors::Handler;
+use mako_core::swc_common::sync::Lrc;
+use mako_core::swc_ecma_ast::{Expr, MemberExpr, MemberProp, Module};
+use mako_core::swc_ecma_utils::collect_decls;
+use mako_core::swc_ecma_visit::{Visit, VisitWith};
+use mako_core::{anyhow, swc_common, swc_ecma_ast};
 
 use crate::plugin::Plugin;
 

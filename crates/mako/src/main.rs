@@ -2,9 +2,10 @@
 
 use std::sync::Arc;
 
-use anyhow::Result;
-use clap::Parser;
-use tracing::debug;
+use mako_core::anyhow::Result;
+use mako_core::clap::Parser;
+use mako_core::tokio;
+use mako_core::tracing::debug;
 
 use crate::compiler::Args;
 use crate::config::Mode;

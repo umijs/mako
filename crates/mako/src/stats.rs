@@ -5,9 +5,9 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use colored::*;
-use pathdiff::diff_paths;
-use serde::Serialize;
+use mako_core::colored::*;
+use mako_core::pathdiff::diff_paths;
+use mako_core::serde::Serialize;
 
 use crate::chunk::ChunkType;
 use crate::compiler::Compiler;

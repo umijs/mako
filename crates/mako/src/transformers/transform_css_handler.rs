@@ -1,6 +1,6 @@
-use swc_common::util::take::Take;
-use swc_css_ast::{AtRule, AtRulePrelude, ImportHref, Rule, Stylesheet, UrlValue};
-use swc_css_visit::{VisitMut, VisitMutWith};
+use mako_core::swc_common::util::take::Take;
+use mako_core::swc_css_ast::{AtRule, AtRulePrelude, ImportHref, Rule, Stylesheet, UrlValue};
+use mako_core::swc_css_visit::{VisitMut, VisitMutWith};
 
 use crate::analyze_deps::is_url_ignored;
 

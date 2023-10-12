@@ -53,6 +53,8 @@ fn match_glob_pattern(pattern: &str, path: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use mako_core::tokio;
+
     use crate::test_helper::{get_module, setup_compiler};
 
     #[tokio::test(flavor = "multi_thread")]

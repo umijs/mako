@@ -1,12 +1,13 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use anyhow::Result;
+use mako_core::anyhow::Result;
 use mako_core::glob::glob;
 use mako_core::notify::event::{CreateKind, DataChange, ModifyKind, RenameMode};
 use mako_core::notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
-use tokio::sync::mpsc::channel;
-use tracing::debug;
+use mako_core::tokio::sync::mpsc::channel;
+use mako_core::tracing::debug;
+use mako_core::{fs_extra, tokio};
 
 use crate::compiler::Context;
 use crate::plugin::Plugin;

@@ -4,19 +4,19 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::{fs, io};
 
-use anyhow::Result;
-use cached::proc_macro::cached;
-use pathdiff::diff_paths;
-use rayon::prelude::*;
-use swc_common::errors::HANDLER;
-use swc_common::GLOBALS;
-use swc_ecma_transforms::fixer;
-use swc_ecma_transforms::helpers::{Helpers, HELPERS};
-use swc_ecma_transforms::hygiene::hygiene_with_config;
-use swc_ecma_transforms::modules::import_analysis::import_analyzer;
-use swc_ecma_transforms::modules::util::ImportInterop;
-use swc_ecma_visit::VisitMutWith;
-use swc_error_reporters::handler::try_with_handler;
+use mako_core::anyhow::Result;
+use mako_core::cached::proc_macro::cached;
+use mako_core::pathdiff::diff_paths;
+use mako_core::rayon::prelude::*;
+use mako_core::swc_common::errors::HANDLER;
+use mako_core::swc_common::GLOBALS;
+use mako_core::swc_ecma_transforms::helpers::{Helpers, HELPERS};
+use mako_core::swc_ecma_transforms::hygiene::hygiene_with_config;
+use mako_core::swc_ecma_transforms::modules::import_analysis::import_analyzer;
+use mako_core::swc_ecma_transforms::modules::util::ImportInterop;
+use mako_core::swc_ecma_transforms::{fixer, hygiene};
+use mako_core::swc_ecma_visit::VisitMutWith;
+use mako_core::swc_error_reporters::handler::try_with_handler;
 
 use crate::ast::{js_ast_to_code, Ast};
 use crate::compiler::Context;
@@ -248,12 +248,11 @@ pub fn transform_js_generate(
                             let mut dynamic_import = DynamicImport { context };
                             ast.ast.visit_mut_with(&mut dynamic_import);
 
-                            ast.ast.visit_mut_with(&mut hygiene_with_config(
-                                swc_ecma_transforms::hygiene::Config {
+                            ast.ast
+                                .visit_mut_with(&mut hygiene_with_config(hygiene::Config {
                                     top_level_mark,
                                     ..Default::default()
-                                },
-                            ));
+                                }));
                             ast.ast.visit_mut_with(&mut fixer(Some(
                                 context
                                     .meta

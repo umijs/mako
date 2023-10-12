@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use mako_core::notify::event::{CreateKind, DataChange, ModifyKind, RenameMode};
 use mako_core::notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
-use tokio::sync::mpsc::channel;
+use mako_core::tokio::sync::mpsc::channel;
 
 use crate::update::UpdateType;
 

@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use swc_common::DUMMY_SP;
-use swc_ecma_ast::{
-    AssignOp, BlockStmt, Expr, ExprOrSpread, FnExpr, Function, Lit, NamedExport, Stmt, Str,
-    ThrowStmt, VarDeclKind,
+use mako_core::swc_common::DUMMY_SP;
+use mako_core::swc_ecma_ast::{
+    AssignOp, BlockStmt, Expr, ExprOrSpread, FnExpr, Function, ImportDecl, Lit, NamedExport, Stmt,
+    Str, ThrowStmt, VarDeclKind,
 };
-use swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
-use swc_ecma_visit::{VisitMut, VisitMutWith};
+use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
+use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::analyze_deps::{is_commonjs_require, is_dynamic_import};
 use crate::compiler::Context;
@@ -108,7 +108,7 @@ impl VisitMut for DepReplacer<'_> {
         expr.visit_mut_children_with(self);
     }
 
-    fn visit_mut_import_decl(&mut self, import_decl: &mut swc_ecma_ast::ImportDecl) {
+    fn visit_mut_import_decl(&mut self, import_decl: &mut ImportDecl) {
         self.replace_source(&mut import_decl.src);
     }
 
@@ -141,9 +141,9 @@ mod tests {
     use std::collections::HashMap;
     use std::sync::Arc;
 
+    use mako_core::swc_common::GLOBALS;
+    use mako_core::swc_ecma_visit::VisitMut;
     use maplit::hashmap;
-    use swc_common::GLOBALS;
-    use swc_ecma_visit::VisitMut;
 
     use crate::assert_display_snapshot;
     use crate::ast::build_js_ast;

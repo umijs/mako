@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
-use anyhow::Result;
-use base64::engine::{general_purpose, Engine};
-use swc_css_ast::{AtRule, AtRulePrelude, ImportHref, Rule, Str, Stylesheet, UrlValue};
-use swc_css_modules::{compile, CssClassName, TransformConfig, TransformResult};
-use swc_css_visit::VisitMutWith;
+use mako_core::anyhow::Result;
+use mako_core::base64::engine::{general_purpose, Engine};
+use mako_core::swc_css_ast::{AtRule, AtRulePrelude, ImportHref, Rule, Str, Stylesheet, UrlValue};
+use mako_core::swc_css_modules::{compile, CssClassName, TransformConfig, TransformResult};
+use mako_core::swc_css_visit::VisitMutWith;
+use mako_core::{md5, swc_atoms, swc_css_compat};
 
 use crate::ast::{build_css_ast, build_js_ast};
 use crate::compiler::Context;

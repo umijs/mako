@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use swc_common::GLOBALS;
-use swc_ecma_visit::VisitMut;
+use mako_core::swc_common::GLOBALS;
+use mako_core::swc_ecma_visit::VisitMut;
 
 use crate::ast::build_js_ast;
 use crate::compiler::Context;

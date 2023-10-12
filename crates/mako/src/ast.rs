@@ -2,23 +2,25 @@ use std::fmt;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use anyhow::{anyhow, Result};
-use base64::engine::general_purpose;
-use base64::Engine;
-use pathdiff::diff_paths;
-use swc_common::errors::Handler;
-use swc_common::{FileName, Mark, Span, Spanned, GLOBALS};
-use swc_css_ast::Stylesheet;
-use swc_css_codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};
-use swc_css_codegen::{CodeGenerator, CodegenConfig, Emit};
-use swc_css_parser::parser::ParserConfig;
-use swc_ecma_ast::Module;
-use swc_ecma_codegen::text_writer::JsWriter;
-use swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
-use swc_ecma_parser::lexer::Lexer;
-use swc_ecma_parser::{EsConfig, Parser, StringInput, Syntax, TsConfig};
-use swc_error_reporters::{GraphicalReportHandler, PrettyEmitter, PrettyEmitterConfig};
-use thiserror::Error;
+use mako_core::anyhow::{anyhow, Result};
+use mako_core::base64::engine::general_purpose;
+use mako_core::base64::Engine;
+use mako_core::pathdiff::diff_paths;
+use mako_core::swc_common::errors::Handler;
+use mako_core::swc_common::sync::Lrc;
+use mako_core::swc_common::{FileName, Mark, SourceMap, Span, Spanned, GLOBALS};
+use mako_core::swc_css_ast::Stylesheet;
+use mako_core::swc_css_codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};
+use mako_core::swc_css_codegen::{CodeGenerator, CodegenConfig, Emit};
+use mako_core::swc_css_parser;
+use mako_core::swc_css_parser::parser::ParserConfig;
+use mako_core::swc_ecma_ast::{EsVersion, Module};
+use mako_core::swc_ecma_codegen::text_writer::JsWriter;
+use mako_core::swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
+use mako_core::swc_ecma_parser::lexer::Lexer;
+use mako_core::swc_ecma_parser::{EsConfig, Parser, StringInput, Syntax, TsConfig};
+use mako_core::swc_error_reporters::{GraphicalReportHandler, PrettyEmitter, PrettyEmitterConfig};
+use mako_core::thiserror::Error;
 
 use crate::compiler::Context;
 use crate::config::{DevtoolConfig, Mode};
@@ -69,7 +71,7 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
     };
     let lexer = Lexer::new(
         syntax,
-        swc_ecma_ast::EsVersion::Es2015,
+        EsVersion::Es2015,
         StringInput::from(&*fm),
         Some(comments.get_swc_comments()),
     );
@@ -256,9 +258,6 @@ pub fn base64_encode<T: AsRef<[u8]>>(raw: T) -> String {
     general_purpose::STANDARD.encode(raw)
 }
 
-use swc_common::sync::Lrc;
-use swc_common::SourceMap;
-
 pub fn generate_code_frame(span: Span, message: &str, cm: Lrc<SourceMap>) -> String {
     let wr = Box::<LockedWriter>::default();
     let emitter = PrettyEmitter::new(
@@ -291,6 +290,8 @@ impl fmt::Write for LockedWriter {
 mod tests {
     use std::path::PathBuf;
     use std::sync::Arc;
+
+    use mako_core::tokio;
 
     use crate::assert_debug_snapshot;
     use crate::ast::js_ast_to_code;

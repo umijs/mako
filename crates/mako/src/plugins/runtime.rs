@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
-use swc_common::DUMMY_SP as span;
-use swc_ecma_ast::{
+use mako_core::anyhow::{anyhow, Result};
+use mako_core::swc_common::DUMMY_SP as span;
+use mako_core::swc_ecma_ast::{
     BlockStmt, FnExpr, Function, Module, ModuleItem, ObjectLit, PropOrSpread, Stmt, UnaryExpr,
     UnaryOp,
 };
-use swc_ecma_utils::{quote_ident, ExprFactory, StmtOrModuleItem};
+use mako_core::swc_ecma_utils::{quote_ident, ExprFactory, StmtOrModuleItem};
 
 use crate::ast::{build_js_ast, js_ast_to_code};
 use crate::build::Task;

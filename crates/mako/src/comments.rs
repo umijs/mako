@@ -1,6 +1,7 @@
-use swc_atoms::atom;
-use swc_common::{BytePos, Span, DUMMY_SP};
-use swc_node_comments::SwcComments;
+use mako_core::swc_atoms::atom;
+use mako_core::swc_common;
+use mako_core::swc_common::{BytePos, Span, DUMMY_SP};
+use mako_core::swc_node_comments::SwcComments;
 
 #[derive(Default)]
 pub struct Comments(SwcComments);

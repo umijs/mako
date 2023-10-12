@@ -3,12 +3,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
-use anyhow::{anyhow, Result};
-use colored::Colorize;
-use swc_ecma_utils::contains_top_level_await;
-use thiserror::Error;
-use tokio::sync::mpsc::error::TryRecvError;
-use tracing::debug;
+use mako_core::anyhow::{anyhow, Result};
+use mako_core::colored::Colorize;
+use mako_core::swc_ecma_utils::contains_top_level_await;
+use mako_core::thiserror::Error;
+use mako_core::tokio::sync::mpsc::error::TryRecvError;
+use mako_core::tracing::debug;
+use mako_core::{anyhow, thiserror, tokio};
 
 use crate::analyze_deps::analyze_deps;
 use crate::ast::{build_js_ast, generate_code_frame};
@@ -455,8 +456,9 @@ impl FileRequest {
 
 #[cfg(test)]
 mod tests {
-    use petgraph::prelude::EdgeRef;
-    use petgraph::visit::IntoEdgeReferences;
+    use mako_core::petgraph::prelude::EdgeRef;
+    use mako_core::petgraph::visit::IntoEdgeReferences;
+    use mako_core::tokio;
 
     use super::parse_path;
     use crate::compiler;

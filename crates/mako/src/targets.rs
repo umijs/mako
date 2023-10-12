@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use swc_ecma_preset_env::Targets as SwcPresetEnvTargets;
+use mako_core::swc_ecma_preset_env::Targets as SwcPresetEnvTargets;
 
 pub fn swc_preset_env_targets_from_map(map: HashMap<String, usize>) -> SwcPresetEnvTargets {
     let serialized_str = serde_json::to_string(&map).unwrap();
