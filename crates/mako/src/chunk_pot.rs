@@ -3,7 +3,7 @@ use std::hash::Hasher;
 use std::sync::Arc;
 use std::vec;
 
-use cached::proc_macro::cached;
+use cached::proc_macro::{cached, once};
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::cached::SizedCache;
 use mako_core::indexmap::IndexSet;
@@ -21,7 +21,7 @@ use mako_core::swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
 use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
 use mako_core::twox_hash::XxHash64;
 
-use crate::ast::{base64_encode, build_js_ast, Ast};
+use crate::ast::{build_js_ast, Ast};
 use crate::chunk::{Chunk, ChunkType};
 use crate::compiler::Context;
 use crate::config::{DevtoolConfig, Mode};
@@ -93,6 +93,7 @@ fn render_chunk_css(chunk_pot: &ChunkPot, context: &Arc<Context>) -> Result<Chun
     };
 
     Ok(ChunkFile {
+        raw_hash: ast.raw_hash,
         content: css_code.into(),
         hash: css_hash,
         source_map,
@@ -122,6 +123,7 @@ fn render_dev_normal_chunk_js_with_cache(
     };
 
     Ok(ChunkFile {
+        raw_hash: chunk_pot.js_hash,
         content: buf,
         hash,
         source_map: vec![],
@@ -163,6 +165,7 @@ fn render_normal_chunk_js_with_cache(
     };
 
     Ok(ChunkFile {
+        raw_hash: chunk_pot.js_hash,
         content: buf,
         hash,
         source_map,
@@ -392,13 +395,17 @@ impl<'cp> ChunkPot<'cp> {
             sorted_kv
         };
 
-        let module_defines = sorted_kv
-            .par_iter()
-            .map(|(module_id_str, module_and_hash)| {
-                to_module_line(module_and_hash.0, context, module_and_hash.1, module_id_str)
-            })
-            .collect::<Result<Vec<String>>>()?
-            .join("\n");
+        let module_defines = {
+            mako_core::mako_profile_scope!("assemble_module_defines");
+
+            sorted_kv
+                .par_iter()
+                .map(|(module_id_str, module_and_hash)| {
+                    to_module_line(module_and_hash.0, context, module_and_hash.1, module_id_str)
+                })
+                .collect::<Result<Vec<String>>>()?
+                .join("\n")
+        };
 
         {
             mako_core::mako_profile_scope!("wrap_in_brace");
@@ -501,21 +508,26 @@ fn to_module_line(
 
     match &fn_expr.info.as_ref().unwrap().ast {
         ModuleAst::Script(ast) => {
+            mako_core::mako_profile_scope!("ast_to_js_map");
+
             emitter.emit_module(&ast.ast)?;
 
-            let source_map = build_source_map(&source_map_buf, &cm);
+            let source_map_content = build_source_map(&source_map_buf, &cm);
 
             let content = String::from_utf8_lossy(&buf);
+            let source_map_file = format!("{}.map", file_content_hash(module_id_str));
 
             let content = vec![
                 content,
                 format!(
-                    "//# sourceMappingURL=data:application/json;charset=utf-8;base64,{}",
-                    base64_encode(source_map)
+                    "//# sourceMappingURL={}{}",
+                    context.config.public_path, source_map_file
                 )
                 .into(),
             ]
             .join("");
+
+            context.write_static_content(&source_map_file, source_map_content)?;
 
             let escaped = serde_json::to_string(&content)?;
 
@@ -664,6 +676,7 @@ fn render_dev_entry_chunk_js(
         content.extend(runtime_content.into_bytes());
     }
     Ok(ChunkFile {
+        raw_hash: pot.js_hash,
         content,
         hash: None,
         source_map: vec![],
@@ -777,6 +790,7 @@ fn render_entry_chunk_js(
     };
 
     Ok(ChunkFile {
+        raw_hash: pot.js_hash,
         content: buf,
         hash,
         source_map: source_map_buf,
@@ -786,8 +800,7 @@ fn render_entry_chunk_js(
     })
 }
 
-// #[once(result = true)]
-// need a better cache key
+#[once(result = true)]
 fn runtime_base_code(context: &Arc<Context>) -> Result<String> {
     let runtime_entry_content_str = include_str!("runtime/runtime_entry.js");
     let mut content = runtime_entry_content_str.replace(
