@@ -24,6 +24,7 @@ pub enum ChunkFileType {
 
 #[derive(Clone)]
 pub struct ChunkFile {
+    pub raw_hash: u64,
     pub content: Vec<u8>,
     pub source_map: Vec<u8>,
     pub hash: Option<String>,
