@@ -31,11 +31,26 @@ pub struct Context {
     pub plugin_driver: PluginDriver,
     pub stats_info: Mutex<StatsInfo>,
     pub resolvers: Resolvers,
+    pub static_map: RwLock<HashMap<String, Vec<u8>>>,
 }
 
 #[derive(Default)]
 pub struct Args {
     pub watch: bool,
+}
+
+impl Context {
+    pub fn write_static_content(&self, path: &String, content: Vec<u8>) -> Result<()> {
+        let mut map = self.static_map.write().unwrap();
+        map.insert(path.to_string(), content);
+        Ok(())
+    }
+
+    pub fn get_static_content(&self, path: &str) -> Option<Vec<u8>> {
+        let map = self.static_map.read().unwrap();
+
+        map.get(path).cloned()
+    }
 }
 
 impl Default for Context {
@@ -56,6 +71,7 @@ impl Default for Context {
             // 产物信息放在上下文里是否合适
             stats_info: Mutex::new(StatsInfo::new()),
             resolvers,
+            static_map: RwLock::new(Default::default()),
         }
     }
 }
@@ -200,6 +216,7 @@ impl Compiler {
                 plugin_driver,
                 stats_info: Mutex::new(StatsInfo::new()),
                 resolvers,
+                static_map: Default::default(),
             }),
         })
     }
