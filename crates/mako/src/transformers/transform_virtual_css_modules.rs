@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use mako_core::lazy_static::lazy_static;
+use mako_core::regex::Regex;
 use mako_core::swc_ecma_ast::{ImportDecl, Str};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
@@ -10,11 +12,17 @@ pub struct VirtualCSSModules<'a> {
 }
 
 fn is_css_modules_path(path: &str) -> bool {
-    path.ends_with(".module.css") || path.ends_with(".module.less")
+    lazy_static! {
+        static ref CSS_MODULES_PATH_REGEX: Regex = Regex::new(r#"\.module\.(css|less)$"#).unwrap();
+    }
+    CSS_MODULES_PATH_REGEX.is_match(path)
 }
 
-fn is_css_path(path: &str) -> bool {
-    path.ends_with(".css") || path.ends_with(".less")
+pub fn is_css_path(path: &str) -> bool {
+    lazy_static! {
+        static ref CSS_PATH_REGEX: Regex = Regex::new(r#"\.(css|less)$"#).unwrap();
+    }
+    CSS_PATH_REGEX.is_match(path)
 }
 
 impl VisitMut for VirtualCSSModules<'_> {
