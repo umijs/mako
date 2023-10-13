@@ -13,6 +13,7 @@ use crate::compiler::Compiler;
 use crate::module::{Dependency, Module, ModuleId};
 use crate::resolve::{self, get_resolvers, Resolvers};
 use crate::transform_in_generate::transform_modules;
+use crate::transformers::transform_virtual_css_modules::is_css_path;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -123,8 +124,7 @@ impl Compiler {
                     new_paths.push((p.clone(), update_type.clone()));
                 }
                 let p_str = p.to_string_lossy().to_string();
-                let is_css = p_str.ends_with(".css") || p_str.ends_with(".less");
-                if is_css {
+                if is_css_path(&p_str) {
                     let with_as_module = format!("{}?asmodule", p_str);
                     println!("with_as_module:{}", &with_as_module);
                     if module_graph.has_module(&with_as_module.clone().into()) {
