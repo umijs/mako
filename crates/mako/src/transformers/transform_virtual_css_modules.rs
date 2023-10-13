@@ -11,17 +11,16 @@ pub struct VirtualCSSModules<'a> {
     pub context: &'a Arc<Context>,
 }
 
+lazy_static! {
+    static ref CSS_MODULES_PATH_REGEX: Regex = Regex::new(r#"\.module\.(css|less)$"#).unwrap();
+    static ref CSS_PATH_REGEX: Regex = Regex::new(r#"\.(css|less)$"#).unwrap();
+}
+
 fn is_css_modules_path(path: &str) -> bool {
-    lazy_static! {
-        static ref CSS_MODULES_PATH_REGEX: Regex = Regex::new(r#"\.module\.(css|less)$"#).unwrap();
-    }
     CSS_MODULES_PATH_REGEX.is_match(path)
 }
 
 pub fn is_css_path(path: &str) -> bool {
-    lazy_static! {
-        static ref CSS_PATH_REGEX: Regex = Regex::new(r#"\.(css|less)$"#).unwrap();
-    }
     CSS_PATH_REGEX.is_match(path)
 }
 
