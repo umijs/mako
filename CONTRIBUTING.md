@@ -145,7 +145,7 @@ $ pnpm release:bundler-okam
 Then publish bundler-okam to tnpm.
 
 ```bash
-$ cd packages/bundler-okam && tnpm publish
+$ tnpm sync @okamjs/okam && cd packages/bundler-okam && tnpm publish
 ```
 
 ## Project Structure
