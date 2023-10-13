@@ -64,11 +64,6 @@ fn compile_less(param: &PluginLoadParam, _content: &str, context: &Arc<Context>)
     args.push(format!("--aliases-fork={}", alias_params));
     if !theme.is_empty() {
         theme.iter().for_each(|(k, v)| {
-            let v = if v.contains(' ') {
-                format!("\"{}\"", v)
-            } else {
-                v.to_string()
-            };
             args.push(format!("--modify-var={}={}", k, v));
         });
     }
