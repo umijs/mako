@@ -2,8 +2,10 @@ use std::collections::HashSet;
 use std::fs;
 use std::ops::DerefMut;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use cached::proc_macro::cached;
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::indexmap::IndexSet;
 use mako_core::rayon::prelude::*;
@@ -11,7 +13,7 @@ use mako_core::serde::Serialize;
 use mako_core::tracing::debug;
 
 use crate::ast::base64_encode;
-use crate::compiler::Compiler;
+use crate::compiler::{Compiler, Context};
 use crate::config::{DevtoolConfig, OutputMode, TreeShakeStrategy};
 use crate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::module::ModuleId;
@@ -90,7 +92,7 @@ impl Compiler {
             fs::create_dir_all(&config.output.path)?;
         }
 
-        let (t_generate_chunks, t_ast_to_code_and_write) = self.generate_chunk_disk_file()?;
+        let (t_generate_chunks, t_ast_to_code_and_write) = self.write_chunk_files()?;
 
         // write assets
         let t_write_assets = Instant::now();
@@ -145,14 +147,23 @@ impl Compiler {
         Ok(())
     }
 
-    fn generate_chunk_disk_file(&self) -> Result<(Duration, Duration)> {
+    fn write_chunk_files(&self) -> Result<(Duration, Duration)> {
         // generate chunks
         let t_generate_chunks = Instant::now();
         debug!("generate chunks");
         let chunk_files = self.generate_chunk_files()?;
         let t_generate_chunks = t_generate_chunks.elapsed();
 
-        // ast to code and sourcemap, then write
+        let t_ast_to_code_and_write = if self.context.args.watch {
+            self.generate_chunk_mem_file(&chunk_files)?
+        } else {
+            self.generate_chunk_disk_file(&chunk_files)?
+        };
+
+        Ok((t_generate_chunks, t_ast_to_code_and_write))
+    }
+
+    fn generate_chunk_disk_file(&self, chunk_files: &Vec<ChunkFile>) -> Result<Duration> {
         let t_ast_to_code_and_write = Instant::now();
         debug!("ast to code and write");
         chunk_files.par_iter().try_for_each(|file| -> Result<()> {
@@ -161,7 +172,25 @@ impl Compiler {
         })?;
         let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
 
-        Ok((t_generate_chunks, t_ast_to_code_and_write))
+        Ok(t_ast_to_code_and_write)
+    }
+
+    fn generate_chunk_mem_file(&self, chunk_files: &Vec<ChunkFile>) -> Result<Duration> {
+        // ast to code and sourcemap, then write
+        let t_ast_to_code_and_write = Instant::now();
+        debug!("ast to code and write");
+        chunk_files.par_iter().try_for_each(|file| -> Result<()> {
+            write_dev_chunk_file(&self.context, file)?;
+
+            if self.context.config.write_to_disk {
+                self.emit_chunk_file(file);
+            }
+
+            Ok(())
+        })?;
+        let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
+
+        Ok(t_ast_to_code_and_write)
     }
 
     pub fn emit_chunk_file(&self, chunk_file: &ChunkFile) {
@@ -273,23 +302,13 @@ impl Compiler {
         }
 
         // generate chunks
-
         let t_generate_chunks = Instant::now();
         let chunk_files = self.generate_chunk_files()?;
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         // ast to code and sourcemap, then write
-        let t_ast_to_code_and_write = Instant::now();
         debug!("ast to code and write");
-        {
-            mako_core::mako_profile_scope!("write dev chunk files");
-            chunk_files.par_iter().try_for_each(|file| -> Result<()> {
-                self.emit_chunk_file(file);
-
-                Ok(())
-            })?;
-        }
-        let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
+        let t_ast_to_code_and_write = self.generate_chunk_mem_file(&chunk_files)?;
 
         // write assets
         let t_write_assets = Instant::now();
@@ -456,6 +475,11 @@ impl Compiler {
 
         std::fs::write(to, content).unwrap();
     }
+}
+
+#[cached(result = true, key = "u64", convert = "{chunk.raw_hash}")]
+fn write_dev_chunk_file(context: &Arc<Context>, chunk: &ChunkFile) -> Result<()> {
+    context.write_static_content(&chunk.disk_name(), chunk.content.clone())
 }
 
 fn to_hot_update_chunk_name(chunk_name: &String, hash: u64) -> String {
