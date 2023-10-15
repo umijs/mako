@@ -14,6 +14,7 @@ use crate::chunk_graph::ChunkGraph;
 use crate::comments::Comments;
 use crate::config::{Config, OutputMode};
 use crate::module_graph::ModuleGraph;
+use crate::optimize_chunk::OptimizeChunksInfo;
 use crate::plugin::{Plugin, PluginDriver};
 use crate::plugins;
 use crate::resolve::{get_resolvers, Resolvers};
@@ -31,6 +32,7 @@ pub struct Context {
     pub plugin_driver: PluginDriver,
     pub stats_info: Mutex<StatsInfo>,
     pub resolvers: Resolvers,
+    pub optimize_infos: Mutex<Option<Vec<OptimizeChunksInfo>>>,
 }
 
 #[derive(Default)]
@@ -56,6 +58,7 @@ impl Default for Context {
             // 产物信息放在上下文里是否合适
             stats_info: Mutex::new(StatsInfo::new()),
             resolvers,
+            optimize_infos: Mutex::new(None),
         }
     }
 }
@@ -200,6 +203,7 @@ impl Compiler {
                 plugin_driver,
                 stats_info: Mutex::new(StatsInfo::new()),
                 resolvers,
+                optimize_infos: Mutex::new(None),
             }),
         })
     }

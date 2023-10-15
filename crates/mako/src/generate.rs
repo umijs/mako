@@ -339,11 +339,11 @@ impl Compiler {
 
         let t_generate = Instant::now();
         let t_group_chunks = Instant::now();
-        self.group_hot_update_chunk(&updated_modules);
+        let group_result = self.group_hot_update_chunk(&updated_modules);
         let t_group_chunks = t_group_chunks.elapsed();
 
         let t_optimize_chunks = Instant::now();
-        self.optimize_hot_update_chunk(&updated_modules);
+        self.optimize_hot_update_chunk(&updated_modules, &group_result);
         let t_optimize_chunks = t_optimize_chunks.elapsed();
 
         let t_transform_modules = Instant::now();

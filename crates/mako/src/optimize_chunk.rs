@@ -8,6 +8,7 @@ use mako_core::tracing::debug;
 
 use crate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::compiler::Compiler;
+use crate::group_chunk::GroupUpdateResult;
 use crate::module::{Module, ModuleId, ModuleInfo};
 use crate::resolve::{ResolvedResource, ResolverResource};
 use crate::update::UpdateResult;
@@ -67,18 +68,76 @@ impl Compiler {
             self.merge_minimal_async_chunks(&optimize_options);
 
             // stage: modules
-            self.module_to_optimize_infos(&mut optimize_chunks_infos);
+            self.module_to_optimize_infos(&mut optimize_chunks_infos, None);
 
             // stage: size
             self.optimize_chunk_size(&mut optimize_chunks_infos);
 
             // stage: apply
             self.apply_optimize_infos(&optimize_chunks_infos);
+
+            // save optimize infos for hot update
+            if let Ok(optimize_info) = &mut self.context.optimize_infos.lock() {
+                **optimize_info = Some(optimize_chunks_infos);
+            }
         }
     }
 
-    pub fn optimize_hot_update_chunk(&self, update_result: &UpdateResult) {
-        update_result;
+    pub fn optimize_hot_update_chunk(
+        &self,
+        update_result: &UpdateResult,
+        group_result: &GroupUpdateResult,
+    ) {
+        mako_core::mako_profile_function!();
+        debug!("optimize hot update chunk");
+
+        // for logic simplicity, full re-optimize if modified modules are more than 1
+        // ex. git checkout another branch
+        if update_result.modified.len() > 1 {
+            self.optimize_chunk();
+            return;
+        }
+
+        // only optimize if code splitting enabled and there has valid group update result
+        if let (Some(optimize_infos), Some((group_new_chunks, group_modules_in_chunk))) = (
+            self.context.optimize_infos.lock().unwrap().as_ref(),
+            group_result,
+        ) {
+            let chunk_graph = self.context.chunk_graph.write().unwrap();
+            // prepare modules_in_chunk data
+            let mut modules_in_chunk = group_new_chunks.iter().fold(vec![], |mut acc, chunk_id| {
+                let chunk = chunk_graph.chunk(chunk_id).unwrap();
+                acc.append(
+                    &mut chunk
+                        .modules
+                        .iter()
+                        .map(|m| (m.clone(), chunk.id.clone(), chunk.chunk_type.clone()))
+                        .collect::<Vec<_>>(),
+                );
+                acc
+            });
+            modules_in_chunk.extend(group_modules_in_chunk.clone());
+            let modules_in_chunk = modules_in_chunk
+                .iter()
+                .map(|(m, c, t)| (m, c, t))
+                .collect::<Vec<_>>();
+            drop(chunk_graph);
+
+            // clone an empty optimize infos for hot update
+            let mut optimize_infos = optimize_infos
+                .iter()
+                .map(|info| OptimizeChunksInfo {
+                    group_options: info.group_options.clone(),
+                    module_to_chunks: IndexMap::new(),
+                })
+                .collect::<Vec<_>>();
+
+            // stage: modules
+            self.module_to_optimize_infos(&mut optimize_infos, Some(modules_in_chunk));
+
+            // stage: apply
+            self.apply_hot_update_optimize_infos(&optimize_infos);
+        }
     }
 
     fn merge_minimal_async_chunks(&self, options: &OptimizeChunkOptions) {
@@ -136,19 +195,23 @@ impl Compiler {
     fn module_to_optimize_infos<'a>(
         &'a self,
         optimize_chunks_infos: &'a mut Vec<OptimizeChunksInfo>,
+        modules_in_chunk: Option<Vec<(&ModuleId, &ChunkId, &ChunkType)>>,
     ) {
         let chunk_graph = self.context.chunk_graph.read().unwrap();
         let chunks = chunk_graph.get_chunks();
-        let modules_in_chunk = chunks.iter().fold(vec![], |mut acc, chunk| {
-            acc.append(
-                &mut chunk
-                    .modules
-                    .iter()
-                    .map(|m| (m, &chunk.id, &chunk.chunk_type))
-                    .collect::<Vec<_>>(),
-            );
-            acc
-        });
+        let modules_in_chunk = match modules_in_chunk {
+            Some(modules_in_chunk) => modules_in_chunk,
+            None => chunks.iter().fold(vec![], |mut acc, chunk| {
+                acc.append(
+                    &mut chunk
+                        .modules
+                        .iter()
+                        .map(|m| (m, &chunk.id, &chunk.chunk_type))
+                        .collect::<Vec<_>>(),
+                );
+                acc
+            }),
+        };
         for (module_id, chunk_id, chunk_type) in modules_in_chunk {
             for optimize_info in &mut *optimize_chunks_infos {
                 // save chunk to optimize info if module already exists in current info
@@ -348,6 +411,41 @@ impl Compiler {
             // remove modules from original chunks and add edge to new chunk
             for (module_id, chunk_ids) in &info.module_to_chunks {
                 for chunk_id in chunk_ids {
+                    let chunk = chunk_graph.mut_chunk(chunk_id).unwrap();
+
+                    chunk.remove_module(module_id);
+                    edges.insert(chunk_id.clone(), info_chunk_id.clone());
+                }
+            }
+
+            // add edge to original chunks
+            for (from, to) in edges.iter() {
+                chunk_graph.add_edge(from, to);
+            }
+        }
+    }
+
+    fn apply_hot_update_optimize_infos(&self, optimize_chunks_infos: &Vec<OptimizeChunksInfo>) {
+        let mut edges = HashMap::new();
+        let mut chunk_graph = self.context.chunk_graph.write().unwrap();
+        for info in optimize_chunks_infos {
+            // update group chunk
+            for (module_id, chunk_ids) in &info.module_to_chunks {
+                // get chunk
+                let info_chunk = chunk_graph
+                    .mut_chunk(&ChunkId {
+                        id: info.group_options.name.clone(),
+                    })
+                    .unwrap();
+                let info_chunk_id = info_chunk.id.clone();
+
+                // append new module
+                if !info_chunk.has_module(module_id) {
+                    info_chunk.add_module(module_id.clone());
+                }
+
+                // remove modules from original chunks and add edge to new chunk
+                for chunk_id in chunk_ids.iter().filter(|c| c.id != info_chunk_id.id) {
                     let chunk = chunk_graph.mut_chunk(chunk_id).unwrap();
 
                     chunk.remove_module(module_id);
