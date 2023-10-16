@@ -72,17 +72,6 @@ $ npm run release
 $ npm run release:bundler-okam
 ```
 
-Release Dev Version.
-
-Only *canary* and *dev* tags are allowed to be published to npm.
-
-```bash
-$ cd crates/node
-$ pnpm esno scripts/release-dev.ts
-```
-
-[Ref](https://github.com/umijs/mako/pull/335)
-
 Upgrade dependencies.
 
 ```bash
@@ -117,17 +106,19 @@ $ OKAM=/PATH/TO/umijs/marko/packages/bundler-okam/index.js bigfish build --dev
 
 ## Release Locally
 
+> NOTICE: Only *canary* and *dev* tags are allowed to be published to npm locally.
+
 Prepare. Only need to do once.
 
 ```bash
 # 安装交叉编译环境
-$ brew tap messense/macos-cross-toolchains
-$ brew install x86_64-unknown-linux-gnu
+# $ brew tap messense/macos-cross-toolchains
+# $ brew install x86_64-unknown-linux-gnu
 # 支持编译 mac x86 和 linux x86
 $ rustup target add x86_64-apple-darwin
-$ rustup target add x86_64-unknown-linux-gnu
+# $ rustup target add x86_64-unknown-linux-gnu
 # 用于去 linux x86 产物中的 debug 信息的镜像
-$ docker pull --platform linux/amd64 ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian
+# $ docker pull --platform linux/amd64 ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian
 ```
 
 Release @okamjs/okam.
@@ -305,7 +296,7 @@ Flow of mako:
 │   └── win32-x64-msvc
 ├── package.json
 ├── scripts                   # scripts for development
-│   └── release-dev.ts
+│   └── release.ts
 └── src
     └── lib.rs                # export build function via n-api
 ```

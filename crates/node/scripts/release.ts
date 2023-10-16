@@ -35,10 +35,15 @@ import * as process from 'process';
   if (newVersion.includes('-canary.')) tag = 'canary';
   if (newVersion.includes('-dev.')) tag = 'dev';
 
+  if (tag !== 'dev' && tag !== 'canary') {
+    console.error('Please specify version like  x.y.z-canary.n or x.y.z-dev.n');
+    throw Error('Only dev and canary tags are allowed');
+  }
+
   nodePkg.version = newVersion;
 
   console.log(`${nodePkg.name}@${newVersion} will be published`);
-  const willContinue = ((await question(`Continue? y/[n]`)) || 'n').trim();
+  const willContinue = ((await question('Continue? y/[n]')) || 'n').trim();
 
   if (willContinue !== 'y') {
     console.log('Abort!');
@@ -51,17 +56,16 @@ import * as process from 'process';
   await $`rm -rf ./*.node`;
   await $`pnpm run build:mac:x86`;
   await $`pnpm run build:mac:aarch`;
+  await $`strip -x ./okam.darwin-*.node`;
 
   // ref https://gist.github.com/shqld/256e2c4f4b97957fb0ec250cdc6dc463
-  $.env.CC_X86_64_UNKNOWN_LINUX_GNU = 'x86_64-unknown-linux-gnu-gcc';
-  $.env.CXX_X86_64_UNKNOWN_LINUX_GNU = 'x86_64-unknown-linux-gnu-g++';
-  $.env.AR_X86_64_UNKNOWN_LINUX_GNU = 'x86_64-unknown-linux-gnu-ar';
-  $.env.CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER =
-    'x86_64-unknown-linux-gnu-gcc';
-  await $`pnpm run build:linux:x86`;
-
-  await $`strip -x ./okam.darwin-*.node`;
-  await $`docker run  --rm   -v $PWD:/workspace -w /workspace  ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian   bash -c "strip okam.linux-x64-gnu.node"`;
+  // $.env.CC_X86_64_UNKNOWN_LINUX_GNU = 'x86_64-unknown-linux-gnu-gcc';
+  // $.env.CXX_X86_64_UNKNOWN_LINUX_GNU = 'x86_64-unknown-linux-gnu-g++';
+  // $.env.AR_X86_64_UNKNOWN_LINUX_GNU = 'x86_64-unknown-linux-gnu-ar';
+  // $.env.CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER =
+  //   'x86_64-unknown-linux-gnu-gcc';
+  // await $`pnpm run build:linux:x86`;
+  // await $`docker run  --rm   -v $PWD:/workspace -w /workspace  ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian   bash -c "strip okam.linux-x64-gnu.node"`;
 
   await $`pnpm run artifacts:local`;
 
