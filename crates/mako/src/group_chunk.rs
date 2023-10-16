@@ -95,14 +95,14 @@ impl Compiler {
         mako_core::mako_profile_function!();
         debug!("group_hot_update_chunk");
 
-        let mut chunk_graph = self.context.chunk_graph.write().unwrap();
-
         // for logic simplicity, full re-group if modified modules are more than 1
         // ex. git checkout another branch
         if update_result.modified.len() > 1 {
             self.group_chunk();
             return None;
         }
+
+        let mut chunk_graph = self.context.chunk_graph.write().unwrap();
 
         // handle removed modules
         if !update_result.removed.is_empty() {
