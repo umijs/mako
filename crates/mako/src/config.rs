@@ -202,7 +202,7 @@ const DEFAULT_CONFIG: &str = r#"
     "autoCSSModules": false,
     "dynamicImportToRequire": false,
     "umd": "none",
-    "writeToDisk":false
+    "writeToDisk": true
 }
 "#;
 
