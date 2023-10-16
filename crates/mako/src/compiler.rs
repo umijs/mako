@@ -597,13 +597,8 @@ mod tests {
         );
 
         assert!(
-            files.contains(&"vendors-async.js".to_string()),
-            "entry dependencies should be split to vendors"
-        );
-
-        assert!(
-            files.contains(&"vendors_dynamic_0-async.js".to_string())
-                && files.contains(&"vendors_dynamic_1-async.js".to_string()),
+            files.contains(&"vendors_0-async.js".to_string())
+                && files.contains(&"vendors_1-async.js".to_string()),
             "big vendors should be split again"
         );
 
@@ -614,7 +609,7 @@ mod tests {
         );
 
         assert!(
-            files.contains(&"common_dynamic-async.js".to_string()),
+            files.contains(&"common-async.js".to_string()),
             "common async modules should be split"
         );
     }
