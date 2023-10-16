@@ -13,6 +13,7 @@ use crate::module::{Module, ModuleId, ModuleInfo};
 use crate::resolve::{ResolvedResource, ResolverResource};
 use crate::update::UpdateResult;
 
+#[allow(dead_code)]
 #[derive(Clone)]
 pub enum OptimizeAllowChunks {
     // All,
@@ -489,15 +490,6 @@ impl Compiler {
                 groups: vec![
                     OptimizeChunkGroup {
                         name: "vendors".to_string(),
-                        allow_chunks: OptimizeAllowChunks::Entry,
-                        min_chunks: 1,
-                        min_size: 20000,
-                        max_size: 5000000,
-                        test: Regex::new(r"[/\\]node_modules[/\\]").ok(),
-                        priority: Some(-10),
-                    },
-                    OptimizeChunkGroup {
-                        name: "vendors_dynamic".to_string(),
                         allow_chunks: OptimizeAllowChunks::Async,
                         min_chunks: 1,
                         min_size: 20000,
@@ -506,7 +498,7 @@ impl Compiler {
                         priority: Some(-10),
                     },
                     OptimizeChunkGroup {
-                        name: "common_dynamic".to_string(),
+                        name: "common".to_string(),
                         allow_chunks: OptimizeAllowChunks::Async,
                         min_chunks: 2,
                         // always split, to avoid multi-instance risk
