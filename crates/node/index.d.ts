@@ -42,4 +42,5 @@ stats?: boolean;
 hash?: boolean;
 autoCssModules?: boolean;
 dynamicImportToRequire?: boolean;
+umd?: string;
 }, watch: boolean): Promise<void>

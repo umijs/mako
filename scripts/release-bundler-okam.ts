@@ -31,7 +31,17 @@ import 'zx/globals';
 
   console.log('Done');
   console.log('Please run the following command to publish:');
-  console.log('cd packages/bundler-okam && tnpm publish');
+  let tag = 'latest';
+  const newVersion = bundlerOkamPkg.version;
+  if (
+    newVersion.includes('-alpha.') ||
+    newVersion.includes('-beta.') ||
+    newVersion.includes('-rc.')
+  )
+    tag = 'next';
+  if (newVersion.includes('-canary.')) tag = 'canary';
+  if (newVersion.includes('-dev.')) tag = 'dev';
+  console.log(`cd packages/bundler-okam && tnpm publish --tag ${tag}`);
 })().catch((e) => {
   console.error(e);
   process.exit(1);

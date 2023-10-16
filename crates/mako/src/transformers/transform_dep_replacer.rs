@@ -10,8 +10,10 @@ use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::analyze_deps::{is_commonjs_require, is_dynamic_import};
+use crate::build::parse_path;
 use crate::compiler::Context;
 use crate::module::Dependency;
+use crate::transformers::transform_virtual_css_modules::is_css_path;
 
 pub struct DepReplacer<'a> {
     pub to_replace: &'a DependenciesToReplace,
@@ -99,7 +101,10 @@ impl VisitMut for DepReplacer<'_> {
                     }
 
                     // remove `require('./xxx.css');`
-                    if source_string.ends_with(".css?modules") || source_string.ends_with(".css") {
+                    let file_request = parse_path(&source_string).unwrap();
+                    if is_css_path(&file_request.path)
+                        && (file_request.query.is_empty() || file_request.has_query("modules"))
+                    {
                         *expr = Expr::Lit(quote_str!("").into())
                     }
                 }
