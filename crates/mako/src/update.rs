@@ -126,7 +126,6 @@ impl Compiler {
                 let p_str = p.to_string_lossy().to_string();
                 if is_css_path(&p_str) {
                     let with_as_module = format!("{}?asmodule", p_str);
-                    println!("with_as_module:{}", &with_as_module);
                     if module_graph.has_module(&with_as_module.clone().into()) {
                         new_paths.push((PathBuf::from(with_as_module), update_type));
                     }

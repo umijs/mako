@@ -208,7 +208,6 @@ impl ProjectWatch {
 
         tokio::spawn(async move {
             watch(&root, |events| {
-                println!("Compiling...");
                 let res = watch_compiler.update(events.into());
                 let has_no_missing_deps = {
                     watch_compiler
@@ -221,6 +220,7 @@ impl ProjectWatch {
 
                 match res {
                     Err(err) => {
+                        println!("Compiling...");
                         // unescape
                         let mut err = err
                             .to_string()
@@ -236,6 +236,7 @@ impl ProjectWatch {
                     }
                     Ok(res) => {
                         if res.is_updated() {
+                            println!("Compiling...");
                             let t_compiler = Instant::now();
                             let next_full_hash =
                                 watch_compiler.generate_hot_update_chunks(res, *last_full_hash);
