@@ -36,7 +36,13 @@ exports.build = async function (opts) {
 
   // TODO: use stats
   const manifest = JSON.parse(
-    fs.readFileSync(path.join(cwd, 'dist', 'asset-manifest.json')),
+    fs.readFileSync(
+      path.join(
+        cwd,
+        'dist',
+        okamConfig.manifestConfig?.fileName || 'asset-manifest.json',
+      ),
+    ),
   );
   const assets = Object.keys(manifest)
     .filter((key) => !key.endsWith('.map'))
