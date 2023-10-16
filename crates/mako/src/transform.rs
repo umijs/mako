@@ -682,6 +682,7 @@ if (/x/ === /x/) {
             plugin_driver: Default::default(),
             stats_info: Mutex::new(Default::default()),
             resolvers,
+            optimize_infos: Mutex::new(None),
         });
 
         let mut ast = build_js_ast(path, origin, &context).unwrap();
