@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::hash::Hasher;
 use std::sync::Arc;
 use std::vec;
@@ -623,25 +623,11 @@ fn render_module_js(ast: &SwcModule, context: &Arc<Context>) -> Result<(Vec<u8>,
 fn render_dev_entry_chunk_js(
     pot: &ChunkPot,
     mut stmts: Vec<String>,
-    chunk: &Chunk,
+    _chunk: &Chunk,
     context: &Arc<Context>,
     full_hash: u64,
 ) -> Result<ChunkFile> {
     mako_core::mako_profile_function!();
-
-    let chunk_graph = context.chunk_graph.read().unwrap();
-
-    let dep_chunks_ids = chunk_graph
-        .sync_dependencies_chunk(chunk)
-        .into_iter()
-        .map(|chunk| format!(r#""{}""#, chunk.generate(context)))
-        .collect::<HashSet<String>>()
-        .into_iter()
-        .collect::<Vec<_>>();
-
-    // var d = [ ..all dep chunk ids ]
-    let dep_chunk_ids_decl_stmt = format!("var d= [{}];", dep_chunks_ids.join(","));
-    stmts.push(dep_chunk_ids_decl_stmt);
 
     // var cssInstalledChunks = { "chunk_id": 0 }
     let init_install_css_chunk = format!(
@@ -700,27 +686,6 @@ fn render_entry_chunk_js(
 
         stmts.push(main_id_decl);
     }
-
-    let chunk_graph = context.chunk_graph.read().unwrap();
-
-    let dep_chunks_ids = chunk_graph
-        .sync_dependencies_chunk(chunk)
-        .into_iter()
-        .map(|chunk| chunk.generate(context))
-        .collect::<HashSet<String>>()
-        .into_iter()
-        .map(|id| Some(quote_str!(id).as_arg()))
-        .collect::<Vec<_>>();
-
-    // var d = [ ..all dep chunk ids ]
-    let dep_chunk_ids_decl_stmt: Stmt = ArrayLit {
-        span: DUMMY_SP,
-        elems: dep_chunks_ids,
-    }
-    .into_var_decl(VarDeclKind::Var, quote_ident!("d").into())
-    .into();
-
-    stmts.push(dep_chunk_ids_decl_stmt);
 
     // var cssInstalledChunks = { "chunk_id": 0 }
     let init_install_css_chunk: Stmt = {
