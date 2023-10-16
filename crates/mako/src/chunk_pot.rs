@@ -3,7 +3,9 @@ use std::hash::Hasher;
 use std::sync::Arc;
 use std::vec;
 
-use cached::proc_macro::{cached, once};
+use cached::proc_macro::cached;
+#[allow(unused_imports)]
+use cached::proc_macro::once;
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::cached::SizedCache;
 use mako_core::indexmap::IndexSet;
@@ -681,7 +683,7 @@ fn render_dev_entry_chunk_js(
     stmts.push(format!("var e = \"{}\";", pot.chunk_id));
 
     let runtime_content =
-        runtime_base_code(context)?.replace("_%full_hash%_", &full_hash.to_string());
+        runtime_base_code_with_cache(context)?.replace("_%full_hash%_", &full_hash.to_string());
 
     let mut content: Vec<u8> =
         format!("var m = {};", pot.to_chunk_module_object_string(context)?).into();
@@ -773,7 +775,7 @@ fn render_entry_chunk_js(
     stmts.push(init_install_css_chunk);
 
     let runtime_content =
-        runtime_base_code(context)?.replace("_%full_hash%_", &full_hash.to_string());
+        runtime_base_code_with_cache(context)?.replace("_%full_hash%_", &full_hash.to_string());
 
     let mut ast = build_js_ast(
         "_mako_internal/runtime_entry.js",
@@ -815,9 +817,18 @@ fn render_entry_chunk_js(
         file_type: ChunkFileType::JS,
     })
 }
+#[cfg(test)]
+fn runtime_base_code_with_cache(context: &Arc<Context>) -> Result<String> {
+    runtime_code(context)
+}
 
+#[cfg(not(test))]
 #[once(result = true)]
-fn runtime_base_code(context: &Arc<Context>) -> Result<String> {
+fn runtime_base_code_with_cache(context: &Arc<Context>) -> Result<String> {
+    runtime_code(context)
+}
+
+fn runtime_code(context: &Arc<Context>) -> Result<String> {
     let runtime_entry_content_str = include_str!("runtime/runtime_entry.js");
     let mut content = runtime_entry_content_str.replace(
         "// __inject_runtime_code__",
