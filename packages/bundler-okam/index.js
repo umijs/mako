@@ -165,10 +165,13 @@ function checkConfig(config) {
 
 async function getOkamConfig(opts) {
   const WebpackConfig = require('webpack-5-chain');
+  // webpack require is handled by require hooks in bundler-webpack/src/requireHook
+  const webpack = require('webpack');
+  const env = process.env.NODE_ENV;
   const webpackChainConfig = new WebpackConfig();
-  await opts.chainWebpack(webpackChainConfig);
+  await opts.chainWebpack(webpackChainConfig, { env, webpack });
   if (opts.config.chainWebpack) {
-    opts.config.chainWebpack(webpackChainConfig);
+    opts.config.chainWebpack(webpackChainConfig, { env, webpack });
   }
   const webpackConfig = webpackChainConfig.toConfig();
   let umd = 'none';
