@@ -1,4 +1,4 @@
-function createRuntime(makoModules, deps, entryModuleId) {
+function createRuntime(makoModules, entryModuleId) {
   const modulesRegistry = {};
 
   function requireModule(moduleId) {
@@ -261,18 +261,7 @@ function createRuntime(makoModules, deps, entryModuleId) {
 
   // __inject_runtime_code__
 
-  let exports = null;
-  if (deps.length > 0) {
-    exports = Promise.all(
-      deps.map(function (dep) {
-        return requireModule.ensure(dep);
-      }),
-    ).then(function () {
-      return requireModule(entryModuleId);
-    });
-  } else {
-    exports = requireModule(entryModuleId);
-  }
+  const exports = requireModule(entryModuleId);
   return {
     exports,
     requireModule,
@@ -281,7 +270,7 @@ function createRuntime(makoModules, deps, entryModuleId) {
     _makoModuleHotUpdate: requireModule.applyHotUpdate,
   };
 }
-const runtime = createRuntime(m, d, e);
+const runtime = createRuntime(m, e);
 (typeof globalThis !== 'undefined' ? globalThis : self).jsonpCallback =
   runtime._jsonpCallback;
 (typeof globalThis !== 'undefined' ? globalThis : self).modulesRegistry =
