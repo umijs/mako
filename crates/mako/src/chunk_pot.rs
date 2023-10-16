@@ -21,7 +21,7 @@ use mako_core::swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
 use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
 use mako_core::twox_hash::XxHash64;
 
-use crate::ast::{build_js_ast, Ast};
+use crate::ast::{base64_encode, build_js_ast, Ast};
 use crate::chunk::{Chunk, ChunkType};
 use crate::compiler::Context;
 use crate::config::{DevtoolConfig, Mode};
@@ -512,22 +512,27 @@ fn to_module_line(
 
             emitter.emit_module(&ast.ast)?;
 
-            let source_map_content = build_source_map(&source_map_buf, &cm);
+            let source_map = build_source_map(&source_map_buf, &cm);
 
             let content = String::from_utf8_lossy(&buf);
-            let source_map_file = format!("{}.map", file_content_hash(module_id_str));
+            // let source_map_file = format!("{}.map", file_content_hash(module_id_str));
 
             let content = vec![
                 content,
                 format!(
-                    "//# sourceMappingURL={}{}",
-                    context.config.public_path, source_map_file
+                    "//# sourceMappingURL=data:application/json;charset=utf-8;base64,{}",
+                    base64_encode(source_map)
                 )
                 .into(),
+                // format!(
+                //     "//# sourceMappingURL={}{}",
+                //     context.config.public_path, source_map_file
+                // )
+                // .into(),
             ]
             .join("");
 
-            context.write_static_content(&source_map_file, source_map_content)?;
+            // context.write_static_content(&source_map_file, source_map_content)?;
 
             let escaped = serde_json::to_string(&content)?;
 
