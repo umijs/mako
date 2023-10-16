@@ -190,6 +190,7 @@ async function getOkamConfig(opts) {
     runtimePublicPath,
     manifest,
     mdx,
+    theme,
     lessLoader,
     codeSplitting,
     devtool,
@@ -251,7 +252,10 @@ async function getOkamConfig(opts) {
     codeSplitting: codeSplitting === false ? 'none' : 'auto',
     devtool: devtool === false ? 'none' : 'source-map',
     less: {
-      theme: lessLoader?.modifyVars || {},
+      theme: {
+        ...theme,
+        ...lessLoader?.modifyVars,
+      },
       javascriptEnabled: lessLoader?.javascriptEnabled,
       lesscPath: path.join(
         path.dirname(require.resolve('less/package.json')),
