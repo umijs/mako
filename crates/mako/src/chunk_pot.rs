@@ -47,6 +47,7 @@ pub struct ChunkPot<'a> {
     convert = "{chunk_pot.stylesheet.as_ref().unwrap().raw_hash}"
 )]
 fn render_chunk_css(chunk_pot: &ChunkPot, context: &Arc<Context>) -> Result<ChunkFile> {
+    mako_core::mako_profile_function!(&chunk_pot.js_name);
     let mut css_code = String::new();
     let mut source_map = Vec::new();
     let css_writer = BasicCssWriter::new(
@@ -106,7 +107,7 @@ fn render_chunk_css(chunk_pot: &ChunkPot, context: &Arc<Context>) -> Result<Chun
 #[cached(
     result = true,
     type = "SizedCache<u64 , ChunkFile>",
-    create = "{ SizedCache::with_size(100) }",
+    create = "{ SizedCache::with_size(500) }",
     key = "u64",
     convert = "{chunk_pot.js_hash}"
 )]
@@ -114,6 +115,8 @@ fn render_dev_normal_chunk_js_with_cache(
     chunk_pot: &ChunkPot,
     context: &Arc<Context>,
 ) -> Result<ChunkFile> {
+    mako_core::mako_profile_function!(&chunk_pot.js_name);
+
     let buf: Vec<u8> = chunk_pot.to_chunk_module_content(context)?.into();
 
     let hash = if context.config.hash {
@@ -136,7 +139,7 @@ fn render_dev_normal_chunk_js_with_cache(
 #[cached(
     result = true,
     type = "SizedCache<u64 , ChunkFile>",
-    create = "{ SizedCache::with_size(100) }",
+    create = "{ SizedCache::with_size(500) }",
     key = "u64",
     convert = "{chunk_pot.js_hash}"
 )]
@@ -193,13 +196,18 @@ impl<'cp> ChunkPot<'cp> {
     }
 
     pub fn to_dev_normal_chunk_files(&self, context: &Arc<Context>) -> Result<Vec<ChunkFile>> {
+        mako_core::mako_profile_function!(&self.js_name);
+
         let mut files = vec![];
 
-        let js_chunk_file = render_dev_normal_chunk_js_with_cache(self, context)?;
-
-        files.push(js_chunk_file);
+        {
+            mako_core::mako_profile_scope!("JsChunk");
+            let js_chunk_file = render_dev_normal_chunk_js_with_cache(self, context)?;
+            files.push(js_chunk_file);
+        }
 
         if self.stylesheet.is_some() {
+            mako_core::mako_profile_scope!("CssChunk");
             let css_chunk_file = render_chunk_css(self, context)?;
             files.push(css_chunk_file);
         }
@@ -281,7 +289,7 @@ impl<'cp> ChunkPot<'cp> {
         module_graph: &'a ModuleGraph,
         context: &'a Arc<Context>,
     ) -> Result<(JsModules<'a>, Option<CssModules<'a>>)> {
-        mako_core::mako_profile_function!();
+        mako_core::mako_profile_function!(module_ids.len().to_string());
         let mut module_map: HashMap<String, (&Module, u64)> = Default::default();
         let mut merged_css_modules: Vec<(String, &Stylesheet)> = vec![];
 
@@ -377,7 +385,7 @@ impl<'cp> ChunkPot<'cp> {
     }
 
     fn to_chunk_module_object_string(&self, context: &Arc<Context>) -> Result<String> {
-        mako_core::mako_profile_function!();
+        mako_core::mako_profile_function!(&self.chunk_id);
 
         let sorted_kv = {
             mako_core::mako_profile_scope!("collect_&_sort");
@@ -396,7 +404,7 @@ impl<'cp> ChunkPot<'cp> {
         };
 
         let module_defines = {
-            mako_core::mako_profile_scope!("assemble_module_defines");
+            mako_core::mako_profile_scope!("assemble_module_defines", sorted_kv.len().to_string());
 
             sorted_kv
                 .par_iter()
@@ -473,7 +481,7 @@ impl<'cp> ChunkPot<'cp> {
     result = true,
     key = "String",
     type = "SizedCache<String , String>",
-    create = "{ SizedCache::with_size(2000) }",
+    create = "{ SizedCache::with_size(20000) }",
     convert = r#"{format!("{}-{}", _raw_hash, module_id_str)}"#
 )]
 fn to_module_line(
@@ -514,7 +522,10 @@ fn to_module_line(
 
             let source_map = build_source_map(&source_map_buf, &cm);
 
-            let content = String::from_utf8_lossy(&buf);
+            let content = {
+                mako_core::mako_profile_scope!("escape");
+                String::from_utf8_lossy(&buf)
+            };
             // let source_map_file = format!("{}.map", file_content_hash(module_id_str));
 
             let content = vec![

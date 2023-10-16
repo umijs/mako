@@ -266,6 +266,7 @@ impl Compiler {
     }
 
     pub fn full_hash(&self) -> u64 {
+        mako_core::mako_profile_function!();
         let cg = self.context.chunk_graph.read().unwrap();
         let mg = self.context.module_graph.read().unwrap();
         cg.full_hash(&mg)
