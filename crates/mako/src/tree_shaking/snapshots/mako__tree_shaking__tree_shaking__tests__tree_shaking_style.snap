@@ -3,7 +3,9 @@ source: crates/mako/src/tree_shaking/tree_shaking.rs
 expression: content
 ---
 var chunksIdToUrlMap = {};
-var cssChunksIdToUrlMap = {};
+var cssChunksIdToUrlMap = {
+    "index.tsx": "index.css"
+};
 var e = "index.tsx";
 var cssInstalledChunks = {
     "index.tsx": 0
