@@ -229,25 +229,36 @@ impl<'cp> ChunkPot<'cp> {
     ) -> Result<Vec<ChunkFile>> {
         mako_core::mako_profile_function!();
 
+        let mut files = vec![];
         let mut lines = vec![];
+
         lines.push(format!(
             "var chunksIdToUrlMap= {};",
             serde_json::to_string(js_map).unwrap()
         ));
-        lines.push(format!(
-            "var cssChunksIdToUrlMap= {};",
-            serde_json::to_string(css_map).unwrap()
-        ));
-
-        let js_chunk_file = render_dev_entry_chunk_js(self, lines, chunk, context, full_hash)?;
-
-        let mut files = vec![js_chunk_file];
 
         if self.stylesheet.is_some() {
             mako_core::mako_profile_scope!("CssChunk");
             let css_chunk_file = render_chunk_css(self, context)?;
+
+            let mut css_map = css_map.clone();
+            css_map.insert(css_chunk_file.chunk_id.clone(), css_chunk_file.disk_name());
+            lines.push(format!(
+                "var cssChunksIdToUrlMap= {};",
+                serde_json::to_string(&css_map).unwrap()
+            ));
+
             files.push(css_chunk_file);
+        } else {
+            lines.push(format!(
+                "var cssChunksIdToUrlMap= {};",
+                serde_json::to_string(css_map).unwrap()
+            ));
         }
+
+        let js_chunk_file = render_dev_entry_chunk_js(self, lines, chunk, context, full_hash)?;
+
+        files.push(js_chunk_file);
 
         Ok(files)
     }
@@ -260,14 +271,22 @@ impl<'cp> ChunkPot<'cp> {
         chunk: &Chunk,
         full_hash: u64,
     ) -> Result<Vec<ChunkFile>> {
-        let js_chunk_file =
-            render_entry_chunk_js(self, js_map, css_map, chunk, context, full_hash)?;
-
-        let mut files = vec![js_chunk_file];
+        let mut files = vec![];
 
         if self.stylesheet.is_some() {
             let css_chunk_file = render_chunk_css(self, context)?;
+
+            let mut css_map = css_map.clone();
+            css_map.insert(css_chunk_file.chunk_id.clone(), css_chunk_file.disk_name());
+
             files.push(css_chunk_file);
+            files.push(render_entry_chunk_js(
+                self, js_map, &css_map, chunk, context, full_hash,
+            )?);
+        } else {
+            files.push(render_entry_chunk_js(
+                self, js_map, css_map, chunk, context, full_hash,
+            )?);
         }
 
         Ok(files)
