@@ -30,7 +30,7 @@ function $RefreshIsReactComponentLike$(moduleExports) {
     }
     var hasComponentExports = false;
     for(var key in moduleExports){
-        if (!RefreshRuntime.isLikelyComponentType(moduleExports[key])) {
+        if (RefreshRuntime.isLikelyComponentType(moduleExports[key])) {
             hasComponentExports = true;
         }
     }
