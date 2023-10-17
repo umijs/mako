@@ -158,13 +158,12 @@ function $RefreshIsReactComponentLike$(moduleExports) {
   if (RefreshRuntime.isLikelyComponentType(moduleExports.default || moduleExports)) {
     return true;
   }
-  var hasComponentExports = false;
   for (var key in moduleExports) {
     if (RefreshRuntime.isLikelyComponentType(moduleExports[key])) {
-      hasComponentExports = true;
+      return true;
     }
   }
-  return hasComponentExports;
+  return false;
 }
 if ($RefreshIsReactComponentLike$(module.exports)) {
     module.meta.hot.accept();
