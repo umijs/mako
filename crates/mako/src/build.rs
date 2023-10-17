@@ -1,15 +1,16 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::time::Instant;
 
-use mako_core::anyhow::{anyhow, Result};
+use mako_core::anyhow::{anyhow, Error, Result};
 use mako_core::colored::Colorize;
+use mako_core::rayon::{ThreadPool, ThreadPoolBuilder};
 use mako_core::swc_ecma_utils::contains_top_level_await;
 use mako_core::thiserror::Error;
-use mako_core::tokio::sync::mpsc::error::TryRecvError;
 use mako_core::tracing::debug;
-use mako_core::{anyhow, thiserror, tokio};
+use mako_core::{anyhow, thiserror};
 
 use crate::analyze_deps::analyze_deps;
 use crate::ast::{build_js_ast, generate_code_frame};
@@ -24,7 +25,7 @@ use crate::transform::transform;
 
 #[derive(Debug, Error)]
 #[error("{0}")]
-pub struct GenericError(String);
+pub struct GenericError(pub String);
 
 #[derive(Debug)]
 pub struct Task {
@@ -62,7 +63,10 @@ impl Compiler {
         }
 
         let resolvers = Arc::new(get_resolvers(&self.context.config));
-        let mut queue: VecDeque<Task> = VecDeque::new();
+        let (pool, rs, rr) = Self::create_thread_pool();
+
+        let (module_ids_rs, module_ids_rr) = channel::<ModuleId>();
+
         for entry in entries {
             let mut entry = entry.to_str().unwrap().to_string();
             if self.context.config.hmr
@@ -71,158 +75,148 @@ impl Compiler {
             {
                 entry = format!("{}?hmr", entry);
             }
-            queue.push_back(Task {
-                path: entry,
-                parent_resource: None,
-                is_entry: true,
-            });
+
+            Self::build_module_graph_threaded(
+                pool.clone(),
+                self.context.clone(),
+                Task {
+                    path: entry,
+                    parent_resource: None,
+                    is_entry: true,
+                },
+                rs.clone(),
+                resolvers.clone(),
+                module_ids_rs.clone(),
+            );
         }
 
-        self.build_module_graph_by_task_queue(&mut queue, resolvers)
-    }
+        drop(rs);
+        drop(module_ids_rs);
 
-    pub fn build_module_graph_by_task_queue(
-        &self,
-        queue: &mut VecDeque<Task>,
-        resolvers: Arc<Resolvers>,
-    ) -> Result<HashSet<ModuleId>> {
-        let (rs, mut rr) =
-            tokio::sync::mpsc::unbounded_channel::<Result<(Module, ModuleDeps, Task)>>();
-        let mut active_task_count: usize = 0;
-        let mut t_main_thread: usize = 0;
-        let mut module_count: usize = 0;
-        let mut added_module_ids = HashSet::new();
         let mut errors = vec![];
-        tokio::task::block_in_place(|| loop {
-            let mut module_graph = self.context.module_graph.write().unwrap();
-            while let Some(task) = queue.pop_front() {
-                let resolvers = resolvers.clone();
-                let context = self.context.clone();
-                tokio::spawn({
-                    active_task_count += 1;
-                    module_count += 1;
-                    let rs = rs.clone();
-                    async move {
-                        let ret = Compiler::build_module(context, task, resolvers);
-                        let send_ret = rs.send(ret);
-                        if send_ret.is_err() {
-                            debug!(
-                                "send task error in build_module_graph_by_task_queue {:?}",
-                                send_ret.err()
-                            );
-                        }
-                    }
-                });
+        for err in rr {
+            // unescape
+            let mut err = err
+                .to_string()
+                .replace("\\n", "\n")
+                .replace("\\u{1b}", "\u{1b}")
+                .replace("\\\\", "\\");
+            // remove first char and last char
+            if err.starts_with('"') && err.ends_with('"') {
+                err = err[1..err.len() - 1].to_string();
             }
-            match rr.try_recv() {
-                Ok(ret) => {
-                    let (module, deps, task) = match ret {
-                        Ok(ret) => ret,
-                        Err(err) => {
-                            // unescape
-                            let mut err = err
-                                .to_string()
-                                .replace("\\n", "\n")
-                                .replace("\\u{1b}", "\u{1b}")
-                                .replace("\\\\", "\\");
-                            // remove first char and last char
-                            if err.starts_with('"') && err.ends_with('"') {
-                                err = err[1..err.len() - 1].to_string();
-                            }
-                            eprintln!("{}", "Build failed.".to_string().red());
-                            errors.push(err);
-                            break;
-                        }
-                    };
-                    let t = Instant::now();
+            eprintln!("{}", "Build failed.".to_string().red());
+            errors.push(err);
+        }
 
-                    // record modules with missing deps
-                    if self.context.args.watch {
-                        if module.info.clone().unwrap().missing_deps.is_empty() {
-                            self.context
-                                .modules_with_missing_deps
-                                .write()
-                                .unwrap()
-                                .retain(|id| id != &module.id.id);
-                        } else {
-                            self.context
-                                .modules_with_missing_deps
-                                .write()
-                                .unwrap()
-                                .push(module.id.id.clone());
-                        }
-                    }
-
-                    // current module
-                    let module_id = module.id.clone();
-                    // 只有处理 entry 时，module 会不存在于 module_graph 里
-                    // 否则，module 肯定已存在于 module_graph 里，只需要补充 info 信息即可
-                    if task.is_entry {
-                        added_module_ids.insert(module_id.clone());
-                        module_graph.add_module(module);
-                    } else {
-                        let m = module_graph.get_module_mut(&module_id).unwrap();
-                        m.add_info(module.info);
-                    }
-
-                    // deps
-                    deps.iter().for_each(|(resource, dep)| {
-                        let resolved_path = resource.get_resolved_path();
-                        let external = resource.get_external();
-                        let is_external = external.is_some();
-                        let dep_module_id = ModuleId::new(resolved_path.clone());
-                        let dependency = dep.clone();
-
-                        if !module_graph.has_module(&dep_module_id) {
-                            let module = self.create_module(resource, &dep_module_id);
-                            match module {
-                                Ok(module) => {
-                                    if !is_external {
-                                        queue.push_back(Task {
-                                            path: resolved_path,
-                                            parent_resource: Some(resource.clone()),
-                                            // parent_module_id: None,
-                                            is_entry: false,
-                                        });
-                                    }
-                                    // 拿到依赖之后需要直接添加 module 到 module_graph 里，不能等依赖 build 完再添加
-                                    // 由于是异步处理各个模块，后者会导致大量重复任务的 build_module 任务（3 倍左右）
-                                    added_module_ids.insert(module.id.clone());
-                                    module_graph.add_module(module);
-                                }
-                                Err(err) => {
-                                    panic!("create module failed: {:?}", err);
-                                }
-                            }
-                        }
-                        module_graph.add_dependency(&module_id, &dep_module_id, dependency);
-                    });
-                    active_task_count -= 1;
-                    let t = t.elapsed();
-                    t_main_thread += t.as_micros() as usize;
-                }
-                Err(TryRecvError::Empty) => {
-                    if active_task_count == 0 {
-                        debug!("build time in main thread: {}ms", t_main_thread / 1000);
-                        debug!("module count: {}", module_count);
-                        break;
-                    }
-                }
-                Err(TryRecvError::Disconnected) => {
-                    break;
-                }
-            }
-        });
         if !errors.is_empty() {
             return Err(anyhow!(GenericError(errors.join(", "))));
         }
-        Ok(added_module_ids)
+
+        let mut module_ids = HashSet::new();
+        for module_id in module_ids_rr {
+            module_ids.insert(module_id);
+        }
+
+        Ok(module_ids)
+    }
+
+    pub fn build_module_graph_threaded(
+        pool: Arc<ThreadPool>,
+        context: Arc<Context>,
+        task: Task,
+        rs: Sender<Error>,
+        resolvers: Arc<Resolvers>,
+        module_ids: Sender<ModuleId>,
+    ) {
+        let pool_clone = pool.clone();
+        let module_ids_clone = module_ids.clone();
+
+        pool.spawn(move || {
+            let (module, deps) = match Compiler::build_module(&context, &task, resolvers.clone()) {
+                Ok(r) => r,
+                Err(e) => {
+                    rs.send(e).unwrap();
+                    return;
+                }
+            };
+
+            // record modules with missing deps
+            if context.args.watch {
+                if module.info.clone().unwrap().missing_deps.is_empty() {
+                    context
+                        .modules_with_missing_deps
+                        .write()
+                        .unwrap()
+                        .retain(|id| id != &module.id.id);
+                } else {
+                    context
+                        .modules_with_missing_deps
+                        .write()
+                        .unwrap()
+                        .push(module.id.id.clone());
+                }
+            }
+
+            // current module
+            let module_id = module.id.clone();
+            // 只有处理 entry 时，module 会不存在于 module_graph 里
+            // 否则，module 肯定已存在于 module_graph 里，只需要补充 info 信息即可
+            let mut module_graph = context.module_graph.write().unwrap();
+            if task.is_entry {
+                module_ids.send(module_id.clone()).unwrap();
+                module_graph.add_module(module);
+            } else {
+                let m = module_graph.get_module_mut(&module_id).unwrap();
+                m.add_info(module.info);
+            }
+
+            // deps
+            deps.into_iter().for_each(|(resource, dep)| {
+                let resolved_path = resource.get_resolved_path();
+                let external = resource.get_external();
+                let is_external = external.is_some();
+                let dep_module_id = ModuleId::new(resolved_path.clone());
+                let dependency = dep;
+
+                if !module_graph.has_module(&dep_module_id) {
+                    let module = Self::create_module(&resource, &dep_module_id, &context);
+                    match module {
+                        Ok(module) => {
+                            if !is_external {
+                                Self::build_module_graph_threaded(
+                                    pool_clone.clone(),
+                                    context.clone(),
+                                    Task {
+                                        path: resolved_path,
+                                        parent_resource: Some(resource),
+                                        // parent_module_id: None,
+                                        is_entry: false,
+                                    },
+                                    rs.clone(),
+                                    resolvers.clone(),
+                                    module_ids_clone.clone(),
+                                );
+                            }
+                            // 拿到依赖之后需要直接添加 module 到 module_graph 里，不能等依赖 build 完再添加
+                            // 由于是异步处理各个模块，后者会导致大量重复任务的 build_module 任务（3 倍左右）
+                            module_ids.send(module.id.clone()).unwrap();
+                            module_graph.add_module(module);
+                        }
+                        Err(err) => {
+                            panic!("create module failed: {:?}", err);
+                        }
+                    }
+                }
+                module_graph.add_dependency(&module_id, &dep_module_id, dependency);
+            });
+        });
     }
 
     pub fn create_module(
-        &self,
         resource: &ResolverResource,
         dep_module_id: &ModuleId,
+        context: &Arc<Context>,
     ) -> Result<Module> {
         let external = resource.get_external();
         let resolved_path = resource.get_resolved_path();
@@ -238,7 +232,7 @@ impl Compiler {
                 let ast = build_js_ast(
                     format!("external_{}", &resolved_path).as_str(),
                     code.as_str(),
-                    &self.context,
+                    context,
                 )?;
 
                 Module::new(
@@ -264,26 +258,26 @@ impl Compiler {
     }
 
     pub fn build_module(
-        context: Arc<Context>,
-        task: Task,
+        context: &Arc<Context>,
+        task: &Task,
         resolvers: Arc<Resolvers>,
-    ) -> Result<(Module, ModuleDeps, Task)> {
+    ) -> Result<(Module, ModuleDeps)> {
         let module_id = ModuleId::new(task.path.clone());
         let request = parse_path(&task.path)?;
 
         // load
-        let content = load(&request, task.is_entry, &context)?;
+        let content = load(&request, task.is_entry, context)?;
 
         // parse
-        let mut ast = parse(&content, &request, &context)?;
+        let mut ast = parse(&content, &request, context)?;
 
         // check ast
         context
             .plugin_driver
-            .check_ast(&PluginCheckAstParam { ast: &ast }, &context)?;
+            .check_ast(&PluginCheckAstParam { ast: &ast }, context)?;
 
         // transform
-        transform(&mut ast, &context, &task, &resolvers)?;
+        transform(&mut ast, context, task, &resolvers)?;
 
         // 在此之前需要把所有依赖都和模块关联起来，并且需要使用 resolved source
         // analyze deps
@@ -305,7 +299,7 @@ impl Compiler {
         let mut ignored_deps = Vec::new();
 
         for dep in deps {
-            let ret = resolve(&task.path, &dep, &context.resolvers, &context);
+            let ret = resolve(&task.path, &dep, &context.resolvers, context);
             match ret {
                 Ok(resolved_resource) => {
                     if matches!(resolved_resource, ResolverResource::Ignored) {
@@ -410,7 +404,13 @@ impl Compiler {
         };
         let module = Module::new(module_id, task.is_entry, Some(info));
 
-        Ok((module, dependencies_resource, task))
+        Ok((module, dependencies_resource))
+    }
+
+    pub fn create_thread_pool() -> (Arc<ThreadPool>, Sender<Error>, Receiver<Error>) {
+        let pool = Arc::new(ThreadPoolBuilder::new().build().unwrap());
+        let (rs, rr) = channel();
+        (pool, rs, rr)
     }
 }
 
