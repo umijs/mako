@@ -95,14 +95,23 @@ impl Compiler {
         mako_core::mako_profile_function!();
         debug!("group_hot_update_chunk");
 
-        let mut chunk_graph = self.context.chunk_graph.write().unwrap();
+        // unique for queried file modules
+        let modified_files = update_result
+            .modified
+            .iter()
+            // ex. ["a.module.css?modules", "a.module.css?asmodule"] => ["a.module.css"]
+            .map(|m| m.id.split('?').next().unwrap())
+            .collect::<HashSet<_>>();
 
-        // for logic simplicity, full re-group if modified modules are more than 1
+        // for logic simplicity, full re-group if modified files are more than 1
         // ex. git checkout another branch
-        if update_result.modified.len() > 1 {
+        if modified_files.len() > 1 {
             self.group_chunk();
-            return None;
+            // empty vec means full re-group
+            return Some((vec![], vec![]));
         }
+
+        let mut chunk_graph = self.context.chunk_graph.write().unwrap();
 
         // handle removed modules
         if !update_result.removed.is_empty() {

@@ -343,7 +343,7 @@ impl Compiler {
         let t_group_chunks = t_group_chunks.elapsed();
 
         let t_optimize_chunks = Instant::now();
-        self.optimize_hot_update_chunk(&updated_modules, &group_result);
+        self.optimize_hot_update_chunk(&group_result);
         let t_optimize_chunks = t_optimize_chunks.elapsed();
 
         let t_transform_modules = Instant::now();

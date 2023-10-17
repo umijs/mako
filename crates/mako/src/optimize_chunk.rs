@@ -11,7 +11,6 @@ use crate::compiler::Compiler;
 use crate::group_chunk::GroupUpdateResult;
 use crate::module::{Module, ModuleId, ModuleInfo};
 use crate::resolve::{ResolvedResource, ResolverResource};
-use crate::update::UpdateResult;
 
 #[allow(dead_code)]
 #[derive(Clone)]
@@ -84,26 +83,21 @@ impl Compiler {
         }
     }
 
-    pub fn optimize_hot_update_chunk(
-        &self,
-        update_result: &UpdateResult,
-        group_result: &GroupUpdateResult,
-    ) {
+    pub fn optimize_hot_update_chunk(&self, group_result: &GroupUpdateResult) {
         mako_core::mako_profile_function!();
         debug!("optimize hot update chunk");
-
-        // for logic simplicity, full re-optimize if modified modules are more than 1
-        // ex. git checkout another branch
-        if update_result.modified.len() > 1 {
-            self.optimize_chunk();
-            return;
-        }
 
         // only optimize if code splitting enabled and there has valid group update result
         if let (Some(optimize_infos), Some((group_new_chunks, group_modules_in_chunk))) = (
             self.context.optimize_infos.lock().unwrap().as_ref(),
             group_result,
         ) {
+            // empty means full re-optimize
+            if group_new_chunks.is_empty() && group_modules_in_chunk.is_empty() {
+                self.optimize_chunk();
+                return;
+            }
+
             let chunk_graph = self.context.chunk_graph.write().unwrap();
             // prepare modules_in_chunk data
             let mut modules_in_chunk = group_new_chunks.iter().fold(vec![], |mut acc, chunk_id| {
