@@ -121,6 +121,24 @@ impl DevServer {
                         }
                     }
                     _ => {
+                        if let Some(res) = for_fn.context.get_static_content(path) {
+                            let ext = path.rsplit('.').next();
+
+                            let content_type = match ext {
+                                None => "text/plain; charset=utf-8",
+                                Some("js") => "application/javascript; charset=utf-8",
+                                Some("css") => "text/css; charset=utf-8",
+                                Some("map") | Some("json") => "application/json; charset=utf-8",
+                                Some(_) => "text/plain; charset=utf-8",
+                            };
+
+                            return Ok(hyper::Response::builder()
+                                .status(hyper::StatusCode::OK)
+                                .header(CONTENT_TYPE, content_type)
+                                .body(hyper::Body::from(res))
+                                .unwrap());
+                        }
+
                         // try chunk content in memory first, else use dist content
                         match static_serve.serve(req).await {
                             Ok(mut res) => {

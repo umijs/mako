@@ -2,8 +2,10 @@ use std::collections::HashSet;
 use std::fs;
 use std::ops::DerefMut;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use cached::proc_macro::cached;
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::indexmap::IndexSet;
 use mako_core::rayon::prelude::*;
@@ -11,7 +13,7 @@ use mako_core::serde::Serialize;
 use mako_core::tracing::debug;
 
 use crate::ast::base64_encode;
-use crate::compiler::Compiler;
+use crate::compiler::{Compiler, Context};
 use crate::config::{DevtoolConfig, OutputMode, TreeShakeStrategy};
 use crate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::module::ModuleId;
@@ -90,7 +92,7 @@ impl Compiler {
             fs::create_dir_all(&config.output.path)?;
         }
 
-        let (t_generate_chunks, t_ast_to_code_and_write) = self.generate_chunk_disk_file()?;
+        let (t_generate_chunks, t_ast_to_code_and_write) = self.write_chunk_files()?;
 
         // write assets
         let t_write_assets = Instant::now();
@@ -145,14 +147,23 @@ impl Compiler {
         Ok(())
     }
 
-    fn generate_chunk_disk_file(&self) -> Result<(Duration, Duration)> {
+    fn write_chunk_files(&self) -> Result<(Duration, Duration)> {
         // generate chunks
         let t_generate_chunks = Instant::now();
         debug!("generate chunks");
         let chunk_files = self.generate_chunk_files()?;
         let t_generate_chunks = t_generate_chunks.elapsed();
 
-        // ast to code and sourcemap, then write
+        let t_ast_to_code_and_write = if self.context.args.watch {
+            self.generate_chunk_mem_file(&chunk_files)?
+        } else {
+            self.generate_chunk_disk_file(&chunk_files)?
+        };
+
+        Ok((t_generate_chunks, t_ast_to_code_and_write))
+    }
+
+    fn generate_chunk_disk_file(&self, chunk_files: &Vec<ChunkFile>) -> Result<Duration> {
         let t_ast_to_code_and_write = Instant::now();
         debug!("ast to code and write");
         chunk_files.par_iter().try_for_each(|file| -> Result<()> {
@@ -161,102 +172,25 @@ impl Compiler {
         })?;
         let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
 
-        Ok((t_generate_chunks, t_ast_to_code_and_write))
+        Ok(t_ast_to_code_and_write)
+    }
+
+    fn generate_chunk_mem_file(&self, chunk_files: &Vec<ChunkFile>) -> Result<Duration> {
+        mako_core::mako_profile_function!();
+        // ast to code and sourcemap, then write
+        let t_ast_to_code_and_write = Instant::now();
+        debug!("ast to code and write");
+        chunk_files.par_iter().try_for_each(|file| -> Result<()> {
+            write_dev_chunk_file(&self.context, file)?;
+            Ok(())
+        })?;
+        let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
+
+        Ok(t_ast_to_code_and_write)
     }
 
     pub fn emit_chunk_file(&self, chunk_file: &ChunkFile) {
-        let to: PathBuf = self.context.config.output.path.join(chunk_file.disk_name());
-
-        match self.context.config.devtool {
-            DevtoolConfig::SourceMap => {
-                {
-                    let source_map = &chunk_file.source_map;
-
-                    let size = source_map.len() as u64;
-                    self.context.stats_info.lock().unwrap().add_assets(
-                        size,
-                        chunk_file.source_map_name(),
-                        chunk_file.chunk_id.clone(),
-                        to.clone(),
-                        chunk_file.source_map_disk_name(),
-                    );
-                    fs::write(
-                        self.context
-                            .config
-                            .output
-                            .path
-                            .join(chunk_file.source_map_disk_name()),
-                        source_map,
-                    )
-                    .unwrap();
-                }
-
-                let source_map_url_line = match chunk_file.file_type {
-                    ChunkFileType::JS => {
-                        format!(
-                            "\n//# sourceMappingURL={}",
-                            chunk_file.source_map_disk_name()
-                        )
-                    }
-                    ChunkFileType::Css => {
-                        format!(
-                            "\n/*# sourceMappingURL={}*/",
-                            chunk_file.source_map_disk_name()
-                        )
-                    }
-                };
-
-                let mut code = Vec::new();
-
-                code.extend_from_slice(&chunk_file.content);
-                code.extend_from_slice(source_map_url_line.as_bytes());
-
-                let size = code.len() as u64;
-                self.context.stats_info.lock().unwrap().add_assets(
-                    size,
-                    chunk_file.file_name.clone(),
-                    chunk_file.chunk_id.clone(),
-                    to.clone(),
-                    chunk_file.disk_name(),
-                );
-                fs::write(to, &code).unwrap();
-            }
-            DevtoolConfig::InlineSourceMap => {
-                let source_map = &chunk_file.source_map;
-
-                let mut code = Vec::new();
-
-                code.extend_from_slice(&chunk_file.content);
-                code.extend_from_slice(
-                    format!(
-                        "\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,{}",
-                        base64_encode(source_map)
-                    )
-                    .as_bytes(),
-                );
-
-                let size = code.len() as u64;
-                self.context.stats_info.lock().unwrap().add_assets(
-                    size,
-                    chunk_file.file_name.clone(),
-                    chunk_file.chunk_id.clone(),
-                    to.clone(),
-                    chunk_file.disk_name(),
-                );
-                fs::write(to, code).unwrap();
-            }
-            DevtoolConfig::None => {
-                self.context.stats_info.lock().unwrap().add_assets(
-                    chunk_file.content.len() as u64,
-                    chunk_file.file_name.clone(),
-                    chunk_file.chunk_id.clone(),
-                    to.clone(),
-                    chunk_file.disk_name(),
-                );
-
-                fs::write(to, &chunk_file.content).unwrap();
-            }
-        }
+        emit_chunk_file(&self.context, chunk_file);
     }
 
     pub fn emit_dev_chunks(&self) -> Result<()> {
@@ -273,23 +207,13 @@ impl Compiler {
         }
 
         // generate chunks
-
         let t_generate_chunks = Instant::now();
         let chunk_files = self.generate_chunk_files()?;
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         // ast to code and sourcemap, then write
-        let t_ast_to_code_and_write = Instant::now();
         debug!("ast to code and write");
-        {
-            mako_core::mako_profile_scope!("write dev chunk files");
-            chunk_files.par_iter().try_for_each(|file| -> Result<()> {
-                self.emit_chunk_file(file);
-
-                Ok(())
-            })?;
-        }
-        let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
+        let t_ast_to_code_and_write = self.generate_chunk_mem_file(&chunk_files)?;
 
         // write assets
         let t_write_assets = Instant::now();
@@ -454,6 +378,114 @@ impl Compiler {
         let to = self.context.config.output.path.join(filename);
 
         std::fs::write(to, content).unwrap();
+    }
+}
+
+#[cached(result = true, key = "u64", convert = "{chunk.raw_hash}")]
+fn write_dev_chunk_file(context: &Arc<Context>, chunk: &ChunkFile) -> Result<()> {
+    context.write_static_content(&chunk.disk_name(), chunk.content.clone())?;
+
+    if context.config.write_to_disk {
+        mako_core::mako_profile_scope!("write_to_disk");
+        emit_chunk_file(context, chunk);
+    }
+    Ok(())
+}
+
+fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
+    mako_core::mako_profile_function!(&chunk_file.file_name);
+
+    let to: PathBuf = context.config.output.path.join(chunk_file.disk_name());
+
+    match context.config.devtool {
+        DevtoolConfig::SourceMap => {
+            {
+                let source_map = &chunk_file.source_map;
+
+                let size = source_map.len() as u64;
+                context.stats_info.lock().unwrap().add_assets(
+                    size,
+                    chunk_file.source_map_name(),
+                    chunk_file.chunk_id.clone(),
+                    to.clone(),
+                    chunk_file.source_map_disk_name(),
+                );
+                fs::write(
+                    context
+                        .config
+                        .output
+                        .path
+                        .join(chunk_file.source_map_disk_name()),
+                    source_map,
+                )
+                .unwrap();
+            }
+
+            let source_map_url_line = match chunk_file.file_type {
+                ChunkFileType::JS => {
+                    format!(
+                        "\n//# sourceMappingURL={}",
+                        chunk_file.source_map_disk_name()
+                    )
+                }
+                ChunkFileType::Css => {
+                    format!(
+                        "\n/*# sourceMappingURL={}*/",
+                        chunk_file.source_map_disk_name()
+                    )
+                }
+            };
+
+            let mut code = Vec::new();
+
+            code.extend_from_slice(&chunk_file.content);
+            code.extend_from_slice(source_map_url_line.as_bytes());
+
+            let size = code.len() as u64;
+            context.stats_info.lock().unwrap().add_assets(
+                size,
+                chunk_file.file_name.clone(),
+                chunk_file.chunk_id.clone(),
+                to.clone(),
+                chunk_file.disk_name(),
+            );
+            fs::write(to, &code).unwrap();
+        }
+        DevtoolConfig::InlineSourceMap => {
+            let source_map = &chunk_file.source_map;
+
+            let mut code = Vec::new();
+
+            code.extend_from_slice(&chunk_file.content);
+            code.extend_from_slice(
+                format!(
+                    "\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,{}",
+                    base64_encode(source_map)
+                )
+                .as_bytes(),
+            );
+
+            let size = code.len() as u64;
+            context.stats_info.lock().unwrap().add_assets(
+                size,
+                chunk_file.file_name.clone(),
+                chunk_file.chunk_id.clone(),
+                to.clone(),
+                chunk_file.disk_name(),
+            );
+            fs::write(to, code).unwrap();
+        }
+        DevtoolConfig::None => {
+            context.stats_info.lock().unwrap().add_assets(
+                chunk_file.content.len() as u64,
+                chunk_file.file_name.clone(),
+                chunk_file.chunk_id.clone(),
+                to.clone(),
+                chunk_file.disk_name(),
+            );
+
+            fs::write(to, &chunk_file.content).unwrap();
+        }
     }
 }
 

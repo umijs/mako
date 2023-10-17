@@ -24,6 +24,7 @@ pub enum ChunkFileType {
 
 #[derive(Clone)]
 pub struct ChunkFile {
+    pub raw_hash: u64,
     pub content: Vec<u8>,
     pub source_map: Vec<u8>,
     pub hash: Option<String>,
@@ -65,24 +66,27 @@ impl Compiler {
 
         let full_hash = self.full_hash();
 
-        let mut all_chunk_files = chunks
-            .iter()
-            .filter(|chunk| matches!(chunk.chunk_type, ChunkType::Entry(_, _)))
-            .map(|&chunk| {
-                let mut pot = ChunkPot::from(chunk, &module_graph, &self.context)?;
+        let mut all_chunk_files = {
+            mako_core::mako_profile_scope!("collect_entry_chunks");
+            chunks
+                .iter()
+                .filter(|chunk| matches!(chunk.chunk_type, ChunkType::Entry(_, _)))
+                .map(|&chunk| {
+                    let mut pot = ChunkPot::from(chunk, &module_graph, &self.context)?;
 
-                self.generate_entry_chunk_files(
-                    &mut pot,
-                    &js_chunk_map,
-                    &css_chunk_map,
-                    chunk,
-                    full_hash,
-                )
-            })
-            .collect::<Result<Vec<_>>>()?
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>();
+                    self.generate_entry_chunk_files(
+                        &mut pot,
+                        &js_chunk_map,
+                        &css_chunk_map,
+                        chunk,
+                        full_hash,
+                    )
+                })
+                .collect::<Result<Vec<_>>>()?
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>()
+        };
 
         all_chunk_files.extend(non_entry_chunk_files);
 

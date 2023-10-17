@@ -4,6 +4,8 @@ use std::sync::Arc;
 use std::vec;
 
 use cached::proc_macro::cached;
+#[allow(unused_imports)]
+use cached::proc_macro::once;
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::cached::SizedCache;
 use mako_core::indexmap::IndexSet;
@@ -47,6 +49,7 @@ pub struct ChunkPot<'a> {
     convert = "{chunk_pot.stylesheet.as_ref().unwrap().raw_hash}"
 )]
 fn render_chunk_css(chunk_pot: &ChunkPot, context: &Arc<Context>) -> Result<ChunkFile> {
+    mako_core::mako_profile_function!(&chunk_pot.js_name);
     let mut css_code = String::new();
     let mut source_map = Vec::new();
     let css_writer = BasicCssWriter::new(
@@ -93,6 +96,7 @@ fn render_chunk_css(chunk_pot: &ChunkPot, context: &Arc<Context>) -> Result<Chun
     };
 
     Ok(ChunkFile {
+        raw_hash: ast.raw_hash,
         content: css_code.into(),
         hash: css_hash,
         source_map,
@@ -105,7 +109,7 @@ fn render_chunk_css(chunk_pot: &ChunkPot, context: &Arc<Context>) -> Result<Chun
 #[cached(
     result = true,
     type = "SizedCache<u64 , ChunkFile>",
-    create = "{ SizedCache::with_size(100) }",
+    create = "{ SizedCache::with_size(500) }",
     key = "u64",
     convert = "{chunk_pot.js_hash}"
 )]
@@ -113,6 +117,8 @@ fn render_dev_normal_chunk_js_with_cache(
     chunk_pot: &ChunkPot,
     context: &Arc<Context>,
 ) -> Result<ChunkFile> {
+    mako_core::mako_profile_function!(&chunk_pot.js_name);
+
     let buf: Vec<u8> = chunk_pot.to_chunk_module_content(context)?.into();
 
     let hash = if context.config.hash {
@@ -122,6 +128,7 @@ fn render_dev_normal_chunk_js_with_cache(
     };
 
     Ok(ChunkFile {
+        raw_hash: chunk_pot.js_hash,
         content: buf,
         hash,
         source_map: vec![],
@@ -134,7 +141,7 @@ fn render_dev_normal_chunk_js_with_cache(
 #[cached(
     result = true,
     type = "SizedCache<u64 , ChunkFile>",
-    create = "{ SizedCache::with_size(100) }",
+    create = "{ SizedCache::with_size(500) }",
     key = "u64",
     convert = "{chunk_pot.js_hash}"
 )]
@@ -163,6 +170,7 @@ fn render_normal_chunk_js_with_cache(
     };
 
     Ok(ChunkFile {
+        raw_hash: chunk_pot.js_hash,
         content: buf,
         hash,
         source_map,
@@ -190,13 +198,18 @@ impl<'cp> ChunkPot<'cp> {
     }
 
     pub fn to_dev_normal_chunk_files(&self, context: &Arc<Context>) -> Result<Vec<ChunkFile>> {
+        mako_core::mako_profile_function!(&self.js_name);
+
         let mut files = vec![];
 
-        let js_chunk_file = render_dev_normal_chunk_js_with_cache(self, context)?;
-
-        files.push(js_chunk_file);
+        {
+            mako_core::mako_profile_scope!("JsChunk");
+            let js_chunk_file = render_dev_normal_chunk_js_with_cache(self, context)?;
+            files.push(js_chunk_file);
+        }
 
         if self.stylesheet.is_some() {
+            mako_core::mako_profile_scope!("CssChunk");
             let css_chunk_file = render_chunk_css(self, context)?;
             files.push(css_chunk_file);
         }
@@ -278,7 +291,7 @@ impl<'cp> ChunkPot<'cp> {
         module_graph: &'a ModuleGraph,
         context: &'a Arc<Context>,
     ) -> Result<(JsModules<'a>, Option<CssModules<'a>>)> {
-        mako_core::mako_profile_function!();
+        mako_core::mako_profile_function!(module_ids.len().to_string());
         let mut module_map: HashMap<String, (&Module, u64)> = Default::default();
         let mut merged_css_modules: Vec<(String, &Stylesheet)> = vec![];
 
@@ -374,7 +387,7 @@ impl<'cp> ChunkPot<'cp> {
     }
 
     fn to_chunk_module_object_string(&self, context: &Arc<Context>) -> Result<String> {
-        mako_core::mako_profile_function!();
+        mako_core::mako_profile_function!(&self.chunk_id);
 
         let sorted_kv = {
             mako_core::mako_profile_scope!("collect_&_sort");
@@ -392,13 +405,17 @@ impl<'cp> ChunkPot<'cp> {
             sorted_kv
         };
 
-        let module_defines = sorted_kv
-            .par_iter()
-            .map(|(module_id_str, module_and_hash)| {
-                to_module_line(module_and_hash.0, context, module_and_hash.1, module_id_str)
-            })
-            .collect::<Result<Vec<String>>>()?
-            .join("\n");
+        let module_defines = {
+            mako_core::mako_profile_scope!("assemble_module_defines", sorted_kv.len().to_string());
+
+            sorted_kv
+                .par_iter()
+                .map(|(module_id_str, module_and_hash)| {
+                    to_module_line(module_and_hash.0, context, module_and_hash.1, module_id_str)
+                })
+                .collect::<Result<Vec<String>>>()?
+                .join("\n")
+        };
 
         {
             mako_core::mako_profile_scope!("wrap_in_brace");
@@ -466,7 +483,7 @@ impl<'cp> ChunkPot<'cp> {
     result = true,
     key = "String",
     type = "SizedCache<String , String>",
-    create = "{ SizedCache::with_size(2000) }",
+    create = "{ SizedCache::with_size(20000) }",
     convert = r#"{format!("{}-{}", _raw_hash, module_id_str)}"#
 )]
 fn to_module_line(
@@ -501,11 +518,17 @@ fn to_module_line(
 
     match &fn_expr.info.as_ref().unwrap().ast {
         ModuleAst::Script(ast) => {
+            mako_core::mako_profile_scope!("ast_to_js_map");
+
             emitter.emit_module(&ast.ast)?;
 
             let source_map = build_source_map(&source_map_buf, &cm);
 
-            let content = String::from_utf8_lossy(&buf);
+            let content = {
+                mako_core::mako_profile_scope!("escape");
+                String::from_utf8_lossy(&buf)
+            };
+            // let source_map_file = format!("{}.map", file_content_hash(module_id_str));
 
             let content = vec![
                 content,
@@ -514,8 +537,15 @@ fn to_module_line(
                     base64_encode(source_map)
                 )
                 .into(),
+                // format!(
+                //     "//# sourceMappingURL={}{}",
+                //     context.config.public_path, source_map_file
+                // )
+                // .into(),
             ]
             .join("");
+
+            // context.write_static_content(&source_map_file, source_map_content)?;
 
             let escaped = serde_json::to_string(&content)?;
 
@@ -639,7 +669,7 @@ fn render_dev_entry_chunk_js(
     stmts.push(format!("var e = \"{}\";", pot.chunk_id));
 
     let runtime_content =
-        runtime_base_code(context)?.replace("_%full_hash%_", &full_hash.to_string());
+        runtime_base_code_with_cache(context)?.replace("_%full_hash%_", &full_hash.to_string());
 
     let mut content: Vec<u8> =
         format!("var m = {};", pot.to_chunk_module_object_string(context)?).into();
@@ -650,6 +680,7 @@ fn render_dev_entry_chunk_js(
         content.extend(runtime_content.into_bytes());
     }
     Ok(ChunkFile {
+        raw_hash: pot.js_hash,
         content,
         hash: None,
         source_map: vec![],
@@ -709,7 +740,7 @@ fn render_entry_chunk_js(
     stmts.push(init_install_css_chunk);
 
     let runtime_content =
-        runtime_base_code(context)?.replace("_%full_hash%_", &full_hash.to_string());
+        runtime_base_code_with_cache(context)?.replace("_%full_hash%_", &full_hash.to_string());
 
     let mut ast = build_js_ast(
         "_mako_internal/runtime_entry.js",
@@ -742,6 +773,7 @@ fn render_entry_chunk_js(
     };
 
     Ok(ChunkFile {
+        raw_hash: pot.js_hash,
         content: buf,
         hash,
         source_map: source_map_buf,
@@ -750,10 +782,18 @@ fn render_entry_chunk_js(
         file_type: ChunkFileType::JS,
     })
 }
+#[cfg(test)]
+fn runtime_base_code_with_cache(context: &Arc<Context>) -> Result<String> {
+    runtime_code(context)
+}
 
-// #[once(result = true)]
-// need a better cache key
-fn runtime_base_code(context: &Arc<Context>) -> Result<String> {
+#[cfg(not(test))]
+#[once(result = true)]
+fn runtime_base_code_with_cache(context: &Arc<Context>) -> Result<String> {
+    runtime_code(context)
+}
+
+fn runtime_code(context: &Arc<Context>) -> Result<String> {
     let runtime_entry_content_str = include_str!("runtime/runtime_entry.js");
     let mut content = runtime_entry_content_str.replace(
         "// __inject_runtime_code__",

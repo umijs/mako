@@ -683,6 +683,7 @@ if (/x/ === /x/) {
             stats_info: Mutex::new(Default::default()),
             resolvers,
             optimize_infos: Mutex::new(None),
+            static_map: Default::default(),
         });
 
         let mut ast = build_js_ast(path, origin, &context).unwrap();

@@ -32,12 +32,27 @@ pub struct Context {
     pub plugin_driver: PluginDriver,
     pub stats_info: Mutex<StatsInfo>,
     pub resolvers: Resolvers,
+    pub static_map: RwLock<HashMap<String, Vec<u8>>>,
     pub optimize_infos: Mutex<Option<Vec<OptimizeChunksInfo>>>,
 }
 
 #[derive(Default)]
 pub struct Args {
     pub watch: bool,
+}
+
+impl Context {
+    pub fn write_static_content(&self, path: &String, content: Vec<u8>) -> Result<()> {
+        let mut map = self.static_map.write().unwrap();
+        map.insert(path.to_string(), content);
+        Ok(())
+    }
+
+    pub fn get_static_content(&self, path: &str) -> Option<Vec<u8>> {
+        let map = self.static_map.read().unwrap();
+
+        map.get(path).cloned()
+    }
 }
 
 impl Default for Context {
@@ -59,6 +74,7 @@ impl Default for Context {
             stats_info: Mutex::new(StatsInfo::new()),
             resolvers,
             optimize_infos: Mutex::new(None),
+            static_map: Default::default(),
         }
     }
 }
@@ -204,6 +220,7 @@ impl Compiler {
                 stats_info: Mutex::new(StatsInfo::new()),
                 resolvers,
                 optimize_infos: Mutex::new(None),
+                static_map: Default::default(),
             }),
         })
     }
@@ -249,6 +266,7 @@ impl Compiler {
     }
 
     pub fn full_hash(&self) -> u64 {
+        mako_core::mako_profile_function!();
         let cg = self.context.chunk_graph.read().unwrap();
         let mg = self.context.module_graph.read().unwrap();
         cg.full_hash(&mg)

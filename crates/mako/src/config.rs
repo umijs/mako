@@ -165,6 +165,7 @@ pub struct Config {
     pub auto_css_modules: bool,
     pub dynamic_import_to_require: bool,
     pub umd: String,
+    pub write_to_disk: bool,
 }
 
 const CONFIG_FILE: &str = "mako.config.json";
@@ -200,7 +201,8 @@ const DEFAULT_CONFIG: &str = r#"
     "treeShake": "basic",
     "autoCSSModules": false,
     "dynamicImportToRequire": false,
-    "umd": "none"
+    "umd": "none",
+    "writeToDisk": true
 }
 "#;
 
