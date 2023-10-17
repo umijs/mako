@@ -1,7 +1,8 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::fmt::Debug;
 use std::path::PathBuf;
+use std::sync::mpsc::channel;
 use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Ok, Result};
@@ -225,9 +226,9 @@ impl Compiler {
                     entries.any(|e| e.eq(entry))
                 };
 
-                let (module, dependencies, _) = Compiler::build_module(
-                    self.context.clone(),
-                    Task {
+                let (module, dependencies) = Compiler::build_module(
+                    &self.context,
+                    &Task {
                         path: entry.to_string_lossy().to_string(),
                         is_entry,
                         parent_resource: None,
@@ -265,7 +266,7 @@ impl Compiler {
                     let resolved_path = resource.get_resolved_path();
                     let module_id = ModuleId::new(resolved_path);
                     // TODO: handle error
-                    let module = self.create_module(&resource, &module_id).unwrap();
+                    let module = Self::create_module(&resource, &module_id, &self.context).unwrap();
                     target_dependencies.push((module_id.clone(), dep));
                     add_modules.insert(module_id, module);
                 });
@@ -313,16 +314,35 @@ impl Compiler {
         added: &Vec<PathBuf>,
         resolvers: Arc<Resolvers>,
     ) -> Result<HashSet<ModuleId>> {
-        let mut add_queue: VecDeque<Task> = VecDeque::new();
+        let (module_ids_rs, module_ids_rr) = channel::<ModuleId>();
+        let (pool, rs, rr) = Self::create_thread_pool();
         for path in added {
-            add_queue.push_back(Task {
-                path: path.to_string_lossy().to_string(),
-                is_entry: false,
-                parent_resource: None,
-            })
+            Self::build_module_graph_threaded(
+                pool.clone(),
+                self.context.clone(),
+                Task {
+                    path: path.to_string_lossy().to_string(),
+                    is_entry: false,
+                    parent_resource: None,
+                },
+                rs.clone(),
+                resolvers.clone(),
+                module_ids_rs.clone(),
+            );
         }
 
-        self.build_module_graph_by_task_queue(&mut add_queue, resolvers)
+        drop(rs);
+        drop(module_ids_rs);
+
+        for err in rr {
+            return Err(err);
+        }
+
+        let mut module_ids = HashSet::new();
+        for module_id in module_ids_rr {
+            module_ids.insert(module_id);
+        }
+        Ok(module_ids)
     }
 
     fn build_by_remove(&self, removed: Vec<PathBuf>) -> (HashSet<ModuleId>, HashSet<ModuleId>) {
