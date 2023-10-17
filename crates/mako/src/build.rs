@@ -4,7 +4,7 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::time::Instant;
 
-use mako_core::anyhow::{Error, Result};
+use mako_core::anyhow::{anyhow, Error, Result};
 use mako_core::colored::Colorize;
 use mako_core::rayon::{ThreadPool, ThreadPoolBuilder};
 use mako_core::swc_ecma_utils::contains_top_level_await;
@@ -25,7 +25,7 @@ use crate::transform::transform;
 
 #[derive(Debug, Error)]
 #[error("{0}")]
-pub struct GenericError(String);
+pub struct GenericError(pub String);
 
 #[derive(Debug)]
 pub struct Task {
@@ -94,7 +94,6 @@ impl Compiler {
         drop(module_ids_rs);
 
         let mut errors = vec![];
-
         for err in rr {
             // unescape
             let mut err = err
@@ -111,9 +110,7 @@ impl Compiler {
         }
 
         if !errors.is_empty() {
-            for error in errors {
-                println!("{}", error);
-            }
+            return Err(anyhow!(GenericError(errors.join(", "))));
         }
 
         let mut module_ids = HashSet::new();

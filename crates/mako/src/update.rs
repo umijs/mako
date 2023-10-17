@@ -6,10 +6,11 @@ use std::sync::mpsc::channel;
 use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Ok, Result};
+use mako_core::colored::Colorize;
 use mako_core::rayon::prelude::*;
 use mako_core::tracing::debug;
 
-use crate::build::Task;
+use crate::build::{GenericError, Task};
 use crate::compiler::Compiler;
 use crate::module::{Dependency, Module, ModuleId};
 use crate::resolve::{self, get_resolvers, Resolvers};
@@ -334,8 +335,24 @@ impl Compiler {
         drop(rs);
         drop(module_ids_rs);
 
+        let mut errors = vec![];
         for err in rr {
-            return Err(err);
+            // unescape
+            let mut err = err
+                .to_string()
+                .replace("\\n", "\n")
+                .replace("\\u{1b}", "\u{1b}")
+                .replace("\\\\", "\\");
+            // remove first char and last char
+            if err.starts_with('"') && err.ends_with('"') {
+                err = err[1..err.len() - 1].to_string();
+            }
+            eprintln!("{}", "Build failed.".to_string().red());
+            errors.push(err);
+        }
+
+        if !errors.is_empty() {
+            return Err(anyhow!(GenericError(errors.join(", "))));
         }
 
         let mut module_ids = HashSet::new();
