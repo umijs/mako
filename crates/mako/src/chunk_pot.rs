@@ -87,7 +87,10 @@ fn render_chunk_css(chunk_pot: &ChunkPot, context: &Arc<Context>) -> Result<Chun
     gen.emit(&stylesheet)?;
 
     let cm = &context.meta.css.cm;
-    let source_map = build_source_map(&source_map, cm);
+    let source_map = match context.config.devtool {
+        DevtoolConfig::None => None,
+        _ => Some(build_source_map(&source_map, cm)),
+    };
 
     let css_hash = if context.config.hash {
         Some(file_content_hash(&css_code))
@@ -131,7 +134,7 @@ fn render_dev_normal_chunk_js_with_cache(
         raw_hash: chunk_pot.js_hash,
         content: buf,
         hash,
-        source_map: vec![],
+        source_map: None,
         file_name: chunk_pot.js_name.clone(),
         chunk_id: chunk_pot.chunk_id.clone(),
         file_type: ChunkFileType::JS,
@@ -633,7 +636,7 @@ fn get_css_chunk_filename(js_chunk_filename: &str) -> String {
     )
 }
 
-fn render_module_js(ast: &SwcModule, context: &Arc<Context>) -> Result<(Vec<u8>, Vec<u8>)> {
+fn render_module_js(ast: &SwcModule, context: &Arc<Context>) -> Result<(Vec<u8>, Option<Vec<u8>>)> {
     let mut buf = vec![];
     let mut source_map_buf = Vec::new();
     let cm = context.meta.script.cm.clone();
@@ -654,10 +657,8 @@ fn render_module_js(ast: &SwcModule, context: &Arc<Context>) -> Result<(Vec<u8>,
 
     let cm = &context.meta.script.cm;
     let source_map = match context.config.devtool {
-        DevtoolConfig::None => {
-            vec![]
-        }
-        _ => build_source_map(&source_map_buf, cm),
+        DevtoolConfig::None => None,
+        _ => Some(build_source_map(&source_map_buf, cm)),
     };
 
     Ok((buf, source_map))
@@ -702,7 +703,7 @@ fn render_dev_entry_chunk_js(
         raw_hash: pot.js_hash,
         content,
         hash: None,
-        source_map: vec![],
+        source_map: None,
         file_name: pot.js_name.clone(),
         chunk_id: pot.chunk_id.clone(),
         file_type: ChunkFileType::JS,
