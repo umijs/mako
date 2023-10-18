@@ -254,11 +254,6 @@ function createRuntime(makoModules, entryModuleId) {
     }
   };
 
-  requireModule._h = '_%full_hash%_';
-  requireModule.currentHash = () => {
-    return requireModule._h;
-  };
-
   // __inject_runtime_code__
 
   const exports = requireModule(entryModuleId);
