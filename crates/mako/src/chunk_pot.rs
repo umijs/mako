@@ -88,7 +88,10 @@ fn render_chunk_css(chunk_pot: &ChunkPot, context: &Arc<Context>) -> Result<Chun
     gen.emit(&stylesheet)?;
 
     let cm = &context.meta.css.cm;
-    let source_map = build_source_map(&source_map, cm);
+    let source_map = match context.config.devtool {
+        DevtoolConfig::None => None,
+        _ => Some(build_source_map(&source_map, cm)),
+    };
 
     let css_hash = if context.config.hash {
         Some(file_content_hash(&css_code))
@@ -565,7 +568,7 @@ fn get_css_chunk_filename(js_chunk_filename: &str) -> String {
     )
 }
 
-fn render_module_js(ast: &SwcModule, context: &Arc<Context>) -> Result<(Vec<u8>, Vec<u8>)> {
+fn render_module_js(ast: &SwcModule, context: &Arc<Context>) -> Result<(Vec<u8>, Option<Vec<u8>>)> {
     mako_core::mako_profile_function!();
 
     let mut buf = vec![];
@@ -588,10 +591,8 @@ fn render_module_js(ast: &SwcModule, context: &Arc<Context>) -> Result<(Vec<u8>,
 
     let cm = &context.meta.script.cm;
     let source_map = match context.config.devtool {
-        DevtoolConfig::None => {
-            vec![]
-        }
-        _ => build_source_map(&source_map_buf, cm),
+        DevtoolConfig::None => None,
+        _ => Some(build_source_map(&source_map_buf, cm)),
     };
 
     Ok((buf, source_map))
@@ -656,7 +657,7 @@ fn render_entry_chunk_js_without_full_hash(
     css_map: &HashMap<String, String>,
     chunk: &Chunk,
     context: &Arc<Context>,
-) -> Result<(Vec<u8>, Vec<u8>, Option<String>)> {
+) -> Result<(Vec<u8>, Option<Vec<u8>>, Option<String>)> {
     mako_core::mako_profile_function!();
 
     let mut stmts = vec![];

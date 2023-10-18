@@ -26,7 +26,7 @@ pub enum ChunkFileType {
 pub struct ChunkFile {
     pub raw_hash: u64,
     pub content: Vec<u8>,
-    pub source_map: Vec<u8>,
+    pub source_map: Option<Vec<u8>>,
     pub hash: Option<String>,
     pub file_name: String,
     pub chunk_id: String,
