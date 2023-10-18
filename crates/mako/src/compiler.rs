@@ -32,8 +32,51 @@ pub struct Context {
     pub plugin_driver: PluginDriver,
     pub stats_info: Mutex<StatsInfo>,
     pub resolvers: Resolvers,
-    pub static_map: RwLock<HashMap<String, Vec<u8>>>,
+    pub static_cache: RwLock<MemoryChunkFileCache>,
     pub optimize_infos: Mutex<Option<Vec<OptimizeChunksInfo>>>,
+}
+#[derive(Default)]
+pub struct MemoryChunkFileCache {
+    content_map: HashMap<String, (Vec<u8>, u64)>,
+    root: Option<PathBuf>,
+}
+
+impl MemoryChunkFileCache {
+    pub fn new(root: Option<PathBuf>) -> Self {
+        Self {
+            content_map: HashMap::new(),
+            root,
+        }
+    }
+
+    pub fn write<T: AsRef<str>>(&mut self, path: T, content: Vec<u8>, hash: u64) -> Result<()> {
+        let str = path.as_ref();
+
+        if let Some((_, in_mem_hash)) = self.content_map.get(str) {
+            if *in_mem_hash != hash {
+                self.write_to_disk(str, &content)?;
+            }
+        } else {
+            self.write_to_disk(str, &content)?;
+        }
+        self.content_map
+            .insert(path.as_ref().to_string(), (content, hash));
+        Ok(())
+    }
+
+    pub fn read<T: AsRef<str>>(&self, path: T) -> Option<Vec<u8>> {
+        self.content_map
+            .get(path.as_ref())
+            .map(|(content, _)| content.clone())
+    }
+
+    fn write_to_disk<T: AsRef<str>>(&self, path: T, content: &[u8]) -> Result<()> {
+        if let Some(root) = &self.root {
+            let path = root.join(path.as_ref());
+            fs::write(path, content)?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Default)]
@@ -42,16 +85,20 @@ pub struct Args {
 }
 
 impl Context {
-    pub fn write_static_content(&self, path: &String, content: Vec<u8>) -> Result<()> {
-        let mut map = self.static_map.write().unwrap();
-        map.insert(path.to_string(), content);
-        Ok(())
+    pub fn write_static_content<T: AsRef<str>>(
+        &self,
+        path: T,
+        content: Vec<u8>,
+        hash: u64,
+    ) -> Result<()> {
+        let mut map = self.static_cache.write().unwrap();
+        map.write(path, content, hash)
     }
 
-    pub fn get_static_content(&self, path: &str) -> Option<Vec<u8>> {
-        let map = self.static_map.read().unwrap();
+    pub fn get_static_content<T: AsRef<str>>(&self, path: T) -> Option<Vec<u8>> {
+        let map = self.static_cache.read().unwrap();
 
-        map.get(path).cloned()
+        map.read(path)
     }
 }
 
@@ -74,7 +121,7 @@ impl Default for Context {
             stats_info: Mutex::new(StatsInfo::new()),
             resolvers,
             optimize_infos: Mutex::new(None),
-            static_map: Default::default(),
+            static_cache: Default::default(),
         }
     }
 }
@@ -208,6 +255,11 @@ impl Compiler {
         let resolvers = get_resolvers(&config);
         Ok(Self {
             context: Arc::new(Context {
+                static_cache: if config.write_to_disk {
+                    RwLock::new(MemoryChunkFileCache::new(Some(config.output.path.clone())))
+                } else {
+                    Default::default()
+                },
                 config,
                 args,
                 root,
@@ -220,7 +272,6 @@ impl Compiler {
                 stats_info: Mutex::new(StatsInfo::new()),
                 resolvers,
                 optimize_infos: Mutex::new(None),
-                static_map: Default::default(),
             }),
         })
     }
