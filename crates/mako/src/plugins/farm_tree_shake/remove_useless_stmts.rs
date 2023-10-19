@@ -10,7 +10,7 @@ use crate::plugins::farm_tree_shake::statement_graph::analyze_imports_and_export
 };
 use crate::plugins::farm_tree_shake::statement_graph::defined_idents_collector::DefinedIdentsCollector;
 use crate::plugins::farm_tree_shake::statement_graph::{
-    ExportInfo, ExportSpecifierInfo, ImportInfo,
+    ExportInfo, ExportSpecifierInfo as UsedExportSpecInfo, ImportInfo,
 };
 
 pub fn remove_useless_stmts(
@@ -53,9 +53,9 @@ pub fn remove_useless_stmts(
 
             // if this export statement is export * from 'xxx'
             if export_info.source.is_some()
-                && matches!(export_info.specifiers[0], ExportSpecifierInfo::All(_))
+                && matches!(export_info.specifiers[0], UsedExportSpecInfo::All(_))
             {
-                export_info.specifiers[0] = ExportSpecifierInfo::All(Some(
+                export_info.specifiers[0] = UsedExportSpecInfo::All(Some(
                     used_defined_idents.clone().into_iter().collect(),
                 ));
                 used_export_from_infos.push(export_info.clone());
@@ -139,7 +139,7 @@ impl VisitMut for UselessExportStmtRemover {
             for (index, decl) in var_decl.decls.iter_mut().enumerate() {
                 if !self.export_info.specifiers.iter().any(
                     |export_specifier| match export_specifier {
-                        ExportSpecifierInfo::Named { local, .. } => {
+                        UsedExportSpecInfo::Named { local, .. } => {
                             let mut defined_idents_collector = DefinedIdentsCollector::new();
                             decl.name.visit_with(&mut defined_idents_collector);
 
@@ -168,16 +168,27 @@ impl VisitMut for UselessExportStmtRemover {
                 .export_info
                 .specifiers
                 .iter()
-                .any(|export_specifier| match export_specifier {
-                    ExportSpecifierInfo::Named { local, .. } => match specifier {
-                        ExportSpecifier::Named(named_specifier) => match &named_specifier.orig {
+                .any(
+                    |used_export_specifier| match (used_export_specifier, specifier) {
+                        (
+                            UsedExportSpecInfo::Named { local, .. },
+                            ExportSpecifier::Named(named_specifier),
+                        ) => match &named_specifier.orig {
                             ModuleExportName::Ident(ident) => ident.to_string() == *local,
                             _ => false,
                         },
-                        _ => false,
+
+                        (
+                            UsedExportSpecInfo::Namespace(used_namespace),
+                            ExportSpecifier::Namespace(namespace),
+                        ) => match &namespace.name {
+                            ModuleExportName::Ident(ident) => ident.to_string() == *used_namespace,
+                            _ => false,
+                        },
+
+                        (_, _) => false,
                     },
-                    _ => false,
-                })
+                )
             {
                 specifiers_to_remove.push(index);
             }
