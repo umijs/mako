@@ -66,6 +66,8 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
     } else {
         Syntax::Es(EsConfig {
             jsx,
+            decorators: true,
+            decorators_before_export: true,
             ..Default::default()
         })
     };
@@ -292,6 +294,7 @@ mod tests {
 
     use mako_core::tokio;
 
+    use super::build_js_ast;
     use crate::assert_debug_snapshot;
     use crate::ast::js_ast_to_code;
     use crate::compiler::Context;
@@ -318,5 +321,18 @@ export const bar = {
         )
         .unwrap();
         assert_debug_snapshot!(code);
+    }
+
+    #[test]
+    fn test_decorators_usage_in_js() {
+        let content = r#"
+import { connect } from '@alipay/bigfish';
+
+@connect()
+export default class Index extends Component {}
+"#;
+        let context = Arc::new(Context::default());
+        let result = build_js_ast("/path/to/test", content, &context);
+        assert!(result.is_ok());
     }
 }

@@ -105,11 +105,11 @@ impl Compiler {
             if err.starts_with('"') && err.ends_with('"') {
                 err = err[1..err.len() - 1].to_string();
             }
-            eprintln!("{}", "Build failed.".to_string().red());
             errors.push(err);
         }
 
         if !errors.is_empty() {
+            eprintln!("{}", "Build failed.".to_string().red());
             return Err(anyhow!(GenericError(errors.join(", "))));
         }
 
