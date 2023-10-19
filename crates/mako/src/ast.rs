@@ -141,6 +141,7 @@ pub fn build_css_ast(
     if !parse_errors.is_empty() {
         let mut error_message = vec![];
         for err in parse_errors {
+            println!("parse_errors: {:?}", err.message().to_string().as_str());
             error_message.push(generate_code_frame(
                 (*err.clone().into_inner()).0,
                 err.message().to_string().as_str(),
