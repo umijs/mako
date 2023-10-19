@@ -66,6 +66,8 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
     } else {
         Syntax::Es(EsConfig {
             jsx,
+            decorators: true,
+            decorators_before_export: true,
             ..Default::default()
         })
     };
