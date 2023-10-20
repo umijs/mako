@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::sync::mpsc::channel;
 
-use mako_core::notify::event::{CreateKind, DataChange, ModifyKind, RenameMode};
+use mako_core::notify::event::{AccessKind, CreateKind, DataChange, ModifyKind, RenameMode};
 use mako_core::notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 
 use crate::update::UpdateType;
@@ -79,7 +79,9 @@ where
                 func(crate::watch::WatchEvent::Added(event.paths));
             }
             EventKind::Modify(ModifyKind::Data(DataChange::Content)) => {
-                func(crate::watch::WatchEvent::Modified(event.paths));
+                if cfg!(target_os = "macos") {
+                    func(crate::watch::WatchEvent::Modified(event.paths));
+                }
             }
             EventKind::Modify(ModifyKind::Name(RenameMode::Any)) => {
                 func(crate::watch::WatchEvent::Removed(event.paths));
@@ -87,6 +89,11 @@ where
             EventKind::Remove(_) => {
                 println!("removed");
                 func(crate::watch::WatchEvent::Removed(event.paths));
+            }
+            EventKind::Access(AccessKind::Close(_)) => {
+                if cfg!(target_os = "linux") {
+                    func(crate::watch::WatchEvent::Modified(event.paths));
+                }
             }
             _ => {}
         }
