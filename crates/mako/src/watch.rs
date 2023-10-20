@@ -1,8 +1,8 @@
 use std::path::PathBuf;
+use std::sync::mpsc::channel;
 
-use mako_core::notify::event::{CreateKind, DataChange, ModifyKind, RenameMode};
+use mako_core::notify::event::{AccessKind, CreateKind, DataChange, ModifyKind, RenameMode};
 use mako_core::notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
-use mako_core::tokio::sync::mpsc::channel;
 
 use crate::update::UpdateType;
 
@@ -33,21 +33,14 @@ impl From<WatchEvent> for Vec<(PathBuf, UpdateType)> {
     }
 }
 
-pub async fn watch<T>(root: &PathBuf, func: T)
+pub fn watch<T>(root: &PathBuf, mut func: T)
 where
     T: FnMut(WatchEvent),
 {
-    watch_async(root, func).await;
-}
-
-pub async fn watch_async<T>(root: &PathBuf, mut func: T)
-where
-    T: FnMut(WatchEvent),
-{
-    let (tx, mut rx) = channel(2);
+    let (tx, rx) = channel();
     let mut watcher = RecommendedWatcher::new(
         move |res| {
-            tx.blocking_send(res).unwrap();
+            tx.send(res).unwrap();
         },
         mako_core::notify::Config::default(),
     )
@@ -80,31 +73,29 @@ where
         }
     });
 
-    while let Some(res) = rx.recv().await {
-        match res {
-            Ok(event) => match event.kind {
-                EventKind::Any => {}
-                EventKind::Access(_) => {}
-                EventKind::Create(CreateKind::File) => {
-                    func(crate::watch::WatchEvent::Added(event.paths));
-                }
-                EventKind::Create(_) => {}
-
-                EventKind::Modify(ModifyKind::Data(DataChange::Any)) => {
+    while let Ok(event) = rx.recv().unwrap() {
+        match event.kind {
+            EventKind::Create(CreateKind::File) => {
+                func(crate::watch::WatchEvent::Added(event.paths));
+            }
+            EventKind::Modify(ModifyKind::Data(DataChange::Content)) => {
+                if cfg!(target_os = "macos") {
                     func(crate::watch::WatchEvent::Modified(event.paths));
                 }
-                EventKind::Modify(ModifyKind::Name(RenameMode::Any)) => {
-                    func(crate::watch::WatchEvent::Removed(event.paths));
-                }
-                EventKind::Modify(_) => {}
-                EventKind::Remove(_) => {
-                    func(crate::watch::WatchEvent::Removed(event.paths));
-                }
-                EventKind::Other => {}
-            },
-            Err(e) => {
-                println!("watch error: {:?}", e);
             }
+            EventKind::Modify(ModifyKind::Name(RenameMode::Any)) => {
+                func(crate::watch::WatchEvent::Removed(event.paths));
+            }
+            EventKind::Remove(_) => {
+                println!("removed");
+                func(crate::watch::WatchEvent::Removed(event.paths));
+            }
+            EventKind::Access(AccessKind::Close(_)) => {
+                if cfg!(target_os = "linux") {
+                    func(crate::watch::WatchEvent::Modified(event.paths));
+                }
+            }
+            _ => {}
         }
     }
 }
