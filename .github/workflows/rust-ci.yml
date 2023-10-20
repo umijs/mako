@@ -75,7 +75,7 @@ jobs:
         working-directory: ./examples/with-dynamic-import
         run: pnpm cypress install
       - name: HMR-CI
-        run: RUST_LOG=mako=debug pnpm --filter with-dynamic-import run e2e:ci
+        run: pnpm --filter with-dynamic-import run e2e:ci
 
   # build_benchmarks:
   #   runs-on: ubuntu-latest
