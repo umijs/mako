@@ -9,8 +9,8 @@ use mako_core::hyper::http::HeaderValue;
 use mako_core::hyper::server::conn::AddrIncoming;
 use mako_core::hyper::server::Builder;
 use mako_core::hyper::{Body, Request, Server};
+use mako_core::rayon::ThreadPoolBuilder;
 use mako_core::tokio::sync::broadcast::{Receiver, Sender};
-use mako_core::tokio::task::JoinHandle;
 use mako_core::tokio::try_join;
 use mako_core::tracing::debug;
 use mako_core::tungstenite::Message;
@@ -51,7 +51,7 @@ impl DevServer {
     }
 
     pub async fn serve(&self) {
-        let watch_handler = self.watcher.start();
+        self.watcher.start();
 
         async fn serve_websocket(
             websocket: hyper_tungstenite::HyperWebsocket,
@@ -187,7 +187,7 @@ impl DevServer {
 
         // build_handle 必须在 dev_server_handle 之前
         // 否则会导致 build_handle 无法收到前几个消息，原因未知
-        let join_error = try_join!(watch_handler, dev_server_handle);
+        let join_error = try_join!(dev_server_handle);
         if let Err(e) = join_error {
             eprintln!("Error in dev server: {:?}", e);
         }
@@ -215,7 +215,7 @@ impl ProjectWatch {
         }
     }
 
-    pub fn start(&self) -> JoinHandle<()> {
+    pub fn start(&self) {
         let c = self.compiler.clone();
         let root = self.root.clone();
         let tx = self.tx.clone();
@@ -224,7 +224,8 @@ impl ProjectWatch {
 
         let watch_compiler = c.clone();
 
-        tokio::spawn(async move {
+        let pool = ThreadPoolBuilder::new().build().unwrap();
+        pool.spawn(move || {
             watch(&root, |events| {
                 let res = watch_compiler.update(events.into());
                 let has_no_missing_deps = {
@@ -307,9 +308,8 @@ impl ProjectWatch {
                         }
                     }
                 }
-            })
-            .await;
-        })
+            });
+        });
     }
 
     pub fn clone_receiver(&self) -> Receiver<WsMessage> {

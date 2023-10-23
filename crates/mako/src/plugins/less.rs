@@ -56,6 +56,7 @@ fn compile_less(param: &PluginLoadParam, _content: &str, context: &Arc<Context>)
     if context.config.less.javascript_enabled {
         args.push("--js".to_string());
     }
+    args.push("--math=always".to_string());
     let mut alias_params = vec![];
     context.config.resolve.alias.iter().for_each(|(k, v)| {
         alias_params.push(format!("{}={}", k, v));
@@ -90,12 +91,18 @@ fn compile_less(param: &PluginLoadParam, _content: &str, context: &Arc<Context>)
             reason,
         }));
     }
-    if !output.stderr.is_empty() {
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    let stderr = stderr.replace(
+        "--math=always is deprecated and will be removed in the future.",
+        "",
+    );
+    let stderr = stderr.trim().to_string();
+    if !stderr.is_empty() {
         return Err(anyhow!(LoadError::CompileLessError {
             path: param.path.to_string(),
-            reason: String::from_utf8_lossy(&output.stderr).to_string(),
+            reason: stderr,
         }));
     }
-    let css_content = String::from_utf8_lossy(&output.stdout);
-    Ok(css_content.into())
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    Ok(stdout.into())
 }
