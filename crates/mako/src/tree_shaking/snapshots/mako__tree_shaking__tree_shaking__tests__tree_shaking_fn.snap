@@ -220,10 +220,6 @@ function createRuntime(makoModules, entryModuleId) {
             makoModules[id] = modules[id];
         }
     };
-    requireModule._h = '725297569670338491';
-    requireModule.currentHash = ()=>{
-        return requireModule._h;
-    };
     !function() {
         requireModule.publicPath = "/";
     }();

@@ -1,5 +1,11 @@
 // mako/runtime/hmr plugin
 !(function () {
+  requireModule._h = '_%full_hash%_';
+  requireModule.currentHash = () => {
+    return requireModule._h;
+  };
+})();
+!(function () {
   let currentParents = [];
   let currentChildModule;
   requireModule.hmrC = {};
