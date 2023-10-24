@@ -56,7 +56,7 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
         || path.ends_with(".svg")
         // exclude files under node_modules is for performance
         || (path.ends_with(".js") && !path.contains("node_modules"));
-    let tsx = path.ends_with(".tsx") || path.ends_with(".ts");
+    let tsx = path.ends_with(".tsx");
     let syntax = if is_ts {
         Syntax::Typescript(TsConfig {
             decorators: true,
