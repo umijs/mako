@@ -65,7 +65,10 @@ fn compile_less(param: &PluginLoadParam, _content: &str, context: &Arc<Context>)
     args.push(format!("--aliases-fork={}", alias_params));
     if !theme.is_empty() {
         theme.iter().for_each(|(k, v)| {
-            args.push(format!("--modify-var={}={}", k, v));
+            // remove \n
+            // cli don't support \n in values
+            let vv = v.replace('\n', "");
+            args.push(format!("--modify-var={}={}", k, vv));
         });
     }
     args.push(param.path.to_string());
