@@ -52,6 +52,7 @@ pub async fn build(
     stats?: boolean;
     hash?: boolean;
     autoCssModules?: boolean;
+    ignoreCSSParserErrors?: boolean;
     dynamicImportToRequire?: boolean;
     umd?: string;
 }"#)]

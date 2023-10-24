@@ -138,7 +138,16 @@ pub fn build_css_ast(
     if parse_result.is_err() {
         parse_errors.push(parse_result.clone().unwrap_err());
     };
-    if !parse_errors.is_empty() {
+    // why?
+    // 1、默认配置是，项目 css 有错误就报错，node_modules 下的 css 不报错
+    //    因为 node_modules 下的 css 有很多是不符合规范的，但却不是自己可控的
+    // 2、增加一个 ignore_css_parser_errors 配置，用于忽略 css parser 的错误
+    //    因为 less 编译 less 时，会把 node_modules 下的 less 也编译进去，此时
+    //    不能区分是否来自 node_modules 下
+    if !context.config.ignore_css_parser_errors
+        && !path.contains("node_modules")
+        && !parse_errors.is_empty()
+    {
         let mut error_message = vec![];
         for err in parse_errors {
             println!("parse_errors: {:?}", err.message().to_string().as_str());
