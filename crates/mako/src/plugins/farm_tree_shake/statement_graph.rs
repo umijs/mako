@@ -282,13 +282,11 @@ impl StatementGraph {
             let mut visited = HashSet::new();
 
             let hash_stmt = |stmt_id: &StatementId, used_defined_idents: &HashSet<String>| {
-                let mut hash = format!("{}:", stmt_id);
+                let mut sorted_idents =
+                    used_defined_idents.iter().cloned().collect::<Vec<String>>();
+                sorted_idents.sort();
 
-                for ident in used_defined_idents {
-                    hash += ident;
-                }
-
-                hash
+                format!("{}:{}", stmt_id, sorted_idents.join(""))
             };
 
             while let Some((stmt_id, used_defined_idents, used_dep_idents)) = stmts.pop_front() {
