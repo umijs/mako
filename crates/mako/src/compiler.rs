@@ -214,6 +214,7 @@ impl Compiler {
             Arc::new(plugins::node_polyfill::NodePolyfillPlugin {}),
             Arc::new(plugins::manifest::ManifestPlugin {}),
             Arc::new(plugins::copy::CopyPlugin {}),
+            Arc::new(plugins::import::ImportPlugin {}),
             // file types
             Arc::new(plugins::css::CSSPlugin {}),
             Arc::new(plugins::less::LessPlugin {}),
