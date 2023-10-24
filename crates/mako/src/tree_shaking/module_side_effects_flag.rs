@@ -9,13 +9,12 @@ impl ModuleInfo {
      */
     #[allow(dead_code)]
     pub fn get_side_effects_flag(&self) -> bool {
-        if let Some(ResolverResource::Resolved(ResolvedResource(source))) = &self.resolved_resource
+        if let Some(ResolverResource::Resolved(ResolvedResource(resolution))) =
+            &self.resolved_resource
         {
-            match &source.description {
+            match &resolution.package_json() {
                 Some(desc) => {
-                    let data = desc.data();
-                    let value = data.raw();
-                    let side_effects = value.get("sideEffects".to_string());
+                    let side_effects = desc.raw_json.get("sideEffects".to_string());
 
                     match side_effects {
                         Some(side_effect) => self.match_flag(side_effect),

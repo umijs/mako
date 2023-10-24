@@ -1,10 +1,10 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::vec;
 
 use mako_core::anyhow::{anyhow, Result};
-use mako_core::nodejs_resolver::{AliasMap, Options, ResolveResult, Resolver, Resource};
+use mako_core::oxc_resolver::{self, AliasValue, Resolution, ResolveOptions, Resolver};
 use mako_core::thiserror::Error;
 use mako_core::tracing::debug;
 
@@ -36,7 +36,7 @@ pub struct ExternalResource {
 }
 
 #[derive(Debug, Clone)]
-pub struct ResolvedResource(pub Resource);
+pub struct ResolvedResource(pub Resolution);
 
 #[derive(Debug, Clone)]
 pub enum ResolverResource {
@@ -49,12 +49,8 @@ impl ResolverResource {
     pub fn get_resolved_path(&self) -> String {
         match self {
             ResolverResource::External(ExternalResource { source, .. }) => source.to_string(),
-            ResolverResource::Resolved(ResolvedResource(resource)) => {
-                let mut path = resource.path.to_string_lossy().to_string();
-                if resource.query.is_some() {
-                    path = format!("{}{}", path, resource.query.as_ref().unwrap());
-                }
-                path
+            ResolverResource::Resolved(ResolvedResource(resolution)) => {
+                resolution.full_path().to_string_lossy().to_string()
             }
             ResolverResource::Ignored => "".to_string(),
         }
@@ -107,22 +103,15 @@ fn do_resolve(
         // 所有的 path 都是文件，所以 parent() 肯定是其所在目录
         let parent = path.parent().unwrap();
         debug!("parent: {:?}, source: {:?}", parent, source);
-        let result = resolver.resolve(parent, source);
-        if let Ok(result) = result {
-            match result {
-                ResolveResult::Resource(resource) => {
-                    Ok(ResolverResource::Resolved(ResolvedResource(resource)))
-                }
-                ResolveResult::Ignored => {
-                    debug!("resolve ignored: {:?}", source);
-                    Ok(ResolverResource::Ignored)
-                }
+        match resolver.resolve(parent, source) {
+            Ok(resolution) => Ok(ResolverResource::Resolved(ResolvedResource(resolution))),
+            Err(error) if matches!(error, oxc_resolver::ResolveError::Ignored(_)) => {
+                Ok(ResolverResource::Ignored)
             }
-        } else {
-            Err(anyhow!(ResolveError::ResolveError {
+            Err(_) => Err(anyhow!(ResolveError::ResolveError {
                 path: source.to_string(),
                 from: path.to_string_lossy().to_string(),
-            }))
+            })),
         }
     }
 }
@@ -140,8 +129,9 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
     let alias = parse_alias(config.resolve.alias.clone());
     let is_browser = config.platform == Platform::Browser;
     // TODO: read from config
-    Resolver::new(Options {
+    Resolver::new(ResolveOptions {
         alias,
+        alias_fields: vec![vec!["browser".to_string()]],
         extensions: vec![
             ".js".to_string(),
             ".jsx".to_string(),
@@ -153,30 +143,30 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
         ],
         condition_names: if is_browser {
             if resolver_type == ResolverType::Cjs {
-                HashSet::from([
+                vec![
                     "browser".to_string(),
                     "default".to_string(),
                     "require".to_string(),
-                ])
+                ]
             } else {
                 // esm
-                HashSet::from([
+                vec![
                     "module".to_string(),
                     "browser".to_string(),
                     "import".to_string(),
                     // why add require? e.g. axios needs it
                     "require".to_string(),
                     "default".to_string(),
-                ])
+                ]
             }
         } else {
-            HashSet::from([
+            vec![
                 "module".to_string(),
                 "node".to_string(),
                 "import".to_string(),
                 "default".to_string(),
                 "require".to_string(),
-            ])
+            ]
         },
         main_fields: if is_browser {
             if resolver_type == ResolverType::Cjs {
@@ -193,15 +183,14 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
         } else {
             vec!["module".to_string(), "main".to_string()]
         },
-        browser_field: true,
         ..Default::default()
     })
 }
 
-fn parse_alias(alias: HashMap<String, String>) -> Vec<(String, Vec<AliasMap>)> {
+fn parse_alias(alias: HashMap<String, String>) -> Vec<(String, Vec<AliasValue>)> {
     let mut result = vec![];
     for (key, value) in alias {
-        let alias_map = vec![AliasMap::Target(value)];
+        let alias_map = vec![AliasValue::Path(value)];
         result.push((key, alias_map));
     }
     result

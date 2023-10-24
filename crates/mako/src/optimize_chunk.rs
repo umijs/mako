@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::string::String;
 
 use mako_core::indexmap::{IndexMap, IndexSet};
-use mako_core::nodejs_resolver::Resource;
 use mako_core::regex::Regex;
 use mako_core::tracing::debug;
 
@@ -298,21 +297,21 @@ impl Compiler {
                 let mut package_size_map = chunk_modules.iter().fold(
                     IndexMap::<String, (usize, HashMap<ModuleId, Vec<ChunkId>>)>::new(),
                     |mut size_map, mtc| {
-                        let pkg_name = match module_graph.get_module(mtc.0) {
+                        let pkg_name: &str = match module_graph.get_module(mtc.0) {
                             Some(Module {
                                 info:
                                     Some(ModuleInfo {
                                         resolved_resource:
                                             Some(ResolverResource::Resolved(ResolvedResource(
-                                                Resource {
-                                                    description: Some(module_desc),
-                                                    ..
-                                                },
+                                                resolution,
                                             ))),
                                         ..
                                     }),
                                 ..
-                            }) => module_desc.data().raw().get("name"),
+                            }) => match resolution.package_json() {
+                                Some(p) => p.raw_json.get("name"),
+                                None => None,
+                            },
                             _ => None,
                         }
                         .map(|n| n.as_str().unwrap())

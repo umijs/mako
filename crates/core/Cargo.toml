@@ -30,7 +30,6 @@ md5 = "0.7.0"
 serde = { workspace = true }
 serde_json = { workspace = true }
 config = "0.13.3"
-nodejs-resolver = "0.0.88"
 swc_css_ast = "0.139.1"
 swc_css_codegen = "0.149.1"
 swc_css_modules = "0.27.3"
@@ -70,6 +69,7 @@ eframe = { version = "0.22.0", optional = true }
 puffin = { version = "0.16.0", optional = true }
 puffin_egui = { version = "0.22.0", optional = true }
 lazy_static = "1.4.0"
+oxc_resolver = "0.3.1"
 
 [features]
 profile = ["dep:eframe", "dep:puffin", "dep:puffin_egui"]
