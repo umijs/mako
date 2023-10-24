@@ -75,8 +75,26 @@ impl<'a> VisitMut for ImportVisitor<'a> {
                             },
                             None => &member.local.sym,
                         };
-                        let member_src =
-                            format!("{}/{}/{}", decl.src.value, library_dir, imported,);
+                        let member_src = format!(
+                            "{}/{}/{}",
+                            decl.src.value,
+                            library_dir,
+                            // CamelCase to kebab-case
+                            imported
+                                .to_string()
+                                .chars()
+                                .fold(String::new(), |mut acc, c| {
+                                    if c.is_uppercase() {
+                                        if acc.len() > 1 {
+                                            acc.push('-');
+                                        }
+                                        acc.push(c.to_ascii_lowercase());
+                                    } else {
+                                        acc.push(c);
+                                    }
+                                    acc
+                                })
+                        );
                         let member_specifier = ImportDefaultSpecifier {
                             span: member.span,
                             local: member.local.clone(),
@@ -139,8 +157,6 @@ impl<'a> VisitMut for ImportVisitor<'a> {
 
             cur += 1;
         }
-
-        module.visit_mut_children_with(self);
     }
 }
 
@@ -184,7 +200,7 @@ mod tests {
     fn test_multi() {
         let code = generate(
             r#"
-import { Button, Input } from "antd";
+import { Button, DatePicker } from "antd";
         "#,
             &vec![TransformImportConfig {
                 library_name: "antd".to_string(),
@@ -195,8 +211,8 @@ import { Button, Input } from "antd";
         assert_eq!(
             code,
             r#"
-import Button from "antd/lib/Button";
-import Input from "antd/lib/Input";
+import Button from "antd/lib/button";
+import DatePicker from "antd/lib/date-picker";
 
 //# sourceMappingURL=/test/path.map
         "#
@@ -208,7 +224,7 @@ import Input from "antd/lib/Input";
     fn test_multi_style() {
         let code = generate(
             r#"
-import { Button, Input } from "antd";
+import { Button, DatePicker } from "antd";
         "#,
             &vec![TransformImportConfig {
                 library_name: "antd".to_string(),
@@ -219,10 +235,10 @@ import { Button, Input } from "antd";
         assert_eq!(
             code,
             r#"
-import Button from "antd/lib/Button";
-import "antd/lib/Button/style";
-import Input from "antd/lib/Input";
-import "antd/lib/Input/style";
+import Button from "antd/lib/button";
+import "antd/lib/button/style";
+import DatePicker from "antd/lib/date-picker";
+import "antd/lib/date-picker/style";
 
 //# sourceMappingURL=/test/path.map
         "#
@@ -234,7 +250,7 @@ import "antd/lib/Input/style";
     fn test_multi_builtin_style() {
         let code = generate(
             r#"
-import { Button, Input } from "antd";
+import { Button, DatePicker } from "antd";
         "#,
             &vec![TransformImportConfig {
                 library_name: "antd".to_string(),
@@ -245,10 +261,10 @@ import { Button, Input } from "antd";
         assert_eq!(
             code,
             r#"
-import Button from "antd/lib/Button";
-import "antd/lib/Button/style/css";
-import Input from "antd/lib/Input";
-import "antd/lib/Input/style/css";
+import Button from "antd/lib/button";
+import "antd/lib/button/style/css";
+import DatePicker from "antd/lib/date-picker";
+import "antd/lib/date-picker/style/css";
 
 //# sourceMappingURL=/test/path.map
         "#
@@ -260,7 +276,7 @@ import "antd/lib/Input/style/css";
     fn test_multi_lib_dir() {
         let code = generate(
             r#"
-import { Button, Input } from "antd";
+import { Button, DatePicker } from "antd";
         "#,
             &vec![TransformImportConfig {
                 library_name: "antd".to_string(),
@@ -271,8 +287,8 @@ import { Button, Input } from "antd";
         assert_eq!(
             code,
             r#"
-import Button from "antd/es/Button";
-import Input from "antd/es/Input";
+import Button from "antd/es/button";
+import DatePicker from "antd/es/date-picker";
 
 //# sourceMappingURL=/test/path.map
         "#
@@ -295,7 +311,7 @@ import { Button as MyButton } from "antd";
         assert_eq!(
             code,
             r#"
-import MyButton from "antd/lib/Button";
+import MyButton from "antd/lib/button";
 
 //# sourceMappingURL=/test/path.map
         "#
@@ -310,7 +326,7 @@ import MyButton from "antd/lib/Button";
 import antd1 from "antd";
 import * as antd2 from "antd";
 import antd3, { Checkbox, Form } from "antd";
-import { Button, Input } from "antd";
+import { Button, DatePicker } from "antd";
         "#,
             &vec![TransformImportConfig {
                 library_name: "antd".to_string(),
@@ -324,10 +340,10 @@ import { Button, Input } from "antd";
 import antd1 from "antd";
 import * as antd2 from "antd";
 import antd3 from "antd";
-import Checkbox from "antd/lib/Checkbox";
-import Form from "antd/lib/Form";
-import Button from "antd/lib/Button";
-import Input from "antd/lib/Input";
+import Checkbox from "antd/lib/checkbox";
+import Form from "antd/lib/form";
+import Button from "antd/lib/button";
+import DatePicker from "antd/lib/date-picker";
 
 //# sourceMappingURL=/test/path.map
         "#
