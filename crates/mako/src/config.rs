@@ -332,16 +332,19 @@ impl Config {
                 .clone()
                 .into_iter()
                 .map(|(k, v)| {
-                    let v = if v.starts_with('.') {
-                        root.join(v)
-                            .canonicalize()
-                            .unwrap()
-                            .to_string_lossy()
-                            .to_string()
+                    let path_buf: PathBuf = v.into();
+
+                    let p = if path_buf.is_absolute() {
+                        path_buf
                     } else {
-                        v
+                        root.join(path_buf)
+                            .canonicalize()
+                            .expect(&format!("can't resolve alias.{}", k))
                     };
-                    (k, v)
+
+                    let p = p.to_string_lossy().to_string();
+
+                    (k, p)
                 })
                 .collect();
         }
