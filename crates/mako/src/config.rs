@@ -128,6 +128,21 @@ pub struct Px2RemConfig {
     pub selector_white_list: Vec<String>,
 }
 
+#[derive(Deserialize, Clone, Debug)]
+pub enum TransformImportStyle {
+    Built(String),
+    Source(bool),
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct TransformImportConfig {
+    #[serde(rename = "libraryName")]
+    pub library_name: String,
+    #[serde(rename = "libraryDirectory")]
+    pub library_directory: Option<String>,
+    pub style: Option<TransformImportStyle>,
+}
+
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
@@ -166,6 +181,8 @@ pub struct Config {
     pub dynamic_import_to_require: bool,
     pub umd: String,
     pub write_to_disk: bool,
+    #[serde(rename = "transformImport")]
+    pub transform_import: Vec<TransformImportConfig>,
 }
 
 const CONFIG_FILE: &str = "mako.config.json";
@@ -202,7 +219,8 @@ const DEFAULT_CONFIG: &str = r#"
     "autoCSSModules": false,
     "dynamicImportToRequire": false,
     "umd": "none",
-    "writeToDisk": true
+    "writeToDisk": true,
+    "transformImport": []
 }
 "#;
 

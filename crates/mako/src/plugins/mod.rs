@@ -4,6 +4,7 @@ pub mod copy;
 pub mod css;
 pub mod farm_tree_shake;
 pub mod hmr_runtime;
+pub mod import;
 pub mod invalid_syntax;
 pub mod javascript;
 pub mod json;

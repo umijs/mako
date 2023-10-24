@@ -43,4 +43,5 @@ hash?: boolean;
 autoCssModules?: boolean;
 dynamicImportToRequire?: boolean;
 umd?: string;
+transformImport?: { library: string; libraryDirectory?: string; style?: boolean | string }[];
 }, watch: boolean): Promise<void>

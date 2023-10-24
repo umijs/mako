@@ -54,6 +54,7 @@ pub async fn build(
     autoCssModules?: boolean;
     dynamicImportToRequire?: boolean;
     umd?: string;
+    transformImport?: { library: string; libraryDirectory?: string; style?: boolean | string }[];
 }"#)]
     config: serde_json::Value,
     watch: bool,
