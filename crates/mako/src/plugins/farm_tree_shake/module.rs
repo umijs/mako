@@ -75,20 +75,7 @@ pub enum AllExports {
     Ambiguous(HashSet<String>),
 }
 
-pub enum UsedExportsMatch {
-    Matched,
-    NotMatched,
-    Ambiguous,
-}
-
 impl AllExports {
-    pub fn exports(&self) -> Vec<String> {
-        match self {
-            AllExports::Precise(ids) => ids.iter().cloned().collect::<Vec<_>>(),
-            AllExports::Ambiguous(ids) => ids.iter().cloned().collect::<Vec<_>>(),
-        }
-    }
-
     fn all_specifiers(&self) -> Vec<String> {
         match self {
             AllExports::Precise(ids) => ids
@@ -118,25 +105,6 @@ impl AllExports {
         match self {
             AllExports::Precise(s) => s.extend(idents),
             AllExports::Ambiguous(s) => s.extend(idents),
-        }
-    }
-
-    pub fn contains(&self, ident: &str) -> UsedExportsMatch {
-        match self {
-            AllExports::Precise(idents) => {
-                if idents.contains(ident) {
-                    UsedExportsMatch::Matched
-                } else {
-                    UsedExportsMatch::NotMatched
-                }
-            }
-            AllExports::Ambiguous(idents) => {
-                if idents.contains(ident) {
-                    UsedExportsMatch::Matched
-                } else {
-                    UsedExportsMatch::Ambiguous
-                }
-            }
         }
     }
 }
