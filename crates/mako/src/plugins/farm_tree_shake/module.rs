@@ -92,6 +92,15 @@ impl AllExports {
         }
     }
 
+    pub fn into_ambigous(&mut self) {
+        match self {
+            AllExports::Precise(ids) => {
+                *self = AllExports::Ambiguous(ids.clone());
+            }
+            AllExports::Ambiguous(_) => {}
+        }
+    }
+
     pub fn to_all_specifier(&self) -> ExportSpecifierInfo {
         let sps = self.all_specifiers();
 
@@ -133,7 +142,7 @@ impl TreeShakeModule {
             (AllExports::Precise(me), AllExports::Ambiguous(to_add)) => {
                 me.extend(to_add.iter().cloned());
 
-                self.all_exports = AllExports::Ambiguous(me.clone())
+                self.all_exports.into_ambigous(); //  = AllExports::Ambiguous(me.clone())
             }
             (AllExports::Ambiguous(me), AllExports::Ambiguous(to_add)) => {
                 me.extend(to_add.iter().cloned());
