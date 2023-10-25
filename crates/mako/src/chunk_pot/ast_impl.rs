@@ -155,13 +155,16 @@ pub(crate) fn render_entry_js_chunk(
 ) -> Result<ChunkFile> {
     mako_core::mako_profile_function!();
 
-    let (buf, source_map_buf, hash) =
-        render_entry_chunk_js_without_full_hash(pot, js_map, css_map, chunk, context)?;
+    let RenderedChunk {
+        content,
+        source_map,
+        hash,
+    } = render_entry_chunk_js_without_full_hash(pot, js_map, css_map, chunk, context)?;
 
     let content = {
         mako_core::mako_profile_scope!("full_hash_replace");
 
-        String::from_utf8(buf)?
+        String::from_utf8(content)?
             .replace("_%full_hash%_", &full_hash.to_string())
             .into_bytes()
     };
@@ -170,7 +173,7 @@ pub(crate) fn render_entry_js_chunk(
         raw_hash: pot.js_hash,
         content,
         hash,
-        source_map: source_map_buf,
+        source_map,
         file_name: pot.js_name.clone(),
         chunk_id: pot.chunk_id.clone(),
         file_type: ChunkFileType::JS,
@@ -188,7 +191,7 @@ fn render_entry_chunk_js_without_full_hash(
     css_map: &HashMap<String, String>,
     chunk: &Chunk,
     context: &Arc<Context>,
-) -> Result<(Vec<u8>, Option<Vec<u8>>, Option<String>)> {
+) -> Result<RenderedChunk> {
     mako_core::mako_profile_function!(&pot.chunk_id);
 
     let mut stmts = vec![];
@@ -271,7 +274,18 @@ fn render_entry_chunk_js_without_full_hash(
         None
     };
 
-    Ok((buf, source_map_buf, hash))
+    Ok(RenderedChunk {
+        content: buf,
+        source_map: source_map_buf,
+        hash,
+    })
+}
+
+#[derive(Clone)]
+struct RenderedChunk {
+    content: Vec<u8>,
+    source_map: Option<Vec<u8>>,
+    hash: Option<String>,
 }
 
 fn chunk_map_decls(
