@@ -219,7 +219,7 @@ async function getOkamConfig(opts) {
       if (key.startsWith('process.env.')) {
         define[key.replace(/^process\.env\./, '')] = opts.config.define[key];
       } else {
-        define[key] = JSON.stringify(opts.config.define[key]);
+        define[key] = opts.config.define[key];
       }
     }
   }
