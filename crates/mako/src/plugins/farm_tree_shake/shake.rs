@@ -25,7 +25,7 @@ use crate::tree_shaking::tree_shaking_module::ModuleSystem;
 /// 4. remove used module and update tree-shaked AST into module graph
 pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
     let (topo_sorted_modules, _cyclic_modules) = {
-        mako_core::mako_profile_scope!("tree shake toposort");
+        mako_core::mako_profile_scope!("tree shake topo-sort");
         module_graph.toposort()
     };
 
@@ -75,7 +75,8 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
             if let Some(source) = exp_info.source {
                 for sp_info in exp_info.specifiers {
                     match sp_info {
-                        ExportSpecifierInfo::All(_) => {
+                        // export * from "xx"
+                        ExportSpecifierInfo::All(_) | ExportSpecifierInfo::Ambiguous(_) => {
                             let dependent_id =
                                 module_graph.get_dependency_module_by_source(module_id, &source);
 
@@ -87,28 +88,22 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
                                 tsm.stmt_graph.stmt_mut(&exp_info.stmt_id).export_info =
                                     Some(ExportInfo {
                                         source: Some(source.clone()),
-                                        specifiers: vec![ExportSpecifierInfo::All(Some(
-                                            to_extend
-                                                .clone()
-                                                .into_iter()
-                                                .filter(|id| id != "default")
-                                                .collect::<Vec<_>>(),
-                                        ))],
+                                        specifiers: vec![to_extend.to_all_specifier()],
                                         stmt_id: exp_info.stmt_id,
                                     });
 
-                                tsm.all_exports.extend(to_extend.into_iter());
+                                tsm.extends_exports(&to_extend);
                             }
                         }
                         _ => {
-                            tsm.all_exports.extend(sp_info.to_idents());
+                            tsm.all_exports.add_idents(sp_info.to_idents());
                         }
                     }
                 }
             } else {
                 for exp_sp in exp_info.specifiers {
                     let idents = exp_sp.to_idents();
-                    tsm.all_exports.extend(idents);
+                    tsm.all_exports.add_idents(idents);
                 }
             }
         }
@@ -306,6 +301,7 @@ fn add_used_exports_by_import_info(
         })
         .borrow_mut();
 
+    //  import "xxx"
     if import_info.specifiers.is_empty() {
         imported_tree_shake_module.used_exports.use_all();
         imported_tree_shake_module.side_effects = true;
@@ -399,18 +395,31 @@ fn add_used_exports_by_export_info(
                 statement_graph::ExportSpecifierInfo::All(used_idents) => {
                     if has_side_effects {
                         added |= exported_tree_shake_module.used_exports.use_all();
-                    } else if let Some(used_idents) = used_idents {
+                    } else {
                         for ident in used_idents {
                             if ident == "*" {
                                 added |= exported_tree_shake_module.used_exports.use_all();
-                            } else if exported_tree_shake_module.all_exports.contains(ident) {
+                            } else {
                                 added |= exported_tree_shake_module
                                     .used_exports
                                     .add_used_export(&strip_context(ident));
                             }
                         }
-                    } else {
+                    }
+                }
+                statement_graph::ExportSpecifierInfo::Ambiguous(used_idents) => {
+                    if has_side_effects {
                         added |= exported_tree_shake_module.used_exports.use_all();
+                    } else {
+                        for ident in used_idents {
+                            if ident == "*" {
+                                added |= exported_tree_shake_module.used_exports.use_all();
+                            } else {
+                                added |= exported_tree_shake_module
+                                    .used_exports
+                                    .add_used_export(&strip_context(ident));
+                            }
+                        }
                     }
                 }
             }

@@ -4,7 +4,7 @@ use mako_core::swc_ecma_ast::{Module as SwcModule, ModuleItem};
 
 use crate::module::{Module, ModuleId};
 use crate::plugins::farm_tree_shake::statement_graph::{
-    ExportInfo, ExportSpecifierInfo, ImportInfo, StatementGraph, StatementId,
+    ExportInfo, ExportInfoMatch, ExportSpecifierInfo, ImportInfo, StatementGraph, StatementId,
 };
 use crate::tree_shaking::tree_shaking_module::ModuleSystem;
 
@@ -69,6 +69,78 @@ impl UsedExports {
     }
 }
 
+#[derive(Clone, Debug)]
+pub enum AllExports {
+    Precise(HashSet<String>),
+    Ambiguous(HashSet<String>),
+}
+
+pub enum UsedExportsMatch {
+    Matched,
+    NotMatched,
+    Ambiguous,
+}
+
+impl AllExports {
+    pub fn exports(&self) -> Vec<String> {
+        match self {
+            AllExports::Precise(ids) => ids.iter().cloned().collect::<Vec<_>>(),
+            AllExports::Ambiguous(ids) => ids.iter().cloned().collect::<Vec<_>>(),
+        }
+    }
+
+    fn all_specifiers(&self) -> Vec<String> {
+        match self {
+            AllExports::Precise(ids) => ids
+                .iter()
+                .cloned()
+                .filter(|id| id != "default")
+                .collect::<Vec<_>>(),
+
+            AllExports::Ambiguous(ids) => ids
+                .iter()
+                .cloned()
+                .filter(|id| id != "default")
+                .collect::<Vec<_>>(),
+        }
+    }
+
+    pub fn to_all_specifier(&self) -> ExportSpecifierInfo {
+        let sps = self.all_specifiers();
+
+        match self {
+            AllExports::Precise(_) => ExportSpecifierInfo::All(sps),
+            AllExports::Ambiguous(_) => ExportSpecifierInfo::Ambiguous(sps),
+        }
+    }
+
+    pub fn add_idents<I: IntoIterator<Item = String>>(&mut self, idents: I) {
+        match self {
+            AllExports::Precise(s) => s.extend(idents),
+            AllExports::Ambiguous(s) => s.extend(idents),
+        }
+    }
+
+    pub fn contains(&self, ident: &str) -> UsedExportsMatch {
+        match self {
+            AllExports::Precise(idents) => {
+                if idents.contains(ident) {
+                    UsedExportsMatch::Matched
+                } else {
+                    UsedExportsMatch::NotMatched
+                }
+            }
+            AllExports::Ambiguous(idents) => {
+                if idents.contains(ident) {
+                    UsedExportsMatch::Matched
+                } else {
+                    UsedExportsMatch::Ambiguous
+                }
+            }
+        }
+    }
+}
+
 pub struct TreeShakeModule {
     pub module_id: ModuleId,
     pub side_effects: bool,
@@ -76,12 +148,31 @@ pub struct TreeShakeModule {
     // used exports will be analyzed when tree shaking
     pub used_exports: UsedExports,
     pub module_system: ModuleSystem,
-    pub all_exports: HashSet<String>,
+    pub all_exports: AllExports,
     pub topo_order: usize,
     pub updated_ast: Option<SwcModule>,
 }
 
 impl TreeShakeModule {
+    pub fn extends_exports(&mut self, to_extend: &AllExports) {
+        match (&mut self.all_exports, to_extend) {
+            (AllExports::Precise(me), AllExports::Precise(to_add)) => {
+                me.extend(to_add.iter().cloned());
+            }
+            (AllExports::Ambiguous(me), AllExports::Precise(to_add)) => {
+                me.extend(to_add.iter().cloned());
+            }
+            (AllExports::Precise(me), AllExports::Ambiguous(to_add)) => {
+                me.extend(to_add.iter().cloned());
+
+                self.all_exports = AllExports::Ambiguous(me.clone())
+            }
+            (AllExports::Ambiguous(me), AllExports::Ambiguous(to_add)) => {
+                me.extend(to_add.iter().cloned());
+            }
+        }
+    }
+
     pub fn new(module: &Module, order: usize) -> Self {
         let module_info = module.info.as_ref().unwrap();
 
@@ -123,8 +214,13 @@ impl TreeShakeModule {
             stmt_graph,
             used_exports,
             side_effects: module.side_effects,
+            all_exports: match module_system {
+                ModuleSystem::ESModule => AllExports::Precise(Default::default()),
+                ModuleSystem::Custom | ModuleSystem::CommonJS => {
+                    AllExports::Ambiguous(Default::default())
+                }
+            },
             module_system,
-            all_exports: Default::default(),
             topo_order: order,
             updated_ast: None,
         }
@@ -246,7 +342,7 @@ impl TreeShakeModule {
                                 used_idents
                                     .push((UsedIdent::SwcIdent(ns.clone()), export_info.stmt_id));
                             }
-                            ExportSpecifierInfo::All(_) => {
+                            ExportSpecifierInfo::All(_) | ExportSpecifierInfo::Ambiguous(_) => {
                                 used_idents.push((UsedIdent::ExportAll, export_info.stmt_id));
                             }
                         }
@@ -255,31 +351,31 @@ impl TreeShakeModule {
 
                 used_idents
             }
+            // import {x,y,z} from "x"
             UsedExports::Partial(idents) => {
                 let mut used_idents = vec![];
 
+                println!("{} used {:?}", self.module_id.id, idents);
+
                 for ident in idents {
-                    // find the export info that contains the ident
-                    let export_info = self.exports().into_iter().find(|export_info| {
-                        export_info.specifiers.iter().any(|sp| match sp {
-                            ExportSpecifierInfo::Default => ident == "default",
-                            ExportSpecifierInfo::Named { local, exported } => {
-                                let exported_ident = if let Some(exported) = exported {
-                                    exported
-                                } else {
-                                    local
-                                };
+                    // find the export info*s* that contains the ident
 
-                                is_ident_equal(ident, exported_ident)
+                    let mut export_infos = vec![];
+
+                    for export_info in self.exports().into_iter() {
+                        match export_info.matches_ident(ident) {
+                            ExportInfoMatch::Matched => {
+                                export_infos = vec![export_info];
+                                break;
                             }
-                            ExportSpecifierInfo::Namespace(ns) => is_ident_equal(ident, ns),
-                            ExportSpecifierInfo::All(exported_idents) => exported_idents
-                                .as_ref()
-                                .map_or(false, |all_idents| all_idents.contains(ident)),
-                        })
-                    });
+                            ExportInfoMatch::Unmatched => {}
+                            ExportInfoMatch::Ambiguous => {
+                                export_infos.push(export_info);
+                            }
+                        }
+                    }
 
-                    if let Some(export_info) = export_info {
+                    for export_info in export_infos {
                         for sp in export_info.specifiers {
                             match sp {
                                 ExportSpecifierInfo::Default => {
@@ -310,25 +406,22 @@ impl TreeShakeModule {
                                         ));
                                     }
                                 }
-                                ExportSpecifierInfo::All(_) => used_idents.push((
+                                ExportSpecifierInfo::All(exports_idents) => {
+                                    let found = exports_idents.iter().find(|exported_ident| {
+                                        is_ident_equal(ident, exported_ident)
+                                    });
+
+                                    if found.is_some() {
+                                        used_idents.push((
+                                            UsedIdent::InExportAll(ident.clone()),
+                                            export_info.stmt_id,
+                                        ));
+                                    }
+                                }
+                                ExportSpecifierInfo::Ambiguous(_) => used_idents.push((
                                     UsedIdent::InExportAll(ident.clone()),
                                     export_info.stmt_id,
                                 )),
-                            }
-                        }
-                    } else {
-                        // if export info is not found, and there are ExportSpecifierInfo::All, then the ident may be exported by `export * from 'xxx'`
-                        for export_info in self.exports() {
-                            if export_info.specifiers.iter().any(|sp| match sp {
-                                ExportSpecifierInfo::All(exported_idents) => exported_idents
-                                    .as_ref()
-                                    .map_or(false, |all_idents| all_idents.contains(ident)),
-                                _ => false,
-                            }) {
-                                let stmt_id = export_info.stmt_id;
-
-                                used_idents
-                                    .push((UsedIdent::InExportAll(ident.to_string()), stmt_id));
                             }
                         }
                     }
@@ -340,7 +433,7 @@ impl TreeShakeModule {
     }
 }
 
-fn is_ident_equal(ident1: &str, ident2: &str) -> bool {
+pub fn is_ident_equal(ident1: &str, ident2: &str) -> bool {
     let split1 = ident1.split('#').collect::<Vec<_>>();
     let split2 = ident2.split('#').collect::<Vec<_>>();
 

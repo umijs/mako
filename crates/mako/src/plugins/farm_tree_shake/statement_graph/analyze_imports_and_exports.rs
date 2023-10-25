@@ -111,7 +111,7 @@ pub fn analyze_imports_and_exports(
       swc_ecma_ast::ModuleDecl::ExportAll(export_all) => {
         exports = Some(ExportInfo {
           source: Some(export_all.src.value.to_string()),
-          specifiers: vec![ExportSpecifierInfo::All(None)],
+          specifiers: vec![ExportSpecifierInfo::All(vec![])],
           stmt_id: *id,
         })
       }

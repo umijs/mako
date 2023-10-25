@@ -10,7 +10,7 @@ pub(crate) mod used_idents_collector;
 
 use analyze_imports_and_exports::analyze_imports_and_exports;
 
-use crate::plugins::farm_tree_shake::module::UsedIdent;
+use crate::plugins::farm_tree_shake::module::{is_ident_equal, UsedIdent};
 use crate::plugins::farm_tree_shake::shake::strip_context;
 use crate::plugins::farm_tree_shake::statement_graph::analyze_imports_and_exports::StatementInfo;
 
@@ -37,7 +37,7 @@ pub struct ImportInfo {
 #[derive(Debug, Clone)]
 pub enum ExportSpecifierInfo {
     // export * from 'foo';
-    All(Option<Vec<String>>),
+    All(Vec<String>),
     // export { foo, bar, default as zoo } from 'foo';
     Named {
         local: String,
@@ -47,6 +47,7 @@ pub enum ExportSpecifierInfo {
     Default,
     // export * as foo from 'foo';
     Namespace(String),
+    Ambiguous(Vec<String>),
 }
 
 impl ExportSpecifierInfo {
@@ -68,6 +69,9 @@ impl ExportSpecifierInfo {
             ExportSpecifierInfo::Namespace(ns) => {
                 vec![strip_context(ns)]
             }
+            ExportSpecifierInfo::Ambiguous(_) => {
+                vec![]
+            }
         }
     }
 }
@@ -77,6 +81,60 @@ pub struct ExportInfo {
     pub source: Option<String>,
     pub specifiers: Vec<ExportSpecifierInfo>,
     pub stmt_id: StatementId,
+}
+
+pub enum ExportInfoMatch {
+    Matched,
+    Unmatched,
+    Ambiguous,
+}
+
+impl ExportInfo {
+    pub fn matches_ident(&self, ident: &String) -> ExportInfoMatch {
+        let mut res = ExportInfoMatch::Unmatched;
+
+        for specifier in self.specifiers.iter() {
+            match specifier {
+                ExportSpecifierInfo::Default => {
+                    if ident == "default" {
+                        return ExportInfoMatch::Matched;
+                    }
+                }
+                ExportSpecifierInfo::Named { local, exported } => {
+                    let exported_ident = if let Some(exported) = exported {
+                        exported
+                    } else {
+                        local
+                    };
+
+                    if is_ident_equal(ident, exported_ident) {
+                        return ExportInfoMatch::Matched;
+                    }
+                }
+                ExportSpecifierInfo::Namespace(ns) => {
+                    if is_ident_equal(ident, ns) {
+                        return ExportInfoMatch::Matched;
+                    }
+                }
+                ExportSpecifierInfo::All(exported_idents) => {
+                    let found = exported_idents.iter().find(|i| is_ident_equal(ident, i));
+
+                    if found.is_some() {
+                        return ExportInfoMatch::Matched;
+                    }
+                }
+                ExportSpecifierInfo::Ambiguous(idents) => {
+                    if idents.iter().any(|i| is_ident_equal(ident, i)) {
+                        return ExportInfoMatch::Matched;
+                    }
+
+                    res = ExportInfoMatch::Ambiguous;
+                }
+            }
+        }
+
+        res
+    }
 }
 
 #[derive(Debug)]
