@@ -37,12 +37,13 @@ impl Content {
         }
     }
 
-    pub fn raw_hash(&self) -> u64 {
+    pub fn raw_hash(&self, init: u64) -> u64 {
         let mut hasher: XxHash64 = Default::default();
         match self {
             Content::Js(content)
             | Content::Css(content)
             | Content::Assets(Asset { content, .. }) => {
+                hasher.write_u64(init);
                 hasher.write(content.as_bytes());
                 hasher.finish()
             }

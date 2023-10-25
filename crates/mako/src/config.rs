@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::hash::Hasher;
 use std::path::{Path, PathBuf};
 
 use mako_core::clap::ValueEnum;
@@ -7,9 +8,11 @@ use mako_core::serde::Deserialize;
 use mako_core::serde_json::Value;
 use mako_core::swc_ecma_ast::EsVersion;
 use mako_core::thiserror::Error;
+use mako_core::twox_hash::XxHash64;
 use mako_core::{clap, config, thiserror};
+use serde::Serialize;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct OutputConfig {
     pub path: PathBuf,
     pub mode: OutputMode,
@@ -17,7 +20,7 @@ pub struct OutputConfig {
     pub es_version: EsVersion,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ManifestConfig {
     #[serde(rename(deserialize = "fileName"))]
     pub file_name: String,
@@ -25,7 +28,7 @@ pub struct ManifestConfig {
     pub base_path: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ResolveConfig {
     pub alias: HashMap<String, String>,
     pub extensions: Vec<String>,
@@ -37,7 +40,7 @@ pub struct ResolveConfig {
 // { "Buffer": ("buffer", "Buffer") }
 pub type Providers = HashMap<String, (String, String)>;
 
-#[derive(Deserialize, Debug, PartialEq, Eq, ValueEnum, Clone)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, ValueEnum, Clone)]
 pub enum Mode {
     #[serde(rename = "development")]
     Development,
@@ -45,7 +48,7 @@ pub enum Mode {
     Production,
 }
 
-#[derive(Deserialize, Debug, PartialEq, Eq, ValueEnum, Clone)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, ValueEnum, Clone)]
 pub enum OutputMode {
     #[serde(rename = "bundle")]
     Bundle,
@@ -55,7 +58,7 @@ pub enum OutputMode {
 
 // TODO:
 // 1. node specific runtime
-#[derive(Deserialize, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 pub enum Platform {
     #[serde(rename = "browser")]
     Browser,
@@ -69,7 +72,7 @@ impl std::fmt::Display for Mode {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub enum DevtoolConfig {
     /// Generate separate sourcemap file
     #[serde(rename = "source-map")]
@@ -81,7 +84,7 @@ pub enum DevtoolConfig {
     None,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct LessConfig {
     pub theme: HashMap<String, String>,
     #[serde(rename(deserialize = "lesscPath"))]
@@ -90,7 +93,7 @@ pub struct LessConfig {
     pub javascript_enabled: bool,
 }
 
-#[derive(Deserialize, Clone, Copy, Debug)]
+#[derive(Deserialize, Serialize, Clone, Copy, Debug)]
 pub enum ModuleIdStrategy {
     #[serde(rename = "hashed")]
     Hashed,
@@ -98,14 +101,14 @@ pub enum ModuleIdStrategy {
     Named,
 }
 
-#[derive(Deserialize, Clone, Copy, Debug)]
+#[derive(Deserialize, Serialize, Clone, Copy, Debug)]
 pub enum CodeSplittingStrategy {
     #[serde(rename = "auto")]
     Auto,
     #[serde(rename = "none")]
     None,
 }
-#[derive(Deserialize, Clone, Copy, Debug)]
+#[derive(Deserialize, Serialize, Clone, Copy, Debug)]
 pub enum TreeShakeStrategy {
     #[serde(rename = "basic")]
     Basic,
@@ -115,7 +118,7 @@ pub enum TreeShakeStrategy {
     None,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Px2RemConfig {
     pub root: f64,
     #[serde(rename = "propBlackList")]
@@ -128,7 +131,7 @@ pub struct Px2RemConfig {
     pub selector_white_list: Vec<String>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     pub entry: HashMap<String, PathBuf>,
@@ -166,6 +169,13 @@ pub struct Config {
     pub dynamic_import_to_require: bool,
     pub umd: String,
     pub write_to_disk: bool,
+    pub dev_eval: bool,
+}
+
+pub(crate) fn hash_config(c: &Config) -> u64 {
+    let mut hasher = XxHash64::default();
+    hasher.write(serde_json::to_string(c).unwrap().as_bytes());
+    hasher.finish()
 }
 
 const CONFIG_FILE: &str = "mako.config.json";
@@ -202,7 +212,8 @@ const DEFAULT_CONFIG: &str = r#"
     "autoCSSModules": false,
     "dynamicImportToRequire": false,
     "umd": "none",
-    "writeToDisk": true
+    "writeToDisk": true,
+    "devEval": true
 }
 "#;
 

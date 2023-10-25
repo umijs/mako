@@ -12,7 +12,7 @@ use mako_core::swc_ecma_ast::Ident;
 
 use crate::chunk_graph::ChunkGraph;
 use crate::comments::Comments;
-use crate::config::{Config, OutputMode};
+use crate::config::{hash_config, Config, OutputMode};
 use crate::module_graph::ModuleGraph;
 use crate::optimize_chunk::OptimizeChunksInfo;
 use crate::plugin::{Plugin, PluginDriver};
@@ -26,6 +26,7 @@ pub struct Context {
     pub assets_info: Mutex<HashMap<String, String>>,
     pub modules_with_missing_deps: RwLock<Vec<String>>,
     pub config: Config,
+    pub config_hash: u64,
     pub args: Args,
     pub root: PathBuf,
     pub meta: Meta,
@@ -106,9 +107,10 @@ impl Default for Context {
     fn default() -> Self {
         let config: Config = Default::default();
         let resolvers = get_resolvers(&config);
-
+        let config_hash = hash_config(&config);
         Self {
-            config: Default::default(),
+            config,
+            config_hash,
             args: Args { watch: false },
             root: PathBuf::from(""),
             module_graph: RwLock::new(ModuleGraph::new()),
@@ -260,6 +262,7 @@ impl Compiler {
                 } else {
                     Default::default()
                 },
+                config_hash: hash_config(&config),
                 config,
                 args,
                 root,

@@ -201,7 +201,7 @@ mod tests {
     use crate::chunk::{Chunk, ChunkType};
     use crate::chunk_graph::ChunkGraph;
     use crate::compiler::{Context, Meta};
-    use crate::config::Config;
+    use crate::config::{hash_config, Config};
     use crate::module::ModuleId;
     use crate::module_graph::ModuleGraph;
     use crate::resolve::get_resolvers;
@@ -669,9 +669,11 @@ if (/x/ === /x/) {
         chunk_graph.add_chunk(Chunk::new("./foo".to_string().into(), ChunkType::Async));
 
         let resolvers = get_resolvers(&config);
+        let config_hash = hash_config(&config);
 
         let context = Arc::new(Context {
             config,
+            config_hash,
             args: Default::default(),
             root: root.clone(),
             module_graph: RwLock::new(ModuleGraph::new()),
