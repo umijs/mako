@@ -131,6 +131,21 @@ pub struct Px2RemConfig {
     pub selector_white_list: Vec<String>,
 }
 
+#[derive(Deserialize, Serialize, Clone, Debug)]
+#[serde(untagged)]
+pub enum TransformImportStyle {
+    Built(String),
+    Source(bool),
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct TransformImportConfig {
+    pub library_name: String,
+    pub library_directory: Option<String>,
+    pub style: Option<TransformImportStyle>,
+}
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
@@ -166,9 +181,12 @@ pub struct Config {
     pub tree_shake: TreeShakeStrategy,
     #[serde(rename = "autoCSSModules")]
     pub auto_css_modules: bool,
+    #[serde(rename = "ignoreCSSParserErrors")]
+    pub ignore_css_parser_errors: bool,
     pub dynamic_import_to_require: bool,
     pub umd: String,
     pub write_to_disk: bool,
+    pub transform_import: Vec<TransformImportConfig>,
     pub dev_eval: bool,
 }
 
@@ -210,9 +228,11 @@ const DEFAULT_CONFIG: &str = r#"
     "px2remConfig": { "root": 100, "propBlackList": [], "propWhiteList": [], "selectorBlackList": [], "selectorWhiteList": [] },
     "treeShake": "basic",
     "autoCSSModules": false,
+    "ignoreCSSParserErrors": false,
     "dynamicImportToRequire": false,
     "umd": "none",
     "writeToDisk": true,
+    "transformImport": [],
     "devEval": true
 }
 "#;

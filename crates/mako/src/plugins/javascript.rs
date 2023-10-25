@@ -24,7 +24,7 @@ impl Plugin for JavaScriptPlugin {
                 let port = &context.config.hmr_port.to_string();
                 let host = &context.config.hmr_host.to_string();
                 let host = if host == "0.0.0.0" { "127.0.0.1" } else { host };
-                let content = format!("require(\"{}\");", param.path.as_str());
+                let content = format!("module.exports = require(\"{}\");", param.path.as_str());
                 let content = format!(
                     "{}\n{}\n",
                     include_str!("../runtime/runtime_hmr_entry.js"),

@@ -44,6 +44,9 @@ importers:
       semver:
         specifier: ^7.5.4
         version: 7.5.4
+      webpack:
+        specifier: ^5.0.0
+        version: 5.84.1
       zx:
         specifier: ^7.2.3
         version: 7.2.3
@@ -3633,7 +3636,7 @@ packages:
       react-refresh: 0.14.0
       schema-utils: 3.1.2
       source-map: 0.7.4
-      webpack: 5.84.1(webpack-cli@4.7.2)
+      webpack: 5.84.1
     dev: true
 
   /@rc-component/color-picker@1.4.1(react-dom@18.2.0)(react@18.2.0):
@@ -6660,7 +6663,7 @@ packages:
       postcss-modules-values: 4.0.0(postcss@8.4.24)
       postcss-value-parser: 4.2.0
       semver: 7.5.4
-      webpack: 5.84.1(webpack-cli@4.7.2)
+      webpack: 5.84.1
     dev: true
 
   /css-prefers-color-scheme@6.0.3(postcss@8.4.24):
@@ -7190,7 +7193,6 @@ packages:
     dependencies:
       graceful-fs: 4.2.11
       tapable: 2.2.1
-    dev: false
 
   /enhanced-resolve@5.9.3:
     resolution: {integrity: sha512-Bq9VSor+kjvW3f9/MiiR4eE3XYgOl7/rS8lnSxbRbF3kS0B2r+Y9w5krBWxZgDxASVZbdYrn5wT4j/Wb0J9qow==}
@@ -7943,7 +7945,7 @@ packages:
       semver: 7.5.4
       tapable: 2.2.1
       typescript: 5.0.4
-      webpack: 5.84.1(webpack-cli@4.7.2)
+      webpack: 5.84.1
     dev: true
 
   /form-data@2.3.3:
@@ -8428,7 +8430,7 @@ packages:
       lodash: 4.17.21
       pretty-error: 4.0.0
       tapable: 2.2.1
-      webpack: 5.84.1(webpack-cli@4.7.2)
+      webpack: 5.84.1
     dev: true
 
   /htmlparser2@6.1.0:
@@ -14489,6 +14491,46 @@ packages:
   /webpack-sources@3.2.3:
     resolution: {integrity: sha512-/DyMEOrDgLKKIG0fmvtz+4dUX/3Ghozwgm6iPp8KRhvn+eQf9+Q7GWxVNMk3+uCPWfdXYC4ExGBckIXdFEfH1w==}
     engines: {node: '>=10.13.0'}
+    dev: true
+
+  /webpack@5.84.1:
+    resolution: {integrity: sha512-ZP4qaZ7vVn/K8WN/p990SGATmrL1qg4heP/MrVneczYtpDGJWlrgZv55vxaV2ul885Kz+25MP2kSXkPe3LZfmg==}
+    engines: {node: '>=10.13.0'}
+    hasBin: true
+    peerDependencies:
+      webpack-cli: '*'
+    peerDependenciesMeta:
+      webpack-cli:
+        optional: true
+    dependencies:
+      '@types/eslint-scope': 3.7.4
+      '@types/estree': 1.0.1
+      '@webassemblyjs/ast': 1.11.6
+      '@webassemblyjs/wasm-edit': 1.11.6
+      '@webassemblyjs/wasm-parser': 1.11.6
+      acorn: 8.8.2
+      acorn-import-assertions: 1.9.0(acorn@8.8.2)
+      browserslist: 4.21.7
+      chrome-trace-event: 1.0.3
+      enhanced-resolve: 5.15.0
+      es-module-lexer: 1.2.1
+      eslint-scope: 5.1.1
+      events: 3.3.0
+      glob-to-regexp: 0.4.1
+      graceful-fs: 4.2.11
+      json-parse-even-better-errors: 2.3.1
+      loader-runner: 4.3.0
+      mime-types: 2.1.35
+      neo-async: 2.6.2
+      schema-utils: 3.1.2
+      tapable: 2.2.1
+      terser-webpack-plugin: 5.3.9(webpack@5.84.1)
+      watchpack: 2.4.0
+      webpack-sources: 3.2.3
+    transitivePeerDependencies:
+      - '@swc/core'
+      - esbuild
+      - uglify-js
     dev: true
 
   /webpack@5.84.1(webpack-cli@4.7.2):
