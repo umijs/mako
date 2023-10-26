@@ -87,7 +87,6 @@ where
                 func(crate::watch::WatchEvent::Removed(event.paths));
             }
             EventKind::Remove(_) => {
-                println!("removed");
                 func(crate::watch::WatchEvent::Removed(event.paths));
             }
             EventKind::Access(AccessKind::Close(_)) => {
