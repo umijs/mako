@@ -20,7 +20,6 @@ var m = {
             }
         });
         function foo() {}
-        const bar = 1;
     },
     "index.ts": function(module, exports, require) {
         Object.defineProperty(exports, "__esModule", {
