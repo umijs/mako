@@ -34,6 +34,7 @@ pub enum ResolveType {
     Require,
     DynamicImport,
     Css,
+    Worker,
 }
 
 #[derive(Debug, Clone)]

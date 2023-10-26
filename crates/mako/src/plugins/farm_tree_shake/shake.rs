@@ -224,7 +224,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
         // add all dynamic imported dependencies as [UsedExports::All]
         for (dep, edge) in module_graph.get_dependencies(tree_shake_module_id) {
             match edge.resolve_type {
-                ResolveType::DynamicImport => {
+                ResolveType::DynamicImport | ResolveType::Worker => {
                     let mut tree_shake_module =
                         tree_shake_modules_map.get(dep).unwrap().borrow_mut();
                     if tree_shake_module.used_exports.use_all()

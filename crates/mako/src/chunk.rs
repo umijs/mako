@@ -18,6 +18,8 @@ pub enum ChunkType {
     Async,
     // mean that the chunk is not async, but it's a dependency of an async chunk
     Sync,
+    // web workers
+    Worker,
 }
 
 pub struct Chunk {
@@ -45,7 +47,7 @@ impl Chunk {
             // foo/bar.tsx -> bar.js
             ChunkType::Entry(_, name) => format!("{}.js", name),
             // foo/bar.tsx -> foo_bar_tsx-async.js
-            ChunkType::Async | ChunkType::Sync => {
+            ChunkType::Async | ChunkType::Sync | ChunkType::Worker => {
                 let path = Path::new(&self.id.id);
 
                 let name = path

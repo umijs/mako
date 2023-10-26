@@ -3,7 +3,9 @@ use mako_core::swc_common::collections::AHashSet;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_css_ast::{ImportHref, UrlValue};
 use mako_core::swc_css_visit::VisitWith as CSSVisitWith;
-use mako_core::swc_ecma_ast::{CallExpr, Callee, Expr, Id, Import, Lit, Module, ModuleDecl};
+use mako_core::swc_ecma_ast::{
+    CallExpr, Callee, Expr, Id, Import, Lit, Module, ModuleDecl, NewExpr,
+};
 use mako_core::swc_ecma_utils::collect_decls;
 use mako_core::swc_ecma_visit::{Visit, VisitWith};
 use mako_core::{swc_common, swc_css_ast, swc_css_visit, swc_ecma_ast};
@@ -132,6 +134,20 @@ impl Visit for DepCollectVisitor {
             }
         }
         expr.visit_children_with(self);
+    }
+
+    // Web Workers: new Worker()
+    fn visit_new_expr(&mut self, new_expr: &NewExpr) {
+        if !new_expr.args.is_some_and(|args| !args.is_empty()) || !new_expr.callee.is_ident() {
+            return;
+        }
+
+        if new_expr.callee.as_ident().unwrap().sym.eq("Worker") {
+            let arg = &new_expr.args.as_ref().unwrap().get(0).unwrap().expr;
+            if let box Expr::Lit(Lit::Str(str)) = arg {
+                self.bind_dependency(str.value.to_string(), ResolveType::Worker, None);
+            }
+        }
     }
 }
 
