@@ -343,15 +343,16 @@ impl Config {
                 .clone()
                 .into_iter()
                 .map(|(k, v)| {
-                    let path_buf: PathBuf = v.clone().into();
-
-                    let p = if path_buf.is_absolute() {
-                        v
+                    let v = if v.starts_with('.') {
+                        root.join(v)
+                            .canonicalize()
+                            .unwrap()
+                            .to_string_lossy()
+                            .to_string()
                     } else {
-                        root.join(path_buf).to_string_lossy().to_string()
+                        v
                     };
-
-                    (k, p)
+                    (k, v)
                 })
                 .collect();
         }
