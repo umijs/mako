@@ -14,6 +14,7 @@ use mako_core::{anyhow, thiserror};
 
 use crate::analyze_deps::analyze_deps;
 use crate::ast::{build_js_ast, generate_code_frame};
+use crate::chunk_pot::util::{hash_hashmap, hash_vec};
 use crate::compiler::{Compiler, Context};
 use crate::config::Mode;
 use crate::load::{ext_name, load};
@@ -389,13 +390,17 @@ impl Compiler {
             }
         };
 
+        let raw_hash = content
+            .raw_hash(context.config_hash)
+            .wrapping_add(hash_hashmap(&missing_deps).wrapping_add(hash_vec(&ignored_deps)));
+
         // create module info
         let info = ModuleInfo {
             ast,
             path: task.path.clone(),
             external: None,
             raw: content.raw(),
-            raw_hash: content.raw_hash(),
+            raw_hash,
             missing_deps,
             ignored_deps,
             top_level_await,

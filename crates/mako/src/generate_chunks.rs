@@ -103,11 +103,7 @@ impl Compiler {
     ) -> Result<Vec<ChunkFile>> {
         mako_core::mako_profile_function!();
 
-        if self.context.args.watch {
-            pot.to_dev_entry_chunk_files(&self.context, js_map, css_map, chunk, full_hash)
-        } else {
-            pot.to_entry_chunk_files(&self.context, js_map, css_map, chunk, full_hash)
-        }
+        pot.to_entry_chunk_files(&self.context, js_map, css_map, chunk, full_hash)
     }
 
     fn generate_non_entry_chunk_files(&self) -> Result<Vec<ChunkFile>> {
@@ -122,12 +118,7 @@ impl Compiler {
             .filter(|chunk| !matches!(chunk.chunk_type, ChunkType::Entry(_, _)))
             .map(|chunk| {
                 let pot: ChunkPot = ChunkPot::from(chunk, &module_graph, &self.context)?;
-
-                if self.context.args.watch {
-                    pot.to_dev_normal_chunk_files(&self.context)
-                } else {
-                    pot.to_normal_chunk_files(&self.context)
-                }
+                pot.to_normal_chunk_files(&self.context)
             })
             .collect::<Result<Vec<_>>>()?
             .into_iter()
