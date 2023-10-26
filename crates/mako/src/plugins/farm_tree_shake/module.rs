@@ -323,8 +323,6 @@ impl TreeShakeModule {
             UsedExports::Partial(idents) => {
                 let mut used_idents = vec![];
 
-                println!("{} used {:?}", self.module_id.id, idents);
-
                 for ident in idents {
                     // find the export info*s* that contains the ident
 
