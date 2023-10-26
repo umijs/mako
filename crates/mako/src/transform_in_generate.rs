@@ -56,7 +56,18 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
             .collect();
         let mut resolved_deps: HashMap<String, String> = deps
             .into_iter()
-            .map(|(id, dep, _)| (dep.source, id.generate(context)))
+            .map(|(id, dep, _)| {
+                (
+                    dep.source,
+                    if dep.resolve_type == ResolveType::Worker {
+                        let chunk_id = id.generate(context);
+                        let chunk_graph = context.chunk_graph.read().unwrap();
+                        chunk_graph.chunk(&chunk_id.into()).unwrap().filename()
+                    } else {
+                        id.generate(context)
+                    },
+                )
+            })
             .collect();
         insert_swc_helper_replace(&mut resolved_deps, context);
 

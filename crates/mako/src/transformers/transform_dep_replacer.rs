@@ -3,13 +3,13 @@ use std::sync::Arc;
 
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{
-    AssignOp, BlockStmt, Expr, ExprOrSpread, FnExpr, Function, ImportDecl, Lit, NamedExport, Stmt,
-    Str, ThrowStmt, VarDeclKind,
+    AssignOp, BlockStmt, Expr, ExprOrSpread, FnExpr, Function, ImportDecl, Lit, NamedExport,
+    NewExpr, Stmt, Str, ThrowStmt, VarDeclKind,
 };
 use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
-use crate::analyze_deps::{is_commonjs_require, is_dynamic_import};
+use crate::analyze_deps::{is_commonjs_require, is_dynamic_import, is_web_worker};
 use crate::build::parse_path;
 use crate::compiler::Context;
 use crate::module::Dependency;
@@ -111,6 +111,17 @@ impl VisitMut for DepReplacer<'_> {
             }
         }
         expr.visit_mut_children_with(self);
+    }
+
+    fn visit_mut_new_expr(&mut self, new_expr: &mut NewExpr) {
+        if is_web_worker(new_expr) {
+            let args = new_expr.args.as_mut().unwrap();
+            if let box Expr::Lit(Lit::Str(ref mut str)) = &mut args[0].expr {
+                self.replace_source(str);
+            }
+        }
+
+        new_expr.visit_mut_children_with(self);
     }
 
     fn visit_mut_import_decl(&mut self, import_decl: &mut ImportDecl) {

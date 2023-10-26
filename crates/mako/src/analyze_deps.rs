@@ -138,16 +138,14 @@ impl Visit for DepCollectVisitor {
 
     // Web Workers: new Worker()
     fn visit_new_expr(&mut self, new_expr: &NewExpr) {
-        if !new_expr.args.is_some_and(|args| !args.is_empty()) || !new_expr.callee.is_ident() {
-            return;
-        }
-
-        if new_expr.callee.as_ident().unwrap().sym.eq("Worker") {
+        if is_web_worker(new_expr) {
             let arg = &new_expr.args.as_ref().unwrap().get(0).unwrap().expr;
             if let box Expr::Lit(Lit::Str(str)) = arg {
                 self.bind_dependency(str.value.to_string(), ResolveType::Worker, None);
             }
         }
+
+        new_expr.visit_children_with(self);
     }
 }
 
@@ -174,6 +172,14 @@ impl swc_css_visit::Visit for DepCollectVisitor {
             }
         }
     }
+}
+
+pub fn is_web_worker(new_expr: &NewExpr) -> bool {
+    if !new_expr.args.is_some_and(|args| !args.is_empty()) || !new_expr.callee.is_ident() {
+        return false;
+    }
+
+    new_expr.callee.as_ident().unwrap().sym.eq("Worker")
 }
 
 pub fn is_dynamic_import(call_expr: &CallExpr) -> bool {
