@@ -219,7 +219,7 @@ async function getOkamConfig(opts) {
       if (key.startsWith('process.env.')) {
         define[key.replace(/^process\.env\./, '')] = opts.config.define[key];
       } else {
-        define[key] = JSON.stringify(opts.config.define[key]);
+        define[key] = normalizeDefineValue(opts.config.define[key]);
       }
     }
   }
@@ -280,4 +280,19 @@ async function getOkamConfig(opts) {
   }
 
   return okamConfig;
+}
+
+function normalizeDefineValue(val) {
+  if (!isPlainObject(val)) {
+    return JSON.stringify(val);
+  } else {
+    return Object.keys(val).reduce((obj, key) => {
+      obj[key] = normalizeDefineValue(val[key]);
+      return obj;
+    }, {});
+  }
+}
+
+function isPlainObject(obj) {
+  return Object.prototype.toString.call(obj) === '[object Object]';
 }
