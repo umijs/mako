@@ -43,7 +43,7 @@ impl Compiler {
                 }
             }
 
-            let (chunk, dynamic_dependencies) = self.create_chunk(
+            let (chunk, dynamic_dependencies, worker_dependencies) = self.create_chunk(
                 &entry,
                 ChunkType::Entry(entry.clone(), entry_chunk_name.to_string()),
                 &mut chunk_graph,
@@ -52,7 +52,8 @@ impl Compiler {
             let chunk_name = chunk.filename();
             visited.borrow_mut().insert(chunk.id.clone());
             edges.extend(
-                dynamic_dependencies
+                [dynamic_dependencies.clone(), worker_dependencies.clone()]
+                    .concat()
                     .clone()
                     .into_iter()
                     .map(|dep| (chunk.id.clone(), dep.generate(&self.context).into())),
@@ -65,20 +66,48 @@ impl Compiler {
                 match bfs.next_node() {
                     NextResult::Visited => continue,
                     NextResult::First(head) => {
-                        let (chunk, dynamic_dependencies) = self.create_chunk(
+                        let (chunk, dynamic_dependencies, worker_dependencies) = self.create_chunk(
                             &head,
                             ChunkType::Async,
                             &mut chunk_graph,
                             vec![chunk_name.clone()],
                         );
                         edges.extend(
-                            dynamic_dependencies
+                            [dynamic_dependencies.clone(), worker_dependencies.clone()]
+                                .concat()
                                 .clone()
                                 .into_iter()
                                 .map(|dep| (chunk.id.clone(), dep.generate(&self.context).into())),
                         );
                         chunk_graph.add_chunk(chunk);
-                        for dep in dynamic_dependencies {
+                        for dep in [dynamic_dependencies, worker_dependencies].concat() {
+                            bfs.visit(dep);
+                        }
+                    }
+                }
+            }
+
+            // handle worker dependencies
+            // TODO 支持 WorkerType 为 module 的情况
+            let mut bfs = Bfs::new(VecDeque::from(worker_dependencies), visited.clone());
+            while !bfs.done() {
+                match bfs.next_node() {
+                    NextResult::Visited => continue,
+                    NextResult::First(head) => {
+                        let (chunk, _, worker_dependencies) = self.create_chunk(
+                            &head,
+                            ChunkType::Worker,
+                            &mut chunk_graph,
+                            vec![chunk_name.clone()],
+                        );
+                        edges.extend(
+                            worker_dependencies
+                                .clone()
+                                .into_iter()
+                                .map(|dep| (chunk.id.clone(), dep.generate(&self.context).into())),
+                        );
+                        chunk_graph.add_chunk(chunk);
+                        for dep in worker_dependencies {
                             bfs.visit(dep);
                         }
                     }
@@ -240,7 +269,10 @@ impl Compiler {
                     let static_deps = module_graph
                         .get_dependencies(head)
                         .into_iter()
-                        .filter(|(_, dep)| dep.resolve_type != ResolveType::DynamicImport)
+                        .filter(|(_, dep)| {
+                            dep.resolve_type != ResolveType::DynamicImport
+                                && dep.resolve_type != ResolveType::Worker
+                        })
                         .collect::<Vec<_>>();
 
                     for (dep_module_id, _dep) in static_deps {
@@ -290,9 +322,10 @@ impl Compiler {
         chunk_type: ChunkType,
         chunk_graph: &mut ChunkGraph,
         shared_chunk_names: Vec<String>,
-    ) -> (Chunk, Vec<ModuleId>) {
+    ) -> (Chunk, Vec<ModuleId>, Vec<ModuleId>) {
         mako_core::mako_profile_function!(&entry_module_id.id);
         let mut dynamic_entries = vec![];
+        let mut worker_entries = vec![];
         let mut bfs = Bfs::new(VecDeque::from(vec![entry_module_id]), Default::default());
 
         let chunk_id = entry_module_id.generate(&self.context);
@@ -320,12 +353,18 @@ impl Compiler {
                         let mut normal_deps = vec![];
 
                         for (dep_module_id, dep) in module_graph.get_dependencies(head) {
-                            if dep.resolve_type == ResolveType::DynamicImport {
-                                dynamic_entries.push(dep_module_id.clone());
-                            } else {
-                                bfs.visit(dep_module_id);
-                                // collect normal deps for current head
-                                normal_deps.push(dep_module_id.clone());
+                            match dep.resolve_type {
+                                ResolveType::DynamicImport => {
+                                    dynamic_entries.push(dep_module_id.clone());
+                                }
+                                ResolveType::Worker => {
+                                    worker_entries.push(dep_module_id.clone());
+                                }
+                                _ => {
+                                    bfs.visit(dep_module_id);
+                                    // collect normal deps for current head
+                                    normal_deps.push(dep_module_id.clone());
+                                }
                             }
                         }
 
@@ -341,7 +380,7 @@ impl Compiler {
             chunk.add_module(module_id);
         }
 
-        (chunk, dynamic_entries)
+        (chunk, dynamic_entries, worker_entries)
     }
 
     fn create_update_async_chunks(
@@ -358,7 +397,7 @@ impl Compiler {
             match bfs.next_node() {
                 NextResult::Visited => continue,
                 NextResult::First(head) => {
-                    let (new_chunk, dynamic_dependencies) = self.create_chunk(
+                    let (new_chunk, dynamic_dependencies, worker_dependencies) = self.create_chunk(
                         &head,
                         ChunkType::Async,
                         chunk_graph,
@@ -367,17 +406,23 @@ impl Compiler {
                     let chunk_id = new_chunk.id.clone();
 
                     // record edges and add chunk to graph
-                    edges.extend(dynamic_dependencies.clone().into_iter().map(|dep| {
-                        (
-                            chunk_id.clone(),
-                            match chunk_graph.get_chunk_for_module(&dep) {
-                                // ref existing chunk
-                                Some(chunk) => chunk.id.clone(),
-                                // ref new chunk
-                                None => dep.generate(&self.context).into(),
-                            },
-                        )
-                    }));
+                    edges.extend(
+                        [dynamic_dependencies.clone(), worker_dependencies]
+                            .concat()
+                            .clone()
+                            .into_iter()
+                            .map(|dep| {
+                                (
+                                    chunk_id.clone(),
+                                    match chunk_graph.get_chunk_for_module(&dep) {
+                                        // ref existing chunk
+                                        Some(chunk) => chunk.id.clone(),
+                                        // ref new chunk
+                                        None => dep.generate(&self.context).into(),
+                                    },
+                                )
+                            }),
+                    );
                     chunk_graph.add_chunk(new_chunk);
                     new_chunks.push(chunk_id.clone());
 
