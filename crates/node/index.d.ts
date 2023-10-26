@@ -41,6 +41,7 @@ selectorWhiteList: string[];
 stats?: boolean;
 hash?: boolean;
 autoCssModules?: boolean;
+ignoreCSSParserErrors?: boolean;
 dynamicImportToRequire?: boolean;
 umd?: string;
 transformImport?: { library: string; libraryDirectory?: string; style?: boolean | string }[];
