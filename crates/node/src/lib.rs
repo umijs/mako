@@ -39,10 +39,10 @@ pub async fn build(
                 rules: {
                     regex: string;
                     target: string | '$EMPTY';
-                    targetConverter?: 'CamelCase';
+                    targetConverter?: 'PascalCase';
                 }[];
-            }
-        }
+            };
+        },
     >;
     copy?: string[];
     code_splitting: "auto" | "none";

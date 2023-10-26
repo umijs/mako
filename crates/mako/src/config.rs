@@ -152,6 +152,7 @@ pub enum ExternalAdvancedSubpathConverter {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(untagged)]
 pub enum ExternalAdvancedSubpathTarget {
     #[serde(rename = "$EMPTY")]
     Empty,
