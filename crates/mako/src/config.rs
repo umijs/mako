@@ -147,6 +147,43 @@ pub struct TransformImportConfig {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+pub enum ExternalAdvancedSubpathConverter {
+    PascalCase,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub enum ExternalAdvancedSubpathTarget {
+    #[serde(rename = "$EMPTY")]
+    Empty,
+    Tpl(String),
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct ExternalAdvancedSubpathRule {
+    pub regex: String,
+    pub target: ExternalAdvancedSubpathTarget,
+    pub target_converter: Option<ExternalAdvancedSubpathConverter>,
+}
+#[derive(Deserialize, Serialize, Debug)]
+pub struct ExternalAdvancedSubpath {
+    pub exclude: Option<Vec<String>>,
+    pub rules: Vec<ExternalAdvancedSubpathRule>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct ExternalAdvanced {
+    pub window: String,
+    pub subpath: ExternalAdvancedSubpath,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(untagged)]
+pub enum ExternalConfig {
+    Basic(String),
+    Advanced(ExternalAdvanced),
+}
+
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     pub entry: HashMap<String, PathBuf>,
@@ -157,7 +194,7 @@ pub struct Config {
     pub mode: Mode,
     pub minify: bool,
     pub devtool: DevtoolConfig,
-    pub externals: HashMap<String, String>,
+    pub externals: HashMap<String, ExternalConfig>,
     pub providers: Providers,
     pub copy: Vec<String>,
     pub public_path: String,
@@ -309,7 +346,17 @@ impl Config {
 
             // 暂不支持 remote external
             // 如果 config.externals 中有值是以「script 」开头，则 panic 报错
-            for v in config.externals.values() {
+            let basic_external_values = config
+                .externals
+                .values()
+                .into_iter()
+                .filter_map(|v| match v {
+                    ExternalConfig::Basic(b) => Some(b),
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
+
+            for v in basic_external_values {
                 if v.starts_with("script ") {
                     panic!(
                         "remote external is not supported yet, but we found {}",

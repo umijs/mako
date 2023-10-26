@@ -30,7 +30,20 @@ pub async fn build(
     mode?: "development" | "production";
     define?: Record<string, string>;
     devtool?: "source-map" | "inline-source-map" | "none";
-    externals?: Record<string, string>;
+    externals?: Record<
+        string,
+        string | {
+            window: string;
+            subpath: {
+                exclude?: string[];
+                rules: {
+                    regex: string;
+                    target: string | '$EMPTY';
+                    targetConverter?: 'CamelCase';
+                }[];
+            }
+        }
+    >;
     copy?: string[];
     code_splitting: "auto" | "none";
     providers?: Record<string, string[]>;
