@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use mako_core::swc_common::{Mark, DUMMY_SP};
 use mako_core::swc_ecma_ast::{
-    AssignOp, BlockStmt, Expr, ExprOrSpread, FnExpr, Function, ImportDecl, Lit, NamedExport,
+    AssignOp, BlockStmt, Expr, ExprOrSpread, FnExpr, Function, Ident, ImportDecl, Lit, NamedExport,
     NewExpr, Stmt, Str, ThrowStmt, VarDeclKind,
 };
 use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
@@ -12,7 +12,8 @@ use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 use crate::build::parse_path;
 use crate::compiler::Context;
 use crate::module::Dependency;
-use crate::plugins::javascript::{is_commonjs_require, is_dynamic_import, resolve_web_worker_mut};
+use crate::plugins::css::is_url_ignored;
+use crate::plugins::javascript::{is_commonjs_require, is_dynamic_import};
 use crate::transformers::transform_virtual_css_modules::is_css_path;
 
 pub struct DepReplacer<'a> {
@@ -149,6 +150,51 @@ impl DepReplacer<'_> {
         *source = Str::from(to_replace);
         source.span = span;
     }
+}
+
+pub fn resolve_web_worker_mut(new_expr: &mut NewExpr, unresolved_mark: Mark) -> Option<&mut Str> {
+    if !new_expr.args.is_some_and(|args| !args.is_empty()) || !new_expr.callee.is_ident() {
+        return None;
+    }
+
+    if let box Expr::Ident(Ident { span, sym, .. }) = &mut new_expr.callee {
+        // `Worker` must be unresolved
+        if sym == "Worker" && (span.ctxt.outer() == unresolved_mark) {
+            let args = new_expr.args.as_mut().unwrap();
+
+            match &mut *args[0].expr {
+                // new Worker('./worker.js');
+                Expr::Lit(Lit::Str(str)) => {
+                    if !is_url_ignored(&str.value) {
+                        return Some(str);
+                    }
+                }
+                // new Worker(new URL(''), base);
+                Expr::New(new_expr) => {
+                    if !new_expr.args.is_some_and(|args| !args.is_empty())
+                        || !new_expr.callee.is_ident()
+                    {
+                        return None;
+                    }
+
+                    if let box Expr::Ident(Ident { span, sym, .. }) = &new_expr.callee {
+                        if sym == "URL" && (span.ctxt.outer() == unresolved_mark) {
+                            // new URL('');
+                            let args = new_expr.args.as_mut().unwrap();
+                            if let box Expr::Lit(Lit::Str(ref mut str)) = &mut args[0].expr {
+                                if !is_url_ignored(&str.value) {
+                                    return Some(str);
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    None
 }
 
 #[cfg(test)]

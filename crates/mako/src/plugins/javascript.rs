@@ -1,11 +1,13 @@
 use std::sync::Arc;
 
 use mako_core::anyhow::Result;
+use mako_core::swc_atoms::js_word;
 use mako_core::swc_common::collections::AHashSet;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{self, Mark, GLOBALS};
 use mako_core::swc_ecma_ast::{
-    self, CallExpr, Callee, Expr, Id, Ident, Import, Lit, Module, ModuleDecl, NewExpr, Str,
+    self, CallExpr, Callee, Expr, Id, Ident, Import, Lit, MemberExpr, MemberProp, MetaPropExpr,
+    MetaPropKind, Module, ModuleDecl, NewExpr, Str,
 };
 use mako_core::swc_ecma_utils::collect_decls;
 use mako_core::swc_ecma_visit::{Visit, VisitWith};
@@ -193,8 +195,15 @@ pub fn resolve_web_worker(new_expr: &NewExpr, unresolved_mark: Mark) -> Option<&
 
                     if let box Expr::Ident(Ident { span, sym, .. }) = &new_expr.callee {
                         if sym == "URL" && (span.ctxt.outer() == unresolved_mark) {
-                            // new URL('');
+                            // new URL(''); 仅第一个参数为字符串字面量, 第二个参数为 import.meta.url 时添加依赖
                             let args = new_expr.args.as_ref().unwrap();
+
+                            if args.get(1).is_none()
+                                || is_import_meta_url(&args.get(1).unwrap().expr)
+                            {
+                                return None;
+                            }
+
                             if let box Expr::Lit(Lit::Str(ref str)) = &args[0].expr {
                                 if !is_url_ignored(&str.value) {
                                     return Some(str);
@@ -211,49 +220,21 @@ pub fn resolve_web_worker(new_expr: &NewExpr, unresolved_mark: Mark) -> Option<&
     None
 }
 
-pub fn resolve_web_worker_mut(new_expr: &mut NewExpr, unresolved_mark: Mark) -> Option<&mut Str> {
-    if !new_expr.args.is_some_and(|args| !args.is_empty()) || !new_expr.callee.is_ident() {
-        return None;
-    }
-
-    if let box Expr::Ident(Ident { span, sym, .. }) = &mut new_expr.callee {
-        // `Worker` must be unresolved
-        if sym == "Worker" && (span.ctxt.outer() == unresolved_mark) {
-            let args = new_expr.args.as_mut().unwrap();
-
-            match &mut *args[0].expr {
-                // new Worker('./worker.js');
-                Expr::Lit(Lit::Str(str)) => {
-                    if !is_url_ignored(&str.value) {
-                        return Some(str);
-                    }
-                }
-                // new Worker(new URL(''), base);
-                Expr::New(new_expr) => {
-                    if !new_expr.args.is_some_and(|args| !args.is_empty())
-                        || !new_expr.callee.is_ident()
-                    {
-                        return None;
-                    }
-
-                    if let box Expr::Ident(Ident { span, sym, .. }) = &new_expr.callee {
-                        if sym == "URL" && (span.ctxt.outer() == unresolved_mark) {
-                            // new URL('');
-                            let args = new_expr.args.as_mut().unwrap();
-                            if let box Expr::Lit(Lit::Str(ref mut str)) = &mut args[0].expr {
-                                if !is_url_ignored(&str.value) {
-                                    return Some(str);
-                                }
-                            }
-                        }
-                    }
-                }
-                _ => {}
-            }
-        }
-    }
-
-    None
+pub fn is_import_meta_url(expr: &Expr) -> bool {
+    matches!(
+        expr,
+        Expr::Member(MemberExpr {
+            obj: box Expr::MetaProp(MetaPropExpr {
+                kind: MetaPropKind::ImportMeta,
+                ..
+            }),
+            prop: MemberProp::Ident(Ident {
+                sym: js_word!("url"),
+                ..
+            }),
+            ..
+        })
+    )
 }
 
 pub fn is_dynamic_import(call_expr: &CallExpr) -> bool {
