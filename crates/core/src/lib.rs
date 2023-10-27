@@ -5,7 +5,7 @@ pub use puffin;
 #[cfg(feature = "profile")]
 pub use puffin_egui;
 pub use {
-    anyhow, base64, cached, clap, colored, config, fs_extra, futures, glob, hyper,
+    anyhow, base64, cached, clap, colored, config, convert_case, fs_extra, futures, glob, hyper,
     hyper_staticfile, hyper_tungstenite, indexmap, lazy_static, md5, mdxjs, mime_guess,
     nodejs_resolver, notify, pathdiff, petgraph, rayon, regex, serde, serde_json, serde_xml_rs,
     serde_yaml, svgr_rs, swc_atoms, swc_common, swc_css_ast, swc_css_codegen, swc_css_compat,

@@ -19,7 +19,20 @@ basePath: string;
 mode?: "development" | "production";
 define?: Record<string, string>;
 devtool?: "source-map" | "inline-source-map" | "none";
-externals?: Record<string, string>;
+externals?: Record<
+string,
+string | {
+root: string;
+subpath: {
+exclude?: string[];
+rules: {
+regex: string;
+target: string | '$EMPTY';
+targetConverter?: 'PascalCase';
+}[];
+};
+},
+>;
 copy?: string[];
 code_splitting: "auto" | "none";
 providers?: Record<string, string[]>;

@@ -4,12 +4,17 @@ use std::sync::Arc;
 use std::vec;
 
 use mako_core::anyhow::{anyhow, Result};
+use mako_core::convert_case::{Case, Casing};
 use mako_core::nodejs_resolver::{AliasMap, Options, ResolveResult, Resolver, Resource};
+use mako_core::regex::{Captures, Regex};
 use mako_core::thiserror::Error;
 use mako_core::tracing::debug;
 
 use crate::compiler::Context;
-use crate::config::{Config, Platform};
+use crate::config::{
+    Config, ExternalAdvancedSubpathConverter, ExternalAdvancedSubpathTarget, ExternalConfig,
+    Platform,
+};
 use crate::module::{Dependency, ResolveType};
 
 #[derive(Debug, Error)]
@@ -84,16 +89,109 @@ pub fn resolve(
     do_resolve(path, &dep.source, resolver, Some(&context.config.externals))
 }
 
+fn get_external_target(
+    externals: &HashMap<String, ExternalConfig>,
+    source: &str,
+) -> Option<String> {
+    if let Some(external) = externals.get(source) {
+        // handle full match
+        // ex. import React from 'react';
+        match external {
+            ExternalConfig::Basic(external) => Some(external.clone()),
+            ExternalConfig::Advanced(config) => Some(config.root.clone()),
+        }
+    } else if let Some((advanced_config, subpath)) = externals.iter().find_map(|(key, config)| {
+        // find matched advanced config
+        if matches!(config, ExternalConfig::Advanced(_)) && source.starts_with(&format!("{}/", key))
+        {
+            match config {
+                ExternalConfig::Advanced(config) => {
+                    let subpath = source.replace(&format!("{}/", key), "");
+
+                    // skip if source is excluded
+                    match &config.subpath.exclude {
+                        // skip if source is excluded
+                        Some(exclude)
+                            if exclude.iter().any(|e| {
+                                Regex::new(&format!("(^|/){}(/|$)", e))
+                                    .ok()
+                                    .unwrap()
+                                    .is_match(subpath.as_str())
+                            }) =>
+                        {
+                            None
+                        }
+                        _ => Some((config, source.replace(&format!("{}/", key), ""))),
+                    }
+                }
+                _ => unreachable!(),
+            }
+        } else {
+            None
+        }
+    }) {
+        // handle subpath match
+        // ex. import Button from 'antd/es/button';
+        // find matched subpath rule
+        if let Some((rule, caps)) = advanced_config.subpath.rules.iter().find_map(|r| {
+            let regex = Regex::new(r.regex.as_str()).ok().unwrap();
+
+            if regex.is_match(subpath.as_str()) {
+                Some((r, regex.captures(subpath.as_str()).unwrap()))
+            } else {
+                None
+            }
+        }) {
+            // generate target from rule target
+            match &rule.target {
+                // external to empty string
+                ExternalAdvancedSubpathTarget::Empty => Some("''".to_string()),
+                // external to target template
+                ExternalAdvancedSubpathTarget::Tpl(target) => {
+                    let regex = Regex::new(r"\$(\d+)").ok().unwrap();
+
+                    // replace $1, $2, ... with captured groups
+                    let mut replaced = regex
+                        .replace_all(target, |target_caps: &Captures| {
+                            let i = target_caps[1].parse::<usize>().ok().unwrap();
+
+                            caps.get(i).unwrap().as_str().to_string()
+                        })
+                        .to_string();
+
+                    // convert case if needed
+                    // ex. date-picker -> DatePicker
+                    if let Some(converter) = &rule.target_converter {
+                        replaced = match converter {
+                            ExternalAdvancedSubpathConverter::PascalCase => replaced
+                                .split('.')
+                                .into_iter()
+                                .map(|s| s.to_case(Case::Pascal))
+                                .collect::<Vec<_>>()
+                                .join("."),
+                        };
+                    }
+                    Some(format!("{}.{}", advanced_config.root, replaced))
+                }
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
 // TODO:
 // - 支持物理缓存，让第二次更快
 fn do_resolve(
     path: &str,
     source: &str,
     resolver: &Resolver,
-    externals: Option<&HashMap<String, String>>,
+    externals: Option<&HashMap<String, ExternalConfig>>,
 ) -> Result<ResolverResource> {
     let external = if let Some(externals) = externals {
-        externals.get(&source.to_string()).cloned()
+        get_external_target(externals, source)
     } else {
         None
     };
@@ -211,7 +309,10 @@ fn parse_alias(alias: HashMap<String, String>) -> Vec<(String, Vec<AliasMap>)> {
 mod tests {
     use std::collections::HashMap;
 
-    use crate::config::Config;
+    use crate::config::{
+        Config, ExternalAdvanced, ExternalAdvancedSubpath, ExternalAdvancedSubpathConverter,
+        ExternalAdvancedSubpathRule, ExternalAdvancedSubpathTarget, ExternalConfig,
+    };
     use crate::resolve::ResolverType;
 
     #[test]
@@ -255,7 +356,10 @@ mod tests {
 
     #[test]
     fn test_resolve_externals() {
-        let externals = HashMap::from([("react".to_string(), "react".to_string())]);
+        let externals = HashMap::from([(
+            "react".to_string(),
+            ExternalConfig::Basic("react".to_string()),
+        )]);
         let x = resolve(
             "test/resolve/normal",
             None,
@@ -266,10 +370,93 @@ mod tests {
         assert_eq!(x, ("react".to_string(), Some("react".to_string())));
     }
 
+    #[test]
+    fn test_resolve_advanced_externals() {
+        let externals = HashMap::from([(
+            "antd".to_string(),
+            ExternalConfig::Advanced(ExternalAdvanced {
+                root: "antd".to_string(),
+                subpath: ExternalAdvancedSubpath {
+                    exclude: Some(vec!["style".to_string()]),
+                    rules: vec![
+                        ExternalAdvancedSubpathRule {
+                            regex: "/(version|message|notification)$".to_string(),
+                            target: ExternalAdvancedSubpathTarget::Tpl("$1".to_string()),
+                            target_converter: None,
+                        },
+                        ExternalAdvancedSubpathRule {
+                            regex: "/locales/(.*)$".to_string(),
+                            target: ExternalAdvancedSubpathTarget::Empty,
+                            target_converter: None,
+                        },
+                        ExternalAdvancedSubpathRule {
+                            regex: "^(?:es|lib)/([a-z-]+)$".to_string(),
+                            target: ExternalAdvancedSubpathTarget::Tpl("$1".to_string()),
+                            target_converter: Some(ExternalAdvancedSubpathConverter::PascalCase),
+                        },
+                        ExternalAdvancedSubpathRule {
+                            regex: "^(?:es|lib)/([a-z-]+)/([A-Z][a-zA-Z-]+)$".to_string(),
+                            target: ExternalAdvancedSubpathTarget::Tpl("$1.$2".to_string()),
+                            target_converter: Some(ExternalAdvancedSubpathConverter::PascalCase),
+                        },
+                    ],
+                },
+            }),
+        )]);
+        fn internal_resolve(
+            externals: &HashMap<String, ExternalConfig>,
+            source: &str,
+        ) -> (String, Option<String>) {
+            resolve(
+                "test/resolve/externals",
+                None,
+                Some(externals),
+                "index.ts",
+                source,
+            )
+        }
+        // expect exclude
+        assert_eq!(
+            internal_resolve(&externals, "antd/es/button/style"),
+            (
+                "node_modules/antd/es/button/style/index.js".to_string(),
+                None
+            )
+        );
+        // expect capture target
+        assert_eq!(
+            internal_resolve(&externals, "antd/es/version"),
+            (
+                "antd/es/version".to_string(),
+                Some("antd.version".to_string())
+            )
+        );
+        // expect empty target
+        assert_eq!(
+            internal_resolve(&externals, "antd/es/locales/zh_CN"),
+            ("antd/es/locales/zh_CN".to_string(), Some("''".to_string()))
+        );
+        // expect target converter
+        assert_eq!(
+            internal_resolve(&externals, "antd/es/date-picker"),
+            (
+                "antd/es/date-picker".to_string(),
+                Some("antd.DatePicker".to_string())
+            )
+        );
+        assert_eq!(
+            internal_resolve(&externals, "antd/es/input/Group"),
+            (
+                "antd/es/input/Group".to_string(),
+                Some("antd.Input.Group".to_string())
+            )
+        );
+    }
+
     fn resolve(
         base: &str,
         alias: Option<HashMap<String, String>>,
-        externals: Option<&HashMap<String, String>>,
+        externals: Option<&HashMap<String, ExternalConfig>>,
         path: &str,
         source: &str,
     ) -> (String, Option<String>) {

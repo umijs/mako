@@ -147,6 +147,78 @@ pub struct TransformImportConfig {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+pub enum ExternalAdvancedSubpathConverter {
+    PascalCase,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(untagged)]
+pub enum ExternalAdvancedSubpathTarget {
+    Empty,
+    Tpl(String),
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct ExternalAdvancedSubpathRule {
+    pub regex: String,
+    #[serde(with = "external_target_format")]
+    pub target: ExternalAdvancedSubpathTarget,
+    #[serde(rename = "targetConverter")]
+    pub target_converter: Option<ExternalAdvancedSubpathConverter>,
+}
+
+/**
+ * custom formatter for convert $EMPTY to enum, because rename is not supported for $ symbol
+ * @see https://serde.rs/custom-date-format.html
+ */
+mod external_target_format {
+    use serde::{self, Deserialize, Deserializer, Serializer};
+
+    use super::ExternalAdvancedSubpathTarget;
+
+    pub fn serialize<S>(v: &ExternalAdvancedSubpathTarget, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match v {
+            ExternalAdvancedSubpathTarget::Empty => serializer.serialize_str("$EMPTY"),
+            ExternalAdvancedSubpathTarget::Tpl(s) => serializer.serialize_str(s),
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<ExternalAdvancedSubpathTarget, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let v = String::deserialize(deserializer)?;
+
+        if v == "$EMPTY" {
+            Ok(ExternalAdvancedSubpathTarget::Empty)
+        } else {
+            Ok(ExternalAdvancedSubpathTarget::Tpl(v))
+        }
+    }
+}
+#[derive(Deserialize, Serialize, Debug)]
+pub struct ExternalAdvancedSubpath {
+    pub exclude: Option<Vec<String>>,
+    pub rules: Vec<ExternalAdvancedSubpathRule>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct ExternalAdvanced {
+    pub root: String,
+    pub subpath: ExternalAdvancedSubpath,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(untagged)]
+pub enum ExternalConfig {
+    Basic(String),
+    Advanced(ExternalAdvanced),
+}
+
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     pub entry: HashMap<String, PathBuf>,
@@ -157,7 +229,7 @@ pub struct Config {
     pub mode: Mode,
     pub minify: bool,
     pub devtool: DevtoolConfig,
-    pub externals: HashMap<String, String>,
+    pub externals: HashMap<String, ExternalConfig>,
     pub providers: Providers,
     pub copy: Vec<String>,
     pub public_path: String,
@@ -309,7 +381,17 @@ impl Config {
 
             // 暂不支持 remote external
             // 如果 config.externals 中有值是以「script 」开头，则 panic 报错
-            for v in config.externals.values() {
+            let basic_external_values = config
+                .externals
+                .values()
+                .into_iter()
+                .filter_map(|v| match v {
+                    ExternalConfig::Basic(b) => Some(b),
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
+
+            for v in basic_external_values {
                 if v.starts_with("script ") {
                     panic!(
                         "remote external is not supported yet, but we found {}",

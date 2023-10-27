@@ -2413,6 +2413,7 @@ dependencies = [
  "clap",
  "colored",
  "config",
+ "convert_case",
  "eframe",
  "fs_extra",
  "futures",
