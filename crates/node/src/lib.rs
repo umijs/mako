@@ -55,7 +55,7 @@ pub async fn build(
     ignoreCSSParserErrors?: boolean;
     dynamicImportToRequire?: boolean;
     umd?: string;
-    transformImport?: { library: string; libraryDirectory?: string; style?: boolean | string }[];
+    transformImport?: { libraryName: string; libraryDirectory?: string; style?: boolean | string }[];
 }"#)]
     config: serde_json::Value,
     watch: bool,
