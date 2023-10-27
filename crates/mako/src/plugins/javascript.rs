@@ -5,11 +5,12 @@ use mako_core::swc_common::collections::AHashSet;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{self, Mark, GLOBALS};
 use mako_core::swc_ecma_ast::{
-    self, CallExpr, Callee, Expr, Id, Ident, Import, Lit, Module, ModuleDecl, NewExpr,
+    self, CallExpr, Callee, Expr, Id, Ident, Import, Lit, Module, ModuleDecl, NewExpr, Str,
 };
 use mako_core::swc_ecma_utils::collect_decls;
 use mako_core::swc_ecma_visit::{Visit, VisitWith};
 
+use super::css::is_url_ignored;
 use crate::ast::build_js_ast;
 use crate::compiler::Context;
 use crate::load::{read_content, Content};
@@ -155,29 +156,104 @@ impl Visit for DepCollectVisitor {
         expr.visit_children_with(self);
     }
 
-    // Web Workers: new Worker()
+    // Web workers
     fn visit_new_expr(&mut self, new_expr: &NewExpr) {
-        if is_web_worker(new_expr, self.unresolved_mark) {
-            let arg = &new_expr.args.as_ref().unwrap().get(0).unwrap().expr;
-            if let box Expr::Lit(Lit::Str(str)) = arg {
-                self.bind_dependency(str.value.to_string(), ResolveType::Worker, None);
-            }
+        if let Some(str) = resolve_web_worker(new_expr, self.unresolved_mark) {
+            self.bind_dependency(str.value.to_string(), ResolveType::Worker, None);
         }
 
         new_expr.visit_children_with(self);
     }
 }
 
-pub fn is_web_worker(new_expr: &NewExpr, unresolved_mark: Mark) -> bool {
+pub fn resolve_web_worker(new_expr: &NewExpr, unresolved_mark: Mark) -> Option<&Str> {
     if !new_expr.args.is_some_and(|args| !args.is_empty()) || !new_expr.callee.is_ident() {
-        return false;
+        return None;
     }
 
     if let box Expr::Ident(Ident { span, sym, .. }) = &new_expr.callee {
-        sym == "Worker" && (span.ctxt.outer() == unresolved_mark)
-    } else {
-        false
+        // `Worker` must be unresolved
+        if sym == "Worker" && (span.ctxt.outer() == unresolved_mark) {
+            let args = new_expr.args.as_ref().unwrap();
+
+            match &*args[0].expr {
+                // new Worker('./worker.js');
+                Expr::Lit(Lit::Str(str)) => {
+                    if !is_url_ignored(&str.value) {
+                        return Some(str);
+                    }
+                }
+                // new Worker(new URL(''), base);
+                Expr::New(new_expr) => {
+                    if !new_expr.args.is_some_and(|args| !args.is_empty())
+                        || !new_expr.callee.is_ident()
+                    {
+                        return None;
+                    }
+
+                    if let box Expr::Ident(Ident { span, sym, .. }) = &new_expr.callee {
+                        if sym == "URL" && (span.ctxt.outer() == unresolved_mark) {
+                            // new URL('');
+                            let args = new_expr.args.as_ref().unwrap();
+                            if let box Expr::Lit(Lit::Str(ref str)) = &args[0].expr {
+                                if !is_url_ignored(&str.value) {
+                                    return Some(str);
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
     }
+
+    None
+}
+
+pub fn resolve_web_worker_mut(new_expr: &mut NewExpr, unresolved_mark: Mark) -> Option<&mut Str> {
+    if !new_expr.args.is_some_and(|args| !args.is_empty()) || !new_expr.callee.is_ident() {
+        return None;
+    }
+
+    if let box Expr::Ident(Ident { span, sym, .. }) = &mut new_expr.callee {
+        // `Worker` must be unresolved
+        if sym == "Worker" && (span.ctxt.outer() == unresolved_mark) {
+            let args = new_expr.args.as_mut().unwrap();
+
+            match &mut *args[0].expr {
+                // new Worker('./worker.js');
+                Expr::Lit(Lit::Str(str)) => {
+                    if !is_url_ignored(&str.value) {
+                        return Some(str);
+                    }
+                }
+                // new Worker(new URL(''), base);
+                Expr::New(new_expr) => {
+                    if !new_expr.args.is_some_and(|args| !args.is_empty())
+                        || !new_expr.callee.is_ident()
+                    {
+                        return None;
+                    }
+
+                    if let box Expr::Ident(Ident { span, sym, .. }) = &new_expr.callee {
+                        if sym == "URL" && (span.ctxt.outer() == unresolved_mark) {
+                            // new URL('');
+                            let args = new_expr.args.as_mut().unwrap();
+                            if let box Expr::Lit(Lit::Str(ref mut str)) = &mut args[0].expr {
+                                if !is_url_ignored(&str.value) {
+                                    return Some(str);
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    None
 }
 
 pub fn is_dynamic_import(call_expr: &CallExpr) -> bool {

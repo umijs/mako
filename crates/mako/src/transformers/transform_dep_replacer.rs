@@ -12,7 +12,7 @@ use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 use crate::build::parse_path;
 use crate::compiler::Context;
 use crate::module::Dependency;
-use crate::plugins::javascript::{is_commonjs_require, is_dynamic_import, is_web_worker};
+use crate::plugins::javascript::{is_commonjs_require, is_dynamic_import, resolve_web_worker_mut};
 use crate::transformers::transform_virtual_css_modules::is_css_path;
 
 pub struct DepReplacer<'a> {
@@ -116,11 +116,8 @@ impl VisitMut for DepReplacer<'_> {
     }
 
     fn visit_mut_new_expr(&mut self, new_expr: &mut NewExpr) {
-        if is_web_worker(new_expr, self.unresolved_mark) {
-            let args = new_expr.args.as_mut().unwrap();
-            if let box Expr::Lit(Lit::Str(ref mut str)) = &mut args[0].expr {
-                self.replace_source(str);
-            }
+        if let Some(str) = resolve_web_worker_mut(new_expr, self.unresolved_mark) {
+            self.replace_source(str);
         }
 
         new_expr.visit_mut_children_with(self);

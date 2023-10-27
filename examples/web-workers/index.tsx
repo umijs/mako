@@ -2,45 +2,68 @@ import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 
 // 普通的 worker
-const worker1 = new Worker('./worker.ts');
+const commonWorker = new Worker('./commonWorker.ts');
 // 嵌套 worker
-const worker2 = new Worker('./worker2.ts');
+const nestedWorker = new Worker('./nestedWorker.ts');
+// new URL
+const urlWorker = new Worker(new URL('./commonWorker.ts', import.meta.url));
 
 function App() {
-  const [data1, setData1] = useState<number | null>(null);
-  const [working1, setWorking1] = useState(false);
+  const [commonData, setCommonData] = useState<number | null>(null);
+  const [nestedData, setNestedData] = useState<number | null>(null);
+  const [urlData, setURLData] = useState<number | null>(null);
 
-  const [data2, setData2] = useState<number | null>(null);
-  const [working2, setWorking2] = useState(false);
+  const [commonWorking, setCommonWorking] = useState(false);
+  const [nestedWoring, setNestedWoring] = useState(false);
+  const [urlWorking, setURLWorking] = useState(false);
 
   useEffect(() => {
-    worker1.addEventListener('message', (message) => {
-      setWorking1(false);
-      setData1(message.data);
+    commonWorker.addEventListener('message', (message) => {
+      setCommonWorking(false);
+      setCommonData(message.data);
     });
 
-    worker2.addEventListener('message', (message) => {
-      setWorking2(false);
-      setData2(message.data);
+    nestedWorker.addEventListener('message', (message) => {
+      setNestedWoring(false);
+      setNestedData(message.data);
+    });
+
+    urlWorker.addEventListener('message', (message) => {
+      setURLWorking(false);
+      setURLData(message.data);
     });
   }, []);
 
   function onClick() {
-    setWorking1(true);
-    setWorking2(true);
-    worker1.postMessage({ command: 'start' });
-    worker2.postMessage({ command: 'start' });
+    setCommonWorking(true);
+    setNestedWoring(true);
+    setURLWorking(true);
+    commonWorker.postMessage({ command: 'start' });
+    nestedWorker.postMessage({ command: 'start' });
+    urlWorker.postMessage({ command: 'start' });
   }
 
   return (
     <div>
       <button onClick={onClick}>Click to calculate</button>
 
-      {working1 && <div>Calculating...</div>}
-      {!working1 && data1 && <div>Calculate result: {data1}</div>}
+      <div>
+        <h2>Common Worker</h2>
+        {commonWorking && 'Calculating...'}
+        {!commonWorking && commonData && `Calculate result: ${commonData}`}
+      </div>
 
-      {working2 && <div>Calculating...</div>}
-      {!working2 && data2 && <div>Calculate result: {data2}</div>}
+      <div>
+        <h2>Nested Worker</h2>
+        {nestedWoring && 'Calculating...'}
+        {!nestedWoring && nestedData && `Calculate result: ${nestedData}`}
+      </div>
+
+      <div>
+        <h2>URL Worker</h2>
+        {urlWorking && 'Calculating...'}
+        {!urlWorking && urlData && `Calculate result: ${urlData}`}
+      </div>
     </div>
   );
 }
