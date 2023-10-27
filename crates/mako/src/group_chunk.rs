@@ -96,7 +96,7 @@ impl Compiler {
                     NextResult::First(head) => {
                         let (chunk, _, worker_dependencies) = self.create_chunk(
                             &head,
-                            ChunkType::Worker,
+                            ChunkType::Worker(head.clone()),
                             &mut chunk_graph,
                             vec![chunk_name.clone()],
                         );

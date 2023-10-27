@@ -10,7 +10,7 @@ use mako_core::anyhow::Result;
 use mako_core::indexmap::IndexSet;
 use mako_core::swc_css_ast::Stylesheet;
 
-use crate::chunk::Chunk;
+use crate::chunk::{Chunk, ChunkType};
 use crate::chunk_pot::util::{hash_hashmap, hash_vec};
 use crate::compiler::Context;
 use crate::config::Mode;
@@ -20,6 +20,7 @@ use crate::module_graph::ModuleGraph;
 
 pub struct ChunkPot<'a> {
     pub chunk_id: String,
+    pub chunk_type: ChunkType,
     pub js_name: String,
     pub module_map: HashMap<String, (&'a Module, u64)>,
     pub js_hash: u64,
@@ -36,6 +37,7 @@ impl<'cp> ChunkPot<'cp> {
 
         Ok(ChunkPot {
             js_name: chunk.filename(),
+            chunk_type: chunk.chunk_type.clone(),
             chunk_id: chunk.id.generate(context),
             module_map: js_modules.module_map,
             js_hash: js_modules.raw_hash,
