@@ -227,6 +227,31 @@ async function getOkamConfig(opts) {
   if (process.env.COMPRESS === 'none') {
     minify = false;
   }
+  // transform babel-plugin-import plugins to transformImport
+  const transformImport = [
+    ...opts.extraBabelPlugins,
+    ...opts.config.extraBabelPlugins,
+  ]
+    .filter((p) => /^import$|babel-plugin-import/.test(p[0]))
+    .map(([_, v]) => {
+      const { libraryName, libraryDirectory, style, ...others } = v;
+
+      if (Object.keys(others).length > 0) {
+        throw new Error(
+          `babel-plugin-import options ${Object.keys(
+            others,
+          )} is not supported in okam bundler`,
+        );
+      }
+
+      if (typeof style === 'function') {
+        throw new Error(
+          `babel-plugin-import function type style is not supported in okam bundler`,
+        );
+      }
+
+      return { libraryName, libraryDirectory, style };
+    });
   const okamConfig = {
     entry: opts.entry,
     output: { path: outputPath },
@@ -272,6 +297,7 @@ async function getOkamConfig(opts) {
     define,
     autoCSSModules: true,
     umd,
+    transformImport,
   };
 
   if (process.env.DUMP_MAKO_CONFIG) {
