@@ -33,7 +33,7 @@ pub async fn build(
     externals?: Record<
         string,
         string | {
-            window: string;
+            root: string;
             subpath: {
                 exclude?: string[];
                 rules: {

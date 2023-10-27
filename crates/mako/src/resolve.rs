@@ -98,7 +98,7 @@ fn get_external_target(
         // ex. import React from 'react';
         match external {
             ExternalConfig::Basic(external) => Some(external.clone()),
-            ExternalConfig::Advanced(config) => Some(config.window.clone()),
+            ExternalConfig::Advanced(config) => Some(config.root.clone()),
         }
     } else if let Some((advanced_config, subpath)) = externals.iter().find_map(|(key, config)| {
         // find matched advanced config
@@ -171,7 +171,7 @@ fn get_external_target(
                                 .join("."),
                         };
                     }
-                    Some(format!("{}.{}", advanced_config.window, replaced))
+                    Some(format!("{}.{}", advanced_config.root, replaced))
                 }
             }
         } else {
@@ -375,7 +375,7 @@ mod tests {
         let externals = HashMap::from([(
             "antd".to_string(),
             ExternalConfig::Advanced(ExternalAdvanced {
-                window: "antd".to_string(),
+                root: "antd".to_string(),
                 subpath: ExternalAdvancedSubpath {
                     exclude: Some(vec!["style".to_string()]),
                     rules: vec![

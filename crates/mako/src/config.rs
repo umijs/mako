@@ -173,7 +173,7 @@ pub struct ExternalAdvancedSubpath {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ExternalAdvanced {
-    pub window: String,
+    pub root: String,
     pub subpath: ExternalAdvancedSubpath,
 }
 
