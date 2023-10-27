@@ -9,10 +9,10 @@ use mako_core::swc_ecma_ast::{
 use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
-use crate::analyze_deps::{is_commonjs_require, is_dynamic_import, is_web_worker};
 use crate::build::parse_path;
 use crate::compiler::Context;
 use crate::module::Dependency;
+use crate::plugins::javascript::{is_commonjs_require, is_dynamic_import, is_web_worker};
 use crate::transformers::transform_virtual_css_modules::is_css_path;
 
 pub struct DepReplacer<'a> {

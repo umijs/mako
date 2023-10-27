@@ -3,10 +3,10 @@ use std::sync::Arc;
 use mako_core::swc_css_ast::{Url, UrlValue};
 use mako_core::swc_css_visit::VisitMut;
 
-use crate::analyze_deps::{handle_css_url, is_url_ignored};
 use crate::compiler::Context;
 use crate::load::handle_asset;
 use crate::module::Dependency;
+use crate::plugins::css::{handle_css_url, is_url_ignored};
 use crate::resolve::{self, Resolvers};
 
 pub struct CSSUrlReplacer<'a> {
