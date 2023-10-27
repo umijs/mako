@@ -154,7 +154,6 @@ pub enum ExternalAdvancedSubpathConverter {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(untagged)]
 pub enum ExternalAdvancedSubpathTarget {
-    #[serde(rename = "$EMPTY")]
     Empty,
     Tpl(String),
 }
@@ -162,8 +161,43 @@ pub enum ExternalAdvancedSubpathTarget {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ExternalAdvancedSubpathRule {
     pub regex: String,
+    #[serde(with = "external_target_format")]
     pub target: ExternalAdvancedSubpathTarget,
+    #[serde(rename = "targetConverter")]
     pub target_converter: Option<ExternalAdvancedSubpathConverter>,
+}
+
+/**
+ * custom formatter for convert $EMPTY to enum, because rename is not supported for $ symbol
+ * @see https://serde.rs/custom-date-format.html
+ */
+mod external_target_format {
+    use serde::{self, Deserialize, Deserializer, Serializer};
+
+    use super::ExternalAdvancedSubpathTarget;
+
+    pub fn serialize<S>(v: &ExternalAdvancedSubpathTarget, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match v {
+            ExternalAdvancedSubpathTarget::Empty => serializer.serialize_str("$EMPTY"),
+            ExternalAdvancedSubpathTarget::Tpl(s) => serializer.serialize_str(s),
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<ExternalAdvancedSubpathTarget, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let v = String::deserialize(deserializer)?;
+
+        if v == "$EMPTY" {
+            Ok(ExternalAdvancedSubpathTarget::Empty)
+        } else {
+            Ok(ExternalAdvancedSubpathTarget::Tpl(v))
+        }
+    }
 }
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ExternalAdvancedSubpath {
