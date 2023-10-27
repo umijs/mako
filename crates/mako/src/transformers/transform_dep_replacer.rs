@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use mako_core::swc_common::DUMMY_SP;
+use mako_core::swc_common::{Mark, DUMMY_SP};
 use mako_core::swc_ecma_ast::{
     AssignOp, BlockStmt, Expr, ExprOrSpread, FnExpr, Function, ImportDecl, Lit, NamedExport,
     NewExpr, Stmt, Str, ThrowStmt, VarDeclKind,
@@ -18,6 +18,8 @@ use crate::transformers::transform_virtual_css_modules::is_css_path;
 pub struct DepReplacer<'a> {
     pub to_replace: &'a DependenciesToReplace,
     pub context: &'a Arc<Context>,
+    pub unresolved_mark: Mark,
+    pub top_level_mark: Mark,
 }
 
 #[derive(Debug, Clone)]
@@ -114,7 +116,7 @@ impl VisitMut for DepReplacer<'_> {
     }
 
     fn visit_mut_new_expr(&mut self, new_expr: &mut NewExpr) {
-        if is_web_worker(new_expr) {
+        if is_web_worker(new_expr, self.unresolved_mark) {
             let args = new_expr.args.as_mut().unwrap();
             if let box Expr::Lit(Lit::Str(ref mut str)) = &mut args[0].expr {
                 self.replace_source(str);
@@ -188,6 +190,8 @@ mod tests {
             let mut visitor: Box<dyn VisitMut> = Box::new(DepReplacer {
                 to_replace: &to_replace,
                 context: &cloned,
+                unresolved_mark: ast.unresolved_mark,
+                top_level_mark: ast.top_level_mark,
             });
 
             assert_display_snapshot!(transform_ast_with(&mut ast.ast, &mut visitor, &context.meta.script.cm));
@@ -217,6 +221,8 @@ mod tests {
             let mut visitor: Box<dyn VisitMut> = Box::new(DepReplacer {
                 to_replace: &to_replace,
                 context: &cloned,
+                unresolved_mark: ast.unresolved_mark,
+                top_level_mark: ast.top_level_mark,
             });
 
             assert_display_snapshot!(transform_ast_with(
@@ -255,6 +261,8 @@ mod tests {
             let mut visitor: Box<dyn VisitMut> = Box::new(DepReplacer {
                 to_replace: &to_replace,
                 context: &cloned,
+                unresolved_mark: ast.unresolved_mark,
+                top_level_mark: ast.top_level_mark,
             });
 
             assert_display_snapshot!(transform_ast_with(
@@ -291,6 +299,8 @@ mod tests {
                 ignored: vec![],
             },
             context: &context,
+            unresolved_mark: Default::default(),
+            top_level_mark: Default::default(),
         };
         transform_js_code(code, &mut visitor, &context)
     }

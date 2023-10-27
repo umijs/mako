@@ -71,7 +71,11 @@ pub trait Plugin: Any + Send + Sync {
         Ok(())
     }
 
-    fn analyze_deps(&self, _param: &mut PluginDepAnalyzeParam) -> Result<Option<Vec<Dependency>>> {
+    fn analyze_deps(
+        &self,
+        _param: &mut PluginDepAnalyzeParam,
+        _context: &Arc<Context>,
+    ) -> Result<Option<Vec<Dependency>>> {
         Ok(None)
     }
 
@@ -151,9 +155,13 @@ impl PluginDriver {
         Ok(())
     }
 
-    pub fn analyze_deps(&self, param: &mut PluginDepAnalyzeParam) -> Result<Vec<Dependency>> {
+    pub fn analyze_deps(
+        &self,
+        param: &mut PluginDepAnalyzeParam,
+        context: &Arc<Context>,
+    ) -> Result<Vec<Dependency>> {
         for plugin in &self.plugins {
-            let ret = plugin.analyze_deps(param)?;
+            let ret = plugin.analyze_deps(param, context)?;
             if let Some(ret) = ret {
                 return Ok(ret);
             }

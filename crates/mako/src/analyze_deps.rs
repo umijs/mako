@@ -13,7 +13,7 @@ pub fn analyze_deps(ast: &ModuleAst, context: &Arc<Context>) -> Result<Vec<Depen
 
     let deps = context
         .plugin_driver
-        .analyze_deps(&mut analyze_deps_param)?;
+        .analyze_deps(&mut analyze_deps_param, context)?;
 
     Ok(deps)
 }

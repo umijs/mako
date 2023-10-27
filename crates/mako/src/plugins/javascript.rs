@@ -3,9 +3,9 @@ use std::sync::Arc;
 use mako_core::anyhow::Result;
 use mako_core::swc_common::collections::AHashSet;
 use mako_core::swc_common::sync::Lrc;
-use mako_core::swc_common::{self};
+use mako_core::swc_common::{self, Mark, GLOBALS};
 use mako_core::swc_ecma_ast::{
-    self, CallExpr, Callee, Expr, Id, Import, Lit, Module, ModuleDecl, NewExpr,
+    self, CallExpr, Callee, Expr, Id, Ident, Import, Lit, Module, ModuleDecl, NewExpr,
 };
 use mako_core::swc_ecma_utils::collect_decls;
 use mako_core::swc_ecma_visit::{Visit, VisitWith};
@@ -57,11 +57,17 @@ impl Plugin for JavaScriptPlugin {
         Ok(None)
     }
 
-    fn analyze_deps(&self, param: &mut PluginDepAnalyzeParam) -> Result<Option<Vec<Dependency>>> {
+    fn analyze_deps(
+        &self,
+        param: &mut PluginDepAnalyzeParam,
+        context: &Arc<Context>,
+    ) -> Result<Option<Vec<Dependency>>> {
         if let ModuleAst::Script(script) = param.ast {
-            let mut visitor = DepCollectVisitor::new();
-            script.ast.visit_with(&mut visitor);
-            Ok(Some(visitor.dependencies))
+            let mut visitor = DepCollectVisitor::new(script.unresolved_mark);
+            GLOBALS.set(&context.meta.script.globals, || {
+                script.ast.visit_with(&mut visitor);
+                Ok(Some(visitor.dependencies))
+            })
         } else {
             Ok(None)
         }
@@ -72,16 +78,18 @@ struct DepCollectVisitor {
     bindings: Lrc<AHashSet<Id>>,
     dependencies: Vec<Dependency>,
     order: usize,
+    unresolved_mark: Mark,
 }
 
 impl DepCollectVisitor {
-    fn new() -> Self {
+    fn new(unresolved_mark: Mark) -> Self {
         Self {
             bindings: Default::default(),
             dependencies: vec![],
             // start with 1
             // 0 for swc helpers
             order: 1,
+            unresolved_mark,
         }
     }
     fn bind_dependency(
@@ -149,7 +157,7 @@ impl Visit for DepCollectVisitor {
 
     // Web Workers: new Worker()
     fn visit_new_expr(&mut self, new_expr: &NewExpr) {
-        if is_web_worker(new_expr) {
+        if is_web_worker(new_expr, self.unresolved_mark) {
             let arg = &new_expr.args.as_ref().unwrap().get(0).unwrap().expr;
             if let box Expr::Lit(Lit::Str(str)) = arg {
                 self.bind_dependency(str.value.to_string(), ResolveType::Worker, None);
@@ -160,12 +168,16 @@ impl Visit for DepCollectVisitor {
     }
 }
 
-pub fn is_web_worker(new_expr: &NewExpr) -> bool {
+pub fn is_web_worker(new_expr: &NewExpr, unresolved_mark: Mark) -> bool {
     if !new_expr.args.is_some_and(|args| !args.is_empty()) || !new_expr.callee.is_ident() {
         return false;
     }
 
-    new_expr.callee.as_ident().unwrap().sym.eq("Worker")
+    if let box Expr::Ident(Ident { span, sym, .. }) = &new_expr.callee {
+        sym == "Worker" && (span.ctxt.outer() == unresolved_mark)
+    } else {
+        false
+    }
 }
 
 pub fn is_dynamic_import(call_expr: &CallExpr) -> bool {

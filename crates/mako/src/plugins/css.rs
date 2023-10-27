@@ -57,7 +57,11 @@ impl Plugin for CSSPlugin {
         Ok(None)
     }
 
-    fn analyze_deps(&self, param: &mut PluginDepAnalyzeParam) -> Result<Option<Vec<Dependency>>> {
+    fn analyze_deps(
+        &self,
+        param: &mut PluginDepAnalyzeParam,
+        _context: &Arc<Context>,
+    ) -> Result<Option<Vec<Dependency>>> {
         if let ModuleAst::Css(ast) = param.ast {
             let mut visitor = DepCollectVisitor::new();
             ast.visit_with(&mut visitor);
