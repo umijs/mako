@@ -78,18 +78,21 @@ impl Compiler {
         let mut removed = vec![];
         let mut added = vec![];
 
+        debug!("checking added...");
         let mut has_added = false;
         for (path, update_type) in &paths {
             if matches!(update_type, UpdateType::Add) {
-                debug!("has added {}", path.to_string_lossy());
+                debug!("  > {} is added", path.to_string_lossy());
                 has_added = true;
                 break;
             }
         }
+        debug!("checking added...done, has_added:{}", has_added);
 
         // try to resolve modules with missing deps
         // if found, add to modified queue
         if has_added {
+            debug!("checking modules_with_missing_deps... since has added modules");
             let mut modules_with_missing_deps =
                 self.context.modules_with_missing_deps.write().unwrap();
             let mut module_graph = self.context.module_graph.write().unwrap();
@@ -102,39 +105,44 @@ impl Compiler {
                         resolve::resolve(module_id, &dep, &self.context.resolvers, &self.context);
                     if resolved.is_ok() {
                         debug!(
-                            "missing deps resolved {:?} from {:?}",
+                            "  > missing deps resolved {:?} from {:?}",
                             dep.source, module_id
                         );
                         modified.push(PathBuf::from(module_id.clone()));
                         let info = module.info.as_mut().unwrap();
                         info.missing_deps.remove(&dep.source);
                         if info.missing_deps.is_empty() {
-                            debug!("remove {} from modules_with_missing_deps", module_id);
+                            debug!("  > remove {} from modules_with_missing_deps", module_id);
                             modules_with_missing_deps.retain(|x| x == module_id);
                         }
                     }
                 }
             }
+            debug!("checking modules_with_missing_deps...done");
         }
 
         // watch 到变化的文件，如果不在之前的 module graph 中，需过滤掉
+        debug!("filtering paths...");
         let paths: Vec<(PathBuf, UpdateType)> = {
             let module_graph = self.context.module_graph.read().unwrap();
             let mut new_paths = vec![];
             paths.into_iter().for_each(|(p, update_type)| {
                 if module_graph.has_module(&p.clone().into()) {
+                    debug!("  > {} is filtered", p.to_string_lossy());
                     new_paths.push((p.clone(), update_type.clone()));
                 }
                 let p_str = p.to_string_lossy().to_string();
                 if is_css_path(&p_str) {
                     let with_as_module = format!("{}?asmodule", p_str);
                     if module_graph.has_module(&with_as_module.clone().into()) {
+                        debug!("  > {} is filtered", with_as_module);
                         new_paths.push((PathBuf::from(with_as_module), update_type));
                     }
                 }
             });
             new_paths
         };
+        debug!("filtering paths...done");
 
         // 先分组
         for (path, update_type) in paths {
@@ -152,21 +160,36 @@ impl Compiler {
         }
 
         // 先做删除
+        debug!("remove: {:?}", &removed);
         let (removed_module_ids, affected_module_ids) = self.build_by_remove(removed);
+        debug!("after build_by_remove");
+        debug!("  > removed_module_ids: {:?}", &removed_module_ids);
+        debug!(
+            "  > affected_module_ids: {:?} (these will be added to modified",
+            &affected_module_ids
+        );
         update_result.removed.extend(removed_module_ids);
 
         modified.extend(affected_module_ids.into_iter().map(|i| i.to_path()));
 
         // 分析修改的模块，结果中会包含新增的模块
+        debug!("modify: {:?}", &modified);
         let (modified_module_ids, add_paths) = self
             .build_by_modify(modified, resolvers.clone())
             .map_err(|err| anyhow!(err))?;
+        debug!("after build_by_modify");
+        debug!("  > modified_module_ids: {:?}", &modified_module_ids);
+        debug!(
+            "  > add_paths: {:?} (these will be added to added)",
+            &add_paths
+        );
 
         added.extend(add_paths);
         debug!("added:{:?}", &added);
         update_result.modified.extend(modified_module_ids);
 
         // 最后做添加
+        debug!("add: {:?}", &added);
         let added_module_ids = self.build_by_add(&added, resolvers)?;
         update_result.added.extend(
             added
@@ -175,8 +198,8 @@ impl Compiler {
                 .collect::<HashSet<_>>(),
         );
         update_result.added.extend(added_module_ids);
-        debug!("update_result:{:?}", &update_result);
 
+        debug!("update_result: {:?}", &update_result);
         Result::Ok(update_result)
     }
 
@@ -200,16 +223,13 @@ impl Compiler {
         let module_graph = self.context.module_graph.read().unwrap();
         let modules = module_graph.modules();
 
-        // TODO: 考虑更好的实现方案
-        // concat related query modules for modified paths
-        // for example: concat a.module.css?modules for a.module.css
+        // if ?modules is modified, add ?asmodule to modified
         for module in modules
             .iter()
             .filter(|module| module.id.id.contains("?modules"))
         {
             let origin_id = module.id.id.split('?').next().unwrap();
             let css_modules_virtual_id = format!("{}?asmodule", origin_id);
-
             if modified.contains(&PathBuf::from(css_modules_virtual_id)) {
                 modified.push(PathBuf::from(module.id.id.clone()));
             }
@@ -219,8 +239,8 @@ impl Compiler {
         let result = modified
             .par_iter()
             .map(|entry| {
+                debug!("build by modify: {:?} start", entry);
                 // first build
-
                 let is_entry = {
                     // there must be a entry, so unwrap is safe
                     let mut entries = self.context.config.entry.values();
@@ -236,6 +256,11 @@ impl Compiler {
                     },
                     resolvers.clone(),
                 )?;
+
+                debug!(
+                    "  > missing deps: {:?}",
+                    module.info.clone().unwrap().missing_deps
+                );
 
                 // update modules_with_missing_deps
                 if module.info.clone().unwrap().missing_deps.is_empty() {
@@ -273,6 +298,7 @@ impl Compiler {
                 });
 
                 let d = diff(current_dependencies, target_dependencies);
+                debug!("build by modify: {:?} end", entry);
                 Result::Ok((module, d.added, d.removed, add_modules))
             })
             .collect::<Result<Vec<_>>>();
