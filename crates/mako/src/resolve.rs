@@ -111,7 +111,17 @@ fn do_resolve(
         if let Ok(result) = result {
             match result {
                 ResolveResult::Resource(resource) => {
-                    Ok(ResolverResource::Resolved(ResolvedResource(resource)))
+                    // TODO: 只在 watch 时且二次编译时才做这个检查
+                    // TODO: 临时方案，需要改成删除文件时删 resolve cache 里的内容
+                    // 比如把 util.ts 改名为 util.tsx，目前应该是还有问题的
+                    if resource.path.exists() {
+                        Ok(ResolverResource::Resolved(ResolvedResource(resource)))
+                    } else {
+                        Err(anyhow!(ResolveError::ResolveError {
+                            path: source.to_string(),
+                            from: path.to_string_lossy().to_string(),
+                        }))
+                    }
                 }
                 ResolveResult::Ignored => {
                     debug!("resolve ignored: {:?}", source);
@@ -139,7 +149,6 @@ pub fn get_resolvers(config: &Config) -> Resolvers {
 fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
     let alias = parse_alias(config.resolve.alias.clone());
     let is_browser = config.platform == Platform::Browser;
-    // TODO: read from config
     Resolver::new(Options {
         alias,
         extensions: vec![
