@@ -16,7 +16,7 @@ use crate::analyze_deps::analyze_deps;
 use crate::ast::{build_js_ast, generate_code_frame};
 use crate::chunk_pot::util::{hash_hashmap, hash_vec};
 use crate::compiler::{Compiler, Context};
-use crate::config::{Mode, OutputMode};
+use crate::config::Mode;
 use crate::load::{ext_name, load};
 use crate::module::{Dependency, Module, ModuleAst, ModuleId, ModuleInfo};
 use crate::parse::parse;
@@ -282,11 +282,7 @@ impl Compiler {
 
         // 在此之前需要把所有依赖都和模块关联起来，并且需要使用 resolved source
         // analyze deps
-        let mut deps = analyze_deps(&ast, context)?;
-
-        if context.config.output.mode == OutputMode::MinifishPrebuild {
-            deps.retain(|dep| !dep.source.ends_with("_minifish_global_provider.js"));
-        }
+        let deps = analyze_deps(&ast, context)?;
 
         // resolve
         let mut dep_resolve_err = None;
