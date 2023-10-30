@@ -221,24 +221,31 @@ impl ProjectWatch {
         let tx = self.tx.clone();
 
         let mut last_full_hash = Box::new(c.full_hash());
+        debug!("last_full_hash: {:?}", last_full_hash);
 
         let watch_compiler = c.clone();
 
         let pool = ThreadPoolBuilder::new().build().unwrap();
         pool.spawn(move || {
             watch(&root, |events| {
+                debug!("watch events detected: {:?}", events);
+                debug!("checking update status...");
                 let res = watch_compiler.update(events.into());
-                let has_no_missing_deps = {
+                let has_missing_deps = {
                     watch_compiler
                         .context
                         .modules_with_missing_deps
                         .read()
                         .unwrap()
-                        .is_empty()
+                        .len()
+                        > 0
                 };
+                debug!("has_missing_deps: {}", has_missing_deps);
+                debug!("checking update status... done");
 
                 match res {
                     Err(err) => {
+                        debug!("update status is error: {:?}", err);
                         println!("Compiling...");
                         // unescape
                         let mut err = err
@@ -254,13 +261,20 @@ impl ProjectWatch {
                         eprintln!("{}", err);
                     }
                     Ok(res) => {
+                        debug!("update status is ok, is_updated: {}", res.is_updated());
                         if res.is_updated() {
                             println!("Compiling...");
                             let t_compiler = Instant::now();
                             let next_full_hash =
                                 watch_compiler.generate_hot_update_chunks(res, *last_full_hash);
+                            debug!(
+                                "hot update chunks generated, next_full_hash: {:?}",
+                                next_full_hash
+                            );
 
-                            if has_no_missing_deps {
+                            // do not print hot rebuilt message if there are missing deps
+                            // since it's not a success rebuilt to user
+                            if !has_missing_deps {
                                 println!(
                                     "Hot rebuilt in {}",
                                     format!("{}ms", t_compiler.elapsed().as_millis()).bold()
@@ -273,25 +287,26 @@ impl ProjectWatch {
                             }
 
                             let next_full_hash = next_full_hash.unwrap();
-
                             debug!(
-                                "Updated: {:?} {:?} {}",
+                                "hash info, next: {:?}, last: {:?}, is_equal: {}",
                                 next_full_hash,
                                 last_full_hash,
                                 next_full_hash == *last_full_hash
                             );
                             if next_full_hash == *last_full_hash {
-                                // no need to continue
+                                debug!("hash equals, will not do full rebuild");
                                 return;
                             } else {
                                 *last_full_hash = next_full_hash;
                             }
 
+                            debug!("full rebuild...");
                             if let Err(e) = c.emit_dev_chunks() {
-                                debug!("Error in build: {:?}, will rebuild soon", e);
+                                debug!("  > build failed: {:?}", e);
                                 return;
                             }
-                            if has_no_missing_deps {
+                            debug!("full rebuild...done");
+                            if !has_missing_deps {
                                 println!(
                                     "Full rebuilt in {}",
                                     format!("{}ms", t_compiler.elapsed().as_millis()).bold()
@@ -304,6 +319,7 @@ impl ProjectWatch {
                                     hash: next_full_hash,
                                 })
                                 .unwrap();
+                                debug!("send message to clients");
                             }
                         }
                     }

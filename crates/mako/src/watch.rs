@@ -3,6 +3,7 @@ use std::sync::mpsc::channel;
 
 use mako_core::notify::event::{AccessKind, CreateKind, DataChange, ModifyKind, RenameMode};
 use mako_core::notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use mako_core::tracing::debug;
 
 use crate::update::UpdateType;
 
@@ -74,6 +75,15 @@ where
     });
 
     while let Ok(event) = rx.recv().unwrap() {
+        let should_ignore = event
+            .paths
+            .iter()
+            // TODO: add more
+            .any(|path| path.to_string_lossy().contains(".DS_Store"));
+        if should_ignore {
+            continue;
+        }
+        debug!("watch event: {:?}", event);
         match event.kind {
             EventKind::Create(CreateKind::File) => {
                 func(crate::watch::WatchEvent::Added(event.paths));
@@ -84,10 +94,16 @@ where
                 }
             }
             EventKind::Modify(ModifyKind::Name(RenameMode::Any)) => {
-                func(crate::watch::WatchEvent::Removed(event.paths));
+                // add and remove all emit rename event
+                // so we need to check if the file is exists to determine
+                let is_added = event.paths.iter().any(|path| path.exists());
+                if is_added {
+                    func(crate::watch::WatchEvent::Added(event.paths));
+                } else {
+                    func(crate::watch::WatchEvent::Removed(event.paths));
+                }
             }
             EventKind::Remove(_) => {
-                println!("removed");
                 func(crate::watch::WatchEvent::Removed(event.paths));
             }
             EventKind::Access(AccessKind::Close(_)) => {

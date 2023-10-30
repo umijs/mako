@@ -291,9 +291,6 @@ impl Compiler {
         // resolve
         let mut dep_resolve_err = None;
         let mut dependencies_resource = Vec::new();
-        let _resolved_deps_to_source = HashMap::<String, String>::new();
-        // let mut duplicated_source_to_source_map = HashMap::new();
-
         let mut missing_deps = HashMap::new();
         let mut ignored_deps = Vec::new();
 

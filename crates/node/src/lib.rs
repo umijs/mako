@@ -30,7 +30,20 @@ pub async fn build(
     mode?: "development" | "production";
     define?: Record<string, string>;
     devtool?: "source-map" | "inline-source-map" | "none";
-    externals?: Record<string, string>;
+    externals?: Record<
+        string,
+        string | {
+            root: string;
+            subpath: {
+                exclude?: string[];
+                rules: {
+                    regex: string;
+                    target: string | '$EMPTY';
+                    targetConverter?: 'PascalCase';
+                }[];
+            };
+        },
+    >;
     copy?: string[];
     code_splitting: "auto" | "none";
     providers?: Record<string, string[]>;
@@ -55,7 +68,7 @@ pub async fn build(
     ignoreCSSParserErrors?: boolean;
     dynamicImportToRequire?: boolean;
     umd?: string;
-    transformImport?: { library: string; libraryDirectory?: string; style?: boolean | string }[];
+    transformImport?: { libraryName: string; libraryDirectory?: string; style?: boolean | string }[];
 }"#)]
     config: serde_json::Value,
     watch: bool,

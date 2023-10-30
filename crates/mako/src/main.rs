@@ -77,7 +77,7 @@ async fn main() -> Result<()> {
     let root = root.canonicalize().unwrap();
 
     // config
-    let mut config = config::Config::new(&root, None, None).unwrap();
+    let mut config = config::Config::new(&root, None, None).expect("load config error");
 
     config.mode = cli.mode;
 
