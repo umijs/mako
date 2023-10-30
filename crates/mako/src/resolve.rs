@@ -315,7 +315,6 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
                 "webpack".to_string(),
             ]),
             main_fields: vec!["module".to_string(), "main".to_string()],
-            browser_field: true,
             ..Default::default()
         },
     };
@@ -357,7 +356,7 @@ mod tests {
     #[test]
     fn test_resolve_dep_browser_fields() {
         let x = resolve("test/resolve/browser_fields", None, None, "index.ts", "foo");
-        assert_eq!(x, ("node_modules/foo/cjs-browser.js".to_string(), None));
+        assert_eq!(x, ("node_modules/foo/esm-browser.js".to_string(), None));
     }
 
     #[test]
