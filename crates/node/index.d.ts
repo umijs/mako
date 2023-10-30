@@ -19,7 +19,20 @@ basePath: string;
 mode?: "development" | "production";
 define?: Record<string, string>;
 devtool?: "source-map" | "inline-source-map" | "none";
-externals?: Record<string, string>;
+externals?: Record<
+string,
+string | {
+root: string;
+subpath: {
+exclude?: string[];
+rules: {
+regex: string;
+target: string | '$EMPTY';
+targetConverter?: 'PascalCase';
+}[];
+};
+},
+>;
 copy?: string[];
 code_splitting: "auto" | "none";
 providers?: Record<string, string[]>;
@@ -44,5 +57,5 @@ autoCssModules?: boolean;
 ignoreCSSParserErrors?: boolean;
 dynamicImportToRequire?: boolean;
 umd?: string;
-transformImport?: { library: string; libraryDirectory?: string; style?: boolean | string }[];
+transformImport?: { libraryName: string; libraryDirectory?: string; style?: boolean | string }[];
 }, watch: boolean): Promise<void>
