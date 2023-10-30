@@ -384,7 +384,6 @@ impl Config {
             let basic_external_values = config
                 .externals
                 .values()
-                .into_iter()
                 .filter_map(|v| match v {
                     ExternalConfig::Basic(b) => Some(b),
                     _ => None,
