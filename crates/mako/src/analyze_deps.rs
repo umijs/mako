@@ -34,9 +34,9 @@ fn analyze_deps_css(ast: &swc_css_ast::Stylesheet) -> Result<Vec<Dependency>> {
 pub fn is_url_ignored(url: &str) -> bool {
     let lower_url = url.to_lowercase();
     lower_url.starts_with("http://")
-        || url.starts_with("https://")
-        || url.starts_with("data:")
-        || url.starts_with("//")
+        || lower_url.starts_with("https://")
+        || lower_url.starts_with("data:")
+        || lower_url.starts_with("//")
 }
 
 pub fn handle_css_url(url: String) -> String {
@@ -209,6 +209,14 @@ mod tests {
         assert!(
             is_url_ignored(&String::from("https://abc")),
             "https should be ignored"
+        );
+        assert!(
+            is_url_ignored(&String::from("HTTPS://abc")),
+            "HTTPS should be ignored (support uppercase)"
+        );
+        assert!(
+            is_url_ignored(&String::from("//abc")),
+            "// prefixed url should be ignored"
         );
         assert!(
             is_url_ignored(&String::from("data:image")),
