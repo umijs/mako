@@ -27,11 +27,13 @@ enum ResolveError {
 enum ResolverType {
     Cjs,
     Esm,
+    Css,
 }
 
 pub struct Resolvers {
     cjs: Resolver,
     esm: Resolver,
+    css: Resolver,
 }
 
 #[derive(Debug, Clone)]
@@ -83,6 +85,8 @@ pub fn resolve(
     mako_core::mako_profile_scope!("resolve", &dep.source);
     let resolver = if dep.resolve_type == ResolveType::Require {
         &resolvers.cjs
+    } else if dep.resolve_type == ResolveType::Css {
+        &resolvers.css
     } else {
         &resolvers.esm
     };
@@ -238,9 +242,11 @@ fn do_resolve(
 pub fn get_resolvers(config: &Config) -> Resolvers {
     let cjs_resolver = get_resolver(config, ResolverType::Cjs);
     let esm_resolver = get_resolver(config, ResolverType::Esm);
+    let css_resolver = get_resolver(config, ResolverType::Css);
     Resolvers {
         cjs: cjs_resolver,
         esm: esm_resolver,
+        css: css_resolver,
     }
 }
 
@@ -300,6 +306,10 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
         } else {
             vec!["module".to_string(), "main".to_string()]
         },
+        // prefer relative module for css resolver
+        // keep behavior consistent with webpack css-loader
+        // ref: https://webpack.js.org/configuration/resolve/#resolvepreferrelative
+        prefer_relative: resolver_type == ResolverType::Css,
         browser_field: true,
         ..Default::default()
     })
@@ -334,6 +344,23 @@ mod tests {
     fn test_resolve_dep() {
         let x = resolve("test/resolve/normal", None, None, "index.ts", "foo");
         assert_eq!(x, ("node_modules/foo/index.js".to_string(), None));
+    }
+
+    #[test]
+    fn test_resolve_css() {
+        // css resolver should prefer relative module
+        let x = css_resolve(
+            "test/resolve/css",
+            None,
+            None,
+            "index.css",
+            "local/local.css",
+        );
+        assert_eq!(x, ("local/local.css".to_string(), None));
+
+        // css resolver also fallback to node_modules
+        let x = css_resolve("test/resolve/css", None, None, "index.css", "dep/dep.css");
+        assert_eq!(x, ("node_modules/dep/dep.css".to_string(), None));
     }
 
     #[test]
@@ -469,13 +496,34 @@ mod tests {
         path: &str,
         source: &str,
     ) -> (String, Option<String>) {
+        base_resolve(base, alias, externals, path, source, ResolverType::Cjs)
+    }
+
+    fn css_resolve(
+        base: &str,
+        alias: Option<HashMap<String, String>>,
+        externals: Option<&HashMap<String, ExternalConfig>>,
+        path: &str,
+        source: &str,
+    ) -> (String, Option<String>) {
+        base_resolve(base, alias, externals, path, source, ResolverType::Css)
+    }
+
+    fn base_resolve(
+        base: &str,
+        alias: Option<HashMap<String, String>>,
+        externals: Option<&HashMap<String, ExternalConfig>>,
+        path: &str,
+        source: &str,
+        resolve_type: ResolverType,
+    ) -> (String, Option<String>) {
         let current_dir = std::env::current_dir().unwrap();
         let fixture = current_dir.join(base);
         let mut config: Config = Default::default();
         if let Some(alias_config) = alias {
             config.resolve.alias = alias_config;
         }
-        let resolver = super::get_resolver(&config, ResolverType::Cjs);
+        let resolver = super::get_resolver(&config, resolve_type);
         let resource = super::do_resolve(
             &fixture.join(path).to_string_lossy(),
             source,

@@ -37,13 +37,11 @@ pub fn is_url_ignored(url: &str) -> bool {
 
 pub fn handle_css_url(url: String) -> String {
     let mut url = url;
+    // compatible with the legacy css-loader usage in webpack
+    // ref: https://stackoverflow.com/a/39535907
     // @import "~foo" => "foo"
     if url.starts_with('~') {
         url = url[1..].to_string();
-    }
-    // @import "foo" => "./foo"
-    else if !url.starts_with("./") && !url.starts_with("../") {
-        url = format!("./{}", url);
     }
     url
 }
