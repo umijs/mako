@@ -234,7 +234,7 @@ pub struct Config {
     pub copy: Vec<String>,
     pub public_path: String,
     pub inline_limit: usize,
-    pub targets: HashMap<String, usize>,
+    pub targets: HashMap<String, f32>,
     pub platform: Platform,
     pub module_id_strategy: ModuleIdStrategy,
     pub define: HashMap<String, Value>,
