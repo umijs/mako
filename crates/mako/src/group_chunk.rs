@@ -54,7 +54,6 @@ impl Compiler {
             edges.extend(
                 [dynamic_dependencies.clone(), worker_dependencies.clone()]
                     .concat()
-                    .clone()
                     .into_iter()
                     .map(|dep| (chunk.id.clone(), dep.generate(&self.context).into())),
             );
@@ -88,7 +87,6 @@ impl Compiler {
             }
 
             // handle worker dependencies
-            // TODO 支持 WorkerType 为 module 的情况
             let mut bfs = Bfs::new(VecDeque::from(worker_dependencies), visited.clone());
             while !bfs.done() {
                 match bfs.next_node() {
@@ -329,7 +327,7 @@ impl Compiler {
         let mut bfs = Bfs::new(VecDeque::from(vec![entry_module_id]), Default::default());
 
         let chunk_id = entry_module_id.generate(&self.context);
-        let mut chunk = Chunk::new(chunk_id.into(), chunk_type);
+        let mut chunk = Chunk::new(chunk_id.into(), chunk_type.clone());
         let mut visited_modules: Vec<ModuleId> = vec![entry_module_id.clone()];
 
         let module_graph = self.context.module_graph.read().unwrap();
@@ -344,8 +342,8 @@ impl Compiler {
                             .unwrap()
                             .has_module(head)
                     });
-
-                    if !module_already_in_entry {
+                    // worker 无法共享 entry 的依赖
+                    if !module_already_in_entry || matches!(chunk_type, ChunkType::Worker(_)) {
                         let parent_index = visited_modules
                             .iter()
                             .position(|m| m.id == head.id)

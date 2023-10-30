@@ -1,16 +1,17 @@
 ---
 source: crates/mako/src/transformers/transform_react.rs
+assertion_line: 231
 expression: "transform(TransformTask {\n        code: \"export default function R(){return <h1></h1>}\".to_string(),\n        is_entry: false,\n        path: \"index.jsx\".to_string(),\n    })"
 ---
 import * as RefreshRuntime from 'react-refresh';
 var prevRefreshReg;
 var prevRefreshSig;
-prevRefreshReg = window.$RefreshReg$;
-prevRefreshSig = window.$RefreshSig$;
-window.$RefreshReg$ = (type, id)=>{
+prevRefreshReg = self.$RefreshReg$;
+prevRefreshSig = self.$RefreshSig$;
+self.$RefreshReg$ = (type, id)=>{
     RefreshRuntime.register(type, module.id + id);
 };
-window.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
+self.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
 import { jsxDEV as _jsxDEV } from "react/jsx-dev-runtime";
 export default function R() {
     return _jsxDEV("h1", {}, void 0, false, {
@@ -22,8 +23,8 @@ export default function R() {
 _c = R;
 var _c;
 $RefreshReg$(_c, "R");
-window.$RefreshReg$ = prevRefreshReg;
-window.$RefreshSig$ = prevRefreshSig;
+self.$RefreshReg$ = prevRefreshReg;
+self.$RefreshSig$ = prevRefreshSig;
 function $RefreshIsReactComponentLike$(moduleExports) {
     if (RefreshRuntime.isLikelyComponentType(moduleExports.default || moduleExports)) {
         return true;

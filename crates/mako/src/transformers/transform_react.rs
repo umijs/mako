@@ -111,9 +111,9 @@ pub fn react_refresh_entry_prefix(context: &Arc<Context>) -> Box<dyn VisitMut> {
         context: context.clone(),
         code: r#"
 const RefreshRuntime = require('react-refresh');
-RefreshRuntime.injectIntoGlobalHook(window);
-window.$RefreshReg$ = () => {};
-window.$RefreshSig$ = () => (type) => type;
+RefreshRuntime.injectIntoGlobalHook(self);
+self.$RefreshReg$ = () => {};
+self.$RefreshSig$ = () => (type) => type;
 "#
         .to_string(),
     })
@@ -127,12 +127,12 @@ import * as RefreshRuntime from 'react-refresh';
 var prevRefreshReg;
 var prevRefreshSig;
 
-prevRefreshReg = window.$RefreshReg$;
-prevRefreshSig = window.$RefreshSig$;
-window.$RefreshReg$ = (type, id) => {
+prevRefreshReg = self.$RefreshReg$;
+prevRefreshSig = self.$RefreshSig$;
+self.$RefreshReg$ = (type, id) => {
   RefreshRuntime.register(type, module.id + id);
 };
-window.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
+self.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
 "#
         .to_string(),
     })
@@ -152,8 +152,8 @@ pub fn react_refresh_module_postfix(context: &Arc<Context>) -> Box<dyn VisitMut>
     Box::new(PostfixCode {
         context: context.clone(),
         code: r#"
-window.$RefreshReg$ = prevRefreshReg;
-window.$RefreshSig$ = prevRefreshSig;
+self.$RefreshReg$ = prevRefreshReg;
+self.$RefreshSig$ = prevRefreshSig;
 function $RefreshIsReactComponentLike$(moduleExports) {
   if (RefreshRuntime.isLikelyComponentType(moduleExports.default || moduleExports)) {
     return true;
