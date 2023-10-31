@@ -167,6 +167,11 @@ function checkConfig(config) {
   if (config.mpa) {
     throw new Error('mpa is not supported in okam bundler');
   }
+
+  // 不支持数组 externals
+  if (Array.isArray(config.externals)) {
+    throw new Error('externals array is not supported in okam bundler');
+  }
 }
 
 async function getOkamConfig(opts) {
@@ -201,6 +206,7 @@ async function getOkamConfig(opts) {
     codeSplitting,
     devtool,
     jsMinifier,
+    externals,
   } = opts.config;
   const outputPath = path.join(opts.cwd, 'dist');
   // TODO:
@@ -298,6 +304,7 @@ async function getOkamConfig(opts) {
     autoCSSModules: true,
     umd,
     transformImport,
+    externals,
   };
 
   if (process.env.DUMP_MAKO_CONFIG) {
