@@ -191,6 +191,9 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
 
                     tree_shake_module.updated_ast = Some(shadow);
 
+                    // 解决模块自己引用自己，导致 tree_shake_module 同时存在多个可变引用
+                    drop(tree_shake_module);
+
                     for import_info in used_imports {
                         if let Some(order) = add_used_exports_by_import_info(
                             &tree_shake_modules_map,
@@ -209,7 +212,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
                             &tree_shake_modules_map,
                             &*module_graph,
                             tree_shake_module_id,
-                            tree_shake_module.side_effects,
+                            false,
                             &export_info,
                         ) {
                             if next_index > order {
