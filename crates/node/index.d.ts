@@ -6,7 +6,12 @@
 export function build(root: string, config:
 {
 entry?: Record<string, string>;
-output?: {path: string; mode: "bundle" | "minifish" ;  esVersion?: string, };
+output?: {
+path: string;
+mode: "bundle" | "minifish" ;
+esVersion?: string;
+meta?: boolean;
+};
 resolve?: {
 alias?: Record<string, string>;
 extensions?: string[];

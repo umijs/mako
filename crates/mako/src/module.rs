@@ -10,6 +10,7 @@ use mako_core::swc_common::{Span, DUMMY_SP};
 use mako_core::swc_ecma_ast::{BlockStmt, FnExpr, Function, Module as SwcModule};
 use mako_core::swc_ecma_utils::quote_ident;
 use mako_core::{md5, swc_css_ast};
+use serde::Serialize;
 
 use crate::ast::Ast;
 use crate::compiler::Context;
@@ -26,7 +27,7 @@ pub struct Dependency {
     pub span: Option<Span>,
 }
 
-#[derive(Eq, Hash, PartialEq, Debug, Clone)]
+#[derive(Eq, Hash, PartialEq, Serialize, Debug, Clone, Copy)]
 pub enum ResolveType {
     Import,
     ExportNamed,

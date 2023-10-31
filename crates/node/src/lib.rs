@@ -17,7 +17,12 @@ pub async fn build(
     #[napi(ts_arg_type = r#"
 {
     entry?: Record<string, string>;
-    output?: {path: string; mode: "bundle" | "minifish" ;  esVersion?: string, };
+    output?: {
+        path: string; 
+        mode: "bundle" | "minifish" ;  
+        esVersion?: string;
+        meta?: boolean;
+    };
     resolve?: {
        alias?: Record<string, string>;
        extensions?: string[];

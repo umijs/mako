@@ -11,6 +11,7 @@ pub mod json;
 pub mod less;
 pub mod manifest;
 pub mod md;
+pub mod meta;
 pub mod minifish_compiler;
 pub mod node_polyfill;
 pub mod runtime;

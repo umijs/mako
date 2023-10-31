@@ -248,6 +248,10 @@ impl Compiler {
             );
         }
 
+        if config.output.meta {
+            plugins.push(Arc::new(plugins::meta::MetaPlugin {}));
+        }
+
         let plugin_driver = PluginDriver::new(plugins);
 
         plugin_driver.modify_config(&mut config)?;
