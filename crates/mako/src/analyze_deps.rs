@@ -32,18 +32,20 @@ fn analyze_deps_css(ast: &swc_css_ast::Stylesheet) -> Result<Vec<Dependency>> {
 }
 
 pub fn is_url_ignored(url: &str) -> bool {
-    url.starts_with("http://") || url.starts_with("https://") || url.starts_with("data:")
+    let lower_url = url.to_lowercase();
+    lower_url.starts_with("http://")
+        || url.starts_with("https://")
+        || url.starts_with("data:")
+        || url.starts_with("//")
 }
 
 pub fn handle_css_url(url: String) -> String {
     let mut url = url;
+    // compatible with the legacy css-loader usage in webpack
+    // ref: https://stackoverflow.com/a/39535907
     // @import "~foo" => "foo"
     if url.starts_with('~') {
         url = url[1..].to_string();
-    }
-    // @import "foo" => "./foo"
-    else if !url.starts_with("./") && !url.starts_with("../") {
-        url = format!("./{}", url);
     }
     url
 }
