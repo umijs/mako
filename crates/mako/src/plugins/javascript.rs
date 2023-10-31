@@ -224,16 +224,14 @@ pub fn is_import_meta_url(expr: &Expr) -> bool {
     matches!(
         expr,
         Expr::Member(MemberExpr {
-            obj:
-                box Expr::MetaProp(MetaPropExpr {
-                    kind: MetaPropKind::ImportMeta,
-                    ..
-                }),
-            prop:
-                MemberProp::Ident(Ident {
-                    sym: js_word!("url"),
-                    ..
-                }),
+            obj: box Expr::MetaProp(MetaPropExpr {
+                kind: MetaPropKind::ImportMeta,
+                ..
+            }),
+            prop: MemberProp::Ident(Ident {
+                sym: js_word!("url"),
+                ..
+            }),
             ..
         })
     )
