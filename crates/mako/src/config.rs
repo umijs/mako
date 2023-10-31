@@ -426,11 +426,7 @@ impl Config {
                 .into_iter()
                 .map(|(k, v)| {
                     let v = if v.starts_with('.') {
-                        root.join(v)
-                            .canonicalize()
-                            .unwrap()
-                            .to_string_lossy()
-                            .to_string()
+                        root.join(v).to_string_lossy().to_string()
                     } else {
                         v
                     };
