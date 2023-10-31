@@ -177,6 +177,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
                     .get_module_mut(&tree_shake_module.module_id)
                     .unwrap();
                 let ast = &mut module.info.as_mut().unwrap().ast;
+                let side_effects = tree_shake_module.side_effects;
 
                 if let ModuleAst::Script(swc_module) = ast {
                     // remove useless statements and useless imports/exports identifiers, then all preserved import info and export info will be added to the used_exports.
@@ -212,7 +213,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
                             &tree_shake_modules_map,
                             &*module_graph,
                             tree_shake_module_id,
-                            false,
+                            side_effects,
                             &export_info,
                         ) {
                             if next_index > order {

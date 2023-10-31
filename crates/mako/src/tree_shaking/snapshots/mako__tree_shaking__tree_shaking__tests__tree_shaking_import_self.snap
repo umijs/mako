@@ -60,7 +60,7 @@ var m = {
             }
         });
         var _b = require("b.js");
-        const b = "b";
+        const b = 'b';
     },
     "c.js": function(module, exports, require) {
         Object.defineProperty(exports, "__esModule", {
