@@ -5,15 +5,15 @@ expression: "transform(TransformTask {\n        is_entry: true,\n        path: \
 import * as RefreshRuntime from 'react-refresh';
 var prevRefreshReg;
 var prevRefreshSig;
-prevRefreshReg = window.$RefreshReg$;
-prevRefreshSig = window.$RefreshSig$;
-window.$RefreshReg$ = (type, id)=>{
+prevRefreshReg = self.$RefreshReg$;
+prevRefreshSig = self.$RefreshSig$;
+self.$RefreshReg$ = (type, id)=>{
     RefreshRuntime.register(type, module.id + id);
 };
-window.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
+self.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
 console.log('entry');
-window.$RefreshReg$ = prevRefreshReg;
-window.$RefreshSig$ = prevRefreshSig;
+self.$RefreshReg$ = prevRefreshReg;
+self.$RefreshSig$ = prevRefreshSig;
 function $RefreshIsReactComponentLike$(moduleExports) {
     if (RefreshRuntime.isLikelyComponentType(moduleExports.default || moduleExports)) {
         return true;

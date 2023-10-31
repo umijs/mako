@@ -1,12 +1,23 @@
 use std::sync::Arc;
 
 use mako_core::anyhow::Result;
+use mako_core::swc_atoms::js_word;
+use mako_core::swc_common::collections::AHashSet;
+use mako_core::swc_common::sync::Lrc;
+use mako_core::swc_common::{self, Mark, GLOBALS};
+use mako_core::swc_ecma_ast::{
+    self, CallExpr, Callee, Expr, Id, Ident, Import, Lit, MemberExpr, MemberProp, MetaPropExpr,
+    MetaPropKind, Module, ModuleDecl, NewExpr, Str,
+};
+use mako_core::swc_ecma_utils::collect_decls;
+use mako_core::swc_ecma_visit::{Visit, VisitWith};
 
+use super::css::is_url_ignored;
 use crate::ast::build_js_ast;
 use crate::compiler::Context;
 use crate::load::{read_content, Content};
-use crate::module::ModuleAst;
-use crate::plugin::{Plugin, PluginLoadParam, PluginParseParam};
+use crate::module::{Dependency, ModuleAst, ResolveType};
+use crate::plugin::{Plugin, PluginDepAnalyzeParam, PluginLoadParam, PluginParseParam};
 
 pub struct JavaScriptPlugin {}
 
@@ -48,4 +59,213 @@ impl Plugin for JavaScriptPlugin {
         }
         Ok(None)
     }
+
+    fn analyze_deps(
+        &self,
+        param: &mut PluginDepAnalyzeParam,
+        context: &Arc<Context>,
+    ) -> Result<Option<Vec<Dependency>>> {
+        if let ModuleAst::Script(script) = param.ast {
+            let mut visitor = DepCollectVisitor::new(script.unresolved_mark);
+            GLOBALS.set(&context.meta.script.globals, || {
+                script.ast.visit_with(&mut visitor);
+                Ok(Some(visitor.dependencies))
+            })
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+struct DepCollectVisitor {
+    bindings: Lrc<AHashSet<Id>>,
+    dependencies: Vec<Dependency>,
+    order: usize,
+    unresolved_mark: Mark,
+}
+
+impl DepCollectVisitor {
+    fn new(unresolved_mark: Mark) -> Self {
+        Self {
+            bindings: Default::default(),
+            dependencies: vec![],
+            // start with 1
+            // 0 for swc helpers
+            order: 1,
+            unresolved_mark,
+        }
+    }
+    fn bind_dependency(
+        &mut self,
+        source: String,
+        resolve_type: ResolveType,
+        span: Option<swc_common::Span>,
+    ) {
+        self.dependencies.push(Dependency {
+            source,
+            order: self.order,
+            resolve_type,
+            span,
+        });
+        self.order += 1;
+    }
+}
+
+impl Visit for DepCollectVisitor {
+    fn visit_module(&mut self, module: &Module) {
+        self.bindings = Lrc::new(collect_decls(module));
+        module.visit_children_with(self);
+    }
+    fn visit_module_decl(&mut self, n: &ModuleDecl) {
+        match n {
+            ModuleDecl::Import(import) => {
+                if import.type_only {
+                    return;
+                }
+                let src = import.src.value.to_string();
+                self.bind_dependency(src, ResolveType::Import, Some(import.src.span));
+            }
+            ModuleDecl::ExportNamed(export) => {
+                if let Some(src) = &export.src {
+                    self.bind_dependency(
+                        src.value.to_string(),
+                        ResolveType::ExportNamed,
+                        Some(src.span),
+                    );
+                }
+            }
+            ModuleDecl::ExportAll(export) => {
+                let src = export.src.value.to_string();
+                self.bind_dependency(src, ResolveType::ExportAll, Some(export.src.span));
+            }
+            _ => {}
+        }
+        // export function xxx() {} 里可能包含 require 或 import()
+        n.visit_children_with(self);
+    }
+    fn visit_call_expr(&mut self, expr: &CallExpr) {
+        if is_commonjs_require(expr, Some(&self.bindings)) {
+            if let Some(src) = get_first_arg_str(expr) {
+                self.bind_dependency(src, ResolveType::Require, Some(expr.span));
+                return;
+            }
+        } else if is_dynamic_import(expr) {
+            if let Some(src) = get_first_arg_str(expr) {
+                self.bind_dependency(src, ResolveType::DynamicImport, Some(expr.span));
+                return;
+            }
+        }
+        expr.visit_children_with(self);
+    }
+
+    // Web workers
+    fn visit_new_expr(&mut self, new_expr: &NewExpr) {
+        if let Some(str) = resolve_web_worker(new_expr, self.unresolved_mark) {
+            self.bind_dependency(str.value.to_string(), ResolveType::Worker, None);
+        }
+
+        new_expr.visit_children_with(self);
+    }
+}
+
+pub fn resolve_web_worker(new_expr: &NewExpr, unresolved_mark: Mark) -> Option<&Str> {
+    if !new_expr.args.is_some_and(|args| !args.is_empty()) || !new_expr.callee.is_ident() {
+        return None;
+    }
+
+    if let box Expr::Ident(Ident { span, sym, .. }) = &new_expr.callee {
+        // `Worker` must be unresolved
+        if sym == "Worker" && (span.ctxt.outer() == unresolved_mark) {
+            let args = new_expr.args.as_ref().unwrap();
+
+            match &*args[0].expr {
+                // new Worker('./worker.js');
+                Expr::Lit(Lit::Str(str)) => {
+                    if !is_url_ignored(&str.value) {
+                        return Some(str);
+                    }
+                }
+                // new Worker(new URL(''), base);
+                Expr::New(new_expr) => {
+                    if !new_expr.args.is_some_and(|args| !args.is_empty())
+                        || !new_expr.callee.is_ident()
+                    {
+                        return None;
+                    }
+
+                    if let box Expr::Ident(Ident { span, sym, .. }) = &new_expr.callee {
+                        if sym == "URL" && (span.ctxt.outer() == unresolved_mark) {
+                            // new URL(''); 仅第一个参数为字符串字面量, 第二个参数为 import.meta.url 时添加依赖
+                            let args = new_expr.args.as_ref().unwrap();
+
+                            if args.get(1).is_none()
+                                || is_import_meta_url(&args.get(1).unwrap().expr)
+                            {
+                                return None;
+                            }
+
+                            if let box Expr::Lit(Lit::Str(ref str)) = &args[0].expr {
+                                if !is_url_ignored(&str.value) {
+                                    return Some(str);
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    None
+}
+
+pub fn is_import_meta_url(expr: &Expr) -> bool {
+    matches!(
+        expr,
+        Expr::Member(MemberExpr {
+            obj:
+                box Expr::MetaProp(MetaPropExpr {
+                    kind: MetaPropKind::ImportMeta,
+                    ..
+                }),
+            prop:
+                MemberProp::Ident(Ident {
+                    sym: js_word!("url"),
+                    ..
+                }),
+            ..
+        })
+    )
+}
+
+pub fn is_dynamic_import(call_expr: &CallExpr) -> bool {
+    matches!(&call_expr.callee, Callee::Import(Import { .. }))
+}
+
+pub fn is_commonjs_require(call_expr: &CallExpr, bindings: Option<&Lrc<AHashSet<Id>>>) -> bool {
+    if let Callee::Expr(box Expr::Ident(swc_ecma_ast::Ident { sym, span, .. })) = &call_expr.callee
+    {
+        let is_require = sym == "require";
+        if !is_require {
+            return false;
+        }
+        let has_binding = if let Some(bindings) = bindings {
+            bindings.contains(&(sym.clone(), span.ctxt))
+        } else {
+            false
+        };
+        !has_binding
+    } else {
+        false
+    }
+}
+
+pub fn get_first_arg_str(call_expr: &CallExpr) -> Option<String> {
+    if let Some(arg) = call_expr.args.first() {
+        if let box Expr::Lit(Lit::Str(str_)) = &arg.expr {
+            return Some(str_.value.to_string());
+        }
+    }
+    None
 }

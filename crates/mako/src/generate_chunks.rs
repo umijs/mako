@@ -70,7 +70,12 @@ impl Compiler {
             mako_core::mako_profile_scope!("collect_entry_chunks");
             chunks
                 .iter()
-                .filter(|chunk| matches!(chunk.chunk_type, ChunkType::Entry(_, _)))
+                .filter(|chunk| {
+                    matches!(
+                        chunk.chunk_type,
+                        ChunkType::Entry(_, _) | ChunkType::Worker(_)
+                    )
+                })
                 .map(|&chunk| {
                     let mut pot = ChunkPot::from(chunk, &module_graph, &self.context)?;
 
@@ -115,7 +120,12 @@ impl Compiler {
 
         let fs = chunks
             .par_iter()
-            .filter(|chunk| !matches!(chunk.chunk_type, ChunkType::Entry(_, _)))
+            .filter(|chunk| {
+                !matches!(
+                    chunk.chunk_type,
+                    ChunkType::Entry(_, _) | ChunkType::Worker(_)
+                )
+            })
             .map(|chunk| {
                 let pot: ChunkPot = ChunkPot::from(chunk, &module_graph, &self.context)?;
                 pot.to_normal_chunk_files(&self.context)

@@ -37,7 +37,6 @@ pub struct PluginTransformJsParam<'a> {
 
 pub struct PluginDepAnalyzeParam<'a> {
     pub ast: &'a ModuleAst,
-    pub deps: Vec<Dependency>,
 }
 
 pub trait Plugin: Any + Send + Sync {
@@ -72,8 +71,12 @@ pub trait Plugin: Any + Send + Sync {
         Ok(())
     }
 
-    fn analyze_deps(&self, _ast: &mut PluginDepAnalyzeParam) -> Result<()> {
-        Ok(())
+    fn analyze_deps(
+        &self,
+        _param: &mut PluginDepAnalyzeParam,
+        _context: &Arc<Context>,
+    ) -> Result<Option<Vec<Dependency>>> {
+        Ok(None)
     }
 
     fn generate(&self, _context: &Arc<Context>) -> Result<Option<()>> {
@@ -152,11 +155,18 @@ impl PluginDriver {
         Ok(())
     }
 
-    pub fn analyze_deps(&self, param: &mut PluginDepAnalyzeParam) -> Result<()> {
+    pub fn analyze_deps(
+        &self,
+        param: &mut PluginDepAnalyzeParam,
+        context: &Arc<Context>,
+    ) -> Result<Vec<Dependency>> {
         for plugin in &self.plugins {
-            plugin.analyze_deps(param)?;
+            let ret = plugin.analyze_deps(param, context)?;
+            if let Some(ret) = ret {
+                return Ok(ret);
+            }
         }
-        Ok(())
+        Ok(vec![])
     }
 
     pub fn generate(&self, context: &Arc<Context>) -> Result<Option<()>> {

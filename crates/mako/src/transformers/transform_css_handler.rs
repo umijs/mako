@@ -2,7 +2,7 @@ use mako_core::swc_common::util::take::Take;
 use mako_core::swc_css_ast::{AtRule, AtRulePrelude, ImportHref, Rule, Stylesheet, UrlValue};
 use mako_core::swc_css_visit::{VisitMut, VisitMutWith};
 
-use crate::analyze_deps::is_url_ignored;
+use crate::plugins::css::is_url_ignored;
 
 pub struct CssHandler;
 

@@ -25,6 +25,7 @@ use crate::transformers::transform_async_module::AsyncModule;
 use crate::transformers::transform_css_handler::CssHandler;
 use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
 use crate::transformers::transform_dynamic_import::DynamicImport;
+use crate::transformers::transform_meta_url_replacer::MetaUrlReplacer;
 use crate::transformers::transform_react::react_refresh_entry_prefix;
 
 impl Compiler {
@@ -56,7 +57,18 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
             .collect();
         let mut resolved_deps: HashMap<String, String> = deps
             .into_iter()
-            .map(|(id, dep, _)| (dep.source, id.generate(context)))
+            .map(|(id, dep, _)| {
+                (
+                    dep.source,
+                    if dep.resolve_type == ResolveType::Worker {
+                        let chunk_id = id.generate(context);
+                        let chunk_graph = context.chunk_graph.read().unwrap();
+                        chunk_graph.chunk(&chunk_id.into()).unwrap().filename()
+                    } else {
+                        id.generate(context)
+                    },
+                )
+            })
             .collect();
         insert_swc_helper_replace(&mut resolved_deps, context);
 
@@ -192,8 +204,13 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) {
                             let mut dep_replacer = DepReplacer {
                                 to_replace: dep_map,
                                 context,
+                                unresolved_mark: ast.unresolved_mark,
+                                top_level_mark: ast.top_level_mark,
                             };
                             ast.ast.visit_mut_with(&mut dep_replacer);
+
+                            let mut meta_url_replacer = MetaUrlReplacer {};
+                            ast.ast.visit_mut_with(&mut meta_url_replacer);
 
                             let mut dynamic_import = DynamicImport { context };
                             ast.ast.visit_mut_with(&mut dynamic_import);

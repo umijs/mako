@@ -201,12 +201,22 @@ fn render_entry_chunk_js_without_full_hash(
     stmts.push(js_map_stmt);
     stmts.push(css_map_stmt);
 
-    if let ChunkType::Entry(module_id, _) = &chunk.chunk_type {
-        let main_id_decl: Stmt = quote_str!(module_id.generate(context))
-            .into_var_decl(VarDeclKind::Var, quote_ident!("e").into()) // e brief for entry_module_id
-            .into();
+    match &chunk.chunk_type {
+        ChunkType::Entry(module_id, _) => {
+            let main_id_decl: Stmt = quote_str!(module_id.generate(context))
+                .into_var_decl(VarDeclKind::Var, quote_ident!("e").into()) // e brief for entry_module_id
+                .into();
 
-        stmts.push(main_id_decl);
+            stmts.push(main_id_decl);
+        }
+        ChunkType::Worker(module_id) => {
+            let main_id_decl: Stmt = quote_str!(module_id.generate(context))
+                .into_var_decl(VarDeclKind::Var, quote_ident!("e").into()) // e brief for entry_module_id
+                .into();
+
+            stmts.push(main_id_decl);
+        }
+        _ => {}
     }
 
     // var cssInstalledChunks = { "chunk_id": 0 }

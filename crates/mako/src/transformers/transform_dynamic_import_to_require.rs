@@ -2,7 +2,7 @@ use mako_core::swc_ecma_ast::{Expr, ExprOrSpread, Lit};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use super::utils::{arrow_fn, call, id, member_call, member_prop, promise_resolve};
-use crate::analyze_deps::is_dynamic_import;
+use crate::plugins::javascript::is_dynamic_import;
 
 pub struct DynamicImportToRequire {}
 

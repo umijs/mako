@@ -20,7 +20,7 @@ use crate::config::Mode;
 use crate::load::{ext_name, load};
 use crate::module::{Dependency, Module, ModuleAst, ModuleId, ModuleInfo};
 use crate::parse::parse;
-use crate::plugin::{PluginCheckAstParam, PluginDepAnalyzeParam};
+use crate::plugin::PluginCheckAstParam;
 use crate::resolve::{get_resolvers, resolve, ResolverResource, Resolvers};
 use crate::transform::transform;
 
@@ -282,13 +282,7 @@ impl Compiler {
 
         // 在此之前需要把所有依赖都和模块关联起来，并且需要使用 resolved source
         // analyze deps
-        let deps = analyze_deps(&ast)?;
-        let mut deps_analyze_param = PluginDepAnalyzeParam { deps, ast: &ast };
-        context
-            .plugin_driver
-            .analyze_deps(&mut deps_analyze_param)?;
-
-        let deps = deps_analyze_param.deps;
+        let deps = analyze_deps(&ast, context)?;
 
         // resolve
         let mut dep_resolve_err = None;

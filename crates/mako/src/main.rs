@@ -1,4 +1,5 @@
 #![feature(box_patterns)]
+#![feature(is_some_with)]
 
 use std::sync::Arc;
 

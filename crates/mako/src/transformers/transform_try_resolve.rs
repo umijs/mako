@@ -5,9 +5,9 @@ use mako_core::swc_ecma_ast::{
 };
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
-use crate::analyze_deps::{get_first_arg_str, is_commonjs_require};
 use crate::compiler::Context;
 use crate::module::{Dependency, ResolveType};
+use crate::plugins::javascript::{get_first_arg_str, is_commonjs_require};
 use crate::resolve;
 use crate::transformers::transform_dep_replacer::miss_throw_stmt;
 
