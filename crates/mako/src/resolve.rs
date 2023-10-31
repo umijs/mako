@@ -169,7 +169,6 @@ fn get_external_target(
                         replaced = match converter {
                             ExternalAdvancedSubpathConverter::PascalCase => replaced
                                 .split('.')
-                                .into_iter()
                                 .map(|s| s.to_case(Case::Pascal))
                                 .collect::<Vec<_>>()
                                 .join("."),
@@ -211,6 +210,10 @@ fn do_resolve(
         debug!("parent: {:?}, source: {:?}", parent, source);
         let result = resolver.resolve(parent, source);
         if let Ok(result) = result {
+            if source.contains("@alipay/knowledge-form") {
+                println!("resolve: {:?} -> {:?}", source, result);
+            }
+
             match result {
                 ResolveResult::Resource(resource) => {
                     // TODO: 只在 watch 时且二次编译时才做这个检查
@@ -253,66 +256,86 @@ pub fn get_resolvers(config: &Config) -> Resolvers {
 fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
     let alias = parse_alias(config.resolve.alias.clone());
     let is_browser = config.platform == Platform::Browser;
-    Resolver::new(Options {
-        alias,
-        extensions: vec![
-            ".js".to_string(),
-            ".jsx".to_string(),
-            ".ts".to_string(),
-            ".tsx".to_string(),
-            ".mjs".to_string(),
-            ".cjs".to_string(),
-            ".json".to_string(),
-        ],
-        condition_names: if is_browser {
-            if resolver_type == ResolverType::Cjs {
-                HashSet::from([
-                    "browser".to_string(),
-                    "default".to_string(),
-                    "require".to_string(),
-                ])
-            } else {
-                // esm
-                HashSet::from([
-                    "module".to_string(),
-                    "browser".to_string(),
-                    "import".to_string(),
-                    // why add require? e.g. axios needs it
-                    "require".to_string(),
-                    "default".to_string(),
-                ])
-            }
-        } else {
-            HashSet::from([
-                "module".to_string(),
-                "node".to_string(),
-                "import".to_string(),
-                "default".to_string(),
+    let extensions = vec![
+        ".js".to_string(),
+        ".jsx".to_string(),
+        ".ts".to_string(),
+        ".tsx".to_string(),
+        ".mjs".to_string(),
+        ".cjs".to_string(),
+        ".json".to_string(),
+    ];
+
+    let options = match (resolver_type, is_browser) {
+        (ResolverType::Cjs, true) => Options {
+            alias,
+            extensions,
+            condition_names: HashSet::from([
                 "require".to_string(),
-            ])
+                "module".to_string(),
+                "webpack".to_string(),
+                "browser".to_string(),
+            ]),
+            main_fields: vec![
+                "browser".to_string(),
+                "module".to_string(),
+                "main".to_string(),
+            ],
+            browser_field: true,
+            ..Default::default()
         },
-        main_fields: if is_browser {
-            if resolver_type == ResolverType::Cjs {
-                vec!["browser".to_string(), "main".to_string()]
-            } else {
-                vec![
-                    "browser".to_string(),
-                    "module".to_string(),
-                    "main".to_string(),
-                ]
-            }
-        } else if resolver_type == ResolverType::Cjs {
-            vec!["main".to_string()]
-        } else {
-            vec!["module".to_string(), "main".to_string()]
+        (ResolverType::Esm, true) => Options {
+            alias,
+            extensions,
+            condition_names: HashSet::from([
+                "import".to_string(),
+                "module".to_string(),
+                "webpack".to_string(),
+                "browser".to_string(),
+            ]),
+            main_fields: vec![
+                "browser".to_string(),
+                "module".to_string(),
+                "main".to_string(),
+            ],
+            browser_field: true,
+            ..Default::default()
         },
-        // prefer relative module for css resolver
-        // keep behavior consistent with webpack css-loader
-        // ref: https://webpack.js.org/configuration/resolve/#resolvepreferrelative
-        prefer_relative: resolver_type == ResolverType::Css,
-        browser_field: true,
-        ..Default::default()
-    })
+        (ResolverType::Esm, false) => Options {
+            alias,
+            extensions,
+            condition_names: HashSet::from([
+                "import".to_string(),
+                "module".to_string(),
+                "webpack".to_string(),
+            ]),
+            main_fields: vec!["module".to_string(), "main".to_string()],
+            ..Default::default()
+        },
+        (ResolverType::Cjs, false) => Options {
+            alias,
+            extensions,
+            condition_names: HashSet::from([
+                "require".to_string(),
+                "module".to_string(),
+                "webpack".to_string(),
+            ]),
+            main_fields: vec!["module".to_string(), "main".to_string()],
+            ..Default::default()
+        },
+        // css must be browser
+        (ResolverType::Css, _) => Options {
+            extensions: vec![".css".to_string(), ".less".to_string()],
+            alias,
+            main_fields: vec!["css".to_string(), "style".to_string(), "main".to_string()],
+            condition_names: HashSet::from(["style".to_string()]),
+            prefer_relative: true,
+            browser_field: true,
+            ..Default::default()
+        },
+    };
+
+    Resolver::new(options)
 }
 
 fn parse_alias(alias: HashMap<String, String>) -> Vec<(String, Vec<AliasMap>)> {
@@ -366,7 +389,7 @@ mod tests {
     #[test]
     fn test_resolve_dep_browser_fields() {
         let x = resolve("test/resolve/browser_fields", None, None, "index.ts", "foo");
-        assert_eq!(x, ("node_modules/foo/cjs-browser.js".to_string(), None));
+        assert_eq!(x, ("node_modules/foo/esm-browser.js".to_string(), None));
     }
 
     #[test]
