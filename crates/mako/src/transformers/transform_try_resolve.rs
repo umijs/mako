@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use mako_core::swc_ecma_ast::{BlockStmt, Expr, ExprOrSpread, ExprStmt, Stmt, TryStmt};
+use mako_core::swc_ecma_ast::{
+    AssignExpr, BlockStmt, CallExpr, Expr, ExprOrSpread, ExprStmt, Stmt, TryStmt,
+};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::analyze_deps::{get_first_arg_str, is_commonjs_require};
@@ -14,6 +16,33 @@ pub struct TryResolve<'a> {
     pub context: &'a Arc<Context>,
 }
 
+impl TryResolve<'_> {
+    pub fn handle_call_expr(&mut self, call_expr: &mut CallExpr) {
+        if is_commonjs_require(call_expr, None) {
+            let first_arg = get_first_arg_str(call_expr);
+            if let Some(source) = first_arg {
+                let result = resolve::resolve(
+                    self.path.as_str(),
+                    &Dependency {
+                        source: source.clone(),
+                        resolve_type: ResolveType::Require,
+                        order: 0,
+                        span: None,
+                    },
+                    &self.context.resolvers,
+                    self.context,
+                );
+                if result.is_err() {
+                    call_expr.args[0] = ExprOrSpread {
+                        spread: None,
+                        expr: Box::new(miss_throw_stmt(&source)),
+                    };
+                }
+            }
+        }
+    }
+}
+
 impl VisitMut for TryResolve<'_> {
     fn visit_mut_stmt(&mut self, stmt: &mut Stmt) {
         if let Stmt::Try(box TryStmt {
@@ -22,33 +51,20 @@ impl VisitMut for TryResolve<'_> {
         }) = stmt
         {
             for stmt in stmts {
-                if let Stmt::Expr(ExprStmt {
-                    expr: box Expr::Call(call_expr),
-                    ..
-                }) = stmt
-                {
-                    if is_commonjs_require(call_expr, None) {
-                        let first_arg = get_first_arg_str(call_expr);
-                        if let Some(source) = first_arg {
-                            let result = resolve::resolve(
-                                self.path.as_str(),
-                                &Dependency {
-                                    source: source.clone(),
-                                    resolve_type: ResolveType::Require,
-                                    order: 0,
-                                    span: None,
-                                },
-                                &self.context.resolvers,
-                                self.context,
-                            );
-                            if result.is_err() {
-                                call_expr.args[0] = ExprOrSpread {
-                                    spread: None,
-                                    expr: Box::new(miss_throw_stmt(&source)),
-                                };
-                            }
-                        }
-                    }
+                match stmt {
+                    Stmt::Expr(ExprStmt {
+                        expr: box Expr::Call(call_expr),
+                        ..
+                    })
+                    | Stmt::Expr(ExprStmt {
+                        expr:
+                            box Expr::Assign(AssignExpr {
+                                right: box Expr::Call(call_expr),
+                                ..
+                            }),
+                        ..
+                    }) => self.handle_call_expr(call_expr),
+                    _ => {}
                 }
             }
         }
@@ -64,6 +80,19 @@ mod tests {
             r#"
             try {
                 require('foo');
+            } catch (e) {
+                console.log(e);
+            }
+            "#,
+        ));
+    }
+
+    #[test]
+    fn test_try_require_with_exports() {
+        crate::assert_display_snapshot!(transform(
+            r#"
+            try {
+                exports.xxx = require('foo');
             } catch (e) {
                 console.log(e);
             }
