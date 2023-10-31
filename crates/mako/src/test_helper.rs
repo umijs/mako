@@ -3,13 +3,13 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use swc_common::sync::Lrc;
-use swc_common::SourceMap;
-use swc_ecma_ast::Module as SwcModule;
-use swc_ecma_codegen::text_writer::JsWriter;
-use swc_ecma_codegen::Emitter;
-use swc_ecma_visit::{VisitMut, VisitMutWith};
-use tracing_subscriber::EnvFilter;
+use mako_core::swc_common::sync::Lrc;
+use mako_core::swc_common::SourceMap;
+use mako_core::swc_ecma_ast::Module as SwcModule;
+use mako_core::swc_ecma_codegen::text_writer::JsWriter;
+use mako_core::swc_ecma_codegen::Emitter;
+use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+use mako_core::tracing_subscriber::{fmt, EnvFilter};
 
 use crate::ast::{build_js_ast, js_ast_to_code};
 use crate::compiler::{self, Compiler};
@@ -50,27 +50,36 @@ macro_rules! assert_debug_snapshot {
 
 #[allow(dead_code)]
 pub fn create_mock_module(path: PathBuf, code: &str) -> Module {
+    setup_logger();
+
     let ast = build_js_ast(path.to_str().unwrap(), code, &Arc::new(Default::default())).unwrap();
     let module_id = ModuleId::from_path(path.clone());
     let info = ModuleInfo {
         ast: crate::module::ModuleAst::Script(ast),
         path: path.to_string_lossy().to_string(),
         external: None,
+        raw: code.to_string(),
         raw_hash: 0,
+        resolved_resource: None,
         missing_deps: HashMap::new(),
+        ignored_deps: vec![],
+        top_level_await: false,
+        is_async: false,
     };
     Module::new(module_id, false, Some(info))
 }
 
+pub fn get_module(compiler: &Compiler, path: &str) -> Module {
+    let module_graph = compiler.context.module_graph.read().unwrap();
+    let cwd_path = &compiler.context.root;
+    let module_id = ModuleId::from(cwd_path.join(path));
+    let module = module_graph.get_module(&module_id).unwrap();
+    module.clone()
+}
+
 #[allow(dead_code)]
 pub fn setup_compiler(base: &str, cleanup: bool) -> Compiler {
-    let _result = tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("mako=debug")),
-        )
-        // .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
-        // .without_time()
-        .try_init();
+    setup_logger();
     let current_dir = std::env::current_dir().unwrap();
     let root = current_dir.join(base);
     if !root.parent().unwrap().exists() {
@@ -87,13 +96,21 @@ pub fn setup_compiler(base: &str, cleanup: bool) -> Compiler {
     config.minify = false;
     config.mode = Mode::Production;
 
-    compiler::Compiler::new(config, root)
+    compiler::Compiler::new(config, root, Default::default()).unwrap()
 }
 
-pub fn read_dist_file(compiler: &Compiler) -> String {
-    let cwd_path = &compiler.context.root;
+pub fn setup_logger() {
+    let _result = fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        // .with_max_level(Level::DEBUG)
+        // .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
+        // .without_time()
+        .try_init();
+}
 
-    fs::read_to_string(cwd_path.join("dist/index.js")).unwrap()
+pub fn read_dist_file(compiler: &Compiler, path: &str) -> String {
+    let cwd_path = &compiler.context.root;
+    fs::read_to_string(cwd_path.join(path)).unwrap()
 }
 
 pub fn setup_files(compiler: &Compiler, extra_files: Vec<(String, String)>) {

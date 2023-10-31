@@ -1,0 +1,6 @@
+---
+source: crates/mako/src/transformers/transform_dynamic_import_to_require.rs
+expression: "transform(r#\"\nimport(/* test comment */ 'my-module');\nimport('my-module' /* test comment */ );\n            \"#)"
+---
+Promise.resolve().then(()=>require("my-module"));
+Promise.resolve().then(()=>require("my-module"));

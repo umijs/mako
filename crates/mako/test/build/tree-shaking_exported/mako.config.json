@@ -1,5 +1,6 @@
 {
   "mode": "production",
   "minify": false,
-  "hmr": false
+  "hmr": false,
+  "treeShake": "basic"
 }

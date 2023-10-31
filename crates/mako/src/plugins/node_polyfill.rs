@@ -1,6 +1,6 @@
-use anyhow::Result;
+use mako_core::anyhow::Result;
 
-use crate::config::Config;
+use crate::config::{Config, ExternalConfig};
 use crate::plugin::Plugin;
 
 pub struct NodePolyfillPlugin {}
@@ -20,7 +20,9 @@ impl Plugin for NodePolyfillPlugin {
         }
         // empty modules
         for name in get_empty_modules().iter() {
-            config.externals.insert(name.to_string(), "".to_string());
+            config
+                .externals
+                .insert(name.to_string(), ExternalConfig::Basic("".to_string()));
         }
         // identifier
         config

@@ -1,20 +1,24 @@
 use std::any::Any;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use mako_core::anyhow::{anyhow, Result};
+use mako_core::swc_common::errors::Handler;
+use mako_core::swc_ecma_ast::Module;
 
 use crate::build::FileRequest;
 use crate::compiler::Context;
 use crate::config::Config;
 use crate::load::Content;
 use crate::module::{Dependency, ModuleAst};
+use crate::module_graph::ModuleGraph;
 use crate::stats::StatsJsonMap;
 
 #[derive(Debug)]
-pub struct PluginLoadParam {
+pub struct PluginLoadParam<'a> {
     pub path: String,
     pub is_entry: bool,
     pub ext_name: String,
+    pub request: &'a FileRequest,
 }
 
 pub struct PluginParseParam<'a> {
@@ -22,9 +26,17 @@ pub struct PluginParseParam<'a> {
     pub content: &'a Content,
 }
 
+pub struct PluginCheckAstParam<'a> {
+    pub ast: &'a ModuleAst,
+}
+
+pub struct PluginTransformJsParam<'a> {
+    pub handler: &'a Handler,
+    pub path: &'a str,
+}
+
 pub struct PluginDepAnalyzeParam<'a> {
     pub ast: &'a ModuleAst,
-    pub deps: Vec<Dependency>,
 }
 
 pub trait Plugin: Any + Send + Sync {
@@ -46,8 +58,25 @@ pub trait Plugin: Any + Send + Sync {
         Ok(None)
     }
 
-    fn analyze_deps(&self, _ast: &mut PluginDepAnalyzeParam) -> Result<()> {
+    fn check_ast(&self, _param: &PluginCheckAstParam, _context: &Arc<Context>) -> Result<()> {
         Ok(())
+    }
+
+    fn transform_js(
+        &self,
+        _param: &PluginTransformJsParam,
+        _ast: &mut Module,
+        _context: &Arc<Context>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    fn analyze_deps(
+        &self,
+        _param: &mut PluginDepAnalyzeParam,
+        _context: &Arc<Context>,
+    ) -> Result<Option<Vec<Dependency>>> {
+        Ok(None)
     }
 
     fn generate(&self, _context: &Arc<Context>) -> Result<Option<()>> {
@@ -60,6 +89,10 @@ pub trait Plugin: Any + Send + Sync {
 
     fn runtime_plugins(&self, _context: &Arc<Context>) -> Result<Vec<String>> {
         Ok(Vec::new())
+    }
+
+    fn optimize_module_graph(&self, _module_graph: &mut ModuleGraph) -> Result<()> {
+        Ok(())
     }
 }
 
@@ -88,6 +121,7 @@ impl PluginDriver {
         }
         Ok(None)
     }
+
     pub fn parse(
         &self,
         param: &PluginParseParam,
@@ -102,11 +136,37 @@ impl PluginDriver {
         Ok(None)
     }
 
-    pub fn analyze_deps(&self, param: &mut PluginDepAnalyzeParam) -> Result<()> {
+    pub fn check_ast(&self, param: &PluginCheckAstParam, context: &Arc<Context>) -> Result<()> {
         for plugin in &self.plugins {
-            plugin.analyze_deps(param)?;
+            plugin.check_ast(param, context)?;
         }
         Ok(())
+    }
+
+    pub fn transform_js(
+        &self,
+        param: &PluginTransformJsParam,
+        ast: &mut Module,
+        context: &Arc<Context>,
+    ) -> Result<()> {
+        for plugin in &self.plugins {
+            plugin.transform_js(param, ast, context)?;
+        }
+        Ok(())
+    }
+
+    pub fn analyze_deps(
+        &self,
+        param: &mut PluginDepAnalyzeParam,
+        context: &Arc<Context>,
+    ) -> Result<Vec<Dependency>> {
+        for plugin in &self.plugins {
+            let ret = plugin.analyze_deps(param, context)?;
+            if let Some(ret) = ret {
+                return Ok(ret);
+            }
+        }
+        Ok(vec![])
     }
 
     pub fn generate(&self, context: &Arc<Context>) -> Result<Option<()>> {
@@ -133,8 +193,16 @@ impl PluginDriver {
     pub fn runtime_plugins_code(&self, context: &Arc<Context>) -> Result<String> {
         let mut plugins = Vec::new();
         for plugin in &self.plugins {
-            plugins.append(&mut plugin.runtime_plugins(context)?);
+            plugins.extend(plugin.runtime_plugins(context)?);
         }
         Ok(plugins.join("\n"))
+    }
+
+    pub fn optimize_module_graph(&self, module_graph: &mut ModuleGraph) -> Result<()> {
+        for p in &self.plugins {
+            p.optimize_module_graph(module_graph)?;
+        }
+
+        Ok(())
     }
 }

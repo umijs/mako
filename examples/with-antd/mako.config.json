@@ -1,4 +1,6 @@
 {
-  "code_splitting": "depPerChunk",
-  "externals": {}
+  "externals": {},
+  "treeShake": "basic",
+  "minify": true,
+  "moduleIdStrategy": "named"
 }

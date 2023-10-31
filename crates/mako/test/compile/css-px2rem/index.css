@@ -1,0 +1,26 @@
+.a {
+  margin: 0 0 20px;
+  font-size: 32px;
+  line-height: 1.2;
+  letter-spacing: 1px;
+}
+
+.b {
+  font-size: 2em;
+}
+
+.c {
+  margin: 0.5px;
+}
+
+.d {
+  content: "16px";
+  font-family: "16px";
+  font-size: 16px;
+}
+
+@media (min-width: 500px) {
+  .rule {
+    font-size: 16px;
+  }
+}

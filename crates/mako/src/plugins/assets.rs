@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use mako_core::anyhow::{anyhow, Result};
 
 use crate::compiler::Context;
 use crate::load::{handle_asset, Content, LoadError};
@@ -14,7 +14,7 @@ impl Plugin for AssetsPlugin {
     }
 
     fn load(&self, param: &PluginLoadParam, context: &Arc<Context>) -> Result<Option<Content>> {
-        if matches!(param.ext_name.as_str(), "less" | "sass" | "scss" | "stylus") {
+        if matches!(param.ext_name.as_str(), "sass" | "scss" | "stylus") {
             return Err(anyhow!(LoadError::UnsupportedExtName {
                 ext_name: param.ext_name.clone(),
                 path: param.path.clone(),
@@ -23,7 +23,7 @@ impl Plugin for AssetsPlugin {
 
         let asset_content = handle_asset(context, param.path.as_str(), true)?;
         Ok(Some(Content::Js(format!(
-            "module.exports = \"{}\";",
+            "module.exports = {};",
             asset_content
         ))))
     }

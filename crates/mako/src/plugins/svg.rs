@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use mako_core::anyhow::{anyhow, Result};
+use mako_core::svgr_rs;
 
 use crate::compiler::Context;
 use crate::load::{handle_asset, read_content, Content, LoadError};
@@ -40,7 +41,7 @@ impl Plugin for SVGPlugin {
             };
             let default_svg = handle_asset(context, param.path.as_str(), true)?;
             return Ok(Some(Content::Js(format!(
-                "{}\nexport default \"{}\";",
+                "{}\nexport default {};",
                 svgr_code, default_svg
             ))));
         }

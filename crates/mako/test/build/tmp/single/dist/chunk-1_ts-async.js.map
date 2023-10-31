@@ -1,0 +1,1 @@
+{"version":3,"sources":["../chunk-1.ts"],"sourcesContent":["\nexport default async function () {\n    console.log(123);\n}\n    "],"names":[],"mappings":";;;;;;;;;2CACA;;;2BAAA;;;YAAe,eAAf;gBACI,QAAQ,GAAG,CAAC;YAChB"}

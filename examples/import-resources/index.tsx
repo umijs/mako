@@ -4,7 +4,7 @@ import json, { hello } from './index.json5';
 import toml, { title } from './index.toml';
 import yaml, { pi } from './index.yaml';
 import xml from './index.xml';
-import wasm from './add.wasm';
+import { add } from './add.wasm';
 import Md from './index.md';
 import MailchimpUnsplash from './mailchimp-unsplash.jpg';
 
@@ -16,7 +16,6 @@ function App() {
 
   useEffect(() => {
     (async () => {
-      const { add } = await wasm;
       setSum(add(num1, num2));
     })();
   }, []);

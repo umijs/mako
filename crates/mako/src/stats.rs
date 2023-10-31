@@ -5,19 +5,21 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use colored::*;
-use serde::Serialize;
-use tracing::info;
+use mako_core::colored::*;
+use mako_core::pathdiff::diff_paths;
+use mako_core::serde::Serialize;
 
 use crate::chunk::ChunkType;
 use crate::compiler::Compiler;
 use crate::load::file_size;
 
 #[derive(Debug, PartialEq, Eq)]
+// name 记录实际 filename , 用在 stats.json 中, hashname 用在产物描述和 manifest 中
 pub struct AssetsInfo {
     pub assets_type: String,
     pub size: u64,
     pub name: String,
+    pub hashname: String,
     pub chunk_id: String,
     pub path: PathBuf,
 }
@@ -105,13 +107,21 @@ impl StatsInfo {
         Self { assets: vec![] }
     }
 
-    pub fn add_assets(&mut self, size: u64, name: String, chunk_id: String, path: PathBuf) {
+    pub fn add_assets(
+        &mut self,
+        size: u64,
+        name: String,
+        chunk_id: String,
+        path: PathBuf,
+        hashname: String,
+    ) {
         self.assets.push(AssetsInfo {
             assets_type: "asset".to_string(),
             size,
             name,
             chunk_id,
             path,
+            hashname,
         });
     }
 }
@@ -159,6 +169,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
                 asset.1.clone(),
                 "".to_string(),
                 compiler.context.config.output.path.join(asset.1.clone()),
+                asset.1.clone(),
             );
         });
 
@@ -169,7 +180,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
         .map(|asset| StatsJsonAssetsItem {
             assets_type: StatsJsonType::Asset(asset.assets_type.clone()),
             size: asset.size,
-            name: asset.name.clone(),
+            name: asset.hashname.clone(),
             path: asset.path.clone(),
         })
         .collect();
@@ -185,7 +196,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
         .iter()
         .map(|chunk| {
             let modules = chunk.get_modules();
-            let entry = matches!(chunk.chunk_type, ChunkType::Entry);
+            let entry = matches!(chunk.chunk_type, ChunkType::Entry(_, _));
             let id = chunk.id.id.clone();
             let chunk_modules: Vec<StatsJsonModuleItem> = modules
                 .iter()
@@ -240,54 +251,132 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
 }
 
 pub fn write_stats(stats: &StatsJsonMap, compiler: &Compiler) {
-    let path = &compiler.context.root.join("stats.json");
+    let path = &compiler.context.config.output.path.join("stats.json");
     let stats_json = serde_json::to_string_pretty(stats).unwrap();
     fs::write(path, stats_json).unwrap();
-    info!("stats.json has been created in {:?}", path);
 }
 
 // 文件大小转换
 pub fn human_readable_size(size: u64) -> String {
-    let units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
-    let mut size = size as f64;
+    let units = ["kB", "mB", "gB"];
+    // 把 B 转为 KB
+    let mut size = (size as f64) / 1000.0;
     let mut i = 0;
 
-    while size >= 1024.0 && i < units.len() - 1 {
-        size /= 1024.0;
+    while size >= 1000.0 && i < units.len() - 1 {
+        size /= 1000.0;
         i += 1;
     }
 
     format!("{:.2} {}", size, units[i])
 }
 
-fn pad_string(text: &str, max_length: usize) -> String {
-    let mut padded_text = format!("  {}", String::from(text));
+fn pad_string(text: &str, max_length: usize, front: bool) -> String {
+    let mut padded_text = String::from(text);
     let pad_length = max_length - text.chars().count();
-
-    padded_text.push_str(&" ".repeat(pad_length));
-    padded_text
+    if front {
+        let mut s = String::new();
+        s.push_str(&" ".repeat(pad_length));
+        s.push_str(text);
+        s
+    } else {
+        padded_text.push_str(&" ".repeat(pad_length));
+        padded_text
+    }
 }
 
-pub fn log_assets(compiler: &Compiler) {
+pub fn print_stats(compiler: &Compiler) {
     let assets = &mut compiler.context.stats_info.lock().unwrap().assets;
     // 按照产物名称排序
     assets.sort();
-    let length = 15;
-    let mut s = "\n".to_string();
-    let dist = "dist/".truecolor(133, 133, 133);
+    // 产物路径需要按照 output.path 来
+    let abs_path = &compiler.context.root;
+    let output_path = &compiler.context.config.output.path;
+    let dist_path = diff_paths(output_path, abs_path).unwrap_or_else(|| output_path.clone());
+    let mut path_str = dist_path.to_str().unwrap().to_string();
+    if !path_str.ends_with('/') {
+        path_str.push('/');
+    }
+    let dist = path_str.truecolor(128, 128, 128);
 
+    // 最长的文件名字, size长度, map_size长度, 后续保持输出整齐
+    let mut max_length_name = String::new();
+    let mut max_size = 0;
+    let mut max_map_size = 0;
+    // 记录 name size map_size 的数组
+    let mut assets_vec: Vec<(String, u64, u64)> = vec![];
+
+    // 生成 (name, size, map_size) 的 vec
     for asset in assets {
-        let size = human_readable_size(asset.size);
-        s.push_str(
-            format!(
-                "{} {}{}\n",
-                pad_string(&size, length),
-                dist.clone(),
-                asset.name.blue().bold()
-            )
-            .as_str(),
-        );
+        let name = asset.hashname.clone();
+        let size_length = human_readable_size(asset.size).chars().count();
+        // 记录较长的名字
+        if name.chars().count() > max_length_name.chars().count() {
+            max_length_name = name.clone();
+        }
+
+        // 如果是 .map 文件判断是否是上一个的文件的 sourceMap
+        // 前面排序过了, sourceMap 一定 js/css 在后面
+        if name.ends_with(".map") {
+            let len = assets_vec.len();
+            if let Some(last) = assets_vec.get_mut(len - 1) {
+                if name == format!("{}.map", last.0) {
+                    // 记录较长的 map_size
+                    if size_length > max_map_size {
+                        max_map_size = size_length;
+                    }
+                    *last = (last.0.clone(), last.1, asset.size);
+                    continue;
+                }
+            }
+        }
+        // 记录较长的 size
+        if size_length > max_size {
+            max_size = size_length;
+        }
+        assets_vec.push((asset.hashname.clone(), asset.size, 0));
     }
 
-    println!("{}", s);
+    // 输出 stats
+    let mut s = String::new();
+    for asset in assets_vec {
+        let file_name = format!("{}{}", dist, asset.0);
+        let length = format!("{}{}", dist, max_length_name).chars().count() + 2;
+        let file_name_str: String = pad_string(&file_name, length, false);
+        let color_file_name_str = match file_name {
+            s if s.ends_with(".js") => file_name_str.cyan(),
+            s if s.ends_with(".css") => file_name_str.magenta(),
+            _ => file_name_str.green(),
+        };
+        // 没有 map 的输出
+        if asset.2 == 0 {
+            let size = human_readable_size(asset.1);
+            s.push_str(
+                format!(
+                    "{} {}\n",
+                    color_file_name_str,
+                    pad_string(&size, max_size, true),
+                )
+                .as_str(),
+            );
+        } else {
+            // 有 map 的输出, | map: map_size
+            let size = human_readable_size(asset.1);
+            let map_size = human_readable_size(asset.2);
+            s.push_str(
+                format!(
+                    "{} {} {} {}\n",
+                    color_file_name_str,
+                    pad_string(&size, max_size, true)
+                        .truecolor(128, 128, 128)
+                        .bold(),
+                    "│ map:".truecolor(128, 128, 128),
+                    pad_string(&map_size, max_map_size, true).truecolor(128, 128, 128)
+                )
+                .as_str(),
+            );
+        }
+    }
+
+    println!("{}", s.trim_end_matches('\n'));
 }

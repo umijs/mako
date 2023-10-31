@@ -1,9 +1,9 @@
 use std::path::PathBuf;
+use std::sync::mpsc::channel;
 
-use futures::channel::mpsc::channel;
-use futures::{SinkExt, StreamExt};
-use notify::event::{CreateKind, DataChange, ModifyKind, RenameMode};
-use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use mako_core::notify::event::{AccessKind, CreateKind, DataChange, ModifyKind, RenameMode};
+use mako_core::notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use mako_core::tracing::debug;
 
 use crate::update::UpdateType;
 
@@ -34,27 +34,16 @@ impl From<WatchEvent> for Vec<(PathBuf, UpdateType)> {
     }
 }
 
-pub fn watch<T>(root: &PathBuf, func: T)
+pub fn watch<T>(root: &PathBuf, mut func: T)
 where
     T: FnMut(WatchEvent),
 {
-    futures::executor::block_on(async {
-        watch_async(root, func).await;
-    });
-}
-
-pub async fn watch_async<T>(root: &PathBuf, mut func: T)
-where
-    T: FnMut(WatchEvent),
-{
-    let (mut tx, mut rx) = channel(2);
+    let (tx, rx) = channel();
     let mut watcher = RecommendedWatcher::new(
         move |res| {
-            futures::executor::block_on(async {
-                tx.send(res).await.unwrap();
-            })
+            tx.send(res).unwrap();
         },
-        notify::Config::default(),
+        mako_core::notify::Config::default(),
     )
     .unwrap();
 
@@ -85,31 +74,44 @@ where
         }
     });
 
-    while let Some(res) = rx.next().await {
-        match res {
-            Ok(event) => match event.kind {
-                EventKind::Any => {}
-                EventKind::Access(_) => {}
-                EventKind::Create(CreateKind::File) => {
-                    func(crate::watch::WatchEvent::Added(event.paths));
-                }
-                EventKind::Create(_) => {}
-
-                EventKind::Modify(ModifyKind::Data(DataChange::Any)) => {
+    while let Ok(event) = rx.recv().unwrap() {
+        let should_ignore = event
+            .paths
+            .iter()
+            // TODO: add more
+            .any(|path| path.to_string_lossy().contains(".DS_Store"));
+        if should_ignore {
+            continue;
+        }
+        debug!("watch event: {:?}", event);
+        match event.kind {
+            EventKind::Create(CreateKind::File) => {
+                func(crate::watch::WatchEvent::Added(event.paths));
+            }
+            EventKind::Modify(ModifyKind::Data(DataChange::Content)) => {
+                if cfg!(target_os = "macos") {
                     func(crate::watch::WatchEvent::Modified(event.paths));
                 }
-                EventKind::Modify(ModifyKind::Name(RenameMode::Any)) => {
-                    func(crate::watch::WatchEvent::Removed(event.paths));
-                }
-                EventKind::Modify(_) => {}
-                EventKind::Remove(_) => {
-                    func(crate::watch::WatchEvent::Removed(event.paths));
-                }
-                EventKind::Other => {}
-            },
-            Err(e) => {
-                println!("watch error: {:?}", e);
             }
+            EventKind::Modify(ModifyKind::Name(RenameMode::Any)) => {
+                // add and remove all emit rename event
+                // so we need to check if the file is exists to determine
+                let is_added = event.paths.iter().any(|path| path.exists());
+                if is_added {
+                    func(crate::watch::WatchEvent::Added(event.paths));
+                } else {
+                    func(crate::watch::WatchEvent::Removed(event.paths));
+                }
+            }
+            EventKind::Remove(_) => {
+                func(crate::watch::WatchEvent::Removed(event.paths));
+            }
+            EventKind::Access(AccessKind::Close(_)) => {
+                if cfg!(target_os = "linux") {
+                    func(crate::watch::WatchEvent::Modified(event.paths));
+                }
+            }
+            _ => {}
         }
     }
 }

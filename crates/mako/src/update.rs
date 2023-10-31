@@ -1,21 +1,24 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::fmt::Debug;
 use std::path::PathBuf;
+use std::sync::mpsc::channel;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Ok, Result};
-use rayon::prelude::*;
-use tracing::debug;
+use mako_core::anyhow::{anyhow, Ok, Result};
+use mako_core::colored::Colorize;
+use mako_core::rayon::prelude::*;
+use mako_core::tracing::debug;
 
-use crate::build::{get_entries, Task};
+use crate::build::{GenericError, Task};
 use crate::compiler::Compiler;
 use crate::module::{Dependency, Module, ModuleId};
-use crate::resolve::{get_resolvers, Resolvers};
+use crate::resolve::{self, get_resolvers, Resolvers};
 use crate::transform_in_generate::transform_modules;
+use crate::transformers::transform_virtual_css_modules::is_css_path;
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum UpdateType {
     Add,
     Remove,
@@ -69,22 +72,79 @@ removed:{:?}
 impl Compiler {
     pub fn update(&self, paths: Vec<(PathBuf, UpdateType)>) -> Result<UpdateResult> {
         let mut update_result: UpdateResult = Default::default();
-
         let resolvers = Arc::new(get_resolvers(&self.context.config));
 
-        // watch 到变化的文件，如果不在之前的 module graph 中，需过滤掉
-        let paths: Vec<(PathBuf, UpdateType)> = {
-            let module_graph = self.context.module_graph.read().unwrap();
-            paths
-                .into_iter()
-                .filter(|(p, _)| module_graph.has_module(&p.clone().into()))
-                .collect()
-        };
-
-        // 先分组
         let mut modified = vec![];
         let mut removed = vec![];
         let mut added = vec![];
+
+        debug!("checking added...");
+        let mut has_added = false;
+        for (path, update_type) in &paths {
+            if matches!(update_type, UpdateType::Add) {
+                debug!("  > {} is added", path.to_string_lossy());
+                has_added = true;
+                break;
+            }
+        }
+        debug!("checking added...done, has_added:{}", has_added);
+
+        // try to resolve modules with missing deps
+        // if found, add to modified queue
+        if has_added {
+            debug!("checking modules_with_missing_deps... since has added modules");
+            let mut modules_with_missing_deps =
+                self.context.modules_with_missing_deps.write().unwrap();
+            let mut module_graph = self.context.module_graph.write().unwrap();
+            for module_id in modules_with_missing_deps.clone().iter() {
+                let id = ModuleId::new(module_id.clone());
+                let module = module_graph.get_module_mut(&id).unwrap();
+                let missing_deps = module.info.clone().unwrap().missing_deps;
+                for (_source, dep) in missing_deps {
+                    let resolved =
+                        resolve::resolve(module_id, &dep, &self.context.resolvers, &self.context);
+                    if resolved.is_ok() {
+                        debug!(
+                            "  > missing deps resolved {:?} from {:?}",
+                            dep.source, module_id
+                        );
+                        modified.push(PathBuf::from(module_id.clone()));
+                        let info = module.info.as_mut().unwrap();
+                        info.missing_deps.remove(&dep.source);
+                        if info.missing_deps.is_empty() {
+                            debug!("  > remove {} from modules_with_missing_deps", module_id);
+                            modules_with_missing_deps.retain(|x| x == module_id);
+                        }
+                    }
+                }
+            }
+            debug!("checking modules_with_missing_deps...done");
+        }
+
+        // watch 到变化的文件，如果不在之前的 module graph 中，需过滤掉
+        debug!("filtering paths...");
+        let paths: Vec<(PathBuf, UpdateType)> = {
+            let module_graph = self.context.module_graph.read().unwrap();
+            let mut new_paths = vec![];
+            paths.into_iter().for_each(|(p, update_type)| {
+                if module_graph.has_module(&p.clone().into()) {
+                    debug!("  > {} is filtered", p.to_string_lossy());
+                    new_paths.push((p.clone(), update_type.clone()));
+                }
+                let p_str = p.to_string_lossy().to_string();
+                if is_css_path(&p_str) {
+                    let with_as_module = format!("{}?asmodule", p_str);
+                    if module_graph.has_module(&with_as_module.clone().into()) {
+                        debug!("  > {} is filtered", with_as_module);
+                        new_paths.push((PathBuf::from(with_as_module), update_type));
+                    }
+                }
+            });
+            new_paths
+        };
+        debug!("filtering paths...done");
+
+        // 先分组
         for (path, update_type) in paths {
             match update_type {
                 UpdateType::Add => {
@@ -100,22 +160,37 @@ impl Compiler {
         }
 
         // 先做删除
+        debug!("remove: {:?}", &removed);
         let (removed_module_ids, affected_module_ids) = self.build_by_remove(removed);
+        debug!("after build_by_remove");
+        debug!("  > removed_module_ids: {:?}", &removed_module_ids);
+        debug!(
+            "  > affected_module_ids: {:?} (these will be added to modified",
+            &affected_module_ids
+        );
         update_result.removed.extend(removed_module_ids);
 
         modified.extend(affected_module_ids.into_iter().map(|i| i.to_path()));
 
         // 分析修改的模块，结果中会包含新增的模块
+        debug!("modify: {:?}", &modified);
         let (modified_module_ids, add_paths) = self
             .build_by_modify(modified, resolvers.clone())
             .map_err(|err| anyhow!(err))?;
+        debug!("after build_by_modify");
+        debug!("  > modified_module_ids: {:?}", &modified_module_ids);
+        debug!(
+            "  > add_paths: {:?} (these will be added to added)",
+            &add_paths
+        );
 
         added.extend(add_paths);
         debug!("added:{:?}", &added);
         update_result.modified.extend(modified_module_ids);
 
         // 最后做添加
-        let added_module_ids = self.build_by_add(&added, resolvers);
+        debug!("add: {:?}", &added);
+        let added_module_ids = self.build_by_add(&added, resolvers)?;
         update_result.added.extend(
             added
                 .into_iter()
@@ -123,8 +198,8 @@ impl Compiler {
                 .collect::<HashSet<_>>(),
         );
         update_result.added.extend(added_module_ids);
-        debug!("update_result:{:?}", &update_result);
 
+        debug!("update_result: {:?}", &update_result);
         Result::Ok(update_result)
     }
 
@@ -142,28 +217,65 @@ impl Compiler {
 
     fn build_by_modify(
         &self,
-        modified: Vec<PathBuf>,
+        mut modified: Vec<PathBuf>,
         resolvers: Arc<Resolvers>,
     ) -> Result<(HashSet<ModuleId>, Vec<PathBuf>)> {
+        let module_graph = self.context.module_graph.read().unwrap();
+        let modules = module_graph.modules();
+
+        // if ?modules is modified, add ?asmodule to modified
+        for module in modules
+            .iter()
+            .filter(|module| module.id.id.contains("?modules"))
+        {
+            let origin_id = module.id.id.split('?').next().unwrap();
+            let css_modules_virtual_id = format!("{}?asmodule", origin_id);
+            if modified.contains(&PathBuf::from(css_modules_virtual_id)) {
+                modified.push(PathBuf::from(module.id.id.clone()));
+            }
+        }
+        drop(module_graph);
+
         let result = modified
             .par_iter()
             .map(|entry| {
+                debug!("build by modify: {:?} start", entry);
                 // first build
-
                 let is_entry = {
                     // there must be a entry, so unwrap is safe
-                    let entries = get_entries(&self.context.root, &self.context.config).unwrap();
-                    entries.contains(entry)
+                    let mut entries = self.context.config.entry.values();
+                    entries.any(|e| e.eq(entry))
                 };
 
-                let (module, dependencies, _) = Compiler::build_module(
-                    self.context.clone(),
-                    Task {
+                let (module, dependencies) = Compiler::build_module(
+                    &self.context,
+                    &Task {
                         path: entry.to_string_lossy().to_string(),
                         is_entry,
+                        parent_resource: None,
                     },
                     resolvers.clone(),
                 )?;
+
+                debug!(
+                    "  > missing deps: {:?}",
+                    module.info.clone().unwrap().missing_deps
+                );
+
+                // update modules_with_missing_deps
+                if module.info.clone().unwrap().missing_deps.is_empty() {
+                    self.context
+                        .modules_with_missing_deps
+                        .write()
+                        .unwrap()
+                        .retain(|id| id != &module.id.id);
+                } else {
+                    self.context
+                        .modules_with_missing_deps
+                        .write()
+                        .unwrap()
+                        .push(module.id.id.clone());
+                }
 
                 // diff
                 let module_graph = self.context.module_graph.read().unwrap();
@@ -176,15 +288,17 @@ impl Compiler {
 
                 let mut add_modules: HashMap<ModuleId, Module> = HashMap::new();
                 let mut target_dependencies: Vec<(ModuleId, Dependency)> = vec![];
-                dependencies.into_iter().for_each(|(path, external, dep)| {
-                    let module_id = ModuleId::new(path.clone());
+                dependencies.into_iter().for_each(|(resource, dep)| {
+                    let resolved_path = resource.get_resolved_path();
+                    let module_id = ModuleId::new(resolved_path);
                     // TODO: handle error
-                    let module = self.create_module(external, path, &module_id).unwrap();
+                    let module = Self::create_module(&resource, &module_id, &self.context).unwrap();
                     target_dependencies.push((module_id.clone(), dep));
                     add_modules.insert(module_id, module);
                 });
 
                 let d = diff(current_dependencies, target_dependencies);
+                debug!("build by modify: {:?} end", entry);
                 Result::Ok((module, d.added, d.removed, add_modules))
             })
             .collect::<Result<Vec<_>>>();
@@ -196,8 +310,8 @@ impl Compiler {
         let mut module_graph = self.context.module_graph.write().unwrap();
         for (module, add, remove, mut add_modules) in result {
             // remove bind dependency
-            for (remove_module_id, _) in remove {
-                module_graph.remove_dependency(&module.id, &remove_module_id)
+            for (remove_module_id, dep) in remove {
+                module_graph.remove_dependency(&module.id, &remove_module_id, &dep);
             }
 
             // add bind dependency
@@ -222,16 +336,56 @@ impl Compiler {
         Result::Ok((modified_module_ids, added))
     }
 
-    fn build_by_add(&self, added: &Vec<PathBuf>, resolvers: Arc<Resolvers>) -> HashSet<ModuleId> {
-        let mut add_queue: VecDeque<Task> = VecDeque::new();
+    fn build_by_add(
+        &self,
+        added: &Vec<PathBuf>,
+        resolvers: Arc<Resolvers>,
+    ) -> Result<HashSet<ModuleId>> {
+        let (module_ids_rs, module_ids_rr) = channel::<ModuleId>();
+        let (pool, rs, rr) = Self::create_thread_pool();
         for path in added {
-            add_queue.push_back(Task {
-                path: path.to_string_lossy().to_string(),
-                is_entry: false,
-            })
+            Self::build_module_graph_threaded(
+                pool.clone(),
+                self.context.clone(),
+                Task {
+                    path: path.to_string_lossy().to_string(),
+                    is_entry: false,
+                    parent_resource: None,
+                },
+                rs.clone(),
+                resolvers.clone(),
+                module_ids_rs.clone(),
+            );
         }
 
-        self.build_module_graph_by_task_queue(&mut add_queue, resolvers)
+        drop(rs);
+        drop(module_ids_rs);
+
+        let mut errors = vec![];
+        for err in rr {
+            // unescape
+            let mut err = err
+                .to_string()
+                .replace("\\n", "\n")
+                .replace("\\u{1b}", "\u{1b}")
+                .replace("\\\\", "\\");
+            // remove first char and last char
+            if err.starts_with('"') && err.ends_with('"') {
+                err = err[1..err.len() - 1].to_string();
+            }
+            eprintln!("{}", "Build failed.".to_string().red());
+            errors.push(err);
+        }
+
+        if !errors.is_empty() {
+            return Err(anyhow!(GenericError(errors.join(", "))));
+        }
+
+        let mut module_ids = HashSet::new();
+        for module_id in module_ids_rr {
+            module_ids.insert(module_id);
+        }
+        Ok(module_ids)
     }
 
     fn build_by_remove(&self, removed: Vec<PathBuf>) -> (HashSet<ModuleId>, HashSet<ModuleId>) {
@@ -255,26 +409,36 @@ pub struct Diff {
 }
 
 // 对比两颗 Dependency 的差异
-fn diff(right: Vec<(ModuleId, Dependency)>, left: Vec<(ModuleId, Dependency)>) -> Diff {
-    let right: HashSet<(ModuleId, Dependency)> = right.into_iter().collect();
-    let left: HashSet<(ModuleId, Dependency)> = left.into_iter().collect();
-    let removed = right
-        .difference(&left)
-        .collect::<HashSet<_>>()
-        .into_iter()
-        .map(|dep| (*dep).clone())
-        .collect();
-    let added = left
-        .difference(&right)
-        .collect::<HashSet<_>>()
-        .into_iter()
-        .map(|dep| (*dep).clone())
-        .collect();
+fn diff(origin: Vec<(ModuleId, Dependency)>, target: Vec<(ModuleId, Dependency)>) -> Diff {
+    let origin_module_ids = origin
+        .iter()
+        .map(|(module_id, _dep)| module_id)
+        .collect::<HashSet<_>>();
+    let target_module_ids = target
+        .iter()
+        .map(|(module_id, _dep)| module_id)
+        .collect::<HashSet<_>>();
+    let mut added: HashSet<(ModuleId, Dependency)> = HashSet::new();
+    let mut removed: HashSet<(ModuleId, Dependency)> = HashSet::new();
+    target
+        .iter()
+        .filter(|(module_id, _dep)| !origin_module_ids.contains(module_id))
+        .for_each(|(module_id, dep)| {
+            added.insert((module_id.clone(), dep.clone()));
+        });
+    origin
+        .iter()
+        .filter(|(module_id, _dep)| !target_module_ids.contains(module_id))
+        .for_each(|(module_id, dep)| {
+            removed.insert((module_id.clone(), dep.clone()));
+        });
     Diff { added, removed }
 }
 
 #[cfg(test)]
 mod tests {
+
+    use mako_core::tokio;
 
     use crate::module::ModuleId;
     use crate::test_helper::{module_to_jscode, setup_compiler, setup_files};
@@ -283,14 +447,10 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_build() {
-        let compiler = setup_compiler("test/build/tmp/single", true);
+        let compiler = setup_compiler("test/build/tmp/single", false);
         setup_files(
             &compiler,
             vec![
-                (
-                    "mako.config.json".into(),
-                    r#"{"mode": "production"}"#.into(),
-                ),
                 (
                     "index.ts".into(),
                     r#"
@@ -311,7 +471,7 @@ export default async function () {
                 ),
             ],
         );
-        compiler.compile(None);
+        compiler.compile().unwrap();
         {
             let module_graph = compiler.context.module_graph.read().unwrap();
             assert_display_snapshot!(&module_graph);
@@ -354,15 +514,11 @@ export const foo = 1;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_update_multi() {
-        let compiler = setup_compiler("test/build/tmp/multi", true);
+        let compiler = setup_compiler("test/build/tmp/multi", false);
         let target_path = compiler.context.root.join("index.ts");
         setup_files(
             &compiler,
             vec![
-                (
-                    "mako.config.json".into(),
-                    r#"{"mode": "production"}"#.into(),
-                ),
                 (
                     "index.ts".into(),
                     r#"
@@ -383,7 +539,7 @@ export default async function () {
                 ),
             ],
         );
-        compiler.compile(None);
+        compiler.compile().unwrap();
         {
             let module_graph = compiler.context.module_graph.read().unwrap();
             let code = module_to_jscode(&compiler, &ModuleId::from_path(target_path.clone()));

@@ -3,7 +3,8 @@
     "prepare": "husky install",
     "rome:format": "rome format --write .",
     "release": "esno scripts/release.ts",
-    "release:bundler-okam": "cd packages/bundler-okam && tnpm publish"
+    "release:okam": "pnpm --filter @okamjs/okam release",
+    "release:bundler-okam": "esno scripts/release-bundler-okam.ts"
   },
   "license": "MIT",
   "devDependencies": {
@@ -13,12 +14,14 @@
     "esno": "^0.17.0",
     "husky": "^8.0.3",
     "node-libs-browser-okam": "2.2.4",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-error-overlay": "6.0.0",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-error-overlay": "6.0.11",
     "react-refresh": "^0.14.0",
     "rome": "^12.0.0",
     "semver": "^7.5.4",
+    "webpack": "^5.0.0",
     "zx": "^7.2.3"
-  }
+  },
+  "repository": "git@github.com:umijs/mako.git"
 }

@@ -1,19 +1,18 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt;
-use std::sync::Arc;
 
-use petgraph::graph::{DefaultIx, NodeIndex};
-use petgraph::prelude::EdgeRef;
-use petgraph::stable_graph::{StableDiGraph, WalkNeighbors};
-use petgraph::visit::IntoEdgeReferences;
-use petgraph::Direction;
+use mako_core::petgraph::graph::{DefaultIx, NodeIndex};
+use mako_core::petgraph::prelude::EdgeRef;
+use mako_core::petgraph::stable_graph::{StableDiGraph, WalkNeighbors};
+use mako_core::petgraph::visit::IntoEdgeReferences;
+use mako_core::petgraph::Direction;
 
-use crate::compiler::Context;
-use crate::module::{Dependency, Module, ModuleId};
+use crate::module::{Dependencies, Dependency, Module, ModuleId, ModuleInfo};
 
+#[derive(Debug)]
 pub struct ModuleGraph {
     id_index_map: HashMap<ModuleId, NodeIndex<DefaultIx>>,
-    pub graph: StableDiGraph<Module, Dependency>,
+    pub graph: StableDiGraph<Module, Dependencies>,
     entries: HashSet<ModuleId>,
 }
 
@@ -52,16 +51,20 @@ impl ModuleGraph {
             .and_then(|i| self.graph.node_weight(*i))
     }
 
+    pub fn modules(&self) -> Vec<&Module> {
+        self.graph.node_weights().collect()
+    }
+
     #[allow(dead_code)]
     pub fn remove_module_and_deps(&mut self, module_id: &ModuleId) -> Module {
         let mut deps_module_ids = vec![];
         self.get_dependencies(module_id)
             .into_iter()
-            .for_each(|(module_id, _)| {
-                deps_module_ids.push(module_id.clone());
+            .for_each(|(module_id, dep)| {
+                deps_module_ids.push((module_id.clone(), dep.clone()));
             });
-        for to_module_id in deps_module_ids {
-            self.remove_dependency(module_id, &to_module_id);
+        for (to_module_id, dep) in deps_module_ids {
+            self.remove_dependency(module_id, &to_module_id, &dep);
         }
         self.remove_module(module_id)
     }
@@ -88,11 +91,6 @@ impl ModuleGraph {
             .collect()
     }
 
-    pub fn mark_missing_module(&mut self, module_id: &ModuleId, _context: &Arc<Context>) {
-        let module = self.get_module_mut(module_id).unwrap();
-        module.is_missing = true;
-    }
-
     pub fn replace_module(&mut self, module: Module) {
         let i = self
             .id_index_map
@@ -106,7 +104,7 @@ impl ModuleGraph {
         self.graph.node_weights_mut().collect()
     }
 
-    pub fn remove_dependency(&mut self, from: &ModuleId, to: &ModuleId) {
+    pub fn remove_dependency(&mut self, from: &ModuleId, to: &ModuleId, dep: &Dependency) {
         let from_index = self.id_index_map.get(from).unwrap_or_else(|| {
             panic!(
                 r#"from node "{}" does not exist in the module graph when remove edge"#,
@@ -130,8 +128,12 @@ impl ModuleGraph {
                     from.id, to.id
                 )
             });
+        let deps = self.graph.edge_weight_mut(edge).unwrap();
+        deps.remove(dep);
 
-        self.graph.remove_edge(edge);
+        if deps.is_empty() {
+            self.graph.remove_edge(edge);
+        }
     }
 
     pub fn add_dependency(&mut self, from: &ModuleId, to: &ModuleId, edge: Dependency) {
@@ -143,7 +145,15 @@ impl ModuleGraph {
             .id_index_map
             .get(to)
             .unwrap_or_else(|| panic!("module_id {:?} not found in the module graph", to));
-        self.graph.update_edge(*from, *to, edge);
+        let dep = self.graph.find_edge(*from, *to);
+        if let Some(dep) = dep {
+            let edges = self.graph.edge_weight_mut(dep).unwrap();
+            edges.insert(edge);
+        } else {
+            let mut edges = Dependencies::new();
+            edges.insert(edge);
+            self.graph.update_edge(*from, *to, edges);
+        }
     }
 
     // 公共方法抽出, InComing 找 targets, Outing 找 dependencies
@@ -160,11 +170,44 @@ impl ModuleGraph {
         let mut edges = self.get_edges(module_id, Direction::Outgoing);
         let mut deps: Vec<(&ModuleId, &Dependency)> = vec![];
         while let Some((edge_index, node_index)) = edges.next(&self.graph) {
-            let dependency = self.graph.edge_weight(edge_index).unwrap();
+            let dependencies = self.graph.edge_weight(edge_index).unwrap();
             let module = self.graph.node_weight(node_index).unwrap();
-            deps.push((&module.id, dependency));
+            dependencies.iter().for_each(|dep| {
+                deps.push((&module.id, dep));
+            })
         }
         deps.sort_by_key(|(_, dep)| dep.order);
+        deps
+    }
+
+    pub fn get_dependents(&self, module_id: &ModuleId) -> Vec<(&ModuleId, &Dependency)> {
+        let mut edges = self.get_edges(module_id, Direction::Incoming);
+        let mut deps: Vec<(&ModuleId, &Dependency)> = vec![];
+        while let Some((edge_index, node_index)) = edges.next(&self.graph) {
+            let dependencies = self.graph.edge_weight(edge_index).unwrap();
+            let module = self.graph.node_weight(node_index).unwrap();
+            dependencies.iter().for_each(|dep| {
+                deps.push((&module.id, dep));
+            })
+        }
+        deps.sort_by_key(|(_, dep)| dep.order);
+        deps
+    }
+
+    pub fn get_dependencies_info(
+        &self,
+        module_id: &ModuleId,
+    ) -> Vec<(ModuleId, Dependency, ModuleInfo)> {
+        let mut edges = self.get_edges(module_id, Direction::Outgoing);
+        let mut deps = vec![];
+        while let Some((edge_index, node_index)) = edges.next(&self.graph) {
+            let dependencies = self.graph.edge_weight(edge_index).unwrap();
+            let module = self.graph.node_weight(node_index).unwrap();
+            dependencies.iter().for_each(|dep| {
+                deps.push((module.id.clone(), dep.clone(), module.info.clone().unwrap()));
+            })
+        }
+        deps.sort_by_key(|(_, dep, _)| dep.order);
         deps
     }
 
@@ -179,14 +222,25 @@ impl ModuleGraph {
         targets
     }
 
+    pub fn dependence_module_ids(&self, module_id: &ModuleId) -> Vec<ModuleId> {
+        let mut edges = self.get_edges(module_id, Direction::Outgoing);
+        let mut targets: Vec<ModuleId> = vec![];
+        while let Some((_, node_index)) = edges.next(&self.graph) {
+            let module = self.graph.node_weight(node_index).unwrap();
+            targets.push(module.id.clone());
+        }
+
+        targets
+    }
+
     pub fn get_dependency_module_by_source(
         &self,
         module_id: &ModuleId,
-        source: String,
+        source: &String,
     ) -> &ModuleId {
         let deps = self.get_dependencies(module_id);
         for (module_id, dep) in deps {
-            if source == dep.source {
+            if *source == dep.source {
                 return module_id;
             }
         }
@@ -247,15 +301,8 @@ impl ModuleGraph {
 
         (result, cyclic)
     }
-}
 
-impl fmt::Display for ModuleGraph {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut nodes = self
-            .graph
-            .node_weights()
-            .map(|node| &node.id.id)
-            .collect::<Vec<_>>();
+    pub fn get_reference(&self) -> Vec<String> {
         let mut references = self
             .graph
             .edge_references()
@@ -265,8 +312,20 @@ impl fmt::Display for ModuleGraph {
                 format!("{} -> {}", source, target)
             })
             .collect::<Vec<_>>();
-        nodes.sort_by_key(|id| id.to_string());
         references.sort_by_key(|id| id.to_string());
+        references
+    }
+}
+
+impl fmt::Display for ModuleGraph {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut nodes = self
+            .graph
+            .node_weights()
+            .map(|node| &node.id.id)
+            .collect::<Vec<_>>();
+        let references = self.get_reference();
+        nodes.sort_by_key(|id| id.to_string());
         write!(
             f,
             "graph\n nodes:{:?} \n references:{:?}",

@@ -1,0 +1,31 @@
+---
+source: crates/mako/src/transformers/transform_react.rs
+expression: "transform(TransformTask {\n        is_entry: true,\n        path: \"index.js\".to_string(),\n        code: \"console.log('entry');\".to_string(),\n    })"
+---
+import * as RefreshRuntime from 'react-refresh';
+var prevRefreshReg;
+var prevRefreshSig;
+prevRefreshReg = self.$RefreshReg$;
+prevRefreshSig = self.$RefreshSig$;
+self.$RefreshReg$ = (type, id)=>{
+    RefreshRuntime.register(type, module.id + id);
+};
+self.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
+console.log('entry');
+self.$RefreshReg$ = prevRefreshReg;
+self.$RefreshSig$ = prevRefreshSig;
+function $RefreshIsReactComponentLike$(moduleExports) {
+    if (RefreshRuntime.isLikelyComponentType(moduleExports.default || moduleExports)) {
+        return true;
+    }
+    for(var key in moduleExports){
+        if (RefreshRuntime.isLikelyComponentType(moduleExports[key])) {
+            return true;
+        }
+    }
+    return false;
+}
+if ($RefreshIsReactComponentLike$(module.exports)) {
+    module.meta.hot.accept();
+    RefreshRuntime.performReactRefresh();
+}

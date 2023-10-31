@@ -2,22 +2,40 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
-use colored::Colorize;
-use futures::{SinkExt, StreamExt};
-use hyper::header::CONTENT_TYPE;
-use hyper::http::HeaderValue;
-use hyper::Server;
-use tokio::sync::broadcast::{Receiver, Sender};
-use tokio::task::JoinHandle;
-use tokio::try_join;
-use tracing::debug;
-use tungstenite::Message;
+use mako_core::colored::Colorize;
+use mako_core::futures::{SinkExt, StreamExt};
+use mako_core::hyper::header::CONTENT_TYPE;
+use mako_core::hyper::http::HeaderValue;
+use mako_core::hyper::server::conn::AddrIncoming;
+use mako_core::hyper::server::Builder;
+use mako_core::hyper::{Body, Request, Server};
+use mako_core::rayon::ThreadPoolBuilder;
+use mako_core::tokio::sync::broadcast::{Receiver, Sender};
+use mako_core::tokio::try_join;
+use mako_core::tracing::debug;
+use mako_core::tungstenite::Message;
+use mako_core::{hyper, hyper_staticfile, hyper_tungstenite, tokio};
 
 use crate::compiler;
 use crate::compiler::Compiler;
 use crate::watch::watch;
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
+
+fn bind_idle_port(port: u16) -> Builder<AddrIncoming> {
+    let mut port = port;
+    // 循环调用 try_bind, err 继续寻找端口, ok 返回实例
+    loop {
+        match Server::try_bind(&([127, 0, 0, 1], port).into()) {
+            Ok(builder) => {
+                return builder;
+            }
+            Err(_) => {
+                port += 1;
+            }
+        }
+    }
+}
 
 pub struct DevServer {
     watcher: Arc<ProjectWatch>,
@@ -33,7 +51,7 @@ impl DevServer {
     }
 
     pub async fn serve(&self) {
-        let watch_handler = self.watcher.start();
+        self.watcher.start();
 
         async fn serve_websocket(
             websocket: hyper_tungstenite::HyperWebsocket,
@@ -58,7 +76,7 @@ impl DevServer {
             });
 
             while let Some(message) = ws_recv.next().await {
-                if let Message::Close(_) = message.unwrap() {
+                if let Ok(Message::Close(_)) = message {
                     break;
                 }
             }
@@ -68,11 +86,11 @@ impl DevServer {
 
             Ok(())
         }
-        let arc_watcher = Arc::new(self.watcher.clone());
+        let arc_watcher = self.watcher.clone();
         let compiler = self.compiler.clone();
-        let handle_request = move |req: hyper::Request<hyper::Body>| {
+        let handle_request = move |req: Request<Body>| {
             let for_fn = compiler.clone();
-            let r = arc_watcher.clone_receiver();
+            let w = arc_watcher.clone();
             async move {
                 let path = req.uri().path().strip_prefix('/').unwrap_or("");
 
@@ -86,7 +104,8 @@ impl DevServer {
                                 hyper_tungstenite::upgrade(req, None).unwrap();
 
                             tokio::spawn(async move {
-                                if let Err(e) = serve_websocket(websocket, r).await {
+                                if let Err(e) = serve_websocket(websocket, w.clone_receiver()).await
+                                {
                                     eprintln!("Error in websocket connection: {}", e);
                                 }
                             });
@@ -102,6 +121,24 @@ impl DevServer {
                         }
                     }
                     _ => {
+                        if let Some(res) = for_fn.context.get_static_content(path) {
+                            let ext = path.rsplit('.').next();
+
+                            let content_type = match ext {
+                                None => "text/plain; charset=utf-8",
+                                Some("js") => "application/javascript; charset=utf-8",
+                                Some("css") => "text/css; charset=utf-8",
+                                Some("map") | Some("json") => "application/json; charset=utf-8",
+                                Some(_) => "text/plain; charset=utf-8",
+                            };
+
+                            return Ok(hyper::Response::builder()
+                                .status(hyper::StatusCode::OK)
+                                .header(CONTENT_TYPE, content_type)
+                                .body(hyper::Body::from(res))
+                                .unwrap());
+                        }
+
                         // try chunk content in memory first, else use dist content
                         match static_serve.serve(req).await {
                             Ok(mut res) => {
@@ -141,18 +178,16 @@ impl DevServer {
 
         let port = self.compiler.context.config.hmr_port.clone();
         let port = port.parse::<u16>().unwrap();
+
         let dev_server_handle = tokio::spawn(async move {
-            if let Err(_e) = Server::bind(&([127, 0, 0, 1], port).into())
-                .serve(dev_service)
-                .await
-            {
+            if let Err(_e) = bind_idle_port(port).serve(dev_service).await {
                 println!("done");
             }
         });
 
         // build_handle 必须在 dev_server_handle 之前
         // 否则会导致 build_handle 无法收到前几个消息，原因未知
-        let join_error = try_join!(watch_handler, dev_server_handle);
+        let join_error = try_join!(dev_server_handle);
         if let Err(e) = join_error {
             eprintln!("Error in dev server: {:?}", e);
         }
@@ -180,21 +215,38 @@ impl ProjectWatch {
         }
     }
 
-    pub fn start(&self) -> JoinHandle<()> {
+    pub fn start(&self) {
         let c = self.compiler.clone();
         let root = self.root.clone();
         let tx = self.tx.clone();
 
         let mut last_full_hash = Box::new(c.full_hash());
+        debug!("last_full_hash: {:?}", last_full_hash);
 
         let watch_compiler = c.clone();
 
-        tokio::spawn(async move {
+        let pool = ThreadPoolBuilder::new().build().unwrap();
+        pool.spawn(move || {
             watch(&root, |events| {
+                debug!("watch events detected: {:?}", events);
+                debug!("checking update status...");
                 let res = watch_compiler.update(events.into());
+                let has_missing_deps = {
+                    watch_compiler
+                        .context
+                        .modules_with_missing_deps
+                        .read()
+                        .unwrap()
+                        .len()
+                        > 0
+                };
+                debug!("has_missing_deps: {}", has_missing_deps);
+                debug!("checking update status... done");
 
                 match res {
                     Err(err) => {
+                        debug!("update status is error: {:?}", err);
+                        println!("Compiling...");
                         // unescape
                         let mut err = err
                             .to_string()
@@ -209,15 +261,25 @@ impl ProjectWatch {
                         eprintln!("{}", err);
                     }
                     Ok(res) => {
+                        debug!("update status is ok, is_updated: {}", res.is_updated());
                         if res.is_updated() {
                             println!("Compiling...");
                             let t_compiler = Instant::now();
                             let next_full_hash =
                                 watch_compiler.generate_hot_update_chunks(res, *last_full_hash);
-                            println!(
-                                "Hot rebuilt in {}",
-                                format!("{}ms", t_compiler.elapsed().as_millis()).bold()
+                            debug!(
+                                "hot update chunks generated, next_full_hash: {:?}",
+                                next_full_hash
                             );
+
+                            // do not print hot rebuilt message if there are missing deps
+                            // since it's not a success rebuilt to user
+                            if !has_missing_deps {
+                                println!(
+                                    "Hot rebuilt in {}",
+                                    format!("{}ms", t_compiler.elapsed().as_millis()).bold()
+                                );
+                            }
 
                             if let Err(e) = next_full_hash {
                                 eprintln!("Error in watch: {:?}", e);
@@ -225,28 +287,31 @@ impl ProjectWatch {
                             }
 
                             let next_full_hash = next_full_hash.unwrap();
-
                             debug!(
-                                "Updated: {:?} {:?} {}",
+                                "hash info, next: {:?}, last: {:?}, is_equal: {}",
                                 next_full_hash,
                                 last_full_hash,
                                 next_full_hash == *last_full_hash
                             );
                             if next_full_hash == *last_full_hash {
-                                // no need to continue
+                                debug!("hash equals, will not do full rebuild");
                                 return;
                             } else {
                                 *last_full_hash = next_full_hash;
                             }
 
+                            debug!("full rebuild...");
                             if let Err(e) = c.emit_dev_chunks() {
-                                debug!("Error in build: {:?}, will rebuild soon", e);
+                                debug!("  > build failed: {:?}", e);
                                 return;
                             }
-                            println!(
-                                "Full rebuilt in {}",
-                                format!("{}ms", t_compiler.elapsed().as_millis()).bold()
-                            );
+                            debug!("full rebuild...done");
+                            if !has_missing_deps {
+                                println!(
+                                    "Full rebuilt in {}",
+                                    format!("{}ms", t_compiler.elapsed().as_millis()).bold()
+                                );
+                            }
 
                             debug!("receiver count: {}", tx.receiver_count());
                             if tx.receiver_count() > 0 {
@@ -254,12 +319,13 @@ impl ProjectWatch {
                                     hash: next_full_hash,
                                 })
                                 .unwrap();
+                                debug!("send message to clients");
                             }
                         }
                     }
                 }
             });
-        })
+        });
     }
 
     pub fn clone_receiver(&self) -> Receiver<WsMessage> {

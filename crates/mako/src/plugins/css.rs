@@ -1,16 +1,17 @@
 use std::sync::Arc;
 
-use anyhow::Result;
-use base64::engine::{general_purpose, Engine};
-use swc_css_ast::{AtRule, AtRulePrelude, ImportHref, Rule, Str, Stylesheet, UrlValue};
-use swc_css_modules::{compile, CssClassName, TransformConfig, TransformResult};
-use swc_css_visit::VisitMutWith;
+use mako_core::anyhow::Result;
+use mako_core::base64::engine::{general_purpose, Engine};
+use mako_core::swc_css_ast::{AtRule, AtRulePrelude, ImportHref, Rule, Str, Stylesheet, UrlValue};
+use mako_core::swc_css_modules::{compile, CssClassName, TransformConfig, TransformResult};
+use mako_core::swc_css_visit::{Visit, VisitMutWith, VisitWith};
+use mako_core::{md5, swc_atoms, swc_common, swc_css_compat};
 
 use crate::ast::{build_css_ast, build_js_ast};
 use crate::compiler::Context;
 use crate::load::{read_content, Content};
-use crate::module::ModuleAst;
-use crate::plugin::{Plugin, PluginLoadParam, PluginParseParam};
+use crate::module::{Dependency, ModuleAst, ResolveType};
+use crate::plugin::{Plugin, PluginDepAnalyzeParam, PluginLoadParam, PluginParseParam};
 
 pub struct CSSPlugin {}
 
@@ -28,13 +29,17 @@ impl Plugin for CSSPlugin {
 
     fn parse(&self, param: &PluginParseParam, context: &Arc<Context>) -> Result<Option<ModuleAst>> {
         if let Content::Css(content) = param.content {
-            // return Ok(Some(ModuleAst::Css(param.request.clone())));
-            let mut ast = build_css_ast(&param.request.path, content, context)?;
-            import_url_to_href(&mut ast);
             let has_modules_query = param.request.has_query("modules");
-            let is_css_modules_path = param.request.path.ends_with(".module.css");
+            let has_asmodule_query = param.request.has_query("asmodule");
+            let mut ast = build_css_ast(
+                &param.request.path,
+                content,
+                context,
+                has_asmodule_query || has_modules_query,
+            )?;
+            import_url_to_href(&mut ast);
             // parse css module as js
-            if is_css_modules_path && !has_modules_query {
+            if has_asmodule_query {
                 let code = generate_code_for_css_modules(&param.request.path, &mut ast);
                 let js_ast = build_js_ast(&param.request.path, &code, context)?;
                 return Ok(Some(ModuleAst::Script(js_ast)));
@@ -50,6 +55,20 @@ impl Plugin for CSSPlugin {
             }
         }
         Ok(None)
+    }
+
+    fn analyze_deps(
+        &self,
+        param: &mut PluginDepAnalyzeParam,
+        _context: &Arc<Context>,
+    ) -> Result<Option<Vec<Dependency>>> {
+        if let ModuleAst::Css(ast) = param.ast {
+            let mut visitor = DepCollectVisitor::new();
+            ast.visit_with(&mut visitor);
+            Ok(Some(visitor.dependencies))
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -118,6 +137,7 @@ fn generate_code_for_css_modules(path: &str, ast: &mut Stylesheet) -> String {
         .map(|(name, classes)| format!("\"{}\": `{}`", name, classes.join(" ").trim()))
         .collect::<Vec<String>>()
         .join(",");
+
     format!(
         r#"
 import "{}?modules";
@@ -157,11 +177,92 @@ fn import_url_to_href(ast: &mut Stylesheet) {
     });
 }
 
+pub fn is_url_ignored(url: &str) -> bool {
+    let lower_url = url.to_lowercase();
+    lower_url.starts_with("http://")
+        || lower_url.starts_with("https://")
+        || lower_url.starts_with("data:")
+        || lower_url.starts_with("//")
+}
+
+pub fn handle_css_url(url: String) -> String {
+    let mut url = url;
+    // compatible with the legacy css-loader usage in webpack
+    // ref: https://stackoverflow.com/a/39535907
+    // @import "~foo" => "foo"
+    if url.starts_with('~') {
+        url = url[1..].to_string();
+    }
+    url
+}
+
+struct DepCollectVisitor {
+    dependencies: Vec<Dependency>,
+    order: usize,
+}
+
+impl DepCollectVisitor {
+    fn new() -> Self {
+        Self {
+            dependencies: vec![],
+            // start with 1
+            // 0 for swc helpers
+            order: 1,
+        }
+    }
+    fn bind_dependency(
+        &mut self,
+        source: String,
+        resolve_type: ResolveType,
+        span: Option<swc_common::Span>,
+    ) {
+        self.dependencies.push(Dependency {
+            source,
+            order: self.order,
+            resolve_type,
+            span,
+        });
+        self.order += 1;
+    }
+    fn handle_css_url(&mut self, url: String) {
+        if is_url_ignored(&url) {
+            return;
+        }
+        let url = handle_css_url(url);
+        self.bind_dependency(url, ResolveType::Css, None);
+    }
+}
+
+impl Visit for DepCollectVisitor {
+    fn visit_import_href(&mut self, n: &ImportHref) {
+        match n {
+            // e.g.
+            // @import url(a.css)
+            // @import url("a.css")
+            ImportHref::Url(url) => {
+                let src: Option<String> = url.value.as_ref().map(|box value| match value {
+                    UrlValue::Str(str) => str.value.to_string(),
+                    UrlValue::Raw(raw) => raw.value.to_string(),
+                });
+                if let Some(src) = src {
+                    self.handle_css_url(src);
+                }
+            }
+            // e.g.
+            // @import "a.css"
+            ImportHref::Str(src) => {
+                let src = src.value.to_string();
+                self.handle_css_url(src);
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
 
-    use super::ident_name;
+    use super::{ident_name, is_url_ignored};
     use crate::ast::build_css_ast;
     use crate::plugins::css::generate_code_for_css_modules;
 
@@ -201,8 +302,36 @@ export default {"b": `b-KOXpblx_ a`,"c": `c-WTxpkVWA c`,"a": `a-hlnPCer-`}
 
     fn generate(code: &str) -> String {
         let path = "/test/path";
-        let mut ast = build_css_ast(path, code, &Arc::new(Default::default())).unwrap();
+        let mut ast = build_css_ast(path, code, &Arc::new(Default::default()), true).unwrap();
 
         generate_code_for_css_modules(path, &mut ast)
+    }
+
+    #[test]
+    fn test_is_url_ignored() {
+        assert!(
+            is_url_ignored(&String::from("http://abc")),
+            "http should be ignored"
+        );
+        assert!(
+            is_url_ignored(&String::from("https://abc")),
+            "https should be ignored"
+        );
+        assert!(
+            is_url_ignored(&String::from("HTTPS://abc")),
+            "HTTPS should be ignored (support uppercase)"
+        );
+        assert!(
+            is_url_ignored(&String::from("//abc")),
+            "// prefixed url should be ignored"
+        );
+        assert!(
+            is_url_ignored(&String::from("data:image")),
+            "data should be ignored"
+        );
+        assert!(
+            !is_url_ignored(&String::from("./abc")),
+            "./ should not be ignored"
+        );
     }
 }

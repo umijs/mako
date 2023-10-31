@@ -3,13 +3,18 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::vec;
 
-use anyhow::{anyhow, Result};
-use nodejs_resolver::{AliasMap, Options, ResolveResult, Resolver};
-use thiserror::Error;
-use tracing::debug;
+use mako_core::anyhow::{anyhow, Result};
+use mako_core::convert_case::{Case, Casing};
+use mako_core::nodejs_resolver::{AliasMap, Options, ResolveResult, Resolver, Resource};
+use mako_core::regex::{Captures, Regex};
+use mako_core::thiserror::Error;
+use mako_core::tracing::debug;
 
 use crate::compiler::Context;
-use crate::config::{Config, Platform};
+use crate::config::{
+    Config, ExternalAdvancedSubpathConverter, ExternalAdvancedSubpathTarget, ExternalConfig,
+    Platform,
+};
 use crate::module::{Dependency, ResolveType};
 
 #[derive(Debug, Error)]
@@ -22,11 +27,52 @@ enum ResolveError {
 enum ResolverType {
     Cjs,
     Esm,
+    Css,
 }
 
 pub struct Resolvers {
     cjs: Resolver,
     esm: Resolver,
+    css: Resolver,
+}
+
+#[derive(Debug, Clone)]
+pub struct ExternalResource {
+    pub source: String,
+    pub external: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct ResolvedResource(pub Resource);
+
+#[derive(Debug, Clone)]
+pub enum ResolverResource {
+    External(ExternalResource),
+    Resolved(ResolvedResource),
+    Ignored,
+}
+
+impl ResolverResource {
+    pub fn get_resolved_path(&self) -> String {
+        match self {
+            ResolverResource::External(ExternalResource { source, .. }) => source.to_string(),
+            ResolverResource::Resolved(ResolvedResource(resource)) => {
+                let mut path = resource.path.to_string_lossy().to_string();
+                if resource.query.is_some() {
+                    path = format!("{}{}", path, resource.query.as_ref().unwrap());
+                }
+                path
+            }
+            ResolverResource::Ignored => "".to_string(),
+        }
+    }
+    pub fn get_external(&self) -> Option<String> {
+        match self {
+            ResolverResource::External(ExternalResource { external, .. }) => Some(external.clone()),
+            ResolverResource::Resolved(_) => None,
+            ResolverResource::Ignored => None,
+        }
+    }
 }
 
 pub fn resolve(
@@ -34,13 +80,109 @@ pub fn resolve(
     dep: &Dependency,
     resolvers: &Resolvers,
     context: &Arc<Context>,
-) -> Result<(String, Option<String>)> {
+) -> Result<ResolverResource> {
+    mako_core::mako_profile_function!();
+    mako_core::mako_profile_scope!("resolve", &dep.source);
     let resolver = if dep.resolve_type == ResolveType::Require {
         &resolvers.cjs
+    } else if dep.resolve_type == ResolveType::Css {
+        &resolvers.css
     } else {
         &resolvers.esm
     };
     do_resolve(path, &dep.source, resolver, Some(&context.config.externals))
+}
+
+fn get_external_target(
+    externals: &HashMap<String, ExternalConfig>,
+    source: &str,
+) -> Option<String> {
+    if let Some(external) = externals.get(source) {
+        // handle full match
+        // ex. import React from 'react';
+        match external {
+            ExternalConfig::Basic(external) => Some(external.clone()),
+            ExternalConfig::Advanced(config) => Some(config.root.clone()),
+        }
+    } else if let Some((advanced_config, subpath)) = externals.iter().find_map(|(key, config)| {
+        // find matched advanced config
+        if matches!(config, ExternalConfig::Advanced(_)) && source.starts_with(&format!("{}/", key))
+        {
+            match config {
+                ExternalConfig::Advanced(config) => {
+                    let subpath = source.replace(&format!("{}/", key), "");
+
+                    // skip if source is excluded
+                    match &config.subpath.exclude {
+                        // skip if source is excluded
+                        Some(exclude)
+                            if exclude.iter().any(|e| {
+                                Regex::new(&format!("(^|/){}(/|$)", e))
+                                    .ok()
+                                    .unwrap()
+                                    .is_match(subpath.as_str())
+                            }) =>
+                        {
+                            None
+                        }
+                        _ => Some((config, source.replace(&format!("{}/", key), ""))),
+                    }
+                }
+                _ => unreachable!(),
+            }
+        } else {
+            None
+        }
+    }) {
+        // handle subpath match
+        // ex. import Button from 'antd/es/button';
+        // find matched subpath rule
+        if let Some((rule, caps)) = advanced_config.subpath.rules.iter().find_map(|r| {
+            let regex = Regex::new(r.regex.as_str()).ok().unwrap();
+
+            if regex.is_match(subpath.as_str()) {
+                Some((r, regex.captures(subpath.as_str()).unwrap()))
+            } else {
+                None
+            }
+        }) {
+            // generate target from rule target
+            match &rule.target {
+                // external to empty string
+                ExternalAdvancedSubpathTarget::Empty => Some("''".to_string()),
+                // external to target template
+                ExternalAdvancedSubpathTarget::Tpl(target) => {
+                    let regex = Regex::new(r"\$(\d+)").ok().unwrap();
+
+                    // replace $1, $2, ... with captured groups
+                    let mut replaced = regex
+                        .replace_all(target, |target_caps: &Captures| {
+                            let i = target_caps[1].parse::<usize>().ok().unwrap();
+
+                            caps.get(i).unwrap().as_str().to_string()
+                        })
+                        .to_string();
+
+                    // convert case if needed
+                    // ex. date-picker -> DatePicker
+                    if let Some(converter) = &rule.target_converter {
+                        replaced = match converter {
+                            ExternalAdvancedSubpathConverter::PascalCase => replaced
+                                .split('.')
+                                .map(|s| s.to_case(Case::Pascal))
+                                .collect::<Vec<_>>()
+                                .join("."),
+                        };
+                    }
+                    Some(format!("{}.{}", advanced_config.root, replaced))
+                }
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    }
 }
 
 // TODO:
@@ -49,27 +191,48 @@ fn do_resolve(
     path: &str,
     source: &str,
     resolver: &Resolver,
-    externals: Option<&HashMap<String, String>>,
-) -> Result<(String, Option<String>)> {
+    externals: Option<&HashMap<String, ExternalConfig>>,
+) -> Result<ResolverResource> {
     let external = if let Some(externals) = externals {
-        externals.get(&source.to_string()).cloned()
+        get_external_target(externals, source)
     } else {
         None
     };
     if let Some(external) = external {
-        Ok((source.to_string(), Some(external)))
+        Ok(ResolverResource::External(ExternalResource {
+            source: source.to_string(),
+            external,
+        }))
     } else {
         let path = PathBuf::from(path);
         // 所有的 path 都是文件，所以 parent() 肯定是其所在目录
         let parent = path.parent().unwrap();
         debug!("parent: {:?}, source: {:?}", parent, source);
         let result = resolver.resolve(parent, source);
-        if let Ok(ResolveResult::Resource(resource)) = result {
-            let mut path = resource.path.to_string_lossy().to_string();
-            if resource.query.is_some() {
-                path = format!("{}{}", path, resource.query.as_ref().unwrap());
+        if let Ok(result) = result {
+            if source.contains("@alipay/knowledge-form") {
+                println!("resolve: {:?} -> {:?}", source, result);
             }
-            Ok((path, None))
+
+            match result {
+                ResolveResult::Resource(resource) => {
+                    // TODO: 只在 watch 时且二次编译时才做这个检查
+                    // TODO: 临时方案，需要改成删除文件时删 resolve cache 里的内容
+                    // 比如把 util.ts 改名为 util.tsx，目前应该是还有问题的
+                    if resource.path.exists() {
+                        Ok(ResolverResource::Resolved(ResolvedResource(resource)))
+                    } else {
+                        Err(anyhow!(ResolveError::ResolveError {
+                            path: source.to_string(),
+                            from: path.to_string_lossy().to_string(),
+                        }))
+                    }
+                }
+                ResolveResult::Ignored => {
+                    debug!("resolve ignored: {:?}", source);
+                    Ok(ResolverResource::Ignored)
+                }
+            }
         } else {
             Err(anyhow!(ResolveError::ResolveError {
                 path: source.to_string(),
@@ -82,71 +245,97 @@ fn do_resolve(
 pub fn get_resolvers(config: &Config) -> Resolvers {
     let cjs_resolver = get_resolver(config, ResolverType::Cjs);
     let esm_resolver = get_resolver(config, ResolverType::Esm);
+    let css_resolver = get_resolver(config, ResolverType::Css);
     Resolvers {
         cjs: cjs_resolver,
         esm: esm_resolver,
+        css: css_resolver,
     }
 }
 
 fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
     let alias = parse_alias(config.resolve.alias.clone());
     let is_browser = config.platform == Platform::Browser;
-    // TODO: read from config
-    Resolver::new(Options {
-        alias,
-        extensions: vec![
-            ".js".to_string(),
-            ".jsx".to_string(),
-            ".ts".to_string(),
-            ".tsx".to_string(),
-            ".mjs".to_string(),
-            ".cjs".to_string(),
-        ],
-        condition_names: if is_browser {
-            if resolver_type == ResolverType::Cjs {
-                HashSet::from([
-                    "browser".to_string(),
-                    "default".to_string(),
-                    "require".to_string(),
-                ])
-            } else {
-                // esm
-                HashSet::from([
-                    "module".to_string(),
-                    "browser".to_string(),
-                    "import".to_string(),
-                    // why add require? e.g. axios needs it
-                    "require".to_string(),
-                    "default".to_string(),
-                ])
-            }
-        } else {
-            HashSet::from([
-                "module".to_string(),
-                "node".to_string(),
-                "import".to_string(),
-                "default".to_string(),
+    let extensions = vec![
+        ".js".to_string(),
+        ".jsx".to_string(),
+        ".ts".to_string(),
+        ".tsx".to_string(),
+        ".mjs".to_string(),
+        ".cjs".to_string(),
+        ".json".to_string(),
+    ];
+
+    let options = match (resolver_type, is_browser) {
+        (ResolverType::Cjs, true) => Options {
+            alias,
+            extensions,
+            condition_names: HashSet::from([
                 "require".to_string(),
-            ])
+                "module".to_string(),
+                "webpack".to_string(),
+                "browser".to_string(),
+            ]),
+            main_fields: vec![
+                "browser".to_string(),
+                "module".to_string(),
+                "main".to_string(),
+            ],
+            browser_field: true,
+            ..Default::default()
         },
-        main_fields: if is_browser {
-            if resolver_type == ResolverType::Cjs {
-                vec!["browser".to_string(), "main".to_string()]
-            } else {
-                vec![
-                    "browser".to_string(),
-                    "module".to_string(),
-                    "main".to_string(),
-                ]
-            }
-        } else if resolver_type == ResolverType::Cjs {
-            vec!["main".to_string()]
-        } else {
-            vec!["module".to_string(), "main".to_string()]
+        (ResolverType::Esm, true) => Options {
+            alias,
+            extensions,
+            condition_names: HashSet::from([
+                "import".to_string(),
+                "module".to_string(),
+                "webpack".to_string(),
+                "browser".to_string(),
+            ]),
+            main_fields: vec![
+                "browser".to_string(),
+                "module".to_string(),
+                "main".to_string(),
+            ],
+            browser_field: true,
+            ..Default::default()
         },
-        browser_field: true,
-        ..Default::default()
-    })
+        (ResolverType::Esm, false) => Options {
+            alias,
+            extensions,
+            condition_names: HashSet::from([
+                "import".to_string(),
+                "module".to_string(),
+                "webpack".to_string(),
+            ]),
+            main_fields: vec!["module".to_string(), "main".to_string()],
+            ..Default::default()
+        },
+        (ResolverType::Cjs, false) => Options {
+            alias,
+            extensions,
+            condition_names: HashSet::from([
+                "require".to_string(),
+                "module".to_string(),
+                "webpack".to_string(),
+            ]),
+            main_fields: vec!["module".to_string(), "main".to_string()],
+            ..Default::default()
+        },
+        // css must be browser
+        (ResolverType::Css, _) => Options {
+            extensions: vec![".css".to_string(), ".less".to_string()],
+            alias,
+            main_fields: vec!["css".to_string(), "style".to_string(), "main".to_string()],
+            condition_names: HashSet::from(["style".to_string()]),
+            prefer_relative: true,
+            browser_field: true,
+            ..Default::default()
+        },
+    };
+
+    Resolver::new(options)
 }
 
 fn parse_alias(alias: HashMap<String, String>) -> Vec<(String, Vec<AliasMap>)> {
@@ -162,7 +351,10 @@ fn parse_alias(alias: HashMap<String, String>) -> Vec<(String, Vec<AliasMap>)> {
 mod tests {
     use std::collections::HashMap;
 
-    use crate::config::Config;
+    use crate::config::{
+        Config, ExternalAdvanced, ExternalAdvancedSubpath, ExternalAdvancedSubpathConverter,
+        ExternalAdvancedSubpathRule, ExternalAdvancedSubpathTarget, ExternalConfig,
+    };
     use crate::resolve::ResolverType;
 
     #[test]
@@ -178,9 +370,26 @@ mod tests {
     }
 
     #[test]
+    fn test_resolve_css() {
+        // css resolver should prefer relative module
+        let x = css_resolve(
+            "test/resolve/css",
+            None,
+            None,
+            "index.css",
+            "local/local.css",
+        );
+        assert_eq!(x, ("local/local.css".to_string(), None));
+
+        // css resolver also fallback to node_modules
+        let x = css_resolve("test/resolve/css", None, None, "index.css", "dep/dep.css");
+        assert_eq!(x, ("node_modules/dep/dep.css".to_string(), None));
+    }
+
+    #[test]
     fn test_resolve_dep_browser_fields() {
         let x = resolve("test/resolve/browser_fields", None, None, "index.ts", "foo");
-        assert_eq!(x, ("node_modules/foo/cjs-browser.js".to_string(), None));
+        assert_eq!(x, ("node_modules/foo/esm-browser.js".to_string(), None));
     }
 
     #[test]
@@ -206,7 +415,10 @@ mod tests {
 
     #[test]
     fn test_resolve_externals() {
-        let externals = HashMap::from([("react".to_string(), "react".to_string())]);
+        let externals = HashMap::from([(
+            "react".to_string(),
+            ExternalConfig::Basic("react".to_string()),
+        )]);
         let x = resolve(
             "test/resolve/normal",
             None,
@@ -217,12 +429,116 @@ mod tests {
         assert_eq!(x, ("react".to_string(), Some("react".to_string())));
     }
 
+    #[test]
+    fn test_resolve_advanced_externals() {
+        let externals = HashMap::from([(
+            "antd".to_string(),
+            ExternalConfig::Advanced(ExternalAdvanced {
+                root: "antd".to_string(),
+                subpath: ExternalAdvancedSubpath {
+                    exclude: Some(vec!["style".to_string()]),
+                    rules: vec![
+                        ExternalAdvancedSubpathRule {
+                            regex: "/(version|message|notification)$".to_string(),
+                            target: ExternalAdvancedSubpathTarget::Tpl("$1".to_string()),
+                            target_converter: None,
+                        },
+                        ExternalAdvancedSubpathRule {
+                            regex: "/locales/(.*)$".to_string(),
+                            target: ExternalAdvancedSubpathTarget::Empty,
+                            target_converter: None,
+                        },
+                        ExternalAdvancedSubpathRule {
+                            regex: "^(?:es|lib)/([a-z-]+)$".to_string(),
+                            target: ExternalAdvancedSubpathTarget::Tpl("$1".to_string()),
+                            target_converter: Some(ExternalAdvancedSubpathConverter::PascalCase),
+                        },
+                        ExternalAdvancedSubpathRule {
+                            regex: "^(?:es|lib)/([a-z-]+)/([A-Z][a-zA-Z-]+)$".to_string(),
+                            target: ExternalAdvancedSubpathTarget::Tpl("$1.$2".to_string()),
+                            target_converter: Some(ExternalAdvancedSubpathConverter::PascalCase),
+                        },
+                    ],
+                },
+            }),
+        )]);
+        fn internal_resolve(
+            externals: &HashMap<String, ExternalConfig>,
+            source: &str,
+        ) -> (String, Option<String>) {
+            resolve(
+                "test/resolve/externals",
+                None,
+                Some(externals),
+                "index.ts",
+                source,
+            )
+        }
+        // expect exclude
+        assert_eq!(
+            internal_resolve(&externals, "antd/es/button/style"),
+            (
+                "node_modules/antd/es/button/style/index.js".to_string(),
+                None
+            )
+        );
+        // expect capture target
+        assert_eq!(
+            internal_resolve(&externals, "antd/es/version"),
+            (
+                "antd/es/version".to_string(),
+                Some("antd.version".to_string())
+            )
+        );
+        // expect empty target
+        assert_eq!(
+            internal_resolve(&externals, "antd/es/locales/zh_CN"),
+            ("antd/es/locales/zh_CN".to_string(), Some("''".to_string()))
+        );
+        // expect target converter
+        assert_eq!(
+            internal_resolve(&externals, "antd/es/date-picker"),
+            (
+                "antd/es/date-picker".to_string(),
+                Some("antd.DatePicker".to_string())
+            )
+        );
+        assert_eq!(
+            internal_resolve(&externals, "antd/es/input/Group"),
+            (
+                "antd/es/input/Group".to_string(),
+                Some("antd.Input.Group".to_string())
+            )
+        );
+    }
+
     fn resolve(
         base: &str,
         alias: Option<HashMap<String, String>>,
-        externals: Option<&HashMap<String, String>>,
+        externals: Option<&HashMap<String, ExternalConfig>>,
         path: &str,
         source: &str,
+    ) -> (String, Option<String>) {
+        base_resolve(base, alias, externals, path, source, ResolverType::Cjs)
+    }
+
+    fn css_resolve(
+        base: &str,
+        alias: Option<HashMap<String, String>>,
+        externals: Option<&HashMap<String, ExternalConfig>>,
+        path: &str,
+        source: &str,
+    ) -> (String, Option<String>) {
+        base_resolve(base, alias, externals, path, source, ResolverType::Css)
+    }
+
+    fn base_resolve(
+        base: &str,
+        alias: Option<HashMap<String, String>>,
+        externals: Option<&HashMap<String, ExternalConfig>>,
+        path: &str,
+        source: &str,
+        resolve_type: ResolverType,
     ) -> (String, Option<String>) {
         let current_dir = std::env::current_dir().unwrap();
         let fixture = current_dir.join(base);
@@ -230,14 +546,16 @@ mod tests {
         if let Some(alias_config) = alias {
             config.resolve.alias = alias_config;
         }
-        let resolver = super::get_resolver(&config, ResolverType::Cjs);
-        let (path, external) = super::do_resolve(
+        let resolver = super::get_resolver(&config, resolve_type);
+        let resource = super::do_resolve(
             &fixture.join(path).to_string_lossy(),
             source,
             &resolver,
             externals,
         )
         .unwrap();
+        let path = resource.get_resolved_path();
+        let external = resource.get_external();
         println!("> path: {:?}, {:?}", path, external);
         let path = path.replace(format!("{}/", fixture.to_str().unwrap()).as_str(), "");
         (path, external)

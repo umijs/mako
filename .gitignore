@@ -7,7 +7,9 @@
 /node_modules
 /flamegraph.svg
 /crates/mako/test/compile/*/dist
+/crates/mako/test/compile/auto-code-splitting/node_modules
 .DS_Store
 .idea
 **/cypress/videos/
 **/cypress/screenshots/
+stats.json

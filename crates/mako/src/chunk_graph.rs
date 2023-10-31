@@ -1,11 +1,12 @@
 use std::collections::{HashMap, HashSet};
 use std::hash::Hasher;
 
-use petgraph::stable_graph::{DefaultIx, NodeIndex, StableDiGraph};
-use petgraph::Direction;
-use twox_hash::XxHash64;
+use mako_core::petgraph::stable_graph::{DefaultIx, NodeIndex, StableDiGraph};
+use mako_core::petgraph::Direction;
+use mako_core::twox_hash::XxHash64;
 
 use crate::chunk::{Chunk, ChunkId, ChunkType};
+use crate::module::ModuleId;
 use crate::module_graph::ModuleGraph;
 
 pub struct ChunkGraph {
@@ -49,9 +50,13 @@ impl ChunkGraph {
         self.graph.node_weights().find(|c| c.filename().eq(name))
     }
 
-    pub fn get_chunk_by_id(&self, id: &String) -> Option<&Chunk> {
-        self.graph.node_weights().find(|c| c.id.id.eq(id))
+    pub fn get_chunk_for_module(&self, module_id: &ModuleId) -> Option<&Chunk> {
+        self.graph.node_weights().find(|c| c.has_module(module_id))
     }
+
+    // pub fn get_chunk_by_id(&self, id: &String) -> Option<&Chunk> {
+    //     self.graph.node_weights().find(|c| c.id.id.eq(id))
+    // }
 
     pub fn chunk(&self, chunk_id: &ChunkId) -> Option<&Chunk> {
         match self.id_index_map.get(chunk_id) {
@@ -60,10 +65,24 @@ impl ChunkGraph {
         }
     }
 
+    pub fn mut_chunk(&mut self, chunk_id: &ChunkId) -> Option<&mut Chunk> {
+        match self.id_index_map.get(chunk_id) {
+            Some(idx) => self.graph.node_weight_mut(*idx),
+            None => None,
+        }
+    }
+
     pub fn add_edge(&mut self, from: &ChunkId, to: &ChunkId) {
         let from = self.id_index_map.get(from).unwrap();
         let to = self.id_index_map.get(to).unwrap();
         self.graph.add_edge(*from, *to, ());
+    }
+
+    pub fn remove_edge(&mut self, from: &ChunkId, to: &ChunkId) {
+        let from = self.id_index_map.get(from).unwrap();
+        let to = self.id_index_map.get(to).unwrap();
+        self.graph
+            .remove_edge(self.graph.find_edge(*from, *to).unwrap());
     }
 
     pub fn chunk_names(&self) -> HashSet<String> {
@@ -88,6 +107,44 @@ impl ChunkGraph {
             .filter(|idx| matches!(self.graph[*idx].chunk_type, ChunkType::Sync))
             .map(|idx| self.graph[idx].id.clone())
             .collect::<Vec<ChunkId>>()
+    }
+
+    pub fn dependents_chunk(&self, chunk: &Chunk) -> Vec<ChunkId> {
+        let idx = self.id_index_map.get(&chunk.id).unwrap();
+        self.graph
+            .neighbors_directed(*idx, Direction::Incoming)
+            .map(|idx| self.graph[idx].id.clone())
+            .collect::<Vec<ChunkId>>()
+    }
+
+    pub fn entry_dependents_chunk(&self, chunk: &Chunk) -> Vec<ChunkId> {
+        let idx = self.id_index_map.get(&chunk.id).unwrap();
+        self.graph
+            .neighbors_directed(*idx, Direction::Incoming)
+            .filter(|idx| matches!(self.graph[*idx].chunk_type, ChunkType::Entry(_, _)))
+            .map(|idx| self.graph[idx].id.clone())
+            .collect::<Vec<ChunkId>>()
+    }
+
+    pub fn entry_ancestors_chunk(&self, chunk: &Chunk) -> Vec<ChunkId> {
+        let idx = self.id_index_map.get(&chunk.id).unwrap();
+        let mut ret = vec![];
+        self.graph
+            .neighbors_directed(*idx, Direction::Incoming)
+            .for_each(|idx| match self.graph[idx].chunk_type {
+                ChunkType::Entry(_, _) => {
+                    ret.push(self.graph[idx].id.clone());
+                }
+                _ => {
+                    ret.extend(self.entry_ancestors_chunk(&self.graph[idx]));
+                }
+            });
+        ret
+    }
+
+    pub fn remove_chunk(&mut self, chunk_id: &ChunkId) {
+        let idx = self.id_index_map.remove(chunk_id).unwrap();
+        self.graph.remove_node(idx);
     }
 }
 

@@ -1,11 +1,14 @@
 {
-  "inline_limit": 0,
-  "code_splitting": "depPerChunk",
+  "inlineLimit": 0,
   "stats": true,
   "mdx": true,
   "manifest": true,
-  "manifest_config": {
-    "file_name": "manifest.json",
-    "base_path": "aaa"
-  }
+  "manifestConfig": {
+    "fileName": "manifest.json",
+    "basePath": "aaa"
+  },
+  "output": {
+    "path": "dist/assets"
+  },
+  "hash": true
 }

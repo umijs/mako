@@ -1,6 +1,6 @@
-use anyhow::Result;
-use indexmap::IndexSet;
-use swc_ecma_ast::{
+use mako_core::anyhow::Result;
+use mako_core::indexmap::IndexSet;
+use mako_core::swc_ecma_ast::{
     CallExpr, Expr, ExprOrSpread, ExprStmt, KeyValueProp, ModuleItem, ObjectLit, Prop,
     PropOrSpread, Stmt,
 };
@@ -15,6 +15,7 @@ impl Compiler {
     pub fn generate_hmr_chunk(
         &self,
         chunk: &Chunk,
+        filename: &str,
         module_ids: &IndexSet<ModuleId>,
         current_hash: u64,
     ) -> Result<(String, String)> {
@@ -27,7 +28,6 @@ impl Compiler {
                 "__runtime_code__",
                 &format!("runtime._h='{}';", current_hash),
             );
-        let filename = &chunk.filename();
         // TODO: handle error
         let mut js_ast = build_js_ast(filename, content.as_str(), &self.context)
             .unwrap()
@@ -61,41 +61,5 @@ impl Compiler {
 
         let (js_code, js_sourcemap) = js_ast_to_code(&js_ast, &self.context, filename).unwrap();
         Ok((js_code, js_sourcemap))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::assert_debug_snapshot;
-    use crate::compiler::Compiler;
-    use crate::config::Config;
-    use crate::transform_in_generate::transform_modules;
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_generate_hmr_chunk() {
-        let compiler = create_compiler("test/dev/normal");
-
-        compiler.build();
-        compiler.group_chunk();
-        let chunk_graph = &compiler.context.chunk_graph.read().unwrap();
-        let chunks = chunk_graph.get_chunks();
-        let chunk = chunks[0];
-        let module_ids = chunk.get_modules();
-        transform_modules(module_ids.iter().cloned().collect(), &compiler.context).unwrap();
-        let (js_code, _js_sourcemap) = compiler.generate_hmr_chunk(chunk, module_ids, 42).unwrap();
-        let js_code = js_code.replace(
-            compiler.context.root.to_string_lossy().to_string().as_str(),
-            "",
-        );
-        println!("{}", js_code);
-
-        assert_debug_snapshot!(js_code.trim());
-    }
-
-    fn create_compiler(base: &str) -> Compiler {
-        let current_dir = std::env::current_dir().unwrap();
-        let root = current_dir.join(base);
-        let config = Config::new(&root, None, None).unwrap();
-        Compiler::new(config, root)
     }
 }

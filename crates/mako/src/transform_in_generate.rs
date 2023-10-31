@@ -1,36 +1,40 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use anyhow::Result;
-use swc_common::errors::HANDLER;
-use swc_common::GLOBALS;
-use swc_css_visit::VisitMutWith as CSSVisitMutWith;
-use swc_ecma_transforms::feature::FeatureFlag;
-use swc_ecma_transforms::fixer;
-use swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
-use swc_ecma_transforms::hygiene::hygiene_with_config;
-use swc_ecma_transforms::modules::common_js;
-use swc_ecma_transforms::modules::import_analysis::import_analyzer;
-use swc_ecma_transforms::modules::util::{Config, ImportInterop};
-use swc_ecma_visit::VisitMutWith;
-use swc_error_reporters::handler::try_with_handler;
+use mako_core::anyhow::Result;
+use mako_core::swc_common::errors::HANDLER;
+use mako_core::swc_common::GLOBALS;
+use mako_core::swc_css_visit::VisitMutWith as CSSVisitMutWith;
+use mako_core::swc_ecma_transforms::feature::FeatureFlag;
+use mako_core::swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
+use mako_core::swc_ecma_transforms::hygiene::hygiene_with_config;
+use mako_core::swc_ecma_transforms::modules::common_js;
+use mako_core::swc_ecma_transforms::modules::import_analysis::import_analyzer;
+use mako_core::swc_ecma_transforms::modules::util::{Config, ImportInterop};
+use mako_core::swc_ecma_transforms::{fixer, hygiene};
+use mako_core::swc_ecma_visit::VisitMutWith;
+use mako_core::swc_error_reporters::handler::try_with_handler;
+use mako_core::{swc_css_ast, swc_css_prefixer};
 
 use crate::ast::Ast;
 use crate::compiler::{Compiler, Context};
 use crate::config::Mode;
-use crate::module::{ModuleAst, ModuleId};
+use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
 use crate::targets;
-use crate::transform_css_handler::CssHandler;
-use crate::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
-use crate::transform_dynamic_import::DynamicImport;
-use crate::transform_react::react_refresh_entry_prefix;
-use crate::unused_statement_sweep::UnusedStatementSweep;
+use crate::transformers::transform_async_module::AsyncModule;
+use crate::transformers::transform_css_handler::CssHandler;
+use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
+use crate::transformers::transform_dynamic_import::DynamicImport;
+use crate::transformers::transform_meta_url_replacer::MetaUrlReplacer;
+use crate::transformers::transform_react::react_refresh_entry_prefix;
 
 impl Compiler {
     pub fn transform_all(&self) -> Result<()> {
         let context = &self.context;
         let module_graph = context.module_graph.read().unwrap();
-        let module_ids = module_graph.get_module_ids();
+        // Reversed after topo sorting, in order to better handle async module
+        let (mut module_ids, _) = module_graph.toposort();
+        module_ids.reverse();
         drop(module_graph);
         transform_modules(module_ids, context)?;
         Ok(())
@@ -38,15 +42,36 @@ impl Compiler {
 }
 
 pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> Result<()> {
+    mako_core::mako_profile_function!();
     module_ids.iter().for_each(|module_id| {
         let module_graph = context.module_graph.read().unwrap();
-        let deps = module_graph.get_dependencies(module_id);
-
-        let resolved_deps: HashMap<String, String> = deps
+        let deps = module_graph.get_dependencies_info(module_id);
+        // whether to have async deps
+        let async_deps: Vec<Dependency> = deps
             .clone()
             .into_iter()
-            .map(|(id, dep)| (dep.source.clone(), id.generate(context)))
+            .filter(|(_, dep, info)| {
+                matches!(dep.resolve_type, ResolveType::Import) && info.is_async
+            })
+            .map(|(_, dep, _)| dep)
             .collect();
+        let mut resolved_deps: HashMap<String, String> = deps
+            .into_iter()
+            .map(|(id, dep, _)| {
+                (
+                    dep.source,
+                    if dep.resolve_type == ResolveType::Worker {
+                        let chunk_id = id.generate(context);
+                        let chunk_graph = context.chunk_graph.read().unwrap();
+                        chunk_graph.chunk(&chunk_id.into()).unwrap().filename()
+                    } else {
+                        id.generate(context)
+                    },
+                )
+            })
+            .collect();
+        insert_swc_helper_replace(&mut resolved_deps, context);
+
         drop(module_graph);
 
         // let deps: Vec<(&ModuleId, &crate::module::Dependency)> =
@@ -54,27 +79,70 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         let mut module_graph = context.module_graph.write().unwrap();
         let module = module_graph.get_module_mut(module_id).unwrap();
         let info = module.info.as_mut().unwrap();
+        // a module with async deps need to be polluted into async module
+        if !info.is_async && !async_deps.is_empty() {
+            info.is_async = true;
+        }
         let ast = &mut info.ast;
 
         let deps_to_replace = DependenciesToReplace {
             resolved: resolved_deps,
             missing: info.missing_deps.clone(),
+            ignored: info.ignored_deps.clone(),
         };
 
         if let ModuleAst::Script(ast) = ast {
-            transform_js_generate(&module.id, context, ast, &deps_to_replace, module.is_entry);
+            transform_js_generate(TransformJsParam {
+                _id: &module.id,
+                context,
+                ast,
+                dep_map: &deps_to_replace,
+                async_deps: &async_deps,
+                is_entry: module.is_entry,
+                is_async: info.is_async,
+                top_level_await: info.top_level_await,
+            });
         }
     });
     Ok(())
 }
 
-pub fn transform_js_generate(
-    id: &ModuleId,
-    context: &Arc<Context>,
-    ast: &mut Ast,
-    dep_map: &DependenciesToReplace,
-    is_entry: bool,
-) {
+fn insert_swc_helper_replace(map: &mut HashMap<String, String>, context: &Arc<Context>) {
+    let helpers = vec![
+        "@swc/helpers/_/_interop_require_default",
+        "@swc/helpers/_/_interop_require_wildcard",
+        "@swc/helpers/_/_export_star",
+    ];
+
+    helpers.into_iter().for_each(|h| {
+        let m_id: ModuleId = h.to_string().into();
+        map.insert(m_id.id.clone(), m_id.generate(context));
+    });
+}
+
+pub struct TransformJsParam<'a> {
+    pub _id: &'a ModuleId,
+    pub context: &'a Arc<Context>,
+    pub ast: &'a mut Ast,
+    pub dep_map: &'a DependenciesToReplace,
+    pub async_deps: &'a Vec<Dependency>,
+    pub is_entry: bool,
+    pub is_async: bool,
+    pub top_level_await: bool,
+}
+
+pub fn transform_js_generate(transform_js_param: TransformJsParam) {
+    mako_core::mako_profile_function!();
+    let TransformJsParam {
+        _id,
+        context,
+        ast,
+        dep_map,
+        async_deps,
+        is_entry,
+        is_async,
+        top_level_await,
+    } = transform_js_param;
     let is_dev = matches!(context.config.mode, Mode::Development);
     GLOBALS
         .set(&context.meta.script.globals, || {
@@ -86,26 +154,12 @@ pub fn transform_js_generate(
                         HANDLER.set(handler, || {
                             let unresolved_mark = ast.unresolved_mark;
                             let top_level_mark = ast.top_level_mark;
-                            // let (code, ..) = js_ast_to_code(&ast.ast, context, "foo").unwrap();
-                            // print!("{}", code);
-
-                            {
-                                if context.config.minify
-                                    && matches!(context.config.mode, Mode::Production)
-                                {
-                                    let comments =
-                                        context.meta.script.output_comments.read().unwrap();
-                                    let mut unused_statement_sweep =
-                                        UnusedStatementSweep::new(id, &comments);
-                                    ast.ast.visit_mut_with(&mut unused_statement_sweep);
-                                }
-                            }
 
                             let import_interop = ImportInterop::Swc;
-                            // FIXME: 执行两轮 import_analyzer + inject_helpers，第一轮是为了 module_graph，第二轮是为了依赖替换
                             ast.ast
                                 .visit_mut_with(&mut import_analyzer(import_interop, true));
                             ast.ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
+
                             ast.ast.visit_mut_with(&mut common_js(
                                 unresolved_mark,
                                 Config {
@@ -115,6 +169,7 @@ pub fn transform_js_generate(
                                     preserve_import_meta: true,
                                     // TODO: 在 esm 时设置为 false
                                     allow_top_level_this: true,
+                                    strict_mode: false,
                                     ..Default::default()
                                 },
                                 FeatureFlag::empty(),
@@ -129,7 +184,19 @@ pub fn transform_js_generate(
                                 ),
                             ));
 
-                            if is_entry && is_dev {
+                            // transform async module
+                            if is_async {
+                                let mut async_module = AsyncModule {
+                                    async_deps,
+                                    async_deps_idents: Vec::new(),
+                                    last_dep_pos: 0,
+                                    top_level_await,
+                                    context,
+                                };
+                                ast.ast.visit_mut_with(&mut async_module);
+                            }
+
+                            if is_entry && is_dev && context.args.watch && context.config.hmr {
                                 ast.ast
                                     .visit_mut_with(&mut react_refresh_entry_prefix(context));
                             }
@@ -137,18 +204,22 @@ pub fn transform_js_generate(
                             let mut dep_replacer = DepReplacer {
                                 to_replace: dep_map,
                                 context,
+                                unresolved_mark: ast.unresolved_mark,
+                                top_level_mark: ast.top_level_mark,
                             };
                             ast.ast.visit_mut_with(&mut dep_replacer);
+
+                            let mut meta_url_replacer = MetaUrlReplacer {};
+                            ast.ast.visit_mut_with(&mut meta_url_replacer);
 
                             let mut dynamic_import = DynamicImport { context };
                             ast.ast.visit_mut_with(&mut dynamic_import);
 
-                            ast.ast.visit_mut_with(&mut hygiene_with_config(
-                                swc_ecma_transforms::hygiene::Config {
+                            ast.ast
+                                .visit_mut_with(&mut hygiene_with_config(hygiene::Config {
                                     top_level_mark,
                                     ..Default::default()
-                                },
-                            ));
+                                }));
                             ast.ast.visit_mut_with(&mut fixer(Some(
                                 context
                                     .meta
@@ -169,6 +240,7 @@ pub fn transform_js_generate(
 }
 
 pub fn transform_css_generate(ast: &mut swc_css_ast::Stylesheet, context: &Arc<Context>) {
+    mako_core::mako_profile_function!();
     // replace deps
     let mut css_handler = CssHandler {};
     ast.visit_mut_with(&mut css_handler);
@@ -247,7 +319,7 @@ mod tests {
     fn transform_css_code(content: &str, path: Option<&str>) -> (String, String) {
         let path = if let Some(p) = path { p } else { "test.tsx" };
         let context = Arc::new(Default::default());
-        let mut ast = build_css_ast(path, content, &context).unwrap();
+        let mut ast = build_css_ast(path, content, &context, false).unwrap();
         transform_css_generate(&mut ast, &context);
         let (code, _sourcemap) = css_ast_to_code(&ast, &context, "test.css");
         let code = code.trim().to_string();

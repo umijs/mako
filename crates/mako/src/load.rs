@@ -4,12 +4,13 @@ use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Context as AnyHowContext, Result};
-use base64::alphabet::STANDARD;
-use base64::{engine, Engine};
-use thiserror::Error;
-use tracing::debug;
-use twox_hash::XxHash64;
+use mako_core::anyhow::{anyhow, Context as AnyHowContext, Result};
+use mako_core::base64::alphabet::STANDARD;
+use mako_core::base64::{engine, Engine};
+use mako_core::thiserror::Error;
+use mako_core::tracing::debug;
+use mako_core::twox_hash::XxHash64;
+use mako_core::{md5, mime_guess};
 
 use crate::build::FileRequest;
 use crate::compiler::Context;
@@ -28,12 +29,21 @@ pub enum Content {
 }
 
 impl Content {
-    pub fn raw_hash(&self) -> u64 {
+    pub fn raw(&self) -> String {
+        match self {
+            Content::Js(content)
+            | Content::Css(content)
+            | Content::Assets(Asset { content, .. }) => content.clone(),
+        }
+    }
+
+    pub fn raw_hash(&self, init: u64) -> u64 {
         let mut hasher: XxHash64 = Default::default();
         match self {
             Content::Js(content)
             | Content::Css(content)
             | Content::Assets(Asset { content, .. }) => {
+                hasher.write_u64(init);
                 hasher.write(content.as_bytes());
                 hasher.finish()
             }
@@ -55,9 +65,12 @@ pub enum LoadError {
     ToSvgrError { path: String, reason: String },
     #[error("Compile md error: {path:?}, reason: {reason:?}")]
     CompileMdError { path: String, reason: String },
+    #[error("Compile less error: {path:?}, reason: {reason:?}")]
+    CompileLessError { path: String, reason: String },
 }
 
 pub fn load(request: &FileRequest, is_entry: bool, context: &Arc<Context>) -> Result<Content> {
+    mako_core::mako_profile_function!(&request.path);
     debug!("load: {:?}", request);
     let path = &request.path;
     let exists = Path::new(path).exists();
@@ -72,6 +85,7 @@ pub fn load(request: &FileRequest, is_entry: bool, context: &Arc<Context>) -> Re
             path: path.to_string(),
             is_entry,
             ext_name: ext_name(path).unwrap().to_string(),
+            request,
         },
         context,
     )?;
@@ -83,6 +97,8 @@ pub fn load(request: &FileRequest, is_entry: bool, context: &Arc<Context>) -> Re
 pub fn handle_asset<T: AsRef<str>>(
     context: &Arc<Context>,
     path: T,
+    // inject_public_path means it's used in javascript
+    // so it will return an expression
     inject_public_path: bool,
 ) -> Result<String> {
     let path_str = path.as_ref();
@@ -109,7 +125,11 @@ pub fn handle_asset<T: AsRef<str>>(
     } else {
         let base64 =
             to_base64(path_str).with_context(|| LoadError::ToBase64Error { path: path_string })?;
-        Ok(base64)
+        if inject_public_path {
+            Ok(format!("\"{}\"", base64))
+        } else {
+            Ok(base64)
+        }
     }
 }
 
@@ -127,7 +147,7 @@ pub fn file_name(path: &str) -> Option<&str> {
     None
 }
 
-fn ext_name(path: &str) -> Option<&str> {
+pub fn ext_name(path: &str) -> Option<&str> {
     let ext = Path::new(path).extension();
     if let Some(ext) = ext {
         return ext.to_str();
@@ -179,5 +199,18 @@ pub fn content_hash(file_path: &str) -> Result<String> {
         buf.consume(part_len);
     }
     let digest = context.compute();
-    Ok(format!("{:x}", digest))
+    let hash = format!("{:x}", digest);
+    Ok(hash_to_8(hash))
+}
+
+#[allow(dead_code)]
+pub fn file_content_hash<T: AsRef<[u8]>>(content: T) -> String {
+    let digest = md5::compute(content);
+    let hash = format!("{:x}", digest);
+    hash_to_8(hash)
+}
+
+pub fn hash_to_8(hash: String) -> String {
+    let hash_8 = &hash[0..8];
+    hash_8.to_string()
 }

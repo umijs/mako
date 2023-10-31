@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use anyhow::Result;
-use tracing::debug;
+use mako_core::anyhow::Result;
+use mako_core::tracing::debug;
 
 use crate::build::FileRequest;
 use crate::compiler::Context;
@@ -14,6 +14,7 @@ pub fn parse(
     request: &FileRequest,
     context: &Arc<Context>,
 ) -> Result<ModuleAst> {
+    mako_core::mako_profile_function!(&request.path);
     debug!("parse {:?}", request);
     let ast = context
         .plugin_driver

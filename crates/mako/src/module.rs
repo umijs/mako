@@ -1,16 +1,23 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use base64::engine::{general_purpose, Engine};
-use pathdiff::diff_paths;
+use mako_core::anyhow::{anyhow, Result};
+use mako_core::base64::engine::{general_purpose, Engine};
+use mako_core::pathdiff::diff_paths;
+use mako_core::swc_common::{Span, DUMMY_SP};
+use mako_core::swc_ecma_ast::{BlockStmt, FnExpr, Function, Module as SwcModule};
+use mako_core::swc_ecma_utils::quote_ident;
+use mako_core::{md5, swc_css_ast};
 use serde::Serialize;
-use swc_common::Span;
 
 use crate::ast::Ast;
 use crate::compiler::Context;
 use crate::config::ModuleIdStrategy;
+use crate::resolve::ResolverResource;
+
+pub type Dependencies = HashSet<Dependency>;
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct Dependency {
@@ -20,32 +27,33 @@ pub struct Dependency {
     pub span: Option<Span>,
 }
 
-#[derive(Eq, Hash, PartialEq, Debug, Clone, Serialize, Copy)]
+#[derive(Eq, Hash, PartialEq, Serialize, Debug, Clone, Copy)]
 pub enum ResolveType {
-    #[serde(rename = "import")]
     Import,
-    #[serde(rename = "exportNamed")]
     ExportNamed,
-    #[serde(rename = "exportAll")]
     ExportAll,
-    #[serde(rename = "require")]
     Require,
-    #[serde(rename = "dynamicImport")]
     DynamicImport,
-    #[serde(rename = "css")]
     Css,
+    Worker,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ModuleInfo {
     pub ast: ModuleAst,
     pub path: String,
     pub external: Option<String>,
+    pub raw: String,
     pub raw_hash: u64,
-    pub missing_deps: HashMap<String, ResolveType>,
+    pub missing_deps: HashMap<String, Dependency>,
+    pub ignored_deps: Vec<String>,
+    /// Modules with top-level-await
+    pub top_level_await: bool,
+    /// The top-level-await module must be an async module, in addition, for example, wasm is also an async module
+    /// The purpose of distinguishing top_level_await and is_async is to adapt to runtime_async
+    pub is_async: bool,
+    pub resolved_resource: Option<ResolverResource>,
 }
-
-impl ModuleInfo {}
 
 fn md5_hash(source_str: &str, lens: usize) -> String {
     let digest = md5::compute(source_str);
@@ -55,21 +63,12 @@ fn md5_hash(source_str: &str, lens: usize) -> String {
 
 pub fn generate_module_id(origin_module_id: String, context: &Arc<Context>) -> String {
     match context.config.module_id_strategy {
-        ModuleIdStrategy::Hashed => md5_hash(&origin_module_id, 4),
+        ModuleIdStrategy::Hashed => md5_hash(&origin_module_id, 8),
         ModuleIdStrategy::Named => {
             // readable ids for debugging usage
-            // relative path to `&context.root`
             let absolute_path = PathBuf::from(origin_module_id);
             let relative_path = diff_paths(&absolute_path, &context.root).unwrap_or(absolute_path);
-            // diff_paths result always starts with ".."/"." or not
-            if relative_path.starts_with("..") || relative_path.starts_with(".") {
-                relative_path.to_string_lossy().to_string()
-            } else {
-                PathBuf::from(".")
-                    .join(relative_path)
-                    .to_string_lossy()
-                    .to_string()
-            }
+            relative_path.to_string_lossy().to_string()
         }
     }
 }
@@ -137,7 +136,7 @@ impl From<PathBuf> for ModuleId {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ModuleAst {
     Script(Ast),
     Css(swc_css_ast::Stylesheet),
@@ -146,7 +145,7 @@ pub enum ModuleAst {
 }
 
 impl ModuleAst {
-    pub fn as_script_mut(&mut self) -> &mut swc_ecma_ast::Module {
+    pub fn as_script_mut(&mut self) -> &mut SwcModule {
         if let Self::Script(script) = self {
             &mut script.ast
         } else {
@@ -156,6 +155,7 @@ impl ModuleAst {
 }
 
 #[allow(dead_code)]
+#[derive(PartialEq, Eq)]
 pub enum ModuleType {
     Script,
     Css,
@@ -168,13 +168,12 @@ impl ModuleType {
     }
 }
 #[allow(dead_code)]
-
+#[derive(Clone)]
 pub struct Module {
     pub id: ModuleId,
     pub is_entry: bool,
     pub info: Option<ModuleInfo>,
     pub side_effects: bool,
-    pub is_missing: bool,
 }
 #[allow(dead_code)]
 
@@ -184,8 +183,7 @@ impl Module {
             id,
             is_entry,
             info,
-            side_effects: false,
-            is_missing: false,
+            side_effects: is_entry,
         }
     }
 
@@ -211,10 +209,87 @@ impl Module {
             ModuleAst::None => todo!(),
         }
     }
+
+    pub fn get_module_size(&self) -> usize {
+        let info = self.info.as_ref().unwrap();
+
+        info.raw.as_bytes().len()
+    }
+
+    // wrap module stmt into a function
+    // eg:
+    // function(module, exports, require) {
+    //   module stmt..
+    // }
+    pub fn to_module_fn_expr(&self) -> Result<FnExpr> {
+        match &self.info.as_ref().unwrap().ast {
+            ModuleAst::Script(script) => {
+                let mut stmts = Vec::new();
+
+                for n in script.ast.body.iter() {
+                    match n.as_stmt() {
+                        None => return Err(anyhow!("Error: {:?} not a stmt in ", self.id.id)),
+                        Some(stmt) => {
+                            stmts.push(stmt.clone());
+                        }
+                    }
+                }
+
+                let func = Function {
+                    span: DUMMY_SP,
+                    params: vec![
+                        quote_ident!("module").into(),
+                        quote_ident!("exports").into(),
+                        quote_ident!("require").into(),
+                    ],
+                    decorators: vec![],
+                    body: Some(BlockStmt {
+                        span: DUMMY_SP,
+                        stmts,
+                    }),
+                    is_generator: false,
+                    is_async: false,
+                    type_params: None,
+                    return_type: None,
+                };
+                Ok(FnExpr {
+                    ident: None,
+                    function: func.into(),
+                })
+            }
+            //TODO:  css module will be removed in the future
+            ModuleAst::Css(_) => Ok(empty_module_fn_expr()),
+            ModuleAst::None => Err(anyhow!("ModuleAst::None({}) cannot concert", self.id.id)),
+        }
+    }
 }
 
 impl Debug for Module {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "Module id={}", self.id.id)
+    }
+}
+
+fn empty_module_fn_expr() -> FnExpr {
+    let func = Function {
+        span: DUMMY_SP,
+        params: vec![
+            quote_ident!("module").into(),
+            quote_ident!("exports").into(),
+            quote_ident!("require").into(),
+        ],
+        decorators: vec![],
+        body: Some(BlockStmt {
+            span: DUMMY_SP,
+            stmts: vec![],
+        }),
+        is_generator: false,
+        is_async: false,
+        type_params: None,
+        return_type: None,
+    };
+    FnExpr {
+        ident: None,
+        function: func.into(),
     }
 }

@@ -27,7 +27,9 @@ import { parse } from 'semver';
     throw new Error(`Invalid version: ${version}`);
   }
   parsedVersion.patch += 1;
-  const newVersion = parsedVersion.format();
+  let newVersion = parsedVersion.format();
+  // remove prerelease tag
+  newVersion = newVersion.replace(/-.+/, '');
   nodePkg.version = newVersion;
   fs.writeFileSync(nodePkgPath, JSON.stringify(nodePkg, null, 2) + '\n');
 

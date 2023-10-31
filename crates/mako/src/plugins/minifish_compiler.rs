@@ -4,19 +4,19 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::{fs, io};
 
-use anyhow::Result;
-use cached::proc_macro::cached;
-use pathdiff::diff_paths;
-use rayon::prelude::*;
-use swc_common::errors::HANDLER;
-use swc_common::GLOBALS;
-use swc_ecma_transforms::fixer;
-use swc_ecma_transforms::helpers::{Helpers, HELPERS};
-use swc_ecma_transforms::hygiene::hygiene_with_config;
-use swc_ecma_transforms::modules::import_analysis::import_analyzer;
-use swc_ecma_transforms::modules::util::ImportInterop;
-use swc_ecma_visit::VisitMutWith;
-use swc_error_reporters::handler::try_with_handler;
+use mako_core::anyhow::Result;
+use mako_core::cached::proc_macro::cached;
+use mako_core::pathdiff::diff_paths;
+use mako_core::rayon::prelude::*;
+use mako_core::swc_common::errors::HANDLER;
+use mako_core::swc_common::GLOBALS;
+use mako_core::swc_ecma_transforms::helpers::{Helpers, HELPERS};
+use mako_core::swc_ecma_transforms::hygiene::hygiene_with_config;
+use mako_core::swc_ecma_transforms::modules::import_analysis::import_analyzer;
+use mako_core::swc_ecma_transforms::modules::util::ImportInterop;
+use mako_core::swc_ecma_transforms::{fixer, hygiene};
+use mako_core::swc_ecma_visit::VisitMutWith;
+use mako_core::swc_error_reporters::handler::try_with_handler;
 
 use crate::ast::{js_ast_to_code, Ast};
 use crate::compiler::Context;
@@ -24,9 +24,8 @@ use crate::config::{Config, Mode};
 use crate::load::{read_content, Content};
 use crate::module::{ModuleAst, ModuleId};
 use crate::plugin::{Plugin, PluginLoadParam};
-use crate::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
-use crate::transform_dynamic_import::DynamicImport;
-use crate::unused_statement_sweep::UnusedStatementSweep;
+use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
+use crate::transformers::transform_dynamic_import::DynamicImport;
 
 pub struct MinifishCompiler {
     minifish_map: HashMap<String, String>,
@@ -191,6 +190,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
         let deps_to_replace = DependenciesToReplace {
             resolved: resolved_deps,
             missing: info.missing_deps.clone(),
+            ignored: vec![],
         };
 
         if let ModuleAst::Script(ast) = ast {
@@ -201,7 +201,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
 }
 
 pub fn transform_js_generate(
-    id: &ModuleId,
+    _id: &ModuleId,
     context: &Arc<Context>,
     ast: &mut Ast,
     dep_map: &DependenciesToReplace,
@@ -221,17 +221,17 @@ pub fn transform_js_generate(
                             // let (code, ..) = js_ast_to_code(&ast.ast, context, "foo").unwrap();
                             // print!("{}", code);
 
-                            {
-                                if context.config.minify
-                                    && matches!(context.config.mode, Mode::Production)
-                                {
-                                    let comments =
-                                        context.meta.script.output_comments.read().unwrap();
-                                    let mut unused_statement_sweep =
-                                        UnusedStatementSweep::new(id, &comments);
-                                    ast.ast.visit_mut_with(&mut unused_statement_sweep);
-                                }
-                            }
+                            // {
+                            //     if context.config.minify
+                            //         && matches!(context.config.mode, Mode::Production)
+                            //     {
+                            //         let comments =
+                            //             context.meta.script.output_comments.read().unwrap();
+                            //         let mut unused_statement_sweep =
+                            //             UnusedStatementSweep::new(id, &comments);
+                            //         ast.ast.visit_mut_with(&mut unused_statement_sweep);
+                            //     }
+                            // }
 
                             let import_interop = ImportInterop::Swc;
                             // FIXME: 执行两轮 import_analyzer + inject_helpers，第一轮是为了 module_graph，第二轮是为了依赖替换
@@ -242,18 +242,19 @@ pub fn transform_js_generate(
                             let mut dep_replacer = DepReplacer {
                                 to_replace: dep_map,
                                 context,
+                                unresolved_mark: ast.unresolved_mark,
+                                top_level_mark: ast.top_level_mark,
                             };
                             ast.ast.visit_mut_with(&mut dep_replacer);
 
                             let mut dynamic_import = DynamicImport { context };
                             ast.ast.visit_mut_with(&mut dynamic_import);
 
-                            ast.ast.visit_mut_with(&mut hygiene_with_config(
-                                swc_ecma_transforms::hygiene::Config {
+                            ast.ast
+                                .visit_mut_with(&mut hygiene_with_config(hygiene::Config {
                                     top_level_mark,
                                     ..Default::default()
-                                },
-                            ));
+                                }));
                             ast.ast.visit_mut_with(&mut fixer(Some(
                                 context
                                     .meta

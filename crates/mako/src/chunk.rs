@@ -1,21 +1,25 @@
 use std::hash::Hasher;
 use std::path::{Component, Path};
 
-use indexmap::IndexSet;
-use twox_hash::XxHash64;
+use mako_core::indexmap::IndexSet;
+use mako_core::twox_hash::XxHash64;
 
 use crate::module::ModuleId;
 use crate::module_graph::ModuleGraph;
 
 pub type ChunkId = ModuleId;
 
+#[derive(Clone, PartialEq, Eq)]
 pub enum ChunkType {
     #[allow(dead_code)]
     Runtime,
-    Entry,
+    // module id, entry chunk name
+    Entry(ModuleId, String),
     Async,
     // mean that the chunk is not async, but it's a dependency of an async chunk
     Sync,
+    // web workers
+    Worker(ModuleId),
 }
 
 pub struct Chunk {
@@ -38,20 +42,12 @@ impl Chunk {
     }
 
     pub fn filename(&self) -> String {
-        match self.chunk_type {
+        match &self.chunk_type {
             ChunkType::Runtime => "runtime.js".into(),
             // foo/bar.tsx -> bar.js
-            ChunkType::Entry => {
-                let id = self.id.id.clone();
-                let basename = Path::new(&id)
-                    .file_stem()
-                    .unwrap()
-                    .to_string_lossy()
-                    .to_string();
-                format!("{}.js", basename)
-            }
+            ChunkType::Entry(_, name) => format!("{}.js", name),
             // foo/bar.tsx -> foo_bar_tsx-async.js
-            ChunkType::Async | ChunkType::Sync => {
+            ChunkType::Async | ChunkType::Sync | ChunkType::Worker(_) => {
                 let path = Path::new(&self.id.id);
 
                 let name = path
@@ -67,7 +63,15 @@ impl Chunk {
                     .collect::<Vec<String>>()
                     .join("_");
 
-                format!("{}-async.js", name)
+                format!(
+                    "{}-{}.js",
+                    name,
+                    if matches!(self.chunk_type, ChunkType::Worker(_)) {
+                        "worker"
+                    } else {
+                        "async"
+                    }
+                )
             }
         }
     }
@@ -84,6 +88,7 @@ impl Chunk {
         &self.modules
     }
 
+    #[allow(dead_code)]
     pub fn mut_modules(&mut self) -> &mut IndexSet<ModuleId> {
         &mut self.modules
     }
@@ -104,7 +109,6 @@ impl Chunk {
 
         for id in sorted_module_ids {
             let m = mg.get_module(&id).unwrap();
-
             hash.write_u64(m.info.as_ref().unwrap().raw_hash);
         }
 
@@ -119,8 +123,12 @@ mod tests {
 
     #[test]
     fn test_filename() {
-        let chunk = Chunk::new(ModuleId::new("foo/bar.tsx".into()), ChunkType::Entry);
-        assert_eq!(chunk.filename(), "bar.js");
+        let module_id = ModuleId::new("foo/bar.tsx".into());
+        let chunk = Chunk::new(
+            module_id.clone(),
+            ChunkType::Entry(module_id, "foo_bar".to_string()),
+        );
+        assert_eq!(chunk.filename(), "foo_bar.js");
 
         let chunk = Chunk::new(ModuleId::new("./foo/bar.tsx".into()), ChunkType::Async);
         assert_eq!(chunk.filename(), "foo_bar_tsx-async.js");

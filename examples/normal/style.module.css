@@ -8,3 +8,7 @@
   width: 180px;
   height: 180px;
 }
+
+:global(.a) .b {
+  color: red
+}

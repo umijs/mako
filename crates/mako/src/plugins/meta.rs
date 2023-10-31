@@ -1,8 +1,8 @@
 use std::fs::write;
 use std::sync::Arc;
 
-use anyhow::Result;
-use rayon::prelude::*;
+use mako_core::anyhow::Result;
+use mako_core::rayon::prelude::*;
 use serde::Serialize;
 
 use crate::compiler::Context;

@@ -1,324 +1,167 @@
+use std::collections::HashMap;
+use std::path::Path;
 use std::sync::Arc;
 use std::vec;
 
-use anyhow::{anyhow, Result};
-use indexmap::IndexSet;
-use rayon::prelude::*;
-use swc_common::DUMMY_SP;
-use swc_css_ast::Stylesheet;
-use swc_ecma_ast::{
-    ArrayLit, BindingIdent, BlockStmt, CallExpr, Callee, Decl, Expr, ExprOrSpread, ExprStmt,
-    FnExpr, Function, Ident, KeyValueProp, MemberExpr, MemberProp, ModuleItem, ObjectLit, Param,
-    Pat, Prop, PropOrSpread, Stmt, Str, VarDecl,
-};
+use mako_core::anyhow::Result;
+use mako_core::indexmap::IndexSet;
+use mako_core::rayon::prelude::*;
+use mako_core::swc_common::DUMMY_SP;
+use mako_core::swc_css_ast::Stylesheet;
+use mako_core::swc_ecma_ast::{Expr, KeyValueProp, Prop, PropName, PropOrSpread, Str};
 
-use crate::ast::build_js_ast;
+use crate::chunk::{Chunk, ChunkType};
+use crate::chunk_pot::ChunkPot;
 use crate::compiler::{Compiler, Context};
-use crate::config::Mode;
 use crate::module::{ModuleAst, ModuleId};
 use crate::transform_in_generate::transform_css_generate;
 
-pub struct OutputAst {
-    pub path: String,
-    pub ast: ModuleAst,
+#[derive(Clone)]
+pub enum ChunkFileType {
+    JS,
+    Css,
+}
+
+#[derive(Clone)]
+pub struct ChunkFile {
+    pub raw_hash: u64,
+    pub content: Vec<u8>,
+    pub source_map: Option<Vec<u8>>,
+    pub hash: Option<String>,
+    pub file_name: String,
     pub chunk_id: String,
+    pub file_type: ChunkFileType,
+}
+
+impl ChunkFile {
+    pub fn disk_name(&self) -> String {
+        if let Some(hash) = &self.hash {
+            hash_file_name(&self.file_name, hash)
+        } else {
+            self.file_name.clone()
+        }
+    }
+
+    pub fn source_map_disk_name(&self) -> String {
+        format!("{}.map", self.disk_name())
+    }
+
+    pub fn source_map_name(&self) -> String {
+        format!("{}.map", self.file_name)
+    }
 }
 
 impl Compiler {
-    pub fn generate_chunks_ast(&self) -> Result<Vec<OutputAst>> {
-        let full_hash = self.full_hash();
+    pub fn generate_chunk_files(&self) -> Result<Vec<ChunkFile>> {
+        mako_core::mako_profile_function!();
 
         let module_graph = self.context.module_graph.read().unwrap();
-        let chunk_graph = self.context.chunk_graph.write().unwrap();
+        let chunk_graph = self.context.chunk_graph.read().unwrap();
 
         let chunks = chunk_graph.get_chunks();
-        // TODO: remove this
-        let chunks_map_str: Vec<String> = chunks
-            .iter()
-            .map(|chunk| {
-                format!(
-                    "chunksIdToUrlMap[\"{}\"] = `{}`;",
-                    chunk.id.generate(&self.context),
-                    chunk.filename()
-                )
-            })
-            .collect();
-        let chunks_map_str = format!(
-            "const chunksIdToUrlMap = {{}};\n{}",
-            chunks_map_str.join("\n")
-        );
 
-        let css_chunks_map_str: Vec<String> = {
+        let non_entry_chunk_files = self.generate_non_entry_chunk_files()?;
+
+        let (js_chunk_map, css_chunk_map) = Self::chunk_maps(&non_entry_chunk_files);
+
+        let full_hash = self.full_hash();
+
+        let mut all_chunk_files = {
+            mako_core::mako_profile_scope!("collect_entry_chunks");
             chunks
                 .iter()
-                .filter_map(|chunk| match chunk.chunk_type {
-                    crate::chunk::ChunkType::Async | crate::chunk::ChunkType::Entry => {
-                        let module_ids = chunk.get_modules();
-                        let module_ids: Vec<_> = module_ids.iter().collect();
-
-                        for module_id in module_ids {
-                            let module = module_graph.get_module(module_id).unwrap();
-
-                            if let Some(info) = module.info.as_ref() {
-                                match &info.ast {
-                                    ModuleAst::Css(_) => {
-                                        let str = format!(
-                                            "cssChunksIdToUrlMap[\"{}\"] = `{}`;",
-                                            chunk.id.generate(&self.context),
-                                            get_css_chunk_filename(chunk.filename()),
-                                        );
-
-                                        match chunk.chunk_type {
-                                            crate::chunk::ChunkType::Entry => {
-                                                return Some(format!(
-                                                    "installedChunks['{}'] = 0;\n{}",
-                                                    chunk.id.generate(&self.context),
-                                                    str,
-                                                ))
-                                            }
-                                            _ => return Some(str),
-                                        }
-                                    }
-                                    _ => continue,
-                                }
-                            }
-                        }
-                        None
-                    }
-                    _ => None,
+                .filter(|chunk| {
+                    matches!(
+                        chunk.chunk_type,
+                        ChunkType::Entry(_, _) | ChunkType::Worker(_)
+                    )
                 })
-                .collect()
+                .map(|&chunk| {
+                    let mut pot = ChunkPot::from(chunk, &module_graph, &self.context)?;
+
+                    self.generate_entry_chunk_files(
+                        &mut pot,
+                        &js_chunk_map,
+                        &css_chunk_map,
+                        chunk,
+                        full_hash,
+                    )
+                })
+                .collect::<Result<Vec<_>>>()?
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>()
         };
-        let css_chunks_map_str = format!(
-            "const cssChunksIdToUrlMap = {{}};\n{}",
-            css_chunks_map_str.join("\n")
-        );
 
-        let chunks_ast = chunks
+        all_chunk_files.extend(non_entry_chunk_files);
+
+        Ok(all_chunk_files)
+    }
+
+    fn generate_entry_chunk_files(
+        &self,
+        pot: &mut ChunkPot,
+        js_map: &HashMap<String, String>,
+        css_map: &HashMap<String, String>,
+        chunk: &Chunk,
+        full_hash: u64,
+    ) -> Result<Vec<ChunkFile>> {
+        mako_core::mako_profile_function!();
+
+        pot.to_entry_chunk_files(&self.context, js_map, css_map, chunk, full_hash)
+    }
+
+    fn generate_non_entry_chunk_files(&self) -> Result<Vec<ChunkFile>> {
+        mako_core::mako_profile_function!();
+        let module_graph = self.context.module_graph.read().unwrap();
+        let chunk_graph = self.context.chunk_graph.read().unwrap();
+
+        let chunks = chunk_graph.get_chunks();
+
+        let fs = chunks
             .par_iter()
-            .map(|chunk| {
-                // build stmts
-                let module_ids = chunk.get_modules();
-
-                let stmts_res = modules_to_js_stmts(module_ids, &module_graph, &self.context);
-
-                if stmts_res.is_err() {
-                    return Err(anyhow!("Chunk {} failed to generate js ast", chunk.id.id));
-                }
-
-                let (js_stmts, merged_css_ast) = stmts_res.unwrap();
-
-                // build js ast
-                let mut content = if matches!(chunk.chunk_type, crate::chunk::ChunkType::Entry) {
-                    let chunks_ids = chunk_graph
-                        .sync_dependencies_chunk(chunk)
-                        .into_iter()
-                        .map(|chunk| chunk.generate(&self.context))
-                        .collect::<Vec<String>>();
-
-                    let code = format!(
-                        "{}\n{}",
-                        chunks_map_str,
-                        compile_runtime_entry(
-                            self.context
-                                .assets_info
-                                .lock()
-                                .unwrap()
-                                .values()
-                                .any(|info| info.ends_with(".wasm"))
-                        )
-                    )
-                    .replace("_%full_hash%_", &full_hash.to_string())
-                    .replace(
-                        "// __inject_runtime_code__",
-                        &self
-                            .context
-                            .plugin_driver
-                            .runtime_plugins_code(&self.context)?,
-                    )
-                    .replace("// __CSS_CHUNKS_URL_MAP", &css_chunks_map_str.to_string());
-
-                    if !chunks_ids.is_empty() {
-                        let ensures = chunks_ids
-                            .into_iter()
-                            .map(|id| format!("requireModule.ensure(\"{}\")", id))
-                            .collect::<Vec<String>>()
-                            .join(", ");
-
-                        code.replace(
-                            "// __BEFORE_ENTRY",
-                            format!("Promise.all([{}]).then(()=>{{", ensures).as_str(),
-                        )
-                        .replace("// __AFTER_ENTRY", "});")
-                    } else {
-                        code
-                    }
-                } else {
-                    include_str!("runtime/runtime_chunk.js").to_string()
-                };
-                content = content.replace("_%main%_", chunk.id.generate(&self.context).as_str());
-                let file_name = if matches!(chunk.chunk_type, crate::chunk::ChunkType::Entry) {
-                    "mako_internal_runtime_entry.js"
-                } else {
-                    "mako_internal_runtime_chunk.js"
-                };
-                // TODO: handle error
-                let mut js_ast = build_js_ast(file_name, content.as_str(), &self.context).unwrap();
-                for stmt in &mut js_ast.ast.body {
-                    // const runtime = createRuntime({}, 'main');
-                    if let ModuleItem::Stmt(Stmt::Decl(Decl::Var(box VarDecl { decls, .. }))) = stmt
-                    {
-                        if decls.len() != 1 {
-                            continue;
-                        }
-                        let decl = &mut decls[0];
-                        if let Pat::Ident(BindingIdent { id, .. }) = &decl.name {
-                            if id.sym.to_string() != "runtime" {
-                                continue;
-                            }
-                        }
-                        if let Some(box Expr::Call(CallExpr {
-                            args,
-                            callee: Callee::Expr(box Expr::Ident(ident)),
-                            ..
-                        })) = &mut decl.init
-                        {
-                            if args.len() != 2 || ident.sym.to_string() != "createRuntime" {
-                                continue;
-                            }
-                            if let ExprOrSpread {
-                                expr: box Expr::Object(ObjectLit { props, .. }),
-                                ..
-                            } = &mut args[0]
-                            {
-                                props.extend(js_stmts);
-                                break;
-                            }
-                        }
-                    }
-
-                    // window.jsonpCallback([['main'], {}]);
-                    if let ModuleItem::Stmt(Stmt::Expr(ExprStmt {
-                        expr:
-                            box Expr::Call(CallExpr {
-                                args,
-                                callee:
-                                    Callee::Expr(box Expr::Member(MemberExpr {
-                                        obj: box Expr::Ident(ident),
-                                        prop: MemberProp::Ident(ident2),
-                                        ..
-                                    })),
-                                ..
-                            }),
-                        ..
-                    })) = stmt
-                    {
-                        if args.len() != 1
-                            || ident.sym.to_string() != "globalThis"
-                            || ident2.sym.to_string() != "jsonpCallback"
-                        {
-                            continue;
-                        }
-                        if let ExprOrSpread {
-                            expr: box Expr::Array(ArrayLit { elems, .. }),
-                            ..
-                        } = &mut args[0]
-                        {
-                            if elems.len() != 2 {
-                                continue;
-                            }
-                            if let Some(ExprOrSpread {
-                                expr: box Expr::Object(ObjectLit { props, .. }),
-                                ..
-                            }) = &mut elems[1]
-                            {
-                                props.extend(js_stmts);
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                let filename = chunk.filename();
-                let css_filename = get_css_chunk_filename(filename.clone());
-
-                let mut output = vec![];
-                output.push(OutputAst {
-                    path: filename,
-                    ast: ModuleAst::Script(js_ast),
-                    chunk_id: chunk.id.id.clone(),
-                });
-                if let Some(merged_css_ast) = merged_css_ast {
-                    output.push(OutputAst {
-                        path: css_filename,
-                        ast: ModuleAst::Css(merged_css_ast),
-                        chunk_id: chunk.id.id.clone(),
-                    });
-                }
-                Ok(output)
+            .filter(|chunk| {
+                !matches!(
+                    chunk.chunk_type,
+                    ChunkType::Entry(_, _) | ChunkType::Worker(_)
+                )
             })
-            .collect::<Result<Vec<_>>>();
+            .map(|chunk| {
+                let pot: ChunkPot = ChunkPot::from(chunk, &module_graph, &self.context)?;
+                pot.to_normal_chunk_files(&self.context)
+            })
+            .collect::<Result<Vec<_>>>()?
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>();
 
-        match chunks_ast {
-            Ok(asts) => Ok(asts.into_iter().flatten().collect::<Vec<_>>()),
-            Err(e) => Err(e),
+        Ok(fs)
+    }
+
+    fn chunk_maps(
+        non_entry_chunk_files: &[ChunkFile],
+    ) -> (HashMap<String, String>, HashMap<String, String>) {
+        let mut js_chunk_map: HashMap<String, String> = HashMap::new();
+        let mut css_chunk_map: HashMap<String, String> = HashMap::new();
+
+        for f in non_entry_chunk_files.iter() {
+            match f.file_type {
+                ChunkFileType::JS => {
+                    js_chunk_map.insert(f.chunk_id.clone(), f.disk_name());
+                }
+                ChunkFileType::Css => {
+                    css_chunk_map.insert(f.chunk_id.clone(), f.disk_name());
+                }
+            }
         }
+
+        (js_chunk_map, css_chunk_map)
     }
 }
 
-fn get_css_chunk_filename(js_chunk_filename: String) -> String {
-    format!(
-        "{}.css",
-        js_chunk_filename.strip_suffix(".js").unwrap_or("")
-    )
-}
-
-fn compile_runtime_entry(has_wasm: bool) -> String {
-    let runtime_entry_content_str = include_str!("runtime/runtime_entry.js");
-    runtime_entry_content_str.replace(
-        "// __WASM_REQUIRE_SUPPORT",
-        if has_wasm {
-            include_str!("runtime/runtime_wasm.js")
-        } else {
-            ""
-        },
-    )
-}
-
-fn build_ident_param(ident: &str) -> Param {
-    Param {
-        span: DUMMY_SP,
-        decorators: vec![],
-        pat: Pat::Ident(BindingIdent {
-            id: Ident::new(ident.into(), DUMMY_SP),
-            type_ann: None,
-        }),
-    }
-}
-
-fn build_fn_expr(ident: Option<Ident>, params: Vec<Param>, stmts: Vec<Stmt>) -> FnExpr {
-    let func = Function {
-        span: DUMMY_SP,
-        params,
-        decorators: vec![],
-        body: Some(BlockStmt {
-            span: DUMMY_SP,
-            stmts,
-        }),
-        is_generator: false,
-        is_async: false,
-        type_params: None,
-        return_type: None,
-    };
-    FnExpr {
-        ident,
-        function: Box::new(func),
-    }
-}
-
-fn build_props(key_str: &str, value: Box<Expr>) -> PropOrSpread {
+pub fn build_props(key_str: &str, value: Box<Expr>) -> PropOrSpread {
     PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-        key: swc_ecma_ast::PropName::Str(Str {
+        key: PropName::Str(Str {
             span: DUMMY_SP,
             value: key_str.into(),
             raw: None,
@@ -339,68 +182,26 @@ pub fn modules_to_js_stmts(
 
     for module_id in module_ids {
         let module = module_graph.get_module(module_id).unwrap();
-        if context.config.minify
-            && matches!(context.config.mode, Mode::Production)
-            && module.is_missing
-        {
-            continue;
-        }
         let ast = module.info.as_ref().unwrap();
         let ast = &ast.ast;
-        match ast {
-            ModuleAst::Script(ast) => {
-                let mut stmts = Vec::new();
-                for n in ast.ast.body.iter() {
-                    match n.as_stmt() {
-                        None => {
-                            return Err(anyhow!("Error: {:?} not a stmt in {}", n, module.id.id))
-                        }
-                        Some(stmt) => {
-                            stmts.push(stmt.clone());
-                        }
-                    }
-                }
-                // id: function(module, exports, require) {}
-                js_stmts.push(build_props(
-                    module.id.generate(context).as_str(),
-                    Box::new(Expr::Fn(build_fn_expr(
-                        None,
-                        vec![
-                            build_ident_param("module"),
-                            build_ident_param("exports"),
-                            build_ident_param("require"),
-                        ],
-                        stmts,
-                    ))),
-                ));
-            }
-            ModuleAst::Css(ast) => {
-                // also push an empty css module to js_stmts
-                // to make sure require('./xxxx.css') not throw error
-                js_stmts.push(build_props(
-                    module.id.generate(context).as_str(),
-                    Box::new(Expr::Fn(build_fn_expr(
-                        None,
-                        vec![
-                            build_ident_param("module"),
-                            build_ident_param("exports"),
-                            build_ident_param("require"),
-                        ],
-                        vec![],
-                    ))),
-                ));
 
-                // only apply the last css module if chunk depend on it multiple times
-                // make sure the rules order is correct
-                if let Some(index) = merged_css_modules
-                    .iter()
-                    .position(|(id, _)| id.eq(&module.id.id))
-                {
-                    merged_css_modules.remove(index);
-                }
-                merged_css_modules.push((module.id.id.clone(), ast.clone()));
+        let fn_expr = module.to_module_fn_expr()?;
+
+        js_stmts.push(build_props(
+            module.id.generate(context).as_str(),
+            fn_expr.into(),
+        ));
+
+        if let ModuleAst::Css(ast) = ast {
+            // only apply the last css module if chunk depend on it multiple times
+            // make sure the rules order is correct
+            if let Some(index) = merged_css_modules
+                .iter()
+                .position(|(id, _)| id.eq(&module.id.id))
+            {
+                merged_css_modules.remove(index);
             }
-            ModuleAst::None => {}
+            merged_css_modules.push((module.id.id.clone(), ast.clone()));
         }
     }
     if !merged_css_modules.is_empty() {
@@ -418,4 +219,12 @@ pub fn modules_to_js_stmts(
     } else {
         Ok((js_stmts, None))
     }
+}
+
+fn hash_file_name(file_name: &String, hash: &String) -> String {
+    let path = Path::new(&file_name);
+    let file_stem = path.file_stem().unwrap().to_str().unwrap();
+    let file_extension = path.extension().unwrap().to_str().unwrap();
+
+    format!("{}.{}.{}", file_stem, hash, file_extension)
 }

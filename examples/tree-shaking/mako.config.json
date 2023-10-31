@@ -1,0 +1,13 @@
+{
+  "mode": "production",
+  "stats": true,
+  "entry": {
+    "index": "./index.js"
+  },
+  "minify": false,
+  "hmr": false,
+  "codeSplitting": "none",
+  "define": {
+    "NODE_ENV": "'production'"
+  }
+}

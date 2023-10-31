@@ -1,5 +1,0 @@
----
-source: crates/mako/src/transform_dep_replacer.rs
-expression: "transform_ast_with(&mut ast.ast, &mut visitor)"
----
-require("/root/node_modules/react/index.js");
