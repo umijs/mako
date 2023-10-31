@@ -229,8 +229,8 @@ async function getOkamConfig(opts) {
   }
   // transform babel-plugin-import plugins to transformImport
   const transformImport = [
-    ...opts.extraBabelPlugins,
-    ...opts.config.extraBabelPlugins,
+    ...(opts.extraBabelPlugins || []),
+    ...(opts.config.extraBabelPlugins || []),
   ]
     .filter((p) => /^import$|babel-plugin-import/.test(p[0]))
     .map(([_, v]) => {
