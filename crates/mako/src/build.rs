@@ -283,6 +283,15 @@ impl Compiler {
         // 在此之前需要把所有依赖都和模块关联起来，并且需要使用 resolved source
         // analyze deps
         let deps = analyze_deps(&ast, context)?;
+        for dep in &deps {
+            if dep.source.contains("-loader!") {
+                return Err(anyhow!(
+                    "webpack loader syntax is not supported, since found dep {:?} in {:?}",
+                    dep.source,
+                    task.path,
+                ));
+            }
+        }
 
         // resolve
         let mut dep_resolve_err = None;
