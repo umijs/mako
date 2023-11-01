@@ -261,6 +261,7 @@ pub struct Config {
     pub write_to_disk: bool,
     pub transform_import: Vec<TransformImportConfig>,
     pub dev_eval: bool,
+    pub clean: bool,
 }
 
 pub(crate) fn hash_config(c: &Config) -> u64 {
@@ -306,7 +307,8 @@ const DEFAULT_CONFIG: &str = r#"
     "umd": "none",
     "writeToDisk": true,
     "transformImport": [],
-    "devEval": true
+    "devEval": true,
+    "clean": true
 }
 "#;
 
