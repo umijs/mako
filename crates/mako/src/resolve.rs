@@ -97,12 +97,14 @@ fn get_external_target(
     externals: &HashMap<String, ExternalConfig>,
     source: &str,
 ) -> Option<String> {
+    let global_obj = "(typeof globalThis !== 'undefined' ? globalThis : self)";
+
     if let Some(external) = externals.get(source) {
         // handle full match
         // ex. import React from 'react';
         match external {
-            ExternalConfig::Basic(external) => Some(external.clone()),
-            ExternalConfig::Advanced(config) => Some(config.root.clone()),
+            ExternalConfig::Basic(external) => Some(format!("{}.{}", global_obj, external)),
+            ExternalConfig::Advanced(config) => Some(format!("{}.{}", global_obj, config.root)),
         }
     } else if let Some((advanced_config, subpath)) = externals.iter().find_map(|(key, config)| {
         // find matched advanced config
@@ -174,7 +176,10 @@ fn get_external_target(
                                 .join("."),
                         };
                     }
-                    Some(format!("{}.{}", advanced_config.root, replaced))
+                    Some(format!(
+                        "{}.{}.{}",
+                        global_obj, advanced_config.root, replaced
+                    ))
                 }
             }
         } else {
@@ -426,7 +431,13 @@ mod tests {
             "index.ts",
             "react",
         );
-        assert_eq!(x, ("react".to_string(), Some("react".to_string())));
+        assert_eq!(
+            x,
+            (
+                "react".to_string(),
+                Some("(typeof globalThis !== 'undefined' ? globalThis : self).react".to_string())
+            )
+        );
     }
 
     #[test]
@@ -487,7 +498,10 @@ mod tests {
             internal_resolve(&externals, "antd/es/version"),
             (
                 "antd/es/version".to_string(),
-                Some("antd.version".to_string())
+                Some(
+                    "(typeof globalThis !== 'undefined' ? globalThis : self).antd.version"
+                        .to_string()
+                )
             )
         );
         // expect empty target
@@ -500,14 +514,20 @@ mod tests {
             internal_resolve(&externals, "antd/es/date-picker"),
             (
                 "antd/es/date-picker".to_string(),
-                Some("antd.DatePicker".to_string())
+                Some(
+                    "(typeof globalThis !== 'undefined' ? globalThis : self).antd.DatePicker"
+                        .to_string()
+                )
             )
         );
         assert_eq!(
             internal_resolve(&externals, "antd/es/input/Group"),
             (
                 "antd/es/input/Group".to_string(),
-                Some("antd.Input.Group".to_string())
+                Some(
+                    "(typeof globalThis !== 'undefined' ? globalThis : self).antd.Input.Group"
+                        .to_string()
+                )
             )
         );
     }
