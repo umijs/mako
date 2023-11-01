@@ -3,13 +3,14 @@
 #[macro_use]
 extern crate napi_derive;
 
-use std::sync::Arc;
+use std::sync::{Arc, Once};
 
 use mako::compiler::{Args, Compiler};
 use mako::config::{Config, Mode};
 use mako::dev::DevServer;
 use mako::logger::init_logger;
 use napi::Status;
+static LOG_INIT: Once = Once::new();
 
 #[napi]
 pub async fn build(
@@ -79,7 +80,9 @@ pub async fn build(
     watch: bool,
 ) -> napi::Result<()> {
     // logger
-    init_logger();
+    LOG_INIT.call_once(|| {
+        init_logger();
+    });
 
     let default_config = serde_json::to_string(&config).unwrap();
     let root = std::path::PathBuf::from(&root);
