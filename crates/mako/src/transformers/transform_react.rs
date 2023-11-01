@@ -52,6 +52,8 @@ pub fn mako_react(
             // support react 17 + only
             runtime: Some(Runtime::Automatic),
             development: Some(is_dev),
+            // to avoid throw error for svg namespace element
+            throw_if_namespace: Some(false),
             refresh: if use_refresh {
                 Some(RefreshOptions::default())
             } else {
@@ -230,6 +232,37 @@ mod tests {
     pub fn normal_module_with_react_refresh() {
         assert_display_snapshot!(transform(TransformTask {
             code: "export default function R(){return <h1></h1>}".to_string(),
+            is_entry: false,
+            path: "index.jsx".to_string()
+        }));
+    }
+
+    #[test]
+    pub fn svgr_with_namespace() {
+        assert_display_snapshot!(transform(TransformTask {
+            // part of jsoneditor/dist/img/jsoneditor-icons.svg
+            code: r#"const SvgComponent = (props) => (
+    <svg
+        xmlns:dc="http://purl.org/dc/elements/1.1/"
+        xmlns:cc="http://creativecommons.org/ns#"
+        xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+        xmlns:svg="http://www.w3.org/2000/svg"
+        xmlns="http://www.w3.org/2000/svg"
+        xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+        xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+        width={240}
+        height={144}
+        id="svg4136"
+        inkscape:version="0.91 r13725"
+        sodipodi:docname="jsoneditor-icons.svg"
+        {...props}
+    >
+        <metadata id="metadata4148">
+            <rdf:RDF></rdf:RDF>
+        </metadata>
+    </svg>
+)"#
+            .to_string(),
             is_entry: false,
             path: "index.jsx".to_string()
         }));
