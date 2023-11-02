@@ -17,6 +17,7 @@ use mako_core::swc_css_parser::parser::ParserConfig;
 use mako_core::swc_ecma_ast::{EsVersion, Module};
 use mako_core::swc_ecma_codegen::text_writer::JsWriter;
 use mako_core::swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
+use mako_core::swc_ecma_parser::error::SyntaxError;
 use mako_core::swc_ecma_parser::lexer::Lexer;
 use mako_core::swc_ecma_parser::{EsConfig, Parser, StringInput, Syntax, TsConfig};
 use mako_core::swc_error_reporters::{GraphicalReportHandler, PrettyEmitter, PrettyEmitterConfig};
@@ -82,6 +83,9 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
     // parse to ast
     let ast = parser.parse_module();
     let mut ast_errors = parser.take_errors();
+    // 忽略 strict mode 下 with 语法错误
+    ast_errors.retain_mut(|error| !matches!(error.kind(), SyntaxError::WithInStrict));
+
     if ast.is_err() {
         ast_errors.push(ast.clone().unwrap_err());
     }
