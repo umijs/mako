@@ -12,7 +12,7 @@ use mako_core::swc_ecma_ast::{
     MemberProp, MetaPropExpr, MetaPropKind, Module, ModuleItem, Null, Number, ObjectLit, Prop,
     PropName, PropOrSpread, Stmt, Str,
 };
-use mako_core::swc_ecma_utils::{collect_decls, ExprExt};
+use mako_core::swc_ecma_utils::{collect_decls, quote_expr, ExprExt};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::ast::build_js_ast;
@@ -112,16 +112,6 @@ impl VisitMut for EnvReplacer {
                     _ => false,
                 } {
                     // handle `process.env.XX` and `import.meta.env.XX`
-                    // create an empty object to replace below
-                    let expr_with_empty_obj = Expr::Member(MemberExpr {
-                        obj: Box::new(Expr::Object(ObjectLit {
-                            span: DUMMY_SP,
-                            props: vec![],
-                        })),
-                        prop: prop.clone(),
-                        span: DUMMY_SP,
-                    });
-
                     match prop {
                         MemberProp::Computed(ComputedPropName { expr: c, .. }) => {
                             if let Expr::Lit(Lit::Str(Str { value: sym, .. })) = &**c {
@@ -129,8 +119,8 @@ impl VisitMut for EnvReplacer {
                                     // replace with real value if env found
                                     *expr = env;
                                 } else {
-                                    // replace with an empty object if env not found
-                                    *expr = expr_with_empty_obj;
+                                    // replace with `undefined` if env not found
+                                    *expr = *quote_expr!(DUMMY_SP, undefined);
                                 }
                             }
                         }
@@ -140,8 +130,8 @@ impl VisitMut for EnvReplacer {
                                 // replace with real value if env found
                                 *expr = env;
                             } else {
-                                // replace with an empty object if env not found
-                                *expr = expr_with_empty_obj;
+                                // replace with `undefined` if env not found
+                                *expr = *quote_expr!(DUMMY_SP, undefined);
                             }
                         }
                         _ => {}
