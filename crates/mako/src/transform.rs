@@ -11,6 +11,7 @@ use mako_core::swc_ecma_ast::Module;
 use mako_core::swc_ecma_preset_env::{self as swc_preset_env};
 use mako_core::swc_ecma_transforms::feature::FeatureFlag;
 use mako_core::swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
+use mako_core::swc_ecma_transforms::optimization::simplifier;
 use mako_core::swc_ecma_transforms::proposals::decorators;
 use mako_core::swc_ecma_transforms::typescript::strip_with_jsx;
 use mako_core::swc_ecma_transforms::{resolver, Assumptions};
@@ -27,7 +28,6 @@ use crate::targets;
 use crate::transformers::transform_css_url_replacer::CSSUrlReplacer;
 use crate::transformers::transform_dynamic_import_to_require::DynamicImportToRequire;
 use crate::transformers::transform_env_replacer::{build_env_map, EnvReplacer};
-use crate::transformers::transform_optimizer::Optimizer;
 use crate::transformers::transform_provide::Provide;
 use crate::transformers::transform_px2rem::Px2Rem;
 use crate::transformers::transform_react::mako_react;
@@ -111,9 +111,6 @@ fn transform_js(
                     let mut import_css_in_js = VirtualCSSModules { context };
                     ast.visit_mut_with(&mut import_css_in_js);
 
-                    let mut optimizer = Optimizer {};
-                    ast.visit_mut_with(&mut optimizer);
-
                     if context.config.dynamic_import_to_require {
                         let mut dynamic_import_to_require = DynamicImportToRequire {};
                         ast.visit_mut_with(&mut dynamic_import_to_require);
@@ -141,8 +138,11 @@ fn transform_js(
                             legacy: true,
                             emit_metadata: false,
                             ..Default::default()
-                        })
+                        }),
+                        // 简化代码, 例如可以删除一些不必要的 if 分支
+                        simplifier(unresolved_mark, Default::default()),
                     );
+
                     ast.body = folders.fold_module(ast.clone()).body;
 
                     // inject helpers must after decorators
