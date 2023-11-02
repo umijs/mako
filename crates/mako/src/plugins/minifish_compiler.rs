@@ -102,12 +102,10 @@ impl Plugin for MinifishCompiler {
 
         let ids = mg.get_module_ids();
 
-        let _output = context.config.output.path.canonicalize().unwrap();
-
         // TODO try tokio fs later
         ids.iter().for_each(|id| {
             let target = to_dist_path(&id.id, context);
-            create_dir_all_with_cache(target.parent().unwrap().to_str().unwrap()).unwrap();
+            create_dir_all(target.parent().unwrap()).unwrap();
         });
 
         ids.par_iter().for_each(|id| {
