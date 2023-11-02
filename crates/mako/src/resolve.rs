@@ -107,14 +107,16 @@ fn get_external_target(
             ExternalConfig::Advanced(config) => Some(format!("{}.{}", global_obj, config.root)),
         }
     } else if let Some((advanced_config, subpath)) = externals.iter().find_map(|(key, config)| {
-        // find matched advanced config
-        if matches!(config, ExternalConfig::Advanced(_)) && source.starts_with(&format!("{}/", key))
-        {
-            match config {
-                ExternalConfig::Advanced(config) => {
-                    let subpath = source.replace(&format!("{}/", key), "");
+        match config {
+            ExternalConfig::Advanced(config) => {
+                if let Some(caps) =
+                    Regex::new(&format!(r#"(?:^|node_modules/|[a-zA-Z\d]@){}(/|$)"#, key))
+                        .ok()
+                        .unwrap()
+                        .captures(source)
+                {
+                    let subpath = source.split(&caps[0]).collect::<Vec<_>>()[1].to_string();
 
-                    // skip if source is excluded
                     match &config.subpath.exclude {
                         // skip if source is excluded
                         Some(exclude)
@@ -127,13 +129,13 @@ fn get_external_target(
                         {
                             None
                         }
-                        _ => Some((config, source.replace(&format!("{}/", key), ""))),
+                        _ => Some((config, subpath)),
                     }
+                } else {
+                    None
                 }
-                _ => unreachable!(),
             }
-        } else {
-            None
+            _ => None,
         }
     }) {
         // handle subpath match
@@ -526,6 +528,32 @@ mod tests {
                 "antd/es/input/Group".to_string(),
                 Some(
                     "(typeof globalThis !== 'undefined' ? globalThis : self).antd.Input.Group"
+                        .to_string()
+                )
+            )
+        );
+        // expect external absolute path
+        assert_eq!(
+            // npm mode absolute path
+            internal_resolve(&externals, "/path/to/node_modules/antd/es/button"),
+            (
+                "/path/to/node_modules/antd/es/button".to_string(),
+                Some(
+                    "(typeof globalThis !== 'undefined' ? globalThis : self).antd.Button"
+                        .to_string()
+                )
+            )
+        );
+        assert_eq!(
+            // npminstall mode absolute path
+            internal_resolve(
+                &externals,
+                "/path/to/node_modules/_antd@5.0.0@antd/es/button"
+            ),
+            (
+                "/path/to/node_modules/_antd@5.0.0@antd/es/button".to_string(),
+                Some(
+                    "(typeof globalThis !== 'undefined' ? globalThis : self).antd.Button"
                         .to_string()
                 )
             )
