@@ -1,11 +1,10 @@
 use std::collections::HashMap;
+use std::fs;
 use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::{fs, io};
 
 use mako_core::anyhow::Result;
-use mako_core::cached::proc_macro::cached;
 use mako_core::pathdiff::diff_paths;
 use mako_core::rayon::prelude::*;
 use mako_core::swc_common::errors::HANDLER;
@@ -66,11 +65,6 @@ impl MinifishCompiler {
     }
 }
 
-#[cached(result = true, key = "String", convert = r#"{ format!("{}", path) }"#)]
-fn create_dir_all_with_cache(path: &str) -> io::Result<()> {
-    create_dir_all(path)
-}
-
 impl Plugin for MinifishCompiler {
     fn name(&self) -> &str {
         "minifish_generator"
@@ -102,12 +96,10 @@ impl Plugin for MinifishCompiler {
 
         let ids = mg.get_module_ids();
 
-        let _output = context.config.output.path.canonicalize().unwrap();
-
         // TODO try tokio fs later
         ids.iter().for_each(|id| {
             let target = to_dist_path(&id.id, context);
-            create_dir_all_with_cache(target.parent().unwrap().to_str().unwrap()).unwrap();
+            create_dir_all(target.parent().unwrap()).unwrap();
         });
 
         ids.par_iter().for_each(|id| {

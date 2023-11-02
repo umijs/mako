@@ -36,10 +36,10 @@ target: string | '$EMPTY';
 targetConverter?: 'PascalCase';
 }[];
 };
-},
+}
 >;
 copy?: string[];
-code_splitting: "auto" | "none";
+code_splitting?: "auto" | "none";
 providers?: Record<string, string[]>;
 publicPath?: string;
 inlineLimit?: number;
@@ -63,4 +63,5 @@ ignoreCSSParserErrors?: boolean;
 dynamicImportToRequire?: boolean;
 umd?: string;
 transformImport?: { libraryName: string; libraryDirectory?: string; style?: boolean | string }[];
+clean?: boolean;
 }, watch: boolean): Promise<void>
