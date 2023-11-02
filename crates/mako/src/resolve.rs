@@ -110,7 +110,7 @@ fn get_external_target(
         match config {
             ExternalConfig::Advanced(config) => {
                 if let Some(caps) =
-                    Regex::new(&format!(r#"(?:^|node_modules/|[a-zA-Z\d]@){}(/|$)"#, key))
+                    Regex::new(&format!(r#"(?:^|/node_modules/|[a-zA-Z\d]@){}(/|$)"#, key))
                         .ok()
                         .unwrap()
                         .captures(source)
