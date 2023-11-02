@@ -82,34 +82,32 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
     // parse to ast
     let ast = parser.parse_module();
     let mut ast_errors = parser.take_errors();
-    if ast.is_err() {
-        ast_errors.push(ast.clone().unwrap_err());
-    }
-    if !ast_errors.is_empty() {
-        let mut error_message = vec![];
-        for err in ast_errors {
-            error_message.push(generate_code_frame(
-                err.span(),
-                err.kind().msg().to_string().as_str(),
-                context.meta.script.cm.clone(),
-            ));
-        }
-        return Err(anyhow!(ParseError {
-            resolved_path: path.to_string(),
-            error_message: error_message.join("\n"),
-        }));
+    if let Ok(ast) = ast {
+        // top level mark、unresolved mark 需要持久化起来，后续的 transform 需要用到
+        return GLOBALS.set(&context.meta.script.globals, || {
+            let top_level_mark = Mark::new();
+            let unresolved_mark = Mark::new();
+            Ok(Ast {
+                ast,
+                unresolved_mark,
+                top_level_mark,
+            })
+        });
     }
 
-    // top level mark、unresolved mark 需要持久化起来，后续的 transform 需要用到
-    GLOBALS.set(&context.meta.script.globals, || {
-        let top_level_mark = Mark::new();
-        let unresolved_mark = Mark::new();
-        Ok(Ast {
-            ast: ast.unwrap(),
-            unresolved_mark,
-            top_level_mark,
-        })
-    })
+    ast_errors.push(ast.unwrap_err());
+    let mut error_message = vec![];
+    for err in ast_errors {
+        error_message.push(generate_code_frame(
+            err.span(),
+            err.kind().msg().to_string().as_str(),
+            context.meta.script.cm.clone(),
+        ));
+    }
+    Err(anyhow!(ParseError {
+        resolved_path: path.to_string(),
+        error_message: error_message.join("\n"),
+    }))
 }
 
 pub fn build_css_ast(
