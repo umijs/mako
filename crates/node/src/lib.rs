@@ -48,10 +48,10 @@ pub async fn build(
                     targetConverter?: 'PascalCase';
                 }[];
             };
-        },
+        }
     >;
     copy?: string[];
-    code_splitting: "auto" | "none";
+    code_splitting?: "auto" | "none";
     providers?: Record<string, string[]>;
     publicPath?: string;
     inlineLimit?: number;
@@ -75,6 +75,7 @@ pub async fn build(
     dynamicImportToRequire?: boolean;
     umd?: string;
     transformImport?: { libraryName: string; libraryDirectory?: string; style?: boolean | string }[];
+    clean?: boolean;
 }"#)]
     config: serde_json::Value,
     watch: bool,

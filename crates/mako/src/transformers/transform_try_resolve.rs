@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use mako_core::swc_ecma_ast::{
-    AssignExpr, BlockStmt, CallExpr, Expr, ExprOrSpread, ExprStmt, Stmt, TryStmt,
+    AssignExpr, BlockStmt, CallExpr, Decl, Expr, ExprOrSpread, ExprStmt, Stmt, TryStmt,
 };
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
@@ -64,6 +64,14 @@ impl VisitMut for TryResolve<'_> {
                             }),
                         ..
                     }) => self.handle_call_expr(call_expr),
+                    // e.g. var x = require('x');
+                    Stmt::Decl(Decl::Var(var_decl)) => {
+                        for decl in &mut var_decl.decls {
+                            if let Some(Expr::Call(call_expr)) = decl.init.as_deref_mut() {
+                                self.handle_call_expr(call_expr);
+                            }
+                        }
+                    }
                     _ => {}
                 }
             }
