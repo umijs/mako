@@ -1,11 +1,10 @@
 use std::collections::HashMap;
+use std::fs;
 use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::{fs, io};
 
 use mako_core::anyhow::Result;
-use mako_core::cached::proc_macro::cached;
 use mako_core::pathdiff::diff_paths;
 use mako_core::rayon::prelude::*;
 use mako_core::swc_common::errors::HANDLER;
@@ -64,11 +63,6 @@ impl MinifishCompiler {
 
         fs::write(to, content).unwrap();
     }
-}
-
-#[cached(result = true, key = "String", convert = r#"{ format!("{}", path) }"#)]
-fn create_dir_all_with_cache(path: &str) -> io::Result<()> {
-    create_dir_all(path)
 }
 
 impl Plugin for MinifishCompiler {
