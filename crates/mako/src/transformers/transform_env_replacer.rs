@@ -243,8 +243,12 @@ mod tests {
     use std::sync::Arc;
 
     use mako_core::serde_json::json;
+    use mako_core::swc_common::{Globals, GLOBALS};
+    use mako_core::swc_ecma_visit::VisitMutWith;
     use maplit::hashmap;
 
+    use super::EnvReplacer;
+    use crate::ast::{build_js_ast, js_ast_to_code};
     use crate::compiler::Context;
     use crate::transformers::transform_env_replacer::build_env_map;
 
@@ -275,5 +279,46 @@ mod tests {
             &context,
         )
         .unwrap();
+    }
+
+    #[test]
+    fn test_transform_undefined_env() {
+        let code = r#"
+if (process.env.UNDEFINED_ENV === 'true') {
+    console.log('UNDEFINED env is true');
+}
+        "#
+        .trim();
+        let (code, _) = transform_code(code, None);
+        println!(">> CODE\n{}", code);
+        assert_eq!(
+            code,
+            r#"
+if (undefined === 'true') {
+    console.log('UNDEFINED env is true');
+}
+
+//# sourceMappingURL=index.js.map
+                    "#
+            .trim()
+        );
+    }
+
+    fn transform_code(origin: &str, path: Option<&str>) -> (String, String) {
+        let path = if let Some(p) = path { p } else { "test.tsx" };
+        let context: Arc<Context> = Arc::new(Default::default());
+
+        let mut ast = build_js_ast(path, origin, &context).unwrap();
+
+        let globals = Globals::default();
+        GLOBALS.set(&globals, || {
+            let mut env_replacer = EnvReplacer::new(Default::default());
+            ast.ast.visit_mut_with(&mut env_replacer);
+        });
+
+        let (code, _sourcemap) = js_ast_to_code(&ast.ast, &context, "index.js").unwrap();
+        let code = code.replace("\"use strict\";", "");
+        let code = code.trim().to_string();
+        (code, _sourcemap)
     }
 }
