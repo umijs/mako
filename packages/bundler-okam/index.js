@@ -11,8 +11,8 @@ exports.build = async function (opts) {
     cwd,
     onBuildComplete,
     clean,
-    // 以下暂不支持
-    // rootDir, disableCopy, watch,
+    // 尚有不支持的配置项，checkConfig 会根据情况做报错、警告及忽略
+    // 详见：https://github.com/umijs/mako/issues/611
   } = opts;
   checkConfig(opts);
 
@@ -298,6 +298,7 @@ async function getOkamConfig(opts) {
     devtool,
     jsMinifier,
     externals,
+    copy = [],
   } = opts.config;
   const outputPath = path.join(opts.cwd, 'dist');
   // TODO:
@@ -396,6 +397,7 @@ async function getOkamConfig(opts) {
     umd,
     transformImport,
     externals,
+    ...(opts.disableCopy ? { copy: [] } : { copy: ['public'].concat(copy) }),
   };
 
   if (process.env.DUMP_MAKO_CONFIG) {
