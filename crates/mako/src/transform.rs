@@ -212,6 +212,7 @@ mod tests {
     fn test_react() {
         let code = r#"
 const App = () => <><h1>Hello World</h1></>;
+App;
         "#
         .trim();
         let (code, _) = transform_js_code(code, None, HashMap::new());
@@ -232,6 +233,7 @@ const App = ()=>(0, _jsxdevruntime.jsxDEV)(_jsxdevruntime.Fragment, {
             columnNumber: 21
         }, this)
     }, void 0, false);
+App;
 
 //# sourceMappingURL=index.js.map
         "#
@@ -243,6 +245,7 @@ const App = ()=>(0, _jsxdevruntime.jsxDEV)(_jsxdevruntime.Fragment, {
     fn test_strip_type() {
         let code = r#"
 const Foo: string = "foo";
+Foo;
         "#
         .trim();
         let (code, _) = transform_js_code(code, None, HashMap::new());
@@ -251,6 +254,7 @@ const Foo: string = "foo";
             code,
             r#"
 const Foo = "foo";
+Foo;
 
 //# sourceMappingURL=index.js.map
         "#
@@ -265,6 +269,7 @@ import { X } from 'foo';
 import x from 'foo';
 x;
 const b: X = 1;
+b;
         "#
         .trim();
         let (code, _) = transform_js_code(code, None, HashMap::new());
@@ -279,6 +284,7 @@ var _interop_require_default = require("@swc/helpers/_/_interop_require_default"
 var _foo = _interop_require_default._(require("foo"));
 _foo.default;
 const b = 1;
+b;
 
 //# sourceMappingURL=index.js.map
         "#
@@ -339,6 +345,7 @@ _foo.bar;
     fn test_dynamic_import() {
         let code = r#"
 const foo = import('./foo');
+foo;
         "#
         .trim();
         let (code, _) = transform_js_code(code, None, HashMap::new());
@@ -349,6 +356,7 @@ const foo = import('./foo');
 const foo = Promise.all([
     require.ensure("./foo")
 ]).then(require.bind(require, "./foo"));
+foo;
 
 //# sourceMappingURL=index.js.map
         "#
@@ -368,6 +376,7 @@ function foo() {
     let Buffer = 'b';
     Buffer.from('foo');
 }
+foo();
         "#
         .trim();
         let (code, _) = transform_js_code(code, None, HashMap::new());
@@ -382,6 +391,7 @@ function foo() {
     let Buffer = 'b';
     Buffer.from('foo');
 }
+foo();
 
 //# sourceMappingURL=index.js.map"#
             .trim();
@@ -405,6 +415,7 @@ const Buffer = require("buffer").Buffer;
     fn test_import_deps() {
         let code = r#"
 import React from 'react';
+React;
         "#
         .trim();
         let (code, _) = transform_js_code(code, None, HashMap::new());
@@ -417,6 +428,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 var _interop_require_default = require("@swc/helpers/_/_interop_require_default");
 var _react = _interop_require_default._(require("react"));
+_react.default;
 
 //# sourceMappingURL=index.js.map
         "#
@@ -441,6 +453,12 @@ const c = MEMBERS;
 const d = YOUYOU.name;
 const e = XIAOHUONI.friend;
 const f = MEMBER_NAMES;
+a;
+b;
+c;
+d;
+e;
+f;
         "#
         .trim();
         let (code, _sourcemap) = transform_js_code(code, None, HashMap::new());
@@ -451,22 +469,17 @@ const f = MEMBER_NAMES;
 const EXIT = false;
 console.log(EXIT);
 console.log(false);
-if (1) {
+{
     const FOO = 1;
     console.log(FOO);
-}
-console.log("MAKO");
+}console.log("MAKO");
 const a = "development";
 const b = "MAKO";
 const c = 3;
-const d = {
-    name: "youyou"
-}.name;
+const d = "youyou";
 const e = {
-    friend: {
-        name: "sorrycc"
-    }
-}.friend;
+    name: "sorrycc"
+};
 const f = [
     {
         name: "sorrycc"
@@ -475,33 +488,12 @@ const f = [
         name: "xiaohuoni"
     }
 ];
-
-//# sourceMappingURL=index.js.map
-        "#
-            .trim()
-        );
-    }
-
-    #[test]
-    fn test_transform_optimizer() {
-        let code = r#"
-if ('a1' === 'a1') 1.1;
-if ('a2' == 'a3') 1.2;
-if ('b1' !== 'b1') 2.1;
-if ('b2' != 'b3') 2.2;
-if ('a1' === "a2") { 3.1; } else 3.2;
-        "#
-        .trim();
-        let (code, _sourcemap) = transform_js_code(code, None, HashMap::new());
-        println!(">> CODE\n{}", code);
-        assert_eq!(
-            code,
-            r#"
-1.1;
-;
-;
-2.2;
-3.2;
+a;
+b;
+c;
+d;
+e;
+f;
 
 //# sourceMappingURL=index.js.map
         "#
@@ -513,6 +505,7 @@ if ('a1' === "a2") { 3.1; } else 3.2;
     fn test_preset_env() {
         let code = r#"
 const b = window.a?.b;
+b;
         "#
         .trim();
         let (code, _sourcemap) = transform_js_code(code, None, HashMap::new());
@@ -522,6 +515,7 @@ const b = window.a?.b;
             r#"
 var _window_a;
 const b = (_window_a = window.a) === null || _window_a === void 0 ? void 0 : _window_a.b;
+b;
 
 //# sourceMappingURL=index.js.map
         "#
@@ -564,8 +558,6 @@ if(1 == 2) { console.log("1"); } else if (1 == 2) { console.log("2"); } else { c
 if(null === null) { console.log("null==null optimized"); } else {"ooops"}
 
 if(true) { console.log("1"); } else { console.log("2"); }
-
-if(a) { 1 } else { 2 }
         "#
         .trim();
         let (code, _sourcemap) = transform_js_code(
@@ -576,21 +568,11 @@ if(a) { 1 } else { 2 }
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
-            r#"{
-    console.log("1");
-}{
-    console.log("2");
-}{
-    console.log("3");
-}{
-    console.log("null==null optimized");
-}{
-    console.log("1");
-}if (a) {
-    1;
-} else {
-    2;
-}
+            r#"console.log("1");
+console.log("2");
+console.log("3");
+console.log("null==null optimized");
+console.log("1");
 
 //# sourceMappingURL=index.js.map
 "#
@@ -616,15 +598,8 @@ if(/x/ === /x/) { "should keep" }
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
-            r#"if (1 == 'a') {
-    "should keep";
-}
-if (null == undefined) {
-    "should keep";
-}
-if (/x/ === /x/) {
-    "should keep";
-}
+            r#""should keep";
+if (/x/ === /x/) "should keep";
 
 //# sourceMappingURL=index.js.map
 "#

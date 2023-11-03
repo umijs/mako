@@ -358,22 +358,17 @@ var m = {
         exports.version = "18.2.0";
     },
     "../../../../../node_modules/.pnpm/react@18.2.0/node_modules/react/index.js": function(module, exports, require) {
-        {
-            module.exports = require("../../../../../node_modules/.pnpm/react@18.2.0/node_modules/react/cjs/react.production.min.js");
-        }
+        module.exports = require("../../../../../node_modules/.pnpm/react@18.2.0/node_modules/react/cjs/react.production.min.js");
     },
     "../../../../../node_modules/.pnpm/react@18.2.0/node_modules/react/jsx-runtime.js": function(module, exports, require) {
-        {
-            module.exports = require("../../../../../node_modules/.pnpm/react@18.2.0/node_modules/react/cjs/react-jsx-runtime.production.min.js");
-        }
+        module.exports = require("../../../../../node_modules/.pnpm/react@18.2.0/node_modules/react/cjs/react-jsx-runtime.production.min.js");
     },
     "index.tsx": function(module, exports, require) {
         Object.defineProperty(exports, "__esModule", {
             value: true
         });
-        var _interop_require_default = require("@swc/helpers/_/_interop_require_default");
         var _jsxruntime = require("../../../../../node_modules/.pnpm/react@18.2.0/node_modules/react/jsx-runtime.js");
-        var _react = _interop_require_default._(require("../../../../../node_modules/.pnpm/react@18.2.0/node_modules/react/index.js"));
+        require("../../../../../node_modules/.pnpm/react@18.2.0/node_modules/react/index.js");
         function Foo() {
             return (0, _jsxruntime.jsx)("div", {
                 children: "123"
@@ -630,12 +625,10 @@ function createRuntime(makoModules, entryModuleId) {
                     if (cache && cache.has(obj)) return cache.get(obj);
                     var newObj = {};
                     var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor;
-                    for(var key in obj){
-                        if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) {
-                            var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null;
-                            if (desc && (desc.get || desc.set)) Object.defineProperty(newObj, key, desc);
-                            else newObj[key] = obj[key];
-                        }
+                    for(var key in obj)if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) {
+                        var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null;
+                        if (desc && (desc.get || desc.set)) Object.defineProperty(newObj, key, desc);
+                        else newObj[key] = obj[key];
                     }
                     newObj.default = obj;
                     if (cache) cache.set(obj, newObj);
@@ -662,14 +655,12 @@ function createRuntime(makoModules, entryModuleId) {
                 });
                 function _export_star(from, to) {
                     Object.keys(from).forEach(function(k) {
-                        if (k !== "default" && !Object.prototype.hasOwnProperty.call(to, k)) {
-                            Object.defineProperty(to, k, {
-                                enumerable: true,
-                                get: function() {
-                                    return from[k];
-                                }
-                            });
-                        }
+                        if (k !== "default" && !Object.prototype.hasOwnProperty.call(to, k)) Object.defineProperty(to, k, {
+                            enumerable: true,
+                            get: function() {
+                                return from[k];
+                            }
+                        });
                     });
                     return from;
                 }
