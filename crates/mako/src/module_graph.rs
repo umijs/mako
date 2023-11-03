@@ -237,17 +237,14 @@ impl ModuleGraph {
         &self,
         module_id: &ModuleId,
         source: &String,
-    ) -> &ModuleId {
+    ) -> Option<&ModuleId> {
         let deps = self.get_dependencies(module_id);
         for (module_id, dep) in deps {
             if *source == dep.source {
-                return module_id;
+                return Some(module_id);
             }
         }
-        panic!(
-            "source `{}` is not a dependency of `{:?}`",
-            source, module_id
-        );
+        None
     }
 
     /**

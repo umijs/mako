@@ -19,61 +19,63 @@ impl Compiler {
             .used_exports
             .clone();
         if let Some(source) = &export_statement.info.source {
-            let exported_module_id =
-                module_graph.get_dependency_module_by_source(tree_shaking_module_id, source);
-            let exported_module = module_graph.get_module(exported_module_id).unwrap();
+            if let Some(exported_module_id) =
+                module_graph.get_dependency_module_by_source(tree_shaking_module_id, source)
+            {
+                let exported_module = module_graph.get_module(exported_module_id).unwrap();
 
-            if exported_module.is_external() {
-                return;
-            }
+                if exported_module.is_external() {
+                    return;
+                }
 
-            let exported_tree_shaking_module =
-                tree_shake_modules_map.get_mut(exported_module_id).unwrap();
+                let exported_tree_shaking_module =
+                    tree_shake_modules_map.get_mut(exported_module_id).unwrap();
 
-            for specifier in &export_statement.info.specifiers {
-                match specifier {
-                    ExportSpecifier::All => {
-                        // 把*透传进去
-                        if let UsedExports::Partial(ref idents) = used_export {
-                            for ident in idents {
-                                exported_tree_shaking_module
-                                    .used_exports
-                                    .add_used_export(&ident);
+                for specifier in &export_statement.info.specifiers {
+                    match specifier {
+                        ExportSpecifier::All => {
+                            // 把*透传进去
+                            if let UsedExports::Partial(ref idents) = used_export {
+                                for ident in idents {
+                                    exported_tree_shaking_module
+                                        .used_exports
+                                        .add_used_export(&ident);
+                                }
+                            } else {
+                                exported_tree_shaking_module.used_exports = UsedExports::All;
                             }
-                        } else {
-                            exported_tree_shaking_module.used_exports = UsedExports::All;
                         }
-                    }
-                    ExportSpecifier::Named { exported, local } => {
-                        let used_ident = if strip_context(local) == "default" {
-                            UsedIdent::Default
-                        } else {
-                            UsedIdent::SwcIdent(strip_context(local))
-                        };
+                        ExportSpecifier::Named { exported, local } => {
+                            let used_ident = if strip_context(local) == "default" {
+                                UsedIdent::Default
+                            } else {
+                                UsedIdent::SwcIdent(strip_context(local))
+                            };
 
-                        // export { default as foo } from './foo'
-                        if let Some(exported) = exported {
-                            // 当前文件如果有被用到的变量，才把目标模块的 default export 标记为 used
-                            if used_export.contains(&strip_context(exported)) {
+                            // export { default as foo } from './foo'
+                            if let Some(exported) = exported {
+                                // 当前文件如果有被用到的变量，才把目标模块的 default export 标记为 used
+                                if used_export.contains(&strip_context(exported)) {
+                                    exported_tree_shaking_module
+                                        .used_exports
+                                        .add_used_export(&used_ident);
+                                }
+                                continue;
+                            }
+
+                            // 其余情况
+                            if used_export.contains(&strip_context(local)) {
                                 exported_tree_shaking_module
                                     .used_exports
                                     .add_used_export(&used_ident);
                             }
-                            continue;
                         }
-
-                        // 其余情况
-                        if used_export.contains(&strip_context(local)) {
-                            exported_tree_shaking_module
-                                .used_exports
-                                .add_used_export(&used_ident);
+                        ExportSpecifier::Default => {
+                            unreachable!("Export default not supported on source")
                         }
-                    }
-                    ExportSpecifier::Default => {
-                        unreachable!("Export default not supported on source")
-                    }
-                    ExportSpecifier::Namespace(_) => {
-                        exported_tree_shaking_module.used_exports = UsedExports::All;
+                        ExportSpecifier::Namespace(_) => {
+                            exported_tree_shaking_module.used_exports = UsedExports::All;
+                        }
                     }
                 }
             }
@@ -87,53 +89,55 @@ impl Compiler {
         import_statement: ImportStatement,
     ) {
         let module_graph = self.context.module_graph.write().unwrap();
-        let imported_module_id = module_graph
-            .get_dependency_module_by_source(tree_shaking_module_id, &import_statement.info.source);
-        let imported_module = module_graph.get_module(imported_module_id).unwrap();
+        if let Some(imported_module_id) = module_graph
+            .get_dependency_module_by_source(tree_shaking_module_id, &import_statement.info.source)
+        {
+            let imported_module = module_graph.get_module(imported_module_id).unwrap();
 
-        if imported_module.is_external() || !imported_module.get_module_type().is_script() {
-            return;
-        }
+            if imported_module.is_external() || !imported_module.get_module_type().is_script() {
+                return;
+            }
 
-        let imported_tree_shaking_module = tree_shake_modules_map
-            .get_mut(imported_module_id)
-            .unwrap_or_else(|| {
-                panic!("imported module not found: {:?}", imported_module_id);
-            });
+            let imported_tree_shaking_module = tree_shake_modules_map
+                .get_mut(imported_module_id)
+                .unwrap_or_else(|| {
+                    panic!("imported module not found: {:?}", imported_module_id);
+                });
 
-        if import_statement.is_self_executed {
-            imported_tree_shaking_module.side_effects = true;
-            imported_tree_shaking_module.used_exports = UsedExports::All;
-            return;
-        }
+            if import_statement.is_self_executed {
+                imported_tree_shaking_module.side_effects = true;
+                imported_tree_shaking_module.used_exports = UsedExports::All;
+                return;
+            }
 
-        for specifier in &import_statement.info.specifiers {
-            match specifier {
-                // FIXME: 后面可以处理下 * as foo -> foo.F 这种情况下的 tree shaking，现在暂时不处理
-                crate::tree_shaking::statement::ImportSpecifier::Namespace(_) => {
-                    imported_tree_shaking_module.used_exports = UsedExports::All;
-                }
-                crate::tree_shaking::statement::ImportSpecifier::Named { local, imported } => {
-                    if let Some(ident) = imported {
-                        if strip_context(ident) == "default" {
-                            imported_tree_shaking_module
-                                .used_exports
-                                .add_used_export(&UsedIdent::Default)
+            for specifier in &import_statement.info.specifiers {
+                match specifier {
+                    // FIXME: 后面可以处理下 * as foo -> foo.F 这种情况下的 tree shaking，现在暂时不处理
+                    crate::tree_shaking::statement::ImportSpecifier::Namespace(_) => {
+                        imported_tree_shaking_module.used_exports = UsedExports::All;
+                    }
+                    crate::tree_shaking::statement::ImportSpecifier::Named { local, imported } => {
+                        if let Some(ident) = imported {
+                            if strip_context(ident) == "default" {
+                                imported_tree_shaking_module
+                                    .used_exports
+                                    .add_used_export(&UsedIdent::Default)
+                            } else {
+                                imported_tree_shaking_module
+                                    .used_exports
+                                    .add_used_export(&UsedIdent::SwcIdent(strip_context(ident)))
+                            }
                         } else {
                             imported_tree_shaking_module
                                 .used_exports
-                                .add_used_export(&UsedIdent::SwcIdent(strip_context(ident)))
+                                .add_used_export(&UsedIdent::SwcIdent(strip_context(local)))
                         }
-                    } else {
+                    }
+                    crate::tree_shaking::statement::ImportSpecifier::Default(_) => {
                         imported_tree_shaking_module
                             .used_exports
-                            .add_used_export(&UsedIdent::SwcIdent(strip_context(local)))
+                            .add_used_export(&UsedIdent::Default)
                     }
-                }
-                crate::tree_shaking::statement::ImportSpecifier::Default(_) => {
-                    imported_tree_shaking_module
-                        .used_exports
-                        .add_used_export(&UsedIdent::Default)
                 }
             }
         }
