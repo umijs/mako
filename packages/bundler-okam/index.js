@@ -149,8 +149,6 @@ function checkConfig(opts) {
   const unsupportedKeys = [
     // 不支持 MFSU
     'mfsu',
-    // 暂不支持 legacy
-    'legacy',
     // 暂不支持多 entry
     'mpa',
   ];
