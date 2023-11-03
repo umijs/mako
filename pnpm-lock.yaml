@@ -75,11 +75,14 @@ importers:
   crates/node:
     optionalDependencies:
       '@okamjs/okam-darwin-arm64':
-        specifier: 0.0.29-dev.20231103.1
-        version: 0.0.29-dev.20231103.1
+        specifier: 0.0.20
+        version: 0.0.20
       '@okamjs/okam-darwin-x64':
-        specifier: 0.0.29-dev.20231103.1
-        version: 0.0.29-dev.20231103.1
+        specifier: 0.0.20
+        version: 0.0.20
+      '@okamjs/okam-linux-x64-gnu':
+        specifier: 0.0.20
+        version: 0.0.20
     devDependencies:
       '@napi-rs/cli':
         specifier: ^2.14.8
@@ -3583,8 +3586,8 @@ packages:
       fastq: 1.15.0
     dev: true
 
-  /@okamjs/okam-darwin-arm64@0.0.29-dev.20231103.1:
-    resolution: {integrity: sha512-r3Va6VXAssjg2NdRvy64hmfmv6TeL0JWLRyPpcQFyL7pcLuXedT/QyigU1DSswb1CZjbDa+3BQeo7JoXS7M+RA==}
+  /@okamjs/okam-darwin-arm64@0.0.20:
+    resolution: {integrity: sha512-RHw6Tjj9NSTq8BldXFDNGjQHEFHbCvRbSTTrP0zTHrkM890JXqKGhkDFMZwTFFxM0ePHp11/jzcI0S+QWPe5vw==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
@@ -3592,11 +3595,20 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-darwin-x64@0.0.29-dev.20231103.1:
-    resolution: {integrity: sha512-rNNPFlCPJrd+4zVPqbsbAVn1K1BIfUYykvZSJD2HAFuRZLLF9BETFhk6DxVf5hFa2avmBDa0GmyyZVMG6/S4bQ==}
+  /@okamjs/okam-darwin-x64@0.0.20:
+    resolution: {integrity: sha512-Yl2XAPC0uMqZsxlM1nWSMjztaoVb0uVxFJVj8xs3YTaHzVKnDxohncZd5c2WVKdkHvnDr9roXmwleKv/Fs9M6A==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@okamjs/okam-linux-x64-gnu@0.0.20:
+    resolution: {integrity: sha512-C1L8/XimoQRwGmS6KVKsAGPn+7xEX+NIsDhp/JJSiYGzRnPnSZO+z8oC5S9dhEd+bZE2ZLZkRRa7fzKtiDktLA==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
     requiresBuild: true
     dev: false
     optional: true
