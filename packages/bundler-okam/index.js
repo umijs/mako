@@ -10,17 +10,10 @@ exports.build = async function (opts) {
   const {
     cwd,
     onBuildComplete,
-    clean,
     // 尚有不支持的配置项，checkConfig 会根据情况做报错、警告及忽略
     // 详见：https://github.com/umijs/mako/issues/611
   } = opts;
   checkConfig(opts);
-
-  if (clean) {
-    const outputPath = path.join(cwd, 'dist');
-    const rimraf = require('rimraf');
-    rimraf.sync(outputPath);
-  }
 
   const okamConfig = await getOkamConfig(opts);
   const mode = process.argv.includes('--dev') ? 'development' : 'production';
@@ -299,6 +292,7 @@ async function getOkamConfig(opts) {
     jsMinifier,
     externals,
     copy = [],
+    clean,
   } = opts.config;
   const outputPath = path.join(opts.cwd, 'dist');
   // TODO:
@@ -397,6 +391,7 @@ async function getOkamConfig(opts) {
     umd,
     transformImport,
     externals,
+    clean,
     ...(opts.disableCopy ? { copy: [] } : { copy: ['public'].concat(copy) }),
   };
 
