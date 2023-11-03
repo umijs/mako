@@ -148,7 +148,7 @@ function checkConfig(opts) {
 
   // 处理构建不支持的配置项
   unsupportedKeys.forEach((key) => {
-    assert(!opts.config[key], `${key} is not supported in okam bundler`);
+    assert(!opts.config[key], `${key} is not supported in Mako bundler`);
   });
 
   // 暂不支持 { from, to } 格式
@@ -157,14 +157,14 @@ function checkConfig(opts) {
     for (const item of copy) {
       assert(
         typeof item === 'string',
-        `copy config item must be string in okam bundler, but got ${item}`,
+        `copy config item must be string in Mako bundler, but got ${item}`,
       );
     }
   }
 
   // 不支持数组 externals
   if (Array.isArray(opts.config.externals)) {
-    throw new Error('externals array is not supported in okam bundler');
+    throw new Error('externals array is not supported in Mako bundler');
   }
 
   // 不支持但对构建影响不明确的配置项，会统一警告
@@ -245,7 +245,7 @@ function checkConfig(opts) {
        ░░░   ░░░      ░░░░░   ░░░░░ ░░░░░   ░░░░░ ░░░░░    ░░░░░ ░░░░░ ░░░░░    ░░░░░   ░░░░░░░░░
 
 
-  Okam bundler does not support the following options:
+  Mako bundler does not support the following options:
     - ${warningKeys.join('\n    - ')}
 
   So this project may fail in compile-time or error in runtime, ${chalk.bold(
