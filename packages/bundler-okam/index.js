@@ -3,7 +3,7 @@ const fs = require('fs');
 const http = require('http');
 const assert = require('assert');
 const { createProxy, createHttpsServer } = require('@umijs/bundler-utils');
-const { lodash } = require('@umijs/utils');
+const { lodash, chalk } = require('@umijs/utils');
 
 exports.build = async function (opts) {
   assert(opts, 'opts should be supplied');
@@ -14,7 +14,7 @@ exports.build = async function (opts) {
     // 以下暂不支持
     // rootDir, disableCopy, watch,
   } = opts;
-  checkConfig(opts.config);
+  checkConfig(opts);
 
   if (clean) {
     const outputPath = path.join(cwd, 'dist');
@@ -144,11 +144,24 @@ function getDevBanner(protocol, host, port, ip) {
   return messages.join('\n');
 }
 
-function checkConfig(config) {
-  assert(!config.mfsu, 'mfsu is not supported in okam bundler');
+function checkConfig(opts) {
+  // 构建不支持的配置项，会直接报错
+  const unsupportedKeys = [
+    // 不支持 MFSU
+    'mfsu',
+    // 暂不支持 legacy
+    'legacy',
+    // 暂不支持多 entry
+    'mpa',
+  ];
+
+  // 处理构建不支持的配置项
+  unsupportedKeys.forEach((key) => {
+    assert(!opts.config[key], `${key} is not supported in okam bundler`);
+  });
 
   // 暂不支持 { from, to } 格式
-  const { copy } = config;
+  const { copy } = opts.config;
   if (copy) {
     for (const item of copy) {
       assert(
@@ -158,19 +171,99 @@ function checkConfig(config) {
     }
   }
 
-  // 暂不支持 legacy
-  if (config.legacy) {
-    throw new Error('legacy is not supported in okam bundler');
-  }
-
-  // 暂不支持多 entry 的场景
-  if (config.mpa) {
-    throw new Error('mpa is not supported in okam bundler');
-  }
-
   // 不支持数组 externals
-  if (Array.isArray(config.externals)) {
+  if (Array.isArray(opts.config.externals)) {
     throw new Error('externals array is not supported in okam bundler');
+  }
+
+  // 不支持但对构建影响不明确的配置项，会统一警告
+  const riskyKeys = [
+    'config.autoprefixer',
+    'config.analyze',
+    'config.cssPublicPath',
+    'config.cssLoader',
+    'config.cssLoaderModules',
+    'config.classPropertiesLoose',
+    'config.extraPostCSSPlugins',
+    'config.forkTSChecker',
+    'config.postcssLoader',
+    'config.sassLoader',
+    'config.styleLoader',
+    'config.stylusLoader',
+    'config.chainWebpack',
+  ];
+  // 收集警告的配置项
+  const warningKeys = [];
+
+  riskyKeys.forEach((key) => {
+    if (lodash.get(opts, key)) {
+      warningKeys.push(key.split('.').pop());
+    }
+  });
+
+  // 不支持 mdx 子配置
+  if (opts.config.mdx && Object.keys(opts.config.mdx).length) {
+    warningKeys.push('mdx');
+  }
+
+  // 不支持 lessLoader 的部分配置
+  if (opts.config.lessLoader) {
+    lodash
+      .difference(Object.keys(opts.config.lessLoader), [
+        'javascriptEnabled',
+        'modifyVars',
+      ])
+      .forEach((k) => {
+        warningKeys.push(`lessLoader.${k}`);
+      });
+  }
+
+  // 不支持内置 babel preset 以外的其他预设
+  ['beforeBabelPresets', 'extraBabelPresets', 'config.extraBabelPresets']
+    .reduce((acc, key) => acc.concat(lodash.get(opts, key) || []), [])
+    .some((p) => {
+      if (!p.plugins?.[0]?.[1]?.onCheckCode) {
+        warningKeys.push('extraBabelPresets');
+        return true;
+      }
+    });
+
+  // 不支持除 babel-plugin-import 以外的插件
+  ['beforeBabelPlugins', 'extraBabelPlugins', 'config.extraBabelPlugins']
+    .reduce((acc, key) => acc.concat(lodash.get(opts, key) || []), [])
+    .some((p) => {
+      if (!/^import$|babel-plugin-import/.test(p[0])) {
+        warningKeys.push('extraBabelPlugins');
+        return true;
+      }
+    });
+
+  if (warningKeys.length) {
+    console.warn(
+      chalk.yellow(
+        `
+=====================================================================================================
+
+   █████   ███   █████   █████████   ███████████   ██████   █████ █████ ██████   █████   █████████
+  ░░███   ░███  ░░███   ███░░░░░███ ░░███░░░░░███ ░░██████ ░░███ ░░███ ░░██████ ░░███   ███░░░░░███
+   ░███   ░███   ░███  ░███    ░███  ░███    ░███  ░███░███ ░███  ░███  ░███░███ ░███  ███     ░░░
+   ░███   ░███   ░███  ░███████████  ░██████████   ░███░░███░███  ░███  ░███░░███░███ ░███
+   ░░███  █████  ███   ░███░░░░░███  ░███░░░░░███  ░███ ░░██████  ░███  ░███ ░░██████ ░███    █████
+    ░░░█████░█████░    ░███    ░███  ░███    ░███  ░███  ░░█████  ░███  ░███  ░░█████ ░░███  ░░███
+      ░░███ ░░███      █████   █████ █████   █████ █████  ░░█████ █████ █████  ░░█████ ░░█████████
+       ░░░   ░░░      ░░░░░   ░░░░░ ░░░░░   ░░░░░ ░░░░░    ░░░░░ ░░░░░ ░░░░░    ░░░░░   ░░░░░░░░░
+
+
+  Okam bundler does not support the following options:
+    - ${warningKeys.join('\n    - ')}
+
+  So this project may fail in compile-time or error in runtime, ${chalk.bold(
+    'please test and release carefully',
+  )}.
+=====================================================================================================
+      `,
+      ),
+    );
   }
 }
 
