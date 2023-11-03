@@ -60,7 +60,7 @@ impl Compiler {
         let entries: Vec<&PathBuf> = self.context.config.entry.values().collect();
 
         if entries.is_empty() {
-            panic!("entry not found");
+            return Err(anyhow!("NO ENTRY FOUND"));
         }
 
         let resolvers = Arc::new(get_resolvers(&self.context.config));

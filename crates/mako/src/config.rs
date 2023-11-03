@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::hash::Hasher;
 use std::path::{Path, PathBuf};
 
+use mako_core::anyhow::{anyhow, Result};
 use mako_core::clap::ValueEnum;
 use mako_core::colored::Colorize;
 use mako_core::serde::Deserialize;
@@ -321,7 +322,7 @@ impl Config {
         root: &Path,
         default_config: Option<&str>,
         cli_config: Option<&str>,
-    ) -> Result<Self, config::ConfigError> {
+    ) -> Result<Self> {
         let abs_config_file = root.join(CONFIG_FILE);
         let abs_config_file = abs_config_file.to_str().unwrap();
         let c = config::Config::builder();
@@ -379,7 +380,7 @@ impl Config {
                 .insert("NODE_ENV".to_string(), serde_json::Value::String(mode));
 
             if config.public_path != "runtime" && !config.public_path.ends_with('/') {
-                panic!("public_path must end with '/' or be 'runtime'");
+                return Err(anyhow!("public_path must end with '/' or be 'runtime'"));
             }
 
             // 暂不支持 remote external
@@ -395,10 +396,10 @@ impl Config {
 
             for v in basic_external_values {
                 if v.starts_with("script ") {
-                    panic!(
+                    return Err(anyhow!(
                         "remote external is not supported yet, but we found {}",
                         v.to_string().red()
-                    );
+                    ));
                 }
             }
 
@@ -413,12 +414,20 @@ impl Config {
                 }
             }
 
-            config.entry = config
+            let entry_tuples = config
                 .entry
                 .clone()
                 .into_iter()
-                .map(|(k, v)| (k, root.join(v).canonicalize().unwrap()))
-                .collect();
+                .map(|(k, v)| {
+                    if let Ok(entry_path) = root.join(v).canonicalize() {
+                        Ok((k, entry_path))
+                    } else {
+                        Err(anyhow!("entry:{} not found", k,))
+                    }
+                })
+                .collect::<Result<Vec<_>>>()?;
+
+            config.entry = entry_tuples.into_iter().collect();
 
             // support relative alias
             config.resolve.alias = config
@@ -436,7 +445,7 @@ impl Config {
                 })
                 .collect();
         }
-        ret
+        ret.map_err(|e| anyhow!("{}: {}", "config error".red(), e.to_string().red()))
     }
 }
 
