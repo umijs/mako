@@ -308,7 +308,7 @@ const DEFAULT_CONFIG: &str = r#"
     "umd": "none",
     "writeToDisk": true,
     "transformImport": [],
-    "devEval": true,
+    "devEval": false,
     "clean": true
 }
 "#;

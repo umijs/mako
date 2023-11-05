@@ -199,7 +199,7 @@ pub fn resolve_web_worker(new_expr: &NewExpr, unresolved_mark: Mark) -> Option<&
                             let args = new_expr.args.as_ref().unwrap();
 
                             if args.get(1).is_none()
-                                || is_import_meta_url(&args.get(1).unwrap().expr)
+                                || !is_import_meta_url(&args.get(1).unwrap().expr)
                             {
                                 return None;
                             }

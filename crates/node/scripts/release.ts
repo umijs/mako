@@ -1,5 +1,4 @@
 import 'zx/globals';
-import * as process from 'process';
 
 (async () => {
   console.log('Check branch');
@@ -58,14 +57,7 @@ import * as process from 'process';
   await $`pnpm run build:mac:aarch`;
   await $`strip -x ./okam.darwin-*.node`;
 
-  // ref https://gist.github.com/shqld/256e2c4f4b97957fb0ec250cdc6dc463
-  // $.env.CC_X86_64_UNKNOWN_LINUX_GNU = 'x86_64-unknown-linux-gnu-gcc';
-  // $.env.CXX_X86_64_UNKNOWN_LINUX_GNU = 'x86_64-unknown-linux-gnu-g++';
-  // $.env.AR_X86_64_UNKNOWN_LINUX_GNU = 'x86_64-unknown-linux-gnu-ar';
-  // $.env.CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER =
-  //   'x86_64-unknown-linux-gnu-gcc';
-  // await $`pnpm run build:linux:x86`;
-  // await $`docker run  --rm   -v $PWD:/workspace -w /workspace  ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian   bash -c "strip okam.linux-x64-gnu.node"`;
+  await build_linux_binding();
 
   await $`pnpm run artifacts:local`;
 
@@ -99,3 +91,57 @@ import * as process from 'process';
   console.error(e);
   process.exit(1);
 });
+
+async function build_linux_binding() {
+  const isArm = process.arch === 'arm64';
+
+  const cargoBase = path.join(
+    process.env['CARGO_HOME'] || process.env['HOME'],
+    '.cargo',
+  );
+
+  const cargoMapOption = (p) => [
+    '-v',
+    `${path.join(cargoBase, p)}:${path.join('/usr/local/cargo', p)}`,
+  ];
+
+  const makoRoot = path.join(__dirname, '../../..');
+
+  const volumeOptions = [
+    ...cargoMapOption('config'),
+    ...cargoMapOption('git/db'),
+    ...cargoMapOption('registry/cache'),
+    ...cargoMapOption('registry/index'),
+    ...[`-v`, `${makoRoot}:/build`],
+    ...[`-w`, `/build`],
+  ];
+
+  const containerCMD = [
+    'cargo build -r',
+    'pnpm --filter @okamjs/okam build',
+    'strip ./crates/node/okam.linux*.node',
+  ].join('&&');
+
+  const envOptions = [];
+  if (process.env['RUSTUP_DIST_SERVER']) {
+    envOptions.push(
+      ...['-e', `RUSTUP_DIST_SERVER=${process.env['RUSTUP_DIST_SERVER']}`],
+    );
+  }
+
+  if (process.env[`RUSTUP_UPDATE_ROOT`]) {
+    envOptions.push(
+      ...['-e', `RUSTUP_UPDATE_ROOT=${process.env[`RUSTUP_UPDATE_ROOT`]}`],
+    );
+  }
+
+  const options = ['--rm', ...volumeOptions, ...envOptions];
+  if (isArm) {
+    options.push(...['--platform', 'linux/amd64']);
+  }
+
+  const image = 'ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian';
+
+  // too many <jemalloc> log, so we use quiet
+  await $`docker run ${options} ${image} bash -c ${containerCMD}`.quiet();
+}
