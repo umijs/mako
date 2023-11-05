@@ -77,22 +77,23 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
                     match sp_info {
                         // export * from "xx"
                         ExportSpecifierInfo::All(_) | ExportSpecifierInfo::Ambiguous(_) => {
-                            let dependent_id =
-                                module_graph.get_dependency_module_by_source(module_id, &source);
+                            if let Some(dependent_id) =
+                                module_graph.get_dependency_module_by_source(module_id, &source)
+                            {
+                                if let Some(rc) = tree_shake_modules_map.get(dependent_id) {
+                                    let dependence_module = rc.borrow();
 
-                            if let Some(rc) = tree_shake_modules_map.get(dependent_id) {
-                                let dependence_module = rc.borrow();
+                                    let to_extend = dependence_module.all_exports.clone();
 
-                                let to_extend = dependence_module.all_exports.clone();
+                                    tsm.stmt_graph.stmt_mut(&exp_info.stmt_id).export_info =
+                                        Some(ExportInfo {
+                                            source: Some(source.clone()),
+                                            specifiers: vec![to_extend.to_all_specifier()],
+                                            stmt_id: exp_info.stmt_id,
+                                        });
 
-                                tsm.stmt_graph.stmt_mut(&exp_info.stmt_id).export_info =
-                                    Some(ExportInfo {
-                                        source: Some(source.clone()),
-                                        specifiers: vec![to_extend.to_all_specifier()],
-                                        stmt_id: exp_info.stmt_id,
-                                    });
-
-                                tsm.extends_exports(&to_extend);
+                                    tsm.extends_exports(&to_extend);
+                                }
                             }
                         }
                         _ => {
@@ -286,66 +287,70 @@ fn add_used_exports_by_import_info(
     tree_shake_module_id: &ModuleId,
     import_info: &ImportInfo,
 ) -> Option<usize> {
-    let imported_module_id =
-        module_graph.get_dependency_module_by_source(tree_shake_module_id, &import_info.source);
-    let imported_module = module_graph.get_module(imported_module_id).unwrap();
+    if let Some(imported_module_id) =
+        module_graph.get_dependency_module_by_source(tree_shake_module_id, &import_info.source)
+    {
+        let imported_module = module_graph.get_module(imported_module_id).unwrap();
 
-    let info = imported_module.info.as_ref().unwrap();
+        let info = imported_module.info.as_ref().unwrap();
 
-    let is_js = matches!(info.ast, ModuleAst::Script(_));
+        let is_js = matches!(info.ast, ModuleAst::Script(_));
 
-    if info.external.is_some() || !is_js {
-        return None;
-    }
+        if info.external.is_some() || !is_js {
+            return None;
+        }
 
-    let mut imported_tree_shake_module = tree_shake_modules_map
-        .get(imported_module_id)
-        .unwrap_or_else(|| {
-            panic!("imported module not found: {:?}", imported_module_id);
-        })
-        .borrow_mut();
+        let mut imported_tree_shake_module = tree_shake_modules_map
+            .get(imported_module_id)
+            .unwrap_or_else(|| {
+                panic!("imported module not found: {:?}", imported_module_id);
+            })
+            .borrow_mut();
 
-    //  import "xxx"
-    if import_info.specifiers.is_empty() {
-        imported_tree_shake_module.used_exports.use_all();
-        imported_tree_shake_module.side_effects = true;
-        return Some(imported_tree_shake_module.topo_order);
-    }
+        //  import "xxx"
+        if import_info.specifiers.is_empty() {
+            imported_tree_shake_module.used_exports.use_all();
+            imported_tree_shake_module.side_effects = true;
+            return Some(imported_tree_shake_module.topo_order);
+        }
 
-    let mut added = false;
+        let mut added = false;
 
-    for sp in &import_info.specifiers {
-        match sp {
-            statement_graph::ImportSpecifierInfo::Namespace(_) => {
-                imported_tree_shake_module.used_exports = UsedExports::All;
-            }
-            statement_graph::ImportSpecifierInfo::Named { local, imported } => {
-                if let Some(ident) = imported {
-                    if *ident == "default" {
-                        added |= imported_tree_shake_module
-                            .used_exports
-                            .add_used_export(&module::UsedIdent::Default);
+        for sp in &import_info.specifiers {
+            match sp {
+                statement_graph::ImportSpecifierInfo::Namespace(_) => {
+                    imported_tree_shake_module.used_exports = UsedExports::All;
+                }
+                statement_graph::ImportSpecifierInfo::Named { local, imported } => {
+                    if let Some(ident) = imported {
+                        if *ident == "default" {
+                            added |= imported_tree_shake_module
+                                .used_exports
+                                .add_used_export(&module::UsedIdent::Default);
+                        } else {
+                            added |= imported_tree_shake_module.used_exports.add_used_export(
+                                &module::UsedIdent::SwcIdent(strip_context(ident)),
+                            );
+                        }
                     } else {
                         added |= imported_tree_shake_module
                             .used_exports
-                            .add_used_export(&module::UsedIdent::SwcIdent(strip_context(ident)));
+                            .add_used_export(&module::UsedIdent::SwcIdent(strip_context(local)));
                     }
-                } else {
+                }
+                statement_graph::ImportSpecifierInfo::Default(_) => {
                     added |= imported_tree_shake_module
                         .used_exports
-                        .add_used_export(&module::UsedIdent::SwcIdent(strip_context(local)));
+                        .add_used_export(&module::UsedIdent::Default);
                 }
             }
-            statement_graph::ImportSpecifierInfo::Default(_) => {
-                added |= imported_tree_shake_module
-                    .used_exports
-                    .add_used_export(&module::UsedIdent::Default);
-            }
         }
-    }
 
-    if added {
-        Some(imported_tree_shake_module.topo_order)
+        if added {
+            Some(imported_tree_shake_module.topo_order)
+        } else {
+            None
+        }
     } else {
         None
     }
@@ -360,79 +365,81 @@ fn add_used_exports_by_export_info(
     export_info: &ExportInfo,
 ) -> Option<usize> {
     if let Some(source) = &export_info.source {
-        let exported_module_id =
-            module_graph.get_dependency_module_by_source(tree_shake_module_id, source);
-        let exported_module = module_graph.get_module(exported_module_id).unwrap();
+        if let Some(exported_module_id) =
+            module_graph.get_dependency_module_by_source(tree_shake_module_id, source)
+        {
+            let exported_module = module_graph.get_module(exported_module_id).unwrap();
 
-        if exported_module.is_external() {
-            return None;
-        };
+            if exported_module.is_external() {
+                return None;
+            };
 
-        let mut exported_tree_shake_module = tree_shake_modules_map
-            .get(exported_module_id)
-            .unwrap()
-            .borrow_mut();
+            let mut exported_tree_shake_module = tree_shake_modules_map
+                .get(exported_module_id)
+                .unwrap()
+                .borrow_mut();
 
-        let mut added = false;
+            let mut added = false;
 
-        for sp in &export_info.specifiers {
-            match sp {
-                statement_graph::ExportSpecifierInfo::Namespace(_) => {
-                    added |= exported_tree_shake_module.used_exports.use_all();
-                }
-                statement_graph::ExportSpecifierInfo::Named { local, .. } => {
-                    if local == &"default".to_string() {
+            for sp in &export_info.specifiers {
+                match sp {
+                    statement_graph::ExportSpecifierInfo::Namespace(_) => {
+                        added |= exported_tree_shake_module.used_exports.use_all();
+                    }
+                    statement_graph::ExportSpecifierInfo::Named { local, .. } => {
+                        if local == &"default".to_string() {
+                            added |= exported_tree_shake_module
+                                .used_exports
+                                .add_used_export(&module::UsedIdent::Default);
+                        } else {
+                            added |= exported_tree_shake_module.used_exports.add_used_export(
+                                &module::UsedIdent::SwcIdent(strip_context(local)),
+                            );
+                        }
+                    }
+                    statement_graph::ExportSpecifierInfo::Default => {
                         added |= exported_tree_shake_module
                             .used_exports
                             .add_used_export(&module::UsedIdent::Default);
-                    } else {
-                        added |= exported_tree_shake_module
-                            .used_exports
-                            .add_used_export(&module::UsedIdent::SwcIdent(strip_context(local)));
                     }
-                }
-                statement_graph::ExportSpecifierInfo::Default => {
-                    added |= exported_tree_shake_module
-                        .used_exports
-                        .add_used_export(&module::UsedIdent::Default);
-                }
-                statement_graph::ExportSpecifierInfo::All(used_idents) => {
-                    if has_side_effects {
-                        added |= exported_tree_shake_module.used_exports.use_all();
-                    } else {
-                        for ident in used_idents {
-                            if ident == "*" {
-                                added |= exported_tree_shake_module.used_exports.use_all();
-                            } else {
-                                added |= exported_tree_shake_module
-                                    .used_exports
-                                    .add_used_export(&strip_context(ident));
+                    statement_graph::ExportSpecifierInfo::All(used_idents) => {
+                        if has_side_effects {
+                            added |= exported_tree_shake_module.used_exports.use_all();
+                        } else {
+                            for ident in used_idents {
+                                if ident == "*" {
+                                    added |= exported_tree_shake_module.used_exports.use_all();
+                                } else {
+                                    added |= exported_tree_shake_module
+                                        .used_exports
+                                        .add_used_export(&strip_context(ident));
+                                }
                             }
                         }
                     }
-                }
-                statement_graph::ExportSpecifierInfo::Ambiguous(used_idents) => {
-                    if has_side_effects {
-                        added |= exported_tree_shake_module.used_exports.use_all();
-                    } else {
-                        for ident in used_idents {
-                            if ident == "*" {
-                                added |= exported_tree_shake_module.used_exports.use_all();
-                            } else {
-                                added |= exported_tree_shake_module
-                                    .used_exports
-                                    .add_used_export(&strip_context(ident));
+                    statement_graph::ExportSpecifierInfo::Ambiguous(used_idents) => {
+                        if has_side_effects {
+                            added |= exported_tree_shake_module.used_exports.use_all();
+                        } else {
+                            for ident in used_idents {
+                                if ident == "*" {
+                                    added |= exported_tree_shake_module.used_exports.use_all();
+                                } else {
+                                    added |= exported_tree_shake_module
+                                        .used_exports
+                                        .add_used_export(&strip_context(ident));
+                                }
                             }
                         }
                     }
                 }
             }
+            return if added {
+                Some(exported_tree_shake_module.topo_order)
+            } else {
+                None
+            };
         }
-        return if added {
-            Some(exported_tree_shake_module.topo_order)
-        } else {
-            None
-        };
     }
     None
 }

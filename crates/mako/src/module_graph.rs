@@ -6,6 +6,7 @@ use mako_core::petgraph::prelude::EdgeRef;
 use mako_core::petgraph::stable_graph::{StableDiGraph, WalkNeighbors};
 use mako_core::petgraph::visit::IntoEdgeReferences;
 use mako_core::petgraph::Direction;
+use mako_core::tracing::warn;
 
 use crate::module::{Dependencies, Dependency, Module, ModuleId, ModuleInfo};
 
@@ -237,17 +238,18 @@ impl ModuleGraph {
         &self,
         module_id: &ModuleId,
         source: &String,
-    ) -> &ModuleId {
+    ) -> Option<&ModuleId> {
         let deps = self.get_dependencies(module_id);
         for (module_id, dep) in deps {
             if *source == dep.source {
-                return module_id;
+                return Some(module_id);
             }
         }
-        panic!(
-            "source `{}` is not a dependency of `{:?}`",
-            source, module_id
+        warn!(
+            "can not find module by source: {} in module {}",
+            source, module_id.id
         );
+        None
     }
 
     /**
