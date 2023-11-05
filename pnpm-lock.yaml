@@ -75,14 +75,14 @@ importers:
   crates/node:
     optionalDependencies:
       '@okamjs/okam-darwin-arm64':
-        specifier: 0.0.20
-        version: 0.0.20
+        specifier: 0.0.31-dev.20231105.1
+        version: 0.0.31-dev.20231105.1
       '@okamjs/okam-darwin-x64':
-        specifier: 0.0.20
-        version: 0.0.20
+        specifier: 0.0.31-dev.20231105.1
+        version: 0.0.31-dev.20231105.1
       '@okamjs/okam-linux-x64-gnu':
-        specifier: 0.0.20
-        version: 0.0.20
+        specifier: 0.0.31-dev.20231105.1
+        version: 0.0.31-dev.20231105.1
     devDependencies:
       '@napi-rs/cli':
         specifier: ^2.14.8
@@ -306,7 +306,7 @@ importers:
   packages/bundler-okam:
     dependencies:
       '@okamjs/okam':
-        specifier: 0.0.31
+        specifier: 0.0.32
         version: link:../../crates/node
       '@swc/helpers':
         specifier: 0.5.1
@@ -3586,8 +3586,8 @@ packages:
       fastq: 1.15.0
     dev: true
 
-  /@okamjs/okam-darwin-arm64@0.0.20:
-    resolution: {integrity: sha512-RHw6Tjj9NSTq8BldXFDNGjQHEFHbCvRbSTTrP0zTHrkM890JXqKGhkDFMZwTFFxM0ePHp11/jzcI0S+QWPe5vw==}
+  /@okamjs/okam-darwin-arm64@0.0.31-dev.20231105.1:
+    resolution: {integrity: sha512-YRiqYukP7D82Gr8sHRoaxPUxQgAl8N7XF7y1Cf8WiNAn2rE/Qq1dZmEKadmmMutpF1dyKGWV7qgENOfgKt0LCg==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
@@ -3595,8 +3595,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-darwin-x64@0.0.20:
-    resolution: {integrity: sha512-Yl2XAPC0uMqZsxlM1nWSMjztaoVb0uVxFJVj8xs3YTaHzVKnDxohncZd5c2WVKdkHvnDr9roXmwleKv/Fs9M6A==}
+  /@okamjs/okam-darwin-x64@0.0.31-dev.20231105.1:
+    resolution: {integrity: sha512-87Hlo94nmRSBt6U54rykjsUJAbTCd8vDfB3ICVxDf1lveq8CVVNqJpSWMQTshwDtmUwZpGKCM2rE2g4IznSpww==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
@@ -3604,8 +3604,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-linux-x64-gnu@0.0.20:
-    resolution: {integrity: sha512-C1L8/XimoQRwGmS6KVKsAGPn+7xEX+NIsDhp/JJSiYGzRnPnSZO+z8oC5S9dhEd+bZE2ZLZkRRa7fzKtiDktLA==}
+  /@okamjs/okam-linux-x64-gnu@0.0.31-dev.20231105.1:
+    resolution: {integrity: sha512-nSIcEErO6xNNYWWn8qXVtvWodQvwDbYsvwjbU+QUglHKnExNKnOQEj7lDZJfiAzp+GI0n2F7rgP4e1BT6WAK7w==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
@@ -4990,7 +4990,7 @@ packages:
       axios: 0.27.2(debug@4.3.4)
       babel-plugin-import: 1.13.6
       dayjs: 1.11.7
-      dva-core: 2.0.4(redux@4.2.1)
+      dva-core: 2.0.4(redux@3.7.2)
       dva-immer: 1.0.1(dva@2.5.0-beta.2)
       dva-loading: 3.0.24(dva-core@2.0.4)
       event-emitter: 0.3.5
@@ -7177,7 +7177,7 @@ packages:
       warning: 3.0.0
     dev: true
 
-  /dva-core@2.0.4(redux@4.2.1):
+  /dva-core@2.0.4(redux@3.7.2):
     resolution: {integrity: sha512-Zh39llFyItu9HKXKfCZVf9UFtDTcypdAjGBew1S+wK8BGVzFpm1GPTdd6uIMeg7O6STtCvt2Qv+RwUut1GFynA==}
     peerDependencies:
       redux: 4.x
@@ -7187,7 +7187,7 @@ packages:
       global: 4.4.0
       invariant: 2.2.4
       is-plain-object: 2.0.4
-      redux: 4.2.1
+      redux: 3.7.2
       redux-saga: 0.16.2
       warning: 3.0.0
     dev: true
@@ -7208,7 +7208,7 @@ packages:
       dva-core: ^1.1.0 || ^1.5.0-0 || ^1.6.0-0
     dependencies:
       '@babel/runtime': 7.22.11
-      dva-core: 2.0.4(redux@4.2.1)
+      dva-core: 2.0.4(redux@3.7.2)
     dev: true
 
   /dva@2.5.0-beta.2(react-dom@18.2.0)(react@18.2.0):
