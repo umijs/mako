@@ -90,7 +90,7 @@ impl Compiler {
                     let ast = module.info.as_mut().unwrap().ast.as_script_mut();
 
                     let unused = tree_shaking_module.get_used_export_statement();
-                    // 吧没有用到的 stmt 删除
+                    // 把没有用到的 stmt 删除
                     let mut reexport_cleanup =
                         UnusedStatementCleanup::new(&tree_shaking_module.id, &unused);
                     ast.visit_mut_with(&mut reexport_cleanup);
