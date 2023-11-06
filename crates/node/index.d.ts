@@ -66,4 +66,6 @@ dynamicImportToRequire?: boolean;
 umd?: string;
 transformImport?: { libraryName: string; libraryDirectory?: string; style?: boolean | string }[];
 clean?: boolean;
+nodePolyfill?: boolean;
+ignores?: string[];
 }, watch: boolean): Promise<void>
