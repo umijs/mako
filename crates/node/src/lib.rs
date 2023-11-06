@@ -78,6 +78,8 @@ pub async fn build(
     umd?: string;
     transformImport?: { libraryName: string; libraryDirectory?: string; style?: boolean | string }[];
     clean?: boolean;
+    nodePolyfill?: boolean;
+    ignores?: string[];
 }"#)]
     config: serde_json::Value,
     watch: bool,

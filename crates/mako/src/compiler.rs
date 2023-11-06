@@ -4,8 +4,9 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
 
-use mako_core::anyhow::Result;
+use mako_core::anyhow::{Error, Result};
 use mako_core::colored::Colorize;
+use mako_core::regex::Regex;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{Globals, SourceMap, DUMMY_SP};
 use mako_core::swc_ecma_ast::Ident;
@@ -213,7 +214,6 @@ impl Compiler {
 
         let mut plugins: Vec<Arc<dyn Plugin>> = vec![
             // features
-            Arc::new(plugins::node_polyfill::NodePolyfillPlugin {}),
             Arc::new(plugins::manifest::ManifestPlugin {}),
             Arc::new(plugins::copy::CopyPlugin {}),
             Arc::new(plugins::import::ImportPlugin {}),
@@ -239,6 +239,10 @@ impl Compiler {
 
         let mut config = config;
 
+        if config.node_polyfill {
+            plugins.push(Arc::new(plugins::node_polyfill::NodePolyfillPlugin {}));
+        }
+
         if config.output.mode == OutputMode::MinifishPrebuild {
             plugins.insert(
                 0,
@@ -246,6 +250,18 @@ impl Compiler {
                     &config, &root,
                 )),
             );
+        }
+
+        if !config.ignores.is_empty() {
+            let ignore_regex = config
+                .ignores
+                .iter()
+                .map(|ignore| Regex::new(ignore).map_err(Error::new))
+                .collect::<Result<Vec<Regex>>>()?;
+
+            plugins.push(Arc::new(plugins::ignore::IgnorePlugin {
+                ignores: ignore_regex,
+            }))
         }
 
         if config.output.meta {

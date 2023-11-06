@@ -268,6 +268,8 @@ pub struct Config {
     pub transform_import: Vec<TransformImportConfig>,
     pub dev_eval: bool,
     pub clean: bool,
+    pub node_polyfill: bool,
+    pub ignores: Vec<String>,
 }
 
 pub(crate) fn hash_config(c: &Config) -> u64 {
@@ -321,7 +323,9 @@ const DEFAULT_CONFIG: &str = r#"
     "writeToDisk": true,
     "transformImport": [],
     "devEval": false,
-    "clean": true
+    "clean": true,
+    "nodePolyfill": true,
+    "ignores": []
 }
 "#;
 

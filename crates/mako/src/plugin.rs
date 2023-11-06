@@ -80,6 +80,10 @@ pub trait Plugin: Any + Send + Sync {
         Ok(None)
     }
 
+    fn before_resolve(&self, _deps: &mut Vec<Dependency>, _context: &Arc<Context>) -> Result<()> {
+        Ok(())
+    }
+
     fn generate(&self, _context: &Arc<Context>) -> Result<Option<()>> {
         Ok(None)
     }
@@ -168,6 +172,17 @@ impl PluginDriver {
             }
         }
         Ok(vec![])
+    }
+
+    pub fn before_resolve(
+        &self,
+        param: &mut Vec<Dependency>,
+        context: &Arc<Context>,
+    ) -> Result<()> {
+        for plugin in &self.plugins {
+            plugin.before_resolve(param, context)?;
+        }
+        Ok(())
     }
 
     pub fn generate(&self, context: &Arc<Context>) -> Result<Option<()>> {
