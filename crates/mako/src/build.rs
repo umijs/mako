@@ -223,13 +223,7 @@ impl Compiler {
         let resolved_path = resource.get_resolved_path();
         let module = match external {
             Some(external) => {
-                // support empty external
-                let code = if external.is_empty() {
-                    "module.exports = {};".to_string()
-                } else {
-                    format!("module.exports = {};", external)
-                };
-
+                let code = format!("module.exports = {};", external);
                 let ast = build_js_ast(
                     format!("external_{}", &resolved_path).as_str(),
                     code.as_str(),
