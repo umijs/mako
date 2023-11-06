@@ -89,12 +89,12 @@ impl Plugin for MinifishCompiler {
         Ok(None)
     }
 
-    fn modify_config(&self, config: &mut Config, root: &PathBuf, _args: &Args) -> Result<()> {
+    fn modify_config(&self, config: &mut Config, root: &Path, _args: &Args) -> Result<()> {
         if config.output.preserve_modules {
-            let preserve_path = config.output.preserve_modules_path.clone();
+            let preserve_path = config.output.preserve_modules_root.clone();
 
             if !preserve_path.is_absolute() {
-                config.output.preserve_modules_path = root.join(preserve_path);
+                config.output.preserve_modules_root = root.join(preserve_path);
             }
         }
 
@@ -287,7 +287,7 @@ pub fn to_dist_path<P: AsRef<str>>(abs_path: P, context: &Arc<Context>) -> PathB
 
         context.config.output.path.join(relative_path)
     } else {
-        let preserve_path = &context.config.output.preserve_modules_path;
+        let preserve_path = &context.config.output.preserve_modules_root;
         let relative_path = diff_paths(str, preserve_path).unwrap();
 
         context.config.output.path.join(relative_path)

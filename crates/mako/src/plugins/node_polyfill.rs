@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::Path;
 
 use mako_core::anyhow::Result;
 
@@ -13,7 +13,7 @@ impl Plugin for NodePolyfillPlugin {
         "node_polyfill"
     }
 
-    fn modify_config(&self, config: &mut Config, _root: &PathBuf, _args: &Args) -> Result<()> {
+    fn modify_config(&self, config: &mut Config, _root: &Path, _args: &Args) -> Result<()> {
         // polyfill modules
         for name in get_polyfill_modules().iter() {
             config.resolve.alias.insert(

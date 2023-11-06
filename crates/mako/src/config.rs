@@ -23,8 +23,8 @@ pub struct OutputConfig {
 
     #[serde(rename(deserialize = "preserveModules"))]
     pub preserve_modules: bool,
-    #[serde(rename(deserialize = "preserveModulesPath"))]
-    pub preserve_modules_path: PathBuf,
+    #[serde(rename(deserialize = "preserveModulesRoot"))]
+    pub preserve_modules_root: PathBuf,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -286,7 +286,7 @@ const DEFAULT_CONFIG: &str = r#"
       "esVersion": "es2022",
       "meta": false,
       "preserveModules": false,
-      "preserveModulesPath": ""
+      "preserveModulesRoot": ""
     },
     "resolve": { "alias": {}, "extensions": ["js", "jsx", "ts", "tsx"] },
     "mode": "development",

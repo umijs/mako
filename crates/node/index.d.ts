@@ -11,6 +11,8 @@ path: string;
 mode: "bundle" | "minifish" ;
 esVersion?: string;
 meta?: boolean;
+preserveModules?: boolean;
+preserveModulesRoot?: string;
 };
 resolve?: {
 alias?: Record<string, string>;

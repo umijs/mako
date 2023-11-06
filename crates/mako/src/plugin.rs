@@ -1,5 +1,5 @@
 use std::any::Any;
-use std::path::PathBuf;
+use std::path::Path;
 use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
@@ -43,7 +43,7 @@ pub struct PluginDepAnalyzeParam<'a> {
 pub trait Plugin: Any + Send + Sync {
     fn name(&self) -> &str;
 
-    fn modify_config(&self, _config: &mut Config, _root: &PathBuf, _args: &Args) -> Result<()> {
+    fn modify_config(&self, _config: &mut Config, _root: &Path, _args: &Args) -> Result<()> {
         Ok(())
     }
 
@@ -106,7 +106,7 @@ impl PluginDriver {
         Self { plugins }
     }
 
-    pub fn modify_config(&self, config: &mut Config, root: &PathBuf, args: &Args) -> Result<()> {
+    pub fn modify_config(&self, config: &mut Config, root: &Path, args: &Args) -> Result<()> {
         for plugin in &self.plugins {
             plugin.modify_config(config, root, args)?;
         }
