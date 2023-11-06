@@ -20,6 +20,11 @@ pub struct OutputConfig {
     #[serde(rename(deserialize = "esVersion"))]
     pub es_version: EsVersion,
     pub meta: bool,
+
+    #[serde(rename(deserialize = "preserveModules"))]
+    pub preserve_modules: bool,
+    #[serde(rename(deserialize = "preserveModulesPath"))]
+    pub preserve_modules_path: PathBuf,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -275,7 +280,14 @@ const CONFIG_FILE: &str = "mako.config.json";
 const DEFAULT_CONFIG: &str = r#"
 {
     "entry": {},
-    "output": { "path": "dist", "mode": "bundle", "esVersion": "es2022", "meta": false },
+    "output": {
+      "path": "dist",
+      "mode": "bundle",
+      "esVersion": "es2022",
+      "meta": false,
+      "preserveModules": false,
+      "preserveModulesPath": ""
+    },
     "resolve": { "alias": {}, "extensions": ["js", "jsx", "ts", "tsx"] },
     "mode": "development",
     "minify": true,
