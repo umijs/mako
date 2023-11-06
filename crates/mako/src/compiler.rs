@@ -254,7 +254,7 @@ impl Compiler {
 
         let plugin_driver = PluginDriver::new(plugins);
 
-        plugin_driver.modify_config(&mut config)?;
+        plugin_driver.modify_config(&mut config, &root, &args)?;
 
         let resolvers = get_resolvers(&config);
         Ok(Self {

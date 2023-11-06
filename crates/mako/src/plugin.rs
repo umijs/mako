@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::path::Path;
 use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
@@ -6,7 +7,7 @@ use mako_core::swc_common::errors::Handler;
 use mako_core::swc_ecma_ast::Module;
 
 use crate::build::FileRequest;
-use crate::compiler::Context;
+use crate::compiler::{Args, Context};
 use crate::config::Config;
 use crate::load::Content;
 use crate::module::{Dependency, ModuleAst};
@@ -42,7 +43,7 @@ pub struct PluginDepAnalyzeParam<'a> {
 pub trait Plugin: Any + Send + Sync {
     fn name(&self) -> &str;
 
-    fn modify_config(&self, _config: &mut Config) -> Result<()> {
+    fn modify_config(&self, _config: &mut Config, _root: &Path, _args: &Args) -> Result<()> {
         Ok(())
     }
 
@@ -105,9 +106,9 @@ impl PluginDriver {
         Self { plugins }
     }
 
-    pub fn modify_config(&self, config: &mut Config) -> Result<()> {
+    pub fn modify_config(&self, config: &mut Config, root: &Path, args: &Args) -> Result<()> {
         for plugin in &self.plugins {
-            plugin.modify_config(config)?;
+            plugin.modify_config(config, root, args)?;
         }
         Ok(())
     }

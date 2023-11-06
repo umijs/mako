@@ -1,5 +1,8 @@
+use std::path::Path;
+
 use mako_core::anyhow::Result;
 
+use crate::compiler::Args;
 use crate::config::{Config, ExternalConfig};
 use crate::plugin::Plugin;
 
@@ -10,7 +13,7 @@ impl Plugin for NodePolyfillPlugin {
         "node_polyfill"
     }
 
-    fn modify_config(&self, config: &mut Config) -> Result<()> {
+    fn modify_config(&self, config: &mut Config, _root: &Path, _args: &Args) -> Result<()> {
         // polyfill modules
         for name in get_polyfill_modules().iter() {
             config.resolve.alias.insert(

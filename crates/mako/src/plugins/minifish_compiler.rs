@@ -18,7 +18,7 @@ use mako_core::swc_ecma_visit::VisitMutWith;
 use mako_core::swc_error_reporters::handler::try_with_handler;
 
 use crate::ast::{js_ast_to_code, Ast};
-use crate::compiler::Context;
+use crate::compiler::{Args, Context};
 use crate::config::{Config, Mode};
 use crate::load::{read_content, Content};
 use crate::module::{ModuleAst, ModuleId};
@@ -87,6 +87,18 @@ impl Plugin for MinifishCompiler {
             };
         }
         Ok(None)
+    }
+
+    fn modify_config(&self, config: &mut Config, root: &Path, _args: &Args) -> Result<()> {
+        if config.output.preserve_modules {
+            let preserve_path = config.output.preserve_modules_root.clone();
+
+            if !preserve_path.is_absolute() {
+                config.output.preserve_modules_root = root.join(preserve_path);
+            }
+        }
+
+        Ok(())
     }
 
     fn generate(&self, context: &Arc<Context>) -> Result<Option<()>> {
@@ -267,31 +279,17 @@ pub fn transform_js_generate(
 }
 
 pub fn to_dist_path<P: AsRef<str>>(abs_path: P, context: &Arc<Context>) -> PathBuf {
-    let src_root = context
-        .root
-        .clone()
-        .join("src")
-        .to_str()
-        .unwrap()
-        .to_string();
-    let npm_root = context
-        .root
-        .clone()
-        .join("node_modules")
-        .to_str()
-        .unwrap()
-        .to_string();
-
     let str = abs_path.as_ref();
 
-    if str.contains(&src_root) {
-        let relative_path = diff_paths(str, &src_root).unwrap();
-        context.config.output.path.join(relative_path)
-    } else if str.contains(&npm_root) {
-        let relative_path = diff_paths(str, &context.root).unwrap();
+    if str.contains("node_modules") {
+        let base_path = &context.root;
+        let relative_path = diff_paths(str, base_path).unwrap();
 
         context.config.output.path.join(relative_path)
     } else {
-        abs_path.as_ref().to_string().into()
+        let preserve_path = &context.config.output.preserve_modules_root;
+        let relative_path = diff_paths(str, preserve_path).unwrap();
+
+        context.config.output.path.join(relative_path)
     }
 }
