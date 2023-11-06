@@ -313,10 +313,12 @@ impl Compiler {
                 .get_chunks()
                 .iter()
                 .filter(|c| {
-                    updated_modules
+                    let is_modified = updated_modules
                         .modified
                         .iter()
-                        .any(|m_id| c.has_module(m_id))
+                        .any(|m_id| c.has_module(m_id));
+                    let is_added = updated_modules.added.iter().any(|m_id| c.has_module(m_id));
+                    is_modified || is_added
                 })
                 .map(|c| c.filename())
                 .collect();
@@ -337,8 +339,12 @@ impl Compiler {
             if let Some(chunk) = cg.get_chunk_by_name(chunk_name) {
                 let modified_ids: IndexSet<ModuleId> =
                     IndexSet::from_iter(updated_modules.modified.iter().cloned());
+                let added_ids: IndexSet<ModuleId> =
+                    IndexSet::from_iter(updated_modules.added.iter().cloned());
+                let merged_ids: IndexSet<ModuleId> =
+                    modified_ids.union(&added_ids).cloned().collect();
                 let (code, sourcemap) =
-                    self.generate_hmr_chunk(chunk, &filename, &modified_ids, current_full_hash)?;
+                    self.generate_hmr_chunk(chunk, &filename, &merged_ids, current_full_hash)?;
                 // TODO the final format should be {name}.{full_hash}.hot-update.{ext}
                 self.write_to_dist(&filename, code);
                 self.write_to_dist(format!("{}.map", &filename), sourcemap);
