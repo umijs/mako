@@ -7,6 +7,10 @@ import 'zx/globals';
     throw new Error('Please run this script in master branch');
   }
 
+  // Check docker status
+  console.log('Check docker status');
+  await $`docker ps`;
+
   // Check git status
   console.log('Check git status');
   const status = (await $`git status --porcelain`).stdout.trim();
