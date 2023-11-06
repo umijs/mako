@@ -135,10 +135,13 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
                 }
             }
         } else {
+            let side_effects = tree_shake_module.side_effects;
             // if module is esm and the module has side effects, add imported identifiers to [UsedExports::Partial] of the imported modules
-            if tree_shake_module.side_effects {
+            if side_effects {
                 let imports = tree_shake_module.imports();
                 let exports = tree_shake_module.exports();
+
+                drop(tree_shake_module);
 
                 for import_info in &imports {
                     if let Some(order) = add_used_exports_by_import_info(
@@ -158,7 +161,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
                         &tree_shake_modules_map,
                         &*module_graph,
                         tree_shake_module_id,
-                        tree_shake_module.side_effects,
+                        side_effects,
                         export_info,
                     ) {
                         if order < next_index {
@@ -178,7 +181,6 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
                     .get_module_mut(&tree_shake_module.module_id)
                     .unwrap();
                 let ast = &mut module.info.as_mut().unwrap().ast;
-                let side_effects = tree_shake_module.side_effects;
 
                 if let ModuleAst::Script(swc_module) = ast {
                     // remove useless statements and useless imports/exports identifiers, then all preserved import info and export info will be added to the used_exports.
