@@ -103,7 +103,11 @@ fn get_external_target(
         // handle full match
         // ex. import React from 'react';
         match external {
-            ExternalConfig::Basic(external) => Some(format!("{}.{}", global_obj, external)),
+            ExternalConfig::Basic(external) => Some(if external.is_empty() {
+                "''".to_string()
+            } else {
+                format!("{}.{}", global_obj, external)
+            }),
             ExternalConfig::Advanced(config) => Some(format!("{}.{}", global_obj, config.root)),
         }
     } else if let Some((advanced_config, subpath)) = externals.iter().find_map(|(key, config)| {
@@ -422,10 +426,13 @@ mod tests {
 
     #[test]
     fn test_resolve_externals() {
-        let externals = HashMap::from([(
-            "react".to_string(),
-            ExternalConfig::Basic("react".to_string()),
-        )]);
+        let externals = HashMap::from([
+            (
+                "react".to_string(),
+                ExternalConfig::Basic("react".to_string()),
+            ),
+            ("empty".to_string(), ExternalConfig::Basic("".to_string())),
+        ]);
         let x = resolve(
             "test/resolve/normal",
             None,
@@ -440,6 +447,14 @@ mod tests {
                 Some("(typeof globalThis !== 'undefined' ? globalThis : self).react".to_string())
             )
         );
+        let x = resolve(
+            "test/resolve/normal",
+            None,
+            Some(&externals),
+            "index.ts",
+            "empty",
+        );
+        assert_eq!(x, ("empty".to_string(), Some("''".to_string())));
     }
 
     #[test]
