@@ -56,7 +56,7 @@ exports.build = async function (opts) {
 
 exports.dev = async function (opts) {
   assert(opts, 'opts should be supplied');
-  checkConfig(opts.config);
+  checkConfig(opts);
   const express = require('express');
   const app = express();
   // cros
