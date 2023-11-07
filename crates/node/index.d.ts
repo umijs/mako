@@ -71,6 +71,9 @@ ignores?: string[];
 _minifish?: {
 mapping: Record<string, string>;
 metaPath?: string;
-mockMY: boolean;
+inject?: Record<string, { from:string;exclude?:string; } |
+{ from:string; named:string; exclude?:string } |
+{ from:string; namespace: true; exclude?:string }
+>;
 };
 }, watch: boolean): Promise<void>

@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::swc_common::errors::Handler;
+use mako_core::swc_common::Mark;
 use mako_core::swc_ecma_ast::Module;
 
 use crate::build::FileRequest;
@@ -34,6 +35,8 @@ pub struct PluginCheckAstParam<'a> {
 pub struct PluginTransformJsParam<'a> {
     pub handler: &'a Handler,
     pub path: &'a str,
+    pub top_level_mark: Mark,
+    pub unresolved_mark: Mark,
 }
 
 pub struct PluginDepAnalyzeParam<'a> {

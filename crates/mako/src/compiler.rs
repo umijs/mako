@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
 
-use mako_core::anyhow::{Error, Result};
+use mako_core::anyhow::{anyhow, Error, Result};
 use mako_core::colored::Colorize;
 use mako_core::regex::Regex;
 use mako_core::swc_common::sync::Lrc;
@@ -18,6 +18,7 @@ use crate::module_graph::ModuleGraph;
 use crate::optimize_chunk::OptimizeChunksInfo;
 use crate::plugin::{Plugin, PluginDriver};
 use crate::plugins;
+use crate::plugins::minifish::Inject;
 use crate::resolve::{get_resolvers, Resolvers};
 use crate::stats::StatsInfo;
 
@@ -248,12 +249,42 @@ impl Compiler {
         }
 
         if let Some(minifish_config) = &config._minifish {
+            let inject = if let Some(inject) = &minifish_config.inject {
+                let mut map = HashMap::new();
+
+                for (k, ii) in inject.iter() {
+                    let exclude = if let Some(exclude) = &ii.exclude {
+                        if let Ok(regex) = Regex::new(exclude) {
+                            Some(regex)
+                        } else {
+                            return Err(anyhow!("Config Error invalid regex: {}", exclude));
+                        }
+                    } else {
+                        None
+                    };
+
+                    map.insert(
+                        k.clone(),
+                        Inject {
+                            from: ii.from.clone(),
+                            name: k.clone(),
+                            named: ii.named.clone(),
+                            namespace: ii.namespace,
+                            exclude,
+                        },
+                    );
+                }
+                Some(map)
+            } else {
+                None
+            };
+
             plugins.insert(
                 0,
                 Arc::new(plugins::minifish::MinifishPlugin {
                     mapping: minifish_config.mapping.clone(),
                     meta_path: minifish_config.meta_path.clone(),
-                    mock: minifish_config.mock_my,
+                    inject,
                 }),
             );
         }
