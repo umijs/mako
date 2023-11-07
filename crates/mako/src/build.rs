@@ -221,9 +221,24 @@ impl Compiler {
     ) -> Result<Module> {
         let external = resource.get_external();
         let resolved_path = resource.get_resolved_path();
+        let script = resource.get_script();
         let module = match external {
             Some(external) => {
-                let code = format!("module.exports = {};", external);
+                let has_script = script.is_some();
+
+                let code = if let Some(url) = script {
+                    format!(
+                        r#"
+module.exports = new Promise((resolve, reject) => {{
+    require.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(e));
+}}).then(() => {});
+"#,
+                        url, external
+                    )
+                } else {
+                    format!("module.exports = {};", external)
+                };
+
                 let ast = build_js_ast(
                     format!("external_{}", &resolved_path).as_str(),
                     code.as_str(),
@@ -243,7 +258,7 @@ impl Compiler {
                         missing_deps: HashMap::new(),
                         ignored_deps: vec![],
                         top_level_await: false,
-                        is_async: false,
+                        is_async: has_script,
                     }),
                 )
             }

@@ -688,7 +688,7 @@ if (/x/ === /x/) "should keep";
             },
             async_deps: &vec![],
             is_entry: false,
-            is_async: false,
+            wrap_async: false,
             top_level_await: false,
         });
         let (code, _sourcemap) = js_ast_to_code(&ast.ast, &context, "index.js").unwrap();

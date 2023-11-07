@@ -40,6 +40,7 @@ pub struct Resolvers {
 pub struct ExternalResource {
     pub source: String,
     pub external: String,
+    pub script: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -73,6 +74,13 @@ impl ResolverResource {
             ResolverResource::Ignored => None,
         }
     }
+    pub fn get_script(&self) -> Option<String> {
+        match self {
+            ResolverResource::External(ExternalResource { script, .. }) => script.clone(),
+            ResolverResource::Resolved(_) => None,
+            ResolverResource::Ignored => None,
+        }
+    }
 }
 
 pub fn resolve(
@@ -96,56 +104,59 @@ pub fn resolve(
 fn get_external_target(
     externals: &HashMap<String, ExternalConfig>,
     source: &str,
-) -> Option<String> {
+) -> Option<(String, Option<String>)> {
     let global_obj = "(typeof globalThis !== 'undefined' ? globalThis : self)";
 
     if let Some(external) = externals.get(source) {
         // handle full match
         // ex. import React from 'react';
         match external {
-            ExternalConfig::Basic(external) => Some(if external.is_empty() {
+            ExternalConfig::Basic(external) => Some((if external.is_empty() {
                 "''".to_string()
             } else {
                 format!("{}.{}", global_obj, external)
-            }),
-            ExternalConfig::Advanced(config) => Some(format!("{}.{}", global_obj, config.root)),
+            }, None)),
+            ExternalConfig::Advanced(config) => Some((format!("{}.{}", global_obj, config.root), config.script.clone())),
         }
-    } else if let Some((advanced_config, subpath)) = externals.iter().find_map(|(key, config)| {
-        match config {
-            ExternalConfig::Advanced(config) => {
-                if let Some(caps) =
-                    Regex::new(&format!(r#"(?:^|/node_modules/|[a-zA-Z\d]@){}(/|$)"#, key))
-                        .ok()
-                        .unwrap()
-                        .captures(source)
-                {
-                    let subpath = source.split(&caps[0]).collect::<Vec<_>>()[1].to_string();
+    } else if let Some((advanced_config, subpath_config, subpath)) =
+        externals.iter().find_map(|(key, config)| {
+            match config {
+                ExternalConfig::Advanced(config) if config.subpath.is_some() => {
+                    if let Some(caps) =
+                        Regex::new(&format!(r#"(?:^|/node_modules/|[a-zA-Z\d]@){}(/|$)"#, key))
+                            .ok()
+                            .unwrap()
+                            .captures(source)
+                    {
+                        let subpath = source.split(&caps[0]).collect::<Vec<_>>()[1].to_string();
+                        let subpath_config = config.subpath.as_ref().unwrap();
 
-                    match &config.subpath.exclude {
-                        // skip if source is excluded
-                        Some(exclude)
-                            if exclude.iter().any(|e| {
-                                Regex::new(&format!("(^|/){}(/|$)", e))
-                                    .ok()
-                                    .unwrap()
-                                    .is_match(subpath.as_str())
-                            }) =>
-                        {
-                            None
+                        match &subpath_config.exclude {
+                            // skip if source is excluded
+                            Some(exclude)
+                                if exclude.iter().any(|e| {
+                                    Regex::new(&format!("(^|/){}(/|$)", e))
+                                        .ok()
+                                        .unwrap()
+                                        .is_match(subpath.as_str())
+                                }) =>
+                            {
+                                None
+                            }
+                            _ => Some((config, subpath_config, subpath)),
                         }
-                        _ => Some((config, subpath)),
+                    } else {
+                        None
                     }
-                } else {
-                    None
                 }
+                _ => None,
             }
-            _ => None,
-        }
-    }) {
+        })
+    {
         // handle subpath match
         // ex. import Button from 'antd/es/button';
         // find matched subpath rule
-        if let Some((rule, caps)) = advanced_config.subpath.rules.iter().find_map(|r| {
+        if let Some((rule, caps)) = subpath_config.rules.iter().find_map(|r| {
             let regex = Regex::new(r.regex.as_str()).ok().unwrap();
 
             if regex.is_match(subpath.as_str()) {
@@ -157,7 +168,9 @@ fn get_external_target(
             // generate target from rule target
             match &rule.target {
                 // external to empty string
-                ExternalAdvancedSubpathTarget::Empty => Some("''".to_string()),
+                ExternalAdvancedSubpathTarget::Empty => {
+                    Some(("''".to_string(), advanced_config.script.clone()))
+                }
                 // external to target template
                 ExternalAdvancedSubpathTarget::Tpl(target) => {
                     let regex = Regex::new(r"\$(\d+)").ok().unwrap();
@@ -182,9 +195,9 @@ fn get_external_target(
                                 .join("."),
                         };
                     }
-                    Some(format!(
-                        "{}.{}.{}",
-                        global_obj, advanced_config.root, replaced
+                    Some((
+                        format!("{}.{}.{}", global_obj, advanced_config.root, replaced),
+                        advanced_config.script.clone(),
                     ))
                 }
             }
@@ -209,10 +222,11 @@ fn do_resolve(
     } else {
         None
     };
-    if let Some(external) = external {
+    if let Some((external, script)) = external {
         Ok(ResolverResource::External(ExternalResource {
             source: source.to_string(),
             external,
+            script,
         }))
     } else {
         let path = PathBuf::from(path);
@@ -463,7 +477,8 @@ mod tests {
             "antd".to_string(),
             ExternalConfig::Advanced(ExternalAdvanced {
                 root: "antd".to_string(),
-                subpath: ExternalAdvancedSubpath {
+                script: None,
+                subpath: Some(ExternalAdvancedSubpath {
                     exclude: Some(vec!["style".to_string()]),
                     rules: vec![
                         ExternalAdvancedSubpathRule {
@@ -487,7 +502,7 @@ mod tests {
                             target_converter: Some(ExternalAdvancedSubpathConverter::PascalCase),
                         },
                     ],
-                },
+                }),
             }),
         )]);
         fn internal_resolve(
