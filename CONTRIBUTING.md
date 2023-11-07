@@ -111,14 +111,8 @@ $ OKAM=/PATH/TO/umijs/marko/packages/bundler-okam/index.js bigfish build --dev
 Prepare. Only need to do once.
 
 ```bash
-# 安装交叉编译环境
-# $ brew tap messense/macos-cross-toolchains
-# $ brew install x86_64-unknown-linux-gnu
 # 支持编译 mac x86 和 linux x86
 $ rustup target add x86_64-apple-darwin
-# $ rustup target add x86_64-unknown-linux-gnu
-# 用于去 linux x86 产物中的 debug 信息的镜像
-# $ docker pull --platform linux/amd64 ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian
 ```
 
 Release @okamjs/okam.
@@ -140,6 +134,8 @@ $ tnpm sync @okamjs/okam && cd packages/bundler-okam && tnpm publish
 ```
 
 ## Project Structure
+
+> Deprecated: documentation is out of date.
 
 There are 1 crate, 1 mixed (as crate and npm package at the same time) entity and 1 npm package in this project.
 
