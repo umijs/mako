@@ -20,26 +20,14 @@ use mako_core::swc_error_reporters::handler::try_with_handler;
 use crate::ast::{js_ast_to_code, Ast};
 use crate::compiler::{Args, Context};
 use crate::config::{Config, Mode};
-use crate::load::{read_content, Content};
 use crate::module::{ModuleAst, ModuleId};
-use crate::plugin::{Plugin, PluginLoadParam};
+use crate::plugin::Plugin;
 use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
 use crate::transformers::transform_dynamic_import::DynamicImport;
 
-pub struct MinifishCompiler {
-    minifish_map: HashMap<String, String>,
-}
+pub struct BundlessCompiler {}
 
-impl MinifishCompiler {
-    pub fn new(_: &Config, root: &Path) -> Self {
-        let map_file = root.join("_apcJsonContentMap.json");
-
-        let content = read_content(map_file).unwrap();
-
-        let minifish_map = serde_json::from_str::<HashMap<String, String>>(&content).unwrap();
-
-        Self { minifish_map }
-    }
+impl BundlessCompiler {
     pub fn transform_all(&self, context: &Arc<Context>) -> Result<()> {
         let module_graph = context.module_graph.read().unwrap();
         let module_ids = module_graph.get_module_ids();
@@ -65,28 +53,9 @@ impl MinifishCompiler {
     }
 }
 
-impl Plugin for MinifishCompiler {
+impl Plugin for BundlessCompiler {
     fn name(&self) -> &str {
-        "minifish_generator"
-    }
-
-    fn load(&self, param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
-        if matches!(param.ext_name.as_str(), "json" | "json5") {
-            let root = _context.root.clone();
-            let to: PathBuf = param.path.clone().into();
-
-            let relative = to
-                .strip_prefix(root)
-                .unwrap_or_else(|_| panic!("{:?} not under project root", to))
-                .to_str()
-                .unwrap();
-
-            return match self.minifish_map.get(relative) {
-                Some(js_content) => Ok(Some(Content::Js(js_content.to_string()))),
-                None => Ok(None),
-            };
-        }
-        Ok(None)
+        "bundless_compiler"
     }
 
     fn modify_config(&self, config: &mut Config, root: &Path, _args: &Args) -> Result<()> {

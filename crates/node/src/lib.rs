@@ -20,7 +20,7 @@ pub async fn build(
     entry?: Record<string, string>;
     output?: {
         path: string; 
-        mode: "bundle" | "minifish" ;  
+        mode: "bundle" | "bundless" ;
         esVersion?: string;
         meta?: boolean;
         preserveModules?: boolean;
@@ -80,6 +80,11 @@ pub async fn build(
     clean?: boolean;
     nodePolyfill?: boolean;
     ignores?: string[];
+    _minifish?: {
+        mapping: Record<string, string>;
+        metaPath?: string;
+        mockMY: boolean;
+    };
 }"#)]
     config: serde_json::Value,
     watch: bool,

@@ -244,11 +244,17 @@ impl Compiler {
         }
 
         if config.output.mode == OutputMode::Bundless {
+            plugins.insert(0, Arc::new(plugins::bundless_compiler::BundlessCompiler {}));
+        }
+
+        if let Some(minifish_config) = &config._minifish {
             plugins.insert(
                 0,
-                Arc::new(plugins::minifish_compiler::MinifishCompiler::new(
-                    &config, &root,
-                )),
+                Arc::new(plugins::minifish::MinifishPlugin {
+                    mapping: minifish_config.mapping.clone(),
+                    meta_path: minifish_config.meta_path.clone(),
+                    mock: minifish_config.mock_my,
+                }),
             );
         }
 
@@ -262,10 +268,6 @@ impl Compiler {
             plugins.push(Arc::new(plugins::ignore::IgnorePlugin {
                 ignores: ignore_regex,
             }))
-        }
-
-        if config.output.meta {
-            plugins.push(Arc::new(plugins::meta::MetaPlugin {}));
         }
 
         let plugin_driver = PluginDriver::new(plugins);

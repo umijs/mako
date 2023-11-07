@@ -8,7 +8,7 @@ export function build(root: string, config:
 entry?: Record<string, string>;
 output?: {
 path: string;
-mode: "bundle" | "minifish" ;
+mode: "bundle" | "bundless" ;
 esVersion?: string;
 meta?: boolean;
 preserveModules?: boolean;
@@ -68,4 +68,9 @@ transformImport?: { libraryName: string; libraryDirectory?: string; style?: bool
 clean?: boolean;
 nodePolyfill?: boolean;
 ignores?: string[];
+_minifish?: {
+mapping: Record<string, string>;
+metaPath?: string;
+mockMY: boolean;
+};
 }, watch: boolean): Promise<void>

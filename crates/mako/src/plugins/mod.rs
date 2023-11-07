@@ -1,5 +1,6 @@
 pub mod assets;
 pub mod async_runtime;
+pub mod bundless_compiler;
 pub mod copy;
 pub mod css;
 pub mod farm_tree_shake;
@@ -13,7 +14,7 @@ pub mod less;
 pub mod manifest;
 pub mod md;
 pub mod meta;
-pub mod minifish_compiler;
+pub mod minifish;
 pub mod node_polyfill;
 pub mod runtime;
 pub mod svg;
