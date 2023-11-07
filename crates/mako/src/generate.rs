@@ -40,7 +40,7 @@ impl Compiler {
     }
 
     pub fn generate(&self) -> Result<()> {
-        if self.context.config.output.mode == OutputMode::MinifishPrebuild {
+        if self.context.config.output.mode == OutputMode::Bundless {
             return self.generate_with_plugin_driver();
         }
 

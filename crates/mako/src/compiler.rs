@@ -243,7 +243,7 @@ impl Compiler {
             plugins.push(Arc::new(plugins::node_polyfill::NodePolyfillPlugin {}));
         }
 
-        if config.output.mode == OutputMode::MinifishPrebuild {
+        if config.output.mode == OutputMode::Bundless {
             plugins.insert(
                 0,
                 Arc::new(plugins::minifish_compiler::MinifishCompiler::new(
