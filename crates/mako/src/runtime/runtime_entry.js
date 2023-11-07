@@ -1,33 +1,32 @@
 function createRuntime(makoModules, entryModuleId) {
-  const modulesRegistry = {};
+  var modulesRegistry = {};
 
   function requireModule(moduleId) {
     if (moduleId === '$$IGNORED$$') return {};
-    const cachedModule = modulesRegistry[moduleId];
+    var cachedModule = modulesRegistry[moduleId];
 
     if (cachedModule !== undefined) {
       if (cachedModule.error) {
         throw cachedModule.error;
       }
-
       return cachedModule.exports;
     }
 
-    const module = {
+    var module = {
       id: moduleId,
       exports: {},
     };
     modulesRegistry[moduleId] = module;
 
     try {
-      const execOptions = {
+      var execOptions = {
         id: moduleId,
-        module,
+        module: module,
         factory: makoModules[moduleId],
         require: requireModule,
       };
 
-      requireModule.requireInterceptors.forEach((interceptor) => {
+      requireModule.requireInterceptors.forEach(function (interceptor) {
         interceptor(execOptions);
       });
       execOptions.factory.call(
@@ -67,10 +66,11 @@ function createRuntime(makoModules, entryModuleId) {
 
   /* mako/runtime/ensure load js Chunk */
   !(function () {
-    const installedChunks = (requireModule.jsonpInstalled = {});
+    requireModule.jsonpInstalled = {};
+    var installedChunks = requireModule.jsonpInstalled;
 
-    requireModule.chunkEnsures.jsonp = (chunkId, promises) => {
-      let data = installedChunks[chunkId];
+    requireModule.chunkEnsures.jsonp = function (chunkId, promises) {
+      var data = installedChunks[chunkId];
       if (data === 0) return;
 
       if (data) {
@@ -78,26 +78,33 @@ function createRuntime(makoModules, entryModuleId) {
         // [resolve, reject, promise]
         promises.push(data[2]);
       } else {
-        const promise = new Promise((resolve, reject) => {
+        var promise = new Promise(function (resolve, reject) {
           data = installedChunks[chunkId] = [resolve, reject];
         });
         promises.push((data[2] = promise));
-        const url = requireModule.publicPath + chunksIdToUrlMap[chunkId];
-        const error = new Error();
-        const onLoadEnd = (event) => {
+        var url = requireModule.publicPath + chunksIdToUrlMap[chunkId];
+        var error = new Error();
+        var onLoadEnd = function (event) {
           data = installedChunks[chunkId];
           if (data !== 0) installedChunks[chunkId] = undefined;
           if (data) {
-            const errorType = event?.type;
-            const src = event?.target?.src;
-            error.message = `Loading chunk ${chunkId} failed. (${errorType} : ${src})`;
+            var errorType = event && event.type;
+            var src = event && event.target && event.target.src;
+            error.message =
+              'Loading chunk ' +
+              chunkId +
+              ' failed. (' +
+              errorType +
+              ' : ' +
+              src +
+              ')';
             error.name = 'ChunkLoadError';
             error.type = errorType;
             data[1](error);
           }
         };
         // load
-        requireModule.loadScript(url, onLoadEnd, `chunk-${chunkId}`);
+        requireModule.loadScript(url, onLoadEnd, 'chunk-' + chunkId);
         return promise;
       }
     };
@@ -106,20 +113,20 @@ function createRuntime(makoModules, entryModuleId) {
 
   /* mako/runtime/load script */
   !(function () {
-    const inProgress = {};
-    requireModule.loadScript = (url, done, key) => {
+    var inProgress = {};
+    requireModule.loadScript = function (url, done, key) {
       if (inProgress[url]) {
         return inProgress[url].push(done);
       }
-      const script = document.createElement('script');
+      var script = document.createElement('script');
       script.timeout = 120;
       script.src = url;
       inProgress[url] = [done];
-      const onLoadEnd = (prev, event) => {
+      var onLoadEnd = function (prev, event) {
         clearTimeout(timeout);
-        const doneFns = inProgress[url];
+        var doneFns = inProgress[url];
         delete inProgress[url];
-        script.parentNode?.removeChild(script);
+        if (script.parentNode) script.parentNode.removeChild(script);
         if (doneFns) {
           doneFns.forEach(function (fn) {
             return fn(event);
@@ -128,7 +135,7 @@ function createRuntime(makoModules, entryModuleId) {
         if (prev) return prev(event);
       };
       // May not be needed, already has timeout attributes
-      const timeout = setTimeout(
+      var timeout = setTimeout(
         onLoadEnd.bind(null, undefined, { type: 'timeout', target: script }),
         120000,
       );
@@ -144,11 +151,10 @@ function createRuntime(makoModules, entryModuleId) {
     requireModule.findStylesheet = function (url) {
       return Array.from(
         document.querySelectorAll('link[href][rel=stylesheet]'),
-      ).find((link) => {
+      ).find(function (link) {
         // why not use link.href?
         // because link.href contains hostname
-        const [linkUrl] = link.getAttribute('href').split('?');
-
+        var linkUrl = link.getAttribute('href').split('?')[0];
         return linkUrl === url || linkUrl === requireModule.publicPath + url;
       });
     };
@@ -160,7 +166,7 @@ function createRuntime(makoModules, entryModuleId) {
       resolve,
       reject,
     ) {
-      const link = document.createElement('link');
+      var link = document.createElement('link');
 
       link.rel = 'stylesheet';
       link.type = 'text/css';
@@ -176,9 +182,9 @@ function createRuntime(makoModules, entryModuleId) {
         } else {
           // throw error and reset state
           delete cssInstalledChunks[chunkId];
-          const errorType = event?.type;
-          const realHref = event?.target?.href;
-          const err = new Error(
+          var errorType = event && event.type;
+          var realHref = event && event.target && event.target.href;
+          var err = new Error(
             'Loading CSS chunk ' + chunkId + ' failed.\n(' + realHref + ')',
           );
 
@@ -199,7 +205,7 @@ function createRuntime(makoModules, entryModuleId) {
       return link;
     };
 
-    requireModule.chunkEnsures.css = (chunkId, promises) => {
+    requireModule.chunkEnsures.css = function (chunkId, promises) {
       if (cssInstalledChunks[chunkId]) {
         // still pending, avoid duplicate promises
         promises.push(cssInstalledChunks[chunkId]);
@@ -208,9 +214,9 @@ function createRuntime(makoModules, entryModuleId) {
         cssChunksIdToUrlMap[chunkId]
       ) {
         // load chunk and save promise
-        cssInstalledChunks[chunkId] = new Promise((resolve, reject) => {
-          const url = cssChunksIdToUrlMap[chunkId];
-          const fullUrl = requireModule.publicPath + url;
+        cssInstalledChunks[chunkId] = new Promise(function (resolve, reject) {
+          var url = cssChunksIdToUrlMap[chunkId];
+          var fullUrl = requireModule.publicPath + url;
 
           if (requireModule.findStylesheet(url)) {
             // already loaded
@@ -232,15 +238,19 @@ function createRuntime(makoModules, entryModuleId) {
     };
   })();
 
-  const jsonpCallback = (data) => {
-    const installedChunks = requireModule.jsonpInstalled;
-
-    const chunkIds = data[0];
-    const modules = data[1];
-    if (chunkIds.some((id) => installedChunks[id] !== 0)) {
+  var jsonpCallback = function (data) {
+    var installedChunks = requireModule.jsonpInstalled;
+    var chunkIds = data[0];
+    var modules = data[1];
+    if (
+      chunkIds.some(function (id) {
+        return installedChunks[id] !== 0;
+      })
+    ) {
       registerModules(modules);
     }
-    for (const id of chunkIds) {
+    for (var i = 0; i < chunkIds.length; i++) {
+      var id = chunkIds[i];
       if (installedChunks[id]) {
         installedChunks[id][0]();
       }
@@ -248,27 +258,26 @@ function createRuntime(makoModules, entryModuleId) {
     }
   };
 
-  const registerModules = (modules) => {
-    for (const id in modules) {
+  var registerModules = function (modules) {
+    for (var id in modules) {
       makoModules[id] = modules[id];
     }
   };
 
   // __inject_runtime_code__
 
-  const exports = requireModule(entryModuleId);
+  var exports = requireModule(entryModuleId);
   return {
-    exports,
-    requireModule,
+    exports: exports,
+    requireModule: requireModule,
     _modulesRegistry: modulesRegistry,
     _jsonpCallback: jsonpCallback,
     _makoModuleHotUpdate: requireModule.applyHotUpdate,
   };
 }
-const runtime = createRuntime(m, e);
-(typeof globalThis !== 'undefined' ? globalThis : self).jsonpCallback =
-  runtime._jsonpCallback;
-(typeof globalThis !== 'undefined' ? globalThis : self).modulesRegistry =
-  runtime._modulesRegistry;
-(typeof globalThis !== 'undefined' ? globalThis : self).makoModuleHotUpdate =
-  runtime._makoModuleHotUpdate;
+
+var runtime = createRuntime(m, e);
+var root = typeof globalThis !== 'undefined' ? globalThis : self;
+root.jsonpCallback = runtime._jsonpCallback;
+root.modulesRegistry = runtime._modulesRegistry;
+root.makoModuleHotUpdate = runtime._makoModuleHotUpdate;
