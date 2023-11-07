@@ -59,8 +59,8 @@ pub enum Mode {
 pub enum OutputMode {
     #[serde(rename = "bundle")]
     Bundle,
-    #[serde(rename = "minifish")]
-    MinifishPrebuild,
+    #[serde(rename = "bundless")]
+    Bundless,
 }
 
 // TODO:
@@ -224,6 +224,14 @@ pub enum ExternalConfig {
     Basic(String),
     Advanced(ExternalAdvanced),
 }
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct MinifishConfig {
+    pub mapping: HashMap<String, String>,
+    pub meta_path: Option<PathBuf>,
+    #[serde(rename = "mockMY")]
+    pub mock_my: bool,
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -270,6 +278,8 @@ pub struct Config {
     pub clean: bool,
     pub node_polyfill: bool,
     pub ignores: Vec<String>,
+    #[serde(rename = "_minifish")]
+    pub _minifish: Option<MinifishConfig>,
 }
 
 pub(crate) fn hash_config(c: &Config) -> u64 {
@@ -325,7 +335,8 @@ const DEFAULT_CONFIG: &str = r#"
     "devEval": false,
     "clean": true,
     "nodePolyfill": true,
-    "ignores": []
+    "ignores": [],
+    "_minifish": null
 }
 "#;
 
