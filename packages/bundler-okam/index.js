@@ -203,6 +203,7 @@ function checkConfig(opts) {
       .difference(Object.keys(opts.config.lessLoader), [
         'javascriptEnabled',
         'modifyVars',
+        'math',
       ])
       .forEach((k) => {
         warningKeys.push(`lessLoader.${k}`);
