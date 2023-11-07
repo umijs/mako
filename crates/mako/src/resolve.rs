@@ -111,12 +111,18 @@ fn get_external_target(
         // handle full match
         // ex. import React from 'react';
         match external {
-            ExternalConfig::Basic(external) => Some((if external.is_empty() {
-                "''".to_string()
-            } else {
-                format!("{}.{}", global_obj, external)
-            }, None)),
-            ExternalConfig::Advanced(config) => Some((format!("{}.{}", global_obj, config.root), config.script.clone())),
+            ExternalConfig::Basic(external) => Some((
+                if external.is_empty() {
+                    "''".to_string()
+                } else {
+                    format!("{}.{}", global_obj, external)
+                },
+                None,
+            )),
+            ExternalConfig::Advanced(config) => Some((
+                format!("{}.{}", global_obj, config.root),
+                config.script.clone(),
+            )),
         }
     } else if let Some((advanced_config, subpath_config, subpath)) =
         externals.iter().find_map(|(key, config)| {
