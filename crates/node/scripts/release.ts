@@ -57,6 +57,7 @@ import 'zx/globals';
 
   // build macOs *.node
   await $`rm -rf ./*.node`;
+  await $`find ./ -name '*.node' | xargs rm -f`;
   await $`pnpm run build:mac:x86`;
   await $`pnpm run build:mac:aarch`;
   await $`strip -x ./okam.darwin-*.node`;
