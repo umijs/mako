@@ -365,6 +365,7 @@ mod tests {
 
     use super::Compiler;
     use crate::config::Config;
+    use crate::load::read_content;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_config_inline_limit() {
@@ -595,7 +596,7 @@ mod tests {
             .collect::<Vec<_>>();
         for file in files.iter() {
             if file.ends_with(".js") || file.ends_with(".css") {
-                let content = std::fs::read_to_string(dist.join(file)).unwrap();
+                let content = read_content(dist.join(file)).unwrap();
                 file_contents.insert(file.to_string(), content);
             }
         }
