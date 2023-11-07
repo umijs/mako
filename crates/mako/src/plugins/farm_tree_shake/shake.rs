@@ -311,9 +311,13 @@ fn add_used_exports_by_import_info(
 
         //  import "xxx"
         if import_info.specifiers.is_empty() {
-            imported_tree_shake_module.used_exports.use_all();
             imported_tree_shake_module.side_effects = true;
-            return Some(imported_tree_shake_module.topo_order);
+
+            if imported_tree_shake_module.used_exports.use_all() {
+                return Some(imported_tree_shake_module.topo_order);
+            }
+
+            return None;
         }
 
         let mut added = false;
