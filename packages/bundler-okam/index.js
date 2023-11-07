@@ -167,6 +167,15 @@ function checkConfig(opts) {
     throw new Error('externals array is not supported in Mako bundler');
   }
 
+  // 不支持非 script 的 [string] externals
+  Object.values(opts.config.externals || {}).forEach((v) => {
+    if (Array.isArray(v) && (v.length !== 2 || !v[0].startsWith('script '))) {
+      throw new Error(
+        `externals [string] only can be ['script {url}', '{root}'] in Mako bundler`,
+      );
+    }
+  });
+
   // 不支持但对构建影响不明确的配置项，会统一警告
   const riskyKeys = [
     'config.autoprefixer',
@@ -345,6 +354,21 @@ async function getOkamConfig(opts) {
 
       return { libraryName, libraryDirectory, style };
     });
+  // transform externals
+  const externalsConfig = Object.entries(externals).reduce((ret, [k, v]) => {
+    // handle [string] with script type
+    if (Array.isArray(v)) {
+      ret[k] = {
+        root: v[1],
+        script: v[0].replace('script ', ''),
+      };
+    } else {
+      ret[k] = v;
+    }
+
+    return ret;
+  }, {});
+
   const okamConfig = {
     entry: opts.entry,
     output: { path: outputPath },
@@ -391,7 +415,7 @@ async function getOkamConfig(opts) {
     autoCSSModules: true,
     umd,
     transformImport,
-    externals,
+    externals: externalsConfig,
     clean,
     ...(opts.disableCopy ? { copy: [] } : { copy: ['public'].concat(copy) }),
   };
