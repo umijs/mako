@@ -250,6 +250,9 @@ pub fn is_commonjs_require(call_expr: &CallExpr, bindings: Option<&Lrc<AHashSet<
         if !is_require {
             return false;
         }
+        if call_expr.args.len() != 1 {
+            return false;
+        }
         let has_binding = if let Some(bindings) = bindings {
             bindings.contains(&(sym.clone(), span.ctxt))
         } else {
