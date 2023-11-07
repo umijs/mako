@@ -75,14 +75,14 @@ importers:
   crates/node:
     optionalDependencies:
       '@okamjs/okam-darwin-arm64':
-        specifier: 0.0.33-canary.20231106.2
-        version: 0.0.33-canary.20231106.2
+        specifier: 0.0.33-canary.20231107.1
+        version: 0.0.33-canary.20231107.1
       '@okamjs/okam-darwin-x64':
-        specifier: 0.0.33-canary.20231106.2
-        version: 0.0.33-canary.20231106.2
+        specifier: 0.0.33-canary.20231107.1
+        version: 0.0.33-canary.20231107.1
       '@okamjs/okam-linux-x64-gnu':
-        specifier: 0.0.33-canary.20231106.2
-        version: 0.0.33-canary.20231106.2
+        specifier: 0.0.33-canary.20231107.1
+        version: 0.0.33-canary.20231107.1
     devDependencies:
       '@napi-rs/cli':
         specifier: ^2.14.8
@@ -306,7 +306,7 @@ importers:
   packages/bundler-okam:
     dependencies:
       '@okamjs/okam':
-        specifier: 0.0.33-canary.20231106.2
+        specifier: 0.0.33-canary.20231107.1
         version: link:../../crates/node
       '@swc/helpers':
         specifier: 0.5.1
@@ -3586,8 +3586,8 @@ packages:
       fastq: 1.15.0
     dev: true
 
-  /@okamjs/okam-darwin-arm64@0.0.33-canary.20231106.2:
-    resolution: {integrity: sha512-39SNCg0GcACxnaWPntA31W+It8Q31KQHeVVwb6yjLS0D1I5Cmqaeo47XB64kF5g1X3Vd9ReKsSvne8qpkWR27g==}
+  /@okamjs/okam-darwin-arm64@0.0.33-canary.20231107.1:
+    resolution: {integrity: sha512-YeabmwW1Uvu13rwPfebFcffPtaUtpqyucdd8vjyAlUFTuT8VYQg0YoPiUDLNLEPSv4mx6T9xcTMbTNFcR4k4fA==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
@@ -3595,8 +3595,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-darwin-x64@0.0.33-canary.20231106.2:
-    resolution: {integrity: sha512-adfC5kFrDOUc54xFLb9JahGdyFYOMfL1JGLLsan1sd4i8pwEnDVGSMs7AMTcIT5xbexL9u+aLojMB/UKNbuq1A==}
+  /@okamjs/okam-darwin-x64@0.0.33-canary.20231107.1:
+    resolution: {integrity: sha512-UXLSQs3RxJQVYxlFrCYcPAAIO5YsrIjXt23hzCWYzRvwcnVRzAQA4M5gX5+okPxT1fwlgm3Q36yjSZ6gsn3XPw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
@@ -3604,8 +3604,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-linux-x64-gnu@0.0.33-canary.20231106.2:
-    resolution: {integrity: sha512-v9d3+5K3HoHQDs6LNnDSaeC1xiVYrcKBF3xbxhQJW4Y2YanugS1oOejS+cPjJQo7jcJ0nXaZ3UXqU2WJRa9zTQ==}
+  /@okamjs/okam-linux-x64-gnu@0.0.33-canary.20231107.1:
+    resolution: {integrity: sha512-DNKEExz6s9EiAetHd76wbSQePGyb6pB5FBIr4o/v+BB9JLd3d6QD8BMRLmrvQgmdI6n0sbxSe/AYkP0Y7zJOJQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
