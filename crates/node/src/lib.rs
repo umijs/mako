@@ -35,6 +35,7 @@ pub async fn build(
         fileName: string;
         basePath: string;
     };
+    minify?: boolean;
     mode?: "development" | "production";
     define?: Record<string, string>;
     devtool?: "source-map" | "inline-source-map" | "none";
