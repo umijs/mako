@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use mako_core::swc_common::DUMMY_SP;
+use mako_core::swc_common::{Mark, DUMMY_SP};
 use mako_core::swc_ecma_ast::{
     ArrayLit, ArrowExpr, AssignExpr, AssignOp, AwaitExpr, BindingIdent, BlockStmt, BlockStmtOrExpr,
     CallExpr, Callee, CondExpr, Decl, Expr, ExprOrSpread, ExprStmt, Ident, Lit, MemberExpr,
@@ -22,6 +22,7 @@ pub struct AsyncModule<'a> {
     pub last_dep_pos: usize,
     pub top_level_await: bool,
     pub context: &'a Arc<Context>,
+    pub unresolved_mark: Mark,
 }
 
 impl VisitMut for AsyncModule<'_> {
@@ -33,7 +34,7 @@ impl VisitMut for AsyncModule<'_> {
                     // `require('./async');` => `var _async__mako_imported_module_n__ = require('./async');`
                     Stmt::Expr(expr_stmt) => {
                         if let Expr::Call(call_expr) = &*expr_stmt.expr {
-                            if is_commonjs_require(call_expr, None) {
+                            if is_commonjs_require(call_expr, &self.unresolved_mark) {
                                 if let Expr::Lit(Lit::Str(Str { value, .. })) =
                                     &*call_expr.args[0].expr
                                 {
@@ -67,7 +68,7 @@ impl VisitMut for AsyncModule<'_> {
                     Stmt::Decl(Decl::Var(var_decl)) => {
                         for decl in &var_decl.decls {
                             if let Some(box Expr::Call(call_expr)) = &decl.init {
-                                if is_commonjs_require(call_expr, None) {
+                                if is_commonjs_require(call_expr, &self.unresolved_mark) {
                                     if let Expr::Lit(Lit::Str(Str { value, .. })) =
                                         &*call_expr.args[0].expr
                                     {
@@ -95,7 +96,10 @@ impl VisitMut for AsyncModule<'_> {
                                                     if let Expr::Call(call_expr) =
                                                         &*call_expr.args[0].expr
                                                     {
-                                                        if is_commonjs_require(call_expr, None) {
+                                                        if is_commonjs_require(
+                                                            call_expr,
+                                                            &self.unresolved_mark,
+                                                        ) {
                                                             if let Expr::Lit(Lit::Str(Str {
                                                                 value,
                                                                 ..
@@ -418,6 +422,7 @@ require._async(module, async (handleAsyncDeps, asyncResult)=>{
                 last_dep_pos: 0,
                 top_level_await: true,
                 context: &context,
+                unresolved_mark: ast.unresolved_mark,
             };
             ast.ast.visit_mut_with(&mut async_module);
         });

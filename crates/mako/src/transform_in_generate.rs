@@ -194,6 +194,7 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) {
                                     last_dep_pos: 0,
                                     top_level_await,
                                     context,
+                                    unresolved_mark: ast.unresolved_mark,
                                 };
                                 ast.ast.visit_mut_with(&mut async_module);
                             }

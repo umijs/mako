@@ -144,7 +144,7 @@ impl Visit for DepCollectVisitor {
         n.visit_children_with(self);
     }
     fn visit_call_expr(&mut self, expr: &CallExpr) {
-        if is_commonjs_require(expr, Some(&self.bindings)) {
+        if is_commonjs_require(expr, &self.unresolved_mark) {
             if let Some(src) = get_first_arg_str(expr) {
                 self.bind_dependency(src, ResolveType::Require, Some(expr.span));
                 return;
@@ -243,22 +243,10 @@ pub fn is_dynamic_import(call_expr: &CallExpr) -> bool {
     matches!(&call_expr.callee, Callee::Import(Import { .. }))
 }
 
-pub fn is_commonjs_require(call_expr: &CallExpr, bindings: Option<&Lrc<AHashSet<Id>>>) -> bool {
+pub fn is_commonjs_require(call_expr: &CallExpr, unresolved_mark: &Mark) -> bool {
     if let Callee::Expr(box Expr::Ident(swc_ecma_ast::Ident { sym, span, .. })) = &call_expr.callee
     {
-        let is_require = sym == "require";
-        if !is_require {
-            return false;
-        }
-        if call_expr.args.len() != 1 {
-            return false;
-        }
-        let has_binding = if let Some(bindings) = bindings {
-            bindings.contains(&(sym.clone(), span.ctxt))
-        } else {
-            false
-        };
-        !has_binding
+        sym == "require" && span.ctxt.outer() == *unresolved_mark
     } else {
         false
     }

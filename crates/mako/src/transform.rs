@@ -106,6 +106,7 @@ fn transform_js(
                         let mut try_resolve = TryResolve {
                             path: task.path.clone(),
                             context,
+                            unresolved_mark,
                         };
                         ast.visit_mut_with(&mut try_resolve);
                     }
@@ -113,7 +114,10 @@ fn transform_js(
                     let mut provide = Provide::new(context.config.providers.clone());
                     ast.visit_mut_with(&mut provide);
 
-                    let mut import_css_in_js = VirtualCSSModules { context };
+                    let mut import_css_in_js = VirtualCSSModules {
+                        context,
+                        unresolved_mark,
+                    };
                     ast.visit_mut_with(&mut import_css_in_js);
 
                     if context.config.dynamic_import_to_require {

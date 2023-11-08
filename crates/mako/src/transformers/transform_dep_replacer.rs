@@ -83,7 +83,8 @@ pub fn miss_throw_stmt<T: AsRef<str>>(source: T) -> Expr {
 impl VisitMut for DepReplacer<'_> {
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Call(call_expr) = expr {
-            if is_commonjs_require(call_expr, None) || is_dynamic_import(call_expr) {
+            if is_commonjs_require(call_expr, &self.unresolved_mark) || is_dynamic_import(call_expr)
+            {
                 if let ExprOrSpread {
                     expr: box Expr::Lit(Lit::Str(ref mut source)),
                     ..
