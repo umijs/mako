@@ -13,7 +13,7 @@ use mako_core::swc_ecma_transforms::feature::FeatureFlag;
 use mako_core::swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
 use mako_core::swc_ecma_transforms::optimization::simplifier;
 use mako_core::swc_ecma_transforms::proposals::decorators;
-use mako_core::swc_ecma_transforms::typescript::strip_with_jsx;
+use mako_core::swc_ecma_transforms::typescript::{strip_with_jsx, Config, ImportsNotUsedAsValues};
 use mako_core::swc_ecma_transforms::{resolver, Assumptions};
 use mako_core::swc_ecma_visit::{Fold, VisitMutWith};
 use mako_core::swc_error_reporters::handler::try_with_handler;
@@ -80,7 +80,10 @@ fn transform_js(
                     ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
                     ast.visit_mut_with(&mut strip_with_jsx(
                         cm.clone(),
-                        Default::default(),
+                        Config {
+                            import_not_used_as_values: ImportsNotUsedAsValues::Preserve,
+                            ..Default::default()
+                        },
                         NoopComments,
                         top_level_mark,
                     ));
