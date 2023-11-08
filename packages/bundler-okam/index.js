@@ -230,6 +230,17 @@ function checkConfig(opts) {
       }
     });
 
+  // 不支持非字符串形式的 theme
+  Object.values(opts.config.theme || {})
+    .reduce((ret, v) => {
+      const type = typeof v;
+      if (type !== 'string') ret.add(type);
+      return ret;
+    }, new Set())
+    .forEach((type) => {
+      warningKeys.push(`theme.[${type} value]`);
+    });
+
   if (warningKeys.length) {
     console.warn(
       chalk.yellow(
@@ -377,7 +388,8 @@ async function getOkamConfig(opts) {
     devtool: devtool === false ? 'none' : 'source-map',
     less: {
       theme: {
-        ...theme,
+        // ignore function value
+        ...lodash.pickBy(theme, lodash.isString),
         ...lessLoader?.modifyVars,
       },
       javascriptEnabled: lessLoader?.javascriptEnabled,
