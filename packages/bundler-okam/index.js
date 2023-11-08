@@ -343,7 +343,9 @@ async function getOkamConfig(opts) {
       // 这里传 process.env.xxx 反而不会生效
       // TODO: 待 mako 改成和 umi/webpack 的方式一致之后，可以把这段去掉
       if (key.startsWith('process.env.')) {
-        define[key.replace(/^process\.env\./, '')] = opts.config.define[key];
+        define[key.replace(/^process\.env\./, '')] = normalizeDefineValue(
+          opts.config.define[key],
+        );
       } else {
         define[key] = normalizeDefineValue(opts.config.define[key]);
       }
