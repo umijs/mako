@@ -224,13 +224,21 @@ pub enum ExternalConfig {
     Basic(String),
     Advanced(ExternalAdvanced),
 }
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct InjectItem {
+    pub from: String,
+    pub named: Option<String>,
+    pub namespace: Option<bool>,
+    pub exclude: Option<String>,
+}
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct MinifishConfig {
     pub mapping: HashMap<String, String>,
     pub meta_path: Option<PathBuf>,
-    #[serde(rename = "mockMY")]
-    pub mock_my: bool,
+    pub inject: Option<HashMap<String, InjectItem>>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

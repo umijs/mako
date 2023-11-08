@@ -154,6 +154,8 @@ fn transform_js(
                         &PluginTransformJsParam {
                             handler,
                             path: &task.path,
+                            top_level_mark,
+                            unresolved_mark,
                         },
                         ast,
                         context,
