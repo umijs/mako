@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use mako_core::anyhow::Result;
+use mako_core::anyhow::{anyhow, Result};
 use mako_core::clap::Parser;
 use mako_core::tokio;
 #[cfg(feature = "profile")]
@@ -73,12 +73,15 @@ async fn main() -> Result<()> {
     let root = if cli.root.is_absolute() {
         cli.root
     } else {
-        std::env::current_dir().unwrap().join(cli.root)
+        std::env::current_dir()?.join(cli.root)
     };
-    let root = root.canonicalize().unwrap();
+    let root = root
+        .canonicalize()
+        .map_err(|_| anyhow!("The root directory {:?} is not found", root))?;
 
     // config
-    let mut config = config::Config::new(&root, None, None).expect("load config error");
+    let mut config =
+        config::Config::new(&root, None, None).map_err(|_| anyhow!("Load config error"))?;
 
     config.mode = cli.mode;
 
