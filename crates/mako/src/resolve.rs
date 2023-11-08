@@ -40,6 +40,7 @@ pub struct Resolvers {
 pub struct ExternalResource {
     pub source: String,
     pub external: String,
+    pub script: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -73,6 +74,13 @@ impl ResolverResource {
             ResolverResource::Ignored => None,
         }
     }
+    pub fn get_script(&self) -> Option<String> {
+        match self {
+            ResolverResource::External(ExternalResource { script, .. }) => script.clone(),
+            ResolverResource::Resolved(_) => None,
+            ResolverResource::Ignored => None,
+        }
+    }
 }
 
 pub fn resolve(
@@ -96,56 +104,65 @@ pub fn resolve(
 fn get_external_target(
     externals: &HashMap<String, ExternalConfig>,
     source: &str,
-) -> Option<String> {
+) -> Option<(String, Option<String>)> {
     let global_obj = "(typeof globalThis !== 'undefined' ? globalThis : self)";
 
     if let Some(external) = externals.get(source) {
         // handle full match
         // ex. import React from 'react';
         match external {
-            ExternalConfig::Basic(external) => Some(if external.is_empty() {
-                "''".to_string()
-            } else {
-                format!("{}.{}", global_obj, external)
-            }),
-            ExternalConfig::Advanced(config) => Some(format!("{}.{}", global_obj, config.root)),
-        }
-    } else if let Some((advanced_config, subpath)) = externals.iter().find_map(|(key, config)| {
-        match config {
-            ExternalConfig::Advanced(config) => {
-                if let Some(caps) =
-                    Regex::new(&format!(r#"(?:^|/node_modules/|[a-zA-Z\d]@){}(/|$)"#, key))
-                        .ok()
-                        .unwrap()
-                        .captures(source)
-                {
-                    let subpath = source.split(&caps[0]).collect::<Vec<_>>()[1].to_string();
-
-                    match &config.subpath.exclude {
-                        // skip if source is excluded
-                        Some(exclude)
-                            if exclude.iter().any(|e| {
-                                Regex::new(&format!("(^|/){}(/|$)", e))
-                                    .ok()
-                                    .unwrap()
-                                    .is_match(subpath.as_str())
-                            }) =>
-                        {
-                            None
-                        }
-                        _ => Some((config, subpath)),
-                    }
+            ExternalConfig::Basic(external) => Some((
+                if external.is_empty() {
+                    "''".to_string()
                 } else {
-                    None
-                }
-            }
-            _ => None,
+                    format!("{}.{}", global_obj, external)
+                },
+                None,
+            )),
+            ExternalConfig::Advanced(config) => Some((
+                format!("{}.{}", global_obj, config.root),
+                config.script.clone(),
+            )),
         }
-    }) {
+    } else if let Some((advanced_config, subpath_config, subpath)) =
+        externals.iter().find_map(|(key, config)| {
+            match config {
+                ExternalConfig::Advanced(config) if config.subpath.is_some() => {
+                    if let Some(caps) =
+                        Regex::new(&format!(r#"(?:^|/node_modules/|[a-zA-Z\d]@){}(/|$)"#, key))
+                            .ok()
+                            .unwrap()
+                            .captures(source)
+                    {
+                        let subpath = source.split(&caps[0]).collect::<Vec<_>>()[1].to_string();
+                        let subpath_config = config.subpath.as_ref().unwrap();
+
+                        match &subpath_config.exclude {
+                            // skip if source is excluded
+                            Some(exclude)
+                                if exclude.iter().any(|e| {
+                                    Regex::new(&format!("(^|/){}(/|$)", e))
+                                        .ok()
+                                        .unwrap()
+                                        .is_match(subpath.as_str())
+                                }) =>
+                            {
+                                None
+                            }
+                            _ => Some((config, subpath_config, subpath)),
+                        }
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            }
+        })
+    {
         // handle subpath match
         // ex. import Button from 'antd/es/button';
         // find matched subpath rule
-        if let Some((rule, caps)) = advanced_config.subpath.rules.iter().find_map(|r| {
+        if let Some((rule, caps)) = subpath_config.rules.iter().find_map(|r| {
             let regex = Regex::new(r.regex.as_str()).ok().unwrap();
 
             if regex.is_match(subpath.as_str()) {
@@ -157,7 +174,9 @@ fn get_external_target(
             // generate target from rule target
             match &rule.target {
                 // external to empty string
-                ExternalAdvancedSubpathTarget::Empty => Some("''".to_string()),
+                ExternalAdvancedSubpathTarget::Empty => {
+                    Some(("''".to_string(), advanced_config.script.clone()))
+                }
                 // external to target template
                 ExternalAdvancedSubpathTarget::Tpl(target) => {
                     let regex = Regex::new(r"\$(\d+)").ok().unwrap();
@@ -182,9 +201,9 @@ fn get_external_target(
                                 .join("."),
                         };
                     }
-                    Some(format!(
-                        "{}.{}.{}",
-                        global_obj, advanced_config.root, replaced
+                    Some((
+                        format!("{}.{}.{}", global_obj, advanced_config.root, replaced),
+                        advanced_config.script.clone(),
                     ))
                 }
             }
@@ -209,10 +228,11 @@ fn do_resolve(
     } else {
         None
     };
-    if let Some(external) = external {
+    if let Some((external, script)) = external {
         Ok(ResolverResource::External(ExternalResource {
             source: source.to_string(),
             external,
+            script,
         }))
     } else {
         let path = PathBuf::from(path);
@@ -371,13 +391,13 @@ mod tests {
     #[test]
     fn test_resolve() {
         let x = resolve("test/resolve/normal", None, None, "index.ts", "./source");
-        assert_eq!(x, ("source.ts".to_string(), None));
+        assert_eq!(x, "source.ts".to_string());
     }
 
     #[test]
     fn test_resolve_dep() {
         let x = resolve("test/resolve/normal", None, None, "index.ts", "foo");
-        assert_eq!(x, ("node_modules/foo/index.js".to_string(), None));
+        assert_eq!(x, "node_modules/foo/index.js".to_string());
     }
 
     #[test]
@@ -390,17 +410,17 @@ mod tests {
             "index.css",
             "local/local.css",
         );
-        assert_eq!(x, ("local/local.css".to_string(), None));
+        assert_eq!(x, "local/local.css".to_string());
 
         // css resolver also fallback to node_modules
         let x = css_resolve("test/resolve/css", None, None, "index.css", "dep/dep.css");
-        assert_eq!(x, ("node_modules/dep/dep.css".to_string(), None));
+        assert_eq!(x, "node_modules/dep/dep.css".to_string());
     }
 
     #[test]
     fn test_resolve_dep_browser_fields() {
         let x = resolve("test/resolve/browser_fields", None, None, "index.ts", "foo");
-        assert_eq!(x, ("node_modules/foo/esm-browser.js".to_string(), None));
+        assert_eq!(x, "node_modules/foo/esm-browser.js".to_string());
     }
 
     #[test]
@@ -413,7 +433,7 @@ mod tests {
             "index.ts",
             "bar",
         );
-        assert_eq!(x, ("node_modules/foo/index.js".to_string(), None));
+        assert_eq!(x, "node_modules/foo/index.js".to_string());
         let x = resolve(
             "test/resolve/normal",
             Some(alias),
@@ -421,7 +441,7 @@ mod tests {
             "index.ts",
             "bar/foo",
         );
-        assert_eq!(x, ("node_modules/foo/foo.js".to_string(), None));
+        assert_eq!(x, "node_modules/foo/foo.js".to_string());
     }
 
     #[test]
@@ -433,7 +453,7 @@ mod tests {
             ),
             ("empty".to_string(), ExternalConfig::Basic("".to_string())),
         ]);
-        let x = resolve(
+        let x = external_resolve(
             "test/resolve/normal",
             None,
             Some(&externals),
@@ -444,57 +464,73 @@ mod tests {
             x,
             (
                 "react".to_string(),
-                Some("(typeof globalThis !== 'undefined' ? globalThis : self).react".to_string())
+                Some("(typeof globalThis !== 'undefined' ? globalThis : self).react".to_string()),
+                None,
             )
         );
-        let x = resolve(
+        let x = external_resolve(
             "test/resolve/normal",
             None,
             Some(&externals),
             "index.ts",
             "empty",
         );
-        assert_eq!(x, ("empty".to_string(), Some("''".to_string())));
+        assert_eq!(x, ("empty".to_string(), Some("''".to_string()), None));
     }
 
     #[test]
     fn test_resolve_advanced_externals() {
-        let externals = HashMap::from([(
-            "antd".to_string(),
-            ExternalConfig::Advanced(ExternalAdvanced {
-                root: "antd".to_string(),
-                subpath: ExternalAdvancedSubpath {
-                    exclude: Some(vec!["style".to_string()]),
-                    rules: vec![
-                        ExternalAdvancedSubpathRule {
-                            regex: "/(version|message|notification)$".to_string(),
-                            target: ExternalAdvancedSubpathTarget::Tpl("$1".to_string()),
-                            target_converter: None,
-                        },
-                        ExternalAdvancedSubpathRule {
-                            regex: "/locales/(.*)$".to_string(),
-                            target: ExternalAdvancedSubpathTarget::Empty,
-                            target_converter: None,
-                        },
-                        ExternalAdvancedSubpathRule {
-                            regex: "^(?:es|lib)/([a-z-]+)$".to_string(),
-                            target: ExternalAdvancedSubpathTarget::Tpl("$1".to_string()),
-                            target_converter: Some(ExternalAdvancedSubpathConverter::PascalCase),
-                        },
-                        ExternalAdvancedSubpathRule {
-                            regex: "^(?:es|lib)/([a-z-]+)/([A-Z][a-zA-Z-]+)$".to_string(),
-                            target: ExternalAdvancedSubpathTarget::Tpl("$1.$2".to_string()),
-                            target_converter: Some(ExternalAdvancedSubpathConverter::PascalCase),
-                        },
-                    ],
-                },
-            }),
-        )]);
+        let externals = HashMap::from([
+            (
+                "antd".to_string(),
+                ExternalConfig::Advanced(ExternalAdvanced {
+                    root: "antd".to_string(),
+                    script: None,
+                    subpath: Some(ExternalAdvancedSubpath {
+                        exclude: Some(vec!["style".to_string()]),
+                        rules: vec![
+                            ExternalAdvancedSubpathRule {
+                                regex: "/(version|message|notification)$".to_string(),
+                                target: ExternalAdvancedSubpathTarget::Tpl("$1".to_string()),
+                                target_converter: None,
+                            },
+                            ExternalAdvancedSubpathRule {
+                                regex: "/locales/(.*)$".to_string(),
+                                target: ExternalAdvancedSubpathTarget::Empty,
+                                target_converter: None,
+                            },
+                            ExternalAdvancedSubpathRule {
+                                regex: "^(?:es|lib)/([a-z-]+)$".to_string(),
+                                target: ExternalAdvancedSubpathTarget::Tpl("$1".to_string()),
+                                target_converter: Some(
+                                    ExternalAdvancedSubpathConverter::PascalCase,
+                                ),
+                            },
+                            ExternalAdvancedSubpathRule {
+                                regex: "^(?:es|lib)/([a-z-]+)/([A-Z][a-zA-Z-]+)$".to_string(),
+                                target: ExternalAdvancedSubpathTarget::Tpl("$1.$2".to_string()),
+                                target_converter: Some(
+                                    ExternalAdvancedSubpathConverter::PascalCase,
+                                ),
+                            },
+                        ],
+                    }),
+                }),
+            ),
+            (
+                "script".to_string(),
+                ExternalConfig::Advanced(ExternalAdvanced {
+                    root: "ScriptType".to_string(),
+                    script: Some("https://example.com/lib/script.js".to_string()),
+                    subpath: None,
+                }),
+            ),
+        ]);
         fn internal_resolve(
             externals: &HashMap<String, ExternalConfig>,
             source: &str,
-        ) -> (String, Option<String>) {
-            resolve(
+        ) -> (String, Option<String>, Option<String>) {
+            external_resolve(
                 "test/resolve/externals",
                 None,
                 Some(externals),
@@ -507,7 +543,8 @@ mod tests {
             internal_resolve(&externals, "antd/es/button/style"),
             (
                 "node_modules/antd/es/button/style/index.js".to_string(),
-                None
+                None,
+                None,
             )
         );
         // expect capture target
@@ -518,13 +555,18 @@ mod tests {
                 Some(
                     "(typeof globalThis !== 'undefined' ? globalThis : self).antd.version"
                         .to_string()
-                )
+                ),
+                None,
             )
         );
         // expect empty target
         assert_eq!(
             internal_resolve(&externals, "antd/es/locales/zh_CN"),
-            ("antd/es/locales/zh_CN".to_string(), Some("''".to_string()))
+            (
+                "antd/es/locales/zh_CN".to_string(),
+                Some("''".to_string()),
+                None
+            ),
         );
         // expect target converter
         assert_eq!(
@@ -534,7 +576,8 @@ mod tests {
                 Some(
                     "(typeof globalThis !== 'undefined' ? globalThis : self).antd.DatePicker"
                         .to_string()
-                )
+                ),
+                None,
             )
         );
         assert_eq!(
@@ -544,7 +587,8 @@ mod tests {
                 Some(
                     "(typeof globalThis !== 'undefined' ? globalThis : self).antd.Input.Group"
                         .to_string()
-                )
+                ),
+                None,
             )
         );
         // expect external absolute path
@@ -556,7 +600,8 @@ mod tests {
                 Some(
                     "(typeof globalThis !== 'undefined' ? globalThis : self).antd.Button"
                         .to_string()
-                )
+                ),
+                None,
             )
         );
         assert_eq!(
@@ -570,7 +615,20 @@ mod tests {
                 Some(
                     "(typeof globalThis !== 'undefined' ? globalThis : self).antd.Button"
                         .to_string()
-                )
+                ),
+                None,
+            )
+        );
+        // expect script type external
+        assert_eq!(
+            internal_resolve(&externals, "script"),
+            (
+                "script".to_string(),
+                Some(
+                    "(typeof globalThis !== 'undefined' ? globalThis : self).ScriptType"
+                        .to_string()
+                ),
+                Some("https://example.com/lib/script.js".to_string()),
             )
         );
     }
@@ -581,8 +639,8 @@ mod tests {
         externals: Option<&HashMap<String, ExternalConfig>>,
         path: &str,
         source: &str,
-    ) -> (String, Option<String>) {
-        base_resolve(base, alias, externals, path, source, ResolverType::Cjs)
+    ) -> String {
+        base_resolve(base, alias, externals, path, source, ResolverType::Cjs).0
     }
 
     fn css_resolve(
@@ -591,8 +649,18 @@ mod tests {
         externals: Option<&HashMap<String, ExternalConfig>>,
         path: &str,
         source: &str,
-    ) -> (String, Option<String>) {
-        base_resolve(base, alias, externals, path, source, ResolverType::Css)
+    ) -> String {
+        base_resolve(base, alias, externals, path, source, ResolverType::Css).0
+    }
+
+    fn external_resolve(
+        base: &str,
+        alias: Option<HashMap<String, String>>,
+        externals: Option<&HashMap<String, ExternalConfig>>,
+        path: &str,
+        source: &str,
+    ) -> (String, Option<String>, Option<String>) {
+        base_resolve(base, alias, externals, path, source, ResolverType::Cjs)
     }
 
     fn base_resolve(
@@ -602,7 +670,7 @@ mod tests {
         path: &str,
         source: &str,
         resolve_type: ResolverType,
-    ) -> (String, Option<String>) {
+    ) -> (String, Option<String>, Option<String>) {
         let current_dir = std::env::current_dir().unwrap();
         let fixture = current_dir.join(base);
         let mut config: Config = Default::default();
@@ -619,8 +687,9 @@ mod tests {
         .unwrap();
         let path = resource.get_resolved_path();
         let external = resource.get_external();
+        let script = resource.get_script();
         println!("> path: {:?}, {:?}", path, external);
         let path = path.replace(format!("{}/", fixture.to_str().unwrap()).as_str(), "");
-        (path, external)
+        (path, external, script)
     }
 }

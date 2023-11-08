@@ -98,9 +98,9 @@ impl VisitMut for AsyncModule<'_> {
                                     ..
                                 })) = &call_expr.callee
                                 {
-                                    if let Some(Ident { sym, .. }) = obj.clone().ident() {
-                                        if &sym == "_interop_require_default"
-                                            || &sym == "_interop_require_wildcard"
+                                    if let Some(Ident { sym: obj_sym, .. }) = obj.clone().ident() {
+                                        if &obj_sym == "_interop_require_default"
+                                            || &obj_sym == "_interop_require_wildcard"
                                         {
                                             if let Some(Ident { sym, .. }) = prop.clone().ident() {
                                                 if &sym == "_" {
@@ -126,11 +126,27 @@ impl VisitMut for AsyncModule<'_> {
                                                                             binding_ident,
                                                                         ) = &decl.name
                                                                         {
-                                                                            self.async_deps_idents
-                                                                                .push(
-                                                                                    binding_ident
-                                                                                        .clone(),
-                                                                                );
+                                                                            let binding_ident_default = BindingIdent {
+                                                                                id: Ident {
+                                                                                    sym: format!("{}.default", binding_ident.id.sym).into(),
+                                                                                    ..binding_ident.id.clone()
+                                                                                },
+                                                                                ..binding_ident.clone()
+                                                                            };
+
+                                                                            if &obj_sym == "_interop_require_default" {
+                                                                                // ex. _react.default
+                                                                                self.async_deps_idents.push(binding_ident_default.clone());
+                                                                            } else if &obj_sym == "_interop_require_wildcard" {
+                                                                                // ex. _react
+                                                                                self.async_deps_idents.push(binding_ident.clone());
+                                                                                // why also push the default import?
+                                                                                // adapt both default import and wildcard import for the same module
+                                                                                self.async_deps_idents.push(binding_ident_default.clone());
+                                                                            } else {
+                                                                                unreachable!();
+                                                                            }
+
                                                                             self.last_dep_pos = i;
                                                                         }
                                                                     }

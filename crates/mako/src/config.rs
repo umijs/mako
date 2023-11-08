@@ -215,7 +215,8 @@ pub struct ExternalAdvancedSubpath {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ExternalAdvanced {
     pub root: String,
-    pub subpath: ExternalAdvancedSubpath,
+    pub script: Option<String>,
+    pub subpath: Option<ExternalAdvancedSubpath>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

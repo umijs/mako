@@ -19,7 +19,7 @@ pub async fn build(
 {
     entry?: Record<string, string>;
     output?: {
-        path: string; 
+        path: string;
         mode: "bundle" | "bundless" ;
         esVersion?: string;
         meta?: boolean;
@@ -42,7 +42,8 @@ pub async fn build(
         string,
         string | {
             root: string;
-            subpath: {
+            script?: string;
+            subpath?: {
                 exclude?: string[];
                 rules: {
                     regex: string;

@@ -51,7 +51,8 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
             .clone()
             .into_iter()
             .filter(|(_, dep, info)| {
-                matches!(dep.resolve_type, ResolveType::Import) && info.is_async
+                matches!(dep.resolve_type, ResolveType::Import | ResolveType::Require)
+                    && info.is_async
             })
             .map(|(_, dep, _)| dep)
             .collect();
@@ -99,7 +100,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
                 dep_map: &deps_to_replace,
                 async_deps: &async_deps,
                 is_entry: module.is_entry,
-                is_async: info.is_async,
+                wrap_async: info.is_async && info.external.is_none(),
                 top_level_await: info.top_level_await,
             });
         }
@@ -127,7 +128,7 @@ pub struct TransformJsParam<'a> {
     pub dep_map: &'a DependenciesToReplace,
     pub async_deps: &'a Vec<Dependency>,
     pub is_entry: bool,
-    pub is_async: bool,
+    pub wrap_async: bool,
     pub top_level_await: bool,
 }
 
@@ -140,7 +141,7 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) {
         dep_map,
         async_deps,
         is_entry,
-        is_async,
+        wrap_async,
         top_level_await,
     } = transform_js_param;
     let is_dev = matches!(context.config.mode, Mode::Development);
@@ -185,7 +186,7 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) {
                             ));
 
                             // transform async module
-                            if is_async {
+                            if wrap_async {
                                 let mut async_module = AsyncModule {
                                     async_deps,
                                     async_deps_idents: Vec::new(),

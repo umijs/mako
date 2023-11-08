@@ -30,7 +30,8 @@ externals?: Record<
 string,
 string | {
 root: string;
-subpath: {
+script?: string;
+subpath?: {
 exclude?: string[];
 rules: {
 regex: string;
