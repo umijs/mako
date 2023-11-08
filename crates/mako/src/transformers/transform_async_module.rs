@@ -356,6 +356,7 @@ mod tests {
     use std::sync::Arc;
 
     use mako_core::swc_common::{Globals, DUMMY_SP, GLOBALS};
+    use mako_core::swc_ecma_transforms::resolver;
     use mako_core::swc_ecma_visit::VisitMutWith;
 
     use super::AsyncModule;
@@ -424,6 +425,11 @@ require._async(module, async (handleAsyncDeps, asyncResult)=>{
                 context: &context,
                 unresolved_mark: ast.unresolved_mark,
             };
+            ast.ast.visit_mut_with(&mut resolver(
+                ast.unresolved_mark,
+                ast.top_level_mark,
+                false,
+            ));
             ast.ast.visit_mut_with(&mut async_module);
         });
 
