@@ -1,6 +1,6 @@
 {
   "name": "@alipay/umi-bundler-okam",
-  "version": "0.0.33-canary.20231107.1",
+  "version": "0.0.34",
   "dependencies": {
     "@okamjs/okam": "0.0.34",
     "@swc/helpers": "0.5.1",
