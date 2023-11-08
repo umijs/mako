@@ -81,7 +81,7 @@ async fn main() -> Result<()> {
 
     // config
     let mut config =
-        config::Config::new(&root, None, None).map_err(|_| anyhow!("load config error"))?;
+        config::Config::new(&root, None, None).map_err(|_| anyhow!("Load config error"))?;
 
     config.mode = cli.mode;
 
