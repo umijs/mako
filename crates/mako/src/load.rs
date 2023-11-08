@@ -1,6 +1,6 @@
-use std::fs;
+use std::fs::{self, File};
 use std::hash::Hasher;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Read};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -134,8 +134,13 @@ pub fn handle_asset<T: AsRef<str>>(
 }
 
 pub fn read_content<P: AsRef<Path>>(path: P) -> Result<String> {
-    std::fs::read_to_string(path.as_ref())
-        .with_context(|| format!("read file error: {:?}", path.as_ref()))
+    let mut file = File::open(path.as_ref())
+        .with_context(|| format!("open file error: {:?}", path.as_ref()))?;
+    let mut buf = vec![];
+
+    file.read_to_end(&mut buf)
+        .with_context(|| format!("read file error: {:?}", path.as_ref()))?;
+    Ok(String::from_utf8_lossy(&buf).to_string())
 }
 
 // 获取文件名称
