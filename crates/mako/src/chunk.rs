@@ -58,7 +58,7 @@ impl Chunk {
                         Component::Prefix(_) => "@".to_string(),
                         Component::RootDir => "".to_string(),
                         Component::CurDir => "".to_string(),
-                        Component::Normal(seg) => seg.to_string_lossy().replace('.', "_"),
+                        Component::Normal(seg) => seg.to_string_lossy().replace(['.', '?'], "_"),
                     })
                     .collect::<Vec<String>>()
                     .join("_");
