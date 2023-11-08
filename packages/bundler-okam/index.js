@@ -167,11 +167,24 @@ function checkConfig(opts) {
     throw new Error('externals array is not supported in Mako bundler');
   }
 
-  // 不支持非 script 的 [string] externals
+  // 对 externals 的具体值做判定
   Object.values(opts.config.externals || {}).forEach((v) => {
     if (Array.isArray(v) && (v.length !== 2 || !v[0].startsWith('script '))) {
+      // 不支持非 script 的 [string] externals
       throw new Error(
-        `externals [string] only can be ['script {url}', '{root}'] in Mako bundler`,
+        `externals [string] value only can be ['script {url}', '{root}'] in Mako bundler`,
+      );
+    } else if (typeof v === 'object') {
+      throw new Error(
+        'externals object value is not supported in Mako bundler',
+      );
+    } else if (typeof v === 'function') {
+      throw new Error(
+        'externals function value is not supported in Mako bundler',
+      );
+    } else if (v instanceof RegExp) {
+      throw new Error(
+        'externals RegExp value is not supported in Mako bundler',
       );
     }
   });
@@ -362,8 +375,12 @@ async function getOkamConfig(opts) {
         root: v[1],
         script: v[0].replace('script ', ''),
       };
+    } else if (typeof v === 'string') {
+      // 'var window.antd' => 'antd'
+      ret[k] = v.replace(/^var\s+(window\.)?/, '');
     } else {
-      ret[k] = v;
+      // other types except boolean has been checked before
+      // so here only ignore invalid boolean type
     }
 
     return ret;
