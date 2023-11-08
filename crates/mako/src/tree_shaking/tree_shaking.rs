@@ -417,7 +417,7 @@ mod tests {
         assert_display_snapshot!(content);
     }
     #[tokio::test(flavor = "multi_thread")]
-    async fn test_tree_shaking_import_self_entry() {
+    async fn test_tree_shaking_require_self() {
         let compiler = setup_compiler("test/build/tree-shaking_import_self_entry", false);
         compiler.compile().unwrap();
         let content = read_dist_file(&compiler, "dist/index.js");
