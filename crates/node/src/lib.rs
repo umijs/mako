@@ -101,7 +101,8 @@ pub async fn build(
 
     let default_config = serde_json::to_string(&config).unwrap();
     let root = std::path::PathBuf::from(&root);
-    let mut config = Config::new(&root, Some(&default_config), None).unwrap();
+    let mut config = Config::new(&root, Some(&default_config), None)
+        .map_err(|e| napi::Error::new(Status::GenericFailure, format!("{}", e)))?;
 
     // dev 环境下不产生 hash, prod 环境下根据用户配置
     if config.mode == Mode::Development {
