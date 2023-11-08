@@ -125,6 +125,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
 
         // if module is not esm, mark all imported modules as [UsedExports::All]
         if !matches!(tree_shake_module.module_system, ModuleSystem::ESModule) {
+            drop(tree_shake_module);
             for (dep_id, _) in module_graph.get_dependencies(tree_shake_module_id) {
                 if let Some(ref_cell) = tree_shake_modules_map.get(dep_id) {
                     let mut dep_module = ref_cell.borrow_mut();

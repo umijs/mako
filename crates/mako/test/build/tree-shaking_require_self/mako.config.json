@@ -1,0 +1,7 @@
+{
+  "entry": {
+    "index": "./index.js"
+  },
+  "minify": false,
+  "hmr": false
+}
