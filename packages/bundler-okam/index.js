@@ -174,7 +174,7 @@ function checkConfig(opts) {
       throw new Error(
         `externals [string] value only can be ['script {url}', '{root}'] in Mako bundler`,
       );
-    } else if (typeof v === 'object') {
+    } else if (lodash.isPlainObject(v)) {
       throw new Error(
         'externals object value is not supported in Mako bundler',
       );
@@ -190,7 +190,7 @@ function checkConfig(opts) {
       typeof v === 'string' &&
       // allow non-standard var usage in some project
       // ex. `var window.antd` or `var antd`
-      !/^var\s+[\w$]+$/.test(v) &&
+      !/^var\s+[\w\.$]+$/.test(v) &&
       // allow prefix window type
       // ex. `window antd`
       !/^window\s+/.test(v) &&
@@ -202,7 +202,7 @@ function checkConfig(opts) {
       // ex. `commonjs`、`var 1 + 1`、`global`
       throw new Error(
         `externals string value prefix \`${
-          v.slipt(' ')[0]
+          v.split(' ')[0]
         } \` is not supported in Mako bundler`,
       );
     }
