@@ -191,7 +191,7 @@ pub fn js_ast_to_code(
                     context.config.minify && matches!(context.config.mode, Mode::Production),
                 )
                 .with_target(context.config.output.es_version)
-                .with_ascii_only(true)
+                .with_ascii_only(context.config.output.ascii_only)
                 .with_omit_last_semi(true),
             cm: cm.clone(),
             comments: Some(swc_comments),
