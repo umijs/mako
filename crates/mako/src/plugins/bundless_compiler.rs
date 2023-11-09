@@ -4,7 +4,7 @@ use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use mako_core::anyhow::Result;
+use mako_core::anyhow::{anyhow, Result};
 use mako_core::pathdiff::diff_paths;
 use mako_core::rayon::prelude::*;
 use mako_core::swc_common::errors::HANDLER;
@@ -114,62 +114,77 @@ impl Plugin for BundlessCompiler {
 }
 
 pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> Result<()> {
-    module_ids.iter().for_each(|module_id| {
-        let module_graph = context.module_graph.read().unwrap();
-        let deps = module_graph.get_dependencies(module_id);
+    mako_core::mako_profile_function!();
 
-        let module_dist_path = to_dist_path(&module_id.id, context)
-            .parent()
-            .unwrap()
-            .to_path_buf();
+    module_ids
+        .par_iter()
+        .map(|module_id| {
+            let module_graph = context.module_graph.read().unwrap();
+            let deps = module_graph.get_dependencies(module_id);
 
-        let resolved_deps: HashMap<String, String> = deps
-            .clone()
-            .into_iter()
-            // .map(|(id, dep)| (dep.source.clone(), id.generate(context)))
-            .map(|(id, dep)| {
-                let dep_dist_path = to_dist_path(&id.id, context);
+            let module_dist_path = to_dist_path(&module_id.id, context)
+                .parent()
+                .unwrap()
+                .to_path_buf();
 
-                let rel_path = diff_paths(dep_dist_path, &module_dist_path)
-                    .unwrap()
-                    .with_extension("js");
+            let resolved_deps = deps
+                .clone()
+                .into_iter()
+                // .map(|(id, dep)| (dep.source.clone(), id.generate(context)))
+                .map(|(id, dep)| {
+                    let dep_dist_path = to_dist_path(&id.id, context);
 
-                let replacement: String = {
-                    let mut to_path = rel_path.to_str().unwrap().to_string();
-                    if to_path.starts_with('.') {
-                        to_path
-                    } else {
-                        to_path.insert_str(0, "./");
-                        to_path
-                    }
-                };
+                    let rel_path = diff_paths(&dep_dist_path, &module_dist_path)
+                        .ok_or_else(|| {
+                            anyhow!(
+                                "failed to get relative path from {:?} to {:?}",
+                                dep_dist_path,
+                                module_dist_path
+                            )
+                        })?
+                        .with_extension("js");
 
-                (dep.source.clone(), replacement)
-            })
-            .collect();
-        let _assets_map: HashMap<String, String> = deps
-            .into_iter()
-            .map(|(id, dep)| (dep.source.clone(), id.id.clone()))
-            .collect();
-        drop(module_graph);
+                    let replacement: String = {
+                        let mut to_path = rel_path.to_str().unwrap().to_string();
+                        if to_path.starts_with('.') {
+                            to_path
+                        } else {
+                            to_path.insert_str(0, "./");
+                            to_path
+                        }
+                    };
 
-        // let deps: Vec<(&ModuleId, &crate::module::Dependency)> =
-        //     module_graph.get_dependencies(module_id);
-        let mut module_graph = context.module_graph.write().unwrap();
-        let module = module_graph.get_module_mut(module_id).unwrap();
-        let info = module.info.as_mut().unwrap();
-        let ast = &mut info.ast;
+                    Ok((dep.source.clone(), replacement))
+                })
+                .collect::<Result<Vec<_>>>();
 
-        let deps_to_replace = DependenciesToReplace {
-            resolved: resolved_deps,
-            missing: info.missing_deps.clone(),
-            ignored: vec![],
-        };
+            let resolved_deps: HashMap<String, String> = resolved_deps?.into_iter().collect();
+            let _assets_map: HashMap<String, String> = deps
+                .into_iter()
+                .map(|(id, dep)| (dep.source.clone(), id.id.clone()))
+                .collect();
+            drop(module_graph);
 
-        if let ModuleAst::Script(ast) = ast {
-            transform_js_generate(&module.id, context, ast, &deps_to_replace, module.is_entry);
-        }
-    });
+            // let deps: Vec<(&ModuleId, &crate::module::Dependency)> =
+            //     module_graph.get_dependencies(module_id);
+            let mut module_graph = context.module_graph.write().unwrap();
+            let module = module_graph.get_module_mut(module_id).unwrap();
+            let info = module.info.as_mut().unwrap();
+            let ast = &mut info.ast;
+
+            let deps_to_replace = DependenciesToReplace {
+                resolved: resolved_deps,
+                missing: info.missing_deps.clone(),
+                ignored: vec![],
+            };
+
+            if let ModuleAst::Script(ast) = ast {
+                transform_js_generate(&module.id, context, ast, &deps_to_replace, module.is_entry);
+            }
+
+            Ok(())
+        })
+        .collect::<Result<Vec<_>>>()?;
     Ok(())
 }
 
