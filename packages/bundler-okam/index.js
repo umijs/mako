@@ -188,14 +188,11 @@ function checkConfig(opts) {
       );
     } else if (
       typeof v === 'string' &&
-      // allow non-standard var usage in some project
-      // ex. `var window.antd` or `var antd`
-      !/^var\s+[\w\.$]+$/.test(v) &&
       // allow prefix window type
       // ex. `window antd`
       !/^window\s+/.test(v) &&
       // allow normal string value without type prefix
-      // ex. `antd` or `antd.Button` or `antd['Button']`
+      // ex. `antd` or `antd.Button` or `antd['Button']` or `window.antd`
       !/^\S+$/.test(v)
     ) {
       // throw error for other type prefixes
@@ -410,8 +407,8 @@ async function getOkamConfig(opts) {
         script: url.replace('script ', ''),
       };
     } else if (typeof v === 'string') {
-      // 'var window.antd' => 'antd'
-      ret[k] = v.replace(/^var\s+(window\.)?|^window\s+/, '');
+      // 'window.antd' or 'window antd' => 'antd'
+      ret[k] = v.replace(/^window(\s+|\.)/, '');
     } else {
       // other types except boolean has been checked before
       // so here only ignore invalid boolean type
