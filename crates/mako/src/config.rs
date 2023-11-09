@@ -14,16 +14,15 @@ use mako_core::{clap, config, thiserror};
 use serde::Serialize;
 
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct OutputConfig {
     pub path: PathBuf,
     pub mode: OutputMode,
-    #[serde(rename(deserialize = "esVersion"))]
     pub es_version: EsVersion,
+    pub ascii_only: bool,
     pub meta: bool,
 
-    #[serde(rename(deserialize = "preserveModules"))]
     pub preserve_modules: bool,
-    #[serde(rename(deserialize = "preserveModulesRoot"))]
     pub preserve_modules_root: PathBuf,
 }
 
@@ -306,6 +305,7 @@ const DEFAULT_CONFIG: &str = r#"
       "mode": "bundle",
       "esVersion": "es2022",
       "meta": false,
+      "asciiOnly": true,
       "preserveModules": false,
       "preserveModulesRoot": ""
     },

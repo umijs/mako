@@ -23,6 +23,7 @@ pub async fn build(
         mode: "bundle" | "bundless" ;
         esVersion?: string;
         meta?: boolean;
+        asciiOnly?: boolean,
         preserveModules?: boolean;
         preserveModulesRoot?: string;
     };

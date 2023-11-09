@@ -11,6 +11,7 @@ path: string;
 mode: "bundle" | "bundless" ;
 esVersion?: string;
 meta?: boolean;
+asciiOnly?: boolean,
 preserveModules?: boolean;
 preserveModulesRoot?: string;
 };
@@ -23,6 +24,7 @@ manifestConfig?: {
 fileName: string;
 basePath: string;
 };
+minify?: boolean;
 mode?: "development" | "production";
 define?: Record<string, string>;
 devtool?: "source-map" | "inline-source-map" | "none";
