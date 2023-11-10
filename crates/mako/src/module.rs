@@ -145,6 +145,14 @@ pub enum ModuleAst {
 }
 
 impl ModuleAst {
+    pub fn as_script(&self) -> &SwcModule {
+        if let Self::Script(script) = self {
+            &script.ast
+        } else {
+            panic!("ModuleAst is not Script")
+        }
+    }
+
     pub fn as_script_mut(&mut self) -> &mut SwcModule {
         if let Self::Script(script) = self {
             &mut script.ast

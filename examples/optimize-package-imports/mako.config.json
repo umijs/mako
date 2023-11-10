@@ -1,0 +1,5 @@
+{
+  "devtool": "source-map",
+  "stats": true,
+  "hash": true
+}
