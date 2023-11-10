@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use cached::proc_macro::cached;
 use mako_core::anyhow::Result;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{
@@ -244,7 +245,7 @@ impl Fold for OptimizePackageImports {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct ExportInfo {
     // `bar` in `export { foo as bar } from './foo';`
     exported: String,
@@ -254,6 +255,7 @@ struct ExportInfo {
     orig: String,
 }
 
+#[cached(result = true, key = "String", convert = r#"{ format!("{}", path) }"#)]
 fn parse_barrel_file(path: &str, context: &Arc<Context>) -> Result<(bool, Vec<ExportInfo>)> {
     let request = parse_path(path)?;
     let content = load(&request, false, context)?;
