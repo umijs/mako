@@ -1,6 +1,6 @@
 {
   "name": "@okamjs/okam-darwin-arm64",
-  "version": "0.0.35-dev.20231110.1",
+  "version": "0.0.35-dev.20231110.2",
   "os": [
     "darwin"
   ],
