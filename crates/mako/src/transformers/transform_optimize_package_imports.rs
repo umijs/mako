@@ -9,6 +9,7 @@ use mako_core::swc_ecma_ast::{
 };
 use mako_core::swc_ecma_utils::quote_str;
 use mako_core::swc_ecma_visit::Fold;
+use mako_core::tracing::debug;
 
 use crate::build::parse_path;
 use crate::compiler::Context;
@@ -32,10 +33,10 @@ impl Fold for OptimizePackageImports {
 
         for module_item in module_items {
             if let ModuleItem::ModuleDecl(ModuleDecl::Import(import_decl)) = &module_item {
-                // 1. Exclude situations where import source does not need to be replaced
-                //   - Don't replace import namesapce
-                // FIXME: If the specifiers' length is zero, should replace?
-                // FIXME: Consider replace import default
+                // 1. Exclude situations where import source does not need to be replaced:
+                //   - namespace import
+                //   - named import with non specifier
+                // TODO: Consider support import default?
                 if import_decl
                     .specifiers
                     .iter()
@@ -87,8 +88,8 @@ impl Fold for OptimizePackageImports {
                             continue;
                         }
 
-                        println!(
-                            "\nparsed barrel file:\n    path:{:?}\n    export_map:{:?}\n",
+                        debug!(
+                            "parsed barrel file: {:?}, export_map:{:?}",
                             path, export_map
                         );
 
