@@ -28,6 +28,7 @@ use crate::targets;
 use crate::transformers::transform_css_url_replacer::CSSUrlReplacer;
 use crate::transformers::transform_dynamic_import_to_require::DynamicImportToRequire;
 use crate::transformers::transform_env_replacer::{build_env_map, EnvReplacer};
+use crate::transformers::transform_optimize_package_imports::optimize_package_imports;
 use crate::transformers::transform_provide::Provide;
 use crate::transformers::transform_px2rem::Px2Rem;
 use crate::transformers::transform_react::mako_react;
@@ -144,6 +145,7 @@ fn transform_js(
                         }),
                         // 简化代码, 例如可以删除一些不必要的 if 分支
                         simplifier(unresolved_mark, Default::default()),
+                        optimize_package_imports(task.path.clone(), context.clone()),
                     );
 
                     ast.body = folders.fold_module(ast.clone()).body;
