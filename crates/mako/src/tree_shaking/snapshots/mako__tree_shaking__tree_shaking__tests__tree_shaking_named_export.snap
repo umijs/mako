@@ -2,340 +2,342 @@
 source: crates/mako/src/tree_shaking/tree_shaking.rs
 expression: content
 ---
-var chunksIdToUrlMap = {};
-var cssChunksIdToUrlMap = {};
-var e = "index.ts";
-var cssInstalledChunks = {
-    "index.ts": 0
-};
-var m = {
-    "1.ts": function(module, exports, require) {
-        Object.defineProperty(exports, "__esModule", {
-            value: true
-        });
-        Object.defineProperty(exports, "bar", {
-            enumerable: true,
-            get: function() {
-                return bar;
-            }
-        });
-        const bar = 1;
-    },
-    "index.ts": function(module, exports, require) {
-        Object.defineProperty(exports, "__esModule", {
-            value: true
-        });
-        var _1 = require("1.ts");
-        console.log(_1.bar);
-    }
-};
-function createRuntime(makoModules, entryModuleId) {
-    var modulesRegistry = {};
-    function requireModule(moduleId) {
-        if (moduleId === '$$IGNORED$$') return {};
-        var cachedModule = modulesRegistry[moduleId];
-        if (cachedModule !== undefined) {
-            if (cachedModule.error) {
-                throw cachedModule.error;
-            }
-            return cachedModule.exports;
+(function() {
+    var chunksIdToUrlMap = {};
+    var cssChunksIdToUrlMap = {};
+    var e = "index.ts";
+    var cssInstalledChunks = {
+        "index.ts": 0
+    };
+    var m = {
+        "1.ts": function(module, exports, require) {
+            Object.defineProperty(exports, "__esModule", {
+                value: true
+            });
+            Object.defineProperty(exports, "bar", {
+                enumerable: true,
+                get: function() {
+                    return bar;
+                }
+            });
+            const bar = 1;
+        },
+        "index.ts": function(module, exports, require) {
+            Object.defineProperty(exports, "__esModule", {
+                value: true
+            });
+            var _1 = require("1.ts");
+            console.log(_1.bar);
         }
-        var module = {
-            id: moduleId,
-            exports: {}
-        };
-        modulesRegistry[moduleId] = module;
-        try {
-            var execOptions = {
+    };
+    function createRuntime(makoModules, entryModuleId) {
+        var modulesRegistry = {};
+        function requireModule(moduleId) {
+            if (moduleId === '$$IGNORED$$') return {};
+            var cachedModule = modulesRegistry[moduleId];
+            if (cachedModule !== undefined) {
+                if (cachedModule.error) {
+                    throw cachedModule.error;
+                }
+                return cachedModule.exports;
+            }
+            var module = {
                 id: moduleId,
-                module: module,
-                factory: makoModules[moduleId],
-                require: requireModule
+                exports: {}
             };
-            requireModule.requireInterceptors.forEach(function(interceptor) {
-                interceptor(execOptions);
-            });
-            execOptions.factory.call(execOptions.module.exports, execOptions.module, execOptions.module.exports, execOptions.require);
-        } catch (e) {
-            modulesRegistry[moduleId].error = e;
-            throw e;
-        }
-        return module.exports;
-    }
-    requireModule.requireInterceptors = [];
-    !(function() {
-        requireModule.chunkEnsures = {};
-        requireModule.ensure = function(chunkId) {
-            return Promise.all(Object.keys(requireModule.chunkEnsures).reduce(function(promises, key) {
-                requireModule.chunkEnsures[key](chunkId, promises);
-                return promises;
-            }, []));
-        };
-    })();
-    !(function() {
-        requireModule.jsonpInstalled = {};
-        var installedChunks = requireModule.jsonpInstalled;
-        requireModule.chunkEnsures.jsonp = function(chunkId, promises) {
-            var data = installedChunks[chunkId];
-            if (data === 0) return;
-            if (data) {
-                promises.push(data[2]);
-            } else {
-                var promise = new Promise(function(resolve, reject) {
-                    data = installedChunks[chunkId] = [
-                        resolve,
-                        reject
-                    ];
-                });
-                promises.push((data[2] = promise));
-                var url = requireModule.publicPath + chunksIdToUrlMap[chunkId];
-                var error = new Error();
-                var onLoadEnd = function(event) {
-                    data = installedChunks[chunkId];
-                    if (data !== 0) installedChunks[chunkId] = undefined;
-                    if (data) {
-                        var errorType = event && event.type;
-                        var src = event && event.target && event.target.src;
-                        error.message = 'Loading chunk ' + chunkId + ' failed. (' + errorType + ' : ' + src + ')';
-                        error.name = 'ChunkLoadError';
-                        error.type = errorType;
-                        data[1](error);
-                    }
+            modulesRegistry[moduleId] = module;
+            try {
+                var execOptions = {
+                    id: moduleId,
+                    module: module,
+                    factory: makoModules[moduleId],
+                    require: requireModule
                 };
-                requireModule.loadScript(url, onLoadEnd, 'chunk-' + chunkId);
-                return promise;
+                requireModule.requireInterceptors.forEach(function(interceptor) {
+                    interceptor(execOptions);
+                });
+                execOptions.factory.call(execOptions.module.exports, execOptions.module, execOptions.module.exports, execOptions.require);
+            } catch (e) {
+                modulesRegistry[moduleId].error = e;
+                throw e;
             }
-        };
-    })();
-    !(function() {
-        var inProgress = {};
-        requireModule.loadScript = function(url, done, key) {
-            if (inProgress[url]) {
-                return inProgress[url].push(done);
-            }
-            var script = document.createElement('script');
-            script.timeout = 120;
-            script.src = url;
-            inProgress[url] = [
-                done
-            ];
-            var onLoadEnd = function(prev, event) {
-                clearTimeout(timeout);
-                var doneFns = inProgress[url];
-                delete inProgress[url];
-                if (script.parentNode) script.parentNode.removeChild(script);
-                if (doneFns) {
-                    doneFns.forEach(function(fn) {
-                        return fn(event);
-                    });
-                }
-                if (prev) return prev(event);
+            return module.exports;
+        }
+        requireModule.requireInterceptors = [];
+        !(function() {
+            requireModule.chunkEnsures = {};
+            requireModule.ensure = function(chunkId) {
+                return Promise.all(Object.keys(requireModule.chunkEnsures).reduce(function(promises, key) {
+                    requireModule.chunkEnsures[key](chunkId, promises);
+                    return promises;
+                }, []));
             };
-            var timeout = setTimeout(onLoadEnd.bind(null, undefined, {
-                type: 'timeout',
-                target: script
-            }), 120000);
-            script.onerror = onLoadEnd.bind(null, script.onerror);
-            script.onload = onLoadEnd.bind(null, script.onload);
-            document.head.appendChild(script);
-        };
-    })();
-    !(function() {
-        requireModule.cssInstalled = cssInstalledChunks;
-        requireModule.findStylesheet = function(url) {
-            return Array.from(document.querySelectorAll('link[href][rel=stylesheet]')).find(function(link) {
-                var linkUrl = link.getAttribute('href').split('?')[0];
-                return linkUrl === url || linkUrl === requireModule.publicPath + url;
-            });
-        };
-        requireModule.createStylesheet = function(chunkId, url, oldTag, resolve, reject) {
-            var link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.type = 'text/css';
-            link.href = url;
-            link.onerror = link.onload = function(event) {
-                link.onerror = link.onload = null;
-                if (event.type === 'load') {
-                    cssInstalledChunks[chunkId] = 0;
-                    resolve();
+        })();
+        !(function() {
+            requireModule.jsonpInstalled = {};
+            var installedChunks = requireModule.jsonpInstalled;
+            requireModule.chunkEnsures.jsonp = function(chunkId, promises) {
+                var data = installedChunks[chunkId];
+                if (data === 0) return;
+                if (data) {
+                    promises.push(data[2]);
                 } else {
-                    delete cssInstalledChunks[chunkId];
-                    var errorType = event && event.type;
-                    var realHref = event && event.target && event.target.href;
-                    var err = new Error('Loading CSS chunk ' + chunkId + ' failed.\n(' + realHref + ')');
-                    err.code = 'CSS_CHUNK_LOAD_FAILED';
-                    err.type = errorType;
-                    err.request = realHref;
-                    link.parentNode.removeChild(link);
-                    reject(err);
+                    var promise = new Promise(function(resolve, reject) {
+                        data = installedChunks[chunkId] = [
+                            resolve,
+                            reject
+                        ];
+                    });
+                    promises.push((data[2] = promise));
+                    var url = requireModule.publicPath + chunksIdToUrlMap[chunkId];
+                    var error = new Error();
+                    var onLoadEnd = function(event) {
+                        data = installedChunks[chunkId];
+                        if (data !== 0) installedChunks[chunkId] = undefined;
+                        if (data) {
+                            var errorType = event && event.type;
+                            var src = event && event.target && event.target.src;
+                            error.message = 'Loading chunk ' + chunkId + ' failed. (' + errorType + ' : ' + src + ')';
+                            error.name = 'ChunkLoadError';
+                            error.type = errorType;
+                            data[1](error);
+                        }
+                    };
+                    requireModule.loadScript(url, onLoadEnd, 'chunk-' + chunkId);
+                    return promise;
                 }
             };
-            if (oldTag) {
-                oldTag.parentNode.insertBefore(link, oldTag.nextSibling);
-            } else {
-                document.head.appendChild(link);
-            }
-            return link;
-        };
-        requireModule.chunkEnsures.css = function(chunkId, promises) {
-            if (cssInstalledChunks[chunkId]) {
-                promises.push(cssInstalledChunks[chunkId]);
-            } else if (cssInstalledChunks[chunkId] !== 0 && cssChunksIdToUrlMap[chunkId]) {
-                cssInstalledChunks[chunkId] = new Promise(function(resolve, reject) {
-                    var url = cssChunksIdToUrlMap[chunkId];
-                    var fullUrl = requireModule.publicPath + url;
-                    if (requireModule.findStylesheet(url)) {
+        })();
+        !(function() {
+            var inProgress = {};
+            requireModule.loadScript = function(url, done, key) {
+                if (inProgress[url]) {
+                    return inProgress[url].push(done);
+                }
+                var script = document.createElement('script');
+                script.timeout = 120;
+                script.src = url;
+                inProgress[url] = [
+                    done
+                ];
+                var onLoadEnd = function(prev, event) {
+                    clearTimeout(timeout);
+                    var doneFns = inProgress[url];
+                    delete inProgress[url];
+                    if (script.parentNode) script.parentNode.removeChild(script);
+                    if (doneFns) {
+                        doneFns.forEach(function(fn) {
+                            return fn(event);
+                        });
+                    }
+                    if (prev) return prev(event);
+                };
+                var timeout = setTimeout(onLoadEnd.bind(null, undefined, {
+                    type: 'timeout',
+                    target: script
+                }), 120000);
+                script.onerror = onLoadEnd.bind(null, script.onerror);
+                script.onload = onLoadEnd.bind(null, script.onload);
+                document.head.appendChild(script);
+            };
+        })();
+        !(function() {
+            requireModule.cssInstalled = cssInstalledChunks;
+            requireModule.findStylesheet = function(url) {
+                return Array.from(document.querySelectorAll('link[href][rel=stylesheet]')).find(function(link) {
+                    var linkUrl = link.getAttribute('href').split('?')[0];
+                    return linkUrl === url || linkUrl === requireModule.publicPath + url;
+                });
+            };
+            requireModule.createStylesheet = function(chunkId, url, oldTag, resolve, reject) {
+                var link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.type = 'text/css';
+                link.href = url;
+                link.onerror = link.onload = function(event) {
+                    link.onerror = link.onload = null;
+                    if (event.type === 'load') {
+                        cssInstalledChunks[chunkId] = 0;
                         resolve();
                     } else {
-                        requireModule.createStylesheet(chunkId, fullUrl, null, resolve, reject);
+                        delete cssInstalledChunks[chunkId];
+                        var errorType = event && event.type;
+                        var realHref = event && event.target && event.target.href;
+                        var err = new Error('Loading CSS chunk ' + chunkId + ' failed.\n(' + realHref + ')');
+                        err.code = 'CSS_CHUNK_LOAD_FAILED';
+                        err.type = errorType;
+                        err.request = realHref;
+                        link.parentNode.removeChild(link);
+                        reject(err);
                     }
-                });
-                promises.push(cssInstalledChunks[chunkId]);
-                return promises;
+                };
+                if (oldTag) {
+                    oldTag.parentNode.insertBefore(link, oldTag.nextSibling);
+                } else {
+                    document.head.appendChild(link);
+                }
+                return link;
+            };
+            requireModule.chunkEnsures.css = function(chunkId, promises) {
+                if (cssInstalledChunks[chunkId]) {
+                    promises.push(cssInstalledChunks[chunkId]);
+                } else if (cssInstalledChunks[chunkId] !== 0 && cssChunksIdToUrlMap[chunkId]) {
+                    cssInstalledChunks[chunkId] = new Promise(function(resolve, reject) {
+                        var url = cssChunksIdToUrlMap[chunkId];
+                        var fullUrl = requireModule.publicPath + url;
+                        if (requireModule.findStylesheet(url)) {
+                            resolve();
+                        } else {
+                            requireModule.createStylesheet(chunkId, fullUrl, null, resolve, reject);
+                        }
+                    });
+                    promises.push(cssInstalledChunks[chunkId]);
+                    return promises;
+                }
+            };
+        })();
+        var jsonpCallback = function(data) {
+            var installedChunks = requireModule.jsonpInstalled;
+            var chunkIds = data[0];
+            var modules = data[1];
+            if (chunkIds.some(function(id) {
+                return installedChunks[id] !== 0;
+            })) {
+                registerModules(modules);
+            }
+            for(var i = 0; i < chunkIds.length; i++){
+                var id = chunkIds[i];
+                if (installedChunks[id]) {
+                    installedChunks[id][0]();
+                }
+                installedChunks[id] = 0;
             }
         };
-    })();
-    var jsonpCallback = function(data) {
-        var installedChunks = requireModule.jsonpInstalled;
-        var chunkIds = data[0];
-        var modules = data[1];
-        if (chunkIds.some(function(id) {
-            return installedChunks[id] !== 0;
-        })) {
-            registerModules(modules);
-        }
-        for(var i = 0; i < chunkIds.length; i++){
-            var id = chunkIds[i];
-            if (installedChunks[id]) {
-                installedChunks[id][0]();
+        var registerModules = function(modules) {
+            for(var id in modules){
+                makoModules[id] = modules[id];
             }
-            installedChunks[id] = 0;
-        }
-    };
-    var registerModules = function(modules) {
-        for(var id in modules){
-            makoModules[id] = modules[id];
-        }
-    };
-    !function() {
-        requireModule.publicPath = "/";
-    }();
-    !function() {
-        registerModules({
-            "@swc/helpers/_/_interop_require_default": function(module, exports, require) {
-                Object.defineProperty(exports, "__esModule", {
-                    value: true
-                });
-                function _export(target, all) {
-                    for(var name in all)Object.defineProperty(target, name, {
-                        enumerable: true,
-                        get: all[name]
+        };
+        !function() {
+            requireModule.publicPath = "/";
+        }();
+        !function() {
+            registerModules({
+                "@swc/helpers/_/_interop_require_default": function(module, exports, require) {
+                    Object.defineProperty(exports, "__esModule", {
+                        value: true
                     });
-                }
-                _export(exports, {
-                    _interop_require_default: function() {
-                        return _interop_require_default;
-                    },
-                    _: function() {
-                        return _interop_require_default;
-                    }
-                });
-                function _interop_require_default(obj) {
-                    return obj && obj.__esModule ? obj : {
-                        default: obj
-                    };
-                }
-            },
-            "@swc/helpers/_/_interop_require_wildcard": function(module, exports, require) {
-                Object.defineProperty(exports, "__esModule", {
-                    value: true
-                });
-                function _export(target, all) {
-                    for(var name in all)Object.defineProperty(target, name, {
-                        enumerable: true,
-                        get: all[name]
-                    });
-                }
-                _export(exports, {
-                    _interop_require_wildcard: function() {
-                        return _interop_require_wildcard;
-                    },
-                    _: function() {
-                        return _interop_require_wildcard;
-                    }
-                });
-                function _getRequireWildcardCache(nodeInterop) {
-                    if (typeof WeakMap !== "function") return null;
-                    var cacheBabelInterop = new WeakMap();
-                    var cacheNodeInterop = new WeakMap();
-                    return (_getRequireWildcardCache = function(nodeInterop) {
-                        return nodeInterop ? cacheNodeInterop : cacheBabelInterop;
-                    })(nodeInterop);
-                }
-                function _interop_require_wildcard(obj, nodeInterop) {
-                    if (!nodeInterop && obj && obj.__esModule) return obj;
-                    if (obj === null || typeof obj !== "object" && typeof obj !== "function") return {
-                        default: obj
-                    };
-                    var cache = _getRequireWildcardCache(nodeInterop);
-                    if (cache && cache.has(obj)) return cache.get(obj);
-                    var newObj = {};
-                    var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor;
-                    for(var key in obj)if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) {
-                        var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null;
-                        if (desc && (desc.get || desc.set)) Object.defineProperty(newObj, key, desc);
-                        else newObj[key] = obj[key];
-                    }
-                    newObj.default = obj;
-                    if (cache) cache.set(obj, newObj);
-                    return newObj;
-                }
-            },
-            "@swc/helpers/_/_export_star": function(module, exports, require) {
-                Object.defineProperty(exports, "__esModule", {
-                    value: true
-                });
-                function _export(target, all) {
-                    for(var name in all)Object.defineProperty(target, name, {
-                        enumerable: true,
-                        get: all[name]
-                    });
-                }
-                _export(exports, {
-                    _export_star: function() {
-                        return _export_star;
-                    },
-                    _: function() {
-                        return _export_star;
-                    }
-                });
-                function _export_star(from, to) {
-                    Object.keys(from).forEach(function(k) {
-                        if (k !== "default" && !Object.prototype.hasOwnProperty.call(to, k)) Object.defineProperty(to, k, {
+                    function _export(target, all) {
+                        for(var name in all)Object.defineProperty(target, name, {
                             enumerable: true,
-                            get: function() {
-                                return from[k];
-                            }
+                            get: all[name]
                         });
+                    }
+                    _export(exports, {
+                        _interop_require_default: function() {
+                            return _interop_require_default;
+                        },
+                        _: function() {
+                            return _interop_require_default;
+                        }
                     });
-                    return from;
+                    function _interop_require_default(obj) {
+                        return obj && obj.__esModule ? obj : {
+                            default: obj
+                        };
+                    }
+                },
+                "@swc/helpers/_/_interop_require_wildcard": function(module, exports, require) {
+                    Object.defineProperty(exports, "__esModule", {
+                        value: true
+                    });
+                    function _export(target, all) {
+                        for(var name in all)Object.defineProperty(target, name, {
+                            enumerable: true,
+                            get: all[name]
+                        });
+                    }
+                    _export(exports, {
+                        _interop_require_wildcard: function() {
+                            return _interop_require_wildcard;
+                        },
+                        _: function() {
+                            return _interop_require_wildcard;
+                        }
+                    });
+                    function _getRequireWildcardCache(nodeInterop) {
+                        if (typeof WeakMap !== "function") return null;
+                        var cacheBabelInterop = new WeakMap();
+                        var cacheNodeInterop = new WeakMap();
+                        return (_getRequireWildcardCache = function(nodeInterop) {
+                            return nodeInterop ? cacheNodeInterop : cacheBabelInterop;
+                        })(nodeInterop);
+                    }
+                    function _interop_require_wildcard(obj, nodeInterop) {
+                        if (!nodeInterop && obj && obj.__esModule) return obj;
+                        if (obj === null || typeof obj !== "object" && typeof obj !== "function") return {
+                            default: obj
+                        };
+                        var cache = _getRequireWildcardCache(nodeInterop);
+                        if (cache && cache.has(obj)) return cache.get(obj);
+                        var newObj = {};
+                        var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor;
+                        for(var key in obj)if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) {
+                            var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null;
+                            if (desc && (desc.get || desc.set)) Object.defineProperty(newObj, key, desc);
+                            else newObj[key] = obj[key];
+                        }
+                        newObj.default = obj;
+                        if (cache) cache.set(obj, newObj);
+                        return newObj;
+                    }
+                },
+                "@swc/helpers/_/_export_star": function(module, exports, require) {
+                    Object.defineProperty(exports, "__esModule", {
+                        value: true
+                    });
+                    function _export(target, all) {
+                        for(var name in all)Object.defineProperty(target, name, {
+                            enumerable: true,
+                            get: all[name]
+                        });
+                    }
+                    _export(exports, {
+                        _export_star: function() {
+                            return _export_star;
+                        },
+                        _: function() {
+                            return _export_star;
+                        }
+                    });
+                    function _export_star(from, to) {
+                        Object.keys(from).forEach(function(k) {
+                            if (k !== "default" && !Object.prototype.hasOwnProperty.call(to, k)) Object.defineProperty(to, k, {
+                                enumerable: true,
+                                get: function() {
+                                    return from[k];
+                                }
+                            });
+                        });
+                        return from;
+                    }
                 }
-            }
-        });
-    }();
-    var exports = requireModule(entryModuleId);
-    return {
-        exports: exports,
-        requireModule: requireModule,
-        _modulesRegistry: modulesRegistry,
-        _jsonpCallback: jsonpCallback,
-        _makoModuleHotUpdate: requireModule.applyHotUpdate
-    };
-}
-var runtime = createRuntime(m, e);
-var root = typeof globalThis !== 'undefined' ? globalThis : self;
-root.jsonpCallback = runtime._jsonpCallback;
-root.modulesRegistry = runtime._modulesRegistry;
-root.makoModuleHotUpdate = runtime._makoModuleHotUpdate;
+            });
+        }();
+        var exports = requireModule(entryModuleId);
+        return {
+            exports: exports,
+            requireModule: requireModule,
+            _modulesRegistry: modulesRegistry,
+            _jsonpCallback: jsonpCallback,
+            _makoModuleHotUpdate: requireModule.applyHotUpdate
+        };
+    }
+    var runtime = createRuntime(m, e);
+    var root = typeof globalThis !== 'undefined' ? globalThis : self;
+    root.jsonpCallback = runtime._jsonpCallback;
+    root.modulesRegistry = runtime._modulesRegistry;
+    root.makoModuleHotUpdate = runtime._makoModuleHotUpdate;
+})();
 
 //# sourceMappingURL=index.js.map

@@ -9,7 +9,8 @@ use mako_core::swc_css_ast::Stylesheet;
 use mako_core::swc_css_codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};
 use mako_core::swc_css_codegen::{CodeGenerator, CodegenConfig, Emit};
 use mako_core::swc_ecma_ast::{
-    KeyValueProp, Lit, Number, ObjectLit, Prop, PropOrSpread, Stmt, VarDeclKind,
+    BlockStmt, FnExpr, Function, KeyValueProp, Lit, Module as SwcModule, Number, ObjectLit, Prop,
+    PropOrSpread, Stmt, UnaryExpr, UnaryOp, VarDeclKind,
 };
 use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
 
@@ -269,6 +270,8 @@ fn render_entry_chunk_js_without_full_hash(
         ast.ast
             .body
             .splice(0..0, stmts.into_iter().map(|s| s.into()));
+
+        ast.ast = wrap_in_iife(ast.ast);
     }
 
     if context.config.minify && matches!(context.config.mode, Mode::Production) {
@@ -328,5 +331,41 @@ fn to_object_lit(value: &HashMap<String, String>) -> ObjectLit {
     ObjectLit {
         span: DUMMY_SP,
         props,
+    }
+}
+
+fn wrap_in_iife(module: SwcModule) -> SwcModule {
+    let stmts = module
+        .body
+        .into_iter()
+        .map(|stmt| stmt.as_stmt().unwrap().clone())
+        .collect::<Vec<_>>();
+
+    let fnc: FnExpr = Function {
+        params: vec![],
+        decorators: vec![],
+        span: DUMMY_SP,
+        body: Some(BlockStmt {
+            span: DUMMY_SP,
+            stmts,
+        }),
+        is_generator: false,
+        is_async: false,
+        type_params: None,
+        return_type: None,
+    }
+    .into();
+
+    let stmt = UnaryExpr {
+        span: DUMMY_SP,
+        op: UnaryOp::Bang,
+        arg: fnc.wrap_with_paren().as_iife().into(),
+    }
+    .into_stmt();
+
+    SwcModule {
+        body: vec![stmt.into()],
+        shebang: module.shebang,
+        span: DUMMY_SP,
     }
 }
