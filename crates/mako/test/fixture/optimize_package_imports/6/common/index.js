@@ -1,4 +1,7 @@
 // Barrel file
 'use client';
 
-export * from './a';
+import { a } from './a';
+import { b as bb } from './b';
+
+export { a, bb };

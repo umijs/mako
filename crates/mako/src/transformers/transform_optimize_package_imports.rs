@@ -4,8 +4,8 @@ use std::sync::Arc;
 use mako_core::anyhow::Result;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{
-    ExportSpecifier, Expr, ImportDecl, ImportDefaultSpecifier, ImportSpecifier, ModuleDecl,
-    ModuleExportName, ModuleItem, Stmt,
+    ExportSpecifier, Expr, ImportDecl, ImportDefaultSpecifier, ImportSpecifier,
+    ImportStarAsSpecifier, ModuleDecl, ModuleExportName, ModuleItem, Stmt,
 };
 use mako_core::swc_ecma_utils::quote_str;
 use mako_core::swc_ecma_visit::Fold;
@@ -110,10 +110,43 @@ impl Fold for OptimizePackageImports {
                             // If the import specifier is exported from the barrel file, insert to src_specifiers_map
                             if let Some(export) = export_map
                                 .iter()
+                                .find(|export| export.0 == imported && export.2 == "*")
+                            {
+                                // namespace specifier: `export * as foo from 'foo';`
+                                let new_src = PathBuf::from(&path)
+                                    .parent()
+                                    .unwrap()
+                                    .join(&export.1)
+                                    .to_string_lossy()
+                                    .to_string();
+
+                                match src_specifiers_map
+                                    .iter_mut()
+                                    .find(|(src, _)| src == &new_src)
+                                {
+                                    Some(map) => map.1.push(ImportSpecifier::Namespace(
+                                        ImportStarAsSpecifier {
+                                            span: DUMMY_SP,
+                                            local: specifier.local.clone(),
+                                        },
+                                    )),
+                                    None => {
+                                        src_specifiers_map.push((
+                                            new_src,
+                                            vec![ImportSpecifier::Namespace(
+                                                ImportStarAsSpecifier {
+                                                    span: DUMMY_SP,
+                                                    local: specifier.local.clone(),
+                                                },
+                                            )],
+                                        ));
+                                    }
+                                }
+                            } else if let Some(export) = export_map
+                                .iter()
                                 .find(|export| export.0 == imported && export.2 == "default")
                             {
                                 // default specifier: `export { default as Button } from 'button';`
-
                                 let new_src = PathBuf::from(&path)
                                     .parent()
                                     .unwrap()
@@ -260,13 +293,24 @@ fn parse_barrel_file(
                                             orig_str.clone(),
                                         ));
                                     } else {
-                                        // FIXME break 需要跳出外层循环
                                         is_barrel = false;
                                         break;
                                     }
                                 }
                                 // `export * as foo from 'foo';`
-                                ExportSpecifier::Namespace(_) => {}
+                                ExportSpecifier::Namespace(specifier) => {
+                                    let name_str = match &specifier.name {
+                                        ModuleExportName::Ident(n) => n.sym.to_string(),
+                                        ModuleExportName::Str(n) => n.value.to_string(),
+                                    };
+                                    if let Some(src) = &export_named.src {
+                                        export_map.push((
+                                            name_str.clone(),
+                                            src.value.to_string(),
+                                            "*".to_string(),
+                                        ));
+                                    }
+                                }
                                 // export v from 'mod';
                                 ExportSpecifier::Default(_) => {}
                             }

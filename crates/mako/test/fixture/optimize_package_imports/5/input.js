@@ -1,1 +1,1 @@
-import { a, bb } from './common';
+import { foo } from './common';
