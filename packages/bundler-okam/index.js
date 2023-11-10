@@ -174,7 +174,7 @@ function checkConfig(opts) {
       throw new Error(
         `externals [string] value only can be ['script {url}', '{root}'] in Mako bundler`,
       );
-    } else if (typeof v === 'object') {
+    } else if (lodash.isPlainObject(v)) {
       throw new Error(
         'externals object value is not supported in Mako bundler',
       );
@@ -185,6 +185,22 @@ function checkConfig(opts) {
     } else if (v instanceof RegExp) {
       throw new Error(
         'externals RegExp value is not supported in Mako bundler',
+      );
+    } else if (
+      typeof v === 'string' &&
+      // allow prefix window type
+      // ex. `window antd`
+      !/^window\s+/.test(v) &&
+      // allow normal string value without type prefix
+      // ex. `antd` or `antd.Button` or `antd['Button']` or `window.antd`
+      !/^\S+$/.test(v)
+    ) {
+      // throw error for other type prefixes
+      // ex. `commonjs`、`var 1 + 1`、`global`
+      throw new Error(
+        `externals string value prefix \`${
+          v.split(' ')[0]
+        } \` is not supported in Mako bundler`,
       );
     }
   });
@@ -384,13 +400,17 @@ async function getOkamConfig(opts) {
   const externalsConfig = Object.entries(externals).reduce((ret, [k, v]) => {
     // handle [string] with script type
     if (Array.isArray(v)) {
+      const [url, ...members] = v;
+
       ret[k] = {
-        root: v[1],
-        script: v[0].replace('script ', ''),
+        // ['antd', 'Button'] => `antd.Button`
+        root: members.join('.'),
+        // `script https://example.com/lib/script.js` => `https://example.com/lib/script.js`
+        script: url.replace('script ', ''),
       };
     } else if (typeof v === 'string') {
-      // 'var window.antd' => 'antd'
-      ret[k] = v.replace(/^var\s+(window\.)?/, '');
+      // 'window.antd' or 'window antd' => 'antd'
+      ret[k] = v.replace(/^window(\s+|\.)/, '');
     } else {
       // other types except boolean has been checked before
       // so here only ignore invalid boolean type
