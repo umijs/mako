@@ -53,7 +53,7 @@ impl Fold for OptimizePackageImports {
                     .map(|specifier| specifier.as_named().unwrap())
                     .collect::<Vec<_>>();
 
-                if specifiers.len() == 0 {
+                if specifiers.is_empty() {
                     new_items.push(module_item);
                     continue;
                 }
@@ -111,13 +111,13 @@ impl Fold for OptimizePackageImports {
                             // If the import specifier is exported from the barrel file, insert to src_specifiers_map
                             if let Some(export) = export_map
                                 .iter()
-                                .find(|export| export.0 == imported && export.2 == "*")
+                                .find(|export| export.exported == imported && export.orig == "*")
                             {
                                 // namespace specifier: `export * as foo from 'foo';`
                                 let new_src = PathBuf::from(&path)
                                     .parent()
                                     .unwrap()
-                                    .join(&export.1)
+                                    .join(&export.src)
                                     .to_string_lossy()
                                     .to_string();
 
@@ -143,15 +143,14 @@ impl Fold for OptimizePackageImports {
                                         ));
                                     }
                                 }
-                            } else if let Some(export) = export_map
-                                .iter()
-                                .find(|export| export.0 == imported && export.2 == "default")
-                            {
+                            } else if let Some(export) = export_map.iter().find(|export| {
+                                export.exported == imported && export.orig == "default"
+                            }) {
                                 // default specifier: `export { default as Button } from 'button';`
                                 let new_src = PathBuf::from(&path)
                                     .parent()
                                     .unwrap()
-                                    .join(&export.1)
+                                    .join(&export.src)
                                     .to_string_lossy()
                                     .to_string();
 
@@ -178,14 +177,14 @@ impl Fold for OptimizePackageImports {
                                     }
                                 }
                             } else if let Some(export) =
-                                export_map.iter().find(|export| export.2 == imported)
+                                export_map.iter().find(|export| export.orig == imported)
                             {
                                 // named specifier: `export { a } from 'a';`
                                 // 'foo/a'
                                 let new_src = PathBuf::from(&path)
                                     .parent()
                                     .unwrap()
-                                    .join(&export.1)
+                                    .join(&export.src)
                                     .to_string_lossy()
                                     .to_string();
 
@@ -193,13 +192,13 @@ impl Fold for OptimizePackageImports {
                                     .iter_mut()
                                     .find(|(src, _)| src == &new_src)
                                 {
-                                    Some(map) => map
-                                        .1
-                                        .push(ImportSpecifier::Named(specifier.clone().clone())),
+                                    Some(map) => {
+                                        map.1.push(ImportSpecifier::Named((*specifier).clone()))
+                                    }
                                     None => {
                                         src_specifiers_map.push((
                                             new_src,
-                                            vec![ImportSpecifier::Named(specifier.clone().clone())],
+                                            vec![ImportSpecifier::Named((*specifier).clone())],
                                         ));
                                     }
                                 }
@@ -209,13 +208,13 @@ impl Fold for OptimizePackageImports {
                                     .iter_mut()
                                     .find(|(src, _)| src == &raw_src)
                                 {
-                                    Some(map) => map
-                                        .1
-                                        .push(ImportSpecifier::Named(specifier.clone().clone())),
+                                    Some(map) => {
+                                        map.1.push(ImportSpecifier::Named((*specifier).clone()))
+                                    }
                                     None => {
                                         src_specifiers_map.push((
                                             raw_src.clone(),
-                                            vec![ImportSpecifier::Named(specifier.clone().clone())],
+                                            vec![ImportSpecifier::Named((*specifier).clone())],
                                         ));
                                     }
                                 }
@@ -245,10 +244,17 @@ impl Fold for OptimizePackageImports {
     }
 }
 
-fn parse_barrel_file(
-    path: &str,
-    context: &Arc<Context>,
-) -> Result<(bool, Vec<(String, String, String)>)> {
+#[derive(Debug)]
+struct ExportInfo {
+    // `bar` in `export { foo as bar } from './foo';`
+    exported: String,
+    // `./foo` in `export { foo as bar } from './foo';`
+    src: String,
+    // `foo` in `export { foo as bar } from './foo';`
+    orig: String,
+}
+
+fn parse_barrel_file(path: &str, context: &Arc<Context>) -> Result<(bool, Vec<ExportInfo>)> {
     let request = parse_path(path)?;
     let content = load(&request, false, context)?;
     let ast = parse(&content, &request, context)?;
@@ -260,7 +266,7 @@ fn parse_barrel_file(
     // Imported meta information. import { a, b as bb } from './foo'; => [(a, './foo', a), (bb, './foo', b)]
     // let mut import_map = vec![];
     // Exportd meta information. export { a, b as bb } from './foo'; => [(a, './foo', a), (bb, './foo', b)]
-    let mut export_map = vec![];
+    let mut export_map: Vec<ExportInfo> = vec![];
 
     for module_item in &ast.body {
         match module_item {
@@ -288,11 +294,11 @@ fn parse_barrel_file(
                                         None => orig_str.clone(),
                                     };
                                     if let Some(src) = &export_named.src {
-                                        export_map.push((
-                                            name_str.clone(),
-                                            src.value.to_string(),
-                                            orig_str.clone(),
-                                        ));
+                                        export_map.push(ExportInfo {
+                                            exported: name_str.clone(),
+                                            src: src.value.to_string(),
+                                            orig: orig_str.clone(),
+                                        });
                                     } else {
                                         is_barrel = false;
                                         break;
@@ -305,11 +311,11 @@ fn parse_barrel_file(
                                         ModuleExportName::Str(n) => n.value.to_string(),
                                     };
                                     if let Some(src) = &export_named.src {
-                                        export_map.push((
-                                            name_str.clone(),
-                                            src.value.to_string(),
-                                            "*".to_string(),
-                                        ));
+                                        export_map.push(ExportInfo {
+                                            exported: name_str.clone(),
+                                            src: src.value.to_string(),
+                                            orig: "*".to_string(),
+                                        });
                                     }
                                 }
                                 // export v from 'mod';
@@ -352,7 +358,7 @@ fn parse_barrel_file(
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
     use std::sync::Arc;
 
     use mako_core::swc_common::{chain, Mark};
@@ -395,10 +401,10 @@ mod tests {
         })
     }
 
-    fn context(input: &PathBuf) -> Arc<Context> {
+    fn context(input: &Path) -> Arc<Context> {
         let root = input.parent().unwrap().to_path_buf();
         let config = Config::new(&root, None, None).unwrap();
-        let compiler = Compiler::new(config, root.clone(), Default::default()).unwrap();
+        let compiler = Compiler::new(config, root, Default::default()).unwrap();
         compiler.context
     }
 }

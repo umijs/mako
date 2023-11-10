@@ -12,15 +12,15 @@ use mako_core::swc_ecma_preset_env::{self as swc_preset_env};
 use mako_core::swc_ecma_transforms::feature::FeatureFlag;
 use mako_core::swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
 use mako_core::swc_ecma_transforms::optimization::simplifier;
+use mako_core::swc_ecma_transforms::optimization::simplify::{dce, Config as SimpilifyConfig};
 use mako_core::swc_ecma_transforms::proposals::decorators;
-use mako_core::swc_ecma_transforms::typescript::{strip_with_jsx, Config, ImportsNotUsedAsValues};
+use mako_core::swc_ecma_transforms::typescript::strip_with_jsx;
 use mako_core::swc_ecma_transforms::{resolver, Assumptions};
 use mako_core::swc_ecma_visit::{Fold, VisitMutWith};
 use mako_core::swc_error_reporters::handler::try_with_handler;
 
 use crate::build::Task;
 use crate::compiler::Context;
-use crate::config::Mode;
 use crate::module::ModuleAst;
 use crate::plugin::PluginTransformJsParam;
 use crate::resolve::Resolvers;
@@ -71,7 +71,7 @@ fn transform_js(
     define
         .entry("NODE_ENV".to_string())
         .or_insert_with(|| format!("\"{}\"", mode).into());
-    let _is_dev = matches!(context.config.mode, Mode::Development);
+    let is_ts = task.path.ends_with(".ts") || task.path.ends_with(".tsx");
 
     let env_map = build_env_map(define, context)?;
     GLOBALS.set(&context.meta.script.globals, || {
@@ -79,15 +79,17 @@ fn transform_js(
             HELPERS.set(&Helpers::new(true), || {
                 HANDLER.set(handler, || {
                     ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
-                    ast.visit_mut_with(&mut strip_with_jsx(
-                        cm.clone(),
-                        Config {
-                            import_not_used_as_values: ImportsNotUsedAsValues::Preserve,
-                            ..Default::default()
-                        },
-                        NoopComments,
-                        top_level_mark,
-                    ));
+                    // strip should be ts only
+                    // since when use this in js, it will remove all unused imports
+                    // which is not expected as what webpack does
+                    if is_ts {
+                        ast.visit_mut_with(&mut strip_with_jsx(
+                            cm.clone(),
+                            Default::default(),
+                            NoopComments,
+                            top_level_mark,
+                        ));
+                    }
 
                     ast.visit_mut_with(&mut mako_react(
                         cm,
@@ -143,8 +145,19 @@ fn transform_js(
                             emit_metadata: false,
                             ..Default::default()
                         }),
-                        // 简化代码, 例如可以删除一些不必要的 if 分支
-                        simplifier(unresolved_mark, Default::default()),
+                        // simplify, but keep top level dead code
+                        // e.g. import x from 'foo'; but x is not used
+                        // this must be keeped for tree shaking to work
+                        simplifier(
+                            unresolved_mark,
+                            SimpilifyConfig {
+                                dce: dce::Config {
+                                    top_level: false,
+                                    ..Default::default()
+                                },
+                                ..Default::default()
+                            }
+                        ),
                         optimize_package_imports(task.path.clone(), context.clone()),
                     );
 
