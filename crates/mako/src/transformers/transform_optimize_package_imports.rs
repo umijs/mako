@@ -4,7 +4,7 @@ use std::sync::Arc;
 use mako_core::anyhow::Result;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{
-    ExportSpecifier, Expr, ImportDecl, ImportNamedSpecifier, ImportSpecifier, ModuleDecl,
+    ExportSpecifier, Expr, ImportDecl, ImportDefaultSpecifier, ImportSpecifier, ModuleDecl,
     ModuleExportName, ModuleItem, Stmt,
 };
 use mako_core::swc_ecma_utils::quote_str;
@@ -87,12 +87,16 @@ impl Fold for OptimizePackageImports {
                             continue;
                         }
 
+                        println!(
+                            "\nparsed barrel file:\n    path:{:?}\n    export_map:{:?}\n",
+                            path, export_map
+                        );
+
                         // 2. If it's a bucket file, rewrite the source of import statement
                         //   - `import { a } from 'foo';` => `import { a } from 'foo/a';`
                         //   - `import { a, b, bb } from 'foo';` => `import { a } from 'foo/a'; import { b, bb } from 'foo/b';`
                         // src_specifiers_map: [ ('foo/a', [a]), ('foo/b', [b, bb]) ]
-                        let mut src_specifiers_map: Vec<(String, Vec<&ImportNamedSpecifier>)> =
-                            vec![];
+                        let mut src_specifiers_map: Vec<(String, Vec<ImportSpecifier>)> = vec![];
                         specifiers.iter().for_each(|specifier| {
                             // import { a, foo as bar } from 'foo'; => a、foo
                             let imported = match &specifier.imported {
@@ -104,9 +108,45 @@ impl Fold for OptimizePackageImports {
                             };
 
                             // If the import specifier is exported from the barrel file, insert to src_specifiers_map
-                            if let Some(export) =
+                            if let Some(export) = export_map
+                                .iter()
+                                .find(|export| export.0 == imported && export.2 == "default")
+                            {
+                                // default specifier: `export { default as Button } from 'button';`
+
+                                let new_src = PathBuf::from(&path)
+                                    .parent()
+                                    .unwrap()
+                                    .join(&export.1)
+                                    .to_string_lossy()
+                                    .to_string();
+
+                                match src_specifiers_map
+                                    .iter_mut()
+                                    .find(|(src, _)| src == &new_src)
+                                {
+                                    Some(map) => map.1.push(ImportSpecifier::Default(
+                                        ImportDefaultSpecifier {
+                                            span: DUMMY_SP,
+                                            local: specifier.local.clone(),
+                                        },
+                                    )),
+                                    None => {
+                                        src_specifiers_map.push((
+                                            new_src,
+                                            vec![ImportSpecifier::Default(
+                                                ImportDefaultSpecifier {
+                                                    span: DUMMY_SP,
+                                                    local: specifier.local.clone(),
+                                                },
+                                            )],
+                                        ));
+                                    }
+                                }
+                            } else if let Some(export) =
                                 export_map.iter().find(|export| export.2 == imported)
                             {
+                                // named specifier: `export { a } from 'a';`
                                 // 'foo/a'
                                 let new_src = PathBuf::from(&path)
                                     .parent()
@@ -119,9 +159,14 @@ impl Fold for OptimizePackageImports {
                                     .iter_mut()
                                     .find(|(src, _)| src == &new_src)
                                 {
-                                    Some(map) => map.1.push(&specifier),
+                                    Some(map) => map
+                                        .1
+                                        .push(ImportSpecifier::Named(specifier.clone().clone())),
                                     None => {
-                                        src_specifiers_map.push((new_src, vec![specifier]));
+                                        src_specifiers_map.push((
+                                            new_src,
+                                            vec![ImportSpecifier::Named(specifier.clone().clone())],
+                                        ));
                                     }
                                 }
                             } else {
@@ -130,19 +175,20 @@ impl Fold for OptimizePackageImports {
                                     .iter_mut()
                                     .find(|(src, _)| src == &raw_src)
                                 {
-                                    Some(map) => map.1.push(&specifier),
+                                    Some(map) => map
+                                        .1
+                                        .push(ImportSpecifier::Named(specifier.clone().clone())),
                                     None => {
-                                        src_specifiers_map.push((raw_src.clone(), vec![specifier]));
+                                        src_specifiers_map.push((
+                                            raw_src.clone(),
+                                            vec![ImportSpecifier::Named(specifier.clone().clone())],
+                                        ));
                                     }
                                 }
                             }
                         });
 
                         for (new_src, specifiers) in src_specifiers_map {
-                            let specifiers = specifiers
-                                .iter()
-                                .map(|specifier| ImportSpecifier::Named(specifier.clone().clone()))
-                                .collect::<Vec<_>>();
                             new_items.push(ModuleItem::ModuleDecl(ModuleDecl::Import(
                                 ImportDecl {
                                     span: DUMMY_SP,

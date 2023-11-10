@@ -1,1 +1,1 @@
-import { Alert, Button } from './common';
+import { Alert, Button, ButtonProps } from './common';
