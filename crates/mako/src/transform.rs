@@ -154,7 +154,6 @@ fn transform_js(
                                     top_level: false,
                                     ..Default::default()
                                 },
-                                expr: Default::default(),
                                 ..Default::default()
                             }
                         ),
