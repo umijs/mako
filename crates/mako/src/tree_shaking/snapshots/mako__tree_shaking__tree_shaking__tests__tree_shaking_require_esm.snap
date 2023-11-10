@@ -75,7 +75,8 @@ var m = {
         Object.defineProperty(exports, "__esModule", {
             value: true
         });
-        var _a = require("a.ts");
+        var _interop_require_default = require("@swc/helpers/_/_interop_require_default");
+        var _c = _interop_require_default._(require("c.ts"));
         function a() {}
         function b(old = false) {
             if (old === true) {
@@ -85,7 +86,7 @@ var m = {
             return a;
         }
         b();
-        (0, _a.c)();
+        (0, _c.default)();
     }
 };
 function createRuntime(makoModules, entryModuleId) {
