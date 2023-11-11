@@ -110,7 +110,7 @@ async fn main() -> Result<()> {
 
             if cli.watch {
                 let d = crate::dev::DevServer::new(root.clone(), compiler.clone());
-                d.serve().await;
+                d.serve(move |_params| {}).await;
             }
         });
 
@@ -129,7 +129,7 @@ async fn main() -> Result<()> {
         if cli.watch {
             let d = crate::dev::DevServer::new(root.clone(), compiler);
             // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
-            d.serve().await;
+            d.serve(move |_params| {}).await;
         }
     }
     Ok(())
