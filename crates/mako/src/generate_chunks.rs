@@ -52,7 +52,7 @@ impl ChunkFile {
 }
 
 impl Compiler {
-    pub fn generate_chunk_files(&self) -> Result<Vec<ChunkFile>> {
+    pub fn generate_chunk_files(&self, current_hash: Option<u64>) -> Result<Vec<ChunkFile>> {
         mako_core::mako_profile_function!();
 
         let module_graph = self.context.module_graph.read().unwrap();
@@ -64,7 +64,11 @@ impl Compiler {
 
         let (js_chunk_map, css_chunk_map) = Self::chunk_maps(&non_entry_chunk_files);
 
-        let full_hash = self.full_hash();
+        let full_hash = if current_hash.is_none() {
+            self.full_hash()
+        } else {
+            current_hash.unwrap()
+        };
 
         let mut all_chunk_files = {
             mako_core::mako_profile_scope!("collect_entry_chunks");
