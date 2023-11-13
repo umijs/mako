@@ -1,4 +1,4 @@
-// Barrel file
+// Barrel file with side-effects
 'use client';
 
 export { a } from './a';
