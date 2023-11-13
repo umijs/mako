@@ -454,6 +454,8 @@ fn parse_barrel_file(path: &str, context: &Arc<Context>) -> Result<(bool, Vec<Ex
         }
     }
 
+    export_map.retain(|export| export.src.starts_with("./") || export.src.starts_with("../"));
+
     Ok((is_barrel, export_map))
 }
 
