@@ -9,6 +9,19 @@ var cssInstalledChunks = {
     "index.ts": 0
 };
 var m = {
+    "a.ts": function(module, exports, require) {
+        Object.defineProperty(exports, "__esModule", {
+            value: true
+        });
+        Object.defineProperty(exports, "c", {
+            enumerable: true,
+            get: function() {
+                return _c.default;
+            }
+        });
+        var _interop_require_default = require("@swc/helpers/_/_interop_require_default");
+        var _c = _interop_require_default._(require("c.ts"));
+    },
     "c.ts": function(module, exports, require) {
         Object.defineProperty(exports, "__esModule", {
             value: true
@@ -25,10 +38,9 @@ var m = {
         Object.defineProperty(exports, "__esModule", {
             value: true
         });
-        var _interop_require_default = require("@swc/helpers/_/_interop_require_default");
-        var _c = _interop_require_default._(require("c.ts"));
-        (0, _c.default)();
-        (0, _c.default)();
+        var _a = require("a.ts");
+        (0, _a.c)();
+        (0, _a.c)();
     }
 };
 function createRuntime(makoModules, entryModuleId) {
