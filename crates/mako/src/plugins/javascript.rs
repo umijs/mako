@@ -224,16 +224,14 @@ pub fn is_import_meta_url(expr: &Expr) -> bool {
     matches!(
         expr,
         Expr::Member(MemberExpr {
-            obj:
-                box Expr::MetaProp(MetaPropExpr {
-                    kind: MetaPropKind::ImportMeta,
-                    ..
-                }),
-            prop:
-                MemberProp::Ident(Ident {
-                    sym: js_word!("url"),
-                    ..
-                }),
+            obj: box Expr::MetaProp(MetaPropExpr {
+                kind: MetaPropKind::ImportMeta,
+                ..
+            }),
+            prop: MemberProp::Ident(Ident {
+                sym: js_word!("url"),
+                ..
+            }),
             ..
         })
     )
@@ -246,7 +244,11 @@ pub fn is_dynamic_import(call_expr: &CallExpr) -> bool {
 pub fn is_commonjs_require(call_expr: &CallExpr, unresolved_mark: &Mark) -> bool {
     if let Callee::Expr(box Expr::Ident(swc_ecma_ast::Ident { sym, span, .. })) = &call_expr.callee
     {
-        sym == "require" && span.ctxt.outer() == *unresolved_mark
+        sym == "require"
+            && (span.ctxt.outer() == *unresolved_mark ||
+        // also treat empty mark require as native require
+        // because hmr code snippet ast cannot has correct mark
+        span.ctxt.outer() == Mark::root())
     } else {
         false
     }
