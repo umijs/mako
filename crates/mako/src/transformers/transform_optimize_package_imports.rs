@@ -127,7 +127,7 @@ impl Fold for OptimizePackageImports {
                             // If the import specifier is exported from the barrel file, insert to src_specifiers_map
                             if let Some(export) = export_map
                                 .iter()
-                                .find(|export| export.orig == imported && export.orig == "*")
+                                .find(|export| export.exported == imported && export.orig == "*")
                             {
                                 // namespace specifier: `export * as foo from 'foo';`
                                 let new_src = PathBuf::from(&path)

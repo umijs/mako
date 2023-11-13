@@ -2,4 +2,5 @@
 'use client';
 
 export { a } from './a';
-export { b } from './b';
+export { default as b } from './b';
+export * as cc from './c';

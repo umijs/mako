@@ -1,1 +1,1 @@
-import { a, b } from './package';
+import { a, b, cc } from './package';
