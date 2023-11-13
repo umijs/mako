@@ -3,7 +3,7 @@ use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use mako_core::anyhow::Result;
+use mako_core::anyhow::{anyhow, Result};
 use mako_core::rayon::prelude::*;
 use mako_core::regex::Regex;
 use mako_core::swc_common::{Mark, Span, SyntaxContext, DUMMY_SP};
@@ -114,7 +114,10 @@ impl Plugin for MinifishPlugin {
                 serde_json::to_string_pretty(&serde_json::json!(ModuleGraphOutput { modules }))
                     .unwrap();
 
-            std::fs::write(meta_path, meta).unwrap();
+            std::fs::create_dir_all(meta_path.parent().unwrap()).unwrap();
+
+            std::fs::write(meta_path, meta)
+                .map_err(|e| anyhow!("write meta file({}) error: {}", meta_path.display(), e))?;
         }
 
         Ok(None)
