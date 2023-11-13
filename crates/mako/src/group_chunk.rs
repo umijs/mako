@@ -194,7 +194,7 @@ impl Compiler {
                 };
 
                 if let Some(chunk) = chunk_graph.chunk(&chunk_id) {
-                    let dependent_chunks = chunk_graph.dependents_chunk(chunk);
+                    let dependent_chunks = chunk_graph.dependents_chunk(&chunk.id);
 
                     // remove edge for dependent chunks
                     for dependent_id in dependent_chunks {
@@ -284,7 +284,7 @@ impl Compiler {
             if let ChunkType::Entry(_, _) = chunk.chunk_type {
                 ret.push(chunk.filename());
             } else {
-                for chunk_id in chunk_graph.entry_ancestors_chunk(chunk) {
+                for chunk_id in chunk_graph.entry_ancestors_chunk(&chunk.id) {
                     ret.push(chunk_graph.chunk(&chunk_id).unwrap().filename());
                 }
             }
