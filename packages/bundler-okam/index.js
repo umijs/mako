@@ -25,7 +25,7 @@ exports.build = async function (opts) {
   }
 
   const { build } = require('@okamjs/okam');
-  await build(cwd, okamConfig, false);
+  await build(cwd, okamConfig, () => {}, false);
 
   // TODO: use stats
   const manifest = JSON.parse(
@@ -122,7 +122,14 @@ exports.dev = async function (opts) {
   okamConfig.hmr = true;
   okamConfig.hmr_port = String(opts.port + 1);
   okamConfig.hmr_host = opts.host;
-  await build(opts.cwd, okamConfig, true);
+  await build(
+    opts.cwd,
+    okamConfig,
+    (_, args) => {
+      opts.onDevCompileDone(args);
+    },
+    true,
+  );
 };
 
 function getDevBanner(protocol, host, port, ip) {
@@ -390,7 +397,7 @@ async function getOkamConfig(opts) {
 
       if (typeof style === 'function') {
         throw new Error(
-          `babel-plugin-import function type style is not supported in okam bundler`,
+          'babel-plugin-import function type style is not supported in okam bundler',
         );
       }
 

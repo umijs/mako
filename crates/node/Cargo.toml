@@ -8,8 +8,8 @@ crate-type = ["cdylib"]
 
 [dependencies]
 # Default enable napi4 feature, see https://nodejs.org/api/n-api.html#node-api-version-matrix
-napi = { version = "2.13.2", default-features = false, features = ["napi4", "serde-json", "tokio_rt"] }
-napi-derive = "2.13.0"
+napi = { version = "2.14.0", default-features = false, features = ["napi4", "serde-json", "tokio_rt"] }
+napi-derive = "2.14.0"
 mako = { path = '../mako' }
 serde_json = { workspace = true }
 
