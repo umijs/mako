@@ -17,7 +17,7 @@ use crate::compiler::Context;
 use crate::load::load;
 use crate::module::{Dependency, ResolveType};
 use crate::parse::parse;
-use crate::resolve::{resolve, ResolverResource};
+use crate::resolve::{resolve, ResolvedResource, ResolverResource};
 
 pub fn optimize_package_imports(path: String, context: Arc<Context>) -> impl Fold {
     OptimizePackageImports { path, context }
@@ -75,6 +75,12 @@ impl Fold for OptimizePackageImports {
                             resolved_resource,
                             ResolverResource::Ignored | ResolverResource::External(_)
                         ) {
+                            new_items.push(module_item);
+                            continue;
+                        }
+
+                        // module with side-effects are not allowed
+                        if has_side_effects(resolved_resource.as_resolved()) {
                             new_items.push(module_item);
                             continue;
                         }
@@ -253,6 +259,30 @@ struct ExportInfo {
     src: String,
     // `foo` in `export { foo as bar } from './foo';`
     orig: String,
+}
+
+// TODO:
+// - add cache
+// - support `sideEffects: ['xxx']`
+fn has_side_effects(resolved_resource: &ResolvedResource) -> bool {
+    if let Some(descrioption) = &resolved_resource.0.description {
+        let pkg_json = descrioption.data().raw();
+        if pkg_json.is_object() {
+            if let Some(side_effects) = pkg_json.as_object().unwrap().get("sideEffects") {
+                if side_effects.is_boolean() {
+                    !side_effects.as_bool().unwrap().eq(&false)
+                } else {
+                    true
+                }
+            } else {
+                true
+            }
+        } else {
+            true
+        }
+    } else {
+        true
+    }
 }
 
 #[cached(result = true, key = "String", convert = r#"{ format!("{}", path) }"#)]
