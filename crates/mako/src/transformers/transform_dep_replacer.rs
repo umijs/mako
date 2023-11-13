@@ -83,7 +83,8 @@ pub fn miss_throw_stmt<T: AsRef<str>>(source: T) -> Expr {
 impl VisitMut for DepReplacer<'_> {
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Call(call_expr) = expr {
-            if is_commonjs_require(call_expr, None) || is_dynamic_import(call_expr) {
+            if is_commonjs_require(call_expr, &self.unresolved_mark) || is_dynamic_import(call_expr)
+            {
                 if let ExprOrSpread {
                     expr: box Expr::Lit(Lit::Str(ref mut source)),
                     ..
@@ -202,7 +203,8 @@ mod tests {
     use std::collections::HashMap;
     use std::sync::Arc;
 
-    use mako_core::swc_common::GLOBALS;
+    use mako_core::swc_common::{chain, GLOBALS};
+    use mako_core::swc_ecma_transforms::resolver;
     use mako_core::swc_ecma_visit::VisitMut;
     use maplit::hashmap;
 
@@ -230,12 +232,15 @@ mod tests {
             };
 
             let cloned = context.clone();
-            let mut visitor: Box<dyn VisitMut> = Box::new(DepReplacer {
-                to_replace: &to_replace,
-                context: &cloned,
-                unresolved_mark: ast.unresolved_mark,
-                top_level_mark: ast.top_level_mark,
-            });
+            let mut visitor: Box<dyn VisitMut> = Box::new(chain!(
+                resolver(ast.unresolved_mark, ast.top_level_mark, false),
+                DepReplacer {
+                    to_replace: &to_replace,
+                    context: &cloned,
+                    unresolved_mark: ast.unresolved_mark,
+                    top_level_mark: ast.top_level_mark,
+                }
+            ));
 
             assert_display_snapshot!(transform_ast_with(&mut ast.ast, &mut visitor, &context.meta.script.cm));
         });
@@ -261,12 +266,15 @@ mod tests {
             };
 
             let cloned = context.clone();
-            let mut visitor: Box<dyn VisitMut> = Box::new(DepReplacer {
-                to_replace: &to_replace,
-                context: &cloned,
-                unresolved_mark: ast.unresolved_mark,
-                top_level_mark: ast.top_level_mark,
-            });
+            let mut visitor: Box<dyn VisitMut> = Box::new(chain!(
+                resolver(ast.unresolved_mark, ast.top_level_mark, false),
+                DepReplacer {
+                    to_replace: &to_replace,
+                    context: &cloned,
+                    unresolved_mark: ast.unresolved_mark,
+                    top_level_mark: ast.top_level_mark,
+                }
+            ));
 
             assert_display_snapshot!(transform_ast_with(
                 &mut ast.ast,
@@ -301,12 +309,15 @@ mod tests {
             };
 
             let cloned = context.clone();
-            let mut visitor: Box<dyn VisitMut> = Box::new(DepReplacer {
-                to_replace: &to_replace,
-                context: &cloned,
-                unresolved_mark: ast.unresolved_mark,
-                top_level_mark: ast.top_level_mark,
-            });
+            let mut visitor: Box<dyn VisitMut> = Box::new(chain!(
+                resolver(ast.unresolved_mark, ast.top_level_mark, false),
+                DepReplacer {
+                    to_replace: &to_replace,
+                    context: &cloned,
+                    unresolved_mark: ast.unresolved_mark,
+                    top_level_mark: ast.top_level_mark,
+                }
+            ));
 
             assert_display_snapshot!(transform_ast_with(
                 &mut ast.ast,
@@ -333,6 +344,8 @@ mod tests {
 
     fn transform_code(code: &str) -> String {
         let context = Arc::new(Default::default());
+        let unresolved_mark = Default::default();
+        let top_level_mark = Default::default();
         let mut visitor = DepReplacer {
             to_replace: &DependenciesToReplace {
                 resolved: hashmap! {
@@ -342,8 +355,8 @@ mod tests {
                 ignored: vec![],
             },
             context: &context,
-            unresolved_mark: Default::default(),
-            top_level_mark: Default::default(),
+            unresolved_mark,
+            top_level_mark,
         };
         transform_js_code(code, &mut visitor, &context)
     }

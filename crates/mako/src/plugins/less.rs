@@ -62,7 +62,7 @@ fn compile_less(param: &PluginLoadParam, _content: &str, context: &Arc<Context>)
         alias_params.push(format!("{}={}", k, v));
     });
     let alias_params = alias_params.join("&");
-    args.push(format!("--resolve={}", alias_params));
+    args.push(format!("--less-plugin-resolve={}", alias_params));
     if !theme.is_empty() {
         theme.iter().for_each(|(k, v)| {
             // remove \n
