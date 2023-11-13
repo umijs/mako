@@ -19,6 +19,7 @@ use crate::compiler::Context;
 use crate::load::Content;
 use crate::module::ResolveType;
 use crate::plugin::{Plugin, PluginLoadParam, PluginTransformJsParam};
+use crate::plugins::bundless_compiler::to_dist_path;
 use crate::stats::StatsJsonMap;
 
 pub struct MinifishPlugin {
@@ -103,8 +104,18 @@ impl Plugin for MinifishPlugin {
                         })
                         .collect();
 
+                    let filename = if id.id.ends_with(".json") {
+                        to_dist_path(&id.id, context).to_string_lossy().to_string()
+                    } else {
+                        to_dist_path(&id.id, context)
+                            .with_extension("js")
+                            .to_string_lossy()
+                            .to_string()
+                    };
+
                     Module {
-                        filename: id.id.clone(),
+                        filename,
+                        id: id.id.clone(),
                         dependencies: deps,
                     }
                 })
@@ -242,6 +253,7 @@ struct ModuleGraphOutput {
 #[derive(Serialize)]
 struct Module {
     filename: String,
+    id: String,
     dependencies: Vec<Dependency>,
 }
 
