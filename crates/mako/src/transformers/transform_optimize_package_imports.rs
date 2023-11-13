@@ -118,7 +118,7 @@ impl Fold for OptimizePackageImports {
                             // If the import specifier is exported from the barrel file, insert to src_specifiers_map
                             if let Some(export) = export_map
                                 .iter()
-                                .find(|export| export.exported == imported && export.orig == "*")
+                                .find(|export| export.orig == imported && export.orig == "*")
                             {
                                 // namespace specifier: `export * as foo from 'foo';`
                                 let new_src = PathBuf::from(&path)
@@ -184,7 +184,7 @@ impl Fold for OptimizePackageImports {
                                     }
                                 }
                             } else if let Some(export) =
-                                export_map.iter().find(|export| export.orig == imported)
+                                export_map.iter().find(|export| export.exported == imported)
                             {
                                 // named specifier: `export { a } from 'a';`
                                 // 'foo/a'
@@ -252,6 +252,16 @@ impl Fold for OptimizePackageImports {
 }
 
 #[derive(Debug, Clone)]
+struct ImportInfo {
+    // `bar` in `export { foo as bar } from './foo';`
+    imported: String,
+    // `./foo` in `export { foo as bar } from './foo';`
+    src: String,
+    // `foo` in `export { foo as bar } from './foo';`
+    orig: String,
+}
+
+#[derive(Debug, Clone)]
 struct ExportInfo {
     // `bar` in `export { foo as bar } from './foo';`
     exported: String,
@@ -296,7 +306,7 @@ fn parse_barrel_file(path: &str, context: &Arc<Context>) -> Result<(bool, Vec<Ex
     // Besides that, lit expressions are allowed as well ("use client", etc.).
     let mut is_barrel = true;
     // Imported meta information. import { a, b as bb } from './foo'; => [(a, './foo', a), (bb, './foo', b)]
-    // let mut import_map = vec![];
+    let mut import_map: Vec<ImportInfo> = vec![];
     // Exportd meta information. export { a, b as bb } from './foo'; => [(a, './foo', a), (bb, './foo', b)]
     let mut export_map: Vec<ExportInfo> = vec![];
 
@@ -305,14 +315,52 @@ fn parse_barrel_file(path: &str, context: &Arc<Context>) -> Result<(bool, Vec<Ex
             ModuleItem::ModuleDecl(module_decl) => {
                 match module_decl {
                     // import
-                    ModuleDecl::Import(_) => {
-                        // Yes
+                    ModuleDecl::Import(import_decl) => {
+                        let src = import_decl.src.value.to_string();
+
+                        for specifier in &import_decl.specifiers {
+                            match specifier {
+                                // e.g. local = foo, imported = None `import { foo } from 'mod.js'`
+                                // e.g. local = bar, imported = Some(foo) for `import { foo as bar } from
+                                ImportSpecifier::Named(import_named) => {
+                                    import_map.push(ImportInfo {
+                                        imported: import_named.local.sym.to_string(),
+                                        src: src.clone(),
+                                        orig: if let Some(imported) = &import_named.imported {
+                                            match imported {
+                                                ModuleExportName::Ident(n) => n.sym.to_string(),
+                                                ModuleExportName::Str(n) => n.value.to_string(),
+                                            }
+                                        } else {
+                                            import_named.local.sym.to_string()
+                                        },
+                                    });
+                                }
+                                // e.g. `import * as foo from 'foo'`.
+                                ImportSpecifier::Namespace(import_namesapce) => {
+                                    import_map.push(ImportInfo {
+                                        imported: import_namesapce.local.sym.to_string(),
+                                        src: src.clone(),
+                                        orig: "*".to_string(),
+                                    })
+                                }
+                                // e.g. `import foo from 'foo'`
+                                ImportSpecifier::Default(import_default) => {
+                                    import_map.push(ImportInfo {
+                                        imported: import_default.local.sym.to_string(),
+                                        src: src.clone(),
+                                        orig: "default".to_string(),
+                                    });
+                                }
+                            }
+                        }
                     }
                     // export named
                     ModuleDecl::ExportNamed(export_named) => {
                         for specifier in &export_named.specifiers {
                             match specifier {
-                                // `export { foo } from 'foo';` / `export { foo as bar } from 'foo';`
+                                // e.g. `export { foo } from 'foo';`
+                                // e.g. `export { foo as bar } from 'foo';`
                                 ExportSpecifier::Named(specifier) => {
                                     let orig_str = match &specifier.orig {
                                         ModuleExportName::Ident(n) => n.sym.to_string(),
@@ -332,11 +380,34 @@ fn parse_barrel_file(path: &str, context: &Arc<Context>) -> Result<(bool, Vec<Ex
                                             orig: orig_str.clone(),
                                         });
                                     } else {
-                                        is_barrel = false;
-                                        break;
+                                        // resolve src from import_map
+                                        let export_info = import_map.iter().find_map(|import| {
+                                            if import.imported == orig_str {
+                                                Some((
+                                                    import.src.to_string(),
+                                                    import.orig.to_string(),
+                                                ))
+                                            } else {
+                                                None
+                                            }
+                                        });
+
+                                        export_map.push(ExportInfo {
+                                            exported: name_str.clone(),
+                                            src: if let Some(export_info) = &export_info {
+                                                export_info.0.clone()
+                                            } else {
+                                                "".to_string()
+                                            },
+                                            orig: if let Some(export_info) = &export_info {
+                                                export_info.1.clone()
+                                            } else {
+                                                orig_str.clone()
+                                            },
+                                        });
                                     }
                                 }
-                                // `export * as foo from 'foo';`
+                                // e.g. `export * as foo from 'foo';`
                                 ExportSpecifier::Namespace(specifier) => {
                                     let name_str = match &specifier.name {
                                         ModuleExportName::Ident(n) => n.sym.to_string(),
@@ -350,7 +421,7 @@ fn parse_barrel_file(path: &str, context: &Arc<Context>) -> Result<(bool, Vec<Ex
                                         });
                                     }
                                 }
-                                // export v from 'mod';
+                                // e.g. export v from 'mod';
                                 ExportSpecifier::Default(_) => {}
                             }
                         }
@@ -369,9 +440,7 @@ fn parse_barrel_file(path: &str, context: &Arc<Context>) -> Result<(bool, Vec<Ex
             }
             ModuleItem::Stmt(stmt) => match stmt {
                 Stmt::Expr(stmt_expr) => match &*stmt_expr.expr {
-                    Expr::Lit(_) => {
-                        // Yes
-                    }
+                    Expr::Lit(_) => {}
                     _ => {
                         is_barrel = false;
                         break;
