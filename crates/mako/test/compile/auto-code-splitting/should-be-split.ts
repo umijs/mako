@@ -10,6 +10,8 @@ import common from './common';
 
 console.log(React, antd, icons, lodash, axios, component, context, common);
 
+import('antd/es/_util/isNumeric').then((m) => console.log(m));
+
 export default {
   React,
   antd,

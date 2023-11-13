@@ -723,6 +723,11 @@ mod tests {
         );
 
         assert!(
+            !files.iter().any(|f| f.contains("_isNumeric_js")),
+            "empty chunk should be removed"
+        );
+
+        assert!(
             files.contains(&"vendors_0-async.js".to_string())
                 && files.contains(&"vendors_1-async.js".to_string()),
             "big vendors should be split again"
