@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use cached::proc_macro::cached;
 use mako_core::anyhow::Result;
+use mako_core::nodejs_resolver::DescriptionData;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{
     ExportSpecifier, Expr, ImportDecl, ImportDefaultSpecifier, ImportSpecifier,
@@ -17,7 +18,7 @@ use crate::compiler::Context;
 use crate::load::load;
 use crate::module::{Dependency, ResolveType};
 use crate::parse::parse;
-use crate::resolve::{resolve, ResolvedResource, ResolverResource};
+use crate::resolve::{resolve, ResolverResource};
 
 pub fn optimize_package_imports(path: String, context: Arc<Context>) -> impl Fold {
     OptimizePackageImports { path, context }
@@ -79,8 +80,16 @@ impl Fold for OptimizePackageImports {
                             continue;
                         }
 
-                        // module with side-effects are not allowed
-                        if has_side_effects(resolved_resource.as_resolved()) {
+                        // package with side-effects are not allowed
+                        let side_effects = if let Some(description) =
+                            &resolved_resource.as_resolved().0.description
+                        {
+                            has_side_effects(description)
+                        } else {
+                            true
+                        };
+
+                        if side_effects {
                             new_items.push(module_item);
                             continue;
                         }
@@ -271,21 +280,21 @@ struct ExportInfo {
     orig: String,
 }
 
-// TODO:
-// - add cache
-// - support `sideEffects: ['xxx']`
-fn has_side_effects(resolved_resource: &ResolvedResource) -> bool {
-    if let Some(descrioption) = &resolved_resource.0.description {
-        let pkg_json = descrioption.data().raw();
-        if pkg_json.is_object() {
-            if let Some(side_effects) = pkg_json.as_object().unwrap().get("sideEffects") {
-                if side_effects.is_boolean() {
-                    !side_effects.as_bool().unwrap().eq(&false)
-                } else {
-                    true
-                }
-            } else {
-                true
+#[cached(
+    key = "String",
+    convert = r#"{ format!("{:?}", description.data().name()) }"#
+)]
+fn has_side_effects(description: &Arc<DescriptionData>) -> bool {
+    let pkg_json = description.data().raw();
+    if pkg_json.is_object() {
+        if let Some(side_effects) = pkg_json.as_object().unwrap().get("sideEffects") {
+            match side_effects {
+                serde_json::Value::Bool(side_effects) => *side_effects,
+                // Temporary support antd by this way
+                serde_json::Value::Array(side_effects) => !side_effects
+                    .iter()
+                    .all(|rule| rule.is_string() && rule.as_str().unwrap().ends_with(".css")),
+                _ => true,
             }
         } else {
             true
