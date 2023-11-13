@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Instant, UNIX_EPOCH};
 
 use mako_core::colored::Colorize;
 use mako_core::futures::{SinkExt, StreamExt};
@@ -50,8 +50,8 @@ impl DevServer {
         }
     }
 
-    pub async fn serve(&self) {
-        self.watcher.start();
+    pub async fn serve(&self, callback: impl Fn(OnDevCompleteParams) + Send + Sync + 'static) {
+        self.watcher.start(callback);
 
         async fn serve_websocket(
             websocket: hyper_tungstenite::HyperWebsocket,
@@ -199,6 +199,17 @@ struct WsMessage {
     hash: u64,
 }
 
+pub struct OnDevCompleteParams {
+    pub is_first_compile: bool,
+    pub time: u64,
+    pub stats: Stats,
+}
+
+pub struct Stats {
+    pub start_time: u64,
+    pub end_time: u64,
+}
+
 struct ProjectWatch {
     root: PathBuf,
     compiler: std::sync::Arc<compiler::Compiler>,
@@ -215,7 +226,7 @@ impl ProjectWatch {
         }
     }
 
-    pub fn start(&self) {
+    pub fn start(&self, callback: impl Fn(OnDevCompleteParams) + Send + Sync + 'static) {
         let c = self.compiler.clone();
         let root = self.root.clone();
         let tx = self.tx.clone();
@@ -265,6 +276,7 @@ impl ProjectWatch {
                         if res.is_updated() {
                             println!("Compiling...");
                             let t_compiler = Instant::now();
+                            let start_time = std::time::SystemTime::now();
                             let next_full_hash =
                                 watch_compiler.generate_hot_update_chunks(res, *last_full_hash);
                             debug!(
@@ -311,6 +323,24 @@ impl ProjectWatch {
                                     "Full rebuilt in {}",
                                     format!("{}ms", t_compiler.elapsed().as_millis()).bold()
                                 );
+
+                                let end_time = std::time::SystemTime::now();
+                                callback(OnDevCompleteParams {
+                                    is_first_compile: false,
+                                    time: t_compiler.elapsed().as_millis() as u64,
+                                    stats: Stats {
+                                        start_time: start_time
+                                            .duration_since(UNIX_EPOCH)
+                                            .unwrap()
+                                            .as_millis()
+                                            as u64,
+                                        end_time: end_time
+                                            .duration_since(UNIX_EPOCH)
+                                            .unwrap()
+                                            .as_millis()
+                                            as u64,
+                                    },
+                                });
                             }
 
                             debug!("receiver count: {}", tx.receiver_count());
