@@ -64,10 +64,10 @@ impl Compiler {
 
         let (js_chunk_map, css_chunk_map) = Self::chunk_maps(&non_entry_chunk_files);
 
-        let full_hash = if current_hash.is_none() {
-            self.full_hash()
+        let full_hash = if let Some(hash) = current_hash {
+            hash
         } else {
-            current_hash.unwrap()
+            self.full_hash()
         };
 
         let mut all_chunk_files = {
