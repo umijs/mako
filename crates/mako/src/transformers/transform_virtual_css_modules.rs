@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use mako_core::lazy_static::lazy_static;
 use mako_core::regex::Regex;
+use mako_core::swc_common::Mark;
 use mako_core::swc_ecma_ast::{CallExpr, Expr, ImportDecl, Lit, Str};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
@@ -10,6 +11,7 @@ use crate::plugins::javascript::{is_commonjs_require, is_dynamic_import};
 
 pub struct VirtualCSSModules<'a> {
     pub context: &'a Arc<Context>,
+    pub unresolved_mark: Mark,
 }
 
 lazy_static! {
@@ -38,7 +40,7 @@ impl VisitMut for VirtualCSSModules<'_> {
     }
 
     fn visit_mut_call_expr(&mut self, call_expr: &mut CallExpr) {
-        if is_dynamic_import(call_expr) || is_commonjs_require(call_expr, None) {
+        if is_dynamic_import(call_expr) || is_commonjs_require(call_expr, &self.unresolved_mark) {
             if let Some(arg) = call_expr.args.first_mut() {
                 if let box Expr::Lit(Lit::Str(ref mut str)) = &mut arg.expr {
                     if is_css_modules_path(&str.value)

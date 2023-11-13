@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use mako_core::swc_common::Mark;
 use mako_core::swc_ecma_ast::{
     AssignExpr, BlockStmt, CallExpr, Decl, Expr, ExprOrSpread, ExprStmt, Stmt, TryStmt,
 };
@@ -14,11 +15,12 @@ use crate::transformers::transform_dep_replacer::miss_throw_stmt;
 pub struct TryResolve<'a> {
     pub path: String,
     pub context: &'a Arc<Context>,
+    pub unresolved_mark: Mark,
 }
 
 impl TryResolve<'_> {
     pub fn handle_call_expr(&mut self, call_expr: &mut CallExpr) {
-        if is_commonjs_require(call_expr, None) {
+        if is_commonjs_require(call_expr, &self.unresolved_mark) {
             let first_arg = get_first_arg_str(call_expr);
             if let Some(source) = first_arg {
                 let result = resolve::resolve(
@@ -126,6 +128,7 @@ mod tests {
         let mut visitor = super::TryResolve {
             path: "test.js".to_string(),
             context: &context,
+            unresolved_mark: Default::default(),
         };
         crate::transformers::test_helper::transform_js_code(code, &mut visitor, &context)
     }
