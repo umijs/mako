@@ -25,7 +25,7 @@ exports.build = async function (opts) {
   }
 
   const { build } = require('@okamjs/okam');
-  await build(cwd, okamConfig, false);
+  await build(cwd, okamConfig, () => {}, false);
 
   // TODO: use stats
   const manifest = JSON.parse(
@@ -122,7 +122,14 @@ exports.dev = async function (opts) {
   okamConfig.hmr = true;
   okamConfig.hmr_port = String(opts.port + 1);
   okamConfig.hmr_host = opts.host;
-  await build(opts.cwd, okamConfig, true);
+  await build(
+    opts.cwd,
+    okamConfig,
+    (_, args) => {
+      opts.onDevCompileDone(args);
+    },
+    true,
+  );
 };
 
 function getDevBanner(protocol, host, port, ip) {
@@ -174,7 +181,7 @@ function checkConfig(opts) {
       throw new Error(
         `externals [string] value only can be ['script {url}', '{root}'] in Mako bundler`,
       );
-    } else if (typeof v === 'object') {
+    } else if (lodash.isPlainObject(v)) {
       throw new Error(
         'externals object value is not supported in Mako bundler',
       );
@@ -185,6 +192,22 @@ function checkConfig(opts) {
     } else if (v instanceof RegExp) {
       throw new Error(
         'externals RegExp value is not supported in Mako bundler',
+      );
+    } else if (
+      typeof v === 'string' &&
+      // allow prefix window type
+      // ex. `window antd`
+      !/^window\s+/.test(v) &&
+      // allow normal string value without type prefix
+      // ex. `antd` or `antd.Button` or `antd['Button']` or `window.antd`
+      !/^\S+$/.test(v)
+    ) {
+      // throw error for other type prefixes
+      // ex. `commonjs`、`var 1 + 1`、`global`
+      throw new Error(
+        `externals string value prefix \`${
+          v.split(' ')[0]
+        } \` is not supported in Mako bundler`,
       );
     }
   });
@@ -343,7 +366,9 @@ async function getOkamConfig(opts) {
       // 这里传 process.env.xxx 反而不会生效
       // TODO: 待 mako 改成和 umi/webpack 的方式一致之后，可以把这段去掉
       if (key.startsWith('process.env.')) {
-        define[key.replace(/^process\.env\./, '')] = opts.config.define[key];
+        define[key.replace(/^process\.env\./, '')] = normalizeDefineValue(
+          opts.config.define[key],
+        );
       } else {
         define[key] = normalizeDefineValue(opts.config.define[key]);
       }
@@ -372,7 +397,7 @@ async function getOkamConfig(opts) {
 
       if (typeof style === 'function') {
         throw new Error(
-          `babel-plugin-import function type style is not supported in okam bundler`,
+          'babel-plugin-import function type style is not supported in okam bundler',
         );
       }
 
@@ -382,13 +407,17 @@ async function getOkamConfig(opts) {
   const externalsConfig = Object.entries(externals).reduce((ret, [k, v]) => {
     // handle [string] with script type
     if (Array.isArray(v)) {
+      const [url, ...members] = v;
+
       ret[k] = {
-        root: v[1],
-        script: v[0].replace('script ', ''),
+        // ['antd', 'Button'] => `antd.Button`
+        root: members.join('.'),
+        // `script https://example.com/lib/script.js` => `https://example.com/lib/script.js`
+        script: url.replace('script ', ''),
       };
     } else if (typeof v === 'string') {
-      // 'var window.antd' => 'antd'
-      ret[k] = v.replace(/^var\s+(window\.)?/, '');
+      // 'window.antd' or 'window antd' => 'antd'
+      ret[k] = v.replace(/^window(\s+|\.)/, '');
     } else {
       // other types except boolean has been checked before
       // so here only ignore invalid boolean type

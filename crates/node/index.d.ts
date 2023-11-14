@@ -79,4 +79,4 @@ inject?: Record<string, { from:string;exclude?:string; } |
 { from:string; namespace: true; exclude?:string }
 >;
 };
-}, watch: boolean): Promise<void>
+}, callback: (...args: any[]) => any, watch: boolean): void

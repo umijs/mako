@@ -54,15 +54,23 @@ import 'zx/globals';
   }
 
   fs.writeFileSync(nodePkgPath, JSON.stringify(nodePkg, null, 2) + '\n');
-
   // build macOs *.node
   await $`rm -rf ./*.node`;
-  await $`find ./ -name '*.node' | xargs rm -f`;
+  await $`find ./npm -name '*.node' | xargs rm -f`;
+
+  await $`cargo build --lib -r --target x86_64-apple-darwin`;
   await $`pnpm run build:mac:x86`;
+
+  await $`cargo build --lib -r  --target aarch64-apple-darwin`;
   await $`pnpm run build:mac:aarch`;
+
   await $`strip -x ./okam.darwin-*.node`;
 
+  console.log('linux building started...');
+  const start = Date.now();
   await build_linux_binding();
+  const duration = (Date.now() - start) / 1000;
+  console.log(`linux building done ${duration}`);
 
   await $`pnpm run artifacts:local`;
 
@@ -122,8 +130,8 @@ async function build_linux_binding() {
   ];
 
   const containerCMD = [
-    'cargo build -r',
-    'pnpm --filter @okamjs/okam build',
+    'cargo build -r --target x86_64-unknown-linux-gnu',
+    'pnpm --filter @okamjs/okam build:linux:x86',
     'strip ./crates/node/okam.linux*.node',
   ].join('&&');
 
@@ -147,6 +155,5 @@ async function build_linux_binding() {
 
   const image = 'ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian';
 
-  // too many <jemalloc> log, so we use quiet
-  await $`docker run ${options} ${image} bash -c ${containerCMD}`.quiet();
+  await $`docker run ${options} ${image} bash -c ${containerCMD}`;
 }
