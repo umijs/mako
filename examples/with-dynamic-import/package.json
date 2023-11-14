@@ -4,9 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "e2e:ci": "start-server-and-test start 3000 test",
-    "start": "cargo run  -- $PWD --watch",
-    "test": "cypress run"
+    "start": "cargo run  -- $PWD --watch"
   },
   "keywords": [],
   "author": "pshu",
@@ -17,9 +15,7 @@
   },
   "devDependencies": {
     "classnames": "^2.3.2",
-    "cypress": "^12.17.0",
     "react-error-overlay": "6.0.9",
-    "react-refresh": "^0.14.0",
-    "start-server-and-test": "^2.0.0"
+    "react-refresh": "^0.14.0"
   }
 }
