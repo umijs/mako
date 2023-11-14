@@ -163,34 +163,25 @@ pub fn resolve_web_worker_mut(new_expr: &mut NewExpr, unresolved_mark: Mark) -> 
         if sym == "Worker" && (span.ctxt.outer() == unresolved_mark) {
             let args = new_expr.args.as_mut().unwrap();
 
-            match &mut *args[0].expr {
-                // new Worker('./worker.js');
-                Expr::Lit(Lit::Str(str)) => {
-                    if !is_url_ignored(&str.value) {
-                        return Some(str);
-                    }
+            // new Worker(new URL(''), base);
+            if let Expr::New(new_expr) = &mut *args[0].expr {
+                if !new_expr.args.is_some_and(|args| !args.is_empty())
+                    || !new_expr.callee.is_ident()
+                {
+                    return None;
                 }
-                // new Worker(new URL(''), base);
-                Expr::New(new_expr) => {
-                    if !new_expr.args.is_some_and(|args| !args.is_empty())
-                        || !new_expr.callee.is_ident()
-                    {
-                        return None;
-                    }
 
-                    if let box Expr::Ident(Ident { span, sym, .. }) = &new_expr.callee {
-                        if sym == "URL" && (span.ctxt.outer() == unresolved_mark) {
-                            // new URL('');
-                            let args = new_expr.args.as_mut().unwrap();
-                            if let box Expr::Lit(Lit::Str(ref mut str)) = &mut args[0].expr {
-                                if !is_url_ignored(&str.value) {
-                                    return Some(str);
-                                }
+                if let box Expr::Ident(Ident { span, sym, .. }) = &new_expr.callee {
+                    if sym == "URL" && (span.ctxt.outer() == unresolved_mark) {
+                        // new URL('');
+                        let args = new_expr.args.as_mut().unwrap();
+                        if let box Expr::Lit(Lit::Str(ref mut str)) = &mut args[0].expr {
+                            if !is_url_ignored(&str.value) {
+                                return Some(str);
                             }
                         }
                     }
                 }
-                _ => {}
             }
         }
     }
