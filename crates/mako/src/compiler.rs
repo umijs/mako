@@ -376,7 +376,12 @@ impl Compiler {
         mako_core::mako_profile_function!();
         let cg = self.context.chunk_graph.read().unwrap();
         let mg = self.context.module_graph.read().unwrap();
-        cg.full_hash(&mg)
+
+        let hash = cg.full_hash(&mg);
+
+        println!("full_hash hhhhhhhhh: {}", hash);
+
+        hash
     }
 
     pub fn clean_dist(&self) {

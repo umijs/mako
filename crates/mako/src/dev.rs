@@ -320,7 +320,7 @@ impl ProjectWatch {
                             }
 
                             debug!("full rebuild...");
-                            if let Err(e) = c.emit_dev_chunks(Some(next_full_hash)) {
+                            if let Err(e) = c.emit_dev_chunks(next_full_hash, next_control_hash) {
                                 debug!("  > build failed: {:?}", e);
                                 return;
                             }

@@ -143,7 +143,7 @@ pub(crate) fn render_normal_js_chunk(
     convert = r#"{ format!("{:x}",pot.js_hash
          .wrapping_add(hash_hashmap(js_map))
          .wrapping_add(hash_hashmap(css_map))
-         .wrapping_add(full_hash)) }"#
+         .wrapping_add(_full_hash)) }"#
 )]
 pub(crate) fn render_entry_js_chunk(
     pot: &ChunkPot,
@@ -151,7 +151,8 @@ pub(crate) fn render_entry_js_chunk(
     css_map: &HashMap<String, String>,
     chunk: &Chunk,
     context: &Arc<Context>,
-    full_hash: u64,
+    _full_hash: u64,
+    control_hash: u64,
 ) -> Result<ChunkFile> {
     mako_core::mako_profile_function!();
 
@@ -165,7 +166,7 @@ pub(crate) fn render_entry_js_chunk(
         mako_core::mako_profile_scope!("full_hash_replace");
 
         String::from_utf8(content)?
-            .replace("_%full_hash%_", &full_hash.to_string())
+            .replace("_%full_hash%_", &control_hash.to_string())
             .into_bytes()
     };
 

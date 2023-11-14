@@ -22,16 +22,16 @@ use crate::sourcemap::build_source_map;
     result = true,
     type = "SizedCache<String, ChunkFile>",
     create = "{ SizedCache::with_size(10) }",
-    convert = r#"{format!("{}-{}",pot.js_hash, full_hash)}"#
+    convert = r#"{format!("{}-{}",pot.js_hash, _full_hash)}"#
 )]
 pub(super) fn render_entry_js_chunk(
     pot: &ChunkPot,
-
     js_map: &HashMap<String, String>,
     css_map: &HashMap<String, String>,
     _chunk: &Chunk,
     context: &Arc<Context>,
-    full_hash: u64,
+    _full_hash: u64,
+    control_hash: u64,
 ) -> Result<ChunkFile> {
     mako_core::mako_profile_function!();
 
@@ -71,7 +71,8 @@ pub(super) fn render_entry_js_chunk(
     lines.push(init_install_css_chunk);
     lines.push(format!("var e = \"{}\";", pot.chunk_id));
 
-    let runtime_content = runtime_code(context)?.replace("_%full_hash%_", &full_hash.to_string());
+    let runtime_content =
+        runtime_code(context)?.replace("_%full_hash%_", &control_hash.to_string());
 
     let mut content: Vec<u8> = format!(
         "var m = {};",

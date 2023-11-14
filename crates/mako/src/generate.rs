@@ -28,10 +28,10 @@ pub struct EmitFile {
 }
 
 impl Compiler {
-    pub fn generate_with_plugin_driver(&self) -> Result<()> {
+    pub fn generate_with_plugin_driver(&self, full_hash: u64) -> Result<()> {
         self.context.plugin_driver.generate(&self.context)?;
 
-        let stats = create_stats_info(0, self);
+        let stats = create_stats_info(0, self, full_hash);
 
         self.context
             .plugin_driver
@@ -40,8 +40,10 @@ impl Compiler {
     }
 
     pub fn generate(&self) -> Result<()> {
+        let full_hash = self.full_hash();
+
         if self.context.config.output.mode == OutputMode::Bundless {
-            return self.generate_with_plugin_driver();
+            return self.generate_with_plugin_driver(full_hash);
         }
 
         debug!("generate");
@@ -97,7 +99,7 @@ impl Compiler {
             fs::create_dir_all(&config.output.path)?;
         }
 
-        let (t_generate_chunks, t_ast_to_code_and_write) = self.write_chunk_files()?;
+        let (t_generate_chunks, t_ast_to_code_and_write) = self.write_chunk_files(full_hash)?;
 
         // write assets
         let t_write_assets = Instant::now();
@@ -119,7 +121,7 @@ impl Compiler {
         let t_write_assets = t_write_assets.elapsed();
 
         // generate stats
-        let stats = create_stats_info(0, self);
+        let stats = create_stats_info(0, self, full_hash);
         if self.context.config.stats && !self.context.args.watch {
             write_stats(&stats, self);
         }
@@ -152,11 +154,11 @@ impl Compiler {
         Ok(())
     }
 
-    fn write_chunk_files(&self) -> Result<(Duration, Duration)> {
+    fn write_chunk_files(&self, full_hash: u64) -> Result<(Duration, Duration)> {
         // generate chunks
         let t_generate_chunks = Instant::now();
         debug!("generate chunks");
-        let chunk_files = self.generate_chunk_files(None)?;
+        let chunk_files = self.generate_chunk_files(full_hash, full_hash)?;
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         let t_ast_to_code_and_write = if self.context.args.watch {
@@ -198,7 +200,7 @@ impl Compiler {
         emit_chunk_file(&self.context, chunk_file);
     }
 
-    pub fn emit_dev_chunks(&self, current_hash: Option<u64>) -> Result<()> {
+    pub fn emit_dev_chunks(&self, full_hash: u64, control_hash: u64) -> Result<()> {
         mako_core::mako_profile_function!("emit_dev_chunks");
 
         debug!("generate(hmr-fullbuild)");
@@ -213,7 +215,7 @@ impl Compiler {
 
         // generate chunks
         let t_generate_chunks = Instant::now();
-        let chunk_files = self.generate_chunk_files(current_hash)?;
+        let chunk_files = self.generate_chunk_files(full_hash, control_hash)?;
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         // ast to code and sourcemap, then write

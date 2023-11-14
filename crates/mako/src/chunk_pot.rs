@@ -73,6 +73,7 @@ impl<'cp> ChunkPot<'cp> {
         css_map: &HashMap<String, String>,
         chunk: &Chunk,
         full_hash: u64,
+        control_hash: u64,
     ) -> Result<Vec<ChunkFile>> {
         mako_core::mako_profile_function!();
 
@@ -86,17 +87,49 @@ impl<'cp> ChunkPot<'cp> {
 
             files.push(css_chunk_file);
             files.push(if self.use_eval(context) {
-                str_impl::render_entry_js_chunk(self, js_map, &css_map, chunk, context, full_hash)?
+                str_impl::render_entry_js_chunk(
+                    self,
+                    js_map,
+                    &css_map,
+                    chunk,
+                    context,
+                    full_hash,
+                    control_hash,
+                )?
             } else {
-                ast_impl::render_entry_js_chunk(self, js_map, &css_map, chunk, context, full_hash)?
+                ast_impl::render_entry_js_chunk(
+                    self,
+                    js_map,
+                    &css_map,
+                    chunk,
+                    context,
+                    full_hash,
+                    control_hash,
+                )?
             });
         } else {
             mako_core::mako_profile_scope!("EntryDevJsChunk", &self.chunk_id);
 
             files.push(if self.use_eval(context) {
-                str_impl::render_entry_js_chunk(self, js_map, css_map, chunk, context, full_hash)?
+                str_impl::render_entry_js_chunk(
+                    self,
+                    js_map,
+                    css_map,
+                    chunk,
+                    context,
+                    full_hash,
+                    control_hash,
+                )?
             } else {
-                ast_impl::render_entry_js_chunk(self, js_map, css_map, chunk, context, full_hash)?
+                ast_impl::render_entry_js_chunk(
+                    self,
+                    js_map,
+                    css_map,
+                    chunk,
+                    context,
+                    full_hash,
+                    control_hash,
+                )?
             });
         }
 
