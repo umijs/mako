@@ -1,7 +1,0 @@
-{
-  "entry": {
-    "foo": "foo.ts"
-  },
-  "hmr": false,
-  "mode": "production"
-}
