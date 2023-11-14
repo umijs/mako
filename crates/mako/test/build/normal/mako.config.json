@@ -1,7 +1,0 @@
-{
-  "externals": {
-    "hoo": "hoo"
-  },
-  "hmr": false,
-  "mode": "production"
-}

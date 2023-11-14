@@ -108,11 +108,6 @@ pub fn setup_logger() {
         .try_init();
 }
 
-pub fn read_dist_file(compiler: &Compiler, path: &str) -> String {
-    let cwd_path = &compiler.context.root;
-    fs::read_to_string(cwd_path.join(path)).unwrap()
-}
-
 pub fn setup_files(compiler: &Compiler, extra_files: Vec<(String, String)>) {
     let cwd_path = &compiler.context.root;
     extra_files.into_iter().for_each(|(path, content)| {
