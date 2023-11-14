@@ -231,11 +231,11 @@ impl ProjectWatch {
         let root = self.root.clone();
         let tx = self.tx.clone();
 
-        let full_hash = c.full_hash();
+        let initial_hash = c.full_hash();
 
-        let mut last_full_hash = Box::new(full_hash);
-        let mut control_hash = Box::new(full_hash);
-        debug!("last_full_hash: {:?}", last_full_hash);
+        let mut last_cache_hash = Box::new(initial_hash);
+        let mut hmr_hash = Box::new(initial_hash);
+        debug!("last_full_hash: {:?}", last_cache_hash);
 
         let watch_compiler = c.clone();
 
@@ -282,8 +282,8 @@ impl ProjectWatch {
                             let start_time = std::time::SystemTime::now();
                             let next_hash = watch_compiler.generate_hot_update_chunks(
                                 res,
-                                *last_full_hash,
-                                *control_hash,
+                                *last_cache_hash,
+                                *hmr_hash,
                             );
                             debug!(
                                 "hot update chunks generated, next_full_hash: {:?}",
@@ -304,23 +304,23 @@ impl ProjectWatch {
                                 return;
                             }
 
-                            let (next_full_hash, next_control_hash) = next_hash.unwrap();
+                            let (next_cache_hash, next_hmr_hash) = next_hash.unwrap();
                             debug!(
                                 "hash info, next: {:?}, last: {:?}, is_equal: {}",
-                                next_full_hash,
-                                last_full_hash,
-                                next_full_hash == *last_full_hash
+                                next_cache_hash,
+                                last_cache_hash,
+                                next_cache_hash == *last_cache_hash
                             );
-                            if next_full_hash == *last_full_hash {
+                            if next_cache_hash == *last_cache_hash {
                                 debug!("hash equals, will not do full rebuild");
                                 return;
                             } else {
-                                *last_full_hash = next_full_hash;
-                                *control_hash = next_control_hash;
+                                *last_cache_hash = next_cache_hash;
+                                *hmr_hash = next_hmr_hash;
                             }
 
                             debug!("full rebuild...");
-                            if let Err(e) = c.emit_dev_chunks(next_full_hash, next_control_hash) {
+                            if let Err(e) = c.emit_dev_chunks(next_cache_hash, next_hmr_hash) {
                                 debug!("  > build failed: {:?}", e);
                                 return;
                             }
@@ -352,10 +352,7 @@ impl ProjectWatch {
 
                             debug!("receiver count: {}", tx.receiver_count());
                             if tx.receiver_count() > 0 {
-                                tx.send(WsMessage {
-                                    hash: *control_hash,
-                                })
-                                .unwrap();
+                                tx.send(WsMessage { hash: *hmr_hash }).unwrap();
                                 debug!("send message to clients");
                             }
                         }

@@ -132,7 +132,7 @@ impl Default for StatsInfo {
     }
 }
 
-pub fn create_stats_info(compile_time: u128, compiler: &Compiler, full_hash: u64) -> StatsJsonMap {
+pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMap {
     let mut stats_map = StatsJsonMap::new();
     let context = compiler.context.clone();
     // 获取当前时间
@@ -140,6 +140,8 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler, full_hash: u64
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_millis();
+    // 获取 hash
+    let hash = compiler.full_hash();
     // 获取 root_path
     let root_path = context.root.clone();
     // 获取 output_path
@@ -147,7 +149,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler, full_hash: u64
 
     stats_map.built_at = now;
     stats_map.time = compile_time;
-    stats_map.hash = full_hash;
+    stats_map.hash = hash;
     stats_map.root_path = root_path;
     stats_map.output_path = output_path;
 

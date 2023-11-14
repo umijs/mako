@@ -52,11 +52,7 @@ impl ChunkFile {
 }
 
 impl Compiler {
-    pub fn generate_chunk_files(
-        &self,
-        full_hash: u64,
-        control_hash: u64,
-    ) -> Result<Vec<ChunkFile>> {
+    pub fn generate_chunk_files(&self, cache_hash: u64, hmr_hash: u64) -> Result<Vec<ChunkFile>> {
         mako_core::mako_profile_function!();
 
         let module_graph = self.context.module_graph.read().unwrap();
@@ -86,8 +82,8 @@ impl Compiler {
                         &js_chunk_map,
                         &css_chunk_map,
                         chunk,
-                        full_hash,
-                        control_hash,
+                        cache_hash,
+                        hmr_hash,
                     )
                 })
                 .collect::<Result<Vec<_>>>()?
@@ -107,19 +103,12 @@ impl Compiler {
         js_map: &HashMap<String, String>,
         css_map: &HashMap<String, String>,
         chunk: &Chunk,
-        full_hash: u64,
-        control_hash: u64,
+        cache_hash: u64,
+        hmr_hash: u64,
     ) -> Result<Vec<ChunkFile>> {
         mako_core::mako_profile_function!();
 
-        pot.to_entry_chunk_files(
-            &self.context,
-            js_map,
-            css_map,
-            chunk,
-            full_hash,
-            control_hash,
-        )
+        pot.to_entry_chunk_files(&self.context, js_map, css_map, chunk, cache_hash, hmr_hash)
     }
 
     fn generate_non_entry_chunk_files(&self) -> Result<Vec<ChunkFile>> {

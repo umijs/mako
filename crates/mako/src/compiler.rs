@@ -377,11 +377,7 @@ impl Compiler {
         let cg = self.context.chunk_graph.read().unwrap();
         let mg = self.context.module_graph.read().unwrap();
 
-        let hash = cg.full_hash(&mg);
-
-        println!("full_hash hhhhhhhhh: {}", hash);
-
-        hash
+        cg.full_hash(&mg)
     }
 
     pub fn clean_dist(&self) {
