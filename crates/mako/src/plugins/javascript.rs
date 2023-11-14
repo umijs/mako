@@ -178,41 +178,31 @@ pub fn resolve_web_worker(new_expr: &NewExpr, unresolved_mark: Mark) -> Option<&
         if sym == "Worker" && (span.ctxt.outer() == unresolved_mark) {
             let args = new_expr.args.as_ref().unwrap();
 
-            match &*args[0].expr {
-                // new Worker('./worker.js');
-                Expr::Lit(Lit::Str(str)) => {
-                    if !is_url_ignored(&str.value) {
-                        return Some(str);
-                    }
+            // new Worker(new URL(''), base);
+            if let Expr::New(new_expr) = &*args[0].expr {
+                if !new_expr.args.is_some_and(|args| !args.is_empty())
+                    || !new_expr.callee.is_ident()
+                {
+                    return None;
                 }
-                // new Worker(new URL(''), base);
-                Expr::New(new_expr) => {
-                    if !new_expr.args.is_some_and(|args| !args.is_empty())
-                        || !new_expr.callee.is_ident()
-                    {
-                        return None;
-                    }
 
-                    if let box Expr::Ident(Ident { span, sym, .. }) = &new_expr.callee {
-                        if sym == "URL" && (span.ctxt.outer() == unresolved_mark) {
-                            // new URL(''); 仅第一个参数为字符串字面量, 第二个参数为 import.meta.url 时添加依赖
-                            let args = new_expr.args.as_ref().unwrap();
+                if let box Expr::Ident(Ident { span, sym, .. }) = &new_expr.callee {
+                    if sym == "URL" && (span.ctxt.outer() == unresolved_mark) {
+                        // new URL(''); 仅第一个参数为字符串字面量, 第二个参数为 import.meta.url 时添加依赖
+                        let args = new_expr.args.as_ref().unwrap();
 
-                            if args.get(1).is_none()
-                                || !is_import_meta_url(&args.get(1).unwrap().expr)
-                            {
-                                return None;
-                            }
+                        if args.get(1).is_none() || !is_import_meta_url(&args.get(1).unwrap().expr)
+                        {
+                            return None;
+                        }
 
-                            if let box Expr::Lit(Lit::Str(ref str)) = &args[0].expr {
-                                if !is_url_ignored(&str.value) {
-                                    return Some(str);
-                                }
+                        if let box Expr::Lit(Lit::Str(ref str)) = &args[0].expr {
+                            if !is_url_ignored(&str.value) {
+                                return Some(str);
                             }
                         }
                     }
                 }
-                _ => {}
             }
         }
     }
