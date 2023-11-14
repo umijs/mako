@@ -6,10 +6,10 @@ use mako_core::anyhow::Result;
 use mako_core::nodejs_resolver::DescriptionData;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{
-    ExportSpecifier, Expr, ImportDecl, ImportDefaultSpecifier, ImportSpecifier,
-    ImportStarAsSpecifier, ModuleDecl, ModuleExportName, ModuleItem, Stmt,
+    ExportSpecifier, Expr, ImportDecl, ImportDefaultSpecifier, ImportNamedSpecifier,
+    ImportSpecifier, ImportStarAsSpecifier, ModuleDecl, ModuleExportName, ModuleItem, Stmt,
 };
-use mako_core::swc_ecma_utils::quote_str;
+use mako_core::swc_ecma_utils::{quote_ident, quote_str};
 use mako_core::swc_ecma_visit::Fold;
 use mako_core::tracing::debug;
 
@@ -195,7 +195,6 @@ impl Fold for OptimizePackageImports {
                             } else if let Some(export) =
                                 export_map.iter().find(|export| export.exported == imported)
                             {
-                                // named specifier: `export { a } from 'a';`
                                 // 'foo/a'
                                 let new_src = PathBuf::from(&path)
                                     .parent()
@@ -204,18 +203,28 @@ impl Fold for OptimizePackageImports {
                                     .to_string_lossy()
                                     .to_string();
 
+                                let new_specifier = if export.orig == export.exported {
+                                    // `export { a } from 'a';` and `import { a } from 'foo'`
+                                    ImportSpecifier::Named((*specifier).clone())
+                                } else {
+                                    // `export { a as aa } from 'a';` and `import { aa } from 'foo'`
+                                    ImportSpecifier::Named(ImportNamedSpecifier {
+                                        span: DUMMY_SP,
+                                        local: specifier.local.clone(),
+                                        imported: Some(ModuleExportName::Ident(quote_ident!(
+                                            export.orig.clone()
+                                        ))),
+                                        is_type_only: specifier.is_type_only,
+                                    })
+                                };
+
                                 match src_specifiers_map
                                     .iter_mut()
                                     .find(|(src, _)| src == &new_src)
                                 {
-                                    Some(map) => {
-                                        map.1.push(ImportSpecifier::Named((*specifier).clone()))
-                                    }
+                                    Some(map) => map.1.push(new_specifier),
                                     None => {
-                                        src_specifiers_map.push((
-                                            new_src,
-                                            vec![ImportSpecifier::Named((*specifier).clone())],
-                                        ));
+                                        src_specifiers_map.push((new_src, vec![new_specifier]));
                                     }
                                 }
                             } else {
