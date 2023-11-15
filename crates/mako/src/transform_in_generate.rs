@@ -19,7 +19,7 @@ use mako_core::{swc_css_ast, swc_css_prefixer};
 
 use crate::ast::Ast;
 use crate::compiler::{Compiler, Context};
-use crate::config::Mode;
+use crate::config::{Mode, OutputMode};
 use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
 use crate::targets;
 use crate::transformers::transform_async_module::AsyncModule;
@@ -219,11 +219,14 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) {
                             let mut dynamic_import = DynamicImport { context };
                             ast.ast.visit_mut_with(&mut dynamic_import);
 
-                            ast.ast.visit_mut_with(&mut MakoRequire {
-                                unresolved_mark,
-                                ignored_idents: &mut vec![],
-                                context,
-                            });
+                            // replace require to __mako_require__ for bundle mode
+                            if matches!(context.config.output.mode, OutputMode::Bundle) {
+                                ast.ast.visit_mut_with(&mut MakoRequire {
+                                    unresolved_mark,
+                                    ignored_idents: &mut vec![],
+                                    context,
+                                });
+                            }
 
                             ast.ast
                                 .visit_mut_with(&mut hygiene_with_config(hygiene::Config {
