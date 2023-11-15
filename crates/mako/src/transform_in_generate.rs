@@ -223,7 +223,6 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) {
                             if matches!(context.config.output.mode, OutputMode::Bundle) {
                                 ast.ast.visit_mut_with(&mut MakoRequire {
                                     unresolved_mark,
-                                    ignored_idents: &mut vec![],
                                     context,
                                 });
                             }
