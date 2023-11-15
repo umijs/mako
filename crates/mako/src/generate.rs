@@ -97,7 +97,8 @@ impl Compiler {
             fs::create_dir_all(&config.output.path)?;
         }
 
-        let (t_generate_chunks, t_ast_to_code_and_write) = self.write_chunk_files()?;
+        let full_hash = self.full_hash();
+        let (t_generate_chunks, t_ast_to_code_and_write) = self.write_chunk_files(full_hash)?;
 
         // write assets
         let t_write_assets = Instant::now();
@@ -152,11 +153,11 @@ impl Compiler {
         Ok(())
     }
 
-    fn write_chunk_files(&self) -> Result<(Duration, Duration)> {
+    fn write_chunk_files(&self, full_hash: u64) -> Result<(Duration, Duration)> {
         // generate chunks
         let t_generate_chunks = Instant::now();
         debug!("generate chunks");
-        let chunk_files = self.generate_chunk_files()?;
+        let chunk_files = self.generate_chunk_files(full_hash, full_hash)?;
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         let t_ast_to_code_and_write = if self.context.args.watch {
@@ -198,7 +199,7 @@ impl Compiler {
         emit_chunk_file(&self.context, chunk_file);
     }
 
-    pub fn emit_dev_chunks(&self) -> Result<()> {
+    pub fn emit_dev_chunks(&self, cache_hash: u64, hmr_hash: u64) -> Result<()> {
         mako_core::mako_profile_function!("emit_dev_chunks");
 
         debug!("generate(hmr-fullbuild)");
@@ -213,7 +214,7 @@ impl Compiler {
 
         // generate chunks
         let t_generate_chunks = Instant::now();
-        let chunk_files = self.generate_chunk_files()?;
+        let chunk_files = self.generate_chunk_files(cache_hash, hmr_hash)?;
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         // ast to code and sourcemap, then write
@@ -255,8 +256,9 @@ impl Compiler {
     pub fn generate_hot_update_chunks(
         &self,
         updated_modules: UpdateResult,
-        last_full_hash: u64,
-    ) -> Result<u64> {
+        last_cache_hash: u64,
+        last_hmr_hash: u64,
+    ) -> Result<(u64, u64)> {
         debug!("generate_hot_update_chunks start");
 
         let last_chunk_names: HashSet<String> = {
@@ -280,22 +282,23 @@ impl Compiler {
         let t_transform_modules = t_transform_modules.elapsed();
 
         let t_calculate_hash = Instant::now();
-        let current_full_hash = self.full_hash();
+        let current_cache_hash = self.full_hash();
+        let current_hmr_hash = last_hmr_hash.wrapping_add(current_cache_hash);
         let t_calculate_hash = t_calculate_hash.elapsed();
 
         debug!(
             "{} {} {}",
-            current_full_hash,
-            if current_full_hash == last_full_hash {
+            current_cache_hash,
+            if current_cache_hash == last_cache_hash {
                 "equals"
             } else {
                 "not equals"
             },
-            last_full_hash
+            last_cache_hash
         );
 
-        if current_full_hash == last_full_hash {
-            return Ok(current_full_hash);
+        if current_cache_hash == last_cache_hash {
+            return Ok((current_cache_hash, current_hmr_hash));
         }
 
         // ensure output dir exists
@@ -334,7 +337,7 @@ impl Compiler {
         let t_generate_hmr_chunk = Instant::now();
         let cg = self.context.chunk_graph.read().unwrap();
         for chunk_name in &modified_chunks {
-            let filename = to_hot_update_chunk_name(chunk_name, last_full_hash);
+            let filename = to_hot_update_chunk_name(chunk_name, last_hmr_hash);
 
             if let Some(chunk) = cg.get_chunk_by_name(chunk_name) {
                 let modified_ids: IndexSet<ModuleId> =
@@ -344,7 +347,7 @@ impl Compiler {
                 let merged_ids: IndexSet<ModuleId> =
                     modified_ids.union(&added_ids).cloned().collect();
                 let (code, sourcemap) =
-                    self.generate_hmr_chunk(chunk, &filename, &merged_ids, current_full_hash)?;
+                    self.generate_hmr_chunk(chunk, &filename, &merged_ids, current_hmr_hash)?;
                 // TODO the final format should be {name}.{full_hash}.hot-update.{ext}
                 self.write_to_dist(&filename, code);
                 self.write_to_dist(format!("{}.map", &filename), sourcemap);
@@ -353,7 +356,7 @@ impl Compiler {
         let t_generate_hmr_chunk = t_generate_hmr_chunk.elapsed();
 
         self.write_to_dist(
-            format!("{}.hot-update.json", last_full_hash),
+            format!("{}.hot-update.json", last_hmr_hash),
             serde_json::to_string(&HotUpdateManifest {
                 removed_chunks,
                 modified_chunks,
@@ -376,9 +379,9 @@ impl Compiler {
             "  - generate hmr chunk: {}ms",
             t_generate_hmr_chunk.as_millis()
         );
-        debug!("  - next full hash: {}", current_full_hash);
+        debug!("  - next full hash: {}", current_cache_hash);
 
-        Ok(current_full_hash)
+        Ok((current_cache_hash, current_hmr_hash))
     }
 
     pub fn write_to_dist<P: AsRef<std::path::Path>, C: AsRef<[u8]>>(
