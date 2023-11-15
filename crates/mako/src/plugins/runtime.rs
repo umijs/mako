@@ -181,7 +181,7 @@ impl MakoRuntime {
                 params: vec![
                     quote_ident!("module").into(),
                     quote_ident!("exports").into(),
-                    quote_ident!("require").into(),
+                    quote_ident!("__mako_require__").into(),
                 ],
                 is_async: false,
                 span,

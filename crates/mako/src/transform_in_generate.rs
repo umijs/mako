@@ -26,6 +26,7 @@ use crate::transformers::transform_async_module::AsyncModule;
 use crate::transformers::transform_css_handler::CssHandler;
 use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
 use crate::transformers::transform_dynamic_import::DynamicImport;
+use crate::transformers::transform_mako_require::MakoRequire;
 use crate::transformers::transform_meta_url_replacer::MetaUrlReplacer;
 use crate::transformers::transform_react::react_refresh_entry_prefix;
 
@@ -217,6 +218,12 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) {
 
                             let mut dynamic_import = DynamicImport { context };
                             ast.ast.visit_mut_with(&mut dynamic_import);
+
+                            ast.ast.visit_mut_with(&mut MakoRequire {
+                                unresolved_mark,
+                                ignored_idents: &mut vec![],
+                                context,
+                            });
 
                             ast.ast
                                 .visit_mut_with(&mut hygiene_with_config(hygiene::Config {
