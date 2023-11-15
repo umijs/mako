@@ -54,14 +54,6 @@ pub enum ResolverResource {
 }
 
 impl ResolverResource {
-    pub fn as_resolved(&self) -> &ResolvedResource {
-        if let Self::Resolved(resolved) = self {
-            resolved
-        } else {
-            panic!("resolved resource is not resolved");
-        }
-    }
-
     pub fn get_resolved_path(&self) -> String {
         match self {
             ResolverResource::External(ExternalResource { source, .. }) => source.to_string(),
