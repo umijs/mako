@@ -3,7 +3,7 @@ use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use mako_core::anyhow::Result;
+use mako_core::anyhow::{anyhow, Result};
 use mako_core::rayon::prelude::*;
 use mako_core::regex::Regex;
 use mako_core::swc_common::{Mark, Span, SyntaxContext, DUMMY_SP};
@@ -17,8 +17,9 @@ use serde::Serialize;
 
 use crate::compiler::Context;
 use crate::load::Content;
-use crate::module::ResolveType;
+use crate::module::{Dependency as ModuleDependency, ResolveType};
 use crate::plugin::{Plugin, PluginLoadParam, PluginTransformJsParam};
+use crate::plugins::bundless_compiler::to_dist_path;
 use crate::stats::StatsJsonMap;
 
 pub struct MinifishPlugin {
@@ -85,6 +86,38 @@ impl Plugin for MinifishPlugin {
         Ok(())
     }
 
+    fn before_resolve(
+        &self,
+        deps: &mut Vec<ModuleDependency>,
+        _context: &Arc<Context>,
+    ) -> Result<()> {
+        let src_root = _context
+            .config
+            .output
+            .preserve_modules_root
+            .to_str()
+            .ok_or_else(|| {
+                anyhow!(
+                    "output.preserve_modules_root {:?} is not a valid utf8 string",
+                    _context.config.output.preserve_modules_root
+                )
+            })?;
+
+        if src_root.is_empty() {
+            return Err(anyhow!(
+                "output.preserve_modules_root cannot be empty in minifish plugin"
+            ));
+        }
+
+        for dep in deps.iter_mut() {
+            if dep.source.starts_with('/') {
+                dep.source.replace_range(0..0, src_root);
+            }
+        }
+
+        Ok(())
+    }
+
     fn build_success(&self, _stats: &StatsJsonMap, context: &Arc<Context>) -> Result<Option<()>> {
         if let Some(meta_path) = &self.meta_path {
             let mg = context.module_graph.read().unwrap();
@@ -103,8 +136,18 @@ impl Plugin for MinifishPlugin {
                         })
                         .collect();
 
+                    let filename = if id.id.ends_with(".json") {
+                        to_dist_path(&id.id, context).to_string_lossy().to_string()
+                    } else {
+                        to_dist_path(&id.id, context)
+                            .with_extension("js")
+                            .to_string_lossy()
+                            .to_string()
+                    };
+
                     Module {
-                        filename: id.id.clone(),
+                        filename,
+                        id: id.id.clone(),
                         dependencies: deps,
                     }
                 })
@@ -114,7 +157,10 @@ impl Plugin for MinifishPlugin {
                 serde_json::to_string_pretty(&serde_json::json!(ModuleGraphOutput { modules }))
                     .unwrap();
 
-            std::fs::write(meta_path, meta).unwrap();
+            std::fs::create_dir_all(meta_path.parent().unwrap()).unwrap();
+
+            std::fs::write(meta_path, meta)
+                .map_err(|e| anyhow!("write meta file({}) error: {}", meta_path.display(), e))?;
         }
 
         Ok(None)
@@ -239,6 +285,7 @@ struct ModuleGraphOutput {
 #[derive(Serialize)]
 struct Module {
     filename: String,
+    id: String,
     dependencies: Vec<Dependency>,
 }
 

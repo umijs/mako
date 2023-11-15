@@ -81,8 +81,11 @@ pub(super) fn render_entry_js_chunk(
 
     {
         mako_core::mako_profile_scope!("assemble");
+
+        content.splice(0..0, "!(function(){\n".bytes());
         content.extend(lines.join("\n").into_bytes());
         content.extend(runtime_content.into_bytes());
+        content.extend("\n})();".as_bytes());
     }
 
     Ok(ChunkFile {

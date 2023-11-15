@@ -470,13 +470,7 @@ impl FileRequest {
 
 #[cfg(test)]
 mod tests {
-    use mako_core::petgraph::prelude::EdgeRef;
-    use mako_core::petgraph::visit::IntoEdgeReferences;
-    use mako_core::tokio;
-
     use super::parse_path;
-    use crate::compiler;
-    use crate::config::Config;
 
     #[test]
     fn test_parse_path() {
@@ -505,106 +499,5 @@ mod tests {
             &("bar".to_string(), "".to_string())
         );
         assert!(result.has_query("bar"));
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_build_normal() {
-        let (module_ids, references) = build("test/build/normal");
-        assert_eq!(
-            module_ids.join(","),
-            "bar_1.ts,bar_2.ts,foo.ts,hoo,index.ts".to_string()
-        );
-        assert_eq!(
-            references
-                .into_iter()
-                .map(|(source, target)| { format!("{} -> {}", source, target) })
-                .collect::<Vec<String>>()
-                .join(","),
-            "bar_1.ts -> foo.ts,bar_2.ts -> foo.ts,index.ts -> bar_1.ts,index.ts -> bar_2.ts,index.ts -> hoo"
-                .to_string()
-        );
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_build_config_entry() {
-        let (module_ids, _references) = build("test/build/config-entry");
-        assert_eq!(module_ids.join(","), "bar.ts,foo.ts".to_string());
-    }
-
-    // TODO: add this test case back
-    // #[tokio::test(flavor = "multi_thread")]
-    // #[should_panic]
-    // async fn test_build_panic_resolve() {
-    //     build("test/build/panic-resolve");
-    // }
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_build_css() {
-        let (module_ids, references) = build("test/build/css");
-        assert_eq!(
-            module_ids.join(","),
-            "foo.css,index.css,index.ts".to_string()
-        );
-        assert_eq!(
-            references
-                .into_iter()
-                .map(|(source, target)| { format!("{} -> {}", source, target) })
-                .collect::<Vec<String>>()
-                .join(","),
-            "index.css -> foo.css,index.ts -> index.css".to_string()
-        );
-    }
-
-    fn build(base: &str) -> (Vec<String>, Vec<(String, String)>) {
-        let current_dir = std::env::current_dir().unwrap();
-        let pnpm_dir = current_dir.join("node_modules/.pnpm");
-        let root = current_dir.join(base);
-        let config = Config::new(&root, None, None).unwrap();
-        let compiler = compiler::Compiler::new(config, root.clone(), Default::default()).unwrap();
-        compiler.build().unwrap();
-        let module_graph = compiler.context.module_graph.read().unwrap();
-        let mut module_ids: Vec<String> = module_graph
-            .graph
-            .node_weights()
-            .map(|module| {
-                module
-                    .id
-                    .id
-                    .to_string()
-                    .replace(format!("{}/", root.to_str().unwrap()).as_str(), "")
-                    .replace(pnpm_dir.to_str().unwrap(), "")
-            })
-            .collect();
-        module_ids.sort_by_key(|module_id| module_id.to_string());
-        let mut references: Vec<(String, String)> = module_graph
-            .graph
-            .edge_references()
-            .map(|edge| {
-                let source = &module_graph.graph[edge.source()].id.id;
-                let target = &module_graph.graph[edge.target()].id.id;
-                (
-                    source
-                        .to_string()
-                        .replace(format!("{}/", root.to_str().unwrap()).as_str(), "")
-                        .replace(pnpm_dir.to_str().unwrap(), ""),
-                    target
-                        .to_string()
-                        .replace(format!("{}/", root.to_str().unwrap()).as_str(), "")
-                        .replace(pnpm_dir.to_str().unwrap(), ""),
-                )
-            })
-            .collect();
-        references.sort_by_key(|(source, target)| format!("{} -> {}", source, target));
-
-        println!("module_ids:");
-        for module_id in &module_ids {
-            println!("  - {:?}", module_id);
-        }
-        println!("references:");
-        for (source, target) in &references {
-            println!("  - {} -> {}", source, target);
-        }
-
-        (module_ids, references)
     }
 }

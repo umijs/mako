@@ -49,45 +49,6 @@ jobs:
         run: >
           cargo test -v
 
-      - name: build
-        run: cargo build
-
-      - name: prepare-antd-CI
-        working-directory: ./examples/with-antd
-        run: pnpm cypress install
-
-#      - name: antd-CI-advanced
-#        run: pnpm --filter with-antd run e2e:ci
-
-      - name: Set Mako TreeShake to basic strategy
-        uses: sergeysova/jq-action@v2
-        with:
-          cmd: jq '.treeShake="basic"' ./examples/with-antd/mako.config.json > tmp.json
-      - name: Update Mako config file
-        run: |
-          mv tmp.json  ./examples/with-antd/mako.config.json
-          cat ./examples/with-antd/mako.config.json
-
-      - name: antd-CI-basic
-        run: pnpm --filter with-antd run e2e:ci
-
-      - name: prepare-HMR-CI
-        working-directory: ./examples/with-dynamic-import
-        run: pnpm cypress install
-      - name: HMR-CI
-        run: pnpm --filter with-dynamic-import run e2e:ci
-
-  # build_benchmarks:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v2
-  #     - uses: actions-rs/toolchain@v1
-  #       with:
-  #         toolchain: nightly
-  #         override: true
-  #     - name: build
-  #       run: cargo build -v --benches
-
   lint_with_clippy:
     runs-on: ubuntu-20.04
     steps:

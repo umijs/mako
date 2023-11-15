@@ -145,7 +145,7 @@ impl Compiler {
         for chunk in chunks {
             if chunk.chunk_type == ChunkType::Async && self.get_chunk_size(chunk) < options.min_size
             {
-                let entry_ids = chunk_graph.entry_dependents_chunk(chunk);
+                let entry_ids = chunk_graph.entry_dependents_chunk(&chunk.id);
 
                 // merge if there is only one entry chunk
                 // TODO: don't merge if entry chunk size is greater than max_size
@@ -385,6 +385,7 @@ impl Compiler {
     fn apply_optimize_infos(&self, optimize_chunks_infos: &Vec<OptimizeChunksInfo>) {
         let mut edges = HashMap::new();
         let mut chunk_graph = self.context.chunk_graph.write().unwrap();
+        let mut empty_to_info_chunks = vec![];
         for info in optimize_chunks_infos {
             // create new chunk
             let info_chunk_id = ChunkId {
@@ -410,13 +411,33 @@ impl Compiler {
 
                     chunk.remove_module(module_id);
                     edges.insert(chunk_id.clone(), info_chunk_id.clone());
+
+                    // record empty chunk if all modules moved to info chunk
+                    if chunk.modules.is_empty() {
+                        empty_to_info_chunks.push((chunk_id.clone(), info_chunk_id.clone()));
+                    }
                 }
             }
+        }
 
-            // add edge to original chunks
-            for (from, to) in edges.iter() {
-                chunk_graph.add_edge(from, to);
+        // remove empty chunks and update edges
+        for (chunk_id, info_chunk_id) in &empty_to_info_chunks {
+            // replace edge between empty chunk and its dependent chunks
+            for dependent_id in chunk_graph.dependents_chunk(chunk_id) {
+                chunk_graph.remove_edge(&dependent_id, chunk_id);
+                edges.insert(dependent_id, info_chunk_id.clone());
             }
+
+            chunk_graph.remove_chunk(chunk_id);
+        }
+
+        // add edge to original chunks
+        for (from, to) in edges.iter() {
+            if empty_to_info_chunks.iter().any(|(id, _)| id == from) {
+                continue;
+            }
+
+            chunk_graph.add_edge(from, to);
         }
     }
 
