@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use mako_core::anyhow::Result;
 use mako_core::swc_common::errors::HANDLER;
-use mako_core::swc_common::{chain, GLOBALS};
+use mako_core::swc_common::GLOBALS;
 use mako_core::swc_css_visit::VisitMutWith as CSSVisitMutWith;
 use mako_core::swc_ecma_transforms::feature::FeatureFlag;
 use mako_core::swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
@@ -11,9 +11,8 @@ use mako_core::swc_ecma_transforms::hygiene::hygiene_with_config;
 use mako_core::swc_ecma_transforms::modules::common_js;
 use mako_core::swc_ecma_transforms::modules::import_analysis::import_analyzer;
 use mako_core::swc_ecma_transforms::modules::util::{Config, ImportInterop};
-use mako_core::swc_ecma_transforms::optimization::simplify::dce::dce;
 use mako_core::swc_ecma_transforms::{fixer, hygiene};
-use mako_core::swc_ecma_visit::{Fold, VisitMutWith};
+use mako_core::swc_ecma_visit::VisitMutWith;
 use mako_core::swc_error_reporters::handler::try_with_handler;
 use mako_core::{swc_css_ast, swc_css_prefixer};
 
@@ -227,11 +226,7 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) {
                             let origin_comments =
                                 context.meta.script.origin_comments.read().unwrap();
                             let swc_comments = origin_comments.get_swc_comments();
-                            let mut folders = chain!(
-                                fixer(Some(swc_comments)),
-                                dce(Default::default(), unresolved_mark)
-                            );
-                            ast.ast.body = folders.fold_module(ast.ast.clone()).body;
+                            ast.ast.visit_mut_with(&mut fixer(Some(swc_comments)));
 
                             Ok(())
                         })
