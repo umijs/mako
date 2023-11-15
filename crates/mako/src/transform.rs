@@ -3,6 +3,7 @@ use std::sync::Arc;
 use mako_core::anyhow::Result;
 use mako_core::swc_common::comments::NoopComments;
 use mako_core::swc_common::errors::HANDLER;
+use mako_core::swc_common::pass::Optional;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{chain, Mark, GLOBALS};
 use mako_core::swc_css_ast::Stylesheet;
@@ -162,7 +163,10 @@ fn transform_js(
                                 ..Default::default()
                             }
                         ),
-                        optimize_package_imports(task.path.clone(), context.clone()),
+                        Optional {
+                            enabled: context.config.optimize_package_imports,
+                            visitor: optimize_package_imports(task.path.clone(), context.clone()),
+                        },
                     );
 
                     ast.body = folders.fold_module(ast.clone()).body;
