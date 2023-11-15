@@ -40,14 +40,11 @@ impl Compiler {
     }
 
     pub fn generate(&self) -> Result<()> {
-        if self.context.config.output.mode == OutputMode::Bundless {
-            return self.generate_with_plugin_driver();
-        }
-
         debug!("generate");
         let t_generate = Instant::now();
-        let t_tree_shaking = Instant::now();
+
         debug!("tree_shaking");
+        let t_tree_shaking = Instant::now();
         // Disable tree shaking in watch mode temporarily
         // ref: https://github.com/umijs/mako/issues/396
         if !self.context.args.watch {
@@ -76,6 +73,11 @@ impl Compiler {
             }
         }
         let t_tree_shaking = t_tree_shaking.elapsed();
+
+        if self.context.config.output.mode == OutputMode::Bundless {
+            return self.generate_with_plugin_driver();
+        }
+
         let t_group_chunks = Instant::now();
         self.group_chunk();
         let t_group_chunks = t_group_chunks.elapsed();
