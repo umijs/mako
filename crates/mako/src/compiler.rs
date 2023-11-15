@@ -293,7 +293,9 @@ impl Compiler {
             let ignore_regex = config
                 .ignores
                 .iter()
-                .map(|ignore| Regex::new(ignore).map_err(Error::new))
+                .map(|ignore| {
+                    Regex::new(format!(r#"^{}(/|$)"#, ignore).as_str()).map_err(Error::new)
+                })
                 .collect::<Result<Vec<Regex>>>()?;
 
             plugins.push(Arc::new(plugins::ignore::IgnorePlugin {
