@@ -34,6 +34,7 @@ impl VisitMut for CSSUrlReplacer<'_> {
         let url = handle_css_url(url);
         let dep = Dependency {
             source: url,
+            resolve_as: None,
             resolve_type: crate::module::ResolveType::Css,
             order: 0,
             span: None,

@@ -218,6 +218,7 @@ impl DepCollectVisitor {
     ) {
         self.dependencies.push(Dependency {
             source,
+            resolve_as: None,
             order: self.order,
             resolve_type,
             span,

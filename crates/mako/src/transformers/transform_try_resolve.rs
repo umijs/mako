@@ -27,6 +27,7 @@ impl TryResolve<'_> {
                     self.path.as_str(),
                     &Dependency {
                         source: source.clone(),
+                        resolve_as: None,
                         resolve_type: ResolveType::Require,
                         order: 0,
                         span: None,

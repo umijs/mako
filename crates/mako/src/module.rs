@@ -22,6 +22,7 @@ pub type Dependencies = HashSet<Dependency>;
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct Dependency {
     pub source: String,
+    pub resolve_as: Option<String>,
     pub resolve_type: ResolveType,
     pub order: usize,
     pub span: Option<Span>,

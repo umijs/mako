@@ -16,6 +16,7 @@ use mako_core::swc_ecma_transforms::modules::util::ImportInterop;
 use mako_core::swc_ecma_transforms::{fixer, hygiene};
 use mako_core::swc_ecma_visit::VisitMutWith;
 use mako_core::swc_error_reporters::handler::try_with_handler;
+use mako_core::tracing::warn;
 
 use crate::ast::{js_ast_to_code, Ast};
 use crate::compiler::{Args, Context};
@@ -42,12 +43,8 @@ impl BundlessCompiler {
         content: C,
         context: &Arc<Context>,
     ) {
-        let to = context
-            .config
-            .output
-            .path
-            .join(filename)
-            .with_extension("js");
+        let to = context.config.output.path.join(&filename);
+        let to = normalize_extension(to);
 
         fs::write(to, content).unwrap();
     }
@@ -134,15 +131,16 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
                 .map(|(id, dep)| {
                     let dep_dist_path = to_dist_path(&id.id, context);
 
-                    let rel_path = diff_paths(&dep_dist_path, &module_dist_path)
-                        .ok_or_else(|| {
+                    let rel_path =
+                        diff_paths(&dep_dist_path, &module_dist_path).ok_or_else(|| {
                             anyhow!(
                                 "failed to get relative path from {:?} to {:?}",
                                 dep_dist_path,
                                 module_dist_path
                             )
-                        })?
-                        .with_extension("js");
+                        })?;
+
+                    let rel_path = normalize_extension(rel_path);
 
                     let replacement: String = {
                         let mut to_path = rel_path.to_str().unwrap().to_string();
@@ -276,4 +274,23 @@ pub fn to_dist_path<P: AsRef<str>>(abs_path: P, context: &Arc<Context>) -> PathB
 
         context.config.output.path.join(relative_path)
     }
+}
+
+fn normalize_extension(to: PathBuf) -> PathBuf {
+    if let Some(ext) = to.extension() {
+        let ext = ext.to_str().unwrap();
+
+        return match ext {
+            "js" | "json" => to,
+            "mjs" => to.with_extension("mjs.js"),
+            "cjs" => to.with_extension("cjs.js"),
+            "jsx" | "tsx" | "ts" => to.with_extension("js"),
+            _ => {
+                warn!("unknown extension: {} will keep unchanged", to.display());
+
+                return to;
+            }
+        };
+    }
+    to
 }
