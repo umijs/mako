@@ -1,6 +1,6 @@
 use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::{Instant, UNIX_EPOCH};
+use std::sync::{mpsc, Arc};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use mako_core::colored::Colorize;
 use mako_core::futures::{SinkExt, StreamExt};
@@ -230,6 +230,8 @@ impl ProjectWatch {
         let c = self.compiler.clone();
         let root = self.root.clone();
         let tx = self.tx.clone();
+        // full rebuild channel
+        let (build_send, build_resv) = mpsc::channel::<(Instant, SystemTime, u64, u64, bool)>();
 
         let initial_hash = c.full_hash();
 
@@ -317,37 +319,15 @@ impl ProjectWatch {
                             } else {
                                 *last_cache_hash = next_cache_hash;
                                 *hmr_hash = next_hmr_hash;
-                            }
-
-                            debug!("full rebuild...");
-                            if let Err(e) = c.emit_dev_chunks(next_cache_hash, next_hmr_hash) {
-                                debug!("  > build failed: {:?}", e);
-                                return;
-                            }
-                            debug!("full rebuild...done");
-                            if !has_missing_deps {
-                                println!(
-                                    "Full rebuilt in {}",
-                                    format!("{}ms", t_compiler.elapsed().as_millis()).bold()
-                                );
-
-                                let end_time = std::time::SystemTime::now();
-                                callback(OnDevCompleteParams {
-                                    is_first_compile: false,
-                                    time: t_compiler.elapsed().as_millis() as u64,
-                                    stats: Stats {
-                                        start_time: start_time
-                                            .duration_since(UNIX_EPOCH)
-                                            .unwrap()
-                                            .as_millis()
-                                            as u64,
-                                        end_time: end_time
-                                            .duration_since(UNIX_EPOCH)
-                                            .unwrap()
-                                            .as_millis()
-                                            as u64,
-                                    },
-                                });
+                                build_send
+                                    .send((
+                                        t_compiler,
+                                        start_time,
+                                        next_cache_hash,
+                                        next_hmr_hash,
+                                        has_missing_deps,
+                                    ))
+                                    .unwrap();
                             }
 
                             debug!("receiver count: {}", tx.receiver_count());
@@ -360,6 +340,37 @@ impl ProjectWatch {
                 }
             });
         });
+
+        pool.spawn(move || {
+            for (t_compiler, start_time, next_cache_hash, next_hmr_hash, has_missing_deps) in
+                build_resv
+            {
+                debug!("full rebuild...");
+                if let Err(e) = c.emit_dev_chunks(next_cache_hash, next_hmr_hash) {
+                    debug!("  > build failed: {:?}", e);
+                    return;
+                }
+                debug!("full rebuild...done");
+                if !has_missing_deps {
+                    println!(
+                        "Full rebuilt in {}",
+                        format!("{}ms", t_compiler.elapsed().as_millis()).bold()
+                    );
+
+                    let end_time = std::time::SystemTime::now();
+                    callback(OnDevCompleteParams {
+                        is_first_compile: false,
+                        time: t_compiler.elapsed().as_millis() as u64,
+                        stats: Stats {
+                            start_time: start_time.duration_since(UNIX_EPOCH).unwrap().as_millis()
+                                as u64,
+                            end_time: end_time.duration_since(UNIX_EPOCH).unwrap().as_millis()
+                                as u64,
+                        },
+                    });
+                }
+            }
+        })
     }
 
     pub fn clone_receiver(&self) -> Receiver<WsMessage> {
