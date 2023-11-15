@@ -93,6 +93,16 @@ where
                     func(crate::watch::WatchEvent::Modified(event.paths));
                 }
             }
+            // why?
+            // cloudide 下 下会先 create 一个 .随机数文件，然后再 rename 过来，会走到 RenameMode::To 的事件
+            EventKind::Modify(ModifyKind::Name(RenameMode::To)) => {
+                let is_added = event.paths.iter().any(|path| path.exists());
+                if is_added {
+                    func(crate::watch::WatchEvent::Added(event.paths));
+                } else {
+                    func(crate::watch::WatchEvent::Removed(event.paths));
+                }
+            }
             EventKind::Modify(ModifyKind::Name(RenameMode::Any)) => {
                 // add and remove all emit rename event
                 // so we need to check if the file is exists to determine
