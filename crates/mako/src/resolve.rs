@@ -244,10 +244,6 @@ fn do_resolve(
         debug!("parent: {:?}, source: {:?}", parent, source);
         let result = resolver.resolve(parent, source);
         if let Ok(result) = result {
-            if source.contains("@alipay/knowledge-form") {
-                println!("resolve: {:?} -> {:?}", source, result);
-            }
-
             match result {
                 ResolveResult::Resource(resource) => {
                     // TODO: 只在 watch 时且二次编译时才做这个检查
