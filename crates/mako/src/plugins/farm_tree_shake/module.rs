@@ -150,6 +150,7 @@ impl TreeShakeModule {
             UsedExports::All => {}
             UsedExports::Partial(ref mut used_exports) => {
                 self.used_exports = UsedExports::ReferredPartial(used_exports.clone());
+                return true;
             }
             UsedExports::ReferredPartial(_) => {}
         };
