@@ -13,22 +13,13 @@ var m = {
         Object.defineProperty(exports, "__esModule", {
             value: true
         });
-        function _export(target, all) {
-            for(var name in all)Object.defineProperty(target, name, {
-                enumerable: true,
-                get: all[name]
-            });
-        }
-        _export(exports, {
-            foo: function() {
+        Object.defineProperty(exports, "foo", {
+            enumerable: true,
+            get: function() {
                 return foo;
-            },
-            bar: function() {
-                return bar;
             }
         });
         function foo() {}
-        const bar = 1;
         foo();
     },
     "2.ts": function(module, exports, require) {

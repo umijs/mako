@@ -21,6 +21,8 @@ var m = {
         });
         var _interop_require_default = require("@swc/helpers/_/_interop_require_default");
         var _2 = _interop_require_default._(require("2.ts"));
+        require("3.ts");
+        require("4.ts");
     },
     "2.ts": function(module, exports, require) {
         Object.defineProperty(exports, "__esModule", {
@@ -46,6 +48,7 @@ var m = {
         });
         function xx() {}
     },
+    "4.ts": function(module, exports, require) {},
     "index.ts": function(module, exports, require) {
         Object.defineProperty(exports, "__esModule", {
             value: true

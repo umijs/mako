@@ -11,27 +11,7 @@ var cssInstalledChunks = {
     "index.tsx": 0
 };
 var m = {
-    "foo.tsx": function(module, exports, require) {
-        Object.defineProperty(exports, "__esModule", {
-            value: true
-        });
-        function _export(target, all) {
-            for(var name in all)Object.defineProperty(target, name, {
-                enumerable: true,
-                get: all[name]
-            });
-        }
-        _export(exports, {
-            a: function() {
-                return a;
-            },
-            b: function() {
-                return b;
-            }
-        });
-        function a() {}
-        function b() {}
-    },
+    "foo.tsx": function(module, exports, require) {},
     "index.tsx": function(module, exports, require) {
         Object.defineProperty(exports, "__esModule", {
             value: true
