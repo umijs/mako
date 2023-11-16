@@ -2,5 +2,6 @@
   "externals": {},
   "treeShake": "basic",
   "minify": true,
-  "moduleIdStrategy": "named"
+  "moduleIdStrategy": "named",
+  "optimizePackageImports": true
 }

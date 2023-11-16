@@ -4,16 +4,20 @@
 extern crate napi_derive;
 
 use std::sync::{Arc, Once};
+use std::time::UNIX_EPOCH;
 
 use mako::compiler::{Args, Compiler};
 use mako::config::{Config, Mode};
-use mako::dev::DevServer;
+use mako::dev::{DevServer, OnDevCompleteParams, Stats};
 use mako::logger::init_logger;
+use napi::bindgen_prelude::*;
+use napi::threadsafe_function::{ErrorStrategy, ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi::Status;
 static LOG_INIT: Once = Once::new();
 
 #[napi]
-pub async fn build(
+pub fn build(
+    e: Env,
     root: String,
     #[napi(ts_arg_type = r#"
 {
@@ -91,14 +95,37 @@ pub async fn build(
             { from:string; namespace: true; exclude?:string }
             >;
     };
+    optimizePackageImports?: boolean;
 }"#)]
     config: serde_json::Value,
+    callback: JsFunction,
     watch: bool,
 ) -> napi::Result<()> {
     // logger
     LOG_INIT.call_once(|| {
         init_logger();
     });
+
+    let callback: ThreadsafeFunction<OnDevCompleteParams, ErrorStrategy::CalleeHandled> = callback
+        .create_threadsafe_function(
+            0,
+            |ctx: napi::threadsafe_function::ThreadSafeCallContext<OnDevCompleteParams>| {
+                let mut obj = ctx.env.create_object()?;
+                let mut stats = ctx.env.create_object()?;
+                stats.set_named_property(
+                    "startTime",
+                    ctx.env.create_int64(ctx.value.stats.start_time as i64)?,
+                )?;
+                stats.set_named_property(
+                    "endTime",
+                    ctx.env.create_int64(ctx.value.stats.end_time as i64)?,
+                )?;
+                obj.set_named_property("isFirstCompile", ctx.value.is_first_compile)?;
+                obj.set_named_property("time", ctx.env.create_int64(ctx.value.time as i64))?;
+                obj.set_named_property("stats", stats)?;
+                Ok(vec![obj])
+            },
+        )?;
 
     let default_config = serde_json::to_string(&config).unwrap();
     let root = std::path::PathBuf::from(&root);
@@ -112,13 +139,35 @@ pub async fn build(
 
     let compiler = Compiler::new(config, root.clone(), Args { watch })
         .map_err(|e| napi::Error::new(Status::GenericFailure, format!("{}", e)))?;
+    let start_time = std::time::SystemTime::now();
     compiler
         .compile()
         .map_err(|e| napi::Error::new(Status::GenericFailure, format!("{}", e)))?;
+    let end_time = std::time::SystemTime::now();
+    callback.call(
+        Ok(OnDevCompleteParams {
+            is_first_compile: true,
+            time: end_time.duration_since(start_time).unwrap().as_millis() as u64,
+            stats: Stats {
+                start_time: start_time.duration_since(UNIX_EPOCH).unwrap().as_millis() as u64,
+                end_time: end_time.duration_since(UNIX_EPOCH).unwrap().as_millis() as u64,
+            },
+        }),
+        ThreadsafeFunctionCallMode::Blocking,
+    );
     if watch {
-        let d = DevServer::new(root.clone(), Arc::new(compiler));
-        // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
-        d.serve().await;
+        e.execute_tokio_future(
+            async move {
+                let d = DevServer::new(root.clone(), Arc::new(compiler));
+                // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
+                d.serve(move |params| {
+                    callback.call(Ok(params), ThreadsafeFunctionCallMode::Blocking);
+                })
+                .await;
+                Ok(())
+            },
+            move |&mut _, _res| Ok(()),
+        )?;
     }
     Ok(())
 }

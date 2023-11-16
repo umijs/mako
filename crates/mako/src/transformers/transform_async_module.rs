@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use mako_core::swc_common::DUMMY_SP;
+use mako_core::swc_common::{Mark, DUMMY_SP};
 use mako_core::swc_ecma_ast::{
     ArrayLit, ArrowExpr, AssignExpr, AssignOp, AwaitExpr, BindingIdent, BlockStmt, BlockStmtOrExpr,
     CallExpr, Callee, CondExpr, Decl, Expr, ExprOrSpread, ExprStmt, Ident, Lit, MemberExpr,
@@ -11,6 +11,7 @@ use mako_core::swc_ecma_visit::VisitMut;
 
 use crate::compiler::Context;
 use crate::module::Dependency;
+use crate::plugins::javascript::is_commonjs_require;
 
 const ASYNC_DEPS_IDENT: &str = "__mako_async_dependencies__";
 const ASYNC_IMPORTED_MODULE: &str = "_async__mako_imported_module_";
@@ -21,6 +22,7 @@ pub struct AsyncModule<'a> {
     pub last_dep_pos: usize,
     pub top_level_await: bool,
     pub context: &'a Arc<Context>,
+    pub unresolved_mark: Mark,
 }
 
 impl VisitMut for AsyncModule<'_> {
@@ -32,34 +34,30 @@ impl VisitMut for AsyncModule<'_> {
                     // `require('./async');` => `var _async__mako_imported_module_n__ = require('./async');`
                     Stmt::Expr(expr_stmt) => {
                         if let Expr::Call(call_expr) = &*expr_stmt.expr {
-                            if let Callee::Expr(box Expr::Ident(Ident { sym, .. })) =
-                                &call_expr.callee
-                            {
-                                if sym == "require" {
-                                    if let Expr::Lit(Lit::Str(Str { value, .. })) =
-                                        &*call_expr.args[0].expr
-                                    {
-                                        let source = value.to_string();
-                                        if self.async_deps.iter().any(|dep| dep.source == source) {
-                                            let ident_name: BindingIdent = Ident::new(
-                                                format!("{}{}__", ASYNC_IMPORTED_MODULE, i).into(),
-                                                DUMMY_SP,
-                                            )
-                                            .into();
-                                            *stmt = Stmt::Decl(Decl::Var(Box::new(VarDecl {
+                            if is_commonjs_require(call_expr, &self.unresolved_mark) {
+                                if let Expr::Lit(Lit::Str(Str { value, .. })) =
+                                    &*call_expr.args[0].expr
+                                {
+                                    let source = value.to_string();
+                                    if self.async_deps.iter().any(|dep| dep.source == source) {
+                                        let ident_name: BindingIdent = Ident::new(
+                                            format!("{}{}__", ASYNC_IMPORTED_MODULE, i).into(),
+                                            DUMMY_SP,
+                                        )
+                                        .into();
+                                        *stmt = Stmt::Decl(Decl::Var(Box::new(VarDecl {
+                                            span: DUMMY_SP,
+                                            kind: VarDeclKind::Var,
+                                            declare: false,
+                                            decls: vec![VarDeclarator {
                                                 span: DUMMY_SP,
-                                                kind: VarDeclKind::Var,
-                                                declare: false,
-                                                decls: vec![VarDeclarator {
-                                                    span: DUMMY_SP,
-                                                    name: Pat::Ident(ident_name.clone()),
-                                                    init: Some(Box::new(*expr_stmt.expr.clone())),
-                                                    definite: false,
-                                                }],
-                                            })));
-                                            self.async_deps_idents.push(ident_name.clone());
-                                            self.last_dep_pos = i;
-                                        }
+                                                name: Pat::Ident(ident_name.clone()),
+                                                init: Some(Box::new(*expr_stmt.expr.clone())),
+                                                definite: false,
+                                            }],
+                                        })));
+                                        self.async_deps_idents.push(ident_name.clone());
+                                        self.last_dep_pos = i;
                                     }
                                 }
                             }
@@ -70,25 +68,16 @@ impl VisitMut for AsyncModule<'_> {
                     Stmt::Decl(Decl::Var(var_decl)) => {
                         for decl in &var_decl.decls {
                             if let Some(box Expr::Call(call_expr)) = &decl.init {
-                                if let Callee::Expr(box Expr::Ident(Ident { sym, .. })) =
-                                    &call_expr.callee
-                                {
-                                    if sym == "require" {
-                                        if let Expr::Lit(Lit::Str(Str { value, .. })) =
-                                            &*call_expr.args[0].expr
-                                        {
-                                            let source = value.to_string();
-                                            if self
-                                                .async_deps
-                                                .iter()
-                                                .any(|dep| dep.source == source)
-                                            {
-                                                // filter the async deps
-                                                if let Pat::Ident(binding_ident) = &decl.name {
-                                                    self.async_deps_idents
-                                                        .push(binding_ident.clone());
-                                                    self.last_dep_pos = i;
-                                                }
+                                if is_commonjs_require(call_expr, &self.unresolved_mark) {
+                                    if let Expr::Lit(Lit::Str(Str { value, .. })) =
+                                        &*call_expr.args[0].expr
+                                    {
+                                        let source = value.to_string();
+                                        if self.async_deps.iter().any(|dep| dep.source == source) {
+                                            // filter the async deps
+                                            if let Pat::Ident(binding_ident) = &decl.name {
+                                                self.async_deps_idents.push(binding_ident.clone());
+                                                self.last_dep_pos = i;
                                             }
                                         }
                                     }
@@ -107,48 +96,48 @@ impl VisitMut for AsyncModule<'_> {
                                                     if let Expr::Call(call_expr) =
                                                         &*call_expr.args[0].expr
                                                     {
-                                                        if let Callee::Expr(box Expr::Ident(
-                                                            Ident { sym, .. },
-                                                        )) = &call_expr.callee
-                                                        {
-                                                            if sym == "require" {
-                                                                if let Expr::Lit(Lit::Str(Str {
-                                                                    value,
-                                                                    ..
-                                                                })) = &*call_expr.args[0].expr
+                                                        if is_commonjs_require(
+                                                            call_expr,
+                                                            &self.unresolved_mark,
+                                                        ) {
+                                                            if let Expr::Lit(Lit::Str(Str {
+                                                                value,
+                                                                ..
+                                                            })) = &*call_expr.args[0].expr
+                                                            {
+                                                                let source = value.to_string();
+                                                                if self
+                                                                    .async_deps
+                                                                    .iter()
+                                                                    .any(|dep| dep.source == source)
                                                                 {
-                                                                    let source = value.to_string();
-                                                                    if self.async_deps.iter().any(
-                                                                        |dep| dep.source == source,
-                                                                    ) {
-                                                                        // filter the async deps
-                                                                        if let Pat::Ident(
-                                                                            binding_ident,
-                                                                        ) = &decl.name
-                                                                        {
-                                                                            let binding_ident_default = BindingIdent {
-                                                                                id: Ident {
-                                                                                    sym: format!("{}.default", binding_ident.id.sym).into(),
-                                                                                    ..binding_ident.id.clone()
-                                                                                },
-                                                                                ..binding_ident.clone()
-                                                                            };
+                                                                    // filter the async deps
+                                                                    if let Pat::Ident(
+                                                                        binding_ident,
+                                                                    ) = &decl.name
+                                                                    {
+                                                                        let binding_ident_default = BindingIdent {
+                                                                            id: Ident {
+                                                                                sym: format!("{}.default", binding_ident.id.sym).into(),
+                                                                                ..binding_ident.id.clone()
+                                                                            },
+                                                                            ..binding_ident.clone()
+                                                                        };
 
-                                                                            if &obj_sym == "_interop_require_default" {
-                                                                                // ex. _react.default
-                                                                                self.async_deps_idents.push(binding_ident_default.clone());
-                                                                            } else if &obj_sym == "_interop_require_wildcard" {
-                                                                                // ex. _react
-                                                                                self.async_deps_idents.push(binding_ident.clone());
-                                                                                // why also push the default import?
-                                                                                // adapt both default import and wildcard import for the same module
-                                                                                self.async_deps_idents.push(binding_ident_default.clone());
-                                                                            } else {
-                                                                                unreachable!();
-                                                                            }
-
-                                                                            self.last_dep_pos = i;
+                                                                        if &obj_sym == "_interop_require_default" {
+                                                                            // ex. _react.default
+                                                                            self.async_deps_idents.push(binding_ident_default.clone());
+                                                                        } else if &obj_sym == "_interop_require_wildcard" {
+                                                                            // ex. _react
+                                                                            self.async_deps_idents.push(binding_ident.clone());
+                                                                            // why also push the default import?
+                                                                            // adapt both default import and wildcard import for the same module
+                                                                            self.async_deps_idents.push(binding_ident_default.clone());
+                                                                        } else {
+                                                                            unreachable!();
                                                                         }
+
+                                                                        self.last_dep_pos = i;
                                                                     }
                                                                 }
                                                             }
@@ -367,6 +356,7 @@ mod tests {
     use std::sync::Arc;
 
     use mako_core::swc_common::{Globals, DUMMY_SP, GLOBALS};
+    use mako_core::swc_ecma_transforms::resolver;
     use mako_core::swc_ecma_visit::VisitMutWith;
 
     use super::AsyncModule;
@@ -426,6 +416,7 @@ require._async(module, async (handleAsyncDeps, asyncResult)=>{
                 async_deps: &vec![Dependency {
                     resolve_type: ResolveType::Import,
                     source: String::from("./async"),
+                    resolve_as: None,
                     span: Some(DUMMY_SP),
                     order: 1,
                 }],
@@ -433,7 +424,13 @@ require._async(module, async (handleAsyncDeps, asyncResult)=>{
                 last_dep_pos: 0,
                 top_level_await: true,
                 context: &context,
+                unresolved_mark: ast.unresolved_mark,
             };
+            ast.ast.visit_mut_with(&mut resolver(
+                ast.unresolved_mark,
+                ast.top_level_mark,
+                false,
+            ));
             ast.ast.visit_mut_with(&mut async_module);
         });
 

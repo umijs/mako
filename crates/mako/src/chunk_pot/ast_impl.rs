@@ -9,7 +9,8 @@ use mako_core::swc_css_ast::Stylesheet;
 use mako_core::swc_css_codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};
 use mako_core::swc_css_codegen::{CodeGenerator, CodegenConfig, Emit};
 use mako_core::swc_ecma_ast::{
-    KeyValueProp, Lit, Number, ObjectLit, Prop, PropOrSpread, Stmt, VarDeclKind,
+    BlockStmt, FnExpr, Function, KeyValueProp, Lit, Module as SwcModule, Number, ObjectLit, Prop,
+    PropOrSpread, Stmt, UnaryExpr, UnaryOp, VarDeclKind,
 };
 use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
 
@@ -143,7 +144,7 @@ pub(crate) fn render_normal_js_chunk(
     convert = r#"{ format!("{:x}",pot.js_hash
          .wrapping_add(hash_hashmap(js_map))
          .wrapping_add(hash_hashmap(css_map))
-         .wrapping_add(full_hash)) }"#
+         .wrapping_add(_cache_hash)) }"#
 )]
 pub(crate) fn render_entry_js_chunk(
     pot: &ChunkPot,
@@ -151,7 +152,8 @@ pub(crate) fn render_entry_js_chunk(
     css_map: &HashMap<String, String>,
     chunk: &Chunk,
     context: &Arc<Context>,
-    full_hash: u64,
+    _cache_hash: u64,
+    hmr_hash: u64,
 ) -> Result<ChunkFile> {
     mako_core::mako_profile_function!();
 
@@ -165,7 +167,7 @@ pub(crate) fn render_entry_js_chunk(
         mako_core::mako_profile_scope!("full_hash_replace");
 
         String::from_utf8(content)?
-            .replace("_%full_hash%_", &full_hash.to_string())
+            .replace("_%full_hash%_", &hmr_hash.to_string())
             .into_bytes()
     };
 
@@ -269,6 +271,8 @@ fn render_entry_chunk_js_without_full_hash(
         ast.ast
             .body
             .splice(0..0, stmts.into_iter().map(|s| s.into()));
+
+        ast.ast = wrap_in_iife(ast.ast);
     }
 
     if context.config.minify && matches!(context.config.mode, Mode::Production) {
@@ -328,5 +332,41 @@ fn to_object_lit(value: &HashMap<String, String>) -> ObjectLit {
     ObjectLit {
         span: DUMMY_SP,
         props,
+    }
+}
+
+fn wrap_in_iife(module: SwcModule) -> SwcModule {
+    let stmts = module
+        .body
+        .into_iter()
+        .map(|stmt| stmt.as_stmt().unwrap().clone())
+        .collect::<Vec<_>>();
+
+    let fnc: FnExpr = Function {
+        params: vec![],
+        decorators: vec![],
+        span: DUMMY_SP,
+        body: Some(BlockStmt {
+            span: DUMMY_SP,
+            stmts,
+        }),
+        is_generator: false,
+        is_async: false,
+        type_params: None,
+        return_type: None,
+    }
+    .into();
+
+    let stmt = UnaryExpr {
+        span: DUMMY_SP,
+        op: UnaryOp::Bang,
+        arg: fnc.wrap_with_paren().as_iife().into(),
+    }
+    .into_stmt();
+
+    SwcModule {
+        body: vec![stmt.into()],
+        shebang: module.shebang,
+        span: DUMMY_SP,
     }
 }

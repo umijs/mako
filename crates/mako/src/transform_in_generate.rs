@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use mako_core::anyhow::Result;
 use mako_core::swc_common::errors::HANDLER;
-use mako_core::swc_common::{chain, GLOBALS};
+use mako_core::swc_common::GLOBALS;
 use mako_core::swc_css_visit::VisitMutWith as CSSVisitMutWith;
 use mako_core::swc_ecma_transforms::feature::FeatureFlag;
 use mako_core::swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
@@ -11,21 +11,21 @@ use mako_core::swc_ecma_transforms::hygiene::hygiene_with_config;
 use mako_core::swc_ecma_transforms::modules::common_js;
 use mako_core::swc_ecma_transforms::modules::import_analysis::import_analyzer;
 use mako_core::swc_ecma_transforms::modules::util::{Config, ImportInterop};
-use mako_core::swc_ecma_transforms::optimization::simplify::dce::dce;
 use mako_core::swc_ecma_transforms::{fixer, hygiene};
-use mako_core::swc_ecma_visit::{Fold, VisitMutWith};
+use mako_core::swc_ecma_visit::VisitMutWith;
 use mako_core::swc_error_reporters::handler::try_with_handler;
 use mako_core::{swc_css_ast, swc_css_prefixer};
 
 use crate::ast::Ast;
 use crate::compiler::{Compiler, Context};
-use crate::config::Mode;
+use crate::config::{Mode, OutputMode};
 use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
 use crate::targets;
 use crate::transformers::transform_async_module::AsyncModule;
 use crate::transformers::transform_css_handler::CssHandler;
 use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
 use crate::transformers::transform_dynamic_import::DynamicImport;
+use crate::transformers::transform_mako_require::MakoRequire;
 use crate::transformers::transform_meta_url_replacer::MetaUrlReplacer;
 use crate::transformers::transform_react::react_refresh_entry_prefix;
 
@@ -194,6 +194,7 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) {
                                     last_dep_pos: 0,
                                     top_level_await,
                                     context,
+                                    unresolved_mark,
                                 };
                                 ast.ast.visit_mut_with(&mut async_module);
                             }
@@ -206,8 +207,8 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) {
                             let mut dep_replacer = DepReplacer {
                                 to_replace: dep_map,
                                 context,
-                                unresolved_mark: ast.unresolved_mark,
-                                top_level_mark: ast.top_level_mark,
+                                unresolved_mark,
+                                top_level_mark,
                             };
                             ast.ast.visit_mut_with(&mut dep_replacer);
 
@@ -216,6 +217,12 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) {
 
                             let mut dynamic_import = DynamicImport { context };
                             ast.ast.visit_mut_with(&mut dynamic_import);
+
+                            // replace require to __mako_require__ for bundle mode
+                            if matches!(context.config.output.mode, OutputMode::Bundle) {
+                                let mut mako_require = MakoRequire::new(context, unresolved_mark);
+                                ast.ast.visit_mut_with(&mut mako_require);
+                            }
 
                             ast.ast
                                 .visit_mut_with(&mut hygiene_with_config(hygiene::Config {
@@ -226,11 +233,7 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) {
                             let origin_comments =
                                 context.meta.script.origin_comments.read().unwrap();
                             let swc_comments = origin_comments.get_swc_comments();
-                            let mut folders = chain!(
-                                fixer(Some(swc_comments)),
-                                dce(Default::default(), unresolved_mark)
-                            );
-                            ast.ast.body = folders.fold_module(ast.ast.clone()).body;
+                            ast.ast.visit_mut_with(&mut fixer(Some(swc_comments)));
 
                             Ok(())
                         })

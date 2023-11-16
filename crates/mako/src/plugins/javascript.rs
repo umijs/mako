@@ -6,7 +6,7 @@ use mako_core::swc_common::collections::AHashSet;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{self, Mark, GLOBALS};
 use mako_core::swc_ecma_ast::{
-    self, CallExpr, Callee, Expr, Id, Ident, Import, Lit, MemberExpr, MemberProp, MetaPropExpr,
+    CallExpr, Callee, Expr, Id, Ident, Import, Lit, MemberExpr, MemberProp, MetaPropExpr,
     MetaPropKind, Module, ModuleDecl, NewExpr, Str,
 };
 use mako_core::swc_ecma_utils::collect_decls;
@@ -103,6 +103,7 @@ impl DepCollectVisitor {
     ) {
         self.dependencies.push(Dependency {
             source,
+            resolve_as: None,
             order: self.order,
             resolve_type,
             span,
@@ -144,7 +145,7 @@ impl Visit for DepCollectVisitor {
         n.visit_children_with(self);
     }
     fn visit_call_expr(&mut self, expr: &CallExpr) {
-        if is_commonjs_require(expr, Some(&self.bindings)) {
+        if is_commonjs_require(expr, &self.unresolved_mark) {
             if let Some(src) = get_first_arg_str(expr) {
                 self.bind_dependency(src, ResolveType::Require, Some(expr.span));
                 return;
@@ -178,41 +179,31 @@ pub fn resolve_web_worker(new_expr: &NewExpr, unresolved_mark: Mark) -> Option<&
         if sym == "Worker" && (span.ctxt.outer() == unresolved_mark) {
             let args = new_expr.args.as_ref().unwrap();
 
-            match &*args[0].expr {
-                // new Worker('./worker.js');
-                Expr::Lit(Lit::Str(str)) => {
-                    if !is_url_ignored(&str.value) {
-                        return Some(str);
-                    }
+            // new Worker(new URL(''), base);
+            if let Expr::New(new_expr) = &*args[0].expr {
+                if !new_expr.args.is_some_and(|args| !args.is_empty())
+                    || !new_expr.callee.is_ident()
+                {
+                    return None;
                 }
-                // new Worker(new URL(''), base);
-                Expr::New(new_expr) => {
-                    if !new_expr.args.is_some_and(|args| !args.is_empty())
-                        || !new_expr.callee.is_ident()
-                    {
-                        return None;
-                    }
 
-                    if let box Expr::Ident(Ident { span, sym, .. }) = &new_expr.callee {
-                        if sym == "URL" && (span.ctxt.outer() == unresolved_mark) {
-                            // new URL(''); 仅第一个参数为字符串字面量, 第二个参数为 import.meta.url 时添加依赖
-                            let args = new_expr.args.as_ref().unwrap();
+                if let box Expr::Ident(Ident { span, sym, .. }) = &new_expr.callee {
+                    if sym == "URL" && (span.ctxt.outer() == unresolved_mark) {
+                        // new URL(''); 仅第一个参数为字符串字面量, 第二个参数为 import.meta.url 时添加依赖
+                        let args = new_expr.args.as_ref().unwrap();
 
-                            if args.get(1).is_none()
-                                || !is_import_meta_url(&args.get(1).unwrap().expr)
-                            {
-                                return None;
-                            }
+                        if args.get(1).is_none() || !is_import_meta_url(&args.get(1).unwrap().expr)
+                        {
+                            return None;
+                        }
 
-                            if let box Expr::Lit(Lit::Str(ref str)) = &args[0].expr {
-                                if !is_url_ignored(&str.value) {
-                                    return Some(str);
-                                }
+                        if let box Expr::Lit(Lit::Str(ref str)) = &args[0].expr {
+                            if !is_url_ignored(&str.value) {
+                                return Some(str);
                             }
                         }
                     }
                 }
-                _ => {}
             }
         }
     }
@@ -224,16 +215,14 @@ pub fn is_import_meta_url(expr: &Expr) -> bool {
     matches!(
         expr,
         Expr::Member(MemberExpr {
-            obj:
-                box Expr::MetaProp(MetaPropExpr {
-                    kind: MetaPropKind::ImportMeta,
-                    ..
-                }),
-            prop:
-                MemberProp::Ident(Ident {
-                    sym: js_word!("url"),
-                    ..
-                }),
+            obj: box Expr::MetaProp(MetaPropExpr {
+                kind: MetaPropKind::ImportMeta,
+                ..
+            }),
+            prop: MemberProp::Ident(Ident {
+                sym: js_word!("url"),
+                ..
+            }),
             ..
         })
     )
@@ -243,22 +232,21 @@ pub fn is_dynamic_import(call_expr: &CallExpr) -> bool {
     matches!(&call_expr.callee, Callee::Import(Import { .. }))
 }
 
-pub fn is_commonjs_require(call_expr: &CallExpr, bindings: Option<&Lrc<AHashSet<Id>>>) -> bool {
-    if let Callee::Expr(box Expr::Ident(swc_ecma_ast::Ident { sym, span, .. })) = &call_expr.callee
-    {
-        let is_require = sym == "require";
-        if !is_require {
-            return false;
-        }
-        let has_binding = if let Some(bindings) = bindings {
-            bindings.contains(&(sym.clone(), span.ctxt))
-        } else {
-            false
-        };
-        !has_binding
+pub fn is_commonjs_require(call_expr: &CallExpr, unresolved_mark: &Mark) -> bool {
+    if let Callee::Expr(box Expr::Ident(ident)) = &call_expr.callee {
+        ident.sym == *"require" && is_native_ident(ident, unresolved_mark)
     } else {
         false
     }
+}
+
+pub fn is_native_ident(ident: &Ident, unresolved_mark: &Mark) -> bool {
+    let outer = ident.span.ctxt.outer();
+
+    outer == *unresolved_mark ||
+        // also treat empty mark require as native require
+        // because hmr code snippet ast cannot has correct mark
+        outer == Mark::root()
 }
 
 pub fn get_first_arg_str(call_expr: &CallExpr) -> Option<String> {

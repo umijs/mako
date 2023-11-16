@@ -22,6 +22,7 @@ pub type Dependencies = HashSet<Dependency>;
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct Dependency {
     pub source: String,
+    pub resolve_as: Option<String>,
     pub resolve_type: ResolveType,
     pub order: usize,
     pub span: Option<Span>,
@@ -145,6 +146,14 @@ pub enum ModuleAst {
 }
 
 impl ModuleAst {
+    pub fn as_script(&self) -> &SwcModule {
+        if let Self::Script(script) = self {
+            &script.ast
+        } else {
+            panic!("ModuleAst is not Script")
+        }
+    }
+
     pub fn as_script_mut(&mut self) -> &mut SwcModule {
         if let Self::Script(script) = self {
             &mut script.ast
@@ -240,7 +249,7 @@ impl Module {
                     params: vec![
                         quote_ident!("module").into(),
                         quote_ident!("exports").into(),
-                        quote_ident!("require").into(),
+                        quote_ident!("__mako_require__").into(),
                     ],
                     decorators: vec![],
                     body: Some(BlockStmt {
@@ -276,7 +285,7 @@ fn empty_module_fn_expr() -> FnExpr {
         params: vec![
             quote_ident!("module").into(),
             quote_ident!("exports").into(),
-            quote_ident!("require").into(),
+            quote_ident!("__mako_require__").into(),
         ],
         decorators: vec![],
         body: Some(BlockStmt {

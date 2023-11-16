@@ -83,7 +83,8 @@ pub fn miss_throw_stmt<T: AsRef<str>>(source: T) -> Expr {
 impl VisitMut for DepReplacer<'_> {
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Call(call_expr) = expr {
-            if is_commonjs_require(call_expr, None) || is_dynamic_import(call_expr) {
+            if is_commonjs_require(call_expr, &self.unresolved_mark) || is_dynamic_import(call_expr)
+            {
                 if let ExprOrSpread {
                     expr: box Expr::Lit(Lit::Str(ref mut source)),
                     ..
@@ -162,34 +163,25 @@ pub fn resolve_web_worker_mut(new_expr: &mut NewExpr, unresolved_mark: Mark) -> 
         if sym == "Worker" && (span.ctxt.outer() == unresolved_mark) {
             let args = new_expr.args.as_mut().unwrap();
 
-            match &mut *args[0].expr {
-                // new Worker('./worker.js');
-                Expr::Lit(Lit::Str(str)) => {
-                    if !is_url_ignored(&str.value) {
-                        return Some(str);
-                    }
+            // new Worker(new URL(''), base);
+            if let Expr::New(new_expr) = &mut *args[0].expr {
+                if !new_expr.args.is_some_and(|args| !args.is_empty())
+                    || !new_expr.callee.is_ident()
+                {
+                    return None;
                 }
-                // new Worker(new URL(''), base);
-                Expr::New(new_expr) => {
-                    if !new_expr.args.is_some_and(|args| !args.is_empty())
-                        || !new_expr.callee.is_ident()
-                    {
-                        return None;
-                    }
 
-                    if let box Expr::Ident(Ident { span, sym, .. }) = &new_expr.callee {
-                        if sym == "URL" && (span.ctxt.outer() == unresolved_mark) {
-                            // new URL('');
-                            let args = new_expr.args.as_mut().unwrap();
-                            if let box Expr::Lit(Lit::Str(ref mut str)) = &mut args[0].expr {
-                                if !is_url_ignored(&str.value) {
-                                    return Some(str);
-                                }
+                if let box Expr::Ident(Ident { span, sym, .. }) = &new_expr.callee {
+                    if sym == "URL" && (span.ctxt.outer() == unresolved_mark) {
+                        // new URL('');
+                        let args = new_expr.args.as_mut().unwrap();
+                        if let box Expr::Lit(Lit::Str(ref mut str)) = &mut args[0].expr {
+                            if !is_url_ignored(&str.value) {
+                                return Some(str);
                             }
                         }
                     }
                 }
-                _ => {}
             }
         }
     }
@@ -202,7 +194,8 @@ mod tests {
     use std::collections::HashMap;
     use std::sync::Arc;
 
-    use mako_core::swc_common::GLOBALS;
+    use mako_core::swc_common::{chain, GLOBALS};
+    use mako_core::swc_ecma_transforms::resolver;
     use mako_core::swc_ecma_visit::VisitMut;
     use maplit::hashmap;
 
@@ -230,12 +223,15 @@ mod tests {
             };
 
             let cloned = context.clone();
-            let mut visitor: Box<dyn VisitMut> = Box::new(DepReplacer {
-                to_replace: &to_replace,
-                context: &cloned,
-                unresolved_mark: ast.unresolved_mark,
-                top_level_mark: ast.top_level_mark,
-            });
+            let mut visitor: Box<dyn VisitMut> = Box::new(chain!(
+                resolver(ast.unresolved_mark, ast.top_level_mark, false),
+                DepReplacer {
+                    to_replace: &to_replace,
+                    context: &cloned,
+                    unresolved_mark: ast.unresolved_mark,
+                    top_level_mark: ast.top_level_mark,
+                }
+            ));
 
             assert_display_snapshot!(transform_ast_with(&mut ast.ast, &mut visitor, &context.meta.script.cm));
         });
@@ -254,6 +250,7 @@ mod tests {
                 missing: hashmap! {"react".to_string() => Dependency {
                     resolve_type: ResolveType::Import,
                     source: "react".to_string(),
+                    resolve_as: None,
                     span: None,
                     order: 0,
                 }},
@@ -261,12 +258,15 @@ mod tests {
             };
 
             let cloned = context.clone();
-            let mut visitor: Box<dyn VisitMut> = Box::new(DepReplacer {
-                to_replace: &to_replace,
-                context: &cloned,
-                unresolved_mark: ast.unresolved_mark,
-                top_level_mark: ast.top_level_mark,
-            });
+            let mut visitor: Box<dyn VisitMut> = Box::new(chain!(
+                resolver(ast.unresolved_mark, ast.top_level_mark, false),
+                DepReplacer {
+                    to_replace: &to_replace,
+                    context: &cloned,
+                    unresolved_mark: ast.unresolved_mark,
+                    top_level_mark: ast.top_level_mark,
+                }
+            ));
 
             assert_display_snapshot!(transform_ast_with(
                 &mut ast.ast,
@@ -294,6 +294,7 @@ mod tests {
                 missing: hashmap! {"react".to_string() => Dependency {
                     resolve_type: ResolveType::Import,
                     source: "react".to_string(),
+                    resolve_as: None,
                     span: None,
                     order: 0,
                 }},
@@ -301,12 +302,15 @@ mod tests {
             };
 
             let cloned = context.clone();
-            let mut visitor: Box<dyn VisitMut> = Box::new(DepReplacer {
-                to_replace: &to_replace,
-                context: &cloned,
-                unresolved_mark: ast.unresolved_mark,
-                top_level_mark: ast.top_level_mark,
-            });
+            let mut visitor: Box<dyn VisitMut> = Box::new(chain!(
+                resolver(ast.unresolved_mark, ast.top_level_mark, false),
+                DepReplacer {
+                    to_replace: &to_replace,
+                    context: &cloned,
+                    unresolved_mark: ast.unresolved_mark,
+                    top_level_mark: ast.top_level_mark,
+                }
+            ));
 
             assert_display_snapshot!(transform_ast_with(
                 &mut ast.ast,
@@ -333,6 +337,8 @@ mod tests {
 
     fn transform_code(code: &str) -> String {
         let context = Arc::new(Default::default());
+        let unresolved_mark = Default::default();
+        let top_level_mark = Default::default();
         let mut visitor = DepReplacer {
             to_replace: &DependenciesToReplace {
                 resolved: hashmap! {
@@ -342,8 +348,8 @@ mod tests {
                 ignored: vec![],
             },
             context: &context,
-            unresolved_mark: Default::default(),
-            top_level_mark: Default::default(),
+            unresolved_mark,
+            top_level_mark,
         };
         transform_js_code(code, &mut visitor, &context)
     }

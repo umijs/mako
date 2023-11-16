@@ -28,7 +28,6 @@ impl VisitMut for Provide {
     fn visit_mut_module(&mut self, module: &mut Module) {
         self.bindings = Lrc::new(collect_decls(&*module));
         module.visit_mut_children_with(self);
-
         module
             .body
             .splice(0..0, self.var_decls.iter().map(|(_, var)| var.clone()));
@@ -37,7 +36,8 @@ impl VisitMut for Provide {
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Ident(Ident { ref sym, span, .. }) = expr {
             let has_binding = self.bindings.contains(&(sym.clone(), span.ctxt));
-            let provider = self.providers.get(&sym.to_string());
+            let name = &sym.to_string();
+            let provider = self.providers.get(name);
             if !has_binding && provider.is_some() {
                 if let Some((from, key)) = provider {
                     let require_decl: ModuleItem = {
@@ -69,7 +69,7 @@ impl VisitMut for Provide {
                         }
                     };
 
-                    self.var_decls.insert(key.clone(), require_decl);
+                    self.var_decls.insert(name.to_string(), require_decl);
                 }
             }
         }
