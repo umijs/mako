@@ -4,6 +4,7 @@ use std::sync::Arc;
 use cached::proc_macro::cached;
 use mako_core::anyhow::Result;
 use mako_core::nodejs_resolver::DescriptionData;
+use mako_core::path_clean::PathClean;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{
     ExportSpecifier, Expr, ImportDecl, ImportDefaultSpecifier, ImportNamedSpecifier,
@@ -124,6 +125,7 @@ impl Fold for OptimizePackageImports {
                                         .parent()
                                         .unwrap()
                                         .join(&export.src)
+                                        .clean()
                                         .to_string_lossy()
                                         .to_string();
 
@@ -157,6 +159,7 @@ impl Fold for OptimizePackageImports {
                                         .parent()
                                         .unwrap()
                                         .join(&export.src)
+                                        .clean()
                                         .to_string_lossy()
                                         .to_string();
 
@@ -190,6 +193,7 @@ impl Fold for OptimizePackageImports {
                                         .parent()
                                         .unwrap()
                                         .join(&export.src)
+                                        .clean()
                                         .to_string_lossy()
                                         .to_string();
 

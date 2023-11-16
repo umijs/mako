@@ -1245,7 +1245,7 @@ version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330c60081dcc4c72131f8eb70510f1ac07223e5d4163db481a04a0befcffa412"
 dependencies = [
- "libloading 0.7.4",
+ "libloading 0.8.1",
 ]
 
 [[package]]
@@ -2506,6 +2506,7 @@ dependencies = [
  "mime_guess",
  "nodejs-resolver",
  "notify",
+ "path-clean 1.0.1",
  "pathdiff",
  "petgraph",
  "puffin",
@@ -3197,6 +3198,12 @@ name = "path-clean"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ecba01bf2678719532c5e3059e0b5f0811273d94b397088b82e3bd0a78c78fdd"
+
+[[package]]
+name = "path-clean"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "17359afc20d7ab31fdb42bb844c8b3bb1dabd7dcf7e68428492da7f16966fcef"
 
 [[package]]
 name = "path-dedot"
@@ -4891,7 +4898,7 @@ dependencies = [
  "dashmap",
  "normpath",
  "once_cell",
- "path-clean",
+ "path-clean 0.1.0",
  "pathdiff",
  "serde",
  "serde_json",
@@ -5186,7 +5193,7 @@ dependencies = [
  "bitflags 2.3.3",
  "indexmap 1.9.3",
  "is-macro 0.3.0",
- "path-clean",
+ "path-clean 0.1.0",
  "pathdiff",
  "regex",
  "serde",
