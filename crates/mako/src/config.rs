@@ -290,6 +290,8 @@ pub struct Config {
     pub ignores: Vec<String>,
     #[serde(rename = "_minifish")]
     pub _minifish: Option<MinifishConfig>,
+    #[serde(rename = "optimizePackageImports")]
+    pub optimize_package_imports: bool,
 }
 
 pub(crate) fn hash_config(c: &Config) -> u64 {
@@ -347,7 +349,8 @@ const DEFAULT_CONFIG: &str = r#"
     "clean": true,
     "nodePolyfill": true,
     "ignores": [],
-    "_minifish": null
+    "_minifish": null,
+    "optimizePackageImports": false
 }
 "#;
 

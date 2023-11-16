@@ -79,4 +79,5 @@ inject?: Record<string, { from:string;exclude?:string; } |
 { from:string; namespace: true; exclude?:string }
 >;
 };
+optimizePackageImports?: boolean;
 }, callback: (...args: any[]) => any, watch: boolean): void

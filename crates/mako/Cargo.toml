@@ -19,6 +19,8 @@ cached = { workspace = true }
 [dev-dependencies]
 insta = { version = "1.30.0", features = ["yaml"] }
 maplit = "1.0.2"
+testing = "0.35.10"
+swc_ecma_transforms_testing = "0.136.2"
 
 [features]
 profile = ["mako_core/profile"]

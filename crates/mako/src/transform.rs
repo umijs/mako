@@ -3,6 +3,7 @@ use std::sync::Arc;
 use mako_core::anyhow::Result;
 use mako_core::swc_common::comments::NoopComments;
 use mako_core::swc_common::errors::HANDLER;
+use mako_core::swc_common::pass::Optional;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{chain, Mark, GLOBALS};
 use mako_core::swc_css_ast::Stylesheet;
@@ -28,6 +29,7 @@ use crate::targets;
 use crate::transformers::transform_css_url_replacer::CSSUrlReplacer;
 use crate::transformers::transform_dynamic_import_to_require::DynamicImportToRequire;
 use crate::transformers::transform_env_replacer::{build_env_map, EnvReplacer};
+use crate::transformers::transform_optimize_package_imports::optimize_package_imports;
 use crate::transformers::transform_provide::Provide;
 use crate::transformers::transform_px2rem::Px2Rem;
 use crate::transformers::transform_react::mako_react;
@@ -161,6 +163,10 @@ fn transform_js(
                                 ..Default::default()
                             }
                         ),
+                        Optional {
+                            enabled: context.config.optimize_package_imports,
+                            visitor: optimize_package_imports(task.path.clone(), context.clone()),
+                        },
                     );
 
                     ast.body = folders.fold_module(ast.clone()).body;
