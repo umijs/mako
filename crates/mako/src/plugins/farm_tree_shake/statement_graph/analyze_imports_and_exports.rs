@@ -8,6 +8,7 @@ use super::defined_idents_collector::DefinedIdentsCollector;
 use super::used_idents_collector::{self, UsedIdentsCollector};
 use super::{ExportInfo, ExportSpecifierInfo, ImportInfo, ImportSpecifierInfo, StatementId};
 
+#[derive(Debug)]
 pub struct StatementInfo {
     pub import_info: Option<ImportInfo>,
     pub export_info: Option<ExportInfo>,
@@ -97,10 +98,6 @@ pub fn analyze_imports_and_exports(
           }
         }
 
-        // mark empty specifiers as self-executed so it will be preserved
-        if specifiers.is_empty() {
-          is_self_executed = true;
-        }
 
         imports = Some(ImportInfo {
           source,
