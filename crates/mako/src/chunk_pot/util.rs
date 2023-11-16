@@ -64,7 +64,7 @@ pub(crate) fn empty_module_fn_expr() -> FnExpr {
         params: vec![
             quote_ident!("module").into(),
             quote_ident!("exports").into(),
-            quote_ident!("require").into(),
+            quote_ident!("__mako_require__").into(),
         ],
         decorators: vec![],
         body: Some(BlockStmt {
@@ -221,7 +221,7 @@ pub fn to_module_fn_expr(module: &Module) -> Result<FnExpr> {
                 params: vec![
                     quote_ident!("module").into(),
                     quote_ident!("exports").into(),
-                    quote_ident!("require").into(),
+                    quote_ident!("__mako_require__").into(),
                 ],
                 decorators: vec![],
                 body: Some(BlockStmt {

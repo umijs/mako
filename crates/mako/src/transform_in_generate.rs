@@ -19,13 +19,14 @@ use mako_core::{swc_css_ast, swc_css_prefixer};
 
 use crate::ast::Ast;
 use crate::compiler::{Compiler, Context};
-use crate::config::Mode;
+use crate::config::{Mode, OutputMode};
 use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
 use crate::targets;
 use crate::transformers::transform_async_module::AsyncModule;
 use crate::transformers::transform_css_handler::CssHandler;
 use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
 use crate::transformers::transform_dynamic_import::DynamicImport;
+use crate::transformers::transform_mako_require::MakoRequire;
 use crate::transformers::transform_meta_url_replacer::MetaUrlReplacer;
 use crate::transformers::transform_react::react_refresh_entry_prefix;
 
@@ -217,6 +218,12 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) {
 
                             let mut dynamic_import = DynamicImport { context };
                             ast.ast.visit_mut_with(&mut dynamic_import);
+
+                            // replace require to __mako_require__ for bundle mode
+                            if matches!(context.config.output.mode, OutputMode::Bundle) {
+                                let mut mako_require = MakoRequire::new(context, unresolved_mark);
+                                ast.ast.visit_mut_with(&mut mako_require);
+                            }
 
                             ast.ast
                                 .visit_mut_with(&mut hygiene_with_config(hygiene::Config {

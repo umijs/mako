@@ -2,4 +2,4 @@
 source: crates/mako/src/update.rs
 expression: "&code"
 ---
-"(async ()=>{\n    await Promise.all([\n        require.ensure(\"chunk-1.ts\")\n    ]).then(require.bind(require, \"chunk-1.ts\"));\n})();\n\n//# sourceMappingURL=<CWD>/crates/mako/test/build/tmp/multi/index.ts.map"
+"(async ()=>{\n    await Promise.all([\n        __mako_require__.ensure(\"chunk-1.ts\")\n    ]).then(__mako_require__.bind(__mako_require__, \"chunk-1.ts\"));\n})();\n\n//# sourceMappingURL=<CWD>/crates/mako/test/build/tmp/multi/index.ts.map"
