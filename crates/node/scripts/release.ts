@@ -38,11 +38,6 @@ import 'zx/globals';
   if (newVersion.includes('-canary.')) tag = 'canary';
   if (newVersion.includes('-dev.')) tag = 'dev';
 
-  if (tag !== 'dev' && tag !== 'canary') {
-    console.error('Please specify version like  x.y.z-canary.n or x.y.z-dev.n');
-    throw Error('Only dev and canary tags are allowed');
-  }
-
   nodePkg.version = newVersion;
 
   console.log(`${nodePkg.name}@${newVersion} will be published`);
