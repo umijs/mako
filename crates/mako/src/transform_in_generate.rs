@@ -221,10 +221,8 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) {
 
                             // replace require to __mako_require__ for bundle mode
                             if matches!(context.config.output.mode, OutputMode::Bundle) {
-                                ast.ast.visit_mut_with(&mut MakoRequire {
-                                    unresolved_mark,
-                                    context,
-                                });
+                                let mut mako_require = MakoRequire::new(context, unresolved_mark);
+                                ast.ast.visit_mut_with(&mut mako_require);
                             }
 
                             ast.ast

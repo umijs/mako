@@ -648,11 +648,12 @@ if (/x/ === /x/) "should keep";
     fn test_mako_require_ignores() {
         // test will not panic
         let code = r#"
-import fs1 from 'fs';
+import fs1 from 'node:fs';
 
 const fs2 = require('fs');
+const fs3 = require('fs/promises');
 
-console.log(fs1, fs2);
+console.log(fs1, fs2, fs3);
 "#
         .trim();
         let (code, _sourcemap) = transform_js_code(code, None, HashMap::from([]));
@@ -664,9 +665,10 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 var _interop_require_default = __mako_require__("@swc/helpers/_/_interop_require_default");
-var _fs = _interop_require_default._(require("fs"));
+var _nodefs = _interop_require_default._(require("node:fs"));
 const fs2 = require('fs');
-console.log(_fs.default, fs2);
+const fs3 = require('fs/promises');
+console.log(_nodefs.default, fs2, fs3);
 
 //# sourceMappingURL=index.js.map
 "#
@@ -690,7 +692,7 @@ console.log(_fs.default, fs2);
             .providers
             .insert("Buffer".into(), ("buffer".into(), "Buffer".into()));
         // for test ignores
-        config.ignores.push("fs".into());
+        config.ignores.push("^(node:)?fs(/|$)".into());
 
         let root = PathBuf::from("/path/to/root");
 
