@@ -120,8 +120,8 @@ exports.dev = async function (opts) {
   const { build } = require('@okamjs/okam');
   const okamConfig = await getOkamConfig(opts);
   okamConfig.hmr = true;
-  okamConfig.hmr_port = String(opts.port + 1);
-  okamConfig.hmr_host = opts.host;
+  okamConfig.hmrPort = String(opts.port + 1);
+  okamConfig.hmrHost = opts.host;
   await build(
     opts.cwd,
     okamConfig,
