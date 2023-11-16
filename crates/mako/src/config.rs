@@ -487,8 +487,13 @@ impl Config {
             if config.platform == Platform::Node {
                 let target = config.targets.get("node").unwrap_or(&14.0);
 
+                // set target to node version
                 config.targets = HashMap::from([("node".into(), *target)]);
-                config.ignores.extend(get_all_modules());
+
+                // ignore standard library
+                config
+                    .ignores
+                    .push(format!("^(node:)?({})(/|$)", get_all_modules().join("|")));
                 config.node_polyfill = false;
             }
         }
@@ -590,7 +595,7 @@ mod tests {
             "use node targets by default if platform is node",
         );
         assert!(
-            config.ignores.iter().any(|i| i == "fs"),
+            config.ignores.iter().any(|i| i.contains("|fs|")),
             "ignore Node.js standard library by default if platform is node",
         );
     }
