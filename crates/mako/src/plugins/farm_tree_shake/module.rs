@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use mako_core::swc_ecma_ast::{Module as SwcModule, ModuleItem};
 
 use crate::module::{Module, ModuleId};
+use crate::module_graph::ModuleGraph;
 use crate::plugins::farm_tree_shake::statement_graph::{
     ExportInfo, ExportInfoMatch, ExportSpecifierInfo, ImportInfo, StatementGraph, StatementId,
 };
@@ -35,6 +36,7 @@ impl ToString for UsedIdent {
 pub enum UsedExports {
     All,
     Partial(HashSet<String>),
+    ReferredPartial(HashSet<String>),
 }
 
 impl UsedExports {
@@ -44,7 +46,8 @@ impl UsedExports {
                 *self = UsedExports::All;
                 false
             }
-            UsedExports::Partial(self_used_exports) => {
+            UsedExports::Partial(self_used_exports)
+            | UsedExports::ReferredPartial(self_used_exports) => {
                 self_used_exports.insert(used_export.to_string())
             }
         }
@@ -53,7 +56,7 @@ impl UsedExports {
     pub fn use_all(&mut self) -> bool {
         match self {
             UsedExports::All => false,
-            UsedExports::Partial(_) => {
+            UsedExports::Partial(_) | UsedExports::ReferredPartial(_) => {
                 *self = UsedExports::All;
                 // fixme : case partial used all exports
                 true
@@ -63,7 +66,7 @@ impl UsedExports {
 
     pub fn is_empty(&self) -> bool {
         match self {
-            UsedExports::All => false,
+            UsedExports::All | UsedExports::ReferredPartial(_) => false,
             UsedExports::Partial(self_used_exports) => self_used_exports.is_empty(),
         }
     }
@@ -114,7 +117,7 @@ pub struct TreeShakeModule {
     pub side_effects: bool,
     pub stmt_graph: StatementGraph,
     // used exports will be analyzed when tree shaking
-    pub used_exports: UsedExports,
+    used_exports: UsedExports,
     pub module_system: ModuleSystem,
     pub all_exports: AllExports,
     pub topo_order: usize,
@@ -122,6 +125,42 @@ pub struct TreeShakeModule {
 }
 
 impl TreeShakeModule {
+    pub fn use_all_exports(&mut self) -> bool {
+        self.used_exports.use_all()
+    }
+
+    pub fn add_used_export(&mut self, used_export: Option<&dyn ToString>) -> bool {
+        if let Some(used_export) = used_export {
+            if self.side_effects {
+                match &self.used_exports {
+                    UsedExports::All | UsedExports::ReferredPartial(_) => {}
+                    UsedExports::Partial(already_used) => {
+                        self.used_exports = UsedExports::ReferredPartial(already_used.clone());
+                    }
+                }
+            }
+            self.used_exports.add_used_export(used_export)
+        } else {
+            self.use_module()
+        }
+    }
+
+    fn use_module(&mut self) -> bool {
+        match self.used_exports {
+            UsedExports::All => {}
+            UsedExports::Partial(ref mut used_exports) => {
+                self.used_exports = UsedExports::ReferredPartial(used_exports.clone());
+            }
+            UsedExports::ReferredPartial(_) => {}
+        };
+
+        false
+    }
+
+    pub fn not_used(&self) -> bool {
+        self.used_exports.is_empty()
+    }
+
     pub fn extends_exports(&mut self, to_extend: &AllExports) {
         match (&mut self.all_exports, to_extend) {
             (AllExports::Precise(me), AllExports::Precise(to_add)) => {
@@ -141,8 +180,23 @@ impl TreeShakeModule {
         }
     }
 
-    pub fn new(module: &Module, order: usize) -> Self {
+    pub fn new(module: &Module, order: usize, module_graph: &ModuleGraph) -> Self {
         let module_info = module.info.as_ref().unwrap();
+
+        let mut side_effect_map: HashMap<String, bool> = Default::default();
+
+        module_graph
+            .get_dependencies(&module.id)
+            .iter()
+            .for_each(|&(module_id, dep)| {
+                let side_effects = module_graph.get_module(module_id).map_or(true, |m| {
+                    m.info
+                        .as_ref()
+                        .map_or(true, |info| info.get_side_effects_flag())
+                });
+
+                side_effect_map.insert(dep.source.clone(), side_effects);
+            });
 
         // 1. generate statement graph
         let mut module_system = ModuleSystem::CommonJS;
@@ -155,7 +209,7 @@ impl TreeShakeModule {
                     .any(|s| matches!(s, ModuleItem::ModuleDecl(_)));
                 if is_esm {
                     module_system = ModuleSystem::ESModule;
-                    StatementGraph::new(&module.ast)
+                    StatementGraph::new(&module.ast, &side_effect_map)
                 } else {
                     StatementGraph::empty()
                 }
@@ -170,9 +224,11 @@ impl TreeShakeModule {
             }
         };
 
+        let real_side_effects = module_info.get_side_effects_flag();
         // 2. set default used exports
-        let used_exports = if module.side_effects {
-            UsedExports::All
+
+        let used_exports = if module.is_entry {
+            UsedExports::ReferredPartial(Default::default())
         } else {
             UsedExports::Partial(Default::default())
         };
@@ -181,7 +237,7 @@ impl TreeShakeModule {
             module_id: module.id.clone(),
             stmt_graph,
             used_exports,
-            side_effects: module.side_effects,
+            side_effects: real_side_effects,
             all_exports: match module_system {
                 ModuleSystem::ESModule => AllExports::Precise(Default::default()),
                 ModuleSystem::Custom | ModuleSystem::CommonJS => {
@@ -320,7 +376,7 @@ impl TreeShakeModule {
                 used_idents
             }
             // import {x,y,z} from "x"
-            UsedExports::Partial(idents) => {
+            UsedExports::Partial(idents) | UsedExports::ReferredPartial(idents) => {
                 let mut used_idents = vec![];
 
                 for ident in idents {
