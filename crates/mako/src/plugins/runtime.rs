@@ -116,6 +116,7 @@ impl MakoRuntime {
             virtual_js.to_str().unwrap(),
             &Dependency {
                 source: source.clone(),
+                resolve_as: None,
                 order: 0,
                 span: None,
                 resolve_type: ResolveType::Import,

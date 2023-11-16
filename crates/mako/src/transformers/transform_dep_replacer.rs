@@ -250,6 +250,7 @@ mod tests {
                 missing: hashmap! {"react".to_string() => Dependency {
                     resolve_type: ResolveType::Import,
                     source: "react".to_string(),
+                    resolve_as: None,
                     span: None,
                     order: 0,
                 }},
@@ -293,6 +294,7 @@ mod tests {
                 missing: hashmap! {"react".to_string() => Dependency {
                     resolve_type: ResolveType::Import,
                     source: "react".to_string(),
+                    resolve_as: None,
                     span: None,
                     order: 0,
                 }},

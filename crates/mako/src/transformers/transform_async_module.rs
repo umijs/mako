@@ -416,6 +416,7 @@ require._async(module, async (handleAsyncDeps, asyncResult)=>{
                 async_deps: &vec![Dependency {
                     resolve_type: ResolveType::Import,
                     source: String::from("./async"),
+                    resolve_as: None,
                     span: Some(DUMMY_SP),
                     order: 1,
                 }],

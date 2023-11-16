@@ -98,7 +98,10 @@ pub fn resolve(
     } else {
         &resolvers.esm
     };
-    do_resolve(path, &dep.source, resolver, Some(&context.config.externals))
+
+    let source = dep.resolve_as.as_ref().unwrap_or(&dep.source);
+
+    do_resolve(path, source, resolver, Some(&context.config.externals))
 }
 
 fn get_external_target(

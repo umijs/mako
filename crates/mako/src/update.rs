@@ -580,7 +580,7 @@ export const foo = 1;
 
         assert_display_snapshot!(&result);
         {
-            compiler.generate_hot_update_chunks(result, 0).unwrap();
+            compiler.generate_hot_update_chunks(result, 0, 0).unwrap();
 
             let module_graph = compiler.context.module_graph.read().unwrap();
             let code = module_to_jscode(&compiler, &ModuleId::from_path(target_path));

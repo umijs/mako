@@ -18,6 +18,7 @@ jobs:
   build:
     name: Run tests and build_fixture on ubuntu
     runs-on: ubuntu-latest
+    if: ${{ !startsWith(github.event.head_commit.message, 'release:') && !startsWith(github.event.head_commit.message, 'ci:') && !startsWith(github.event.head_commit.message, 'docs:') }}
     strategy:
       matrix:
         rust: [nightly-2022-09-23]
@@ -51,6 +52,7 @@ jobs:
 
   lint_with_clippy:
     runs-on: ubuntu-20.04
+    if: ${{ !startsWith(github.event.head_commit.message, 'release:') && !startsWith(github.event.head_commit.message, 'ci:') && !startsWith(github.event.head_commit.message, 'docs:') }}
     steps:
       - name: install-dependencies
         run: sudo apt update && sudo apt install ninja-build meson nasm
@@ -66,6 +68,7 @@ jobs:
 
   rustfmt:
     runs-on: ubuntu-latest
+    if: ${{ !startsWith(github.event.head_commit.message, 'release:') && !startsWith(github.event.head_commit.message, 'ci:') && !startsWith(github.event.head_commit.message, 'docs:') }}
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
