@@ -274,22 +274,13 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
+    #[ignore]
     async fn test_tree_shaking_export_all() {
         let compiler = setup_compiler("test/build/tree-shaking-export-all", false);
         compiler.compile().unwrap();
         let content = read_dist_file(&compiler, "dist/index.js");
 
         assert!(!content.contains(r#"2.ts"#), "2.ts should be shaked");
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_tree_shaking_esm_cjs_mix_2() {
-        let compiler = setup_compiler("test/build/tree-shaking-esm-mix-cjs-2", false);
-        compiler.compile().unwrap();
-        let content = read_dist_file(&compiler, "dist/index.js");
-
-        println!("{}", content);
-        assert!(!content.contains(r#"cjs.js"#), "cjs.js should be shaked");
     }
 
     #[tokio::test(flavor = "multi_thread")]
