@@ -100,8 +100,8 @@ impl ChunkGraph {
         hasher.finish()
     }
 
-    pub fn sync_dependencies_chunk(&self, chunk: &Chunk) -> Vec<ChunkId> {
-        let idx = self.id_index_map.get(&chunk.id).unwrap();
+    pub fn sync_dependencies_chunk(&self, chunk_id: &ChunkId) -> Vec<ChunkId> {
+        let idx = self.id_index_map.get(chunk_id).unwrap();
         self.graph
             .neighbors_directed(*idx, Direction::Outgoing)
             .filter(|idx| matches!(self.graph[*idx].chunk_type, ChunkType::Sync))
@@ -109,16 +109,16 @@ impl ChunkGraph {
             .collect::<Vec<ChunkId>>()
     }
 
-    pub fn dependents_chunk(&self, chunk: &Chunk) -> Vec<ChunkId> {
-        let idx = self.id_index_map.get(&chunk.id).unwrap();
+    pub fn dependents_chunk(&self, chunk_id: &ChunkId) -> Vec<ChunkId> {
+        let idx = self.id_index_map.get(chunk_id).unwrap();
         self.graph
             .neighbors_directed(*idx, Direction::Incoming)
             .map(|idx| self.graph[idx].id.clone())
             .collect::<Vec<ChunkId>>()
     }
 
-    pub fn entry_dependents_chunk(&self, chunk: &Chunk) -> Vec<ChunkId> {
-        let idx = self.id_index_map.get(&chunk.id).unwrap();
+    pub fn entry_dependents_chunk(&self, chunk_id: &ChunkId) -> Vec<ChunkId> {
+        let idx = self.id_index_map.get(chunk_id).unwrap();
         self.graph
             .neighbors_directed(*idx, Direction::Incoming)
             .filter(|idx| matches!(self.graph[*idx].chunk_type, ChunkType::Entry(_, _)))
@@ -126,8 +126,8 @@ impl ChunkGraph {
             .collect::<Vec<ChunkId>>()
     }
 
-    pub fn entry_ancestors_chunk(&self, chunk: &Chunk) -> Vec<ChunkId> {
-        let idx = self.id_index_map.get(&chunk.id).unwrap();
+    pub fn entry_ancestors_chunk(&self, chunk_id: &ChunkId) -> Vec<ChunkId> {
+        let idx = self.id_index_map.get(chunk_id).unwrap();
         let mut ret = vec![];
         self.graph
             .neighbors_directed(*idx, Direction::Incoming)
@@ -136,7 +136,7 @@ impl ChunkGraph {
                     ret.push(self.graph[idx].id.clone());
                 }
                 _ => {
-                    ret.extend(self.entry_ancestors_chunk(&self.graph[idx]));
+                    ret.extend(self.entry_ancestors_chunk(&self.graph[idx].id));
                 }
             });
         ret
