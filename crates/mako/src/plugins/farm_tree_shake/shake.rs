@@ -58,10 +58,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
             continue;
         };
 
-        let mut tree_shake_module = TreeShakeModule::new(module, order, module_graph);
-        if module.is_entry {
-            tree_shake_module.add_used_export(None);
-        }
+        let tree_shake_module = TreeShakeModule::new(module, order, module_graph);
 
         order += 1;
         tree_shake_modules_ids.push(tree_shake_module.module_id.clone());

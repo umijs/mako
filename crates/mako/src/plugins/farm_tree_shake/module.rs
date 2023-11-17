@@ -229,7 +229,7 @@ impl TreeShakeModule {
         // 2. set default used exports
 
         let used_exports = if module.is_entry {
-            UsedExports::ReferredPartial(Default::default())
+            UsedExports::All
         } else {
             UsedExports::Partial(Default::default())
         };
