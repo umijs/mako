@@ -144,7 +144,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
 
                     let replacement: String = {
                         let mut to_path = rel_path.to_str().unwrap().to_string();
-                        if to_path.starts_with('.') {
+                        if to_path.starts_with("./") || to_path.starts_with("../") {
                             to_path
                         } else {
                             to_path.insert_str(0, "./");
