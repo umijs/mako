@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use mako_core::swc_css_ast;
-use mako_core::swc_css_ast::Length;
+use mako_core::swc_css_ast::{self, Length, Token};
 use mako_core::swc_css_visit::{VisitMut, VisitMutWith};
 
 use crate::compiler::Context;
@@ -54,5 +53,14 @@ impl VisitMut for Px2Rem<'_> {
             n.unit.value = "rem".into();
         }
         n.visit_mut_children_with(self);
+    }
+    fn visit_mut_token(&mut self, t: &mut Token) {
+        if let Token::Dimension(dimension) = t {
+            dimension.raw_value = (dimension.value / self.context.config.px2rem_config.root)
+                .to_string()
+                .into();
+            dimension.raw_unit = "rem".into();
+        }
+        t.visit_mut_children_with(self);
     }
 }
