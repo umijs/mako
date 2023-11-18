@@ -219,9 +219,6 @@ impl VisitMut for MyInjector<'_> {
         n.visit_mut_children_with(self);
 
         self.will_inject.iter().for_each(|&(inject, ctxt)| {
-            // let module_dcl: ImportDecl = inject.clone().into_with(ctxt);
-            // let module_dcl: ModuleDecl = module_dcl.into();
-
             let mi = if self.is_cjs {
                 inject.clone().into_require_with(ctxt)
             } else {
