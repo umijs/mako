@@ -56,10 +56,12 @@ impl VisitMut for Px2Rem<'_> {
     }
     fn visit_mut_token(&mut self, t: &mut Token) {
         if let Token::Dimension(dimension) = t {
-            dimension.raw_value = (dimension.value / self.context.config.px2rem_config.root)
-                .to_string()
-                .into();
-            dimension.raw_unit = "rem".into();
+            if self.should_transform() {
+                dimension.raw_value = (dimension.value / self.context.config.px2rem_config.root)
+                    .to_string()
+                    .into();
+                dimension.raw_unit = "rem".into();
+            }
         }
         t.visit_mut_children_with(self);
     }
