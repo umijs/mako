@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::sync::{mpsc, Arc};
-use std::thread;
 
 use mako_core::anyhow::Result;
+use mako_core::rayon::ThreadPoolBuilder;
 use mako_core::swc_common::errors::HANDLER;
 use mako_core::swc_common::GLOBALS;
 use mako_core::swc_css_visit::VisitMutWith as CSSVisitMutWith;
@@ -45,12 +45,13 @@ impl Compiler {
 
 pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> Result<()> {
     mako_core::mako_profile_function!();
+    let pool = ThreadPoolBuilder::new().build().unwrap();
     let (sender, receiver) = mpsc::channel::<(ModuleId, bool, Ast)>();
 
     for module_id in module_ids {
         let sender = sender.clone();
         let context = context.clone();
-        thread::spawn(move || {
+        pool.spawn(move || {
             let module_graph = context.module_graph.read().unwrap();
             let deps = module_graph.get_dependencies_info(&module_id);
             // whether to have async deps
