@@ -1,5 +1,6 @@
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{mpsc, Arc};
+use std::thread;
 
 use mako_core::anyhow::Result;
 use mako_core::swc_common::errors::HANDLER;
@@ -44,68 +45,90 @@ impl Compiler {
 
 pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> Result<()> {
     mako_core::mako_profile_function!();
-    module_ids.iter().for_each(|module_id| {
-        let module_graph = context.module_graph.read().unwrap();
-        let deps = module_graph.get_dependencies_info(module_id);
-        // whether to have async deps
-        let async_deps: Vec<Dependency> = deps
-            .clone()
-            .into_iter()
-            .filter(|(_, dep, info)| {
-                matches!(dep.resolve_type, ResolveType::Import | ResolveType::Require)
-                    && info.is_async
-            })
-            .map(|(_, dep, _)| dep)
-            .collect();
-        let mut resolved_deps: HashMap<String, String> = deps
-            .into_iter()
-            .map(|(id, dep, _)| {
-                (
-                    dep.source,
-                    if dep.resolve_type == ResolveType::Worker {
-                        let chunk_id = id.generate(context);
-                        let chunk_graph = context.chunk_graph.read().unwrap();
-                        chunk_graph.chunk(&chunk_id.into()).unwrap().filename()
-                    } else {
-                        id.generate(context)
-                    },
-                )
-            })
-            .collect();
-        insert_swc_helper_replace(&mut resolved_deps, context);
+    let (sender, receiver) = mpsc::channel::<(ModuleId, bool, Ast)>();
 
-        drop(module_graph);
+    for module_id in module_ids {
+        let sender = sender.clone();
+        let context = context.clone();
+        thread::spawn(move || {
+            let module_graph = context.module_graph.read().unwrap();
+            let deps = module_graph.get_dependencies_info(&module_id);
+            // whether to have async deps
+            let async_deps: Vec<Dependency> = deps
+                .clone()
+                .into_iter()
+                .filter(|(_, dep, info)| {
+                    matches!(dep.resolve_type, ResolveType::Import | ResolveType::Require)
+                        && info.is_async
+                })
+                .map(|(_, dep, _)| dep)
+                .collect();
+            let mut resolved_deps: HashMap<String, String> = deps
+                .into_iter()
+                .map(|(id, dep, _)| {
+                    (
+                        dep.source,
+                        if dep.resolve_type == ResolveType::Worker {
+                            let chunk_id = id.generate(&context);
+                            let chunk_graph = context.chunk_graph.read().unwrap();
+                            chunk_graph.chunk(&chunk_id.into()).unwrap().filename()
+                        } else {
+                            id.generate(&context)
+                        },
+                    )
+                })
+                .collect();
+            insert_swc_helper_replace(&mut resolved_deps, &context);
 
-        // let deps: Vec<(&ModuleId, &crate::module::Dependency)> =
-        //     module_graph.get_dependencies(module_id);
-        let mut module_graph = context.module_graph.write().unwrap();
-        let module = module_graph.get_module_mut(module_id).unwrap();
+            let module = module_graph.get_module(&module_id).unwrap();
+            let info = module.info.as_ref().unwrap();
+            // a module with async deps need to be polluted into async module
+            let is_async = !info.is_async && !async_deps.is_empty();
+
+            let ast = &mut info.ast.clone();
+
+            let deps_to_replace = DependenciesToReplace {
+                resolved: resolved_deps,
+                missing: info.missing_deps.clone(),
+                ignored: info.ignored_deps.clone(),
+            };
+
+            if let ModuleAst::Script(ast) = ast {
+                transform_js_generate(TransformJsParam {
+                    _id: &module.id,
+                    context: &context,
+                    ast,
+                    dep_map: &deps_to_replace,
+                    async_deps: &async_deps,
+                    is_entry: module.is_entry,
+                    wrap_async: is_async && info.external.is_none(),
+                    top_level_await: info.top_level_await,
+                });
+
+                sender
+                    .send((module_id.clone(), is_async, ast.clone()))
+                    .unwrap();
+            }
+        });
+    }
+
+    drop(sender);
+
+    let mut transform_map: HashMap<ModuleId, (bool, Ast)> = HashMap::new();
+
+    while let Ok((module_id, is_async, ast)) = receiver.recv() {
+        transform_map.insert(module_id, (is_async, ast));
+    }
+
+    let mut module_graph = context.module_graph.write().unwrap();
+
+    for (module_id, (is_async, ast)) in transform_map {
+        let module = module_graph.get_module_mut(&module_id).unwrap();
         let info = module.info.as_mut().unwrap();
-        // a module with async deps need to be polluted into async module
-        if !info.is_async && !async_deps.is_empty() {
-            info.is_async = true;
-        }
-        let ast = &mut info.ast;
+        info.ast = ModuleAst::Script(ast);
+        info.is_async = is_async;
+    }
 
-        let deps_to_replace = DependenciesToReplace {
-            resolved: resolved_deps,
-            missing: info.missing_deps.clone(),
-            ignored: info.ignored_deps.clone(),
-        };
-
-        if let ModuleAst::Script(ast) = ast {
-            transform_js_generate(TransformJsParam {
-                _id: &module.id,
-                context,
-                ast,
-                dep_map: &deps_to_replace,
-                async_deps: &async_deps,
-                is_entry: module.is_entry,
-                wrap_async: info.is_async && info.external.is_none(),
-                top_level_await: info.top_level_await,
-            });
-        }
-    });
     Ok(())
 }
 
