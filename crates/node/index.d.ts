@@ -80,4 +80,5 @@ inject?: Record<string, { from:string;exclude?:string; } |
 >;
 };
 optimizePackageImports?: boolean;
+emotion?: boolean;
 }, callback: (...args: any[]) => any, watch: boolean): void

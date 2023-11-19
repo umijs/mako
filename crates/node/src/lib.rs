@@ -96,6 +96,7 @@ pub fn build(
             >;
     };
     optimizePackageImports?: boolean;
+    emotion?: boolean;
 }"#)]
     config: serde_json::Value,
     callback: JsFunction,
