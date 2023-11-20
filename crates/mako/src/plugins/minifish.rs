@@ -287,7 +287,7 @@ impl Inject {
             // import { named as x }
             (Some(named), None | Some(false)) => require_source_expr
                 .into_var_decl(
-                    VarDeclKind::Const,
+                    VarDeclKind::Var,
                     Pat::Object(ObjectPat {
                         span: DUMMY_SP,
                         optional: false,
@@ -311,7 +311,7 @@ impl Inject {
             // import * as x
             (None, Some(true)) => require_source_expr
                 .into_var_decl(
-                    VarDeclKind::Const,
+                    VarDeclKind::Var,
                     quote_ident!(name_span, self.name.clone()).into(),
                 )
                 .into(),
@@ -319,7 +319,7 @@ impl Inject {
             // import x from "x"
             (None, None | Some(false)) => require_source_expr
                 .into_var_decl(
-                    VarDeclKind::Const,
+                    VarDeclKind::Var,
                     Pat::Object(ObjectPat {
                         span: DUMMY_SP,
                         optional: false,
