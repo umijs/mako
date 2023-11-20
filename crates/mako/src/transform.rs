@@ -8,9 +8,12 @@ use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{chain, Mark, GLOBALS};
 use mako_core::swc_css_ast::Stylesheet;
 use mako_core::swc_css_visit::VisitMutWith as CssVisitMutWith;
+use mako_core::swc_ecma_ast::EsVersion::Es2018;
 use mako_core::swc_ecma_ast::Module;
 use mako_core::swc_ecma_preset_env::{self as swc_preset_env};
-use mako_core::swc_ecma_transforms::feature::FeatureFlag;
+use mako_core::swc_ecma_transforms::feature::{
+    enable_available_feature_from_es_version, FeatureFlag,
+};
 use mako_core::swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
 use mako_core::swc_ecma_transforms::optimization::simplifier;
 use mako_core::swc_ecma_transforms::optimization::simplify::{dce, Config as SimpilifyConfig};
@@ -141,6 +144,12 @@ fn transform_js(
                         Assumptions::default(),
                         &mut FeatureFlag::default(),
                     );
+
+                    println!(
+                        "FeatureFlag::default {}",
+                        enable_available_feature_from_es_version(Es2018).bits()
+                    );
+
                     let mut folders = chain!(
                         preset_env,
                         // support decorator
@@ -169,12 +178,6 @@ fn transform_js(
                         },
                     );
 
-                    ast.body = folders.fold_module(ast.clone()).body;
-
-                    // inject helpers must after decorators
-                    // since decorators will use helpers
-                    ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
-
                     // plugin transform
                     context.plugin_driver.transform_js(
                         &PluginTransformJsParam {
@@ -186,6 +189,12 @@ fn transform_js(
                         ast,
                         context,
                     )?;
+
+                    ast.body = folders.fold_module(ast.clone()).body;
+
+                    // inject helpers must after decorators
+                    // since decorators will use helpers
+                    ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
 
                     Ok(())
                 })
