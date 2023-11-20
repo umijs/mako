@@ -509,7 +509,7 @@ export { };
 
         assert_eq!(
             code,
-            r#"const { default: my } = require("mock-lib");
+            r#"var { default: my } = require("mock-lib");
 my.call("toast");
 "#
         );
@@ -558,7 +558,7 @@ export { };
         );
         assert_eq!(
             code,
-            r#"const { her: my } = require("mock-lib");
+            r#"var { her: my } = require("mock-lib");
 my.call("toast");
 "#
         );
@@ -609,7 +609,7 @@ export { };
 
         assert_eq!(
             code,
-            r#"const { my } = require("mock-lib");
+            r#"var { my } = require("mock-lib");
 my.call("toast");
 "#
         );
@@ -658,7 +658,7 @@ export { };
 
         assert_eq!(
             code,
-            r#"const my = require("mock-lib");
+            r#"var my = require("mock-lib");
 my.call("toast");
 "#
         );
