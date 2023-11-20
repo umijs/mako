@@ -17,9 +17,10 @@ use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 use serde::Serialize;
 
 use crate::compiler::Context;
-use crate::load::Content;
-use crate::module::{Dependency as ModuleDependency, ResolveType};
-use crate::plugin::{Plugin, PluginLoadParam, PluginTransformJsParam};
+use crate::load::Content::Assets;
+use crate::load::{read_content, Asset, Content};
+use crate::module::{Dependency as ModuleDependency, ModuleAst, ResolveType};
+use crate::plugin::{Plugin, PluginLoadParam, PluginParseParam, PluginTransformJsParam};
 use crate::plugins::bundless_compiler::to_dist_path;
 use crate::stats::StatsJsonMap;
 
@@ -49,9 +50,33 @@ impl Plugin for MinifishPlugin {
 
             return match self.mapping.get(relative) {
                 Some(js_content) => Ok(Some(Content::Js(js_content.to_string()))),
-                None => Ok(None),
+
+                None => {
+                    let content = read_content(param.path.as_str())?;
+
+                    let asset = Asset {
+                        path: param.path.clone(),
+                        content,
+                    };
+
+                    Ok(Some(Assets(asset)))
+                }
             };
         }
+        Ok(None)
+    }
+
+    fn parse(
+        &self,
+        param: &PluginParseParam,
+        _context: &Arc<Context>,
+    ) -> Result<Option<ModuleAst>> {
+        if param.request.path.ends_with(".json") {
+            if let Assets(_) = param.content {
+                return Ok(Some(ModuleAst::None));
+            }
+        }
+
         Ok(None)
     }
 
