@@ -392,10 +392,6 @@ async function getOkamConfig(opts) {
   }
 
   if (process.env.SOCKET_SERVER) {
-    const protocol = opts.config.https ? 'https:' : 'http:';
-    const hostStr = opts.host === '0.0.0.0' ? 'localhost' : opts.host;
-    const port = opts.port || 8000;
-
     define['SOCKET_SERVER'] = normalizeDefineValue(process.env.SOCKET_SERVER);
   }
 
