@@ -218,6 +218,9 @@ impl Compiler {
     ) -> Result<Self> {
         assert!(root.is_absolute(), "root path must be absolute");
 
+        // why add plugins before builtin plugins?
+        // because plugins like less-loader need to be added before assets plugin
+        // TODO: support plugin orders
         let mut plugins: Vec<Arc<dyn Plugin>> = vec![];
         if let Some(extra_plugins) = extra_plugins {
             plugins.extend(extra_plugins);
