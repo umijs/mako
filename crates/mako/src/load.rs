@@ -100,12 +100,11 @@ pub fn handle_asset<T: AsRef<str>>(
     inject_public_path: bool,
 ) -> Result<String> {
     let path_str = path.as_ref();
-    let path_string = path_str.to_string();
     let file_size = file_size(path_str).with_context(|| LoadError::ReadFileSizeError {
-        path: path_string.clone(),
+        path: path_str.to_string(),
     })?;
 
-    if file_size > context.config.inline_limit.try_into().unwrap() {
+    let emit_assets = || -> Result<String> {
         // add.png => add.hash.png, 不然产生的 manifest 里把 hash 值去掉后就没有文件名称了
         let final_file_name = format!(
             "{}.{}.{}",
@@ -114,19 +113,30 @@ pub fn handle_asset<T: AsRef<str>>(
             ext_name(path_str).unwrap()
         );
 
-        context.emit_assets(path_string, final_file_name.clone());
+        context.emit_assets(path_str.to_string(), final_file_name.clone());
         if inject_public_path {
             Ok(format!("`${{require.publicPath}}{}`", final_file_name))
         } else {
             Ok(final_file_name)
         }
+    };
+
+    if file_size > context.config.inline_limit.try_into().unwrap() {
+        // add.png => add.hash.png, 不然产生的 manifest 里把 hash 值去掉后就没有文件名称了
+        emit_assets()
     } else {
-        let base64 =
-            to_base64(path_str).with_context(|| LoadError::ToBase64Error { path: path_string })?;
-        if inject_public_path {
-            Ok(format!("\"{}\"", base64))
-        } else {
-            Ok(base64)
+        let base64_result = to_base64(path_str).with_context(|| LoadError::ToBase64Error {
+            path: path_str.to_string(),
+        });
+        match base64_result {
+            Ok(base64) => {
+                if inject_public_path {
+                    Ok(format!("\"{}\"", base64))
+                } else {
+                    Ok(base64)
+                }
+            }
+            Err(_) => emit_assets(),
         }
     }
 }
