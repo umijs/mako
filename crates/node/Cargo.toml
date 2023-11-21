@@ -18,6 +18,7 @@ napi-derive = "2.14.0"
 mako = { path = '../mako' }
 mako_core = { path = "../core" }
 serde_json = { workspace = true }
+cached = { workspace = true }
 
 [build-dependencies]
 napi-build = "2.0.1"

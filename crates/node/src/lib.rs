@@ -10,7 +10,7 @@ use std::time::UNIX_EPOCH;
 use mako::compiler::{Args, Compiler, Context};
 use mako::config::{Config, Mode};
 use mako::dev::{DevServer, OnDevCompleteParams, Stats};
-use mako::load::Content;
+use mako::load::{read_content, Content};
 use mako::logger::init_logger;
 use napi::bindgen_prelude::*;
 use napi::threadsafe_function::{ErrorStrategy, ThreadsafeFunction, ThreadsafeFunctionCallMode};
@@ -264,22 +264,29 @@ pub struct ReadMessage {
 pub struct LessPlugin {
     pub on_compile_less: threadsafe_function::ThreadsafeFunction<ReadMessage>,
 }
+use cached::proc_macro::cached;
 use mako::plugin::{Plugin, PluginLoadParam};
 
-impl LessPlugin {
-    fn compile_less(&self, path: &str) -> Result<String> {
-        let (tx, rx) = std::sync::mpsc::channel::<Result<String>>();
-        self.on_compile_less.call(
-            ReadMessage {
-                message: path.to_string(),
-                tx,
-            },
-            threadsafe_function::ThreadsafeFunctionCallMode::Blocking,
-        );
-
-        rx.recv()
-            .unwrap_or_else(|e| panic!("recv error: {:?}", e.to_string()))
-    }
+#[cached(
+    result = true,
+    key = "String",
+    convert = r#"{ format!("{}-{}", path, _content) }"#
+)]
+fn compile_less(
+    path: &str,
+    _content: &str,
+    on_compile_less: &threadsafe_function::ThreadsafeFunction<ReadMessage>,
+) -> Result<String> {
+    let (tx, rx) = std::sync::mpsc::channel::<Result<String>>();
+    on_compile_less.call(
+        ReadMessage {
+            message: path.to_string(),
+            tx,
+        },
+        threadsafe_function::ThreadsafeFunctionCallMode::Blocking,
+    );
+    rx.recv()
+        .unwrap_or_else(|e| panic!("recv error: {:?}", e.to_string()))
 }
 
 impl Plugin for LessPlugin {
@@ -293,7 +300,8 @@ impl Plugin for LessPlugin {
         _context: &Arc<Context>,
     ) -> mako_core::anyhow::Result<Option<Content>> {
         if matches!(param.ext_name.as_str(), "less") {
-            let content = self.compile_less(param.path.as_str())?;
+            let content = read_content(param.path.as_str())?;
+            let content = compile_less(param.path.as_str(), &content, &self.on_compile_less)?;
             return Ok(Some(Content::Css(content)));
         }
         Ok(None)

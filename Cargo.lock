@@ -149,6 +149,7 @@ dependencies = [
 name = "alipay_okam"
 version = "0.0.0"
 dependencies = [
+ "cached",
  "mako",
  "mako_core",
  "napi",
