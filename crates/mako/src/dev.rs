@@ -199,6 +199,14 @@ struct WsMessage {
     hash: u64,
 }
 
+struct RebuildMessage {
+    t_compiler: Instant,
+    start_time: SystemTime,
+    next_cache_hash: u64,
+    next_hmr_hash: u64,
+    has_missing_deps: bool,
+}
+
 pub struct OnDevCompleteParams {
     pub is_first_compile: bool,
     pub time: u64,
@@ -231,7 +239,7 @@ impl ProjectWatch {
         let root = self.root.clone();
         let tx = self.tx.clone();
         // full rebuild channel
-        let (build_send, build_resv) = mpsc::channel::<(Instant, SystemTime, u64, u64, bool)>();
+        let (build_send, build_resv) = mpsc::channel::<RebuildMessage>();
 
         let initial_hash = c.full_hash();
 
@@ -320,13 +328,13 @@ impl ProjectWatch {
                                 *last_cache_hash = next_cache_hash;
                                 *hmr_hash = next_hmr_hash;
                                 build_send
-                                    .send((
+                                    .send(RebuildMessage {
                                         t_compiler,
                                         start_time,
                                         next_cache_hash,
                                         next_hmr_hash,
                                         has_missing_deps,
-                                    ))
+                                    })
                                     .unwrap();
                             }
 
@@ -342,32 +350,59 @@ impl ProjectWatch {
         });
 
         pool.spawn(move || {
-            for (t_compiler, start_time, next_cache_hash, next_hmr_hash, has_missing_deps) in
-                build_resv
-            {
-                debug!("full rebuild...");
-                if let Err(e) = c.emit_dev_chunks(next_cache_hash, next_hmr_hash) {
-                    debug!("  > build failed: {:?}", e);
-                    return;
-                }
-                debug!("full rebuild...done");
-                if !has_missing_deps {
-                    println!(
-                        "Full rebuilt in {}",
-                        format!("{}ms", t_compiler.elapsed().as_millis()).bold()
-                    );
+            loop {
+                match build_resv.recv() {
+                    Ok(rebuild_msg) => {
+                        let mut last_msg = rebuild_msg;
 
-                    let end_time = std::time::SystemTime::now();
-                    callback(OnDevCompleteParams {
-                        is_first_compile: false,
-                        time: t_compiler.elapsed().as_millis() as u64,
-                        stats: Stats {
-                            start_time: start_time.duration_since(UNIX_EPOCH).unwrap().as_millis()
-                                as u64,
-                            end_time: end_time.duration_since(UNIX_EPOCH).unwrap().as_millis()
-                                as u64,
-                        },
-                    });
+                        // 查看通道里还有没有未处理的消息
+                        loop {
+                            match build_resv.try_recv() {
+                                // 通道中有未处理的消息，更新 last_msg
+                                Ok(msg) => last_msg = msg,
+                                // 通道中没有未处理的消息，退出循环
+                                Err(_) => break,
+                            }
+                        }
+
+                        debug!("full rebuild...");
+                        if let Err(e) =
+                            c.emit_dev_chunks(last_msg.next_cache_hash, last_msg.next_hmr_hash)
+                        {
+                            debug!("  > build failed: {:?}", e);
+                            return;
+                        }
+                        debug!("full rebuild...done");
+                        if !last_msg.has_missing_deps {
+                            println!(
+                                "Full rebuilt in {}",
+                                format!("{}ms", last_msg.t_compiler.elapsed().as_millis()).bold()
+                            );
+
+                            let end_time = std::time::SystemTime::now();
+                            callback(OnDevCompleteParams {
+                                is_first_compile: false,
+                                time: last_msg.t_compiler.elapsed().as_millis() as u64,
+                                stats: Stats {
+                                    start_time: last_msg
+                                        .start_time
+                                        .duration_since(UNIX_EPOCH)
+                                        .unwrap()
+                                        .as_millis()
+                                        as u64,
+                                    end_time: end_time
+                                        .duration_since(UNIX_EPOCH)
+                                        .unwrap()
+                                        .as_millis()
+                                        as u64,
+                                },
+                            });
+                        }
+                    }
+                    Err(_) => {
+                        println!("Channel closed");
+                        break;
+                    }
                 }
             }
         })
