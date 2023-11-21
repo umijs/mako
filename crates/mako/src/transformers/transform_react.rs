@@ -50,12 +50,18 @@ pub fn mako_react(
         ("react", "React.createElement")
     };
 
-    let visit = chain!(
-        Emotion {
-            context: context.clone(),
+    let emotion = if context.config.emotion {
+        Box::new(Emotion {
+            mode: context.config.mode.clone(),
             cm: cm.clone(),
-            path: task.path.clone()
-        },
+            path: task.path.clone(),
+        })
+    } else {
+        noop()
+    };
+
+    let visit = chain!(
+        emotion,
         react(
             cm,
             Some(NoopComments),
@@ -99,32 +105,30 @@ pub fn mako_react(
 }
 
 struct Emotion {
-    context: Arc<Context>,
     cm: Lrc<SourceMap>,
     path: String,
+    mode: Mode,
 }
 
 impl VisitMut for Emotion {
     fn visit_mut_module(&mut self, module: &mut Module) {
-        if self.context.config.emotion {
-            let is_dev = matches!(self.context.config.mode, Mode::Development);
-            let pos = self.cm.lookup_char_pos(module.span.lo);
-            let hash = pos.file.src_hash as u32;
-            let mut folder = emotion(
-                EmotionOptions {
-                    enabled: Some(true),
-                    sourcemap: Some(true),
-                    auto_label: Some(is_dev),
-                    import_map: None,
-                    ..Default::default()
-                },
-                Path::new(&self.path),
-                hash,
-                self.cm.clone(),
-                NoopComments,
-            );
-            module.body = folder.fold_module(module.clone()).body;
-        }
+        let is_dev = matches!(self.mode, Mode::Development);
+        let pos = self.cm.lookup_char_pos(module.span.lo);
+        let hash = pos.file.src_hash as u32;
+        let mut folder = emotion(
+            EmotionOptions {
+                enabled: Some(true),
+                sourcemap: Some(true),
+                auto_label: Some(is_dev),
+                import_map: None,
+                ..Default::default()
+            },
+            Path::new(&self.path),
+            hash,
+            self.cm.clone(),
+            NoopComments,
+        );
+        module.body = folder.fold_module(module.clone()).body;
 
         module.visit_mut_children_with(self);
     }
