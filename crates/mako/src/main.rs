@@ -12,7 +12,6 @@ use mako_core::tokio::sync::Notify;
 use mako_core::tracing::debug;
 
 use crate::compiler::Args;
-use crate::config::Mode;
 use crate::logger::init_logger;
 #[cfg(feature = "profile")]
 use crate::profile_gui::ProfileApp;
@@ -85,15 +84,10 @@ async fn main() -> Result<()> {
 
     config.mode = cli.mode;
 
-    // dev 环境下不产生 hash, prod 环境下根据用户配置
-    if config.mode == Mode::Development {
-        config.hash = false;
-    }
-
     debug!("config: {:?}", config);
 
     // compiler
-    let compiler = compiler::Compiler::new(config, root.clone(), Args { watch: cli.watch })?;
+    let compiler = compiler::Compiler::new(config, root.clone(), Args { watch: cli.watch }, None)?;
     let compiler = Arc::new(compiler);
 
     #[cfg(feature = "profile")]

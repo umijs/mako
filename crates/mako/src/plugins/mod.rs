@@ -10,7 +10,6 @@ pub mod import;
 pub mod invalid_syntax;
 pub mod javascript;
 pub mod json;
-pub mod less;
 pub mod manifest;
 pub mod md;
 pub mod meta;

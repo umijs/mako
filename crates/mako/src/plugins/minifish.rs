@@ -9,16 +9,17 @@ use mako_core::regex::Regex;
 use mako_core::swc_common::{Mark, Span, SyntaxContext, DUMMY_SP};
 use mako_core::swc_ecma_ast::{
     Ident, ImportDecl, ImportDefaultSpecifier, ImportNamedSpecifier, ImportSpecifier,
-    ImportStarAsSpecifier, ModuleDecl,
+    ImportStarAsSpecifier, MemberExpr, ModuleDecl, ModuleItem, Stmt, VarDeclKind,
 };
-use mako_core::swc_ecma_utils::{quote_ident, quote_str};
+use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 use serde::Serialize;
 
 use crate::compiler::Context;
-use crate::load::Content;
-use crate::module::{Dependency as ModuleDependency, ResolveType};
-use crate::plugin::{Plugin, PluginLoadParam, PluginTransformJsParam};
+use crate::load::Content::Assets;
+use crate::load::{read_content, Asset, Content};
+use crate::module::{Dependency as ModuleDependency, ModuleAst, ResolveType};
+use crate::plugin::{Plugin, PluginLoadParam, PluginParseParam, PluginTransformJsParam};
 use crate::plugins::bundless_compiler::to_dist_path;
 use crate::stats::StatsJsonMap;
 
@@ -48,9 +49,33 @@ impl Plugin for MinifishPlugin {
 
             return match self.mapping.get(relative) {
                 Some(js_content) => Ok(Some(Content::Js(js_content.to_string()))),
-                None => Ok(None),
+
+                None => {
+                    let content = read_content(param.path.as_str())?;
+
+                    let asset = Asset {
+                        path: param.path.clone(),
+                        content,
+                    };
+
+                    Ok(Some(Assets(asset)))
+                }
             };
         }
+        Ok(None)
+    }
+
+    fn parse(
+        &self,
+        param: &PluginParseParam,
+        _context: &Arc<Context>,
+    ) -> Result<Option<ModuleAst>> {
+        if param.request.path.ends_with(".json") {
+            if let Assets(_) = param.content {
+                return Ok(Some(ModuleAst::None));
+            }
+        }
+
         Ok(None)
     }
 
@@ -174,6 +199,7 @@ struct MyInjector<'a> {
     unresolved_mark: Mark,
     injects: HashMap<String, &'a Inject>,
     will_inject: HashSet<(&'a Inject, SyntaxContext)>,
+    is_cjs: bool,
 }
 
 impl<'a> MyInjector<'a> {
@@ -182,11 +208,23 @@ impl<'a> MyInjector<'a> {
             unresolved_mark,
             will_inject: Default::default(),
             injects,
+            is_cjs: true,
         }
     }
 }
 
 impl VisitMut for MyInjector<'_> {
+    fn visit_mut_module_items(&mut self, module_items: &mut Vec<ModuleItem>) {
+        let has_esm = module_items.iter().any(|item| match item {
+            ModuleItem::ModuleDecl(_) => true,
+            ModuleItem::Stmt(_) => false,
+        });
+
+        self.is_cjs = !has_esm;
+
+        module_items.visit_mut_children_with(self);
+    }
+
     fn visit_mut_ident(&mut self, n: &mut Ident) {
         if self.injects.is_empty() {
             return;
@@ -205,10 +243,13 @@ impl VisitMut for MyInjector<'_> {
         n.visit_mut_children_with(self);
 
         self.will_inject.iter().for_each(|&(inject, ctxt)| {
-            let module_dcl: ImportDecl = inject.clone().into_with(ctxt);
-            let module_dcl: ModuleDecl = module_dcl.into();
+            let mi = if self.is_cjs {
+                inject.clone().into_require_with(ctxt)
+            } else {
+                inject.clone().into_with(ctxt)
+            };
 
-            n.body.insert(0, module_dcl.into());
+            n.body.insert(0, mi);
         });
     }
 }
@@ -235,7 +276,52 @@ impl Hash for Inject {
 }
 
 impl Inject {
-    fn into_with(self, ctxt: SyntaxContext) -> ImportDecl {
+    fn into_require_with(self, ctxt: SyntaxContext) -> ModuleItem {
+        let name_span = Span { ctxt, ..DUMMY_SP };
+
+        let require_source_expr =
+            quote_ident!("require").as_call(DUMMY_SP, vec![quote_str!(self.from).as_arg()]);
+
+        let stmt: Stmt = match (&self.named, &self.namespace) {
+            // import { named as x }
+            (Some(named), None | Some(false)) => MemberExpr {
+                span: Default::default(),
+                obj: require_source_expr.into(),
+                prop: quote_ident!(named.to_string()).into(),
+            }
+            .into_var_decl(
+                VarDeclKind::Var,
+                quote_ident!(name_span, self.name.clone()).into(),
+            )
+            .into(),
+            // import * as x
+            (None, Some(true)) => require_source_expr
+                .into_var_decl(
+                    VarDeclKind::Var,
+                    quote_ident!(name_span, self.name.clone()).into(),
+                )
+                .into(),
+
+            // import x from "x"
+            (None, None | Some(false)) => MemberExpr {
+                span: DUMMY_SP,
+                obj: require_source_expr.into(),
+                prop: quote_ident!("default").into(),
+            }
+            .into_var_decl(
+                VarDeclKind::Var,
+                quote_ident!(name_span, self.name.clone()).into(),
+            )
+            .into(),
+            (Some(_), Some(true)) => {
+                panic!("Cannot use both `named` and `namespaced`")
+            }
+        };
+
+        stmt.into()
+    }
+
+    fn into_with(self, ctxt: SyntaxContext) -> ModuleItem {
         let name_span = Span { ctxt, ..DUMMY_SP };
         let specifier: ImportSpecifier = match (&self.named, &self.namespace) {
             // import { named as x }
@@ -270,13 +356,16 @@ impl Inject {
             }
         };
 
-        ImportDecl {
+        let decl: ModuleDecl = ImportDecl {
             span: DUMMY_SP,
             specifiers: vec![specifier],
             type_only: false,
             with: None,
             src: quote_str!(self.from).into(),
         }
+        .into();
+
+        decl.into()
     }
 }
 
@@ -309,34 +398,14 @@ mod tests {
     use crate::ast::{build_js_ast, js_ast_to_code};
     use crate::config::DevtoolConfig;
 
-    #[test]
-    fn no_inject() {
+    fn apply_inject_to_code(injects: HashMap<String, &Inject>, code: &str) -> String {
         let mut context = Context::default();
         context.config.devtool = DevtoolConfig::None;
         let context = Arc::new(context);
 
-        let mut ast = build_js_ast(
-            "test.no.inject.js",
-            r#"let my = 1;my.call("toast");"#,
-            &context,
-        )
-        .unwrap();
+        let mut ast = build_js_ast("cut.js", code, &context).unwrap();
 
-        let i = Inject {
-            name: "my".to_string(),
-            named: None,
-            from: "mock-lib".to_string(),
-            namespace: None,
-            exclude: None,
-        };
-
-        let mut injector = MyInjector {
-            unresolved_mark: ast.unresolved_mark,
-            injects: hashmap! {
-                "my".to_string() =>&i
-            },
-            will_inject: HashSet::new(),
-        };
+        let mut injector = MyInjector::new(ast.unresolved_mark, injects);
 
         GLOBALS.set(&context.meta.script.globals, || {
             ast.ast.visit_mut_with(&mut resolver(
@@ -348,6 +417,26 @@ mod tests {
         });
 
         let (code, _) = js_ast_to_code(&ast.ast, &context, "x.js").unwrap();
+
+        code
+    }
+
+    #[test]
+    fn no_inject() {
+        let i = Inject {
+            name: "my".to_string(),
+            named: None,
+            from: "mock-lib".to_string(),
+            namespace: None,
+            exclude: None,
+        };
+
+        let code = apply_inject_to_code(
+            hashmap! {
+                "my".to_string() =>&i
+            },
+            r#"let my = 1;my.call("toast");"#,
+        );
 
         assert_eq!(
             code,
@@ -359,12 +448,6 @@ my.call("toast");
 
     #[test]
     fn inject_from_default() {
-        let mut context = Context::default();
-        context.config.devtool = DevtoolConfig::None;
-        let context = Arc::new(context);
-
-        let mut ast = build_js_ast("test.1.js", r#"my.call("toast");"#, &context).unwrap();
-
         let i = Inject {
             name: "my".to_string(),
             named: None,
@@ -373,28 +456,42 @@ my.call("toast");
             exclude: None,
         };
 
-        let mut injector = MyInjector {
-            unresolved_mark: ast.unresolved_mark,
-            injects: hashmap! {
-                "my".to_string()=> &i
+        let code = apply_inject_to_code(
+            hashmap! {
+                "my".to_string() =>&i
             },
-            will_inject: HashSet::new(),
-        };
-
-        GLOBALS.set(&context.meta.script.globals, || {
-            ast.ast.visit_mut_with(&mut resolver(
-                ast.unresolved_mark,
-                ast.top_level_mark,
-                false,
-            ));
-            ast.ast.visit_mut_with(&mut injector);
-        });
-
-        let (code, _) = js_ast_to_code(&ast.ast, &context, "x.js").unwrap();
+            r#"my.call("toast");export { }"#,
+        );
 
         assert_eq!(
             code,
             r#"import my from "mock-lib";
+my.call("toast");
+export { };
+"#
+        );
+    }
+
+    #[test]
+    fn inject_in_cjs_from_default() {
+        let i = Inject {
+            name: "my".to_string(),
+            named: None,
+            from: "mock-lib".to_string(),
+            namespace: None,
+            exclude: None,
+        };
+
+        let code = apply_inject_to_code(
+            hashmap! {
+                "my".to_string() =>&i
+            },
+            r#"my.call("toast");"#,
+        );
+
+        assert_eq!(
+            code,
+            r#"var my = require("mock-lib").default;
 my.call("toast");
 "#
         );
@@ -402,12 +499,6 @@ my.call("toast");
 
     #[test]
     fn inject_from_named() {
-        let mut context = Context::default();
-        context.config.devtool = DevtoolConfig::None;
-        let context = Arc::new(context);
-
-        let mut ast = build_js_ast("test.1.js", r#"my.call("toast");"#, &context).unwrap();
-
         let i = Inject {
             name: "my".to_string(),
             named: Some("her".to_string()),
@@ -415,28 +506,41 @@ my.call("toast");
             namespace: None,
             exclude: None,
         };
-        let mut injector = MyInjector {
-            unresolved_mark: ast.unresolved_mark,
-            injects: hashmap! {
-                "my".to_string()=> &i
+
+        let code = apply_inject_to_code(
+            hashmap! {
+                "my".to_string() =>&i
             },
-            will_inject: HashSet::new(),
-        };
-
-        GLOBALS.set(&context.meta.script.globals, || {
-            ast.ast.visit_mut_with(&mut resolver(
-                ast.unresolved_mark,
-                ast.top_level_mark,
-                false,
-            ));
-            ast.ast.visit_mut_with(&mut injector);
-        });
-
-        let (code, _) = js_ast_to_code(&ast.ast, &context, "x.js").unwrap();
-
+            r#"my.call("toast");export { }"#,
+        );
         assert_eq!(
             code,
             r#"import { her as my } from "mock-lib";
+my.call("toast");
+export { };
+"#
+        );
+    }
+
+    #[test]
+    fn inject_in_cjs_from_named() {
+        let i = Inject {
+            name: "my".to_string(),
+            named: Some("her".to_string()),
+            from: "mock-lib".to_string(),
+            namespace: None,
+            exclude: None,
+        };
+
+        let code = apply_inject_to_code(
+            hashmap! {
+                "my".to_string() =>&i
+            },
+            r#"my.call("toast")"#,
+        );
+        assert_eq!(
+            code,
+            r#"var my = require("mock-lib").her;
 my.call("toast");
 "#
         );
@@ -444,12 +548,6 @@ my.call("toast");
 
     #[test]
     fn inject_from_named_same_name() {
-        let mut context = Context::default();
-        context.config.devtool = DevtoolConfig::None;
-        let context = Arc::new(context);
-
-        let mut ast = build_js_ast("test.1.js", r#"my.call("toast");"#, &context).unwrap();
-
         let i = Inject {
             name: "my".to_string(),
             named: Some("my".to_string()),
@@ -457,28 +555,43 @@ my.call("toast");
             namespace: None,
             exclude: None,
         };
-        let mut injector = MyInjector {
-            unresolved_mark: ast.unresolved_mark,
-            injects: hashmap! {
-                "my".to_string() => &i
+
+        let code = apply_inject_to_code(
+            hashmap! {
+                "my".to_string() =>&i
             },
-            will_inject: HashSet::new(),
-        };
-
-        GLOBALS.set(&context.meta.script.globals, || {
-            ast.ast.visit_mut_with(&mut resolver(
-                ast.unresolved_mark,
-                ast.top_level_mark,
-                false,
-            ));
-            ast.ast.visit_mut_with(&mut injector);
-        });
-
-        let (code, _) = js_ast_to_code(&ast.ast, &context, "x.js").unwrap();
+            r#"my.call("toast");export { }"#,
+        );
 
         assert_eq!(
             code,
             r#"import { my } from "mock-lib";
+my.call("toast");
+export { };
+"#
+        );
+    }
+
+    #[test]
+    fn inject_in_cjs_from_named_same_name() {
+        let i = Inject {
+            name: "my".to_string(),
+            named: Some("my".to_string()),
+            from: "mock-lib".to_string(),
+            namespace: None,
+            exclude: None,
+        };
+
+        let code = apply_inject_to_code(
+            hashmap! {
+                "my".to_string() =>&i
+            },
+            r#"my.call("toast");"#,
+        );
+
+        assert_eq!(
+            code,
+            r#"var my = require("mock-lib").my;
 my.call("toast");
 "#
         );
@@ -486,12 +599,6 @@ my.call("toast");
 
     #[test]
     fn inject_from_namespace() {
-        let mut context = Context::default();
-        context.config.devtool = DevtoolConfig::None;
-        let context = Arc::new(context);
-
-        let mut ast = build_js_ast("test.1.js", r#"my.call("toast");"#, &context).unwrap();
-
         let i = Inject {
             name: "my".to_string(),
             named: None,
@@ -499,29 +606,41 @@ my.call("toast");
             namespace: Some(true),
             exclude: None,
         };
-
-        let mut injector = MyInjector {
-            unresolved_mark: ast.unresolved_mark,
-            injects: hashmap! {
-                "my".to_string()=> &i
+        let code = apply_inject_to_code(
+            hashmap! {
+                "my".to_string() =>&i
             },
-            will_inject: HashSet::new(),
-        };
-
-        GLOBALS.set(&context.meta.script.globals, || {
-            ast.ast.visit_mut_with(&mut resolver(
-                ast.unresolved_mark,
-                ast.top_level_mark,
-                false,
-            ));
-            ast.ast.visit_mut_with(&mut injector);
-        });
-
-        let (code, _) = js_ast_to_code(&ast.ast, &context, "x.js").unwrap();
+            r#"my.call("toast");export { }"#,
+        );
 
         assert_eq!(
             code,
             r#"import * as my from "mock-lib";
+my.call("toast");
+export { };
+"#
+        );
+    }
+
+    #[test]
+    fn inject_in_cjs_from_namespace() {
+        let i = Inject {
+            name: "my".to_string(),
+            named: None,
+            from: "mock-lib".to_string(),
+            namespace: Some(true),
+            exclude: None,
+        };
+        let code = apply_inject_to_code(
+            hashmap! {
+                "my".to_string() =>&i
+            },
+            r#"my.call("toast");"#,
+        );
+
+        assert_eq!(
+            code,
+            r#"var my = require("mock-lib");
 my.call("toast");
 "#
         );
