@@ -182,6 +182,8 @@ fn transform_js(
                         context,
                     )?;
 
+                    // preset-env and other folders must be after plugin transform
+                    // because plugin transform may inject some code that may need syntax transform
                     ast.body = folders.fold_module(ast.clone()).body;
 
                     // inject helpers must after decorators
