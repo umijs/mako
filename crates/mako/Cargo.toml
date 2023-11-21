@@ -15,6 +15,7 @@ mako_core  = { path = "../core" }
 serde      = { workspace = true }
 serde_json = { workspace = true }
 cached     = { workspace = true }
+either     = "1.9.0"
 
 [dev-dependencies]
 insta                       = { version = "1.30.0", features = ["yaml"] }

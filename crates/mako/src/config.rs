@@ -262,6 +262,8 @@ pub struct Config {
     pub public_path: String,
     pub inline_limit: usize,
     pub targets: HashMap<String, f32>,
+    #[serde(rename = "targetEsVersion")]
+    pub target_es_version: Option<EsVersion>,
     pub platform: Platform,
     pub module_id_strategy: ModuleIdStrategy,
     pub define: HashMap<String, Value>,
@@ -326,7 +328,8 @@ const DEFAULT_CONFIG: &str = r#"
     "providers": {},
     "publicPath": "/",
     "inlineLimit": 10000,
-    "targets": { "chrome": 80 },
+    "targets": {},
+    "targetEsVersion": null,
     "less": { "theme": {}, "lesscPath": "", javascriptEnabled: true },
     "define": {},
     "manifest": false,
@@ -498,6 +501,15 @@ impl Config {
             // dev 环境下不产生 hash, prod 环境下根据用户配置
             if config.mode == Mode::Development {
                 config.hash = false;
+            }
+
+            if config.targets.is_empty() && config.target_es_version.is_none() {
+                config.targets = HashMap::new();
+                config.targets.insert("chrome".into(), 80_f32);
+            }
+            if !config.targets.is_empty() && config.target_es_version.is_some() {
+                println!("{}", "When both 'targets' and 'targetEsVersion' are present, 'targets' will be ignored".to_string().yellow());
+                config.targets = HashMap::new();
             }
 
             // configure node platform
