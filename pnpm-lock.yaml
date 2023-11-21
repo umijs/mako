@@ -54,14 +54,14 @@ importers:
   crates/node:
     optionalDependencies:
       '@okamjs/okam-darwin-arm64':
-        specifier: 0.0.36-dev.20231118.1
-        version: 0.0.36-dev.20231118.1
+        specifier: 0.0.36-dev.20231119.1
+        version: 0.0.36-dev.20231119.1
       '@okamjs/okam-darwin-x64':
-        specifier: 0.0.36-dev.20231118.1
-        version: 0.0.36-dev.20231118.1
+        specifier: 0.0.36-dev.20231119.1
+        version: 0.0.36-dev.20231119.1
       '@okamjs/okam-linux-x64-gnu':
-        specifier: 0.0.36-dev.20231118.1
-        version: 0.0.36-dev.20231118.1
+        specifier: 0.0.36-dev.20231119.1
+        version: 0.0.36-dev.20231119.1
     devDependencies:
       '@napi-rs/cli':
         specifier: ^2.14.8
@@ -273,7 +273,7 @@ importers:
   packages/bundler-okam:
     dependencies:
       '@okamjs/okam':
-        specifier: 0.0.36-dev.20231118.1
+        specifier: 0.0.36-dev.20231119.1
         version: link:../../crates/node
       '@swc/helpers':
         specifier: 0.5.1
@@ -299,12 +299,9 @@ importers:
       express:
         specifier: ^4.18.2
         version: 4.18.2
-      less:
-        specifier: ^4.2.0
-        version: 4.2.0
       less-plugin-resolve:
-        specifier: ^1.0.1
-        version: 1.0.1
+        specifier: ^1.0.2
+        version: 1.0.2
       node-libs-browser-okam:
         specifier: 2.2.4
         version: 2.2.4
@@ -3175,8 +3172,8 @@ packages:
       fastq: 1.15.0
     dev: true
 
-  /@okamjs/okam-darwin-arm64@0.0.36-dev.20231118.1:
-    resolution: {integrity: sha512-QmAbUhMtilvhM8M9RtVzFRLzxJbPMnLTb8x+A9pNjtT6Ci08FTrmpUukj3YVPjyDsreQrTaBX/5N55Oby6dn/w==}
+  /@okamjs/okam-darwin-arm64@0.0.36-dev.20231119.1:
+    resolution: {integrity: sha512-7CQvgNodxl3VLaFVWEqIzmeQE3/p/3H/xq0KIn4Hgu8W99lAYR1jsnfi6F4cyJlJLZctJu1IK/wMzJp+fn9R0A==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
@@ -3184,8 +3181,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-darwin-x64@0.0.36-dev.20231118.1:
-    resolution: {integrity: sha512-x6Rs474rxzQpro8xh5Q6FeSdCCUvQ0XpyN2K3IvTay7MYdBIOmQaToKYpZKrzfDGy3dP8Gsh9m5Thx6J/r63Ow==}
+  /@okamjs/okam-darwin-x64@0.0.36-dev.20231119.1:
+    resolution: {integrity: sha512-55WSz0xOKnJr7ibWacTe7Bf6rJqBvDQ1hqd1Cm49Tc3eds4Cx2ieLWIVCvl2vVdlopFSDYIRhKmQwXzjhuFplA==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
@@ -3193,8 +3190,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-linux-x64-gnu@0.0.36-dev.20231118.1:
-    resolution: {integrity: sha512-1S1S3Rwnl6OU1wgb2NryIXmIMo0ujcWM05k6/ONBG3aSZ4HObGWEJ57piDhaqOPYWlMm+Io2qoYeF7ojyVJQOw==}
+  /@okamjs/okam-linux-x64-gnu@0.0.36-dev.20231119.1:
+    resolution: {integrity: sha512-gnTciMt0403dW75zb968irykQxoqpGXHjARZ71aeMB+rOzifZBHpoBuq+T6JEzCq++8yyhLB1bIcOs8vbeAp6A==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
@@ -4453,7 +4450,7 @@ packages:
       axios: 0.27.2
       babel-plugin-import: 1.13.6
       dayjs: 1.11.7
-      dva-core: 2.0.4(redux@3.7.2)
+      dva-core: 2.0.4(redux@4.2.1)
       dva-immer: 1.0.1(dva@2.5.0-beta.2)
       dva-loading: 3.0.24(dva-core@2.0.4)
       event-emitter: 0.3.5
@@ -5886,6 +5883,7 @@ packages:
     resolution: {integrity: sha512-1j20GZTsvKNkc4BY3NpMOM8tt///wY3FpIzozTOFO2ffuZcV61nojHXVKIy3WM+7ADCy5FVhdZYHYDdgTU0yJw==}
     dependencies:
       is-what: 3.14.1
+    dev: true
 
   /copy-anything@3.0.5:
     resolution: {integrity: sha512-yCEafptTtb4bk7GLEQoM8KVJpxAfdBJYaXyzQEgQQQgYrZiDp8SJmGKlYza6CYjEDNstAdNdKA3UuoULlEbS6w==}
@@ -6135,6 +6133,7 @@ packages:
         optional: true
     dependencies:
       ms: 2.1.3
+    dev: true
 
   /debug@4.3.4(supports-color@5.5.0):
     resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==}
@@ -6381,7 +6380,7 @@ packages:
       warning: 3.0.0
     dev: true
 
-  /dva-core@2.0.4(redux@3.7.2):
+  /dva-core@2.0.4(redux@4.2.1):
     resolution: {integrity: sha512-Zh39llFyItu9HKXKfCZVf9UFtDTcypdAjGBew1S+wK8BGVzFpm1GPTdd6uIMeg7O6STtCvt2Qv+RwUut1GFynA==}
     peerDependencies:
       redux: 4.x
@@ -6391,7 +6390,7 @@ packages:
       global: 4.4.0
       invariant: 2.2.4
       is-plain-object: 2.0.4
-      redux: 3.7.2
+      redux: 4.2.1
       redux-saga: 0.16.2
       warning: 3.0.0
     dev: true
@@ -6412,7 +6411,7 @@ packages:
       dva-core: ^1.1.0 || ^1.5.0-0 || ^1.6.0-0
     dependencies:
       '@babel/runtime': 7.22.11
-      dva-core: 2.0.4(redux@3.7.2)
+      dva-core: 2.0.4(redux@4.2.1)
     dev: true
 
   /dva@2.5.0-beta.2(react-dom@18.2.0)(react@18.2.0):
@@ -6532,6 +6531,7 @@ packages:
     requiresBuild: true
     dependencies:
       prr: 1.0.1
+    dev: true
     optional: true
 
   /error-ex@1.3.2:
@@ -7750,6 +7750,7 @@ packages:
     engines: {node: '>=0.10.0'}
     dependencies:
       safer-buffer: 2.1.2
+    dev: true
 
   /icss-utils@5.1.0(postcss@8.4.24):
     resolution: {integrity: sha512-soFhflCVWLfRNOPU3iv5Z9VUdT44xFRbzjLsEzSr5AQmgqPMTHdU3PMT1Cf1ssx8fLNJDA1juftYl+PUcv3MqA==}
@@ -7780,6 +7781,7 @@ packages:
     engines: {node: '>=0.10.0'}
     hasBin: true
     requiresBuild: true
+    dev: true
     optional: true
 
   /immer@8.0.4:
@@ -8158,6 +8160,7 @@ packages:
 
   /is-what@3.14.1:
     resolution: {integrity: sha512-sNxgpk9793nzSs7bA6JQJGeIuRBQhAaNGG77kzYQgMkrID+lS6SlK07K5LaptscDlSaIgH+GPFzf+d75FVxozA==}
+    dev: true
 
   /is-what@4.1.13:
     resolution: {integrity: sha512-Aoe8pT24sWzyoO0S2PTDyutGp9l7qYHyFtzYlC8hMLshyqV/minljBANT4f2hiS5OxnWvcKMiA5io+VaLMJ1oA==}
@@ -8395,8 +8398,8 @@ packages:
     resolution: {integrity: sha512-Y+60/zizpJ3HRH8DCss+q95yr6145JXZo46OTpFvDZWLfRCE4qChOyk1b26nMaNpfHHgxagk9dXT5OP0Tfe+dQ==}
     dev: true
 
-  /less-plugin-resolve@1.0.1:
-    resolution: {integrity: sha512-0ggSTIvKgGGByB7Dbt+/se0aZYLgUUqxQkjvNEi1Meu2iBala49NMi0qdbaWmBtbpEeNCGav4Kjo6dBRmFqsEQ==}
+  /less-plugin-resolve@1.0.2:
+    resolution: {integrity: sha512-e1AHq0XNTU8S3d9JCc8CFYajoUBr0EK3pcuLT5PogyBBeE0knzZJL105kKKSZWfq2lQLq3/uEDrMK3JPq+fHaA==}
     dependencies:
       enhanced-resolve: 5.15.0
     dev: false
@@ -8439,6 +8442,7 @@ packages:
       source-map: 0.6.1
     transitivePeerDependencies:
       - supports-color
+    dev: true
 
   /levn@0.4.1:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
@@ -8641,6 +8645,7 @@ packages:
     dependencies:
       pify: 4.0.1
       semver: 5.7.1
+    dev: true
 
   /make-dir@3.1.0:
     resolution: {integrity: sha512-g3FeP20LNwhALb/6Cz6Dd4F2ngze0jz7tbzrD2wAV+o9FeNHe4rL+yK2md0J/fiSf1sa1ADhXqi5+oVwOM/eGw==}
@@ -8918,6 +8923,7 @@ packages:
       sax: 1.2.4
     transitivePeerDependencies:
       - supports-color
+    dev: true
     optional: true
 
   /negotiator@0.6.3:
@@ -9326,6 +9332,7 @@ packages:
   /parse-node-version@1.0.1:
     resolution: {integrity: sha512-3YHlOa/JgH6Mnpr05jP9eDG254US9ek25LyIxZlDItp2iJtwyaXQb57lBYLdT3MowkUFYEV2XXNAYIPlESvJlA==}
     engines: {node: '>= 0.10'}
+    dev: true
 
   /parseurl@1.3.3:
     resolution: {integrity: sha512-CiyeOxFT/JZyN5m0z9PfXw4SCBJ6Sygz1Dpl0wqjlhDEGGBP1GnsUVEL0p63hoG1fcj3fHynXi9NYO4nWOL+qQ==}
@@ -9433,6 +9440,7 @@ packages:
   /pify@4.0.1:
     resolution: {integrity: sha512-uB80kBFb/tfd68bVleG9T5GGsGPjJrLAUpR5PZIrhBnIaRTQRjqdJSsIKkOP6OAIFbj7GOrcudc5pNjZ+geV2g==}
     engines: {node: '>=6'}
+    dev: true
 
   /pino-abstract-transport@0.5.0:
     resolution: {integrity: sha512-+KAgmVeqXYbTtU2FScx1XS3kNyfZ5TrXY07V96QnUSFqo2gAqlvmaxH67Lj7SWazqsMabf+58ctdTcBgnOLUOQ==}
@@ -10018,6 +10026,7 @@ packages:
   /prr@1.0.1:
     resolution: {integrity: sha512-yPw4Sng1gWghHQWj0B3ZggWUm4qVbPwPFcRG8KyxiU7J2OHFSoEHKS+EZ3fv5l1t9CyCiop6l/ZYeWbrgoQejw==}
     requiresBuild: true
+    dev: true
     optional: true
 
   /ps-tree@1.2.0:
@@ -11617,6 +11626,7 @@ packages:
   /sax@1.2.4:
     resolution: {integrity: sha512-NqVDv9TpANUjFm0N8uM5GxL36UgKi9/atZw+x7YFnQ8ckwFGKrl4xX4yWtrey3UJm5nP1kUbnYgLopqWNSRhWw==}
     requiresBuild: true
+    dev: true
     optional: true
 
   /scheduler@0.22.0:
@@ -11654,6 +11664,7 @@ packages:
   /semver@5.7.1:
     resolution: {integrity: sha512-sauaDf/PZdVgrLTNYHRtpXa1iRiKcaebiKQ1BJdpQlWH2lCvexQdX55snPFyK7QzpudqbCI0qXFfOasHdyNDGQ==}
     hasBin: true
+    dev: true
 
   /semver@6.3.0:
     resolution: {integrity: sha512-b39TBaTSfV6yBrapU89p5fKekE2m/NwnDocOVruQFS1/veMgdzuPcnOM34M6CwxW8jH/lxEa5rBoDeUwu5HHTw==}
@@ -11841,6 +11852,7 @@ packages:
   /source-map@0.6.1:
     resolution: {integrity: sha512-UjgapumWlbMhkBgzT7Ykc5YXUT46F0iKu8SGXq0bcwP5dz/h0Plj6enJqjz1Zbq2l5WaqYnrVbwWOWMyF3F47g==}
     engines: {node: '>=0.10.0'}
+    dev: true
 
   /source-map@0.7.4:
     resolution: {integrity: sha512-l3BikUxvPOcn5E74dZiq5BGsTb5yEwhaTSzccU6t4sDOH8NWJCstKO5QT2CvtFoK6F0saL7p9xHAqHOlCPJygA==}

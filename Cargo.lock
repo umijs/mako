@@ -150,6 +150,7 @@ name = "alipay_okam"
 version = "0.0.0"
 dependencies = [
  "mako",
+ "mako_core",
  "napi",
  "napi-build",
  "napi-derive",

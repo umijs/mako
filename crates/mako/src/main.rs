@@ -93,7 +93,7 @@ async fn main() -> Result<()> {
     debug!("config: {:?}", config);
 
     // compiler
-    let compiler = compiler::Compiler::new(config, root.clone(), Args { watch: cli.watch })?;
+    let compiler = compiler::Compiler::new(config, root.clone(), Args { watch: cli.watch }, None)?;
     let compiler = Arc::new(compiler);
 
     #[cfg(feature = "profile")]

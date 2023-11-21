@@ -3,7 +3,28 @@ const fs = require('fs');
 const http = require('http');
 const assert = require('assert');
 const { createProxy, createHttpsServer } = require('@umijs/bundler-utils');
-const { lodash, chalk } = require('@umijs/utils');
+const lodash = require('lodash');
+const chalk = require('chalk');
+
+const onCompileLess = async function (cwd, alias, modifyVars, filePath) {
+  const less = require('@umijs/bundler-utils/compiled/less');
+  const input = fs.readFileSync(filePath, 'utf-8');
+  const resolvePlugin = new (require('less-plugin-resolve'))({
+    aliases: alias,
+  });
+  const result = await less.render(input, {
+    filename: filePath,
+    javascriptEnabled: true,
+    math: 'always',
+    plugins: [resolvePlugin],
+    modifyVars,
+    rootpath: cwd,
+  });
+  return result.css;
+};
+
+// export for test only
+exports._onCompileLess = onCompileLess;
 
 exports.build = async function (opts) {
   assert(opts, 'opts should be supplied');
@@ -25,7 +46,20 @@ exports.build = async function (opts) {
   }
 
   const { build } = require('@okamjs/okam');
-  await build(cwd, okamConfig, () => {}, false);
+  await build(
+    cwd,
+    okamConfig,
+    () => {},
+    {
+      onCompileLess: onCompileLess.bind(
+        null,
+        cwd,
+        okamConfig.resolve.alias,
+        okamConfig.less.theme,
+      ),
+    },
+    false,
+  );
 
   // TODO: use stats
   const manifest = JSON.parse(
@@ -128,12 +162,19 @@ exports.dev = async function (opts) {
     (_, args) => {
       opts.onDevCompileDone(args);
     },
+    {
+      onCompileLess: onCompileLess.bind(
+        null,
+        opts.cwd,
+        okamConfig.resolve.alias,
+        okamConfig.less.theme,
+      ),
+    },
     true,
   );
 };
 
 function getDevBanner(protocol, host, port, ip) {
-  const chalk = require('chalk');
   const hostStr = host === '0.0.0.0' ? 'localhost' : host;
   const messages = [];
   messages.push('  App listening at:');
@@ -335,6 +376,12 @@ async function getOkamConfig(opts) {
     umd = webpackConfig.output.library;
   }
 
+  let makoConfig = {};
+  const makoConfigPath = path.join(opts.cwd, 'mako.config.json');
+  if (fs.existsSync(makoConfigPath)) {
+    makoConfig = JSON.parse(fs.readFileSync(makoConfigPath, 'utf-8'));
+  }
+
   const {
     alias,
     targets,
@@ -432,6 +479,7 @@ async function getOkamConfig(opts) {
     resolve: {
       alias: {
         ...alias,
+        ...makoConfig.resolve?.alias,
         '@swc/helpers': path.dirname(
           require.resolve('@swc/helpers/package.json'),
         ),
@@ -461,6 +509,7 @@ async function getOkamConfig(opts) {
         // ignore function value
         ...lodash.pickBy(theme, lodash.isString),
         ...lessLoader?.modifyVars,
+        ...makoConfig.less?.theme,
       },
       javascriptEnabled: lessLoader?.javascriptEnabled,
       lesscPath: path.join(
