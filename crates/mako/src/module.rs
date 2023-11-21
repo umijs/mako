@@ -168,6 +168,7 @@ impl ModuleAst {
 pub enum ModuleType {
     Script,
     Css,
+    Raw,
 }
 
 #[allow(dead_code)]
@@ -215,7 +216,7 @@ impl Module {
         match info.ast {
             ModuleAst::Script(_) => ModuleType::Script,
             ModuleAst::Css(_) => ModuleType::Css,
-            ModuleAst::None => todo!(),
+            ModuleAst::None => ModuleType::Raw,
         }
     }
 

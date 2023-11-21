@@ -8,18 +8,18 @@ use mako_core::rayon::prelude::*;
 use mako_core::regex::Regex;
 use mako_core::swc_common::{Mark, Span, SyntaxContext, DUMMY_SP};
 use mako_core::swc_ecma_ast::{
-    AssignPatProp, Ident, ImportDecl, ImportDefaultSpecifier, ImportNamedSpecifier,
-    ImportSpecifier, ImportStarAsSpecifier, KeyValuePatProp, ModuleDecl, ModuleItem, ObjectPat,
-    ObjectPatProp, Pat, PropName, Stmt, VarDeclKind,
+    Ident, ImportDecl, ImportDefaultSpecifier, ImportNamedSpecifier, ImportSpecifier,
+    ImportStarAsSpecifier, MemberExpr, ModuleDecl, ModuleItem, Stmt, VarDeclKind,
 };
 use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 use serde::Serialize;
 
 use crate::compiler::Context;
-use crate::load::Content;
-use crate::module::{Dependency as ModuleDependency, ResolveType};
-use crate::plugin::{Plugin, PluginLoadParam, PluginTransformJsParam};
+use crate::load::Content::Assets;
+use crate::load::{read_content, Asset, Content};
+use crate::module::{Dependency as ModuleDependency, ModuleAst, ResolveType};
+use crate::plugin::{Plugin, PluginLoadParam, PluginParseParam, PluginTransformJsParam};
 use crate::plugins::bundless_compiler::to_dist_path;
 use crate::stats::StatsJsonMap;
 
@@ -49,9 +49,33 @@ impl Plugin for MinifishPlugin {
 
             return match self.mapping.get(relative) {
                 Some(js_content) => Ok(Some(Content::Js(js_content.to_string()))),
-                None => Ok(None),
+
+                None => {
+                    let content = read_content(param.path.as_str())?;
+
+                    let asset = Asset {
+                        path: param.path.clone(),
+                        content,
+                    };
+
+                    Ok(Some(Assets(asset)))
+                }
             };
         }
+        Ok(None)
+    }
+
+    fn parse(
+        &self,
+        param: &PluginParseParam,
+        _context: &Arc<Context>,
+    ) -> Result<Option<ModuleAst>> {
+        if param.request.path.ends_with(".json") {
+            if let Assets(_) = param.content {
+                return Ok(Some(ModuleAst::None));
+            }
+        }
+
         Ok(None)
     }
 
@@ -260,52 +284,35 @@ impl Inject {
 
         let stmt: Stmt = match (&self.named, &self.namespace) {
             // import { named as x }
-            (Some(named), None | Some(false)) => require_source_expr
-                .into_var_decl(
-                    VarDeclKind::Const,
-                    Pat::Object(ObjectPat {
-                        span: DUMMY_SP,
-                        optional: false,
-                        props: vec![if *named == self.name {
-                            ObjectPatProp::Assign(AssignPatProp {
-                                span: DUMMY_SP,
-                                key: quote_ident!(name_span, self.name.clone()),
-                                value: None,
-                            })
-                        } else {
-                            ObjectPatProp::KeyValue(KeyValuePatProp {
-                                key: PropName::Ident(quote_ident!(named.to_string())),
-                                value: quote_ident!(name_span, self.name.clone()).into(),
-                            })
-                        }],
-                        type_ann: None,
-                    }),
-                )
-                .into(),
-
+            (Some(named), None | Some(false)) => MemberExpr {
+                span: Default::default(),
+                obj: require_source_expr.into(),
+                prop: quote_ident!(named.to_string()).into(),
+            }
+            .into_var_decl(
+                VarDeclKind::Var,
+                quote_ident!(name_span, self.name.clone()).into(),
+            )
+            .into(),
             // import * as x
             (None, Some(true)) => require_source_expr
                 .into_var_decl(
-                    VarDeclKind::Const,
+                    VarDeclKind::Var,
                     quote_ident!(name_span, self.name.clone()).into(),
                 )
                 .into(),
 
             // import x from "x"
-            (None, None | Some(false)) => require_source_expr
-                .into_var_decl(
-                    VarDeclKind::Const,
-                    Pat::Object(ObjectPat {
-                        span: DUMMY_SP,
-                        optional: false,
-                        props: vec![ObjectPatProp::KeyValue(KeyValuePatProp {
-                            key: PropName::Ident(quote_ident!("default")),
-                            value: quote_ident!(name_span, self.name.clone()).into(),
-                        })],
-                        type_ann: None,
-                    }),
-                )
-                .into(),
+            (None, None | Some(false)) => MemberExpr {
+                span: DUMMY_SP,
+                obj: require_source_expr.into(),
+                prop: quote_ident!("default").into(),
+            }
+            .into_var_decl(
+                VarDeclKind::Var,
+                quote_ident!(name_span, self.name.clone()).into(),
+            )
+            .into(),
             (Some(_), Some(true)) => {
                 panic!("Cannot use both `named` and `namespaced`")
             }
@@ -484,7 +491,7 @@ export { };
 
         assert_eq!(
             code,
-            r#"const { default: my } = require("mock-lib");
+            r#"var my = require("mock-lib").default;
 my.call("toast");
 "#
         );
@@ -533,7 +540,7 @@ export { };
         );
         assert_eq!(
             code,
-            r#"const { her: my } = require("mock-lib");
+            r#"var my = require("mock-lib").her;
 my.call("toast");
 "#
         );
@@ -584,7 +591,7 @@ export { };
 
         assert_eq!(
             code,
-            r#"const { my } = require("mock-lib");
+            r#"var my = require("mock-lib").my;
 my.call("toast");
 "#
         );
@@ -633,7 +640,7 @@ export { };
 
         assert_eq!(
             code,
-            r#"const my = require("mock-lib");
+            r#"var my = require("mock-lib");
 my.call("toast");
 "#
         );

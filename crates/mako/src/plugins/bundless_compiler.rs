@@ -101,7 +101,8 @@ impl Plugin for BundlessCompiler {
                 }
                 ModuleAst::Css(_style) => {}
                 ModuleAst::None => {
-                    //  nothing
+                    let target = to_dist_path(&id.id, context);
+                    self.write_to_dist(target, &info.raw, context);
                 }
             }
         });
