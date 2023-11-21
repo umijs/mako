@@ -45,11 +45,10 @@ exports.build = async function (opts) {
   }
 
   const { build } = require('@okamjs/okam');
-  await build(
-    cwd,
-    okamConfig,
-    () => {},
-    {
+  await build({
+    root: cwd,
+    config: okamConfig,
+    hooks: {
       onCompileLess: onCompileLess.bind(
         null,
         cwd,
@@ -57,8 +56,8 @@ exports.build = async function (opts) {
         okamConfig.less.theme,
       ),
     },
-    false,
-  );
+    watch: false,
+  });
 
   // TODO: use stats
   const manifest = JSON.parse(
@@ -155,22 +154,23 @@ exports.dev = async function (opts) {
   okamConfig.hmr = true;
   okamConfig.hmrPort = String(opts.port + 1);
   okamConfig.hmrHost = opts.host;
-  await build(
-    opts.cwd,
-    okamConfig,
-    (_, args) => {
-      opts.onDevCompileDone(args);
-    },
-    {
+  const cwd = opts.cwd;
+  await build({
+    root: cwd,
+    config: okamConfig,
+    hooks: {
       onCompileLess: onCompileLess.bind(
         null,
-        opts.cwd,
+        cwd,
         okamConfig.resolve.alias,
         okamConfig.less.theme,
       ),
+      onBuildComplete: (args) => {
+        opts.onDevCompileDone(args);
+      },
     },
-    true,
-  );
+    watch: true,
+  });
 };
 
 function getDevBanner(protocol, host, port, ip) {

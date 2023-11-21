@@ -229,7 +229,6 @@ impl Compiler {
             Arc::new(plugins::import::ImportPlugin {}),
             // file types
             Arc::new(plugins::css::CSSPlugin {}),
-            // Arc::new(plugins::less::LessPlugin {}),
             Arc::new(plugins::javascript::JavaScriptPlugin {}),
             Arc::new(plugins::json::JSONPlugin {}),
             Arc::new(plugins::md::MdPlugin {}),

@@ -7,120 +7,57 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, Once};
 use std::time::UNIX_EPOCH;
 
-use mako::compiler::{Args, Compiler, Context};
-use mako::config::{Config, Mode};
+use mako::compiler::{Args, Compiler};
+use mako::config::Config;
 use mako::dev::{DevServer, OnDevCompleteParams, Stats};
-use mako::load::{read_content, Content};
 use mako::logger::init_logger;
+use mako::plugin::Plugin;
 use napi::bindgen_prelude::*;
-use napi::threadsafe_function::{ErrorStrategy, ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi::{JsObject, JsString, JsUnknown, NapiRaw, Status};
 
+mod plugin_less;
 mod threadsafe_function;
 
 static LOG_INIT: Once = Once::new();
 
 #[napi(object)]
 pub struct JsHooks {
-    pub on_compile_less: JsFunction,
+    pub on_compile_less: Option<JsFunction>,
+    pub on_build_complete: Option<JsFunction>,
+}
+
+#[napi(object)]
+pub struct BuildParams {
+    pub root: String,
+    pub config: serde_json::Value,
+    pub hooks: JsHooks,
+    pub watch: bool,
+}
+
+fn call_on_build_complete(
+    on_build_complete: &Option<threadsafe_function::ThreadsafeFunction<OnDevCompleteParams>>,
+    params: OnDevCompleteParams,
+) {
+    if let Some(func) = on_build_complete {
+        func.call(
+            params,
+            threadsafe_function::ThreadsafeFunctionCallMode::NonBlocking,
+        );
+    }
 }
 
 #[napi]
-pub fn build(
-    e: Env,
-    root: String,
-    #[napi(ts_arg_type = r#"
-{
-    entry?: Record<string, string>;
-    output?: {
-        path: string;
-        mode: "bundle" | "bundless" ;
-        esVersion?: string;
-        meta?: boolean;
-        asciiOnly?: boolean,
-        preserveModules?: boolean;
-        preserveModulesRoot?: string;
-    };
-    resolve?: {
-       alias?: Record<string, string>;
-       extensions?: string[];
-    };
-    manifest?: boolean;
-    manifestConfig?: {
-        fileName: string;
-        basePath: string;
-    };
-    minify?: boolean;
-    mode?: "development" | "production";
-    define?: Record<string, string>;
-    devtool?: "source-map" | "inline-source-map" | "none";
-    externals?: Record<
-        string,
-        string | {
-            root: string;
-            script?: string;
-            subpath?: {
-                exclude?: string[];
-                rules: {
-                    regex: string;
-                    target: string | '$EMPTY';
-                    targetConverter?: 'PascalCase';
-                }[];
-            };
-        }
-    >;
-    copy?: string[];
-    code_splitting?: "auto" | "none";
-    providers?: Record<string, string[]>;
-    publicPath?: string;
-    inlineLimit?: number;
-    targets?: Record<string, number>;
-    platform?: "node" | "browser";
-    hmr?: boolean;
-    hmrPort?: string;
-    hmrHost?: string;
-    px2rem?: boolean;
-    px2remConfig?: {
-        root: number;
-        propBlackList: string[];
-        propWhiteList: string[];
-        selectorBlackList: string[];
-        selectorWhiteList: string[];
-    };
-    stats?: boolean;
-    hash?: boolean;
-    autoCssModules?: boolean;
-    ignoreCSSParserErrors?: boolean;
-    dynamicImportToRequire?: boolean;
-    umd?: string;
-    transformImport?: { libraryName: string; libraryDirectory?: string; style?: boolean | string }[];
-    clean?: boolean;
-    nodePolyfill?: boolean;
-    ignores?: string[];
-    _minifish?: {
-        mapping: Record<string, string>;
-        metaPath?: string;
-        inject?: Record<string, { from:string;exclude?:string; } |
-            { from:string; named:string; exclude?:string } |
-            { from:string; namespace: true; exclude?:string }
-            >;
-    };
-    optimizePackageImports?: boolean;
-}"#)]
-    config: serde_json::Value,
-    callback: JsFunction,
-    js_hooks: JsHooks,
-    watch: bool,
-) -> napi::Result<JsObject> {
-    // logger
+pub fn build(env: Env, build_params: BuildParams) -> napi::Result<JsObject> {
     LOG_INIT.call_once(|| {
         init_logger();
     });
 
-    let callback: ThreadsafeFunction<OnDevCompleteParams, ErrorStrategy::CalleeHandled> = callback
-        .create_threadsafe_function(
+    let on_build_complete = if let Some(on_build_complete) = build_params.hooks.on_build_complete {
+        let func = threadsafe_function::ThreadsafeFunction::create(
+            env.raw(),
+            unsafe { on_build_complete.raw() },
             0,
-            |ctx: napi::threadsafe_function::ThreadSafeCallContext<OnDevCompleteParams>| {
+            |ctx: threadsafe_function::ThreadSafeCallContext<OnDevCompleteParams>| {
                 let mut obj = ctx.env.create_object()?;
                 let mut stats = ctx.env.create_object()?;
                 stats.set_named_property(
@@ -134,49 +71,68 @@ pub fn build(
                 obj.set_named_property("isFirstCompile", ctx.value.is_first_compile)?;
                 obj.set_named_property("time", ctx.env.create_int64(ctx.value.time as i64))?;
                 obj.set_named_property("stats", stats)?;
-                Ok(vec![obj])
+                ctx.callback.unwrap().call(None, &[obj])?;
+                Ok(())
             },
         )?;
+        Some(func)
+    } else {
+        None
+    };
 
-    let on_compile_less = js_hooks.on_compile_less;
-    let on_compile_less = threadsafe_function::ThreadsafeFunction::create(
-        e.raw(),
-        unsafe { on_compile_less.raw() },
-        0,
-        |ctx: threadsafe_function::ThreadSafeCallContext<ReadMessage>| {
-            let str = ctx.env.create_string(&ctx.value.message)?;
-            let result = ctx.callback.unwrap().call(None, &[str])?;
-            await_promise(ctx.env, result, ctx.value.tx).unwrap();
-            Ok(())
-        },
-    )?;
-    let less_plugin = LessPlugin { on_compile_less };
-    let extra_plugins: Vec<Arc<dyn Plugin>> = vec![Arc::new(less_plugin)];
+    let less_plugin = if let Some(on_compile_less) = build_params.hooks.on_compile_less {
+        let on_compile_less = threadsafe_function::ThreadsafeFunction::create(
+            env.raw(),
+            unsafe { on_compile_less.raw() },
+            0,
+            |ctx: threadsafe_function::ThreadSafeCallContext<ReadMessage>| {
+                let str = ctx.env.create_string(&ctx.value.message)?;
+                let result = ctx.callback.unwrap().call(None, &[str])?;
+                await_promise(ctx.env, result, ctx.value.tx).unwrap();
+                Ok(())
+            },
+        )?;
+        Some(Arc::new(plugin_less::LessPlugin { on_compile_less }))
+    } else {
+        None
+    };
 
-    let default_config = serde_json::to_string(&config).unwrap();
-    let root = std::path::PathBuf::from(&root);
-    let mut config = Config::new(&root, Some(&default_config), None)
-        .map_err(|e| napi::Error::new(Status::GenericFailure, format!("{}", e)))?;
-
-    // dev 环境下不产生 hash, prod 环境下根据用户配置
-    if config.mode == Mode::Development {
-        config.hash = false;
+    let mut plugins: Vec<Arc<dyn Plugin>> = vec![];
+    if let Some(less_plugin) = less_plugin {
+        plugins.push(less_plugin);
     }
 
-    if watch {
-        let (deferred, promise) = e.create_deferred()?;
-        e.execute_tokio_future(
+    let root = std::path::PathBuf::from(&build_params.root);
+    let default_config = serde_json::to_string(&build_params.config).unwrap();
+    let config = Config::new(&root, Some(&default_config), None)
+        .map_err(|e| napi::Error::new(Status::GenericFailure, format!("{}", e)))?;
+
+    if build_params.watch {
+        let (deferred, promise) = env.create_deferred()?;
+        env.execute_tokio_future(
             async move {
+                let start_time = std::time::SystemTime::now();
                 let compiler =
-                    Compiler::new(config, root.clone(), Args { watch }, Some(extra_plugins))
+                    Compiler::new(config, root.clone(), Args { watch: true }, Some(plugins))
                         .map_err(|e| napi::Error::new(Status::GenericFailure, format!("{}", e)))?;
                 compiler
                     .compile()
                     .map_err(|e| napi::Error::new(Status::GenericFailure, format!("{}", e)))?;
+                let end_time = std::time::SystemTime::now();
+                let params = OnDevCompleteParams {
+                    is_first_compile: true,
+                    time: end_time.duration_since(start_time).unwrap().as_millis() as u64,
+                    stats: Stats {
+                        start_time: start_time.duration_since(UNIX_EPOCH).unwrap().as_millis()
+                            as u64,
+                        end_time: end_time.duration_since(UNIX_EPOCH).unwrap().as_millis() as u64,
+                    },
+                };
+                call_on_build_complete(&on_build_complete, params);
                 let d = DevServer::new(root.clone(), Arc::new(compiler));
                 deferred.resolve(move |env| env.get_undefined());
                 d.serve(move |params| {
-                    callback.call(Ok(params), ThreadsafeFunctionCallMode::Blocking);
+                    call_on_build_complete(&on_build_complete, params);
                 })
                 .await;
                 Ok(())
@@ -185,11 +141,11 @@ pub fn build(
         )?;
         Ok(promise)
     } else {
-        let (deferred, promise) = e.create_deferred()?;
+        let (deferred, promise) = env.create_deferred()?;
         mako_core::rayon::spawn(move || {
-            let start_time = std::time::SystemTime::now();
-            let compiler = Compiler::new(config, root.clone(), Args { watch }, Some(extra_plugins))
-                .map_err(|e| napi::Error::new(Status::GenericFailure, format!("{}", e)));
+            let compiler =
+                Compiler::new(config, root.clone(), Args { watch: false }, Some(plugins))
+                    .map_err(|e| napi::Error::new(Status::GenericFailure, format!("{}", e)));
             let compiler = match compiler {
                 Ok(c) => c,
                 Err(e) => {
@@ -204,19 +160,6 @@ pub fn build(
                 deferred.reject(e);
                 return;
             }
-            let end_time = std::time::SystemTime::now();
-            callback.call(
-                Ok(OnDevCompleteParams {
-                    is_first_compile: true,
-                    time: end_time.duration_since(start_time).unwrap().as_millis() as u64,
-                    stats: Stats {
-                        start_time: start_time.duration_since(UNIX_EPOCH).unwrap().as_millis()
-                            as u64,
-                        end_time: end_time.duration_since(UNIX_EPOCH).unwrap().as_millis() as u64,
-                    },
-                }),
-                ThreadsafeFunctionCallMode::Blocking,
-            );
             deferred.resolve(move |env| env.get_undefined());
         });
         Ok(promise)
@@ -259,51 +202,4 @@ fn await_promise(
 pub struct ReadMessage {
     pub message: String,
     pub tx: Sender<Result<String>>,
-}
-
-pub struct LessPlugin {
-    pub on_compile_less: threadsafe_function::ThreadsafeFunction<ReadMessage>,
-}
-use cached::proc_macro::cached;
-use mako::plugin::{Plugin, PluginLoadParam};
-
-#[cached(
-    result = true,
-    key = "String",
-    convert = r#"{ format!("{}-{}", path, _content) }"#
-)]
-fn compile_less(
-    path: &str,
-    _content: &str,
-    on_compile_less: &threadsafe_function::ThreadsafeFunction<ReadMessage>,
-) -> Result<String> {
-    let (tx, rx) = std::sync::mpsc::channel::<Result<String>>();
-    on_compile_less.call(
-        ReadMessage {
-            message: path.to_string(),
-            tx,
-        },
-        threadsafe_function::ThreadsafeFunctionCallMode::Blocking,
-    );
-    rx.recv()
-        .unwrap_or_else(|e| panic!("recv error: {:?}", e.to_string()))
-}
-
-impl Plugin for LessPlugin {
-    fn name(&self) -> &str {
-        "less"
-    }
-
-    fn load(
-        &self,
-        param: &PluginLoadParam,
-        _context: &Arc<Context>,
-    ) -> mako_core::anyhow::Result<Option<Content>> {
-        if matches!(param.ext_name.as_str(), "less") {
-            let content = read_content(param.path.as_str())?;
-            let content = compile_less(param.path.as_str(), &content, &self.on_compile_less)?;
-            return Ok(Some(Content::Css(content)));
-        }
-        Ok(None)
-    }
 }

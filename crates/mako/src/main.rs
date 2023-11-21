@@ -12,7 +12,6 @@ use mako_core::tokio::sync::Notify;
 use mako_core::tracing::debug;
 
 use crate::compiler::Args;
-use crate::config::Mode;
 use crate::logger::init_logger;
 #[cfg(feature = "profile")]
 use crate::profile_gui::ProfileApp;
@@ -84,11 +83,6 @@ async fn main() -> Result<()> {
         config::Config::new(&root, None, None).map_err(|_| anyhow!("Load config error"))?;
 
     config.mode = cli.mode;
-
-    // dev 环境下不产生 hash, prod 环境下根据用户配置
-    if config.mode == Mode::Development {
-        config.hash = false;
-    }
 
     debug!("config: {:?}", config);
 
