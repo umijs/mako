@@ -56,6 +56,7 @@ exports.build = async function (opts) {
       onCompileLess: onCompileLess.bind(null, {
         cwd,
         config: opts.config,
+        // NOTICE: 有个缺点是 如果 alias 配置是 mako 插件修改的 less 这边就感知到不了
         alias: okamConfig.resolve.alias,
         modifyVars: okamConfig.less.theme,
       }),
