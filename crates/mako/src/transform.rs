@@ -3,6 +3,7 @@ use std::sync::Arc;
 use mako_core::anyhow::Result;
 use mako_core::swc_common::comments::NoopComments;
 use mako_core::swc_common::errors::HANDLER;
+use mako_core::swc_common::pass::Optional;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{chain, Mark, GLOBALS};
 use mako_core::swc_css_ast::Stylesheet;
@@ -28,6 +29,7 @@ use crate::targets;
 use crate::transformers::transform_css_url_replacer::CSSUrlReplacer;
 use crate::transformers::transform_dynamic_import_to_require::DynamicImportToRequire;
 use crate::transformers::transform_env_replacer::{build_env_map, EnvReplacer};
+use crate::transformers::transform_optimize_package_imports::optimize_package_imports;
 use crate::transformers::transform_provide::Provide;
 use crate::transformers::transform_px2rem::Px2Rem;
 use crate::transformers::transform_react::mako_react;
@@ -139,6 +141,7 @@ fn transform_js(
                         Assumptions::default(),
                         &mut FeatureFlag::default(),
                     );
+
                     let mut folders = chain!(
                         preset_env,
                         // support decorator
@@ -161,13 +164,11 @@ fn transform_js(
                                 ..Default::default()
                             }
                         ),
+                        Optional {
+                            enabled: context.config.optimize_package_imports,
+                            visitor: optimize_package_imports(task.path.clone(), context.clone()),
+                        },
                     );
-
-                    ast.body = folders.fold_module(ast.clone()).body;
-
-                    // inject helpers must after decorators
-                    // since decorators will use helpers
-                    ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
 
                     // plugin transform
                     context.plugin_driver.transform_js(
@@ -180,6 +181,14 @@ fn transform_js(
                         ast,
                         context,
                     )?;
+
+                    // preset-env and other folders must be after plugin transform
+                    // because plugin transform may inject some code that may need syntax transform
+                    ast.body = folders.fold_module(ast.clone()).body;
+
+                    // inject helpers must after decorators
+                    // since decorators will use helpers
+                    ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
 
                     Ok(())
                 })
@@ -245,7 +254,7 @@ App;
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-var _jsxdevruntime = require("react/jsx-dev-runtime");
+var _jsxdevruntime = __mako_require__("react/jsx-dev-runtime");
 const App = ()=>(0, _jsxdevruntime.jsxDEV)(_jsxdevruntime.Fragment, {
         children: (0, _jsxdevruntime.jsxDEV)("h1", {
             children: "Hello World"
@@ -302,8 +311,8 @@ b;
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-var _interop_require_default = require("@swc/helpers/_/_interop_require_default");
-var _foo = _interop_require_default._(require("foo"));
+var _interop_require_default = __mako_require__("@swc/helpers/_/_interop_require_default");
+var _foo = _interop_require_default._(__mako_require__("foo"));
 _foo.default;
 const b = 1;
 b;
@@ -329,7 +338,7 @@ foo;
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-var _foo = require("./foo");
+var _foo = __mako_require__("./foo");
 _foo.foo;
 
 //# sourceMappingURL=index.js.map
@@ -353,8 +362,8 @@ foo.bar;
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-var _interop_require_wildcard = require("@swc/helpers/_/_interop_require_wildcard");
-var _foo = _interop_require_wildcard._(require("./foo"));
+var _interop_require_wildcard = __mako_require__("@swc/helpers/_/_interop_require_wildcard");
+var _foo = _interop_require_wildcard._(__mako_require__("./foo"));
 _foo.bar;
 
 //# sourceMappingURL=index.js.map
@@ -376,8 +385,8 @@ foo;
             code,
             r#"
 const foo = Promise.all([
-    require.ensure("./foo")
-]).then(require.bind(require, "./foo"));
+    __mako_require__.ensure("./foo")
+]).then(__mako_require__.bind(__mako_require__, "./foo"));
 foo;
 
 //# sourceMappingURL=index.js.map
@@ -418,13 +427,13 @@ foo();
 //# sourceMappingURL=index.js.map"#
             .trim();
         let require1 = r#"
-const Buffer = require("buffer").Buffer;
-const process = require("process");
+const Buffer = __mako_require__("buffer").Buffer;
+const process = __mako_require__("process");
         "#
         .trim();
         let require2 = r#"
-const process = require("process");
-const Buffer = require("buffer").Buffer;
+const process = __mako_require__("process");
+const Buffer = __mako_require__("buffer").Buffer;
         "#
         .trim();
         // 内部使用 RandomState hashmap，require 的顺序有两种可能
@@ -448,8 +457,8 @@ React;
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-var _interop_require_default = require("@swc/helpers/_/_interop_require_default");
-var _react = _interop_require_default._(require("react"));
+var _interop_require_default = __mako_require__("@swc/helpers/_/_interop_require_default");
+var _react = _interop_require_default._(__mako_require__("react"));
 _react.default;
 
 //# sourceMappingURL=index.js.map
@@ -560,7 +569,7 @@ require("foo");
         assert_eq!(
             code,
             r#"
-require("./bar");
+__mako_require__("./bar");
 
 //# sourceMappingURL=index.js.map
         "#
@@ -644,6 +653,38 @@ if (/x/ === /x/) "should keep";
         let (_code, _sourcemap) = transform_js_code(code, None, HashMap::from([]));
     }
 
+    #[test]
+    fn test_mako_require_ignores() {
+        // test will not panic
+        let code = r#"
+import fs1 from 'node:fs';
+
+const fs2 = require('fs');
+const fs3 = require('fs/promises');
+
+console.log(fs1, fs2, fs3);
+"#
+        .trim();
+        let (code, _sourcemap) = transform_js_code(code, None, HashMap::from([]));
+
+        assert_eq!(
+            code,
+            r#"
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var _interop_require_default = __mako_require__("@swc/helpers/_/_interop_require_default");
+var _nodefs = _interop_require_default._(require("node:fs"));
+const fs2 = require('fs');
+const fs3 = require('fs/promises');
+console.log(_nodefs.default, fs2, fs3);
+
+//# sourceMappingURL=index.js.map
+"#
+            .trim()
+        );
+    }
+
     fn transform_js_code(
         origin: &str,
         path: Option<&str>,
@@ -659,6 +700,8 @@ if (/x/ === /x/) "should keep";
         config
             .providers
             .insert("Buffer".into(), ("buffer".into(), "Buffer".into()));
+        // for test ignores
+        config.ignores.push("^(node:)?fs(/|$)".into());
 
         let root = PathBuf::from("/path/to/root");
 

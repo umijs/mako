@@ -46,7 +46,7 @@ importers:
         version: 7.5.4
       webpack:
         specifier: ^5.0.0
-        version: 5.84.1
+        version: 5.84.1(webpack-cli@4.7.2)
       zx:
         specifier: ^7.2.3
         version: 7.2.3
@@ -54,14 +54,14 @@ importers:
   crates/node:
     optionalDependencies:
       '@okamjs/okam-darwin-arm64':
-        specifier: 0.0.35-dev.20231115.1
-        version: 0.0.35-dev.20231115.1
+        specifier: 0.0.36-dev.20231118.1
+        version: 0.0.36-dev.20231118.1
       '@okamjs/okam-darwin-x64':
-        specifier: 0.0.35-dev.20231115.1
-        version: 0.0.35-dev.20231115.1
+        specifier: 0.0.36-dev.20231118.1
+        version: 0.0.36-dev.20231118.1
       '@okamjs/okam-linux-x64-gnu':
-        specifier: 0.0.35-dev.20231115.1
-        version: 0.0.35-dev.20231115.1
+        specifier: 0.0.36-dev.20231118.1
+        version: 0.0.36-dev.20231118.1
     devDependencies:
       '@napi-rs/cli':
         specifier: ^2.14.8
@@ -273,7 +273,7 @@ importers:
   packages/bundler-okam:
     dependencies:
       '@okamjs/okam':
-        specifier: 0.0.35-dev.20231115.1
+        specifier: 0.0.36-dev.20231118.1
         version: link:../../crates/node
       '@swc/helpers':
         specifier: 0.5.1
@@ -3175,8 +3175,8 @@ packages:
       fastq: 1.15.0
     dev: true
 
-  /@okamjs/okam-darwin-arm64@0.0.35-dev.20231115.1:
-    resolution: {integrity: sha512-hTrTyq9xX6Ky/IfSTYlWn23FFVAsO4vS7e4UuHhGAnOtr2zP5QCo5HvgqYYU6foR0vLeaGvau0SPpJ0Mw6+Bug==}
+  /@okamjs/okam-darwin-arm64@0.0.36-dev.20231118.1:
+    resolution: {integrity: sha512-QmAbUhMtilvhM8M9RtVzFRLzxJbPMnLTb8x+A9pNjtT6Ci08FTrmpUukj3YVPjyDsreQrTaBX/5N55Oby6dn/w==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
@@ -3184,8 +3184,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-darwin-x64@0.0.35-dev.20231115.1:
-    resolution: {integrity: sha512-+Ua2ktUpf2DOMk0H9694P1460FzQqUOQoZxHtl36XU3iyZdYIJ/nMbG3qEnYF5RiJRLs9T2iEb40EyR0WwZXVQ==}
+  /@okamjs/okam-darwin-x64@0.0.36-dev.20231118.1:
+    resolution: {integrity: sha512-x6Rs474rxzQpro8xh5Q6FeSdCCUvQ0XpyN2K3IvTay7MYdBIOmQaToKYpZKrzfDGy3dP8Gsh9m5Thx6J/r63Ow==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
@@ -3193,8 +3193,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-linux-x64-gnu@0.0.35-dev.20231115.1:
-    resolution: {integrity: sha512-WbYsS0etGEZAfz9PS72TZZfnFDgAPJEQkVRoRTWhwlsUSOqzDiLgF1jgwTM/UcBzrF48/Hd7VteR0/MA1Ir8SA==}
+  /@okamjs/okam-linux-x64-gnu@0.0.36-dev.20231118.1:
+    resolution: {integrity: sha512-1S1S3Rwnl6OU1wgb2NryIXmIMo0ujcWM05k6/ONBG3aSZ4HObGWEJ57piDhaqOPYWlMm+Io2qoYeF7ojyVJQOw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
@@ -3257,7 +3257,7 @@ packages:
       react-refresh: 0.14.0
       schema-utils: 3.1.2
       source-map: 0.7.4
-      webpack: 5.84.1
+      webpack: 5.84.1(webpack-cli@4.7.2)
     dev: true
 
   /@rc-component/color-picker@1.4.1(react-dom@18.2.0)(react@18.2.0):
@@ -4453,7 +4453,7 @@ packages:
       axios: 0.27.2
       babel-plugin-import: 1.13.6
       dayjs: 1.11.7
-      dva-core: 2.0.4(redux@4.2.1)
+      dva-core: 2.0.4(redux@3.7.2)
       dva-immer: 1.0.1(dva@2.5.0-beta.2)
       dva-loading: 3.0.24(dva-core@2.0.4)
       event-emitter: 0.3.5
@@ -6034,7 +6034,7 @@ packages:
       postcss-modules-values: 4.0.0(postcss@8.4.24)
       postcss-value-parser: 4.2.0
       semver: 7.5.4
-      webpack: 5.84.1
+      webpack: 5.84.1(webpack-cli@4.7.2)
     dev: true
 
   /css-prefers-color-scheme@6.0.3(postcss@8.4.24):
@@ -6381,7 +6381,7 @@ packages:
       warning: 3.0.0
     dev: true
 
-  /dva-core@2.0.4(redux@4.2.1):
+  /dva-core@2.0.4(redux@3.7.2):
     resolution: {integrity: sha512-Zh39llFyItu9HKXKfCZVf9UFtDTcypdAjGBew1S+wK8BGVzFpm1GPTdd6uIMeg7O6STtCvt2Qv+RwUut1GFynA==}
     peerDependencies:
       redux: 4.x
@@ -6391,7 +6391,7 @@ packages:
       global: 4.4.0
       invariant: 2.2.4
       is-plain-object: 2.0.4
-      redux: 4.2.1
+      redux: 3.7.2
       redux-saga: 0.16.2
       warning: 3.0.0
     dev: true
@@ -6412,7 +6412,7 @@ packages:
       dva-core: ^1.1.0 || ^1.5.0-0 || ^1.6.0-0
     dependencies:
       '@babel/runtime': 7.22.11
-      dva-core: 2.0.4(redux@4.2.1)
+      dva-core: 2.0.4(redux@3.7.2)
     dev: true
 
   /dva@2.5.0-beta.2(react-dom@18.2.0)(react@18.2.0):
@@ -6495,14 +6495,6 @@ packages:
     resolution: {integrity: sha512-+uw1inIHVPQoaVuHzRyXd21icM+cnt4CzD5rW+NC1wjOUSTOs+Te7FOv7AhN7vS9x/oIyhLP5PR1H+phQAHu5Q==}
     dependencies:
       once: 1.4.0
-
-  /enhanced-resolve@5.14.1:
-    resolution: {integrity: sha512-Vklwq2vDKtl0y/vtwjSesgJ5MYS7Etuk5txS8VdKL4AOS1aUlD96zqIfsOSLQsdv3xgMRbtkWM8eG9XDfKUPow==}
-    engines: {node: '>=10.13.0'}
-    dependencies:
-      graceful-fs: 4.2.11
-      tapable: 2.2.1
-    dev: true
 
   /enhanced-resolve@5.15.0:
     resolution: {integrity: sha512-LXYT42KJ7lpIKECr2mAXIaMldcNCh/7E0KBKOu4KSfkHmP+mZmSs+8V5gBAqisWBy0OO4W5Oyys0GO1Y8KtdKg==}
@@ -7187,7 +7179,7 @@ packages:
       semver: 7.5.4
       tapable: 2.2.1
       typescript: 5.0.4
-      webpack: 5.84.1
+      webpack: 5.84.1(webpack-cli@4.7.2)
     dev: true
 
   /form-data@4.0.0:
@@ -7657,7 +7649,7 @@ packages:
       lodash: 4.17.21
       pretty-error: 4.0.0
       tapable: 2.2.1
-      webpack: 5.84.1
+      webpack: 5.84.1(webpack-cli@4.7.2)
     dev: true
 
   /htmlparser2@6.1.0:
@@ -12942,46 +12934,6 @@ packages:
     engines: {node: '>=10.13.0'}
     dev: true
 
-  /webpack@5.84.1:
-    resolution: {integrity: sha512-ZP4qaZ7vVn/K8WN/p990SGATmrL1qg4heP/MrVneczYtpDGJWlrgZv55vxaV2ul885Kz+25MP2kSXkPe3LZfmg==}
-    engines: {node: '>=10.13.0'}
-    hasBin: true
-    peerDependencies:
-      webpack-cli: '*'
-    peerDependenciesMeta:
-      webpack-cli:
-        optional: true
-    dependencies:
-      '@types/eslint-scope': 3.7.4
-      '@types/estree': 1.0.1
-      '@webassemblyjs/ast': 1.11.6
-      '@webassemblyjs/wasm-edit': 1.11.6
-      '@webassemblyjs/wasm-parser': 1.11.6
-      acorn: 8.8.2
-      acorn-import-assertions: 1.9.0(acorn@8.8.2)
-      browserslist: 4.21.7
-      chrome-trace-event: 1.0.3
-      enhanced-resolve: 5.15.0
-      es-module-lexer: 1.2.1
-      eslint-scope: 5.1.1
-      events: 3.3.0
-      glob-to-regexp: 0.4.1
-      graceful-fs: 4.2.11
-      json-parse-even-better-errors: 2.3.1
-      loader-runner: 4.3.0
-      mime-types: 2.1.35
-      neo-async: 2.6.2
-      schema-utils: 3.1.2
-      tapable: 2.2.1
-      terser-webpack-plugin: 5.3.9(webpack@5.84.1)
-      watchpack: 2.4.0
-      webpack-sources: 3.2.3
-    transitivePeerDependencies:
-      - '@swc/core'
-      - esbuild
-      - uglify-js
-    dev: true
-
   /webpack@5.84.1(webpack-cli@4.7.2):
     resolution: {integrity: sha512-ZP4qaZ7vVn/K8WN/p990SGATmrL1qg4heP/MrVneczYtpDGJWlrgZv55vxaV2ul885Kz+25MP2kSXkPe3LZfmg==}
     engines: {node: '>=10.13.0'}
@@ -13001,7 +12953,7 @@ packages:
       acorn-import-assertions: 1.9.0(acorn@8.8.2)
       browserslist: 4.21.7
       chrome-trace-event: 1.0.3
-      enhanced-resolve: 5.14.1
+      enhanced-resolve: 5.15.0
       es-module-lexer: 1.2.1
       eslint-scope: 5.1.1
       events: 3.3.0

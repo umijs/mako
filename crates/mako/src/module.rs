@@ -146,6 +146,14 @@ pub enum ModuleAst {
 }
 
 impl ModuleAst {
+    pub fn as_script(&self) -> &SwcModule {
+        if let Self::Script(script) = self {
+            &script.ast
+        } else {
+            panic!("ModuleAst is not Script")
+        }
+    }
+
     pub fn as_script_mut(&mut self) -> &mut SwcModule {
         if let Self::Script(script) = self {
             &mut script.ast
@@ -160,6 +168,7 @@ impl ModuleAst {
 pub enum ModuleType {
     Script,
     Css,
+    Raw,
 }
 
 #[allow(dead_code)]
@@ -207,7 +216,7 @@ impl Module {
         match info.ast {
             ModuleAst::Script(_) => ModuleType::Script,
             ModuleAst::Css(_) => ModuleType::Css,
-            ModuleAst::None => todo!(),
+            ModuleAst::None => ModuleType::Raw,
         }
     }
 
@@ -241,7 +250,7 @@ impl Module {
                     params: vec![
                         quote_ident!("module").into(),
                         quote_ident!("exports").into(),
-                        quote_ident!("require").into(),
+                        quote_ident!("__mako_require__").into(),
                     ],
                     decorators: vec![],
                     body: Some(BlockStmt {
@@ -277,7 +286,7 @@ fn empty_module_fn_expr() -> FnExpr {
         params: vec![
             quote_ident!("module").into(),
             quote_ident!("exports").into(),
-            quote_ident!("require").into(),
+            quote_ident!("__mako_require__").into(),
         ],
         decorators: vec![],
         body: Some(BlockStmt {

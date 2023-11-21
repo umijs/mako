@@ -6,7 +6,7 @@ use mako_core::swc_common::collections::AHashSet;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{self, Mark, GLOBALS};
 use mako_core::swc_ecma_ast::{
-    self, CallExpr, Callee, Expr, Id, Ident, Import, Lit, MemberExpr, MemberProp, MetaPropExpr,
+    CallExpr, Callee, Expr, Id, Ident, Import, Lit, MemberExpr, MemberProp, MetaPropExpr,
     MetaPropKind, Module, ModuleDecl, NewExpr, Str,
 };
 use mako_core::swc_ecma_utils::collect_decls;
@@ -233,16 +233,20 @@ pub fn is_dynamic_import(call_expr: &CallExpr) -> bool {
 }
 
 pub fn is_commonjs_require(call_expr: &CallExpr, unresolved_mark: &Mark) -> bool {
-    if let Callee::Expr(box Expr::Ident(swc_ecma_ast::Ident { sym, span, .. })) = &call_expr.callee
-    {
-        sym == "require"
-            && (span.ctxt.outer() == *unresolved_mark ||
-        // also treat empty mark require as native require
-        // because hmr code snippet ast cannot has correct mark
-        span.ctxt.outer() == Mark::root())
+    if let Callee::Expr(box Expr::Ident(ident)) = &call_expr.callee {
+        ident.sym == *"require" && is_native_ident(ident, unresolved_mark)
     } else {
         false
     }
+}
+
+pub fn is_native_ident(ident: &Ident, unresolved_mark: &Mark) -> bool {
+    let outer = ident.span.ctxt.outer();
+
+    outer == *unresolved_mark ||
+        // also treat empty mark require as native require
+        // because hmr code snippet ast cannot has correct mark
+        outer == Mark::root()
 }
 
 pub fn get_first_arg_str(call_expr: &CallExpr) -> Option<String> {

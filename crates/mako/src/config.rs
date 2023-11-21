@@ -13,6 +13,8 @@ use mako_core::twox_hash::XxHash64;
 use mako_core::{clap, config, thiserror};
 use serde::Serialize;
 
+use crate::plugins::node_polyfill::get_all_modules;
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputConfig {
@@ -288,6 +290,8 @@ pub struct Config {
     pub ignores: Vec<String>,
     #[serde(rename = "_minifish")]
     pub _minifish: Option<MinifishConfig>,
+    #[serde(rename = "optimizePackageImports")]
+    pub optimize_package_imports: bool,
 }
 
 pub(crate) fn hash_config(c: &Config) -> u64 {
@@ -345,7 +349,8 @@ const DEFAULT_CONFIG: &str = r#"
     "clean": true,
     "nodePolyfill": true,
     "ignores": [],
-    "_minifish": null
+    "_minifish": null,
+    "optimizePackageImports": false
 }
 "#;
 
@@ -480,6 +485,20 @@ impl Config {
                     (k, v)
                 })
                 .collect();
+
+            // configure node platform
+            if config.platform == Platform::Node {
+                let target = config.targets.get("node").unwrap_or(&14.0);
+
+                // set target to node version
+                config.targets = HashMap::from([("node".into(), *target)]);
+
+                // ignore standard library
+                config
+                    .ignores
+                    .push(format!("^(node:)?({})(/|$)", get_all_modules().join("|")));
+                config.node_polyfill = false;
+            }
         }
         ret.map_err(|e| anyhow!("{}: {}", "config error".red(), e.to_string().red()))
     }
@@ -566,5 +585,21 @@ mod tests {
             Some(r#"{"publicPath":"abc"}"#),
         )
         .unwrap();
+    }
+
+    #[test]
+    fn test_node_platform() {
+        let current_dir = std::env::current_dir().unwrap();
+        let config =
+            Config::new(&current_dir.join("test/config/node-platform"), None, None).unwrap();
+        assert_eq!(
+            config.targets.get("node"),
+            Some(&14.0),
+            "use node targets by default if platform is node",
+        );
+        assert!(
+            config.ignores.iter().any(|i| i.contains("|fs|")),
+            "ignore Node.js standard library by default if platform is node",
+        );
     }
 }

@@ -95,6 +95,7 @@ pub fn build(
             { from:string; namespace: true; exclude?:string }
             >;
     };
+    optimizePackageImports?: boolean;
 }"#)]
     config: serde_json::Value,
     callback: JsFunction,

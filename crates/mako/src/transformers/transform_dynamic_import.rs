@@ -33,7 +33,7 @@ impl VisitMut for DynamicImport<'_> {
                     let chunk_ids = match chunk {
                         Some(chunk) => {
                             let mut ids = chunk_graph
-                                .sync_dependencies_chunk(&chunk.id)
+                                .sync_dependencies_chunk(chunk)
                                 .iter()
                                 .map(|chunk_id| {
                                     generate_module_id(chunk_id.id.clone(), self.context)

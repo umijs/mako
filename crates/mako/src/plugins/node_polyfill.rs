@@ -90,3 +90,10 @@ fn get_empty_modules() -> Vec<String> {
     .map(|s| s.to_string())
     .collect()
 }
+
+pub fn get_all_modules() -> Vec<String> {
+    let mut modules = get_polyfill_modules();
+
+    modules.extend(get_empty_modules());
+    modules
+}

@@ -1,0 +1,4 @@
+{
+  "name": "no-side-effects",
+  "sideEffects": false
+}
