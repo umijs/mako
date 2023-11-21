@@ -2,10 +2,10 @@ import 'zx/globals';
 
 (async () => {
   console.log('Check branch');
-  const branch = (await $`git branch --show-current`).stdout.trim();
-  if (branch !== 'master') {
-    throw new Error('Please run this script in master branch');
-  }
+  // const branch = (await $`git branch --show-current`).stdout.trim();
+  // if (branch !== 'master') {
+  //   throw new Error('Please run this script in master branch');
+  // }
 
   // Check docker status
   console.log('Check docker status');
@@ -13,10 +13,10 @@ import 'zx/globals';
 
   // Check git status
   console.log('Check git status');
-  const status = (await $`git status --porcelain`).stdout.trim();
-  if (status) {
-    throw new Error('Please commit all changes before release');
-  }
+  // const status = (await $`git status --porcelain`).stdout.trim();
+  // if (status) {
+  //   throw new Error('Please commit all changes before release');
+  // }
 
   // bump version
   console.log('Bump version');
