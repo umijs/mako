@@ -141,6 +141,7 @@ fn transform_js(
                         Assumptions::default(),
                         &mut FeatureFlag::default(),
                     );
+
                     let mut folders = chain!(
                         preset_env,
                         // support decorator
@@ -169,12 +170,6 @@ fn transform_js(
                         },
                     );
 
-                    ast.body = folders.fold_module(ast.clone()).body;
-
-                    // inject helpers must after decorators
-                    // since decorators will use helpers
-                    ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
-
                     // plugin transform
                     context.plugin_driver.transform_js(
                         &PluginTransformJsParam {
@@ -186,6 +181,14 @@ fn transform_js(
                         ast,
                         context,
                     )?;
+
+                    // preset-env and other folders must be after plugin transform
+                    // because plugin transform may inject some code that may need syntax transform
+                    ast.body = folders.fold_module(ast.clone()).body;
+
+                    // inject helpers must after decorators
+                    // since decorators will use helpers
+                    ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
 
                     Ok(())
                 })
