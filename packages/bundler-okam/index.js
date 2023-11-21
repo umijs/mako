@@ -6,7 +6,7 @@ const { createProxy, createHttpsServer } = require('@umijs/bundler-utils');
 const lodash = require('lodash');
 const chalk = require('chalk');
 
-const onCompileLess = async function (cwd, alias, modifyVars, filePath) {
+const onCompileLess = async function (_cwd, alias, modifyVars, filePath) {
   const less = require('@umijs/bundler-utils/compiled/less');
   const input = fs.readFileSync(filePath, 'utf-8');
   const resolvePlugin = new (require('less-plugin-resolve'))({
@@ -18,7 +18,6 @@ const onCompileLess = async function (cwd, alias, modifyVars, filePath) {
     math: 'always',
     plugins: [resolvePlugin],
     modifyVars,
-    rootpath: cwd,
   });
   return result.css;
 };
@@ -511,11 +510,6 @@ async function getOkamConfig(opts) {
         ...lessLoader?.modifyVars,
         ...makoConfig.less?.theme,
       },
-      javascriptEnabled: lessLoader?.javascriptEnabled,
-      lesscPath: path.join(
-        path.dirname(require.resolve('less/package.json')),
-        'bin/lessc',
-      ),
     },
     minify,
     define,
