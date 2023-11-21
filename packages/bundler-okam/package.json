@@ -5,7 +5,6 @@
     "@okamjs/okam": "0.0.36",
     "@swc/helpers": "0.5.1",
     "@umijs/bundler-utils": "^4.0.81",
-    "@umijs/utils": "^4.0.81",
     "chalk": "^4.1.2",
     "compression": "^1.7.4",
     "connect-history-api-fallback": "^2.0.0",
