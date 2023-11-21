@@ -434,7 +434,6 @@ impl Config {
                     _ => None,
                 })
                 .collect::<Vec<_>>();
-
             for v in basic_external_values {
                 if v.starts_with("script ") {
                     return Err(anyhow!(
@@ -444,6 +443,7 @@ impl Config {
                 }
             }
 
+            // support default entries
             if config.entry.is_empty() {
                 let file_paths = vec!["src/index.tsx", "src/index.ts", "index.tsx", "index.ts"];
                 for file_path in file_paths {
@@ -455,6 +455,7 @@ impl Config {
                 }
             }
 
+            // normalize entry
             let entry_tuples = config
                 .entry
                 .clone()
@@ -467,7 +468,6 @@ impl Config {
                     }
                 })
                 .collect::<Result<Vec<_>>>()?;
-
             config.entry = entry_tuples.into_iter().collect();
 
             // support relative alias
@@ -485,6 +485,11 @@ impl Config {
                     (k, v)
                 })
                 .collect();
+
+            // dev 环境下不产生 hash, prod 环境下根据用户配置
+            if config.mode == Mode::Development {
+                config.hash = false;
+            }
 
             // configure node platform
             if config.platform == Platform::Node {
