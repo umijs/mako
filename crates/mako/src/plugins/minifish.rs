@@ -8,9 +8,8 @@ use mako_core::rayon::prelude::*;
 use mako_core::regex::Regex;
 use mako_core::swc_common::{Mark, Span, SyntaxContext, DUMMY_SP};
 use mako_core::swc_ecma_ast::{
-    AssignPatProp, Ident, ImportDecl, ImportDefaultSpecifier, ImportNamedSpecifier,
-    ImportSpecifier, ImportStarAsSpecifier, KeyValuePatProp, ModuleDecl, ModuleItem, ObjectPat,
-    ObjectPatProp, Pat, PropName, Stmt, VarDeclKind,
+    Ident, ImportDecl, ImportDefaultSpecifier, ImportNamedSpecifier, ImportSpecifier,
+    ImportStarAsSpecifier, MemberExpr, ModuleDecl, ModuleItem, Stmt, VarDeclKind,
 };
 use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
@@ -285,29 +284,16 @@ impl Inject {
 
         let stmt: Stmt = match (&self.named, &self.namespace) {
             // import { named as x }
-            (Some(named), None | Some(false)) => require_source_expr
-                .into_var_decl(
-                    VarDeclKind::Var,
-                    Pat::Object(ObjectPat {
-                        span: DUMMY_SP,
-                        optional: false,
-                        props: vec![if *named == self.name {
-                            ObjectPatProp::Assign(AssignPatProp {
-                                span: DUMMY_SP,
-                                key: quote_ident!(name_span, self.name.clone()),
-                                value: None,
-                            })
-                        } else {
-                            ObjectPatProp::KeyValue(KeyValuePatProp {
-                                key: PropName::Ident(quote_ident!(named.to_string())),
-                                value: quote_ident!(name_span, self.name.clone()).into(),
-                            })
-                        }],
-                        type_ann: None,
-                    }),
-                )
-                .into(),
-
+            (Some(named), None | Some(false)) => MemberExpr {
+                span: Default::default(),
+                obj: require_source_expr.into(),
+                prop: quote_ident!(named.to_string()).into(),
+            }
+            .into_var_decl(
+                VarDeclKind::Var,
+                quote_ident!(name_span, self.name.clone()).into(),
+            )
+            .into(),
             // import * as x
             (None, Some(true)) => require_source_expr
                 .into_var_decl(
@@ -317,20 +303,16 @@ impl Inject {
                 .into(),
 
             // import x from "x"
-            (None, None | Some(false)) => require_source_expr
-                .into_var_decl(
-                    VarDeclKind::Var,
-                    Pat::Object(ObjectPat {
-                        span: DUMMY_SP,
-                        optional: false,
-                        props: vec![ObjectPatProp::KeyValue(KeyValuePatProp {
-                            key: PropName::Ident(quote_ident!("default")),
-                            value: quote_ident!(name_span, self.name.clone()).into(),
-                        })],
-                        type_ann: None,
-                    }),
-                )
-                .into(),
+            (None, None | Some(false)) => MemberExpr {
+                span: DUMMY_SP,
+                obj: require_source_expr.into(),
+                prop: quote_ident!("default").into(),
+            }
+            .into_var_decl(
+                VarDeclKind::Var,
+                quote_ident!(name_span, self.name.clone()).into(),
+            )
+            .into(),
             (Some(_), Some(true)) => {
                 panic!("Cannot use both `named` and `namespaced`")
             }
@@ -509,7 +491,7 @@ export { };
 
         assert_eq!(
             code,
-            r#"var { default: my } = require("mock-lib");
+            r#"var my = require("mock-lib").default;
 my.call("toast");
 "#
         );
@@ -558,7 +540,7 @@ export { };
         );
         assert_eq!(
             code,
-            r#"var { her: my } = require("mock-lib");
+            r#"var my = require("mock-lib").her;
 my.call("toast");
 "#
         );
@@ -609,7 +591,7 @@ export { };
 
         assert_eq!(
             code,
-            r#"var { my } = require("mock-lib");
+            r#"var my = require("mock-lib").my;
 my.call("toast");
 "#
         );
