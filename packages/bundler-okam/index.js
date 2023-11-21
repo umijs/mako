@@ -530,7 +530,7 @@ async function getOkamConfig(opts) {
 }
 
 function normalizeDefineValue(val) {
-  if (!isPlainObject(val)) {
+  if (!lodash.isPlainObject(val)) {
     return JSON.stringify(val);
   } else {
     return Object.keys(val).reduce((obj, key) => {
@@ -538,8 +538,4 @@ function normalizeDefineValue(val) {
       return obj;
     }, {});
   }
-}
-
-function isPlainObject(obj) {
-  return Object.prototype.toString.call(obj) === '[object Object]';
 }
