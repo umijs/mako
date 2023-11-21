@@ -19,7 +19,22 @@ import * as ErrorOverlay from 'react-error-overlay';
     });
   }
 
-  const socket = new WebSocket('ws://__HOST__:__PORT__/__/hmr-ws');
+  function getHost() {
+    if (process.env.SOCKET_SERVER) {
+      return new URL(process.env.SOCKET_SERVER);
+    }
+    return location;
+  }
+
+  function getSocketUrl() {
+    let h = getHost();
+    const host = h.host;
+    const isHttps = h.protocol === 'https:';
+    return `${isHttps ? 'wss' : 'ws'}://${host}/__/hmr-ws`;
+  }
+
+  const socket = new WebSocket(getSocketUrl());
+
   let latestHash = '';
   let updating = false;
 
