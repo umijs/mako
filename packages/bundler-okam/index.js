@@ -5,7 +5,9 @@ const assert = require('assert');
 const { createProxy, createHttpsServer } = require('@umijs/bundler-utils');
 const lodash = require('lodash');
 const chalk = require('chalk');
-const { createProxyMiddleware } = require('http-proxy-middleware');
+const {
+  createProxyMiddleware,
+} = require('@umijs/bundler-utils/compiled/http-proxy-middleware');
 
 const onCompileLess = async function (opts, filePath) {
   const { alias, modifyVars, config } = opts;
