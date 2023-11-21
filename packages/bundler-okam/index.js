@@ -4,6 +4,7 @@ const http = require('http');
 const assert = require('assert');
 const { createProxy, createHttpsServer } = require('@umijs/bundler-utils');
 const { lodash, chalk } = require('@umijs/utils');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 
 exports.build = async function (opts) {
   assert(opts, 'opts should be supplied');
@@ -59,6 +60,8 @@ exports.dev = async function (opts) {
   checkConfig(opts);
   const express = require('express');
   const app = express();
+  const port = opts.port || 8000;
+  const hmrPort = opts.port + 1;
   // cros
   app.use(
     require('cors')({
@@ -75,6 +78,16 @@ exports.dev = async function (opts) {
   }
   // before middlewares
   (opts.beforeMiddlewares || []).forEach((m) => app.use(m));
+
+  // proxy ws to mako server
+  const wsProxy = createProxyMiddleware({
+    // mako server in the same host so hard code is ok
+    target: `http://127.0.0.1:${hmrPort}`,
+    ws: true,
+    logLevel: 'silent',
+  });
+  app.use('/__/hmr-ws', wsProxy);
+
   // serve dist files
   app.use(express.static(path.join(opts.cwd, 'dist')));
   // proxy
@@ -110,17 +123,20 @@ exports.dev = async function (opts) {
   } else {
     server = http.createServer(app);
   }
-  const port = opts.port || 8000;
   server.listen(port, () => {
     const protocol = opts.config.https ? 'https:' : 'http:';
     const banner = getDevBanner(protocol, opts.host, port, opts.ip);
     console.log(banner);
   });
+  // prevent first websocket auto disconnected
+  // ref https://github.com/chimurai/http-proxy-middleware#external-websocket-upgrade
+  server.on('upgrade', wsProxy.upgrade);
+
   // okam dev
   const { build } = require('@okamjs/okam');
   const okamConfig = await getOkamConfig(opts);
   okamConfig.hmr = true;
-  okamConfig.hmrPort = String(opts.port + 1);
+  okamConfig.hmrPort = String(hmrPort);
   okamConfig.hmrHost = opts.host;
   await build(
     opts.cwd,
@@ -374,6 +390,11 @@ async function getOkamConfig(opts) {
       }
     }
   }
+
+  if (process.env.SOCKET_SERVER) {
+    define['SOCKET_SERVER'] = normalizeDefineValue(process.env.SOCKET_SERVER);
+  }
+
   let minify = jsMinifier === 'none' ? false : true;
   if (process.env.COMPRESS === 'none') {
     minify = false;
