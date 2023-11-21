@@ -355,14 +355,9 @@ impl ProjectWatch {
                     Ok(rebuild_msg) => {
                         let mut last_msg = rebuild_msg;
 
-                        // 查看通道里还有没有未处理的消息
-                        loop {
-                            match build_resv.try_recv() {
-                                // 通道中有未处理的消息，更新 last_msg
-                                Ok(msg) => last_msg = msg,
-                                // 通道中没有未处理的消息，退出循环
-                                Err(_) => break,
-                            }
+                        // 查看通道里还有没有未处理的消息，有的话统一处理，减少 rebuild 次数
+                        while let Ok(msg) = build_resv.try_recv() {
+                            last_msg = msg;
                         }
 
                         debug!("full rebuild...");
