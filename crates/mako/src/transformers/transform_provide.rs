@@ -2,8 +2,11 @@ use mako_core::indexmap::IndexMap;
 use mako_core::swc_common::collections::AHashSet;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::DUMMY_SP;
-use mako_core::swc_ecma_ast::{Expr, Id, Ident, MemberExpr, Module, ModuleItem, VarDeclKind};
-use mako_core::swc_ecma_utils::{collect_decls, quote_ident, quote_str, ExprFactory};
+use mako_core::swc_ecma_ast::{
+    Expr, Id, Ident, ImportDecl, ImportDefaultSpecifier, ImportNamedSpecifier, ImportSpecifier,
+    Module, ModuleDecl, ModuleItem,
+};
+use mako_core::swc_ecma_utils::{collect_decls, quote_ident, quote_str};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::config::Providers;
@@ -42,30 +45,37 @@ impl VisitMut for Provide {
                 if let Some((from, key)) = provider {
                     let require_decl: ModuleItem = {
                         if key.is_empty() {
-                            // eg: const process = require('process');
-                            quote_ident!("__mako_require__")
-                                .as_call(DUMMY_SP, vec![quote_str!(from.as_str()).as_arg()])
-                                .into_var_decl(
-                                    VarDeclKind::Const,
-                                    quote_ident!(*span, sym.clone()).into(),
-                                )
-                                .into()
-                        } else {
-                            // require("buffer")
-                            let require_expr = quote_ident!("__mako_require__")
-                                .as_call(DUMMY_SP, vec![quote_str!(from.as_str()).as_arg()]);
-
-                            // eg const Buffer = require("buffer").Buffer;
-                            Expr::Member(MemberExpr {
-                                obj: require_expr.into(),
+                            // eg: import process from 'process';
+                            ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
                                 span: DUMMY_SP,
-                                prop: quote_ident!(key.as_str()).into(),
-                            })
-                            .into_var_decl(
-                                VarDeclKind::Const,
-                                quote_ident!(*span, sym.clone()).into(),
-                            )
-                            .into()
+                                specifiers: vec![ImportSpecifier::Default(
+                                    ImportDefaultSpecifier {
+                                        span: DUMMY_SP,
+                                        local: quote_ident!(*span, sym.clone()),
+                                    },
+                                )],
+                                src: quote_str!(from.as_str()).into(),
+                                type_only: false,
+                                with: None,
+                            }))
+                        } else {
+                            // eg: import { Buffer } from 'buffer';
+                            ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
+                                span: DUMMY_SP,
+                                specifiers: vec![ImportSpecifier::Named(ImportNamedSpecifier {
+                                    span: DUMMY_SP,
+                                    local: quote_ident!(*span, sym.clone()),
+                                    imported: if sym.to_string().eq(key) {
+                                        None
+                                    } else {
+                                        Some(quote_ident!(key.as_str()).into())
+                                    },
+                                    is_type_only: false,
+                                })],
+                                src: quote_str!(from.as_str()).into(),
+                                type_only: false,
+                                with: None,
+                            }))
                         }
                     };
 

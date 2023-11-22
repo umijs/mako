@@ -412,10 +412,17 @@ foo();
         .trim();
         let (code, _) = transform_js_code(code, None, HashMap::new());
         println!(">> CODE\n{}", code);
+        let head = r#"
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var _interop_require_default = __mako_require__("@swc/helpers/_/_interop_require_default");
+        "#
+        .trim();
         let common = r#"
-console.log(process);
-console.log(process.env);
-Buffer.from('foo');
+console.log(_process.default);
+console.log(_process.default.env);
+_buffer.Buffer.from('foo');
 function foo() {
     let process = 1;
     console.log(process);
@@ -427,18 +434,18 @@ foo();
 //# sourceMappingURL=index.js.map"#
             .trim();
         let require1 = r#"
-const Buffer = __mako_require__("buffer").Buffer;
-const process = __mako_require__("process");
+var _buffer = __mako_require__("buffer");
+var _process = _interop_require_default._(__mako_require__("process"));
         "#
         .trim();
         let require2 = r#"
-const process = __mako_require__("process");
-const Buffer = __mako_require__("buffer").Buffer;
+var _process = _interop_require_default._(__mako_require__("process"));
+var _buffer = __mako_require__("buffer");
         "#
         .trim();
         // 内部使用 RandomState hashmap，require 的顺序有两种可能
-        let result = code == format!("{}\n{}", require1, common)
-            || code == format!("{}\n{}", require2, common);
+        let result = code == format!("{}\n{}\n{}", head, require1, common)
+            || code == format!("{}\n{}\n{}", head, require2, common);
         assert!(result);
     }
 
