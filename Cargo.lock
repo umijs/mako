@@ -1692,6 +1692,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fxhash"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
+dependencies = [
+ "byteorder",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2538,6 +2547,7 @@ dependencies = [
  "swc_ecma_transforms",
  "swc_ecma_utils 0.123.0",
  "swc_ecma_visit 0.95.1",
+ "swc_emotion",
  "swc_error_reporters 0.16.1",
  "swc_node_comments",
  "thiserror",
@@ -5459,6 +5469,30 @@ dependencies = [
  "swc_common 0.32.1",
  "swc_ecma_ast 0.109.1",
  "swc_visit",
+ "tracing",
+]
+
+[[package]]
+name = "swc_emotion"
+version = "0.51.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d1a13c3241b2812f15e751687924b0458b55ca7c3576a752b939e954cb4b0ba"
+dependencies = [
+ "base64 0.13.1",
+ "byteorder",
+ "fxhash",
+ "once_cell",
+ "radix_fmt",
+ "regex",
+ "serde",
+ "sourcemap",
+ "swc_atoms 0.5.9",
+ "swc_common 0.32.1",
+ "swc_ecma_ast 0.109.1",
+ "swc_ecma_codegen 0.145.2",
+ "swc_ecma_utils 0.123.0",
+ "swc_ecma_visit 0.95.1",
+ "swc_trace_macro",
  "tracing",
 ]
 

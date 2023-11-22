@@ -292,6 +292,7 @@ pub struct Config {
     pub _minifish: Option<MinifishConfig>,
     #[serde(rename = "optimizePackageImports")]
     pub optimize_package_imports: bool,
+    pub emotion: bool,
 }
 
 pub(crate) fn hash_config(c: &Config) -> u64 {
@@ -350,7 +351,8 @@ const DEFAULT_CONFIG: &str = r#"
     "nodePolyfill": true,
     "ignores": [],
     "_minifish": null,
-    "optimizePackageImports": false
+    "optimizePackageImports": false,
+    "emotion": false,
 }
 "#;
 
