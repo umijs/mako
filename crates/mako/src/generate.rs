@@ -12,7 +12,7 @@ use mako_core::serde::Serialize;
 use mako_core::tracing::debug;
 
 use crate::ast::base64_encode;
-use crate::compiler::{Compiler, Context};
+use crate::compiler::{Compiler, Context, MemoryChunkFileCache};
 use crate::config::{DevtoolConfig, OutputMode, TreeShakeStrategy};
 use crate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::module::ModuleId;
@@ -163,7 +163,9 @@ impl Compiler {
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         let t_ast_to_code_and_write = if self.context.args.watch {
-            self.generate_chunk_mem_file(&chunk_files)?
+            let mut mem_cache = self.context.static_cache.write().unwrap();
+
+            self.generate_chunk_mem_file(&chunk_files, mem_cache.deref_mut())?
         } else {
             self.generate_chunk_disk_file(&chunk_files)?
         };
@@ -183,15 +185,20 @@ impl Compiler {
         Ok(t_ast_to_code_and_write)
     }
 
-    fn generate_chunk_mem_file(&self, chunk_files: &Vec<ChunkFile>) -> Result<Duration> {
+    fn generate_chunk_mem_file(
+        &self,
+        chunk_files: &Vec<ChunkFile>,
+        mem_cache: &mut MemoryChunkFileCache,
+    ) -> Result<Duration> {
         mako_core::mako_profile_function!();
         // ast to code and sourcemap, then write
         let t_ast_to_code_and_write = Instant::now();
         debug!("ast to code and write");
-        chunk_files.par_iter().try_for_each(|file| -> Result<()> {
-            write_dev_chunk_file(&self.context, file)?;
-            Ok(())
-        })?;
+
+        for file in chunk_files {
+            write_dev_chunk_file(file, mem_cache)?;
+        }
+
         let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
 
         Ok(t_ast_to_code_and_write)
@@ -201,7 +208,12 @@ impl Compiler {
         emit_chunk_file(&self.context, chunk_file);
     }
 
-    pub fn emit_dev_chunks(&self, cache_hash: u64, hmr_hash: u64) -> Result<()> {
+    pub fn emit_dev_chunks(
+        &self,
+        cache_hash: u64,
+        hmr_hash: u64,
+        mem_cache: &mut MemoryChunkFileCache,
+    ) -> Result<()> {
         mako_core::mako_profile_function!("emit_dev_chunks");
 
         debug!("generate(hmr-fullbuild)");
@@ -221,7 +233,7 @@ impl Compiler {
 
         // ast to code and sourcemap, then write
         debug!("ast to code and write");
-        let t_ast_to_code_and_write = self.generate_chunk_mem_file(&chunk_files)?;
+        let t_ast_to_code_and_write = self.generate_chunk_mem_file(&chunk_files, mem_cache)?;
 
         // write assets
         let t_write_assets = Instant::now();
@@ -397,11 +409,11 @@ impl Compiler {
     }
 }
 
-fn write_dev_chunk_file(context: &Arc<Context>, chunk: &ChunkFile) -> Result<()> {
+fn write_dev_chunk_file(chunk: &ChunkFile, mem_cache: &mut MemoryChunkFileCache) -> Result<()> {
     mako_core::mako_profile_function!();
 
     if let Some(source_map) = &chunk.source_map {
-        context.write_static_content(
+        mem_cache.write(
             chunk.source_map_disk_name(),
             source_map.clone(),
             chunk.raw_hash,
@@ -421,9 +433,9 @@ fn write_dev_chunk_file(context: &Arc<Context>, chunk: &ChunkFile) -> Result<()>
         code.extend_from_slice(&chunk.content);
         code.extend_from_slice(source_map_url_line.as_bytes());
 
-        context.write_static_content(chunk.disk_name(), code, chunk.raw_hash)?;
+        mem_cache.write(chunk.disk_name(), code, chunk.raw_hash)?;
     } else {
-        context.write_static_content(chunk.disk_name(), chunk.content.clone(), chunk.raw_hash)?;
+        mem_cache.write(chunk.disk_name(), chunk.content.clone(), chunk.raw_hash)?;
     }
 
     Ok(())

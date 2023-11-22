@@ -1,3 +1,4 @@
+use std::ops::DerefMut;
 use std::path::PathBuf;
 use std::sync::{mpsc, Arc};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
@@ -9,7 +10,9 @@ use mako_core::hyper::http::HeaderValue;
 use mako_core::hyper::server::conn::AddrIncoming;
 use mako_core::hyper::server::Builder;
 use mako_core::hyper::{Body, Request, Server};
+use mako_core::lazy_static::lazy_static;
 use mako_core::rayon::ThreadPoolBuilder;
+use mako_core::regex::Regex;
 use mako_core::tokio::sync::broadcast::{Receiver, Sender};
 use mako_core::tokio::try_join;
 use mako_core::tracing::debug;
@@ -40,6 +43,11 @@ fn bind_idle_port(port: u16) -> Builder<AddrIncoming> {
 pub struct DevServer {
     watcher: Arc<ProjectWatch>,
     compiler: Arc<Compiler>,
+}
+
+lazy_static! {
+    static ref HOTUPDATE_RES_REGEX: Regex =
+        Regex::new(r#"\.hot-update\.(css|js|json|js\.map|css\.map)$"#).unwrap();
 }
 
 impl DevServer {
@@ -118,6 +126,36 @@ impl DevServer {
                                     .body(hyper::Body::empty())
                                     .unwrap(),
                             )
+                        }
+                    }
+
+                    path if HOTUPDATE_RES_REGEX.is_match(path) => {
+                        match static_serve.serve(req).await {
+                            Ok(mut res) => {
+                                if let Some(content_type) = res.headers().get(CONTENT_TYPE).cloned()
+                                {
+                                    if let Ok(c_str) = content_type.to_str() {
+                                        if c_str.contains("javascript") || c_str.contains("text") {
+                                            res.headers_mut()
+                                                .insert(
+                                                    CONTENT_TYPE,
+                                                    HeaderValue::from_str(&format!(
+                                                        "{c_str}; charset=utf-8"
+                                                    ))
+                                                    .unwrap(),
+                                                )
+                                                .unwrap();
+                                        }
+                                    }
+                                }
+                                Ok(res)
+                            }
+                            Err(_) => Ok::<_, hyper::Error>(
+                                hyper::Response::builder()
+                                    .status(hyper::StatusCode::NOT_FOUND)
+                                    .body(hyper::Body::from("404 - Page not found"))
+                                    .unwrap(),
+                            ),
                         }
                     }
                     _ => {
@@ -353,6 +391,8 @@ impl ProjectWatch {
             loop {
                 match build_resv.recv() {
                     Ok(rebuild_msg) => {
+                        let mut chunk_cache = c.context.static_cache.write().unwrap();
+
                         let mut last_msg = rebuild_msg;
 
                         // 查看通道里还有没有未处理的消息，有的话统一处理，减少 rebuild 次数
@@ -361,9 +401,11 @@ impl ProjectWatch {
                         }
 
                         debug!("full rebuild...");
-                        if let Err(e) =
-                            c.emit_dev_chunks(last_msg.next_cache_hash, last_msg.next_hmr_hash)
-                        {
+                        if let Err(e) = c.emit_dev_chunks(
+                            last_msg.next_cache_hash,
+                            last_msg.next_hmr_hash,
+                            chunk_cache.deref_mut(),
+                        ) {
                             debug!("  > build failed: {:?}", e);
                             return;
                         }
