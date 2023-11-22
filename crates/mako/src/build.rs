@@ -425,7 +425,7 @@ module.exports = new Promise((resolve, reject) => {{
         Ok((module, dependencies_resource))
     }
 
-    pub fn create_thread_pool() -> (Arc<ThreadPool>, Sender<Error>, Receiver<Error>) {
+    pub fn create_thread_pool<T>() -> (Arc<ThreadPool>, Sender<T>, Receiver<T>) {
         let pool = Arc::new(ThreadPoolBuilder::new().build().unwrap());
         let (rs, rr) = channel();
         (pool, rs, rr)
