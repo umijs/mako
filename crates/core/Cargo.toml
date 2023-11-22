@@ -72,6 +72,7 @@ puffin_egui = { version = "0.22.0", optional = true }
 lazy_static = "1.4.0"
 convert_case = "0.6.0"
 path-clean = "1.0.1"
+swc_emotion = "0.51.0"
 
 [features]
 profile = ["dep:eframe", "dep:puffin", "dep:puffin_egui"]

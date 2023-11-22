@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::sync::Arc;
 
 use mako_core::swc_common::comments::NoopComments;
@@ -5,7 +6,8 @@ use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{chain, Mark, SourceMap};
 use mako_core::swc_ecma_ast::Module;
 use mako_core::swc_ecma_transforms::react::{react, Options, RefreshOptions, Runtime};
-use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+use mako_core::swc_ecma_visit::{Fold, VisitMut, VisitMutWith};
+use mako_core::swc_emotion::{emotion, EmotionOptions};
 
 use crate::ast::build_js_ast;
 use crate::build::Task;
@@ -42,27 +44,46 @@ pub fn mako_react(
         };
     }
 
-    let visit = react(
-        cm,
-        Some(NoopComments),
-        Options {
-            import_source: Some("react".to_string()),
-            pragma: Some("React.createElement".into()),
-            pragma_frag: Some("React.Fragment".into()),
-            // support react 17 + only
-            runtime: Some(Runtime::Automatic),
-            development: Some(is_dev),
-            // to avoid throw error for svg namespace element
-            throw_if_namespace: Some(false),
-            refresh: if use_refresh {
-                Some(RefreshOptions::default())
-            } else {
-                None
+    let (import_source, pragma) = if context.config.emotion {
+        ("@emotion/react", "jsx")
+    } else {
+        ("react", "React.createElement")
+    };
+
+    let emotion = if context.config.emotion {
+        Box::new(Emotion {
+            mode: context.config.mode.clone(),
+            cm: cm.clone(),
+            path: task.path.clone(),
+        })
+    } else {
+        noop()
+    };
+
+    let visit = chain!(
+        emotion,
+        react(
+            cm,
+            Some(NoopComments),
+            Options {
+                import_source: Some(import_source.to_string()),
+                pragma: Some(pragma.into()),
+                pragma_frag: Some("React.Fragment".into()),
+                // support react 17 + only
+                runtime: Some(Runtime::Automatic),
+                development: Some(is_dev),
+                // to avoid throw error for svg namespace element
+                throw_if_namespace: Some(false),
+                refresh: if use_refresh {
+                    Some(RefreshOptions::default())
+                } else {
+                    None
+                },
+                ..Default::default()
             },
-            ..Default::default()
-        },
-        *top_level_mark,
-        *unresolved_mark,
+            *top_level_mark,
+            *unresolved_mark,
+        )
     );
     if use_refresh {
         Box::new(if task.is_entry {
@@ -80,6 +101,36 @@ pub fn mako_react(
         })
     } else {
         Box::new(visit)
+    }
+}
+
+struct Emotion {
+    cm: Lrc<SourceMap>,
+    path: String,
+    mode: Mode,
+}
+
+impl VisitMut for Emotion {
+    fn visit_mut_module(&mut self, module: &mut Module) {
+        let is_dev = matches!(self.mode, Mode::Development);
+        let pos = self.cm.lookup_char_pos(module.span.lo);
+        let hash = pos.file.src_hash as u32;
+        let mut folder = emotion(
+            EmotionOptions {
+                enabled: Some(true),
+                sourcemap: Some(true),
+                auto_label: Some(is_dev),
+                import_map: None,
+                ..Default::default()
+            },
+            Path::new(&self.path),
+            hash,
+            self.cm.clone(),
+            NoopComments,
+        );
+        module.body = folder.fold_module(module.clone()).body;
+
+        module.visit_mut_children_with(self);
     }
 }
 

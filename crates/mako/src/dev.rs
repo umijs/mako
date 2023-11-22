@@ -90,6 +90,7 @@ impl DevServer {
             }
 
             // release rx;
+            debug!("websocket disconnect");
             fwd_task.abort();
 
             Ok(())
