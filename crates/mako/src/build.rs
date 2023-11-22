@@ -293,7 +293,11 @@ module.exports = new Promise((resolve, reject) => {{
         // analyze deps
         let deps = analyze_deps(&ast, context)?;
         for dep in &deps {
-            if dep.source.contains("-loader!") {
+            // e.g. file-loader!./file.txt
+            if dep.source.contains("-loader!")
+            // e.g. file-loader?esModule=false!./src-noconflict/theme-kr_theme.js
+                || (dep.source.contains("-loader?") && dep.source.contains('!'))
+            {
                 return Err(anyhow!(
                     "webpack loader syntax is not supported, since found dep {:?} in {:?}",
                     dep.source,
@@ -421,7 +425,7 @@ module.exports = new Promise((resolve, reject) => {{
         Ok((module, dependencies_resource))
     }
 
-    pub fn create_thread_pool() -> (Arc<ThreadPool>, Sender<Error>, Receiver<Error>) {
+    pub fn create_thread_pool<T>() -> (Arc<ThreadPool>, Sender<T>, Receiver<T>) {
         let pool = Arc::new(ThreadPoolBuilder::new().build().unwrap());
         let (rs, rr) = channel();
         (pool, rs, rr)
