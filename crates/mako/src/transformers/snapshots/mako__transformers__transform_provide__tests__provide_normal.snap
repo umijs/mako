@@ -2,8 +2,8 @@
 source: crates/mako/src/transformers/transform_provide.rs
 expression: "transform(r#\"\nconsole.log(process);\nconsole.log(process.env);\nBuffer.from('foo');\nfunction foo() {\n    // let process = 1;\n    // console.log(process);\n    // let Buffer = 'b';\n    // Buffer.from('foo');\n}\n            \"#)"
 ---
-const process = require("process");
-const Buffer = require("buffer").Buffer;
+const process = __mako_require__("process");
+const Buffer = __mako_require__("buffer").Buffer;
 console.log(process);
 console.log(process.env);
 Buffer.from('foo');

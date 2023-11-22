@@ -18,7 +18,7 @@ use mako_core::{swc_css_ast, swc_css_prefixer};
 
 use crate::ast::Ast;
 use crate::compiler::{Compiler, Context};
-use crate::config::{Mode, OutputMode};
+use crate::config::OutputMode;
 use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
 use crate::targets;
 use crate::transformers::transform_async_module::AsyncModule;
@@ -27,7 +27,6 @@ use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToRep
 use crate::transformers::transform_dynamic_import::DynamicImport;
 use crate::transformers::transform_mako_require::MakoRequire;
 use crate::transformers::transform_meta_url_replacer::MetaUrlReplacer;
-use crate::transformers::transform_react::react_refresh_entry_prefix;
 
 impl Compiler {
     pub fn transform_all(&self) -> Result<()> {
@@ -100,7 +99,6 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
                 ast,
                 dep_map: &deps_to_replace,
                 async_deps: &async_deps,
-                is_entry: module.is_entry,
                 wrap_async: info.is_async && info.external.is_none(),
                 top_level_await: info.top_level_await,
             });
@@ -128,7 +126,6 @@ pub struct TransformJsParam<'a> {
     pub ast: &'a mut Ast,
     pub dep_map: &'a DependenciesToReplace,
     pub async_deps: &'a Vec<Dependency>,
-    pub is_entry: bool,
     pub wrap_async: bool,
     pub top_level_await: bool,
 }
@@ -141,11 +138,9 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) {
         ast,
         dep_map,
         async_deps,
-        is_entry,
         wrap_async,
         top_level_await,
     } = transform_js_param;
-    let is_dev = matches!(context.config.mode, Mode::Development);
     GLOBALS
         .set(&context.meta.script.globals, || {
             try_with_handler(
@@ -197,11 +192,6 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) {
                                     unresolved_mark,
                                 };
                                 ast.ast.visit_mut_with(&mut async_module);
-                            }
-
-                            if is_entry && is_dev && context.args.watch && context.config.hmr {
-                                ast.ast
-                                    .visit_mut_with(&mut react_refresh_entry_prefix(context));
                             }
 
                             let mut dep_replacer = DepReplacer {

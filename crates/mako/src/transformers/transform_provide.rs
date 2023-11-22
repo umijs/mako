@@ -43,7 +43,7 @@ impl VisitMut for Provide {
                     let require_decl: ModuleItem = {
                         if key.is_empty() {
                             // eg: const process = require('process');
-                            quote_ident!("require")
+                            quote_ident!("__mako_require__")
                                 .as_call(DUMMY_SP, vec![quote_str!(from.as_str()).as_arg()])
                                 .into_var_decl(
                                     VarDeclKind::Const,
@@ -52,7 +52,7 @@ impl VisitMut for Provide {
                                 .into()
                         } else {
                             // require("buffer")
-                            let require_expr = quote_ident!("require")
+                            let require_expr = quote_ident!("__mako_require__")
                                 .as_call(DUMMY_SP, vec![quote_str!(from.as_str()).as_arg()]);
 
                             // eg const Buffer = require("buffer").Buffer;
