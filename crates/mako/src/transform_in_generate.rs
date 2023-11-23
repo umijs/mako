@@ -85,7 +85,7 @@ fn mark_async(
     async_deps_by_module_id
 }
 
-fn create_thread_pool<T>() -> (Arc<ThreadPool>, Sender<T>, Receiver<T>) {
+pub fn create_thread_pool<T>() -> (Arc<ThreadPool>, Sender<T>, Receiver<T>) {
     let pool = Arc::new(ThreadPoolBuilder::new().build().unwrap());
     let (rs, rr) = channel();
     (pool, rs, rr)
@@ -97,7 +97,7 @@ pub fn transform_modules_in_thread(
     async_deps_by_module_id: HashMap<ModuleId, Vec<Dependency>>,
 ) -> Result<()> {
     mako_core::mako_profile_function!();
-    let (pool, rs, rr) = create_thread_pool::<(ModuleId, ModuleAst)>();
+    let (pool, rs, rr) = create_thread_pool::<Result<(ModuleId, ModuleAst)>>();
     for module_id in module_ids {
         let context = context.clone();
         let rs = rs.clone();
@@ -131,7 +131,7 @@ pub fn transform_modules_in_thread(
                 ignored: info.ignored_deps.clone(),
             };
             if let ModuleAst::Script(ast) = ast {
-                transform_js_generate(TransformJsParam {
+                let ret = transform_js_generate(TransformJsParam {
                     _id: &module.id,
                     context: &context,
                     ast,
@@ -140,15 +140,19 @@ pub fn transform_modules_in_thread(
                     wrap_async: info.is_async && info.external.is_none(),
                     top_level_await: info.top_level_await,
                 });
-                rs.send((module_id, ModuleAst::Script(ast.clone())))
-                    .unwrap();
+                let message = match ret {
+                    Ok(_) => Ok((module_id, ModuleAst::Script(ast.clone()))),
+                    Err(e) => Err(e),
+                };
+                rs.send(message).unwrap();
             }
         });
     }
     drop(rs);
 
     let mut transform_map: HashMap<ModuleId, ModuleAst> = HashMap::new();
-    for (module_id, ast) in rr {
+    for r in rr {
+        let (module_id, ast) = r?;
         transform_map.insert(module_id, ast);
     }
 
@@ -185,7 +189,7 @@ pub struct TransformJsParam<'a> {
     pub top_level_await: bool,
 }
 
-pub fn transform_js_generate(transform_js_param: TransformJsParam) {
+pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()> {
     mako_core::mako_profile_function!();
     let TransformJsParam {
         _id,
@@ -196,97 +200,94 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) {
         wrap_async,
         top_level_await,
     } = transform_js_param;
-    GLOBALS
-        .set(&context.meta.script.globals, || {
-            try_with_handler(
-                context.meta.script.cm.clone(),
-                Default::default(),
-                |handler| {
-                    HELPERS.set(&Helpers::new(true), || {
-                        HANDLER.set(handler, || {
-                            let unresolved_mark = ast.unresolved_mark;
-                            let top_level_mark = ast.top_level_mark;
+    GLOBALS.set(&context.meta.script.globals, || {
+        try_with_handler(
+            context.meta.script.cm.clone(),
+            Default::default(),
+            |handler| {
+                HELPERS.set(&Helpers::new(true), || {
+                    HANDLER.set(handler, || {
+                        let unresolved_mark = ast.unresolved_mark;
+                        let top_level_mark = ast.top_level_mark;
 
-                            let import_interop = ImportInterop::Swc;
-                            ast.ast
-                                .visit_mut_with(&mut import_analyzer(import_interop, true));
-                            ast.ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
+                        let import_interop = ImportInterop::Swc;
+                        ast.ast
+                            .visit_mut_with(&mut import_analyzer(import_interop, true));
+                        ast.ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
 
-                            ast.ast.visit_mut_with(&mut common_js(
-                                unresolved_mark,
-                                Config {
-                                    import_interop: Some(import_interop),
-                                    // NOTE: 这里后面要调整为注入自定义require
-                                    ignore_dynamic: true,
-                                    preserve_import_meta: true,
-                                    // TODO: 在 esm 时设置为 false
-                                    allow_top_level_this: true,
-                                    strict_mode: false,
-                                    ..Default::default()
-                                },
-                                FeatureFlag::empty(),
-                                Some(
-                                    context
-                                        .meta
-                                        .script
-                                        .origin_comments
-                                        .read()
-                                        .unwrap()
-                                        .get_swc_comments(),
-                                ),
-                            ));
+                        ast.ast.visit_mut_with(&mut common_js(
+                            unresolved_mark,
+                            Config {
+                                import_interop: Some(import_interop),
+                                // NOTE: 这里后面要调整为注入自定义require
+                                ignore_dynamic: true,
+                                preserve_import_meta: true,
+                                // TODO: 在 esm 时设置为 false
+                                allow_top_level_this: true,
+                                strict_mode: false,
+                                ..Default::default()
+                            },
+                            FeatureFlag::empty(),
+                            Some(
+                                context
+                                    .meta
+                                    .script
+                                    .origin_comments
+                                    .read()
+                                    .unwrap()
+                                    .get_swc_comments(),
+                            ),
+                        ));
 
-                            // transform async module
-                            if wrap_async {
-                                let mut async_module = AsyncModule {
-                                    async_deps,
-                                    async_deps_idents: Vec::new(),
-                                    last_dep_pos: 0,
-                                    top_level_await,
-                                    context,
-                                    unresolved_mark,
-                                };
-                                ast.ast.visit_mut_with(&mut async_module);
-                            }
-
-                            let mut dep_replacer = DepReplacer {
-                                to_replace: dep_map,
+                        // transform async module
+                        if wrap_async {
+                            let mut async_module = AsyncModule {
+                                async_deps,
+                                async_deps_idents: Vec::new(),
+                                last_dep_pos: 0,
+                                top_level_await,
                                 context,
                                 unresolved_mark,
-                                top_level_mark,
                             };
-                            ast.ast.visit_mut_with(&mut dep_replacer);
+                            ast.ast.visit_mut_with(&mut async_module);
+                        }
 
-                            let mut meta_url_replacer = MetaUrlReplacer {};
-                            ast.ast.visit_mut_with(&mut meta_url_replacer);
+                        let mut dep_replacer = DepReplacer {
+                            to_replace: dep_map,
+                            context,
+                            unresolved_mark,
+                            top_level_mark,
+                        };
+                        ast.ast.visit_mut_with(&mut dep_replacer);
 
-                            let mut dynamic_import = DynamicImport { context };
-                            ast.ast.visit_mut_with(&mut dynamic_import);
+                        let mut meta_url_replacer = MetaUrlReplacer {};
+                        ast.ast.visit_mut_with(&mut meta_url_replacer);
 
-                            // replace require to __mako_require__ for bundle mode
-                            if matches!(context.config.output.mode, OutputMode::Bundle) {
-                                let mut mako_require = MakoRequire::new(context, unresolved_mark);
-                                ast.ast.visit_mut_with(&mut mako_require);
-                            }
+                        let mut dynamic_import = DynamicImport { context };
+                        ast.ast.visit_mut_with(&mut dynamic_import);
 
-                            ast.ast
-                                .visit_mut_with(&mut hygiene_with_config(hygiene::Config {
-                                    top_level_mark,
-                                    ..Default::default()
-                                }));
+                        // replace require to __mako_require__ for bundle mode
+                        if matches!(context.config.output.mode, OutputMode::Bundle) {
+                            let mut mako_require = MakoRequire::new(context, unresolved_mark);
+                            ast.ast.visit_mut_with(&mut mako_require);
+                        }
 
-                            let origin_comments =
-                                context.meta.script.origin_comments.read().unwrap();
-                            let swc_comments = origin_comments.get_swc_comments();
-                            ast.ast.visit_mut_with(&mut fixer(Some(swc_comments)));
+                        ast.ast
+                            .visit_mut_with(&mut hygiene_with_config(hygiene::Config {
+                                top_level_mark,
+                                ..Default::default()
+                            }));
 
-                            Ok(())
-                        })
+                        let origin_comments = context.meta.script.origin_comments.read().unwrap();
+                        let swc_comments = origin_comments.get_swc_comments();
+                        ast.ast.visit_mut_with(&mut fixer(Some(swc_comments)));
+
+                        Ok(())
                     })
-                },
-            )
-        })
-        .unwrap();
+                })
+            },
+        )
+    })
 }
 
 pub fn transform_css_generate(ast: &mut swc_css_ast::Stylesheet, context: &Arc<Context>) {
