@@ -227,6 +227,8 @@ mod tests {
     use std::path::PathBuf;
     use std::sync::{Arc, Mutex, RwLock};
 
+    use mako_core::indexmap::IndexSet;
+
     use super::transform_js;
     use crate::ast::{build_js_ast, js_ast_to_code};
     use crate::chunk::{Chunk, ChunkType};
@@ -727,6 +729,22 @@ console.log(_nodefs.default, fs2, fs3);
             optimize_infos: Mutex::new(None),
             static_cache: Default::default(),
         });
+
+        // add fake chunk for dynamic import
+        let mut chunk_graph = context.chunk_graph.write().unwrap();
+
+        chunk_graph.add_chunk(Chunk {
+            id: ModuleId {
+                id: "./foo".to_string(),
+            },
+            chunk_type: ChunkType::Async,
+            modules: IndexSet::from([ModuleId {
+                id: "./foo".to_string(),
+            }]),
+            content: None,
+            source_map: None,
+        });
+        drop(chunk_graph);
 
         let mut ast = build_js_ast(path, origin, &context).unwrap();
         transform_js(

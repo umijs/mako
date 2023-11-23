@@ -39,6 +39,13 @@ impl ChunkGraph {
     }
 
     pub fn get_chunks(&self) -> Vec<&Chunk> {
+        self.get_all_chunks()
+            .into_iter()
+            .filter(|c| !c.modules.is_empty())
+            .collect()
+    }
+
+    pub fn get_all_chunks(&self) -> Vec<&Chunk> {
         self.graph.node_weights().collect()
     }
 
@@ -90,7 +97,7 @@ impl ChunkGraph {
     }
 
     pub fn full_hash(&self, module_graph: &ModuleGraph) -> u64 {
-        let mut chunks = self.get_chunks();
+        let mut chunks = self.get_all_chunks();
         chunks.sort_by_key(|c| c.id.id.clone());
 
         let mut hasher: XxHash64 = Default::default();

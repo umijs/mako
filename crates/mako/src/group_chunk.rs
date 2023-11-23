@@ -261,7 +261,7 @@ impl Compiler {
         module_id: &ModuleId,
         chunk_graph: &ChunkGraph,
     ) -> Vec<(ModuleId, String)> {
-        let chunks = chunk_graph.get_chunks();
+        let chunks = chunk_graph.get_all_chunks();
 
         chunks
             .iter()
