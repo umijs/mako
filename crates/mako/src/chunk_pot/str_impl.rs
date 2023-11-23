@@ -83,7 +83,7 @@ pub(super) fn render_entry_js_chunk(
     }
 
     Ok(ChunkFile {
-        raw_hash: pot.js_hash,
+        raw_hash: hmr_hash,
         content,
         hash: None,
         source_map: None,
