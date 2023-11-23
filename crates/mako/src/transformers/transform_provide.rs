@@ -2,21 +2,16 @@ use mako_core::indexmap::IndexMap;
 use mako_core::swc_common::collections::AHashSet;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::DUMMY_SP;
-use mako_core::swc_ecma_ast::{
-    Expr, Id, Ident, ImportDecl, ImportDefaultSpecifier, ImportNamedSpecifier, ImportSpecifier,
-    Module, ModuleDecl, ModuleItem,
-};
-use mako_core::swc_ecma_utils::{collect_decls, quote_ident, quote_str};
+use mako_core::swc_ecma_ast::{Expr, Id, Ident, MemberExpr, Module, ModuleItem, VarDeclKind};
+use mako_core::swc_ecma_utils::{collect_decls, quote_ident, quote_str, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::config::Providers;
-
 pub struct Provide {
     bindings: Lrc<AHashSet<Id>>,
     providers: Providers,
     var_decls: IndexMap<String, ModuleItem>,
 }
-
 impl Provide {
     pub fn new(providers: Providers) -> Self {
         Self {
@@ -26,7 +21,6 @@ impl Provide {
         }
     }
 }
-
 impl VisitMut for Provide {
     fn visit_mut_module(&mut self, module: &mut Module) {
         self.bindings = Lrc::new(collect_decls(&*module));
@@ -35,7 +29,6 @@ impl VisitMut for Provide {
             .body
             .splice(0..0, self.var_decls.iter().map(|(_, var)| var.clone()));
     }
-
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Ident(Ident { ref sym, span, .. }) = expr {
             let has_binding = self.bindings.contains(&(sym.clone(), span.ctxt));
@@ -45,37 +38,30 @@ impl VisitMut for Provide {
                 if let Some((from, key)) = provider {
                     let require_decl: ModuleItem = {
                         if key.is_empty() {
-                            // eg: import process from 'process';
-                            ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
-                                span: DUMMY_SP,
-                                specifiers: vec![ImportSpecifier::Default(
-                                    ImportDefaultSpecifier {
-                                        span: DUMMY_SP,
-                                        local: quote_ident!(*span, sym.clone()),
-                                    },
-                                )],
-                                src: quote_str!(from.as_str()).into(),
-                                type_only: false,
-                                with: None,
-                            }))
+                            // eg: const process = require('process');
+                            quote_ident!("__mako_require__")
+                                .as_call(DUMMY_SP, vec![quote_str!(from.as_str()).as_arg()])
+                                .into_var_decl(
+                                    VarDeclKind::Const,
+                                    quote_ident!(*span, sym.clone()).into(),
+                                )
+                                .into()
                         } else {
-                            // eg: import { Buffer } from 'buffer';
-                            ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
+                            // require("buffer")
+                            let require_expr = quote_ident!("__mako_require__")
+                                .as_call(DUMMY_SP, vec![quote_str!(from.as_str()).as_arg()]);
+
+                            // eg const Buffer = require("buffer").Buffer;
+                            Expr::Member(MemberExpr {
+                                obj: require_expr.into(),
                                 span: DUMMY_SP,
-                                specifiers: vec![ImportSpecifier::Named(ImportNamedSpecifier {
-                                    span: DUMMY_SP,
-                                    local: quote_ident!(*span, sym.clone()),
-                                    imported: if sym.to_string().eq(key) {
-                                        None
-                                    } else {
-                                        Some(quote_ident!(key.as_str()).into())
-                                    },
-                                    is_type_only: false,
-                                })],
-                                src: quote_str!(from.as_str()).into(),
-                                type_only: false,
-                                with: None,
-                            }))
+                                prop: quote_ident!(key.as_str()).into(),
+                            })
+                            .into_var_decl(
+                                VarDeclKind::Const,
+                                quote_ident!(*span, sym.clone()).into(),
+                            )
+                            .into()
                         }
                     };
 
@@ -83,7 +69,6 @@ impl VisitMut for Provide {
                 }
             }
         }
-
         expr.visit_mut_children_with(self);
     }
 }

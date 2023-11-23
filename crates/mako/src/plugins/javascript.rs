@@ -235,6 +235,7 @@ pub fn is_dynamic_import(call_expr: &CallExpr) -> bool {
 pub fn is_commonjs_require(call_expr: &CallExpr, unresolved_mark: &Mark) -> bool {
     if let Callee::Expr(box Expr::Ident(ident)) = &call_expr.callee {
         ident.sym == *"require" && is_native_ident(ident, unresolved_mark)
+            || ident.sym == *"__mako_require__"
     } else {
         false
     }
