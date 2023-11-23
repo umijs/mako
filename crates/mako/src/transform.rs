@@ -755,7 +755,8 @@ console.log(_nodefs.default, fs2, fs3);
             is_entry: false,
             wrap_async: false,
             top_level_await: false,
-        });
+        })
+        .unwrap();
         let (code, _sourcemap) = js_ast_to_code(&ast.ast, &context, "index.js").unwrap();
         let code = code.replace("\"use strict\";", "");
         let code = code.trim().to_string();

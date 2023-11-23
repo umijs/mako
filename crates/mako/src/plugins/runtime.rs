@@ -163,7 +163,7 @@ impl MakoRuntime {
             _id: &module_id,
             context,
             ast: &mut ast,
-        });
+        })?;
 
         let stmts: Result<Vec<Stmt>> = ast
             .ast
