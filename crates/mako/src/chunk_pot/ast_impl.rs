@@ -16,9 +16,7 @@ use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
 
 use crate::ast::{build_js_ast, Ast};
 use crate::chunk::{Chunk, ChunkType};
-use crate::chunk_pot::util::{
-    hash_hashmap, pot_to_chunk_module, pot_to_module_object, runtime_code,
-};
+use crate::chunk_pot::util::{pot_to_chunk_module, pot_to_module_object, runtime_code};
 use crate::chunk_pot::{get_css_chunk_filename, util, ChunkPot};
 use crate::compiler::Context;
 use crate::config::{DevtoolConfig, Mode};
@@ -138,14 +136,6 @@ pub(crate) fn render_normal_js_chunk(
     })
 }
 
-#[cached(
-    result = true,
-    key = "String",
-    convert = r#"{ format!("{:x}",pot.js_hash
-         .wrapping_add(hash_hashmap(js_map))
-         .wrapping_add(hash_hashmap(css_map))
-         .wrapping_add(_cache_hash)) }"#
-)]
 pub(crate) fn render_entry_js_chunk(
     pot: &ChunkPot,
     js_map: &HashMap<String, String>,
