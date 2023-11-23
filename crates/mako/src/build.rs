@@ -1,12 +1,12 @@
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::time::Instant;
 
-use mako_core::anyhow::{anyhow, Error, Result};
+use mako_core::anyhow::{anyhow, Result};
 use mako_core::colored::Colorize;
-use mako_core::rayon::{ThreadPool, ThreadPoolBuilder};
+use mako_core::rayon::ThreadPool;
 use mako_core::swc_ecma_utils::contains_top_level_await;
 use mako_core::thiserror::Error;
 use mako_core::tracing::debug;
@@ -23,6 +23,7 @@ use crate::parse::parse;
 use crate::plugin::PluginCheckAstParam;
 use crate::resolve::{get_resolvers, resolve, ResolverResource, Resolvers};
 use crate::transform::transform;
+use crate::util::create_thread_pool;
 
 #[derive(Debug, Error)]
 #[error("{0}")]
@@ -43,8 +44,6 @@ impl Compiler {
         let t_build = Instant::now();
         let module_ids = self.build_module_graph()?;
         let t_build = t_build.elapsed();
-        // build chunk map 应该放 generate 阶段
-        // 和 chunk 相关的都属于 generate
         println!(
             "{} modules transformed in {}ms.",
             module_ids.len(),
@@ -59,14 +58,8 @@ impl Compiler {
 
         let entries: Vec<&PathBuf> = self.context.config.entry.values().collect();
 
-        if entries.is_empty() {
-            return Err(anyhow!("NO ENTRY FOUND"));
-        }
-
         let resolvers = Arc::new(get_resolvers(&self.context.config));
-        let (pool, rs, rr) = Self::create_thread_pool();
-
-        let (module_ids_rs, module_ids_rr) = channel::<ModuleId>();
+        let (pool, rs, rr) = create_thread_pool::<Result<ModuleId>>();
 
         for entry in entries {
             let mut entry = entry.to_str().unwrap().to_string();
@@ -87,36 +80,37 @@ impl Compiler {
                 },
                 rs.clone(),
                 resolvers.clone(),
-                module_ids_rs.clone(),
             );
         }
 
         drop(rs);
-        drop(module_ids_rs);
 
         let mut errors = vec![];
-        for err in rr {
-            // unescape
-            let mut err = err
-                .to_string()
-                .replace("\\n", "\n")
-                .replace("\\u{1b}", "\u{1b}")
-                .replace("\\\\", "\\");
-            // remove first char and last char
-            if err.starts_with('"') && err.ends_with('"') {
-                err = err[1..err.len() - 1].to_string();
+        let mut module_ids = HashSet::new();
+        for r in rr {
+            match r {
+                Ok(module_id) => {
+                    module_ids.insert(module_id);
+                }
+                Err(err) => {
+                    // unescape
+                    let mut err = err
+                        .to_string()
+                        .replace("\\n", "\n")
+                        .replace("\\u{1b}", "\u{1b}")
+                        .replace("\\\\", "\\");
+                    // remove first char and last char
+                    if err.starts_with('"') && err.ends_with('"') {
+                        err = err[1..err.len() - 1].to_string();
+                    }
+                    errors.push(err);
+                }
             }
-            errors.push(err);
         }
 
         if !errors.is_empty() {
             eprintln!("{}", "Build failed.".to_string().red());
             return Err(anyhow!(GenericError(errors.join(", "))));
-        }
-
-        let mut module_ids = HashSet::new();
-        for module_id in module_ids_rr {
-            module_ids.insert(module_id);
         }
 
         Ok(module_ids)
@@ -126,18 +120,16 @@ impl Compiler {
         pool: Arc<ThreadPool>,
         context: Arc<Context>,
         task: Task,
-        rs: Sender<Error>,
+        rs: Sender<Result<ModuleId>>,
         resolvers: Arc<Resolvers>,
-        module_ids: Sender<ModuleId>,
     ) {
         let pool_clone = pool.clone();
-        let module_ids_clone = module_ids.clone();
 
         pool.spawn(move || {
             let (module, deps) = match Compiler::build_module(&context, &task, resolvers.clone()) {
                 Ok(r) => r,
                 Err(e) => {
-                    rs.send(e).unwrap();
+                    rs.send(Err(e)).unwrap();
                     return;
                 }
             };
@@ -165,7 +157,7 @@ impl Compiler {
             // 否则，module 肯定已存在于 module_graph 里，只需要补充 info 信息即可
             let mut module_graph = context.module_graph.write().unwrap();
             if task.is_entry {
-                module_ids.send(module_id.clone()).unwrap();
+                rs.send(Ok(module_id.clone())).unwrap();
                 module_graph.add_module(module);
             } else {
                 let m = module_graph.get_module_mut(&module_id).unwrap();
@@ -196,12 +188,11 @@ impl Compiler {
                                     },
                                     rs.clone(),
                                     resolvers.clone(),
-                                    module_ids_clone.clone(),
                                 );
                             }
                             // 拿到依赖之后需要直接添加 module 到 module_graph 里，不能等依赖 build 完再添加
                             // 由于是异步处理各个模块，后者会导致大量重复任务的 build_module 任务（3 倍左右）
-                            module_ids.send(module.id.clone()).unwrap();
+                            rs.send(Ok(module.id.clone())).unwrap();
                             module_graph.add_module(module);
                         }
                         Err(err) => {
@@ -360,33 +351,6 @@ module.exports = new Promise((resolve, reject) => {{
             if let Some(span) = span {
                 err = generate_code_frame(span, &err, context.meta.script.cm.clone());
             }
-
-            // let id = ModuleId::new(target.clone());
-            // let module_graph = context.module_graph.read().unwrap();
-
-            // //  当 entry resolve 文件失败时，get_targets 自身会失败
-            // if module_graph.get_module(&id).is_some() {
-            //     let mut targets: Vec<ModuleId> = module_graph.dependant_module_ids(&id);
-            //     // 循环找 target
-            //     while !targets.is_empty() {
-            //         let target_module_id = targets[0].clone();
-            //         targets = module_graph.dependant_module_ids(&target_module_id);
-            //         source = target.clone();
-            //         target = target_module_id.id;
-            //         // 拼接引用堆栈 string
-            //         err = format!("{}  -> Resolve \"{}\" from \"{}\" \n", err, source, target);
-
-            //         if target_map.contains_key(&target) {
-            //             // 存在循环依赖
-            //             err = format!("{}  -> \"{}\" 中存在循环依赖", err, target);
-            //             break;
-            //         } else {
-            //             target_map.insert(target.clone(), 1);
-            //         }
-            //     }
-            //     // 调整格式
-            //     err = format!("{} \n", err);
-            // }
             if context.args.watch {
                 eprintln!("{}", err);
             } else {
@@ -423,12 +387,6 @@ module.exports = new Promise((resolve, reject) => {{
         let module = Module::new(module_id, task.is_entry, Some(info));
 
         Ok((module, dependencies_resource))
-    }
-
-    pub fn create_thread_pool<T>() -> (Arc<ThreadPool>, Sender<T>, Receiver<T>) {
-        let pool = Arc::new(ThreadPoolBuilder::new().build().unwrap());
-        let (rs, rr) = channel();
-        (pool, rs, rr)
     }
 }
 

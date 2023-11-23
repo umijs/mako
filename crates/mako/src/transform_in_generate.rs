@@ -1,10 +1,8 @@
 use std::collections::HashMap;
-use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::time::Instant;
 
 use mako_core::anyhow::Result;
-use mako_core::rayon::{ThreadPool, ThreadPoolBuilder};
 use mako_core::swc_common::errors::HANDLER;
 use mako_core::swc_common::GLOBALS;
 use mako_core::swc_css_visit::VisitMutWith as CSSVisitMutWith;
@@ -32,6 +30,7 @@ use crate::transformers::transform_dynamic_import::DynamicImport;
 use crate::transformers::transform_mako_require::MakoRequire;
 use crate::transformers::transform_meta_url_replacer::MetaUrlReplacer;
 use crate::transformers::transform_react::react_refresh_entry_prefix;
+use crate::util::create_thread_pool;
 
 impl Compiler {
     pub fn transform_all(&self) -> Result<()> {
@@ -84,12 +83,6 @@ fn mark_async(
         async_deps_by_module_id.insert(module_id.clone(), async_deps);
     });
     async_deps_by_module_id
-}
-
-pub fn create_thread_pool<T>() -> (Arc<ThreadPool>, Sender<T>, Receiver<T>) {
-    let pool = Arc::new(ThreadPoolBuilder::new().build().unwrap());
-    let (rs, rr) = channel();
-    (pool, rs, rr)
 }
 
 pub fn transform_modules_in_thread(

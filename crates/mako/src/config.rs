@@ -455,6 +455,9 @@ impl Config {
                         break;
                     }
                 }
+                if config.entry.is_empty() {
+                    return Err(anyhow!("Entry is empty"));
+                }
             }
 
             // normalize entry
