@@ -88,16 +88,6 @@ pub struct Args {
 }
 
 impl Context {
-    pub fn write_static_content<T: AsRef<str>>(
-        &self,
-        path: T,
-        content: Vec<u8>,
-        hash: u64,
-    ) -> Result<()> {
-        let mut map = self.static_cache.write().unwrap();
-        map.write(path, content, hash)
-    }
-
     pub fn get_static_content<T: AsRef<str>>(&self, path: T) -> Option<Vec<u8>> {
         let map = self.static_cache.read().unwrap();
 
