@@ -86,7 +86,7 @@ fn mark_async(
     async_deps_by_module_id
 }
 
-fn create_thread_pool<T>() -> (Arc<ThreadPool>, Sender<T>, Receiver<T>) {
+pub fn create_thread_pool<T>() -> (Arc<ThreadPool>, Sender<T>, Receiver<T>) {
     let pool = Arc::new(ThreadPoolBuilder::new().build().unwrap());
     let (rs, rr) = channel();
     (pool, rs, rr)
