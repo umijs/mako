@@ -34,18 +34,6 @@ pub struct BuildParams {
     pub watch: bool,
 }
 
-fn call_on_build_complete(
-    on_build_complete: &Option<threadsafe_function::ThreadsafeFunction<OnDevCompleteParams>>,
-    params: OnDevCompleteParams,
-) {
-    if let Some(func) = on_build_complete {
-        func.call(
-            params,
-            threadsafe_function::ThreadsafeFunctionCallMode::NonBlocking,
-        );
-    }
-}
-
 #[napi]
 pub fn build(env: Env, build_params: BuildParams) -> napi::Result<JsObject> {
     LOG_INIT.call_once(|| {
@@ -104,8 +92,9 @@ pub fn build(env: Env, build_params: BuildParams) -> napi::Result<JsObject> {
 
     let root = std::path::PathBuf::from(&build_params.root);
     let default_config = serde_json::to_string(&build_params.config).unwrap();
-    let config = Config::new(&root, Some(&default_config), None)
-        .map_err(|e| napi::Error::new(Status::GenericFailure, format!("{}", e)))?;
+    let config = Config::new(&root, Some(&default_config), None).map_err(|e| {
+        napi::Error::new(Status::GenericFailure, format!("Load config failed: {}", e))
+    })?;
 
     if build_params.watch {
         let (deferred, promise) = env.create_deferred()?;
@@ -163,6 +152,18 @@ pub fn build(env: Env, build_params: BuildParams) -> napi::Result<JsObject> {
             deferred.resolve(move |env| env.get_undefined());
         });
         Ok(promise)
+    }
+}
+
+fn call_on_build_complete(
+    on_build_complete: &Option<threadsafe_function::ThreadsafeFunction<OnDevCompleteParams>>,
+    params: OnDevCompleteParams,
+) {
+    if let Some(func) = on_build_complete {
+        func.call(
+            params,
+            threadsafe_function::ThreadsafeFunctionCallMode::NonBlocking,
+        );
     }
 }
 
