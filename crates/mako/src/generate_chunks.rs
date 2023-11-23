@@ -15,7 +15,8 @@ use crate::chunk::{Chunk, ChunkType};
 use crate::chunk_pot::ChunkPot;
 use crate::compiler::{Compiler, Context};
 use crate::module::{ModuleAst, ModuleId};
-use crate::transform_in_generate::{create_thread_pool, transform_css_generate};
+use crate::transform_in_generate::transform_css_generate;
+use crate::util::create_thread_pool;
 
 #[derive(Clone)]
 pub enum ChunkFileType {

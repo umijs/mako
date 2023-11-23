@@ -2,7 +2,6 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::fmt::Debug;
 use std::path::PathBuf;
-use std::sync::mpsc::channel;
 use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Ok, Result};
@@ -16,6 +15,7 @@ use crate::module::{Dependency, Module, ModuleId};
 use crate::resolve::{self, get_resolvers, Resolvers};
 use crate::transform_in_generate::transform_modules;
 use crate::transformers::transform_virtual_css_modules::is_css_path;
+use crate::util::create_thread_pool;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -341,8 +341,7 @@ impl Compiler {
         added: &Vec<PathBuf>,
         resolvers: Arc<Resolvers>,
     ) -> Result<HashSet<ModuleId>> {
-        let (module_ids_rs, module_ids_rr) = channel::<ModuleId>();
-        let (pool, rs, rr) = Self::create_thread_pool();
+        let (pool, rs, rr) = create_thread_pool::<Result<ModuleId>>();
         for path in added {
             Self::build_module_graph_threaded(
                 pool.clone(),
@@ -354,37 +353,39 @@ impl Compiler {
                 },
                 rs.clone(),
                 resolvers.clone(),
-                module_ids_rs.clone(),
             );
         }
 
         drop(rs);
-        drop(module_ids_rs);
 
         let mut errors = vec![];
-        for err in rr {
-            // unescape
-            let mut err = err
-                .to_string()
-                .replace("\\n", "\n")
-                .replace("\\u{1b}", "\u{1b}")
-                .replace("\\\\", "\\");
-            // remove first char and last char
-            if err.starts_with('"') && err.ends_with('"') {
-                err = err[1..err.len() - 1].to_string();
+        let mut module_ids = HashSet::new();
+        for r in rr {
+            match r {
+                Result::Ok(module_id) => {
+                    module_ids.insert(module_id);
+                }
+                Err(err) => {
+                    // unescape
+                    let mut err = err
+                        .to_string()
+                        .replace("\\n", "\n")
+                        .replace("\\u{1b}", "\u{1b}")
+                        .replace("\\\\", "\\");
+                    // remove first char and last char
+                    if err.starts_with('"') && err.ends_with('"') {
+                        err = err[1..err.len() - 1].to_string();
+                    }
+                    errors.push(err);
+                }
             }
-            eprintln!("{}", "Build failed.".to_string().red());
-            errors.push(err);
         }
 
         if !errors.is_empty() {
+            eprintln!("{}", "Build failed.".to_string().red());
             return Err(anyhow!(GenericError(errors.join(", "))));
         }
 
-        let mut module_ids = HashSet::new();
-        for module_id in module_ids_rr {
-            module_ids.insert(module_id);
-        }
         Ok(module_ids)
     }
 
