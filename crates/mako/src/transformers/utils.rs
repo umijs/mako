@@ -67,7 +67,7 @@ pub fn arrow_fn(args: Vec<Pat>, body: Expr) -> Expr {
 
 pub fn require_ensure(source: String) -> Expr {
     member_call(
-        Expr::Ident(id("require")),
+        Expr::Ident(id("__mako_require__")),
         MemberProp::Ident(id("ensure")),
         vec![ExprOrSpread {
             spread: None,

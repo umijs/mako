@@ -1,6 +1,10 @@
 // swc will hoist
 // working only with react-error-overlay@6.0.9
-import * as ErrorOverlay from 'react-error-overlay';
+const ErrorOverlay = require('react-error-overlay');
+const RefreshRuntime = require('react-refresh');
+RefreshRuntime.injectIntoGlobalHook(self);
+self.$RefreshReg$ = () => {};
+self.$RefreshSig$ = () => (type) => type;
 
 (function () {
   let hadRuntimeError = false;

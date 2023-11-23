@@ -151,7 +151,6 @@ impl MakoRuntime {
         };
 
         transform_js_generate(TransformJsParam {
-            is_entry: false,
             wrap_async: false,
             top_level_await: false,
             dep_map: &DependenciesToReplace {

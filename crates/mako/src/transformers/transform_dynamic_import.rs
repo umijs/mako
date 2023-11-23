@@ -69,12 +69,12 @@ impl VisitMut for DynamicImport<'_> {
                     });
 
                     let require_call = member_call(
-                        Expr::Ident(id("require")),
+                        Expr::Ident(id("__mako_require__")),
                         member_prop("bind"),
                         vec![
                             ExprOrSpread {
                                 spread: None,
-                                expr: Box::new(Expr::Ident(id("require"))),
+                                expr: Box::new(Expr::Ident(id("__mako_require__"))),
                             },
                             ExprOrSpread {
                                 spread: None,
@@ -124,8 +124,8 @@ import("./foo");
             code,
             r#"
 Promise.all([
-    require.ensure("./foo")
-]).then(require.bind(require, "./foo"));
+    __mako_require__.ensure("./foo")
+]).then(__mako_require__.bind(__mako_require__, "./foo"));
 
 //# sourceMappingURL=index.js.map
             "#

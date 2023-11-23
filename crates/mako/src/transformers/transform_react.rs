@@ -86,19 +86,11 @@ pub fn mako_react(
         )
     );
     if use_refresh {
-        Box::new(if task.is_entry {
-            chain!(
-                visit,
-                react_refresh_module_prefix(context),
-                react_refresh_module_postfix(context)
-            )
-        } else {
-            chain!(
-                visit,
-                react_refresh_module_prefix(context),
-                react_refresh_module_postfix(context)
-            )
-        })
+        Box::new(chain!(
+            visit,
+            react_refresh_module_prefix(context),
+            react_refresh_module_postfix(context)
+        ))
     } else {
         Box::new(visit)
     }
@@ -157,19 +149,6 @@ impl VisitMut for PostfixCode {
 
         module.visit_mut_children_with(self);
     }
-}
-
-pub fn react_refresh_entry_prefix(context: &Arc<Context>) -> Box<dyn VisitMut> {
-    Box::new(PrefixCode {
-        context: context.clone(),
-        code: r#"
-const RefreshRuntime = require('react-refresh');
-RefreshRuntime.injectIntoGlobalHook(self);
-self.$RefreshReg$ = () => {};
-self.$RefreshSig$ = () => (type) => type;
-"#
-        .to_string(),
-    })
 }
 
 pub fn react_refresh_module_prefix(context: &std::sync::Arc<Context>) -> Box<dyn VisitMut> {

@@ -685,6 +685,26 @@ console.log(_nodefs.default, fs2, fs3);
         );
     }
 
+    #[test]
+    fn test_mako_require_cannot_be_replaced() {
+        // test will not panic
+        let code = r#"
+const require = window.require;
+"#
+        .trim();
+        let (code, _sourcemap) = transform_js_code(code, None, HashMap::from([]));
+
+        assert_eq!(
+            code,
+            r#"
+const require = window.require;
+
+//# sourceMappingURL=index.js.map
+"#
+            .trim()
+        );
+    }
+
     fn transform_js_code(
         origin: &str,
         path: Option<&str>,
@@ -752,7 +772,6 @@ console.log(_nodefs.default, fs2, fs3);
                 ignored: vec![],
             },
             async_deps: &vec![],
-            is_entry: false,
             wrap_async: false,
             top_level_await: false,
         })
