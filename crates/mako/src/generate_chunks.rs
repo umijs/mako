@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use std::vec;
 
-use mako_core::anyhow::Result;
+use mako_core::anyhow::{anyhow, Result};
 use mako_core::indexmap::IndexSet;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_css_ast::Stylesheet;
@@ -122,7 +122,7 @@ impl Compiler {
         mako_core::mako_profile_function!();
         let chunk_graph = self.context.chunk_graph.read().unwrap();
         let chunks = chunk_graph.get_chunks();
-        let (pool, rs, rr) = create_thread_pool::<Vec<ChunkFile>>();
+        let (pool, rs, rr) = create_thread_pool::<Result<Vec<ChunkFile>>>();
         for chunk in chunks.iter() {
             if !matches!(
                 chunk.chunk_type,
@@ -135,19 +135,34 @@ impl Compiler {
                     let chunk_graph = context.chunk_graph.read().unwrap();
                     let module_graph = context.module_graph.read().unwrap();
                     let chunk = chunk_graph.chunk(&chunk_id).unwrap();
-                    let pot = ChunkPot::from(chunk, &module_graph, &context).unwrap();
-                    let chunk_files = pot.to_normal_chunk_files(&context);
-                    let chunk_files = chunk_files.unwrap();
-                    rs.send(chunk_files).unwrap();
+                    let pot = ChunkPot::from(chunk, &module_graph, &context);
+                    if let Err(e) = pot {
+                        rs.send(Err(e)).unwrap();
+                    } else {
+                        let pot = pot.unwrap();
+                        let chunk_files = pot.to_normal_chunk_files(&context);
+                        rs.send(chunk_files).unwrap();
+                    }
                 });
             }
         }
         drop(rs);
         let mut fs = vec![];
+        let mut errors = vec![];
         for cf in rr {
-            for chunk_file in cf {
-                fs.push(chunk_file);
+            match cf {
+                Ok(cf) => {
+                    for chunk_file in cf {
+                        fs.push(chunk_file);
+                    }
+                }
+                Err(e) => {
+                    errors.push(e.to_string());
+                }
             }
+        }
+        if !errors.is_empty() {
+            return Err(anyhow!(errors.join(", ")));
         }
         Ok(fs)
     }
