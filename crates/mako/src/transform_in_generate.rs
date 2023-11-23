@@ -59,7 +59,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
 }
 
 fn mark_async(
-    module_ids: &Vec<ModuleId>,
+    module_ids: &[ModuleId],
     context: &Arc<Context>,
 ) -> HashMap<ModuleId, Vec<Dependency>> {
     mako_core::mako_profile_function!();
