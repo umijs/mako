@@ -8,6 +8,8 @@ const chalk = require('chalk');
 const {
   createProxyMiddleware,
 } = require('@umijs/bundler-utils/compiled/http-proxy-middleware');
+const proxy = require('express-http-proxy');
+const express = require('express');
 
 const onCompileLess = async function (opts, filePath) {
   const { alias, modifyVars, config } = opts;
@@ -125,16 +127,27 @@ exports.dev = async function (opts) {
   app.use('/__/hmr-ws', wsProxy);
 
   // serve dist files
-  app.use(express.static(path.join(opts.cwd, 'dist')));
+  const proxyToMakoHttp = proxy(`http://127.0.0.1:${hmrPort}`, {
+    proxyErrorHandler(err, res, next) {
+      next();
+    },
+    skipToNextHandlerFilter: function (proxyRes) {
+      return proxyRes.statusCode !== 200;
+    },
+  });
+  app.use(proxyToMakoHttp, express.static(path.join(opts.cwd, 'dist')));
+
   // proxy
   if (opts.config.proxy) {
     createProxy(opts.config.proxy, app);
   }
-  // after middlewares
+
+  // after middlewares html renders here
   (opts.afterMiddlewares || []).forEach((m) => {
     // TODO: FIXME
     app.use(m.toString().includes('{ compiler }') ? m({}) : m);
   });
+
   // history fallback
   app.use(
     require('connect-history-api-fallback')({
@@ -401,6 +414,8 @@ async function getOkamConfig(opts) {
     makoConfig = JSON.parse(fs.readFileSync(makoConfigPath, 'utf-8'));
   }
 
+  console.log(opts.config);
+
   const {
     alias,
     targets,
@@ -416,6 +431,7 @@ async function getOkamConfig(opts) {
     externals,
     copy = [],
     clean,
+    writeToDisk = false,
   } = opts.config;
   const outputPath = path.join(opts.cwd, 'dist');
   // TODO:
@@ -543,6 +559,7 @@ async function getOkamConfig(opts) {
     transformImport,
     externals: externalsConfig,
     clean,
+    writeToDisk,
     ...(opts.disableCopy ? { copy: [] } : { copy: ['public'].concat(copy) }),
   };
 
