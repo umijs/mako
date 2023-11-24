@@ -22,7 +22,7 @@ static LOG_INIT: Once = Once::new();
 
 #[napi(object)]
 pub struct JsHooks {
-    #[napi(ts_type = "(filePath: string) => Promise<{css:string}> ;")]
+    #[napi(ts_type = "(filePath: string) => Promise<string> ;")]
     pub on_compile_less: Option<JsFunction>,
     #[napi(ts_type = "(data: {isFirstCompile: boolean; time: number; stats: {
         startTime: number;
