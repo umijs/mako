@@ -221,7 +221,7 @@ impl Compiler {
                     format!(
                         r#"
 module.exports = new Promise((resolve, reject) => {{
-    require.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(e));
+    __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(e));
 }}).then(() => {});
 "#,
                         url, external
