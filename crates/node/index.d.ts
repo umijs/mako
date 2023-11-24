@@ -100,4 +100,4 @@ export interface BuildParams {
   hooks: JsHooks;
   watch: boolean;
 }
-export function build(buildParams: BuildParams): object;
+export function build(buildParams: BuildParams): Promise<void>;

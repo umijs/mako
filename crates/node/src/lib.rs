@@ -115,7 +115,7 @@ pub struct BuildParams {
     pub watch: bool,
 }
 
-#[napi()]
+#[napi(ts_return_type = r#"Promise<void>"#)]
 pub fn build(env: Env, build_params: BuildParams) -> napi::Result<JsObject> {
     LOG_INIT.call_once(|| {
         init_logger();
