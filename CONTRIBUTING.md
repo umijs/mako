@@ -9,6 +9,13 @@ $ git clone git@github.com:umijs/mako.git
 $ cd mako
 ```
 
+Install tools.
+
+```bash
+$ cargo install just
+$ cargo install cargo-binstall
+```
+
 Compile.
 
 ```bash
@@ -40,8 +47,8 @@ $ pnpm dev examples/normal
 Test.
 
 ```bash
-$ cargo test
-$ cargo test transformers::transform_try_resolve::tests
+$ just test
+$ cargo nextest run transformers::transform_try_resolve::tests
 $ cargo insta review
 ```
 
@@ -55,13 +62,13 @@ $ cargo codecov --html && open target/llvm-cov/html/index.html
 Format.
 
 ```bash
-$ cargo fmt
+$ just fmt
 ```
 
 Lint.
 
 ```bash
-$ cargo lint
+$ just lint
 ```
 
 Release.
@@ -135,7 +142,7 @@ $ tnpm sync @okamjs/okam && cd packages/bundler-okam && tnpm publish
 
 ## Project Structure
 
-> Deprecated: documentation is out of date.
+> Deprecated: documentation is out of date, please refer to the source code for details.
 
 There are 1 crate, 1 mixed (as crate and npm package at the same time) entity and 1 npm package in this project.
 

@@ -1,0 +1,11 @@
+# https://github.com/crate-ci/typos
+# cargo install typos-cli
+# typos
+
+[files]
+extend-exclude = [
+  "**/*.snap",
+  "pnpm-lock.yaml",
+]
+
+[default.extend-words]

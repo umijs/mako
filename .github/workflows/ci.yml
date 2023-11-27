@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths-ignore:
+      - '**/*.md'
+  pull_request:
+    types: [opened, synchronize]
+    paths-ignore:
+      - '**/*.md'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.ref_name != 'master' }}
+
+jobs:
+  test:
+    name: Lint and Test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust Toolchain
+        uses: ./.github/actions/rustup
+        with:
+          clippy: true
+          save-cache: ${{ github.ref_name == 'master' }}
+      - name: Clippy
+        run: cargo clippy --locked -- -D warnings
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@cargo-nextest
+      - name: Test
+        shell: bash
+        run: |
+          # removing env vars is a temporary workaround for unit tests in pacquet relying on external environment
+          # this should be removed in the future
+          unset PNPM_HOME
+          unset XDG_DATA_HOME
+          cargo nextest run
+
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    if: ${{ !startsWith(github.event.head_commit.message, 'release:') && !startsWith(github.event.head_commit.message, 'ci:') && !startsWith(github.event.head_commit.message, 'docs:') }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: ./.github/actions/rustup
+        with:
+          fmt: true
+          restore-cache: false
+      - run: cargo fmt --all -- --check
+      - name: Install Taplo CLI
+        uses: ./.github/actions/binstall
+        with:
+          packages: taplo-cli@0.8.1
+      - run: taplo format --check
+
+  typos:
+    name: Spell Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: crate-ci/typos@v1.16.22
+        with:
+          files: .
