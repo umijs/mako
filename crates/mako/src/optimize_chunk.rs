@@ -138,7 +138,7 @@ impl Compiler {
     fn merge_minimal_async_chunks(&self, options: &OptimizeChunkOptions) {
         let mut async_to_entry = vec![];
         let chunk_graph = self.context.chunk_graph.read().unwrap();
-        let chunks = chunk_graph.get_chunks();
+        let chunks = chunk_graph.get_all_chunks();
 
         // find minimal async chunks to merge to entry chunk
         // TODO: continue to merge deep-level async chunk
@@ -193,7 +193,7 @@ impl Compiler {
         modules_in_chunk: Option<Vec<(&ModuleId, &ChunkId, &ChunkType)>>,
     ) {
         let chunk_graph = self.context.chunk_graph.read().unwrap();
-        let chunks = chunk_graph.get_chunks();
+        let chunks = chunk_graph.get_all_chunks();
         let modules_in_chunk = match modules_in_chunk {
             Some(modules_in_chunk) => modules_in_chunk,
             None => chunks.iter().fold(vec![], |mut acc, chunk| {
@@ -383,16 +383,8 @@ impl Compiler {
     }
 
     fn apply_optimize_infos(&self, optimize_chunks_infos: &Vec<OptimizeChunksInfo>) {
-        let mut edges_map = HashMap::new();
+        let mut edges_map: HashMap<ModuleId, IndexSet<ModuleId>> = HashMap::new();
         let mut chunk_graph = self.context.chunk_graph.write().unwrap();
-
-        fn insert_edges_map(map: &mut HashMap<ChunkId, IndexSet<ChunkId>>, k: ChunkId, v: ChunkId) {
-            if let Some(value) = map.get_mut(&k) {
-                value.insert(v);
-            } else {
-                map.insert(k, IndexSet::from([v]));
-            }
-        }
 
         for info in optimize_chunks_infos {
             // create new chunk
@@ -419,21 +411,11 @@ impl Compiler {
 
                     chunk.remove_module(module_id);
 
-                    if chunk.modules.is_empty() {
-                        // replace edge between empty chunk and its dependent chunks
-                        for dependent_id in chunk_graph.dependents_chunk(chunk_id) {
-                            chunk_graph.remove_edge(&dependent_id, chunk_id);
-                            insert_edges_map(&mut edges_map, dependent_id, info_chunk_id.clone());
-                        }
-
-                        // remove all new edges from original chunk if it is empty
-                        edges_map.remove(chunk_id);
-
-                        // remove empty chunk from chunk graph
-                        chunk_graph.remove_chunk(chunk_id);
+                    // record edge between original chunk and new dependency chunks
+                    if let Some(value) = edges_map.get_mut(chunk_id) {
+                        value.insert(info_chunk_id.clone());
                     } else {
-                        // record edge between original chunk and new dependency chunks
-                        insert_edges_map(&mut edges_map, chunk_id.clone(), info_chunk_id.clone());
+                        edges_map.insert(chunk_id.clone(), IndexSet::from([info_chunk_id.clone()]));
                     }
                 }
             }

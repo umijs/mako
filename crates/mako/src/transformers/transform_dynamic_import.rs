@@ -32,15 +32,26 @@ impl VisitMut for DynamicImport<'_> {
 
                     let chunk_ids = match chunk {
                         Some(chunk) => {
-                            let mut ids = chunk_graph
-                                .sync_dependencies_chunk(&chunk.id)
-                                .iter()
-                                .map(|chunk_id| {
-                                    generate_module_id(chunk_id.id.clone(), self.context)
-                                })
-                                .collect::<Vec<_>>();
-                            ids.push(chunk.id.generate(self.context));
-                            ids
+                            [
+                                chunk_graph.sync_dependencies_chunk(&chunk.id),
+                                vec![chunk.id.clone()],
+                            ]
+                            .concat()
+                            .iter()
+                            .filter_map(|chunk_id| {
+                                let id = generate_module_id(chunk_id.id.clone(), self.context);
+
+                                // skip empty chunk because it will not be generated
+                                if chunk_graph
+                                    .chunk(chunk_id)
+                                    .is_some_and(|c| !c.modules.is_empty())
+                                {
+                                    Some(id)
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect::<Vec<_>>()
                         }
                         // None means the original chunk has been optimized to entry chunk
                         None => vec![],
