@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::sync::mpsc::channel;
 
-use mako_core::notify::event::{AccessKind, CreateKind, DataChange, ModifyKind, RenameMode};
+use mako_core::notify::event::{CreateKind, DataChange, ModifyKind, RenameMode};
 use mako_core::notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use mako_core::tracing::debug;
 
@@ -89,21 +89,17 @@ where
                 func(crate::watch::WatchEvent::Added(event.paths));
             }
             EventKind::Modify(ModifyKind::Data(DataChange::Content)) => {
-                if cfg!(target_os = "macos") {
-                    func(crate::watch::WatchEvent::Modified(event.paths));
-                }
+                func(crate::watch::WatchEvent::Modified(event.paths));
             }
-            // why?
-            // cloudide 下 下会先 create 一个 .随机数文件，然后再 rename 过来，会走到 RenameMode::To 的事件
+            EventKind::Remove(_) => {
+                func(crate::watch::WatchEvent::Removed(event.paths));
+            }
             EventKind::Modify(ModifyKind::Name(RenameMode::To)) => {
-                let is_added = event.paths.iter().any(|path| path.exists());
-                if is_added {
-                    func(crate::watch::WatchEvent::Added(event.paths));
-                } else {
-                    func(crate::watch::WatchEvent::Removed(event.paths));
-                }
+                func(crate::watch::WatchEvent::Added(event.paths));
             }
-            EventKind::Modify(ModifyKind::Name(RenameMode::Any)) => {
+            EventKind::Modify(
+                ModifyKind::Name(RenameMode::From) | ModifyKind::Name(RenameMode::Any),
+            ) => {
                 // add and remove all emit rename event
                 // so we need to check if the file is exists to determine
                 let is_added = event.paths.iter().any(|path| path.exists());
@@ -111,14 +107,6 @@ where
                     func(crate::watch::WatchEvent::Added(event.paths));
                 } else {
                     func(crate::watch::WatchEvent::Removed(event.paths));
-                }
-            }
-            EventKind::Remove(_) => {
-                func(crate::watch::WatchEvent::Removed(event.paths));
-            }
-            EventKind::Access(AccessKind::Close(_)) => {
-                if cfg!(target_os = "linux") {
-                    func(crate::watch::WatchEvent::Modified(event.paths));
                 }
             }
             _ => {}

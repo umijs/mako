@@ -8,7 +8,7 @@ use mako_core::petgraph::visit::IntoEdgeReferences;
 use mako_core::petgraph::Direction;
 use mako_core::tracing::warn;
 
-use crate::module::{Dependencies, Dependency, Module, ModuleId, ModuleInfo};
+use crate::module::{Dependencies, Dependency, Module, ModuleId};
 
 #[derive(Debug)]
 pub struct ModuleGraph {
@@ -198,14 +198,15 @@ impl ModuleGraph {
     pub fn get_dependencies_info(
         &self,
         module_id: &ModuleId,
-    ) -> Vec<(ModuleId, Dependency, ModuleInfo)> {
+    ) -> Vec<(&ModuleId, &Dependency, bool)> {
         let mut edges = self.get_edges(module_id, Direction::Outgoing);
         let mut deps = vec![];
         while let Some((edge_index, node_index)) = edges.next(&self.graph) {
             let dependencies = self.graph.edge_weight(edge_index).unwrap();
             let module = self.graph.node_weight(node_index).unwrap();
             dependencies.iter().for_each(|dep| {
-                deps.push((module.id.clone(), dep.clone(), module.info.clone().unwrap()));
+                let is_async = module.info.as_ref().unwrap().is_async;
+                deps.push((&module.id, dep, is_async));
             })
         }
         deps.sort_by_key(|(_, dep, _)| dep.order);

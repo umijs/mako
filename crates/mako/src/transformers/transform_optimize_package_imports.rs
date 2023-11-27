@@ -525,7 +525,7 @@ mod tests {
     fn context(input: &Path) -> Arc<Context> {
         let root = input.parent().unwrap().to_path_buf();
         let config = Config::new(&root, None, None).unwrap();
-        let compiler = Compiler::new(config, root, Default::default()).unwrap();
+        let compiler = Compiler::new(config, root, Default::default(), None).unwrap();
         compiler.context
     }
 }

@@ -3,7 +3,31 @@ const fs = require('fs');
 const http = require('http');
 const assert = require('assert');
 const { createProxy, createHttpsServer } = require('@umijs/bundler-utils');
-const { lodash, chalk } = require('@umijs/utils');
+const lodash = require('lodash');
+const chalk = require('chalk');
+const {
+  createProxyMiddleware,
+} = require('@umijs/bundler-utils/compiled/http-proxy-middleware');
+
+const onCompileLess = async function (opts, filePath) {
+  const { alias, modifyVars, config } = opts;
+  const less = require('@umijs/bundler-utils/compiled/less');
+  const input = fs.readFileSync(filePath, 'utf-8');
+  const resolvePlugin = new (require('less-plugin-resolve'))({
+    aliases: alias,
+  });
+  const result = await less.render(input, {
+    filename: filePath,
+    javascriptEnabled: true,
+    math: config.lessLoader?.math,
+    plugins: [resolvePlugin],
+    modifyVars,
+  });
+  return result.css;
+};
+
+// export for test only
+exports._onCompileLess = onCompileLess;
 
 exports.build = async function (opts) {
   assert(opts, 'opts should be supplied');
@@ -25,7 +49,20 @@ exports.build = async function (opts) {
   }
 
   const { build } = require('@okamjs/okam');
-  await build(cwd, okamConfig, () => {}, false);
+  await build({
+    root: cwd,
+    config: okamConfig,
+    hooks: {
+      onCompileLess: onCompileLess.bind(null, {
+        cwd,
+        config: opts.config,
+        // NOTICE: 有个缺点是 如果 alias 配置是 mako 插件修改的 less 这边就感知到不了
+        alias: okamConfig.resolve.alias,
+        modifyVars: okamConfig.less.theme,
+      }),
+    },
+    watch: false,
+  });
 
   // TODO: use stats
   const manifest = JSON.parse(
@@ -59,6 +96,8 @@ exports.dev = async function (opts) {
   checkConfig(opts);
   const express = require('express');
   const app = express();
+  const port = opts.port || 8000;
+  const hmrPort = opts.port + 1;
   // cros
   app.use(
     require('cors')({
@@ -75,6 +114,16 @@ exports.dev = async function (opts) {
   }
   // before middlewares
   (opts.beforeMiddlewares || []).forEach((m) => app.use(m));
+
+  // proxy ws to mako server
+  const wsProxy = createProxyMiddleware({
+    // mako server in the same host so hard code is ok
+    target: `http://127.0.0.1:${hmrPort}`,
+    ws: true,
+    logLevel: 'silent',
+  });
+  app.use('/__/hmr-ws', wsProxy);
+
   // serve dist files
   app.use(express.static(path.join(opts.cwd, 'dist')));
   // proxy
@@ -110,30 +159,41 @@ exports.dev = async function (opts) {
   } else {
     server = http.createServer(app);
   }
-  const port = opts.port || 8000;
   server.listen(port, () => {
     const protocol = opts.config.https ? 'https:' : 'http:';
     const banner = getDevBanner(protocol, opts.host, port, opts.ip);
     console.log(banner);
   });
+  // prevent first websocket auto disconnected
+  // ref https://github.com/chimurai/http-proxy-middleware#external-websocket-upgrade
+  server.on('upgrade', wsProxy.upgrade);
+
   // okam dev
   const { build } = require('@okamjs/okam');
   const okamConfig = await getOkamConfig(opts);
   okamConfig.hmr = true;
-  okamConfig.hmrPort = String(opts.port + 1);
+  okamConfig.hmrPort = String(hmrPort);
   okamConfig.hmrHost = opts.host;
-  await build(
-    opts.cwd,
-    okamConfig,
-    (_, args) => {
-      opts.onDevCompileDone(args);
+  const cwd = opts.cwd;
+  await build({
+    root: cwd,
+    config: okamConfig,
+    hooks: {
+      onCompileLess: onCompileLess.bind(null, {
+        cwd,
+        config: opts.config,
+        alias: okamConfig.resolve.alias,
+        modifyVars: okamConfig.less.theme,
+      }),
+      onBuildComplete: (args) => {
+        opts.onDevCompileDone(args);
+      },
     },
-    true,
-  );
+    watch: true,
+  });
 };
 
 function getDevBanner(protocol, host, port, ip) {
-  const chalk = require('chalk');
   const hostStr = host === '0.0.0.0' ? 'localhost' : host;
   const messages = [];
   messages.push('  App listening at:');
@@ -335,6 +395,12 @@ async function getOkamConfig(opts) {
     umd = webpackConfig.output.library;
   }
 
+  let makoConfig = {};
+  const makoConfigPath = path.join(opts.cwd, 'mako.config.json');
+  if (fs.existsSync(makoConfigPath)) {
+    makoConfig = JSON.parse(fs.readFileSync(makoConfigPath, 'utf-8'));
+  }
+
   const {
     alias,
     targets,
@@ -374,6 +440,11 @@ async function getOkamConfig(opts) {
       }
     }
   }
+
+  if (process.env.SOCKET_SERVER) {
+    define.SOCKET_SERVER = normalizeDefineValue(process.env.SOCKET_SERVER);
+  }
+
   let minify = jsMinifier === 'none' ? false : true;
   if (process.env.COMPRESS === 'none') {
     minify = false;
@@ -432,6 +503,7 @@ async function getOkamConfig(opts) {
     resolve: {
       alias: {
         ...alias,
+        ...makoConfig.resolve?.alias,
         '@swc/helpers': path.dirname(
           require.resolve('@swc/helpers/package.json'),
         ),
@@ -461,12 +533,8 @@ async function getOkamConfig(opts) {
         // ignore function value
         ...lodash.pickBy(theme, lodash.isString),
         ...lessLoader?.modifyVars,
+        ...makoConfig.less?.theme,
       },
-      javascriptEnabled: lessLoader?.javascriptEnabled,
-      lesscPath: path.join(
-        path.dirname(require.resolve('less/package.json')),
-        'bin/lessc',
-      ),
     },
     minify,
     define,
@@ -487,7 +555,7 @@ async function getOkamConfig(opts) {
 }
 
 function normalizeDefineValue(val) {
-  if (!isPlainObject(val)) {
+  if (!lodash.isPlainObject(val)) {
     return JSON.stringify(val);
   } else {
     return Object.keys(val).reduce((obj, key) => {
@@ -495,8 +563,4 @@ function normalizeDefineValue(val) {
       return obj;
     }, {});
   }
-}
-
-function isPlainObject(obj) {
-  return Object.prototype.toString.call(obj) === '[object Object]';
 }

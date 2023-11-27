@@ -151,7 +151,6 @@ impl MakoRuntime {
         };
 
         transform_js_generate(TransformJsParam {
-            is_entry: false,
             wrap_async: false,
             top_level_await: false,
             dep_map: &DependenciesToReplace {
@@ -163,7 +162,7 @@ impl MakoRuntime {
             _id: &module_id,
             context,
             ast: &mut ast,
-        });
+        })?;
 
         let stmts: Result<Vec<Stmt>> = ast
             .ast

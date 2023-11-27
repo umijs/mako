@@ -377,7 +377,7 @@ _async.add(1, 2);
         assert_eq!(
             code,
             r#"
-require._async(module, async (handleAsyncDeps, asyncResult)=>{
+__mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
     const _async = require('./async');
     var __mako_async_dependencies__ = handleAsyncDeps([
         _async

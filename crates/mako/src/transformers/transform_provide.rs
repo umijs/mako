@@ -7,13 +7,11 @@ use mako_core::swc_ecma_utils::{collect_decls, quote_ident, quote_str, ExprFacto
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::config::Providers;
-
 pub struct Provide {
     bindings: Lrc<AHashSet<Id>>,
     providers: Providers,
     var_decls: IndexMap<String, ModuleItem>,
 }
-
 impl Provide {
     pub fn new(providers: Providers) -> Self {
         Self {
@@ -23,7 +21,6 @@ impl Provide {
         }
     }
 }
-
 impl VisitMut for Provide {
     fn visit_mut_module(&mut self, module: &mut Module) {
         self.bindings = Lrc::new(collect_decls(&*module));
@@ -32,7 +29,6 @@ impl VisitMut for Provide {
             .body
             .splice(0..0, self.var_decls.iter().map(|(_, var)| var.clone()));
     }
-
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Ident(Ident { ref sym, span, .. }) = expr {
             let has_binding = self.bindings.contains(&(sym.clone(), span.ctxt));
@@ -43,7 +39,7 @@ impl VisitMut for Provide {
                     let require_decl: ModuleItem = {
                         if key.is_empty() {
                             // eg: const process = require('process');
-                            quote_ident!("require")
+                            quote_ident!("__mako_require__")
                                 .as_call(DUMMY_SP, vec![quote_str!(from.as_str()).as_arg()])
                                 .into_var_decl(
                                     VarDeclKind::Const,
@@ -52,7 +48,7 @@ impl VisitMut for Provide {
                                 .into()
                         } else {
                             // require("buffer")
-                            let require_expr = quote_ident!("require")
+                            let require_expr = quote_ident!("__mako_require__")
                                 .as_call(DUMMY_SP, vec![quote_str!(from.as_str()).as_arg()]);
 
                             // eg const Buffer = require("buffer").Buffer;
@@ -73,7 +69,6 @@ impl VisitMut for Provide {
                 }
             }
         }
-
         expr.visit_mut_children_with(self);
     }
 }

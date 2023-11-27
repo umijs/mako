@@ -18,12 +18,6 @@ use crate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::module::{Module, ModuleAst};
 use crate::sourcemap::build_source_map;
 
-#[cached(
-    result = true,
-    type = "SizedCache<String, ChunkFile>",
-    create = "{ SizedCache::with_size(10) }",
-    convert = r#"{format!("{}-{}",pot.js_hash, _cache_hash)}"#
-)]
 pub(super) fn render_entry_js_chunk(
     pot: &ChunkPot,
     js_map: &HashMap<String, String>,
@@ -89,7 +83,7 @@ pub(super) fn render_entry_js_chunk(
     }
 
     Ok(ChunkFile {
-        raw_hash: pot.js_hash,
+        raw_hash: hmr_hash,
         content,
         hash: None,
         source_map: None,

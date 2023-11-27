@@ -170,7 +170,7 @@ impl ScriptMeta {
             globals: Globals::default(),
             module_ident: build_ident("module"),
             exports_ident: build_ident("exports"),
-            require_ident: build_ident("require"),
+            require_ident: build_ident("__mako_require__"),
         }
     }
 }
@@ -210,17 +210,28 @@ pub struct Compiler {
 }
 
 impl Compiler {
-    pub fn new(config: Config, root: PathBuf, args: Args) -> Result<Self> {
+    pub fn new(
+        config: Config,
+        root: PathBuf,
+        args: Args,
+        extra_plugins: Option<Vec<Arc<dyn Plugin>>>,
+    ) -> Result<Self> {
         assert!(root.is_absolute(), "root path must be absolute");
 
-        let mut plugins: Vec<Arc<dyn Plugin>> = vec![
+        // why add plugins before builtin plugins?
+        // because plugins like less-loader need to be added before assets plugin
+        // TODO: support plugin orders
+        let mut plugins: Vec<Arc<dyn Plugin>> = vec![];
+        if let Some(extra_plugins) = extra_plugins {
+            plugins.extend(extra_plugins);
+        }
+        let builtin_plugins: Vec<Arc<dyn Plugin>> = vec![
             // features
             Arc::new(plugins::manifest::ManifestPlugin {}),
             Arc::new(plugins::copy::CopyPlugin {}),
             Arc::new(plugins::import::ImportPlugin {}),
             // file types
             Arc::new(plugins::css::CSSPlugin {}),
-            Arc::new(plugins::less::LessPlugin {}),
             Arc::new(plugins::javascript::JavaScriptPlugin {}),
             Arc::new(plugins::json::JSONPlugin {}),
             Arc::new(plugins::md::MdPlugin {}),
@@ -237,6 +248,7 @@ impl Compiler {
             Arc::new(plugins::wasm_runtime::WasmRuntimePlugin {}),
             Arc::new(plugins::async_runtime::AsyncRuntimePlugin {}),
         ];
+        plugins.extend(builtin_plugins);
 
         let mut config = config;
 
