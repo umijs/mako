@@ -189,29 +189,12 @@ pub struct StatementGraph {
 }
 
 impl StatementGraph {
-    pub fn new(module: &SwcModule, side_effects_map: &HashMap<String, bool>) -> Self {
+    pub fn new(module: &SwcModule, _side_effects_map: &HashMap<String, bool>) -> Self {
         let mut g = petgraph::graph::Graph::new();
         let mut id_index_map = HashMap::new();
 
         for (index, stmt) in module.body.iter().enumerate() {
-            let mut statement = Statement::new(index, stmt);
-
-            if let Some(import_info) = &statement.import_info {
-                if let Some(side_effects) = side_effects_map.get(&import_info.source) {
-                    statement.is_self_executed = *side_effects;
-                } else {
-                    statement.is_self_executed = true;
-                }
-            }
-            if let Some(export_info) = &statement.export_info {
-                if let Some(source) = &export_info.source {
-                    if let Some(side_effects) = side_effects_map.get(source) {
-                        statement.is_self_executed = *side_effects;
-                    } else {
-                        statement.is_self_executed = true;
-                    }
-                }
-            }
+            let statement = Statement::new(index, stmt);
 
             let node = g.add_node(statement);
             id_index_map.insert(index, node);
