@@ -253,7 +253,7 @@ impl VisitMut for MyInjector<'_> {
     }
 }
 
-#[derive(Eq, Clone)]
+#[derive(Clone)]
 pub struct Inject {
     pub from: String,
     pub name: String,
@@ -261,6 +261,8 @@ pub struct Inject {
     pub namespace: Option<bool>,
     pub exclude: Option<Regex>,
 }
+
+impl Eq for Inject {}
 
 impl PartialEq for Inject {
     fn eq(&self, other: &Self) -> bool {

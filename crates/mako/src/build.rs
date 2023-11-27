@@ -443,7 +443,7 @@ mod tests {
         let result = parse_path("foo?bar=1&hoo=2").unwrap();
         assert_eq!(result.path, "foo");
         assert_eq!(
-            result.query.get(0).unwrap(),
+            result.query.first().unwrap(),
             &("bar".to_string(), "1".to_string())
         );
         assert_eq!(
@@ -457,7 +457,7 @@ mod tests {
         let result = parse_path("foo?bar").unwrap();
         assert_eq!(result.path, "foo");
         assert_eq!(
-            result.query.get(0).unwrap(),
+            result.query.first().unwrap(),
             &("bar".to_string(), "".to_string())
         );
         assert!(result.has_query("bar"));
