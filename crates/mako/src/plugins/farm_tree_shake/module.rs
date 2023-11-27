@@ -115,6 +115,7 @@ impl AllExports {
 pub struct TreeShakeModule {
     pub module_id: ModuleId,
     pub side_effects: bool,
+    pub described_side_effects: Option<bool>,
     pub stmt_graph: StatementGraph,
     // used exports will be analyzed when tree shaking
     used_exports: UsedExports,
@@ -122,9 +123,58 @@ pub struct TreeShakeModule {
     pub all_exports: AllExports,
     pub topo_order: usize,
     pub updated_ast: Option<SwcModule>,
+    pub side_effect_dep_sources: HashSet<String>,
 }
 
 impl TreeShakeModule {
+    pub fn update_side_effect(&mut self) -> bool {
+        let mut side_effect_stmts = vec![];
+
+        if let Some(described_side_effects) = self.described_side_effects {
+            if !described_side_effects {
+                return false;
+            }
+        }
+
+        self.stmt_graph.stmts().iter().for_each(|&s| {
+            if s.is_self_executed {
+                return;
+            }
+            if let Some(source) = s
+                .export_info
+                .as_ref()
+                .and_then(|export_info| export_info.source.as_ref())
+            {
+                if self.side_effect_dep_sources.contains(source) {
+                    side_effect_stmts.push(s.id);
+                }
+            }
+
+            if let Some(&source) = s
+                .import_info
+                .as_ref()
+                .map(|import_info| &import_info.source)
+                .as_ref()
+            {
+                if self.side_effect_dep_sources.contains(source) {
+                    side_effect_stmts.push(s.id);
+                }
+            }
+        });
+
+        side_effect_stmts.iter().for_each(|id| {
+            self.stmt_graph.stmt_mut(id).is_self_executed = true;
+        });
+
+        let has_self_exec = self.stmt_graph.stmts().iter().any(|&s| s.is_self_executed);
+
+        if has_self_exec {
+            self.side_effects = true;
+        }
+
+        self.side_effects
+    }
+
     pub fn use_all_exports(&mut self) -> bool {
         self.used_exports.use_all()
     }
@@ -225,9 +275,6 @@ impl TreeShakeModule {
             }
         };
 
-        let real_side_effects = module_info.get_side_effects_flag();
-        // 2. set default used exports
-
         let used_exports = if module.is_entry {
             UsedExports::All
         } else {
@@ -238,7 +285,9 @@ impl TreeShakeModule {
             module_id: module.id.clone(),
             stmt_graph,
             used_exports,
-            side_effects: real_side_effects,
+            described_side_effects: module.info.as_ref().unwrap().described_side_effect(),
+            side_effects: false,
+            side_effect_dep_sources: Default::default(),
             all_exports: match module_system {
                 ModuleSystem::ESModule => AllExports::Precise(Default::default()),
                 ModuleSystem::Custom | ModuleSystem::CommonJS => {

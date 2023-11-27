@@ -68,6 +68,43 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
         );
     }
 
+    let mut current_index = tree_shake_modules_ids.len() - 1;
+
+    // fill tree shake module all exported ident in reversed opo-sort order
+    while current_index > 0 {
+        let mut next_index = current_index - 1;
+        let module_id = &tree_shake_modules_ids[current_index];
+
+        let mut current_tsm = tree_shake_modules_map.get(module_id).unwrap().borrow_mut();
+        let side_effects = current_tsm.update_side_effect();
+        drop(current_tsm);
+
+        if side_effects {
+            module_graph
+                .get_dependents(module_id)
+                .iter()
+                .for_each(|&(module_id, dependency)| {
+                    if let Some(tsm) = tree_shake_modules_map.get(module_id) {
+                        let mut tsm = tsm.borrow_mut();
+                        if tsm
+                            .side_effect_dep_sources
+                            .insert(dependency.source.clone())
+                            && tsm.topo_order > next_index
+                        {
+                            next_index = tsm.topo_order;
+                        }
+                    }
+                });
+        }
+
+        current_index = next_index;
+    }
+    tree_shake_modules_map
+        .get(&tree_shake_modules_ids[0])
+        .unwrap()
+        .borrow_mut()
+        .update_side_effect();
+
     // fill tree shake module all exported ident in reversed opo-sort order
     for module_id in tree_shake_modules_ids.iter().rev() {
         let mut tsm = tree_shake_modules_map.get(module_id).unwrap().borrow_mut();
