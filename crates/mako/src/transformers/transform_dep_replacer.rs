@@ -154,7 +154,7 @@ impl DepReplacer<'_> {
 }
 
 pub fn resolve_web_worker_mut(new_expr: &mut NewExpr, unresolved_mark: Mark) -> Option<&mut Str> {
-    if !new_expr.args.clone().is_some_and(|args| !args.is_empty()) || !new_expr.callee.is_ident() {
+    if !new_expr.args.as_ref().is_some_and(|args| !args.is_empty()) || !new_expr.callee.is_ident() {
         return None;
     }
 
@@ -165,7 +165,7 @@ pub fn resolve_web_worker_mut(new_expr: &mut NewExpr, unresolved_mark: Mark) -> 
 
             // new Worker(new URL(''), base);
             if let Expr::New(new_expr) = &mut *args[0].expr {
-                if !new_expr.args.clone().is_some_and(|args| !args.is_empty())
+                if !new_expr.args.as_ref().is_some_and(|args| !args.is_empty())
                     || !new_expr.callee.is_ident()
                 {
                     return None;
