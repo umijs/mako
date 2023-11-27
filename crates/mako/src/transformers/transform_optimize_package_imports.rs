@@ -355,9 +355,9 @@ fn parse_barrel_file(path: &str, context: &Arc<Context>) -> Result<(bool, Vec<Ex
                                     });
                                 }
                                 // e.g. `import * as foo from 'foo'`.
-                                ImportSpecifier::Namespace(import_namesapce) => {
+                                ImportSpecifier::Namespace(import_namespace) => {
                                     import_map.push(ImportInfo {
-                                        imported: import_namesapce.local.sym.to_string(),
+                                        imported: import_namespace.local.sym.to_string(),
                                         src: src.clone(),
                                         orig: "*".to_string(),
                                     })
