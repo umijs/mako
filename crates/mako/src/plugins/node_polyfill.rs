@@ -74,7 +74,7 @@ fn get_polyfill_modules() -> Vec<String> {
 }
 
 fn get_empty_modules() -> Vec<String> {
-    vec![
+    [
         "child_process",
         "cluster",
         "dgram",

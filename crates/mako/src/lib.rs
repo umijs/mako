@@ -1,7 +1,5 @@
 #![feature(box_patterns)]
 #![feature(hasher_prefixfree_extras)]
-#![feature(is_some_with)]
-#![feature(box_syntax)]
 
 mod analyze_deps;
 mod ast;
