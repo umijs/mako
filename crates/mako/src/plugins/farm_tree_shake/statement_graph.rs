@@ -9,6 +9,7 @@ pub(crate) mod defined_idents_collector;
 pub(crate) mod used_idents_collector;
 
 use analyze_imports_and_exports::analyze_imports_and_exports;
+use mako_core::swc_common::Span;
 
 use crate::plugins::farm_tree_shake::module::{is_ident_equal, UsedIdent};
 use crate::plugins::farm_tree_shake::shake::strip_context;
@@ -148,6 +149,8 @@ pub struct Statement {
     /// transform it to Ident.to_string() is exactly what we want
     pub defined_idents_map: HashMap<String, HashSet<String>>,
     pub is_self_executed: bool,
+    pub has_side_effects: bool,
+    pub span: Span,
 }
 
 impl Statement {
@@ -159,6 +162,8 @@ impl Statement {
             used_idents,
             defined_idents_map,
             is_self_executed,
+            span,
+            has_side_effects,
         } = analyze_imports_and_exports(&id, stmt, None);
 
         // transform defined_idents_map from HashMap<Ident, Vec<Ident>> to HashMap<String, Ident> using ToString
@@ -175,6 +180,8 @@ impl Statement {
             used_idents,
             defined_idents_map,
             is_self_executed,
+            has_side_effects,
+            span,
         }
     }
 }

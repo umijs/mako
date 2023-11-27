@@ -1,8 +1,12 @@
 use std::cell::RefCell;
 use std::ops::DerefMut;
+use std::sync::Arc;
 
 use mako_core::anyhow::Result;
+use mako_core::swc_common::comments::{Comment, CommentKind};
+use mako_core::swc_common::DUMMY_SP;
 
+use crate::compiler::Context;
 use crate::module::{ModuleAst, ModuleId, ModuleType, ResolveType};
 use crate::module_graph::ModuleGraph;
 use crate::plugins::farm_tree_shake::module::TreeShakeModule;
@@ -23,7 +27,7 @@ use crate::tree_shaking::tree_shaking_module::ModuleSystem;
 ///   3.4 else if module is esm and the module has no side effects, analyze the used statement based on the statement graph
 ///     if add imported identifiers to previous modules, traverse smallest index tree_shake_modules again
 /// 4. remove used module and update tree-shaked AST into module graph
-pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
+pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> Result<()> {
     let (topo_sorted_modules, _cyclic_modules) = {
         mako_core::mako_profile_scope!("tree shake topo-sort");
         module_graph.toposort()
@@ -59,6 +63,23 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
         };
 
         let tree_shake_module = TreeShakeModule::new(module, order, module_graph);
+
+        if std::env::var("TS_DEBUG").is_ok() {
+            let mut comments = context.meta.script.output_comments.write().unwrap();
+
+            for s in tree_shake_module.stmt_graph.stmts() {
+                if s.is_self_executed {
+                    comments.add_leading_comment_at(
+                        s.span.lo,
+                        Comment {
+                            kind: CommentKind::Line,
+                            span: DUMMY_SP,
+                            text: "__SELF_EXECUTED__".into(),
+                        },
+                    );
+                }
+            }
+        }
 
         order += 1;
         tree_shake_modules_ids.push(tree_shake_module.module_id.clone());
@@ -105,7 +126,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph) -> Result<()> {
         .borrow_mut()
         .update_side_effect();
 
-    // fill tree shake module all exported ident in reversed opo-sort order
+    // fill tree shake module all exported ident in reversed topo-sort order
     for module_id in tree_shake_modules_ids.iter().rev() {
         let mut tsm = tree_shake_modules_map.get(module_id).unwrap().borrow_mut();
 
