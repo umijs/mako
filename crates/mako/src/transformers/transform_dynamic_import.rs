@@ -124,7 +124,7 @@ mod tests {
     use crate::compiler::Context;
 
     #[test]
-    fn test_dyanmic_import() {
+    fn test_dynamic_import() {
         let code = r#"
 import("./foo");
         "#
@@ -157,8 +157,8 @@ Promise.all([
 
         let globals = Globals::default();
         GLOBALS.set(&globals, || {
-            let mut dyanmic_import = DynamicImport { context: &context };
-            ast.ast.visit_mut_with(&mut dyanmic_import);
+            let mut dynamic_import = DynamicImport { context: &context };
+            ast.ast.visit_mut_with(&mut dynamic_import);
         });
 
         let (code, _sourcemap) = js_ast_to_code(&ast.ast, &context, "index.js").unwrap();

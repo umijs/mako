@@ -136,10 +136,9 @@ impl Plugin for MinifishPlugin {
 
         for dep in deps.iter_mut() {
             if dep.source.starts_with('/') {
-                let mut reslove_as = dep.source.clone();
-                reslove_as.replace_range(0..0, src_root);
-
-                dep.resolve_as = Some(reslove_as);
+                let mut resolve_as = dep.source.clone();
+                resolve_as.replace_range(0..0, src_root);
+                dep.resolve_as = Some(resolve_as);
             }
         }
 

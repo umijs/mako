@@ -181,7 +181,7 @@
     }
   };
   requireModule.requireInterceptors.push((options) => {
-    const orginRequire = options.require;
+    const originRequire = options.require;
     options.module.hot = createModuleHotObject(options.id, options.module);
     options.module.meta = {
       hot: options.module.hot,
@@ -191,7 +191,7 @@
     options.module.children = [];
     options.require = createHmrRequire(options.require, options.id);
     options.require.currentHash = () => {
-      return orginRequire._h;
+      return originRequire._h;
     };
   });
   requireModule.applyHotUpdate = (chunkId, update, runtime) => {
