@@ -17,13 +17,14 @@ concurrency:
 
 jobs:
   test:
-    name: Lint and Test
+    name: Test
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
     runs-on: ${{ matrix.os }}
+    if: ${{ !startsWith(github.event.head_commit.message, 'release:') && !startsWith(github.event.head_commit.message, 'ci:') && !startsWith(github.event.head_commit.message, 'docs:') }}
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust Toolchain
@@ -31,18 +32,25 @@ jobs:
         with:
           clippy: true
           save-cache: ${{ github.ref_name == 'master' }}
-      - name: Clippy
-        run: cargo clippy --locked -- -D warnings
       - name: Install cargo-nextest
         uses: taiki-e/install-action@cargo-nextest
       - name: Test
         shell: bash
-        run: |
-          # removing env vars is a temporary workaround for unit tests in pacquet relying on external environment
-          # this should be removed in the future
-          unset PNPM_HOME
-          unset XDG_DATA_HOME
-          cargo nextest run
+        run: cargo nextest run
+
+  lint:
+    name: Clippy
+    runs-on: ubuntu-latest
+    if: ${{ !startsWith(github.event.head_commit.message, 'release:') && !startsWith(github.event.head_commit.message, 'ci:') && !startsWith(github.event.head_commit.message, 'docs:') }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust Toolchain
+        uses: ./.github/actions/rustup
+        with:
+          clippy: true
+          restore-cache: false
+      - name: Clippy
+        run: cargo clippy --locked -- -D warnings
 
   format:
     name: Format
@@ -65,6 +73,7 @@ jobs:
   typos:
     name: Spell Check
     runs-on: ubuntu-latest
+    if: ${{ !startsWith(github.event.head_commit.message, 'release:') && !startsWith(github.event.head_commit.message, 'ci:') && !startsWith(github.event.head_commit.message, 'docs:') }}
     steps:
       - uses: actions/checkout@v4
       - uses: crate-ci/typos@v1.16.22
