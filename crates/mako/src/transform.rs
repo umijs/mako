@@ -26,6 +26,7 @@ use crate::module::ModuleAst;
 use crate::plugin::PluginTransformJsParam;
 use crate::resolve::Resolvers;
 use crate::targets;
+use crate::transformers::transform_css_flexbugs::CSSFlexbugs;
 use crate::transformers::transform_css_url_replacer::CSSUrlReplacer;
 use crate::transformers::transform_dynamic_import_to_require::DynamicImportToRequire;
 use crate::transformers::transform_env_replacer::{build_env_map, EnvReplacer};
@@ -209,6 +210,12 @@ fn transform_css(
         context,
     };
     ast.visit_mut_with(&mut css_handler);
+
+    // same ability as postcss-flexbugs-fixes
+    if context.config.flex_bugs {
+        ast.visit_mut_with(&mut CSSFlexbugs {});
+    }
+
     if context.config.px2rem {
         let mut px2rem = Px2Rem {
             path: &task.path,
