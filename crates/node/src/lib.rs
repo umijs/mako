@@ -45,6 +45,7 @@ pub struct BuildParams {
         meta?: boolean;
         preserveModules?: boolean;
         preserveModulesRoot?: string;
+        asciiOnly?: boolean;
     };
     resolve?: {
        alias?: Record<string, string>;
@@ -101,6 +102,7 @@ pub struct BuildParams {
     clean?: boolean;
     nodePolyfill?: boolean;
     ignores?: string[];
+    minify?: boolean;
     _minifish?: {
         mapping: Record<string, string>;
         metaPath?: string;
