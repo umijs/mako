@@ -1,6 +1,8 @@
 
 ## 0.1.3
 
+`2023-11-27`
+
 > @alipay/bigfish@4.1.2
 
 - 修复合并到 common 的 async chunk 在生成 ensure 语句时数据错误导致加载失败的问题 by [@PeachScript](https://github.com/PeachScript) in [#712](https://github.com/umijs/mako/pull/712)
@@ -8,6 +10,8 @@
 - 添加 node api 的 dts by [@stormslowly](https://github.com/stormslowly) in [#716](https://github.com/umijs/mako/pull/716)
 
 ## 0.1.0
+
+`2023-11-23`
 
 > @alipay/bigfish@4.1.0
 
