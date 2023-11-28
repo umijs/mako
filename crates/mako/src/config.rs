@@ -293,6 +293,7 @@ pub struct Config {
     #[serde(rename = "optimizePackageImports")]
     pub optimize_package_imports: bool,
     pub emotion: bool,
+    pub flex_bugs: bool,
 }
 
 pub(crate) fn hash_config(c: &Config) -> u64 {
@@ -353,6 +354,7 @@ const DEFAULT_CONFIG: &str = r#"
     "_minifish": null,
     "optimizePackageImports": false,
     "emotion": false,
+    "flexBugs": false,
 }
 "#;
 

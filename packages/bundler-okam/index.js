@@ -98,7 +98,7 @@ exports.dev = async function (opts) {
   const app = express();
   const port = opts.port || 8000;
   const hmrPort = opts.port + 1;
-  // cros
+  // cors
   app.use(
     require('cors')({
       origin: true,
@@ -543,6 +543,7 @@ async function getOkamConfig(opts) {
     transformImport,
     externals: externalsConfig,
     clean,
+    flexBugs: true,
     ...(opts.disableCopy ? { copy: [] } : { copy: ['public'].concat(copy) }),
   };
 

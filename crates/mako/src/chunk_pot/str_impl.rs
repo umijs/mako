@@ -179,18 +179,13 @@ fn to_module_line(
             };
             // let source_map_file = format!("{}.map", file_content_hash(module_id_str));
 
-            let content = vec![
+            let content = [
                 content,
                 format!(
                     "//# sourceMappingURL=data:application/json;charset=utf-8;base64,{}",
                     base64_encode(source_map)
                 )
                 .into(),
-                // format!(
-                //     "//# sourceMappingURL={}{}",
-                //     context.config.public_path, source_map_file
-                // )
-                // .into(),
             ]
             .join("");
 

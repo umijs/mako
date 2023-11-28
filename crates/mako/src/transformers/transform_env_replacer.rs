@@ -12,7 +12,7 @@ use mako_core::swc_ecma_ast::{
     MemberProp, MetaPropExpr, MetaPropKind, Module, ModuleItem, Null, Number, ObjectLit, Prop,
     PropName, PropOrSpread, Stmt, Str,
 };
-use mako_core::swc_ecma_utils::{collect_decls, quote_expr, quote_ident, ExprExt};
+use mako_core::swc_ecma_utils::{collect_decls, quote_ident, ExprExt};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::ast::build_js_ast;
@@ -120,7 +120,10 @@ impl VisitMut for EnvReplacer {
                                     *expr = env;
                                 } else {
                                     // replace with `undefined` if env not found
-                                    *expr = *quote_expr!(DUMMY_SP, undefined);
+                                    *expr = *Box::new(Expr::Ident(Ident::new(
+                                        js_word!("undefined"),
+                                        DUMMY_SP,
+                                    )));
                                 }
                             }
                         }
@@ -131,7 +134,10 @@ impl VisitMut for EnvReplacer {
                                 *expr = env;
                             } else {
                                 // replace with `undefined` if env not found
-                                *expr = *quote_expr!(DUMMY_SP, undefined);
+                                *expr = *Box::new(Expr::Ident(Ident::new(
+                                    js_word!("undefined"),
+                                    DUMMY_SP,
+                                )));
                             }
                         }
                         _ => {}
@@ -190,7 +196,7 @@ fn get_env_expr(v: Value, context: &Arc<Context>) -> Result<Expr> {
         Value::String(v) => {
             // the string content is treat as expression, so it has to be parsed
             let ast = build_js_ast("_define_.js", &v, context).unwrap();
-            let module = ast.ast.body.get(0).unwrap();
+            let module = ast.ast.body.first().unwrap();
 
             match module {
                 ModuleItem::Stmt(Stmt::Expr(stmt_expr)) => {

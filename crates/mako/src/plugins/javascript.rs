@@ -170,7 +170,7 @@ impl Visit for DepCollectVisitor {
 }
 
 pub fn resolve_web_worker(new_expr: &NewExpr, unresolved_mark: Mark) -> Option<&Str> {
-    if !new_expr.args.is_some_and(|args| !args.is_empty()) || !new_expr.callee.is_ident() {
+    if !new_expr.args.as_ref().is_some_and(|args| !args.is_empty()) || !new_expr.callee.is_ident() {
         return None;
     }
 
@@ -181,7 +181,7 @@ pub fn resolve_web_worker(new_expr: &NewExpr, unresolved_mark: Mark) -> Option<&
 
             // new Worker(new URL(''), base);
             if let Expr::New(new_expr) = &*args[0].expr {
-                if !new_expr.args.is_some_and(|args| !args.is_empty())
+                if !new_expr.args.as_ref().is_some_and(|args| !args.is_empty())
                     || !new_expr.callee.is_ident()
                 {
                     return None;

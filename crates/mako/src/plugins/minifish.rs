@@ -136,10 +136,9 @@ impl Plugin for MinifishPlugin {
 
         for dep in deps.iter_mut() {
             if dep.source.starts_with('/') {
-                let mut reslove_as = dep.source.clone();
-                reslove_as.replace_range(0..0, src_root);
-
-                dep.resolve_as = Some(reslove_as);
+                let mut resolve_as = dep.source.clone();
+                resolve_as.replace_range(0..0, src_root);
+                dep.resolve_as = Some(resolve_as);
             }
         }
 
@@ -254,7 +253,7 @@ impl VisitMut for MyInjector<'_> {
     }
 }
 
-#[derive(Eq, Clone)]
+#[derive(Clone)]
 pub struct Inject {
     pub from: String,
     pub name: String,
@@ -262,6 +261,8 @@ pub struct Inject {
     pub namespace: Option<bool>,
     pub exclude: Option<Regex>,
 }
+
+impl Eq for Inject {}
 
 impl PartialEq for Inject {
     fn eq(&self, other: &Self) -> bool {
