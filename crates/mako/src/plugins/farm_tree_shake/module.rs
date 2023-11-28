@@ -300,6 +300,7 @@ impl TreeShakeModule {
         }
     }
 
+    #[allow(dead_code)]
     pub fn imports(&self) -> Vec<ImportInfo> {
         let mut imports = vec![];
 
