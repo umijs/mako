@@ -89,12 +89,12 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
         );
     }
 
-    let mut current_index = tree_shake_modules_ids.len() - 1;
+    let mut current_index = (tree_shake_modules_ids.len() - 1) as i64;
 
-    // fill tree shake module all exported ident in reversed opo-sort order
-    while current_index > 0 {
+    // update tree-shake module side_effects flag in reversed topo-sort order
+    while current_index >= 0 {
         let mut next_index = current_index - 1;
-        let module_id = &tree_shake_modules_ids[current_index];
+        let module_id = &tree_shake_modules_ids[current_index as usize];
 
         let mut current_tsm = tree_shake_modules_map.get(module_id).unwrap().borrow_mut();
         let side_effects = current_tsm.update_side_effect();
@@ -110,9 +110,9 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
                         if tsm
                             .side_effect_dep_sources
                             .insert(dependency.source.clone())
-                            && tsm.topo_order > next_index
+                            && greater_equal_than(tsm.topo_order, next_index)
                         {
-                            next_index = tsm.topo_order;
+                            next_index = tsm.topo_order as i64;
                         }
                     }
                 });
@@ -120,11 +120,6 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
 
         current_index = next_index;
     }
-    tree_shake_modules_map
-        .get(&tree_shake_modules_ids[0])
-        .unwrap()
-        .borrow_mut()
-        .update_side_effect();
 
     // fill tree shake module all exported ident in reversed topo-sort order
     for module_id in tree_shake_modules_ids.iter().rev() {
@@ -475,4 +470,12 @@ fn add_used_exports_by_export_info(
 pub fn strip_context(ident: &str) -> String {
     let ident_split = ident.split('#').collect::<Vec<_>>();
     ident_split[0].to_string()
+}
+// is a greater than b
+fn greater_equal_than(a: usize, b: i64) -> bool {
+    if b < 0 {
+        true
+    } else {
+        (a as i64) >= b
+    }
 }

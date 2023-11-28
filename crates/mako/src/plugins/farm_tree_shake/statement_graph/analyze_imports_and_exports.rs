@@ -105,6 +105,13 @@ pub fn analyze_imports_and_exports(
                     }
                 }
 
+                if specifiers.is_empty() {
+                    // TODO: import "x" may not be a side effect statement
+                    is_self_executed = true;
+                }
+
+                span = import_decl.span;
+
                 imports = Some(ImportInfo {
                     source,
                     specifiers,

@@ -286,7 +286,7 @@ impl TreeShakeModule {
             stmt_graph,
             used_exports,
             described_side_effects: module.info.as_ref().unwrap().described_side_effect(),
-            side_effects: false,
+            side_effects: module_system != ModuleSystem::ESModule,
             side_effect_dep_sources: Default::default(),
             all_exports: match module_system {
                 ModuleSystem::ESModule => AllExports::Precise(Default::default()),
