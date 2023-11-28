@@ -1,4 +1,13 @@
 
+## 0.1.5
+
+`2023-11-28`
+
+> @alipay/bigfish@4.1.3
+
+- 添加 flexBugs 配置项，并在 umi 场景下默认开启 by [@PeachScript](https://github.com/PeachScript) in [#728](https://github.com/umijs/mako/pull/728)
+- 修复 okam node 包的 dts 问题 by [@stormslowly](https://github.com/stormslowly) in [#726](https://github.com/umijs/mako/pull/726)
+
 ## 0.1.3
 
 `2023-11-27`
