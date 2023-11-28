@@ -2,7 +2,7 @@
   "name": "@alipay/umi-bundler-okam",
   "version": "0.1.4",
   "dependencies": {
-    "@okamjs/okam": "0.1.4",
+    "@okamjs/okam": "0.1.5",
     "@swc/helpers": "0.5.1",
     "@umijs/bundler-utils": "^4.0.81",
     "chalk": "^4.1.2",
