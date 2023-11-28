@@ -543,6 +543,7 @@ async function getOkamConfig(opts) {
     transformImport,
     externals: externalsConfig,
     clean,
+    flexBugs: true,
     ...(opts.disableCopy ? { copy: [] } : { copy: ['public'].concat(copy) }),
   };
 
