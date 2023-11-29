@@ -80,6 +80,9 @@ fn transform_js(
         try_with_handler(cm.clone(), Default::default(), |handler| {
             HELPERS.set(&Helpers::new(true), || {
                 HANDLER.set(handler, || {
+                    let mut env_replacer = EnvReplacer::new(Lrc::new(env_map));
+                    ast.visit_mut_with(&mut env_replacer);
+
                     ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
                     // strip should be ts only
                     // since when use this in js, it will remove all unused imports
@@ -100,9 +103,6 @@ fn transform_js(
                         &top_level_mark,
                         &unresolved_mark,
                     ));
-
-                    let mut env_replacer = EnvReplacer::new(Lrc::new(env_map));
-                    ast.visit_mut_with(&mut env_replacer);
 
                     // watch 模式下全部会走 missing 然后转 throw error，无需提前转换
                     if !context.args.watch {
