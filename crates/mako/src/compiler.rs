@@ -283,6 +283,7 @@ impl Compiler {
                             named: ii.named.clone(),
                             namespace: ii.namespace,
                             exclude,
+                            prefer_require: ii.prefer_require.map_or(false, |v| v),
                         },
                     );
                 }

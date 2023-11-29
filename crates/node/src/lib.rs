@@ -106,9 +106,9 @@ pub struct BuildParams {
     _minifish?: {
         mapping: Record<string, string>;
         metaPath?: string;
-        inject?: Record<string, { from:string;exclude?:string; } |
-            { from:string; named:string; exclude?:string } |
-            { from:string; namespace: true; exclude?:string }
+        inject?: Record<string, { from:string;exclude?:string; preferRequire?: boolean } |
+            { from:string; named:string; exclude?:string; preferRequire?: boolean } |
+            { from:string; namespace: true; exclude?:string; preferRequire?: boolean }
             >;
     };
 }"#)]
