@@ -9,7 +9,7 @@ import 'zx/globals';
   }
 
   // check git remote update
-  logger.event('check git remote update');
+  console.log('check git remote update');
   await $`git fetch`;
   const gitStatus = (await $`git status --short --branch`).stdout.trim();
   assert(!gitStatus.includes('behind'), `git status is behind remote`);
@@ -37,10 +37,10 @@ import 'zx/globals';
     tag = 'next';
   if (newVersion.includes('-canary.')) tag = 'canary';
   if (newVersion.includes('-dev.')) tag = 'dev';
-
+  
+  console.log('Check branch');
+  const branch = (await $`git branch --show-current`).stdout.trim();
   if (tag === 'latest') {
-    console.log('Check branch');
-    const branch = (await $`git branch --show-current`).stdout.trim();
     if (branch !== 'master') {
       throw new Error('publishing latest tag needs to be in master branch');
     }
@@ -159,4 +159,11 @@ async function build_linux_binding() {
   const image = 'ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian';
 
   await $`docker run ${options} ${image} bash -c ${containerCMD}`;
+}
+
+function assert(v: unknown, message: string) {
+  if (!v) {
+    console.error(message);
+    process.exit(1);
+  }
 }
