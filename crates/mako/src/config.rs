@@ -26,6 +26,7 @@ pub struct OutputConfig {
 
     pub preserve_modules: bool,
     pub preserve_modules_root: PathBuf,
+    pub skip_write: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -313,7 +314,8 @@ const DEFAULT_CONFIG: &str = r#"
       "meta": false,
       "asciiOnly": true,
       "preserveModules": false,
-      "preserveModulesRoot": ""
+      "preserveModulesRoot": "",
+      "skipWrite": false
     },
     "resolve": { "alias": {}, "extensions": ["js", "jsx", "ts", "tsx"] },
     "mode": "development",

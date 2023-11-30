@@ -13,6 +13,7 @@ export interface JsHooks {
       endTime: number;
     };
   }) => void;
+  onGenerateFsWrite?: (path: string, content: Buffer) => Promise<void>;
 }
 export interface BuildParams {
   root: string;

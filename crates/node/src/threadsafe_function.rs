@@ -300,3 +300,26 @@ unsafe extern "C" fn call_js_cb<T: 'static, R>(
         );
     }
 }
+
+#[macro_export]
+macro_rules! await_js_async_result {
+    ($env:expr, $result: expr, $tx: expr, $get_return_val: expr) => {{
+        let result: napi::JsObject = $result.try_into()?;
+        let then: napi::JsFunction = result.get_named_property("then")?;
+        let tx2 = $tx.clone();
+        let cb = $env.create_function_from_closure("callback", move |ctx| {
+            // 使用闭包处理数据
+            let data = $get_return_val(ctx)?;
+            $tx.send(Ok(data)).unwrap();
+            ctx.env.get_undefined()
+        })?;
+        let eb = $env.create_function_from_closure("error_callback", move |ctx| {
+            let res = ctx.get::<JsUnknown>(0)?;
+            tx2.send(Err(napi::Error::from(res))).unwrap();
+            ctx.env.get_undefined()
+        })?;
+        then.call(Some(&result), &[cb, eb])?;
+
+        Ok(())
+    }};
+}

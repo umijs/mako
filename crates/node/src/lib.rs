@@ -15,8 +15,12 @@ use mako::plugin::Plugin;
 use napi::bindgen_prelude::*;
 use napi::{JsObject, JsString, JsUnknown, NapiRaw, Status};
 
+use crate::plugin_write::create_fs_write_plugin;
+
 mod plugin_less;
-mod threadsafe_function;
+mod plugin_write;
+
+pub(crate) mod threadsafe_function;
 
 static LOG_INIT: Once = Once::new();
 
@@ -29,6 +33,8 @@ pub struct JsHooks {
         endTime: number;
     }}) =>void ;")]
     pub on_build_complete: Option<JsFunction>,
+    #[napi(ts_type = "(path: string, content: Buffer) => Promise<void>;")]
+    pub on_generate_file: Option<JsFunction>,
 }
 
 #[napi(object)]
@@ -171,6 +177,10 @@ pub fn build(env: Env, build_params: BuildParams) -> napi::Result<JsObject> {
     let mut plugins: Vec<Arc<dyn Plugin>> = vec![];
     if let Some(less_plugin) = less_plugin {
         plugins.push(less_plugin);
+    }
+
+    if let Some(plugin) = create_fs_write_plugin(&env, build_params.hooks.on_generate_file) {
+        plugins.push(Arc::new(plugin));
     }
 
     let root = std::path::PathBuf::from(&build_params.root);
