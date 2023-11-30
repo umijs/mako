@@ -1,9 +1,10 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
+use mako_core::indexmap::IndexSet;
 use mako_core::rayon::prelude::*;
 use mako_core::regex::Regex;
 use mako_core::swc_common::{Mark, Span, SyntaxContext, DUMMY_SP};
@@ -197,7 +198,7 @@ impl Plugin for MinifishPlugin {
 struct MyInjector<'a> {
     unresolved_mark: Mark,
     injects: HashMap<String, &'a Inject>,
-    will_inject: HashSet<(&'a Inject, SyntaxContext)>,
+    will_inject: IndexSet<(&'a Inject, SyntaxContext)>,
     is_cjs: bool,
 }
 
