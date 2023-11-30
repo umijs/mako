@@ -242,7 +242,7 @@ impl VisitMut for MyInjector<'_> {
     fn visit_mut_module(&mut self, n: &mut mako_core::swc_ecma_ast::Module) {
         n.visit_mut_children_with(self);
 
-        self.will_inject.iter().for_each(|&(inject, ctxt)| {
+        self.will_inject.iter().rev().for_each(|&(inject, ctxt)| {
             let mi = if self.is_cjs || inject.prefer_require {
                 inject.clone().into_require_with(ctxt, self.unresolved_mark)
             } else {
