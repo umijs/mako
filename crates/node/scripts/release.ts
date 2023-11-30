@@ -1,22 +1,22 @@
 import 'zx/globals';
 
 (async () => {
-  console.log('Check branch');
-  const branch = (await $`git branch --show-current`).stdout.trim();
-  if (branch !== 'master') {
-    throw new Error('Please run this script in master branch');
-  }
-
-  // Check docker status
-  console.log('Check docker status');
-  await $`docker ps`;
-
   // Check git status
   console.log('Check git status');
   const status = (await $`git status --porcelain`).stdout.trim();
   if (status) {
     throw new Error('Please commit all changes before release');
   }
+
+  // check git remote update
+  logger.event('check git remote update');
+  await $`git fetch`;
+  const gitStatus = (await $`git status --short --branch`).stdout.trim();
+  assert(!gitStatus.includes('behind'), `git status is behind remote`);
+
+  // Check docker status
+  console.log('Check docker status');
+  await $`docker ps`;
 
   // bump version
   console.log('Bump version');
@@ -37,6 +37,14 @@ import 'zx/globals';
     tag = 'next';
   if (newVersion.includes('-canary.')) tag = 'canary';
   if (newVersion.includes('-dev.')) tag = 'dev';
+
+  if (tag === 'latest') {
+    console.log('Check branch');
+    const branch = (await $`git branch --show-current`).stdout.trim();
+    if (branch !== 'master') {
+      throw new Error('publishing latest tag needs to be in master branch');
+    }
+  }
 
   nodePkg.version = newVersion;
 
