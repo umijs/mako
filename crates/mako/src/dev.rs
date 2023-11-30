@@ -1,24 +1,22 @@
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{mpsc, Arc};
 use std::time::{Instant, UNIX_EPOCH};
 
 use mako_core::colored::Colorize;
-use mako_core::futures::{SinkExt, StreamExt};
+use mako_core::futures::{try_join, SinkExt, StreamExt};
 use mako_core::hyper::header::CONTENT_TYPE;
 use mako_core::hyper::http::HeaderValue;
 use mako_core::hyper::server::conn::AddrIncoming;
 use mako_core::hyper::server::Builder;
 use mako_core::hyper::{Body, Request, Server};
-use mako_core::rayon::ThreadPoolBuilder;
 use mako_core::tokio::sync::broadcast::{Receiver, Sender};
-use mako_core::tokio::try_join;
 use mako_core::tracing::debug;
 use mako_core::tungstenite::Message;
 use mako_core::{hyper, hyper_staticfile, hyper_tungstenite, tokio};
 
 use crate::compiler;
 use crate::compiler::Compiler;
-use crate::watch::watch;
+use crate::watch::{Watch, WatchEvent};
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
@@ -28,6 +26,7 @@ fn bind_idle_port(port: u16) -> Builder<AddrIncoming> {
     loop {
         match Server::try_bind(&([127, 0, 0, 1], port).into()) {
             Ok(builder) => {
+                println!("port: {}", port);
                 return builder;
             }
             Err(_) => {
@@ -52,6 +51,8 @@ impl DevServer {
 
     pub async fn serve(&self, callback: impl Fn(OnDevCompleteParams) + Send + Sync + 'static) {
         self.watcher.start(callback);
+        println!("watch done");
+        // x.await.unwrap();
 
         async fn serve_websocket(
             websocket: hyper_tungstenite::HyperWebsocket,
@@ -192,6 +193,8 @@ impl DevServer {
         if let Err(e) = join_error {
             eprintln!("Error in dev server: {:?}", e);
         }
+
+        println!("server 3");
     }
 }
 
@@ -239,13 +242,13 @@ impl ProjectWatch {
         debug!("last_full_hash: {:?}", last_cache_hash);
 
         let watch_compiler = c.clone();
-
-        let pool = ThreadPoolBuilder::new().build().unwrap();
-        pool.spawn(move || {
-            watch(&root, |events| {
+        let (tx_watch, rx_watch) = mpsc::channel::<Vec<WatchEvent>>();
+        std::thread::spawn(move || {
+            while let Ok(events) = rx_watch.recv() {
+                println!("Change: {:?}", events);
                 debug!("watch events detected: {:?}", events);
                 debug!("checking update status...");
-                let res = watch_compiler.update(events.into());
+                let res = watch_compiler.update(events);
                 let has_missing_deps = {
                     watch_compiler
                         .context
@@ -359,8 +362,16 @@ impl ProjectWatch {
                         }
                     }
                 }
-            });
+            }
         });
+
+        Watch {
+            root: root.clone(),
+            tx: tx_watch.clone(),
+            delay: 10,
+        }
+        .start()
+        .unwrap();
     }
 
     pub fn clone_receiver(&self) -> Receiver<WsMessage> {

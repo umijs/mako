@@ -16,8 +16,8 @@ use crate::resolve::{self, get_resolvers, Resolvers};
 use crate::transform_in_generate::transform_modules;
 use crate::transformers::transform_virtual_css_modules::is_css_path;
 use crate::util::create_thread_pool;
+use crate::watch::WatchEvent;
 
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum UpdateType {
     Add,
@@ -70,7 +70,18 @@ removed:{:?}
 }
 
 impl Compiler {
-    pub fn update(&self, paths: Vec<(PathBuf, UpdateType)>) -> Result<UpdateResult> {
+    pub fn update(&self, paths: Vec<WatchEvent>) -> Result<UpdateResult> {
+        let paths = paths
+            .into_iter()
+            .map(|event| {
+                let update_type = match event.event_type {
+                    crate::watch::WatchEventType::Added => UpdateType::Add,
+                    crate::watch::WatchEventType::Modified => UpdateType::Modify,
+                    crate::watch::WatchEventType::Removed => UpdateType::Remove,
+                };
+                (event.path, update_type)
+            })
+            .collect::<Vec<_>>();
         let mut update_result: UpdateResult = Default::default();
         let resolvers = Arc::new(get_resolvers(&self.context.config));
 
