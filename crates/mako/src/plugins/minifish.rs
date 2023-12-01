@@ -1,9 +1,10 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
+use mako_core::indexmap::IndexSet;
 use mako_core::rayon::prelude::*;
 use mako_core::regex::Regex;
 use mako_core::swc_common::{Mark, Span, SyntaxContext, DUMMY_SP};
@@ -197,7 +198,7 @@ impl Plugin for MinifishPlugin {
 struct MyInjector<'a> {
     unresolved_mark: Mark,
     injects: HashMap<String, &'a Inject>,
-    will_inject: HashSet<(&'a Inject, SyntaxContext)>,
+    will_inject: IndexSet<(&'a Inject, SyntaxContext)>,
     is_cjs: bool,
 }
 
@@ -241,15 +242,15 @@ impl VisitMut for MyInjector<'_> {
     fn visit_mut_module(&mut self, n: &mut mako_core::swc_ecma_ast::Module) {
         n.visit_mut_children_with(self);
 
-        self.will_inject.iter().for_each(|&(inject, ctxt)| {
-            let mi = if self.is_cjs || inject.prefer_require {
+        let stmts = self.will_inject.iter().map(|&(inject, ctxt)| {
+            if self.is_cjs || inject.prefer_require {
                 inject.clone().into_require_with(ctxt, self.unresolved_mark)
             } else {
                 inject.clone().into_with(ctxt)
-            };
-
-            n.body.insert(0, mi);
+            }
         });
+
+        n.body.splice(0..0, stmts);
     }
 }
 
