@@ -28,12 +28,14 @@ enum ResolverType {
     Cjs,
     Esm,
     Css,
+    Ctxt,
 }
 
 pub struct Resolvers {
     cjs: Resolver,
     esm: Resolver,
     css: Resolver,
+    ctxt: Resolver,
 }
 
 #[derive(Debug, Clone)]
@@ -276,10 +278,12 @@ pub fn get_resolvers(config: &Config) -> Resolvers {
     let cjs_resolver = get_resolver(config, ResolverType::Cjs);
     let esm_resolver = get_resolver(config, ResolverType::Esm);
     let css_resolver = get_resolver(config, ResolverType::Css);
+    let ctxt_resolver = get_resolver(config, ResolverType::Ctxt);
     Resolvers {
         cjs: cjs_resolver,
         esm: esm_resolver,
         css: css_resolver,
+        ctxt: ctxt_resolver,
     }
 }
 
@@ -361,6 +365,11 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
             condition_names: HashSet::from(["style".to_string()]),
             prefer_relative: true,
             browser_field: true,
+            ..Default::default()
+        },
+        (ResolverType::Ctxt, _) => Options {
+            alias,
+            resolve_to_context: true,
             ..Default::default()
         },
     };
