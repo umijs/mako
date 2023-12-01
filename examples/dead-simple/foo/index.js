@@ -1,2 +1,8 @@
-export const foo = 1;
+export const foo = '123341123';
 export const bar = 2;
+112112312321312123
+112312133331211
+2121411211
+311123
+1
+1
