@@ -243,6 +243,13 @@ pub struct MinifishConfig {
     pub inject: Option<HashMap<String, InjectItem>>,
 }
 
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum Targets {
+    Env(HashMap<String, f32>),
+    EsVersion(EsVersion),
+}
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
@@ -259,9 +266,7 @@ pub struct Config {
     pub copy: Vec<String>,
     pub public_path: String,
     pub inline_limit: usize,
-    pub targets: HashMap<String, f32>,
-    #[serde(rename = "targetEsVersion")]
-    pub target_es_version: Option<EsVersion>,
+    pub targets: Targets,
     pub platform: Platform,
     pub module_id_strategy: ModuleIdStrategy,
     pub define: HashMap<String, Value>,
@@ -324,8 +329,7 @@ const DEFAULT_CONFIG: &str = r#"
     "providers": {},
     "publicPath": "/",
     "inlineLimit": 10000,
-    "targets": {},
-    "targetEsVersion": null,
+    "targets": { "chrome": 80 },
     "less": { "theme": {}, "lesscPath": "", javascriptEnabled: true },
     "define": {},
     "manifest": false,
@@ -494,21 +498,13 @@ impl Config {
                 config.hash = false;
             }
 
-            if config.targets.is_empty() && config.target_es_version.is_none() {
-                config.targets = HashMap::new();
-                config.targets.insert("chrome".into(), 80_f32);
-            }
-            if !config.targets.is_empty() && config.target_es_version.is_some() {
-                println!("{}", "When both 'targets' and 'targetEsVersion' are present, 'targets' will be ignored".to_string().yellow());
-                config.targets = HashMap::new();
-            }
-
             // configure node platform
             if config.platform == Platform::Node {
-                let target = config.targets.get("node").unwrap_or(&14.0);
-
-                // set target to node version
-                config.targets = HashMap::from([("node".into(), *target)]);
+                if let Targets::Env(target) = &config.targets {
+                    let target = target.get("node").unwrap_or(&14.0);
+                    // set target to node version
+                    config.targets = Targets::Env(HashMap::from([("node".into(), *target)]));
+                }
 
                 // ignore standard library
                 config
@@ -541,7 +537,7 @@ pub enum ConfigError {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::{Config, Mode, Platform};
+    use crate::config::{Config, Mode, Platform, Targets};
 
     #[test]
     fn test_config() {
@@ -609,11 +605,15 @@ mod tests {
         let current_dir = std::env::current_dir().unwrap();
         let config =
             Config::new(&current_dir.join("test/config/node-platform"), None, None).unwrap();
-        assert_eq!(
-            config.targets.get("node"),
-            Some(&14.0),
-            "use node targets by default if platform is node",
-        );
+        match config.targets {
+            Targets::Env(targets) => assert_eq!(
+                targets.get("node"),
+                Some(&14.0),
+                "use node targets by default if platform is node",
+            ),
+            _ => unreachable!(),
+        }
+
         assert!(
             config.ignores.iter().any(|i| i.contains("|fs|")),
             "ignore Node.js standard library by default if platform is node",

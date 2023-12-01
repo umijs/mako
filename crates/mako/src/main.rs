@@ -79,8 +79,10 @@ async fn main() -> Result<()> {
         .map_err(|_| anyhow!("The root directory {:?} is not found", root))?;
 
     // config
-    let mut config =
-        config::Config::new(&root, None, None).map_err(|_| anyhow!("Load config error"))?;
+    let mut config = config::Config::new(&root, None, None).map_err(|e| {
+        println!("{}", e);
+        anyhow!("Load config error")
+    })?;
 
     config.mode = cli.mode;
 

@@ -18,7 +18,7 @@ use mako_core::{swc_css_ast, swc_css_prefixer};
 
 use crate::ast::Ast;
 use crate::compiler::{Compiler, Context};
-use crate::config::{Mode, OutputMode};
+use crate::config::{Mode, OutputMode, Targets};
 use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
 use crate::targets;
 use crate::transformers::transform_async_module::AsyncModule;
@@ -251,11 +251,12 @@ pub fn transform_css_generate(ast: &mut swc_css_ast::Stylesheet, context: &Arc<C
     ast.visit_mut_with(&mut css_handler);
 
     // prefixer
-    let mut prefixer = swc_css_prefixer::prefixer(swc_css_prefixer::options::Options {
-        env: Some(targets::swc_preset_env_targets_from_map(
-            context.config.targets.clone(),
-        )),
-    });
+    let prefix_env = match &context.config.targets {
+        Targets::Env(env) => Some(targets::swc_preset_env_targets_from_map(env.clone())),
+        Targets::EsVersion(_) => None,
+    };
+    let mut prefixer =
+        swc_css_prefixer::prefixer(swc_css_prefixer::options::Options { env: prefix_env });
     ast.visit_mut_with(&mut prefixer);
 }
 
