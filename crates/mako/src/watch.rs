@@ -27,6 +27,7 @@ pub struct Watch {
 }
 
 impl Watch {
+    // pub fn watch(root: &PathBuf, watcher: &mut notify::RecommendedWatcher) -> anyhow::Result<()> {
     pub fn watch(root: &PathBuf, watcher: &mut notify::KqueueWatcher) -> anyhow::Result<()> {
         let items = std::fs::read_dir(root)?;
         items
@@ -84,6 +85,46 @@ impl Watch {
                 }
                 paths.push(path.clone());
                 if matches!(debounced_event.event.kind, EventKind::Create(_)) {
+                    create_paths.insert(path.clone(), true);
+                } else {
+                    create_paths.remove(path);
+                }
+            });
+        });
+        paths.sort();
+        paths.dedup();
+        // println!("paths: {:?}", paths);
+
+        let mut watch_events = vec![];
+        paths.iter().for_each(|path| {
+            watch_events.push(WatchEvent {
+                path: path.clone(),
+                event_type: if create_paths.get(path).is_some() {
+                    WatchEventType::Added
+                } else if path.exists() {
+                    // Added or Modified?
+                    WatchEventType::Added
+                } else {
+                    WatchEventType::Removed
+                },
+            });
+        });
+        watch_events
+    }
+
+    pub fn normalize_events2(events: Vec<notify::Event>) -> Vec<WatchEvent> {
+        // events: { event: { kind, paths: string[] }, time: { tv_sec, tv_nsec } }[]
+        // collect paths
+        let mut paths = vec![];
+        let mut create_paths = HashMap::new();
+        events.iter().for_each(|debounced_event| {
+            let kind = &debounced_event.kind;
+            debounced_event.paths.iter().for_each(|path| {
+                if Self::should_ignore_event(path, kind) {
+                    return;
+                }
+                paths.push(path.clone());
+                if matches!(debounced_event.kind, EventKind::Create(_)) {
                     create_paths.insert(path.clone(), true);
                 } else {
                     create_paths.remove(path);

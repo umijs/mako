@@ -11,6 +11,7 @@ use mako_core::hyper::server::conn::AddrIncoming;
 use mako_core::hyper::server::Builder;
 use mako_core::hyper::service::{make_service_fn, service_fn};
 use mako_core::hyper::{Body, Request, Server};
+use mako_core::notify::{self, RecommendedWatcher, Watcher};
 use mako_core::notify_debouncer_full::new_debouncer;
 use mako_core::tokio::sync::broadcast;
 use mako_core::tracing::debug;
@@ -82,11 +83,12 @@ impl DevServer {
 
     async fn handle_requests(
         req: Request<Body>,
-        _context: Arc<Context>,
+        context: Arc<Context>,
         staticfile: hyper_staticfile::Static,
         txws: broadcast::Sender<WsMessage>,
     ) -> Result<hyper::Response<Body>> {
         let path = req.uri().path();
+        let path_without_slash_start = path.trim_start_matches('/');
         let not_found_response = || {
             hyper::Response::builder()
                 .status(hyper::StatusCode::NOT_FOUND)
@@ -109,24 +111,29 @@ impl DevServer {
                 }
             }
             _ => {
-                let res = staticfile.serve(req).await;
-                // res.map_err(anyhow::Error::from);
-                // Ok(res)
-                match res {
-                    Ok(mut res) => {
-                        if let Some(content_type) = res.headers().get(CONTENT_TYPE).cloned() {
-                            if let Ok(c_str) = content_type.to_str() {
-                                res.headers_mut().insert(
-                                    CONTENT_TYPE,
-                                    HeaderValue::from_str(&format!("{c_str}; charset=utf-8"))
-                                        .unwrap(),
-                                );
-                            }
-                        }
-                        Ok(res)
-                    }
-                    Err(_) => Ok(not_found_response()),
+                // for bundle outputs
+                // staticfile has 302 problems when modify tooooo fast in 1 second
+                // it will response 302 and we will get the old file
+                // TODO: fix the 302 problem?
+                if let Some(res) = context.get_static_content(path_without_slash_start) {
+                    println!(">>> static content: {}", path);
+                    let ext = path.rsplit('.').next();
+                    let content_type = match ext {
+                        None => "text/plain; charset=utf-8",
+                        Some("js") => "application/javascript; charset=utf-8",
+                        Some("css") => "text/css; charset=utf-8",
+                        Some("map") | Some("json") => "application/json; charset=utf-8",
+                        Some(_) => "text/plain; charset=utf-8",
+                    };
+                    return Ok(hyper::Response::builder()
+                        .status(hyper::StatusCode::OK)
+                        .header(CONTENT_TYPE, content_type)
+                        .body(hyper::Body::from(res))
+                        .unwrap());
                 }
+                // for hmr files
+                let res = staticfile.serve(req).await;
+                res.map_err(anyhow::Error::from)
             }
         }
     }
@@ -141,7 +148,6 @@ impl DevServer {
         let task = tokio::spawn(async move {
             loop {
                 if let Ok(msg) = receiver.recv().await {
-                    println!(">>> recv message: {:?}", msg);
                     if sender
                         .send(Message::text(format!(r#"{{"hash":"{}"}}"#, msg.hash)))
                         .await
@@ -158,7 +164,6 @@ impl DevServer {
                 break;
             }
         }
-        println!("abort");
         task.abort();
         Ok(())
     }
@@ -170,7 +175,8 @@ impl DevServer {
         callback: impl Fn(OnDevCompleteParams) + Clone,
     ) -> Result<()> {
         let (tx, rx) = mpsc::channel();
-        let mut debouncer = new_debouncer(Duration::from_millis(10), None, tx).unwrap();
+        // let mut watcher = RecommendedWatcher::new(tx, notify::Config::default())?;
+        let mut debouncer = new_debouncer(Duration::from_millis(0), None, tx).unwrap();
         let watcher = debouncer.watcher();
         Watch::watch(&root, watcher)?;
 
@@ -181,7 +187,6 @@ impl DevServer {
         for result in rx {
             let events = Watch::normalize_events(result.unwrap());
             if !events.is_empty() {
-                println!("events: {:?}", events);
                 let compiler = compiler.clone();
                 let txws = txws.clone();
                 let callback = callback.clone();
@@ -195,9 +200,6 @@ impl DevServer {
                 ) {
                     eprintln!("Error rebuilding: {:?}", e);
                 }
-                // if txws.receiver_count() > 0 {
-                //     txws.send(WsMessage { hash: 55555 }).unwrap();
-                // }
             }
         }
         Ok(())

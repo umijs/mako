@@ -71,17 +71,30 @@ removed:{:?}
 
 impl Compiler {
     pub fn update(&self, paths: Vec<WatchEvent>) -> Result<UpdateResult> {
+        println!("update: {:?}", &paths);
+        let module_graph = self.context.module_graph.read().unwrap();
         let paths = paths
             .into_iter()
             .map(|event| {
-                let update_type = match event.event_type {
-                    crate::watch::WatchEventType::Added => UpdateType::Add,
-                    crate::watch::WatchEventType::Modified => UpdateType::Modify,
-                    crate::watch::WatchEventType::Removed => UpdateType::Remove,
+                let pathbuf = PathBuf::from(event.path.clone());
+                let update_type = if pathbuf.exists() {
+                    let p_str = pathbuf.to_string_lossy().to_string();
+                    let with_as_module = format!("{}?asmodule", p_str);
+                    if module_graph.has_module(&event.path.clone().into())
+                        || module_graph.has_module(&with_as_module.into())
+                    {
+                        UpdateType::Modify
+                    } else {
+                        UpdateType::Add
+                    }
+                } else {
+                    UpdateType::Remove
                 };
                 (event.path, update_type)
             })
             .collect::<Vec<_>>();
+        drop(module_graph);
+        println!("update: {:?}", &paths);
         let mut update_result: UpdateResult = Default::default();
         let resolvers = Arc::new(get_resolvers(&self.context.config));
 
@@ -239,7 +252,7 @@ impl Compiler {
             .iter()
             .filter(|module| module.id.id.contains("?modules"))
         {
-            let origin_id = module.id.id.split('?').next().unwrap();
+            let origin_id: &str = module.id.id.split('?').next().unwrap();
             let css_modules_virtual_id = format!("{}?asmodule", origin_id);
             if modified.contains(&PathBuf::from(css_modules_virtual_id)) {
                 modified.push(PathBuf::from(module.id.id.clone()));

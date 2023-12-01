@@ -1,4 +1,4 @@
-export const foo = '123341123';
+export const foo = '1234';
 export const bar = 2;
 112112312321312123
 112312133331211
