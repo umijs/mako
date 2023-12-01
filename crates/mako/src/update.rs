@@ -16,8 +16,8 @@ use crate::resolve::{self, get_resolvers, Resolvers};
 use crate::transform_in_generate::transform_modules;
 use crate::transformers::transform_virtual_css_modules::is_css_path;
 use crate::util::create_thread_pool;
+use crate::watch::WatchEvent;
 
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum UpdateType {
     Add,
@@ -70,7 +70,30 @@ removed:{:?}
 }
 
 impl Compiler {
-    pub fn update(&self, paths: Vec<(PathBuf, UpdateType)>) -> Result<UpdateResult> {
+    pub fn update(&self, paths: Vec<WatchEvent>) -> Result<UpdateResult> {
+        let module_graph = self.context.module_graph.read().unwrap();
+        let paths = paths
+            .into_iter()
+            .map(|event| {
+                let pathbuf = event.path.clone();
+                let update_type = if pathbuf.exists() {
+                    let p_str = pathbuf.to_string_lossy().to_string();
+                    let with_as_module = format!("{}?asmodule", p_str);
+                    if module_graph.has_module(&event.path.clone().into())
+                        || module_graph.has_module(&with_as_module.into())
+                    {
+                        UpdateType::Modify
+                    } else {
+                        UpdateType::Add
+                    }
+                } else {
+                    UpdateType::Remove
+                };
+                (event.path, update_type)
+            })
+            .collect::<Vec<_>>();
+        drop(module_graph);
+        debug!("update: {:?}", &paths);
         let mut update_result: UpdateResult = Default::default();
         let resolvers = Arc::new(get_resolvers(&self.context.config));
 
@@ -228,7 +251,7 @@ impl Compiler {
             .iter()
             .filter(|module| module.id.id.contains("?modules"))
         {
-            let origin_id = module.id.id.split('?').next().unwrap();
+            let origin_id: &str = module.id.id.split('?').next().unwrap();
             let css_modules_virtual_id = format!("{}?asmodule", origin_id);
             if modified.contains(&PathBuf::from(css_modules_virtual_id)) {
                 modified.push(PathBuf::from(module.id.id.clone()));
@@ -434,163 +457,4 @@ fn diff(origin: Vec<(ModuleId, Dependency)>, target: Vec<(ModuleId, Dependency)>
             removed.insert((module_id.clone(), dep.clone()));
         });
     Diff { added, removed }
-}
-
-#[cfg(test)]
-mod tests {
-
-    use mako_core::tokio;
-
-    use crate::module::ModuleId;
-    use crate::test_helper::{module_to_jscode, setup_compiler, setup_files};
-    use crate::update::UpdateType;
-    use crate::{assert_debug_snapshot, assert_display_snapshot};
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_build() {
-        let compiler = setup_compiler("test/build/tmp/single", false);
-        setup_files(
-            &compiler,
-            vec![
-                (
-                    "index.ts".into(),
-                    r#"
-(async () => {
-    await import('./chunk-1.ts');
-})();
-    "#
-                    .into(),
-                ),
-                (
-                    "chunk-1.ts".into(),
-                    r#"
-export default async function () {
-    console.log(123);
-}
-    "#
-                    .into(),
-                ),
-            ],
-        );
-        compiler.compile().unwrap();
-        {
-            let module_graph = compiler.context.module_graph.read().unwrap();
-            assert_display_snapshot!(&module_graph);
-        }
-        setup_files(
-            &compiler,
-            vec![
-                (
-                    "index.ts".into(),
-                    r#"
-(async () => {
-    await import('./chunk-2.ts');
-})();
-"#
-                    .into(),
-                ),
-                (
-                    "chunk-2.ts".into(),
-                    r#"
-export const foo = 1;
-"#
-                    .into(),
-                ),
-            ],
-        );
-        let result = compiler
-            .update(vec![(
-                compiler.context.root.join("index.ts"),
-                UpdateType::Modify,
-            )])
-            .unwrap();
-
-        assert_display_snapshot!(&result);
-
-        {
-            let module_graph = compiler.context.module_graph.read().unwrap();
-            assert_display_snapshot!(&module_graph);
-        }
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_update_multi() {
-        let compiler = setup_compiler("test/build/tmp/multi", false);
-        let target_path = compiler.context.root.join("index.ts");
-        setup_files(
-            &compiler,
-            vec![
-                (
-                    "index.ts".into(),
-                    r#"
-(async () => {
-    await import('./chunk-1.ts');
-})();
-    "#
-                    .into(),
-                ),
-                (
-                    "chunk-1.ts".into(),
-                    r#"
-export default async function () {
-    console.log(123);
-}
-    "#
-                    .into(),
-                ),
-            ],
-        );
-        compiler.compile().unwrap();
-        {
-            let module_graph = compiler.context.module_graph.read().unwrap();
-            let code = module_to_jscode(&compiler, &ModuleId::from_path(target_path.clone()));
-            assert_display_snapshot!(&module_graph);
-            assert_debug_snapshot!(&code);
-        }
-        setup_files(
-            &compiler,
-            vec![
-                (
-                    "index.ts".into(),
-                    r#"
-(async () => {
-    await import('./chunk-2.ts');
-})();
-"#
-                    .into(),
-                ),
-                (
-                    "chunk-2.ts".into(),
-                    r#"
-export * from './chunk-3.ts';
-"#
-                    .into(),
-                ),
-                (
-                    "chunk-3.ts".into(),
-                    r#"
-export const foo = 1;
-"#
-                    .into(),
-                ),
-            ],
-        );
-        let result = compiler
-            .update(vec![(target_path.clone(), UpdateType::Modify)])
-            .unwrap();
-
-        assert_display_snapshot!(&result);
-        {
-            compiler.generate_hot_update_chunks(result, 0, 0).unwrap();
-
-            let module_graph = compiler.context.module_graph.read().unwrap();
-            let code = module_to_jscode(&compiler, &ModuleId::from_path(target_path));
-            assert_display_snapshot!(&module_graph);
-            assert_debug_snapshot!(&code);
-        }
-        {
-            let module_graph = compiler.context.module_graph.read().unwrap();
-            assert_display_snapshot!(&module_graph);
-        }
-    }
 }

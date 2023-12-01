@@ -1,203 +1,329 @@
 use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::{Instant, UNIX_EPOCH};
+use std::sync::{mpsc, Arc};
+use std::time::{Duration, Instant, UNIX_EPOCH};
 
+use mako_core::anyhow::{self, Result};
 use mako_core::colored::Colorize;
 use mako_core::futures::{SinkExt, StreamExt};
 use mako_core::hyper::header::CONTENT_TYPE;
-use mako_core::hyper::http::HeaderValue;
-use mako_core::hyper::server::conn::AddrIncoming;
-use mako_core::hyper::server::Builder;
+use mako_core::hyper::service::{make_service_fn, service_fn};
 use mako_core::hyper::{Body, Request, Server};
-use mako_core::rayon::ThreadPoolBuilder;
-use mako_core::tokio::sync::broadcast::{Receiver, Sender};
-use mako_core::tokio::try_join;
+use mako_core::notify_debouncer_full::new_debouncer;
+use mako_core::tokio::sync::broadcast;
 use mako_core::tracing::debug;
 use mako_core::tungstenite::Message;
 use mako_core::{hyper, hyper_staticfile, hyper_tungstenite, tokio};
 
-use crate::compiler;
-use crate::compiler::Compiler;
-use crate::watch::watch;
-
-type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
-
-fn bind_idle_port(port: u16) -> Builder<AddrIncoming> {
-    let mut port = port;
-    // 循环调用 try_bind, err 继续寻找端口, ok 返回实例
-    loop {
-        match Server::try_bind(&([127, 0, 0, 1], port).into()) {
-            Ok(builder) => {
-                return builder;
-            }
-            Err(_) => {
-                port += 1;
-            }
-        }
-    }
-}
+use crate::compiler::{Compiler, Context};
+use crate::watch::{Watch, WatchEvent};
 
 pub struct DevServer {
-    watcher: Arc<ProjectWatch>,
+    root: PathBuf,
     compiler: Arc<Compiler>,
 }
 
 impl DevServer {
     pub fn new(root: PathBuf, compiler: Arc<Compiler>) -> Self {
-        Self {
-            watcher: Arc::new(ProjectWatch::new(root, compiler.clone())),
-            compiler,
+        Self { root, compiler }
+    }
+
+    pub async fn serve(
+        &self,
+        callback: impl Fn(OnDevCompleteParams) + Send + Sync + Clone + 'static,
+    ) {
+        let (txws, _) = broadcast::channel::<WsMessage>(256);
+
+        // watch
+        let root = self.root.clone();
+        let compiler = self.compiler.clone();
+        let txws_watch = txws.clone();
+        std::thread::spawn(move || {
+            if let Err(e) = Self::watch_for_changes(root, compiler, txws_watch, callback) {
+                eprintln!("Error watching files: {:?}", e);
+            }
+        });
+
+        // server
+        let port = self
+            .compiler
+            .context
+            .config
+            .hmr_port
+            .parse::<u16>()
+            .unwrap();
+        // TODO: host
+        // let host = self.compiler.context.config.hmr_host.clone();
+        // TODO: find free port
+        let addr = ([127, 0, 0, 1], port);
+        let context = self.compiler.context.clone();
+        let txws = txws.clone();
+        let make_svc = make_service_fn(move |_conn| {
+            let context = context.clone();
+            let txws = txws.clone();
+            async move {
+                Ok::<_, hyper::Error>(service_fn(move |req| {
+                    let context = context.clone();
+                    let txws = txws.clone();
+                    let staticfile =
+                        hyper_staticfile::Static::new(context.config.output.path.clone());
+                    async move { Self::handle_requests(req, context, staticfile, txws).await }
+                }))
+            }
+        });
+        let server = Server::bind(&addr.into()).serve(make_svc);
+        // TODO: print when mako is run standalone
+        // println!("Listening on http://{:?}", addr);
+        if let Err(e) = server.await {
+            eprintln!("Error starting server: {:?}", e);
         }
     }
 
-    pub async fn serve(&self, callback: impl Fn(OnDevCompleteParams) + Send + Sync + 'static) {
-        self.watcher.start(callback);
-
-        async fn serve_websocket(
-            websocket: hyper_tungstenite::HyperWebsocket,
-            mut rx: Receiver<WsMessage>,
-        ) -> Result<(), Error> {
-            let websocket = websocket.await?;
-
-            let (mut sender, mut ws_recv) = websocket.split();
-
-            let fwd_task = tokio::spawn(async move {
-                loop {
-                    if let Ok(msg) = rx.recv().await {
-                        if sender
-                            .send(Message::text(format!(r#"{{"hash":"{}"}}"#, msg.hash)))
-                            .await
-                            .is_err()
-                        {
-                            break;
-                        }
-                    }
-                }
-            });
-
-            while let Some(message) = ws_recv.next().await {
-                if let Ok(Message::Close(_)) = message {
-                    break;
-                }
-            }
-
-            // release rx;
-            debug!("websocket disconnect");
-            fwd_task.abort();
-
-            Ok(())
-        }
-        let arc_watcher = self.watcher.clone();
-        let compiler = self.compiler.clone();
-        let handle_request = move |req: Request<Body>| {
-            let for_fn = compiler.clone();
-            let w = arc_watcher.clone();
-            async move {
-                let path = req.uri().path().strip_prefix('/').unwrap_or("");
-
-                let static_serve =
-                    hyper_staticfile::Static::new(for_fn.context.config.output.path.clone());
-
-                match path {
-                    "__/hmr-ws" => {
-                        if hyper_tungstenite::is_upgrade_request(&req) {
-                            let (response, websocket) =
-                                hyper_tungstenite::upgrade(req, None).unwrap();
-
-                            tokio::spawn(async move {
-                                if let Err(e) = serve_websocket(websocket, w.clone_receiver()).await
-                                {
-                                    eprintln!("Error in websocket connection: {}", e);
-                                }
-                            });
-
-                            Ok(response)
-                        } else {
-                            Ok::<_, hyper::Error>(
-                                hyper::Response::builder()
-                                    .status(hyper::StatusCode::NOT_FOUND)
-                                    .body(hyper::Body::empty())
-                                    .unwrap(),
-                            )
-                        }
-                    }
-                    _ => {
-                        if let Some(res) = for_fn.context.get_static_content(path) {
-                            let ext = path.rsplit('.').next();
-
-                            let content_type = match ext {
-                                None => "text/plain; charset=utf-8",
-                                Some("js") => "application/javascript; charset=utf-8",
-                                Some("css") => "text/css; charset=utf-8",
-                                Some("map") | Some("json") => "application/json; charset=utf-8",
-                                Some(_) => "text/plain; charset=utf-8",
-                            };
-
-                            return Ok(hyper::Response::builder()
-                                .status(hyper::StatusCode::OK)
-                                .header(CONTENT_TYPE, content_type)
-                                .body(hyper::Body::from(res))
-                                .unwrap());
-                        }
-
-                        // try chunk content in memory first, else use dist content
-                        match static_serve.serve(req).await {
-                            Ok(mut res) => {
-                                if let Some(content_type) = res.headers().get(CONTENT_TYPE).cloned()
-                                {
-                                    if let Ok(c_str) = content_type.to_str() {
-                                        if c_str.contains("javascript") || c_str.contains("text") {
-                                            res.headers_mut()
-                                                .insert(
-                                                    CONTENT_TYPE,
-                                                    HeaderValue::from_str(&format!(
-                                                        "{c_str}; charset=utf-8"
-                                                    ))
-                                                    .unwrap(),
-                                                )
-                                                .unwrap();
-                                        }
-                                    }
-                                }
-                                Ok(res)
-                            }
-                            Err(_) => Ok::<_, hyper::Error>(
-                                hyper::Response::builder()
-                                    .status(hyper::StatusCode::NOT_FOUND)
-                                    .body(hyper::Body::from("404 - Page not found"))
-                                    .unwrap(),
-                            ),
-                        }
-                    }
-                }
-            }
+    async fn handle_requests(
+        req: Request<Body>,
+        context: Arc<Context>,
+        staticfile: hyper_staticfile::Static,
+        txws: broadcast::Sender<WsMessage>,
+    ) -> Result<hyper::Response<Body>> {
+        let path = req.uri().path();
+        let path_without_slash_start = path.trim_start_matches('/');
+        let not_found_response = || {
+            hyper::Response::builder()
+                .status(hyper::StatusCode::NOT_FOUND)
+                .body(hyper::Body::empty())
+                .unwrap()
         };
-        let dev_service = hyper::service::make_service_fn(move |_conn| {
-            let my_fn = handle_request.clone();
-            async move { Ok::<_, hyper::Error>(hyper::service::service_fn(my_fn)) }
-        });
+        match path {
+            "/__/hmr-ws" => {
+                if hyper_tungstenite::is_upgrade_request(&req) {
+                    debug!("new websocket connection");
+                    let (response, websocket) = hyper_tungstenite::upgrade(req, None).unwrap();
+                    let txws = txws.clone();
+                    tokio::spawn(async move {
+                        let receiver = txws.subscribe();
+                        Self::handle_websocket(websocket, receiver).await.unwrap();
+                    });
+                    Ok(response)
+                } else {
+                    Ok(not_found_response())
+                }
+            }
+            _ => {
+                // for bundle outputs
+                // staticfile has 302 problems when modify tooooo fast in 1 second
+                // it will response 302 and we will get the old file
+                // TODO: fix the 302 problem?
+                if let Some(res) = context.get_static_content(path_without_slash_start) {
+                    debug!("serve with context.get_static_content: {}", path);
+                    let ext = path.rsplit('.').next();
+                    let content_type = match ext {
+                        None => "text/plain; charset=utf-8",
+                        Some("js") => "application/javascript; charset=utf-8",
+                        Some("css") => "text/css; charset=utf-8",
+                        Some("map") | Some("json") => "application/json; charset=utf-8",
+                        Some(_) => "text/plain; charset=utf-8",
+                    };
+                    return Ok(hyper::Response::builder()
+                        .status(hyper::StatusCode::OK)
+                        .header(CONTENT_TYPE, content_type)
+                        .body(hyper::Body::from(res))
+                        .unwrap());
+                }
+                // for hmr files
+                debug!("serve with staticfile server: {}", path);
+                let res = staticfile.serve(req).await;
+                res.map_err(anyhow::Error::from)
+            }
+        }
+    }
 
-        let port = self.compiler.context.config.hmr_port.clone();
-        let port = port.parse::<u16>().unwrap();
-
-        let dev_server_handle = tokio::spawn(async move {
-            if let Err(_e) = bind_idle_port(port).serve(dev_service).await {
-                println!("done");
+    // TODO: refact socket message data structure
+    async fn handle_websocket(
+        websocket: hyper_tungstenite::HyperWebsocket,
+        mut receiver: broadcast::Receiver<WsMessage>,
+    ) -> Result<()> {
+        let websocket = websocket.await?;
+        let (mut sender, mut ws_recv) = websocket.split();
+        let task = tokio::spawn(async move {
+            loop {
+                if let Ok(msg) = receiver.recv().await {
+                    if sender
+                        .send(Message::text(format!(r#"{{"hash":"{}"}}"#, msg.hash)))
+                        .await
+                        .is_err()
+                    {
+                        break;
+                    }
+                }
             }
         });
-
-        // build_handle 必须在 dev_server_handle 之前
-        // 否则会导致 build_handle 无法收到前几个消息，原因未知
-        let join_error = try_join!(dev_server_handle);
-        if let Err(e) = join_error {
-            eprintln!("Error in dev server: {:?}", e);
+        while let Some(message) = ws_recv.next().await {
+            if let Ok(Message::Close(_)) = message {
+                break;
+            }
         }
+        debug!("websocket connection disconnected");
+        task.abort();
+        Ok(())
+    }
+
+    fn watch_for_changes(
+        root: PathBuf,
+        compiler: Arc<Compiler>,
+        txws: broadcast::Sender<WsMessage>,
+        callback: impl Fn(OnDevCompleteParams) + Clone,
+    ) -> Result<()> {
+        let (tx, rx) = mpsc::channel();
+        // let mut watcher = RecommendedWatcher::new(tx, notify::Config::default())?;
+        let mut debouncer = new_debouncer(Duration::from_millis(10), None, tx).unwrap();
+        let watcher = debouncer.watcher();
+        Watch::watch(&root, watcher)?;
+
+        let initial_hash = compiler.full_hash();
+        let mut last_cache_hash = Box::new(initial_hash);
+        let mut hmr_hash = Box::new(initial_hash);
+
+        for result in rx {
+            let events = Watch::normalize_events(result.unwrap());
+            if !events.is_empty() {
+                let compiler = compiler.clone();
+                let txws = txws.clone();
+                let callback = callback.clone();
+                if let Err(e) = Self::rebuild(
+                    events,
+                    compiler,
+                    txws,
+                    &mut last_cache_hash,
+                    &mut hmr_hash,
+                    callback,
+                ) {
+                    eprintln!("Error rebuilding: {:?}", e);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn rebuild(
+        events: Vec<WatchEvent>,
+        compiler: Arc<Compiler>,
+        txws: broadcast::Sender<WsMessage>,
+        last_cache_hash: &mut Box<u64>,
+        hmr_hash: &mut Box<u64>,
+        callback: impl Fn(OnDevCompleteParams),
+    ) -> Result<()> {
+        debug!("watch events detected: {:?}", events);
+        debug!("checking update status...");
+        let res = compiler.update(events);
+        let has_missing_deps = {
+            compiler
+                .context
+                .modules_with_missing_deps
+                .read()
+                .unwrap()
+                .len()
+                > 0
+        };
+        debug!("has_missing_deps: {}", has_missing_deps);
+        debug!("checking update status... done");
+
+        if let Err(e) = res {
+            debug!("checking update status... failed");
+            println!("Compiling...");
+            let err = format_error(&e);
+            eprintln!("{}", "Build failed.".to_string().red());
+            eprintln!("{}", err);
+            // do not return error, since it's already printed
+            return Ok(());
+        }
+
+        let res = res.unwrap();
+        let is_updated = res.is_updated();
+        debug!("update status is ok, is_updated: {}", is_updated);
+        if !is_updated {
+            return Ok(());
+        }
+
+        println!("Compiling...");
+        let t_compiler = Instant::now();
+        let start_time = std::time::SystemTime::now();
+        let next_hash = compiler.generate_hot_update_chunks(res, **last_cache_hash, **hmr_hash);
+        debug!(
+            "hot update chunks generated, next_full_hash: {:?}",
+            next_hash
+        );
+        // do not print hot rebuilt message if there are missing deps
+        // since it's not a success rebuilt to user
+        if !has_missing_deps {
+            println!(
+                "Hot rebuilt in {}",
+                format!("{}ms", t_compiler.elapsed().as_millis()).bold()
+            );
+        }
+        if let Err(e) = next_hash {
+            eprintln!("Error in watch: {:?}", e);
+            return Err(e);
+        }
+        let (next_cache_hash, next_hmr_hash) = next_hash.unwrap();
+        debug!(
+            "hash info, next: {:?}, last: {:?}, is_equal: {}",
+            next_cache_hash,
+            last_cache_hash,
+            next_cache_hash == **last_cache_hash
+        );
+        if next_cache_hash == **last_cache_hash {
+            debug!("hash equals, will not do full rebuild");
+            return Ok(());
+        } else {
+            **last_cache_hash = next_cache_hash;
+            **hmr_hash = next_hmr_hash;
+        }
+
+        debug!("full rebuild...");
+        if let Err(e) = compiler.emit_dev_chunks(next_cache_hash, next_hmr_hash) {
+            debug!("  > build failed: {:?}", e);
+            return Err(e);
+        }
+        debug!("full rebuild...done");
+        if !has_missing_deps {
+            println!(
+                "Full rebuilt in {}",
+                format!("{}ms", t_compiler.elapsed().as_millis()).bold()
+            );
+
+            let end_time = std::time::SystemTime::now();
+            callback(OnDevCompleteParams {
+                is_first_compile: false,
+                time: t_compiler.elapsed().as_millis() as u64,
+                stats: Stats {
+                    start_time: start_time.duration_since(UNIX_EPOCH).unwrap().as_millis() as u64,
+                    end_time: end_time.duration_since(UNIX_EPOCH).unwrap().as_millis() as u64,
+                },
+            });
+        }
+
+        let receiver_count = txws.receiver_count();
+        debug!("receiver count: {}", receiver_count);
+        if receiver_count > 0 {
+            txws.send(WsMessage { hash: **hmr_hash }).unwrap();
+            debug!("send message to clients");
+        }
+
+        Ok(())
     }
 }
 
-#[derive(Clone, Debug)]
-struct WsMessage {
-    hash: u64,
+pub fn format_error(e: &anyhow::Error) -> String {
+    // unescape
+    let mut err = e
+        .to_string()
+        .replace("\\n", "\n")
+        .replace("\\u{1b}", "\u{1b}")
+        .replace("\\\\", "\\");
+    // remove first char and last char
+    if err.starts_with('"') && err.ends_with('"') {
+        err = err[1..err.len() - 1].to_string();
+    }
+    err
 }
 
 pub struct OnDevCompleteParams {
@@ -211,159 +337,7 @@ pub struct Stats {
     pub end_time: u64,
 }
 
-struct ProjectWatch {
-    root: PathBuf,
-    compiler: std::sync::Arc<compiler::Compiler>,
-    tx: Sender<WsMessage>,
-}
-
-impl ProjectWatch {
-    pub fn new(root: PathBuf, c: Arc<compiler::Compiler>) -> Self {
-        let (tx, _) = tokio::sync::broadcast::channel::<WsMessage>(256);
-        Self {
-            compiler: c,
-            root,
-            tx,
-        }
-    }
-
-    pub fn start(&self, callback: impl Fn(OnDevCompleteParams) + Send + Sync + 'static) {
-        let c = self.compiler.clone();
-        let root = self.root.clone();
-        let tx = self.tx.clone();
-
-        let initial_hash = c.full_hash();
-
-        let mut last_cache_hash = Box::new(initial_hash);
-        let mut hmr_hash = Box::new(initial_hash);
-        debug!("last_full_hash: {:?}", last_cache_hash);
-
-        let watch_compiler = c.clone();
-
-        let pool = ThreadPoolBuilder::new().build().unwrap();
-        pool.spawn(move || {
-            watch(&root, |events| {
-                debug!("watch events detected: {:?}", events);
-                debug!("checking update status...");
-                let res = watch_compiler.update(events.into());
-                let has_missing_deps = {
-                    watch_compiler
-                        .context
-                        .modules_with_missing_deps
-                        .read()
-                        .unwrap()
-                        .len()
-                        > 0
-                };
-                debug!("has_missing_deps: {}", has_missing_deps);
-                debug!("checking update status... done");
-
-                match res {
-                    Err(err) => {
-                        debug!("update status is error: {:?}", err);
-                        println!("Compiling...");
-                        // unescape
-                        let mut err = err
-                            .to_string()
-                            .replace("\\n", "\n")
-                            .replace("\\u{1b}", "\u{1b}")
-                            .replace("\\\\", "\\");
-                        // remove first char and last char
-                        if err.starts_with('"') && err.ends_with('"') {
-                            err = err[1..err.len() - 1].to_string();
-                        }
-                        eprintln!("{}", "Build failed.".to_string().red());
-                        eprintln!("{}", err);
-                    }
-                    Ok(res) => {
-                        debug!("update status is ok, is_updated: {}", res.is_updated());
-                        if res.is_updated() {
-                            println!("Compiling...");
-                            let t_compiler = Instant::now();
-                            let start_time = std::time::SystemTime::now();
-                            let next_hash = watch_compiler.generate_hot_update_chunks(
-                                res,
-                                *last_cache_hash,
-                                *hmr_hash,
-                            );
-                            debug!(
-                                "hot update chunks generated, next_full_hash: {:?}",
-                                next_hash
-                            );
-
-                            // do not print hot rebuilt message if there are missing deps
-                            // since it's not a success rebuilt to user
-                            if !has_missing_deps {
-                                println!(
-                                    "Hot rebuilt in {}",
-                                    format!("{}ms", t_compiler.elapsed().as_millis()).bold()
-                                );
-                            }
-
-                            if let Err(e) = next_hash {
-                                eprintln!("Error in watch: {:?}", e);
-                                return;
-                            }
-
-                            let (next_cache_hash, next_hmr_hash) = next_hash.unwrap();
-                            debug!(
-                                "hash info, next: {:?}, last: {:?}, is_equal: {}",
-                                next_cache_hash,
-                                last_cache_hash,
-                                next_cache_hash == *last_cache_hash
-                            );
-                            if next_cache_hash == *last_cache_hash {
-                                debug!("hash equals, will not do full rebuild");
-                                return;
-                            } else {
-                                *last_cache_hash = next_cache_hash;
-                                *hmr_hash = next_hmr_hash;
-                            }
-
-                            debug!("full rebuild...");
-                            if let Err(e) = c.emit_dev_chunks(next_cache_hash, next_hmr_hash) {
-                                debug!("  > build failed: {:?}", e);
-                                return;
-                            }
-                            debug!("full rebuild...done");
-                            if !has_missing_deps {
-                                println!(
-                                    "Full rebuilt in {}",
-                                    format!("{}ms", t_compiler.elapsed().as_millis()).bold()
-                                );
-
-                                let end_time = std::time::SystemTime::now();
-                                callback(OnDevCompleteParams {
-                                    is_first_compile: false,
-                                    time: t_compiler.elapsed().as_millis() as u64,
-                                    stats: Stats {
-                                        start_time: start_time
-                                            .duration_since(UNIX_EPOCH)
-                                            .unwrap()
-                                            .as_millis()
-                                            as u64,
-                                        end_time: end_time
-                                            .duration_since(UNIX_EPOCH)
-                                            .unwrap()
-                                            .as_millis()
-                                            as u64,
-                                    },
-                                });
-                            }
-
-                            debug!("receiver count: {}", tx.receiver_count());
-                            if tx.receiver_count() > 0 {
-                                tx.send(WsMessage { hash: *hmr_hash }).unwrap();
-                                debug!("send message to clients");
-                            }
-                        }
-                    }
-                }
-            });
-        });
-    }
-
-    pub fn clone_receiver(&self) -> Receiver<WsMessage> {
-        self.tx.subscribe()
-    }
+#[derive(Clone, Debug)]
+struct WsMessage {
+    hash: u64,
 }
