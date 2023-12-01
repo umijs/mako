@@ -6,12 +6,8 @@ use mako_core::anyhow::{self, Result};
 use mako_core::colored::Colorize;
 use mako_core::futures::{SinkExt, StreamExt};
 use mako_core::hyper::header::CONTENT_TYPE;
-use mako_core::hyper::http::HeaderValue;
-use mako_core::hyper::server::conn::AddrIncoming;
-use mako_core::hyper::server::Builder;
 use mako_core::hyper::service::{make_service_fn, service_fn};
 use mako_core::hyper::{Body, Request, Server};
-use mako_core::notify::{self, RecommendedWatcher, Watcher};
 use mako_core::notify_debouncer_full::new_debouncer;
 use mako_core::tokio::sync::broadcast;
 use mako_core::tracing::debug;
@@ -43,7 +39,7 @@ impl DevServer {
         let txws_watch = txws.clone();
         std::thread::spawn(move || {
             if let Err(e) = Self::watch_for_changes(root, compiler, txws_watch, callback) {
-                println!("Error watching files: {:?}", e);
+                eprintln!("Error watching files: {:?}", e);
             }
         });
 
@@ -75,9 +71,10 @@ impl DevServer {
             }
         });
         let server = Server::bind(&addr.into()).serve(make_svc);
-        println!("Listening on http://{:?}", addr);
+        // TODO: print when mako is run standalone
+        // println!("Listening on http://{:?}", addr);
         if let Err(e) = server.await {
-            println!("Error starting server: {:?}", e);
+            eprintln!("Error starting server: {:?}", e);
         }
     }
 
@@ -98,7 +95,7 @@ impl DevServer {
         match path {
             "/__/hmr-ws" => {
                 if hyper_tungstenite::is_upgrade_request(&req) {
-                    println!(">>> upgrade request");
+                    debug!("new websocket connection");
                     let (response, websocket) = hyper_tungstenite::upgrade(req, None).unwrap();
                     let txws = txws.clone();
                     tokio::spawn(async move {
@@ -116,7 +113,7 @@ impl DevServer {
                 // it will response 302 and we will get the old file
                 // TODO: fix the 302 problem?
                 if let Some(res) = context.get_static_content(path_without_slash_start) {
-                    println!(">>> static content: {}", path);
+                    debug!("serve with context.get_static_content: {}", path);
                     let ext = path.rsplit('.').next();
                     let content_type = match ext {
                         None => "text/plain; charset=utf-8",
@@ -132,6 +129,7 @@ impl DevServer {
                         .unwrap());
                 }
                 // for hmr files
+                debug!("serve with staticfile server: {}", path);
                 let res = staticfile.serve(req).await;
                 res.map_err(anyhow::Error::from)
             }
@@ -158,12 +156,12 @@ impl DevServer {
                 }
             }
         });
-        // sender.send(Message::text(r#"{"hash":"initial"}"#)).await?;
         while let Some(message) = ws_recv.next().await {
             if let Ok(Message::Close(_)) = message {
                 break;
             }
         }
+        debug!("websocket connection disconnected");
         task.abort();
         Ok(())
     }
@@ -176,7 +174,7 @@ impl DevServer {
     ) -> Result<()> {
         let (tx, rx) = mpsc::channel();
         // let mut watcher = RecommendedWatcher::new(tx, notify::Config::default())?;
-        let mut debouncer = new_debouncer(Duration::from_millis(0), None, tx).unwrap();
+        let mut debouncer = new_debouncer(Duration::from_millis(10), None, tx).unwrap();
         let watcher = debouncer.watcher();
         Watch::watch(&root, watcher)?;
 
@@ -231,8 +229,11 @@ impl DevServer {
         if let Err(e) = res {
             debug!("checking update status... failed");
             println!("Compiling...");
-            eprintln!("{}: {}", "error".red(), e);
-            return Err(e);
+            let err = format_error(&e);
+            eprintln!("{}", "Build failed.".to_string().red());
+            eprintln!("{}", err);
+            // do not return error, since it's already printed
+            return Ok(());
         }
 
         let res = res.unwrap();
@@ -309,6 +310,20 @@ impl DevServer {
 
         Ok(())
     }
+}
+
+pub fn format_error(e: &anyhow::Error) -> String {
+    // unescape
+    let mut err = e
+        .to_string()
+        .replace("\\n", "\n")
+        .replace("\\u{1b}", "\u{1b}")
+        .replace("\\\\", "\\");
+    // remove first char and last char
+    if err.starts_with('"') && err.ends_with('"') {
+        err = err[1..err.len() - 1].to_string();
+    }
+    err
 }
 
 pub struct OnDevCompleteParams {

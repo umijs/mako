@@ -1,8 +1,2 @@
-export const foo = '1234';
+export const foo = 1;
 export const bar = 2;
-112112312321312123
-112312133331211
-2121411211
-311123
-1
-1

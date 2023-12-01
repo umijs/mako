@@ -1,11 +1,11 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
-use std::time::Duration;
 
 use mako_core::anyhow;
 use mako_core::notify::{self, EventKind, Watcher};
-use mako_core::notify_debouncer_full::{new_debouncer, DebouncedEvent};
+use mako_core::notify_debouncer_full::DebouncedEvent;
+use mako_core::tracing::debug;
 
 #[derive(Debug)]
 pub struct WatchEvent {
@@ -49,13 +49,13 @@ impl Watch {
         Ok(())
     }
 
-    fn should_ignore_watch(path: &PathBuf) -> bool {
+    fn should_ignore_watch(path: &Path) -> bool {
         let path = path.to_string_lossy();
         let ignore_list = [".git", "node_modules", ".DS_Store", "dist"];
         ignore_list.iter().any(|ignored| path.ends_with(ignored))
     }
 
-    fn should_ignore_event(path: &PathBuf, kind: &EventKind) -> bool {
+    fn should_ignore_event(path: &Path, kind: &EventKind) -> bool {
         if matches!(
             kind,
             EventKind::Modify(notify::event::ModifyKind::Metadata(_))
@@ -72,6 +72,7 @@ impl Watch {
         ignore_list.iter().any(|ignored| path.ends_with(ignored))
     }
 
+    // TODO: support notify::Event mode
     pub fn normalize_events(events: Vec<DebouncedEvent>) -> Vec<WatchEvent> {
         // events: { event: { kind, paths: string[] }, time: { tv_sec, tv_nsec } }[]
         // collect paths
@@ -93,7 +94,7 @@ impl Watch {
         });
         paths.sort();
         paths.dedup();
-        // println!("paths: {:?}", paths);
+        debug!("paths: {:?}", paths);
 
         let mut watch_events = vec![];
         paths.iter().for_each(|path| {
@@ -103,47 +104,7 @@ impl Watch {
                     WatchEventType::Added
                 } else if path.exists() {
                     // Added or Modified?
-                    WatchEventType::Added
-                } else {
-                    WatchEventType::Removed
-                },
-            });
-        });
-        watch_events
-    }
-
-    pub fn normalize_events2(events: Vec<notify::Event>) -> Vec<WatchEvent> {
-        // events: { event: { kind, paths: string[] }, time: { tv_sec, tv_nsec } }[]
-        // collect paths
-        let mut paths = vec![];
-        let mut create_paths = HashMap::new();
-        events.iter().for_each(|debounced_event| {
-            let kind = &debounced_event.kind;
-            debounced_event.paths.iter().for_each(|path| {
-                if Self::should_ignore_event(path, kind) {
-                    return;
-                }
-                paths.push(path.clone());
-                if matches!(debounced_event.kind, EventKind::Create(_)) {
-                    create_paths.insert(path.clone(), true);
-                } else {
-                    create_paths.remove(path);
-                }
-            });
-        });
-        paths.sort();
-        paths.dedup();
-        // println!("paths: {:?}", paths);
-
-        let mut watch_events = vec![];
-        paths.iter().for_each(|path| {
-            watch_events.push(WatchEvent {
-                path: path.clone(),
-                event_type: if create_paths.get(path).is_some() {
-                    WatchEventType::Added
-                } else if path.exists() {
-                    // Added or Modified?
-                    WatchEventType::Added
+                    WatchEventType::Modified
                 } else {
                     WatchEventType::Removed
                 },
