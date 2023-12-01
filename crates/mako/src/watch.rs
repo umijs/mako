@@ -28,7 +28,7 @@ pub struct Watch {
 
 impl Watch {
     // pub fn watch(root: &PathBuf, watcher: &mut notify::RecommendedWatcher) -> anyhow::Result<()> {
-    pub fn watch(root: &PathBuf, watcher: &mut notify::KqueueWatcher) -> anyhow::Result<()> {
+    pub fn watch(root: &PathBuf, watcher: &mut notify::RecommendedWatcher) -> anyhow::Result<()> {
         let items = std::fs::read_dir(root)?;
         items
             .into_iter()
