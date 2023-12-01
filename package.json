@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "changelog:format": "esno scripts/format-changelog.ts",
     "prepare": "husky install",
     "rome:format": "rome format --write .",
     "release": "esno scripts/release.ts",

@@ -170,7 +170,7 @@ impl Visit for DepCollectVisitor {
 }
 
 pub fn resolve_web_worker(new_expr: &NewExpr, unresolved_mark: Mark) -> Option<&Str> {
-    if !new_expr.args.is_some_and(|args| !args.is_empty()) || !new_expr.callee.is_ident() {
+    if !new_expr.args.as_ref().is_some_and(|args| !args.is_empty()) || !new_expr.callee.is_ident() {
         return None;
     }
 
@@ -181,7 +181,7 @@ pub fn resolve_web_worker(new_expr: &NewExpr, unresolved_mark: Mark) -> Option<&
 
             // new Worker(new URL(''), base);
             if let Expr::New(new_expr) = &*args[0].expr {
-                if !new_expr.args.is_some_and(|args| !args.is_empty())
+                if !new_expr.args.as_ref().is_some_and(|args| !args.is_empty())
                     || !new_expr.callee.is_ident()
                 {
                     return None;
@@ -235,6 +235,7 @@ pub fn is_dynamic_import(call_expr: &CallExpr) -> bool {
 pub fn is_commonjs_require(call_expr: &CallExpr, unresolved_mark: &Mark) -> bool {
     if let Callee::Expr(box Expr::Ident(ident)) = &call_expr.callee {
         ident.sym == *"require" && is_native_ident(ident, unresolved_mark)
+            || ident.sym == *"__mako_require__"
     } else {
         false
     }
@@ -243,10 +244,7 @@ pub fn is_commonjs_require(call_expr: &CallExpr, unresolved_mark: &Mark) -> bool
 pub fn is_native_ident(ident: &Ident, unresolved_mark: &Mark) -> bool {
     let outer = ident.span.ctxt.outer();
 
-    outer == *unresolved_mark ||
-        // also treat empty mark require as native require
-        // because hmr code snippet ast cannot has correct mark
-        outer == Mark::root()
+    outer == *unresolved_mark
 }
 
 pub fn get_first_arg_str(call_expr: &CallExpr) -> Option<String> {

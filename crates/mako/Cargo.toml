@@ -1,9 +1,9 @@
 [package]
-name = "mako"
-version = "0.1.0"
-edition = "2021"
+name       = "mako"
+version    = "0.1.0"
+edition    = "2021"
 repository = "https://github.com/umijs/mako"
-license = "MIT"
+license    = "MIT"
 
 [[bin]]
 name = "mako"
@@ -11,16 +11,15 @@ path = "src/main.rs"
 test = false
 
 [dependencies]
-mako_core = { path = "../core" }
-serde = { workspace = true }
+mako_core  = { path = "../core" }
+serde      = { workspace = true }
 serde_json = { workspace = true }
-cached = { workspace = true }
-either = "1.9.0"
+cached     = { workspace = true }
 
 [dev-dependencies]
-insta = { version = "1.30.0", features = ["yaml"] }
-maplit = "1.0.2"
-testing = "0.35.10"
+insta                       = { version = "1.30.0", features = ["yaml"] }
+maplit                      = "1.0.2"
+testing                     = "0.35.10"
 swc_ecma_transforms_testing = "0.136.2"
 
 [features]

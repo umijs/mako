@@ -138,14 +138,14 @@ impl Compiler {
     fn merge_minimal_async_chunks(&self, options: &OptimizeChunkOptions) {
         let mut async_to_entry = vec![];
         let chunk_graph = self.context.chunk_graph.read().unwrap();
-        let chunks = chunk_graph.get_chunks();
+        let chunks = chunk_graph.get_all_chunks();
 
         // find minimal async chunks to merge to entry chunk
         // TODO: continue to merge deep-level async chunk
         for chunk in chunks {
             if chunk.chunk_type == ChunkType::Async && self.get_chunk_size(chunk) < options.min_size
             {
-                let entry_ids = chunk_graph.entry_dependents_chunk(chunk);
+                let entry_ids = chunk_graph.entry_dependents_chunk(&chunk.id);
 
                 // merge if there is only one entry chunk
                 // TODO: don't merge if entry chunk size is greater than max_size
@@ -193,7 +193,7 @@ impl Compiler {
         modules_in_chunk: Option<Vec<(&ModuleId, &ChunkId, &ChunkType)>>,
     ) {
         let chunk_graph = self.context.chunk_graph.read().unwrap();
-        let chunks = chunk_graph.get_chunks();
+        let chunks = chunk_graph.get_all_chunks();
         let modules_in_chunk = match modules_in_chunk {
             Some(modules_in_chunk) => modules_in_chunk,
             None => chunks.iter().fold(vec![], |mut acc, chunk| {
@@ -383,8 +383,9 @@ impl Compiler {
     }
 
     fn apply_optimize_infos(&self, optimize_chunks_infos: &Vec<OptimizeChunksInfo>) {
-        let mut edges = HashMap::new();
+        let mut edges_map: HashMap<ModuleId, IndexSet<ModuleId>> = HashMap::new();
         let mut chunk_graph = self.context.chunk_graph.write().unwrap();
+
         for info in optimize_chunks_infos {
             // create new chunk
             let info_chunk_id = ChunkId {
@@ -409,14 +410,23 @@ impl Compiler {
                     let chunk = chunk_graph.mut_chunk(chunk_id).unwrap();
 
                     chunk.remove_module(module_id);
-                    edges.insert(chunk_id.clone(), info_chunk_id.clone());
+
+                    // record edge between original chunk and new dependency chunks
+                    if let Some(value) = edges_map.get_mut(chunk_id) {
+                        value.insert(info_chunk_id.clone());
+                    } else {
+                        edges_map.insert(chunk_id.clone(), IndexSet::from([info_chunk_id.clone()]));
+                    }
                 }
             }
+        }
 
-            // add edge to original chunks
-            for (from, to) in edges.iter() {
-                chunk_graph.add_edge(from, to);
-            }
+        // add edge to original chunks
+        for (from, to) in edges_map
+            .iter()
+            .flat_map(|(from, tos)| tos.iter().map(move |to| (from, to)))
+        {
+            chunk_graph.add_edge(from, to);
         }
     }
 

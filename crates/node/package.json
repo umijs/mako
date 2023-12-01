@@ -1,6 +1,6 @@
 {
   "name": "@okamjs/okam",
-  "version": "0.0.37",
+  "version": "0.1.8-dev.20231201.1",
   "main": "index.js",
   "types": "index.d.ts",
   "napi": {
@@ -25,19 +25,22 @@
     "artifacts": "napi artifacts",
     "artifacts:local": "napi artifacts --dir . --dist npm",
     "build": "napi build --platform --release",
-    "build:mac:x86": "napi build --platform --release --target x86_64-apple-darwin",
-    "build:mac:aarch": "napi build --platform --release --target aarch64-apple-darwin",
-    "build:linux:x86": "napi build --platform --release --target x86_64-unknown-linux-gnu",
+    "postbuild": "npm run format:dts",
+    "build:mac:x86": "npm run build -- --target x86_64-apple-darwin",
+    "build:mac:aarch": "npm run build -- --target aarch64-apple-darwin",
+    "build:linux:x86": "npm run --ignore-scripts build -- --release --target x86_64-unknown-linux-gnu",
     "build:debug": "napi build --platform",
+    "postbuild:debug": "npm run format:dts",
     "prepublishOnly": "napi prepublish -t npm",
+    "format:dts": "rome format --write index.d.ts",
     "test": "ava",
     "universal": "napi universal",
     "version": "napi version",
     "release": "esno scripts/release.ts"
   },
   "optionalDependencies": {
-    "@okamjs/okam-darwin-arm64": "0.0.37",
-    "@okamjs/okam-darwin-x64": "0.0.37",
-    "@okamjs/okam-linux-x64-gnu": "0.0.37"
+    "@okamjs/okam-darwin-arm64": "0.1.8-dev.20231201.1",
+    "@okamjs/okam-darwin-x64": "0.1.8-dev.20231201.1",
+    "@okamjs/okam-linux-x64-gnu": "0.1.8-dev.20231201.1"
   }
 }

@@ -228,11 +228,13 @@ pub enum ExternalConfig {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct InjectItem {
     pub from: String,
     pub named: Option<String>,
     pub namespace: Option<bool>,
     pub exclude: Option<String>,
+    pub prefer_require: Option<bool>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -299,6 +301,8 @@ pub struct Config {
     pub _minifish: Option<MinifishConfig>,
     #[serde(rename = "optimizePackageImports")]
     pub optimize_package_imports: bool,
+    pub emotion: bool,
+    pub flex_bugs: bool,
 }
 
 pub(crate) fn hash_config(c: &Config) -> u64 {
@@ -357,7 +361,9 @@ const DEFAULT_CONFIG: &str = r#"
     "nodePolyfill": true,
     "ignores": [],
     "_minifish": null,
-    "optimizePackageImports": false
+    "optimizePackageImports": false,
+    "emotion": false,
+    "flexBugs": false,
 }
 "#;
 
@@ -459,6 +465,9 @@ impl Config {
                         config.entry.insert("index".to_string(), file_path);
                         break;
                     }
+                }
+                if config.entry.is_empty() {
+                    return Err(anyhow!("Entry is empty"));
                 }
             }
 

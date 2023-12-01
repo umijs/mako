@@ -23,6 +23,7 @@ use crate::compiler::Context;
 use crate::module::ModuleAst;
 use crate::plugin::PluginTransformJsParam;
 use crate::resolve::Resolvers;
+use crate::transformers::transform_css_flexbugs::CSSFlexbugs;
 use crate::transformers::transform_css_url_replacer::CSSUrlReplacer;
 use crate::transformers::transform_dynamic_import_to_require::DynamicImportToRequire;
 use crate::transformers::transform_env_replacer::{build_env_map, EnvReplacer};
@@ -197,6 +198,12 @@ fn transform_css(
         context,
     };
     ast.visit_mut_with(&mut css_handler);
+
+    // same ability as postcss-flexbugs-fixes
+    if context.config.flex_bugs {
+        ast.visit_mut_with(&mut CSSFlexbugs {});
+    }
+
     if context.config.px2rem {
         let mut px2rem = Px2Rem {
             path: &task.path,
@@ -214,6 +221,8 @@ mod tests {
     use std::collections::HashMap;
     use std::path::PathBuf;
     use std::sync::{Arc, Mutex, RwLock};
+
+    use mako_core::indexmap::IndexSet;
 
     use super::transform_js;
     use crate::ast::{build_js_ast, js_ast_to_code};
@@ -673,6 +682,26 @@ console.log(_nodefs.default, fs2, fs3);
         );
     }
 
+    #[test]
+    fn test_mako_require_cannot_be_replaced() {
+        // test will not panic
+        let code = r#"
+const require = window.require;
+"#
+        .trim();
+        let (code, _sourcemap) = transform_js_code(code, None, HashMap::from([]));
+
+        assert_eq!(
+            code,
+            r#"
+const require = window.require;
+
+//# sourceMappingURL=index.js.map
+"#
+            .trim()
+        );
+    }
+
     fn transform_js_code(
         origin: &str,
         path: Option<&str>,
@@ -716,6 +745,22 @@ console.log(_nodefs.default, fs2, fs3);
             static_cache: Default::default(),
         });
 
+        // add fake chunk for dynamic import
+        let mut chunk_graph = context.chunk_graph.write().unwrap();
+
+        chunk_graph.add_chunk(Chunk {
+            id: ModuleId {
+                id: "./foo".to_string(),
+            },
+            chunk_type: ChunkType::Async,
+            modules: IndexSet::from([ModuleId {
+                id: "./foo".to_string(),
+            }]),
+            content: None,
+            source_map: None,
+        });
+        drop(chunk_graph);
+
         let mut ast = build_js_ast(path, origin, &context).unwrap();
         transform_js(
             &mut ast.ast,
@@ -740,10 +785,10 @@ console.log(_nodefs.default, fs2, fs3);
                 ignored: vec![],
             },
             async_deps: &vec![],
-            is_entry: false,
             wrap_async: false,
             top_level_await: false,
-        });
+        })
+        .unwrap();
         let (code, _sourcemap) = js_ast_to_code(&ast.ast, &context, "index.js").unwrap();
         let code = code.replace("\"use strict\";", "");
         let code = code.trim().to_string();

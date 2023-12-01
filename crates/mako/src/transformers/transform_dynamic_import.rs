@@ -32,15 +32,26 @@ impl VisitMut for DynamicImport<'_> {
 
                     let chunk_ids = match chunk {
                         Some(chunk) => {
-                            let mut ids = chunk_graph
-                                .sync_dependencies_chunk(chunk)
-                                .iter()
-                                .map(|chunk_id| {
-                                    generate_module_id(chunk_id.id.clone(), self.context)
-                                })
-                                .collect::<Vec<_>>();
-                            ids.push(chunk.id.generate(self.context));
-                            ids
+                            [
+                                chunk_graph.sync_dependencies_chunk(&chunk.id),
+                                vec![chunk.id.clone()],
+                            ]
+                            .concat()
+                            .iter()
+                            .filter_map(|chunk_id| {
+                                let id = generate_module_id(chunk_id.id.clone(), self.context);
+
+                                // skip empty chunk because it will not be generated
+                                if chunk_graph
+                                    .chunk(chunk_id)
+                                    .is_some_and(|c| !c.modules.is_empty())
+                                {
+                                    Some(id)
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect::<Vec<_>>()
                         }
                         // None means the original chunk has been optimized to entry chunk
                         None => vec![],
@@ -69,12 +80,12 @@ impl VisitMut for DynamicImport<'_> {
                     });
 
                     let require_call = member_call(
-                        Expr::Ident(id("require")),
+                        Expr::Ident(id("__mako_require__")),
                         member_prop("bind"),
                         vec![
                             ExprOrSpread {
                                 spread: None,
-                                expr: Box::new(Expr::Ident(id("require"))),
+                                expr: Box::new(Expr::Ident(id("__mako_require__"))),
                             },
                             ExprOrSpread {
                                 spread: None,
@@ -113,7 +124,7 @@ mod tests {
     use crate::compiler::Context;
 
     #[test]
-    fn test_dyanmic_import() {
+    fn test_dynamic_import() {
         let code = r#"
 import("./foo");
         "#
@@ -124,8 +135,8 @@ import("./foo");
             code,
             r#"
 Promise.all([
-    require.ensure("./foo")
-]).then(require.bind(require, "./foo"));
+    __mako_require__.ensure("./foo")
+]).then(__mako_require__.bind(__mako_require__, "./foo"));
 
 //# sourceMappingURL=index.js.map
             "#
@@ -146,8 +157,8 @@ Promise.all([
 
         let globals = Globals::default();
         GLOBALS.set(&globals, || {
-            let mut dyanmic_import = DynamicImport { context: &context };
-            ast.ast.visit_mut_with(&mut dyanmic_import);
+            let mut dynamic_import = DynamicImport { context: &context };
+            ast.ast.visit_mut_with(&mut dynamic_import);
         });
 
         let (code, _sourcemap) = js_ast_to_code(&ast.ast, &context, "index.js").unwrap();

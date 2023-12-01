@@ -22,31 +22,102 @@ static LOG_INIT: Once = Once::new();
 
 #[napi(object)]
 pub struct JsHooks {
+    #[napi(ts_type = "(filePath: string) => Promise<string> ;")]
     pub on_compile_less: Option<JsFunction>,
+    #[napi(ts_type = "(data: {isFirstCompile: boolean; time: number; stats: {
+        startTime: number;
+        endTime: number;
+    }}) =>void ;")]
     pub on_build_complete: Option<JsFunction>,
 }
 
 #[napi(object)]
 pub struct BuildParams {
     pub root: String,
+
+    #[napi(ts_type = r#"
+{
+    entry?: Record<string, string>;
+    output?: {
+        path: string;
+        mode: "bundle" | "bundless" ;
+        esVersion?: string;
+        meta?: boolean;
+        preserveModules?: boolean;
+        preserveModulesRoot?: string;
+        asciiOnly?: boolean;
+    };
+    resolve?: {
+       alias?: Record<string, string>;
+       extensions?: string[];
+    };
+    manifest?: boolean;
+    manifestConfig?: {
+        fileName: string;
+        basePath: string;
+    };
+    mode?: "development" | "production";
+    define?: Record<string, string>;
+    devtool?: "source-map" | "inline-source-map" | "none";
+    externals?: Record<
+        string,
+        string | {
+            root: string;
+            script?: string;
+            subpath?: {
+                exclude?: string[];
+                rules: {
+                    regex: string;
+                    target: string | '$EMPTY';
+                    targetConverter?: 'PascalCase';
+                }[];
+            };
+        }
+    >;
+    copy?: string[];
+    code_splitting?: "auto" | "none";
+    providers?: Record<string, string[]>;
+    publicPath?: string;
+    inlineLimit?: number;
+    targets?: Record<string, number>;
+    platform?: "node" | "browser";
+    hmr?: boolean;
+    hmrPort?: string;
+    hmrHost?: string;
+    px2rem?: boolean;
+    px2remConfig?: {
+        root: number;
+        propBlackList: string[];
+        propWhiteList: string[];
+        selectorBlackList: string[];
+        selectorWhiteList: string[];
+    };
+    stats?: boolean;
+    hash?: boolean;
+    autoCssModules?: boolean;
+    ignoreCSSParserErrors?: boolean;
+    dynamicImportToRequire?: boolean;
+    umd?: string;
+    transformImport?: { libraryName: string; libraryDirectory?: string; style?: boolean | string }[];
+    clean?: boolean;
+    nodePolyfill?: boolean;
+    ignores?: string[];
+    minify?: boolean;
+    _minifish?: {
+        mapping: Record<string, string>;
+        metaPath?: string;
+        inject?: Record<string, { from:string;exclude?:string; preferRequire?: boolean } |
+            { from:string; named:string; exclude?:string; preferRequire?: boolean } |
+            { from:string; namespace: true; exclude?:string; preferRequire?: boolean }
+            >;
+    };
+}"#)]
     pub config: serde_json::Value,
     pub hooks: JsHooks,
     pub watch: bool,
 }
 
-fn call_on_build_complete(
-    on_build_complete: &Option<threadsafe_function::ThreadsafeFunction<OnDevCompleteParams>>,
-    params: OnDevCompleteParams,
-) {
-    if let Some(func) = on_build_complete {
-        func.call(
-            params,
-            threadsafe_function::ThreadsafeFunctionCallMode::NonBlocking,
-        );
-    }
-}
-
-#[napi]
+#[napi(ts_return_type = r#"Promise<void>"#)]
 pub fn build(env: Env, build_params: BuildParams) -> napi::Result<JsObject> {
     LOG_INIT.call_once(|| {
         init_logger();
@@ -104,8 +175,9 @@ pub fn build(env: Env, build_params: BuildParams) -> napi::Result<JsObject> {
 
     let root = std::path::PathBuf::from(&build_params.root);
     let default_config = serde_json::to_string(&build_params.config).unwrap();
-    let config = Config::new(&root, Some(&default_config), None)
-        .map_err(|e| napi::Error::new(Status::GenericFailure, format!("{}", e)))?;
+    let config = Config::new(&root, Some(&default_config), None).map_err(|e| {
+        napi::Error::new(Status::GenericFailure, format!("Load config failed: {}", e))
+    })?;
 
     if build_params.watch {
         let (deferred, promise) = env.create_deferred()?;
@@ -163,6 +235,18 @@ pub fn build(env: Env, build_params: BuildParams) -> napi::Result<JsObject> {
             deferred.resolve(move |env| env.get_undefined());
         });
         Ok(promise)
+    }
+}
+
+fn call_on_build_complete(
+    on_build_complete: &Option<threadsafe_function::ThreadsafeFunction<OnDevCompleteParams>>,
+    params: OnDevCompleteParams,
+) {
+    if let Some(func) = on_build_complete {
+        func.call(
+            params,
+            threadsafe_function::ThreadsafeFunctionCallMode::NonBlocking,
+        );
     }
 }
 

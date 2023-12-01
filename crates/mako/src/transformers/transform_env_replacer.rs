@@ -12,7 +12,7 @@ use mako_core::swc_ecma_ast::{
     MemberProp, MetaPropExpr, MetaPropKind, Module, ModuleItem, Null, Number, ObjectLit, Prop,
     PropName, PropOrSpread, Stmt, Str,
 };
-use mako_core::swc_ecma_utils::{collect_decls, quote_expr, ExprExt};
+use mako_core::swc_ecma_utils::{collect_decls, quote_ident, ExprExt};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::ast::build_js_ast;
@@ -120,7 +120,10 @@ impl VisitMut for EnvReplacer {
                                     *expr = env;
                                 } else {
                                     // replace with `undefined` if env not found
-                                    *expr = *quote_expr!(DUMMY_SP, undefined);
+                                    *expr = *Box::new(Expr::Ident(Ident::new(
+                                        js_word!("undefined"),
+                                        DUMMY_SP,
+                                    )));
                                 }
                             }
                         }
@@ -131,7 +134,10 @@ impl VisitMut for EnvReplacer {
                                 *expr = env;
                             } else {
                                 // replace with `undefined` if env not found
-                                *expr = *quote_expr!(DUMMY_SP, undefined);
+                                *expr = *Box::new(Expr::Ident(Ident::new(
+                                    js_word!("undefined"),
+                                    DUMMY_SP,
+                                )));
                             }
                         }
                         _ => {}
@@ -188,8 +194,9 @@ pub fn build_env_map(
 fn get_env_expr(v: Value, context: &Arc<Context>) -> Result<Expr> {
     match v {
         Value::String(v) => {
+            // the string content is treat as expression, so it has to be parsed
             let ast = build_js_ast("_define_.js", &v, context).unwrap();
-            let module = ast.ast.body.get(0).unwrap();
+            let module = ast.ast.body.first().unwrap();
 
             match module {
                 ModuleItem::Stmt(Stmt::Expr(stmt_expr)) => {
@@ -198,42 +205,50 @@ fn get_env_expr(v: Value, context: &Arc<Context>) -> Result<Expr> {
                 _ => Err(anyhow!(ConfigError::InvalidateDefineConfig(v))),
             }
         }
-        Value::Bool(v) => Ok(Expr::Lit(Lit::Bool(Bool {
+        Value::Bool(v) => Ok(Bool {
             span: DUMMY_SP,
             value: v,
-        }))),
-        Value::Number(v) => Ok(Expr::Lit(Lit::Num(Number {
+        }
+        .into()),
+        Value::Number(v) => Ok(Number {
             span: DUMMY_SP,
             raw: None,
             value: v.as_f64().unwrap(),
-        }))),
+        }
+        .into()),
         Value::Array(val) => {
             let mut elems = vec![];
             for item in val.iter() {
                 elems.push(Some(ExprOrSpread {
                     spread: None,
-                    expr: Box::new(get_env_expr(item.clone(), context)?),
+                    expr: get_env_expr(item.clone(), context)?.into(),
                 }));
             }
-            Ok(Expr::Array(ArrayLit {
+
+            Ok(ArrayLit {
                 span: DUMMY_SP,
                 elems,
-            }))
+            }
+            .into())
         }
-        Value::Null => Ok(Expr::Lit(Lit::Null(Null { span: DUMMY_SP }))),
+        Value::Null => Ok(Null { span: DUMMY_SP }.into()),
         Value::Object(val) => {
             let mut props = vec![];
             for (key, value) in val.iter() {
-                let prop = PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                    key: PropName::Ident(Ident::new(key.clone().into(), DUMMY_SP)),
-                    value: Box::new(get_env_expr(value.clone(), context)?),
-                })));
+                let prop = PropOrSpread::Prop(
+                    Prop::KeyValue(KeyValueProp {
+                        key: quote_ident!(key.clone()).into(),
+                        value: get_env_expr(value.clone(), context)?.into(),
+                    })
+                    .into(),
+                );
                 props.push(prop);
             }
-            Ok(Expr::Object(ObjectLit {
+            Ok(ObjectLit {
                 span: DUMMY_SP,
                 props,
-            }))
+            }
+            .into())
         }
     }
 }

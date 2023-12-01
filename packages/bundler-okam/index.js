@@ -98,7 +98,7 @@ exports.dev = async function (opts) {
   const app = express();
   const port = opts.port || 8000;
   const hmrPort = opts.port + 1;
-  // cros
+  // cors
   app.use(
     require('cors')({
       origin: true,
@@ -241,9 +241,9 @@ function checkConfig(opts) {
       throw new Error(
         `externals [string] value only can be ['script {url}', '{root}'] in Mako bundler`,
       );
-    } else if (lodash.isPlainObject(v)) {
+    } else if (typeof v === 'object' && !lodash.isPlainObject(v)) {
       throw new Error(
-        'externals object value is not supported in Mako bundler',
+        'externals non-plain object value is not supported in Mako bundler',
       );
     } else if (typeof v === 'function') {
       throw new Error(
@@ -543,6 +543,7 @@ async function getOkamConfig(opts) {
     transformImport,
     externals: externalsConfig,
     clean,
+    flexBugs: true,
     ...(opts.disableCopy ? { copy: [] } : { copy: ['public'].concat(copy) }),
   };
 

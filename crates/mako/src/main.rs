@@ -1,6 +1,4 @@
 #![feature(box_patterns)]
-#![feature(is_some_with)]
-#![feature(box_syntax)]
 
 use std::sync::Arc;
 
@@ -54,6 +52,7 @@ mod transform_in_generate;
 mod transformers;
 mod tree_shaking;
 mod update;
+mod util;
 mod watch;
 
 #[tokio::main]
@@ -76,13 +75,11 @@ async fn main() -> Result<()> {
     };
     let root = root
         .canonicalize()
-        .map_err(|_| anyhow!("The root directory {:?} is not found", root))?;
+        .map_err(|_| anyhow!("Root directory {:?} not found", root))?;
 
     // config
-    let mut config = config::Config::new(&root, None, None).map_err(|e| {
-        println!("{}", e);
-        anyhow!("Load config error")
-    })?;
+    let mut config = config::Config::new(&root, None, None)
+        .map_err(|e| anyhow!(format!("Load config failed: {}", e)))?;
 
     config.mode = cli.mode;
 

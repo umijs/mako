@@ -11,7 +11,7 @@ use mako_core::swc_ecma_codegen::Emitter;
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 use mako_core::tracing_subscriber::{fmt, EnvFilter};
 
-use crate::ast::{build_js_ast, js_ast_to_code};
+use crate::ast::build_js_ast;
 use crate::compiler::{self, Compiler};
 use crate::config::{Config, Mode};
 use crate::module::{Module, ModuleId, ModuleInfo};
@@ -106,31 +106,6 @@ pub fn setup_logger() {
         // .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
         // .without_time()
         .try_init();
-}
-
-pub fn setup_files(compiler: &Compiler, extra_files: Vec<(String, String)>) {
-    let cwd_path = &compiler.context.root;
-    extra_files.into_iter().for_each(|(path, content)| {
-        let output = cwd_path.join(path);
-        fs::write(output, content).unwrap();
-    });
-}
-
-pub fn module_to_jscode(compiler: &Compiler, module_id: &ModuleId) -> String {
-    let module_graph = compiler.context.module_graph.read().unwrap();
-    let module = module_graph.get_module(module_id).unwrap();
-    let context = compiler.context.clone();
-    let info = module.info.as_ref().unwrap();
-    let ast = &info.ast;
-    match ast {
-        crate::module::ModuleAst::Script(ast) => {
-            let (code, _) =
-                js_ast_to_code(&ast.ast.clone(), &context, module.id.id.as_str()).unwrap();
-            code
-        }
-        crate::module::ModuleAst::Css(_) => todo!(),
-        crate::module::ModuleAst::None => todo!(),
-    }
 }
 
 pub fn transform_ast_with(

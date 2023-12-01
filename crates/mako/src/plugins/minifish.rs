@@ -1,9 +1,10 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
+use mako_core::indexmap::IndexSet;
 use mako_core::rayon::prelude::*;
 use mako_core::regex::Regex;
 use mako_core::swc_common::{Mark, Span, SyntaxContext, DUMMY_SP};
@@ -136,10 +137,9 @@ impl Plugin for MinifishPlugin {
 
         for dep in deps.iter_mut() {
             if dep.source.starts_with('/') {
-                let mut reslove_as = dep.source.clone();
-                reslove_as.replace_range(0..0, src_root);
-
-                dep.resolve_as = Some(reslove_as);
+                let mut resolve_as = dep.source.clone();
+                resolve_as.replace_range(0..0, src_root);
+                dep.resolve_as = Some(resolve_as);
             }
         }
 
@@ -198,7 +198,7 @@ impl Plugin for MinifishPlugin {
 struct MyInjector<'a> {
     unresolved_mark: Mark,
     injects: HashMap<String, &'a Inject>,
-    will_inject: HashSet<(&'a Inject, SyntaxContext)>,
+    will_inject: IndexSet<(&'a Inject, SyntaxContext)>,
     is_cjs: bool,
 }
 
@@ -242,26 +242,29 @@ impl VisitMut for MyInjector<'_> {
     fn visit_mut_module(&mut self, n: &mut mako_core::swc_ecma_ast::Module) {
         n.visit_mut_children_with(self);
 
-        self.will_inject.iter().for_each(|&(inject, ctxt)| {
-            let mi = if self.is_cjs {
-                inject.clone().into_require_with(ctxt)
+        let stmts = self.will_inject.iter().map(|&(inject, ctxt)| {
+            if self.is_cjs || inject.prefer_require {
+                inject.clone().into_require_with(ctxt, self.unresolved_mark)
             } else {
                 inject.clone().into_with(ctxt)
-            };
-
-            n.body.insert(0, mi);
+            }
         });
+
+        n.body.splice(0..0, stmts);
     }
 }
 
-#[derive(Eq, Clone)]
+#[derive(Clone, Debug)]
 pub struct Inject {
     pub from: String,
     pub name: String,
     pub named: Option<String>,
     pub namespace: Option<bool>,
     pub exclude: Option<Regex>,
+    pub prefer_require: bool,
 }
+
+impl Eq for Inject {}
 
 impl PartialEq for Inject {
     fn eq(&self, other: &Self) -> bool {
@@ -276,11 +279,11 @@ impl Hash for Inject {
 }
 
 impl Inject {
-    fn into_require_with(self, ctxt: SyntaxContext) -> ModuleItem {
+    fn into_require_with(self, ctxt: SyntaxContext, unresolved_mark: Mark) -> ModuleItem {
         let name_span = Span { ctxt, ..DUMMY_SP };
 
-        let require_source_expr =
-            quote_ident!("require").as_call(DUMMY_SP, vec![quote_str!(self.from).as_arg()]);
+        let require_source_expr = quote_ident!(DUMMY_SP.apply_mark(unresolved_mark), "require")
+            .as_call(DUMMY_SP, vec![quote_str!(self.from).as_arg()]);
 
         let stmt: Stmt = match (&self.named, &self.namespace) {
             // import { named as x }
@@ -395,8 +398,11 @@ mod tests {
     use maplit::hashmap;
 
     use super::*;
+    use crate::analyze_deps::analyze_deps;
     use crate::ast::{build_js_ast, js_ast_to_code};
     use crate::config::DevtoolConfig;
+    use crate::plugin::PluginDriver;
+    use crate::plugins::javascript::JavaScriptPlugin;
 
     fn apply_inject_to_code(injects: HashMap<String, &Inject>, code: &str) -> String {
         let mut context = Context::default();
@@ -429,6 +435,7 @@ mod tests {
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            prefer_require: false,
         };
 
         let code = apply_inject_to_code(
@@ -454,6 +461,7 @@ my.call("toast");
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            prefer_require: false,
         };
 
         let code = apply_inject_to_code(
@@ -480,6 +488,7 @@ export { };
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            prefer_require: false,
         };
 
         let code = apply_inject_to_code(
@@ -505,6 +514,7 @@ my.call("toast");
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            prefer_require: false,
         };
 
         let code = apply_inject_to_code(
@@ -530,6 +540,7 @@ export { };
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            prefer_require: false,
         };
 
         let code = apply_inject_to_code(
@@ -554,6 +565,7 @@ my.call("toast");
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            prefer_require: false,
         };
 
         let code = apply_inject_to_code(
@@ -580,6 +592,7 @@ export { };
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            prefer_require: false,
         };
 
         let code = apply_inject_to_code(
@@ -605,6 +618,7 @@ my.call("toast");
             from: "mock-lib".to_string(),
             namespace: Some(true),
             exclude: None,
+            prefer_require: false,
         };
         let code = apply_inject_to_code(
             hashmap! {
@@ -630,6 +644,7 @@ export { };
             from: "mock-lib".to_string(),
             namespace: Some(true),
             exclude: None,
+            prefer_require: false,
         };
         let code = apply_inject_to_code(
             hashmap! {
@@ -642,6 +657,72 @@ export { };
             code,
             r#"var my = require("mock-lib");
 my.call("toast");
+"#
+        );
+    }
+
+    #[test]
+    fn injected_require_treat_as_dep() {
+        let code = r#"my.call("toast");"#;
+        let injects = Inject {
+            name: "my".to_string(),
+            named: None,
+            from: "mock-lib".to_string(),
+            namespace: Some(true),
+            exclude: None,
+            prefer_require: false,
+        };
+
+        let mut context = Context {
+            plugin_driver: PluginDriver::new(vec![Arc::new(JavaScriptPlugin {})]),
+            ..Context::default()
+        };
+        context.config.devtool = DevtoolConfig::None;
+        let context = Arc::new(context);
+
+        let mut ast = build_js_ast("cut.js", code, &context).unwrap();
+
+        let mut injector =
+            MyInjector::new(ast.unresolved_mark, hashmap! {"my".to_string() =>&injects});
+        GLOBALS.set(&context.meta.script.globals, || {
+            ast.ast.visit_mut_with(&mut resolver(
+                ast.unresolved_mark,
+                ast.top_level_mark,
+                false,
+            ));
+            ast.ast.visit_mut_with(&mut injector);
+        });
+
+        let module_ast = ModuleAst::Script(ast);
+
+        let deps = analyze_deps(&module_ast, &context).unwrap();
+
+        assert_eq!(deps.len(), 1);
+    }
+
+    #[test]
+    fn inject_prefer_require() {
+        let i = Inject {
+            name: "my".to_string(),
+            named: None,
+            from: "mock-lib".to_string(),
+            namespace: None,
+            exclude: None,
+            prefer_require: true,
+        };
+
+        let code = apply_inject_to_code(
+            hashmap! {
+                "my".to_string() =>&i
+            },
+            r#"my.call("toast");export { }"#,
+        );
+
+        assert_eq!(
+            code,
+            r#"var my = require("mock-lib").default;
+my.call("toast");
+export { };
 "#
         );
     }

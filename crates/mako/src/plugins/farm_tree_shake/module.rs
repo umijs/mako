@@ -80,14 +80,14 @@ impl AllExports {
         match self {
             AllExports::Precise(ids) => ids
                 .iter()
+                .filter(|&id| id != "default")
                 .cloned()
-                .filter(|id| id != "default")
                 .collect::<Vec<_>>(),
 
             AllExports::Ambiguous(ids) => ids
                 .iter()
+                .filter(|&id| id != "default")
                 .cloned()
-                .filter(|id| id != "default")
                 .collect::<Vec<_>>(),
         }
     }

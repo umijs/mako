@@ -43,7 +43,7 @@ impl VisitMut for MakoRequire {
                 ..
             }),
             Callee::Expr(box Expr::Ident(ident)),
-        ) = (&call_expr.args.get(0), &mut call_expr.callee)
+        ) = (&call_expr.args.first(), &mut call_expr.callee)
         {
             let src = value.to_string();
 

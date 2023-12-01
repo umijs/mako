@@ -170,7 +170,7 @@ impl ScriptMeta {
             globals: Globals::default(),
             module_ident: build_ident("module"),
             exports_ident: build_ident("exports"),
-            require_ident: build_ident("require"),
+            require_ident: build_ident("__mako_require__"),
         }
     }
 }
@@ -283,6 +283,7 @@ impl Compiler {
                             named: ii.named.clone(),
                             namespace: ii.namespace,
                             exclude,
+                            prefer_require: ii.prefer_require.map_or(false, |v| v),
                         },
                     );
                 }
