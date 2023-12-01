@@ -13,6 +13,7 @@ export interface JsHooks {
       endTime: number;
     };
   }) => void;
+  onGenerateFsWrite?: (path: string, content: Buffer) => Promise<void>;
 }
 export interface BuildParams {
   root: string;
@@ -93,19 +94,9 @@ export interface BuildParams {
       metaPath?: string;
       inject?: Record<
         string,
-        | { from: string; exclude?: string; preferRequire?: boolean }
-        | {
-            from: string;
-            named: string;
-            exclude?: string;
-            preferRequire?: boolean;
-          }
-        | {
-            from: string;
-            namespace: true;
-            exclude?: string;
-            preferRequire?: boolean;
-          }
+        | { from: string; exclude?: string }
+        | { from: string; named: string; exclude?: string }
+        | { from: string; namespace: true; exclude?: string }
       >;
     };
   };
