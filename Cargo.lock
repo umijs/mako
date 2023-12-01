@@ -2493,7 +2493,6 @@ name = "mako"
 version = "0.1.0"
 dependencies = [
  "cached",
- "either",
  "insta",
  "mako_core",
  "maplit",
