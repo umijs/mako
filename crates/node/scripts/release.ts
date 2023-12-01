@@ -61,6 +61,13 @@ import 'zx/globals';
   await $`rm -rf ./*.node`;
   await $`find ./npm -name '*.node' | xargs rm -f`;
 
+  console.log('linux building started...');
+  const start = Date.now();
+  await build_linux_binding();
+  await $`pnpm run format:dts`;
+  const duration = (Date.now() - start) / 1000;
+  console.log(`linux building done ${duration}`);
+
   await $`cargo build --lib -r --target x86_64-apple-darwin`;
   await $`pnpm run build:mac:x86`;
 
@@ -69,15 +76,8 @@ import 'zx/globals';
 
   await $`strip -x ./okam.darwin-*.node`;
 
-  console.log('linux building started...');
-  const start = Date.now();
-  await build_linux_binding();
-  await $`pnpm run format:dts`;
-  const duration = (Date.now() - start) / 1000;
-  console.log(`linux building done ${duration}`);
   await $`pnpm run artifacts:local`;
 
-  // --ignore-scripts because we don't publish optional pkg
   await $`npm publish --tag ${tag} --access public`;
 
   // set new version to bundler-okam
