@@ -280,6 +280,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
         current_index = next_index;
     }
 
+    // do the tree shaking
     for (module_id, tsm) in tree_shake_modules_map {
         let tsm = tsm.borrow();
 
