@@ -17,6 +17,9 @@ impl VisitMut for DynamicImport<'_> {
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Call(call_expr) = expr {
             if is_dynamic_import(call_expr) {
+                if call_expr.args.is_empty() {
+                    return;
+                }
                 if let ExprOrSpread {
                     expr: box Expr::Lit(Lit::Str(ref mut source)),
                     ..
