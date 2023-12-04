@@ -241,7 +241,7 @@ function checkConfig(opts) {
       throw new Error(
         `externals [string] value only can be ['script {url}', '{root}'] in Mako bundler`,
       );
-    } else if (typeof v === 'object' && !lodash.isPlainObject(v)) {
+    } else if (typeof v === 'object' && !lodash.isPlainObject(v) && !Array.isArray(v)) {
       throw new Error(
         'externals non-plain object value is not supported in Mako bundler',
       );
