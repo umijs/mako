@@ -4,6 +4,24 @@ use crate::module::ModuleInfo;
 use crate::resolve::{ResolvedResource, ResolverResource};
 
 impl ModuleInfo {
+    pub fn described_side_effect(&self) -> Option<bool> {
+        if let Some(ResolverResource::Resolved(ResolvedResource(source))) = &self.resolved_resource
+        {
+            match &source.description {
+                Some(desc) => {
+                    let data = desc.data();
+                    let value = data.raw();
+                    let side_effects = value.get("sideEffects".to_string());
+
+                    side_effects.map(|side_effect| self.match_flag(side_effect))
+                }
+                None => None,
+            }
+        } else {
+            None
+        }
+    }
+
     /**
      * 获取当前的模块是否具备 sideEffects
      */

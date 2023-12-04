@@ -47,23 +47,37 @@ pub fn remove_useless_stmts(
         }
 
         if let Some(mut export_info) = export_info {
-            if export_info.specifiers.is_empty() {
+            // ignore export {}
+            if export_info.specifiers.is_empty() && export_info.source.is_none() {
                 continue;
             }
 
-            // if this export statement is export * from 'xxx'
-            if export_info.source.is_some()
-                && matches!(export_info.specifiers[0], UsedExportSpecInfo::All(_))
-            {
-                export_info.specifiers[0] =
-                    UsedExportSpecInfo::All(used_defined_idents.clone().into_iter().collect());
-
-                used_export_from_infos.push(export_info.clone());
-            } else {
-                if export_info.source.is_some() {
+            if export_info.source.is_some() {
+                // export {} from "x"
+                if export_info.specifiers.is_empty() {
                     used_export_from_infos.push(export_info.clone());
-                }
+                    let mut remover = UselessExportStmtRemover { export_info };
 
+                    module_item.visit_mut_with(&mut remover);
+                } else {
+                    // export * from  "x"
+                    if matches!(export_info.specifiers[0], UsedExportSpecInfo::All(_)) {
+                        export_info.specifiers[0] = UsedExportSpecInfo::All(
+                            used_defined_idents.clone().into_iter().collect(),
+                        );
+
+                        used_export_from_infos.push(export_info.clone());
+                    } else {
+                        // export {a,b } from "x"
+                        used_export_from_infos.push(export_info.clone());
+
+                        let mut remover = UselessExportStmtRemover { export_info };
+
+                        module_item.visit_mut_with(&mut remover);
+                    }
+                }
+            } else {
+                // export { a ,b } or export default a;
                 let mut remover = UselessExportStmtRemover { export_info };
 
                 module_item.visit_mut_with(&mut remover);

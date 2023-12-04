@@ -99,7 +99,11 @@ pub trait Plugin: Any + Send + Sync {
         Ok(Vec::new())
     }
 
-    fn optimize_module_graph(&self, _module_graph: &mut ModuleGraph) -> Result<()> {
+    fn optimize_module_graph(
+        &self,
+        _module_graph: &mut ModuleGraph,
+        _context: &Arc<Context>,
+    ) -> Result<()> {
         Ok(())
     }
 }
@@ -217,9 +221,13 @@ impl PluginDriver {
         Ok(plugins.join("\n"))
     }
 
-    pub fn optimize_module_graph(&self, module_graph: &mut ModuleGraph) -> Result<()> {
+    pub fn optimize_module_graph(
+        &self,
+        module_graph: &mut ModuleGraph,
+        context: &Arc<Context>,
+    ) -> Result<()> {
         for p in &self.plugins {
-            p.optimize_module_graph(module_graph)?;
+            p.optimize_module_graph(module_graph, context)?;
         }
 
         Ok(())
