@@ -16,7 +16,6 @@ use crate::resolve::{self, get_resolvers, Resolvers};
 use crate::transform_in_generate::transform_modules;
 use crate::transformers::transform_virtual_css_modules::is_css_path;
 use crate::util::create_thread_pool;
-use crate::watch::WatchEvent;
 
 #[derive(Debug, Clone)]
 pub enum UpdateType {
@@ -70,16 +69,15 @@ removed:{:?}
 }
 
 impl Compiler {
-    pub fn update(&self, paths: Vec<WatchEvent>) -> Result<UpdateResult> {
+    pub fn update(&self, paths: Vec<PathBuf>) -> Result<UpdateResult> {
         let module_graph = self.context.module_graph.read().unwrap();
         let paths = paths
             .into_iter()
-            .map(|event| {
-                let pathbuf = event.path.clone();
-                let update_type = if pathbuf.exists() {
-                    let p_str = pathbuf.to_string_lossy().to_string();
+            .map(|path| {
+                let update_type = if path.exists() {
+                    let p_str = path.to_string_lossy().to_string();
                     let with_as_module = format!("{}?asmodule", p_str);
-                    if module_graph.has_module(&event.path.clone().into())
+                    if module_graph.has_module(&path.clone().into())
                         || module_graph.has_module(&with_as_module.into())
                     {
                         UpdateType::Modify
@@ -89,7 +87,7 @@ impl Compiler {
                 } else {
                     UpdateType::Remove
                 };
-                (event.path, update_type)
+                (path, update_type)
             })
             .collect::<Vec<_>>();
         drop(module_graph);
