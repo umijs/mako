@@ -128,6 +128,18 @@ pub struct TreeShakeModule {
 
 impl TreeShakeModule {
     pub fn update_side_effect(&mut self) -> bool {
+        if self.module_id.id.ends_with(
+            "/rc-util@5.37.0_react-dom@18.2.0_react@18.2.0/node_modules/rc-util/es/warning.js",
+        ) ||
+
+            self.module_id.id.ends_with(
+                "/node_modules/antd/es/_util/warning.js"
+            )
+
+            {
+            return false;
+        }
+
         let mut side_effect_stmts = vec![];
 
         if let Some(described_side_effects) = self.described_side_effects {

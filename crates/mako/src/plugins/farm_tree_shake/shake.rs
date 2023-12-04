@@ -120,7 +120,6 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
 
         current_index = next_index;
     }
-
     // fill tree shake module all exported ident in reversed topo-sort order
     for module_id in tree_shake_modules_ids.iter().rev() {
         let mut tsm = tree_shake_modules_map.get(module_id).unwrap().borrow_mut();
@@ -286,6 +285,11 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
         if tsm.not_used() {
             module_graph.remove_module(&module_id);
         } else if let Some(swc_module) = &tsm.updated_ast {
+            println!(
+                "TS:DEBUG {}: {} {:?}",
+                tsm.module_id.id, tsm.side_effects, tsm.described_side_effects
+            );
+
             module_graph
                 .get_module_mut(&module_id)
                 .unwrap()
