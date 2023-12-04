@@ -243,7 +243,11 @@ impl DevServer {
             return Ok(());
         }
 
-        println!("Compiling...");
+        // do not print hot rebuilt message if there are missing deps
+        // since it's not a success rebuilt to user
+        if !has_missing_deps {
+            println!("Compiling...");
+        }
         let t_compiler = Instant::now();
         let start_time = std::time::SystemTime::now();
         let next_hash = compiler.generate_hot_update_chunks(res, **last_cache_hash, **hmr_hash);
@@ -251,8 +255,6 @@ impl DevServer {
             "hot update chunks generated, next_full_hash: {:?}",
             next_hash
         );
-        // do not print hot rebuilt message if there are missing deps
-        // since it's not a success rebuilt to user
         if !has_missing_deps {
             println!(
                 "Hot rebuilt in {}",
