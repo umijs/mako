@@ -1,6 +1,4 @@
 // swc will hoist
-// working only with react-error-overlay@6.0.9
-const ErrorOverlay = require('react-error-overlay');
 const RefreshRuntime = require('react-refresh');
 RefreshRuntime.injectIntoGlobalHook(self);
 self.$RefreshReg$ = () => {};
@@ -9,17 +7,28 @@ self.$RefreshSig$ = () => (type) => type;
 (function () {
   let hadRuntimeError = false;
 
-  const enableErrorOverlay = true;
-  enableErrorOverlay &&
-    ErrorOverlay.startReportingRuntimeErrors({
-      onError: function () {
-        hadRuntimeError = true;
-      },
-    });
+  function startReportingRuntimeErrors(options) {
+    const errorHandler = () => {
+      options.onError();
+      hadRuntimeError = true;
+    };
+    window.addEventListener('error', errorHandler);
+    window.addEventListener('unhandledrejection', errorHandler);
+    return () => {
+      window.removeEventListener('error', errorHandler);
+      window.removeEventListener('unhandledrejection', errorHandler);
+    };
+  }
+
+  const stopReportingRuntimeError = startReportingRuntimeErrors({
+    onError: function () {
+      hadRuntimeError = true;
+    },
+  });
 
   if (module.hot && typeof module.hot.dispose === 'function') {
     module.hot.dispose(function () {
-      enableErrorOverlay && ErrorOverlay.stopReportingRuntimeErrors();
+      stopReportingRuntimeError();
     });
   }
 
@@ -31,7 +40,7 @@ self.$RefreshSig$ = () => (type) => type;
   }
 
   function getSocketUrl() {
-    let h = getHost();
+    const h = getHost();
     const host = h.host;
     const isHttps = h.protocol === 'https:';
     return `${isHttps ? 'wss' : 'ws'}://${host}/__/hmr-ws`;
