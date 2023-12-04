@@ -192,7 +192,6 @@ impl Compiler {
             &affected_module_ids
         );
         update_result.removed.extend(removed_module_ids);
-
         modified.extend(affected_module_ids.into_iter().map(|i| i.to_path()));
 
         // 分析修改的模块，结果中会包含新增的模块
@@ -413,15 +412,15 @@ impl Compiler {
     }
 
     fn build_by_remove(&self, removed: Vec<PathBuf>) -> (HashSet<ModuleId>, HashSet<ModuleId>) {
+        let mut module_graph = self.context.module_graph.write().unwrap();
         let mut removed_module_ids = HashSet::new();
         let mut affected_module_ids = HashSet::new();
         for path in removed {
-            let from_module_id = ModuleId::from_path(path);
-
-            let module_graph = self.context.module_graph.write().unwrap();
-            let dependants = module_graph.dependant_module_ids(&from_module_id);
+            let module_id = ModuleId::from_path(path);
+            let dependants = module_graph.dependant_module_ids(&module_id);
+            module_graph.remove_module_and_deps(&module_id);
             affected_module_ids.extend(dependants);
-            removed_module_ids.insert(from_module_id);
+            removed_module_ids.insert(module_id);
         }
         (removed_module_ids, affected_module_ids)
     }
