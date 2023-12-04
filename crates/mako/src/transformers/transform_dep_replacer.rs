@@ -85,6 +85,9 @@ impl VisitMut for DepReplacer<'_> {
         if let Expr::Call(call_expr) = expr {
             if is_commonjs_require(call_expr, &self.unresolved_mark) || is_dynamic_import(call_expr)
             {
+                if call_expr.args.is_empty() {
+                    return;
+                }
                 if let ExprOrSpread {
                     expr: box Expr::Lit(Lit::Str(ref mut source)),
                     ..
