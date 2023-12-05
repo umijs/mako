@@ -123,7 +123,11 @@ fn get_external_target(
                 None,
             )),
             ExternalConfig::Advanced(config) => Some((
-                format!("{}.{}", global_obj, config.root),
+                if config.root.is_empty() {
+                    "''".to_string()
+                } else {
+                    format!("{}.{}", global_obj, config.root)
+                },
                 config.script.clone(),
             )),
         }
