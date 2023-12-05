@@ -37,7 +37,7 @@ import 'zx/globals';
     tag = 'next';
   if (newVersion.includes('-canary.')) tag = 'canary';
   if (newVersion.includes('-dev.')) tag = 'dev';
-  
+
   console.log('Check branch');
   const branch = (await $`git branch --show-current`).stdout.trim();
   if (tag === 'latest') {
