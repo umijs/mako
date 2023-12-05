@@ -15,7 +15,7 @@ impl Plugin for JSONPlugin {
 
     fn load(&self, param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
         // TODO: json5 应该没这么简单
-        if matches!(param.ext_name.as_str(), "json" | "json5") {
+        if matches!(param.ext_name, Some("json" | "json5")) {
             return Ok(Some(Content::Js(format!(
                 "module.exports = {}",
                 read_content(param.path.as_str())?

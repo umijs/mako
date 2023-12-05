@@ -15,13 +15,13 @@ impl Plugin for WASMPlugin {
 
     fn load(&self, param: &PluginLoadParam, context: &Arc<Context>) -> Result<Option<Content>> {
         // wasm don't need to support base64
-        if matches!(param.ext_name.as_str(), "wasm") {
+        if matches!(param.ext_name, Some("wasm")) {
             // add.wasm => add.hash.wasm
             let final_file_name = format!(
                 "{}.{}.{}",
                 file_name(param.path.as_str()).unwrap(),
                 content_hash(param.path.as_str())?,
-                param.ext_name.as_str()
+                param.ext_name.unwrap()
             );
             context.emit_assets(param.path.clone(), final_file_name.clone());
             return Ok(Some(Content::Js(format!(

@@ -28,8 +28,8 @@ impl Plugin for JavaScriptPlugin {
 
     fn load(&self, param: &PluginLoadParam, context: &Arc<Context>) -> Result<Option<Content>> {
         if matches!(
-            param.ext_name.as_str(),
-            "js" | "jsx" | "ts" | "tsx" | "cjs" | "mjs"
+            param.ext_name,
+            Some("js" | "jsx" | "ts" | "tsx" | "cjs" | "mjs")
         ) {
             if param.is_entry && param.request.has_query("hmr") {
                 let port = &context.config.hmr_port.to_string();

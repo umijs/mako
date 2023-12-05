@@ -392,7 +392,7 @@ module.exports = new Promise((resolve, reject) => {{
 
 fn is_async_module(path: &str) -> bool {
     // wasm should be treated as an async module
-    ["wasm"].contains(&ext_name(path).unwrap())
+    ["wasm"].contains(&ext_name(path).unwrap_or(""))
 }
 
 pub fn parse_path(path: &str) -> Result<FileRequest> {

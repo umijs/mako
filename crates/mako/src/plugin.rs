@@ -19,7 +19,7 @@ use crate::stats::StatsJsonMap;
 pub struct PluginLoadParam<'a> {
     pub path: String,
     pub is_entry: bool,
-    pub ext_name: String,
+    pub ext_name: Option<&'a str>,
     pub request: &'a FileRequest,
 }
 

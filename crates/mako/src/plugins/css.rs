@@ -21,7 +21,7 @@ impl Plugin for CSSPlugin {
     }
 
     fn load(&self, param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
-        if matches!(param.ext_name.as_str(), "css") {
+        if matches!(param.ext_name, Some("css")) {
             return Ok(Some(Content::Css(read_content(param.path.as_str())?)));
         }
         Ok(None)
