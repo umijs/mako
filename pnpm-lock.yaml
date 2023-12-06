@@ -54,14 +54,14 @@ importers:
   crates/node:
     optionalDependencies:
       '@okamjs/okam-darwin-arm64':
-        specifier: 0.1.8
-        version: 0.1.8
+        specifier: 0.1.9-dev.20231206.1
+        version: 0.1.9-dev.20231206.1
       '@okamjs/okam-darwin-x64':
-        specifier: 0.1.8
-        version: 0.1.8
+        specifier: 0.1.9-dev.20231206.1
+        version: 0.1.9-dev.20231206.1
       '@okamjs/okam-linux-x64-gnu':
-        specifier: 0.1.8
-        version: 0.1.8
+        specifier: 0.1.9-dev.20231206.1
+        version: 0.1.9-dev.20231206.1
     devDependencies:
       '@napi-rs/cli':
         specifier: ^2.14.8
@@ -288,7 +288,7 @@ importers:
   packages/bundler-okam:
     dependencies:
       '@okamjs/okam':
-        specifier: 0.1.8
+        specifier: 0.1.9-dev.20231206.1
         version: link:../../crates/node
       '@swc/helpers':
         specifier: 0.5.1
@@ -3286,8 +3286,8 @@ packages:
       fastq: 1.15.0
     dev: true
 
-  /@okamjs/okam-darwin-arm64@0.1.8:
-    resolution: {integrity: sha512-OKUFAxazPN7lsyhhMw7n8BLywbaGyNUa2ppjrsYVonCt5cr/RyMm+a1NWF4ab2d6xAIUhuOxV3zKrdmzXhBmkA==}
+  /@okamjs/okam-darwin-arm64@0.1.9-dev.20231206.1:
+    resolution: {integrity: sha512-WMN7ayBCADvt4ldVrJ+XltPZh/J8+xgfGjikJVaLW/kx4i1udxxRz7BngSQzC6W28hlu/iRSkeRC5z+Tpro7wA==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
@@ -3295,8 +3295,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-darwin-x64@0.1.8:
-    resolution: {integrity: sha512-v+54RFBcB+9ka0MgHitL3zxWl9xLpZ81OXXZPnjPy+HkVrucSCCdpq6Mm1P3/0zvhcUBB2bhC1u3Y7QG1PF2hQ==}
+  /@okamjs/okam-darwin-x64@0.1.9-dev.20231206.1:
+    resolution: {integrity: sha512-laO9PWIiQ3z1Djc85rpcYCaEqS77z4bd5wxOf/YD7kBfUXSrLg2QnHdMeRXfrQSUhH5IbMJ0ovr0iixp1OPLgw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
@@ -3304,8 +3304,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-linux-x64-gnu@0.1.8:
-    resolution: {integrity: sha512-KRzNbQVEBcFu0LJezCKZZomN9hAXibLMFiQ2l4bKDyNUeW0nvWs2aw7WHgJNgHv9LN0HOA5uLhElPXeZlYI9Vw==}
+  /@okamjs/okam-linux-x64-gnu@0.1.9-dev.20231206.1:
+    resolution: {integrity: sha512-QIWzNR7xqN/X5Hks1Xniq7Uwn9L9LbzPaChZcijrPYqVISfXsMNOW/VPULEzHq/iAjDYvtu53ahy3wOLjeALlg==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
