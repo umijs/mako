@@ -164,7 +164,7 @@ impl ModuleAst {
 }
 
 #[allow(dead_code)]
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum ModuleType {
     Script,
     Css,

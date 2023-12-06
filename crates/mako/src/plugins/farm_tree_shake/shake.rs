@@ -252,15 +252,16 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
         for (dep, edge) in module_graph.get_dependencies(tree_shake_module_id) {
             match edge.resolve_type {
                 ResolveType::DynamicImport | ResolveType::Worker => {
-                    let mut tree_shake_module =
-                        tree_shake_modules_map.get(dep).unwrap().borrow_mut();
-                    if tree_shake_module.use_all_exports()
-                        && tree_shake_module.topo_order < next_index
-                    {
-                        next_index = tree_shake_module.topo_order;
-                    }
+                    if let Some(ref_cell) = tree_shake_modules_map.get(dep) {
+                        let mut tree_shake_module = ref_cell.borrow_mut();
+                        if tree_shake_module.use_all_exports()
+                            && tree_shake_module.topo_order < next_index
+                        {
+                            next_index = tree_shake_module.topo_order;
+                        }
 
-                    tree_shake_module.side_effects = true;
+                        tree_shake_module.side_effects = true;
+                    }
                 }
                 ResolveType::Require => {
                     if let Some(ref_cell) = tree_shake_modules_map.get(dep) {
