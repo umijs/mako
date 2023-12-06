@@ -38,7 +38,7 @@ impl Plugin for MinifishPlugin {
     }
 
     fn load(&self, param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
-        if matches!(param.ext_name.as_str(), "json" | "json5") {
+        if matches!(param.ext_name, Some("json" | "json5")) {
             let root = _context.root.clone();
             let to: PathBuf = param.path.clone().into();
 

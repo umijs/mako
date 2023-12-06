@@ -43,7 +43,7 @@ impl Plugin for LessPlugin {
         param: &PluginLoadParam,
         _context: &Arc<Context>,
     ) -> anyhow::Result<Option<Content>> {
-        if matches!(param.ext_name.as_str(), "less") {
+        if matches!(param.ext_name, Some("less")) {
             let content = read_content(param.path.as_str())?;
             let content = compile_less(param.path.as_str(), &content, &self.on_compile_less)?;
             return Ok(Some(Content::Css(content)));

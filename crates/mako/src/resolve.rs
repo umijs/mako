@@ -10,6 +10,7 @@ use mako_core::regex::{Captures, Regex};
 use mako_core::thiserror::Error;
 use mako_core::tracing::debug;
 
+use crate::build::parse_path;
 use crate::compiler::Context;
 use crate::config::{
     Config, ExternalAdvancedSubpathConverter, ExternalAdvancedSubpathTarget, ExternalConfig,
@@ -28,12 +29,14 @@ enum ResolverType {
     Cjs,
     Esm,
     Css,
+    Ctxt,
 }
 
 pub struct Resolvers {
     cjs: Resolver,
     esm: Resolver,
     css: Resolver,
+    ctxt: Resolver,
 }
 
 #[derive(Debug, Clone)]
@@ -91,7 +94,9 @@ pub fn resolve(
 ) -> Result<ResolverResource> {
     mako_core::mako_profile_function!();
     mako_core::mako_profile_scope!("resolve", &dep.source);
-    let resolver = if dep.resolve_type == ResolveType::Require {
+    let resolver = if parse_path(&dep.source)?.has_query("context") {
+        &resolvers.ctxt
+    } else if dep.resolve_type == ResolveType::Require {
         &resolvers.cjs
     } else if dep.resolve_type == ResolveType::Css {
         &resolvers.css
@@ -254,7 +259,18 @@ fn do_resolve(
                     // TODO: 临时方案，需要改成删除文件时删 resolve cache 里的内容
                     // 比如把 util.ts 改名为 util.tsx，目前应该是还有问题的
                     if resource.path.exists() {
-                        Ok(ResolverResource::Resolved(ResolvedResource(resource)))
+                        Ok(ResolverResource::Resolved(ResolvedResource(Resource {
+                            query: resource.query.or_else(|| {
+                                // 手动为 context resolve 补全 query，因为 nodejs_resolver 不会和 enhanced-resolve 一样保留 query
+                                // TODO: 看看能否 PR 上游后移除该逻辑
+                                source
+                                    .split('#')
+                                    .next()
+                                    .and_then(|head| head.split('?').nth(1))
+                                    .map(|query| format!("?{}", query))
+                            }),
+                            ..resource
+                        })))
                     } else {
                         Err(anyhow!(ResolveError::ResolveError {
                             path: source.to_string(),
@@ -280,17 +296,17 @@ pub fn get_resolvers(config: &Config) -> Resolvers {
     let cjs_resolver = get_resolver(config, ResolverType::Cjs);
     let esm_resolver = get_resolver(config, ResolverType::Esm);
     let css_resolver = get_resolver(config, ResolverType::Css);
+    let ctxt_resolver = get_resolver(config, ResolverType::Ctxt);
     Resolvers {
         cjs: cjs_resolver,
         esm: esm_resolver,
         css: css_resolver,
+        ctxt: ctxt_resolver,
     }
 }
 
-fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
-    let alias = parse_alias(config.resolve.alias.clone());
-    let is_browser = config.platform == Platform::Browser;
-    let extensions = vec![
+pub fn get_module_extensions() -> Vec<String> {
+    vec![
         ".js".to_string(),
         ".jsx".to_string(),
         ".ts".to_string(),
@@ -298,7 +314,13 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
         ".mjs".to_string(),
         ".cjs".to_string(),
         ".json".to_string(),
-    ];
+    ]
+}
+
+fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
+    let alias = parse_alias(config.resolve.alias.clone());
+    let is_browser = config.platform == Platform::Browser;
+    let extensions = get_module_extensions();
 
     let options = match (resolver_type, is_browser) {
         (ResolverType::Cjs, true) => Options {
@@ -365,6 +387,11 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
             condition_names: HashSet::from(["style".to_string()]),
             prefer_relative: true,
             browser_field: true,
+            ..Default::default()
+        },
+        (ResolverType::Ctxt, _) => Options {
+            alias,
+            resolve_to_context: true,
             ..Default::default()
         },
     };

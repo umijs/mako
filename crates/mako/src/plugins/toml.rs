@@ -15,7 +15,7 @@ impl Plugin for TOMLPlugin {
     }
 
     fn load(&self, param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
-        if matches!(param.ext_name.as_str(), "toml") {
+        if matches!(param.ext_name, Some("toml")) {
             let toml_string = read_content(param.path.as_str())?;
             let toml_value = from_toml_str::<TomlValue>(&toml_string)?;
             let json_string = serde_json::to_string(&toml_value)?;
