@@ -5,10 +5,9 @@ use mako_core::anyhow::Result;
 use mako_core::glob::glob;
 use mako_core::swc_common::{Mark, DUMMY_SP};
 use mako_core::swc_ecma_ast::{
-    ArrowExpr, BinExpr, BinaryOp, BindingIdent, BlockStmtOrExpr, CallExpr, Callee, Expr,
-    ExprOrSpread, Lit, MemberExpr, MemberProp, Module, ParenExpr, Pat, TplElement,
+    BinExpr, BinaryOp, CallExpr, Expr, ExprOrSpread, Lit, Module, ParenExpr, TplElement,
 };
-use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
+use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprExt, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use super::javascript::{is_commonjs_require, is_dynamic_import};
@@ -138,49 +137,31 @@ impl VisitMut for ContextModuleVisitor {
             )
             .map(|(prefix, suffix)| (prefix, format!("**/*{}", suffix.unwrap_or("".to_string()),)))
             {
-                let virtual_args: Vec<ExprOrSpread> =
-                    vec![quote_str!(format!("{}?context&glob={}", from, glob.clone())).as_arg()];
+                let ctxt_call_expr = CallExpr {
+                    callee: expr.callee.clone(),
+                    args: vec![quote_str!(format!("{}?context&glob={}", from, glob)).as_arg()],
+                    span: DUMMY_SP,
+                    type_args: None,
+                };
 
                 if commonjs_require {
                     // require('./i18n' + n) -> require('./i18n?context&glob=**/*')('.' + n)
-                    expr.callee = Callee::Expr(Box::new(Expr::Call(CallExpr {
-                        callee: expr.callee.clone(),
-                        args: virtual_args,
-                        span: DUMMY_SP,
-                        type_args: None,
-                    })));
+                    expr.callee = ctxt_call_expr.as_callee();
                 } else {
-                    // import('./i18n' + n) -> import('./i18n?context&glob=**/*').then(m => m.default('.' + n))
-                    expr.callee = Callee::Expr(Box::new(Expr::Member(MemberExpr {
-                        obj: Box::new(Expr::Call(CallExpr {
-                            callee: expr.callee.clone(),
-                            args: virtual_args,
-                            span: DUMMY_SP,
-                            type_args: None,
-                        })),
-                        prop: MemberProp::Ident(quote_ident!("then")),
-                        span: DUMMY_SP,
-                    })));
-                    expr.args = vec![ExprOrSpread {
-                        expr: Box::new(Expr::Arrow(ArrowExpr {
-                            span: DUMMY_SP,
-                            params: vec![Pat::Ident(BindingIdent {
-                                id: quote_ident!("m"),
-                                type_ann: None,
-                            })],
-                            body: Box::new(BlockStmtOrExpr::Expr(Box::new(Expr::Call(CallExpr {
-                                callee: Callee::Expr(Box::new(Expr::Ident(quote_ident!("m")))),
-                                args: expr.args.clone(),
-                                span: DUMMY_SP,
-                                type_args: None,
-                            })))),
-                            is_async: false,
-                            is_generator: false,
-                            type_params: None,
-                            return_type: None,
-                        })),
-                        spread: None,
-                    }]
+                    // import('./i18n' + n) -> import('./i18n?context&glob=**/*').then(m => m('.' + n))
+                    expr.callee = member_expr!(
+                        @EXT,
+                        DUMMY_SP,
+                        ctxt_call_expr.into(),
+                        then
+                    )
+                    .as_callee();
+                    expr.args = vec![quote_ident!("m")
+                        .as_call(DUMMY_SP, expr.args.clone())
+                        .as_expr()
+                        .to_owned()
+                        .into_lazy_arrow(vec![quote_ident!("m").into()])
+                        .as_arg()]
                 }
             }
         }
