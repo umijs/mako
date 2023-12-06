@@ -1,9 +1,13 @@
 use std::hash::Hasher;
 use std::path::{Component, Path};
 
+use mako_core::base64::engine::general_purpose;
+use mako_core::base64::Engine;
 use mako_core::indexmap::IndexSet;
+use mako_core::md5;
 use mako_core::twox_hash::XxHash64;
 
+use crate::build::parse_path;
 use crate::module::ModuleId;
 use crate::module_graph::ModuleGraph;
 
@@ -48,9 +52,16 @@ impl Chunk {
             ChunkType::Entry(_, name) => format!("{}.js", name),
             // foo/bar.tsx -> foo_bar_tsx-async.js
             ChunkType::Async | ChunkType::Sync | ChunkType::Worker(_) => {
-                let path = Path::new(&self.id.id);
+                let parsed_id = parse_path(&self.id.id).ok().unwrap();
+                let path = Path::new(&parsed_id.path);
+                let query = parsed_id
+                    .query
+                    .into_iter()
+                    .map(|(k, v)| format!("{}={}", k, v))
+                    .collect::<Vec<String>>()
+                    .join("&");
 
-                let name = path
+                let mut name = path
                     .components()
                     .filter(|c| !matches!(c, Component::RootDir | Component::CurDir))
                     .map(|c| match c {
@@ -62,6 +73,12 @@ impl Chunk {
                     })
                     .collect::<Vec<String>>()
                     .join("_");
+
+                if !query.is_empty() {
+                    let query_hash =
+                        general_purpose::URL_SAFE.encode(md5::compute(query).0)[..4].to_string();
+                    name = format!("{}_q_{}", name, query_hash);
+                }
 
                 format!(
                     "{}-{}.js",
