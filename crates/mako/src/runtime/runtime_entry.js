@@ -115,6 +115,12 @@ function createRuntime(makoModules, entryModuleId) {
   !(function () {
     var inProgress = {};
     requireModule.loadScript = function (url, done, key) {
+      // Support worker
+      if (!self.document) {
+        importScripts(url);
+        return done();
+      }
+
       if (inProgress[url]) {
         return inProgress[url].push(done);
       }
