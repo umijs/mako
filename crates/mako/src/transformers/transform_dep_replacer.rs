@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use mako_core::swc_common::{Mark, DUMMY_SP};
 use mako_core::swc_ecma_ast::{
-    AssignOp, BlockStmt, Expr, ExprOrSpread, FnExpr, Function, Ident, ImportDecl, Lit, NamedExport,
-    NewExpr, Stmt, Str, ThrowStmt, VarDeclKind,
+    AssignOp, BlockStmt, CallExpr, Callee, Expr, ExprOrSpread, FnExpr, Function, Ident, ImportDecl,
+    Lit, NamedExport, NewExpr, Stmt, Str, ThrowStmt, VarDeclKind,
 };
 use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
@@ -107,12 +107,41 @@ impl VisitMut for DepReplacer<'_> {
                         }
                     }
 
-                    // remove `require('./xxx.css');`
                     let file_request = parse_path(&source_string).unwrap();
                     if is_css_path(&file_request.path)
                         && (file_request.query.is_empty() || file_request.has_query("modules"))
                     {
-                        *expr = Expr::Lit(quote_str!("").into())
+                        // remove `require('./xxx.css');`
+                        if is_commonjs_require(call_expr, &self.unresolved_mark) {
+                            *expr = Expr::Lit(quote_str!("").into())
+                        } else {
+                            // `import('./xxx.css')` => ensure css chunk
+                            let module_id = self.to_replace.resolved.get(&source_string);
+                            if let Some(module_id) = module_id {
+                                let chunk_graph = self.context.chunk_graph.read().unwrap();
+                                let chunk = chunk_graph.chunk(&module_id.clone().into());
+
+                                if let Some(chunk) = chunk {
+                                    let chunk_id = chunk.id.generate(self.context);
+                                    *expr = Expr::Call(CallExpr {
+                                        span: DUMMY_SP,
+                                        type_args: None,
+                                        args: vec![ExprOrSpread {
+                                            spread: None,
+                                            expr: Box::new(Expr::Lit(quote_str!(chunk_id).into())),
+                                        }],
+                                        callee: Callee::Expr(member_expr!(
+                                            DUMMY_SP,
+                                            __mako_require__.ensure
+                                        )),
+                                    });
+                                } else {
+                                    *expr = Expr::Lit(quote_str!("").into())
+                                }
+                            } else {
+                                *expr = Expr::Lit(quote_str!("").into())
+                            }
+                        }
                     }
                 }
             }
