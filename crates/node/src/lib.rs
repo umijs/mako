@@ -52,6 +52,7 @@ pub struct BuildParams {
         preserveModules?: boolean;
         preserveModulesRoot?: string;
         asciiOnly?: boolean;
+        skipWrite?: boolean;
     };
     resolve?: {
        alias?: Record<string, string>;

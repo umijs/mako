@@ -13,7 +13,7 @@ export interface JsHooks {
       endTime: number;
     };
   }) => void;
-  onGenerateFsWrite?: (path: string, content: Buffer) => Promise<void>;
+  onGenerateFile?: (path: string, content: Buffer) => Promise<void>;
 }
 export interface BuildParams {
   root: string;
@@ -27,6 +27,7 @@ export interface BuildParams {
       preserveModules?: boolean;
       preserveModulesRoot?: string;
       asciiOnly?: boolean;
+      skipWrite?: boolean;
     };
     resolve?: {
       alias?: Record<string, string>;
