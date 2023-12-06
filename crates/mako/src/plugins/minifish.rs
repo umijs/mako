@@ -1,9 +1,10 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
+use mako_core::indexmap::IndexSet;
 use mako_core::rayon::prelude::*;
 use mako_core::regex::Regex;
 use mako_core::swc_common::{Mark, Span, SyntaxContext, DUMMY_SP};
@@ -197,7 +198,7 @@ impl Plugin for MinifishPlugin {
 struct MyInjector<'a> {
     unresolved_mark: Mark,
     injects: HashMap<String, &'a Inject>,
-    will_inject: HashSet<(&'a Inject, SyntaxContext)>,
+    will_inject: IndexSet<(&'a Inject, SyntaxContext)>,
     is_cjs: bool,
 }
 
@@ -241,15 +242,15 @@ impl VisitMut for MyInjector<'_> {
     fn visit_mut_module(&mut self, n: &mut mako_core::swc_ecma_ast::Module) {
         n.visit_mut_children_with(self);
 
-        self.will_inject.iter().for_each(|&(inject, ctxt)| {
-            let mi = if self.is_cjs {
+        let stmts = self.will_inject.iter().map(|&(inject, ctxt)| {
+            if self.is_cjs || inject.prefer_require {
                 inject.clone().into_require_with(ctxt, self.unresolved_mark)
             } else {
                 inject.clone().into_with(ctxt)
-            };
-
-            n.body.insert(0, mi);
+            }
         });
+
+        n.body.splice(0..0, stmts);
     }
 }
 
@@ -260,6 +261,7 @@ pub struct Inject {
     pub named: Option<String>,
     pub namespace: Option<bool>,
     pub exclude: Option<Regex>,
+    pub prefer_require: bool,
 }
 
 impl Eq for Inject {}
@@ -433,6 +435,7 @@ mod tests {
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            prefer_require: false,
         };
 
         let code = apply_inject_to_code(
@@ -458,6 +461,7 @@ my.call("toast");
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            prefer_require: false,
         };
 
         let code = apply_inject_to_code(
@@ -484,6 +488,7 @@ export { };
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            prefer_require: false,
         };
 
         let code = apply_inject_to_code(
@@ -509,6 +514,7 @@ my.call("toast");
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            prefer_require: false,
         };
 
         let code = apply_inject_to_code(
@@ -534,6 +540,7 @@ export { };
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            prefer_require: false,
         };
 
         let code = apply_inject_to_code(
@@ -558,6 +565,7 @@ my.call("toast");
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            prefer_require: false,
         };
 
         let code = apply_inject_to_code(
@@ -584,6 +592,7 @@ export { };
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            prefer_require: false,
         };
 
         let code = apply_inject_to_code(
@@ -609,6 +618,7 @@ my.call("toast");
             from: "mock-lib".to_string(),
             namespace: Some(true),
             exclude: None,
+            prefer_require: false,
         };
         let code = apply_inject_to_code(
             hashmap! {
@@ -634,6 +644,7 @@ export { };
             from: "mock-lib".to_string(),
             namespace: Some(true),
             exclude: None,
+            prefer_require: false,
         };
         let code = apply_inject_to_code(
             hashmap! {
@@ -659,6 +670,7 @@ my.call("toast");
             from: "mock-lib".to_string(),
             namespace: Some(true),
             exclude: None,
+            prefer_require: false,
         };
 
         let mut context = Context {
@@ -686,5 +698,32 @@ my.call("toast");
         let deps = analyze_deps(&module_ast, &context).unwrap();
 
         assert_eq!(deps.len(), 1);
+    }
+
+    #[test]
+    fn inject_prefer_require() {
+        let i = Inject {
+            name: "my".to_string(),
+            named: None,
+            from: "mock-lib".to_string(),
+            namespace: None,
+            exclude: None,
+            prefer_require: true,
+        };
+
+        let code = apply_inject_to_code(
+            hashmap! {
+                "my".to_string() =>&i
+            },
+            r#"my.call("toast");export { }"#,
+        );
+
+        assert_eq!(
+            code,
+            r#"var my = require("mock-lib").default;
+my.call("toast");
+export { };
+"#
+        );
     }
 }

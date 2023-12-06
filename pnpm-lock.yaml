@@ -54,14 +54,14 @@ importers:
   crates/node:
     optionalDependencies:
       '@okamjs/okam-darwin-arm64':
-        specifier: 0.1.6-dev.20231129.1
-        version: 0.1.6-dev.20231129.1
+        specifier: 0.1.8
+        version: 0.1.8
       '@okamjs/okam-darwin-x64':
-        specifier: 0.1.6-dev.20231129.1
-        version: 0.1.6-dev.20231129.1
+        specifier: 0.1.8
+        version: 0.1.8
       '@okamjs/okam-linux-x64-gnu':
-        specifier: 0.1.6-dev.20231129.1
-        version: 0.1.6-dev.20231129.1
+        specifier: 0.1.8
+        version: 0.1.8
     devDependencies:
       '@napi-rs/cli':
         specifier: ^2.14.8
@@ -288,7 +288,7 @@ importers:
   packages/bundler-okam:
     dependencies:
       '@okamjs/okam':
-        specifier: 0.1.6-dev.20231129.1
+        specifier: 0.1.8
         version: link:../../crates/node
       '@swc/helpers':
         specifier: 0.5.1
@@ -3286,8 +3286,8 @@ packages:
       fastq: 1.15.0
     dev: true
 
-  /@okamjs/okam-darwin-arm64@0.1.6-dev.20231129.1:
-    resolution: {integrity: sha512-lJSmsRNStxS1tFfIh86GzFCM+jIPPLkGtDUGRMr3ybzYeL+4e2dT+WlV8nYF9FiSwvJI+pYgd6Zq+xFTLv+DGA==}
+  /@okamjs/okam-darwin-arm64@0.1.8:
+    resolution: {integrity: sha512-OKUFAxazPN7lsyhhMw7n8BLywbaGyNUa2ppjrsYVonCt5cr/RyMm+a1NWF4ab2d6xAIUhuOxV3zKrdmzXhBmkA==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
@@ -3295,8 +3295,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-darwin-x64@0.1.6-dev.20231129.1:
-    resolution: {integrity: sha512-1YMvq607Iw1IGPrgd9AsD04GIvbHaQoxdhcpXzphbIgNuOoLK8EP7gJk57DE/JKLNyvO/ZHm2g6j23HL237f9Q==}
+  /@okamjs/okam-darwin-x64@0.1.8:
+    resolution: {integrity: sha512-v+54RFBcB+9ka0MgHitL3zxWl9xLpZ81OXXZPnjPy+HkVrucSCCdpq6Mm1P3/0zvhcUBB2bhC1u3Y7QG1PF2hQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
@@ -3304,8 +3304,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-linux-x64-gnu@0.1.6-dev.20231129.1:
-    resolution: {integrity: sha512-8bnC/MAN8bsmMD6iC/m4GRt0hRgAWtRG8S9PF8S0uXF9K1JNylQ4BSVzHn/CyWpFMz+UT7OxtVLIGF74a9xT7Q==}
+  /@okamjs/okam-linux-x64-gnu@0.1.8:
+    resolution: {integrity: sha512-KRzNbQVEBcFu0LJezCKZZomN9hAXibLMFiQ2l4bKDyNUeW0nvWs2aw7WHgJNgHv9LN0HOA5uLhElPXeZlYI9Vw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
@@ -7265,6 +7265,8 @@ packages:
     peerDependenciesMeta:
       debug:
         optional: true
+    dependencies:
+      debug: 4.3.4(supports-color@5.5.0)
 
   /for-each@0.3.3:
     resolution: {integrity: sha512-jqYfLp7mo9vIyQf8ykW2v7A+2N4QjeCeI5+Dz9XraiO1ign81wjiH7Fb9vSOWvQfNtmSa4H2RoQTrrXivdUZmw==}

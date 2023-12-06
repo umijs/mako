@@ -229,11 +229,13 @@ pub enum ExternalConfig {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct InjectItem {
     pub from: String,
     pub named: Option<String>,
     pub namespace: Option<bool>,
     pub exclude: Option<String>,
+    pub prefer_require: Option<bool>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

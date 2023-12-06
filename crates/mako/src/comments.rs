@@ -1,5 +1,6 @@
 use mako_core::swc_atoms::atom;
 use mako_core::swc_common;
+use mako_core::swc_common::comments::Comment;
 use mako_core::swc_common::{BytePos, Span, DUMMY_SP};
 use mako_core::swc_node_comments::SwcComments;
 
@@ -35,6 +36,12 @@ impl Comments {
         if !leading.iter().any(|c| c.text == unused_comment.text) {
             leading.push(unused_comment);
         }
+    }
+
+    pub fn add_leading_comment_at(&mut self, pos: BytePos, comment: Comment) {
+        let mut leading = self.0.leading.entry(pos).or_default();
+
+        leading.push(comment);
     }
 
     /**

@@ -1,22 +1,22 @@
 import 'zx/globals';
 
 (async () => {
-  console.log('Check branch');
-  const branch = (await $`git branch --show-current`).stdout.trim();
-  if (branch !== 'master') {
-    throw new Error('Please run this script in master branch');
-  }
-
-  // Check docker status
-  console.log('Check docker status');
-  await $`docker ps`;
-
   // Check git status
   console.log('Check git status');
   const status = (await $`git status --porcelain`).stdout.trim();
   if (status) {
     throw new Error('Please commit all changes before release');
   }
+
+  // check git remote update
+  console.log('check git remote update');
+  await $`git fetch`;
+  const gitStatus = (await $`git status --short --branch`).stdout.trim();
+  assert(!gitStatus.includes('behind'), `git status is behind remote`);
+
+  // Check docker status
+  console.log('Check docker status');
+  await $`docker ps`;
 
   // bump version
   console.log('Bump version');
@@ -38,6 +38,14 @@ import 'zx/globals';
   if (newVersion.includes('-canary.')) tag = 'canary';
   if (newVersion.includes('-dev.')) tag = 'dev';
 
+  console.log('Check branch');
+  const branch = (await $`git branch --show-current`).stdout.trim();
+  if (tag === 'latest') {
+    if (branch !== 'master') {
+      throw new Error('publishing latest tag needs to be in master branch');
+    }
+  }
+
   nodePkg.version = newVersion;
 
   console.log(`${nodePkg.name}@${newVersion} will be published`);
@@ -53,6 +61,13 @@ import 'zx/globals';
   await $`rm -rf ./*.node`;
   await $`find ./npm -name '*.node' | xargs rm -f`;
 
+  console.log('linux building started...');
+  const start = Date.now();
+  await build_linux_binding();
+  await $`pnpm run format:dts`;
+  const duration = (Date.now() - start) / 1000;
+  console.log(`linux building done ${duration}`);
+
   await $`cargo build --lib -r --target x86_64-apple-darwin`;
   await $`pnpm run build:mac:x86`;
 
@@ -61,15 +76,8 @@ import 'zx/globals';
 
   await $`strip -x ./okam.darwin-*.node`;
 
-  console.log('linux building started...');
-  const start = Date.now();
-  await build_linux_binding();
-  await $`pnpm run format:dts`;
-  const duration = (Date.now() - start) / 1000;
-  console.log(`linux building done ${duration}`);
   await $`pnpm run artifacts:local`;
 
-  // --ignore-scripts because we don't publish optional pkg
   await $`npm publish --tag ${tag} --access public`;
 
   // set new version to bundler-okam
@@ -151,4 +159,11 @@ async function build_linux_binding() {
   const image = 'ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian';
 
   await $`docker run ${options} ${image} bash -c ${containerCMD}`;
+}
+
+function assert(v: unknown, message: string) {
+  if (!v) {
+    console.error(message);
+    process.exit(1);
+  }
 }
