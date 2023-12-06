@@ -188,7 +188,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
 }
 
 pub fn transform_js_generate(
-    _id: &ModuleId,
+    module_id: &ModuleId,
     context: &Arc<Context>,
     ast: &mut Ast,
     dep_map: &DependenciesToReplace,
@@ -227,6 +227,7 @@ pub fn transform_js_generate(
                             // ast.ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
 
                             let mut dep_replacer = DepReplacer {
+                                module_id,
                                 to_replace: dep_map,
                                 context,
                                 unresolved_mark: ast.unresolved_mark,

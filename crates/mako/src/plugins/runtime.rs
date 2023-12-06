@@ -159,7 +159,7 @@ impl MakoRuntime {
                 ignored: vec![],
             },
             async_deps: &Vec::<Dependency>::new(),
-            _id: &module_id,
+            module_id: &module_id,
             context,
             ast: &mut ast,
         })?;
