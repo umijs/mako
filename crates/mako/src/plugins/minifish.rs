@@ -7,10 +7,11 @@ use mako_core::anyhow::{anyhow, Result};
 use mako_core::indexmap::IndexSet;
 use mako_core::rayon::prelude::*;
 use mako_core::regex::Regex;
+use mako_core::swc_common::util::take::Take;
 use mako_core::swc_common::{Mark, Span, SyntaxContext, DUMMY_SP};
 use mako_core::swc_ecma_ast::{
-    Ident, ImportDecl, ImportDefaultSpecifier, ImportNamedSpecifier, ImportSpecifier,
-    ImportStarAsSpecifier, MemberExpr, ModuleDecl, ModuleItem, Stmt, VarDeclKind,
+    BlockStmt, Ident, IfStmt, ImportDecl, ImportDefaultSpecifier, ImportNamedSpecifier,
+    ImportSpecifier, ImportStarAsSpecifier, MemberExpr, ModuleDecl, ModuleItem, Stmt, VarDeclKind,
 };
 use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
@@ -192,6 +193,39 @@ impl Plugin for MinifishPlugin {
         }
 
         Ok(None)
+    }
+
+    fn after_generate_transform_js(
+        &self,
+        _param: &PluginTransformJsParam,
+        ast: &mut mako_core::swc_ecma_ast::Module,
+        _context: &Arc<Context>,
+    ) -> Result<()> {
+        ast.visit_mut_with(&mut UnSimplify {});
+        Ok(())
+    }
+}
+
+struct UnSimplify {}
+
+impl VisitMut for UnSimplify {
+    fn visit_mut_if_stmt(&mut self, if_stmt: &mut IfStmt) {
+        match if_stmt.cons {
+            box Stmt::Block(_) => {}
+            _ => {
+                let cons = if_stmt.cons.take();
+
+                if_stmt.cons = Box::new(
+                    BlockStmt {
+                        span: DUMMY_SP,
+                        stmts: vec![*cons],
+                    }
+                    .into(),
+                );
+            }
+        }
+
+        if_stmt.visit_mut_children_with(self);
     }
 }
 

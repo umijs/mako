@@ -22,7 +22,7 @@ use crate::ast::{js_ast_to_code, Ast};
 use crate::compiler::{Args, Context};
 use crate::config::{Config, Mode};
 use crate::module::{ModuleAst, ModuleId};
-use crate::plugin::Plugin;
+use crate::plugin::{Plugin, PluginTransformJsParam};
 use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
 use crate::transformers::transform_dynamic_import::DynamicImport;
 
@@ -251,6 +251,17 @@ pub fn transform_js_generate(
                                     .unwrap()
                                     .get_swc_comments(),
                             )));
+
+                            context.plugin_driver.after_generate_transform_js(
+                                &PluginTransformJsParam {
+                                    handler,
+                                    path: &_id.id,
+                                    top_level_mark,
+                                    unresolved_mark: ast.unresolved_mark,
+                                },
+                                &mut ast.ast,
+                                context,
+                            )?;
 
                             Ok(())
                         })

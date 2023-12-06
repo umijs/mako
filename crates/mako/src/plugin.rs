@@ -75,6 +75,15 @@ pub trait Plugin: Any + Send + Sync {
         Ok(())
     }
 
+    fn after_generate_transform_js(
+        &self,
+        _param: &PluginTransformJsParam,
+        _ast: &mut Module,
+        _context: &Arc<Context>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
     fn analyze_deps(
         &self,
         _param: &mut PluginDepAnalyzeParam,
@@ -163,6 +172,18 @@ impl PluginDriver {
     ) -> Result<()> {
         for plugin in &self.plugins {
             plugin.transform_js(param, ast, context)?;
+        }
+        Ok(())
+    }
+
+    pub fn after_generate_transform_js(
+        &self,
+        param: &PluginTransformJsParam,
+        ast: &mut Module,
+        context: &Arc<Context>,
+    ) -> Result<()> {
+        for plugin in &self.plugins {
+            plugin.after_generate_transform_js(param, ast, context)?;
         }
         Ok(())
     }
