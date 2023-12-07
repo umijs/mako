@@ -1,6 +1,6 @@
 {
   "name": "@okamjs/okam",
-  "version": "0.1.9",
+  "version": "0.1.10-dev.20231207.2",
   "main": "index.js",
   "types": "index.d.ts",
   "napi": {
@@ -39,8 +39,8 @@
     "release": "esno scripts/release.ts"
   },
   "optionalDependencies": {
-    "@okamjs/okam-darwin-arm64": "0.1.9",
-    "@okamjs/okam-darwin-x64": "0.1.9",
-    "@okamjs/okam-linux-x64-gnu": "0.1.9"
+    "@okamjs/okam-darwin-arm64": "0.1.10-dev.20231207.2",
+    "@okamjs/okam-darwin-x64": "0.1.10-dev.20231207.2",
+    "@okamjs/okam-linux-x64-gnu": "0.1.10-dev.20231207.2"
   }
 }
