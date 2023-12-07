@@ -1,4 +1,22 @@
 
+## 0.1.9
+
+`2023-12-07`
+
+> @alipay/bigfish@4.1.6
+
+- 新增 require 动态字符串的支持，比如 `require('./i18n' + lang)` @PeachScript in [#747](https://github.com/umijs/mako/pull/747)
+- 调整 tree-shaking，优化对 side effects 的处理 @stormslowly in [#725](https://github.com/umijs/mako/pull/725)
+- 重构 watch、dev 和 update 逻辑，增加 debounce，支持 git checkout 一次触发多次修改的问题 @sorrycc in [#744](https://github.com/umijs/mako/pull/744)
+- 修复 import() 内容为空时会 panic 报错的问题 @sorrycc in [#743](https://github.com/umijs/mako/pull/743)
+- 修复 require(css_file) 被处理成 css modules 的问题 @sorrycc in [#751](https://github.com/umijs/mako/pull/751)
+- 修复 node 补丁方案不支持类 fs/promise 引用的问题 @sorrycc in [#746](https://github.com/umijs/mako/pull/746)
+- 修复 import() 动态加载 CSS 不生效的问题 @jiesia in [#756](https://github.com/umijs/mako/pull/756)
+- 修复 worker 里不支持 import() 动态加载的问题 @jiesia in [#755](https://github.com/umijs/mako/pull/755)
+- 修复 HMR 时有几率触发 process undefined 的问题 @sorrycc in [#741](https://github.com/umijs/mako/pull/741)
+- 修复 external 配置格式判断逻辑 by [@PeachScript](https://github.com/PeachScript) in [#735](https://github.com/umijs/mako/pull/735)
+- 修复 Minifish 的 inject 功能支持配置 preferRequire 和 插入代码顺序根据根据插入变量出现顺序排序 by [@stormslowly](https://github.com/stormslowly) in [#731](https://github.com/umijs/mako/pull/731) #734
+
 ## 0.1.5
 
 `2023-11-28`
