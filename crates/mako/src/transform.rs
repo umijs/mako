@@ -788,7 +788,7 @@ const require = window.require;
         )
         .unwrap();
         transform_js_generate(TransformJsParam {
-            _id: &ModuleId::new("test".to_string()),
+            module_id: &ModuleId::new("test".to_string()),
             context: &context,
             ast: &mut ast,
             dep_map: &DependenciesToReplace {

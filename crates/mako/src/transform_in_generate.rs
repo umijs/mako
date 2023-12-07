@@ -125,7 +125,7 @@ pub fn transform_modules_in_thread(
             };
             if let ModuleAst::Script(ast) = ast {
                 let ret = transform_js_generate(TransformJsParam {
-                    _id: &module.id,
+                    module_id: &module.id,
                     context: &context,
                     ast,
                     dep_map: &deps_to_replace,
@@ -173,7 +173,7 @@ fn insert_swc_helper_replace(map: &mut HashMap<String, String>, context: &Arc<Co
 }
 
 pub struct TransformJsParam<'a> {
-    pub _id: &'a ModuleId,
+    pub module_id: &'a ModuleId,
     pub context: &'a Arc<Context>,
     pub ast: &'a mut Ast,
     pub dep_map: &'a DependenciesToReplace,
@@ -185,7 +185,7 @@ pub struct TransformJsParam<'a> {
 pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()> {
     mako_core::mako_profile_function!();
     let TransformJsParam {
-        _id,
+        module_id,
         context,
         ast,
         dep_map,
@@ -246,6 +246,7 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()>
                         }
 
                         let mut dep_replacer = DepReplacer {
+                            module_id,
                             to_replace: dep_map,
                             context,
                             unresolved_mark,
