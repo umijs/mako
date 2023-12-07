@@ -42,7 +42,7 @@
 
 > @alipay/bigfish@4.1.0
 
-- 新增 Emotion 支持 by zhangpanweb in [#694](https://github.com/umijs/mako/pull/694)
+- 新增 Emotion 支持 by @zhangpanweb in [#694](https://github.com/umijs/mako/pull/694)
 - 提升 generate chunks 的性能，m1 yuyanAssets build 稳定提升 200ms 左右 by [@sorrycc](https://github.com/sorrycc) in [#709](https://github.com/umijs/mako/pull/709)
 - 提升 generate 阶段 transform 的性能，m1 yuyanAssets 此步骤耗时从 3431ms 降到 1019ms by [@sorrycc](https://github.com/sorrycc) in [#707](https://github.com/umijs/mako/pull/707)
 - 修复 window.require 不应该被替换成 `window.__mako_require__` 的问题 by [@jiesia](https://github.com/jiesia) in [#708](https://github.com/umijs/mako/pull/708)
