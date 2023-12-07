@@ -256,7 +256,7 @@ pub fn transform_js_generate(
                             context.plugin_driver.after_generate_transform_js(
                                 &PluginTransformJsParam {
                                     handler,
-                                    path: &_id.id,
+                                    path: &module_id.id,
                                     top_level_mark,
                                     unresolved_mark: ast.unresolved_mark,
                                 },
