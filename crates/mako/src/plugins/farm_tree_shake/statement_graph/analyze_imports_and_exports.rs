@@ -1,8 +1,9 @@
 use std::collections::{HashMap, HashSet};
 
-use mako_core::swc_common::{Span, DUMMY_SP};
+use mako_core::swc_common::{Span, SyntaxContext, DUMMY_SP};
 use mako_core::swc_ecma_ast;
-use mako_core::swc_ecma_ast::{ModuleExportName, ModuleItem};
+use mako_core::swc_ecma_ast::{Expr, ModuleExportName, ModuleItem, VarDecl};
+use mako_core::swc_ecma_utils::{ExprCtx, ExprExt};
 use mako_core::swc_ecma_visit::VisitWith;
 
 use super::defined_idents_collector::DefinedIdentsCollector;
@@ -25,6 +26,7 @@ pub fn analyze_imports_and_exports(
     id: &StatementId,
     stmt: &ModuleItem,
     used_defined_idents: Option<HashSet<String>>,
+    unresolve_ctxt: SyntaxContext,
 ) -> StatementInfo {
     let mut defined_idents = HashSet::new();
     let mut used_idents = HashSet::new();
@@ -406,6 +408,10 @@ pub fn analyze_imports_and_exports(
                             defined_idents_map
                                 .insert(defined_ident.clone(), local_used_idents.clone());
                         }
+
+                        if !is_pure_var_decl(var_decl, unresolve_ctxt) {
+                            is_self_executed = true;
+                        }
                     }
                 }
                 _ => unreachable!(
@@ -415,8 +421,10 @@ pub fn analyze_imports_and_exports(
             swc_ecma_ast::Stmt::Expr(expr) => {
                 span = expr.span;
 
-                is_self_executed = true;
-                analyze_and_insert_used_idents(expr, None)
+                if !is_pure_expression(&expr.expr, unresolve_ctxt) {
+                    is_self_executed = true;
+                }
+                analyze_and_insert_used_idents(expr, None);
             }
         },
     };
@@ -431,4 +439,21 @@ pub fn analyze_imports_and_exports(
         has_side_effects: false,
         span,
     }
+}
+
+fn is_pure_var_decl(var: &VarDecl, unresolved_ctxt: SyntaxContext) -> bool {
+    var.decls.iter().all(|decl| {
+        if let Some(ref init) = decl.init {
+            is_pure_expression(init, unresolved_ctxt)
+        } else {
+            true
+        }
+    })
+}
+
+fn is_pure_expression(expr: &Expr, unresolved_ctxt: SyntaxContext) -> bool {
+    !expr.may_have_side_effects(&ExprCtx {
+        unresolved_ctxt,
+        is_unresolved_ref_safe: false,
+    })
 }

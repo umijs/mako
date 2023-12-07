@@ -9,7 +9,7 @@ pub(crate) mod defined_idents_collector;
 pub(crate) mod used_idents_collector;
 
 use analyze_imports_and_exports::analyze_imports_and_exports;
-use mako_core::swc_common::Span;
+use mako_core::swc_common::{Span, SyntaxContext};
 
 use crate::plugins::farm_tree_shake::module::{is_ident_equal, UsedIdent};
 use crate::plugins::farm_tree_shake::shake::strip_context;
@@ -154,7 +154,7 @@ pub struct Statement {
 }
 
 impl Statement {
-    pub fn new(id: StatementId, stmt: &ModuleItem) -> Self {
+    pub fn new(id: StatementId, stmt: &ModuleItem, unresolved_ctxt: SyntaxContext) -> Self {
         let StatementInfo {
             import_info,
             export_info,
@@ -164,7 +164,7 @@ impl Statement {
             is_self_executed,
             span,
             has_side_effects,
-        } = analyze_imports_and_exports(&id, stmt, None);
+        } = analyze_imports_and_exports(&id, stmt, None, unresolved_ctxt);
 
         // transform defined_idents_map from HashMap<Ident, Vec<Ident>> to HashMap<String, Ident> using ToString
         let defined_idents_map = defined_idents_map
@@ -193,21 +193,30 @@ pub struct StatementGraphEdge {
 pub struct StatementGraph {
     g: petgraph::graph::Graph<Statement, StatementGraphEdge>,
     id_index_map: HashMap<StatementId, NodeIndex>,
+    unresolved_ctxt: SyntaxContext,
 }
 
 impl StatementGraph {
-    pub fn new(module: &SwcModule, _side_effects_map: &HashMap<String, bool>) -> Self {
+    pub fn new(
+        module: &SwcModule,
+        _side_effects_map: &HashMap<String, bool>,
+        unresolved_ctxt: SyntaxContext,
+    ) -> Self {
         let mut g = petgraph::graph::Graph::new();
         let mut id_index_map = HashMap::new();
 
         for (index, stmt) in module.body.iter().enumerate() {
-            let statement = Statement::new(index, stmt);
+            let statement = Statement::new(index, stmt, unresolved_ctxt);
 
             let node = g.add_node(statement);
             id_index_map.insert(index, node);
         }
 
-        let mut graph = Self { g, id_index_map };
+        let mut graph = Self {
+            g,
+            id_index_map,
+            unresolved_ctxt,
+        };
         let mut edges_to_add = Vec::new();
 
         for stmt in graph.stmts() {
@@ -238,6 +247,7 @@ impl StatementGraph {
         Self {
             g: petgraph::graph::Graph::new(),
             id_index_map: HashMap::new(),
+            unresolved_ctxt: SyntaxContext::empty(),
         }
     }
 

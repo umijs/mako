@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use mako_core::anyhow::Result;
 use mako_core::swc_common::comments::{Comment, CommentKind};
-use mako_core::swc_common::DUMMY_SP;
+use mako_core::swc_common::{DUMMY_SP, GLOBALS};
 
 use crate::compiler::Context;
 use crate::module::{ModuleAst, ModuleId, ModuleType, ResolveType};
@@ -62,7 +62,9 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
             continue;
         };
 
-        let tree_shake_module = TreeShakeModule::new(module, order, module_graph);
+        let tree_shake_module = GLOBALS.set(&context.meta.script.globals, || {
+            TreeShakeModule::new(module, order, module_graph)
+        });
 
         if std::env::var("TS_DEBUG").is_ok() {
             let mut comments = context.meta.script.output_comments.write().unwrap();
