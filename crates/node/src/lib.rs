@@ -75,7 +75,7 @@ pub struct BuildParams {
         }
     >;
     copy?: string[];
-    code_splitting?: "auto" | "none";
+    codeSplitting?: "auto" | "none";
     providers?: Record<string, string[]>;
     publicPath?: string;
     inlineLimit?: number;
@@ -94,7 +94,7 @@ pub struct BuildParams {
     };
     stats?: boolean;
     hash?: boolean;
-    autoCssModules?: boolean;
+    autoCSSModules?: boolean;
     ignoreCSSParserErrors?: boolean;
     dynamicImportToRequire?: boolean;
     umd?: string;
