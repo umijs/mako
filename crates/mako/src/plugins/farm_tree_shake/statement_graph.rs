@@ -193,7 +193,6 @@ pub struct StatementGraphEdge {
 pub struct StatementGraph {
     g: petgraph::graph::Graph<Statement, StatementGraphEdge>,
     id_index_map: HashMap<StatementId, NodeIndex>,
-    unresolved_ctxt: SyntaxContext,
 }
 
 impl StatementGraph {
@@ -212,11 +211,7 @@ impl StatementGraph {
             id_index_map.insert(index, node);
         }
 
-        let mut graph = Self {
-            g,
-            id_index_map,
-            unresolved_ctxt,
-        };
+        let mut graph = Self { g, id_index_map };
         let mut edges_to_add = Vec::new();
 
         for stmt in graph.stmts() {
@@ -247,7 +242,6 @@ impl StatementGraph {
         Self {
             g: petgraph::graph::Graph::new(),
             id_index_map: HashMap::new(),
-            unresolved_ctxt: SyntaxContext::empty(),
         }
     }
 
