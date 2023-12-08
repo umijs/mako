@@ -119,6 +119,17 @@ function createRuntime(makoModules, entryModuleId) {
 
   /* mako/runtime/ensure load css chunk */
   !(function () {
+    function isUrlMatched(current, target) {
+      return (
+        // relative path
+        current === target ||
+        // absolute path
+        current === requireModule.publicPath + target ||
+        // absolute path without hostname
+        (/^(\w+:)?\/\//.test(requireModule.publicPath) &&
+          current == new URL(requireModule.publicPath).pathname + target)
+      );
+    }
     requireModule.cssInstalled = cssInstalledChunks;
     // __CSS_CHUNKS_URL_MAP
     requireModule.findStylesheet = function (url) {
@@ -128,7 +139,7 @@ function createRuntime(makoModules, entryModuleId) {
         // why not use link.href?
         // because link.href contains hostname
         var linkUrl = link.getAttribute('href').split('?')[0];
-        return linkUrl === url || linkUrl === requireModule.publicPath + url;
+        return isUrlMatched(linkUrl, url);
       });
     };
 
@@ -210,7 +221,7 @@ function createRuntime(makoModules, entryModuleId) {
       }
     };
   })();
-  
+
   /* mako/runtime/load script */
   !(function () {
     var inProgress = {};
