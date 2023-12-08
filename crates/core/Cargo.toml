@@ -45,7 +45,7 @@ swc_core = { version = "=0.83.19", features = [
 ] }
 
 swc_error_reporters = "0.16.1"
-swc_node_comments   = { version = "0.19.1" }
+swc_node_comments   = "0.19.1"
 swc_emotion         = "0.51.0"
 
 base64                = "0.21.2"
