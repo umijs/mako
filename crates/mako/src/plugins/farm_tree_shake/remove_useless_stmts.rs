@@ -36,7 +36,12 @@ pub fn remove_useless_stmts(
             import_info,
             export_info,
             ..
-        } = analyze_imports_and_exports(stmt_id, module_item, Some(used_defined_idents.clone()));
+        } = analyze_imports_and_exports(
+            stmt_id,
+            module_item,
+            Some(used_defined_idents.clone()),
+            tree_shake_module.unresolved_ctxt,
+        );
 
         if let Some(import_info) = import_info {
             used_import_infos.push(import_info.clone());

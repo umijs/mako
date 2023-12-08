@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use mako_core::swc_common::SyntaxContext;
 use mako_core::swc_ecma_ast::{Module as SwcModule, ModuleItem};
 
 use crate::module::{Module, ModuleId};
@@ -124,6 +125,7 @@ pub struct TreeShakeModule {
     pub topo_order: usize,
     pub updated_ast: Option<SwcModule>,
     pub side_effect_dep_sources: HashSet<String>,
+    pub unresolved_ctxt: SyntaxContext,
 }
 
 impl TreeShakeModule {
@@ -231,24 +233,12 @@ impl TreeShakeModule {
         }
     }
 
-    pub fn new(module: &Module, order: usize, module_graph: &ModuleGraph) -> Self {
+    pub fn new(module: &Module, order: usize, _module_graph: &ModuleGraph) -> Self {
         let module_info = module.info.as_ref().unwrap();
 
-        let mut side_effect_map: HashMap<String, bool> = Default::default();
+        let side_effect_map: HashMap<String, bool> = Default::default();
 
-        module_graph
-            .get_dependencies(&module.id)
-            .iter()
-            .for_each(|&(module_id, dep)| {
-                let side_effects = module_graph.get_module(module_id).map_or(true, |m| {
-                    m.info
-                        .as_ref()
-                        .map_or(true, |info| info.get_side_effects_flag())
-                });
-
-                side_effect_map.insert(dep.source.clone(), side_effects);
-            });
-
+        let mut unresolved_ctxt = SyntaxContext::empty();
         // 1. generate statement graph
         let mut module_system = ModuleSystem::CommonJS;
         let stmt_graph = match &module_info.ast {
@@ -260,7 +250,8 @@ impl TreeShakeModule {
                     .any(|s| matches!(s, ModuleItem::ModuleDecl(_)));
                 if is_esm {
                     module_system = ModuleSystem::ESModule;
-                    StatementGraph::new(&module.ast, &side_effect_map)
+                    unresolved_ctxt = unresolved_ctxt.apply_mark(module.unresolved_mark);
+                    StatementGraph::new(&module.ast, &side_effect_map, unresolved_ctxt)
                 } else {
                     StatementGraph::empty()
                 }
@@ -297,6 +288,7 @@ impl TreeShakeModule {
             module_system,
             topo_order: order,
             updated_ast: None,
+            unresolved_ctxt,
         }
     }
 
