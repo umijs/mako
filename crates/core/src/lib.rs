@@ -4,16 +4,29 @@ pub use eframe;
 pub use puffin;
 #[cfg(feature = "profile")]
 pub use puffin_egui;
+pub use swc_core::common as swc_common;
+pub use swc_core::css::{
+    ast as swc_css_ast, codegen as swc_css_codegen, compat as swc_css_compat,
+    minifier as swc_css_minifier, modules as swc_css_modules, parser as swc_css_parser,
+    prefixer as swc_css_prefixer, visit as swc_css_visit,
+};
+pub use swc_core::ecma::transforms::{
+    base as swc_ecma_transforms, module as swc_ecma_transforms_modules,
+    optimization as swc_ecma_transforms_optimization, proposal as swc_ecma_transforms_proposals,
+    react as swc_ecma_transforms_react, typescript as swc_ecma_transforms_typescript,
+};
+pub use swc_core::ecma::{
+    ast as swc_ecma_ast, atoms as swc_atoms, codegen as swc_ecma_codegen,
+    minifier as swc_ecma_minifier, parser as swc_ecma_parser, preset_env as swc_ecma_preset_env,
+    utils as swc_ecma_utils, visit as swc_ecma_visit,
+};
 pub use {
     anyhow, base64, cached, clap, colored, config, convert_case, fs_extra, futures, glob, hyper,
     hyper_staticfile, hyper_tungstenite, indexmap, lazy_static, md5, mdxjs, mime_guess,
     nodejs_resolver, notify, notify_debouncer_full, path_clean, pathdiff, petgraph, rayon, regex,
-    serde, serde_json, serde_xml_rs, serde_yaml, svgr_rs, swc_atoms, swc_common, swc_css_ast,
-    swc_css_codegen, swc_css_compat, swc_css_minifier, swc_css_modules, swc_css_parser,
-    swc_css_prefixer, swc_css_visit, swc_ecma_ast, swc_ecma_codegen, swc_ecma_minifier,
-    swc_ecma_parser, swc_ecma_preset_env, swc_ecma_transforms, swc_ecma_utils, swc_ecma_visit,
-    swc_emotion, swc_error_reporters, swc_node_comments, thiserror, tokio, tokio_tungstenite, toml,
-    tracing, tracing_subscriber, tungstenite, twox_hash,
+    serde, serde_json, serde_xml_rs, serde_yaml, svgr_rs, swc_emotion, swc_error_reporters,
+    swc_node_comments, thiserror, tokio, tokio_tungstenite, toml, tracing, tracing_subscriber,
+    tungstenite, twox_hash,
 };
 
 #[macro_export]
