@@ -119,7 +119,7 @@ function createRuntime(makoModules, entryModuleId) {
 
   /* mako/runtime/ensure load css chunk */
   !(function () {
-    let publicPathWithoutOrigin;
+    var publicPathWithoutOrigin;
 
     try {
       publicPathWithoutOrigin = new URL(
