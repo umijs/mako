@@ -119,17 +119,14 @@ function createRuntime(makoModules, entryModuleId) {
 
   /* mako/runtime/ensure load css chunk */
   !(function () {
-    function isUrlMatched(current, target) {
-      return (
-        // relative path
-        current === target ||
-        // absolute path
-        current === requireModule.publicPath + target ||
-        // absolute path without hostname
-        (/^(\w+:)?\/\//.test(requireModule.publicPath) &&
-          current === new URL(requireModule.publicPath).pathname + target)
-      );
-    }
+    let publicPathWithoutOrigin;
+
+    try {
+      publicPathWithoutOrigin = new URL(
+        requireModule.publicPath.replace(/^(\/\/)/, 'https:$1')
+      ).pathname;
+    } catch {}
+
     requireModule.cssInstalled = cssInstalledChunks;
     // __CSS_CHUNKS_URL_MAP
     requireModule.findStylesheet = function (url) {
@@ -139,7 +136,14 @@ function createRuntime(makoModules, entryModuleId) {
         // why not use link.href?
         // because link.href contains hostname
         var linkUrl = link.getAttribute('href').split('?')[0];
-        return isUrlMatched(linkUrl, url);
+        return (
+          // relative path
+          linkUrl === url ||
+          // absolute path
+          linkUrl === requireModule.publicPath + url ||
+          // absolute path without hostname
+          (publicPathWithoutOrigin && linkUrl === publicPathWithoutOrigin + url)
+        );
       });
     };
 
