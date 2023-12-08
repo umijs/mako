@@ -5,7 +5,7 @@ use mako_core::swc_common::comments::NoopComments;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{chain, Mark, SourceMap};
 use mako_core::swc_ecma_ast::Module;
-use mako_core::swc_ecma_transforms::react::{react, Options, RefreshOptions, Runtime};
+use mako_core::swc_ecma_transforms_react::{react, Options, RefreshOptions, Runtime};
 use mako_core::swc_ecma_visit::{Fold, VisitMut, VisitMutWith};
 use mako_core::swc_emotion::{emotion, EmotionOptions};
 

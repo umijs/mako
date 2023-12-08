@@ -7,8 +7,9 @@ use mako_core::swc_css_ast::Stylesheet;
 use mako_core::swc_css_minifier;
 use mako_core::swc_ecma_minifier::optimize;
 use mako_core::swc_ecma_minifier::option::{ExtraOptions, MinifyOptions};
+use mako_core::swc_ecma_transforms::fixer::fixer;
 use mako_core::swc_ecma_transforms::helpers::{Helpers, HELPERS};
-use mako_core::swc_ecma_transforms::{fixer, resolver};
+use mako_core::swc_ecma_transforms::resolver;
 use mako_core::swc_ecma_visit::VisitMutWith;
 use mako_core::swc_error_reporters::handler::try_with_handler;
 

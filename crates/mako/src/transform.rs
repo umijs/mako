@@ -12,11 +12,11 @@ use mako_core::swc_ecma_ast::Module;
 use mako_core::swc_ecma_preset_env::{self as swc_preset_env};
 use mako_core::swc_ecma_transforms::feature::FeatureFlag;
 use mako_core::swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
-use mako_core::swc_ecma_transforms::optimization::simplifier;
-use mako_core::swc_ecma_transforms::optimization::simplify::{dce, Config as SimpilifyConfig};
-use mako_core::swc_ecma_transforms::proposals::decorators;
-use mako_core::swc_ecma_transforms::typescript::strip_with_jsx;
 use mako_core::swc_ecma_transforms::{resolver, Assumptions};
+use mako_core::swc_ecma_transforms_optimization::simplifier;
+use mako_core::swc_ecma_transforms_optimization::simplify::{dce, Config as SimpilifyConfig};
+use mako_core::swc_ecma_transforms_proposals::decorators;
+use mako_core::swc_ecma_transforms_typescript::strip_with_jsx;
 use mako_core::swc_ecma_visit::{Fold, VisitMutWith};
 use mako_core::swc_error_reporters::handler::try_with_handler;
 
