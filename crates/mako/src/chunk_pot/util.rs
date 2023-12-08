@@ -5,6 +5,7 @@ use std::sync::Arc;
 use cached::proc_macro::cached;
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::cached::SizedCache;
+use mako_core::sailfish::TemplateOnce;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{
     ArrayLit, BlockStmt, Expr, ExprOrSpread, FnExpr, Function, KeyValueProp, Module as SwcModule,
@@ -20,6 +21,7 @@ use crate::compiler::Context;
 use crate::config::{DevtoolConfig, Mode};
 use crate::load::file_content_hash;
 use crate::module::{Module, ModuleAst};
+use crate::runtime::AppRuntimeTemplate;
 use crate::sourcemap::build_source_map;
 
 pub(crate) fn render_module_js(
@@ -90,17 +92,25 @@ pub(crate) fn empty_module_fn_expr() -> FnExpr {
     create = "{ SizedCache::with_size(5) }"
 )]
 pub(crate) fn runtime_code(context: &Arc<Context>) -> Result<String> {
-    let runtime_entry_content_str = include_str!("../runtime/runtime_entry.js");
-    let mut content = runtime_entry_content_str.replace(
+    let umd = if context.config.umd != "none" {
+        Some(context.config.umd.clone())
+    } else {
+        None
+    };
+    let chunk_graph = context.chunk_graph.read().unwrap();
+    let has_dynamic_chunks = chunk_graph.get_all_chunks().len() > 1;
+    let has_hmr = context.args.watch;
+    let app_runtime = AppRuntimeTemplate {
+        has_dynamic_chunks,
+        has_hmr,
+        umd,
+    };
+    let app_runtime = app_runtime.render_once()?;
+    let app_runtime = app_runtime.replace(
         "// __inject_runtime_code__",
         &context.plugin_driver.runtime_plugins_code(context)?,
     );
-    if context.config.umd != "none" {
-        let umd_runtime = include_str!("../runtime/runtime_umd.js");
-        let umd_runtime = umd_runtime.replace("_%umd_name%_", &context.config.umd);
-        content.push_str(&umd_runtime);
-    }
-    Ok(content)
+    Ok(app_runtime)
 }
 
 pub(crate) fn hash_hashmap<K, V>(map: &HashMap<K, V>) -> u64
