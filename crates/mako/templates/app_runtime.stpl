@@ -6,9 +6,11 @@ function createRuntime(makoModules, entryModuleId) {
     var cachedModule = modulesRegistry[moduleId];
 
     if (cachedModule !== undefined) {
+<% if has_hmr { %>
       if (cachedModule.error) {
         throw cachedModule.error;
       }
+<% } %>
       return cachedModule.exports;
     }
 
@@ -18,14 +20,15 @@ function createRuntime(makoModules, entryModuleId) {
     };
     modulesRegistry[moduleId] = module;
 
+<% if has_hmr { %>
     try {
+<% } %>
       var execOptions = {
         id: moduleId,
         module: module,
         factory: makoModules[moduleId],
         require: requireModule,
       };
-
       requireModule.requireInterceptors.forEach(function (interceptor) {
         interceptor(execOptions);
       });
@@ -35,10 +38,12 @@ function createRuntime(makoModules, entryModuleId) {
         execOptions.module.exports,
         execOptions.require,
       );
+<% if has_hmr { %>
     } catch (e) {
       modulesRegistry[moduleId].error = e;
       throw e;
     }
+<% } %>
 
     return module.exports;
   }
@@ -46,6 +51,7 @@ function createRuntime(makoModules, entryModuleId) {
   // module execution interceptor
   requireModule.requireInterceptors = [];
 
+<% if has_dynamic_chunks || has_hmr { %>
   /* mako/runtime/ensure chunk */
   !(function () {
     requireModule.chunkEnsures = {};
@@ -111,45 +117,6 @@ function createRuntime(makoModules, entryModuleId) {
   })();
   // chunk and async load
 
-  /* mako/runtime/load script */
-  !(function () {
-    var inProgress = {};
-    requireModule.loadScript = function (url, done, key) {
-      // Support worker
-      if (!self.document) {
-        importScripts(url);
-        return done();
-      }
-
-      if (inProgress[url]) {
-        return inProgress[url].push(done);
-      }
-      var script = document.createElement('script');
-      script.timeout = 120;
-      script.src = url;
-      inProgress[url] = [done];
-      var onLoadEnd = function (prev, event) {
-        clearTimeout(timeout);
-        var doneFns = inProgress[url];
-        delete inProgress[url];
-        if (script.parentNode) script.parentNode.removeChild(script);
-        if (doneFns) {
-          doneFns.forEach(function (fn) {
-            return fn(event);
-          });
-        }
-        if (prev) return prev(event);
-      };
-      // May not be needed, already has timeout attributes
-      var timeout = setTimeout(
-        onLoadEnd.bind(null, undefined, { type: 'timeout', target: script }),
-        120000,
-      );
-      script.onerror = onLoadEnd.bind(null, script.onerror);
-      script.onload = onLoadEnd.bind(null, script.onload);
-      document.head.appendChild(script);
-    };
-  })();
   /* mako/runtime/ensure load css chunk */
   !(function () {
     requireModule.cssInstalled = cssInstalledChunks;
@@ -243,7 +210,49 @@ function createRuntime(makoModules, entryModuleId) {
       }
     };
   })();
+  
+  /* mako/runtime/load script */
+  !(function () {
+    var inProgress = {};
+    requireModule.loadScript = function (url, done, key) {
+      // Support worker
+      if (!self.document) {
+        importScripts(url);
+        return done();
+      }
 
+      if (inProgress[url]) {
+        return inProgress[url].push(done);
+      }
+      var script = document.createElement('script');
+      script.timeout = 120;
+      script.src = url;
+      inProgress[url] = [done];
+      var onLoadEnd = function (prev, event) {
+        clearTimeout(timeout);
+        var doneFns = inProgress[url];
+        delete inProgress[url];
+        if (script.parentNode) script.parentNode.removeChild(script);
+        if (doneFns) {
+          doneFns.forEach(function (fn) {
+            return fn(event);
+          });
+        }
+        if (prev) return prev(event);
+      };
+      // May not be needed, already has timeout attributes
+      var timeout = setTimeout(
+        onLoadEnd.bind(null, undefined, { type: 'timeout', target: script }),
+        120000,
+      );
+      script.onerror = onLoadEnd.bind(null, script.onerror);
+      script.onload = onLoadEnd.bind(null, script.onload);
+      document.head.appendChild(script);
+    };
+  })();
+<% } %>
+
+<% if has_dynamic_chunks { %>
   var jsonpCallback = function (data) {
     var installedChunks = requireModule.jsonpInstalled;
     var chunkIds = data[0];
@@ -263,8 +272,9 @@ function createRuntime(makoModules, entryModuleId) {
       installedChunks[id] = 0;
     }
   };
+<% } %>
 
-  var registerModules = function (modules) {
+  var registerModules = function(modules) {
     for (var id in modules) {
       makoModules[id] = modules[id];
     }
@@ -272,18 +282,46 @@ function createRuntime(makoModules, entryModuleId) {
 
   // __inject_runtime_code__
 
+<% if umd.is_some() { %>
   var exports = requireModule(entryModuleId);
+<% } else { %>
+  requireModule(entryModuleId);
+<% } %>
   return {
+<% if umd.is_some() { %>
     exports: exports,
+<% } %>
     requireModule: requireModule,
-    _modulesRegistry: modulesRegistry,
+<% if has_dynamic_chunks { %>
     _jsonpCallback: jsonpCallback,
+<% } %>
+<% if has_hmr { %>
+    _modulesRegistry: modulesRegistry,
     _makoModuleHotUpdate: requireModule.applyHotUpdate,
+<% } %>
   };
 }
 
 var runtime = createRuntime(m, e);
+<% if has_dynamic_chunks || has_hmr { %>
 var root = typeof globalThis !== 'undefined' ? globalThis : self;
+<% } %>
+<% if has_dynamic_chunks { %>
 root.jsonpCallback = runtime._jsonpCallback;
+<% } %>
+<% if has_hmr { %>
 root.modulesRegistry = runtime._modulesRegistry;
 root.makoModuleHotUpdate = runtime._makoModuleHotUpdate;
+<% } %>
+
+<% if umd.is_some() { %>
+(function makoUniversalModuleDefinition(root, factory) {
+  if (typeof exports === 'object' && typeof module === 'object')
+    module.exports = factory();
+  else if (typeof define === 'function' && define.amd) define([], factory);
+  else if (typeof exports === 'object') exports['<%= umd.clone().unwrap() %>'] = factory();
+  else root['<%= umd.clone().unwrap() %>'] = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  return runtime.exports;
+});
+<% } %>

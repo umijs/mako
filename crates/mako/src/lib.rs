@@ -28,6 +28,7 @@ pub mod plugin;
 mod plugins;
 mod profile_gui;
 mod resolve;
+mod runtime;
 mod sourcemap;
 mod stats;
 mod targets;

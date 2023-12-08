@@ -42,6 +42,7 @@ mod plugins;
 #[cfg(feature = "profile")]
 mod profile_gui;
 mod resolve;
+mod runtime;
 mod sourcemap;
 mod stats;
 mod targets;
