@@ -6,7 +6,7 @@ repository = "https://github.com/umijs/mako"
 license    = "MIT"
 
 [dependencies]
-tokio                 = { version = "1", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
 swc_core = { version = "=0.83.19", features = [
   "__ecma",
   "__visit",
@@ -41,7 +41,7 @@ swc_core = { version = "=0.83.19", features = [
   "css_compat",
   "css_modules",
   "css_prefixer",
-  "base_node"
+  "base_node",
 ] }
 
 # swc_ecma_ast          = { version = "0.109.1", features = ["rkyv-impl"] }
@@ -63,9 +63,9 @@ swc_core = { version = "=0.83.19", features = [
 # swc_css_prefixer      = "0.151.1"
 # swc_css_minifier      = "0.114.1"
 
-swc_error_reporters   = "0.16.1"
-swc_node_comments     = { version = "0.19.1" }
-swc_emotion           = "0.51.0"
+swc_error_reporters = "0.16.1"
+swc_node_comments   = { version = "0.19.1" }
+swc_emotion         = "0.51.0"
 
 base64                = "0.21.2"
 petgraph              = "0.6.3"
