@@ -121,6 +121,7 @@ async function build_linux_binding() {
     `${path.join(cargoBase, p)}:${path.join('/usr/local/cargo', p)}`,
   ];
 
+  const rustupRoot = path.join(os.homedir(), '.rustup');
   const makoRoot = path.join(__dirname, '../../..');
 
   const volumeOptions = [
@@ -129,6 +130,7 @@ async function build_linux_binding() {
     ...cargoMapOption('registry/cache'),
     ...cargoMapOption('registry/index'),
     ...[`-v`, `${makoRoot}:/build`],
+    ...[`-v`, `${rustupRoot}:/usr/local/rustup`],
     ...[`-w`, `/build`],
   ];
 
