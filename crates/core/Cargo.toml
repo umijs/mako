@@ -44,25 +44,6 @@ swc_core = { version = "=0.83.19", features = [
   "base_node",
 ] }
 
-# swc_ecma_ast          = { version = "0.109.1", features = ["rkyv-impl"] }
-# swc_ecma_parser       = { version = "0.140.0" }
-# swc_common            = { version = "0.32.1", features = ["concurrent", "sourcemap"] }
-# swc_ecma_visit        = { version = "0.95.1" }
-# swc_ecma_codegen      = { version = "0.145.2" }
-# swc_ecma_transforms   = { version = "0.224.11", features = ["module", "typescript", "react", "concurrent"] }
-# swc_ecma_minifier     = { version = "0.187.12", features = ["concurrent"] }
-# swc_ecma_preset_env   = "0.201.13"
-# swc_ecma_utils        = { version = "0.123.0" }
-# swc_atoms             = { version = "0.5.9" }
-# swc_css_ast           = "0.139.1"
-# swc_css_codegen       = "0.149.1"
-# swc_css_modules       = "0.27.3"
-# swc_css_parser        = "0.148.1"
-# swc_css_visit         = "0.138.1"
-# swc_css_compat        = "0.25.1"
-# swc_css_prefixer      = "0.151.1"
-# swc_css_minifier      = "0.114.1"
-
 swc_error_reporters = "0.16.1"
 swc_node_comments   = { version = "0.19.1" }
 swc_emotion         = "0.51.0"
