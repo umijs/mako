@@ -127,7 +127,7 @@ function createRuntime(makoModules, entryModuleId) {
         current === requireModule.publicPath + target ||
         // absolute path without hostname
         (/^(\w+:)?\/\//.test(requireModule.publicPath) &&
-          current == new URL(requireModule.publicPath).pathname + target)
+          current === new URL(requireModule.publicPath).pathname + target)
       );
     }
     requireModule.cssInstalled = cssInstalledChunks;
