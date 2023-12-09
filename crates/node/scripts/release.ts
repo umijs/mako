@@ -95,7 +95,7 @@ import 'zx/globals';
     JSON.stringify(bundlerOkamPkg, null, 2) + '\n',
   );
 
-  await $`git commit -a -m "release: ${nodePkg.name}@${newVersion}"`;
+  await $`git commit -an -m "release: ${nodePkg.name}@${newVersion}"`;
   // tag
   console.log('Tag');
   await $`git tag v${newVersion}`;
