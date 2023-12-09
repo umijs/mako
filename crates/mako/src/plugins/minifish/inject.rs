@@ -5,8 +5,9 @@ use mako_core::indexmap::IndexSet;
 use mako_core::regex::Regex;
 use mako_core::swc_common::{Mark, Span, SyntaxContext, DUMMY_SP};
 use mako_core::swc_ecma_ast::{
-    Ident, ImportDecl, ImportDefaultSpecifier, ImportNamedSpecifier, ImportSpecifier,
-    ImportStarAsSpecifier, MemberExpr, ModuleDecl, ModuleItem, Stmt, VarDeclKind,
+    ExportSpecifier, Ident, ImportDecl, ImportDefaultSpecifier, ImportNamedSpecifier,
+    ImportSpecifier, ImportStarAsSpecifier, MemberExpr, ModuleDecl, ModuleItem, NamedExport, Stmt,
+    VarDeclKind,
 };
 use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
@@ -40,6 +41,24 @@ impl VisitMut for MyInjector<'_> {
 
             if let Some(inject) = self.injects.remove(&name) {
                 self.will_inject.insert((inject, n.span.ctxt));
+            }
+        }
+    }
+
+    fn visit_mut_named_export(&mut self, named_export: &mut NamedExport) {
+        if named_export.src.is_some() {
+            named_export.visit_mut_children_with(self);
+        } else {
+            for spec in named_export.specifiers.iter_mut() {
+                match spec {
+                    ExportSpecifier::Namespace(_) | ExportSpecifier::Default(_) => {
+                        spec.visit_mut_with(self);
+                    }
+                    ExportSpecifier::Named(named) => {
+                        // skip the exported name
+                        named.orig.visit_mut_with(self);
+                    }
+                }
             }
         }
     }
@@ -524,6 +543,32 @@ my.call("toast");
             r#"var my = require("mock-lib").default;
 my.call("toast");
 export { };
+"#
+        );
+    }
+
+    #[test]
+    fn dont_inject_named_exported() {
+        let i = Inject {
+            name: "my".to_string(),
+            named: None,
+            from: "mock-lib".to_string(),
+            namespace: None,
+            exclude: None,
+            prefer_require: true,
+        };
+
+        let code = apply_inject_to_code(
+            hashmap! {
+                "my".to_string() =>&i
+            },
+            r#"let foo=1;export {foo as my}"#,
+        );
+
+        assert_eq!(
+            code,
+            r#"let foo = 1;
+export { foo as my };
 "#
         );
     }
