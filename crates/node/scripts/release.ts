@@ -63,6 +63,7 @@ import 'zx/globals';
 
   console.log('linux building started...');
   const start = Date.now();
+  await $`rm -rf target/release/build/sailfish*`;
   await build_linux_binding();
   await $`pnpm run format:dts`;
   const duration = (Date.now() - start) / 1000;
@@ -135,9 +136,10 @@ async function build_linux_binding() {
   ];
 
   const containerCMD = [
-    'cargo build -r --target x86_64-unknown-linux-gnu',
-    'pnpm --filter @okamjs/okam build:linux:x86',
-    'strip ./crates/node/okam.linux*.node',
+    'cargo build -r --lib --target x86_64-unknown-linux-gnu',
+    'cd crates/node',
+    'npm run build:linux:x86',
+    'strip okam.linux*.node',
   ].join('&&');
 
   const envOptions = [];
