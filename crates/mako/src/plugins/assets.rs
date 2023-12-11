@@ -14,9 +14,9 @@ impl Plugin for AssetsPlugin {
     }
 
     fn load(&self, param: &PluginLoadParam, context: &Arc<Context>) -> Result<Option<Content>> {
-        if matches!(param.ext_name.as_str(), "sass" | "scss" | "stylus") {
+        if matches!(param.ext_name, Some("sass" | "scss" | "stylus")) {
             return Err(anyhow!(LoadError::UnsupportedExtName {
-                ext_name: param.ext_name.clone(),
+                ext_name: param.ext_name.unwrap().to_string(),
                 path: param.path.clone(),
             }));
         }

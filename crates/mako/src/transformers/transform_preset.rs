@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 
+use mako_core::ecma_transforms_compat::{self as compat};
 use mako_core::swc_common::comments::NoopComments;
 use mako_core::swc_common::pass::Optional;
 use mako_core::swc_common::{chain, Mark};
 use mako_core::swc_ecma_ast::{EsVersion, Module};
 use mako_core::swc_ecma_preset_env::{self as swc_preset_env};
 use mako_core::swc_ecma_transforms::feature::FeatureFlag;
-use mako_core::swc_ecma_transforms::{compat, Assumptions};
+use mako_core::swc_ecma_transforms::Assumptions;
 use mako_core::swc_ecma_visit::{Fold, VisitMut, VisitMutWith};
 
 use crate::config::Targets;

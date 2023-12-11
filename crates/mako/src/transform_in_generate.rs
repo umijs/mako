@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -7,12 +7,13 @@ use mako_core::swc_common::errors::HANDLER;
 use mako_core::swc_common::GLOBALS;
 use mako_core::swc_css_visit::VisitMutWith as CSSVisitMutWith;
 use mako_core::swc_ecma_transforms::feature::FeatureFlag;
+use mako_core::swc_ecma_transforms::fixer::fixer;
 use mako_core::swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
+use mako_core::swc_ecma_transforms::hygiene;
 use mako_core::swc_ecma_transforms::hygiene::hygiene_with_config;
-use mako_core::swc_ecma_transforms::modules::common_js;
-use mako_core::swc_ecma_transforms::modules::import_analysis::import_analyzer;
-use mako_core::swc_ecma_transforms::modules::util::{Config, ImportInterop};
-use mako_core::swc_ecma_transforms::{fixer, hygiene};
+use mako_core::swc_ecma_transforms_modules::common_js;
+use mako_core::swc_ecma_transforms_modules::import_analysis::import_analyzer;
+use mako_core::swc_ecma_transforms_modules::util::{Config, ImportInterop};
 use mako_core::swc_ecma_visit::VisitMutWith;
 use mako_core::swc_error_reporters::handler::try_with_handler;
 use mako_core::tracing::debug;
@@ -22,6 +23,7 @@ use crate::ast::Ast;
 use crate::compiler::{Compiler, Context};
 use crate::config::{OutputMode, Targets};
 use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
+use crate::swc_helpers::SwcHelpers;
 use crate::targets;
 use crate::transformers::transform_async_module::AsyncModule;
 use crate::transformers::transform_css_handler::CssHandler;
@@ -90,7 +92,8 @@ pub fn transform_modules_in_thread(
     async_deps_by_module_id: HashMap<ModuleId, Vec<Dependency>>,
 ) -> Result<()> {
     mako_core::mako_profile_function!();
-    let (pool, rs, rr) = create_thread_pool::<Result<(ModuleId, ModuleAst)>>();
+    let (pool, rs, rr) =
+        create_thread_pool::<Result<(ModuleId, ModuleAst, Option<HashSet<String>>)>>();
     for module_id in module_ids {
         let context = context.clone();
         let rs = rs.clone();
@@ -125,7 +128,7 @@ pub fn transform_modules_in_thread(
             };
             if let ModuleAst::Script(ast) = ast {
                 let ret = transform_js_generate(TransformJsParam {
-                    _id: &module.id,
+                    module_id: &module.id,
                     context: &context,
                     ast,
                     dep_map: &deps_to_replace,
@@ -134,7 +137,14 @@ pub fn transform_modules_in_thread(
                     top_level_await: info.top_level_await,
                 });
                 let message = match ret {
-                    Ok(_) => Ok((module_id, ModuleAst::Script(ast.clone()))),
+                    Ok(_) => {
+                        let swc_helpers = if context.args.watch {
+                            None
+                        } else {
+                            Some(SwcHelpers::get_swc_helpers(&ast.ast))
+                        };
+                        Ok((module_id, ModuleAst::Script(ast.clone()), swc_helpers))
+                    }
                     Err(e) => Err(e),
                 };
                 rs.send(message).unwrap();
@@ -143,17 +153,20 @@ pub fn transform_modules_in_thread(
     }
     drop(rs);
 
-    let mut transform_map: HashMap<ModuleId, ModuleAst> = HashMap::new();
+    let mut transform_map: HashMap<ModuleId, (ModuleAst, Option<HashSet<String>>)> = HashMap::new();
     for r in rr {
-        let (module_id, ast) = r?;
-        transform_map.insert(module_id, ast);
+        let (module_id, ast, swc_helpers) = r?;
+        transform_map.insert(module_id, (ast, swc_helpers));
     }
 
     let mut module_graph = context.module_graph.write().unwrap();
-    for (module_id, ast) in transform_map {
+    for (module_id, (ast, swc_helpers)) in transform_map {
         let module = module_graph.get_module_mut(&module_id).unwrap();
         let info = module.info.as_mut().unwrap();
         info.ast = ast;
+        if let Some(swc_helpers) = swc_helpers {
+            context.swc_helpers.lock().unwrap().extends(swc_helpers);
+        }
     }
 
     Ok(())
@@ -173,7 +186,7 @@ fn insert_swc_helper_replace(map: &mut HashMap<String, String>, context: &Arc<Co
 }
 
 pub struct TransformJsParam<'a> {
-    pub _id: &'a ModuleId,
+    pub module_id: &'a ModuleId,
     pub context: &'a Arc<Context>,
     pub ast: &'a mut Ast,
     pub dep_map: &'a DependenciesToReplace,
@@ -185,7 +198,7 @@ pub struct TransformJsParam<'a> {
 pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()> {
     mako_core::mako_profile_function!();
     let TransformJsParam {
-        _id,
+        module_id,
         context,
         ast,
         dep_map,
@@ -246,6 +259,7 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()>
                         }
 
                         let mut dep_replacer = DepReplacer {
+                            module_id,
                             to_replace: dep_map,
                             context,
                             unresolved_mark,

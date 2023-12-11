@@ -1,9 +1,0 @@
----
-source: crates/mako/src/update.rs
-expression: "&result"
----
-
-added:["<CWD>/crates/mako/test/build/tmp/single/chunk-2.ts"]
-modified:["<CWD>/crates/mako/test/build/tmp/single/index.ts"]
-removed:[]
-

@@ -3,7 +3,10 @@ use std::path::Path;
 use mako_core::anyhow::Result;
 
 use crate::compiler::Args;
-use crate::config::{Config, ExternalConfig};
+use crate::config::{
+    Config, ExternalAdvanced, ExternalAdvancedSubpath, ExternalAdvancedSubpathRule,
+    ExternalAdvancedSubpathTarget, ExternalConfig,
+};
 use crate::plugin::Plugin;
 
 pub struct NodePolyfillPlugin {}
@@ -23,9 +26,22 @@ impl Plugin for NodePolyfillPlugin {
         }
         // empty modules
         for name in get_empty_modules().iter() {
-            config
-                .externals
-                .insert(name.to_string(), ExternalConfig::Basic("".to_string()));
+            // e.g. support fs and fs/promise
+            config.externals.insert(
+                name.to_string(),
+                ExternalConfig::Advanced(ExternalAdvanced {
+                    root: "".into(),
+                    script: None,
+                    subpath: Some(ExternalAdvancedSubpath {
+                        rules: vec![ExternalAdvancedSubpathRule {
+                            regex: ".*".into(),
+                            target: ExternalAdvancedSubpathTarget::Empty,
+                            target_converter: None,
+                        }],
+                        exclude: None,
+                    }),
+                }),
+            );
         }
         // identifier
         config

@@ -19,7 +19,7 @@ use crate::stats::StatsJsonMap;
 pub struct PluginLoadParam<'a> {
     pub path: String,
     pub is_entry: bool,
-    pub ext_name: String,
+    pub ext_name: Option<&'a str>,
     pub request: &'a FileRequest,
 }
 
@@ -75,6 +75,15 @@ pub trait Plugin: Any + Send + Sync {
         Ok(())
     }
 
+    fn after_generate_transform_js(
+        &self,
+        _param: &PluginTransformJsParam,
+        _ast: &mut Module,
+        _context: &Arc<Context>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
     fn analyze_deps(
         &self,
         _param: &mut PluginDepAnalyzeParam,
@@ -99,7 +108,11 @@ pub trait Plugin: Any + Send + Sync {
         Ok(Vec::new())
     }
 
-    fn optimize_module_graph(&self, _module_graph: &mut ModuleGraph) -> Result<()> {
+    fn optimize_module_graph(
+        &self,
+        _module_graph: &mut ModuleGraph,
+        _context: &Arc<Context>,
+    ) -> Result<()> {
         Ok(())
     }
 }
@@ -163,6 +176,18 @@ impl PluginDriver {
         Ok(())
     }
 
+    pub fn after_generate_transform_js(
+        &self,
+        param: &PluginTransformJsParam,
+        ast: &mut Module,
+        context: &Arc<Context>,
+    ) -> Result<()> {
+        for plugin in &self.plugins {
+            plugin.after_generate_transform_js(param, ast, context)?;
+        }
+        Ok(())
+    }
+
     pub fn analyze_deps(
         &self,
         param: &mut PluginDepAnalyzeParam,
@@ -217,9 +242,13 @@ impl PluginDriver {
         Ok(plugins.join("\n"))
     }
 
-    pub fn optimize_module_graph(&self, module_graph: &mut ModuleGraph) -> Result<()> {
+    pub fn optimize_module_graph(
+        &self,
+        module_graph: &mut ModuleGraph,
+        context: &Arc<Context>,
+    ) -> Result<()> {
         for p in &self.plugins {
-            p.optimize_module_graph(module_graph)?;
+            p.optimize_module_graph(module_graph, context)?;
         }
 
         Ok(())

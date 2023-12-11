@@ -15,7 +15,7 @@ use mako_core::tungstenite::Message;
 use mako_core::{hyper, hyper_staticfile, hyper_tungstenite, tokio};
 
 use crate::compiler::{Compiler, Context};
-use crate::watch::{Watch, WatchEvent};
+use crate::watch::Watch;
 
 pub struct DevServer {
     root: PathBuf,
@@ -183,13 +183,13 @@ impl DevServer {
         let mut hmr_hash = Box::new(initial_hash);
 
         for result in rx {
-            let events = Watch::normalize_events(result.unwrap());
-            if !events.is_empty() {
+            let paths = Watch::normalize_events(result.unwrap());
+            if !paths.is_empty() {
                 let compiler = compiler.clone();
                 let txws = txws.clone();
                 let callback = callback.clone();
                 if let Err(e) = Self::rebuild(
-                    events,
+                    paths,
                     compiler,
                     txws,
                     &mut last_cache_hash,
@@ -204,16 +204,16 @@ impl DevServer {
     }
 
     fn rebuild(
-        events: Vec<WatchEvent>,
+        paths: Vec<PathBuf>,
         compiler: Arc<Compiler>,
         txws: broadcast::Sender<WsMessage>,
         last_cache_hash: &mut Box<u64>,
         hmr_hash: &mut Box<u64>,
         callback: impl Fn(OnDevCompleteParams),
     ) -> Result<()> {
-        debug!("watch events detected: {:?}", events);
+        debug!("watch paths detected: {:?}", paths);
         debug!("checking update status...");
-        let res = compiler.update(events);
+        let res = compiler.update(paths);
         let has_missing_deps = {
             compiler
                 .context
@@ -243,7 +243,11 @@ impl DevServer {
             return Ok(());
         }
 
-        println!("Compiling...");
+        // do not print hot rebuilt message if there are missing deps
+        // since it's not a success rebuilt to user
+        if !has_missing_deps {
+            println!("Compiling...");
+        }
         let t_compiler = Instant::now();
         let start_time = std::time::SystemTime::now();
         let next_hash = compiler.generate_hot_update_chunks(res, **last_cache_hash, **hmr_hash);
@@ -251,8 +255,6 @@ impl DevServer {
             "hot update chunks generated, next_full_hash: {:?}",
             next_hash
         );
-        // do not print hot rebuilt message if there are missing deps
-        // since it's not a success rebuilt to user
         if !has_missing_deps {
             println!(
                 "Hot rebuilt in {}",

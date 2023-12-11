@@ -7,6 +7,7 @@ use mako_core::swc_ecma_ast::{
     UnaryOp,
 };
 use mako_core::swc_ecma_utils::{quote_ident, ExprFactory, StmtOrModuleItem};
+use mako_core::tracing::debug;
 
 use crate::ast::{build_js_ast, js_ast_to_code};
 use crate::build::Task;
@@ -57,11 +58,12 @@ impl MakoRuntime {
     }
 
     fn helper_runtime(&self, context: &Arc<Context>) -> Result<String> {
-        let helpers = [
-            "@swc/helpers/_/_interop_require_default",
-            "@swc/helpers/_/_interop_require_wildcard",
-            "@swc/helpers/_/_export_star",
-        ];
+        let helpers = context.swc_helpers.lock().unwrap().get_helpers();
+        debug!("swc helpers: {:?}", helpers);
+
+        if helpers.is_empty() {
+            return Ok("".to_string());
+        }
 
         let props = helpers
             .into_iter()
@@ -159,7 +161,7 @@ impl MakoRuntime {
                 ignored: vec![],
             },
             async_deps: &Vec::<Dependency>::new(),
-            _id: &module_id,
+            module_id: &module_id,
             context,
             ast: &mut ast,
         })?;

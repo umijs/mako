@@ -5,20 +5,6 @@ use std::sync::mpsc::Sender;
 use mako_core::anyhow;
 use mako_core::notify::{self, EventKind, Watcher};
 use mako_core::notify_debouncer_full::DebouncedEvent;
-use mako_core::tracing::debug;
-
-#[derive(Debug)]
-pub struct WatchEvent {
-    pub path: PathBuf,
-    pub event_type: WatchEventType,
-}
-
-#[derive(Debug, Clone)]
-pub enum WatchEventType {
-    Added,
-    Modified,
-    Removed,
-}
 
 pub struct Watch {
     pub root: PathBuf,
@@ -73,9 +59,7 @@ impl Watch {
     }
 
     // TODO: support notify::Event mode
-    pub fn normalize_events(events: Vec<DebouncedEvent>) -> Vec<WatchEvent> {
-        // events: { event: { kind, paths: string[] }, time: { tv_sec, tv_nsec } }[]
-        // collect paths
+    pub fn normalize_events(events: Vec<DebouncedEvent>) -> Vec<PathBuf> {
         let mut paths = vec![];
         let mut create_paths = HashMap::new();
         events.iter().for_each(|debounced_event| {
@@ -94,22 +78,6 @@ impl Watch {
         });
         paths.sort();
         paths.dedup();
-        debug!("paths: {:?}", paths);
-
-        let mut watch_events = vec![];
-        paths.iter().for_each(|path| {
-            watch_events.push(WatchEvent {
-                path: path.clone(),
-                event_type: if create_paths.get(path).is_some() {
-                    WatchEventType::Added
-                } else if path.exists() {
-                    // Added or Modified?
-                    WatchEventType::Modified
-                } else {
-                    WatchEventType::Removed
-                },
-            });
-        });
-        watch_events
+        paths
     }
 }

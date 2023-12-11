@@ -54,14 +54,14 @@ importers:
   crates/node:
     optionalDependencies:
       '@okamjs/okam-darwin-arm64':
-        specifier: 0.1.7
-        version: 0.1.7
+        specifier: 0.1.10
+        version: 0.1.10
       '@okamjs/okam-darwin-x64':
-        specifier: 0.1.7
-        version: 0.1.7
+        specifier: 0.1.10
+        version: 0.1.10
       '@okamjs/okam-linux-x64-gnu':
-        specifier: 0.1.7
-        version: 0.1.7
+        specifier: 0.1.10
+        version: 0.1.10
     devDependencies:
       '@napi-rs/cli':
         specifier: ^2.14.8
@@ -288,7 +288,7 @@ importers:
   packages/bundler-okam:
     dependencies:
       '@okamjs/okam':
-        specifier: 0.1.7
+        specifier: 0.1.10
         version: link:../../crates/node
       '@swc/helpers':
         specifier: 0.5.1
@@ -3286,8 +3286,8 @@ packages:
       fastq: 1.15.0
     dev: true
 
-  /@okamjs/okam-darwin-arm64@0.1.7:
-    resolution: {integrity: sha512-pj8PGmHu1h9Rw0YzAp7k5uM9+c6Q9g2wwrEtKsCTtd0jAj3zpYqVS1knBhNx9ZfJtXePy8EpadeLdljCqs0jyA==}
+  /@okamjs/okam-darwin-arm64@0.1.10:
+    resolution: {integrity: sha512-WW0mKHa+Zh9/MWLVJRYtKUP8iTDxcAgYHCUWfP4Msg/E5EcZ0UC5g+0+jm+OZPvhZzUabNeSBhj1pLj1lIVEmg==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
@@ -3295,8 +3295,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-darwin-x64@0.1.7:
-    resolution: {integrity: sha512-c37N2SrjZqtqpO89DAWhRq0Yn2ZHxToczaiCR6gwdb1sFr2TY3U5/VuuJfaRpJRO+fGaIJBZ23K3azkCw/Kplg==}
+  /@okamjs/okam-darwin-x64@0.1.10:
+    resolution: {integrity: sha512-A3gZJxnrozzZbxqj94NtPK2TyJY3X6+J7PYYS9ubqneIbJv6MvcCpuM1FA4H0NE6iVVNGDXP46D7jDRb19Eenw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
@@ -3304,8 +3304,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-linux-x64-gnu@0.1.7:
-    resolution: {integrity: sha512-tZzkzIwiAVymEM4uoBZypyv8l1qL2YVSqaMk5wGrsqUDxgGvRpaZdhm0+13DF7mJJfNDv1FnxKqy92rMW3fZTA==}
+  /@okamjs/okam-linux-x64-gnu@0.1.10:
+    resolution: {integrity: sha512-lI4I0Zv2/K9RL7MJdqa/LZT3agkdZVgQICyIaXDXoGB5ZPGfm/5e59NhT6KWvrR8zu7orMjPjlFF/tbbMLLqJQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
@@ -7265,6 +7265,8 @@ packages:
     peerDependenciesMeta:
       debug:
         optional: true
+    dependencies:
+      debug: 4.3.4(supports-color@5.5.0)
 
   /for-each@0.3.3:
     resolution: {integrity: sha512-jqYfLp7mo9vIyQf8ykW2v7A+2N4QjeCeI5+Dz9XraiO1ign81wjiH7Fb9vSOWvQfNtmSa4H2RoQTrrXivdUZmw==}

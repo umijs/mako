@@ -10,11 +10,11 @@ use mako_core::swc_css_ast::Stylesheet;
 use mako_core::swc_css_visit::VisitMutWith as CssVisitMutWith;
 use mako_core::swc_ecma_ast::Module;
 use mako_core::swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
-use mako_core::swc_ecma_transforms::optimization::simplifier;
-use mako_core::swc_ecma_transforms::optimization::simplify::{dce, Config as SimpilifyConfig};
-use mako_core::swc_ecma_transforms::proposals::decorators;
 use mako_core::swc_ecma_transforms::resolver;
-use mako_core::swc_ecma_transforms::typescript::strip_with_jsx;
+use mako_core::swc_ecma_transforms_optimization::simplifier;
+use mako_core::swc_ecma_transforms_optimization::simplify::{dce, Config as SimpilifyConfig};
+use mako_core::swc_ecma_transforms_proposals::decorators;
+use mako_core::swc_ecma_transforms_typescript::strip_with_jsx;
 use mako_core::swc_ecma_visit::{Fold, VisitMutWith};
 use mako_core::swc_error_reporters::handler::try_with_handler;
 
@@ -743,6 +743,7 @@ const require = window.require;
             resolvers,
             optimize_infos: Mutex::new(None),
             static_cache: Default::default(),
+            swc_helpers: Mutex::new(Default::default()),
         });
 
         // add fake chunk for dynamic import
@@ -776,7 +777,7 @@ const require = window.require;
         )
         .unwrap();
         transform_js_generate(TransformJsParam {
-            _id: &ModuleId::new("test".to_string()),
+            module_id: &ModuleId::new("test".to_string()),
             context: &context,
             ast: &mut ast,
             dep_map: &DependenciesToReplace {

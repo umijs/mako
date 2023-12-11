@@ -1,5 +1,8 @@
+use std::sync::Arc;
+
 use mako_core::anyhow::Result;
 
+use crate::compiler::Context;
 use crate::module_graph::ModuleGraph;
 use crate::plugin::Plugin;
 
@@ -15,8 +18,12 @@ impl Plugin for FarmTreeShake {
         "farm/tree-shake"
     }
 
-    fn optimize_module_graph(&self, module_graph: &mut ModuleGraph) -> Result<()> {
-        shake::optimize_farm(module_graph)?;
+    fn optimize_module_graph(
+        &self,
+        module_graph: &mut ModuleGraph,
+        context: &Arc<Context>,
+    ) -> Result<()> {
+        shake::optimize_farm(module_graph, context)?;
         Ok(())
     }
 }

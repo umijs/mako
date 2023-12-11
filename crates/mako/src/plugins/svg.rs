@@ -15,7 +15,7 @@ impl Plugin for SVGPlugin {
     }
 
     fn load(&self, param: &PluginLoadParam, context: &Arc<Context>) -> Result<Option<Content>> {
-        if matches!(param.ext_name.as_str(), "svg") {
+        if matches!(param.ext_name, Some("svg")) {
             let code = read_content(param.path.as_str())?;
             let transform_code = svgr_rs::transform(
                 code,
