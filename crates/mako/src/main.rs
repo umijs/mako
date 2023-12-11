@@ -46,6 +46,7 @@ mod resolve;
 mod runtime;
 mod sourcemap;
 mod stats;
+mod swc_helpers;
 mod targets;
 #[cfg(test)]
 mod test_helper;

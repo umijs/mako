@@ -3,7 +3,6 @@ use std::sync::Arc;
 use mako_core::anyhow;
 
 use crate::compiler::Context;
-use crate::config::Mode;
 use crate::plugin::Plugin;
 
 pub struct HMRRuntimePlugin {}
@@ -13,8 +12,8 @@ impl Plugin for HMRRuntimePlugin {
         "hmr_runtime"
     }
 
-    fn runtime_plugins(&self, _context: &Arc<Context>) -> anyhow::Result<Vec<String>> {
-        if _context.config.hmr && _context.config.mode == Mode::Development {
+    fn runtime_plugins(&self, context: &Arc<Context>) -> anyhow::Result<Vec<String>> {
+        if context.args.watch {
             Ok(vec![include_str!("hmr_runtime/hmr_runtime.js").to_string()])
         } else {
             Ok(vec![])

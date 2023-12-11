@@ -317,7 +317,11 @@ function createRuntime(makoModules, entryModuleId) {
   };
 }
 
+<% if has_dynamic_chunks || has_hmr || umd.is_some() { %>
 var runtime = createRuntime(m, e);
+<% } else { %>
+createRuntime(m, e);
+<% } %>
 <% if has_dynamic_chunks || has_hmr { %>
 var root = typeof globalThis !== 'undefined' ? globalThis : self;
 <% } %>
