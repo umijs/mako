@@ -302,8 +302,6 @@ pub fn analyze_imports_and_exports(
                 swc_ecma_ast::Stmt::Debugger(_) => {}
                 swc_ecma_ast::Stmt::With(with) => {
                     span = with.span;
-
-                    is_self_executed = true;
                     analyze_and_insert_used_idents(with, None);
                 }
                 swc_ecma_ast::Stmt::Return(_) => {
@@ -330,13 +328,11 @@ pub fn analyze_imports_and_exports(
                 swc_ecma_ast::Stmt::Switch(switch_stmt) => {
                     span = switch_stmt.span;
 
-                    is_self_executed = true;
                     analyze_and_insert_used_idents(switch_stmt, None)
                 }
                 swc_ecma_ast::Stmt::Throw(throw) => {
                     span = throw.span;
 
-                    is_self_executed = true;
                     analyze_and_insert_used_idents(throw, None)
                 }
                 swc_ecma_ast::Stmt::Try(try_stmt) => {
@@ -356,27 +352,22 @@ pub fn analyze_imports_and_exports(
                 swc_ecma_ast::Stmt::DoWhile(do_while) => {
                     span = do_while.span;
 
-                    is_self_executed = true;
                     analyze_and_insert_used_idents(do_while, None)
-
                 }
                 swc_ecma_ast::Stmt::For(for_stmt) => {
                     span = for_stmt.span;
 
-                    is_self_executed = true;
                     analyze_and_insert_used_idents(for_stmt, None)
                 }
 
                 swc_ecma_ast::Stmt::ForIn(for_in) => {
                     span = for_in.span;
 
-                    is_self_executed = true;
                     analyze_and_insert_used_idents(for_in, None)
                 }
                 swc_ecma_ast::Stmt::ForOf(for_of) => {
                     span = for_of.span;
 
-                    is_self_executed = true;
                     analyze_and_insert_used_idents(for_of, None)
                 }
                 swc_ecma_ast::Stmt::Decl(decl) => match decl {
