@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -23,6 +23,7 @@ use crate::ast::Ast;
 use crate::compiler::{Compiler, Context};
 use crate::config::OutputMode;
 use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
+use crate::swc_helpers::SwcHelpers;
 use crate::targets;
 use crate::transformers::transform_async_module::AsyncModule;
 use crate::transformers::transform_css_handler::CssHandler;
@@ -91,7 +92,8 @@ pub fn transform_modules_in_thread(
     async_deps_by_module_id: HashMap<ModuleId, Vec<Dependency>>,
 ) -> Result<()> {
     mako_core::mako_profile_function!();
-    let (pool, rs, rr) = create_thread_pool::<Result<(ModuleId, ModuleAst)>>();
+    let (pool, rs, rr) =
+        create_thread_pool::<Result<(ModuleId, ModuleAst, Option<HashSet<String>>)>>();
     for module_id in module_ids {
         let context = context.clone();
         let rs = rs.clone();
@@ -135,7 +137,14 @@ pub fn transform_modules_in_thread(
                     top_level_await: info.top_level_await,
                 });
                 let message = match ret {
-                    Ok(_) => Ok((module_id, ModuleAst::Script(ast.clone()))),
+                    Ok(_) => {
+                        let swc_helpers = if context.args.watch {
+                            None
+                        } else {
+                            Some(SwcHelpers::get_swc_helpers(&ast.ast))
+                        };
+                        Ok((module_id, ModuleAst::Script(ast.clone()), swc_helpers))
+                    }
                     Err(e) => Err(e),
                 };
                 rs.send(message).unwrap();
@@ -144,17 +153,20 @@ pub fn transform_modules_in_thread(
     }
     drop(rs);
 
-    let mut transform_map: HashMap<ModuleId, ModuleAst> = HashMap::new();
+    let mut transform_map: HashMap<ModuleId, (ModuleAst, Option<HashSet<String>>)> = HashMap::new();
     for r in rr {
-        let (module_id, ast) = r?;
-        transform_map.insert(module_id, ast);
+        let (module_id, ast, swc_helpers) = r?;
+        transform_map.insert(module_id, (ast, swc_helpers));
     }
 
     let mut module_graph = context.module_graph.write().unwrap();
-    for (module_id, ast) in transform_map {
+    for (module_id, (ast, swc_helpers)) in transform_map {
         let module = module_graph.get_module_mut(&module_id).unwrap();
         let info = module.info.as_mut().unwrap();
         info.ast = ast;
+        if let Some(swc_helpers) = swc_helpers {
+            context.swc_helpers.lock().unwrap().extends(swc_helpers);
+        }
     }
 
     Ok(())

@@ -755,6 +755,7 @@ const require = window.require;
             resolvers,
             optimize_infos: Mutex::new(None),
             static_cache: Default::default(),
+            swc_helpers: Mutex::new(Default::default()),
         });
 
         // add fake chunk for dynamic import
