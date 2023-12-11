@@ -145,10 +145,7 @@ impl Preset {
                 ),
                 should_enable(target, &EsVersion::Es2015)
             ),
-            Optional::new(
-                compat::es3(true),
-                cfg!(feature = "es3") && target == &EsVersion::Es3
-            )
+            Optional::new(compat::es3(true), target == &EsVersion::Es3)
         ))
     }
 }
