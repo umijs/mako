@@ -1,3 +1,4 @@
+#![feature(let_chains)]
 #![feature(box_patterns)]
 #![feature(hasher_prefixfree_extras)]
 

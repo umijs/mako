@@ -2,11 +2,11 @@ use std::collections::{HashMap, HashSet};
 
 use mako_core::swc_common::{Span, SyntaxContext, DUMMY_SP};
 use mako_core::swc_ecma_ast;
-use mako_core::swc_ecma_ast::{Expr, ModuleExportName, ModuleItem, VarDecl};
-use mako_core::swc_ecma_utils::{ExprCtx, ExprExt};
+use mako_core::swc_ecma_ast::{ModuleExportName, ModuleItem};
 use mako_core::swc_ecma_visit::VisitWith;
 
 use super::defined_idents_collector::DefinedIdentsCollector;
+use super::side_effects_detector::SideEffectsDetector;
 use super::used_idents_collector::{self, UsedIdentsCollector};
 use super::{ExportInfo, ExportSpecifierInfo, ImportInfo, ImportSpecifierInfo, StatementId};
 
@@ -26,8 +26,10 @@ pub fn analyze_imports_and_exports(
     id: &StatementId,
     stmt: &ModuleItem,
     used_defined_idents: Option<HashSet<String>>,
-    unresolve_ctxt: SyntaxContext,
+    unresolved_ctxt: SyntaxContext,
 ) -> StatementInfo {
+    mako_core::mako_profile_function!();
+
     let mut defined_idents = HashSet::new();
     let mut used_idents = HashSet::new();
     let mut defined_idents_map = HashMap::new();
@@ -289,144 +291,146 @@ pub fn analyze_imports_and_exports(
             }
             _ => {}
         },
-        ModuleItem::Stmt(stmt) => match stmt {
-            swc_ecma_ast::Stmt::Block(block) => {
-                is_self_executed = true;
-                span = block.span;
-                analyze_and_insert_used_idents(block, None);
-            }
-            swc_ecma_ast::Stmt::Empty(_) => {}
-            swc_ecma_ast::Stmt::Debugger(_) => {}
-            swc_ecma_ast::Stmt::With(with) => {
-                span = with.span;
+        ModuleItem::Stmt(stmt) => {
+            match stmt {
+                swc_ecma_ast::Stmt::Block(block) => {
+                    span = block.span;
+                    analyze_and_insert_used_idents(block, None);
 
-                is_self_executed = true;
-                analyze_and_insert_used_idents(with, None)
-            }
-            swc_ecma_ast::Stmt::Return(_) => {
-                unreachable!("return statement should not be present in a module root")
-            }
-            swc_ecma_ast::Stmt::Labeled(label) => {
-                span = label.span;
-
-                is_self_executed = true;
-                analyze_and_insert_used_idents(label, None)
-            }
-            swc_ecma_ast::Stmt::Break(_) => {
-                unreachable!("break statement should not be present in a module root")
-            }
-            swc_ecma_ast::Stmt::Continue(_) => {
-                unreachable!("continue statement should not be present in a module root")
-            }
-            swc_ecma_ast::Stmt::If(if_stmt) => {
-                span = if_stmt.span;
-
-                is_self_executed = true;
-                analyze_and_insert_used_idents(if_stmt, None)
-            }
-            swc_ecma_ast::Stmt::Switch(switch_stmt) => {
-                span = switch_stmt.span;
-
-                is_self_executed = true;
-                analyze_and_insert_used_idents(switch_stmt, None)
-            }
-            swc_ecma_ast::Stmt::Throw(throw) => {
-                span = throw.span;
-
-                is_self_executed = true;
-                analyze_and_insert_used_idents(throw, None)
-            }
-            swc_ecma_ast::Stmt::Try(try_stmt) => {
-                span = try_stmt.span;
-
-                is_self_executed = true;
-                analyze_and_insert_used_idents(try_stmt, None)
-            }
-            swc_ecma_ast::Stmt::While(while_stmt) => {
-                span = while_stmt.span;
-
-                is_self_executed = true;
-                analyze_and_insert_used_idents(while_stmt, None)
-            }
-            swc_ecma_ast::Stmt::DoWhile(do_while) => {
-                span = do_while.span;
-
-                is_self_executed = true;
-                analyze_and_insert_used_idents(do_while, None)
-            }
-            swc_ecma_ast::Stmt::For(for_stmt) => {
-                span = for_stmt.span;
-
-                is_self_executed = true;
-                analyze_and_insert_used_idents(for_stmt, None)
-            }
-
-            swc_ecma_ast::Stmt::ForIn(for_in) => {
-                span = for_in.span;
-
-                is_self_executed = true;
-                analyze_and_insert_used_idents(for_in, None)
-            }
-            swc_ecma_ast::Stmt::ForOf(for_of) => {
-                span = for_of.span;
-
-                is_self_executed = true;
-                analyze_and_insert_used_idents(for_of, None)
-            }
-            swc_ecma_ast::Stmt::Decl(decl) => match decl {
-                swc_ecma_ast::Decl::Class(class_decl) => {
-                    defined_idents.insert(class_decl.ident.to_string());
-                    analyze_and_insert_used_idents(
-                        &class_decl.class,
-                        Some(class_decl.ident.to_string()),
-                    );
                 }
-                swc_ecma_ast::Decl::Fn(fn_decl) => {
-                    defined_idents.insert(fn_decl.ident.to_string());
-                    analyze_and_insert_used_idents(
-                        &fn_decl.function,
-                        Some(fn_decl.ident.to_string()),
-                    );
+                swc_ecma_ast::Stmt::Empty(_) => {}
+                swc_ecma_ast::Stmt::Debugger(_) => {}
+                swc_ecma_ast::Stmt::With(with) => {
+                    span = with.span;
+
+                    is_self_executed = true;
+                    analyze_and_insert_used_idents(with, None);
                 }
-                swc_ecma_ast::Decl::Var(var_decl) => {
-                    for v_decl in &var_decl.decls {
-                        let mut defined_idents_collector = DefinedIdentsCollector::new();
-                        v_decl.name.visit_with(&mut defined_idents_collector);
-                        let mut used_idents_collector = UsedIdentsCollector::new();
+                swc_ecma_ast::Stmt::Return(_) => {
+                    unreachable!("return statement should not be present in a module root")
+                }
+                swc_ecma_ast::Stmt::Labeled(label) => {
+                    span = label.span;
 
-                        if let Some(init) = &v_decl.init {
-                            init.visit_with(&mut used_idents_collector);
-                        }
+                    analyze_and_insert_used_idents(label, None);
 
-                        let mut local_used_idents = HashSet::new();
-                        local_used_idents.extend(used_idents_collector.used_idents);
-                        local_used_idents.extend(defined_idents_collector.used_idents);
-                        used_idents.extend(local_used_idents.clone());
+                }
+                swc_ecma_ast::Stmt::Break(_) => {
+                    unreachable!("break statement should not be present in a module root")
+                }
+                swc_ecma_ast::Stmt::Continue(_) => {
+                    unreachable!("continue statement should not be present in a module root")
+                }
+                swc_ecma_ast::Stmt::If(if_stmt) => {
+                    span = if_stmt.span;
 
-                        for defined_ident in defined_idents_collector.defined_idents {
-                            defined_idents.insert(defined_ident.clone());
-                            defined_idents_map
-                                .insert(defined_ident.clone(), local_used_idents.clone());
-                        }
+                    analyze_and_insert_used_idents(if_stmt, None);
 
-                        if !is_pure_var_decl(var_decl, unresolve_ctxt) {
-                            is_self_executed = true;
+                }
+                swc_ecma_ast::Stmt::Switch(switch_stmt) => {
+                    span = switch_stmt.span;
+
+                    is_self_executed = true;
+                    analyze_and_insert_used_idents(switch_stmt, None)
+                }
+                swc_ecma_ast::Stmt::Throw(throw) => {
+                    span = throw.span;
+
+                    is_self_executed = true;
+                    analyze_and_insert_used_idents(throw, None)
+                }
+                swc_ecma_ast::Stmt::Try(try_stmt) => {
+                    span = try_stmt.span;
+
+                    analyze_and_insert_used_idents(try_stmt, None)
+
+
+                }
+                swc_ecma_ast::Stmt::While(while_stmt) => {
+                    span = while_stmt.span;
+
+                    analyze_and_insert_used_idents(while_stmt, None)
+
+
+                }
+                swc_ecma_ast::Stmt::DoWhile(do_while) => {
+                    span = do_while.span;
+
+                    is_self_executed = true;
+                    analyze_and_insert_used_idents(do_while, None)
+
+                }
+                swc_ecma_ast::Stmt::For(for_stmt) => {
+                    span = for_stmt.span;
+
+                    is_self_executed = true;
+                    analyze_and_insert_used_idents(for_stmt, None)
+                }
+
+                swc_ecma_ast::Stmt::ForIn(for_in) => {
+                    span = for_in.span;
+
+                    is_self_executed = true;
+                    analyze_and_insert_used_idents(for_in, None)
+                }
+                swc_ecma_ast::Stmt::ForOf(for_of) => {
+                    span = for_of.span;
+
+                    is_self_executed = true;
+                    analyze_and_insert_used_idents(for_of, None)
+                }
+                swc_ecma_ast::Stmt::Decl(decl) => match decl {
+                    swc_ecma_ast::Decl::Class(class_decl) => {
+                        defined_idents.insert(class_decl.ident.to_string());
+                        analyze_and_insert_used_idents(
+                            &class_decl.class,
+                            Some(class_decl.ident.to_string()),
+                        );
+                    }
+                    swc_ecma_ast::Decl::Fn(fn_decl) => {
+                        defined_idents.insert(fn_decl.ident.to_string());
+                        analyze_and_insert_used_idents(
+                            &fn_decl.function,
+                            Some(fn_decl.ident.to_string()),
+                        );
+                    }
+                    swc_ecma_ast::Decl::Var(var_decl) => {
+                        for v_decl in &var_decl.decls {
+                            let mut defined_idents_collector = DefinedIdentsCollector::new();
+                            v_decl.name.visit_with(&mut defined_idents_collector);
+                            let mut used_idents_collector = UsedIdentsCollector::new();
+
+                            if let Some(init) = &v_decl.init {
+                                init.visit_with(&mut used_idents_collector);
+                            }
+
+                            let mut local_used_idents = HashSet::new();
+                            local_used_idents.extend(used_idents_collector.used_idents);
+                            local_used_idents.extend(defined_idents_collector.used_idents);
+                            used_idents.extend(local_used_idents.clone());
+
+                            for defined_ident in defined_idents_collector.defined_idents {
+                                defined_idents.insert(defined_ident.clone());
+                                defined_idents_map
+                                    .insert(defined_ident.clone(), local_used_idents.clone());
+                            }
+
                         }
                     }
+                    _ => unreachable!(
+                        "decl should not be anything other than a class, function, or variable declaration"
+                    ),
+                },
+                swc_ecma_ast::Stmt::Expr(expr) => {
+                    span = expr.span;
+                    analyze_and_insert_used_idents(expr, None);
                 }
-                _ => unreachable!(
-          "decl should not be anything other than a class, function, or variable declaration"
-        ),
-            },
-            swc_ecma_ast::Stmt::Expr(expr) => {
-                span = expr.span;
-
-                if !is_pure_expression(&expr.expr, unresolve_ctxt) {
-                    is_self_executed = true;
-                }
-                analyze_and_insert_used_idents(expr, None);
             }
-        },
+
+            let mut detector = SideEffectsDetector::new(unresolved_ctxt);
+            stmt.visit_with(&mut detector);
+            is_self_executed = detector.has_side_effects();
+        }
     };
 
     StatementInfo {
@@ -439,21 +443,4 @@ pub fn analyze_imports_and_exports(
         has_side_effects: false,
         span,
     }
-}
-
-fn is_pure_var_decl(var: &VarDecl, unresolved_ctxt: SyntaxContext) -> bool {
-    var.decls.iter().all(|decl| {
-        if let Some(ref init) = decl.init {
-            is_pure_expression(init, unresolved_ctxt)
-        } else {
-            true
-        }
-    })
-}
-
-fn is_pure_expression(expr: &Expr, unresolved_ctxt: SyntaxContext) -> bool {
-    !expr.may_have_side_effects(&ExprCtx {
-        unresolved_ctxt,
-        is_unresolved_ref_safe: false,
-    })
 }

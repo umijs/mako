@@ -4,9 +4,10 @@ use mako_core::petgraph;
 use mako_core::petgraph::stable_graph::NodeIndex;
 use mako_core::swc_ecma_ast::{Module as SwcModule, ModuleItem};
 
-pub(crate) mod analyze_imports_and_exports;
-pub(crate) mod defined_idents_collector;
-pub(crate) mod used_idents_collector;
+pub(super) mod analyze_imports_and_exports;
+pub(super) mod defined_idents_collector;
+pub(super) mod side_effects_detector;
+pub(super) mod used_idents_collector;
 
 use analyze_imports_and_exports::analyze_imports_and_exports;
 use mako_core::swc_common::{Span, SyntaxContext};
