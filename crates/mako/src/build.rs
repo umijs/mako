@@ -6,7 +6,9 @@ use std::time::Instant;
 
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::colored::Colorize;
+use mako_core::lazy_static::lazy_static;
 use mako_core::rayon::ThreadPool;
+use mako_core::regex::Regex;
 use mako_core::swc_ecma_utils::contains_top_level_await;
 use mako_core::thiserror::Error;
 use mako_core::tracing::debug;
@@ -16,14 +18,14 @@ use crate::analyze_deps::analyze_deps;
 use crate::ast::{build_js_ast, generate_code_frame};
 use crate::chunk_pot::util::{hash_hashmap, hash_vec};
 use crate::compiler::{Compiler, Context};
-use crate::config::Mode;
-use crate::load::{ext_name, load};
+use crate::config::{DevtoolConfig, Mode};
+use crate::load::{ext_name, load, Content};
 use crate::module::{Dependency, Module, ModuleAst, ModuleId, ModuleInfo};
 use crate::parse::parse;
 use crate::plugin::PluginCheckAstParam;
 use crate::resolve::{get_resolvers, resolve, ResolverResource, Resolvers};
 use crate::transform::transform;
-use crate::util::create_thread_pool;
+use crate::util::{base64_decode, create_thread_pool};
 
 #[derive(Debug, Error)]
 #[error("{0}")]
@@ -250,6 +252,7 @@ module.exports = new Promise((resolve, reject) => {{
                         ignored_deps: vec![],
                         top_level_await: false,
                         is_async: has_script,
+                        source_map_chain: vec![],
                     }),
                 )
             }
@@ -265,9 +268,15 @@ module.exports = new Promise((resolve, reject) => {{
     ) -> Result<(Module, ModuleDeps)> {
         let module_id = ModuleId::new(task.path.clone());
         let request = parse_path(&task.path)?;
+        let mut source_map_chain = vec![];
 
         // load
         let content = load(&request, task.is_entry, context)?;
+
+        let source_map = load_source_map(context, &content);
+        if let Some(source_map) = source_map {
+            source_map_chain.push(source_map);
+        }
 
         // parse
         let mut ast = parse(&content, &request, context)?;
@@ -383,6 +392,7 @@ module.exports = new Promise((resolve, reject) => {{
             top_level_await,
             is_async: top_level_await || is_async_module(&task.path),
             resolved_resource: task.parent_resource.clone(),
+            source_map_chain,
         };
         let module = Module::new(module_id, task.is_entry, Some(info));
 
@@ -427,6 +437,30 @@ pub struct FileRequest {
 impl FileRequest {
     pub fn has_query(&self, key: &str) -> bool {
         self.query.iter().any(|(k, _)| *k == key)
+    }
+}
+
+lazy_static! {
+    static ref CSS_SOURCE_MAP_REGEXP: Regex =
+        Regex::new(r"/\*# sourceMappingURL=data:application/json;base64,(.*?) \*/").unwrap();
+}
+
+fn load_source_map(context: &Arc<Context>, content: &Content) -> Option<Vec<u8>> {
+    if matches!(context.config.devtool, DevtoolConfig::None) {
+        return None;
+    }
+
+    // TODO support load js source map
+    if !matches!(content, Content::Css(_)) {
+        return None;
+    }
+
+    let content = content.raw();
+    if let Some(captures) = CSS_SOURCE_MAP_REGEXP.captures(&content) {
+        let source_map_base64 = captures.get(1).unwrap().as_str().to_string();
+        Some(base64_decode(source_map_base64.as_bytes()))
+    } else {
+        None
     }
 }
 

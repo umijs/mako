@@ -65,6 +65,7 @@ pub fn create_mock_module(path: PathBuf, code: &str) -> Module {
         ignored_deps: vec![],
         top_level_await: false,
         is_async: false,
+        source_map_chain: vec![],
     };
     Module::new(module_id, false, Some(info))
 }

@@ -25,13 +25,18 @@ use crate::load::file_content_hash;
 use crate::minify::{minify_css, minify_js};
 use crate::sourcemap::build_source_map;
 use crate::transform_in_generate::transform_css_generate;
+use crate::util::merge_source_map;
 
 #[cached(
     result = true,
     key = "u64",
     convert = "{chunk_pot.stylesheet.as_ref().unwrap().raw_hash}"
 )]
-pub(crate) fn render_css_chunk(chunk_pot: &ChunkPot, context: &Arc<Context>) -> Result<ChunkFile> {
+pub(crate) fn render_css_chunk(
+    chunk_pot: &ChunkPot,
+    chunk: &Chunk,
+    context: &Arc<Context>,
+) -> Result<ChunkFile> {
     mako_core::mako_profile_function!(&chunk_pot.js_name);
     let mut css_code = String::new();
     let mut source_map = Vec::new();
@@ -72,7 +77,23 @@ pub(crate) fn render_css_chunk(chunk_pot: &ChunkPot, context: &Arc<Context>) -> 
     let cm = &context.meta.css.cm;
     let source_map = match context.config.devtool {
         DevtoolConfig::None => None,
-        _ => Some(build_source_map(&source_map, cm)),
+        _ => {
+            // source map chain
+            let mut source_map_chain: Vec<Vec<u8>> = vec![];
+
+            let module_graph = context.module_graph.read().unwrap();
+            chunk.get_modules().iter().for_each(|module_id| {
+                let module = module_graph.get_module(module_id).unwrap();
+                let info = module.info.as_ref().unwrap();
+                if matches!(info.ast, crate::module::ModuleAst::Css(_)) {
+                    source_map_chain.append(&mut info.source_map_chain.clone());
+                }
+            });
+
+            source_map_chain.push(build_source_map(&source_map, cm));
+
+            Some(merge_source_map(source_map_chain, context.root.clone()))
+        }
     };
 
     let css_hash = if context.config.hash {

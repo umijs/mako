@@ -45,7 +45,11 @@ impl<'cp> ChunkPot<'cp> {
         })
     }
 
-    pub fn to_normal_chunk_files(&self, context: &Arc<Context>) -> Result<Vec<ChunkFile>> {
+    pub fn to_normal_chunk_files(
+        &self,
+        chunk: &Chunk,
+        context: &Arc<Context>,
+    ) -> Result<Vec<ChunkFile>> {
         mako_core::mako_profile_function!(&self.chunk_id);
 
         let mut files = vec![];
@@ -59,7 +63,7 @@ impl<'cp> ChunkPot<'cp> {
         files.push(js_chunk_file);
 
         if self.stylesheet.is_some() {
-            let css_chunk_file = ast_impl::render_css_chunk(self, context)?;
+            let css_chunk_file = ast_impl::render_css_chunk(self, chunk, context)?;
             files.push(css_chunk_file);
         }
 
@@ -80,7 +84,7 @@ impl<'cp> ChunkPot<'cp> {
         let mut files = vec![];
 
         if self.stylesheet.is_some() {
-            let css_chunk_file = ast_impl::render_css_chunk(self, context)?;
+            let css_chunk_file = ast_impl::render_css_chunk(self, chunk, context)?;
 
             let mut css_map = css_map.clone();
             css_map.insert(css_chunk_file.chunk_id.clone(), css_chunk_file.disk_name());

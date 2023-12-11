@@ -141,7 +141,7 @@ impl Compiler {
                         rs.send(Err(e)).unwrap();
                     } else {
                         let pot = pot.unwrap();
-                        let chunk_files = pot.to_normal_chunk_files(&context);
+                        let chunk_files = pot.to_normal_chunk_files(chunk, &context);
                         rs.send(chunk_files).unwrap();
                     }
                 });

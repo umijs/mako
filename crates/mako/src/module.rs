@@ -54,6 +54,8 @@ pub struct ModuleInfo {
     /// The purpose of distinguishing top_level_await and is_async is to adapt to runtime_async
     pub is_async: bool,
     pub resolved_resource: Option<ResolverResource>,
+    /// The transformed source map chain of this module
+    pub source_map_chain: Vec<Vec<u8>>,
 }
 
 fn md5_hash(source_str: &str, lens: usize) -> String {
