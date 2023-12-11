@@ -4,9 +4,10 @@
 
 > @alipay/bigfish@4.1.7  
 
-* chore: ✏️ type typo by @stormslowly in https://github.com/umijs/mako/pull/761
-* feat: 把 swc 的依赖都替换成 swc_core by @goo-yyh in https://github.com/umijs/mako/pull/765
-* feat: ✨ determine whether decl is pure by @stormslowly in https://github.com/umijs/mako/pull/763
+* 调整 swc 相应依赖替换成 swc_core by @goo-yyh in https://github.com/umijs/mako/pull/765
+* 调整 tree-shaking 增加对变量声明语句副作用的判定 by @stormslowly in https://github.com/umijs/mako/pull/763
+* 修复 node binding TypeScript 定义 by @stormslowly in https://github.com/umijs/mako/pull/761
+
 
 ## 0.1.9
 
