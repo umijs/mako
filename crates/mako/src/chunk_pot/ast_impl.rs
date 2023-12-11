@@ -4,6 +4,7 @@ use std::sync::Arc;
 use cached::proc_macro::cached;
 use mako_core::anyhow::Result;
 use mako_core::cached::SizedCache;
+use mako_core::mako_profile_scope;
 use mako_core::swc_common::{Mark, DUMMY_SP, GLOBALS};
 use mako_core::swc_css_ast::Stylesheet;
 use mako_core::swc_css_codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};
@@ -78,6 +79,7 @@ pub(crate) fn render_css_chunk(
     let source_map = match context.config.devtool {
         DevtoolConfig::None => None,
         _ => {
+            mako_profile_scope!("build_source_map");
             // source map chain
             let mut source_map_chain: Vec<Vec<u8>> = vec![];
 
