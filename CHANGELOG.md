@@ -1,3 +1,12 @@
+## 0.1.10
+
+`2023-12-08`
+
+> @alipay/bigfish@4.1.7  
+
+* chore: ✏️ type typo by @stormslowly in https://github.com/umijs/mako/pull/761
+* feat: 把 swc 的依赖都替换成 swc_core by @goo-yyh in https://github.com/umijs/mako/pull/765
+* feat: ✨ determine whether decl is pure by @stormslowly in https://github.com/umijs/mako/pull/763
 
 ## 0.1.9
 
