@@ -21,6 +21,7 @@ use crate::plugins;
 use crate::plugins::minifish::Inject;
 use crate::resolve::{get_resolvers, Resolvers};
 use crate::stats::StatsInfo;
+use crate::swc_helpers::SwcHelpers;
 
 pub struct Context {
     pub module_graph: RwLock<ModuleGraph>,
@@ -37,6 +38,7 @@ pub struct Context {
     pub resolvers: Resolvers,
     pub static_cache: RwLock<MemoryChunkFileCache>,
     pub optimize_infos: Mutex<Option<Vec<OptimizeChunksInfo>>>,
+    pub swc_helpers: Mutex<SwcHelpers>,
 }
 #[derive(Default)]
 pub struct MemoryChunkFileCache {
@@ -126,6 +128,7 @@ impl Default for Context {
             resolvers,
             optimize_infos: Mutex::new(None),
             static_cache: Default::default(),
+            swc_helpers: Mutex::new(Default::default()),
         }
     }
 }
@@ -320,6 +323,7 @@ impl Compiler {
         plugin_driver.modify_config(&mut config, &root, &args)?;
 
         let resolvers = get_resolvers(&config);
+        let is_watch = args.watch;
         Ok(Self {
             context: Arc::new(Context {
                 static_cache: if config.write_to_disk {
@@ -340,6 +344,11 @@ impl Compiler {
                 stats_info: Mutex::new(StatsInfo::new()),
                 resolvers,
                 optimize_infos: Mutex::new(None),
+                swc_helpers: Mutex::new(SwcHelpers::new(if is_watch {
+                    Some(SwcHelpers::new(None).full_helpers())
+                } else {
+                    None
+                })),
             }),
         })
     }
