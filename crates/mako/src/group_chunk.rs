@@ -6,11 +6,11 @@ use std::vec;
 use mako_core::tracing::debug;
 
 use crate::bfs::{Bfs, NextResult};
-use crate::build::parse_path;
 use crate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::chunk_graph::ChunkGraph;
 use crate::compiler::Compiler;
 use crate::module::{ModuleId, ResolveType};
+use crate::task::parse_path;
 use crate::update::UpdateResult;
 
 pub type GroupUpdateResult = Option<(Vec<ChunkId>, Vec<(ModuleId, ChunkId, ChunkType)>)>;

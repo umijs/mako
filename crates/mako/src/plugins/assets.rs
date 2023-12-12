@@ -15,16 +15,15 @@ impl Plugin for AssetsPlugin {
     }
 
     fn load(&self, param: &PluginLoadParam, context: &Arc<Context>) -> Result<Option<Content>> {
-        if matches!(param.ext_name, Some("sass" | "scss" | "stylus")) {
+        if param.task.is_match(vec!["sass", "scss", "stylus"]) {
             return Err(anyhow!(LoadError::UnsupportedExtName {
-                ext_name: param.ext_name.unwrap().to_string(),
-                path: param.path.clone(),
+                ext_name: param.task.ext_name.as_ref().unwrap().to_string(),
+                path: param.task.path.clone(),
             }));
         }
 
-        if Path::new(&param.path).is_file() {
-            let asset_content = handle_asset(context, param.path.as_str(), true)?;
-
+        if Path::new(&param.task.request.path).is_file() {
+            let asset_content = handle_asset(context, param.task.request.path.as_str(), true)?;
             return Ok(Some(Content::Js(format!(
                 "module.exports = {};",
                 asset_content

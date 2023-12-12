@@ -12,9 +12,9 @@ use mako_core::tracing::debug;
 use mako_core::twox_hash::XxHash64;
 use mako_core::{md5, mime_guess};
 
-use crate::build::FileRequest;
 use crate::compiler::Context;
 use crate::plugin::PluginLoadParam;
+use crate::task;
 
 pub struct Asset {
     pub path: String,
@@ -67,10 +67,10 @@ pub enum LoadError {
     CompileMdError { path: String, reason: String },
 }
 
-pub fn load(request: &FileRequest, is_entry: bool, context: &Arc<Context>) -> Result<Content> {
+pub fn load(task: &task::Task, context: &Arc<Context>) -> Result<Content> {
     mako_core::mako_profile_function!(&request.path);
-    debug!("load: {:?}", request);
-    let path = &request.path;
+    debug!("load: {:?}", task);
+    let path = &task.request.path;
     let exists = Path::new(path).exists();
     if !exists {
         return Err(anyhow!(LoadError::FileNotFound {
@@ -78,15 +78,9 @@ pub fn load(request: &FileRequest, is_entry: bool, context: &Arc<Context>) -> Re
         }));
     }
 
-    let content = context.plugin_driver.load(
-        &PluginLoadParam {
-            path: path.to_string(),
-            is_entry,
-            ext_name: ext_name(path),
-            request,
-        },
-        context,
-    )?;
+    let content = context
+        .plugin_driver
+        .load(&PluginLoadParam { task }, context)?;
 
     Ok(content.unwrap())
 }

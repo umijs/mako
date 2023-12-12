@@ -7,24 +7,21 @@ use mako_core::swc_common::errors::Handler;
 use mako_core::swc_common::Mark;
 use mako_core::swc_ecma_ast::Module;
 
-use crate::build::FileRequest;
 use crate::compiler::{Args, Context};
 use crate::config::Config;
 use crate::load::Content;
 use crate::module::{Dependency, ModuleAst};
 use crate::module_graph::ModuleGraph;
 use crate::stats::StatsJsonMap;
+use crate::task::Task;
 
 #[derive(Debug)]
 pub struct PluginLoadParam<'a> {
-    pub path: String,
-    pub is_entry: bool,
-    pub ext_name: Option<&'a str>,
-    pub request: &'a FileRequest,
+    pub task: &'a Task,
 }
 
 pub struct PluginParseParam<'a> {
-    pub request: &'a FileRequest,
+    pub task: &'a Task,
     pub content: &'a Content,
 }
 
