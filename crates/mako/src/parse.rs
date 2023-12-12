@@ -10,7 +10,7 @@ use crate::plugin::PluginParseParam;
 use crate::task::Task;
 
 pub fn parse(content: &Content, task: &Task, context: &Arc<Context>) -> Result<ModuleAst> {
-    mako_core::mako_profile_function!(&request.path);
+    mako_core::mako_profile_function!(&task.path);
     debug!("parse {:?}", task);
     let ast = context
         .plugin_driver
