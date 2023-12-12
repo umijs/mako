@@ -28,8 +28,10 @@ use crate::transform_in_generate::transform_css_generate;
 
 #[cached(
     result = true,
-    key = "u64",
-    convert = "{chunk_pot.stylesheet.as_ref().unwrap().raw_hash}"
+    type = "SizedCache<String , ChunkFile>",
+    create = "{ SizedCache::with_size(500) }",
+    key = "String",
+    convert = r#"{format!("{}.{:x}",chunk_pot.chunk_id,chunk_pot.stylesheet.as_ref().unwrap().raw_hash)}"#
 )]
 pub(crate) fn render_css_chunk(chunk_pot: &ChunkPot, context: &Arc<Context>) -> Result<ChunkFile> {
     mako_core::mako_profile_function!(&chunk_pot.js_name);
@@ -94,10 +96,10 @@ pub(crate) fn render_css_chunk(chunk_pot: &ChunkPot, context: &Arc<Context>) -> 
 
 #[cached(
     result = true,
-    type = "SizedCache<u64 , ChunkFile>",
+    type = "SizedCache<String , ChunkFile>",
     create = "{ SizedCache::with_size(500) }",
-    key = "u64",
-    convert = "{chunk_pot.js_hash}"
+    key = "String",
+    convert = r#"{format!("{}.{:x}", chunk_pot.chunk_id, chunk_pot.js_hash)}"#
 )]
 pub(crate) fn render_normal_js_chunk(
     chunk_pot: &ChunkPot,
