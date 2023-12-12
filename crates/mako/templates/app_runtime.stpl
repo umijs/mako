@@ -1,4 +1,5 @@
 function createRuntime(makoModules, entryModuleId) {
+  var global = typeof globalThis !== 'undefined' ? globalThis : self;
   var modulesRegistry = {};
 
   function requireModule(moduleId) {
@@ -287,6 +288,12 @@ function createRuntime(makoModules, entryModuleId) {
       installedChunks[id] = 0;
     }
   };
+  var chunkLoadingGlobal = global['<%= chunk_loading_global.clone() %>'] = global['<%= chunk_loading_global.clone() %>'] || [];
+	chunkLoadingGlobal.forEach(jsonpCallback.bind(null));
+  chunkLoadingGlobal.push = (function(push, data) {
+    push(data);
+    jsonpCallback(data);
+  }).bind(null, chunkLoadingGlobal.push.bind(chunkLoadingGlobal));
 <% } %>
 
   var registerModules = function(modules) {

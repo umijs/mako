@@ -121,8 +121,10 @@ pub(super) fn render_normal_js_chunk(
 
 pub fn pot_to_chunk_module_content(pot: &ChunkPot, context: &Arc<Context>) -> Result<String> {
     Ok(format!(
-        r#"globalThis.jsonpCallback([["{}"],
+        r#"(globalThis['{}'] = globalThis['{}'] || []).push([['{}'],
 {}]);"#,
+        context.config.output.chunk_loading_global,
+        context.config.output.chunk_loading_global,
         pot.chunk_id,
         pot_to_chunk_module_object_string(pot, context)?
     ))

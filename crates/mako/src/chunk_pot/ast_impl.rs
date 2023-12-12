@@ -105,7 +105,10 @@ pub(crate) fn render_normal_js_chunk(
 ) -> Result<ChunkFile> {
     mako_core::mako_profile_function!();
 
-    let module = pot_to_chunk_module(chunk_pot)?;
+    let module = pot_to_chunk_module(
+        chunk_pot,
+        context.config.output.chunk_loading_global.clone(),
+    )?;
 
     let mut ast = GLOBALS.set(&context.meta.script.globals, || Ast {
         ast: module,

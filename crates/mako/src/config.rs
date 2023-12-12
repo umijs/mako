@@ -23,6 +23,7 @@ pub struct OutputConfig {
     pub es_version: EsVersion,
     pub ascii_only: bool,
     pub meta: bool,
+    pub chunk_loading_global: String,
 
     pub preserve_modules: bool,
     pub preserve_modules_root: PathBuf,
@@ -314,6 +315,7 @@ const DEFAULT_CONFIG: &str = r#"
       "esVersion": "es2022",
       "meta": false,
       "asciiOnly": true,
+      "chunkLoadingGlobal": "",
       "preserveModules": false,
       "preserveModulesRoot": ""
     },
@@ -403,8 +405,14 @@ impl Config {
         let mut ret = c.try_deserialize::<Config>();
         // normalize & check
         if let Ok(config) = &mut ret {
+            // normalize output
             if config.output.path.is_relative() {
                 config.output.path = root.join(config.output.path.to_string_lossy().to_string());
+            }
+
+            if config.output.chunk_loading_global.is_empty() {
+                config.output.chunk_loading_global =
+                    get_default_chunk_loading_global(config.umd.clone(), root);
             }
 
             let node_env_config_opt = config.define.get("NODE_ENV");
@@ -528,6 +536,26 @@ impl Default for Config {
         let c = c.build().unwrap();
         c.try_deserialize::<Config>().unwrap()
     }
+}
+
+fn get_default_chunk_loading_global(umd: String, root: &Path) -> String {
+    let unique_name = if umd != "none" {
+        umd
+    } else {
+        let pkg_json_path = root.join("package.json");
+
+        if pkg_json_path.exists() {
+            let pkg_json = std::fs::read_to_string(pkg_json_path).unwrap();
+            let pkg_json: serde_json::Value = serde_json::from_str(&pkg_json).unwrap();
+
+            if let Some(name) = pkg_json.get("name") {
+                return name.as_str().unwrap().to_string();
+            }
+        }
+        "global".to_string()
+    };
+
+    format!("makoChunk_{}", unique_name)
 }
 
 #[derive(Error, Debug)]
