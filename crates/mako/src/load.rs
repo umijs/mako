@@ -68,7 +68,7 @@ pub enum LoadError {
 }
 
 pub fn load(task: &task::Task, context: &Arc<Context>) -> Result<Content> {
-    mako_core::mako_profile_function!(&request.path);
+    mako_core::mako_profile_function!(&task.path);
     debug!("load: {:?}", task);
     let path = &task.request.path;
     let exists = Path::new(path).exists();
