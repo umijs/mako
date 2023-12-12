@@ -22,7 +22,7 @@ use crate::module::{Dependency, Module, ModuleAst, ModuleId, ModuleInfo};
 use crate::parse::parse;
 use crate::plugin::PluginCheckAstParam;
 use crate::resolve::{resolve, ResolverResource};
-use crate::task;
+use crate::task::{self, Task};
 use crate::transform::transform;
 use crate::util::create_thread_pool;
 
@@ -36,7 +36,21 @@ impl Compiler {
     pub fn build(&self) -> Result<()> {
         debug!("build");
         let t_build = Instant::now();
-        let module_ids = self.build_module_graph()?;
+        let entries: Vec<&PathBuf> = self.context.config.entry.values().collect();
+        let tasks = entries
+            .iter()
+            .map(|entry| {
+                let mut entry = entry.to_str().unwrap().to_string();
+                if self.context.config.hmr
+                    && self.context.config.mode == Mode::Development
+                    && self.context.args.watch
+                {
+                    entry = format!("{}?hmr", entry);
+                }
+                task::Task::new(task::TaskType::Entry(entry), None)
+            })
+            .collect::<Vec<_>>();
+        let module_ids = self.build_tasks(tasks)?;
         let t_build = t_build.elapsed();
         println!(
             "{} modules transformed in {}ms.",
@@ -47,30 +61,12 @@ impl Compiler {
         Ok(())
     }
 
-    fn build_module_graph(&self) -> Result<HashSet<ModuleId>> {
-        debug!("build module graph");
-
-        let entries: Vec<&PathBuf> = self.context.config.entry.values().collect();
-
+    pub fn build_tasks(&self, tasks: Vec<Task>) -> Result<HashSet<ModuleId>> {
+        debug!("build tasks: {:?}", tasks);
         let (pool, rs, rr) = create_thread_pool::<Result<ModuleId>>();
-
-        for entry in entries {
-            let mut entry = entry.to_str().unwrap().to_string();
-            if self.context.config.hmr
-                && self.context.config.mode == Mode::Development
-                && self.context.args.watch
-            {
-                entry = format!("{}?hmr", entry);
-            }
-
-            Self::build_module_graph_threaded(
-                pool.clone(),
-                self.context.clone(),
-                task::Task::new(task::TaskType::Entry(entry), None),
-                rs.clone(),
-            );
+        for task in tasks {
+            Self::build_module_graph_threaded(pool.clone(), self.context.clone(), task, rs.clone());
         }
-
         drop(rs);
 
         let mut errors = vec![];
