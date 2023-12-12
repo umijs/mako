@@ -1,7 +1,6 @@
-use std::path::Path;
-
 use mako_core::anyhow::Result;
 
+use crate::load::ext_name;
 use crate::resolve::ResolverResource;
 
 pub enum TaskType {
@@ -26,7 +25,7 @@ impl Task {
             TaskType::Normal(path) => (path, false),
         };
         let request = parse_path(&path).unwrap();
-        let ext_name = ext_name(&request.path);
+        let ext_name = ext_name(&request.path).map(|s| s.to_string());
         Self {
             path,
             parent_resource,
@@ -86,14 +85,6 @@ pub fn parse_path(path: &str) -> Result<FileRequest> {
         path: path.to_string(),
         query: query_vec,
     })
-}
-
-fn ext_name(path: &str) -> Option<String> {
-    let ext = Path::new(path).extension();
-    if let Some(ext) = ext {
-        return Some(ext.to_string_lossy().to_string());
-    }
-    None
 }
 
 #[derive(Debug)]
