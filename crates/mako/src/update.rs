@@ -4,18 +4,15 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 
 use mako_core::anyhow::{anyhow, Ok, Result};
-use mako_core::colored::Colorize;
 use mako_core::rayon::prelude::*;
 use mako_core::tracing::debug;
 
-use crate::build::GenericError;
 use crate::compiler::Compiler;
 use crate::module::{Dependency, Module, ModuleId};
 use crate::resolve;
 use crate::task::{Task, TaskType};
 use crate::transform_in_generate::transform_modules;
 use crate::transformers::transform_virtual_css_modules::is_css_path;
-use crate::util::create_thread_pool;
 
 #[derive(Debug, Clone)]
 pub enum UpdateType {
@@ -352,48 +349,16 @@ impl Compiler {
         Result::Ok((modified_module_ids, added))
     }
 
-    fn build_by_add(&self, added: &Vec<PathBuf>) -> Result<HashSet<ModuleId>> {
-        let (pool, rs, rr) = create_thread_pool::<Result<ModuleId>>();
-        for path in added {
-            Self::build_module_graph_threaded(
-                pool.clone(),
-                self.context.clone(),
-                Task::new(TaskType::Normal(path.to_string_lossy().to_string()), None),
-                rs.clone(),
-            );
-        }
-
-        drop(rs);
-
-        let mut errors = vec![];
-        let mut module_ids = HashSet::new();
-        for r in rr {
-            match r {
-                Result::Ok(module_id) => {
-                    module_ids.insert(module_id);
-                }
-                Err(err) => {
-                    // unescape
-                    let mut err = err
-                        .to_string()
-                        .replace("\\n", "\n")
-                        .replace("\\u{1b}", "\u{1b}")
-                        .replace("\\\\", "\\");
-                    // remove first char and last char
-                    if err.starts_with('"') && err.ends_with('"') {
-                        err = err[1..err.len() - 1].to_string();
-                    }
-                    errors.push(err);
-                }
-            }
-        }
-
-        if !errors.is_empty() {
-            eprintln!("{}", "Build failed.".to_string().red());
-            return Err(anyhow!(GenericError(errors.join(", "))));
-        }
-
-        Ok(module_ids)
+    fn build_by_add(&self, added: &[PathBuf]) -> Result<HashSet<ModuleId>> {
+        let tasks = added
+            .iter()
+            .map(|path| {
+                let path = path.to_string_lossy().to_string();
+                let task_type = TaskType::Normal(path);
+                Task::new(task_type, None)
+            })
+            .collect::<Vec<_>>();
+        self.build_tasks(tasks)
     }
 
     fn build_by_remove(&self, removed: Vec<PathBuf>) -> (HashSet<ModuleId>, HashSet<ModuleId>) {

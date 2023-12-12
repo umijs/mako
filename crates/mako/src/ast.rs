@@ -233,6 +233,7 @@ pub fn js_ast_to_code(
     let code = String::from_utf8(buf)?;
     Ok((code, sourcemap))
 }
+
 #[allow(dead_code)]
 pub fn css_ast_to_code(
     ast: &Stylesheet,

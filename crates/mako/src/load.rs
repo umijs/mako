@@ -163,12 +163,12 @@ pub fn ext_name(path: &str) -> Option<&str> {
 }
 
 pub fn file_size(path: &str) -> Result<u64> {
-    let metadata = std::fs::metadata(path)?;
+    let metadata = fs::metadata(path)?;
     Ok(metadata.len())
 }
 
 fn to_base64(path: &str) -> Result<String> {
-    let vec = std::fs::read(path)?;
+    let vec = fs::read(path)?;
     let engine = engine::GeneralPurpose::new(&STANDARD, engine::general_purpose::PAD);
     let base64 = engine.encode(vec);
     let guess = mime_guess::from_path(path);
