@@ -14,12 +14,12 @@ use mako_core::swc_ecma_utils::{quote_ident, quote_str};
 use mako_core::swc_ecma_visit::Fold;
 use mako_core::tracing::debug;
 
-use crate::build::parse_path;
 use crate::compiler::Context;
 use crate::load::load;
 use crate::module::{Dependency, ResolveType};
 use crate::parse::parse;
 use crate::resolve::{resolve, ResolverResource};
+use crate::task::{Task, TaskType};
 
 pub fn optimize_package_imports(path: String, context: Arc<Context>) -> impl Fold {
     OptimizePackageImports { path, context }
@@ -315,9 +315,9 @@ fn has_side_effects(description: &Arc<DescriptionData>) -> bool {
 
 #[cached(result = true, key = "String", convert = r#"{ format!("{}", path) }"#)]
 fn parse_barrel_file(path: &str, context: &Arc<Context>) -> Result<(bool, Vec<ExportInfo>)> {
-    let request = parse_path(path)?;
-    let content = load(&request, false, context)?;
-    let ast = parse(&content, &request, context)?;
+    let task = Task::new(TaskType::Normal(path.to_string()), None);
+    let content = load(&task, context)?;
+    let ast = parse(&content, &task, context)?;
     let ast = ast.as_script();
 
     // A barrel file to be a file that only exports from other modules.

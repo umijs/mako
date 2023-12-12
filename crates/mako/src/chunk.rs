@@ -7,9 +7,9 @@ use mako_core::indexmap::IndexSet;
 use mako_core::md5;
 use mako_core::twox_hash::XxHash64;
 
-use crate::build::parse_path;
 use crate::module::ModuleId;
 use crate::module_graph::ModuleGraph;
+use crate::task::parse_path;
 
 pub type ChunkId = ModuleId;
 

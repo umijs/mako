@@ -120,16 +120,16 @@ function createRuntime(makoModules, entryModuleId) {
   /* mako/runtime/ensure load css chunk */
   !(function () {
     var publicPathWithoutOrigin;
-
-    try {
-      publicPathWithoutOrigin = new URL(
-        requireModule.publicPath.replace(/^(\/\/)/, 'https:$1')
-      ).pathname;
-    } catch {}
-
     requireModule.cssInstalled = cssInstalledChunks;
     // __CSS_CHUNKS_URL_MAP
     requireModule.findStylesheet = function (url) {
+      try {
+        if (!publicPathWithoutOrigin) {
+          publicPathWithoutOrigin = new URL(
+            requireModule.publicPath.replace(/^(\/\/)/, 'https:$1')
+          ).pathname;
+        }
+      } catch {}
       return Array.from(
         document.querySelectorAll('link[href][rel=stylesheet]'),
       ).find(function (link) {

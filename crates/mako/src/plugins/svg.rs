@@ -15,8 +15,8 @@ impl Plugin for SVGPlugin {
     }
 
     fn load(&self, param: &PluginLoadParam, context: &Arc<Context>) -> Result<Option<Content>> {
-        if matches!(param.ext_name, Some("svg")) {
-            let code = read_content(param.path.as_str())?;
+        if param.task.is_match(vec!["svg"]) {
+            let code = read_content(param.task.request.path.as_str())?;
             let transform_code = svgr_rs::transform(
                 code,
                 svgr_rs::Config {
@@ -34,12 +34,12 @@ impl Plugin for SVGPlugin {
                 Ok(res) => res,
                 Err(reason) => {
                     return Err(anyhow!(LoadError::ToSvgrError {
-                        path: param.path.to_string(),
+                        path: param.task.path.to_string(),
                         reason,
                     }));
                 }
             };
-            let default_svg = handle_asset(context, param.path.as_str(), true)?;
+            let default_svg = handle_asset(context, param.task.request.path.as_str(), true)?;
             return Ok(Some(Content::Js(format!(
                 "{}\nexport default {};",
                 svgr_code, default_svg

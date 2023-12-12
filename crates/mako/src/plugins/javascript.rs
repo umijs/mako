@@ -27,15 +27,18 @@ impl Plugin for JavaScriptPlugin {
     }
 
     fn load(&self, param: &PluginLoadParam, context: &Arc<Context>) -> Result<Option<Content>> {
-        if matches!(
-            param.ext_name,
-            Some("js" | "jsx" | "ts" | "tsx" | "cjs" | "mjs")
-        ) {
-            if param.is_entry && param.request.has_query("hmr") {
+        if param
+            .task
+            .is_match(vec!["js", "jsx", "ts", "tsx", "cjs", "mjs"])
+        {
+            if param.task.is_entry && param.task.request.has_query("hmr") {
                 let port = &context.config.hmr_port.to_string();
                 let host = &context.config.hmr_host.to_string();
                 let host = if host == "0.0.0.0" { "127.0.0.1" } else { host };
-                let content = format!("module.exports = require(\"{}\");", param.path.as_str());
+                let content = format!(
+                    "module.exports = require(\"{}\");",
+                    param.task.request.path.as_str()
+                );
                 let content = format!(
                     "{}\n{}\n",
                     include_str!("../runtime/runtime_hmr_entry.js"),
@@ -46,7 +49,7 @@ impl Plugin for JavaScriptPlugin {
                 return Ok(Some(Content::Js(content)));
             }
 
-            let content = read_content(param.path.as_str())?;
+            let content = read_content(param.task.request.path.as_str())?;
             return Ok(Some(Content::Js(content)));
         }
         Ok(None)
@@ -54,7 +57,7 @@ impl Plugin for JavaScriptPlugin {
 
     fn parse(&self, param: &PluginParseParam, context: &Arc<Context>) -> Result<Option<ModuleAst>> {
         if let Content::Js(content) = param.content {
-            let ast = build_js_ast(&param.request.path, content, context)?;
+            let ast = build_js_ast(&param.task.request.path, content, context)?;
             return Ok(Some(ModuleAst::Script(ast)));
         }
         Ok(None)
@@ -215,14 +218,16 @@ pub fn is_import_meta_url(expr: &Expr) -> bool {
     matches!(
         expr,
         Expr::Member(MemberExpr {
-            obj: box Expr::MetaProp(MetaPropExpr {
-                kind: MetaPropKind::ImportMeta,
-                ..
-            }),
-            prop: MemberProp::Ident(Ident {
-                sym: js_word!("url"),
-                ..
-            }),
+            obj:
+                box Expr::MetaProp(MetaPropExpr {
+                    kind: MetaPropKind::ImportMeta,
+                    ..
+                }),
+            prop:
+                MemberProp::Ident(Ident {
+                    sym: js_word!("url"),
+                    ..
+                }),
             ..
         })
     )

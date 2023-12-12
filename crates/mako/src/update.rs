@@ -2,17 +2,17 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::fmt::Debug;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Ok, Result};
 use mako_core::colored::Colorize;
 use mako_core::rayon::prelude::*;
 use mako_core::tracing::debug;
 
-use crate::build::{GenericError, Task};
+use crate::build::GenericError;
 use crate::compiler::Compiler;
 use crate::module::{Dependency, Module, ModuleId};
-use crate::resolve::{self, get_resolvers, Resolvers};
+use crate::resolve;
+use crate::task::{Task, TaskType};
 use crate::transform_in_generate::transform_modules;
 use crate::transformers::transform_virtual_css_modules::is_css_path;
 use crate::util::create_thread_pool;
@@ -93,7 +93,6 @@ impl Compiler {
         drop(module_graph);
         debug!("update: {:?}", &paths);
         let mut update_result: UpdateResult = Default::default();
-        let resolvers = Arc::new(get_resolvers(&self.context.config));
 
         let mut modified = vec![];
         let mut removed = vec![];
@@ -194,9 +193,8 @@ impl Compiler {
 
         // 分析修改的模块，结果中会包含新增的模块
         debug!("modify: {:?}", &modified);
-        let (modified_module_ids, add_paths) = self
-            .build_by_modify(modified, resolvers.clone())
-            .map_err(|err| anyhow!(err))?;
+        let (modified_module_ids, add_paths) =
+            self.build_by_modify(modified).map_err(|err| anyhow!(err))?;
         debug!("after build_by_modify");
         debug!("  > modified_module_ids: {:?}", &modified_module_ids);
         debug!(
@@ -210,7 +208,7 @@ impl Compiler {
 
         // 最后做添加
         debug!("add: {:?}", &added);
-        let added_module_ids = self.build_by_add(&added, resolvers)?;
+        let added_module_ids = self.build_by_add(&added)?;
         update_result.added.extend(
             added
                 .into_iter()
@@ -238,7 +236,6 @@ impl Compiler {
     fn build_by_modify(
         &self,
         mut modified: Vec<PathBuf>,
-        resolvers: Arc<Resolvers>,
     ) -> Result<(HashSet<ModuleId>, Vec<PathBuf>)> {
         let module_graph = self.context.module_graph.read().unwrap();
         let modules = module_graph.modules();
@@ -267,15 +264,14 @@ impl Compiler {
                     entries.any(|e| e.eq(entry))
                 };
 
-                let (module, dependencies) = Compiler::build_module(
-                    &self.context,
-                    &Task {
-                        path: entry.to_string_lossy().to_string(),
-                        is_entry,
-                        parent_resource: None,
-                    },
-                    resolvers.clone(),
-                )?;
+                let path = entry.to_string_lossy().to_string();
+                let task_type = if is_entry {
+                    TaskType::Entry(path)
+                } else {
+                    TaskType::Normal(path)
+                };
+                let (module, dependencies) =
+                    Compiler::build_module(&self.context, Task::new(task_type, None))?;
 
                 debug!(
                     "  > missing deps: {:?}",
@@ -356,23 +352,14 @@ impl Compiler {
         Result::Ok((modified_module_ids, added))
     }
 
-    fn build_by_add(
-        &self,
-        added: &Vec<PathBuf>,
-        resolvers: Arc<Resolvers>,
-    ) -> Result<HashSet<ModuleId>> {
+    fn build_by_add(&self, added: &Vec<PathBuf>) -> Result<HashSet<ModuleId>> {
         let (pool, rs, rr) = create_thread_pool::<Result<ModuleId>>();
         for path in added {
             Self::build_module_graph_threaded(
                 pool.clone(),
                 self.context.clone(),
-                Task {
-                    path: path.to_string_lossy().to_string(),
-                    is_entry: false,
-                    parent_resource: None,
-                },
+                Task::new(TaskType::Normal(path.to_string_lossy().to_string()), None),
                 rs.clone(),
-                resolvers.clone(),
             );
         }
 
