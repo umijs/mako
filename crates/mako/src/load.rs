@@ -155,8 +155,8 @@ pub fn file_name(path: &str) -> Option<&str> {
 }
 
 pub fn ext_name(path: &str) -> Option<&str> {
-    let ext = Path::new(path).extension();
-    if let Some(ext) = ext {
+    let path = Path::new(path);
+    if let (true, Some(ext)) = (path.is_file(), path.extension()) {
         return ext.to_str();
     }
     None

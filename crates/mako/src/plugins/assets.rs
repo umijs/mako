@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
@@ -21,10 +22,14 @@ impl Plugin for AssetsPlugin {
             }));
         }
 
-        let asset_content = handle_asset(context, param.task.request.path.as_str(), true)?;
-        Ok(Some(Content::Js(format!(
-            "module.exports = {};",
-            asset_content
-        ))))
+        if Path::new(&param.task.request.path).is_file() {
+            let asset_content = handle_asset(context, param.task.request.path.as_str(), true)?;
+            return Ok(Some(Content::Js(format!(
+                "module.exports = {};",
+                asset_content
+            ))));
+        }
+
+        Ok(None)
     }
 }
