@@ -15,7 +15,7 @@ use crate::resolve::{ResolvedResource, ResolverResource};
 #[allow(dead_code)]
 #[derive(Clone)]
 pub enum OptimizeAllowChunks {
-    // All,
+    All,
     Entry,
     Async,
 }
@@ -391,6 +391,12 @@ impl Compiler {
             let info_chunk_id = ChunkId {
                 id: info.group_options.name.clone(),
             };
+            let info_chunk_type =
+                if matches!(info.group_options.allow_chunks, OptimizeAllowChunks::Async) {
+                    ChunkType::Sync
+                } else {
+                    ChunkType::Entry(info_chunk_id.clone(), info.group_options.name.clone(), true)
+                };
             let info_chunk = Chunk {
                 modules: info
                     .module_to_chunks
@@ -398,7 +404,7 @@ impl Compiler {
                     .cloned()
                     .collect::<IndexSet<_>>(),
                 id: info_chunk_id.clone(),
-                chunk_type: ChunkType::Sync,
+                chunk_type: info_chunk_type,
                 content: None,
                 source_map: None,
             };
@@ -473,7 +479,11 @@ impl Compiler {
         chunk_type: &ChunkType,
     ) -> bool {
         match allow_chunks {
-            OptimizeAllowChunks::Entry => matches!(chunk_type, &ChunkType::Entry(_, _)),
+            OptimizeAllowChunks::All => matches!(
+                chunk_type,
+                &ChunkType::Entry(_, _, false) | &ChunkType::Async
+            ),
+            OptimizeAllowChunks::Entry => matches!(chunk_type, &ChunkType::Entry(_, _, false)),
             OptimizeAllowChunks::Async => chunk_type == &ChunkType::Async,
         }
     }

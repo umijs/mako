@@ -268,6 +268,12 @@ function createRuntime(makoModules, entryModuleId) {
   })();
 <% } %>
 
+  var registerModules = function(modules) {
+    for (var id in modules) {
+      makoModules[id] = modules[id];
+    }
+  };
+
 <% if has_dynamic_chunks { %>
   var jsonpCallback = function (data) {
     var installedChunks = requireModule.jsonpInstalled;
@@ -295,12 +301,6 @@ function createRuntime(makoModules, entryModuleId) {
     jsonpCallback(data);
   }).bind(null, chunkLoadingGlobal.push.bind(chunkLoadingGlobal));
 <% } %>
-
-  var registerModules = function(modules) {
-    for (var id in modules) {
-      makoModules[id] = modules[id];
-    }
-  };
 
   // __inject_runtime_code__
 

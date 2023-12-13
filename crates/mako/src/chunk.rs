@@ -17,8 +17,10 @@ pub type ChunkId = ModuleId;
 pub enum ChunkType {
     #[allow(dead_code)]
     Runtime,
-    // module id, entry chunk name
-    Entry(ModuleId, String),
+    /**
+     * Entry(chunk_id, chunk_name, is_shared_chunk)
+     */
+    Entry(ModuleId, String, bool),
     Async,
     // mean that the chunk is not async, but it's a dependency of an async chunk
     Sync,
@@ -49,7 +51,7 @@ impl Chunk {
         match &self.chunk_type {
             ChunkType::Runtime => "runtime.js".into(),
             // foo/bar.tsx -> bar.js
-            ChunkType::Entry(_, name) => format!("{}.js", name),
+            ChunkType::Entry(_, name, _) => format!("{}.js", name),
             // foo/bar.tsx -> foo_bar_tsx-async.js
             ChunkType::Async | ChunkType::Sync | ChunkType::Worker(_) => {
                 let parsed_id = parse_path(&self.id.id).ok().unwrap();
@@ -143,7 +145,7 @@ mod tests {
         let module_id = ModuleId::new("foo/bar.tsx".into());
         let chunk = Chunk::new(
             module_id.clone(),
-            ChunkType::Entry(module_id, "foo_bar".to_string()),
+            ChunkType::Entry(module_id, "foo_bar".to_string(), false),
         );
         assert_eq!(chunk.filename(), "foo_bar.js");
 

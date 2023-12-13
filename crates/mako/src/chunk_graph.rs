@@ -128,7 +128,7 @@ impl ChunkGraph {
         let idx = self.id_index_map.get(chunk_id).unwrap();
         self.graph
             .neighbors_directed(*idx, Direction::Incoming)
-            .filter(|idx| matches!(self.graph[*idx].chunk_type, ChunkType::Entry(_, _)))
+            .filter(|idx| matches!(self.graph[*idx].chunk_type, ChunkType::Entry(_, _, _)))
             .map(|idx| self.graph[idx].id.clone())
             .collect::<Vec<ChunkId>>()
     }
@@ -139,7 +139,7 @@ impl ChunkGraph {
         self.graph
             .neighbors_directed(*idx, Direction::Incoming)
             .for_each(|idx| match self.graph[idx].chunk_type {
-                ChunkType::Entry(_, _) => {
+                ChunkType::Entry(_, _, _) => {
                     ret.push(self.graph[idx].id.clone());
                 }
                 _ => {

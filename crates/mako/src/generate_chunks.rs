@@ -78,7 +78,7 @@ impl Compiler {
                 .filter(|chunk| {
                     matches!(
                         chunk.chunk_type,
-                        ChunkType::Entry(_, _) | ChunkType::Worker(_)
+                        ChunkType::Entry(_, _, _) | ChunkType::Worker(_)
                     )
                 })
                 .map(|&chunk| {
@@ -127,7 +127,12 @@ impl Compiler {
         hmr_hash: u64,
     ) -> Result<Vec<ChunkFile>> {
         mako_core::mako_profile_function!();
-        pot.to_entry_chunk_files(&self.context, js_map, css_map, chunk, cache_hash, hmr_hash)
+        if matches!(chunk.chunk_type, ChunkType::Entry(_, _, true)) {
+            // generate shared chunk as normal chunk
+            pot.to_normal_chunk_files(&self.context)
+        } else {
+            pot.to_entry_chunk_files(&self.context, js_map, css_map, chunk, cache_hash, hmr_hash)
+        }
     }
 
     fn generate_non_entry_chunk_files(&self) -> Result<Vec<ChunkFile>> {
@@ -138,7 +143,7 @@ impl Compiler {
         for chunk in chunks.iter() {
             if !matches!(
                 chunk.chunk_type,
-                ChunkType::Entry(_, _) | ChunkType::Worker(_)
+                ChunkType::Entry(_, _, _) | ChunkType::Worker(_)
             ) {
                 let rs = rs.clone();
                 let context = self.context.clone();

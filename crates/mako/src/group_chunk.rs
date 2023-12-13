@@ -45,7 +45,7 @@ impl Compiler {
 
             let (chunk, dynamic_dependencies, worker_dependencies) = self.create_chunk(
                 &entry,
-                ChunkType::Entry(entry.clone(), entry_chunk_name.to_string()),
+                ChunkType::Entry(entry.clone(), entry_chunk_name.to_string(), false),
                 &mut chunk_graph,
                 vec![],
             );
@@ -281,7 +281,7 @@ impl Compiler {
         for (chunk_id, _) in &module_chunks {
             let chunk = chunk_graph.chunk(chunk_id).unwrap();
 
-            if let ChunkType::Entry(_, _) = chunk.chunk_type {
+            if let ChunkType::Entry(_, _, _) = chunk.chunk_type {
                 ret.push(chunk.filename());
             } else {
                 for chunk_id in chunk_graph.entry_ancestors_chunk(&chunk.id) {
