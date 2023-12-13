@@ -191,7 +191,12 @@ impl Compiler {
                     &mut chunk
                         .modules
                         .iter()
-                        .map(|m| (m, &chunk.id, &chunk.chunk_type))
+                        .enumerate()
+                        .filter_map(|(i, m)| match chunk.chunk_type {
+                            // entry module of entry chunk should not be optimized
+                            ChunkType::Entry(_, _, false) if i == 0 => None,
+                            _ => Some((m, &chunk.id, &chunk.chunk_type)),
+                        })
                         .collect::<Vec<_>>(),
                 );
                 acc
