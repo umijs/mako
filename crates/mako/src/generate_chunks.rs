@@ -83,7 +83,18 @@ impl Compiler {
                 })
                 .map(|&chunk| {
                     let mut pot = ChunkPot::from(chunk, &module_graph, &self.context)?;
+                    let mut js_chunk_map = js_chunk_map.clone();
+                    let mut css_chunk_map = css_chunk_map.clone();
                     let t = Instant::now();
+                    let installable_chunks = chunk_graph
+                        .installable_descendants_chunk(&chunk.id)
+                        .into_iter()
+                        .map(|c| c.id)
+                        .collect::<Vec<_>>();
+
+                    js_chunk_map.retain(|k, _| installable_chunks.contains(k));
+                    css_chunk_map.retain(|k, _| installable_chunks.contains(k));
+
                     let chunk_file = self.generate_entry_chunk_files(
                         &mut pot,
                         &js_chunk_map,

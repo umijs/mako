@@ -149,6 +149,22 @@ impl ChunkGraph {
         ret
     }
 
+    pub fn installable_descendants_chunk(&self, chunk_id: &ChunkId) -> Vec<ChunkId> {
+        let idx = self.id_index_map.get(chunk_id).unwrap();
+        let mut ret = vec![];
+        self.graph
+            .neighbors_directed(*idx, Direction::Outgoing)
+            .for_each(|idx| match self.graph[idx].chunk_type {
+                ChunkType::Async | ChunkType::Sync => {
+                    ret.push(self.graph[idx].id.clone());
+                }
+                _ => {
+                    ret.extend(self.installable_descendants_chunk(&self.graph[idx].id));
+                }
+            });
+        ret
+    }
+
     pub fn remove_chunk(&mut self, chunk_id: &ChunkId) {
         let idx = self.id_index_map.remove(chunk_id).unwrap();
         self.graph.remove_node(idx);
