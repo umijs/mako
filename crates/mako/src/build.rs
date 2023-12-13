@@ -63,18 +63,90 @@ impl Compiler {
 
     pub fn build_tasks(&self, tasks: Vec<Task>) -> Result<HashSet<ModuleId>> {
         debug!("build tasks: {:?}", tasks);
-        let (pool, rs, rr) = create_thread_pool::<Result<ModuleId>>();
-        for task in tasks {
-            Self::build_module_graph_threaded(pool.clone(), self.context.clone(), task, rs.clone());
+        if tasks.is_empty() {
+            return Ok(HashSet::new());
         }
-        drop(rs);
+
+        let (pool, rs, rr) = create_thread_pool::<Result<(Module, ModuleDeps, Task)>>();
+        let mut count = 0;
+        for task in tasks {
+            count += 1;
+            Self::build_with_pool(pool.clone(), self.context.clone(), task, rs.clone());
+        }
 
         let mut errors = vec![];
         let mut module_ids = HashSet::new();
         for r in rr {
+            count -= 1;
             match r {
-                Ok(module_id) => {
-                    module_ids.insert(module_id);
+                Ok((module, deps, task)) => {
+                    let context = self.context.clone();
+                    // record modules with missing deps
+                    if context.args.watch {
+                        if module.info.as_ref().unwrap().missing_deps.is_empty() {
+                            context
+                                .modules_with_missing_deps
+                                .write()
+                                .unwrap()
+                                .retain(|id| id != &module.id.id);
+                        } else {
+                            context
+                                .modules_with_missing_deps
+                                .write()
+                                .unwrap()
+                                .push(module.id.id.clone());
+                        }
+                    }
+
+                    // current module
+                    let module_id = module.id.clone();
+                    // 只有处理 entry 时，module 会不存在于 module_graph 里
+                    // 否则，module 肯定已存在于 module_graph 里，只需要补充 info 信息即可
+                    let mut module_graph = context.module_graph.write().unwrap();
+                    if task.is_entry {
+                        module_ids.insert(module_id.clone());
+                        module_graph.add_module(module);
+                    } else {
+                        let m = module_graph.get_module_mut(&module_id).unwrap();
+                        m.add_info(module.info);
+                    }
+
+                    // deps
+                    deps.into_iter().for_each(|(resource, dep)| {
+                        let resolved_path = resource.get_resolved_path();
+                        let external = resource.get_external();
+                        let is_external = external.is_some();
+                        let dep_module_id = ModuleId::new(resolved_path.clone());
+                        let dependency = dep;
+
+                        if !module_graph.has_module(&dep_module_id) {
+                            let module = Self::create_module(&resource, &dep_module_id, &context);
+                            match module {
+                                Ok(module) => {
+                                    if !is_external {
+                                        count += 1;
+                                        Self::build_with_pool(
+                                            pool.clone(),
+                                            context.clone(),
+                                            task::Task::new(
+                                                task::TaskType::Normal(resolved_path),
+                                                Some(resource),
+                                            ),
+                                            rs.clone(),
+                                        );
+                                    }
+                                    // 拿到依赖之后需要直接添加 module 到 module_graph 里，不能等依赖 build 完再添加
+                                    // 由于是异步处理各个模块，后者会导致大量重复任务的 build_module 任务（3 倍左右）
+                                    module_ids.insert(module.id.clone());
+                                    module_graph.add_module(module);
+                                }
+                                Err(err) => {
+                                    panic!("Create module failed: {:?}", err);
+                                }
+                            }
+                        }
+                        module_graph.add_dependency(&module_id, &dep_module_id, dependency);
+                    });
                 }
                 Err(err) => {
                     // unescape
@@ -90,7 +162,14 @@ impl Compiler {
                     errors.push(err);
                 }
             }
+
+            if count == 0 {
+                break;
+            }
         }
+
+        debug!("Build tasks done");
+        drop(rs);
 
         if !errors.is_empty() {
             eprintln!("{}", "Build failed.".to_string().red());
@@ -100,89 +179,15 @@ impl Compiler {
         Ok(module_ids)
     }
 
-    pub fn build_module_graph_threaded(
+    pub fn build_with_pool(
         pool: Arc<ThreadPool>,
         context: Arc<Context>,
         task: task::Task,
-        rs: Sender<Result<ModuleId>>,
+        rs: Sender<Result<(Module, ModuleDeps, Task)>>,
     ) {
-        let pool_clone = pool.clone();
-
         pool.spawn(move || {
-            let is_entry = task.is_entry;
-            let (module, deps) = match Compiler::build_module(&context, task) {
-                Ok(r) => r,
-                Err(e) => {
-                    rs.send(Err(e)).unwrap();
-                    return;
-                }
-            };
-
-            // record modules with missing deps
-            if context.args.watch {
-                if module.info.as_ref().unwrap().missing_deps.is_empty() {
-                    context
-                        .modules_with_missing_deps
-                        .write()
-                        .unwrap()
-                        .retain(|id| id != &module.id.id);
-                } else {
-                    context
-                        .modules_with_missing_deps
-                        .write()
-                        .unwrap()
-                        .push(module.id.id.clone());
-                }
-            }
-
-            // current module
-            let module_id = module.id.clone();
-            // 只有处理 entry 时，module 会不存在于 module_graph 里
-            // 否则，module 肯定已存在于 module_graph 里，只需要补充 info 信息即可
-            let mut module_graph = context.module_graph.write().unwrap();
-            if is_entry {
-                rs.send(Ok(module_id.clone())).unwrap();
-                module_graph.add_module(module);
-            } else {
-                let m = module_graph.get_module_mut(&module_id).unwrap();
-                m.add_info(module.info);
-            }
-
-            // deps
-            deps.into_iter().for_each(|(resource, dep)| {
-                let resolved_path = resource.get_resolved_path();
-                let external = resource.get_external();
-                let is_external = external.is_some();
-                let dep_module_id = ModuleId::new(resolved_path.clone());
-                let dependency = dep;
-
-                if !module_graph.has_module(&dep_module_id) {
-                    let module = Self::create_module(&resource, &dep_module_id, &context);
-                    match module {
-                        Ok(module) => {
-                            if !is_external {
-                                Self::build_module_graph_threaded(
-                                    pool_clone.clone(),
-                                    context.clone(),
-                                    task::Task::new(
-                                        task::TaskType::Normal(resolved_path),
-                                        Some(resource),
-                                    ),
-                                    rs.clone(),
-                                );
-                            }
-                            // 拿到依赖之后需要直接添加 module 到 module_graph 里，不能等依赖 build 完再添加
-                            // 由于是异步处理各个模块，后者会导致大量重复任务的 build_module 任务（3 倍左右）
-                            rs.send(Ok(module.id.clone())).unwrap();
-                            module_graph.add_module(module);
-                        }
-                        Err(err) => {
-                            panic!("create module failed: {:?}", err);
-                        }
-                    }
-                }
-                module_graph.add_dependency(&module_id, &dep_module_id, dependency);
-            });
+            let result = Self::build_module(&context, task);
+            rs.send(result).unwrap();
         });
     }
 
@@ -239,7 +244,10 @@ module.exports = new Promise((resolve, reject) => {{
         Ok(module)
     }
 
-    pub fn build_module(context: &Arc<Context>, task: task::Task) -> Result<(Module, ModuleDeps)> {
+    pub fn build_module(
+        context: &Arc<Context>,
+        task: task::Task,
+    ) -> Result<(Module, ModuleDeps, Task)> {
         // load
         let content = load(&task, context)?;
 
@@ -333,7 +341,7 @@ module.exports = new Promise((resolve, reject) => {{
         let module_id = ModuleId::new(task.path.clone());
         let module = Module::new(module_id, task.is_entry, Some(info));
 
-        Ok((module, dependencies_resource))
+        Ok((module, dependencies_resource, task))
     }
 }
 
