@@ -145,9 +145,6 @@ impl Compiler {
                     });
 
                     println!("count: {}", count);
-                    if count == 0 {
-                        break;
-                    }
                 }
                 Err(err) => {
                     // unescape
@@ -162,6 +159,10 @@ impl Compiler {
                     }
                     errors.push(err);
                 }
+            }
+
+            if count == 0 {
+                break;
             }
         }
 
