@@ -267,7 +267,7 @@ impl Compiler {
                 } else {
                     TaskType::Normal(path)
                 };
-                let (module, dependencies) =
+                let (module, dependencies, _task) =
                     Compiler::build_module(&self.context, Task::new(task_type, None))?;
 
                 debug!(
