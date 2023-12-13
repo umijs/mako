@@ -95,10 +95,10 @@ pub(super) fn render_entry_js_chunk(
 
 #[cached(
     result = true,
-    type = "SizedCache<u64 , ChunkFile>",
+    type = "SizedCache<String , ChunkFile>",
     create = "{ SizedCache::with_size(500) }",
-    key = "u64",
-    convert = "{chunk_pot.js_hash}"
+    key = "String",
+    convert = r#"{format!("{}.{:x}", chunk_pot.chunk_id, chunk_pot.js_hash)}"#
 )]
 pub(super) fn render_normal_js_chunk(
     chunk_pot: &ChunkPot,
