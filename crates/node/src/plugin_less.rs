@@ -9,12 +9,12 @@ use cached::proc_macro::cached;
 use mako::compiler::Context;
 use mako::load::{read_content, Content};
 use mako::plugin::{Plugin, PluginLoadParam};
-use mako_core::anyhow;
+use mako_core::{anyhow, md5};
 
 #[cached(
     result = true,
     key = "String",
-    convert = r#"{ format!("{}-{}", path, _content) }"#
+    convert = r#"{ format!("{}-{}", path, md5_hash(_content)) }"#
 )]
 fn compile_less(
     path: &str,
@@ -54,4 +54,9 @@ impl Plugin for LessPlugin {
         }
         Ok(None)
     }
+}
+
+fn md5_hash<T: AsRef<[u8]>>(content: T) -> String {
+    let digest = md5::compute(content);
+    format!("{:x}", digest)
 }
