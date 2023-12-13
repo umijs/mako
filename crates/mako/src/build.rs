@@ -63,6 +63,10 @@ impl Compiler {
 
     pub fn build_tasks(&self, tasks: Vec<Task>) -> Result<HashSet<ModuleId>> {
         debug!("build tasks: {:?}", tasks);
+        if tasks.is_empty() {
+            return Ok(HashSet::new());
+        }
+
         let (pool, rs, rr) = create_thread_pool::<Result<(Module, ModuleDeps, Task)>>();
         let mut count = 0;
         for task in tasks {
@@ -143,8 +147,6 @@ impl Compiler {
                         }
                         module_graph.add_dependency(&module_id, &dep_module_id, dependency);
                     });
-
-                    println!("count: {}", count);
                 }
                 Err(err) => {
                     // unescape
@@ -165,6 +167,9 @@ impl Compiler {
                 break;
             }
         }
+
+        debug!("Build tasks done");
+        drop(rs);
 
         if !errors.is_empty() {
             eprintln!("{}", "Build failed.".to_string().red());
