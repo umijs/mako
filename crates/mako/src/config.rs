@@ -543,16 +543,18 @@ fn get_default_chunk_loading_global(umd: String, root: &Path) -> String {
         umd
     } else {
         let pkg_json_path = root.join("package.json");
+        let mut pkg_name = "global".to_string();
 
         if pkg_json_path.exists() {
             let pkg_json = std::fs::read_to_string(pkg_json_path).unwrap();
             let pkg_json: serde_json::Value = serde_json::from_str(&pkg_json).unwrap();
 
             if let Some(name) = pkg_json.get("name") {
-                return name.as_str().unwrap().to_string();
+                pkg_name = name.as_str().unwrap().to_string();
             }
         }
-        "global".to_string()
+
+        pkg_name
     };
 
     format!("makoChunk_{}", unique_name)

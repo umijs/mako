@@ -187,28 +187,30 @@ pub(crate) fn pot_to_chunk_module(pot: &ChunkPot, global: String) -> Result<SwcM
     // (globalThis['makoChunk_global'] = globalThis['makoChunk_global'] || []).push([["module_id"], { module object }])
     let chunk_global_expr =
         quote_ident!("globalThis").computed_member::<Expr>(global.clone().into());
-    let chunk_global_obj = <Expr as ExprFactory>::make_assign_to(
-        <Expr as ExprFactory>::make_bin::<Expr>(
-            chunk_global_expr.clone(),
+    let chunk_global_obj = chunk_global_expr
+        .clone()
+        .make_bin::<Expr>(
             BinaryOp::LogicalOr,
-            quote_ident!("[]").into(),
-        ),
-        AssignOp::Assign,
-        chunk_global_expr.clone().as_pat_or_expr(),
-    )
-    .wrap_with_paren()
-    .make_member::<Ident>(quote_ident!("push"));
-    let chunk_register_stmt = <Expr as ExprFactory>::as_call(
-        chunk_global_obj,
-        DUMMY_SP,
-        // [[ "module id"], { module object }]
-        vec![to_array_lit(vec![
-            to_array_lit(vec![quote_str!(pot.chunk_id.clone()).as_arg()]).as_arg(),
-            module_object.as_arg(),
-        ])
-        .as_arg()],
-    )
-    .into_stmt();
+            ArrayLit {
+                span: DUMMY_SP,
+                elems: vec![],
+            }
+            .into(),
+        )
+        .make_assign_to(AssignOp::Assign, chunk_global_expr.clone().as_pat_or_expr())
+        .wrap_with_paren()
+        .make_member::<Ident>(quote_ident!("push"));
+    let chunk_register_stmt = chunk_global_obj
+        .as_call(
+            DUMMY_SP,
+            // [[ "module id"], { module object }]
+            vec![to_array_lit(vec![
+                to_array_lit(vec![quote_str!(pot.chunk_id.clone()).as_arg()]).as_arg(),
+                module_object.as_arg(),
+            ])
+            .as_arg()],
+        )
+        .into_stmt();
 
     Ok(SwcModule {
         body: vec![chunk_register_stmt.into()],
