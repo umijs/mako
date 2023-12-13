@@ -7,6 +7,7 @@ use mako_core::anyhow::{anyhow, Ok, Result};
 use mako_core::rayon::prelude::*;
 use mako_core::tracing::debug;
 
+use crate::build::BuildError;
 use crate::compiler::Compiler;
 use crate::module::{Dependency, Module, ModuleId};
 use crate::resolve;
@@ -268,7 +269,8 @@ impl Compiler {
                     TaskType::Normal(path)
                 };
                 let (module, dependencies, _task) =
-                    Compiler::build_module(&self.context, Task::new(task_type, None))?;
+                    Compiler::build_module(&self.context, Task::new(task_type, None))
+                        .map_err(|err| BuildError::BuildTasksError { errors: vec![err] })?;
 
                 debug!(
                     "  > missing deps: {:?}",

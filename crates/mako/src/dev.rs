@@ -213,7 +213,8 @@ impl DevServer {
     ) -> Result<()> {
         debug!("watch paths detected: {:?}", paths);
         debug!("checking update status...");
-        let res = compiler.update(paths);
+        println!("Checking...");
+        let update_result = compiler.update(paths);
         let has_missing_deps = {
             compiler
                 .context
@@ -226,28 +227,21 @@ impl DevServer {
         debug!("has_missing_deps: {}", has_missing_deps);
         debug!("checking update status... done");
 
-        if let Err(e) = res {
+        if let Err(e) = update_result {
             debug!("checking update status... failed");
-            println!("Compiling...");
-            let err = format_error(&e);
-            eprintln!("{}", "Build failed.".to_string().red());
-            eprintln!("{}", err);
+            eprintln!("{}", e);
             // do not return error, since it's already printed
             return Ok(());
         }
 
-        let res = res.unwrap();
+        let res = update_result.unwrap();
         let is_updated = res.is_updated();
         debug!("update status is ok, is_updated: {}", is_updated);
         if !is_updated {
+            println!("No changes");
             return Ok(());
         }
 
-        // do not print hot rebuilt message if there are missing deps
-        // since it's not a success rebuilt to user
-        if !has_missing_deps {
-            println!("Compiling...");
-        }
         let t_compiler = Instant::now();
         let start_time = std::time::SystemTime::now();
         let next_hash = compiler.generate_hot_update_chunks(res, **last_cache_hash, **hmr_hash);
@@ -312,20 +306,6 @@ impl DevServer {
 
         Ok(())
     }
-}
-
-pub fn format_error(e: &anyhow::Error) -> String {
-    // unescape
-    let mut err = e
-        .to_string()
-        .replace("\\n", "\n")
-        .replace("\\u{1b}", "\u{1b}")
-        .replace("\\\\", "\\");
-    // remove first char and last char
-    if err.starts_with('"') && err.ends_with('"') {
-        err = err[1..err.len() - 1].to_string();
-    }
-    err
 }
 
 pub struct OnDevCompleteParams {
