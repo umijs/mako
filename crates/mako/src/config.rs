@@ -24,7 +24,6 @@ pub struct OutputConfig {
     pub ascii_only: bool,
     pub meta: bool,
     pub chunk_loading_global: String,
-
     pub preserve_modules: bool,
     pub preserve_modules_root: PathBuf,
 }
