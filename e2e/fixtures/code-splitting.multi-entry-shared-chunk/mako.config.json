@@ -1,0 +1,16 @@
+{
+  "entry": {
+    "a": "./src/a.ts",
+    "b": "./src/b.ts"
+  },
+  "codeSplitting": {
+    "minSize": 1,
+    "groups": [
+      {
+        "name": "common",
+        "allowChunks": "entry",
+        "minSize": 1
+      }
+    ]
+  }
+}
