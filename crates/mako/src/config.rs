@@ -352,7 +352,7 @@ pub struct OptimizeChunkGroup {
     pub max_size: usize,
     #[serde(default)]
     pub priority: i8,
-    #[serde(with = "optimize_test_format")]
+    #[serde(default, with = "optimize_test_format")]
     pub test: Option<Regex>,
 }
 
