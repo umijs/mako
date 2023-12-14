@@ -90,6 +90,7 @@ async fn main() -> Result<()> {
 
     // compiler
     let compiler = compiler::Compiler::new(config, root.clone(), Args { watch: cli.watch }, None)?;
+    let compiler = Arc::new(compiler);
 
     #[cfg(feature = "profile")]
     {
@@ -125,7 +126,6 @@ async fn main() -> Result<()> {
             std::process::exit(1);
         }
         if cli.watch {
-            let compiler = Arc::new(compiler);
             let d = crate::dev::DevServer::new(root.clone(), compiler);
             // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
             d.serve(move |_params| {}).await;
