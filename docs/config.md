@@ -20,12 +20,38 @@
 
 ## codeSplitting
 
-- 类型：`"none" | "auto"`
+- 类型：`"none" | "auto" | object`
 - 默认值：`"none"`
 
-拆包策略。
+拆包策略，SPA 通常配置为 `auto` 即可，该内置策略会根据项目情况提取 `vendors` chunk 和 `common` chunk；MPA 场景如果需要产出 shared chunk，可以配置为 `object`，配置项说明：
 
-注：多 entry 的拆包策略还在开发中。
+```ts
+{
+  codeSplitting: {
+    //（可选）拆分 chunk 的最小尺寸，单 entry 场景小于该尺寸的 async chunk 会被合并到 entry chunk 中
+    minSize: 20000,
+    // 拆分 chunk 的分组配置
+    groups: [
+      {
+        // chunk 分组的名称，目前仅支持字符串值
+        name: "common",
+        //（可选）chunk 分组包含模块所属的 chunk 类型，枚举值为 "async"（默认）| "entry" | "all"
+        allowChunks: "entry",
+        //（可选）chunk 分组包含模块的最小引用次数
+        minChunks: 1,
+        //（可选）chunk 分组生效的最小尺寸
+        minSize: 20000,
+        //（可选）chunk 分组的最大尺寸，超过该尺寸会自动二次拆分
+        maxSize: 5000000,
+        //（可选）chunk 分组的匹配优先级，值越大优先级越高
+        priority: 0,
+        //（可选）chunk 分组的匹配正则
+        test: "(?:)",
+      }
+    ],
+  },
+}
+```
 
 ## copy
 
