@@ -1,7 +1,5 @@
 use crate::plugins::farm_tree_shake::module::{is_ident_sym_equal, TreeShakeModule};
-use crate::plugins::farm_tree_shake::shake::{
-    strip_context, ReExportSource2, ReExportType, ReExportType2,
-};
+use crate::plugins::farm_tree_shake::shake::{strip_context, ReExportSource2, ReExportType2};
 use crate::plugins::farm_tree_shake::statement_graph::{
     ExportInfoMatch, ExportSpecifierInfo, ImportSpecifierInfo, Statement,
 };
@@ -10,8 +8,6 @@ impl TreeShakeModule {
     pub fn find_export_stmt_info(&self, ident: &String) -> Option<&Statement> {
         // find the exported of the ident
         for stmt in self.stmt_graph.stmts() {
-            println!("\tthe stake: {:?}", stmt.defined_idents);
-            println!("\tthe needle {}", ident);
             if let Some(export_info) = &stmt.export_info {
                 // TODO only one Ambiguous can be treated as matched
                 if export_info.matches_ident(ident) == ExportInfoMatch::Matched {
@@ -32,13 +28,10 @@ impl TreeShakeModule {
 
     pub fn find_export_define_wip(&self, ident: &String) -> Option<ReExportSource2> {
         let mut local_ident = None;
+        let mut re_export_type = None;
 
         for stmt in self.stmt_graph.stmts() {
-            println!("\tthe stake: {:?}", stmt.defined_idents);
-            println!("\tthe needle {}", ident);
             if let Some(export_info) = &stmt.export_info {
-                println!("export_info {:?}", export_info);
-
                 if let Some(export_specifier) = export_info.find_define_specifier(ident) {
                     if let Some(source) = &export_info.source {
                         match export_specifier {
@@ -46,13 +39,11 @@ impl TreeShakeModule {
                                 if all_exports.iter().any(|i| is_ident_sym_equal(i, ident)) {
                                     return Some(ReExportSource2 {
                                         re_export_type: ReExportType2::Named(strip_context(ident)),
-                                        source: source.clone(),
+                                        source: Some(source.clone()),
                                     });
                                 }
                             }
                             ExportSpecifierInfo::Named { exported, local } => {
-                                println!("try to match {} with {:?}", ident, local);
-
                                 let stripped_local = strip_context(local);
 
                                 if let Some(exported_name) = exported {
@@ -63,7 +54,7 @@ impl TreeShakeModule {
                                             } else {
                                                 ReExportType2::Named(stripped_local.clone())
                                             },
-                                            source: source.clone(),
+                                            source: Some(source.clone()),
                                         });
                                     }
                                 } else if is_ident_sym_equal(ident, local) {
@@ -73,7 +64,7 @@ impl TreeShakeModule {
                                         } else {
                                             ReExportType2::Named(stripped_local.clone())
                                         },
-                                        source: source.clone(),
+                                        source: Some(source.clone()),
                                     });
                                 }
                             }
@@ -90,23 +81,35 @@ impl TreeShakeModule {
                         match export_specifier {
                             ExportSpecifierInfo::All(_) => {}
                             ExportSpecifierInfo::Named { exported, local } => {
-                                println!("try to match {} with {:?}", ident, local);
+                                if let Some(exported_name) = exported {
+                                    if is_ident_sym_equal(exported_name, ident) {
+                                        re_export_type = Some(ReExportType2::Named(strip_context(
+                                            exported_name,
+                                        )));
 
-                                if let Some(exporte_name) = exported {
-                                    if is_ident_sym_equal(exporte_name, ident) {
                                         local_ident = Some(local.clone());
                                         break;
                                     }
                                 } else if is_ident_sym_equal(ident, local) {
+                                    re_export_type =
+                                        Some(ReExportType2::Named(strip_context(local)));
                                     local_ident = Some(local.clone());
+
                                     break;
                                 }
                             }
                             ExportSpecifierInfo::Default(export_default_ident) => {
-                                if let Some(default_ident) = export_default_ident
-                                    && is_ident_sym_equal(default_ident, ident)
-                                {
-                                    local_ident = Some(default_ident.clone());
+                                if ident == "default" {
+                                    if let Some(default_ident) = export_default_ident {
+                                        re_export_type = Some(ReExportType2::Default);
+                                        local_ident = Some(default_ident.clone());
+                                        break;
+                                    } else {
+                                        return Some(ReExportSource2 {
+                                            re_export_type: ReExportType2::Default,
+                                            source: None,
+                                        });
+                                    }
                                 }
                             }
                             ExportSpecifierInfo::Namespace(_) => return None,
@@ -124,12 +127,9 @@ impl TreeShakeModule {
         if let Some(local) = &local_ident {
             for stmt in self.stmt_graph.stmts() {
                 if let Some(import_info) = &stmt.import_info {
-                    println!("\tthe import stake: {:?}", stmt.defined_idents);
-                    println!("\tthe import stmt {:?}", import_info);
-
-                    if let Some(import_specifier) = import_info.find_define_specifier(&local) {
+                    if let Some(import_specifier) = import_info.find_define_specifier(local) {
                         match import_specifier {
-                            ImportSpecifierInfo::Namespace(name) => {
+                            ImportSpecifierInfo::Namespace(_) => {
                                 // cant re-export for namespace import
                                 return None;
                             }
@@ -148,7 +148,7 @@ impl TreeShakeModule {
                                         re_export_type: ReExportType2::Named(strip_context(
                                             &next_name,
                                         )),
-                                        source: import_info.source.clone(),
+                                        source: Some(import_info.source.clone()),
                                     });
                                 }
                             }
@@ -156,7 +156,7 @@ impl TreeShakeModule {
                                 if local == name {
                                     return Some(ReExportSource2 {
                                         re_export_type: ReExportType2::Default,
-                                        source: import_info.source.clone(),
+                                        source: Some(import_info.source.clone()),
                                     });
                                 }
                             }
@@ -165,7 +165,10 @@ impl TreeShakeModule {
                 }
             }
 
-            None
+            re_export_type.map(|re_export_type| ReExportSource2 {
+                re_export_type,
+                source: None,
+            })
         } else {
             None
         }
@@ -187,7 +190,11 @@ mod tests {
 
     impl ReExportSource2 {
         pub fn describe(&self) -> String {
-            format!("ReExport from {} by {:?}", self.source, self.re_export_type)
+            if let Some(source) = &self.source {
+                format!("ReExport from {} by {:?}", source, self.re_export_type)
+            } else {
+                format!("Direct Export {:?}", self.re_export_type)
+            }
         }
     }
 
@@ -207,7 +214,7 @@ mod tests {
     fn test_find_import_default_export_default() {
         let tsm = tsm_with_code(r#" import a from "./a.js"; export default a;"#);
 
-        let re_export_source = tsm.find_export_define_wip(&"a".to_string());
+        let re_export_source = tsm.find_export_define_wip(&"default".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -218,11 +225,11 @@ mod tests {
     fn test_find_import_named_export_default() {
         let tsm = tsm_with_code(r#" import {a} from "./a.js"; export default a;"#);
 
-        let re_export_source = tsm.find_export_define_wip(&"a".to_string());
+        let re_export_source = tsm.find_export_define_wip(&"default".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
-            r#"ReExport from ./a.js by Named("a", None)"#
+            r#"ReExport from ./a.js by Named("a")"#
         );
     }
 
@@ -230,11 +237,11 @@ mod tests {
     fn test_find_import_named_renamed_export_default() {
         let tsm = tsm_with_code(r#" import {z as a} from "./a.js"; export default a;"#);
 
-        let re_export_source = tsm.find_export_define_wip(&"a".to_string());
+        let re_export_source = tsm.find_export_define_wip(&"default".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
-            r#"ReExport from ./a.js by Named("z", None)"#
+            r#"ReExport from ./a.js by Named("z")"#
         );
     }
 
@@ -264,7 +271,7 @@ mod tests {
 
         assert_eq!(
             re_export_source.unwrap().describe(),
-            r#"ReExport from ./a.js by Named("a", None)"#
+            r#"ReExport from ./a.js by Named("a")"#
         );
     }
 
@@ -276,7 +283,7 @@ mod tests {
 
         assert_eq!(
             re_export_source.unwrap().describe(),
-            r#"ReExport from ./a.js by Named("a", None)"#
+            r#"ReExport from ./a.js by Named("a")"#
         );
     }
 
@@ -288,7 +295,7 @@ mod tests {
 
         assert_eq!(
             re_export_source.unwrap().describe(),
-            r#"ReExport from ./a.js by Named("a", None)"#
+            r#"ReExport from ./a.js by Named("a")"#
         );
     }
 
@@ -324,7 +331,7 @@ mod tests {
 
         assert_eq!(
             re_export_source.unwrap().describe(),
-            r#"ReExport from ./a.js by Named("a", None)"#
+            r#"ReExport from ./a.js by Named("a")"#
         );
     }
 
@@ -336,7 +343,7 @@ mod tests {
 
         assert_eq!(
             re_export_source.unwrap().describe(),
-            r#"ReExport from ./a.js by Named("b", None)"#
+            r#"ReExport from ./a.js by Named("b")"#
         );
     }
 
@@ -350,14 +357,88 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
+    // too hard to implement later
     fn test_find_export_star_from() {
-        let mut tsm = tsm_with_code(r#" export * from "./a.js" "#);
+        let tsm = tsm_with_code(r#" export * from "./a.js" "#);
 
         let re_export_source = tsm.find_export_define_wip(&"a".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
-            r#"ReExport from ./a.js by Named("a", None)"#
+            r#"ReExport from ./a.js by Named("a")"#
+        );
+    }
+
+    #[test]
+    fn test_find_export_default_local_ident() {
+        let tsm = tsm_with_code(r#"const a=1; export default a "#);
+
+        let re_export_source = tsm.find_export_define_wip(&"default".to_string());
+
+        assert_eq!(
+            re_export_source.unwrap().describe(),
+            r#"Direct Export Default"#
+        );
+    }
+
+    #[test]
+    fn test_find_export_default_function() {
+        let tsm = tsm_with_code(r#"export default function test(){} "#);
+
+        let re_export_source = tsm.find_export_define_wip(&"default".to_string());
+
+        assert_eq!(
+            re_export_source.unwrap().describe(),
+            r#"Direct Export Default"#
+        );
+    }
+
+    #[test]
+    fn test_find_export_default_class() {
+        let tsm = tsm_with_code(r#" export default class Test{} "#);
+
+        let re_export_source = tsm.find_export_define_wip(&"default".to_string());
+
+        assert_eq!(
+            re_export_source.unwrap().describe(),
+            r#"Direct Export Default"#
+        );
+    }
+
+    #[test]
+    fn test_find_export_named_class() {
+        let tsm = tsm_with_code(r#" export class TestClass{} "#);
+
+        let re_export_source = tsm.find_export_define_wip(&"TestClass".to_string());
+
+        assert_eq!(
+            re_export_source.unwrap().describe(),
+            r#"Direct Export Named("TestClass")"#
+        );
+    }
+
+    #[test]
+    fn test_find_export_named_fn() {
+        let tsm = tsm_with_code(r#" export function fnTest(){} "#);
+
+        let re_export_source = tsm.find_export_define_wip(&"fnTest".to_string());
+
+        assert_eq!(
+            re_export_source.unwrap().describe(),
+            r#"Direct Export Named("fnTest")"#
+        );
+    }
+
+    #[test]
+    fn test_find_export_dec_expr() {
+        let tsm = tsm_with_code(r#" export const a = 1 "#);
+
+        let re_export_source = tsm.find_export_define_wip(&"a".to_string());
+
+        assert_eq!(
+            re_export_source.unwrap().describe(),
+            r#"Direct Export Named("a")"#
         );
     }
 

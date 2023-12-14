@@ -39,10 +39,10 @@ impl ImportInfo {
     pub fn find_define_specifier(&self, ident: &String) -> Option<&ImportSpecifierInfo> {
         for specifier in self.specifiers.iter() {
             match specifier {
-                ImportSpecifierInfo::Namespace(n) => {
+                ImportSpecifierInfo::Namespace(_n) => {
                     return Some(specifier);
                 }
-                ImportSpecifierInfo::Named { local, imported } => {
+                ImportSpecifierInfo::Named { local, imported: _ } => {
                     if is_ident_equal(ident, local) {
                         return Some(specifier);
                     }
@@ -55,7 +55,7 @@ impl ImportInfo {
             }
         }
 
-        return None;
+        None
     }
 }
 
@@ -120,10 +120,8 @@ impl ExportInfo {
     pub fn find_define_specifier(&self, ident: &String) -> Option<&ExportSpecifierInfo> {
         for specifier in self.specifiers.iter() {
             match specifier {
-                ExportSpecifierInfo::Default(export_default_ident) => {
-                    if let Some(default_ident) = export_default_ident
-                        && is_ident_sym_equal(default_ident, ident)
-                    {
+                ExportSpecifierInfo::Default(_) => {
+                    if ident == "default" {
                         return Some(specifier);
                     }
                 }
@@ -275,7 +273,7 @@ impl Statement {
             for import_specifier in import_info.specifiers.iter() {
                 match import_specifier {
                     // import * as foo from 'foo';
-                    ImportSpecifierInfo::Namespace(name) => {
+                    ImportSpecifierInfo::Namespace(_name) => {
                         todo!()
                     }
 
