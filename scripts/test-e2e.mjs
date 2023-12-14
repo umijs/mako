@@ -30,7 +30,6 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
       }
       // run umi build
       const x = (await import.meta.resolve('@alipay/umi-bundler-okam')).replace(/^file:\/\//, '');
-      console.log('x', x);
       await $`cd ${cwd} && COMPRESS=none OKAM=${x} umi build`;
     } else {
       try {
