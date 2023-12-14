@@ -1,28 +1,24 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::mem::replace;
-use std::ops::{DerefMut, IndexMut};
+use std::ops::DerefMut;
 use std::sync::Arc;
 
-use cached::CachedAsync;
 use mako_core::anyhow::Result;
 use mako_core::swc_common::comments::{Comment, CommentKind};
 use mako_core::swc_common::util::take::Take;
 use mako_core::swc_common::{DUMMY_SP, GLOBALS};
-use mako_core::swc_ecma_ast::{ImportDecl, ModuleItem};
+use mako_core::swc_ecma_ast::ModuleItem;
 use mako_core::swc_ecma_utils::{quote_ident, quote_str};
-use swc_core::common::pass::Optional;
 use swc_core::ecma::ast::{Ident, ImportSpecifier, ModuleDecl};
 use swc_core::quote;
 
 use crate::analyze_deps::analyze_deps;
-use crate::ast::js_ast_to_code;
 use crate::compiler::Context;
 use crate::module::{ModuleAst, ModuleId, ModuleType, ResolveType};
 use crate::module_graph::ModuleGraph;
-use crate::plugins::farm_tree_shake::module::{is_ident_sym_equal, TreeShakeModule};
+use crate::plugins::farm_tree_shake::module::TreeShakeModule;
 use crate::plugins::farm_tree_shake::statement_graph::{
-    ExportInfo, ExportSpecifierInfo, ImportInfo, ImportSpecifierInfo, StatementGraph, StatementId,
+    ExportInfo, ExportSpecifierInfo, ImportInfo, ImportSpecifierInfo, StatementId,
 };
 use crate::plugins::farm_tree_shake::{module, remove_useless_stmts, statement_graph};
 use crate::resolve::{resolve, ResolverResource};
@@ -187,7 +183,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
         if let Some(imported_module_id) =
             module_graph.get_dependency_module_by_source(from_module_id, source)
         {
-            tree_shake_modules_map.get(&imported_module_id)
+            tree_shake_modules_map.get(imported_module_id)
         } else {
             None
         }
@@ -199,8 +195,6 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
         proxy_module_id: &ModuleId,
         used_ident: &String,
     ) -> Option<ReExportReplace> {
-        println!("\ttry {}", proxy_module_id.id);
-
         if let Some(tsm) = tsm_map.get(proxy_module_id) {
             let proxy_tsm = tsm.borrow();
 
@@ -209,84 +203,47 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
             }
 
             if let Some(re_export_source) = proxy_tsm.find_export_define_wip(used_ident) {
-                if let Some(next_tsm_rc) = get_imported_tree_shake_module(
-                    proxy_module_id,
-                    &re_export_source.source,
-                    module_graph,
-                    tsm_map,
-                ) {
-                    let next_tsm = next_tsm_rc.borrow();
+                if let Some(source) = &re_export_source.source {
+                    if let Some(next_tsm_rc) = get_imported_tree_shake_module(
+                        proxy_module_id,
+                        source,
+                        module_graph,
+                        tsm_map,
+                    ) {
+                        let next_tsm = next_tsm_rc.borrow();
 
-                    if !next_tsm.has_side_effect() {
-                        let ref_ident = re_export_source.to_outer_ref();
+                        if !next_tsm.has_side_effect() {
+                            let ref_ident = re_export_source.to_outer_ref();
 
-                        if let Some(next_replace) = find_reexport_ident_source(
-                            module_graph,
-                            tsm_map,
-                            &next_tsm.module_id,
-                            &ref_ident,
-                        ) {
+                            if let Some(next_replace) = find_reexport_ident_source(
+                                module_graph,
+                                tsm_map,
+                                &next_tsm.module_id,
+                                &ref_ident,
+                            ) {
+                                return Some(ReExportReplace {
+                                    re_export_ident: used_ident.clone(),
+                                    from_module_id: next_replace.from_module_id.clone(),
+                                    re_export_source: next_replace.re_export_source,
+                                });
+                            }
+                        } else {
                             return Some(ReExportReplace {
                                 re_export_ident: used_ident.clone(),
-                                from_module_id: next_replace.from_module_id.clone(),
-                                re_export_source: next_replace.re_export_source,
+                                from_module_id: proxy_module_id.clone(),
+                                re_export_source,
                             });
                         }
-                    } else {
-                        return Some(ReExportReplace {
-                            re_export_ident: used_ident.clone(),
-                            from_module_id: proxy_module_id.clone(),
-                            re_export_source,
-                        });
                     }
+                } else {
+                    return Some(ReExportReplace {
+                        re_export_ident: used_ident.clone(),
+                        from_module_id: proxy_module_id.clone(),
+                        re_export_source,
+                    });
                 }
             } else {
                 return None;
-            }
-
-            if let Some(define_stmt) = proxy_tsm.find_define_stmt_info(used_ident) {
-                if let Some(re_export_source) = define_stmt.to_re_export_type(used_ident) {
-                    println!("{} find stmt {:?}", proxy_module_id.id, re_export_source);
-
-                    if let Some(source) = &re_export_source.source {
-                        if let Some(next_tsm) = get_imported_tree_shake_module(
-                            proxy_module_id,
-                            source,
-                            module_graph,
-                            tsm_map,
-                        ) {
-                            let next_tsm = next_tsm.borrow();
-                            let next_ref_ident = re_export_source.to_outer_ref();
-
-                            if !next_tsm.has_side_effect() {
-                                if let Some(next_replace) = find_reexport_ident_source(
-                                    module_graph,
-                                    tsm_map,
-                                    &next_tsm.module_id,
-                                    &next_ref_ident,
-                                ) {
-                                    return Some(ReExportReplace {
-                                        re_export_ident: used_ident.clone(),
-                                        from_module_id: next_replace.from_module_id.clone(),
-                                        re_export_source: next_replace.re_export_source,
-                                    });
-                                }
-                            }
-                        }
-
-                        return Some(ReExportReplace {
-                            re_export_ident: used_ident.clone(),
-                            re_export_source,
-                            from_module_id: proxy_module_id.clone(),
-                        });
-                    } else {
-                        return Some(ReExportReplace {
-                            re_export_ident: used_ident.clone(),
-                            re_export_source,
-                            from_module_id: proxy_module_id.clone(),
-                        });
-                    }
-                }
             }
         }
 
@@ -300,8 +257,6 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
     let len = tree_shake_modules_ids.len();
     while current_index < len {
         let current_module_id = &tree_shake_modules_ids[current_index];
-
-        println!("\nworking with {}", current_module_id.id);
 
         let mut repalces = vec![];
 
@@ -343,8 +298,6 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
                                     // cant optimize namespace import
                                 }
                                 ImportSpecifierInfo::Named { local, imported } => {
-                                    let local_ident = local.clone();
-
                                     let imported_ident = strip_context(
                                         &imported
                                             .as_ref()
@@ -360,24 +313,32 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
                                         .from_module_id
                                         .eq(&imported_tsm.module_id)
                                     {
-                                        println!(
-                                            "the uesable rexport repalce is {:?}",
-                                            re_export_replace
-                                        );
                                         stmt_replaces.push(re_export_replace);
                                     }
                                 }
-                                ImportSpecifierInfo::Default(_) => {}
+                                ImportSpecifierInfo::Default(_) => {
+                                    if let Some(re_export_replace) = find_reexport_ident_source(
+                                        module_graph,
+                                        &tree_shake_modules_map,
+                                        &imported_tsm.module_id,
+                                        &"default".to_string(),
+                                    ) && !re_export_replace /* at least one level deeper */
+                                        .from_module_id
+                                        .eq(&imported_tsm.module_id)
+                                    {
+                                        stmt_replaces.push(re_export_replace);
+                                    }
+                                }
                             }
                         }
                     }
                 }
 
                 if let Some(export_info) = &stmt.export_info
-                    && let Some(source) = &export_info.source
+                    && let Some(_source) = &export_info.source
                 {
                     //TODO
-                    todo!()
+                    // todo!()
                 }
 
                 if !stmt_replaces.is_empty() {
@@ -418,7 +379,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
                                         matched_index = Some(index);
                                     }
                                 }
-                                ImportSpecifier::Default(default_specifier) => {}
+                                ImportSpecifier::Default(_default_specifier) => {}
                                 ImportSpecifier::Namespace(_) => {
                                     // import * as not allowed
                                     continue;
@@ -429,12 +390,11 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
 
                         to_delete = import_decl.specifiers.is_empty();
 
-                        matched_ident
-                            .map(|ident| replace.to_import_module_item(ident))
-                            .map(|module_item| {
-                                println!("xxxx  {:?}", module_item);
-                                to_insert.push(module_item);
-                            });
+                        if let Some(module_item) =
+                            matched_ident.map(|ident| replace.to_import_module_item(ident))
+                        {
+                            to_insert.push(module_item);
+                        }
                     }
                 }
                 ModuleDecl::ExportDecl(_) => {
@@ -463,9 +423,9 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
 
         if to_delete {
             body.remove(stmt_id);
-            body.splice(stmt_id..0, to_insert);
+            body.splice(stmt_id..stmt_id, to_insert);
         } else {
-            body.splice(stmt_id..0, to_insert);
+            body.splice(stmt_id..stmt_id, to_insert);
         }
     }
 
@@ -482,22 +442,14 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
                 let mut tsm = tree_shake_modules_map.get(module_id).unwrap().borrow_mut();
 
                 tsm.update_stmt_graph(swc_module);
-
-                println!(
-                    "{}\n{}",
-                    module_id.id,
-                    js_ast_to_code(swc_module, context, "test.js").unwrap().0
-                );
             }
 
             let deps = analyze_deps(&module.info.as_mut().unwrap().ast, context)?;
 
-            println!("deps: {:?}", deps);
-
             module_graph.remove_dependencies(module_id);
 
             for dep in deps.iter() {
-                let ret = resolve(&module_id.id, &dep, &context.resolvers, context)?;
+                let ret = resolve(&module_id.id, dep, &context.resolvers, context)?;
 
                 match &ret {
                     ResolverResource::Resolved(_) => {
@@ -523,11 +475,6 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
             .get(tree_shake_module_id)
             .unwrap()
             .borrow_mut();
-
-        println!(
-            "working with {}\n{:?}\n",
-            tree_shake_module.module_id.id, tree_shake_module.used_exports
-        );
 
         // if module is not esm, mark all imported modules as [UsedExports::All]
         if !matches!(tree_shake_module.module_system, ModuleSystem::ESModule) {
@@ -571,8 +518,6 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
                 // 解决模块自己引用自己，导致 tree_shake_module 同时存在多个可变引用
                 drop(tree_shake_module);
 
-                println!("used_imports: {:?}", used_imports);
-
                 for import_info in used_imports {
                     if let Some(order) = add_used_exports_by_import_info(
                         &tree_shake_modules_map,
@@ -585,8 +530,6 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
                         }
                     }
                 }
-
-                println!("used_exports_from: {:?}", used_exports_from);
 
                 for export_info in used_exports_from {
                     if let Some(order) = add_used_exports_by_export_info(
@@ -639,8 +582,6 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
 
     for (module_id, tsm) in tree_shake_modules_map {
         let tsm = tsm.borrow();
-
-        println!("{} not used {}", tsm.module_id.id, tsm.not_used());
 
         if tsm.not_used() {
             module_graph.remove_module(&module_id);
@@ -706,8 +647,6 @@ fn add_used_exports_by_import_info(
 
         let mut added = false;
 
-        dbg!(&import_info.specifiers);
-
         for sp in &import_info.specifiers {
             match sp {
                 statement_graph::ImportSpecifierInfo::Namespace(_) => {
@@ -719,12 +658,6 @@ fn add_used_exports_by_import_info(
                             added |= imported_tree_shake_module
                                 .add_used_export(Some(&module::UsedIdent::Default));
                         } else {
-                            println!(
-                                "add used to {} {:?}",
-                                imported_module_id.id,
-                                strip_context(ident)
-                            );
-
                             added |= imported_tree_shake_module.add_used_export(Some(
                                 &module::UsedIdent::SwcIdent(strip_context(ident)),
                             ));
@@ -741,8 +674,6 @@ fn add_used_exports_by_import_info(
                 }
             }
         }
-
-        println!("added {}", added);
 
         if added {
             Some(imported_tree_shake_module.topo_order)
@@ -854,21 +785,20 @@ pub struct ReExportReplace {
 impl ReExportReplace {
     pub(crate) fn to_import_module_item(&self, ident: Ident) -> ModuleItem {
         match &self.re_export_source.re_export_type {
-            ReExportType::Namespace(_) => {
-                todo!()
-            }
-            ReExportType::Default => {
-                todo!()
-            }
-            ReExportType::Named(local, imported) => {
-                if ident.sym.eq(local) {
-                    quote!("import { $ident } from \"$from\";" as ModuleItem,
+            ReExportType2::Default => {
+                quote!("import $ident from \"$from\";" as ModuleItem,
                     ident: Ident = ident,
                     from: Str = quote_str!(self.from_module_id.id.clone())
+                )
+            }
+            ReExportType2::Named(local) => {
+                if ident.sym.eq(local) {
+                    quote!("import { $ident } from \"$from\";" as ModuleItem,
+                        ident: Ident = ident,
+                        from: Str = quote_str!(self.from_module_id.id.clone())
                     )
                 } else {
-                    quote!(
-                        "import { $local as $ident } from \"$from\";" as ModuleItem,
+                    quote!("import { $local as $ident } from \"$from\";" as ModuleItem,
                         local: Ident = quote_ident!(local.clone()),
                         ident: Ident = ident,
                         from: Str = quote_str!(self.from_module_id.id.clone())
@@ -911,15 +841,15 @@ pub struct ReExportSource {
 
 #[derive(Debug)]
 pub struct ReExportSource2 {
-    pub(crate) source: String,
+    pub(crate) source: Option<String>,
     pub(crate) re_export_type: ReExportType2,
 }
 
 impl ReExportSource2 {
     pub fn to_outer_ref(&self) -> String {
         match &self.re_export_type {
-            ReExportType::Default => "default".into(),
-            ReExportType::Named(local) => local.clone(),
+            ReExportType2::Default => "default".into(),
+            ReExportType2::Named(local) => local.clone(),
         }
     }
 }
