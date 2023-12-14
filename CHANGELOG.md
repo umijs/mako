@@ -1,12 +1,24 @@
+## 0.1.11
+
+`2023-12-14`
+
+> @alipay/bigfish@4.1.8
+
+* 修复 CSS 热更在开启 runtimePublicPath 且最终值包含 origin 时失效的问题 by [@PeachScript](https://github.com/PeachScript) in [#768](https://github.com/umijs/mako/pull/768)
+* 修复 require 动态目录时文件夹带假后缀名会编译失败的问题 by [@PeachScript](https://github.com/PeachScript) in [#778](https://github.com/umijs/mako/pull/778)
+* 修复 CSS 文件内容相同时 chunk 可能丢失的问题 by [@stormslowly](https://github.com/stormslowly) in [#781](https://github.com/umijs/mako/pull/781)
+* 优化 runtime 的尺寸，能力按需生成 by [@sorrycc](https://github.com/sorrycc) in [#767](https://github.com/umijs/mako/pull/767)
+* 优化 chunk 加载及注册逻辑，支持非 entry chunk 先于 entry chunk 加载 by [@PeachScript](https://github.com/PeachScript) in [#783](https://github.com/umijs/mako/pull/783)
+
 ## 0.1.10
 
 `2023-12-08`
 
-> @alipay/bigfish@4.1.7  
+> @alipay/bigfish@4.1.7
 
-* 调整 swc 相应依赖替换成 swc_core by @goo-yyh in https://github.com/umijs/mako/pull/765
-* 调整 tree-shaking 增加对变量声明语句副作用的判定 by @stormslowly in https://github.com/umijs/mako/pull/763
-* 修复 node binding TypeScript 定义 by @stormslowly in https://github.com/umijs/mako/pull/761
+* 调整 swc 相应依赖替换成 swc_core by [@goo-yyh](https://github.com/goo-yyh) in https://github.com/umijs/mako/pull/765
+* 调整 tree-shaking 增加对变量声明语句副作用的判定 by [@stormslowly](https://github.com/stormslowly) in https://github.com/umijs/mako/pull/763
+* 修复 node binding TypeScript 定义 by [@stormslowly](https://github.com/stormslowly) in https://github.com/umijs/mako/pull/761
 
 
 ## 0.1.9
@@ -52,7 +64,7 @@
 
 > @alipay/bigfish@4.1.0
 
-- 新增 Emotion 支持 by @zhangpanweb in [#694](https://github.com/umijs/mako/pull/694)
+- 新增 Emotion 支持 by [@zhangpanweb](https://github.com/zhangpanweb) in [#694](https://github.com/umijs/mako/pull/694)
 - 提升 generate chunks 的性能，m1 yuyanAssets build 稳定提升 200ms 左右 by [@sorrycc](https://github.com/sorrycc) in [#709](https://github.com/umijs/mako/pull/709)
 - 提升 generate 阶段 transform 的性能，m1 yuyanAssets 此步骤耗时从 3431ms 降到 1019ms by [@sorrycc](https://github.com/sorrycc) in [#707](https://github.com/umijs/mako/pull/707)
 - 修复 window.require 不应该被替换成 `window.__mako_require__` 的问题 by [@jiesia](https://github.com/jiesia) in [#708](https://github.com/umijs/mako/pull/708)
