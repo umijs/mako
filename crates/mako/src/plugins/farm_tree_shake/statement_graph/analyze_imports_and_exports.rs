@@ -1,9 +1,11 @@
 use std::collections::{HashMap, HashSet};
+use std::ops::Deref;
 
 use mako_core::swc_common::{Span, SyntaxContext, DUMMY_SP};
 use mako_core::swc_ecma_ast;
 use mako_core::swc_ecma_ast::{ModuleExportName, ModuleItem};
 use mako_core::swc_ecma_visit::VisitWith;
+use swc_core::ecma::ast::Expr;
 
 use super::defined_idents_collector::DefinedIdentsCollector;
 use super::side_effects_detector::SideEffectsDetector;
@@ -195,7 +197,7 @@ pub fn analyze_imports_and_exports(
 
                 exports = Some(ExportInfo {
                     source: None,
-                    specifiers: vec![ExportSpecifierInfo::Default],
+                    specifiers: vec![ExportSpecifierInfo::Default(None)],
                     stmt_id: *id,
                 });
                 match &export_default_decl.decl {
@@ -225,9 +227,14 @@ pub fn analyze_imports_and_exports(
             swc_ecma_ast::ModuleDecl::ExportDefaultExpr(export_default_expr) => {
                 span = export_default_expr.span;
 
+                let default_ident = match export_default_expr.expr.deref() {
+                    Expr::Ident(ident) => Some(ident.to_string()),
+                    _ => None,
+                };
+
                 exports = Some(ExportInfo {
                     source: None,
-                    specifiers: vec![ExportSpecifierInfo::Default],
+                    specifiers: vec![ExportSpecifierInfo::Default(default_ident)],
                     stmt_id: *id,
                 });
                 analyze_and_insert_used_idents(&export_default_expr.expr, None);
