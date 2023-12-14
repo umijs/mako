@@ -1,3 +1,3 @@
-import {z as x} from "./dep.js";
+import { z } from './dep.js';
 
-export {x};
+export { z as x };
