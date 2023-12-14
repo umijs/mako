@@ -234,6 +234,17 @@ impl ModuleGraph {
         targets
     }
 
+    pub fn remove_dependencies(&mut self, module_id: &ModuleId)  {
+        let mut edges = self.get_edges(module_id, Direction::Outgoing);
+
+
+        while let Some((x, node_index)) = edges.next(&self.graph) {
+            self.graph.remove_edge(x);
+        }
+    }
+
+
+
     pub fn get_dependency_module_by_source(
         &self,
         module_id: &ModuleId,

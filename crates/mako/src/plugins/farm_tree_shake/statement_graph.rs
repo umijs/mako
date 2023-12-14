@@ -12,8 +12,8 @@ pub(super) mod used_idents_collector;
 use analyze_imports_and_exports::analyze_imports_and_exports;
 use mako_core::swc_common::{Span, SyntaxContext};
 
-use crate::plugins::farm_tree_shake::module::{is_ident_equal, UsedIdent};
-use crate::plugins::farm_tree_shake::shake::strip_context;
+use crate::plugins::farm_tree_shake::module::{is_ident_equal, is_ident_sym_equal, UsedIdent};
+use crate::plugins::farm_tree_shake::shake::{strip_context, ReExportSource, ReExportType};
 use crate::plugins::farm_tree_shake::statement_graph::analyze_imports_and_exports::StatementInfo;
 
 pub type StatementId = usize;
@@ -35,6 +35,30 @@ pub struct ImportInfo {
     pub stmt_id: StatementId,
 }
 
+impl ImportInfo {
+    pub fn find_define_specifier(&self, ident: &String) -> Option<&ImportSpecifierInfo> {
+        for specifier in self.specifiers.iter() {
+            match specifier {
+                ImportSpecifierInfo::Namespace(n) => {
+                    return Some(specifier);
+                }
+                ImportSpecifierInfo::Named { local, imported } => {
+                    if is_ident_equal(ident, local) {
+                        return Some(specifier);
+                    }
+                }
+                ImportSpecifierInfo::Default(local_name) => {
+                    if ident == local_name {
+                        return Some(specifier);
+                    }
+                }
+            }
+        }
+
+        return None;
+    }
+}
+
 // collect all exports and gathering them into a simpler structure
 #[derive(Debug, Clone)]
 pub enum ExportSpecifierInfo {
@@ -46,7 +70,7 @@ pub enum ExportSpecifierInfo {
         exported: Option<String>,
     },
     // export default xxx;
-    Default,
+    Default(Option<String>),
     // export * as foo from 'foo';
     Namespace(String),
     Ambiguous(Vec<String>),
@@ -65,7 +89,7 @@ impl ExportSpecifierInfo {
                     vec![strip_context(local)]
                 }
             }
-            ExportSpecifierInfo::Default => {
+            ExportSpecifierInfo::Default(_) => {
                 vec!["default".to_string()]
             }
             ExportSpecifierInfo::Namespace(ns) => {
@@ -85,6 +109,7 @@ pub struct ExportInfo {
     pub stmt_id: StatementId,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExportInfoMatch {
     Matched,
     Unmatched,
@@ -92,12 +117,58 @@ pub enum ExportInfoMatch {
 }
 
 impl ExportInfo {
+    pub fn find_define_specifier(&self, ident: &String) -> Option<&ExportSpecifierInfo> {
+        for specifier in self.specifiers.iter() {
+            match specifier {
+                ExportSpecifierInfo::Default(export_default_ident) => {
+                    if let Some(default_ident) = export_default_ident
+                        && is_ident_sym_equal(default_ident, ident)
+                    {
+                        return Some(specifier);
+                    }
+                }
+                ExportSpecifierInfo::Named { local, exported } => {
+                    let exported_ident = if let Some(exported) = exported {
+                        exported
+                    } else {
+                        local
+                    };
+
+                    if is_ident_equal(ident, exported_ident) {
+                        return Some(specifier);
+                    }
+                }
+                ExportSpecifierInfo::Namespace(ns) => {
+                    if is_ident_equal(ident, ns) {
+                        return Some(specifier);
+                    }
+                }
+                ExportSpecifierInfo::All(exported_idents) => {
+                    let found = exported_idents.iter().find(|i| is_ident_equal(ident, i));
+
+                    if found.is_some() {
+                        return Some(specifier);
+                    }
+                }
+                ExportSpecifierInfo::Ambiguous(idents) => {
+                    if idents.iter().any(|i| is_ident_equal(ident, i)) {
+                        return Some(specifier);
+                    }
+
+                    return None;
+                }
+            }
+        }
+
+        None
+    }
+
     pub fn matches_ident(&self, ident: &String) -> ExportInfoMatch {
         let mut res = ExportInfoMatch::Unmatched;
 
         for specifier in self.specifiers.iter() {
             match specifier {
-                ExportSpecifierInfo::Default => {
+                ExportSpecifierInfo::Default(_) => {
                     if ident == "default" {
                         return ExportInfoMatch::Matched;
                     }
@@ -155,6 +226,86 @@ pub struct Statement {
 }
 
 impl Statement {
+    pub(crate) fn to_re_export_type(&self, ref_ident: &String) -> Option<ReExportSource> {
+        if let Some(export_info) = &self.export_info {
+            for x in export_info.specifiers.iter() {
+                match x {
+                    // export * from 'foo';
+                    ExportSpecifierInfo::All(_) => {
+                        todo!()
+                    }
+
+                    // export { foo } from "foo"
+                    // export { foo as bar } from "foo"
+                    ExportSpecifierInfo::Named { local, exported } => {
+                        if let Some(exported) = exported {
+                            if is_ident_equal(ref_ident, exported) {
+                                return Some(ReExportSource {
+                                    re_export_type: ReExportType::Named(
+                                        strip_context(local),
+                                        Some(strip_context(exported)),
+                                    ),
+                                    source: export_info.source.clone(),
+                                });
+                            }
+                        } else if is_ident_equal(ref_ident, local) {
+                            return Some(ReExportSource {
+                                re_export_type: ReExportType::Named(strip_context(local), None),
+                                source: export_info.source.clone(),
+                            });
+                        }
+                    }
+
+                    // export foo from "foo"
+                    // export default from "foo"
+                    ExportSpecifierInfo::Default(_) => {
+                        todo!()
+                    }
+
+                    // export * as foo from 'foo';
+                    ExportSpecifierInfo::Namespace(_) => {}
+                    ExportSpecifierInfo::Ambiguous(_) => {
+                        return None;
+                    }
+                }
+            }
+        }
+
+        if let Some(import_info) = &self.import_info {
+            for import_specifier in import_info.specifiers.iter() {
+                match import_specifier {
+                    // import * as foo from 'foo';
+                    ImportSpecifierInfo::Namespace(name) => {
+                        todo!()
+                    }
+
+                    // import { foo } from "foo"
+                    // import { foo as bar } from "foo"
+                    ImportSpecifierInfo::Named { local, imported } => {
+                        if is_ident_sym_equal(local, ref_ident) {
+                            return Some(ReExportSource {
+                                re_export_type: ReExportType::Named(
+                                    strip_context(local),
+                                    imported.as_ref().map(|i| strip_context(i)),
+                                ),
+                                source: Some(import_info.source.clone()),
+                            });
+                        }
+                    }
+
+                    // import foo from "foo"
+                    ImportSpecifierInfo::Default(_) => {
+                        todo!()
+                    }
+                }
+            }
+        }
+
+        None
+    }
+}
+
+impl Statement {
     pub fn new(id: StatementId, stmt: &ModuleItem, unresolved_ctxt: SyntaxContext) -> Self {
         let StatementInfo {
             import_info,
@@ -197,11 +348,7 @@ pub struct StatementGraph {
 }
 
 impl StatementGraph {
-    pub fn new(
-        module: &SwcModule,
-        _side_effects_map: &HashMap<String, bool>,
-        unresolved_ctxt: SyntaxContext,
-    ) -> Self {
+    pub fn new(module: &SwcModule, unresolved_ctxt: SyntaxContext) -> Self {
         let mut g = petgraph::graph::Graph::new();
         let mut id_index_map = HashMap::new();
 

@@ -1,12 +1,16 @@
+mod import_exports;
+
 use std::collections::{HashMap, HashSet};
 
 use mako_core::swc_common::SyntaxContext;
 use mako_core::swc_ecma_ast::{Module as SwcModule, ModuleItem};
+use mako_core::tracing_subscriber::util::SubscriberInitExt;
 
 use crate::module::{Module, ModuleId};
 use crate::module_graph::ModuleGraph;
 use crate::plugins::farm_tree_shake::statement_graph::{
-    ExportInfo, ExportInfoMatch, ExportSpecifierInfo, ImportInfo, StatementGraph, StatementId,
+    ExportInfo, ExportInfoMatch, ExportSpecifierInfo, ImportInfo, Statement, StatementGraph,
+    StatementId,
 };
 use crate::tree_shaking::tree_shaking_module::ModuleSystem;
 
@@ -119,7 +123,7 @@ pub struct TreeShakeModule {
     pub described_side_effects: Option<bool>,
     pub stmt_graph: StatementGraph,
     // used exports will be analyzed when tree shaking
-    used_exports: UsedExports,
+    pub used_exports: UsedExports,
     pub module_system: ModuleSystem,
     pub all_exports: AllExports,
     pub topo_order: usize,
@@ -129,6 +133,48 @@ pub struct TreeShakeModule {
 }
 
 impl TreeShakeModule {
+
+    pub fn update_stmt_graph(&mut self, module : &SwcModule) {
+        let stmt_graph = StatementGraph::new(module, self.unresolved_ctxt);
+
+        self.stmt_graph = stmt_graph;
+    }
+
+
+
+
+    pub fn find_define_stmt_info(&self, ident: &String) -> Option<&Statement> {
+        for stmt in self.stmt_graph.stmts() {
+            println!("\tthe stake: {:?}", stmt.defined_idents);
+            println!("\tthe needle {}", ident);
+            if let Some(export_info) = &stmt.export_info {
+                // TODO only one Ambiguous can be treated as matched
+                if export_info.matches_ident(ident) == ExportInfoMatch::Matched {
+                    return Some(stmt);
+                }
+            } else if stmt.import_info.is_some()
+                && stmt
+                    .defined_idents
+                    .iter()
+                    .any(|id_with_ctxt| is_ident_sym_equal(id_with_ctxt, ident))
+            {
+                return Some(stmt);
+            }
+        }
+
+        None
+    }
+
+    pub fn has_side_effect(&self) -> bool {
+        if let Some(described_side_effects) = self.described_side_effects {
+            if !described_side_effects {
+                return false;
+            }
+        }
+
+        self.side_effects
+    }
+
     pub fn update_side_effect(&mut self) -> bool {
         let mut side_effect_stmts = vec![];
 
@@ -236,7 +282,6 @@ impl TreeShakeModule {
     pub fn new(module: &Module, order: usize, _module_graph: &ModuleGraph) -> Self {
         let module_info = module.info.as_ref().unwrap();
 
-        let side_effect_map: HashMap<String, bool> = Default::default();
 
         let mut unresolved_ctxt = SyntaxContext::empty();
         // 1. generate statement graph
@@ -251,7 +296,7 @@ impl TreeShakeModule {
                 if is_esm {
                     module_system = ModuleSystem::ESModule;
                     unresolved_ctxt = unresolved_ctxt.apply_mark(module.unresolved_mark);
-                    StatementGraph::new(&module.ast, &side_effect_map, unresolved_ctxt)
+                    StatementGraph::new(&module.ast, unresolved_ctxt)
                 } else {
                     StatementGraph::empty()
                 }
@@ -396,7 +441,7 @@ impl TreeShakeModule {
                 for export_info in self.exports() {
                     for sp in export_info.specifiers {
                         match sp {
-                            ExportSpecifierInfo::Default => {
+                            ExportSpecifierInfo::Default(_) => {
                                 used_idents.push((UsedIdent::Default, export_info.stmt_id));
                             }
                             ExportSpecifierInfo::Named { local, .. } => {
@@ -443,7 +488,7 @@ impl TreeShakeModule {
                     for export_info in export_infos {
                         for sp in export_info.specifiers {
                             match sp {
-                                ExportSpecifierInfo::Default => {
+                                ExportSpecifierInfo::Default(_) => {
                                     if ident == "default" {
                                         used_idents.push((UsedIdent::Default, export_info.stmt_id));
                                     }
@@ -507,4 +552,12 @@ pub fn is_ident_equal(ident1: &str, ident2: &str) -> bool {
     } else {
         split1[0] == split2[0]
     }
+}
+
+pub fn is_ident_sym_equal(ident1: &str, ident2: &str) -> bool {
+    let split1 = ident1.split('#').collect::<Vec<_>>();
+    let split2 = ident2.split('#').collect::<Vec<_>>();
+
+    println!("is_den_sym_equal: {:?} {:?}  ==? {}", split1, split2, split1[0] == split2[0]);
+    split1[0] == split2[0]
 }
