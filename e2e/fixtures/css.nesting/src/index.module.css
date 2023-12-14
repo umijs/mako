@@ -1,0 +1,15 @@
+
+.foo {
+    color:red;
+}
+
+:global {
+    .bar {
+        color:blue;
+    }
+    .hoo { color: green; }
+}
+
+.bar {
+    color: white;
+}

@@ -30,6 +30,12 @@ use crate::util::create_thread_pool;
 #[error("{0}")]
 pub struct GenericError(pub String);
 
+#[derive(Debug, Error)]
+pub enum BuildError {
+    #[error("{:}\n{:}", "Build failed.".to_string().red().to_string(), errors.iter().map(|e| e.to_string()).collect::<Vec<_>>().join("\n"))]
+    BuildTasksError { errors: Vec<anyhow::Error> },
+}
+
 pub type ModuleDeps = Vec<(ResolverResource, Dependency)>;
 
 impl Compiler {
@@ -57,7 +63,6 @@ impl Compiler {
             module_ids.len(),
             t_build.as_millis()
         );
-        debug!("build done in {}ms", t_build.as_millis());
         Ok(())
     }
 
@@ -149,16 +154,6 @@ impl Compiler {
                     });
                 }
                 Err(err) => {
-                    // unescape
-                    let mut err = err
-                        .to_string()
-                        .replace("\\n", "\n")
-                        .replace("\\u{1b}", "\u{1b}")
-                        .replace("\\\\", "\\");
-                    // remove first char and last char
-                    if err.starts_with('"') && err.ends_with('"') {
-                        err = err[1..err.len() - 1].to_string();
-                    }
                     errors.push(err);
                 }
             }
@@ -172,8 +167,7 @@ impl Compiler {
         drop(rs);
 
         if !errors.is_empty() {
-            eprintln!("{}", "Build failed.".to_string().red());
-            return Err(anyhow!(GenericError(errors.join(", "))));
+            return Err(anyhow!(BuildError::BuildTasksError { errors }));
         }
 
         Ok(module_ids)

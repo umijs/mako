@@ -28,7 +28,7 @@ use crate::config::{DevtoolConfig, Mode};
 use crate::sourcemap::build_source_map;
 
 #[derive(Debug, Error)]
-#[error("{error_message:?}")]
+#[error("{error_message:}")]
 struct ParseError {
     resolved_path: String,
     error_message: String,

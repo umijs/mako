@@ -1,0 +1,7 @@
+{
+  "manifest": true,
+  "manifestConfig": {
+    "fileName": "manifest.json",
+    "basePath": "aaa"
+  }
+}
