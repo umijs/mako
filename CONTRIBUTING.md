@@ -27,28 +27,32 @@ Run.
 
 ```bash
 $ cargo run --bin mako examples/normal
+# with HMR
+$ cargo run --bin mako examples/normal --watch
+# in production
+$ cargo run --bin mako examples/normal --mode production
 # filter logs
 $ RUST_LOG=mako=debug,info cargo run --bin mako examples/normal
 $ RUST_LOG=mako::parse=debug,info cargo run --bin mako examples/normal
 ```
 
-Run with HMR.
+## Advanced Tasks
+
+Before you push.
 
 ```bash
-$ cargo run --bin mako examples/with-dynamic-import --watch
-```
-
-Dev.
-
-```bash
-$ pnpm dev examples/normal
+$ just ready
+# without e2e
+$ just ready-lite
 ```
 
 Test.
 
 ```bash
 $ just test
+# test specified testcase
 $ cargo nextest run transformers::transform_try_resolve::tests
+# review snapshot
 $ cargo insta review
 ```
 
@@ -69,14 +73,6 @@ Lint.
 
 ```bash
 $ just lint
-```
-
-Release.
-
-```bash
-$ npm run release
-# After released successful, you need to release bundler-okam manually.
-$ npm run release:bundler-okam
 ```
 
 Upgrade dependencies.
@@ -106,39 +102,32 @@ $ ./target/release/mako examples/normal --mode=production
 Use mako in umi or bigfish.
 
 ```bash
-$ OKAM=/PATH/TO/umijs/marko/packages/bundler-okam/index.js umi build --dev
-$ OKAM=/PATH/TO/umijs/marko/packages/bundler-okam/index.js max build --dev
-$ OKAM=/PATH/TO/umijs/marko/packages/bundler-okam/index.js bigfish build --dev
+$ OKAM=/PATH/TO/umijs/marko/packages/bundler-okam/index.js umi build
+$ OKAM=/PATH/TO/umijs/marko/packages/bundler-okam/index.js umi dev
+$ OKAM=/PATH/TO/umijs/marko/packages/bundler-okam/index.js max build
+$ OKAM=/PATH/TO/umijs/marko/packages/bundler-okam/index.js bigfish build
 ```
 
-## Release Locally
+## Release
 
-> NOTICE: Only *canary* and *dev* tags are allowed to be published to npm locally.
+You can release mako with ci or locally.
 
-Prepare. Only need to do once.
+### Release with CI
+
+> NOTICE: *canary* and *dev* tags are now supported to be released with CI.
 
 ```bash
-# 支持编译 mac x86 和 linux x86
-$ rustup target add x86_64-apple-darwin
+# Make sure everything is ok
+$ just ready
+# Release with CI
+$ npm run release
+# After released successful, you need to release bundler-okam manually.
+$ npm run release:bundler-okam
 ```
 
-Release @okamjs/okam.
+### Release Locally
 
-```bash
-$ pnpm release:okam
-```
-
-Release @alipay/umi-bundler-okam.
-
-```bash
-$ pnpm release:bundler-okam
-```
-
-Then publish bundler-okam to tnpm.
-
-```bash
-$ tnpm sync @okamjs/okam && cd packages/bundler-okam && tnpm publish
-```
+Refer to https://yuque.antfin.com/mako/vz2gn4/vkp4qs8u4zcuxqoc for details.
 
 ## Project Structure
 

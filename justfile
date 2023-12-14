@@ -23,14 +23,17 @@ ready-lite:
   just lint
   git status
 
-e2e:
+ready:
+  typos
+  cargo fmt
+  just check
+  just test
+  just lint
   cargo build --release
   pnpm --filter @okamjs/okam build
+  pnpm --filter @okamjs/okam format:dts
   pnpm test
-
-ready:
-  just ready-lite
-  juet e2e
+  git status
 
 # Update our local branch with the remote branch (this is for you to sync the submodules)
 update:
