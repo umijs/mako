@@ -74,6 +74,9 @@ importers:
       semver:
         specifier: ^7.5.4
         version: 7.5.4
+      umi:
+        specifier: ^4
+        version: 4.0.70(@babel/core@7.22.1)(@types/node@20.4.2)(@types/react@18.2.7)(eslint@8.41.0)(postcss@8.4.24)(prettier@2.8.8)(react-dom@18.2.0)(react@18.2.0)(styled-components@5.3.10)(stylelint@14.16.1)(typescript@5.0.4)(webpack@5.84.1)
       webpack:
         specifier: ^5.0.0
         version: 5.84.1(webpack-cli@4.7.2)

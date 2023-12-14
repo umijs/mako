@@ -38,15 +38,20 @@ jobs:
           version: 8
       - uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 20
           cache: "pnpm"
           token: ${{ secrets.GH_DOTCOM_TOKEN }}
       - run: pnpm i --no-lockfile
       - name: Install cargo-nextest
         uses: taiki-e/install-action@cargo-nextest
-      - name: Test
-        shell: bash
+      - name: Test Rust
         run: cargo nextest run
+      - name: Test E2E
+        run: pnpm test:e2e
+      - name: Test HMR
+        run: pnpm test:hmr
+      - name: Test Umi
+        run: pnpm test:umi
 
   lint:
     name: Clippy
