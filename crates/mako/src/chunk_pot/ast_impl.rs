@@ -199,7 +199,7 @@ fn render_entry_chunk_js_without_full_hash(
     stmts.push(css_map_stmt);
 
     match &chunk.chunk_type {
-        ChunkType::Entry(module_id, _) => {
+        ChunkType::Entry(module_id, _, _) => {
             let main_id_decl: Stmt = quote_str!(module_id.generate(context))
                 .into_var_decl(VarDeclKind::Var, quote_ident!("e").into()) // e brief for entry_module_id
                 .into();
