@@ -16,10 +16,9 @@
 
 > @alipay/bigfish@4.1.7
 
-* 调整 swc 相应依赖替换成 swc_core by [@goo-yyh](https://github.com/goo-yyh) in https://github.com/umijs/mako/pull/765
-* 调整 tree-shaking 增加对变量声明语句副作用的判定 by [@stormslowly](https://github.com/stormslowly) in https://github.com/umijs/mako/pull/763
-* 修复 node binding TypeScript 定义 by [@stormslowly](https://github.com/stormslowly) in https://github.com/umijs/mako/pull/761
-
+* 调整 swc 相应依赖替换成 swc_core by [@goo-yyh](https://github.com/goo-yyh) in [#765](https://github.com/umijs/mako/pull/765)
+* 调整 tree-shaking 增加对变量声明语句副作用的判定 by [@stormslowly](https://github.com/stormslowly) in [#763](https://github.com/umijs/mako/pull/763)
+* 修复 node binding TypeScript 定义 by [@stormslowly](https://github.com/stormslowly) in [#761](https://github.com/umijs/mako/pull/761)
 
 ## 0.1.9
 
