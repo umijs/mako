@@ -1,0 +1,16 @@
+{
+  "entry": {
+    "app": "./src/app.ts"
+  },
+  "output": {
+    "meta": true,
+    "mode": "bundless",
+    "preserveModules": true,
+    "preserveModulesRoot": "./src",
+    "asciiOnly": false
+  },
+  "devtool": "none",
+  "_minifish": {
+    "mapping": {}
+  }
+}

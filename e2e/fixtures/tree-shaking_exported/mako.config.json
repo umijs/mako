@@ -1,0 +1,6 @@
+{
+  "mode": "production",
+  "minify": false,
+  "hmr": false,
+  "treeShake": "basic"
+}

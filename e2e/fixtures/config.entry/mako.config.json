@@ -1,0 +1,6 @@
+{
+  "minify": false,
+  "entry": {
+    "foo": "src/foo.ts"
+  }
+}
