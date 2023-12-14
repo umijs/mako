@@ -4,7 +4,6 @@ use std::collections::{HashMap, HashSet};
 
 use mako_core::swc_common::SyntaxContext;
 use mako_core::swc_ecma_ast::{Module as SwcModule, ModuleItem};
-use mako_core::tracing_subscriber::util::SubscriberInitExt;
 
 use crate::module::{Module, ModuleId};
 use crate::module_graph::ModuleGraph;
@@ -133,20 +132,14 @@ pub struct TreeShakeModule {
 }
 
 impl TreeShakeModule {
-
-    pub fn update_stmt_graph(&mut self, module : &SwcModule) {
+    pub fn update_stmt_graph(&mut self, module: &SwcModule) {
         let stmt_graph = StatementGraph::new(module, self.unresolved_ctxt);
 
         self.stmt_graph = stmt_graph;
     }
 
-
-
-
     pub fn find_define_stmt_info(&self, ident: &String) -> Option<&Statement> {
         for stmt in self.stmt_graph.stmts() {
-            println!("\tthe stake: {:?}", stmt.defined_idents);
-            println!("\tthe needle {}", ident);
             if let Some(export_info) = &stmt.export_info {
                 // TODO only one Ambiguous can be treated as matched
                 if export_info.matches_ident(ident) == ExportInfoMatch::Matched {
@@ -281,7 +274,6 @@ impl TreeShakeModule {
 
     pub fn new(module: &Module, order: usize, _module_graph: &ModuleGraph) -> Self {
         let module_info = module.info.as_ref().unwrap();
-
 
         let mut unresolved_ctxt = SyntaxContext::empty();
         // 1. generate statement graph
@@ -558,6 +550,5 @@ pub fn is_ident_sym_equal(ident1: &str, ident2: &str) -> bool {
     let split1 = ident1.split('#').collect::<Vec<_>>();
     let split2 = ident2.split('#').collect::<Vec<_>>();
 
-    println!("is_den_sym_equal: {:?} {:?}  ==? {}", split1, split2, split1[0] == split2[0]);
     split1[0] == split2[0]
 }

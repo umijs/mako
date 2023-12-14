@@ -227,8 +227,6 @@ pub fn analyze_imports_and_exports(
             swc_ecma_ast::ModuleDecl::ExportDefaultExpr(export_default_expr) => {
                 span = export_default_expr.span;
 
-                println!("the default export {:?}", export_default_expr.expr.clone().ident());
-
                 let default_ident = match export_default_expr.expr.deref() {
                     Expr::Ident(ident) => Some(ident.to_string()),
                     _ => None,
