@@ -345,7 +345,7 @@ impl Compiler {
                 resolvers,
                 optimize_infos: Mutex::new(None),
                 swc_helpers: Mutex::new(SwcHelpers::new(if is_watch {
-                    Some(SwcHelpers::new(None).full_helpers())
+                    Some(SwcHelpers::full_helpers())
                 } else {
                     None
                 })),
