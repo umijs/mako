@@ -64,7 +64,7 @@ exports.build = async function (opts) {
       },
       watch: false,
     });
-  } catch(e) {
+  } catch (e) {
     console.error(e.message);
     const err = new Error('Build with mako failed.');
     err.stack = null;
@@ -199,7 +199,7 @@ exports.dev = async function (opts) {
       },
       watch: true,
     });
-  } catch(e) {
+  } catch (e) {
     console.error(e.message);
     const err = new Error('Build with mako failed.');
     err.stack = null;

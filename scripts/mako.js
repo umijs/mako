@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 
-const path = require("path");
-const fs = require("fs");
-const { build } = require("@okamjs/okam");
-const { _onCompileLess } = require("@alipay/umi-bundler-okam");
+const path = require('path');
+const fs = require('fs');
+const { build } = require('@okamjs/okam');
+const { _onCompileLess } = require('@alipay/umi-bundler-okam');
 const cwd = process.argv[2];
-const isWatch = process.argv.includes("--watch");
+const isWatch = process.argv.includes('--watch');
 
 let makoConfig = {};
-const makoConfigPath = path.join(cwd, "mako.config.json");
+const makoConfigPath = path.join(cwd, 'mako.config.json');
 if (fs.existsSync(makoConfigPath)) {
-  makoConfig = JSON.parse(fs.readFileSync(makoConfigPath, "utf-8"));
+  makoConfig = JSON.parse(fs.readFileSync(makoConfigPath, 'utf-8'));
 }
 const alias = {};
 if (makoConfig.resolve?.alias) {
@@ -21,20 +21,17 @@ if (makoConfig.resolve?.alias) {
 const okamConfig = {
   resolve: { alias },
 };
-console.log("> run mako build for", cwd);
+console.log('> run mako build for', cwd);
 build({
   root: cwd,
   config: okamConfig,
   hooks: {
-    onCompileLess: _onCompileLess.bind(
-      null,
-      {
-        cwd,
-        alias,
-        modifyVars: makoConfig.less?.theme || {},
-        config: {},
-      }
-    ),
+    onCompileLess: _onCompileLess.bind(null, {
+      cwd,
+      alias,
+      modifyVars: makoConfig.less?.theme || {},
+      config: {},
+    }),
   },
   watch: isWatch,
 }).catch((e) => {

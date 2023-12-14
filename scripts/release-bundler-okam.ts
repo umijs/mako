@@ -41,7 +41,9 @@ import 'zx/globals';
     tag = 'next';
   if (newVersion.includes('-canary.')) tag = 'canary';
   if (newVersion.includes('-dev.')) tag = 'dev';
-  console.log(`cd packages/bundler-okam && tnpm publish --tag ${tag} && tnpm sync ${bundlerOkamPkg.name}`);
+  console.log(
+    `cd packages/bundler-okam && tnpm publish --tag ${tag} && tnpm sync ${bundlerOkamPkg.name}`,
+  );
 })().catch((e) => {
   console.error(e);
   process.exit(1);

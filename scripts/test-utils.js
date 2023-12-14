@@ -1,13 +1,13 @@
-const path = require("path");
-const fs = require("fs");
-const { chromium, devices } = require("playwright");
-const express = require("express");
-const { getPortPromise } = require("portfinder");
+const path = require('path');
+const fs = require('fs');
+const { chromium, devices } = require('playwright');
+const express = require('express');
+const { getPortPromise } = require('portfinder');
 
 function parseBuildResult(cwd) {
-  const distDir = path.join(cwd, "dist");
+  const distDir = path.join(cwd, 'dist');
   const files = fs.readdirSync(distDir).reduce((acc, file) => {
-    acc[file] = fs.readFileSync(path.join(distDir, file), "utf-8");
+    acc[file] = fs.readFileSync(path.join(distDir, file), 'utf-8');
     return acc;
   }, {});
   return {
@@ -25,11 +25,11 @@ async function delay(ms) {
 async function testWithBrowser({
   cwd,
   fn,
-  rootElement = "root",
-  entry = "umi.js",
+  rootElement = 'root',
+  entry = 'umi.js',
 }) {
-  const distDir = path.join(cwd, "dist");
-  const htmlPath = path.join(distDir, "index.html");
+  const distDir = path.join(cwd, 'dist');
+  const htmlPath = path.join(distDir, 'index.html');
   if (!fs.existsSync(htmlPath)) {
     const html = `
 <!DOCTYPE html>
@@ -45,13 +45,13 @@ async function testWithBrowser({
 </body>
 </html>
     `.trimStart();
-    fs.writeFileSync(htmlPath, html, "utf-8");
+    fs.writeFileSync(htmlPath, html, 'utf-8');
   }
   const port = await getPortPromise();
   const server = await serve(distDir, port);
   const browser = await chromium.launch();
   const context = await browser.newContext({
-    ...devices["iPhone 11 Pro"],
+    ...devices['iPhone 11 Pro'],
   });
   const page = await context.newPage();
   console.log(`http://localhost:${port}/`);
@@ -90,7 +90,7 @@ async function closeServer(server) {
 }
 
 const trim = (str) => {
-  return str.replace(/[\s\n]/g, "");
+  return str.replace(/[\s\n]/g, '');
 };
 
 /**
@@ -99,7 +99,7 @@ const trim = (str) => {
  * @returns
  */
 const strEscape = (str) => {
-  return str.replace(/(?<!\\)([\(\)\{\}\[\]])/g, "\\$1");
+  return str.replace(/(?<!\\)([\(\)\{\}\[\]])/g, '\\$1');
 };
 
 /**
@@ -116,7 +116,7 @@ const moduleReg = (key, contentReg, autoEscape) => {
     contentReg = strEscape(contentReg);
   }
   return new RegExp(
-    `"${key}": function\\(module, exports, __mako_require__\\) \\{[\\s\\S]*${contentReg}[\\s\\S]*\\}`
+    `"${key}": function\\(module, exports, __mako_require__\\) \\{[\\s\\S]*${contentReg}[\\s\\S]*\\}`,
   );
 };
 

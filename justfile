@@ -21,6 +21,7 @@ ready-lite:
   just check
   just test
   just lint
+  pnpm rome:format
   git status
 
 ready:
@@ -33,6 +34,7 @@ ready:
   pnpm --filter @okamjs/okam build
   pnpm --filter @okamjs/okam format:dts
   pnpm test
+  pnpm rome:format
   git status
 
 # Update our local branch with the remote branch (this is for you to sync the submodules)
