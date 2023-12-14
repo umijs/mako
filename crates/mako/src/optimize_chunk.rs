@@ -8,7 +8,9 @@ use mako_core::tracing::debug;
 
 use crate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::compiler::Compiler;
-use crate::config::{OptimizeAllowChunks, OptimizeChunkGroup, OptimizeChunkOptions};
+use crate::config::{
+    CodeSplittingStrategy, OptimizeAllowChunks, OptimizeChunkGroup, OptimizeChunkOptions,
+};
 use crate::group_chunk::GroupUpdateResult;
 use crate::module::{Module, ModuleId, ModuleInfo};
 use crate::resolve::{ResolvedResource, ResolverResource};
@@ -77,17 +79,23 @@ impl Compiler {
         mako_core::mako_profile_function!();
         debug!("optimize hot update chunk");
 
-        // only optimize if code splitting enabled and there has valid group update result
-        if let (Some(optimize_infos), Some((group_new_chunks, group_modules_in_chunk))) = (
-            self.context.optimize_infos.lock().unwrap().as_ref(),
-            group_result,
-        ) {
-            // empty means full re-optimize
-            if group_new_chunks.is_empty() && group_modules_in_chunk.is_empty() {
-                self.optimize_chunk();
-                return;
-            }
+        // skip if code splitting disabled or group result is invalid
+        if matches!(
+            &self.context.config.code_splitting,
+            CodeSplittingStrategy::None
+        ) || group_result.is_none()
+        {
+            return;
+        }
 
+        let (group_new_chunks, group_modules_in_chunk) = group_result.as_ref().unwrap();
+
+        if group_new_chunks.is_empty() && group_modules_in_chunk.is_empty() {
+            // full re-optimize if code splitting enabled and received empty group result
+            // ref: https://github.com/umijs/mako/blob/d110cbd74e95307c437471185d734e10533b3494/crates/mako/src/group_chunk.rs#L182
+            self.optimize_chunk();
+        } else if let Some(optimize_infos) = self.context.optimize_infos.lock().unwrap().as_ref() {
+            // only optimize if code splitting enabled and there has valid group update result
             let chunk_graph = self.context.chunk_graph.write().unwrap();
             // prepare modules_in_chunk data
             let mut modules_in_chunk = group_new_chunks.iter().fold(vec![], |mut acc, chunk_id| {
