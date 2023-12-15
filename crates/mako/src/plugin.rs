@@ -112,6 +112,10 @@ pub trait Plugin: Any + Send + Sync {
     ) -> Result<()> {
         Ok(())
     }
+
+    fn before_write_fs(&self, _path: &Path, _content: &[u8]) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[derive(Default)]
@@ -246,6 +250,18 @@ impl PluginDriver {
     ) -> Result<()> {
         for p in &self.plugins {
             p.optimize_module_graph(module_graph, context)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn before_write_fs<P: AsRef<Path>, C: AsRef<[u8]>>(
+        &self,
+        path: P,
+        content: C,
+    ) -> Result<()> {
+        for p in &self.plugins {
+            p.before_write_fs(path.as_ref(), content.as_ref())?;
         }
 
         Ok(())
