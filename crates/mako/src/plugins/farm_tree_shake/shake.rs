@@ -868,7 +868,7 @@ impl ReExportReplace {
             ReExportType2::Default => {
                 quote!("export { default as $ident } \"$from\";" as ModuleItem,
                     ident: Ident = ident,
-                    _quote_var__quote_var__quote_var__quote_var__quote_var__quote_var__quote_var__quote_var_from: Str = quote_str!(self.from_module_id.id.clone())
+                    from: Str = quote_str!(self.from_module_id.id.clone())
                 )
             }
             ReExportType2::Named(local) => {
