@@ -4,7 +4,7 @@
     "build:webpack": "webpack --config webpack.config.js"
   },
   "dependencies": {
-    "antd": "^5.8.4"
+    "antd": "^5.12.2"
   },
   "devDependencies": {
     "webpack": "^5.38.1",
