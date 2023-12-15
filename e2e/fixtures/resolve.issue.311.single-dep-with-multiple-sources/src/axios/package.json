@@ -1,0 +1,7 @@
+{
+    "name": "axios",
+    "version": "0.27.2",
+    "browser": {
+      "./foo": "./bar"
+    }
+}

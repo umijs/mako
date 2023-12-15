@@ -42,9 +42,12 @@ mod plugins;
 #[cfg(feature = "profile")]
 mod profile_gui;
 mod resolve;
+mod runtime;
 mod sourcemap;
 mod stats;
+mod swc_helpers;
 mod targets;
+mod task;
 #[cfg(test)]
 mod test_helper;
 mod transform;
@@ -118,7 +121,10 @@ async fn main() -> Result<()> {
 
     #[cfg(not(feature = "profile"))]
     {
-        compiler.compile()?;
+        if let Err(e) = compiler.compile() {
+            eprintln!("{}", e);
+            std::process::exit(1);
+        }
         if cli.watch {
             let d = crate::dev::DevServer::new(root.clone(), compiler);
             // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling

@@ -12,9 +12,9 @@ use mako_core::tracing::debug;
 use mako_core::twox_hash::XxHash64;
 use mako_core::{md5, mime_guess};
 
-use crate::build::FileRequest;
 use crate::compiler::Context;
 use crate::plugin::PluginLoadParam;
+use crate::task;
 
 pub struct Asset {
     pub path: String,
@@ -67,10 +67,10 @@ pub enum LoadError {
     CompileMdError { path: String, reason: String },
 }
 
-pub fn load(request: &FileRequest, is_entry: bool, context: &Arc<Context>) -> Result<Content> {
-    mako_core::mako_profile_function!(&request.path);
-    debug!("load: {:?}", request);
-    let path = &request.path;
+pub fn load(task: &task::Task, context: &Arc<Context>) -> Result<Content> {
+    mako_core::mako_profile_function!(&task.path);
+    debug!("load: {:?}", task);
+    let path = &task.request.path;
     let exists = Path::new(path).exists();
     if !exists {
         return Err(anyhow!(LoadError::FileNotFound {
@@ -78,15 +78,9 @@ pub fn load(request: &FileRequest, is_entry: bool, context: &Arc<Context>) -> Re
         }));
     }
 
-    let content = context.plugin_driver.load(
-        &PluginLoadParam {
-            path: path.to_string(),
-            is_entry,
-            ext_name: ext_name(path).unwrap().to_string(),
-            request,
-        },
-        context,
-    )?;
+    let content = context
+        .plugin_driver
+        .load(&PluginLoadParam { task }, context)?;
 
     Ok(content.unwrap())
 }
@@ -161,20 +155,20 @@ pub fn file_name(path: &str) -> Option<&str> {
 }
 
 pub fn ext_name(path: &str) -> Option<&str> {
-    let ext = Path::new(path).extension();
-    if let Some(ext) = ext {
+    let path = Path::new(path);
+    if let (true, Some(ext)) = (path.is_file(), path.extension()) {
         return ext.to_str();
     }
     None
 }
 
 pub fn file_size(path: &str) -> Result<u64> {
-    let metadata = std::fs::metadata(path)?;
+    let metadata = fs::metadata(path)?;
     Ok(metadata.len())
 }
 
 fn to_base64(path: &str) -> Result<String> {
-    let vec = std::fs::read(path)?;
+    let vec = fs::read(path)?;
     let engine = engine::GeneralPurpose::new(&STANDARD, engine::general_purpose::PAD);
     let base64 = engine.encode(vec);
     let guess = mime_guess::from_path(path);

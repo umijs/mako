@@ -7,24 +7,21 @@ use mako_core::swc_common::errors::Handler;
 use mako_core::swc_common::Mark;
 use mako_core::swc_ecma_ast::Module;
 
-use crate::build::FileRequest;
 use crate::compiler::{Args, Context};
 use crate::config::Config;
 use crate::load::Content;
 use crate::module::{Dependency, ModuleAst};
 use crate::module_graph::ModuleGraph;
 use crate::stats::StatsJsonMap;
+use crate::task::Task;
 
 #[derive(Debug)]
 pub struct PluginLoadParam<'a> {
-    pub path: String,
-    pub is_entry: bool,
-    pub ext_name: String,
-    pub request: &'a FileRequest,
+    pub task: &'a Task,
 }
 
 pub struct PluginParseParam<'a> {
-    pub request: &'a FileRequest,
+    pub task: &'a Task,
     pub content: &'a Content,
 }
 
@@ -67,6 +64,15 @@ pub trait Plugin: Any + Send + Sync {
     }
 
     fn transform_js(
+        &self,
+        _param: &PluginTransformJsParam,
+        _ast: &mut Module,
+        _context: &Arc<Context>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    fn after_generate_transform_js(
         &self,
         _param: &PluginTransformJsParam,
         _ast: &mut Module,
@@ -167,6 +173,18 @@ impl PluginDriver {
     ) -> Result<()> {
         for plugin in &self.plugins {
             plugin.transform_js(param, ast, context)?;
+        }
+        Ok(())
+    }
+
+    pub fn after_generate_transform_js(
+        &self,
+        param: &PluginTransformJsParam,
+        ast: &mut Module,
+        context: &Arc<Context>,
+    ) -> Result<()> {
+        for plugin in &self.plugins {
+            plugin.after_generate_transform_js(param, ast, context)?;
         }
         Ok(())
     }

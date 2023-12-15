@@ -28,8 +28,10 @@ use crate::transform_in_generate::transform_css_generate;
 
 #[cached(
     result = true,
-    key = "u64",
-    convert = "{chunk_pot.stylesheet.as_ref().unwrap().raw_hash}"
+    type = "SizedCache<String , ChunkFile>",
+    create = "{ SizedCache::with_size(500) }",
+    key = "String",
+    convert = r#"{format!("{}.{:x}",chunk_pot.chunk_id,chunk_pot.stylesheet.as_ref().unwrap().raw_hash)}"#
 )]
 pub(crate) fn render_css_chunk(chunk_pot: &ChunkPot, context: &Arc<Context>) -> Result<ChunkFile> {
     mako_core::mako_profile_function!(&chunk_pot.js_name);
@@ -94,10 +96,10 @@ pub(crate) fn render_css_chunk(chunk_pot: &ChunkPot, context: &Arc<Context>) -> 
 
 #[cached(
     result = true,
-    type = "SizedCache<u64 , ChunkFile>",
+    type = "SizedCache<String , ChunkFile>",
     create = "{ SizedCache::with_size(500) }",
-    key = "u64",
-    convert = "{chunk_pot.js_hash}"
+    key = "String",
+    convert = r#"{format!("{}.{:x}", chunk_pot.chunk_id, chunk_pot.js_hash)}"#
 )]
 pub(crate) fn render_normal_js_chunk(
     chunk_pot: &ChunkPot,
@@ -105,7 +107,10 @@ pub(crate) fn render_normal_js_chunk(
 ) -> Result<ChunkFile> {
     mako_core::mako_profile_function!();
 
-    let module = pot_to_chunk_module(chunk_pot)?;
+    let module = pot_to_chunk_module(
+        chunk_pot,
+        context.config.output.chunk_loading_global.clone(),
+    )?;
 
     let mut ast = GLOBALS.set(&context.meta.script.globals, || Ast {
         ast: module,
@@ -194,7 +199,7 @@ fn render_entry_chunk_js_without_full_hash(
     stmts.push(css_map_stmt);
 
     match &chunk.chunk_type {
-        ChunkType::Entry(module_id, _) => {
+        ChunkType::Entry(module_id, _, _) => {
             let main_id_decl: Stmt = quote_str!(module_id.generate(context))
                 .into_var_decl(VarDeclKind::Var, quote_ident!("e").into()) // e brief for entry_module_id
                 .into();

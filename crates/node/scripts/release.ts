@@ -63,6 +63,7 @@ import 'zx/globals';
 
   console.log('linux building started...');
   const start = Date.now();
+  await $`rm -rf target/release/build/sailfish*`;
   await build_linux_binding();
   await $`pnpm run format:dts`;
   const duration = (Date.now() - start) / 1000;
@@ -95,7 +96,7 @@ import 'zx/globals';
     JSON.stringify(bundlerOkamPkg, null, 2) + '\n',
   );
 
-  await $`git commit -a -m "release: ${nodePkg.name}@${newVersion}"`;
+  await $`git commit -an -m "release: ${nodePkg.name}@${newVersion}"`;
   // tag
   console.log('Tag');
   await $`git tag v${newVersion}`;
@@ -121,6 +122,7 @@ async function build_linux_binding() {
     `${path.join(cargoBase, p)}:${path.join('/usr/local/cargo', p)}`,
   ];
 
+  const rustupRoot = path.join(os.homedir(), '.rustup');
   const makoRoot = path.join(__dirname, '../../..');
 
   const volumeOptions = [
@@ -129,13 +131,15 @@ async function build_linux_binding() {
     ...cargoMapOption('registry/cache'),
     ...cargoMapOption('registry/index'),
     ...[`-v`, `${makoRoot}:/build`],
+    ...[`-v`, `${rustupRoot}:/usr/local/rustup`],
     ...[`-w`, `/build`],
   ];
 
   const containerCMD = [
-    'cargo build -r --target x86_64-unknown-linux-gnu',
-    'pnpm --filter @okamjs/okam build:linux:x86',
-    'strip ./crates/node/okam.linux*.node',
+    'cargo build -r --lib --target x86_64-unknown-linux-gnu',
+    'cd crates/node',
+    'npm run build:linux:x86',
+    'strip okam.linux*.node',
   ].join('&&');
 
   const envOptions = [];

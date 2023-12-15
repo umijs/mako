@@ -15,8 +15,8 @@ impl Plugin for TOMLPlugin {
     }
 
     fn load(&self, param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
-        if matches!(param.ext_name.as_str(), "toml") {
-            let toml_string = read_content(param.path.as_str())?;
+        if param.task.is_match(vec!["toml"]) {
+            let toml_string = read_content(param.task.request.path.as_str())?;
             let toml_value = from_toml_str::<TomlValue>(&toml_string)?;
             let json_string = serde_json::to_string(&toml_value)?;
             return Ok(Some(Content::Js(format!(

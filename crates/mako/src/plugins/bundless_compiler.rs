@@ -9,11 +9,12 @@ use mako_core::pathdiff::diff_paths;
 use mako_core::rayon::prelude::*;
 use mako_core::swc_common::errors::HANDLER;
 use mako_core::swc_common::GLOBALS;
+use mako_core::swc_ecma_transforms::fixer::fixer;
 use mako_core::swc_ecma_transforms::helpers::{Helpers, HELPERS};
+use mako_core::swc_ecma_transforms::hygiene;
 use mako_core::swc_ecma_transforms::hygiene::hygiene_with_config;
-use mako_core::swc_ecma_transforms::modules::import_analysis::import_analyzer;
-use mako_core::swc_ecma_transforms::modules::util::ImportInterop;
-use mako_core::swc_ecma_transforms::{fixer, hygiene};
+use mako_core::swc_ecma_transforms_modules::import_analysis::import_analyzer;
+use mako_core::swc_ecma_transforms_modules::util::ImportInterop;
 use mako_core::swc_ecma_visit::VisitMutWith;
 use mako_core::swc_error_reporters::handler::try_with_handler;
 use mako_core::tracing::warn;
@@ -22,7 +23,7 @@ use crate::ast::{js_ast_to_code, Ast};
 use crate::compiler::{Args, Context};
 use crate::config::{Config, Mode};
 use crate::module::{ModuleAst, ModuleId};
-use crate::plugin::Plugin;
+use crate::plugin::{Plugin, PluginTransformJsParam};
 use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
 use crate::transformers::transform_dynamic_import::DynamicImport;
 
@@ -197,7 +198,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
 }
 
 pub fn transform_js_generate(
-    _id: &ModuleId,
+    module_id: &ModuleId,
     context: &Arc<Context>,
     ast: &mut Ast,
     dep_map: &DependenciesToReplace,
@@ -236,6 +237,7 @@ pub fn transform_js_generate(
                             // ast.ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
 
                             let mut dep_replacer = DepReplacer {
+                                module_id,
                                 to_replace: dep_map,
                                 context,
                                 unresolved_mark: ast.unresolved_mark,
@@ -260,6 +262,17 @@ pub fn transform_js_generate(
                                     .unwrap()
                                     .get_swc_comments(),
                             )));
+
+                            context.plugin_driver.after_generate_transform_js(
+                                &PluginTransformJsParam {
+                                    handler,
+                                    path: &module_id.id,
+                                    top_level_mark,
+                                    unresolved_mark: ast.unresolved_mark,
+                                },
+                                &mut ast.ast,
+                                context,
+                            )?;
 
                             Ok(())
                         })

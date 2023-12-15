@@ -5,14 +5,14 @@ use mako_core::swc_common::comments::NoopComments;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{chain, Mark, SourceMap};
 use mako_core::swc_ecma_ast::Module;
-use mako_core::swc_ecma_transforms::react::{react, Options, RefreshOptions, Runtime};
+use mako_core::swc_ecma_transforms_react::{react, Options, RefreshOptions, Runtime};
 use mako_core::swc_ecma_visit::{Fold, VisitMut, VisitMutWith};
 use mako_core::swc_emotion::{emotion, EmotionOptions};
 
 use crate::ast::build_js_ast;
-use crate::build::Task;
 use crate::compiler::Context;
 use crate::config::Mode;
+use crate::task::Task;
 
 pub struct PrefixCode {
     pub code: String,
@@ -229,8 +229,8 @@ mod tests {
 
     use crate::assert_display_snapshot;
     use crate::ast::build_js_ast;
-    use crate::build::Task;
     use crate::compiler::{Args, Context};
+    use crate::task::{Task, TaskType};
     use crate::test_helper::transform_ast_with;
     use crate::transformers::transform_react::mako_react;
 
@@ -307,16 +307,17 @@ mod tests {
         GLOBALS.set(&context.meta.script.globals, || {
             let mut ast = build_js_ast("index.jsx", &task.code, &context).unwrap();
 
+            let task_type = if task.is_entry {
+                TaskType::Entry(task.path.clone())
+            } else {
+                TaskType::Normal(task.path.clone())
+            };
             let mut visitor: Box<dyn VisitMut> = Box::new(chain!(
                 resolver(Mark::new(), Mark::new(), false),
                 mako_react(
                     Default::default(),
                     &context,
-                    &Task {
-                        is_entry: task.is_entry,
-                        path: task.path.to_string(),
-                        parent_resource: None,
-                    },
+                    &Task::new(task_type, None),
                     &Mark::new(),
                     &Mark::new(),
                 )

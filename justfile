@@ -15,12 +15,26 @@ init:
   cargo binstall cargo-nextest cargo-watch cargo-insta typos-cli taplo-cli cargo-llvm-cov -y
 
 # When ready, run the same CI commands
+ready-lite:
+  typos
+  cargo fmt
+  just check
+  just test
+  just lint
+  pnpm rome:format
+  git status
+
 ready:
   typos
   cargo fmt
   just check
   just test
   just lint
+  cargo build --release
+  pnpm --filter @okamjs/okam build
+  pnpm --filter @okamjs/okam format:dts
+  pnpm test
+  pnpm rome:format
   git status
 
 # Update our local branch with the remote branch (this is for you to sync the submodules)

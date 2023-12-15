@@ -15,8 +15,8 @@ impl Plugin for YAMLPlugin {
     }
 
     fn load(&self, param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
-        if matches!(param.ext_name.as_str(), "yaml") {
-            let yaml_string = read_content(param.path.as_str())?;
+        if param.task.is_match(vec!["yaml"]) {
+            let yaml_string = read_content(param.task.request.path.as_str())?;
             let yaml_value = from_yaml_str::<YamlValue>(&yaml_string)?;
             let json_string = serde_json::to_string(&yaml_value)?;
             return Ok(Some(Content::Js(format!(

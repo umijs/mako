@@ -21,18 +21,20 @@ impl Plugin for CSSPlugin {
     }
 
     fn load(&self, param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
-        if matches!(param.ext_name.as_str(), "css") {
-            return Ok(Some(Content::Css(read_content(param.path.as_str())?)));
+        if param.task.is_match(vec!["css"]) {
+            return Ok(Some(Content::Css(read_content(
+                param.task.request.path.as_str(),
+            )?)));
         }
         Ok(None)
     }
 
     fn parse(&self, param: &PluginParseParam, context: &Arc<Context>) -> Result<Option<ModuleAst>> {
         if let Content::Css(content) = param.content {
-            let has_modules_query = param.request.has_query("modules");
-            let has_asmodule_query = param.request.has_query("asmodule");
+            let has_modules_query = param.task.request.has_query("modules");
+            let has_asmodule_query = param.task.request.has_query("asmodule");
             let mut ast = build_css_ast(
-                &param.request.path,
+                &param.task.request.path,
                 content,
                 context,
                 has_asmodule_query || has_modules_query,
@@ -40,8 +42,8 @@ impl Plugin for CSSPlugin {
             import_url_to_href(&mut ast);
             // parse css module as js
             if has_asmodule_query {
-                let code = generate_code_for_css_modules(&param.request.path, &mut ast);
-                let js_ast = build_js_ast(&param.request.path, &code, context)?;
+                let code = generate_code_for_css_modules(&param.task.request.path, &mut ast);
+                let js_ast = build_js_ast(&param.task.request.path, &code, context)?;
                 return Ok(Some(ModuleAst::Script(js_ast)));
             } else {
                 // TODO: move to transform step
@@ -49,7 +51,7 @@ impl Plugin for CSSPlugin {
                 compile_css_compat(&mut ast);
                 // for mako css module, compile it and parse it as css
                 if has_modules_query {
-                    compile_css_modules(&param.request.path, &mut ast);
+                    compile_css_modules(&param.task.request.path, &mut ast);
                 }
                 return Ok(Some(ModuleAst::Css(ast)));
             }

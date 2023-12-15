@@ -1,11 +1,15 @@
 use std::hash::Hasher;
 use std::path::{Component, Path};
 
+use mako_core::base64::engine::general_purpose;
+use mako_core::base64::Engine;
 use mako_core::indexmap::IndexSet;
+use mako_core::md5;
 use mako_core::twox_hash::XxHash64;
 
 use crate::module::ModuleId;
 use crate::module_graph::ModuleGraph;
+use crate::task::parse_path;
 
 pub type ChunkId = ModuleId;
 
@@ -13,8 +17,10 @@ pub type ChunkId = ModuleId;
 pub enum ChunkType {
     #[allow(dead_code)]
     Runtime,
-    // module id, entry chunk name
-    Entry(ModuleId, String),
+    /**
+     * Entry(chunk_id, chunk_name, is_shared_chunk)
+     */
+    Entry(ModuleId, String, bool),
     Async,
     // mean that the chunk is not async, but it's a dependency of an async chunk
     Sync,
@@ -45,12 +51,19 @@ impl Chunk {
         match &self.chunk_type {
             ChunkType::Runtime => "runtime.js".into(),
             // foo/bar.tsx -> bar.js
-            ChunkType::Entry(_, name) => format!("{}.js", name),
+            ChunkType::Entry(_, name, _) => format!("{}.js", name),
             // foo/bar.tsx -> foo_bar_tsx-async.js
             ChunkType::Async | ChunkType::Sync | ChunkType::Worker(_) => {
-                let path = Path::new(&self.id.id);
+                let parsed_id = parse_path(&self.id.id).ok().unwrap();
+                let path = Path::new(&parsed_id.path);
+                let query = parsed_id
+                    .query
+                    .into_iter()
+                    .map(|(k, v)| format!("{}={}", k, v))
+                    .collect::<Vec<String>>()
+                    .join("&");
 
-                let name = path
+                let mut name = path
                     .components()
                     .filter(|c| !matches!(c, Component::RootDir | Component::CurDir))
                     .map(|c| match c {
@@ -62,6 +75,12 @@ impl Chunk {
                     })
                     .collect::<Vec<String>>()
                     .join("_");
+
+                if !query.is_empty() {
+                    let query_hash =
+                        general_purpose::URL_SAFE.encode(md5::compute(query).0)[..4].to_string();
+                    name = format!("{}_q_{}", name, query_hash);
+                }
 
                 format!(
                     "{}-{}.js",
@@ -126,7 +145,7 @@ mod tests {
         let module_id = ModuleId::new("foo/bar.tsx".into());
         let chunk = Chunk::new(
             module_id.clone(),
-            ChunkType::Entry(module_id, "foo_bar".to_string()),
+            ChunkType::Entry(module_id, "foo_bar".to_string(), false),
         );
         assert_eq!(chunk.filename(), "foo_bar.js");
 

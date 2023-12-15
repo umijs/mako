@@ -9,14 +9,15 @@ use mako_core::swc_ecma_ast::{
 use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
-use crate::build::parse_path;
 use crate::compiler::Context;
-use crate::module::Dependency;
+use crate::module::{Dependency, ModuleId};
 use crate::plugins::css::is_url_ignored;
 use crate::plugins::javascript::{is_commonjs_require, is_dynamic_import};
+use crate::task::parse_path;
 use crate::transformers::transform_virtual_css_modules::is_css_path;
 
 pub struct DepReplacer<'a> {
+    pub module_id: &'a ModuleId,
     pub to_replace: &'a DependenciesToReplace,
     pub context: &'a Arc<Context>,
     pub unresolved_mark: Mark,
@@ -83,8 +84,8 @@ pub fn miss_throw_stmt<T: AsRef<str>>(source: T) -> Expr {
 impl VisitMut for DepReplacer<'_> {
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Call(call_expr) = expr {
-            if is_commonjs_require(call_expr, &self.unresolved_mark) || is_dynamic_import(call_expr)
-            {
+            let is_commonjs_require_flag = is_commonjs_require(call_expr, &self.unresolved_mark);
+            if is_commonjs_require_flag || is_dynamic_import(call_expr) {
                 if call_expr.args.is_empty() {
                     return;
                 }
@@ -107,12 +108,36 @@ impl VisitMut for DepReplacer<'_> {
                         }
                     }
 
-                    // remove `require('./xxx.css');`
                     let file_request = parse_path(&source_string).unwrap();
                     if is_css_path(&file_request.path)
                         && (file_request.query.is_empty() || file_request.has_query("modules"))
                     {
-                        *expr = Expr::Lit(quote_str!("").into())
+                        // remove `require('./xxx.css');`
+                        if is_commonjs_require_flag {
+                            *expr = Expr::Lit(quote_str!("").into())
+                        } else {
+                            // `import('./xxx.css')` 中的 css 模块会被拆分到单独的 chunk, 这里需要改为加载 css chunk
+                            let module_graph = self.context.module_graph.read().unwrap();
+                            let dep_module_id = module_graph
+                                .get_dependency_module_by_source(self.module_id, &source_string);
+
+                            if let Some(dep_module_id) = dep_module_id {
+                                let chunk_graph = self.context.chunk_graph.read().unwrap();
+                                let chunk =
+                                    chunk_graph.get_chunk_for_module(&dep_module_id.clone());
+
+                                if let Some(chunk) = chunk {
+                                    let chunk_id = chunk.id.generate(self.context);
+                                    // `import('./xxx.css')` => `__mako_require__.ensure('./xxx.css')`
+                                    *expr = member_expr!(DUMMY_SP, __mako_require__.ensure)
+                                        .as_call(DUMMY_SP, vec![quote_str!(chunk_id).as_arg()]);
+                                } else {
+                                    *expr = Expr::Lit(quote_str!("").into())
+                                }
+                            } else {
+                                *expr = Expr::Lit(quote_str!("").into())
+                            }
+                        }
                     }
                 }
             }
@@ -205,7 +230,7 @@ mod tests {
     use crate::assert_display_snapshot;
     use crate::ast::build_js_ast;
     use crate::compiler::Context;
-    use crate::module::{Dependency, ResolveType};
+    use crate::module::{Dependency, ModuleId, ResolveType};
     use crate::test_helper::transform_ast_with;
     use crate::transformers::test_helper::transform_js_code;
     use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
@@ -226,9 +251,11 @@ mod tests {
             };
 
             let cloned = context.clone();
+            let module_id = ModuleId::new("index.jsx".to_string());
             let mut visitor: Box<dyn VisitMut> = Box::new(chain!(
                 resolver(ast.unresolved_mark, ast.top_level_mark, false),
                 DepReplacer {
+                    module_id: &module_id,
                     to_replace: &to_replace,
                     context: &cloned,
                     unresolved_mark: ast.unresolved_mark,
@@ -261,9 +288,11 @@ mod tests {
             };
 
             let cloned = context.clone();
+            let module_id = ModuleId::new("index.jsx".to_string());
             let mut visitor: Box<dyn VisitMut> = Box::new(chain!(
                 resolver(ast.unresolved_mark, ast.top_level_mark, false),
                 DepReplacer {
+                    module_id: &module_id,
                     to_replace: &to_replace,
                     context: &cloned,
                     unresolved_mark: ast.unresolved_mark,
@@ -305,9 +334,11 @@ mod tests {
             };
 
             let cloned = context.clone();
+            let module_id = ModuleId::new("index.jsx".to_string());
             let mut visitor: Box<dyn VisitMut> = Box::new(chain!(
                 resolver(ast.unresolved_mark, ast.top_level_mark, false),
                 DepReplacer {
+                    module_id: &module_id,
                     to_replace: &to_replace,
                     context: &cloned,
                     unresolved_mark: ast.unresolved_mark,
@@ -343,6 +374,7 @@ mod tests {
         let unresolved_mark = Default::default();
         let top_level_mark = Default::default();
         let mut visitor = DepReplacer {
+            module_id: &ModuleId::new("index.jsx".into()),
             to_replace: &DependenciesToReplace {
                 resolved: hashmap! {
                     "x".to_string() => "/x/index.js".to_string()

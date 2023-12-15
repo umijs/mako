@@ -12,20 +12,19 @@ use mako_core::swc_ecma_ast::Module;
 use mako_core::swc_ecma_preset_env::{self as swc_preset_env};
 use mako_core::swc_ecma_transforms::feature::FeatureFlag;
 use mako_core::swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
-use mako_core::swc_ecma_transforms::optimization::simplifier;
-use mako_core::swc_ecma_transforms::optimization::simplify::{dce, Config as SimpilifyConfig};
-use mako_core::swc_ecma_transforms::proposals::decorators;
-use mako_core::swc_ecma_transforms::typescript::strip_with_jsx;
 use mako_core::swc_ecma_transforms::{resolver, Assumptions};
+use mako_core::swc_ecma_transforms_optimization::simplifier;
+use mako_core::swc_ecma_transforms_optimization::simplify::{dce, Config as SimpilifyConfig};
+use mako_core::swc_ecma_transforms_proposals::decorators;
+use mako_core::swc_ecma_transforms_typescript::strip_with_jsx;
 use mako_core::swc_ecma_visit::{Fold, VisitMutWith};
 use mako_core::swc_error_reporters::handler::try_with_handler;
 
-use crate::build::Task;
 use crate::compiler::Context;
 use crate::module::ModuleAst;
 use crate::plugin::PluginTransformJsParam;
-use crate::resolve::Resolvers;
 use crate::targets;
+use crate::task::Task;
 use crate::transformers::transform_css_flexbugs::CSSFlexbugs;
 use crate::transformers::transform_css_url_replacer::CSSUrlReplacer;
 use crate::transformers::transform_dynamic_import_to_require::DynamicImportToRequire;
@@ -37,12 +36,7 @@ use crate::transformers::transform_react::mako_react;
 use crate::transformers::transform_try_resolve::TryResolve;
 use crate::transformers::transform_virtual_css_modules::VirtualCSSModules;
 
-pub fn transform(
-    ast: &mut ModuleAst,
-    context: &Arc<Context>,
-    task: &Task,
-    resolvers: &Resolvers,
-) -> Result<()> {
+pub fn transform(ast: &mut ModuleAst, context: &Arc<Context>, task: &Task) -> Result<()> {
     mako_core::mako_profile_function!();
     match ast {
         ModuleAst::Script(ast) => transform_js(
@@ -51,9 +45,8 @@ pub fn transform(
             task,
             ast.top_level_mark,
             ast.unresolved_mark,
-            resolvers,
         ),
-        ModuleAst::Css(ast) => transform_css(ast, context, task, resolvers),
+        ModuleAst::Css(ast) => transform_css(ast, context, task),
         _ => Ok(()),
     }
 }
@@ -64,7 +57,6 @@ fn transform_js(
     task: &Task,
     top_level_mark: Mark,
     unresolved_mark: Mark,
-    _resolvers: &Resolvers,
 ) -> Result<()> {
     let cm = context.meta.script.cm.clone();
     let mode = &context.config.mode.to_string();
@@ -198,14 +190,9 @@ fn transform_js(
     })
 }
 
-fn transform_css(
-    ast: &mut Stylesheet,
-    context: &Arc<Context>,
-    task: &Task,
-    resolvers: &Resolvers,
-) -> Result<()> {
+fn transform_css(ast: &mut Stylesheet, context: &Arc<Context>, task: &Task) -> Result<()> {
     let mut css_handler = CSSUrlReplacer {
-        resolvers,
+        resolvers: &context.resolvers,
         path: &task.path,
         context,
     };
@@ -245,6 +232,7 @@ mod tests {
     use crate::module::ModuleId;
     use crate::module_graph::ModuleGraph;
     use crate::resolve::get_resolvers;
+    use crate::task::Task;
     use crate::transform_in_generate::{transform_js_generate, TransformJsParam};
     use crate::transformers::transform_dep_replacer::DependenciesToReplace;
 
@@ -755,6 +743,7 @@ const require = window.require;
             resolvers,
             optimize_infos: Mutex::new(None),
             static_cache: Default::default(),
+            swc_helpers: Mutex::new(Default::default()),
         });
 
         // add fake chunk for dynamic import
@@ -777,18 +766,16 @@ const require = window.require;
         transform_js(
             &mut ast.ast,
             &context,
-            &crate::build::Task {
-                path: root.join(path).to_string_lossy().to_string(),
-                parent_resource: None,
-                is_entry: false,
-            },
+            &Task::new(
+                crate::task::TaskType::Normal(root.join(path).to_string_lossy().to_string()),
+                None,
+            ),
             ast.top_level_mark,
             ast.unresolved_mark,
-            &context.resolvers,
         )
         .unwrap();
         transform_js_generate(TransformJsParam {
-            _id: &ModuleId::new("test".to_string()),
+            module_id: &ModuleId::new("test".to_string()),
             context: &context,
             ast: &mut ast,
             dep_map: &DependenciesToReplace {

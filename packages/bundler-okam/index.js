@@ -49,20 +49,27 @@ exports.build = async function (opts) {
   }
 
   const { build } = require('@okamjs/okam');
-  await build({
-    root: cwd,
-    config: okamConfig,
-    hooks: {
-      onCompileLess: onCompileLess.bind(null, {
-        cwd,
-        config: opts.config,
-        // NOTICE: 有个缺点是 如果 alias 配置是 mako 插件修改的 less 这边就感知到不了
-        alias: okamConfig.resolve.alias,
-        modifyVars: okamConfig.less.theme,
-      }),
-    },
-    watch: false,
-  });
+  try {
+    await build({
+      root: cwd,
+      config: okamConfig,
+      hooks: {
+        onCompileLess: onCompileLess.bind(null, {
+          cwd,
+          config: opts.config,
+          // NOTICE: 有个缺点是 如果 alias 配置是 mako 插件修改的 less 这边就感知到不了
+          alias: okamConfig.resolve.alias,
+          modifyVars: okamConfig.less.theme,
+        }),
+      },
+      watch: false,
+    });
+  } catch (e) {
+    console.error(e.message);
+    const err = new Error('Build with mako failed.');
+    err.stack = null;
+    throw err;
+  }
 
   // TODO: use stats
   const manifest = JSON.parse(
@@ -175,22 +182,29 @@ exports.dev = async function (opts) {
   okamConfig.hmrPort = String(hmrPort);
   okamConfig.hmrHost = opts.host;
   const cwd = opts.cwd;
-  await build({
-    root: cwd,
-    config: okamConfig,
-    hooks: {
-      onCompileLess: onCompileLess.bind(null, {
-        cwd,
-        config: opts.config,
-        alias: okamConfig.resolve.alias,
-        modifyVars: okamConfig.less.theme,
-      }),
-      onBuildComplete: (args) => {
-        opts.onDevCompileDone(args);
+  try {
+    await build({
+      root: cwd,
+      config: okamConfig,
+      hooks: {
+        onCompileLess: onCompileLess.bind(null, {
+          cwd,
+          config: opts.config,
+          alias: okamConfig.resolve.alias,
+          modifyVars: okamConfig.less.theme,
+        }),
+        onBuildComplete: (args) => {
+          opts.onDevCompileDone(args);
+        },
       },
-    },
-    watch: true,
-  });
+      watch: true,
+    });
+  } catch (e) {
+    console.error(e.message);
+    const err = new Error('Build with mako failed.');
+    err.stack = null;
+    throw err;
+  }
 };
 
 function getDevBanner(protocol, host, port, ip) {

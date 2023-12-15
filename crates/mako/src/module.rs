@@ -163,21 +163,18 @@ impl ModuleAst {
     }
 }
 
-#[allow(dead_code)]
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum ModuleType {
     Script,
     Css,
     Raw,
 }
 
-#[allow(dead_code)]
 impl ModuleType {
     pub fn is_script(&self) -> bool {
         matches!(self, ModuleType::Script)
     }
 }
-#[allow(dead_code)]
 #[derive(Clone)]
 pub struct Module {
     pub id: ModuleId,
@@ -185,7 +182,6 @@ pub struct Module {
     pub info: Option<ModuleInfo>,
     pub side_effects: bool,
 }
-#[allow(dead_code)]
 
 impl Module {
     pub fn new(id: ModuleId, is_entry: bool, info: Option<ModuleInfo>) -> Self {
@@ -197,7 +193,6 @@ impl Module {
         }
     }
 
-    #[allow(dead_code)]
     pub fn add_info(&mut self, info: Option<ModuleInfo>) {
         self.info = info;
     }
@@ -207,6 +202,7 @@ impl Module {
         info.external.is_some()
     }
 
+    #[allow(dead_code)]
     pub fn is_node_module(&self) -> bool {
         self.id.id.contains("node_modules")
     }
@@ -267,7 +263,7 @@ impl Module {
                     function: func.into(),
                 })
             }
-            //TODO:  css module will be removed in the future
+            // TODO: css modules will be removed in the future
             ModuleAst::Css(_) => Ok(empty_module_fn_expr()),
             ModuleAst::None => Err(anyhow!("ModuleAst::None({}) cannot concert", self.id.id)),
         }

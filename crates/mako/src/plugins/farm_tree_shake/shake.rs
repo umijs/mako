@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use mako_core::anyhow::Result;
 use mako_core::swc_common::comments::{Comment, CommentKind};
-use mako_core::swc_common::DUMMY_SP;
+use mako_core::swc_common::{DUMMY_SP, GLOBALS};
 
 use crate::compiler::Context;
 use crate::module::{ModuleAst, ModuleId, ModuleType, ResolveType};
@@ -62,7 +62,9 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
             continue;
         };
 
-        let tree_shake_module = TreeShakeModule::new(module, order, module_graph);
+        let tree_shake_module = GLOBALS.set(&context.meta.script.globals, || {
+            TreeShakeModule::new(module, order, module_graph)
+        });
 
         if std::env::var("TS_DEBUG").is_ok() {
             let mut comments = context.meta.script.output_comments.write().unwrap();
@@ -252,15 +254,16 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
         for (dep, edge) in module_graph.get_dependencies(tree_shake_module_id) {
             match edge.resolve_type {
                 ResolveType::DynamicImport | ResolveType::Worker => {
-                    let mut tree_shake_module =
-                        tree_shake_modules_map.get(dep).unwrap().borrow_mut();
-                    if tree_shake_module.use_all_exports()
-                        && tree_shake_module.topo_order < next_index
-                    {
-                        next_index = tree_shake_module.topo_order;
-                    }
+                    if let Some(ref_cell) = tree_shake_modules_map.get(dep) {
+                        let mut tree_shake_module = ref_cell.borrow_mut();
+                        if tree_shake_module.use_all_exports()
+                            && tree_shake_module.topo_order < next_index
+                        {
+                            next_index = tree_shake_module.topo_order;
+                        }
 
-                    tree_shake_module.side_effects = true;
+                        tree_shake_module.side_effects = true;
+                    }
                 }
                 ResolveType::Require => {
                     if let Some(ref_cell) = tree_shake_modules_map.get(dep) {

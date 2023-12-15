@@ -78,12 +78,23 @@ impl Compiler {
                 .filter(|chunk| {
                     matches!(
                         chunk.chunk_type,
-                        ChunkType::Entry(_, _) | ChunkType::Worker(_)
+                        ChunkType::Entry(_, _, _) | ChunkType::Worker(_)
                     )
                 })
                 .map(|&chunk| {
                     let mut pot = ChunkPot::from(chunk, &module_graph, &self.context)?;
+                    let mut js_chunk_map = js_chunk_map.clone();
+                    let mut css_chunk_map = css_chunk_map.clone();
                     let t = Instant::now();
+                    let installable_chunks = chunk_graph
+                        .installable_descendants_chunk(&chunk.id)
+                        .into_iter()
+                        .map(|c| c.id)
+                        .collect::<Vec<_>>();
+
+                    js_chunk_map.retain(|k, _| installable_chunks.contains(k));
+                    css_chunk_map.retain(|k, _| installable_chunks.contains(k));
+
                     let chunk_file = self.generate_entry_chunk_files(
                         &mut pot,
                         &js_chunk_map,
@@ -116,7 +127,12 @@ impl Compiler {
         hmr_hash: u64,
     ) -> Result<Vec<ChunkFile>> {
         mako_core::mako_profile_function!();
-        pot.to_entry_chunk_files(&self.context, js_map, css_map, chunk, cache_hash, hmr_hash)
+        if matches!(chunk.chunk_type, ChunkType::Entry(_, _, true)) {
+            // generate shared chunk as normal chunk
+            pot.to_normal_chunk_files(&self.context)
+        } else {
+            pot.to_entry_chunk_files(&self.context, js_map, css_map, chunk, cache_hash, hmr_hash)
+        }
     }
 
     fn generate_non_entry_chunk_files(&self) -> Result<Vec<ChunkFile>> {
@@ -127,7 +143,7 @@ impl Compiler {
         for chunk in chunks.iter() {
             if !matches!(
                 chunk.chunk_type,
-                ChunkType::Entry(_, _) | ChunkType::Worker(_)
+                ChunkType::Entry(_, _, _) | ChunkType::Worker(_)
             ) {
                 let rs = rs.clone();
                 let context = self.context.clone();

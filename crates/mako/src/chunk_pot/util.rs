@@ -5,14 +5,15 @@ use std::sync::Arc;
 use cached::proc_macro::cached;
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::cached::SizedCache;
+use mako_core::sailfish::TemplateOnce;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{
-    ArrayLit, BlockStmt, Expr, ExprOrSpread, FnExpr, Function, KeyValueProp, Module as SwcModule,
-    ObjectLit, Prop, PropOrSpread,
+    ArrayLit, AssignOp, BinaryOp, BlockStmt, Expr, ExprOrSpread, FnExpr, Function, Ident,
+    KeyValueProp, Module as SwcModule, ObjectLit, Prop, PropOrSpread,
 };
 use mako_core::swc_ecma_codegen::text_writer::JsWriter;
 use mako_core::swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
-use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
+use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
 use mako_core::twox_hash::XxHash64;
 
 use crate::chunk_pot::ChunkPot;
@@ -20,6 +21,7 @@ use crate::compiler::Context;
 use crate::config::{DevtoolConfig, Mode};
 use crate::load::file_content_hash;
 use crate::module::{Module, ModuleAst};
+use crate::runtime::AppRuntimeTemplate;
 use crate::sourcemap::build_source_map;
 
 pub(crate) fn render_module_js(
@@ -90,17 +92,26 @@ pub(crate) fn empty_module_fn_expr() -> FnExpr {
     create = "{ SizedCache::with_size(5) }"
 )]
 pub(crate) fn runtime_code(context: &Arc<Context>) -> Result<String> {
-    let runtime_entry_content_str = include_str!("../runtime/runtime_entry.js");
-    let mut content = runtime_entry_content_str.replace(
+    let umd = if context.config.umd != "none" {
+        Some(context.config.umd.clone())
+    } else {
+        None
+    };
+    let chunk_graph = context.chunk_graph.read().unwrap();
+    let has_dynamic_chunks = chunk_graph.get_all_chunks().len() > 1;
+    let has_hmr = context.args.watch;
+    let app_runtime = AppRuntimeTemplate {
+        has_dynamic_chunks,
+        has_hmr,
+        umd,
+        chunk_loading_global: context.config.output.chunk_loading_global.clone(),
+    };
+    let app_runtime = app_runtime.render_once()?;
+    let app_runtime = app_runtime.replace(
         "// __inject_runtime_code__",
         &context.plugin_driver.runtime_plugins_code(context)?,
     );
-    if context.config.umd != "none" {
-        let umd_runtime = include_str!("../runtime/runtime_umd.js");
-        let umd_runtime = umd_runtime.replace("_%umd_name%_", &context.config.umd);
-        content.push_str(&umd_runtime);
-    }
-    Ok(content)
+    Ok(app_runtime)
 }
 
 pub(crate) fn hash_hashmap<K, V>(map: &HashMap<K, V>) -> u64
@@ -168,26 +179,41 @@ pub(crate) fn pot_to_module_object(pot: &ChunkPot) -> Result<ObjectLit> {
     })
 }
 
-pub(crate) fn pot_to_chunk_module(pot: &ChunkPot) -> Result<SwcModule> {
+pub(crate) fn pot_to_chunk_module(pot: &ChunkPot, global: String) -> Result<SwcModule> {
     mako_core::mako_profile_function!();
 
     let module_object = pot_to_module_object(pot)?;
 
-    // globalThis.jsonpCallback([["module_id"], { module object }])
-    let jsonp_callback_stmt = <Expr as ExprFactory>::as_call(
-        *member_expr!(DUMMY_SP, globalThis.jsonpCallback),
-        DUMMY_SP,
-        // [[ "module id"], { module object }]
-        vec![to_array_lit(vec![
-            to_array_lit(vec![quote_str!(pot.chunk_id.clone()).as_arg()]).as_arg(),
-            module_object.as_arg(),
-        ])
-        .as_arg()],
-    )
-    .into_stmt();
+    // (globalThis['makoChunk_global'] = globalThis['makoChunk_global'] || []).push([["module_id"], { module object }])
+    let chunk_global_expr =
+        quote_ident!("globalThis").computed_member::<Expr>(global.clone().into());
+    let chunk_global_obj = chunk_global_expr
+        .clone()
+        .make_bin::<Expr>(
+            BinaryOp::LogicalOr,
+            ArrayLit {
+                span: DUMMY_SP,
+                elems: vec![],
+            }
+            .into(),
+        )
+        .make_assign_to(AssignOp::Assign, chunk_global_expr.clone().as_pat_or_expr())
+        .wrap_with_paren()
+        .make_member::<Ident>(quote_ident!("push"));
+    let chunk_register_stmt = chunk_global_obj
+        .as_call(
+            DUMMY_SP,
+            // [[ "module id"], { module object }]
+            vec![to_array_lit(vec![
+                to_array_lit(vec![quote_str!(pot.chunk_id.clone()).as_arg()]).as_arg(),
+                module_object.as_arg(),
+            ])
+            .as_arg()],
+        )
+        .into_stmt();
 
     Ok(SwcModule {
-        body: vec![jsonp_callback_stmt.into()],
+        body: vec![chunk_register_stmt.into()],
         shebang: None,
         span: DUMMY_SP,
     })

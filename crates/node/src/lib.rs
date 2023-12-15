@@ -82,7 +82,7 @@ pub struct BuildParams {
         }
     >;
     copy?: string[];
-    code_splitting?: "auto" | "none";
+    codeSplitting?: "auto" | "none";
     providers?: Record<string, string[]>;
     publicPath?: string;
     inlineLimit?: number;
@@ -101,7 +101,7 @@ pub struct BuildParams {
     };
     stats?: boolean;
     hash?: boolean;
-    autoCssModules?: boolean;
+    autoCSSModules?: boolean;
     ignoreCSSParserErrors?: boolean;
     dynamicImportToRequire?: boolean;
     umd?: string;
@@ -195,12 +195,24 @@ pub fn build(env: Env, build_params: BuildParams) -> napi::Result<JsObject> {
         env.execute_tokio_future(
             async move {
                 let start_time = std::time::SystemTime::now();
+
                 let compiler =
                     Compiler::new(config, root.clone(), Args { watch: true }, Some(plugins))
-                        .map_err(|e| napi::Error::new(Status::GenericFailure, format!("{}", e)))?;
-                compiler
+                        .map_err(|e| napi::Error::new(Status::GenericFailure, format!("{}", e)));
+                if let Err(e) = compiler {
+                    deferred.reject(e);
+                    return Ok(());
+                }
+                let compiler = compiler.unwrap();
+
+                if let Err(e) = compiler
                     .compile()
-                    .map_err(|e| napi::Error::new(Status::GenericFailure, format!("{}", e)))?;
+                    .map_err(|e| napi::Error::new(Status::GenericFailure, format!("{}", e)))
+                {
+                    deferred.reject(e);
+                    return Ok(());
+                }
+
                 let end_time = std::time::SystemTime::now();
                 let params = OnDevCompleteParams {
                     is_first_compile: true,

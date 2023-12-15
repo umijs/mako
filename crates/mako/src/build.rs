@@ -21,7 +21,8 @@ use crate::load::{ext_name, load};
 use crate::module::{Dependency, Module, ModuleAst, ModuleId, ModuleInfo};
 use crate::parse::parse;
 use crate::plugin::PluginCheckAstParam;
-use crate::resolve::{get_resolvers, resolve, ResolverResource, Resolvers};
+use crate::resolve::{resolve, ResolverResource};
+use crate::task::{self, Task};
 use crate::transform::transform;
 use crate::util::create_thread_pool;
 
@@ -29,11 +30,10 @@ use crate::util::create_thread_pool;
 #[error("{0}")]
 pub struct GenericError(pub String);
 
-#[derive(Debug)]
-pub struct Task {
-    pub path: String,
-    pub parent_resource: Option<ResolverResource>,
-    pub is_entry: bool,
+#[derive(Debug, Error)]
+pub enum BuildError {
+    #[error("{:}\n{:}", "Build failed.".to_string().red().to_string(), errors.iter().map(|e| e.to_string()).collect::<Vec<_>>().join("\n"))]
+    BuildTasksError { errors: Vec<anyhow::Error> },
 }
 
 pub type ModuleDeps = Vec<(ResolverResource, Dependency)>;
@@ -42,166 +42,146 @@ impl Compiler {
     pub fn build(&self) -> Result<()> {
         debug!("build");
         let t_build = Instant::now();
-        let module_ids = self.build_module_graph()?;
+        let entries: Vec<&PathBuf> = self.context.config.entry.values().collect();
+        let tasks = entries
+            .iter()
+            .map(|entry| {
+                let mut entry = entry.to_str().unwrap().to_string();
+                if self.context.config.hmr
+                    && self.context.config.mode == Mode::Development
+                    && self.context.args.watch
+                {
+                    entry = format!("{}?hmr", entry);
+                }
+                task::Task::new(task::TaskType::Entry(entry), None)
+            })
+            .collect::<Vec<_>>();
+        let module_ids = self.build_tasks(tasks)?;
         let t_build = t_build.elapsed();
         println!(
             "{} modules transformed in {}ms.",
             module_ids.len(),
             t_build.as_millis()
         );
-        debug!("build done in {}ms", t_build.as_millis());
         Ok(())
     }
 
-    fn build_module_graph(&self) -> Result<HashSet<ModuleId>> {
-        debug!("build module graph");
-
-        let entries: Vec<&PathBuf> = self.context.config.entry.values().collect();
-
-        let resolvers = Arc::new(get_resolvers(&self.context.config));
-        let (pool, rs, rr) = create_thread_pool::<Result<ModuleId>>();
-
-        for entry in entries {
-            let mut entry = entry.to_str().unwrap().to_string();
-            if self.context.config.hmr
-                && self.context.config.mode == Mode::Development
-                && self.context.args.watch
-            {
-                entry = format!("{}?hmr", entry);
-            }
-
-            Self::build_module_graph_threaded(
-                pool.clone(),
-                self.context.clone(),
-                Task {
-                    path: entry,
-                    parent_resource: None,
-                    is_entry: true,
-                },
-                rs.clone(),
-                resolvers.clone(),
-            );
+    pub fn build_tasks(&self, tasks: Vec<Task>) -> Result<HashSet<ModuleId>> {
+        debug!("build tasks: {:?}", tasks);
+        if tasks.is_empty() {
+            return Ok(HashSet::new());
         }
 
-        drop(rs);
+        let (pool, rs, rr) = create_thread_pool::<Result<(Module, ModuleDeps, Task)>>();
+        let mut count = 0;
+        for task in tasks {
+            count += 1;
+            Self::build_with_pool(pool.clone(), self.context.clone(), task, rs.clone());
+        }
 
         let mut errors = vec![];
         let mut module_ids = HashSet::new();
         for r in rr {
+            count -= 1;
             match r {
-                Ok(module_id) => {
-                    module_ids.insert(module_id);
+                Ok((module, deps, task)) => {
+                    let context = self.context.clone();
+                    // record modules with missing deps
+                    if context.args.watch {
+                        if module.info.as_ref().unwrap().missing_deps.is_empty() {
+                            context
+                                .modules_with_missing_deps
+                                .write()
+                                .unwrap()
+                                .retain(|id| id != &module.id.id);
+                        } else {
+                            context
+                                .modules_with_missing_deps
+                                .write()
+                                .unwrap()
+                                .push(module.id.id.clone());
+                        }
+                    }
+
+                    // current module
+                    let module_id = module.id.clone();
+                    // 只有处理 entry 时，module 会不存在于 module_graph 里
+                    // 否则，module 肯定已存在于 module_graph 里，只需要补充 info 信息即可
+                    let mut module_graph = context.module_graph.write().unwrap();
+                    if task.is_entry {
+                        module_ids.insert(module_id.clone());
+                        module_graph.add_module(module);
+                    } else {
+                        let m = module_graph.get_module_mut(&module_id).unwrap();
+                        m.add_info(module.info);
+                    }
+
+                    // deps
+                    deps.into_iter().for_each(|(resource, dep)| {
+                        let resolved_path = resource.get_resolved_path();
+                        let external = resource.get_external();
+                        let is_external = external.is_some();
+                        let dep_module_id = ModuleId::new(resolved_path.clone());
+                        let dependency = dep;
+
+                        if !module_graph.has_module(&dep_module_id) {
+                            let module = Self::create_module(&resource, &dep_module_id, &context);
+                            match module {
+                                Ok(module) => {
+                                    if !is_external {
+                                        count += 1;
+                                        Self::build_with_pool(
+                                            pool.clone(),
+                                            context.clone(),
+                                            task::Task::new(
+                                                task::TaskType::Normal(resolved_path),
+                                                Some(resource),
+                                            ),
+                                            rs.clone(),
+                                        );
+                                    }
+                                    // 拿到依赖之后需要直接添加 module 到 module_graph 里，不能等依赖 build 完再添加
+                                    // 由于是异步处理各个模块，后者会导致大量重复任务的 build_module 任务（3 倍左右）
+                                    module_ids.insert(module.id.clone());
+                                    module_graph.add_module(module);
+                                }
+                                Err(err) => {
+                                    panic!("Create module failed: {:?}", err);
+                                }
+                            }
+                        }
+                        module_graph.add_dependency(&module_id, &dep_module_id, dependency);
+                    });
                 }
                 Err(err) => {
-                    // unescape
-                    let mut err = err
-                        .to_string()
-                        .replace("\\n", "\n")
-                        .replace("\\u{1b}", "\u{1b}")
-                        .replace("\\\\", "\\");
-                    // remove first char and last char
-                    if err.starts_with('"') && err.ends_with('"') {
-                        err = err[1..err.len() - 1].to_string();
-                    }
                     errors.push(err);
                 }
             }
+
+            if count == 0 {
+                break;
+            }
         }
 
+        debug!("Build tasks done");
+        drop(rs);
+
         if !errors.is_empty() {
-            eprintln!("{}", "Build failed.".to_string().red());
-            return Err(anyhow!(GenericError(errors.join(", "))));
+            return Err(anyhow!(BuildError::BuildTasksError { errors }));
         }
 
         Ok(module_ids)
     }
 
-    pub fn build_module_graph_threaded(
+    pub fn build_with_pool(
         pool: Arc<ThreadPool>,
         context: Arc<Context>,
-        task: Task,
-        rs: Sender<Result<ModuleId>>,
-        resolvers: Arc<Resolvers>,
+        task: task::Task,
+        rs: Sender<Result<(Module, ModuleDeps, Task)>>,
     ) {
-        let pool_clone = pool.clone();
-
         pool.spawn(move || {
-            let (module, deps) = match Compiler::build_module(&context, &task, resolvers.clone()) {
-                Ok(r) => r,
-                Err(e) => {
-                    rs.send(Err(e)).unwrap();
-                    return;
-                }
-            };
-
-            // record modules with missing deps
-            if context.args.watch {
-                if module.info.clone().unwrap().missing_deps.is_empty() {
-                    context
-                        .modules_with_missing_deps
-                        .write()
-                        .unwrap()
-                        .retain(|id| id != &module.id.id);
-                } else {
-                    context
-                        .modules_with_missing_deps
-                        .write()
-                        .unwrap()
-                        .push(module.id.id.clone());
-                }
-            }
-
-            // current module
-            let module_id = module.id.clone();
-            // 只有处理 entry 时，module 会不存在于 module_graph 里
-            // 否则，module 肯定已存在于 module_graph 里，只需要补充 info 信息即可
-            let mut module_graph = context.module_graph.write().unwrap();
-            if task.is_entry {
-                rs.send(Ok(module_id.clone())).unwrap();
-                module_graph.add_module(module);
-            } else {
-                let m = module_graph.get_module_mut(&module_id).unwrap();
-                m.add_info(module.info);
-            }
-
-            // deps
-            deps.into_iter().for_each(|(resource, dep)| {
-                let resolved_path = resource.get_resolved_path();
-                let external = resource.get_external();
-                let is_external = external.is_some();
-                let dep_module_id = ModuleId::new(resolved_path.clone());
-                let dependency = dep;
-
-                if !module_graph.has_module(&dep_module_id) {
-                    let module = Self::create_module(&resource, &dep_module_id, &context);
-                    match module {
-                        Ok(module) => {
-                            if !is_external {
-                                Self::build_module_graph_threaded(
-                                    pool_clone.clone(),
-                                    context.clone(),
-                                    Task {
-                                        path: resolved_path,
-                                        parent_resource: Some(resource),
-                                        // parent_module_id: None,
-                                        is_entry: false,
-                                    },
-                                    rs.clone(),
-                                    resolvers.clone(),
-                                );
-                            }
-                            // 拿到依赖之后需要直接添加 module 到 module_graph 里，不能等依赖 build 完再添加
-                            // 由于是异步处理各个模块，后者会导致大量重复任务的 build_module 任务（3 倍左右）
-                            rs.send(Ok(module.id.clone())).unwrap();
-                            module_graph.add_module(module);
-                        }
-                        Err(err) => {
-                            panic!("create module failed: {:?}", err);
-                        }
-                    }
-                }
-                module_graph.add_dependency(&module_id, &dep_module_id, dependency);
-            });
+            let result = Self::build_module(&context, task);
+            rs.send(result).unwrap();
         });
     }
 
@@ -260,17 +240,13 @@ module.exports = new Promise((resolve, reject) => {{
 
     pub fn build_module(
         context: &Arc<Context>,
-        task: &Task,
-        resolvers: Arc<Resolvers>,
-    ) -> Result<(Module, ModuleDeps)> {
-        let module_id = ModuleId::new(task.path.clone());
-        let request = parse_path(&task.path)?;
-
+        task: task::Task,
+    ) -> Result<(Module, ModuleDeps, Task)> {
         // load
-        let content = load(&request, task.is_entry, context)?;
+        let content = load(&task, context)?;
 
         // parse
-        let mut ast = parse(&content, &request, context)?;
+        let mut ast = parse(&content, &task, context)?;
 
         // check ast
         context
@@ -278,24 +254,11 @@ module.exports = new Promise((resolve, reject) => {{
             .check_ast(&PluginCheckAstParam { ast: &ast }, context)?;
 
         // transform
-        transform(&mut ast, context, task, &resolvers)?;
+        transform(&mut ast, context, &task)?;
 
         // 在此之前需要把所有依赖都和模块关联起来，并且需要使用 resolved source
         // analyze deps
-        let deps = analyze_deps(&ast, context)?;
-        for dep in &deps {
-            // e.g. file-loader!./file.txt
-            if dep.source.contains("-loader!")
-            // e.g. file-loader?esModule=false!./src-noconflict/theme-kr_theme.js
-                || (dep.source.contains("-loader?") && dep.source.contains('!'))
-            {
-                return Err(anyhow!(
-                    "webpack loader syntax is not supported, since found dep {:?} in {:?}",
-                    dep.source,
-                    task.path,
-                ));
-            }
-        }
+        let deps = analyze_deps(&ast, &task, context)?;
 
         // resolve
         let mut dep_resolve_err = None;
@@ -311,22 +274,7 @@ module.exports = new Promise((resolve, reject) => {{
                         ignored_deps.push(dep.source.clone());
                         continue;
                     }
-
-                    let resolved = resolved_resource.get_resolved_path();
-                    let _external = resolved_resource.get_external();
-                    let _id = ModuleId::new(resolved.clone());
-                    // let id_str = id.generate(&context);
-
-                    // let used_source = resolved_deps_to_source
-                    //     .entry(id_str.clone())
-                    //     .or_insert_with(|| dep.source.clone());
-
                     dependencies_resource.push((resolved_resource, dep.clone()));
-                    // if dep.source.eq(used_source) {
-                    // } else {
-                    //     // duplicated_source_to_source_map
-                    //     //     .insert(dep.source.clone(), used_source.clone());
-                    // }
                 }
                 Err(_) => {
                     // 获取 本次引用 和 上一级引用 路径
@@ -384,82 +332,14 @@ module.exports = new Promise((resolve, reject) => {{
             is_async: top_level_await || is_async_module(&task.path),
             resolved_resource: task.parent_resource.clone(),
         };
+        let module_id = ModuleId::new(task.path.clone());
         let module = Module::new(module_id, task.is_entry, Some(info));
 
-        Ok((module, dependencies_resource))
+        Ok((module, dependencies_resource, task))
     }
 }
 
 fn is_async_module(path: &str) -> bool {
     // wasm should be treated as an async module
-    ["wasm"].contains(&ext_name(path).unwrap())
-}
-
-pub fn parse_path(path: &str) -> Result<FileRequest> {
-    let mut iter = path.split('?');
-    let path = iter.next().unwrap();
-    let query = iter.next().unwrap_or("");
-    let mut query_vec = vec![];
-    for pair in query.split('&') {
-        if pair.contains('=') {
-            let mut it = pair.split('=').take(2);
-            let kv = match (it.next(), it.next()) {
-                (Some(k), Some(v)) => (k.to_string(), v.to_string()),
-                _ => continue,
-            };
-            query_vec.push(kv);
-        } else if !pair.is_empty() {
-            query_vec.push((pair.to_string(), "".to_string()));
-        }
-    }
-    Ok(FileRequest {
-        path: path.to_string(),
-        query: query_vec,
-    })
-}
-
-#[derive(Debug)]
-pub struct FileRequest {
-    pub path: String,
-    pub query: Vec<(String, String)>,
-}
-
-impl FileRequest {
-    pub fn has_query(&self, key: &str) -> bool {
-        self.query.iter().any(|(k, _)| *k == key)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::parse_path;
-
-    #[test]
-    fn test_parse_path() {
-        let result = parse_path("foo").unwrap();
-        assert_eq!(result.path, "foo");
-        assert_eq!(result.query, vec![]);
-
-        let result = parse_path("foo?bar=1&hoo=2").unwrap();
-        assert_eq!(result.path, "foo");
-        assert_eq!(
-            result.query.first().unwrap(),
-            &("bar".to_string(), "1".to_string())
-        );
-        assert_eq!(
-            result.query.get(1).unwrap(),
-            &("hoo".to_string(), "2".to_string())
-        );
-        assert!(result.has_query("bar"));
-        assert!(result.has_query("hoo"));
-        assert!(!result.has_query("foo"));
-
-        let result = parse_path("foo?bar").unwrap();
-        assert_eq!(result.path, "foo");
-        assert_eq!(
-            result.query.first().unwrap(),
-            &("bar".to_string(), "".to_string())
-        );
-        assert!(result.has_query("bar"));
-    }
+    ["wasm"].contains(&ext_name(path).unwrap_or(""))
 }

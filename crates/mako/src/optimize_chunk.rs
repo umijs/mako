@@ -8,32 +8,23 @@ use mako_core::tracing::debug;
 
 use crate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::compiler::Compiler;
+use crate::config::{
+    CodeSplittingStrategy, OptimizeAllowChunks, OptimizeChunkGroup, OptimizeChunkOptions,
+};
 use crate::group_chunk::GroupUpdateResult;
 use crate::module::{Module, ModuleId, ModuleInfo};
 use crate::resolve::{ResolvedResource, ResolverResource};
 
-#[allow(dead_code)]
-#[derive(Clone)]
-pub enum OptimizeAllowChunks {
-    // All,
-    Entry,
-    Async,
+pub(crate) fn default_min_size() -> usize {
+    20000
 }
 
-pub struct OptimizeChunkOptions {
-    pub min_size: usize,
-    pub groups: Vec<OptimizeChunkGroup>,
+pub(crate) fn default_max_size() -> usize {
+    5000000
 }
 
-#[derive(Clone)]
-pub struct OptimizeChunkGroup {
-    pub name: String,
-    pub allow_chunks: OptimizeAllowChunks,
-    pub min_chunks: usize,
-    pub min_size: usize,
-    pub max_size: usize,
-    pub test: Option<Regex>,
-    pub priority: Option<i8>,
+pub(crate) fn default_min_chunks() -> usize {
+    1
 }
 
 pub struct OptimizeChunksInfo {
@@ -52,6 +43,7 @@ impl Compiler {
         mako_core::mako_profile_function!();
         debug!("optimize chunk");
         if let Some(optimize_options) = self.get_optimize_chunk_options() {
+            debug!("optimize options: {:?}", optimize_options);
             // stage: prepare
             let mut optimize_chunks_infos = optimize_options
                 .groups
@@ -62,7 +54,7 @@ impl Compiler {
                 })
                 .collect::<Vec<_>>();
 
-            optimize_chunks_infos.sort_by_key(|o| -o.group_options.priority.unwrap_or(0));
+            optimize_chunks_infos.sort_by_key(|o| -o.group_options.priority);
 
             // stage: deasync
             self.merge_minimal_async_chunks(&optimize_options);
@@ -87,17 +79,23 @@ impl Compiler {
         mako_core::mako_profile_function!();
         debug!("optimize hot update chunk");
 
-        // only optimize if code splitting enabled and there has valid group update result
-        if let (Some(optimize_infos), Some((group_new_chunks, group_modules_in_chunk))) = (
-            self.context.optimize_infos.lock().unwrap().as_ref(),
-            group_result,
-        ) {
-            // empty means full re-optimize
-            if group_new_chunks.is_empty() && group_modules_in_chunk.is_empty() {
-                self.optimize_chunk();
-                return;
-            }
+        // skip if code splitting disabled or group result is invalid
+        if matches!(
+            &self.context.config.code_splitting,
+            CodeSplittingStrategy::None
+        ) || group_result.is_none()
+        {
+            return;
+        }
 
+        let (group_new_chunks, group_modules_in_chunk) = group_result.as_ref().unwrap();
+
+        if group_new_chunks.is_empty() && group_modules_in_chunk.is_empty() {
+            // full re-optimize if code splitting enabled and received empty group result
+            // ref: https://github.com/umijs/mako/blob/d110cbd74e95307c437471185d734e10533b3494/crates/mako/src/group_chunk.rs#L182
+            self.optimize_chunk();
+        } else if let Some(optimize_infos) = self.context.optimize_infos.lock().unwrap().as_ref() {
+            // only optimize if code splitting enabled and there has valid group update result
             let chunk_graph = self.context.chunk_graph.write().unwrap();
             // prepare modules_in_chunk data
             let mut modules_in_chunk = group_new_chunks.iter().fold(vec![], |mut acc, chunk_id| {
@@ -201,7 +199,11 @@ impl Compiler {
                     &mut chunk
                         .modules
                         .iter()
-                        .map(|m| (m, &chunk.id, &chunk.chunk_type))
+                        .filter_map(|m| match &chunk.chunk_type {
+                            // entry module of entry chunk should not be optimized
+                            ChunkType::Entry(entry_id, _, false) if m.id == entry_id.id => None,
+                            _ => Some((m, &chunk.id, &chunk.chunk_type)),
+                        })
                         .collect::<Vec<_>>(),
                 );
                 acc
@@ -391,6 +393,12 @@ impl Compiler {
             let info_chunk_id = ChunkId {
                 id: info.group_options.name.clone(),
             };
+            let info_chunk_type =
+                if matches!(info.group_options.allow_chunks, OptimizeAllowChunks::Async) {
+                    ChunkType::Sync
+                } else {
+                    ChunkType::Entry(info_chunk_id.clone(), info.group_options.name.clone(), true)
+                };
             let info_chunk = Chunk {
                 modules: info
                     .module_to_chunks
@@ -398,7 +406,7 @@ impl Compiler {
                     .cloned()
                     .collect::<IndexSet<_>>(),
                 id: info_chunk_id.clone(),
-                chunk_type: ChunkType::Sync,
+                chunk_type: info_chunk_type,
                 content: None,
                 source_map: None,
             };
@@ -473,7 +481,11 @@ impl Compiler {
         chunk_type: &ChunkType,
     ) -> bool {
         match allow_chunks {
-            OptimizeAllowChunks::Entry => matches!(chunk_type, &ChunkType::Entry(_, _)),
+            OptimizeAllowChunks::All => matches!(
+                chunk_type,
+                &ChunkType::Entry(_, _, false) | &ChunkType::Async
+            ),
+            OptimizeAllowChunks::Entry => matches!(chunk_type, &ChunkType::Entry(_, _, false)),
             OptimizeAllowChunks::Async => chunk_type == &ChunkType::Async,
         }
     }
@@ -488,31 +500,27 @@ impl Compiler {
     }
 
     fn get_optimize_chunk_options(&self) -> Option<OptimizeChunkOptions> {
-        match self.context.config.code_splitting {
+        match &self.context.config.code_splitting {
             crate::config::CodeSplittingStrategy::Auto => Some(OptimizeChunkOptions {
-                min_size: 20000,
                 groups: vec![
                     OptimizeChunkGroup {
                         name: "vendors".to_string(),
-                        allow_chunks: OptimizeAllowChunks::Async,
-                        min_chunks: 1,
-                        min_size: 20000,
-                        max_size: 5000000,
                         test: Regex::new(r"[/\\]node_modules[/\\]").ok(),
-                        priority: Some(-10),
+                        priority: -10,
+                        ..Default::default()
                     },
                     OptimizeChunkGroup {
                         name: "common".to_string(),
-                        allow_chunks: OptimizeAllowChunks::Async,
                         min_chunks: 2,
                         // always split, to avoid multi-instance risk
                         min_size: 1,
-                        max_size: 5000000,
-                        test: None,
-                        priority: Some(-20),
+                        priority: -20,
+                        ..Default::default()
                     },
                 ],
+                ..Default::default()
             }),
+            crate::config::CodeSplittingStrategy::Advanced(options) => Some(options.clone()),
             _ => None,
         }
     }

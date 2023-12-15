@@ -402,7 +402,7 @@ __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
         let module_id: ModuleId = "./async".to_string().into();
         let mut chunk = Chunk::new(
             "./async".to_string().into(),
-            ChunkType::Entry(module_id, "async".to_string()),
+            ChunkType::Entry(module_id, "async".to_string(), false),
         );
         chunk.add_module("./async".to_string().into());
 
