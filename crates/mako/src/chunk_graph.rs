@@ -138,13 +138,12 @@ impl ChunkGraph {
         let mut ret = vec![];
         self.graph
             .neighbors_directed(*idx, Direction::Incoming)
-            .for_each(|idx| match self.graph[idx].chunk_type {
-                ChunkType::Entry(_, _, _) => {
+            .for_each(|idx| {
+                if matches!(self.graph[idx].chunk_type, ChunkType::Entry(_, _, _)) {
                     ret.push(self.graph[idx].id.clone());
                 }
-                _ => {
-                    ret.extend(self.entry_ancestors_chunk(&self.graph[idx].id));
-                }
+                // continue to collect entry ancestors (include shared entry ancestors)
+                ret.extend(self.entry_ancestors_chunk(&self.graph[idx].id));
             });
         ret
     }
@@ -154,13 +153,15 @@ impl ChunkGraph {
         let mut ret = vec![];
         self.graph
             .neighbors_directed(*idx, Direction::Outgoing)
-            .for_each(|idx| match self.graph[idx].chunk_type {
-                ChunkType::Async | ChunkType::Sync => {
+            .for_each(|idx| {
+                if matches!(
+                    self.graph[idx].chunk_type,
+                    ChunkType::Async | ChunkType::Sync
+                ) {
                     ret.push(self.graph[idx].id.clone());
                 }
-                _ => {
-                    ret.extend(self.installable_descendants_chunk(&self.graph[idx].id));
-                }
+                // continue to collect installable descendants
+                ret.extend(self.installable_descendants_chunk(&self.graph[idx].id));
             });
         ret
     }
