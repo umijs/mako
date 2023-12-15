@@ -9,14 +9,14 @@ use mako_core::swc_common::util::take::Take;
 use mako_core::swc_common::{DUMMY_SP, GLOBALS};
 use mako_core::swc_ecma_ast::ModuleItem;
 use mako_core::swc_ecma_utils::{quote_ident, quote_str};
-use swc_core::ecma::ast::{Ident, ImportSpecifier, ModuleDecl};
+use swc_core::ecma::ast::{ExportSpecifier, Ident, ImportSpecifier, ModuleDecl, ModuleExportName};
 use swc_core::quote;
 
 use crate::analyze_deps::analyze_deps;
 use crate::compiler::Context;
 use crate::module::{ModuleAst, ModuleId, ModuleType, ResolveType};
 use crate::module_graph::ModuleGraph;
-use crate::plugins::farm_tree_shake::module::TreeShakeModule;
+use crate::plugins::farm_tree_shake::module::{is_ident_sym_equal, TreeShakeModule};
 use crate::plugins::farm_tree_shake::statement_graph::{
     ExportInfo, ExportSpecifierInfo, ImportInfo, ImportSpecifierInfo, StatementId,
 };
@@ -337,8 +337,50 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
                 if let Some(export_info) = &stmt.export_info
                     && let Some(_source) = &export_info.source
                 {
-                    //TODO
-                    // todo!()
+                    if let Some(tsm_ref) = get_imported_tree_shake_module(
+                        current_module_id,
+                        _source,
+                        module_graph,
+                        &tree_shake_modules_map,
+                    ) {
+                        let proxy_tsm = tsm_ref.borrow();
+
+                        for export_specifier in export_info.specifiers.iter() {
+                            match export_specifier {
+                                ExportSpecifierInfo::All(_) => {}
+                                ExportSpecifierInfo::Named { local, exported: _ } => {
+                                    let ref_ident = strip_context(local);
+
+                                    if let Some(re_export_replace) = find_reexport_ident_source(
+                                        module_graph,
+                                        &tree_shake_modules_map,
+                                        &proxy_tsm.module_id,
+                                        &ref_ident,
+                                    ) && !re_export_replace /* at least one level deeper */
+                                        .from_module_id
+                                        .eq(&proxy_tsm.module_id)
+                                    {
+                                        stmt_replaces.push(re_export_replace);
+                                    }
+                                }
+                                ExportSpecifierInfo::Default(_) => {
+                                    if let Some(re_export_replace) = find_reexport_ident_source(
+                                        module_graph,
+                                        &tree_shake_modules_map,
+                                        &proxy_tsm.module_id,
+                                        &"default".to_string(),
+                                    ) && !re_export_replace /* at least one level deeper */
+                                        .from_module_id
+                                        .eq(&proxy_tsm.module_id)
+                                    {
+                                        stmt_replaces.push(re_export_replace);
+                                    }
+                                }
+                                ExportSpecifierInfo::Namespace(_) => {}
+                                ExportSpecifierInfo::Ambiguous(_) => {}
+                            }
+                        }
+                    }
                 }
 
                 if !stmt_replaces.is_empty() {
@@ -397,20 +439,57 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
                         }
                     }
                 }
-                ModuleDecl::ExportDecl(_) => {
-                    todo!()
+                ModuleDecl::ExportDecl(_) => {}
+                ModuleDecl::ExportNamed(export_named) => {
+                    if export_named.src.is_some() {
+                        for replace in replaces {
+                            let mut matched_index = None;
+                            let mut matched_ident = None;
+
+                            for (index, specifier) in export_named.specifiers.iter_mut().enumerate()
+                            {
+                                match specifier {
+                                    ExportSpecifier::Namespace(_) => {}
+                                    ExportSpecifier::Default(default_specifier) => {
+                                        if replace.re_export_ident == "default" {
+                                            matched_ident = Some(default_specifier.exported.take());
+                                            matched_index = Some(index);
+                                        }
+                                    }
+                                    ExportSpecifier::Named(named_export_specifier) => {
+                                        match &mut named_export_specifier.orig {
+                                            ModuleExportName::Ident(ident) => {
+                                                if is_ident_sym_equal(
+                                                    ident.as_ref(),
+                                                    &replace.re_export_ident,
+                                                ) {
+                                                    matched_ident = Some(ident.take());
+                                                    matched_index = Some(index);
+                                                }
+                                            }
+                                            ModuleExportName::Str(_) => {}
+                                        }
+                                    }
+                                }
+                            }
+
+                            if let Some(index) = matched_index {
+                                export_named.specifiers.remove(index);
+                            }
+                            to_delete = export_named.specifiers.is_empty();
+
+                            if let Some(module_item) =
+                                matched_ident.map(|ident| replace.to_export_module_item(ident))
+                            {
+                                to_insert.push(module_item);
+                            }
+                        }
+                    }
                 }
-                ModuleDecl::ExportNamed(_) => {
-                    todo!()
-                }
-                ModuleDecl::ExportDefaultDecl(_) => {
-                    todo!()
-                }
-                ModuleDecl::ExportDefaultExpr(_) => {
-                    todo!()
-                }
+                ModuleDecl::ExportDefaultDecl(_) => {}
+                ModuleDecl::ExportDefaultExpr(_) => {}
                 ModuleDecl::ExportAll(_) => {
-                    todo!()
+                    // TODO
                 }
                 ModuleDecl::TsImportEquals(_)
                 | ModuleDecl::TsExportAssignment(_)
@@ -436,6 +515,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
 
                 // stmt_id is reversed order
                 for to_replace in replaces.iter() {
+                    // println!("{} apply with {:?}", module_id.id, to_replace.1);
                     apply_replace(&mut swc_module.body, to_replace)
                 }
 
@@ -783,6 +863,31 @@ pub struct ReExportReplace {
 }
 
 impl ReExportReplace {
+    pub(crate) fn to_export_module_item(&self, ident: Ident) -> ModuleItem {
+        match &self.re_export_source.re_export_type {
+            ReExportType2::Default => {
+                quote!("export { default as $ident } \"$from\";" as ModuleItem,
+                    ident: Ident = ident,
+                    _quote_var__quote_var__quote_var__quote_var__quote_var__quote_var__quote_var__quote_var_from: Str = quote_str!(self.from_module_id.id.clone())
+                )
+            }
+            ReExportType2::Named(local) => {
+                if ident.sym.eq(local) {
+                    quote!("export { $ident } from \"$from\";" as ModuleItem,
+                        ident: Ident = ident,
+                        from: Str = quote_str!(self.from_module_id.id.clone())
+                    )
+                } else {
+                    quote!("export { $local as $ident } from \"$from\";" as ModuleItem,
+                        local: Ident = quote_ident!(local.clone()),
+                        ident: Ident = ident,
+                        from: Str = quote_str!(self.from_module_id.id.clone())
+                    )
+                }
+            }
+        }
+    }
+
     pub(crate) fn to_import_module_item(&self, ident: Ident) -> ModuleItem {
         match &self.re_export_source.re_export_type {
             ReExportType2::Default => {
