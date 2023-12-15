@@ -51,7 +51,7 @@ impl BundlessCompiler {
 
         context
             .plugin_driver
-            .write_fs(&to, content.as_ref())
+            .before_write_fs(&to, content.as_ref())
             .unwrap();
 
         if !context.config.output.skip_write {

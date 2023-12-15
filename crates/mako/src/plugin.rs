@@ -113,7 +113,7 @@ pub trait Plugin: Any + Send + Sync {
         Ok(())
     }
 
-    fn write_fs(&self, _path: &Path, _content: &[u8]) -> Result<()> {
+    fn before_write_fs(&self, _path: &Path, _content: &[u8]) -> Result<()> {
         Ok(())
     }
 }
@@ -255,9 +255,13 @@ impl PluginDriver {
         Ok(())
     }
 
-    pub fn write_fs<P: AsRef<Path>, C: AsRef<[u8]>>(&self, path: P, content: C) -> Result<()> {
+    pub fn before_write_fs<P: AsRef<Path>, C: AsRef<[u8]>>(
+        &self,
+        path: P,
+        content: C,
+    ) -> Result<()> {
         for p in &self.plugins {
-            p.write_fs(path.as_ref(), content.as_ref())?;
+            p.before_write_fs(path.as_ref(), content.as_ref())?;
         }
 
         Ok(())

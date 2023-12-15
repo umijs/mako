@@ -73,7 +73,7 @@ impl Plugin for FsWritePlugin {
         "fs_write_hook"
     }
 
-    fn write_fs(&self, _path: &Path, _content: &[u8]) -> anyhow::Result<()> {
+    fn before_write_fs(&self, _path: &Path, _content: &[u8]) -> anyhow::Result<()> {
         write(_path, _content, &self.write)?;
         Ok(())
     }
