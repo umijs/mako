@@ -3,14 +3,12 @@ mod str_impl;
 pub mod util;
 
 use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use std::vec;
 
 use mako_core::anyhow::Result;
 use mako_core::indexmap::IndexSet;
 use mako_core::swc_css_ast::Stylesheet;
-use mako_core::twox_hash::XxHash64;
 
 use crate::chunk::{Chunk, ChunkType};
 use crate::chunk_pot::util::{hash_hashmap, hash_vec};
@@ -154,10 +152,7 @@ impl<'cp> ChunkPot<'cp> {
                     merged_css_modules.remove(index);
                 }
                 merged_css_modules.push((module.id.id.clone(), ast));
-
-                let mut hasher: XxHash64 = Default::default();
-                ast.hash(&mut hasher);
-                css_raw_hashes.push(hasher.finish());
+                css_raw_hashes.push(module_info.raw_hash);
             }
         }
 
