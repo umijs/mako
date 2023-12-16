@@ -9,6 +9,7 @@ use std::vec;
 use mako_core::anyhow::Result;
 use mako_core::indexmap::IndexSet;
 use mako_core::swc_css_ast::Stylesheet;
+use mako_core::ternary;
 
 use crate::chunk::{Chunk, ChunkType};
 use crate::chunk_pot::util::{hash_hashmap, hash_vec};
@@ -50,16 +51,28 @@ impl<'cp> ChunkPot<'cp> {
 
         let mut files = vec![];
 
-        let js_chunk_file = if self.use_eval(context) {
-            str_impl::render_normal_js_chunk(self, context)?
-        } else {
-            ast_impl::render_normal_js_chunk(self, context)?
-        };
+        let js_chunk_file = ternary!(
+            self.use_eval(context),
+            ternary!(
+                context.args.watch,
+                str_impl::render_normal_js_chunk,
+                str_impl::render_normal_js_chunk_no_cache
+            ),
+            ternary!(
+                context.args.watch,
+                ast_impl::render_normal_js_chunk,
+                ast_impl::render_normal_js_chunk_no_cache
+            )
+        )(self, context)?;
 
         files.push(js_chunk_file);
 
         if self.stylesheet.is_some() {
-            let css_chunk_file = ast_impl::render_css_chunk(self, context)?;
+            let css_chunk_file = ternary!(
+                context.args.watch,
+                ast_impl::render_css_chunk,
+                ast_impl::render_css_chunk_no_cache
+            )(self, context)?;
             files.push(css_chunk_file);
         }
 
