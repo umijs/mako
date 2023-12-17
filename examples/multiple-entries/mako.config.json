@@ -2,5 +2,15 @@
   "entry": {
     "a": "a.ts",
     "b": "b.ts"
+  },
+  "codeSplitting": {
+    "groups": [
+      {
+        "name": "common",
+        "allowChunks": "entry",
+        "minSize": 1,
+        "test": ".*"
+      }
+    ]
   }
 }

@@ -141,7 +141,7 @@ pub fn transform_modules_in_thread(
                         let swc_helpers = if context.args.watch {
                             None
                         } else {
-                            Some(SwcHelpers::get_swc_helpers(&ast.ast))
+                            Some(SwcHelpers::get_swc_helpers(&ast.ast, &context))
                         };
                         Ok((module_id, ModuleAst::Script(ast.clone()), swc_helpers))
                     }

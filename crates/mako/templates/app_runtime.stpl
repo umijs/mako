@@ -1,4 +1,5 @@
 function createRuntime(makoModules, entryModuleId) {
+  var global = typeof globalThis !== 'undefined' ? globalThis : self;
   var modulesRegistry = {};
 
   function requireModule(moduleId) {
@@ -120,16 +121,16 @@ function createRuntime(makoModules, entryModuleId) {
   /* mako/runtime/ensure load css chunk */
   !(function () {
     var publicPathWithoutOrigin;
-
-    try {
-      publicPathWithoutOrigin = new URL(
-        requireModule.publicPath.replace(/^(\/\/)/, 'https:$1')
-      ).pathname;
-    } catch {}
-
     requireModule.cssInstalled = cssInstalledChunks;
     // __CSS_CHUNKS_URL_MAP
     requireModule.findStylesheet = function (url) {
+      try {
+        if (!publicPathWithoutOrigin) {
+          publicPathWithoutOrigin = new URL(
+            requireModule.publicPath.replace(/^(\/\/)/, 'https:$1')
+          ).pathname;
+        }
+      } catch {}
       return Array.from(
         document.querySelectorAll('link[href][rel=stylesheet]'),
       ).find(function (link) {
@@ -267,6 +268,12 @@ function createRuntime(makoModules, entryModuleId) {
   })();
 <% } %>
 
+  var registerModules = function(modules) {
+    for (var id in modules) {
+      makoModules[id] = modules[id];
+    }
+  };
+
 <% if has_dynamic_chunks { %>
   var jsonpCallback = function (data) {
     var installedChunks = requireModule.jsonpInstalled;
@@ -287,13 +294,13 @@ function createRuntime(makoModules, entryModuleId) {
       installedChunks[id] = 0;
     }
   };
+  var chunkLoadingGlobal = global['<%= chunk_loading_global.clone() %>'] = global['<%= chunk_loading_global.clone() %>'] || [];
+	chunkLoadingGlobal.forEach(jsonpCallback.bind(null));
+  chunkLoadingGlobal.push = (function(push, data) {
+    push(data);
+    jsonpCallback(data);
+  }).bind(null, chunkLoadingGlobal.push.bind(chunkLoadingGlobal));
 <% } %>
-
-  var registerModules = function(modules) {
-    for (var id in modules) {
-      makoModules[id] = modules[id];
-    }
-  };
 
   // __inject_runtime_code__
 

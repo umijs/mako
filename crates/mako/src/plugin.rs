@@ -7,24 +7,21 @@ use mako_core::swc_common::errors::Handler;
 use mako_core::swc_common::Mark;
 use mako_core::swc_ecma_ast::Module;
 
-use crate::build::FileRequest;
 use crate::compiler::{Args, Context};
 use crate::config::Config;
 use crate::load::Content;
 use crate::module::{Dependency, ModuleAst};
 use crate::module_graph::ModuleGraph;
 use crate::stats::StatsJsonMap;
+use crate::task::Task;
 
 #[derive(Debug)]
 pub struct PluginLoadParam<'a> {
-    pub path: String,
-    pub is_entry: bool,
-    pub ext_name: Option<&'a str>,
-    pub request: &'a FileRequest,
+    pub task: &'a Task,
 }
 
 pub struct PluginParseParam<'a> {
-    pub request: &'a FileRequest,
+    pub task: &'a Task,
     pub content: &'a Content,
 }
 
@@ -113,6 +110,10 @@ pub trait Plugin: Any + Send + Sync {
         _module_graph: &mut ModuleGraph,
         _context: &Arc<Context>,
     ) -> Result<()> {
+        Ok(())
+    }
+
+    fn before_write_fs(&self, _path: &Path, _content: &[u8]) -> Result<()> {
         Ok(())
     }
 }
@@ -249,6 +250,18 @@ impl PluginDriver {
     ) -> Result<()> {
         for p in &self.plugins {
             p.optimize_module_graph(module_graph, context)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn before_write_fs<P: AsRef<Path>, C: AsRef<[u8]>>(
+        &self,
+        path: P,
+        content: C,
+    ) -> Result<()> {
+        for p in &self.plugins {
+            p.before_write_fs(path.as_ref(), content.as_ref())?;
         }
 
         Ok(())

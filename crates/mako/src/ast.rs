@@ -28,7 +28,7 @@ use crate::config::{DevtoolConfig, Mode};
 use crate::sourcemap::build_source_map;
 
 #[derive(Debug, Error)]
-#[error("{error_message:?}")]
+#[error("{error_message:}")]
 struct ParseError {
     resolved_path: String,
     error_message: String,
@@ -233,6 +233,7 @@ pub fn js_ast_to_code(
     let code = String::from_utf8(buf)?;
     Ok((code, sourcemap))
 }
+
 #[allow(dead_code)]
 pub fn css_ast_to_code(
     ast: &Stylesheet,

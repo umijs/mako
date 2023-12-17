@@ -4,7 +4,7 @@
     "ignore": [
       "./examples/**/dist/*", "./.vscode/**", "node_modules/**", "target/**",
       "./crates/node/index.js", "./crates/mako/test/**/*", "./test/**/dist/*",
-      "./test/build/tmp/**/*"
+      "./test/build/tmp/**/*", "./e2e/**/*"
     ],
     "indentStyle": "space",
     "indentSize": 2,

@@ -38,7 +38,7 @@ impl<'cp> ChunkPot<'cp> {
         Ok(ChunkPot {
             js_name: chunk.filename(),
             chunk_type: chunk.chunk_type.clone(),
-            chunk_id: chunk.id.generate(context),
+            chunk_id: chunk.id.id.clone(),
             module_map: js_modules.module_map,
             js_hash: js_modules.raw_hash,
             stylesheet,

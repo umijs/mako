@@ -1,0 +1,10 @@
+{
+  "resolve": {
+    "alias": {
+      "@foo": "./src/foo",
+      "@bar": "./src/bar",
+      "@baz": "@bar",
+      "zoo:hoo": "./src/zoo_hoo"
+    }
+  }
+}

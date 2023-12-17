@@ -35,9 +35,9 @@ impl Plugin for MinifishPlugin {
     }
 
     fn load(&self, param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
-        if matches!(param.ext_name, Some("json" | "json5")) {
+        if param.task.is_match(vec!["json", "json5"]) {
             let root = _context.root.clone();
-            let to: PathBuf = param.path.clone().into();
+            let to: PathBuf = param.task.request.path.clone().into();
 
             let relative = to
                 .strip_prefix(root)
@@ -49,10 +49,10 @@ impl Plugin for MinifishPlugin {
                 Some(js_content) => Ok(Some(Content::Js(js_content.to_string()))),
 
                 None => {
-                    let content = read_content(param.path.as_str())?;
+                    let content = read_content(param.task.path.as_str())?;
 
                     let asset = Asset {
-                        path: param.path.clone(),
+                        path: param.task.path.clone(),
                         content,
                     };
 
@@ -68,7 +68,7 @@ impl Plugin for MinifishPlugin {
         param: &PluginParseParam,
         _context: &Arc<Context>,
     ) -> Result<Option<ModuleAst>> {
-        if param.request.path.ends_with(".json") {
+        if param.task.request.path.ends_with(".json") {
             if let Assets(_) = param.content {
                 return Ok(Some(ModuleAst::None));
             }

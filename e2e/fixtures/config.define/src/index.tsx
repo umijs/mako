@@ -1,0 +1,9 @@
+process.env.NODE_ENV;
+console.log(AAA);
+console.log(BBB);
+console.log(CCC);
+console.log(DDD);
+console.log(EEE);
+console.log(FFF);
+console.log(GGG);
+console.log(HHH);

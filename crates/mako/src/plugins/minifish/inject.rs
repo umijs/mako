@@ -223,6 +223,7 @@ mod tests {
     use crate::module::ModuleAst;
     use crate::plugin::PluginDriver;
     use crate::plugins::javascript::JavaScriptPlugin;
+    use crate::task::Task;
 
     fn apply_inject_to_code(injects: HashMap<String, &Inject>, code: &str) -> String {
         let mut context = Context::default();
@@ -515,7 +516,7 @@ my.call("toast");
 
         let module_ast = ModuleAst::Script(ast);
 
-        let deps = analyze_deps(&module_ast, &context).unwrap();
+        let deps = analyze_deps(&module_ast, &Task::default(), &context).unwrap();
 
         assert_eq!(deps.len(), 1);
     }

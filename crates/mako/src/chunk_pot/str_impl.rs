@@ -95,10 +95,10 @@ pub(super) fn render_entry_js_chunk(
 
 #[cached(
     result = true,
-    type = "SizedCache<u64 , ChunkFile>",
+    type = "SizedCache<String , ChunkFile>",
     create = "{ SizedCache::with_size(500) }",
-    key = "u64",
-    convert = "{chunk_pot.js_hash}"
+    key = "String",
+    convert = r#"{format!("{}.{:x}", chunk_pot.chunk_id, chunk_pot.js_hash)}"#
 )]
 pub(super) fn render_normal_js_chunk(
     chunk_pot: &ChunkPot,
@@ -121,8 +121,10 @@ pub(super) fn render_normal_js_chunk(
 
 pub fn pot_to_chunk_module_content(pot: &ChunkPot, context: &Arc<Context>) -> Result<String> {
     Ok(format!(
-        r#"globalThis.jsonpCallback([["{}"],
+        r#"(globalThis['{}'] = globalThis['{}'] || []).push([['{}'],
 {}]);"#,
+        context.config.output.chunk_loading_global,
+        context.config.output.chunk_loading_global,
         pot.chunk_id,
         pot_to_chunk_module_object_string(pot, context)?
     ))

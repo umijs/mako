@@ -1,0 +1,7 @@
+{
+  "resolve": {
+    "alias": {
+      "hoo": "./node_modules/hoo"
+    }
+  }
+}
