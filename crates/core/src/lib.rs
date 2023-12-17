@@ -55,11 +55,11 @@ macro_rules! mako_profile_function {
 
 #[macro_export]
 macro_rules! ternary {
-    ($if_expr:expr, $if_fn:expr, $else_fn:expr) => {
-        if $if_expr {
-            $if_fn
+    ($if_condition:expr, $if_stmt:expr, $else_stmt:expr) => {
+        if $if_condition {
+            $if_stmt
         } else {
-            $else_fn
+            $else_stmt
         }
     };
 }
