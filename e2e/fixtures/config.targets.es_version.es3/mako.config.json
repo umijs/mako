@@ -1,0 +1,4 @@
+{
+  "targets": "es3",
+  "treeShake": "none"
+}

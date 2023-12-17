@@ -1,0 +1,4 @@
+{
+  "targets": "es2016",
+  "treeShake": "none"
+}
