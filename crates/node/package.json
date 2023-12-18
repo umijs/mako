@@ -32,7 +32,7 @@
     "build:debug": "napi build --platform",
     "postbuild:debug": "npm run format:dts",
     "prepublishOnly": "napi prepublish -t npm",
-    "format:dts": "rome format --write index.d.ts",
+    "format:dts": "biome format --write index.d.ts",
     "test": "ava",
     "universal": "napi universal",
     "version": "napi version",
