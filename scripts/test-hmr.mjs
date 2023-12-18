@@ -1,6 +1,6 @@
-import 'zx/globals';
-import { chromium, devices } from 'playwright';
 import assert from 'assert';
+import { chromium, devices } from 'playwright';
+import 'zx/globals';
 
 function skip() {}
 

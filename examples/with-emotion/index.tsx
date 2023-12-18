@@ -1,7 +1,7 @@
 import { css } from '@emotion/react';
 import styled from '@emotion/styled';
-import ReactDOM from 'react-dom/client';
 import React from 'react';
+import ReactDOM from 'react-dom/client';
 
 const style = css`
   color: hotpink;
