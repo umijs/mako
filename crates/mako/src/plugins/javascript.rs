@@ -15,6 +15,7 @@ use mako_core::swc_ecma_visit::{Visit, VisitWith};
 use super::css::is_url_ignored;
 use crate::ast::build_js_ast;
 use crate::compiler::Context;
+use crate::config::Platform;
 use crate::load::{read_content, Content};
 use crate::module::{Dependency, ModuleAst, ResolveType};
 use crate::plugin::{Plugin, PluginDepAnalyzeParam, PluginLoadParam, PluginParseParam};
@@ -35,17 +36,20 @@ impl Plugin for JavaScriptPlugin {
                 let port = &context.config.hmr_port.to_string();
                 let host = &context.config.hmr_host.to_string();
                 let host = if host == "0.0.0.0" { "127.0.0.1" } else { host };
-                let content = format!(
+                let mut content = format!(
                     "module.exports = require(\"{}\");",
                     param.task.request.path.as_str()
                 );
-                let content = format!(
-                    "{}\n{}\n",
-                    include_str!("../runtime/runtime_hmr_entry.js"),
-                    content,
-                )
-                .replace("__PORT__", port)
-                .replace("__HOST__", host);
+                let is_browser = matches!(context.config.platform, Platform::Browser);
+                if is_browser {
+                    content = format!(
+                        "{}\n{}\n",
+                        include_str!("../runtime/runtime_hmr_entry.js"),
+                        content,
+                    )
+                    .replace("__PORT__", port)
+                    .replace("__HOST__", host);
+                }
                 return Ok(Some(Content::Js(content)));
             }
 

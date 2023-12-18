@@ -27,8 +27,12 @@ pub fn mako_react(
     unresolved_mark: &Mark,
 ) -> Box<dyn VisitMut> {
     let is_dev = matches!(context.config.mode, Mode::Development);
-    let use_refresh =
-        is_dev && context.args.watch && context.config.hmr && !task.path.contains("/node_modules/");
+    let is_browser = matches!(context.config.platform, crate::config::Platform::Browser);
+    let use_refresh = is_dev
+        && context.args.watch
+        && context.config.hmr
+        && !task.path.contains("/node_modules/")
+        && is_browser;
 
     let is_jsx = task.path.ends_with(".jsx")
         || task.path.ends_with(".js")
