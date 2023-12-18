@@ -258,6 +258,66 @@ runTest('css: entry > css hmr with hostname runtime public', async () => {
   await cleanup({ process, browser });
 });
 
+runTest('css: entry > css chunk hmr with hashed chunk id', async () => {
+  write(
+    normalizeFiles(
+      {
+        '/public/index.html': `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Document</title>
+    </head>
+    <body>
+      <div id="root"></div>
+      <script src="/index.js"></script>
+    </body>
+    </html>
+          `,
+        '/src/App.css': `.foo {color:red;}`,
+        '/src/App.tsx': `
+  import('./App.css');
+  function App() {
+    return <div className="foo">App</div>;
+  }
+  export default App;
+        `,
+        '/src/index.tsx': `
+  import React from 'react';
+  import ReactDOM from "react-dom/client";
+  import App from './App';
+  ReactDOM.createRoot(document.getElementById("root")!).render(<><App /><section>{Math.random()}</section></>);
+      `,
+      },
+      { moduleIdStrategy: 'hashed' },
+    ),
+  );
+  await startMakoDevServer();
+  await delay(DELAY_TIME);
+  const { browser, page } = await startBrowser();
+  let lastResult;
+  let thisResult;
+  let isReload;
+  lastResult = normalizeHtml(await getRootHtml(page));
+  const lastColor = await getElementColor(page, '.foo');
+  assert.equal(lastColor, 'rgb(255, 0, 0)', 'Initial render');
+  write({
+    '/src/App.css': `.foo {color:blue;}`,
+  });
+  await delay(DELAY_TIME);
+  thisResult = normalizeHtml(await getRootHtml(page));
+  const thisColor = await getElementColor(page, '.foo');
+  console.log(`new color`, thisColor, 'expect color', 'rgb(0, 0, 255)');
+  assert.equal(thisColor, 'rgb(0, 0, 255)', 'Second render');
+  isReload = lastResult.random !== thisResult.random;
+  assert.equal(isReload, false, 'should not reload');
+  lastResult = thisResult;
+  await cleanup({ process, browser });
+});
+
 runTest('js: entry > js, remove then add back', async () => {
   write(
     normalizeFiles({
