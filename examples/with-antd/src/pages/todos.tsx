@@ -1,7 +1,7 @@
-import React from 'react';
-import { proxy, useSnapshot, subscribe, snapshot } from 'valtio';
 import { Checkbox, Input } from 'antd';
+import React from 'react';
 import styled from 'styled-components';
+import { proxy, snapshot, subscribe, useSnapshot } from 'valtio';
 
 export function proxyWithPersist<V extends Object>(
   val: V,

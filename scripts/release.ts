@@ -1,5 +1,5 @@
-import 'zx/globals';
 import { parse } from 'semver';
+import 'zx/globals';
 
 (async () => {
   // Check branch

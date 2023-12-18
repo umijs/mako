@@ -1,17 +1,17 @@
-import React from 'react';
 import {
-  useQuery,
   QueryClient,
   QueryClientProvider,
+  useQuery,
 } from '@tanstack/react-query';
+import React from 'react';
 
 export function ReactQueryInternal() {
   // fetch https://jsonplaceholder.typicode.com/posts/1
   const { data: queryData, isLoading } = useQuery({
     queryKey: ['posts', '1'],
     queryFn: () => {
-      return fetch('https://jsonplaceholder.typicode.com/posts/1').then(
-        (res) => res.json(),
+      return fetch('https://jsonplaceholder.typicode.com/posts/1').then((res) =>
+        res.json(),
       );
     },
   });

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://biomejs.dev/schemas/1.4.1/schema.json",
+  "files": {
+    "ignore": [
+      "./examples/**/dist/*",
+      "./examples/**/.umi/*",
+      "./examples/**/.umi-production/*",
+      "./.vscode/**",
+      "node_modules/**",
+      "target/**",
+      "./crates/node/index.js",
+      "./crates/mako/test/**/*",
+      "./test/**/dist/*",
+      "./test/build/tmp/**/*",
+      "./e2e/**/*"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 80
+  },
+  "organizeImports": {
+    "enabled": true
+  },
+  "linter": {
+    "enabled": false,
+    "rules": {
+      "recommended": true
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single"
+    }
+  }
+}
