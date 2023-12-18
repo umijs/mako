@@ -13,6 +13,7 @@ use mako_core::swc_ecma_ast::{
     PropOrSpread, Stmt, UnaryExpr, UnaryOp, VarDeclKind,
 };
 use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
+use mako_core::ternary;
 
 use crate::ast::{build_js_ast, Ast};
 use crate::chunk::{Chunk, ChunkType};
@@ -156,7 +157,11 @@ pub(crate) fn render_entry_js_chunk(
         content,
         source_map,
         hash,
-    } = render_entry_chunk_js_without_full_hash(pot, js_map, css_map, chunk, context)?;
+    } = ternary!(
+        context.args.watch,
+        render_entry_chunk_js_without_full_hash,
+        render_entry_chunk_js_without_full_hash_no_cache
+    )(pot, js_map, css_map, chunk, context)?;
 
     let content = {
         mako_core::mako_profile_scope!("full_hash_replace");

@@ -7,10 +7,11 @@ use mako_core::cached::SizedCache;
 use mako_core::rayon::prelude::*;
 use mako_core::swc_ecma_codegen::text_writer::JsWriter;
 use mako_core::swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
+use mako_core::ternary;
 
 use crate::ast::base64_encode;
 use crate::chunk::Chunk;
-use crate::chunk_pot::ast_impl::render_css_chunk;
+use crate::chunk_pot::ast_impl::{render_css_chunk, render_css_chunk_no_cache};
 use crate::chunk_pot::util::runtime_code;
 use crate::chunk_pot::ChunkPot;
 use crate::compiler::Context;
@@ -39,7 +40,11 @@ pub(super) fn render_entry_js_chunk(
 
     if pot.stylesheet.is_some() {
         mako_core::mako_profile_scope!("CssChunk");
-        let css_chunk_file = render_css_chunk(pot, context)?;
+        let css_chunk_file = ternary!(
+            context.args.watch,
+            render_css_chunk,
+            render_css_chunk_no_cache
+        )(pot, context)?;
 
         let mut css_map = css_map.clone();
         css_map.insert(css_chunk_file.chunk_id.clone(), css_chunk_file.disk_name());
