@@ -127,7 +127,7 @@ impl VisitMut for DepReplacer<'_> {
                                     chunk_graph.get_chunk_for_module(&dep_module_id.clone());
 
                                 if let Some(chunk) = chunk {
-                                    let chunk_id = chunk.id.generate(self.context);
+                                    let chunk_id = chunk.id.id.clone();
                                     // `import('./xxx.css')` => `__mako_require__.ensure('./xxx.css')`
                                     *expr = member_expr!(DUMMY_SP, __mako_require__.ensure)
                                         .as_call(DUMMY_SP, vec![quote_str!(chunk_id).as_arg()]);

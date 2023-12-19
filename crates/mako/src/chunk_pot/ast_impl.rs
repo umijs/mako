@@ -13,6 +13,7 @@ use mako_core::swc_ecma_ast::{
     PropOrSpread, Stmt, UnaryExpr, UnaryOp, VarDeclKind,
 };
 use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
+use mako_core::{mako_profile_scope, ternary};
 
 use crate::ast::{build_js_ast, Ast};
 use crate::chunk::{Chunk, ChunkType};
@@ -25,6 +26,7 @@ use crate::load::file_content_hash;
 use crate::minify::{minify_css, minify_js};
 use crate::sourcemap::build_source_map;
 use crate::transform_in_generate::transform_css_generate;
+use crate::util::merge_source_map;
 
 #[cached(
     result = true,
@@ -33,7 +35,11 @@ use crate::transform_in_generate::transform_css_generate;
     key = "String",
     convert = r#"{format!("{}.{:x}",chunk_pot.chunk_id,chunk_pot.stylesheet.as_ref().unwrap().raw_hash)}"#
 )]
-pub(crate) fn render_css_chunk(chunk_pot: &ChunkPot, context: &Arc<Context>) -> Result<ChunkFile> {
+pub(crate) fn render_css_chunk(
+    chunk_pot: &ChunkPot,
+    chunk: &Chunk,
+    context: &Arc<Context>,
+) -> Result<ChunkFile> {
     mako_core::mako_profile_function!(&chunk_pot.js_name);
     let mut css_code = String::new();
     let mut source_map = Vec::new();
@@ -74,7 +80,24 @@ pub(crate) fn render_css_chunk(chunk_pot: &ChunkPot, context: &Arc<Context>) -> 
     let cm = &context.meta.css.cm;
     let source_map = match context.config.devtool {
         DevtoolConfig::None => None,
-        _ => Some(build_source_map(&source_map, cm)),
+        _ => {
+            mako_profile_scope!("build_source_map");
+            // source map chain
+            let mut source_map_chain: Vec<Vec<u8>> = vec![];
+
+            let module_graph = context.module_graph.read().unwrap();
+            chunk.get_modules().iter().for_each(|module_id| {
+                let module = module_graph.get_module(module_id).unwrap();
+                let info = module.info.as_ref().unwrap();
+                if matches!(info.ast, crate::module::ModuleAst::Css(_)) {
+                    source_map_chain.append(&mut info.source_map_chain.clone());
+                }
+            });
+
+            source_map_chain.push(build_source_map(&source_map, cm));
+
+            Some(merge_source_map(source_map_chain, context.root.clone()))
+        }
     };
 
     let css_hash = if context.config.hash {
@@ -156,7 +179,11 @@ pub(crate) fn render_entry_js_chunk(
         content,
         source_map,
         hash,
-    } = render_entry_chunk_js_without_full_hash(pot, js_map, css_map, chunk, context)?;
+    } = ternary!(
+        context.args.watch,
+        render_entry_chunk_js_without_full_hash,
+        render_entry_chunk_js_without_full_hash_no_cache
+    )(pot, js_map, css_map, chunk, context)?;
 
     let content = {
         mako_core::mako_profile_scope!("full_hash_replace");

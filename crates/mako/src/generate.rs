@@ -434,28 +434,29 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
 
     let to: PathBuf = context.config.output.path.join(chunk_file.disk_name());
 
-    if let Some(source_map) = &chunk_file.source_map {
-        match context.config.devtool {
-            DevtoolConfig::SourceMap => {
-                {
-                    let size = source_map.len() as u64;
-                    context.stats_info.lock().unwrap().add_assets(
-                        size,
-                        chunk_file.source_map_name(),
-                        chunk_file.chunk_id.clone(),
-                        to.clone(),
-                        chunk_file.source_map_disk_name(),
-                    );
-                    fs::write(
-                        context
-                            .config
-                            .output
-                            .path
-                            .join(chunk_file.source_map_disk_name()),
-                        source_map,
-                    )
-                    .unwrap();
-                }
+    match context.config.devtool {
+        DevtoolConfig::SourceMap => {
+            let mut code = Vec::new();
+            code.extend_from_slice(&chunk_file.content);
+
+            if let Some(source_map) = &chunk_file.source_map {
+                let size = source_map.len() as u64;
+                context.stats_info.lock().unwrap().add_assets(
+                    size,
+                    chunk_file.source_map_name(),
+                    chunk_file.chunk_id.clone(),
+                    to.clone(),
+                    chunk_file.source_map_disk_name(),
+                );
+                fs::write(
+                    context
+                        .config
+                        .output
+                        .path
+                        .join(chunk_file.source_map_disk_name()),
+                    source_map,
+                )
+                .unwrap();
 
                 let source_map_url_line = match chunk_file.file_type {
                     ChunkFileType::JS => {
@@ -471,26 +472,24 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
                         )
                     }
                 };
-
-                let mut code = Vec::new();
-
-                code.extend_from_slice(&chunk_file.content);
                 code.extend_from_slice(source_map_url_line.as_bytes());
-
-                let size = code.len() as u64;
-                context.stats_info.lock().unwrap().add_assets(
-                    size,
-                    chunk_file.file_name.clone(),
-                    chunk_file.chunk_id.clone(),
-                    to.clone(),
-                    chunk_file.disk_name(),
-                );
-                fs::write(to, &code).unwrap();
             }
-            DevtoolConfig::InlineSourceMap => {
-                let mut code = Vec::new();
 
-                code.extend_from_slice(&chunk_file.content);
+            let size = code.len() as u64;
+            context.stats_info.lock().unwrap().add_assets(
+                size,
+                chunk_file.file_name.clone(),
+                chunk_file.chunk_id.clone(),
+                to.clone(),
+                chunk_file.disk_name(),
+            );
+            fs::write(to, &code).unwrap();
+        }
+        DevtoolConfig::InlineSourceMap => {
+            let mut code = Vec::new();
+            code.extend_from_slice(&chunk_file.content);
+
+            if let Some(source_map) = &chunk_file.source_map {
                 code.extend_from_slice(
                     format!(
                         "\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,{}",
@@ -498,28 +497,28 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
                     )
                     .as_bytes(),
                 );
-
-                let size = code.len() as u64;
-                context.stats_info.lock().unwrap().add_assets(
-                    size,
-                    chunk_file.file_name.clone(),
-                    chunk_file.chunk_id.clone(),
-                    to.clone(),
-                    chunk_file.disk_name(),
-                );
-                fs::write(to, code).unwrap();
             }
-            DevtoolConfig::None => {
-                context.stats_info.lock().unwrap().add_assets(
-                    chunk_file.content.len() as u64,
-                    chunk_file.file_name.clone(),
-                    chunk_file.chunk_id.clone(),
-                    to.clone(),
-                    chunk_file.disk_name(),
-                );
 
-                fs::write(to, &chunk_file.content).unwrap();
-            }
+            let size = code.len() as u64;
+            context.stats_info.lock().unwrap().add_assets(
+                size,
+                chunk_file.file_name.clone(),
+                chunk_file.chunk_id.clone(),
+                to.clone(),
+                chunk_file.disk_name(),
+            );
+            fs::write(to, code).unwrap();
+        }
+        DevtoolConfig::None => {
+            context.stats_info.lock().unwrap().add_assets(
+                chunk_file.content.len() as u64,
+                chunk_file.file_name.clone(),
+                chunk_file.chunk_id.clone(),
+                to.clone(),
+                chunk_file.disk_name(),
+            );
+
+            fs::write(to, &chunk_file.content).unwrap();
         }
     }
 }

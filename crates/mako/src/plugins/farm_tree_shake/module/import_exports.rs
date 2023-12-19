@@ -455,6 +455,7 @@ mod tests {
                 top_level_await: false,
                 is_async: false,
                 resolved_resource: None,
+                source_map_chain: vec![],
             }),
             side_effects: false,
         };

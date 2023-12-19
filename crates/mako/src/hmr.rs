@@ -22,12 +22,10 @@ impl Compiler {
         let module_graph = &self.context.module_graph.read().unwrap();
         let (js_stmts, _) = modules_to_js_stmts(module_ids, module_graph, &self.context).unwrap();
         let mut content = include_str!("runtime/runtime_hmr.js").to_string();
-        content = content
-            .replace("__CHUNK_ID__", &chunk.id.generate(&self.context))
-            .replace(
-                "__runtime_code__",
-                &format!("runtime._h='{}';", current_hash),
-            );
+        content = content.replace("__CHUNK_ID__", &chunk.id.id).replace(
+            "__runtime_code__",
+            &format!("runtime._h='{}';", current_hash),
+        );
         // TODO: handle error
         let mut js_ast = build_js_ast(filename, content.as_str(), &self.context)
             .unwrap()

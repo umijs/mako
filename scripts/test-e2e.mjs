@@ -1,5 +1,5 @@
-import 'zx/globals';
 import test from 'node:test';
+import 'zx/globals';
 
 // node version 小于 20 时退出
 const nodeVersion = process.versions.node.split('.')[0];

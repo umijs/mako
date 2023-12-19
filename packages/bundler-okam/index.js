@@ -10,7 +10,7 @@ const {
 } = require('@umijs/bundler-utils/compiled/http-proxy-middleware');
 
 const onCompileLess = async function (opts, filePath) {
-  const { alias, modifyVars, config } = opts;
+  const { alias, modifyVars, config, sourceMap } = opts;
   const less = require('@umijs/bundler-utils/compiled/less');
   const input = fs.readFileSync(filePath, 'utf-8');
   const resolvePlugin = new (require('less-plugin-resolve'))({
@@ -22,6 +22,7 @@ const onCompileLess = async function (opts, filePath) {
     math: config.lessLoader?.math,
     plugins: [resolvePlugin],
     modifyVars,
+    sourceMap,
   });
   return result.css;
 };
@@ -60,6 +61,7 @@ exports.build = async function (opts) {
           // NOTICE: 有个缺点是 如果 alias 配置是 mako 插件修改的 less 这边就感知到不了
           alias: okamConfig.resolve.alias,
           modifyVars: okamConfig.less.theme,
+          sourceMap: getLessSourceMapConfig(okamConfig.devtool),
         }),
       },
       watch: false,
@@ -192,6 +194,7 @@ exports.dev = async function (opts) {
           config: opts.config,
           alias: okamConfig.resolve.alias,
           modifyVars: okamConfig.less.theme,
+          sourceMap: getLessSourceMapConfig(okamConfig.devtool),
         }),
         onBuildComplete: (args) => {
           opts.onDevCompileDone(args);
@@ -571,6 +574,15 @@ async function getOkamConfig(opts) {
   }
 
   return okamConfig;
+}
+
+function getLessSourceMapConfig(devtool) {
+  return (
+    devtool !== 'none' && {
+      sourceMapFileInline: true,
+      outputSourceFiles: true,
+    }
+  );
 }
 
 function normalizeDefineValue(val) {

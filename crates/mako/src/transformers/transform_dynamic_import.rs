@@ -5,8 +5,8 @@ use mako_core::swc_ecma_ast::{ArrayLit, Expr, ExprOrSpread, Lit};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use super::utils::{id, member_call, member_prop, promise_all, require_ensure};
+use crate::chunk::ChunkId;
 use crate::compiler::Context;
-use crate::module::{generate_module_id, ModuleId};
 use crate::plugins::javascript::is_dynamic_import;
 
 pub struct DynamicImport<'a> {
@@ -27,7 +27,7 @@ impl VisitMut for DynamicImport<'_> {
                 {
                     // note: the source is replaced !
                     let resolved_source = source.value.clone().to_string();
-                    let chunk_id: ModuleId = resolved_source.clone().into();
+                    let chunk_id: ChunkId = resolved_source.clone().into();
 
                     let chunk_graph = &self.context.chunk_graph.read().unwrap();
 
@@ -42,14 +42,12 @@ impl VisitMut for DynamicImport<'_> {
                             .concat()
                             .iter()
                             .filter_map(|chunk_id| {
-                                let id = generate_module_id(chunk_id.id.clone(), self.context);
-
                                 // skip empty chunk because it will not be generated
                                 if chunk_graph
                                     .chunk(chunk_id)
                                     .is_some_and(|c| !c.modules.is_empty())
                                 {
-                                    Some(id)
+                                    Some(chunk_id.id.clone())
                                 } else {
                                     None
                                 }
