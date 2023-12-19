@@ -8,13 +8,30 @@ const asyncContent = files[names.find((name) => name.startsWith("src_i18n_"))];
 
 assert.match(
   content,
-  moduleReg("src/i18n\\?context&glob=\\*\\*/\\*", "'./zh-CN.json': ()=>__mako_require__(\"src/i18n/zh-CN.json\")", true),
+  moduleReg(
+    "src/i18n\\?context&glob=\\*\\*/\\*",
+    [
+      "'./zh-CN.json': ()=>__mako_require__(\"src/i18n/zh-CN.json\")",
+      "'./zh-CN': ()=>__mako_require__(\"src/i18n/zh-CN.json\")",
+    ].join(',\n\\s+'),
+    true,
+  ),
   "should generate context module with correct map",
 );
 
 assert.match(
   content,
-  moduleReg("src/fake.js\\?context&glob=\\*\\*/\\*", "'./a.js': ()=>__mako_require__(\"src/fake.js/a.js\")", true),
+  moduleReg(
+    "src/fake.js\\?context&glob=\\*\\*/\\*",
+    [
+      "'./a': ()=>__mako_require__(\"src/fake.js/a.js\")",
+      "'./index.js': ()=>__mako_require__(\"src/fake.js/index.js\")",
+      "'./index': ()=>__mako_require__(\"src/fake.js/index.js\")",
+      "'.': ()=>__mako_require__(\"src/fake.js/index.js\")",
+      "'./': ()=>__mako_require__(\"src/fake.js/index.js\")",
+    ].join(',\n\\s+'),
+    true,
+  ),
   "should generate context module for fake ext directory with correct map",
 );
 
