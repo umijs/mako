@@ -11,8 +11,8 @@ pub(crate) mod used_idents_collector;
 use analyze_imports_and_exports::analyze_imports_and_exports;
 use mako_core::swc_common::{Span, SyntaxContext};
 
-use crate::plugins::farm_tree_shake::module::{is_ident_equal, is_ident_sym_equal, UsedIdent};
-use crate::plugins::farm_tree_shake::shake::{strip_context, ReExportSource, ReExportType};
+use crate::plugins::farm_tree_shake::module::{is_ident_equal, UsedIdent};
+use crate::plugins::farm_tree_shake::shake::strip_context;
 use crate::plugins::farm_tree_shake::statement_graph::analyze_imports_and_exports::StatementInfo;
 
 pub type StatementId = usize;
@@ -116,7 +116,7 @@ pub enum ExportInfoMatch {
 }
 
 impl ExportInfo {
-    pub fn find_define_specifier(&self, ident: &String) -> Option<&ExportSpecifierInfo> {
+    pub fn find_export_specifier(&self, ident: &String) -> Option<&ExportSpecifierInfo> {
         for specifier in self.specifiers.iter() {
             match specifier {
                 ExportSpecifierInfo::Default(_) => {
@@ -220,86 +220,6 @@ pub struct Statement {
     pub is_self_executed: bool,
     pub has_side_effects: bool,
     pub span: Span,
-}
-
-impl Statement {
-    pub(crate) fn to_re_export_type(&self, ref_ident: &String) -> Option<ReExportSource> {
-        if let Some(export_info) = &self.export_info {
-            for x in export_info.specifiers.iter() {
-                match x {
-                    // export * from 'foo';
-                    ExportSpecifierInfo::All(_) => {
-                        todo!()
-                    }
-
-                    // export { foo } from "foo"
-                    // export { foo as bar } from "foo"
-                    ExportSpecifierInfo::Named { local, exported } => {
-                        if let Some(exported) = exported {
-                            if is_ident_equal(ref_ident, exported) {
-                                return Some(ReExportSource {
-                                    re_export_type: ReExportType::Named(
-                                        strip_context(local),
-                                        Some(strip_context(exported)),
-                                    ),
-                                    source: export_info.source.clone(),
-                                });
-                            }
-                        } else if is_ident_equal(ref_ident, local) {
-                            return Some(ReExportSource {
-                                re_export_type: ReExportType::Named(strip_context(local), None),
-                                source: export_info.source.clone(),
-                            });
-                        }
-                    }
-
-                    // export foo from "foo"
-                    // export default from "foo"
-                    ExportSpecifierInfo::Default(_) => {
-                        todo!()
-                    }
-
-                    // export * as foo from 'foo';
-                    ExportSpecifierInfo::Namespace(_) => {}
-                    ExportSpecifierInfo::Ambiguous(_) => {
-                        return None;
-                    }
-                }
-            }
-        }
-
-        if let Some(import_info) = &self.import_info {
-            for import_specifier in import_info.specifiers.iter() {
-                match import_specifier {
-                    // import * as foo from 'foo';
-                    ImportSpecifierInfo::Namespace(_name) => {
-                        todo!()
-                    }
-
-                    // import { foo } from "foo"
-                    // import { foo as bar } from "foo"
-                    ImportSpecifierInfo::Named { local, imported } => {
-                        if is_ident_sym_equal(local, ref_ident) {
-                            return Some(ReExportSource {
-                                re_export_type: ReExportType::Named(
-                                    strip_context(local),
-                                    imported.as_ref().map(|i| strip_context(i)),
-                                ),
-                                source: Some(import_info.source.clone()),
-                            });
-                        }
-                    }
-
-                    // import foo from "foo"
-                    ImportSpecifierInfo::Default(_) => {
-                        todo!()
-                    }
-                }
-            }
-        }
-
-        None
-    }
 }
 
 impl Statement {

@@ -1,38 +1,16 @@
 use crate::plugins::farm_tree_shake::module::{is_ident_sym_equal, TreeShakeModule};
-use crate::plugins::farm_tree_shake::shake::{strip_context, ReExportSource2, ReExportType2};
-use crate::plugins::farm_tree_shake::statement_graph::{
-    ExportInfoMatch, ExportSpecifierInfo, ImportSpecifierInfo, Statement,
-};
+use crate::plugins::farm_tree_shake::shake::skip_module::{ReExportSource2, ReExportType2};
+use crate::plugins::farm_tree_shake::shake::strip_context;
+use crate::plugins::farm_tree_shake::statement_graph::{ExportSpecifierInfo, ImportSpecifierInfo};
 
 impl TreeShakeModule {
-    pub fn find_export_stmt_info(&self, ident: &String) -> Option<&Statement> {
-        // find the exported of the ident
-        for stmt in self.stmt_graph.stmts() {
-            if let Some(export_info) = &stmt.export_info {
-                // TODO only one Ambiguous can be treated as matched
-                if export_info.matches_ident(ident) == ExportInfoMatch::Matched {
-                    return Some(stmt);
-                }
-            } else if stmt.import_info.is_some()
-                && stmt
-                    .defined_idents
-                    .iter()
-                    .any(|id_with_ctxt| is_ident_sym_equal(id_with_ctxt, ident))
-            {
-                return Some(stmt);
-            }
-        }
-
-        None
-    }
-
-    pub fn find_export_define_wip(&self, ident: &String) -> Option<ReExportSource2> {
+    pub fn find_export_source(&self, ident: &String) -> Option<ReExportSource2> {
         let mut local_ident = None;
         let mut re_export_type = None;
 
         for stmt in self.stmt_graph.stmts() {
             if let Some(export_info) = &stmt.export_info {
-                if let Some(export_specifier) = export_info.find_define_specifier(ident) {
+                if let Some(export_specifier) = export_info.find_export_specifier(ident) {
                     if let Some(source) = &export_info.source {
                         match export_specifier {
                             ExportSpecifierInfo::All(all_exports) => {
@@ -42,6 +20,11 @@ impl TreeShakeModule {
                                         source: Some(source.clone()),
                                     });
                                 }
+                            }
+                            ExportSpecifierInfo::Ambiguous(_) => {
+                                // TODO
+                                // Ambiguous usually means mixed with cjs, currently cjs
+                                // always has side effects
                             }
                             ExportSpecifierInfo::Named { exported, local } => {
                                 let stripped_local = strip_context(local);
@@ -70,12 +53,21 @@ impl TreeShakeModule {
                             }
                             ExportSpecifierInfo::Default(_) => {
                                 // Never when export with source
+                                // export default from "x" is not supported in mako
                                 return None;
                             }
-                            ExportSpecifierInfo::Namespace(_) => {
+                            // export * as x from "x"
+                            ExportSpecifierInfo::Namespace(name) => {
+                                let stripped_name = strip_context(name);
+                                if stripped_name.eq(ident) {
+                                    return Some(ReExportSource2 {
+                                        re_export_type: ReExportType2::Namespace,
+                                        source: Some(source.clone()),
+                                    });
+                                }
+
                                 return None;
                             }
-                            ExportSpecifierInfo::Ambiguous(_) => {}
                         }
                     } else {
                         match export_specifier {
@@ -112,12 +104,9 @@ impl TreeShakeModule {
                                     }
                                 }
                             }
-                            ExportSpecifierInfo::Namespace(_) => return None,
-                            ExportSpecifierInfo::Ambiguous(_) => {
-                                // TODO
-                                // Ambiguous usually means mixed with cjs, currently cjs
-                                // always has side effects
-                            }
+                            //  never happen when export without source
+                            ExportSpecifierInfo::Namespace(_)
+                            | ExportSpecifierInfo::Ambiguous(_) => return None,
                         }
                     }
                 }
@@ -186,7 +175,7 @@ mod tests {
     use crate::ast::build_js_ast;
     use crate::compiler::Context;
     use crate::module::{Module, ModuleAst, ModuleInfo};
-    use crate::plugins::farm_tree_shake::shake::ReExportSource2;
+    use crate::plugins::farm_tree_shake::shake::skip_module::ReExportSource2;
 
     impl ReExportSource2 {
         pub fn describe(&self) -> String {
@@ -202,7 +191,7 @@ mod tests {
     fn test_find_import_default_export_named() {
         let tsm = tsm_with_code(r#" import a from "./a.js"; export {a}; "#);
 
-        let re_export_source = tsm.find_export_define_wip(&"a".to_string());
+        let re_export_source = tsm.find_export_source(&"a".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -214,7 +203,7 @@ mod tests {
     fn test_find_import_default_export_default() {
         let tsm = tsm_with_code(r#" import a from "./a.js"; export default a;"#);
 
-        let re_export_source = tsm.find_export_define_wip(&"default".to_string());
+        let re_export_source = tsm.find_export_source(&"default".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -225,7 +214,7 @@ mod tests {
     fn test_find_import_named_export_default() {
         let tsm = tsm_with_code(r#" import {a} from "./a.js"; export default a;"#);
 
-        let re_export_source = tsm.find_export_define_wip(&"default".to_string());
+        let re_export_source = tsm.find_export_source(&"default".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -237,7 +226,7 @@ mod tests {
     fn test_find_import_named_renamed_export_default() {
         let tsm = tsm_with_code(r#" import {z as a} from "./a.js"; export default a;"#);
 
-        let re_export_source = tsm.find_export_define_wip(&"default".to_string());
+        let re_export_source = tsm.find_export_source(&"default".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -249,7 +238,7 @@ mod tests {
     fn test_find_import_namespace_export_default() {
         let tsm = tsm_with_code(r#" import * as a from "./a.js"; export default a;"#);
 
-        let re_export_source = tsm.find_export_define_wip(&"a".to_string());
+        let re_export_source = tsm.find_export_source(&"a".to_string());
 
         assert!(re_export_source.is_none());
     }
@@ -258,7 +247,7 @@ mod tests {
     fn test_find_import_namespace_export_named() {
         let tsm = tsm_with_code(r#" import * as a from "./a.js"; export { a };"#);
 
-        let re_export_source = tsm.find_export_define_wip(&"a".to_string());
+        let re_export_source = tsm.find_export_source(&"a".to_string());
 
         assert!(re_export_source.is_none());
     }
@@ -267,7 +256,7 @@ mod tests {
     fn test_find_import_named_export_named() {
         let tsm = tsm_with_code(r#" import { a } from "./a.js"; export { a };"#);
 
-        let re_export_source = tsm.find_export_define_wip(&"a".to_string());
+        let re_export_source = tsm.find_export_source(&"a".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -279,7 +268,7 @@ mod tests {
     fn test_find_import_named_export_renamed() {
         let tsm = tsm_with_code(r#" import { a } from "./a.js"; export { a as b };"#);
 
-        let re_export_source = tsm.find_export_define_wip(&"b".to_string());
+        let re_export_source = tsm.find_export_source(&"b".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -291,7 +280,7 @@ mod tests {
     fn test_find_import_renamed_export_renamed() {
         let tsm = tsm_with_code(r#" import { a as b } from "./a.js"; export { b as c };"#);
 
-        let re_export_source = tsm.find_export_define_wip(&"c".to_string());
+        let re_export_source = tsm.find_export_source(&"c".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -303,7 +292,7 @@ mod tests {
     fn test_find_export_default_from() {
         let tsm = tsm_with_code(r#" export { default }  from "./a.js" "#);
 
-        let re_export_source = tsm.find_export_define_wip(&"default".to_string());
+        let re_export_source = tsm.find_export_source(&"default".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -315,7 +304,7 @@ mod tests {
     fn test_find_export_default_as_from() {
         let tsm = tsm_with_code(r#" export { default as a }  from "./a.js" "#);
 
-        let re_export_source = tsm.find_export_define_wip(&"a".to_string());
+        let re_export_source = tsm.find_export_source(&"a".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -327,7 +316,7 @@ mod tests {
     fn test_find_export_named_from() {
         let tsm = tsm_with_code(r#" export { a }  from "./a.js" "#);
 
-        let re_export_source = tsm.find_export_define_wip(&"a".to_string());
+        let re_export_source = tsm.find_export_source(&"a".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -339,7 +328,7 @@ mod tests {
     fn test_find_export_named_as_from() {
         let tsm = tsm_with_code(r#" export { b as a }  from "./a.js" "#);
 
-        let re_export_source = tsm.find_export_define_wip(&"a".to_string());
+        let re_export_source = tsm.find_export_source(&"a".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -351,18 +340,21 @@ mod tests {
     fn test_find_export_star_as_from() {
         let tsm = tsm_with_code(r#" export * as a from "./a.js" "#);
 
-        let re_export_source = tsm.find_export_define_wip(&"a".to_string());
+        let re_export_source = tsm.find_export_source(&"a".to_string());
 
-        assert!(re_export_source.is_none());
+        assert_eq!(
+            re_export_source.unwrap().describe(),
+            r#"ReExport from ./a.js by Namespace"#
+        );
     }
 
     #[test]
     #[ignore]
-    // too hard to implement later
+    // test in e2e
     fn test_find_export_star_from() {
         let tsm = tsm_with_code(r#" export * from "./a.js" "#);
 
-        let re_export_source = tsm.find_export_define_wip(&"a".to_string());
+        let re_export_source = tsm.find_export_source(&"a".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -374,7 +366,7 @@ mod tests {
     fn test_find_export_default_local_ident() {
         let tsm = tsm_with_code(r#"const a=1; export default a "#);
 
-        let re_export_source = tsm.find_export_define_wip(&"default".to_string());
+        let re_export_source = tsm.find_export_source(&"default".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -386,7 +378,7 @@ mod tests {
     fn test_find_export_default_function() {
         let tsm = tsm_with_code(r#"export default function test(){} "#);
 
-        let re_export_source = tsm.find_export_define_wip(&"default".to_string());
+        let re_export_source = tsm.find_export_source(&"default".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -398,7 +390,7 @@ mod tests {
     fn test_find_export_default_class() {
         let tsm = tsm_with_code(r#" export default class Test{} "#);
 
-        let re_export_source = tsm.find_export_define_wip(&"default".to_string());
+        let re_export_source = tsm.find_export_source(&"default".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -410,7 +402,7 @@ mod tests {
     fn test_find_export_named_class() {
         let tsm = tsm_with_code(r#" export class TestClass{} "#);
 
-        let re_export_source = tsm.find_export_define_wip(&"TestClass".to_string());
+        let re_export_source = tsm.find_export_source(&"TestClass".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -422,7 +414,7 @@ mod tests {
     fn test_find_export_named_fn() {
         let tsm = tsm_with_code(r#" export function fnTest(){} "#);
 
-        let re_export_source = tsm.find_export_define_wip(&"fnTest".to_string());
+        let re_export_source = tsm.find_export_source(&"fnTest".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -434,7 +426,7 @@ mod tests {
     fn test_find_export_dec_expr() {
         let tsm = tsm_with_code(r#" export const a = 1 "#);
 
-        let re_export_source = tsm.find_export_define_wip(&"a".to_string());
+        let re_export_source = tsm.find_export_source(&"a".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
