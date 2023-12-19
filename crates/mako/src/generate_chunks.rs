@@ -129,7 +129,7 @@ impl Compiler {
         mako_core::mako_profile_function!();
         if matches!(chunk.chunk_type, ChunkType::Entry(_, _, true)) {
             // generate shared chunk as normal chunk
-            pot.to_normal_chunk_files(&self.context)
+            pot.to_normal_chunk_files(chunk, &self.context)
         } else {
             pot.to_entry_chunk_files(&self.context, js_map, css_map, chunk, cache_hash, hmr_hash)
         }

@@ -4,7 +4,6 @@ use std::sync::Arc;
 use cached::proc_macro::cached;
 use mako_core::anyhow::Result;
 use mako_core::cached::SizedCache;
-use mako_core::mako_profile_scope;
 use mako_core::swc_common::{Mark, DUMMY_SP, GLOBALS};
 use mako_core::swc_css_ast::Stylesheet;
 use mako_core::swc_css_codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};
@@ -14,7 +13,7 @@ use mako_core::swc_ecma_ast::{
     PropOrSpread, Stmt, UnaryExpr, UnaryOp, VarDeclKind,
 };
 use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
-use mako_core::ternary;
+use mako_core::{mako_profile_scope, ternary};
 
 use crate::ast::{build_js_ast, Ast};
 use crate::chunk::{Chunk, ChunkType};

@@ -245,7 +245,6 @@ module.exports = new Promise((resolve, reject) => {{
         context: &Arc<Context>,
         task: task::Task,
     ) -> Result<(Module, ModuleDeps, Task)> {
-
         // load
         let content = load(&task, context)?;
 
