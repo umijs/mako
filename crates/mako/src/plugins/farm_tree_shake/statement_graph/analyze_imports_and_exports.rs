@@ -6,7 +6,6 @@ use mako_core::swc_ecma_ast;
 use mako_core::swc_ecma_ast::{Expr, ModuleExportName, ModuleItem, VarDecl};
 use mako_core::swc_ecma_utils::{ExprCtx, ExprExt};
 use mako_core::swc_ecma_visit::VisitWith;
-use swc_core::ecma::ast::Expr;
 
 use super::defined_idents_collector::DefinedIdentsCollector;
 use super::used_idents_collector::{self, UsedIdentsCollector};
