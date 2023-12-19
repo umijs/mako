@@ -46,7 +46,7 @@ impl Plugin for ContextModulePlugin {
 
                 // omit ext `./i18n/zh_CN`
                 if let Some(ext) = rlt_path.extension() {
-                    if get_module_extensions().contains(&ext.to_string_lossy().to_string()) {
+                    if get_module_extensions().contains(&format!(".{}", ext.to_string_lossy())) {
                         keys.push(format!(
                             "./{}",
                             rlt_path.with_extension("").to_string_lossy()
@@ -57,12 +57,19 @@ impl Plugin for ContextModulePlugin {
                             let entry_paths = rlt_path
                                 .parent()
                                 .map(|p| {
-                                    vec![
-                                        format!("./{}", p.to_string_lossy()),
-                                        format!("./{}/", p.to_string_lossy()),
-                                    ]
+                                    let parent = p.to_string_lossy().to_string();
+
+                                    parent
+                                        .is_empty()
+                                        // root entry
+                                        .then(|| vec![".".to_string(), "./".to_string()])
+                                        // non-root entry
+                                        .unwrap_or(vec![
+                                            format!("./{}", parent),
+                                            format!("./{}/", parent),
+                                        ])
                                 })
-                                .unwrap_or(vec![".".to_string(), "./".to_string()]);
+                                .unwrap();
 
                             keys.extend(entry_paths);
                         }
