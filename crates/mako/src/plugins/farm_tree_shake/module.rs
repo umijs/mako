@@ -8,8 +8,7 @@ use mako_core::swc_ecma_ast::{Module as SwcModule, ModuleItem};
 use crate::module::{Module, ModuleId};
 use crate::module_graph::ModuleGraph;
 use crate::plugins::farm_tree_shake::statement_graph::{
-    ExportInfo, ExportInfoMatch, ExportSpecifierInfo, ImportInfo, Statement, StatementGraph,
-    StatementId,
+    ExportInfo, ExportInfoMatch, ExportSpecifierInfo, ImportInfo, StatementGraph, StatementId,
 };
 use crate::tree_shaking::tree_shaking_module::ModuleSystem;
 
@@ -136,26 +135,6 @@ impl TreeShakeModule {
         let stmt_graph = StatementGraph::new(module, self.unresolved_ctxt);
 
         self.stmt_graph = stmt_graph;
-    }
-
-    pub fn find_define_stmt_info(&self, ident: &String) -> Option<&Statement> {
-        for stmt in self.stmt_graph.stmts() {
-            if let Some(export_info) = &stmt.export_info {
-                // TODO only one Ambiguous can be treated as matched
-                if export_info.matches_ident(ident) == ExportInfoMatch::Matched {
-                    return Some(stmt);
-                }
-            } else if stmt.import_info.is_some()
-                && stmt
-                    .defined_idents
-                    .iter()
-                    .any(|id_with_ctxt| is_ident_sym_equal(id_with_ctxt, ident))
-            {
-                return Some(stmt);
-            }
-        }
-
-        None
     }
 
     pub fn has_side_effect(&self) -> bool {
