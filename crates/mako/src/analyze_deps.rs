@@ -6,7 +6,6 @@ use crate::compiler::Context;
 use crate::module::{Dependency, ModuleAst};
 use crate::plugin::PluginDepAnalyzeParam;
 
-
 pub fn analyze_deps(
     ast: &ModuleAst,
     file_path: &String,
