@@ -1,6 +1,6 @@
 {
   "name": "@okamjs/okam",
-  "version": "0.1.10",
+  "version": "0.1.14",
   "main": "index.js",
   "types": "index.d.ts",
   "napi": {
@@ -32,15 +32,15 @@
     "build:debug": "napi build --platform",
     "postbuild:debug": "npm run format:dts",
     "prepublishOnly": "napi prepublish -t npm",
-    "format:dts": "rome format --write index.d.ts",
+    "format:dts": "biome format --write index.d.ts",
     "test": "ava",
     "universal": "napi universal",
     "version": "napi version",
     "release": "esno scripts/release.ts"
   },
   "optionalDependencies": {
-    "@okamjs/okam-darwin-arm64": "0.1.10",
-    "@okamjs/okam-darwin-x64": "0.1.10",
-    "@okamjs/okam-linux-x64-gnu": "0.1.10"
+    "@okamjs/okam-darwin-arm64": "0.1.14",
+    "@okamjs/okam-darwin-x64": "0.1.14",
+    "@okamjs/okam-linux-x64-gnu": "0.1.14"
   }
 }

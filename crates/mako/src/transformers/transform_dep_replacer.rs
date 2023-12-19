@@ -9,11 +9,11 @@ use mako_core::swc_ecma_ast::{
 use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
-use crate::build::parse_path;
 use crate::compiler::Context;
 use crate::module::{Dependency, ModuleId};
 use crate::plugins::css::is_url_ignored;
 use crate::plugins::javascript::{is_commonjs_require, is_dynamic_import};
+use crate::task::parse_path;
 use crate::transformers::transform_virtual_css_modules::is_css_path;
 
 pub struct DepReplacer<'a> {
@@ -127,7 +127,7 @@ impl VisitMut for DepReplacer<'_> {
                                     chunk_graph.get_chunk_for_module(&dep_module_id.clone());
 
                                 if let Some(chunk) = chunk {
-                                    let chunk_id = chunk.id.generate(self.context);
+                                    let chunk_id = chunk.id.id.clone();
                                     // `import('./xxx.css')` => `__mako_require__.ensure('./xxx.css')`
                                     *expr = member_expr!(DUMMY_SP, __mako_require__.ensure)
                                         .as_call(DUMMY_SP, vec![quote_str!(chunk_id).as_arg()]);

@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::clap::ValueEnum;
 use mako_core::colored::Colorize;
+use mako_core::regex::Regex;
 use mako_core::serde::Deserialize;
 use mako_core::serde_json::Value;
 use mako_core::swc_ecma_ast::EsVersion;
@@ -13,6 +14,7 @@ use mako_core::twox_hash::XxHash64;
 use mako_core::{clap, config, thiserror};
 use serde::Serialize;
 
+use crate::optimize_chunk;
 use crate::plugins::node_polyfill::get_all_modules;
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -23,9 +25,10 @@ pub struct OutputConfig {
     pub es_version: EsVersion,
     pub ascii_only: bool,
     pub meta: bool,
-
+    pub chunk_loading_global: String,
     pub preserve_modules: bool,
     pub preserve_modules_root: PathBuf,
+    pub skip_write: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -109,12 +112,14 @@ pub enum ModuleIdStrategy {
     Named,
 }
 
-#[derive(Deserialize, Serialize, Clone, Copy, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub enum CodeSplittingStrategy {
     #[serde(rename = "auto")]
     Auto,
     #[serde(rename = "none")]
     None,
+    #[serde(untagged)]
+    Advanced(OptimizeChunkOptions),
 }
 #[derive(Deserialize, Serialize, Clone, Copy, Debug)]
 pub enum TreeShakeStrategy {
@@ -304,6 +309,99 @@ pub(crate) fn hash_config(c: &Config) -> u64 {
     hasher.finish()
 }
 
+#[allow(dead_code)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+pub enum OptimizeAllowChunks {
+    #[serde(rename = "all")]
+    All,
+    #[serde(rename = "entry")]
+    Entry,
+    #[serde(rename = "async")]
+    #[default]
+    Async,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct OptimizeChunkOptions {
+    #[serde(default = "optimize_chunk::default_min_size")]
+    pub min_size: usize,
+    pub groups: Vec<OptimizeChunkGroup>,
+}
+
+impl Default for OptimizeChunkOptions {
+    fn default() -> Self {
+        OptimizeChunkOptions {
+            min_size: optimize_chunk::default_min_size(),
+            groups: vec![],
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct OptimizeChunkGroup {
+    pub name: String,
+    #[serde(default)]
+    pub allow_chunks: OptimizeAllowChunks,
+    #[serde(default = "optimize_chunk::default_min_chunks")]
+    pub min_chunks: usize,
+    #[serde(default = "optimize_chunk::default_min_size")]
+    pub min_size: usize,
+    #[serde(default = "optimize_chunk::default_max_size")]
+    pub max_size: usize,
+    #[serde(default)]
+    pub priority: i8,
+    #[serde(default, with = "optimize_test_format")]
+    pub test: Option<Regex>,
+}
+
+impl Default for OptimizeChunkGroup {
+    fn default() -> Self {
+        OptimizeChunkGroup {
+            name: String::default(),
+            allow_chunks: OptimizeAllowChunks::default(),
+            min_chunks: optimize_chunk::default_min_chunks(),
+            min_size: optimize_chunk::default_min_size(),
+            max_size: optimize_chunk::default_max_size(),
+            test: None,
+            priority: i8::default(),
+        }
+    }
+}
+/**
+ * custom formatter for convert string to regex
+ * @see https://serde.rs/custom-date-format.html
+ */
+mod optimize_test_format {
+    use mako_core::regex::Regex;
+    use serde::{self, Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S>(v: &Option<Regex>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if let Some(v) = v {
+            serializer.serialize_str(&v.to_string())
+        } else {
+            serializer.serialize_none()
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Regex>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let v = String::deserialize(deserializer)?;
+
+        if v.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Regex::new(v.as_str()).ok())
+        }
+    }
+}
+
 const CONFIG_FILE: &str = "mako.config.json";
 const DEFAULT_CONFIG: &str = r#"
 {
@@ -314,8 +412,10 @@ const DEFAULT_CONFIG: &str = r#"
       "esVersion": "es2022",
       "meta": false,
       "asciiOnly": true,
+      "chunkLoadingGlobal": "",
       "preserveModules": false,
-      "preserveModulesRoot": ""
+      "preserveModulesRoot": "",
+      "skipWrite": false
     },
     "resolve": { "alias": {}, "extensions": ["js", "jsx", "ts", "tsx"] },
     "mode": "development",
@@ -403,8 +503,14 @@ impl Config {
         let mut ret = c.try_deserialize::<Config>();
         // normalize & check
         if let Ok(config) = &mut ret {
+            // normalize output
             if config.output.path.is_relative() {
                 config.output.path = root.join(config.output.path.to_string_lossy().to_string());
+            }
+
+            if config.output.chunk_loading_global.is_empty() {
+                config.output.chunk_loading_global =
+                    get_default_chunk_loading_global(config.umd.clone(), root);
             }
 
             let node_env_config_opt = config.define.get("NODE_ENV");
@@ -528,6 +634,28 @@ impl Default for Config {
         let c = c.build().unwrap();
         c.try_deserialize::<Config>().unwrap()
     }
+}
+
+fn get_default_chunk_loading_global(umd: String, root: &Path) -> String {
+    let unique_name = if umd != "none" {
+        umd
+    } else {
+        let pkg_json_path = root.join("package.json");
+        let mut pkg_name = "global".to_string();
+
+        if pkg_json_path.exists() {
+            let pkg_json = std::fs::read_to_string(pkg_json_path).unwrap();
+            let pkg_json: serde_json::Value = serde_json::from_str(&pkg_json).unwrap();
+
+            if let Some(name) = pkg_json.get("name") {
+                pkg_name = name.as_str().unwrap().to_string();
+            }
+        }
+
+        pkg_name
+    };
+
+    format!("makoChunk_{}", unique_name)
 }
 
 #[derive(Error, Debug)]

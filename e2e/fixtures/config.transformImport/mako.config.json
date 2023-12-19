@@ -1,0 +1,5 @@
+{
+  "transformImport": [
+    { "libraryName": "foo", "libraryDirectory": "es", "style": true }
+  ]
+}

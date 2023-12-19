@@ -5,7 +5,7 @@
 cargo lintfix
 cargo fmt
 # for js code
-npm run rome:format
+npm run biome:format
 
 # only add staged files though cargo fmt all projects
 git add $(git diff --name-only --cached --diff-filter=AM)

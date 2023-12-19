@@ -26,19 +26,20 @@ impl Plugin for ContextModulePlugin {
     fn load(&self, param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
         if let (Some(glob_pattern), None) = (
             param
+                .task
                 .request
                 .query
                 .iter()
                 .find_map(|(k, v)| k.eq("glob").then_some(v)),
-            param.ext_name,
+            param.task.ext_name.as_ref(),
         ) {
-            let glob_pattern = PathBuf::from(param.path.clone()).join(glob_pattern);
+            let glob_pattern = PathBuf::from(param.task.request.path.clone()).join(glob_pattern);
             let paths = glob(glob_pattern.to_str().unwrap())?;
             let mut key_values = vec![];
 
             for path in paths {
                 let path = path?;
-                let rlt_path = path.strip_prefix(param.path.clone())?;
+                let rlt_path = path.strip_prefix(param.task.request.path.clone())?;
 
                 // full path `./i18n/zh_CN.json`
                 let mut keys = vec![format!("./{}", rlt_path.to_string_lossy())];

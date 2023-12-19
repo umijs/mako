@@ -33,6 +33,7 @@ mod sourcemap;
 mod stats;
 mod swc_helpers;
 mod targets;
+mod task;
 #[cfg(test)]
 mod test_helper;
 mod transform;

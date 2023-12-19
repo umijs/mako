@@ -16,8 +16,8 @@ impl Plugin for MdPlugin {
     }
 
     fn load(&self, param: &PluginLoadParam, context: &Arc<Context>) -> Result<Option<Content>> {
-        if context.config.mdx && matches!(param.ext_name, Some("md" | "mdx")) {
-            let md_string = read_content(param.path.as_str())?;
+        if param.task.is_match(vec!["md", "mdx"]) {
+            let md_string = read_content(param.task.request.path.as_str())?;
             let options = Options {
                 development: matches!(context.config.mode, Mode::Development),
                 ..Default::default()
@@ -26,7 +26,7 @@ impl Plugin for MdPlugin {
                 Ok(js_string) => js_string,
                 Err(reason) => {
                     return Err(anyhow!(LoadError::CompileMdError {
-                        path: param.path.to_string(),
+                        path: param.task.path.to_string(),
                         reason,
                     }));
                 }

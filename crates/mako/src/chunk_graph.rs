@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::hash::Hasher;
 
 use mako_core::petgraph::stable_graph::{DefaultIx, NodeIndex, StableDiGraph};
+use mako_core::petgraph::visit::Dfs;
 use mako_core::petgraph::Direction;
 use mako_core::twox_hash::XxHash64;
 
@@ -128,24 +129,61 @@ impl ChunkGraph {
         let idx = self.id_index_map.get(chunk_id).unwrap();
         self.graph
             .neighbors_directed(*idx, Direction::Incoming)
-            .filter(|idx| matches!(self.graph[*idx].chunk_type, ChunkType::Entry(_, _)))
+            .filter(|idx| matches!(self.graph[*idx].chunk_type, ChunkType::Entry(_, _, _)))
             .map(|idx| self.graph[idx].id.clone())
             .collect::<Vec<ChunkId>>()
     }
 
     pub fn entry_ancestors_chunk(&self, chunk_id: &ChunkId) -> Vec<ChunkId> {
-        let idx = self.id_index_map.get(chunk_id).unwrap();
+        let mut dfs = Dfs::new(&self.graph, *self.id_index_map.get(chunk_id).unwrap());
         let mut ret = vec![];
-        self.graph
-            .neighbors_directed(*idx, Direction::Incoming)
-            .for_each(|idx| match self.graph[idx].chunk_type {
-                ChunkType::Entry(_, _) => {
-                    ret.push(self.graph[idx].id.clone());
-                }
-                _ => {
-                    ret.extend(self.entry_ancestors_chunk(&self.graph[idx].id));
-                }
-            });
+        let mut visited = vec![];
+
+        while let Some(idx) = dfs.next(&self.graph) {
+            if visited.contains(&idx.index()) {
+                continue;
+            }
+            visited.push(idx.index());
+
+            if matches!(self.graph[idx].chunk_type, ChunkType::Entry(_, _, _)) {
+                ret.push(self.graph[idx].id.clone());
+            }
+
+            // continue to collect entry ancestors (include shared entry ancestors)
+            self.graph
+                .neighbors_directed(idx, Direction::Incoming)
+                .for_each(|idx| {
+                    dfs.stack.push(idx);
+                });
+        }
+        ret
+    }
+
+    pub fn installable_descendants_chunk(&self, chunk_id: &ChunkId) -> Vec<ChunkId> {
+        let mut dfs = Dfs::new(&self.graph, *self.id_index_map.get(chunk_id).unwrap());
+        let mut ret = vec![];
+        let mut visited = vec![];
+
+        while let Some(idx) = dfs.next(&self.graph) {
+            if visited.contains(&idx.index()) {
+                continue;
+            }
+            visited.push(idx.index());
+
+            if matches!(
+                self.graph[idx].chunk_type,
+                ChunkType::Async | ChunkType::Sync
+            ) {
+                ret.push(self.graph[idx].id.clone());
+            }
+
+            // continue to collect installable descendants
+            self.graph
+                .neighbors_directed(idx, Direction::Outgoing)
+                .for_each(|idx| {
+                    dfs.stack.push(idx);
+                });
+        }
         ret
     }
 

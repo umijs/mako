@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
-import json, { hello } from './index.json5';
-import toml, { title } from './index.toml';
-import yaml, { pi } from './index.yaml';
-import xml from './index.xml';
 import { add } from './add.wasm';
+import json, { hello } from './index.json5';
 import Md from './index.md';
+import toml, { title } from './index.toml';
+import xml from './index.xml';
+import yaml, { pi } from './index.yaml';
 import MailchimpUnsplash from './mailchimp-unsplash.jpg';
 
 const num1 = 10;
@@ -26,7 +26,7 @@ function App() {
         <img
           style={{ width: 200 }}
           src={MailchimpUnsplash}
-          alt='unsplash big image'
+          alt="unsplash big image"
         />
       </div>
       <h2>

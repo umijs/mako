@@ -1,13 +1,13 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { createHashRouter, RouterProvider } from 'react-router-dom';
+import { RouterProvider, createHashRouter } from 'react-router-dom';
 import { Layout } from './layout';
-import { Home } from './pages/home';
-import { Todos } from './pages/todos';
-import { ReactQuery } from './pages/react-query';
-import { MonacoEditor } from './pages/monaco-editor';
 import { AntDesignIcons } from './pages/ant-design-icons';
 import { AntDesignPro } from './pages/ant-design-pro';
+import { Home } from './pages/home';
+import { MonacoEditor } from './pages/monaco-editor';
+import { ReactQuery } from './pages/react-query';
+import { Todos } from './pages/todos';
 
 const router = createHashRouter([
   {

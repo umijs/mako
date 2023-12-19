@@ -14,6 +14,7 @@ use mako_core::swc_ecma_ast::{
     PropOrSpread, Stmt, UnaryExpr, UnaryOp, VarDeclKind,
 };
 use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
+use mako_core::ternary;
 
 use crate::ast::{build_js_ast, Ast};
 use crate::chunk::{Chunk, ChunkType};
@@ -30,8 +31,10 @@ use crate::util::merge_source_map;
 
 #[cached(
     result = true,
-    key = "u64",
-    convert = "{chunk_pot.stylesheet.as_ref().unwrap().raw_hash}"
+    type = "SizedCache<String , ChunkFile>",
+    create = "{ SizedCache::with_size(500) }",
+    key = "String",
+    convert = r#"{format!("{}.{:x}",chunk_pot.chunk_id,chunk_pot.stylesheet.as_ref().unwrap().raw_hash)}"#
 )]
 pub(crate) fn render_css_chunk(
     chunk_pot: &ChunkPot,
@@ -117,10 +120,10 @@ pub(crate) fn render_css_chunk(
 
 #[cached(
     result = true,
-    type = "SizedCache<u64 , ChunkFile>",
+    type = "SizedCache<String , ChunkFile>",
     create = "{ SizedCache::with_size(500) }",
-    key = "u64",
-    convert = "{chunk_pot.js_hash}"
+    key = "String",
+    convert = r#"{format!("{}.{:x}", chunk_pot.chunk_id, chunk_pot.js_hash)}"#
 )]
 pub(crate) fn render_normal_js_chunk(
     chunk_pot: &ChunkPot,
@@ -128,7 +131,10 @@ pub(crate) fn render_normal_js_chunk(
 ) -> Result<ChunkFile> {
     mako_core::mako_profile_function!();
 
-    let module = pot_to_chunk_module(chunk_pot)?;
+    let module = pot_to_chunk_module(
+        chunk_pot,
+        context.config.output.chunk_loading_global.clone(),
+    )?;
 
     let mut ast = GLOBALS.set(&context.meta.script.globals, || Ast {
         ast: module,
@@ -174,7 +180,11 @@ pub(crate) fn render_entry_js_chunk(
         content,
         source_map,
         hash,
-    } = render_entry_chunk_js_without_full_hash(pot, js_map, css_map, chunk, context)?;
+    } = ternary!(
+        context.args.watch,
+        render_entry_chunk_js_without_full_hash,
+        render_entry_chunk_js_without_full_hash_no_cache
+    )(pot, js_map, css_map, chunk, context)?;
 
     let content = {
         mako_core::mako_profile_scope!("full_hash_replace");
@@ -217,7 +227,7 @@ fn render_entry_chunk_js_without_full_hash(
     stmts.push(css_map_stmt);
 
     match &chunk.chunk_type {
-        ChunkType::Entry(module_id, _) => {
+        ChunkType::Entry(module_id, _, _) => {
             let main_id_decl: Stmt = quote_str!(module_id.generate(context))
                 .into_var_decl(VarDeclKind::Var, quote_ident!("e").into()) // e brief for entry_module_id
                 .into();

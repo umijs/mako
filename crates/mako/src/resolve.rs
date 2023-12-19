@@ -10,13 +10,13 @@ use mako_core::regex::{Captures, Regex};
 use mako_core::thiserror::Error;
 use mako_core::tracing::debug;
 
-use crate::build::parse_path;
 use crate::compiler::Context;
 use crate::config::{
     Config, ExternalAdvancedSubpathConverter, ExternalAdvancedSubpathTarget, ExternalConfig,
     Platform,
 };
 use crate::module::{Dependency, ResolveType};
+use crate::task::parse_path;
 
 #[derive(Debug, Error)]
 enum ResolveError {

@@ -1,12 +1,12 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 
+import MailchimpUnsplash from './assets/mailchimp-unsplash.jpg';
+import Person, { ReactComponent as PersonComponent } from './assets/person.svg';
+import UmiLogo from './assets/umi-logo.png';
 import { foo } from './foo';
 import './index.css';
 import styles from './style.module.css';
-import UmiLogo from './assets/umi-logo.png';
-import MailchimpUnsplash from './assets/mailchimp-unsplash.jpg';
-import Person, { ReactComponent as PersonComponent } from './assets/person.svg';
 
 function App() {
   return (
@@ -21,7 +21,7 @@ function App() {
         <img
           style={{ width: 200 }}
           src={MailchimpUnsplash}
-          alt='unsplash big image'
+          alt="unsplash big image"
         />
       </div>
     </div>

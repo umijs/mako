@@ -52,3 +52,14 @@ macro_rules! mako_profile_function {
         mako_core::puffin::profile_function!($data);
     };
 }
+
+#[macro_export]
+macro_rules! ternary {
+    ($if_condition:expr, $if_stmt:expr, $else_stmt:expr) => {
+        if $if_condition {
+            $if_stmt
+        } else {
+            $else_stmt
+        }
+    };
+}

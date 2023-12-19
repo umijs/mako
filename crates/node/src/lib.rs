@@ -15,8 +15,12 @@ use mako::plugin::Plugin;
 use napi::bindgen_prelude::*;
 use napi::{JsObject, JsString, JsUnknown, NapiRaw, Status};
 
+use crate::plugin_write::create_fs_write_plugin;
+
 mod plugin_less;
-mod threadsafe_function;
+mod plugin_write;
+
+pub(crate) mod threadsafe_function;
 
 static LOG_INIT: Once = Once::new();
 
@@ -29,6 +33,8 @@ pub struct JsHooks {
         endTime: number;
     }}) =>void ;")]
     pub on_build_complete: Option<JsFunction>,
+    #[napi(ts_type = "(path: string, content: Buffer) => Promise<void>;")]
+    pub on_generate_file: Option<JsFunction>,
 }
 
 #[napi(object)]
@@ -46,6 +52,7 @@ pub struct BuildParams {
         preserveModules?: boolean;
         preserveModulesRoot?: string;
         asciiOnly?: boolean;
+        skipWrite?: boolean;
     };
     resolve?: {
        alias?: Record<string, string>;
@@ -173,6 +180,10 @@ pub fn build(env: Env, build_params: BuildParams) -> napi::Result<JsObject> {
         plugins.push(less_plugin);
     }
 
+    if let Some(plugin) = create_fs_write_plugin(&env, build_params.hooks.on_generate_file) {
+        plugins.push(Arc::new(plugin));
+    }
+
     let root = std::path::PathBuf::from(&build_params.root);
     let default_config = serde_json::to_string(&build_params.config).unwrap();
     let config = Config::new(&root, Some(&default_config), None).map_err(|e| {
@@ -184,12 +195,24 @@ pub fn build(env: Env, build_params: BuildParams) -> napi::Result<JsObject> {
         env.execute_tokio_future(
             async move {
                 let start_time = std::time::SystemTime::now();
+
                 let compiler =
                     Compiler::new(config, root.clone(), Args { watch: true }, Some(plugins))
-                        .map_err(|e| napi::Error::new(Status::GenericFailure, format!("{}", e)))?;
-                compiler
+                        .map_err(|e| napi::Error::new(Status::GenericFailure, format!("{}", e)));
+                if let Err(e) = compiler {
+                    deferred.reject(e);
+                    return Ok(());
+                }
+                let compiler = compiler.unwrap();
+
+                if let Err(e) = compiler
                     .compile()
-                    .map_err(|e| napi::Error::new(Status::GenericFailure, format!("{}", e)))?;
+                    .map_err(|e| napi::Error::new(Status::GenericFailure, format!("{}", e)))
+                {
+                    deferred.reject(e);
+                    return Ok(());
+                }
+
                 let end_time = std::time::SystemTime::now();
                 let params = OnDevCompleteParams {
                     is_first_compile: true,

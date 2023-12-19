@@ -204,7 +204,11 @@ impl ModuleGraph {
             let dependencies = self.graph.edge_weight(edge_index).unwrap();
             let module = self.graph.node_weight(node_index).unwrap();
             dependencies.iter().for_each(|dep| {
-                let is_async = module.info.as_ref().unwrap().is_async;
+                let info = module
+                    .info
+                    .as_ref()
+                    .unwrap_or_else(|| panic!("Get info failed: {:}", module.id.id));
+                let is_async = info.is_async;
                 deps.push((&module.id, dep, is_async));
             })
         }

@@ -1,5 +1,5 @@
-import React from 'react';
 import classNames from 'classnames';
+import React from 'react';
 import './lazy.css';
 
 console.log(classNames({ lazy: 0 }));

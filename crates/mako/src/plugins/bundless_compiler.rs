@@ -27,7 +27,9 @@ use crate::plugin::{Plugin, PluginTransformJsParam};
 use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
 use crate::transformers::transform_dynamic_import::DynamicImport;
 
-pub struct BundlessCompiler {}
+pub struct BundlessCompiler {
+    // pub fs_write: Option<>
+}
 
 impl BundlessCompiler {
     pub fn transform_all(&self, context: &Arc<Context>) -> Result<()> {
@@ -47,7 +49,14 @@ impl BundlessCompiler {
         let to = context.config.output.path.join(&filename);
         let to = normalize_extension(to);
 
-        fs::write(to, content).unwrap();
+        context
+            .plugin_driver
+            .before_write_fs(&to, content.as_ref())
+            .unwrap();
+
+        if !context.config.output.skip_write {
+            fs::write(to, content).unwrap();
+        }
     }
 }
 
