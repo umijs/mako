@@ -90,6 +90,7 @@ lazy_static           = "1.4.0"
 convert_case          = "0.6.0"
 path-clean            = "1.0.1"
 sailfish              = "0.8.3"
+merge-source-map      = "1.2.0"
 
 [features]
 profile = ["dep:eframe", "dep:puffin", "dep:puffin_egui"]

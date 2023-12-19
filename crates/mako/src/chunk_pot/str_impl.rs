@@ -23,7 +23,7 @@ pub(super) fn render_entry_js_chunk(
     pot: &ChunkPot,
     js_map: &HashMap<String, String>,
     css_map: &HashMap<String, String>,
-    _chunk: &Chunk,
+    chunk: &Chunk,
     context: &Arc<Context>,
     _cache_hash: u64,
     hmr_hash: u64,
@@ -44,7 +44,7 @@ pub(super) fn render_entry_js_chunk(
             context.args.watch,
             render_css_chunk,
             render_css_chunk_no_cache
-        )(pot, context)?;
+        )(pot, chunk, context)?;
 
         let mut css_map = css_map.clone();
         css_map.insert(css_chunk_file.chunk_id.clone(), css_chunk_file.disk_name());
