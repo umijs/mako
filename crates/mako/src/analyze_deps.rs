@@ -5,11 +5,11 @@ use mako_core::anyhow::{anyhow, Result};
 use crate::compiler::Context;
 use crate::module::{Dependency, ModuleAst};
 use crate::plugin::PluginDepAnalyzeParam;
-use crate::task::Task;
+
 
 pub fn analyze_deps(
     ast: &ModuleAst,
-    task: &Task,
+    file_path: &String,
     context: &Arc<Context>,
 ) -> Result<Vec<Dependency>> {
     mako_core::mako_profile_function!();
@@ -32,7 +32,7 @@ pub fn analyze_deps(
             return Err(anyhow!(
                 "webpack loader syntax is not supported, since found dep {:?} in {:?}",
                 dep.source,
-                task.path,
+                file_path
             ));
         }
     }
