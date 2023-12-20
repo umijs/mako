@@ -118,9 +118,11 @@ impl TreeShakeModule {
                 if let Some(import_info) = &stmt.import_info {
                     if let Some(import_specifier) = import_info.find_define_specifier(local) {
                         match import_specifier {
-                            ImportSpecifierInfo::Namespace(_) => {
-                                // cant re-export for namespace import
-                                return None;
+                            ImportSpecifierInfo::Namespace(_namespace) => {
+                                return Some(ReExportSource2 {
+                                    re_export_type: ReExportType2::Namespace,
+                                    source: Some(import_info.source.clone()),
+                                });
                             }
                             ImportSpecifierInfo::Named {
                                 imported,

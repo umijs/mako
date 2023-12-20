@@ -38,8 +38,10 @@ impl ImportInfo {
     pub fn find_define_specifier(&self, ident: &String) -> Option<&ImportSpecifierInfo> {
         for specifier in self.specifiers.iter() {
             match specifier {
-                ImportSpecifierInfo::Namespace(_n) => {
-                    return Some(specifier);
+                ImportSpecifierInfo::Namespace(ns) => {
+                    if is_ident_equal(ident, ns) {
+                        return Some(specifier);
+                    }
                 }
                 ImportSpecifierInfo::Named { local, imported: _ } => {
                     if is_ident_equal(ident, local) {
