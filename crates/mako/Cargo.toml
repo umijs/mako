@@ -15,6 +15,7 @@ mako_core  = { path = "../core" }
 serde      = { workspace = true }
 serde_json = { workspace = true }
 cached     = { workspace = true }
+swc_core   = { workspace = true, features = ["swc_ecma_quote_macros"] }
 
 [dev-dependencies]
 insta                       = { version = "1.30.0", features = ["yaml"] }

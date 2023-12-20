@@ -1,5 +1,6 @@
 #![feature(box_patterns)]
 #![feature(hasher_prefixfree_extras)]
+#![feature(let_chains)]
 
 mod analyze_deps;
 mod ast;
