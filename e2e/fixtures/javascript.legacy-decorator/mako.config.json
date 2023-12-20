@@ -1,6 +1,6 @@
 {
   "minify": false,
-  "optimizations": {
+  "optimization": {
     "skipModule": false
   }
 }
