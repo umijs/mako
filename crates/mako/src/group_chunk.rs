@@ -359,6 +359,20 @@ impl Compiler {
         modules_in_chunk
     }
 
+    fn is_entry_shared_module(
+        &self,
+        module_id: &ModuleId,
+        shared_chunk_names: &[String],
+        chunk_graph: &ChunkGraph,
+    ) -> bool {
+        shared_chunk_names.iter().any(|name| {
+            chunk_graph
+                .get_chunk_by_name(name)
+                .unwrap()
+                .has_module(module_id)
+        })
+    }
+
     fn create_chunk(
         &self,
         entry_module_id: &ModuleId,
@@ -381,39 +395,38 @@ impl Compiler {
             match bfs.next_node() {
                 NextResult::Visited => continue,
                 NextResult::First(head) => {
-                    let module_already_in_entry = shared_chunk_names.iter().any(|name| {
-                        chunk_graph
-                            .get_chunk_by_name(name)
-                            .unwrap()
-                            .has_module(head)
-                    });
-                    // worker 无法共享 entry 的依赖
-                    if !module_already_in_entry || matches!(chunk_type, ChunkType::Worker(_)) {
-                        let parent_index = visited_modules
-                            .iter()
-                            .position(|m| m.id == head.id)
-                            .unwrap_or(0);
-                        let mut normal_deps = vec![];
+                    let parent_index = visited_modules
+                        .iter()
+                        .position(|m| m.id == head.id)
+                        .unwrap_or(0);
+                    let mut normal_deps = vec![];
 
-                        for (dep_module_id, dep) in module_graph.get_dependencies(head) {
-                            match dep.resolve_type {
-                                ResolveType::DynamicImport => {
-                                    dynamic_entries.push(dep_module_id.clone());
-                                }
-                                ResolveType::Worker => {
-                                    worker_entries.push(dep_module_id.clone());
-                                }
-                                _ => {
-                                    bfs.visit(dep_module_id);
-                                    // collect normal deps for current head
-                                    normal_deps.push(dep_module_id.clone());
-                                }
+                    for (dep_module_id, dep) in module_graph.get_dependencies(head) {
+                        match dep.resolve_type {
+                            ResolveType::DynamicImport => {
+                                dynamic_entries.push(dep_module_id.clone());
                             }
+                            ResolveType::Worker => {
+                                worker_entries.push(dep_module_id.clone());
+                            }
+                            // skip shared modules from entry chunks, but except worker chunk modules
+                            _ if matches!(chunk_type, ChunkType::Worker(_))
+                                || !self.is_entry_shared_module(
+                                    dep_module_id,
+                                    &shared_chunk_names,
+                                    chunk_graph,
+                                ) =>
+                            {
+                                bfs.visit(dep_module_id);
+                                // collect normal deps for current head
+                                normal_deps.push(dep_module_id.clone());
+                            }
+                            _ => {}
                         }
-
-                        // insert normal deps before head, so that we can keep the dfs order
-                        visited_modules.splice(parent_index..parent_index, normal_deps);
                     }
+
+                    // insert normal deps before head, so that we can keep the dfs order
+                    visited_modules.splice(parent_index..parent_index, normal_deps);
                 }
             }
         }
