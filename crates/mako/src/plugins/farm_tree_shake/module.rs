@@ -121,7 +121,7 @@ pub struct TreeShakeModule {
     pub described_side_effects: Option<bool>,
     pub stmt_graph: StatementGraph,
     // used exports will be analyzed when tree shaking
-    pub used_exports: UsedExports,
+    used_exports: UsedExports,
     pub module_system: ModuleSystem,
     pub all_exports: AllExports,
     pub topo_order: usize,
