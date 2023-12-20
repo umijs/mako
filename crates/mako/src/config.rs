@@ -249,6 +249,11 @@ pub struct MinifishConfig {
     pub meta_path: Option<PathBuf>,
     pub inject: Option<HashMap<String, InjectItem>>,
 }
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct OptimizationConfig {
+    pub skip_module: Option<bool>,
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -301,6 +306,7 @@ pub struct Config {
     pub optimize_package_imports: bool,
     pub emotion: bool,
     pub flex_bugs: bool,
+    pub optimizations: Option<OptimizationConfig>,
 }
 
 pub(crate) fn hash_config(c: &Config) -> u64 {
@@ -457,6 +463,7 @@ const DEFAULT_CONFIG: &str = r#"
     "optimizePackageImports": false,
     "emotion": false,
     "flexBugs": false,
+    "optimizations": { "skipModule": true }
 }
 "#;
 

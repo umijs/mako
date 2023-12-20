@@ -169,50 +169,54 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
         }
     }
 
-    skip_module_optimize(
-        module_graph,
-        &tree_shake_modules_ids,
-        &tree_shake_modules_map,
-        context,
-    )?;
+    if let Some(optimizations) = &context.config.optimizations
+        && optimizations.skip_module.unwrap_or(false)
+    {
+        skip_module_optimize(
+            module_graph,
+            &tree_shake_modules_ids,
+            &tree_shake_modules_map,
+            context,
+        )?;
 
-    for module_id in tree_shake_modules_ids.iter().rev() {
-        let mut tsm = tree_shake_modules_map.get(module_id).unwrap().borrow_mut();
+        for module_id in tree_shake_modules_ids.iter().rev() {
+            let mut tsm = tree_shake_modules_map.get(module_id).unwrap().borrow_mut();
 
-        for exp_info in tsm.exports() {
-            if let Some(source) = exp_info.source {
-                for sp_info in exp_info.specifiers {
-                    match sp_info {
-                        // export * from "xx"
-                        ExportSpecifierInfo::All(_) | ExportSpecifierInfo::Ambiguous(_) => {
-                            if let Some(dependent_id) =
-                                module_graph.get_dependency_module_by_source(module_id, &source)
-                            {
-                                if let Some(rc) = tree_shake_modules_map.get(dependent_id) {
-                                    let dependence_module = rc.borrow();
+            for exp_info in tsm.exports() {
+                if let Some(source) = exp_info.source {
+                    for sp_info in exp_info.specifiers {
+                        match sp_info {
+                            // export * from "xx"
+                            ExportSpecifierInfo::All(_) | ExportSpecifierInfo::Ambiguous(_) => {
+                                if let Some(dependent_id) =
+                                    module_graph.get_dependency_module_by_source(module_id, &source)
+                                {
+                                    if let Some(rc) = tree_shake_modules_map.get(dependent_id) {
+                                        let dependence_module = rc.borrow();
 
-                                    let to_extend = dependence_module.all_exports.clone();
+                                        let to_extend = dependence_module.all_exports.clone();
 
-                                    tsm.stmt_graph.stmt_mut(&exp_info.stmt_id).export_info =
-                                        Some(ExportInfo {
-                                            source: Some(source.clone()),
-                                            specifiers: vec![to_extend.to_all_specifier()],
-                                            stmt_id: exp_info.stmt_id,
-                                        });
+                                        tsm.stmt_graph.stmt_mut(&exp_info.stmt_id).export_info =
+                                            Some(ExportInfo {
+                                                source: Some(source.clone()),
+                                                specifiers: vec![to_extend.to_all_specifier()],
+                                                stmt_id: exp_info.stmt_id,
+                                            });
 
-                                    tsm.extends_exports(&to_extend);
+                                        tsm.extends_exports(&to_extend);
+                                    }
                                 }
                             }
-                        }
-                        _ => {
-                            tsm.all_exports.add_idents(sp_info.to_idents());
+                            _ => {
+                                tsm.all_exports.add_idents(sp_info.to_idents());
+                            }
                         }
                     }
-                }
-            } else {
-                for exp_sp in exp_info.specifiers {
-                    let idents = exp_sp.to_idents();
-                    tsm.all_exports.add_idents(idents);
+                } else {
+                    for exp_sp in exp_info.specifiers {
+                        let idents = exp_sp.to_idents();
+                        tsm.all_exports.add_idents(idents);
+                    }
                 }
             }
         }
