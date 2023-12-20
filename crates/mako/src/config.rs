@@ -306,7 +306,7 @@ pub struct Config {
     pub optimize_package_imports: bool,
     pub emotion: bool,
     pub flex_bugs: bool,
-    pub optimizations: Option<OptimizationConfig>,
+    pub optimization: Option<OptimizationConfig>,
 }
 
 pub(crate) fn hash_config(c: &Config) -> u64 {
@@ -463,7 +463,7 @@ const DEFAULT_CONFIG: &str = r#"
     "optimizePackageImports": false,
     "emotion": false,
     "flexBugs": false,
-    "optimizations": { "skipModule": true }
+    "optimization": { "skipModule": true }
 }
 "#;
 

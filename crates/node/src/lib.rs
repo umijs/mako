@@ -118,6 +118,9 @@ pub struct BuildParams {
             { from:string; namespace: true; exclude?:string; preferRequire?: boolean }
             >;
     };
+    optimization?: {
+        skipModule?: boolean;
+    };
 }"#)]
     pub config: serde_json::Value,
     pub hooks: JsHooks,
