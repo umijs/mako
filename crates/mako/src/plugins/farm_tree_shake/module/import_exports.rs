@@ -251,7 +251,10 @@ mod tests {
 
         let re_export_source = tsm.find_export_source(&"a".to_string());
 
-        assert!(re_export_source.is_none());
+        assert_eq!(
+            re_export_source.unwrap().describe(),
+            r#"ReExport from ./a.js by Namespace"#
+        );
     }
 
     #[test]
