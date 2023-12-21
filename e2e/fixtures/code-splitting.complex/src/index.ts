@@ -1,6 +1,7 @@
 import React from 'react';
+import Button from 'antd/es/button';
 
-console.log(React);
+console.log(React, Button);
 
 import('./should-be-split').then((m) => console.log(m));
 import('./should-be-common').then((m) => console.log(m));

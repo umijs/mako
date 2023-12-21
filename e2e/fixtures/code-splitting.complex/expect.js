@@ -69,3 +69,10 @@ assert(
   "common-async.js" in files,
   "common async modules should be split"
 );
+
+assert(
+  files["index.js"].includes('node_modules/antd/es/button/index.js": function') &&
+  !files["vendors_0-async.js"].includes('node_modules/antd/es/button/index.js": function') &&
+  !files["vendors_1-async.js"].includes('node_modules/antd/es/button/index.js": function'),
+  "async chunks should reuse shared modules from entry chunk"
+)
