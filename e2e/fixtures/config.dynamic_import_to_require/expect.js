@@ -13,6 +13,19 @@ assert(
   'dynamic imported module(foo) not existss',
 );
 assert(
+  files['index.js'].includes(
+    `Promise.resolve().then(()=>__mako_require__("node_modules/foo/index.js"))`,
+  ),
+  'require(foo) statement not found',
+);
+
+assert(
   files['index.js'].includes(`"src/foo.js":`),
   'dynamic imported module(./foo) not exists',
+);
+assert(
+  files['index.js'].includes(
+    `Promise.resolve().then(()=>__mako_require__("src/foo.js"))`,
+  ),
+  'require(./foo) statement not found',
 );
