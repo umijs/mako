@@ -8,7 +8,7 @@ pub enum TaskType {
     Normal(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Task {
     // origin path, might includes query
     pub path: String,
@@ -87,7 +87,7 @@ pub fn parse_path(path: &str) -> Result<FileRequest> {
     })
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FileRequest {
     pub path: String,
     pub query: Vec<(String, String)>,

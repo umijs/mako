@@ -40,6 +40,7 @@ pub struct Context {
     pub optimize_infos: Mutex<Option<Vec<OptimizeChunksInfo>>>,
     pub swc_helpers: Mutex<SwcHelpers>,
 }
+
 #[derive(Default)]
 pub struct MemoryChunkFileCache {
     content_map: HashMap<String, (Vec<u8>, u64)>,

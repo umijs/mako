@@ -1,28 +1,32 @@
-use std::path::PathBuf;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use cached::proc_macro::cached;
 use mako_core::anyhow::Result;
 use mako_core::nodejs_resolver::DescriptionData;
-use mako_core::path_clean::PathClean;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{
-    ExportSpecifier, Expr, ImportDecl, ImportDefaultSpecifier, ImportNamedSpecifier,
-    ImportSpecifier, ImportStarAsSpecifier, ModuleDecl, ModuleExportName, ModuleItem, Stmt,
+    ImportDecl, ImportNamedSpecifier, ImportSpecifier, ModuleDecl, ModuleExportName, ModuleItem,
 };
 use mako_core::swc_ecma_utils::{quote_ident, quote_str};
 use mako_core::swc_ecma_visit::Fold;
 use mako_core::tracing::debug;
 
+use crate::build::cached_build_module;
 use crate::compiler::Context;
-use crate::load::load;
-use crate::module::{Dependency, ResolveType};
-use crate::parse::parse;
+use crate::module::{
+    Dependency, ExportInfo, ExportSpecifierInfo, ImportSpecifierInfo, ResolveType,
+};
 use crate::resolve::{resolve, ResolverResource};
 use crate::task::{Task, TaskType};
 
 pub fn optimize_package_imports(path: String, context: Arc<Context>) -> impl Fold {
     OptimizePackageImports { path, context }
+}
+
+pub fn should_optimize(path: &str, context: Arc<Context>) -> bool {
+    let is_under_node_modules = path.contains("node_modules");
+    context.config.optimize_package_imports && !is_under_node_modules
 }
 
 struct OptimizePackageImports {
@@ -32,10 +36,11 @@ struct OptimizePackageImports {
 
 impl Fold for OptimizePackageImports {
     fn fold_module_items(&mut self, module_items: Vec<ModuleItem>) -> Vec<ModuleItem> {
-        let mut new_items = vec![];
-
+        debug!("optimize_package_imports: {}", self.path);
+        let mut new_module_items = vec![];
         for module_item in module_items {
             if let ModuleItem::ModuleDecl(ModuleDecl::Import(import_decl)) = &module_item {
+                // TODO: performance optimization，可以少一次循环
                 // 1. Exclude situations where import source does not need to be replaced:
                 //   - namespace import
                 //   - named import with non specifier
@@ -45,7 +50,11 @@ impl Fold for OptimizePackageImports {
                     .iter()
                     .any(|specifier| specifier.is_namespace() || specifier.is_default())
                 {
-                    new_items.push(module_item);
+                    debug!(
+                        "  namespace import or default import: {:?}",
+                        import_decl.src
+                    );
+                    new_module_items.push(module_item);
                     continue;
                 }
 
@@ -53,11 +62,22 @@ impl Fold for OptimizePackageImports {
                 let specifiers = import_decl
                     .specifiers
                     .iter()
-                    .map(|specifier| specifier.as_named().unwrap())
-                    .collect::<Vec<_>>();
-
+                    .map(|specifier| {
+                        let specifier = specifier.as_named().unwrap();
+                        let imported = if let Some(imported) = &specifier.imported {
+                            match imported {
+                                ModuleExportName::Ident(ident) => ident.sym.to_string(),
+                                ModuleExportName::Str(str) => str.value.to_string(),
+                            }
+                        } else {
+                            specifier.local.sym.to_string()
+                        };
+                        (imported, specifier)
+                    })
+                    .collect::<HashMap<_, _>>();
                 if specifiers.is_empty() {
-                    new_items.push(module_item);
+                    debug!("  no specifiers: {:?}", import_decl.src);
+                    new_module_items.push(module_item);
                     continue;
                 }
 
@@ -73,232 +93,48 @@ impl Fold for OptimizePackageImports {
 
                 match resolve(&self.path, &dep, &self.context.resolvers, &self.context) {
                     Ok(resolved_resource) => {
-                        if let ResolverResource::Resolved(resolved) = &resolved_resource {
-                            // package with side-effects are not allowed
-                            let side_effects = if let Some(description) = &resolved.0.description {
-                                has_side_effects(description)
-                            } else {
-                                true
-                            };
-
-                            if side_effects {
-                                new_items.push(module_item);
-                                continue;
-                            }
-
-                            // Whether the bucket file
-                            let path = resolved_resource.get_resolved_path();
-                            let (is_barrel, export_map) =
-                                parse_barrel_file(&path, &self.context).unwrap();
-
-                            if !is_barrel {
-                                new_items.push(module_item);
-                                continue;
-                            }
-
+                        let x = parse_barrel_file(&resolved_resource, &self.context, false);
+                        if let Ok(Some(mut export_map)) = x {
                             debug!(
-                                "parsed barrel file: {:?}, export_map:{:?}",
-                                path, export_map
+                                "  barrel file: {:?}, export_map: {:?}",
+                                import_decl.src.value.to_string(),
+                                export_map
                             );
-
-                            // 2. If it's a bucket file, rewrite the source of import statement
-                            //   - `import { a } from 'foo';` => `import { a } from 'foo/a';`
-                            //   - `import { a, b, bb } from 'foo';` => `import { a } from 'foo/a'; import { b, bb } from 'foo/b';`
-                            // src_specifiers_map: [ ('foo/a', [a]), ('foo/b', [b, bb]) ]
-                            let mut src_specifiers_map: Vec<(String, Vec<ImportSpecifier>)> =
-                                vec![];
-                            specifiers.iter().for_each(|specifier| {
-                                // import { a, foo as bar } from 'foo'; => a、foo
-                                let imported = match &specifier.imported {
-                                    Some(n) => match &n {
-                                        ModuleExportName::Ident(n) => n.sym.to_string(),
-                                        ModuleExportName::Str(n) => n.value.to_string(),
-                                    },
-                                    None => specifier.local.sym.to_string(),
-                                };
-
-                                // If the import specifier is exported from the barrel file, insert to src_specifiers_map
-                                if let Some(export) = export_map.iter().find(|export| {
-                                    export.exported == imported && export.orig == "*"
-                                }) {
-                                    // namespace specifier: `export * as foo from 'foo';`
-                                    let new_src = PathBuf::from(&path)
-                                        .parent()
-                                        .unwrap()
-                                        .join(&export.src)
-                                        .clean()
-                                        .to_string_lossy()
-                                        .to_string();
-
-                                    match src_specifiers_map
-                                        .iter_mut()
-                                        .find(|(src, _)| src == &new_src)
-                                    {
-                                        Some(map) => map.1.push(ImportSpecifier::Namespace(
-                                            ImportStarAsSpecifier {
-                                                span: DUMMY_SP,
-                                                local: specifier.local.clone(),
-                                            },
-                                        )),
-                                        None => {
-                                            src_specifiers_map.push((
-                                                new_src,
-                                                vec![ImportSpecifier::Namespace(
-                                                    ImportStarAsSpecifier {
-                                                        span: DUMMY_SP,
-                                                        local: specifier.local.clone(),
-                                                    },
-                                                )],
-                                            ));
-                                        }
-                                    }
-                                } else if let Some(export) = export_map.iter().find(|export| {
-                                    export.exported == imported && export.orig == "default"
-                                }) {
-                                    // default specifier: `export { default as Button } from 'button';`
-                                    let new_src = PathBuf::from(&path)
-                                        .parent()
-                                        .unwrap()
-                                        .join(&export.src)
-                                        .clean()
-                                        .to_string_lossy()
-                                        .to_string();
-
-                                    match src_specifiers_map
-                                        .iter_mut()
-                                        .find(|(src, _)| src == &new_src)
-                                    {
-                                        Some(map) => map.1.push(ImportSpecifier::Default(
-                                            ImportDefaultSpecifier {
-                                                span: DUMMY_SP,
-                                                local: specifier.local.clone(),
-                                            },
-                                        )),
-                                        None => {
-                                            src_specifiers_map.push((
-                                                new_src,
-                                                vec![ImportSpecifier::Default(
-                                                    ImportDefaultSpecifier {
-                                                        span: DUMMY_SP,
-                                                        local: specifier.local.clone(),
-                                                    },
-                                                )],
-                                            ));
-                                        }
-                                    }
-                                } else if let Some(export) =
-                                    export_map.iter().find(|export| export.exported == imported)
-                                {
-                                    // 'foo/a'
-                                    let new_src = PathBuf::from(&path)
-                                        .parent()
-                                        .unwrap()
-                                        .join(&export.src)
-                                        .clean()
-                                        .to_string_lossy()
-                                        .to_string();
-
-                                    let new_specifier = if export.orig == export.exported {
-                                        // `export { a } from 'a';` and `import { a } from 'foo'`
-                                        ImportSpecifier::Named((*specifier).clone())
-                                    } else {
-                                        // `export { a as aa } from 'a';` and `import { aa } from 'foo'`
-                                        ImportSpecifier::Named(ImportNamedSpecifier {
-                                            span: DUMMY_SP,
-                                            local: specifier.local.clone(),
-                                            imported: Some(ModuleExportName::Ident(quote_ident!(
-                                                export.orig.clone()
-                                            ))),
-                                            is_type_only: specifier.is_type_only,
-                                        })
-                                    };
-
-                                    match src_specifiers_map
-                                        .iter_mut()
-                                        .find(|(src, _)| src == &new_src)
-                                    {
-                                        Some(map) => map.1.push(new_specifier),
-                                        None => {
-                                            src_specifiers_map.push((new_src, vec![new_specifier]));
-                                        }
-                                    }
-                                } else {
-                                    // If the import specifier is not exported from the barrel file, keep the import statement here first
-                                    match src_specifiers_map
-                                        .iter_mut()
-                                        .find(|(src, _)| src == &raw_src)
-                                    {
-                                        Some(map) => {
-                                            map.1.push(ImportSpecifier::Named((*specifier).clone()))
-                                        }
-                                        None => {
-                                            src_specifiers_map.push((
-                                                raw_src.clone(),
-                                                vec![ImportSpecifier::Named((*specifier).clone())],
-                                            ));
-                                        }
-                                    }
-                                }
-                            });
-
-                            for (new_src, specifiers) in src_specifiers_map {
-                                new_items.push(ModuleItem::ModuleDecl(ModuleDecl::Import(
-                                    ImportDecl {
-                                        span: DUMMY_SP,
-                                        specifiers,
-                                        src: Box::new(quote_str!(new_src)),
-                                        type_only: false,
-                                        with: None,
-                                    },
-                                )));
-                            }
+                            // retain export_map if specifiers contains key
+                            debug!("    specifier_keys: {:?}", specifiers.keys());
+                            export_map.retain(|k, _| specifiers.contains_key(k));
+                            debug!("    retain export_map: {:?}", export_map.keys());
+                            let path = resolved_resource.get_resolved_path();
+                            let stmts = build_import_stmts(&export_map, &specifiers, &path);
+                            new_module_items.extend(stmts);
                         } else {
-                            // Don't replace ignored and external
-                            new_items.push(module_item);
-                            continue;
-                        }
+                            debug!("  not barrel file: {:?}", import_decl.src.value.to_string());
+                            new_module_items.push(module_item);
+                        };
                     }
-                    Err(_) => new_items.push(module_item),
+                    Err(_) => {
+                        debug!("  resolve error: {:?}", import_decl.src);
+                        new_module_items.push(module_item);
+                    }
                 }
             } else {
-                new_items.push(module_item);
+                debug!("  not import decl");
+                new_module_items.push(module_item);
             }
         }
-
-        new_items
+        debug!("optimize_package_imports end: {}", self.path);
+        new_module_items
     }
 }
 
-#[derive(Debug, Clone)]
-struct ImportInfo {
-    // `bar` in `export { foo as bar } from './foo';`
-    imported: String,
-    // `./foo` in `export { foo as bar } from './foo';`
-    src: String,
-    // `foo` in `export { foo as bar } from './foo';`
-    orig: String,
-}
-
-#[derive(Debug, Clone)]
-struct ExportInfo {
-    // `bar` in `export { foo as bar } from './foo';`
-    exported: String,
-    // `./foo` in `export { foo as bar } from './foo';`
-    src: String,
-    // `foo` in `export { foo as bar } from './foo';`
-    orig: String,
-}
-
-#[cached(
-    key = "String",
-    convert = r#"{ format!("{:?}", description.data().name()) }"#
-)]
+#[cached(key = "String", convert = r#"{ format!("{:?}", description.dir()) }"#)]
 fn has_side_effects(description: &Arc<DescriptionData>) -> bool {
     let pkg_json = description.data().raw();
     if pkg_json.is_object() {
         if let Some(side_effects) = pkg_json.as_object().unwrap().get("sideEffects") {
             match side_effects {
                 serde_json::Value::Bool(side_effects) => *side_effects,
+                // FIXME:
                 // Temporary support antd by this way
                 serde_json::Value::Array(side_effects) => !side_effects
                     .iter()
@@ -313,219 +149,194 @@ fn has_side_effects(description: &Arc<DescriptionData>) -> bool {
     }
 }
 
-#[cached(result = true, key = "String", convert = r#"{ format!("{}", path) }"#)]
-fn parse_barrel_file(path: &str, context: &Arc<Context>) -> Result<(bool, Vec<ExportInfo>)> {
-    let task = Task::new(TaskType::Normal(path.to_string()), None);
-    let content = load(&task, context)?;
-    let ast = parse(&content, &task, context)?;
-    let ast = ast.as_script();
+fn build_import_stmts(
+    export_infos: &ExportInfos,
+    orig_specifiers: &HashMap<String, &ImportNamedSpecifier>,
+    source: &str,
+) -> Vec<ModuleItem> {
+    let mut stmts = vec![];
 
-    // A barrel file to be a file that only exports from other modules.
-    // Besides that, lit expressions are allowed as well ("use client", etc.).
-    let mut is_barrel = true;
-    // Imported meta information. import { a, b as bb } from './foo'; => [(a, './foo', a), (bb, './foo', b)]
-    let mut import_map: Vec<ImportInfo> = vec![];
-    // Exportd meta information. export { a, b as bb } from './foo'; => [(a, './foo', a), (bb, './foo', b)]
-    let mut export_map: Vec<ExportInfo> = vec![];
+    // for origin_specifier
+    for (local, specifier) in orig_specifiers {
+        let (source, imported) = if let Some((source, name)) = export_infos.get(local) {
+            (
+                source.as_str(),
+                Some(ModuleExportName::Ident(quote_ident!(name.as_str()))),
+            )
+        } else {
+            // TODO:
+            // 这里还可以优化下。
+            // 现在找不到 export 信息时用原 import 的 source
+            // 优化方案是，如果桶文件只有一个 export *，那可以用那个 export * 的 source
+            (source, specifier.imported.clone())
+        };
+        let local_ident = orig_specifiers.get(local).as_ref().unwrap().local.clone();
+        let specifiers = vec![ImportSpecifier::Named(ImportNamedSpecifier {
+            span: DUMMY_SP,
+            local: local_ident,
+            imported,
+            is_type_only: false,
+        })];
+        let import_stmt = ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
+            span: DUMMY_SP,
+            specifiers,
+            src: Box::new(quote_str!(source)),
+            type_only: false,
+            with: None,
+        }));
+        stmts.push(import_stmt);
+    }
+    stmts
+}
 
-    for module_item in &ast.body {
-        match module_item {
-            ModuleItem::ModuleDecl(module_decl) => {
-                match module_decl {
-                    // import
-                    ModuleDecl::Import(import_decl) => {
-                        let src = import_decl.src.value.to_string();
-
-                        for specifier in &import_decl.specifiers {
-                            match specifier {
-                                // e.g. local = foo, imported = None `import { foo } from 'mod.js'`
-                                // e.g. local = bar, imported = Some(foo) for `import { foo as bar } from
-                                ImportSpecifier::Named(import_named) => {
-                                    import_map.push(ImportInfo {
-                                        imported: import_named.local.sym.to_string(),
-                                        src: src.clone(),
-                                        orig: if let Some(imported) = &import_named.imported {
-                                            match imported {
-                                                ModuleExportName::Ident(n) => n.sym.to_string(),
-                                                ModuleExportName::Str(n) => n.value.to_string(),
-                                            }
-                                        } else {
-                                            import_named.local.sym.to_string()
-                                        },
-                                    });
-                                }
-                                // e.g. `import * as foo from 'foo'`.
-                                ImportSpecifier::Namespace(import_namespace) => {
-                                    import_map.push(ImportInfo {
-                                        imported: import_namespace.local.sym.to_string(),
-                                        src: src.clone(),
-                                        orig: "*".to_string(),
-                                    })
-                                }
-                                // e.g. `import foo from 'foo'`
-                                ImportSpecifier::Default(import_default) => {
-                                    import_map.push(ImportInfo {
-                                        imported: import_default.local.sym.to_string(),
-                                        src: src.clone(),
-                                        orig: "default".to_string(),
-                                    });
-                                }
-                            }
+#[cached(
+    result = true,
+    key = "String",
+    convert = r#"{ format!("{:?}_{:}", resource.get_resolved_path(), exports_all) }"#
+)]
+fn parse_barrel_file(
+    resource: &ResolverResource,
+    context: &Arc<Context>,
+    exports_all: bool,
+) -> Result<Option<ExportInfos>> {
+    debug!(
+        "  parse_barrel_file: {:?}, exports_all: {:?}",
+        resource.get_resolved_path(),
+        exports_all
+    );
+    // only resolved deps is handled
+    let resolved = if let ResolverResource::Resolved(resolved) = &resource {
+        Some(resolved)
+    } else {
+        None
+    };
+    if resolved.is_none() {
+        debug!("    not resolved");
+        return Ok(None);
+    }
+    let resolved = resolved.unwrap();
+    // handle side effects
+    let side_effects = if let Some(description) = &resolved.0.description {
+        has_side_effects(description)
+    } else {
+        true
+    };
+    debug!("    side_effects: {:?}", side_effects);
+    if side_effects {
+        debug!("    has side effects");
+        return Ok(None);
+    }
+    // build_module
+    let path = resource.get_resolved_path();
+    let task = Task::new(TaskType::Normal(path), None);
+    let (m, deps, task) = cached_build_module(context, task)?;
+    let info = m.info.as_ref().unwrap();
+    if !exports_all && !info.is_barrel {
+        debug!("    not exports_all && not barrel file: {:?}", task.path);
+        return Ok(None);
+    }
+    // build hash maps
+    let mut export_infos = HashMap::new();
+    let mut import_infos = HashMap::new();
+    info.import_map.iter().for_each(|import| {
+        import
+            .specifiers
+            .iter()
+            .for_each(|specifier| match specifier {
+                ImportSpecifierInfo::Namespace(n) => {
+                    import_infos.insert(n, import.source.clone());
+                }
+                ImportSpecifierInfo::Named { local, imported: _ } => {
+                    import_infos.insert(local, import.source.clone());
+                }
+                ImportSpecifierInfo::Default(n) => {
+                    import_infos.insert(n, import.source.clone());
+                }
+            });
+    });
+    let mut resolver_resource_infos = HashMap::new();
+    deps.iter().for_each(|dep| {
+        resolver_resource_infos.insert(dep.1.source.clone(), dep.0.clone());
+    });
+    // debug!("6 {:?}", info.export_map);
+    // iter info.export_map
+    info.export_map
+        .iter()
+        .for_each(|export_info| match export_info {
+            ExportInfo::Decl { ident } => {
+                debug!("    export decl: {:?}", ident);
+                export_infos.insert(ident.clone(), ("_".to_string(), ident.clone()));
+            }
+            ExportInfo::All { source } => {
+                debug!("    export all: {:?}", source);
+                if let Some(resolver_resource) = resolver_resource_infos.get(source) {
+                    let more_export_infos = parse_barrel_file(resolver_resource, context, true);
+                    let path = resolver_resource.get_resolved_path();
+                    if let Ok(Some(more_export_infos)) = more_export_infos {
+                        for (k, v) in more_export_infos {
+                            export_infos.insert(k, (path.clone(), v.1));
                         }
-                    }
-                    // export named
-                    ModuleDecl::ExportNamed(export_named) => {
-                        for specifier in &export_named.specifiers {
-                            match specifier {
-                                // e.g. `export { foo } from 'foo';`
-                                // e.g. `export { foo as bar } from 'foo';`
-                                ExportSpecifier::Named(specifier) => {
-                                    let orig_str = match &specifier.orig {
-                                        ModuleExportName::Ident(n) => n.sym.to_string(),
-                                        ModuleExportName::Str(n) => n.value.to_string(),
-                                    };
-                                    let name_str = match &specifier.exported {
-                                        Some(n) => match &n {
-                                            ModuleExportName::Ident(n) => n.sym.to_string(),
-                                            ModuleExportName::Str(n) => n.value.to_string(),
-                                        },
-                                        None => orig_str.clone(),
-                                    };
-                                    if let Some(src) = &export_named.src {
-                                        export_map.push(ExportInfo {
-                                            exported: name_str.clone(),
-                                            src: src.value.to_string(),
-                                            orig: orig_str.clone(),
-                                        });
-                                    } else {
-                                        // resolve src from import_map
-                                        let export_info = import_map.iter().find_map(|import| {
-                                            if import.imported == orig_str {
-                                                Some((
-                                                    import.src.to_string(),
-                                                    import.orig.to_string(),
-                                                ))
-                                            } else {
-                                                None
-                                            }
-                                        });
-
-                                        export_map.push(ExportInfo {
-                                            exported: name_str.clone(),
-                                            src: if let Some(export_info) = &export_info {
-                                                export_info.0.clone()
-                                            } else {
-                                                "".to_string()
-                                            },
-                                            orig: if let Some(export_info) = &export_info {
-                                                export_info.1.clone()
-                                            } else {
-                                                orig_str.clone()
-                                            },
-                                        });
-                                    }
-                                }
-                                // e.g. `export * as foo from 'foo';`
-                                ExportSpecifier::Namespace(specifier) => {
-                                    let name_str = match &specifier.name {
-                                        ModuleExportName::Ident(n) => n.sym.to_string(),
-                                        ModuleExportName::Str(n) => n.value.to_string(),
-                                    };
-                                    if let Some(src) = &export_named.src {
-                                        export_map.push(ExportInfo {
-                                            exported: name_str.clone(),
-                                            src: src.value.to_string(),
-                                            orig: "*".to_string(),
-                                        });
-                                    }
-                                }
-                                // e.g. export v from 'mod';
-                                ExportSpecifier::Default(_) => {}
-                            }
-                        }
-                    }
-                    // ALLOW: `export * from 'foo'`
-                    ModuleDecl::ExportAll(_) => {}
-                    // NOT ALLOW:
-                    // - ExportDecl: `export const foo = 'foo';`
-                    // - ExportDefaultDecl: `export default function foo() {};`
-                    // - ExportDefaultExpr: `export default foo;`
-                    _ => {
-                        is_barrel = false;
-                        break;
                     }
                 }
             }
-            ModuleItem::Stmt(stmt) => match stmt {
-                Stmt::Expr(stmt_expr) => match &*stmt_expr.expr {
-                    Expr::Lit(_) => {}
-                    _ => {
-                        is_barrel = false;
-                        break;
+            ExportInfo::Named { source, specifiers } => {
+                for specifier in specifiers {
+                    // export_infos 要以 exported 为 key 进行保存，然后去找依赖里是否有 orig 的值，如果有，就替换掉
+                    let (source, exported, orig) = match specifier {
+                        // export { x } from 'foo';
+                        // export { x as xxx } from 'foo';
+                        ExportSpecifierInfo::Named { local, exported } => {
+                            let source = if source.is_some() {
+                                source.as_ref().unwrap().clone()
+                            } else if let Some(source) = import_infos.get(local) {
+                                source.to_string()
+                            } else {
+                                continue;
+                            };
+                            let exported = exported.as_ref().unwrap_or(local);
+                            let exported = exported.to_string();
+                            (source, exported, local.clone())
+                        }
+                        // export default foo;
+                        ExportSpecifierInfo::Default(local) => {
+                            let source = if let Some(source) = import_infos.get(local) {
+                                source.clone()
+                            } else {
+                                continue;
+                            };
+                            (source, local.clone(), local.clone())
+                        }
+                        // export * as foo from 'foo';
+                        ExportSpecifierInfo::Namespace(local) => {
+                            let source = if source.is_some() {
+                                source.as_ref().unwrap().clone()
+                            } else if let Some(source) = import_infos.get(local) {
+                                source.clone()
+                            } else {
+                                continue;
+                            };
+                            (source, local.clone(), local.clone())
+                        }
+                    };
+                    if let Some(resolver_resource) = resolver_resource_infos.get(&source) {
+                        // 1、先添加当前依赖
+                        // 2、构建和解析依赖文件，如果找到更深的依赖，覆盖到 export_infos 中
+                        export_infos.insert(
+                            exported.clone(),
+                            (resolver_resource.get_resolved_path(), orig.clone()),
+                        );
+                        let more_export_infos =
+                            parse_barrel_file(resolver_resource, context, exports_all);
+                        if let Ok(Some(more_export_infos)) = more_export_infos {
+                            if let Some(value) = more_export_infos.get(&orig) {
+                                export_infos.insert(exported.clone(), value.clone());
+                            }
+                        }
                     }
-                },
-                _ => {
-                    is_barrel = false;
-                    break;
                 }
-            },
-        }
-    }
-
-    export_map.retain(|export| export.src.starts_with("./") || export.src.starts_with("../"));
-
-    Ok((is_barrel, export_map))
+            }
+        });
+    Ok(Some(export_infos))
 }
 
-#[cfg(test)]
-mod tests {
-    use std::path::{Path, PathBuf};
-    use std::sync::Arc;
-
-    use mako_core::swc_common::{chain, Mark};
-    use mako_core::swc_ecma_parser::{EsConfig, Syntax};
-    use mako_core::swc_ecma_transforms::resolver;
-    use swc_ecma_transforms_testing::test_fixture;
-    use testing::fixture;
-
-    use super::optimize_package_imports;
-    use crate::compiler::{Compiler, Context};
-    use crate::config::Config;
-
-    #[fixture("test/fixture/optimize_package_imports/**/input.js")]
-    fn optimize_package_imports_fixture(input: PathBuf) {
-        let output = input.parent().unwrap().join("output.js");
-        test_fixture(
-            self::syntax(),
-            &|_tr| {
-                let unresolved_mark = Mark::new();
-                let top_level_mark = Mark::new();
-
-                chain!(
-                    resolver(unresolved_mark, top_level_mark, false),
-                    optimize_package_imports(
-                        input.to_string_lossy().to_string(),
-                        self::context(&input)
-                    ),
-                )
-            },
-            &input,
-            &output,
-            Default::default(),
-        );
-    }
-
-    fn syntax() -> Syntax {
-        Syntax::Es(EsConfig {
-            jsx: true,
-            ..Default::default()
-        })
-    }
-
-    fn context(input: &Path) -> Arc<Context> {
-        let root = input.parent().unwrap().to_path_buf();
-        let config = Config::new(&root, None, None).unwrap();
-        let compiler = Compiler::new(config, root, Default::default(), None).unwrap();
-        compiler.context
-    }
-}
+type ExportInfos = HashMap<String, (String, String)>;

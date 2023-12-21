@@ -360,7 +360,7 @@ impl Compiler {
                 Task::new(task_type, None)
             })
             .collect::<Vec<_>>();
-        self.build_tasks(tasks)
+        self.build_tasks(tasks, false)
     }
 
     fn build_by_remove(&self, removed: Vec<PathBuf>) -> (HashSet<ModuleId>, HashSet<ModuleId>) {

@@ -4,11 +4,16 @@ use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::time::Instant;
 
+use cached::proc_macro::cached;
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::colored::Colorize;
 use mako_core::lazy_static::lazy_static;
 use mako_core::rayon::ThreadPool;
 use mako_core::regex::Regex;
+use mako_core::swc_ecma_ast::{
+    Decl, ExportSpecifier, Expr, ImportSpecifier, ModuleDecl, ModuleExportName, ModuleItem, Pat,
+    Stmt,
+};
 use mako_core::swc_ecma_utils::contains_top_level_await;
 use mako_core::thiserror::Error;
 use mako_core::tracing::debug;
@@ -20,7 +25,10 @@ use crate::chunk_pot::util::{hash_hashmap, hash_vec};
 use crate::compiler::{Compiler, Context};
 use crate::config::{DevtoolConfig, Mode};
 use crate::load::{ext_name, load, Content};
-use crate::module::{Dependency, Module, ModuleAst, ModuleId, ModuleInfo};
+use crate::module::{
+    Dependency, ExportInfo, ExportSpecifierInfo, ImportInfo, ImportSpecifierInfo, Module,
+    ModuleAst, ModuleId, ModuleInfo,
+};
 use crate::parse::parse;
 use crate::plugin::PluginCheckAstParam;
 use crate::resolve::{resolve, ResolverResource};
@@ -58,7 +66,7 @@ impl Compiler {
                 task::Task::new(task::TaskType::Entry(entry), None)
             })
             .collect::<Vec<_>>();
-        let module_ids = self.build_tasks(tasks)?;
+        let module_ids = self.build_tasks(tasks, true)?;
         let t_build = t_build.elapsed();
         println!(
             "{} modules transformed in {}ms.",
@@ -68,7 +76,7 @@ impl Compiler {
         Ok(())
     }
 
-    pub fn build_tasks(&self, tasks: Vec<Task>) -> Result<HashSet<ModuleId>> {
+    pub fn build_tasks(&self, tasks: Vec<Task>, with_cache: bool) -> Result<HashSet<ModuleId>> {
         debug!("build tasks: {:?}", tasks);
         if tasks.is_empty() {
             return Ok(HashSet::new());
@@ -78,7 +86,13 @@ impl Compiler {
         let mut count = 0;
         for task in tasks {
             count += 1;
-            Self::build_with_pool(pool.clone(), self.context.clone(), task, rs.clone());
+            Self::build_with_pool(
+                pool.clone(),
+                self.context.clone(),
+                task,
+                rs.clone(),
+                with_cache,
+            );
         }
 
         let mut errors = vec![];
@@ -140,6 +154,7 @@ impl Compiler {
                                                 Some(resource),
                                             ),
                                             rs.clone(),
+                                            with_cache,
                                         );
                                     }
                                     // 拿到依赖之后需要直接添加 module 到 module_graph 里，不能等依赖 build 完再添加
@@ -180,9 +195,14 @@ impl Compiler {
         context: Arc<Context>,
         task: task::Task,
         rs: Sender<Result<(Module, ModuleDeps, Task)>>,
+        with_cache: bool,
     ) {
         pool.spawn(move || {
-            let result = Self::build_module(&context, task);
+            let result = if with_cache {
+                cached_build_module(&context, task)
+            } else {
+                Compiler::build_module(&context, task)
+            };
             rs.send(result).unwrap();
         });
     }
@@ -233,6 +253,9 @@ module.exports = new Promise((resolve, reject) => {{
                         top_level_await: false,
                         is_async: has_script,
                         source_map_chain: vec![],
+                        import_map: vec![],
+                        export_map: vec![],
+                        is_barrel: false,
                     }),
                 )
             }
@@ -329,6 +352,7 @@ module.exports = new Promise((resolve, reject) => {{
             .wrapping_add(hash_hashmap(&missing_deps).wrapping_add(hash_vec(&ignored_deps)));
 
         // create module info
+        let (import_map, export_map, is_barrel) = Self::build_import_export_map(&ast);
         let info = ModuleInfo {
             ast,
             path: task.path.clone(),
@@ -341,12 +365,186 @@ module.exports = new Promise((resolve, reject) => {{
             is_async: top_level_await || is_async_module(&task.path),
             resolved_resource: task.parent_resource.clone(),
             source_map_chain,
+            import_map,
+            export_map,
+            is_barrel,
         };
         let module_id = ModuleId::new(task.path.clone());
         let module = Module::new(module_id, task.is_entry, Some(info));
 
         Ok((module, dependencies_resource, task))
     }
+
+    fn build_import_export_map(ast: &ModuleAst) -> (Vec<ImportInfo>, Vec<ExportInfo>, bool) {
+        let is_script = matches!(ast, ModuleAst::Script(_));
+        if !is_script {
+            return (vec![], vec![], false);
+        }
+        let ast = ast.as_script();
+        let mut import_map = vec![];
+        let mut export_map = vec![];
+        let mut is_barrel = true;
+        for item in &ast.body {
+            match item {
+                ModuleItem::ModuleDecl(module_decl) => {
+                    match module_decl {
+                        ModuleDecl::Import(import_decl) => {
+                            let source = import_decl.src.value.to_string();
+                            let mut specifiers = vec![];
+                            for specifier in &import_decl.specifiers {
+                                match specifier {
+                                    // e.g. local = foo, imported = None `import { foo } from 'mod.js'`
+                                    // e.g. local = bar, imported = Some(foo) for `import { foo as bar } from
+                                    ImportSpecifier::Named(import_named) => {
+                                        let local = import_named.local.sym.to_string();
+                                        let imported =
+                                            if let Some(imported) = &import_named.imported {
+                                                match imported {
+                                                    ModuleExportName::Ident(n) => {
+                                                        Some(n.sym.to_string())
+                                                    }
+                                                    ModuleExportName::Str(n) => {
+                                                        Some(n.value.to_string())
+                                                    }
+                                                }
+                                            } else {
+                                                None
+                                            };
+                                        specifiers
+                                            .push(ImportSpecifierInfo::Named { local, imported });
+                                    }
+                                    // e.g. `import * as foo from 'foo'`.
+                                    ImportSpecifier::Namespace(import_namespace) => {
+                                        specifiers.push(ImportSpecifierInfo::Namespace(
+                                            import_namespace.local.sym.to_string(),
+                                        ));
+                                    }
+                                    // e.g. `import foo from 'foo'`
+                                    ImportSpecifier::Default(import_default) => {
+                                        specifiers.push(ImportSpecifierInfo::Default(
+                                            import_default.local.sym.to_string(),
+                                        ));
+                                    }
+                                }
+                            }
+                            import_map.push(ImportInfo { source, specifiers })
+                        }
+                        ModuleDecl::ExportNamed(named_export) => {
+                            let source = named_export.src.as_ref().map(|src| src.value.to_string());
+                            let mut specifiers = vec![];
+                            for specifier in &named_export.specifiers {
+                                match specifier {
+                                    ExportSpecifier::Named(specifier) => {
+                                        let local = match &specifier.orig {
+                                            ModuleExportName::Ident(n) => n.sym.to_string(),
+                                            ModuleExportName::Str(n) => n.value.to_string(),
+                                        };
+                                        let exported = match &specifier.exported {
+                                            Some(n) => match &n {
+                                                ModuleExportName::Ident(n) => {
+                                                    Some(n.sym.to_string())
+                                                }
+                                                ModuleExportName::Str(n) => {
+                                                    Some(n.value.to_string())
+                                                }
+                                            },
+                                            None => None,
+                                        };
+                                        specifiers
+                                            .push(ExportSpecifierInfo::Named { local, exported });
+                                    }
+                                    ExportSpecifier::Namespace(specifier) => {
+                                        let name = match &specifier.name {
+                                            ModuleExportName::Ident(n) => n.sym.to_string(),
+                                            ModuleExportName::Str(n) => n.value.to_string(),
+                                        };
+                                        specifiers.push(ExportSpecifierInfo::Namespace(name));
+                                    }
+                                    ExportSpecifier::Default(specifier) => {
+                                        let name = specifier.exported.sym.to_string();
+                                        specifiers.push(ExportSpecifierInfo::Default(name));
+                                    }
+                                }
+                            }
+                            export_map.push(ExportInfo::Named { source, specifiers });
+                        }
+                        ModuleDecl::ExportAll(export) => {
+                            export_map.push(ExportInfo::All {
+                                source: export.src.value.to_string(),
+                            });
+                        }
+                        ModuleDecl::ExportDecl(export) => {
+                            let idents = match &export.decl {
+                                Decl::Class(x) => Some(vec![x.ident.sym.to_string()]),
+                                Decl::Var(x) => {
+                                    let decls = x
+                                        .as_ref()
+                                        .decls
+                                        .iter()
+                                        .flat_map(|decl| match decl.name {
+                                            Pat::Ident(ref x) => Some(x.id.sym.to_string()),
+                                            _ => None,
+                                        })
+                                        .collect::<Vec<_>>();
+                                    Some(decls)
+                                }
+                                Decl::Fn(x) => Some(vec![x.ident.sym.to_string()]),
+                                // TODO: more
+                                _ => None,
+                            };
+                            if let Some(idents) = idents {
+                                for ident in idents {
+                                    export_map.push(ExportInfo::Decl { ident });
+                                }
+                            }
+                            debug!(
+                                "[why is_barrel false] not support export_decl: {:?}",
+                                module_decl
+                            );
+                            is_barrel = false;
+                        }
+                        _ => {
+                            debug!(
+                                "[why is_barrel false] not support module_decl: {:?}",
+                                module_decl
+                            );
+                            is_barrel = false;
+                        }
+                    }
+                }
+                ModuleItem::Stmt(stmt) => match stmt {
+                    Stmt::Expr(stmt_expr) => match &*stmt_expr.expr {
+                        // TODO: why this?
+                        Expr::Lit(_) => {}
+                        _ => {
+                            debug!(
+                                "[why is_barrel false] not support stmt_expr: {:?}",
+                                stmt_expr
+                            );
+                            is_barrel = false;
+                        }
+                    },
+                    _ => {
+                        debug!("[why is_barrel false] not support stmt: {:?}", stmt);
+                        is_barrel = false;
+                    }
+                },
+            }
+        }
+        (import_map, export_map, is_barrel)
+    }
+}
+
+#[cached(
+    result = true,
+    key = "String",
+    convert = r#"{ format!("{:?}", task.path) }"#
+)]
+pub fn cached_build_module(
+    context: &Arc<Context>,
+    task: Task,
+) -> Result<(Module, ModuleDeps, Task)> {
+    Compiler::build_module(context, task)
 }
 
 fn is_async_module(path: &str) -> bool {
