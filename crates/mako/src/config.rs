@@ -252,7 +252,7 @@ pub struct MinifishConfig {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct OptimizationConfig {
-    pub skip_module: Option<bool>,
+    pub skip_modules: Option<bool>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -463,7 +463,7 @@ const DEFAULT_CONFIG: &str = r#"
     "optimizePackageImports": false,
     "emotion": false,
     "flexBugs": false,
-    "optimization": { "skipModule": true }
+    "optimization": { "skipModules": true }
 }
 "#;
 

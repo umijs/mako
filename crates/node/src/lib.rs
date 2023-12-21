@@ -119,7 +119,7 @@ pub struct BuildParams {
             >;
     };
     optimization?: {
-        skipModule?: boolean;
+        skipModules?: boolean;
     };
 }"#)]
     pub config: serde_json::Value,

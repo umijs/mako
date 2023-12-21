@@ -170,7 +170,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
     }
 
     if let Some(optimization) = &context.config.optimization
-        && optimization.skip_module.unwrap_or(false)
+        && optimization.skip_modules.unwrap_or(false)
     {
         skip_module_optimize(
             module_graph,
