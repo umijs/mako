@@ -1,7 +1,6 @@
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{
-    ArrowExpr, BlockStmtOrExpr, CallExpr, Callee, Expr, ExprOrSpread, Ident, Lit, MemberExpr,
-    MemberProp, Pat,
+    CallExpr, Callee, Expr, ExprOrSpread, Ident, Lit, MemberExpr, MemberProp,
 };
 
 pub fn id(s: &str) -> Ident {
@@ -27,10 +26,6 @@ pub fn promise_all(promises: ExprOrSpread) -> Expr {
     )
 }
 
-pub fn promise_resolve() -> Expr {
-    member_call(Expr::Ident(id("Promise")), member_prop("resolve"), vec![])
-}
-
 pub fn member_call(obj: Expr, member_prop: MemberProp, args: Vec<ExprOrSpread>) -> Expr {
     Expr::Call(CallExpr {
         span: DUMMY_SP,
@@ -41,27 +36,6 @@ pub fn member_call(obj: Expr, member_prop: MemberProp, args: Vec<ExprOrSpread>) 
         }))),
         args,
         type_args: None,
-    })
-}
-
-pub fn call(obj: Expr, args: Vec<ExprOrSpread>) -> Expr {
-    Expr::Call(CallExpr {
-        span: DUMMY_SP,
-        callee: Callee::Expr(Box::new(obj)),
-        args,
-        type_args: None,
-    })
-}
-
-pub fn arrow_fn(args: Vec<Pat>, body: Expr) -> Expr {
-    Expr::Arrow(ArrowExpr {
-        span: DUMMY_SP,
-        params: args,
-        body: Box::new(BlockStmtOrExpr::Expr(Box::new(body))),
-        is_async: false,
-        is_generator: false,
-        type_params: None,
-        return_type: None,
     })
 }
 

@@ -1,10 +1,13 @@
+use mako_core::swc_common::{Mark, DUMMY_SP};
 use mako_core::swc_ecma_ast::{Expr, ExprOrSpread, Lit};
+use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
-use super::utils::{arrow_fn, call, id, member_call, member_prop, promise_resolve};
 use crate::plugins::javascript::is_dynamic_import;
 
-pub struct DynamicImportToRequire {}
+pub struct DynamicImportToRequire {
+    pub unresolved_mark: Mark,
+}
 
 // import('xxx') -> Promise.resolve().then(() => require('xxx'))
 impl VisitMut for DynamicImportToRequire {
@@ -16,26 +19,23 @@ impl VisitMut for DynamicImportToRequire {
                     ..
                 } = &mut call_expr.args[0]
                 {
-                    // Promise.resolve().then(() => require('xxx'))
-                    *expr = member_call(
-                        promise_resolve(),
-                        member_prop("then"),
-                        vec![ExprOrSpread {
-                            spread: None,
-                            expr: Box::new(arrow_fn(
-                                vec![],
-                                call(
-                                    Expr::Ident(id("require")),
-                                    vec![ExprOrSpread {
-                                        spread: None,
-                                        expr: Box::new(Expr::Lit(Lit::Str(
-                                            source.value.clone().into(),
-                                        ))),
-                                    }],
-                                ),
-                            )),
-                        }],
-                    );
+                    // Promise.resolve()
+                    let promise_resolve: Box<Expr> = member_expr!(DUMMY_SP, Promise.resolve)
+                        .as_call(DUMMY_SP, vec![])
+                        .into();
+
+                    // () => require( source.value... )
+                    let lazy_require =
+                        quote_ident!(DUMMY_SP.apply_mark(self.unresolved_mark), "require")
+                            .as_call(DUMMY_SP, vec![quote_str!(source.value.clone()).as_arg()])
+                            .into_lazy_arrow(vec![]);
+
+                    // Promise.resolve().then(() => require("xxx"))
+                    let promised_lazy_require: Expr =
+                        member_expr!(@EXT,DUMMY_SP, promise_resolve, then)
+                            .as_call(DUMMY_SP, vec![lazy_require.as_arg()]);
+
+                    *expr = promised_lazy_require;
                 }
             }
         }
@@ -45,6 +45,12 @@ impl VisitMut for DynamicImportToRequire {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
+    use mako_core::swc_common::{Mark, GLOBALS};
+
+    use crate::compiler::Context;
+
     #[test]
     fn test_basic_import() {
         crate::assert_display_snapshot!(transform(
@@ -113,8 +119,12 @@ import(`3-${MODULE}`);
     }
 
     fn transform(code: &str) -> String {
-        let context = std::sync::Arc::new(Default::default());
-        let mut visitor = super::DynamicImportToRequire {};
-        crate::transformers::test_helper::transform_js_code(code, &mut visitor, &context)
+        let context: Arc<Context> = Arc::new(Default::default());
+        GLOBALS.set(&context.meta.script.globals, || {
+            let mut visitor = super::DynamicImportToRequire {
+                unresolved_mark: Mark::new(),
+            };
+            crate::transformers::test_helper::transform_js_code(code, &mut visitor, &context)
+        })
     }
 }
