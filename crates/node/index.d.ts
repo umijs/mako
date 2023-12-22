@@ -110,6 +110,9 @@ export interface BuildParams {
           }
       >;
     };
+    optimization?: {
+      skipModules?: boolean;
+    };
   };
   hooks: JsHooks;
   watch: boolean;
