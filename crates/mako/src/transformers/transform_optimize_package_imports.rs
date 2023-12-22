@@ -94,7 +94,7 @@ impl Fold for OptimizePackageImports {
                 match resolve(&self.path, &dep, &self.context.resolvers, &self.context) {
                     Ok(resolved_resource) => {
                         let x = parse_barrel_file(&resolved_resource, &self.context, false);
-                        if let Ok(Some(mut export_map)) = x {
+                        if let Ok(Some((_, mut export_map))) = x {
                             debug!(
                                 "  barrel file: {:?}, export_map: {:?}",
                                 import_decl.src.value.to_string(),
@@ -155,15 +155,20 @@ fn build_import_stmts(
     source: &str,
 ) -> Vec<ModuleItem> {
     let mut stmts = vec![];
+    debug!("export_infos: {:?}", export_infos);
+    debug!("source: {:?}", source);
 
     // for origin_specifier
     for (local, specifier) in orig_specifiers {
-        let (source, imported) = if let Some((source, name)) = export_infos.get(local) {
+        debug!("  local: {:?}", local);
+        let (source, imported) = if let Some((source, name, _orig)) = export_infos.get(local) {
+            debug!("    found: {:?}, {:?}", source, name);
             (
                 source.as_str(),
                 Some(ModuleExportName::Ident(quote_ident!(name.as_str()))),
             )
         } else {
+            debug!("    not found: {:?}", local);
             // TODO:
             // 这里还可以优化下。
             // 现在找不到 export 信息时用原 import 的 source
@@ -184,6 +189,7 @@ fn build_import_stmts(
             type_only: false,
             with: None,
         }));
+        debug!("    import_stmt: {:?}", import_stmt);
         stmts.push(import_stmt);
     }
     stmts
@@ -198,7 +204,7 @@ fn parse_barrel_file(
     resource: &ResolverResource,
     context: &Arc<Context>,
     exports_all: bool,
-) -> Result<Option<ExportInfos>> {
+) -> Result<Option<(bool, ExportInfos)>> {
     debug!(
         "  parse_barrel_file: {:?}, exports_all: {:?}",
         resource.get_resolved_path(),
@@ -259,22 +265,32 @@ fn parse_barrel_file(
         resolver_resource_infos.insert(dep.1.source.clone(), dep.0.clone());
     });
     // debug!("6 {:?}", info.export_map);
+    let export_map_len = info.export_map.len();
+    let is_large_export_map = export_map_len > 20;
     // iter info.export_map
     info.export_map
         .iter()
         .for_each(|export_info| match export_info {
             ExportInfo::Decl { ident } => {
                 debug!("    export decl: {:?}", ident);
-                export_infos.insert(ident.clone(), ("_".to_string(), ident.clone()));
+                export_infos.insert(
+                    ident.clone(),
+                    ("_".to_string(), ident.clone(), ident.clone()),
+                );
             }
             ExportInfo::All { source } => {
                 debug!("    export all: {:?}", source);
                 if let Some(resolver_resource) = resolver_resource_infos.get(source) {
                     let more_export_infos = parse_barrel_file(resolver_resource, context, true);
                     let path = resolver_resource.get_resolved_path();
-                    if let Ok(Some(more_export_infos)) = more_export_infos {
+                    if let Ok(Some((is_barrel_file, more_export_infos))) = more_export_infos {
+                        // (source, orig, exported)
                         for (k, v) in more_export_infos {
-                            export_infos.insert(k, (path.clone(), v.1));
+                            if is_barrel_file {
+                                export_infos.insert(k, (v.0.clone(), v.2.clone(), v.2));
+                            } else {
+                                export_infos.insert(k, (path.clone(), v.1.clone(), v.1));
+                            }
                         }
                     }
                 }
@@ -323,12 +339,20 @@ fn parse_barrel_file(
                         // 2、构建和解析依赖文件，如果找到更深的依赖，覆盖到 export_infos 中
                         export_infos.insert(
                             exported.clone(),
-                            (resolver_resource.get_resolved_path(), orig.clone()),
+                            (
+                                resolver_resource.get_resolved_path(),
+                                orig.clone(),
+                                exported.clone(),
+                            ),
                         );
+                        // 太大了，比如 @ant-design/icons 有 789 个 export，再找就很慢了
+                        if is_large_export_map {
+                            continue;
+                        }
                         let more_export_infos =
                             parse_barrel_file(resolver_resource, context, exports_all);
                         if let Ok(Some(more_export_infos)) = more_export_infos {
-                            if let Some(value) = more_export_infos.get(&orig) {
+                            if let Some(value) = more_export_infos.1.get(&orig) {
                                 export_infos.insert(exported.clone(), value.clone());
                             }
                         }
@@ -336,7 +360,7 @@ fn parse_barrel_file(
                 }
             }
         });
-    Ok(Some(export_infos))
+    Ok(Some((info.is_barrel, export_infos)))
 }
 
-type ExportInfos = HashMap<String, (String, String)>;
+type ExportInfos = HashMap<String, (String, String, String)>;
