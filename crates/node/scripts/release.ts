@@ -63,7 +63,8 @@ import 'zx/globals';
 
   console.log('linux building started...');
   const start = Date.now();
-  await $`rm -rf target/release/build/sailfish*`;
+  const cargoRoot = path.join(__dirname, '../../..');
+  await $`rm -rf ${cargoRoot}/target/release/build/sailfish*`;
   await build_linux_binding();
   await $`pnpm run format:dts`;
   const duration = (Date.now() - start) / 1000;
