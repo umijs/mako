@@ -135,11 +135,11 @@ impl ChunkGraph {
     }
 
     pub fn entry_ancestors_chunk(&self, chunk_id: &ChunkId) -> Vec<ChunkId> {
-        let mut dfs = Dfs::new(&self.graph, *self.id_index_map.get(chunk_id).unwrap());
+        let mut stack = vec![*self.id_index_map.get(chunk_id).unwrap()];
         let mut ret = vec![];
         let mut visited = vec![];
 
-        while let Some(idx) = dfs.next(&self.graph) {
+        while let Some(idx) = stack.pop() {
             if visited.contains(&idx.index()) {
                 continue;
             }
@@ -150,11 +150,7 @@ impl ChunkGraph {
             }
 
             // continue to collect entry ancestors (include shared entry ancestors)
-            self.graph
-                .neighbors_directed(idx, Direction::Incoming)
-                .for_each(|idx| {
-                    dfs.stack.push(idx);
-                });
+            stack.extend(self.graph.neighbors_directed(idx, Direction::Incoming));
         }
         ret
     }
@@ -164,6 +160,7 @@ impl ChunkGraph {
         let mut ret = vec![];
         let mut visited = vec![];
 
+        // petgraph dfs will visit all outgoing nodes by default
         while let Some(idx) = dfs.next(&self.graph) {
             if visited.contains(&idx.index()) {
                 continue;
@@ -176,13 +173,6 @@ impl ChunkGraph {
             ) {
                 ret.push(self.graph[idx].id.clone());
             }
-
-            // continue to collect installable descendants
-            self.graph
-                .neighbors_directed(idx, Direction::Outgoing)
-                .for_each(|idx| {
-                    dfs.stack.push(idx);
-                });
         }
         ret
     }
