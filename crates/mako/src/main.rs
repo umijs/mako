@@ -17,7 +17,6 @@ use crate::profile_gui::ProfileApp;
 
 mod analyze_deps;
 mod ast;
-mod bfs;
 mod build;
 mod chunk;
 mod chunk_graph;
