@@ -16,6 +16,9 @@ assert(content.includes(`var _a61 = __mako_require__("node_modules/a-side-effect
 
 assert(content.includes(`var _bsideeffectstrue = __mako_require__("node_modules/b-side-effects-true/index.js");`), "should include a-side-effects-true/index.js (barrel file) but sideEffects: true");
 
+// 判断 barrel_file 时忽略 side_effects:false 且有 var x = a.b 的场景
+assert(content.includes(`var _aaa = __mako_require__("node_modules/d-side-effects-false/aaa.js");`), "should include d-side-effects-true/aaa.js (barrel file)");
+
 // TODO:
 // [x] 1\ export * as foo from './foo';
 // 2\ alias

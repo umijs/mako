@@ -9,6 +9,5 @@ console.log(b1, b11, b121, b2, b21, b221);
 
 console.log("hello");
 
-// import { a61 } from "a-side-effects-false";
-// console.log(a61);
-
+import { IconPrivider, a1 as da1 } from "d-side-effects-false";
+console.log(IconPrivider, da1);

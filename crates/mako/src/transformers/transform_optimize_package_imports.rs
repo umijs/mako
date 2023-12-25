@@ -128,7 +128,7 @@ impl Fold for OptimizePackageImports {
 }
 
 #[cached(key = "String", convert = r#"{ format!("{:?}", description.dir()) }"#)]
-fn has_side_effects(description: &Arc<DescriptionData>) -> bool {
+pub fn has_side_effects(description: &Arc<DescriptionData>) -> bool {
     let pkg_json = description.data().raw();
     if pkg_json.is_object() {
         if let Some(side_effects) = pkg_json.as_object().unwrap().get("sideEffects") {
@@ -234,7 +234,7 @@ fn parse_barrel_file(
     }
     // build_module
     let path = resource.get_resolved_path();
-    let task = Task::new(TaskType::Normal(path), None);
+    let task = Task::new(TaskType::Normal(path), Some(resource.clone()));
     let (m, deps, task) = cached_build_module(context, task)?;
     let info = m.info.as_ref().unwrap();
     if !exports_all && !info.is_barrel {
@@ -264,7 +264,6 @@ fn parse_barrel_file(
     deps.iter().for_each(|dep| {
         resolver_resource_infos.insert(dep.1.source.clone(), dep.0.clone());
     });
-    // debug!("6 {:?}", info.export_map);
     let export_map_len = info.export_map.len();
     let is_large_export_map = export_map_len > 20;
     // iter info.export_map

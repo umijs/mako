@@ -12,7 +12,7 @@ use mako_core::rayon::ThreadPool;
 use mako_core::regex::Regex;
 use mako_core::swc_ecma_ast::{
     Decl, ExportSpecifier, Expr, ImportSpecifier, ModuleDecl, ModuleExportName, ModuleItem, Pat,
-    Stmt,
+    Stmt, VarDecl,
 };
 use mako_core::swc_ecma_utils::contains_top_level_await;
 use mako_core::thiserror::Error;
@@ -31,9 +31,10 @@ use crate::module::{
 };
 use crate::parse::parse;
 use crate::plugin::PluginCheckAstParam;
-use crate::resolve::{resolve, ResolverResource};
+use crate::resolve::{resolve, ResolvedResource, ResolverResource};
 use crate::task::{self, Task};
 use crate::transform::transform;
+use crate::transformers::transform_optimize_package_imports::has_side_effects;
 use crate::util::{base64_decode, create_thread_pool};
 
 #[derive(Debug, Error)]
@@ -66,7 +67,8 @@ impl Compiler {
                 task::Task::new(task::TaskType::Entry(entry), None)
             })
             .collect::<Vec<_>>();
-        let module_ids = self.build_tasks(tasks, true)?;
+        let with_cache = self.context.config.optimize_package_imports;
+        let module_ids = self.build_tasks(tasks, with_cache)?;
         let t_build = t_build.elapsed();
         println!(
             "{} modules transformed in {}ms.",
@@ -352,7 +354,7 @@ module.exports = new Promise((resolve, reject) => {{
             .wrapping_add(hash_hashmap(&missing_deps).wrapping_add(hash_vec(&ignored_deps)));
 
         // create module info
-        let (import_map, export_map, is_barrel) = Self::build_import_export_map(&ast);
+        let (import_map, export_map, is_barrel) = Self::build_import_export_map(&ast, &task);
         let info = ModuleInfo {
             ast,
             path: task.path.clone(),
@@ -375,7 +377,10 @@ module.exports = new Promise((resolve, reject) => {{
         Ok((module, dependencies_resource, task))
     }
 
-    fn build_import_export_map(ast: &ModuleAst) -> (Vec<ImportInfo>, Vec<ExportInfo>, bool) {
+    fn build_import_export_map(
+        ast: &ModuleAst,
+        task: &Task,
+    ) -> (Vec<ImportInfo>, Vec<ExportInfo>, bool) {
         let is_script = matches!(ast, ModuleAst::Script(_));
         if !is_script {
             return (vec![], vec![], false);
@@ -384,6 +389,17 @@ module.exports = new Promise((resolve, reject) => {{
         let mut import_map = vec![];
         let mut export_map = vec![];
         let mut is_barrel = true;
+        let has_side_effects = if let Some(ResolverResource::Resolved(ResolvedResource(x))) =
+            task.parent_resource.clone()
+        {
+            if let Some(d) = &x.description {
+                has_side_effects(d)
+            } else {
+                true
+            }
+        } else {
+            true
+        };
         for item in &ast.body {
             match item {
                 ModuleItem::ModuleDecl(module_decl) => {
@@ -524,6 +540,26 @@ module.exports = new Promise((resolve, reject) => {{
                             is_barrel = false;
                         }
                     },
+                    Stmt::Decl(stmt_decl) => {
+                        if let Decl::Var(box VarDecl { decls, .. }) = stmt_decl {
+                            // e.g. var Provider = Context.Provider;
+                            let is_all_init_member_expr = decls.iter().all(|decl| {
+                                if let Some(init) = &decl.init {
+                                    matches!(&**init, Expr::Member(_))
+                                } else {
+                                    false
+                                }
+                            });
+                            if is_all_init_member_expr && !has_side_effects {
+                                continue;
+                            }
+                        }
+                        debug!(
+                            "[why is_barrel false] not support stmt_decl: {:?}",
+                            stmt_decl
+                        );
+                        is_barrel = false;
+                    }
                     _ => {
                         debug!("[why is_barrel false] not support stmt: {:?}", stmt);
                         is_barrel = false;
