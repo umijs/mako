@@ -115,7 +115,8 @@ fn transform_js(
                     ast.visit_mut_with(&mut import_css_in_js);
 
                     if context.config.dynamic_import_to_require {
-                        let mut dynamic_import_to_require = DynamicImportToRequire {};
+                        let mut dynamic_import_to_require =
+                            DynamicImportToRequire { unresolved_mark };
                         ast.visit_mut_with(&mut dynamic_import_to_require);
                     }
 

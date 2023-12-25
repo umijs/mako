@@ -1,3 +1,14 @@
+## 0.1.15
+
+`2023-12-18`
+
+> @alipay/bigfish@4.1.12
+
+* 新增 支持显示 less 代码 sourcemap by [@jiesia](https://github.com/jiesia) in [755](https://github.com/umijs/mako/pull/775)
+* 修复 require context 不支持后缀 require 的问题 by [@PeachScript](https://github.com/PeachScript) in [806](https://github.com/umijs/mako/pull/806)
+* 修复 entry chunk 和 vendor chunk 中模块重复的问题 by [@PeachScript](https://github.com/PeachScript) in [809](https://github.com/umijs/mako/pull/809)
+* 修复 dynamicImportToRequire 开启后遗漏动态引用模块的问题 by [@stormslowly](https://github.com/stormslowly)  in [811](https://github.com/umijs/mako/pull/811)
+
 ## 0.1.14
 
 `2023-12-18`
