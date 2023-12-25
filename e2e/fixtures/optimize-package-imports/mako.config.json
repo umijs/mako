@@ -1,1 +1,1 @@
-{"minify": false}
+{"minify": false, "optimizePackageImports":true,"treeShake":"none"}

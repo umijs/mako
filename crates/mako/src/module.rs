@@ -56,6 +56,55 @@ pub struct ModuleInfo {
     pub resolved_resource: Option<ResolverResource>,
     /// The transformed source map chain of this module
     pub source_map_chain: Vec<Vec<u8>>,
+    pub import_map: Vec<ImportInfo>,
+    pub export_map: Vec<ExportInfo>,
+    pub is_barrel: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct ImportInfo {
+    pub source: String,
+    pub specifiers: Vec<ImportSpecifierInfo>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ImportSpecifierInfo {
+    Namespace(String),
+    Named {
+        local: String,
+        imported: Option<String>,
+    },
+    Default(String),
+}
+
+#[derive(Debug, Clone)]
+pub enum ExportInfo {
+    Named {
+        source: Option<String>,
+        specifiers: Vec<ExportSpecifierInfo>,
+    },
+    // export * from 'foo';
+    All {
+        source: String,
+    },
+    Decl {
+        ident: String,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum ExportSpecifierInfo {
+    // export * from 'foo';
+    // All(Vec<String>),
+    // export { foo, bar, default as zoo } from 'foo';
+    Named {
+        local: String,
+        exported: Option<String>,
+    },
+    // export default xxx;
+    Default(String),
+    // export * as foo from 'foo';
+    Namespace(String),
 }
 
 fn md5_hash(source_str: &str, lens: usize) -> String {
@@ -76,9 +125,6 @@ pub fn generate_module_id(origin_module_id: String, context: &Arc<Context>) -> S
     }
 }
 
-// TODO:
-// - id 不包含当前路径
-// - 支持 hash id
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct ModuleId {
     pub id: String,
