@@ -1,3 +1,5 @@
+pub mod skip_module;
+
 use std::cell::RefCell;
 use std::ops::DerefMut;
 use std::sync::Arc;
@@ -6,6 +8,7 @@ use mako_core::anyhow::Result;
 use mako_core::swc_common::comments::{Comment, CommentKind};
 use mako_core::swc_common::{DUMMY_SP, GLOBALS};
 
+use self::skip_module::skip_module_optimize;
 use crate::compiler::Context;
 use crate::module::{ModuleAst, ModuleId, ModuleType, ResolveType};
 use crate::module_graph::ModuleGraph;
@@ -26,7 +29,7 @@ use crate::tree_shaking::tree_shaking_module::ModuleSystem;
 ///     if add imported identifiers to previous modules, traverse smallest index tree_shake_modules again
 ///   3.4 else if module is esm and the module has no side effects, analyze the used statement based on the statement graph
 ///     if add imported identifiers to previous modules, traverse smallest index tree_shake_modules again
-/// 4. remove used module and update tree-shaked AST into module graph
+/// 4. remove used module and update tree-shaken AST into module graph
 pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> Result<()> {
     let (topo_sorted_modules, _cyclic_modules) = {
         mako_core::mako_profile_scope!("tree shake topo-sort");
@@ -166,6 +169,59 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
         }
     }
 
+    if let Some(optimization) = &context.config.optimization
+        && optimization.skip_modules.unwrap_or(false)
+    {
+        skip_module_optimize(
+            module_graph,
+            &tree_shake_modules_ids,
+            &tree_shake_modules_map,
+            context,
+        )?;
+
+        for module_id in tree_shake_modules_ids.iter().rev() {
+            let mut tsm = tree_shake_modules_map.get(module_id).unwrap().borrow_mut();
+
+            for exp_info in tsm.exports() {
+                if let Some(source) = exp_info.source {
+                    for sp_info in exp_info.specifiers {
+                        match sp_info {
+                            // export * from "xx"
+                            ExportSpecifierInfo::All(_) | ExportSpecifierInfo::Ambiguous(_) => {
+                                if let Some(dependent_id) =
+                                    module_graph.get_dependency_module_by_source(module_id, &source)
+                                {
+                                    if let Some(rc) = tree_shake_modules_map.get(dependent_id) {
+                                        let dependence_module = rc.borrow();
+
+                                        let to_extend = dependence_module.all_exports.clone();
+
+                                        tsm.stmt_graph.stmt_mut(&exp_info.stmt_id).export_info =
+                                            Some(ExportInfo {
+                                                source: Some(source.clone()),
+                                                specifiers: vec![to_extend.to_all_specifier()],
+                                                stmt_id: exp_info.stmt_id,
+                                            });
+
+                                        tsm.extends_exports(&to_extend);
+                                    }
+                                }
+                            }
+                            _ => {
+                                tsm.all_exports.add_idents(sp_info.to_idents());
+                            }
+                        }
+                    }
+                } else {
+                    for exp_sp in exp_info.specifiers {
+                        let idents = exp_sp.to_idents();
+                        tsm.all_exports.add_idents(idents);
+                    }
+                }
+            }
+        }
+    }
+
     // traverse the tree_shake_modules
     let mut current_index: usize = 0;
     let len = tree_shake_modules_ids.len();
@@ -283,14 +339,14 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
         current_index = next_index;
     }
 
-    for (module_id, tsm) in tree_shake_modules_map {
+    for (module_id, tsm) in &tree_shake_modules_map {
         let tsm = tsm.borrow();
 
         if tsm.not_used() {
-            module_graph.remove_module(&module_id);
+            module_graph.remove_module(module_id);
         } else if let Some(swc_module) = &tsm.updated_ast {
             module_graph
-                .get_module_mut(&module_id)
+                .get_module_mut(module_id)
                 .unwrap()
                 .info
                 .as_mut()
@@ -421,7 +477,7 @@ fn add_used_exports_by_export_info(
                                 ));
                             }
                         }
-                        statement_graph::ExportSpecifierInfo::Default => {
+                        statement_graph::ExportSpecifierInfo::Default(_) => {
                             added |= exported_tree_shake_module
                                 .add_used_export(Some(&module::UsedIdent::Default));
                         }

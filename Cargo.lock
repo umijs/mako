@@ -2524,6 +2524,7 @@ dependencies = [
  "maplit",
  "serde",
  "serde_json",
+ "swc_core 0.83.19",
  "swc_ecma_transforms_testing",
  "testing 0.35.10",
 ]

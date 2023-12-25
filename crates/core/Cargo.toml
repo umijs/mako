@@ -7,7 +7,7 @@ license    = "MIT"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
-swc_core = { version = "=0.83.19", features = [
+swc_core = { workspace = true, features = [
   "__ecma",
   "__visit",
   "__utils",
