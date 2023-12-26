@@ -4,23 +4,21 @@ use std::sync::Arc;
 
 use mako_core::anyhow::Result;
 use mako_core::swc_common::util::take::Take;
+use swc_core::common::{Span, Spanned};
 use swc_core::ecma::ast::{
     ExportSpecifier, Ident, ImportSpecifier, ModuleDecl, ModuleExportName, ModuleItem,
 };
 use swc_core::ecma::utils::{quote_ident, quote_str};
 use swc_core::quote;
 
-use crate::analyze_deps::analyze_deps;
-use crate::ast::js_ast_to_code;
 use crate::compiler::Context;
-use crate::module::ModuleId;
+use crate::module::{Dependency, ModuleId, ResolveType};
 use crate::module_graph::ModuleGraph;
 use crate::plugins::farm_tree_shake::module::{is_ident_sym_equal, TreeShakeModule};
 use crate::plugins::farm_tree_shake::shake::strip_context;
 use crate::plugins::farm_tree_shake::statement_graph::{
     ExportSpecifierInfo, ImportSpecifierInfo, StatementId,
 };
-use crate::resolve::{resolve, ResolverResource};
 
 #[derive(Debug)]
 pub struct ReExportReplace {
@@ -58,6 +56,26 @@ impl ReExportReplace {
                     )
                 }
             }
+        }
+    }
+
+    pub(crate) fn to_import_dep(&self, span: Span) -> Dependency {
+        Dependency {
+            source: self.from_module_id.id.clone(),
+            span: Some(span),
+            order: 0,
+            resolve_as: None,
+            resolve_type: ResolveType::Import,
+        }
+    }
+
+    pub(crate) fn to_export_dep(&self, span: Span) -> Dependency {
+        Dependency {
+            source: self.from_module_id.id.clone(),
+            resolve_as: None,
+            resolve_type: ResolveType::ExportNamed,
+            order: 0,
+            span: Some(span),
         }
     }
 
@@ -130,20 +148,32 @@ pub(super) fn skip_module_optimize(
     tree_shake_modules_ids: &Vec<ModuleId>,
     tree_shake_modules_map: &HashMap<ModuleId, RefCell<TreeShakeModule>>,
 
-    context: &Arc<Context>,
+    _context: &Arc<Context>,
 ) -> Result<()> {
-    let mut re_export_replace_map: HashMap<ModuleId, Vec<(StatementId, Vec<ReExportReplace>)>> =
-        HashMap::new();
+    let mut re_export_replace_map: HashMap<
+        ModuleId,
+        Vec<(StatementId, Vec<ReExportReplace>, String)>,
+    > = HashMap::new();
 
     let mut current_index: usize = 0;
     let len = tree_shake_modules_ids.len();
 
-    fn apply_replace(body: &mut Vec<ModuleItem>, to_replace: &(StatementId, Vec<ReExportReplace>)) {
+    fn apply_replace(
+        to_replace: &(StatementId, Vec<ReExportReplace>, String),
+        module_id: &ModuleId,
+        module_graph: &mut ModuleGraph,
+    ) {
         let stmt_id = to_replace.0;
         let replaces = &to_replace.1;
+        let source = &to_replace.2;
 
-        let mut stmt = body.get(stmt_id).unwrap().clone();
+        let module = module_graph.get_module_mut(module_id).unwrap();
+
+        let swc_module = module.info.as_mut().unwrap().ast.as_script_mut();
+
+        let mut stmt = swc_module.body.get(stmt_id).unwrap().clone();
         let mut to_insert = vec![];
+        let mut to_insert_deps = vec![];
         let mut to_delete = false;
 
         match &mut stmt {
@@ -180,14 +210,20 @@ pub(super) fn skip_module_optimize(
                                 }
                             }
                         }
-                        matched_index.map(|i| import_decl.specifiers.remove(i));
+                        let remove_specifier =
+                            matched_index.map(|i| import_decl.specifiers.remove(i));
 
                         to_delete = import_decl.specifiers.is_empty();
 
-                        if let Some(module_item) =
-                            matched_ident.map(|ident| replace.to_import_module_item(ident))
+                        if let Some(ident) = matched_ident
+                            && let Some(specifier) = remove_specifier
                         {
+                            let span = specifier.span();
+                            let module_item = replace.to_import_module_item(ident);
+                            let dep = replace.to_import_dep(span);
+
                             to_insert.push(module_item);
+                            to_insert_deps.push(dep);
                         }
                     }
                 }
@@ -234,15 +270,17 @@ pub(super) fn skip_module_optimize(
                                 }
                             }
 
-                            if let Some(index) = matched_index {
-                                export_named.specifiers.remove(index);
-                            }
+                            let specifier =
+                                matched_index.map(|index| export_named.specifiers.remove(index));
+
                             to_delete = export_named.specifiers.is_empty();
 
-                            if let Some(module_item) =
-                                matched_ident.map(|ident| replace.to_export_module_item(ident))
+                            if let Some(ident) = matched_ident
+                                && let Some(specifier) = specifier
                             {
+                                let module_item = replace.to_export_module_item(ident);
                                 to_insert.push(module_item);
+                                to_insert_deps.push(replace.to_export_dep(specifier.span()));
                             }
                         }
                     }
@@ -262,10 +300,17 @@ pub(super) fn skip_module_optimize(
         }
 
         if to_delete {
-            body.remove(stmt_id);
-            body.splice(stmt_id..stmt_id, to_insert);
+            swc_module.body.remove(stmt_id);
+            swc_module.body.splice(stmt_id..stmt_id, to_insert);
         } else {
-            body.splice(stmt_id..stmt_id, to_insert);
+            swc_module.body.splice(stmt_id..stmt_id, to_insert);
+        }
+
+        if to_delete {
+            module_graph.remove_dependency_module_by_source(module_id, source);
+        }
+        for dep in to_insert_deps {
+            module_graph.add_dependency(module_id, &dep.source.clone().into(), dep);
         }
     }
 
@@ -279,6 +324,7 @@ pub(super) fn skip_module_optimize(
 
             for stmt in tsm.stmt_graph.stmts() {
                 let mut stmt_replaces = vec![];
+                let mut stmt_source = None;
 
                 if let Some(import) = &stmt.import_info {
                     if import.specifiers.is_empty() {
@@ -305,6 +351,8 @@ pub(super) fn skip_module_optimize(
                         if imported_module_has_side_effects {
                             continue;
                         }
+
+                        stmt_source = Some(import.source.clone());
 
                         for sp in &import.specifiers {
                             match sp {
@@ -349,16 +397,17 @@ pub(super) fn skip_module_optimize(
                 }
 
                 if let Some(export_info) = &stmt.export_info
-                    && let Some(_source) = &export_info.source
+                    && let Some(source) = &export_info.source
                 {
                     if let Some(tsm_ref) = get_imported_tree_shake_module(
                         current_module_id,
-                        _source,
+                        source,
                         module_graph,
                         tree_shake_modules_map,
                     ) {
                         let proxy_tsm = tsm_ref.borrow();
 
+                        stmt_source = Some(source.clone());
                         for export_specifier in export_info.specifiers.iter() {
                             match export_specifier {
                                 ExportSpecifierInfo::All(_) => {}
@@ -398,13 +447,13 @@ pub(super) fn skip_module_optimize(
                 }
 
                 if !stmt_replaces.is_empty() {
-                    replaces.push((stmt.id, stmt_replaces));
+                    replaces.push((stmt.id, stmt_replaces, stmt_source.unwrap()));
                 }
             }
         }
 
         if !replaces.is_empty() {
-            replaces.sort_by(|(stmt_id_1, _), (stmt_id_2, _)| stmt_id_2.cmp(stmt_id_1));
+            replaces.sort_by(|(stmt_id_1, _, _), (stmt_id_2, _, _)| stmt_id_2.cmp(stmt_id_1));
 
             re_export_replace_map.insert(current_module_id.clone(), replaces);
         }
@@ -413,38 +462,29 @@ pub(super) fn skip_module_optimize(
     }
 
     for (module_id, replaces) in re_export_replace_map.iter() {
-        if let Some(module) = module_graph.get_module_mut(module_id) {
-            {
-                let swc_module = module.info.as_mut().unwrap().ast.as_script_mut();
-
-                // stmt_id is reversed order
-                for to_replace in replaces.iter() {
-                    // println!("{} apply with {:?}", module_id.id, to_replace.1);
-                    apply_replace(&mut swc_module.body, to_replace)
-                }
-
-                let mut tsm = tree_shake_modules_map.get(module_id).unwrap().borrow_mut();
-                let (_code, _) = js_ast_to_code(swc_module, context, &module_id.id).unwrap();
-
-                tsm.update_stmt_graph(swc_module);
+        if module_graph.has_module(module_id) {
+            if module_id.id.ends_with("src/pages/ant-design-icons.tsx") {
+                println!("--- the repalces {:?}", replaces);
             }
 
-            let deps = analyze_deps(&module.info.as_mut().unwrap().ast, &module_id.id, context)?;
-
-            module_graph.remove_dependencies(module_id);
-
-            for dep in deps.iter() {
-                let ret = resolve(&module_id.id, dep, &context.resolvers, context)?;
-
-                match &ret {
-                    ResolverResource::Resolved(_) => {
-                        let resolved_module_id: ModuleId = ret.get_resolved_path().into();
-
-                        module_graph.add_dependency(module_id, &resolved_module_id, dep.clone());
-                    }
-                    ResolverResource::External(_) | ResolverResource::Ignored => {}
-                }
+            // stmt_id is reversed order
+            for to_replace in replaces.iter() {
+                // println!("{} apply with {:?}", module_id.id, to_replace.1);
+                apply_replace(to_replace, module_id, module_graph);
             }
+
+            let mut tsm = tree_shake_modules_map.get(module_id).unwrap().borrow_mut();
+
+            let swc_module = module_graph
+                .get_module(module_id)
+                .unwrap()
+                .info
+                .as_ref()
+                .unwrap()
+                .ast
+                .as_script();
+
+            tsm.update_stmt_graph(swc_module);
         }
     }
 
