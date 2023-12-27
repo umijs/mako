@@ -463,10 +463,6 @@ pub(super) fn skip_module_optimize(
 
     for (module_id, replaces) in re_export_replace_map.iter() {
         if module_graph.has_module(module_id) {
-            if module_id.id.ends_with("src/pages/ant-design-icons.tsx") {
-                println!("--- the repalces {:?}", replaces);
-            }
-
             // stmt_id is reversed order
             for to_replace in replaces.iter() {
                 // println!("{} apply with {:?}", module_id.id, to_replace.1);
