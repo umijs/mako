@@ -130,7 +130,7 @@ function createRuntime(makoModules, entryModuleId) {
             requireModule.publicPath.replace(/^(\/\/)/, 'https:$1')
           ).pathname;
         }
-      } catch {}
+      } catch(e) {}
       return Array.from(
         document.querySelectorAll('link[href][rel=stylesheet]'),
       ).find(function (link) {
