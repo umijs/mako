@@ -461,6 +461,9 @@ mod tests {
                 is_async: false,
                 resolved_resource: None,
                 source_map_chain: vec![],
+                import_map: vec![],
+                export_map: vec![],
+                is_barrel: false,
             }),
             side_effects: false,
         };

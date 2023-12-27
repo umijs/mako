@@ -67,12 +67,22 @@ pub struct StatsJsonModuleItem {
     pub chunk_id: String,
 }
 #[derive(Serialize, Debug)]
+#[serde(untagged)]
+pub enum StatsJsonChunkEntry {
+    /**
+     * only can be `false`, internal logic so omit deserialize fn
+     */
+    False(bool),
+    Name(String),
+}
+#[derive(Serialize, Debug)]
 pub struct StatsJsonChunkItem {
     #[serde(flatten)]
     pub chunk_type: StatsJsonType,
     pub chunk_id: String,
+    pub dependencies: Vec<String>,
     pub files: Vec<String>,
-    pub entry: bool,
+    pub entry: StatsJsonChunkEntry,
     pub modules: Vec<StatsJsonModuleItem>,
 }
 #[derive(Serialize, Debug)]
@@ -196,7 +206,10 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
         .iter()
         .map(|chunk| {
             let modules = chunk.get_modules();
-            let entry = matches!(chunk.chunk_type, ChunkType::Entry(_, _, _));
+            let entry = match &chunk.chunk_type {
+                ChunkType::Entry(_, name, _) => StatsJsonChunkEntry::Name(name.clone()),
+                _ => StatsJsonChunkEntry::False(false),
+            };
             let id = chunk.id.id.clone();
             let chunk_modules: Vec<StatsJsonModuleItem> = modules
                 .iter()
@@ -232,10 +245,16 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
                 .filter(|asset| asset.chunk_id == id)
                 .map(|asset| asset.name.clone())
                 .collect();
+            let dependencies = chunk_graph
+                .entry_dependencies_chunk(&chunk.id)
+                .into_iter()
+                .map(|id| id.id)
+                .collect::<Vec<_>>();
 
             StatsJsonChunkItem {
                 chunk_type: StatsJsonType::Chunk("chunk".to_string()),
                 chunk_id: id,
+                dependencies,
                 files,
                 entry,
                 modules: chunk_modules,
