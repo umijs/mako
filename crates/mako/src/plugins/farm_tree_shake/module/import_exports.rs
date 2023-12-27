@@ -1,10 +1,10 @@
 use crate::plugins::farm_tree_shake::module::{is_ident_sym_equal, TreeShakeModule};
-use crate::plugins::farm_tree_shake::shake::skip_module::{ReExportSource2, ReExportType2};
+use crate::plugins::farm_tree_shake::shake::skip_module::{ReExportSource, ReExportType};
 use crate::plugins::farm_tree_shake::shake::strip_context;
 use crate::plugins::farm_tree_shake::statement_graph::{ExportSpecifierInfo, ImportSpecifierInfo};
 
 impl TreeShakeModule {
-    pub fn find_export_source(&self, ident: &String) -> Option<ReExportSource2> {
+    pub fn find_export_source(&self, ident: &String) -> Option<ReExportSource> {
         let mut local_ident = None;
         let mut re_export_type = None;
 
@@ -15,8 +15,8 @@ impl TreeShakeModule {
                         match export_specifier {
                             ExportSpecifierInfo::All(all_exports) => {
                                 if all_exports.iter().any(|i| is_ident_sym_equal(i, ident)) {
-                                    return Some(ReExportSource2 {
-                                        re_export_type: ReExportType2::Named(strip_context(ident)),
+                                    return Some(ReExportSource {
+                                        re_export_type: ReExportType::Named(strip_context(ident)),
                                         source: Some(source.clone()),
                                     });
                                 }
@@ -31,21 +31,21 @@ impl TreeShakeModule {
 
                                 if let Some(exported_name) = exported {
                                     if is_ident_sym_equal(exported_name, ident) {
-                                        return Some(ReExportSource2 {
+                                        return Some(ReExportSource {
                                             re_export_type: if stripped_local == "default" {
-                                                ReExportType2::Default
+                                                ReExportType::Default
                                             } else {
-                                                ReExportType2::Named(stripped_local.clone())
+                                                ReExportType::Named(stripped_local.clone())
                                             },
                                             source: Some(source.clone()),
                                         });
                                     }
                                 } else if is_ident_sym_equal(ident, local) {
-                                    return Some(ReExportSource2 {
+                                    return Some(ReExportSource {
                                         re_export_type: if stripped_local == "default" {
-                                            ReExportType2::Default
+                                            ReExportType::Default
                                         } else {
-                                            ReExportType2::Named(stripped_local.clone())
+                                            ReExportType::Named(stripped_local.clone())
                                         },
                                         source: Some(source.clone()),
                                     });
@@ -60,8 +60,8 @@ impl TreeShakeModule {
                             ExportSpecifierInfo::Namespace(name) => {
                                 let stripped_name = strip_context(name);
                                 if stripped_name.eq(ident) {
-                                    return Some(ReExportSource2 {
-                                        re_export_type: ReExportType2::Namespace,
+                                    return Some(ReExportSource {
+                                        re_export_type: ReExportType::Namespace,
                                         source: Some(source.clone()),
                                     });
                                 }
@@ -75,16 +75,15 @@ impl TreeShakeModule {
                             ExportSpecifierInfo::Named { exported, local } => {
                                 if let Some(exported_name) = exported {
                                     if is_ident_sym_equal(exported_name, ident) {
-                                        re_export_type = Some(ReExportType2::Named(strip_context(
-                                            exported_name,
-                                        )));
+                                        re_export_type =
+                                            Some(ReExportType::Named(strip_context(exported_name)));
 
                                         local_ident = Some(local.clone());
                                         break;
                                     }
                                 } else if is_ident_sym_equal(ident, local) {
                                     re_export_type =
-                                        Some(ReExportType2::Named(strip_context(local)));
+                                        Some(ReExportType::Named(strip_context(local)));
                                     local_ident = Some(local.clone());
 
                                     break;
@@ -93,12 +92,12 @@ impl TreeShakeModule {
                             ExportSpecifierInfo::Default(export_default_ident) => {
                                 if ident == "default" {
                                     if let Some(default_ident) = export_default_ident {
-                                        re_export_type = Some(ReExportType2::Default);
+                                        re_export_type = Some(ReExportType::Default);
                                         local_ident = Some(default_ident.clone());
                                         break;
                                     } else {
-                                        return Some(ReExportSource2 {
-                                            re_export_type: ReExportType2::Default,
+                                        return Some(ReExportSource {
+                                            re_export_type: ReExportType::Default,
                                             source: None,
                                         });
                                     }
@@ -119,8 +118,8 @@ impl TreeShakeModule {
                     if let Some(import_specifier) = import_info.find_define_specifier(local) {
                         match import_specifier {
                             ImportSpecifierInfo::Namespace(_namespace) => {
-                                return Some(ReExportSource2 {
-                                    re_export_type: ReExportType2::Namespace,
+                                return Some(ReExportSource {
+                                    re_export_type: ReExportType::Namespace,
                                     source: Some(import_info.source.clone()),
                                 });
                             }
@@ -135,8 +134,8 @@ impl TreeShakeModule {
                                         local.clone()
                                     };
 
-                                    return Some(ReExportSource2 {
-                                        re_export_type: ReExportType2::Named(strip_context(
+                                    return Some(ReExportSource {
+                                        re_export_type: ReExportType::Named(strip_context(
                                             &next_name,
                                         )),
                                         source: Some(import_info.source.clone()),
@@ -145,8 +144,8 @@ impl TreeShakeModule {
                             }
                             ImportSpecifierInfo::Default(name) => {
                                 if local == name {
-                                    return Some(ReExportSource2 {
-                                        re_export_type: ReExportType2::Default,
+                                    return Some(ReExportSource {
+                                        re_export_type: ReExportType::Default,
                                         source: Some(import_info.source.clone()),
                                     });
                                 }
@@ -156,7 +155,7 @@ impl TreeShakeModule {
                 }
             }
 
-            re_export_type.map(|re_export_type| ReExportSource2 {
+            re_export_type.map(|re_export_type| ReExportSource {
                 re_export_type,
                 source: None,
             })
@@ -177,9 +176,9 @@ mod tests {
     use crate::ast::build_js_ast;
     use crate::compiler::Context;
     use crate::module::{Module, ModuleAst, ModuleInfo};
-    use crate::plugins::farm_tree_shake::shake::skip_module::ReExportSource2;
+    use crate::plugins::farm_tree_shake::shake::skip_module::ReExportSource;
 
-    impl ReExportSource2 {
+    impl ReExportSource {
         pub fn describe(&self) -> String {
             if let Some(source) = &self.source {
                 format!("ReExport from {} by {:?}", source, self.re_export_type)

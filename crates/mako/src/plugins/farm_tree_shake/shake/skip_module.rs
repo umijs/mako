@@ -23,26 +23,26 @@ use crate::plugins::farm_tree_shake::statement_graph::{
 #[derive(Debug)]
 pub struct ReExportReplace {
     pub(crate) re_export_ident: String,
-    pub(crate) re_export_source: ReExportSource2,
+    pub(crate) re_export_source: ReExportSource,
     pub(crate) from_module_id: ModuleId,
 }
 
 impl ReExportReplace {
     pub(crate) fn to_export_module_item(&self, ident: Ident) -> ModuleItem {
         match &self.re_export_source.re_export_type {
-            ReExportType2::Default => {
+            ReExportType::Default => {
                 quote!("export { default as $ident } from \"$from\";" as ModuleItem,
                     ident: Ident = ident,
                     from: Str = quote_str!(self.from_module_id.id.clone())
                 )
             }
-            ReExportType2::Namespace => {
+            ReExportType::Namespace => {
                 quote!("export * as $ident from \"$from\";" as ModuleItem,
                     ident: Ident = ident,
                     from: Str = quote_str!(self.from_module_id.id.clone())
                 )
             }
-            ReExportType2::Named(local) => {
+            ReExportType::Named(local) => {
                 if ident.sym.eq(local) {
                     quote!("export { $ident } from \"$from\";" as ModuleItem,
                         ident: Ident = ident,
@@ -81,13 +81,13 @@ impl ReExportReplace {
 
     pub(crate) fn to_import_module_item(&self, ident: Ident) -> ModuleItem {
         match &self.re_export_source.re_export_type {
-            ReExportType2::Default => {
+            ReExportType::Default => {
                 quote!("import $ident from \"$from\";" as ModuleItem,
                     ident: Ident = ident,
                     from: Str = quote_str!(self.from_module_id.id.clone())
                 )
             }
-            ReExportType2::Named(local) => {
+            ReExportType::Named(local) => {
                 if ident.sym.eq(local) {
                     quote!("import { $ident } from \"$from\";" as ModuleItem,
                         ident: Ident = ident,
@@ -101,7 +101,7 @@ impl ReExportReplace {
                     )
                 }
             }
-            ReExportType2::Namespace => {
+            ReExportType::Namespace => {
                 quote!("import * as $ident from \"$from\";" as ModuleItem,
                     ident: Ident = ident,
                     from: Str = quote_str!(self.from_module_id.id.clone())
@@ -112,23 +112,23 @@ impl ReExportReplace {
 }
 
 #[derive(Debug)]
-pub struct ReExportSource2 {
+pub struct ReExportSource {
     pub(crate) source: Option<String>,
-    pub(crate) re_export_type: ReExportType2,
+    pub(crate) re_export_type: ReExportType,
 }
 
-impl ReExportSource2 {
+impl ReExportSource {
     pub fn to_outer_ref(&self) -> String {
         match &self.re_export_type {
-            ReExportType2::Default => "default".into(),
-            ReExportType2::Named(local) => local.clone(),
-            ReExportType2::Namespace => "*".into(),
+            ReExportType::Default => "default".into(),
+            ReExportType::Named(local) => local.clone(),
+            ReExportType::Namespace => "*".into(),
         }
     }
 }
 
 #[derive(Debug)]
-pub enum ReExportType2 {
+pub enum ReExportType {
     // export * as x from "x"
     Namespace,
     // import x from "y"
@@ -522,7 +522,7 @@ fn find_ident_export_source(
                 {
                     let next_tsm = next_tsm_rc.borrow();
 
-                    if matches!(re_export_source.re_export_type, ReExportType2::Namespace) {
+                    if matches!(re_export_source.re_export_type, ReExportType::Namespace) {
                         return Some(ReExportReplace {
                             re_export_ident: used_ident.clone(),
                             from_module_id: next_tsm.module_id.clone(),
