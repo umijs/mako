@@ -9,8 +9,8 @@ use mako_core::swc_css_ast::Stylesheet;
 use mako_core::swc_css_codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};
 use mako_core::swc_css_codegen::{CodeGenerator, CodegenConfig, Emit};
 use mako_core::swc_ecma_ast::{
-    BlockStmt, FnExpr, Function, KeyValueProp, Lit, Module as SwcModule, Number, ObjectLit, Prop,
-    PropOrSpread, Stmt, UnaryExpr, UnaryOp, VarDeclKind,
+    BlockStmt, FnExpr, Function, KeyValueProp, Lit, Module as SwcModule, Number, ObjectLit,
+    Program, Prop, PropOrSpread, Stmt, UnaryExpr, UnaryOp, VarDeclKind,
 };
 use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
 use mako_core::{mako_profile_scope, ternary};
@@ -136,7 +136,7 @@ pub(crate) fn render_normal_js_chunk(
     )?;
 
     let mut ast = GLOBALS.set(&context.meta.script.globals, || Ast {
-        ast: module,
+        ast: Program::Module(module),
         unresolved_mark: Mark::new(),
         top_level_mark: Mark::new(),
     });
@@ -279,7 +279,6 @@ fn render_entry_chunk_js_without_full_hash(
 
     let modules_lit: Stmt = {
         mako_core::mako_profile_scope!("to_module_object");
-
         pot_to_module_object(pot)?
             .into_var_decl(VarDeclKind::Var, quote_ident!("m").into())
             .into()
@@ -287,14 +286,22 @@ fn render_entry_chunk_js_without_full_hash(
 
     {
         mako_core::mako_profile_scope!("entryInsert");
-
-        ast.ast.body.insert(0, modules_lit.into());
-
-        ast.ast
-            .body
-            .splice(0..0, stmts.into_iter().map(|s| s.into()));
-
-        ast.ast = wrap_in_iife(ast.ast);
+        // TODO: simpify
+        match ast.ast {
+            Program::Module(ref mut module) => {
+                module.body.insert(0, modules_lit.into());
+                module
+                    .body
+                    .splice(0..0, stmts.into_iter().map(|s| s.into()));
+            }
+            Program::Script(ref mut script) => {
+                script.body.insert(0, modules_lit.into());
+                script
+                    .body
+                    .splice(0..0, stmts.into_iter().map(|s| s.into()));
+            }
+        }
+        ast.ast = wrap_in_iife(&ast)?;
     }
 
     if context.config.minify && matches!(context.config.mode, Mode::Production) {
@@ -357,13 +364,9 @@ fn to_object_lit(value: &HashMap<String, String>) -> ObjectLit {
     }
 }
 
-fn wrap_in_iife(module: SwcModule) -> SwcModule {
-    let stmts = module
-        .body
-        .into_iter()
-        .map(|stmt| stmt.as_stmt().unwrap().clone())
-        .collect::<Vec<_>>();
-
+fn wrap_in_iife(ast: &Ast) -> Result<Program> {
+    let stmts = ast.get_stmts()?;
+    let shebang = ast.get_shebang();
     let fnc: FnExpr = Function {
         params: vec![],
         decorators: vec![],
@@ -386,9 +389,9 @@ fn wrap_in_iife(module: SwcModule) -> SwcModule {
     }
     .into_stmt();
 
-    SwcModule {
+    Ok(Program::Module(SwcModule {
         body: vec![stmt.into()],
-        shebang: module.shebang,
+        shebang,
         span: DUMMY_SP,
-    }
+    }))
 }

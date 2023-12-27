@@ -4,7 +4,7 @@ use std::sync::Arc;
 use mako_core::swc_common::comments::NoopComments;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{chain, Mark, SourceMap};
-use mako_core::swc_ecma_ast::Module;
+use mako_core::swc_ecma_ast::{Module, ModuleItem, Program};
 use mako_core::swc_ecma_transforms_react::{react, Options, RefreshOptions, Runtime};
 use mako_core::swc_ecma_visit::{Fold, VisitMut, VisitMutWith};
 use mako_core::swc_emotion::{emotion, EmotionOptions};
@@ -131,12 +131,28 @@ impl VisitMut for Emotion {
 }
 
 impl VisitMut for PrefixCode {
-    fn visit_mut_module(&mut self, module: &mut Module) {
+    fn visit_mut_program(&mut self, program: &mut Program) {
         let post_code_snippet_module =
             build_js_ast("_pre_code.js", &self.code, &self.context).unwrap();
-        module.body.splice(0..0, post_code_snippet_module.ast.body);
-
-        module.visit_mut_children_with(self);
+        let stmts = post_code_snippet_module
+            .ast
+            .as_script()
+            .unwrap()
+            .body
+            .clone();
+        match program {
+            Program::Module(module) => {
+                let module_items = stmts
+                    .iter()
+                    .map(|f| ModuleItem::Stmt(f.clone()))
+                    .collect::<Vec<ModuleItem>>();
+                module.body.splice(0..0, module_items);
+            }
+            Program::Script(script) => {
+                script.body.splice(0..0, stmts);
+            }
+        }
+        program.visit_mut_children_with(self);
     }
 }
 
@@ -146,12 +162,28 @@ pub struct PostfixCode {
 }
 
 impl VisitMut for PostfixCode {
-    fn visit_mut_module(&mut self, module: &mut Module) {
+    fn visit_mut_program(&mut self, program: &mut Program) {
         let post_code_snippet_module =
             build_js_ast("_post_code.js", &self.code, &self.context).unwrap();
-        module.body.extend(post_code_snippet_module.ast.body);
-
-        module.visit_mut_children_with(self);
+        let stmts = post_code_snippet_module
+            .ast
+            .as_script()
+            .unwrap()
+            .body
+            .clone();
+        match program {
+            Program::Module(module) => {
+                let module_items = stmts
+                    .iter()
+                    .map(|f| ModuleItem::Stmt(f.clone()))
+                    .collect::<Vec<ModuleItem>>();
+                module.body.extend(module_items);
+            }
+            Program::Script(script) => {
+                script.body.extend(stmts);
+            }
+        }
+        program.visit_mut_children_with(self);
     }
 }
 
@@ -327,7 +359,11 @@ mod tests {
                 )
             ));
 
-            transform_ast_with(&mut ast.ast, &mut visitor, &context.meta.script.cm)
+            transform_ast_with(
+                &mut ast.ast.as_module().unwrap(),
+                &mut visitor,
+                &context.meta.script.cm,
+            )
         })
     }
 }

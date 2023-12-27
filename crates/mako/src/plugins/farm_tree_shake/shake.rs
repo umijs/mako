@@ -265,7 +265,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
             if let ModuleAst::Script(swc_module) = ast {
                 // remove useless statements and useless imports/exports identifiers, then all preserved import info and export info will be added to the used_exports.
 
-                let mut shadow = swc_module.ast.clone();
+                let mut shadow = swc_module.ast.as_module().unwrap().clone();
 
                 let (used_imports, used_exports_from) = remove_useless_stmts::remove_useless_stmts(
                     tree_shake_module.deref_mut(),
@@ -353,6 +353,8 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
                 .unwrap()
                 .ast
                 .as_script_mut()
+                .as_mut_module()
+                .unwrap()
                 .body = swc_module.body.clone();
         }
     }

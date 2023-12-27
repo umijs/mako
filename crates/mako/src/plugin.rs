@@ -5,7 +5,7 @@ use std::sync::Arc;
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::swc_common::errors::Handler;
 use mako_core::swc_common::Mark;
-use mako_core::swc_ecma_ast::Module;
+use mako_core::swc_ecma_ast::Program;
 
 use crate::compiler::{Args, Context};
 use crate::config::Config;
@@ -66,7 +66,7 @@ pub trait Plugin: Any + Send + Sync {
     fn transform_js(
         &self,
         _param: &PluginTransformJsParam,
-        _ast: &mut Module,
+        _ast: &mut Program,
         _context: &Arc<Context>,
     ) -> Result<()> {
         Ok(())
@@ -75,7 +75,7 @@ pub trait Plugin: Any + Send + Sync {
     fn after_generate_transform_js(
         &self,
         _param: &PluginTransformJsParam,
-        _ast: &mut Module,
+        _ast: &mut Program,
         _context: &Arc<Context>,
     ) -> Result<()> {
         Ok(())
@@ -168,7 +168,7 @@ impl PluginDriver {
     pub fn transform_js(
         &self,
         param: &PluginTransformJsParam,
-        ast: &mut Module,
+        ast: &mut Program,
         context: &Arc<Context>,
     ) -> Result<()> {
         for plugin in &self.plugins {
@@ -180,7 +180,7 @@ impl PluginDriver {
     pub fn after_generate_transform_js(
         &self,
         param: &PluginTransformJsParam,
-        ast: &mut Module,
+        ast: &mut Program,
         context: &Arc<Context>,
     ) -> Result<()> {
         for plugin in &self.plugins {

@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
-use mako_core::anyhow::{anyhow, Result};
+use mako_core::anyhow::Result;
 use mako_core::swc_common::DUMMY_SP as span;
 use mako_core::swc_ecma_ast::{
-    BlockStmt, FnExpr, Function, Module, ModuleItem, ObjectLit, PropOrSpread, Stmt, UnaryExpr,
+    BlockStmt, FnExpr, Function, Module, ModuleItem, ObjectLit, Program, PropOrSpread, UnaryExpr,
     UnaryOp,
 };
-use mako_core::swc_ecma_utils::{quote_ident, ExprFactory, StmtOrModuleItem};
+use mako_core::swc_ecma_utils::{quote_ident, ExprFactory};
 use mako_core::tracing::debug;
 
 use crate::ast::{build_js_ast, js_ast_to_code};
@@ -72,7 +72,7 @@ impl MakoRuntime {
 
         let obj_expr = ObjectLit { span, props };
 
-        let module = Module {
+        let module = Program::Module(Module {
             span,
             body: vec![ModuleItem::Stmt(
                 UnaryExpr {
@@ -104,7 +104,7 @@ impl MakoRuntime {
                 .into_stmt(),
             )],
             shebang: None,
-        };
+        });
 
         let (code, _) = js_ast_to_code(&module, context, "dummy.js").unwrap();
 
@@ -157,17 +157,7 @@ impl MakoRuntime {
             ast: &mut ast,
         })?;
 
-        let stmts: Result<Vec<Stmt>> = ast
-            .ast
-            .body
-            .into_iter()
-            .map(|s| {
-                s.into_stmt()
-                    .map_err(|e| anyhow!("{:?} not a statement!", e))
-            })
-            .collect();
-        let stmts = stmts.unwrap();
-
+        let stmts = ast.get_stmts()?;
         let factor_decl = FnExpr {
             ident: None,
             function: Function {

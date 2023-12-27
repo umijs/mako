@@ -21,7 +21,7 @@ use mako_core::{swc_css_ast, swc_css_prefixer};
 
 use crate::ast::Ast;
 use crate::compiler::{Compiler, Context};
-use crate::config::OutputMode;
+use crate::config::{OutputMode, Platform};
 use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
 use crate::swc_helpers::SwcHelpers;
 use crate::targets;
@@ -141,7 +141,7 @@ pub fn transform_modules_in_thread(
                         let swc_helpers = if context.args.watch {
                             None
                         } else {
-                            Some(SwcHelpers::get_swc_helpers(&ast.ast, &context))
+                            Some(SwcHelpers::get_swc_helpers(&ast, &context))
                         };
                         Ok((module_id, ModuleAst::Script(ast.clone()), swc_helpers))
                     }
@@ -216,7 +216,11 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()>
                         let unresolved_mark = ast.unresolved_mark;
                         let top_level_mark = ast.top_level_mark;
 
-                        let import_interop = ImportInterop::Swc;
+                        let import_interop = if matches!(context.config.platform, Platform::Node) {
+                            ImportInterop::Node
+                        } else {
+                            ImportInterop::Swc
+                        };
                         ast.ast
                             .visit_mut_with(&mut import_analyzer(import_interop, true));
                         ast.ast.visit_mut_with(&mut inject_helpers(unresolved_mark));

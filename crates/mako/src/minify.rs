@@ -56,8 +56,7 @@ pub fn minify_js(ast: &mut Ast, context: &Arc<Context>) -> Result<()> {
                                 unresolved_mark,
                                 top_level_mark,
                             },
-                        )
-                        .expect_module();
+                        );
 
                         minified.visit_mut_with(&mut fixer(Some(
                             context

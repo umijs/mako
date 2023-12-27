@@ -12,7 +12,7 @@ use mako_core::rayon::ThreadPool;
 use mako_core::regex::Regex;
 use mako_core::swc_ecma_ast::{
     Decl, ExportSpecifier, Expr, ImportSpecifier, ModuleDecl, ModuleExportName, ModuleItem, Pat,
-    Stmt, VarDecl,
+    Program, Stmt, VarDecl,
 };
 use mako_core::swc_ecma_utils::contains_top_level_await;
 use mako_core::thiserror::Error;
@@ -386,6 +386,11 @@ module.exports = new Promise((resolve, reject) => {{
             return (vec![], vec![], false);
         }
         let ast = ast.as_script();
+        let is_module = matches!(ast, Program::Module(_));
+        if !is_module {
+            return (vec![], vec![], false);
+        }
+        let ast = ast.as_module().unwrap();
         let mut import_map = vec![];
         let mut export_map = vec![];
         let mut is_barrel = true;

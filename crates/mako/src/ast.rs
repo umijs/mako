@@ -6,6 +6,7 @@ use mako_core::anyhow::{anyhow, Result};
 use mako_core::base64::engine::general_purpose;
 use mako_core::base64::Engine;
 use mako_core::pathdiff::diff_paths;
+use mako_core::swc_atoms::Atom;
 use mako_core::swc_common::errors::Handler;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{FileName, Mark, SourceMap, Span, Spanned, GLOBALS};
@@ -14,7 +15,7 @@ use mako_core::swc_css_codegen::writer::basic::{BasicCssWriter, BasicCssWriterCo
 use mako_core::swc_css_codegen::{CodeGenerator, CodegenConfig, Emit};
 use mako_core::swc_css_parser;
 use mako_core::swc_css_parser::parser::ParserConfig;
-use mako_core::swc_ecma_ast::{EsVersion, Module};
+use mako_core::swc_ecma_ast::{EsVersion, ModuleItem, Program, Stmt};
 use mako_core::swc_ecma_codegen::text_writer::JsWriter;
 use mako_core::swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
 use mako_core::swc_ecma_parser::error::SyntaxError;
@@ -36,9 +37,49 @@ struct ParseError {
 
 #[derive(Debug, Clone)]
 pub struct Ast {
-    pub ast: Module,
+    pub ast: Program,
     pub unresolved_mark: Mark,
     pub top_level_mark: Mark,
+}
+
+impl Ast {
+    pub fn get_stmts(&self) -> Result<Vec<Stmt>> {
+        let mut stmts = Vec::new();
+        match self.ast {
+            Program::Module(ref module) => {
+                for n in module.body.clone().into_iter() {
+                    match n.as_stmt() {
+                        None => return Err(anyhow!("Error: not a stmt")),
+                        Some(stmt) => {
+                            // TODO: 这里的 clone 应该可以优化下
+                            stmts.push(stmt.clone());
+                        }
+                    }
+                }
+            }
+            Program::Script(ref script) => {
+                stmts.extend(script.body.clone());
+            }
+        };
+        Ok(stmts)
+    }
+
+    pub fn get_shebang(&self) -> Option<Atom> {
+        match self.ast {
+            Program::Module(ref module) => module.shebang.clone(),
+            Program::Script(ref script) => script.shebang.clone(),
+        }
+    }
+
+    pub fn is_esm(&self) -> bool {
+        match self.ast {
+            Program::Module(ref module) => module
+                .body
+                .iter()
+                .any(|s| matches!(s, ModuleItem::ModuleDecl(_))),
+            Program::Script(_) => false,
+        }
+    }
 }
 
 pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result<Ast> {
@@ -78,9 +119,8 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
         Some(comments.get_swc_comments()),
     );
     let mut parser = Parser::new_from(lexer);
-
     // parse to ast
-    let ast = parser.parse_module();
+    let ast = parser.parse_program();
     let mut ast_errors = parser.take_errors();
     // 忽略 strict mode 下 with 语法错误
     ast_errors.retain_mut(|error| !matches!(error.kind(), SyntaxError::WithInStrict));
@@ -174,7 +214,7 @@ pub fn build_css_ast(
 }
 
 pub fn js_ast_to_code(
-    ast: &Module,
+    ast: &Program,
     context: &Arc<Context>,
     filename: &str,
 ) -> Result<(String, String)> {
@@ -201,7 +241,7 @@ pub fn js_ast_to_code(
                 Some(&mut source_map_buf),
             )),
         };
-        emitter.emit_module(ast)?;
+        emitter.emit_program(ast)?;
     }
 
     let sourcemap = match context.config.devtool {

@@ -7,7 +7,7 @@ use mako_core::anyhow::{anyhow, Result};
 use mako_core::base64::engine::{general_purpose, Engine};
 use mako_core::pathdiff::diff_paths;
 use mako_core::swc_common::{Span, DUMMY_SP};
-use mako_core::swc_ecma_ast::{BlockStmt, FnExpr, Function, Module as SwcModule};
+use mako_core::swc_ecma_ast::{BlockStmt, FnExpr, Function, Program};
 use mako_core::swc_ecma_utils::quote_ident;
 use mako_core::{md5, swc_css_ast};
 use serde::Serialize;
@@ -194,7 +194,7 @@ pub enum ModuleAst {
 }
 
 impl ModuleAst {
-    pub fn as_script(&self) -> &SwcModule {
+    pub fn as_script(&self) -> &Program {
         if let Self::Script(script) = self {
             &script.ast
         } else {
@@ -202,7 +202,7 @@ impl ModuleAst {
         }
     }
 
-    pub fn as_script_mut(&mut self) -> &mut SwcModule {
+    pub fn as_script_mut(&mut self) -> &mut Program {
         if let Self::Script(script) = self {
             &mut script.ast
         } else {
@@ -278,17 +278,9 @@ impl Module {
     pub fn to_module_fn_expr(&self) -> Result<FnExpr> {
         match &self.info.as_ref().unwrap().ast {
             ModuleAst::Script(script) => {
-                let mut stmts = Vec::new();
-
-                for n in script.ast.body.iter() {
-                    match n.as_stmt() {
-                        None => return Err(anyhow!("Error: {:?} not a stmt in ", self.id.id)),
-                        Some(stmt) => {
-                            stmts.push(stmt.clone());
-                        }
-                    }
-                }
-
+                let stmts = script
+                    .get_stmts()
+                    .map_err(|e| anyhow!("{:?} in {:?}", e, self.id.id))?;
                 let func = Function {
                     span: DUMMY_SP,
                     params: vec![

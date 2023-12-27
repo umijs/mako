@@ -420,13 +420,17 @@ pub(super) fn skip_module_optimize(
                 // stmt_id is reversed order
                 for to_replace in replaces.iter() {
                     // println!("{} apply with {:?}", module_id.id, to_replace.1);
-                    apply_replace(&mut swc_module.body, to_replace)
+                    // TODO: 确认这么改是否 ok
+                    apply_replace(
+                        &mut swc_module.as_module().unwrap().body.clone(),
+                        to_replace,
+                    )
                 }
 
                 let mut tsm = tree_shake_modules_map.get(module_id).unwrap().borrow_mut();
                 let (_code, _) = js_ast_to_code(swc_module, context, &module_id.id).unwrap();
 
-                tsm.update_stmt_graph(swc_module);
+                tsm.update_stmt_graph(swc_module.as_module().unwrap());
             }
 
             let deps = analyze_deps(&module.info.as_mut().unwrap().ast, &module_id.id, context)?;

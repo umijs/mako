@@ -170,7 +170,7 @@ impl Plugin for ImportPlugin {
     fn transform_js(
         &self,
         param: &crate::plugin::PluginTransformJsParam,
-        ast: &mut mako_core::swc_ecma_ast::Module,
+        ast: &mut mako_core::swc_ecma_ast::Program,
         context: &std::sync::Arc<crate::compiler::Context>,
     ) -> anyhow::Result<()> {
         // skip node_modules to keep behavior same as umi, and skip if no config

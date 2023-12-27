@@ -9,7 +9,7 @@ use mako_core::sailfish::TemplateOnce;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{
     ArrayLit, AssignOp, BinaryOp, BlockStmt, Expr, ExprOrSpread, FnExpr, Function, Ident,
-    KeyValueProp, Module as SwcModule, ObjectLit, Prop, PropOrSpread,
+    KeyValueProp, Module as SwcModule, ObjectLit, Program, Prop, PropOrSpread,
 };
 use mako_core::swc_ecma_codegen::text_writer::JsWriter;
 use mako_core::swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
@@ -25,7 +25,7 @@ use crate::runtime::AppRuntimeTemplate;
 use crate::sourcemap::build_source_map;
 
 pub(crate) fn render_module_js(
-    ast: &SwcModule,
+    ast: &Program,
     context: &Arc<Context>,
 ) -> Result<(Vec<u8>, Option<Vec<u8>>)> {
     mako_core::mako_profile_function!();
@@ -46,8 +46,7 @@ pub(crate) fn render_module_js(
         comments: Some(swc_comments),
         wr: Box::new(JsWriter::new(cm, "\n", &mut buf, Some(&mut source_map_buf))),
     };
-    emitter.emit_module(ast)?;
-
+    emitter.emit_program(ast)?;
     let cm = &context.meta.script.cm;
     let source_map = {
         mako_core::mako_profile_scope!("build_source_map");
@@ -231,17 +230,7 @@ pub fn to_module_fn_expr(module: &Module) -> Result<FnExpr> {
 
     match &module.info.as_ref().unwrap().ast {
         ModuleAst::Script(script) => {
-            let mut stmts = Vec::new();
-
-            for n in script.ast.body.iter() {
-                match n.as_stmt() {
-                    None => return Err(anyhow!("Error: {:?} not a stmt in ", module.id.id)),
-                    Some(stmt) => {
-                        stmts.push(stmt.clone());
-                    }
-                }
-            }
-
+            let stmts = script.get_stmts()?;
             let func = Function {
                 span: DUMMY_SP,
                 params: vec![
@@ -264,7 +253,7 @@ pub fn to_module_fn_expr(module: &Module) -> Result<FnExpr> {
                 function: func.into(),
             })
         }
-        //TODO:  css module will be removed in the future
+        // TODO:  css module will be removed in the future
         ModuleAst::Css(_) => Ok(empty_module_fn_expr()),
         ModuleAst::None => Err(anyhow!("ModuleAst::None({}) cannot concert", module.id.id)),
     }

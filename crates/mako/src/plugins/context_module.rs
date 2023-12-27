@@ -5,7 +5,7 @@ use mako_core::anyhow::Result;
 use mako_core::glob::glob;
 use mako_core::swc_common::{Mark, DUMMY_SP};
 use mako_core::swc_ecma_ast::{
-    BinExpr, BinaryOp, CallExpr, Expr, ExprOrSpread, Lit, Module, ParenExpr, TplElement,
+    BinExpr, BinaryOp, CallExpr, Expr, ExprOrSpread, Lit, ParenExpr, Program, TplElement,
 };
 use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprExt, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
@@ -111,7 +111,7 @@ module.exports = (id) => {{
     fn transform_js(
         &self,
         param: &PluginTransformJsParam,
-        ast: &mut Module,
+        ast: &mut Program,
         _context: &Arc<Context>,
     ) -> Result<()> {
         ast.visit_mut_children_with(&mut ContextModuleVisitor {

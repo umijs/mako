@@ -1,10 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use mako_core::swc_ecma_ast::{
-    CallExpr, Callee, Decl, Expr, Lit, Module, ModuleItem, Stmt, VarDecl, VarDeclarator,
-};
+use mako_core::swc_ecma_ast::{CallExpr, Callee, Decl, Expr, Lit, Stmt, VarDecl, VarDeclarator};
 
+use crate::ast::Ast;
 use crate::compiler::Context;
 use crate::config::ModuleIdStrategy;
 use crate::module::ModuleId;
@@ -40,7 +39,7 @@ impl SwcHelpers {
         helpers
     }
 
-    pub fn get_swc_helpers(ast: &Module, context: &Arc<Context>) -> HashSet<String> {
+    pub fn get_swc_helpers(ast: &Ast, context: &Arc<Context>) -> HashSet<String> {
         let is_hashed = matches!(context.config.module_id_strategy, ModuleIdStrategy::Hashed);
         let helpers: HashMap<String, String> = Self::full_helpers()
             .into_iter()
@@ -54,13 +53,14 @@ impl SwcHelpers {
             })
             .collect();
         let mut swc_helpers = HashSet::new();
+        let stmts = ast.get_stmts().unwrap();
         // Top level require only
         // why top level only? because swc helpers is only used in top level
         // why require only? because cjs transform is done before this
-        ast.body.iter().for_each(|stmt| {
+        stmts.iter().for_each(|stmt| {
             // e.g.
             // var _interop_require_wildcard = __mako_require__("@swc/helpers/_/_interop_require_wildcard");
-            if let ModuleItem::Stmt(Stmt::Decl(Decl::Var(box VarDecl { decls, .. }))) = stmt {
+            if let Stmt::Decl(Decl::Var(box VarDecl { decls, .. })) = stmt {
                 if decls.is_empty() {
                     return;
                 }

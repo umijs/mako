@@ -3,7 +3,7 @@ mod import_exports;
 use std::collections::{HashMap, HashSet};
 
 use mako_core::swc_common::SyntaxContext;
-use mako_core::swc_ecma_ast::{Module as SwcModule, ModuleItem};
+use mako_core::swc_ecma_ast::Module as SwcModule;
 
 use crate::module::{Module, ModuleId};
 use crate::module_graph::ModuleGraph;
@@ -259,15 +259,10 @@ impl TreeShakeModule {
         let mut module_system = ModuleSystem::CommonJS;
         let stmt_graph = match &module_info.ast {
             crate::module::ModuleAst::Script(module) => {
-                let is_esm = module
-                    .ast
-                    .body
-                    .iter()
-                    .any(|s| matches!(s, ModuleItem::ModuleDecl(_)));
-                if is_esm {
+                if module.is_esm() {
                     module_system = ModuleSystem::ESModule;
                     unresolved_ctxt = unresolved_ctxt.apply_mark(module.unresolved_mark);
-                    StatementGraph::new(&module.ast, unresolved_ctxt)
+                    StatementGraph::new(&module.ast.as_module().unwrap(), unresolved_ctxt)
                 } else {
                     StatementGraph::empty()
                 }

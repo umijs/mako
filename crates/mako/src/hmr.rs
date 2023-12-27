@@ -1,8 +1,7 @@
 use mako_core::anyhow::Result;
 use mako_core::indexmap::IndexSet;
 use mako_core::swc_ecma_ast::{
-    CallExpr, Expr, ExprOrSpread, ExprStmt, KeyValueProp, ModuleItem, ObjectLit, Prop,
-    PropOrSpread, Stmt,
+    CallExpr, Expr, ExprOrSpread, ExprStmt, KeyValueProp, ObjectLit, Prop, PropOrSpread, Stmt,
 };
 
 use crate::ast::{build_js_ast, js_ast_to_code};
@@ -31,11 +30,11 @@ impl Compiler {
             .unwrap()
             .ast;
 
-        for stmt in &mut js_ast.body {
-            if let ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+        for stmt in &mut js_ast.as_mut_script().unwrap().body {
+            if let Stmt::Expr(ExprStmt {
                 expr: box Expr::Call(CallExpr { args, .. }),
                 ..
-            })) = stmt
+            }) = stmt
             {
                 if let ExprOrSpread {
                     expr: box Expr::Object(ObjectLit { props, .. }),

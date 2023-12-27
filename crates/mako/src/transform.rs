@@ -8,7 +8,7 @@ use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{chain, Mark, GLOBALS};
 use mako_core::swc_css_ast::Stylesheet;
 use mako_core::swc_css_visit::VisitMutWith as CssVisitMutWith;
-use mako_core::swc_ecma_ast::Module;
+use mako_core::swc_ecma_ast::Program;
 use mako_core::swc_ecma_preset_env::{self as swc_preset_env};
 use mako_core::swc_ecma_transforms::feature::FeatureFlag;
 use mako_core::swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
@@ -54,7 +54,7 @@ pub fn transform(ast: &mut ModuleAst, context: &Arc<Context>, task: &Task) -> Re
 }
 
 fn transform_js(
-    ast: &mut Module,
+    ast: &mut Program,
     context: &Arc<Context>,
     task: &Task,
     top_level_mark: Mark,
@@ -177,7 +177,7 @@ fn transform_js(
 
                     // preset-env and other folders must be after plugin transform
                     // because plugin transform may inject some code that may need syntax transform
-                    ast.body = folders.fold_module(ast.clone()).body;
+                    *ast = folders.fold_program(ast.clone());
 
                     // inject helpers must after decorators
                     // since decorators will use helpers

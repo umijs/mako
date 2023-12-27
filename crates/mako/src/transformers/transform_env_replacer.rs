@@ -9,8 +9,8 @@ use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{
     ArrayLit, Bool, ComputedPropName, Expr, ExprOrSpread, Id, Ident, KeyValueProp, Lit, MemberExpr,
-    MemberProp, MetaPropExpr, MetaPropKind, Module, ModuleItem, Null, Number, ObjectLit, Prop,
-    PropName, PropOrSpread, Stmt, Str,
+    MemberProp, MetaPropExpr, MetaPropKind, Module, Null, Number, ObjectLit, Prop, PropName,
+    PropOrSpread, Stmt, Str,
 };
 use mako_core::swc_ecma_utils::{collect_decls, quote_ident, ExprExt};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
@@ -196,10 +196,9 @@ fn get_env_expr(v: Value, context: &Arc<Context>) -> Result<Expr> {
         Value::String(v) => {
             // the string content is treat as expression, so it has to be parsed
             let ast = build_js_ast("_define_.js", &v, context).unwrap();
-            let module = ast.ast.body.first().unwrap();
-
+            let module = ast.ast.as_script().unwrap().body.first().unwrap();
             match module {
-                ModuleItem::Stmt(Stmt::Expr(stmt_expr)) => {
+                Stmt::Expr(stmt_expr) => {
                     return Ok(stmt_expr.expr.as_expr().clone());
                 }
                 _ => Err(anyhow!(ConfigError::InvalidateDefineConfig(v))),

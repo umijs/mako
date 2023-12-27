@@ -488,12 +488,14 @@ fn init_statement_graph(module: &Module) -> (ModuleSystem, StatementGraph) {
         crate::module::ModuleAst::Script(module) => {
             let is_esm = module
                 .ast
+                .as_module()
+                .unwrap()
                 .body
                 .iter()
                 .any(|s| matches!(s, swc_ecma_ast::ModuleItem::ModuleDecl(_)));
             if is_esm {
                 module_system = ModuleSystem::ESModule;
-                StatementGraph::new(&module.ast)
+                StatementGraph::new(&module.ast.as_module().unwrap())
             } else {
                 StatementGraph::empty()
             }

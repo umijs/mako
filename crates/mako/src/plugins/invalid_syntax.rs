@@ -17,7 +17,7 @@ impl Plugin for InvalidSyntaxPlugin {
     fn transform_js(
         &self,
         param: &crate::plugin::PluginTransformJsParam,
-        ast: &mut swc_ecma_ast::Module,
+        ast: &mut swc_ecma_ast::Program,
         _context: &std::sync::Arc<crate::compiler::Context>,
     ) -> anyhow::Result<()> {
         // 先用白名单的形式，等收集的场景多了之后再考虑通用方案

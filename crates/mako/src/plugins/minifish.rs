@@ -80,7 +80,7 @@ impl Plugin for MinifishPlugin {
     fn transform_js(
         &self,
         param: &PluginTransformJsParam,
-        ast: &mut mako_core::swc_ecma_ast::Module,
+        ast: &mut mako_core::swc_ecma_ast::Program,
         _context: &Arc<Context>,
     ) -> Result<()> {
         if let Some(inject) = &self.inject {
@@ -112,7 +112,7 @@ impl Plugin for MinifishPlugin {
     fn after_generate_transform_js(
         &self,
         _param: &PluginTransformJsParam,
-        ast: &mut mako_core::swc_ecma_ast::Module,
+        ast: &mut mako_core::swc_ecma_ast::Program,
         _context: &Arc<Context>,
     ) -> Result<()> {
         ast.visit_mut_with(&mut UnSimplify {});

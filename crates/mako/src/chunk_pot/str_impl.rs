@@ -176,7 +176,7 @@ fn to_module_line(
         ModuleAst::Script(ast) => {
             mako_core::mako_profile_scope!("ast_to_js_map");
 
-            emitter.emit_module(&ast.ast)?;
+            emitter.emit_program(&ast.ast)?;
 
             let source_map = build_source_map(&source_map_buf, &cm);
 
