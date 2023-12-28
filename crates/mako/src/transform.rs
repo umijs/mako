@@ -19,6 +19,7 @@ use mako_core::swc_ecma_transforms_proposals::decorators;
 use mako_core::swc_ecma_transforms_typescript::strip_with_jsx;
 use mako_core::swc_ecma_visit::{Fold, VisitMutWith};
 use mako_core::swc_error_reporters::handler::try_with_handler;
+use swc_core::ecma::ast::ModuleItem;
 
 use crate::compiler::Context;
 use crate::module::ModuleAst;
@@ -120,7 +121,18 @@ fn transform_js(
                         ast.visit_mut_with(&mut dynamic_import_to_require);
                     }
 
-                    // TODO: polyfill
+                    // plugin transform
+                    context.plugin_driver.transform_js(
+                        &PluginTransformJsParam {
+                            handler,
+                            path: &task.path,
+                            top_level_mark,
+                            unresolved_mark,
+                        },
+                        ast,
+                        context,
+                    )?;
+
                     let preset_env = swc_preset_env::preset_env(
                         unresolved_mark,
                         Some(NoopComments),
@@ -160,24 +172,23 @@ fn transform_js(
                         Optional {
                             enabled: should_optimize(task.path.as_str(), context.clone()),
                             visitor: optimize_package_imports(task.path.clone(), context.clone()),
-                        },
+                        }
                     );
-
-                    // plugin transform
-                    context.plugin_driver.transform_js(
-                        &PluginTransformJsParam {
-                            handler,
-                            path: &task.path,
-                            top_level_mark,
-                            unresolved_mark,
-                        },
-                        ast,
-                        context,
-                    )?;
 
                     // preset-env and other folders must be after plugin transform
                     // because plugin transform may inject some code that may need syntax transform
-                    ast.body = folders.fold_module(ast.clone()).body;
+                    if is_esm_modules(ast) {
+                        ast.body = folders.fold_module(ast.clone()).body;
+                    } else {
+                        let script_ast = swc_core::ecma::ast::Script {
+                            span: ast.span,
+                            shebang: ast.shebang.clone(),
+                            body: ast.body.iter().map(|i| i.clone().stmt().unwrap()).collect(),
+                        };
+
+                        let script_ast = folders.fold_script(script_ast);
+                        ast.body = script_ast.body.iter().map(|i| i.clone().into()).collect();
+                    }
 
                     // inject helpers must after decorators
                     // since decorators will use helpers
@@ -213,6 +224,13 @@ fn transform_css(ast: &mut Stylesheet, context: &Arc<Context>, task: &Task) -> R
         ast.visit_mut_with(&mut px2rem);
     }
     Ok(())
+}
+
+fn is_esm_modules(swc_module: &Module) -> bool {
+    swc_module
+        .body
+        .iter()
+        .any(|item| matches!(item, ModuleItem::ModuleDecl(_)))
 }
 
 #[cfg(test)]
