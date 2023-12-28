@@ -1,5 +1,8 @@
 {
   "mode": "production",
   "minify": false,
-  "hmr": false
+  "hmr": false,
+  "optimization": {
+    "skipModules": false
+  }
 }
