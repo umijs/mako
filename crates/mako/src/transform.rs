@@ -187,7 +187,7 @@ fn transform_js(
                         };
 
                         let script_ast = folders.fold_script(script_ast);
-                        ast.body = script_ast.body.iter().map(|i| i.clone().into()).collect();
+                        ast.body = script_ast.body.into_iter().map(|i| i.into()).collect();
                     }
 
                     // inject helpers must after decorators
