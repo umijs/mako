@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -76,6 +77,11 @@ pub struct StatsJsonChunkItem {
     pub modules: Vec<StatsJsonModuleItem>,
 }
 #[derive(Serialize, Debug)]
+pub struct StatsJsonEntryItem {
+    pub name: String,
+    pub chunks: Vec<String>,
+}
+#[derive(Serialize, Debug)]
 pub struct StatsJsonMap {
     hash: u64,
     time: u128,
@@ -85,6 +91,7 @@ pub struct StatsJsonMap {
     assets: Vec<StatsJsonAssetsItem>,
     modules: Vec<StatsJsonModuleItem>,
     chunks: Vec<StatsJsonChunkItem>,
+    entrypoints: HashMap<String, StatsJsonEntryItem>,
 }
 
 impl StatsJsonMap {
@@ -98,6 +105,7 @@ impl StatsJsonMap {
             assets: vec![],
             modules: vec![],
             chunks: vec![],
+            entrypoints: HashMap::new(),
         }
     }
 }
@@ -242,6 +250,29 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
             }
         })
         .collect();
+    stats_map.entrypoints = chunks
+        .iter()
+        .filter_map(|chunk| match &chunk.chunk_type {
+            ChunkType::Entry(_, name, _) => {
+                let mut chunks = chunk_graph
+                    .entry_dependencies_chunk(&chunk.id)
+                    .into_iter()
+                    .map(|id| id.id)
+                    .collect::<Vec<_>>();
+
+                chunks.push(chunk.id.id.clone());
+
+                Some((
+                    name.clone(),
+                    StatsJsonEntryItem {
+                        name: name.clone(),
+                        chunks,
+                    },
+                ))
+            }
+            _ => None,
+        })
+        .collect::<HashMap<_, _>>();
 
     // 获取 modules
     let modules: Vec<StatsJsonModuleItem> = modules_vec.borrow().iter().cloned().collect();

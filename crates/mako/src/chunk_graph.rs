@@ -117,6 +117,15 @@ impl ChunkGraph {
             .collect::<Vec<ChunkId>>()
     }
 
+    pub fn entry_dependencies_chunk(&self, chunk_id: &ChunkId) -> Vec<ChunkId> {
+        let idx = self.id_index_map.get(chunk_id).unwrap();
+        self.graph
+            .neighbors_directed(*idx, Direction::Outgoing)
+            .filter(|idx| matches!(self.graph[*idx].chunk_type, ChunkType::Entry(_, _, _)))
+            .map(|idx| self.graph[idx].id.clone())
+            .collect::<Vec<ChunkId>>()
+    }
+
     pub fn dependents_chunk(&self, chunk_id: &ChunkId) -> Vec<ChunkId> {
         let idx = self.id_index_map.get(chunk_id).unwrap();
         self.graph

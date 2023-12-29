@@ -5,6 +5,7 @@ use mako_core::swc_common::comments::NoopComments;
 use mako_core::swc_common::errors::HANDLER;
 use mako_core::swc_common::pass::Optional;
 use mako_core::swc_common::sync::Lrc;
+use mako_core::swc_common::util::take::Take;
 use mako_core::swc_common::{chain, Mark, GLOBALS};
 use mako_core::swc_css_ast::Stylesheet;
 use mako_core::swc_css_visit::VisitMutWith as CssVisitMutWith;
@@ -19,6 +20,7 @@ use mako_core::swc_ecma_transforms_proposals::decorators;
 use mako_core::swc_ecma_transforms_typescript::strip_with_jsx;
 use mako_core::swc_ecma_visit::{Fold, VisitMutWith};
 use mako_core::swc_error_reporters::handler::try_with_handler;
+use swc_core::ecma::ast::ModuleItem;
 
 use crate::compiler::Context;
 use crate::module::ModuleAst;
@@ -120,6 +122,18 @@ fn transform_js(
                         ast.visit_mut_with(&mut dynamic_import_to_require);
                     }
 
+                    // plugin transform
+                    context.plugin_driver.transform_js(
+                        &PluginTransformJsParam {
+                            handler,
+                            path: &task.path,
+                            top_level_mark,
+                            unresolved_mark,
+                        },
+                        ast,
+                        context,
+                    )?;
+
                     // TODO: polyfill
                     let preset_env = swc_preset_env::preset_env(
                         unresolved_mark,
@@ -146,7 +160,7 @@ fn transform_js(
                         }),
                         // simplify, but keep top level dead code
                         // e.g. import x from 'foo'; but x is not used
-                        // this must be keeped for tree shaking to work
+                        // this must be kept for tree shaking to work
                         simplifier(
                             unresolved_mark,
                             SimpilifyConfig {
@@ -160,20 +174,8 @@ fn transform_js(
                         Optional {
                             enabled: should_optimize(task.path.as_str(), context.clone()),
                             visitor: optimize_package_imports(task.path.clone(), context.clone()),
-                        },
+                        }
                     );
-
-                    // plugin transform
-                    context.plugin_driver.transform_js(
-                        &PluginTransformJsParam {
-                            handler,
-                            path: &task.path,
-                            top_level_mark,
-                            unresolved_mark,
-                        },
-                        ast,
-                        context,
-                    )?;
 
                     // preset-env and other folders must be after plugin transform
                     // because plugin transform may inject some code that may need syntax transform
@@ -181,7 +183,23 @@ fn transform_js(
 
                     // inject helpers must after decorators
                     // since decorators will use helpers
-                    ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
+                    if is_esm_modules(ast) {
+                        ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
+                    } else {
+                        let body = ast.body.take();
+
+                        let mut script_ast = swc_core::ecma::ast::Script {
+                            span: ast.span,
+                            shebang: ast.shebang.clone(),
+                            body: body
+                                .into_iter()
+                                .map(|i| i.clone().stmt().unwrap())
+                                .collect(),
+                        };
+
+                        script_ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
+                        ast.body = script_ast.body.into_iter().map(|i| i.into()).collect();
+                    }
 
                     Ok(())
                 })
@@ -213,6 +231,13 @@ fn transform_css(ast: &mut Stylesheet, context: &Arc<Context>, task: &Task) -> R
         ast.visit_mut_with(&mut px2rem);
     }
     Ok(())
+}
+
+fn is_esm_modules(swc_module: &Module) -> bool {
+    swc_module
+        .body
+        .iter()
+        .any(|item| matches!(item, ModuleItem::ModuleDecl(_)))
 }
 
 #[cfg(test)]
