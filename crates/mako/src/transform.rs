@@ -134,6 +134,7 @@ fn transform_js(
                         context,
                     )?;
 
+                    // TODO: polyfill
                     let preset_env = swc_preset_env::preset_env(
                         unresolved_mark,
                         Some(NoopComments),
@@ -159,7 +160,7 @@ fn transform_js(
                         }),
                         // simplify, but keep top level dead code
                         // e.g. import x from 'foo'; but x is not used
-                        // this must be keeped for tree shaking to work
+                        // this must be kept for tree shaking to work
                         simplifier(
                             unresolved_mark,
                             SimpilifyConfig {
