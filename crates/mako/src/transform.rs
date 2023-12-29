@@ -5,6 +5,7 @@ use mako_core::swc_common::comments::NoopComments;
 use mako_core::swc_common::errors::HANDLER;
 use mako_core::swc_common::pass::Optional;
 use mako_core::swc_common::sync::Lrc;
+use mako_core::swc_common::util::take::Take;
 use mako_core::swc_common::{chain, Mark, GLOBALS};
 use mako_core::swc_css_ast::Stylesheet;
 use mako_core::swc_css_visit::VisitMutWith as CssVisitMutWith;
@@ -177,22 +178,27 @@ fn transform_js(
 
                     // preset-env and other folders must be after plugin transform
                     // because plugin transform may inject some code that may need syntax transform
-                    if is_esm_modules(ast) {
-                        ast.body = folders.fold_module(ast.clone()).body;
-                    } else {
-                        let script_ast = swc_core::ecma::ast::Script {
-                            span: ast.span,
-                            shebang: ast.shebang.clone(),
-                            body: ast.body.iter().map(|i| i.clone().stmt().unwrap()).collect(),
-                        };
-
-                        let script_ast = folders.fold_script(script_ast);
-                        ast.body = script_ast.body.into_iter().map(|i| i.into()).collect();
-                    }
+                    ast.body = folders.fold_module(ast.clone()).body;
 
                     // inject helpers must after decorators
                     // since decorators will use helpers
-                    ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
+                    if is_esm_modules(ast) {
+                        ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
+                    } else {
+                        let body = ast.body.take();
+
+                        let mut script_ast = swc_core::ecma::ast::Script {
+                            span: ast.span,
+                            shebang: ast.shebang.clone(),
+                            body: body
+                                .into_iter()
+                                .map(|i| i.clone().stmt().unwrap())
+                                .collect(),
+                        };
+
+                        script_ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
+                        ast.body = script_ast.body.into_iter().map(|i| i.into()).collect();
+                    }
 
                     Ok(())
                 })
