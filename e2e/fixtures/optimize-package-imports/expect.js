@@ -12,12 +12,13 @@ assert(content.includes(`var _a3exportfrom = __mako_require__("node_modules/a-si
 assert(content.includes(`var _a4 = __mako_require__("node_modules/a-side-effects-false/a4.js");`), "should include a4.js");
 assert(content.includes(`_a4.a41`), "should include _a4.a41");
 assert(content.includes(`var _a5 = __mako_require__("node_modules/a-side-effects-false/a5.js");`), "should include a5.js");
-assert(content.includes(`var _a61 = __mako_require__("node_modules/a-side-effects-false/a61.js");`), "should include a61.js");
+assert(content.includes(`var _a61 = _interop_require_default._(__mako_require__("node_modules/a-side-effects-false/a61.js"));`), "should include a61.js");
 
 assert(content.includes(`var _bsideeffectstrue = __mako_require__("node_modules/b-side-effects-true/index.js");`), "should include a-side-effects-true/index.js (barrel file) but sideEffects: true");
 
 // 判断 barrel_file 时忽略 side_effects:false 且有 var x = a.b 的场景
 assert(content.includes(`var _aaa = __mako_require__("node_modules/d-side-effects-false/aaa.js");`), "should include d-side-effects-true/aaa.js (barrel file)");
+
 
 // TODO:
 // [x] 1\ export * as foo from './foo';
