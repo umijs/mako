@@ -179,7 +179,13 @@ fn transform_js(
 
                     // preset-env and other folders must be after plugin transform
                     // because plugin transform may inject some code that may need syntax transform
-                    ast.body = folders.fold_module(ast.clone()).body;
+                    let body = ast.body.take();
+                    let module = Module {
+                        span: ast.span,
+                        shebang: ast.shebang.clone(),
+                        body,
+                    };
+                    ast.body = folders.fold_module(module).body;
 
                     // inject helpers must after decorators
                     // since decorators will use helpers

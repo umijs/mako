@@ -120,17 +120,17 @@ pub fn transform_modules_in_thread(
             insert_swc_helper_replace(&mut resolved_deps, &context);
             let module = module_graph.get_module(&module_id).unwrap();
             let info = module.info.as_ref().unwrap();
-            let ast = &mut info.ast.clone();
+            let ast = info.ast.clone();
             let deps_to_replace = DependenciesToReplace {
                 resolved: resolved_deps,
                 missing: info.missing_deps.clone(),
                 ignored: info.ignored_deps.clone(),
             };
-            if let ModuleAst::Script(ast) = ast {
+            if let ModuleAst::Script(mut ast) = ast {
                 let ret = transform_js_generate(TransformJsParam {
                     module_id: &module.id,
                     context: &context,
-                    ast,
+                    ast: &mut ast,
                     dep_map: &deps_to_replace,
                     async_deps: &async_deps,
                     wrap_async: info.is_async && info.external.is_none(),
@@ -143,7 +143,7 @@ pub fn transform_modules_in_thread(
                         } else {
                             Some(SwcHelpers::get_swc_helpers(&ast.ast, &context))
                         };
-                        Ok((module_id, ModuleAst::Script(ast.clone()), swc_helpers))
+                        Ok((module_id, ModuleAst::Script(ast), swc_helpers))
                     }
                     Err(e) => Err(e),
                 };
