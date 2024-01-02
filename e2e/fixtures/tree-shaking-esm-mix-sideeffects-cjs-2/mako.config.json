@@ -1,6 +1,6 @@
 {
   "mode": "production",
   "minify": false,
-  "hmr": null,
+  "hmr": false,
   "_treeShaking": "basic"
 }

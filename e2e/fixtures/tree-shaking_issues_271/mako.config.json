@@ -1,5 +1,5 @@
 {
   "mode": "production",
-  "hmr": null,
+  "hmr": false,
   "minify":false
 }

@@ -5,7 +5,7 @@
     "index": "./index.js"
   },
   "minify": false,
-  "hmr": null,
+  "hmr": false,
   "define": {
     "NODE_ENV": "'production'"
   }

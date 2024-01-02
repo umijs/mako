@@ -14,5 +14,5 @@
     "MEMBER_NAMES": [{ "name": "\"sorrycc\"" }, { "name": "\"xiaohuoni\"" }],
     "EXIT": true
   },
-  "hmr": null
+  "hmr": false
 }

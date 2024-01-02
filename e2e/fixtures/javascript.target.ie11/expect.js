@@ -1,4 +1,5 @@
 const assert = require("assert");
+const path = require("path");
 const { parseBuildResult, moduleReg } = require("../../../scripts/test-utils");
 const { distDir } = parseBuildResult(__dirname);
 

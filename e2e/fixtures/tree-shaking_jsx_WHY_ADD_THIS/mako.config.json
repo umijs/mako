@@ -1,4 +1,4 @@
 {
   "mode": "production",
-  "hmr": null
+  "hmr": false
 }
