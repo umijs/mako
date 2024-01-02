@@ -15,7 +15,7 @@ use mako_core::{clap, config, thiserror};
 use serde::Serialize;
 
 use crate::plugins::node_polyfill::get_all_modules;
-use crate::{optimize_chunk, plugins};
+use crate::{optimize_chunk, plugins, transformers};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -136,14 +136,15 @@ pub enum TreeShakeStrategy {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Px2RemConfig {
+    #[serde(default = "transformers::transform_px2rem::default_root")]
     pub root: f64,
-    #[serde(rename = "propBlackList")]
+    #[serde(rename = "propBlackList", default)]
     pub prop_black_list: Vec<String>,
-    #[serde(rename = "propWhiteList")]
+    #[serde(rename = "propWhiteList", default)]
     pub prop_white_list: Vec<String>,
-    #[serde(rename = "selectorBlackList")]
+    #[serde(rename = "selectorBlackList", default)]
     pub selector_black_list: Vec<String>,
-    #[serde(rename = "selectorWhiteList")]
+    #[serde(rename = "selectorWhiteList", default)]
     pub selector_white_list: Vec<String>,
 }
 
@@ -288,9 +289,7 @@ pub struct Config {
     pub less: LessConfig,
     pub hmr: Option<HmrConfig>,
     pub code_splitting: CodeSplittingStrategy,
-    pub px2rem: bool,
-    #[serde(rename = "px2remConfig")]
-    pub px2rem_config: Px2RemConfig,
+    pub px2rem: Option<Px2RemConfig>,
     pub hash: bool,
     pub tree_shake: TreeShakeStrategy,
     #[serde(rename = "autoCSSModules")]
@@ -447,8 +446,6 @@ const DEFAULT_CONFIG: &str = r#"
     "moduleIdStrategy": "named",
     "codeSplitting": "none",
     "hash": false,
-    "px2rem": false,
-    "px2remConfig": { "root": 100, "propBlackList": [], "propWhiteList": [], "selectorBlackList": [], "selectorWhiteList": [] },
     "treeShake": "basic",
     "autoCSSModules": false,
     "ignoreCSSParserErrors": false,

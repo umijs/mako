@@ -88,13 +88,12 @@ pub struct BuildParams {
     targets?: Record<string, number>;
     platform?: "node" | "browser";
     hmr?: { host?: string; port?: number };
-    px2rem?: boolean;
-    px2remConfig?: {
-        root: number;
-        propBlackList: string[];
-        propWhiteList: string[];
-        selectorBlackList: string[];
-        selectorWhiteList: string[];
+    px2rem?: {
+        root?: number;
+        propBlackList?: string[];
+        propWhiteList?: string[];
+        selectorBlackList?: string[];
+        selectorWhiteList?: string[];
     };
     stats?: boolean;
     hash?: boolean;

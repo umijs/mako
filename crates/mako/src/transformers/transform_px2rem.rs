@@ -5,6 +5,10 @@ use mako_core::swc_css_visit::{VisitMut, VisitMutWith};
 
 use crate::compiler::Context;
 
+pub(crate) fn default_root() -> f64 {
+    100.0
+}
+
 pub struct Px2Rem<'a> {
     pub context: &'a Arc<Context>,
     pub path: &'a str,
@@ -16,17 +20,28 @@ pub struct Px2Rem<'a> {
 impl Px2Rem<'_> {
     fn should_transform(&self) -> bool {
         if let Some(current_decl) = &self.current_decl {
-            let is_in_whitelist = self.context.config.px2rem_config.prop_white_list.is_empty()
+            let is_in_whitelist = self
+                .context
+                .config
+                .px2rem
+                .as_ref()
+                .unwrap()
+                .prop_white_list
+                .is_empty()
                 || self
                     .context
                     .config
-                    .px2rem_config
+                    .px2rem
+                    .as_ref()
+                    .unwrap()
                     .prop_white_list
                     .contains(current_decl);
             let is_in_blacklist = self
                 .context
                 .config
-                .px2rem_config
+                .px2rem
+                .as_ref()
+                .unwrap()
                 .prop_black_list
                 .contains(current_decl);
             return is_in_whitelist && !is_in_blacklist;
@@ -48,7 +63,7 @@ impl VisitMut for Px2Rem<'_> {
     }
     fn visit_mut_length(&mut self, n: &mut Length) {
         if n.unit.value.to_string() == "px" && self.should_transform() {
-            n.value.value /= self.context.config.px2rem_config.root;
+            n.value.value /= self.context.config.px2rem.as_ref().unwrap().root;
             n.value.raw = None;
             n.unit.value = "rem".into();
         }
@@ -57,7 +72,7 @@ impl VisitMut for Px2Rem<'_> {
     fn visit_mut_token(&mut self, t: &mut Token) {
         if let Token::Dimension(dimension) = t {
             if dimension.unit.to_string() == "px" && self.should_transform() {
-                let rem_val = dimension.value / self.context.config.px2rem_config.root;
+                let rem_val = dimension.value / self.context.config.px2rem.as_ref().unwrap().root;
                 dimension.raw_value = rem_val.to_string().into();
                 dimension.value = rem_val;
                 dimension.raw_unit = "rem".into();

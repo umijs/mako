@@ -308,19 +308,10 @@ publicPath 配置。注：有个特殊值 `"runtime"`，表示会切换到 runti
 
 ## px2rem
 
-- 类型：`boolean`
-- 默认值：`false`
+- 类型：`null | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[], selectorWhiteList?: string[] }`
+- 默认值：`null`
 
-是否开启 px2rem 转换。
-
-## px2remConfig
-
-- 类型：`{ root: number, propBlackList: string[], propWhiteList: string[], selectorBlackList: string[], selectorWhiteList: string[] }`
-- 默认值：`{ root: 100, propBlackList: [], propWhiteList: [], selectorBlackList: [], selectorWhiteList: [] }`
-
-px2rem 的配置。
-
-注：后续会合并到 px2rem 配置里，并将其改成 `Object` 类型。
+是否开启 px2rem 转换，启用时 `root` 的默认值为 `100`。
 
 - `root`，根节点的字体大小
 - `propBlackList`，属性黑名单
