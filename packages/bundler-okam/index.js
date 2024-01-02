@@ -43,7 +43,7 @@ exports.build = async function (opts) {
   const okamConfig = await getOkamConfig(opts);
   const mode = process.argv.includes('--dev') ? 'development' : 'production';
   okamConfig.mode = mode;
-  okamConfig.manifest = true;
+  okamConfig.manifest = {};
   okamConfig.hash = !!opts.config.hash;
   if (okamConfig.hash) {
     okamConfig.moduleIdStrategy = 'hashed';
@@ -60,7 +60,7 @@ exports.build = async function (opts) {
           config: opts.config,
           // NOTICE: 有个缺点是 如果 alias 配置是 mako 插件修改的 less 这边就感知到不了
           alias: okamConfig.resolve.alias,
-          modifyVars: okamConfig.less.theme,
+          modifyVars: opts.config.theme,
           sourceMap: getLessSourceMapConfig(okamConfig.devtool),
         }),
       },
@@ -79,7 +79,7 @@ exports.build = async function (opts) {
       path.join(
         cwd,
         'dist',
-        okamConfig.manifestConfig?.fileName || 'asset-manifest.json',
+        okamConfig.manifest?.fileName || 'asset-manifest.json',
       ),
     ),
   );
@@ -180,9 +180,7 @@ exports.dev = async function (opts) {
   // okam dev
   const { build } = require('@okamjs/okam');
   const okamConfig = await getOkamConfig(opts);
-  okamConfig.hmr = true;
-  okamConfig.hmrPort = String(hmrPort);
-  okamConfig.hmrHost = opts.host;
+  okamConfig.hmr = { port: hmrPort, host: opts.host };
   const cwd = opts.cwd;
   try {
     await build({
@@ -193,7 +191,7 @@ exports.dev = async function (opts) {
           cwd,
           config: opts.config,
           alias: okamConfig.resolve.alias,
-          modifyVars: okamConfig.less.theme,
+          modifyVars: opts.config.theme,
           sourceMap: getLessSourceMapConfig(okamConfig.devtool),
         }),
         onBuildComplete: (args) => {
@@ -407,7 +405,7 @@ async function getOkamConfig(opts) {
     opts.config.chainWebpack(webpackChainConfig, { env, webpack });
   }
   const webpackConfig = webpackChainConfig.toConfig();
-  let umd = 'none';
+  let umd = false;
   if (
     webpackConfig.output &&
     webpackConfig.output.libraryTarget === 'umd' &&
@@ -429,8 +427,6 @@ async function getOkamConfig(opts) {
     runtimePublicPath,
     manifest,
     mdx,
-    theme,
-    lessLoader,
     codeSplitting,
     devtool,
     jsMinifier,
@@ -544,19 +540,10 @@ async function getOkamConfig(opts) {
     targets: targets || {
       chrome: 80,
     },
-    manifest: !!manifest,
-    manifestConfig: manifest || {},
+    manifest: manifest,
     mdx: !!mdx,
-    codeSplitting: codeSplitting === false ? 'none' : 'auto',
-    devtool: devtool === false ? 'none' : 'source-map',
-    less: {
-      theme: {
-        // ignore function value
-        ...lodash.pickBy(theme, lodash.isString),
-        ...lessLoader?.modifyVars,
-        ...makoConfig.less?.theme,
-      },
-    },
+    codeSplitting: codeSplitting === false ? false : 'auto',
+    devtool: devtool === false ? false : 'source-map',
     minify,
     define,
     autoCSSModules: true,
@@ -578,7 +565,7 @@ async function getOkamConfig(opts) {
 
 function getLessSourceMapConfig(devtool) {
   return (
-    devtool !== 'none' && {
+    devtool && {
       sourceMapFileInline: true,
       outputSourceFiles: true,
     }
