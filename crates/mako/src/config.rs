@@ -14,8 +14,8 @@ use mako_core::twox_hash::XxHash64;
 use mako_core::{clap, config, thiserror};
 use serde::Serialize;
 
-use crate::optimize_chunk;
 use crate::plugins::node_polyfill::get_all_modules;
+use crate::{optimize_chunk, plugins};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -33,9 +33,12 @@ pub struct OutputConfig {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ManifestConfig {
-    #[serde(rename(deserialize = "fileName"))]
+    #[serde(
+        rename(deserialize = "fileName"),
+        default = "plugins::manifest::default_manifest_file_name"
+    )]
     pub file_name: String,
-    #[serde(rename(deserialize = "basePath"))]
+    #[serde(rename(deserialize = "basePath"), default)]
     pub base_path: String,
 }
 
@@ -261,8 +264,7 @@ pub struct Config {
     pub entry: HashMap<String, PathBuf>,
     pub output: OutputConfig,
     pub resolve: ResolveConfig,
-    pub manifest: bool,
-    pub manifest_config: ManifestConfig,
+    pub manifest: Option<ManifestConfig>,
     pub mode: Mode,
     pub minify: bool,
     pub devtool: DevtoolConfig,
@@ -435,8 +437,6 @@ const DEFAULT_CONFIG: &str = r#"
     "targets": { "chrome": 80 },
     "less": { "theme": {}, "lesscPath": "", javascriptEnabled: true },
     "define": {},
-    "manifest": false,
-    "manifestConfig": { "fileName": "asset-manifest.json", "basePath": "" },
     "stats": false,
     "mdx": false,
     "platform": "browser",

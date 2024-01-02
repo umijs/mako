@@ -58,8 +58,7 @@ pub struct BuildParams {
        alias?: Record<string, string>;
        extensions?: string[];
     };
-    manifest?: boolean;
-    manifestConfig?: {
+    manifest?: {
         fileName: string;
         basePath: string;
     };

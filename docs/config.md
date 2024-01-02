@@ -214,17 +214,10 @@ import("./a.js")
 
 ## manifest
 
-- 类型：`boolean`
-- 默认值：`false`
+- 类型：`null | { fileName?: string, basePath?: string }`
+- 默认值：`null`
 
-是否生成 `manifest.json` 文件。
-
-## manifestConfig
-
-- 类型：`{ fileName: string, basePath: string }`
-- 默认值：`{ fileName: "asset-manifest.json", basePath: "" }`
-
-`manifest.json` 文件的配置。（注：此配置后续会合并到 `manifest` 配置里）
+是否生成 `manifest.json` 文件，启用时 `fileName` 的默认值为 `asset-manifest.json`。
 
 ## mdx
 
