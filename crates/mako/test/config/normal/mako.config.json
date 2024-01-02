@@ -1,4 +1,4 @@
 {
   "platform": "node",
-  "hmr": false
+  "hmr": null
 }

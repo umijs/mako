@@ -2,7 +2,7 @@
   "inlineLimit": 0,
   "stats": true,
   "mdx": true,
-  "manifest": true,
+  "manifest": {},
   "manifestConfig": {
     "fileName": "manifest.json",
     "basePath": "aaa"

@@ -1,4 +1,4 @@
 {
   "minify": false,
-  "hmr": false
+  "hmr": null
 }
