@@ -13,7 +13,7 @@ use mako_core::tracing::debug;
 
 use crate::ast::base64_encode;
 use crate::compiler::{Compiler, Context};
-use crate::config::{DevtoolConfig, OutputMode, TreeShakeStrategy};
+use crate::config::{DevtoolConfig, OutputMode, TreeShakingStrategy};
 use crate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::module::ModuleId;
 use crate::stats::{create_stats_info, print_stats, write_stats};
@@ -48,8 +48,8 @@ impl Compiler {
         // Disable tree shaking in watch mode temporarily
         // ref: https://github.com/umijs/mako/issues/396
         if !self.context.args.watch {
-            match self.context.config.tree_shake {
-                TreeShakeStrategy::Basic => {
+            match self.context.config._tree_shaking {
+                Some(TreeShakingStrategy::Basic) => {
                     let mut module_graph = self.context.module_graph.write().unwrap();
 
                     mako_core::mako_profile_scope!("tree shake");
@@ -59,7 +59,7 @@ impl Compiler {
                     let t_tree_shaking = t_tree_shaking.elapsed();
                     println!("basic optimize in {}ms.", t_tree_shaking.as_millis());
                 }
-                TreeShakeStrategy::Advanced => {
+                Some(TreeShakingStrategy::Advanced) => {
                     mako_core::mako_profile_scope!("advanced tree shake");
                     let shaking_module_ids = self.tree_shaking();
                     let t_tree_shaking = t_tree_shaking.elapsed();
@@ -69,7 +69,7 @@ impl Compiler {
                         t_tree_shaking.as_millis()
                     );
                 }
-                TreeShakeStrategy::None => {}
+                None => {}
             }
         }
         let t_tree_shaking = t_tree_shaking.elapsed();

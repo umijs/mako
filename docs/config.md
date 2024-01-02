@@ -345,15 +345,6 @@ publicPath 配置。注：有个特殊值 `"runtime"`，表示会切换到 runti
 
 > TODO: @辟殊。
 
-## treeShake
-
-- 类型：`"basic"`
-- 默认值：`"basic"`
-
-注：1）配置名后续会改成 `treeShaking`；2）配置值也会做调整，目前只支持 `"basic"` 模式，应该也不会同时支持多种 treeShaking 模式。
-
-注：目前只在 mode 为 "production" 时生效。
-
 ## umd
 
 - 类型：`null | string`

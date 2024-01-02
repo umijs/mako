@@ -112,13 +112,11 @@ pub enum CodeSplittingStrategy {
     Advanced(OptimizeChunkOptions),
 }
 #[derive(Deserialize, Serialize, Clone, Copy, Debug)]
-pub enum TreeShakeStrategy {
+pub enum TreeShakingStrategy {
     #[serde(rename = "basic")]
     Basic,
     #[serde(rename = "advanced")]
     Advanced,
-    #[serde(rename = "none")]
-    None,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -277,7 +275,8 @@ pub struct Config {
     pub code_splitting: Option<CodeSplittingStrategy>,
     pub px2rem: Option<Px2RemConfig>,
     pub hash: bool,
-    pub tree_shake: TreeShakeStrategy,
+    #[serde(rename = "_treeShaking")]
+    pub _tree_shaking: Option<TreeShakingStrategy>,
     #[serde(rename = "autoCSSModules")]
     pub auto_css_modules: bool,
     #[serde(rename = "ignoreCSSParserErrors")]
@@ -431,7 +430,7 @@ const DEFAULT_CONFIG: &str = r#"
     "hmr": { "host": "127.0.0.1", "port": 3000 },
     "moduleIdStrategy": "named",
     "hash": false,
-    "treeShake": "basic",
+    "_treeShaking": "basic",
     "autoCSSModules": false,
     "ignoreCSSParserErrors": false,
     "dynamicImportToRequire": false,
