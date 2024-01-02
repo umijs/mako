@@ -89,6 +89,7 @@ export interface BuildParams {
     clean?: boolean;
     nodePolyfill?: boolean;
     ignores?: string[];
+    moduleIdStrategy?: 'hashed' | 'named';
     minify?: boolean;
     _minifish?: {
       mapping: Record<string, string>;
