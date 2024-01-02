@@ -6,6 +6,6 @@ const names = Object.keys(files).join(",");
 const content = files["index.js"];
 
 assert(
-  content.includes(`Foo = (0, _ts_decorate._)([`),
+  content.includes(`Foo = _ts_decorate._([`),
   "legacy decorator should works"
 );
