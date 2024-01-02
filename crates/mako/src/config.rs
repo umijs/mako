@@ -98,15 +98,6 @@ pub enum DevtoolConfig {
     None,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-pub struct LessConfig {
-    pub theme: HashMap<String, String>,
-    #[serde(rename(deserialize = "lesscPath"))]
-    pub lessc_path: String,
-    #[serde(rename(deserialize = "javascriptEnabled"))]
-    pub javascript_enabled: bool,
-}
-
 #[derive(Deserialize, Serialize, Clone, Copy, Debug)]
 pub enum ModuleIdStrategy {
     #[serde(rename = "hashed")]
@@ -286,7 +277,6 @@ pub struct Config {
     pub define: HashMap<String, Value>,
     pub stats: bool,
     pub mdx: bool,
-    pub less: LessConfig,
     pub hmr: Option<HmrConfig>,
     pub code_splitting: CodeSplittingStrategy,
     pub px2rem: Option<Px2RemConfig>,

@@ -129,8 +129,6 @@ import("./a.js")
 }
 ```
 
-注：多 entry 的 code splitting 支持还在开发中。
-
 ## externals
 
 - 类型：`Record<string, string>`
@@ -189,10 +187,6 @@ import("./a.js")
 - 默认值：`10000`
 
 小于 `inlineLimit` 大小的 assets 文件会被转换成 `base64` 格式。
-
-## less
-
-> 注：已废弃，待移除。
 
 ## manifest
 
