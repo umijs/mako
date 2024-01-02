@@ -6,7 +6,7 @@ use mako_core::anyhow::{anyhow, Result};
 use mako_core::clap::ValueEnum;
 use mako_core::colored::Colorize;
 use mako_core::regex::Regex;
-use mako_core::serde::Deserialize;
+use mako_core::serde::{Deserialize, Deserializer};
 use mako_core::serde_json::Value;
 use mako_core::swc_ecma_ast::EsVersion;
 use mako_core::thiserror::Error;
@@ -16,6 +16,48 @@ use serde::Serialize;
 
 use crate::plugins::node_polyfill::get_all_modules;
 use crate::{optimize_chunk, plugins, transformers};
+
+/**
+ * a macro to create deserialize function that allow false value for optional struct
+ */
+macro_rules! create_deserialize_fn {
+    ($fn_name:ident, $struct_type:ty) => {
+        pub fn $fn_name<'de, D>(deserializer: D) -> Result<Option<$struct_type>, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            let value: serde_json::Value = serde_json::Value::deserialize(deserializer)?;
+
+            match value {
+                // allow false value for optional struct
+                serde_json::Value::Bool(false) => Ok(None),
+                // try deserialize
+                serde_json::Value::Object(obj) => Ok(Some(
+                    serde_json::from_value::<$struct_type>(serde_json::Value::Object(obj))
+                        .map_err(serde::de::Error::custom)?,
+                )),
+                serde_json::Value::String(s) => Ok(Some(
+                    serde_json::from_value::<$struct_type>(serde_json::Value::String(s.clone()))
+                        .map_err(serde::de::Error::custom)?,
+                )),
+                _ => Err(serde::de::Error::custom(format!(
+                    "invalid `{}` value: {}",
+                    stringify!($fn_name).replace("deserialize_", ""),
+                    value
+                ))),
+            }
+        }
+    };
+}
+create_deserialize_fn!(deserialize_hmr, HmrConfig);
+create_deserialize_fn!(deserialize_manifest, ManifestConfig);
+create_deserialize_fn!(deserialize_code_splitting, CodeSplittingStrategy);
+create_deserialize_fn!(deserialize_px2rem, Px2RemConfig);
+create_deserialize_fn!(deserialize_umd, String);
+create_deserialize_fn!(deserialize_devtool, DevtoolConfig);
+create_deserialize_fn!(deserialize_tree_shaking, TreeShakingStrategy);
+create_deserialize_fn!(deserialize_optimization, OptimizationConfig);
+create_deserialize_fn!(deserialize_minifish, MinifishConfig);
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -256,9 +298,11 @@ pub struct Config {
     pub entry: HashMap<String, PathBuf>,
     pub output: OutputConfig,
     pub resolve: ResolveConfig,
+    #[serde(deserialize_with = "deserialize_manifest", default)]
     pub manifest: Option<ManifestConfig>,
     pub mode: Mode,
     pub minify: bool,
+    #[serde(deserialize_with = "deserialize_devtool")]
     pub devtool: Option<DevtoolConfig>,
     pub externals: HashMap<String, ExternalConfig>,
     pub providers: Providers,
@@ -271,17 +315,21 @@ pub struct Config {
     pub define: HashMap<String, Value>,
     pub stats: bool,
     pub mdx: bool,
+    #[serde(deserialize_with = "deserialize_hmr")]
     pub hmr: Option<HmrConfig>,
+    #[serde(deserialize_with = "deserialize_code_splitting", default)]
     pub code_splitting: Option<CodeSplittingStrategy>,
+    #[serde(deserialize_with = "deserialize_px2rem", default)]
     pub px2rem: Option<Px2RemConfig>,
     pub hash: bool,
-    #[serde(rename = "_treeShaking")]
+    #[serde(rename = "_treeShaking", deserialize_with = "deserialize_tree_shaking")]
     pub _tree_shaking: Option<TreeShakingStrategy>,
     #[serde(rename = "autoCSSModules")]
     pub auto_css_modules: bool,
     #[serde(rename = "ignoreCSSParserErrors")]
     pub ignore_css_parser_errors: bool,
     pub dynamic_import_to_require: bool,
+    #[serde(deserialize_with = "deserialize_umd", default)]
     pub umd: Option<String>,
     pub write_to_disk: bool,
     pub transform_import: Vec<TransformImportConfig>,
@@ -289,12 +337,17 @@ pub struct Config {
     pub clean: bool,
     pub node_polyfill: bool,
     pub ignores: Vec<String>,
-    #[serde(rename = "_minifish")]
+    #[serde(
+        rename = "_minifish",
+        deserialize_with = "deserialize_minifish",
+        default
+    )]
     pub _minifish: Option<MinifishConfig>,
     #[serde(rename = "optimizePackageImports")]
     pub optimize_package_imports: bool,
     pub emotion: bool,
     pub flex_bugs: bool,
+    #[serde(deserialize_with = "deserialize_optimization")]
     pub optimization: Option<OptimizationConfig>,
 }
 
@@ -440,7 +493,6 @@ const DEFAULT_CONFIG: &str = r#"
     "clean": true,
     "nodePolyfill": true,
     "ignores": [],
-    "_minifish": null,
     "optimizePackageImports": false,
     "emotion": false,
     "flexBugs": false,

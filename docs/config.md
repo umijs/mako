@@ -20,8 +20,8 @@
 
 ## codeSplitting
 
-- 类型：`null | "auto" | object`
-- 默认值：`null`
+- 类型：`false | "auto" | object`
+- 默认值：`false`
 
 拆包策略，SPA 通常配置为 `auto` 即可，该内置策略会根据项目情况提取 `vendors` chunk 和 `common` chunk；MPA 场景如果需要产出 shared chunk，可以配置为 `object`，配置项说明：
 
@@ -85,7 +85,7 @@
 
 ## devtool
 
-- 类型：`"source-map" | "inline-source-map" | null`
+- 类型：`false | "source-map" | "inline-source-map"`
 - 默认值：`"source-map"`
 
 Source Map 类型。
@@ -163,7 +163,7 @@ import("./a.js")
 
 ## hmr
 
-- 类型：`null | { host?: string, port?: number }`
+- 类型：`false | { host?: string, port?: number }`
 - 默认值：`{ host: '127.0.0.1', port: 3000 }`
 
 是否开启热更新。
@@ -188,8 +188,8 @@ import("./a.js")
 
 ## manifest
 
-- 类型：`null | { fileName?: string, basePath?: string }`
-- 默认值：`null`
+- 类型：`false | { fileName?: string, basePath?: string }`
+- 默认值：`false`
 
 是否生成 `manifest.json` 文件，启用时 `fileName` 的默认值为 `asset-manifest.json`。
 
@@ -300,8 +300,8 @@ publicPath 配置。注：有个特殊值 `"runtime"`，表示会切换到 runti
 
 ## px2rem
 
-- 类型：`null | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[], selectorWhiteList?: string[] }`
-- 默认值：`null`
+- 类型：`false | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[], selectorWhiteList?: string[] }`
+- 默认值：`false`
 
 是否开启 px2rem 转换，启用时 `root` 的默认值为 `100`。
 
@@ -347,8 +347,8 @@ publicPath 配置。注：有个特殊值 `"runtime"`，表示会切换到 runti
 
 ## umd
 
-- 类型：`null | string`
-- 默认值：`null`
+- 类型：`false | string`
+- 默认值：`false`
 
 是否输出 umd 格式的代码。
 
