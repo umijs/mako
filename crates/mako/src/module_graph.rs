@@ -238,11 +238,20 @@ impl ModuleGraph {
         targets
     }
 
-    pub fn remove_dependencies(&mut self, module_id: &ModuleId) {
+    pub fn remove_dependency_module_by_source(&mut self, module_id: &ModuleId, source: &String) {
         let mut edges = self.get_edges(module_id, Direction::Outgoing);
 
-        while let Some((edge_index, _)) = edges.next(&self.graph) {
-            self.graph.remove_edge(edge_index);
+        while let Some((edge_index, _node_index)) = edges.next(&self.graph) {
+            let dependencies = self.graph.edge_weight_mut(edge_index).unwrap();
+
+            if let Some(to_del_dep) = dependencies.iter().position(|dep| *source == dep.source) {
+                dependencies.take(&dependencies.iter().nth(to_del_dep).unwrap().clone());
+
+                if dependencies.is_empty() {
+                    self.graph.remove_edge(edge_index);
+                }
+                return;
+            }
         }
     }
 

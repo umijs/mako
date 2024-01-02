@@ -4,8 +4,8 @@ const { files } = parseBuildResult(__dirname);
 
 const content = files['index.js'];
 
-assert(!content.includes('dep/index.js'), `dep/index.js should be skipped`);
 assert(
-  content.includes('console.log(_dep.z);'),
-  `access field changed to exported name`,
+  content.includes('src/dep/index.js'),
+  `dep/index.js should keep in chunk`,
 );
+assert(content.includes('src/dep/dep.js'), `dep/dep.js should keep in chunk`);
