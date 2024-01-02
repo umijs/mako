@@ -110,8 +110,6 @@ pub enum ModuleIdStrategy {
 pub enum CodeSplittingStrategy {
     #[serde(rename = "auto")]
     Auto,
-    #[serde(rename = "none")]
-    None,
     #[serde(untagged)]
     Advanced(OptimizeChunkOptions),
 }
@@ -278,7 +276,7 @@ pub struct Config {
     pub stats: bool,
     pub mdx: bool,
     pub hmr: Option<HmrConfig>,
-    pub code_splitting: CodeSplittingStrategy,
+    pub code_splitting: Option<CodeSplittingStrategy>,
     pub px2rem: Option<Px2RemConfig>,
     pub hash: bool,
     pub tree_shake: TreeShakeStrategy,
@@ -434,7 +432,6 @@ const DEFAULT_CONFIG: &str = r#"
     "platform": "browser",
     "hmr": { "host": "127.0.0.1", "port": 3000 },
     "moduleIdStrategy": "named",
-    "codeSplitting": "none",
     "hash": false,
     "treeShake": "basic",
     "autoCSSModules": false,

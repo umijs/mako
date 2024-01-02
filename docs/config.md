@@ -20,8 +20,8 @@
 
 ## codeSplitting
 
-- 类型：`"none" | "auto" | object`
-- 默认值：`"none"`
+- 类型：`null | "auto" | object`
+- 默认值：`null`
 
 拆包策略，SPA 通常配置为 `auto` 即可，该内置策略会根据项目情况提取 `vendors` chunk 和 `common` chunk；MPA 场景如果需要产出 shared chunk，可以配置为 `object`，配置项说明：
 

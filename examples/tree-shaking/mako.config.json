@@ -6,7 +6,6 @@
   },
   "minify": false,
   "hmr": null,
-  "codeSplitting": "none",
   "define": {
     "NODE_ENV": "'production'"
   }

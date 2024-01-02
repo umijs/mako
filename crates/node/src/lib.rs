@@ -81,7 +81,7 @@ pub struct BuildParams {
         }
     >;
     copy?: string[];
-    codeSplitting?: "auto" | "none";
+    codeSplitting?: "auto";
     providers?: Record<string, string[]>;
     publicPath?: string;
     inlineLimit?: number;
