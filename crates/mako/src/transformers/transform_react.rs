@@ -30,7 +30,7 @@ pub fn mako_react(
     let is_browser = matches!(context.config.platform, crate::config::Platform::Browser);
     let use_refresh = is_dev
         && context.args.watch
-        && context.config.hmr
+        && context.config.hmr.is_some()
         && !task.path.contains("/node_modules/")
         && is_browser;
 

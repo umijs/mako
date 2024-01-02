@@ -167,28 +167,10 @@ import("./a.js")
 
 ## hmr
 
-- 类型：`boolean`
-- 默认值：`true`
+- 类型：`null | { host?: string, port?: number }`
+- 默认值：`{ host: '127.0.0.1', port: 3000 }`
 
 是否开启热更新。
-
-## hmrHost
-
-- 类型：`string`
-- 默认值：`"127.0.0.1"`
-
-热更新的 host。
-
-注：后续会改成 `hmr` 的子配置。
-
-## hmrPort
-
-- 类型：`number`
-- 默认值：`3000`
-
-热更新的端口。
-
-注：后续会改成 `hmr` 的子配置。
 
 ## ignoreCSSParserErrors
 

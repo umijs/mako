@@ -58,7 +58,7 @@ impl Compiler {
             .iter()
             .map(|entry| {
                 let mut entry = entry.to_str().unwrap().to_string();
-                if self.context.config.hmr
+                if self.context.config.hmr.is_some()
                     && self.context.config.mode == Mode::Development
                     && self.context.args.watch
                 {

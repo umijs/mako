@@ -257,6 +257,12 @@ pub struct MinifishConfig {
 pub struct OptimizationConfig {
     pub skip_modules: Option<bool>,
 }
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct HmrConfig {
+    pub host: String,
+    pub port: u16,
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -280,10 +286,7 @@ pub struct Config {
     pub stats: bool,
     pub mdx: bool,
     pub less: LessConfig,
-    // temp solution
-    pub hmr: bool,
-    pub hmr_port: String,
-    pub hmr_host: String,
+    pub hmr: Option<HmrConfig>,
     pub code_splitting: CodeSplittingStrategy,
     pub px2rem: bool,
     #[serde(rename = "px2remConfig")]
@@ -440,9 +443,7 @@ const DEFAULT_CONFIG: &str = r#"
     "stats": false,
     "mdx": false,
     "platform": "browser",
-    "hmr": true,
-    "hmrHost": "127.0.0.1",
-    "hmrPort": "3000",
+    "hmr": { "host": "127.0.0.1", "port": 3000 },
     "moduleIdStrategy": "named",
     "codeSplitting": "none",
     "hash": false,
