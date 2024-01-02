@@ -287,7 +287,7 @@ pub struct Config {
     #[serde(rename = "ignoreCSSParserErrors")]
     pub ignore_css_parser_errors: bool,
     pub dynamic_import_to_require: bool,
-    pub umd: String,
+    pub umd: Option<String>,
     pub write_to_disk: bool,
     pub transform_import: Vec<TransformImportConfig>,
     pub dev_eval: bool,
@@ -440,7 +440,6 @@ const DEFAULT_CONFIG: &str = r#"
     "autoCSSModules": false,
     "ignoreCSSParserErrors": false,
     "dynamicImportToRequire": false,
-    "umd": "none",
     "writeToDisk": true,
     "transformImport": [],
     "devEval": false,
@@ -631,10 +630,8 @@ impl Default for Config {
     }
 }
 
-fn get_default_chunk_loading_global(umd: String, root: &Path) -> String {
-    let unique_name = if umd != "none" {
-        umd
-    } else {
+fn get_default_chunk_loading_global(umd: Option<String>, root: &Path) -> String {
+    let unique_name = umd.unwrap_or_else(|| {
         let pkg_json_path = root.join("package.json");
         let mut pkg_name = "global".to_string();
 
@@ -648,7 +645,7 @@ fn get_default_chunk_loading_global(umd: String, root: &Path) -> String {
         }
 
         pkg_name
-    };
+    });
 
     format!("makoChunk_{}", unique_name)
 }

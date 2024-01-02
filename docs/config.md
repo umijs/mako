@@ -358,12 +358,12 @@ publicPath 配置。注：有个特殊值 `"runtime"`，表示会切换到 runti
 
 ## umd
 
-- 类型：`"none" | string`
-- 默认值：`"none"`
+- 类型：`null | string`
+- 默认值：`null`
 
 是否输出 umd 格式的代码。
 
-注：1）后续会改成 `Object` 类型，支持更多子配置用于控制 umd 参数；2）`"none"` 会改成 `false` 类型。
+注：后续会改成 `Object` 类型，支持更多子配置用于控制 umd 参数。
 
 ## writeToDisk
 

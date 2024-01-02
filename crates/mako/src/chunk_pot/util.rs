@@ -92,11 +92,7 @@ pub(crate) fn empty_module_fn_expr() -> FnExpr {
     create = "{ SizedCache::with_size(5) }"
 )]
 pub(crate) fn runtime_code(context: &Arc<Context>) -> Result<String> {
-    let umd = if context.config.umd != "none" {
-        Some(context.config.umd.clone())
-    } else {
-        None
-    };
+    let umd = context.config.umd.clone();
     let chunk_graph = context.chunk_graph.read().unwrap();
     let has_dynamic_chunks = chunk_graph.get_all_chunks().len() > 1;
     let has_hmr = context.args.watch;
