@@ -286,9 +286,9 @@ fn parse_barrel_file(
                         // (source, orig, exported)
                         for (k, v) in more_export_infos {
                             if is_barrel_file {
-                                export_infos.insert(k, (v.0.clone(), v.2.clone(), v.2));
+                                export_infos.insert(k, (v.0.clone(), v.1.clone(), v.2));
                             } else {
-                                export_infos.insert(k, (path.clone(), v.1.clone(), v.1));
+                                export_infos.insert(k, (path.clone(), v.1.clone(), v.2));
                             }
                         }
                     }
