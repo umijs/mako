@@ -2,7 +2,7 @@ use mako_core::indexmap::IndexMap;
 use mako_core::swc_common::collections::AHashSet;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::DUMMY_SP;
-use mako_core::swc_ecma_ast::{Expr, Id, Ident, MemberExpr, Module, ModuleItem, VarDeclKind};
+use mako_core::swc_ecma_ast::{Expr, Id, Ident, MemberExpr, Program, Stmt, VarDeclKind};
 use mako_core::swc_ecma_utils::{collect_decls, quote_ident, quote_str, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
@@ -10,7 +10,7 @@ use crate::config::Providers;
 pub struct Provide {
     bindings: Lrc<AHashSet<Id>>,
     providers: Providers,
-    var_decls: IndexMap<String, ModuleItem>,
+    var_decls: IndexMap<String, Stmt>,
 }
 impl Provide {
     pub fn new(providers: Providers) -> Self {
@@ -22,12 +22,22 @@ impl Provide {
     }
 }
 impl VisitMut for Provide {
-    fn visit_mut_module(&mut self, module: &mut Module) {
-        self.bindings = Lrc::new(collect_decls(&*module));
-        module.visit_mut_children_with(self);
-        module
-            .body
-            .splice(0..0, self.var_decls.iter().map(|(_, var)| var.clone()));
+    fn visit_mut_program(&mut self, program: &mut Program) {
+        self.bindings = Lrc::new(collect_decls(&*program));
+        program.visit_mut_children_with(self);
+        match program {
+            Program::Module(module) => {
+                module.body.splice(
+                    0..0,
+                    self.var_decls.iter().map(|(_, var)| var.clone().into()),
+                );
+            }
+            Program::Script(script) => {
+                script
+                    .body
+                    .splice(0..0, self.var_decls.iter().map(|(_, var)| var.clone()));
+            }
+        }
     }
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Ident(Ident { ref sym, span, .. }) = expr {
@@ -36,7 +46,7 @@ impl VisitMut for Provide {
             let provider = self.providers.get(name);
             if !has_binding && provider.is_some() {
                 if let Some((from, key)) = provider {
-                    let require_decl: ModuleItem = {
+                    let require_decl = {
                         if key.is_empty() {
                             // eg: const process = require('process');
                             quote_ident!("__mako_require__")

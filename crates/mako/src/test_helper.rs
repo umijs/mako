@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::SourceMap;
-use mako_core::swc_ecma_ast::Module as SwcModule;
+use mako_core::swc_ecma_ast::Program;
 use mako_core::swc_ecma_codegen::text_writer::JsWriter;
 use mako_core::swc_ecma_codegen::Emitter;
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
@@ -113,7 +113,7 @@ pub fn setup_logger() {
 }
 
 pub fn transform_ast_with(
-    module: &mut SwcModule,
+    module: &mut Program,
     visitor: &mut dyn VisitMut,
     cm: &Lrc<SourceMap>,
 ) -> String {
@@ -121,7 +121,7 @@ pub fn transform_ast_with(
     emit_js(module, cm)
 }
 
-fn emit_js(module: &SwcModule, cm: &Arc<SourceMap>) -> String {
+fn emit_js(module: &Program, cm: &Arc<SourceMap>) -> String {
     let mut buf = Vec::new();
 
     {
@@ -133,7 +133,7 @@ fn emit_js(module: &SwcModule, cm: &Arc<SourceMap>) -> String {
             wr: writer,
         };
         // This may return an error if it fails to write
-        emitter.emit_module(module).unwrap();
+        emitter.emit_program(module).unwrap();
     }
 
     String::from_utf8(buf).unwrap().trim().to_string()

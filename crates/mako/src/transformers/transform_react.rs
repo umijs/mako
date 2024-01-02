@@ -107,9 +107,13 @@ struct Emotion {
 }
 
 impl VisitMut for Emotion {
-    fn visit_mut_module(&mut self, module: &mut Module) {
+    fn visit_mut_program(&mut self, program: &mut Program) {
         let is_dev = matches!(self.mode, Mode::Development);
-        let pos = self.cm.lookup_char_pos(module.span.lo);
+        let span = match program {
+            Program::Module(module) => module.span,
+            Program::Script(script) => script.span,
+        };
+        let pos = self.cm.lookup_char_pos(span.lo);
         let hash = pos.file.src_hash as u32;
         let mut folder = emotion(
             EmotionOptions {
@@ -124,9 +128,8 @@ impl VisitMut for Emotion {
             self.cm.clone(),
             NoopComments,
         );
-        module.body = folder.fold_module(module.clone()).body;
-
-        module.visit_mut_children_with(self);
+        *program = folder.fold_program(program.clone());
+        program.visit_mut_children_with(self);
     }
 }
 
@@ -359,11 +362,7 @@ mod tests {
                 )
             ));
 
-            transform_ast_with(
-                &mut ast.ast.as_module().unwrap(),
-                &mut visitor,
-                &context.meta.script.cm,
-            )
+            transform_ast_with(&mut ast.ast, &mut visitor, &context.meta.script.cm)
         })
     }
 }

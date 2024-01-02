@@ -59,7 +59,16 @@ impl Compiler {
                     let t_tree_shaking = t_tree_shaking.elapsed();
                     println!("basic optimize in {}ms.", t_tree_shaking.as_millis());
                 }
-                TreeShakeStrategy::Advanced => {}
+                TreeShakeStrategy::Advanced => {
+                    mako_core::mako_profile_scope!("advanced tree shake");
+                    let shaking_module_ids = self.tree_shaking();
+                    let t_tree_shaking = t_tree_shaking.elapsed();
+                    println!(
+                        "{} modules removed in {}ms.",
+                        shaking_module_ids.len(),
+                        t_tree_shaking.as_millis()
+                    );
+                }
                 TreeShakeStrategy::None => {}
             }
         }

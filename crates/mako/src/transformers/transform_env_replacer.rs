@@ -9,7 +9,7 @@ use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{
     ArrayLit, Bool, ComputedPropName, Expr, ExprOrSpread, Id, Ident, KeyValueProp, Lit, MemberExpr,
-    MemberProp, MetaPropExpr, MetaPropKind, Module, Null, Number, ObjectLit, Prop, PropName,
+    MemberProp, MetaPropExpr, MetaPropKind, Null, Number, ObjectLit, Program, Prop, PropName,
     PropOrSpread, Stmt, Str,
 };
 use mako_core::swc_ecma_utils::{collect_decls, quote_ident, ExprExt};
@@ -61,7 +61,7 @@ impl EnvReplacer {
     }
 }
 impl VisitMut for EnvReplacer {
-    fn visit_mut_module(&mut self, module: &mut Module) {
+    fn visit_mut_program(&mut self, module: &mut Program) {
         self.bindings = Lrc::new(collect_decls(&*module));
         module.visit_mut_children_with(self);
     }

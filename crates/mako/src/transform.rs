@@ -248,12 +248,9 @@ App;
         assert_eq!(
             code,
             r#"
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-var _jsxdevruntime = __mako_require__("react/jsx-dev-runtime");
-const App = ()=>(0, _jsxdevruntime.jsxDEV)(_jsxdevruntime.Fragment, {
-        children: (0, _jsxdevruntime.jsxDEV)("h1", {
+const { jsxDEV: _jsxDEV, Fragment: _Fragment } = __mako_require__("react/jsx-dev-runtime");
+const App = ()=>_jsxDEV(_Fragment, {
+        children: _jsxDEV("h1", {
             children: "Hello World"
         }, void 0, false, {
             fileName: "test.tsx",

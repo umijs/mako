@@ -6,8 +6,8 @@ use mako_core::regex::Regex;
 use mako_core::swc_common::{Mark, Span, SyntaxContext, DUMMY_SP};
 use mako_core::swc_ecma_ast::{
     ExportSpecifier, Ident, ImportDecl, ImportDefaultSpecifier, ImportNamedSpecifier,
-    ImportSpecifier, ImportStarAsSpecifier, MemberExpr, ModuleDecl, ModuleItem, NamedExport, Stmt,
-    VarDeclKind,
+    ImportSpecifier, ImportStarAsSpecifier, MemberExpr, ModuleDecl, ModuleItem, NamedExport,
+    Program, Stmt, VarDeclKind,
 };
 use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
@@ -63,18 +63,29 @@ impl VisitMut for MyInjector<'_> {
         }
     }
 
-    fn visit_mut_module(&mut self, n: &mut mako_core::swc_ecma_ast::Module) {
+    fn visit_mut_program(&mut self, n: &mut Program) {
         n.visit_mut_children_with(self);
-
-        let stmts = self.will_inject.iter().map(|&(inject, ctxt)| {
-            if self.is_cjs || inject.prefer_require {
-                inject.clone().into_require_with(ctxt, self.unresolved_mark)
-            } else {
-                inject.clone().into_with(ctxt)
+        match n {
+            Program::Module(n) => {
+                let stmts = self.will_inject.iter().map(|&(inject, ctxt)| {
+                    if self.is_cjs || inject.prefer_require {
+                        inject
+                            .clone()
+                            .into_require_with(ctxt, self.unresolved_mark)
+                            .into()
+                    } else {
+                        inject.clone().into_with(ctxt)
+                    }
+                });
+                n.body.splice(0..0, stmts);
             }
-        });
-
-        n.body.splice(0..0, stmts);
+            Program::Script(n) => {
+                let stmts = self.will_inject.iter().map(|&(inject, ctxt)| {
+                    inject.clone().into_require_with(ctxt, self.unresolved_mark)
+                });
+                n.body.splice(0..0, stmts);
+            }
+        }
     }
 
     fn visit_mut_module_items(&mut self, module_items: &mut Vec<ModuleItem>) {
@@ -114,7 +125,7 @@ impl Hash for Inject {
 }
 
 impl Inject {
-    fn into_require_with(self, ctxt: SyntaxContext, unresolved_mark: Mark) -> ModuleItem {
+    fn into_require_with(self, ctxt: SyntaxContext, unresolved_mark: Mark) -> Stmt {
         let name_span = Span { ctxt, ..DUMMY_SP };
 
         let require_source_expr = quote_ident!(DUMMY_SP.apply_mark(unresolved_mark), "require")
@@ -156,7 +167,7 @@ impl Inject {
             }
         };
 
-        stmt.into()
+        stmt
     }
 
     fn into_with(self, ctxt: SyntaxContext) -> ModuleItem {
