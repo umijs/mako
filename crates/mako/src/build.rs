@@ -23,7 +23,7 @@ use crate::analyze_deps::analyze_deps;
 use crate::ast::{build_js_ast, generate_code_frame};
 use crate::chunk_pot::util::{hash_hashmap, hash_vec};
 use crate::compiler::{Compiler, Context};
-use crate::config::{DevtoolConfig, Mode};
+use crate::config::Mode;
 use crate::load::{ext_name, load, Content};
 use crate::module::{
     Dependency, ExportInfo, ExportSpecifierInfo, ImportInfo, ImportSpecifierInfo, Module,
@@ -594,9 +594,7 @@ lazy_static! {
 }
 
 fn load_source_map(context: &Arc<Context>, content: &Content) -> Option<Vec<u8>> {
-    if matches!(context.config.devtool, DevtoolConfig::None) {
-        return None;
-    }
+    context.config.devtool.as_ref()?;
 
     // TODO support load js source map
     if !matches!(content, Content::Css(_)) {

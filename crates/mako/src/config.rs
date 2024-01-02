@@ -94,8 +94,6 @@ pub enum DevtoolConfig {
     /// Generate inline sourcemap
     #[serde(rename = "inline-source-map")]
     InlineSourceMap,
-    #[serde(rename = "none")]
-    None,
 }
 
 #[derive(Deserialize, Serialize, Clone, Copy, Debug)]
@@ -263,7 +261,7 @@ pub struct Config {
     pub manifest: Option<ManifestConfig>,
     pub mode: Mode,
     pub minify: bool,
-    pub devtool: DevtoolConfig,
+    pub devtool: Option<DevtoolConfig>,
     pub externals: HashMap<String, ExternalConfig>,
     pub providers: Providers,
     pub copy: Vec<String>,

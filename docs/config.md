@@ -85,12 +85,10 @@
 
 ## devtool
 
-- 类型：`"source-map" | "inline-source-map" | "none"`
+- 类型：`"source-map" | "inline-source-map" | null`
 - 默认值：`"source-map"`
 
 Source Map 类型。
-
-注：`"none"` 类型后续会改成 `false`。
 
 ## dynamicImportToRequire
 

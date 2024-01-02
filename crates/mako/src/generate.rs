@@ -435,7 +435,7 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
     let to: PathBuf = context.config.output.path.join(chunk_file.disk_name());
 
     match context.config.devtool {
-        DevtoolConfig::SourceMap => {
+        Some(DevtoolConfig::SourceMap) => {
             let mut code = Vec::new();
             code.extend_from_slice(&chunk_file.content);
 
@@ -485,7 +485,7 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
             );
             fs::write(to, &code).unwrap();
         }
-        DevtoolConfig::InlineSourceMap => {
+        Some(DevtoolConfig::InlineSourceMap) => {
             let mut code = Vec::new();
             code.extend_from_slice(&chunk_file.content);
 
@@ -509,7 +509,7 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
             );
             fs::write(to, code).unwrap();
         }
-        DevtoolConfig::None => {
+        None => {
             context.stats_info.lock().unwrap().add_assets(
                 chunk_file.content.len() as u64,
                 chunk_file.file_name.clone(),

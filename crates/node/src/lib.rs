@@ -64,7 +64,7 @@ pub struct BuildParams {
     };
     mode?: "development" | "production";
     define?: Record<string, string>;
-    devtool?: "source-map" | "inline-source-map" | "none";
+    devtool?: "source-map" | "inline-source-map";
     externals?: Record<
         string,
         string | {
