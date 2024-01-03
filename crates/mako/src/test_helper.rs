@@ -96,7 +96,7 @@ pub fn setup_compiler(base: &str, cleanup: bool) -> Compiler {
         fs::create_dir_all(&root).unwrap();
     }
     let mut config = Config::new(&root, None, None).unwrap();
-    config.hmr = false;
+    config.hmr = None;
     config.minify = false;
     config.mode = Mode::Production;
 

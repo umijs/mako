@@ -20,8 +20,8 @@
 
 ## codeSplitting
 
-- 类型：`"none" | "auto" | object`
-- 默认值：`"none"`
+- 类型：`false | "auto" | object`
+- 默认值：`false`
 
 拆包策略，SPA 通常配置为 `auto` 即可，该内置策略会根据项目情况提取 `vendors` chunk 和 `common` chunk；MPA 场景如果需要产出 shared chunk，可以配置为 `object`，配置项说明：
 
@@ -85,12 +85,10 @@
 
 ## devtool
 
-- 类型：`"source-map" | "inline-source-map" | "none"`
+- 类型：`false | "source-map" | "inline-source-map"`
 - 默认值：`"source-map"`
 
 Source Map 类型。
-
-注：`"none"` 类型后续会改成 `false`。
 
 ## dynamicImportToRequire
 
@@ -129,8 +127,6 @@ import("./a.js")
 }
 ```
 
-注：多 entry 的 code splitting 支持还在开发中。
-
 ## externals
 
 - 类型：`Record<string, string>`
@@ -167,28 +163,10 @@ import("./a.js")
 
 ## hmr
 
-- 类型：`boolean`
-- 默认值：`true`
+- 类型：`false | { host?: string, port?: number }`
+- 默认值：`{ host: '127.0.0.1', port: 3000 }`
 
 是否开启热更新。
-
-## hmrHost
-
-- 类型：`string`
-- 默认值：`"127.0.0.1"`
-
-热更新的 host。
-
-注：后续会改成 `hmr` 的子配置。
-
-## hmrPort
-
-- 类型：`number`
-- 默认值：`3000`
-
-热更新的端口。
-
-注：后续会改成 `hmr` 的子配置。
 
 ## ignoreCSSParserErrors
 
@@ -208,23 +186,12 @@ import("./a.js")
 
 小于 `inlineLimit` 大小的 assets 文件会被转换成 `base64` 格式。
 
-## less
-
-> 注：已废弃，待移除。
-
 ## manifest
 
-- 类型：`boolean`
+- 类型：`false | { fileName?: string, basePath?: string }`
 - 默认值：`false`
 
-是否生成 `manifest.json` 文件。
-
-## manifestConfig
-
-- 类型：`{ fileName: string, basePath: string }`
-- 默认值：`{ fileName: "asset-manifest.json", basePath: "" }`
-
-`manifest.json` 文件的配置。（注：此配置后续会合并到 `manifest` 配置里）
+是否生成 `manifest.json` 文件，启用时 `fileName` 的默认值为 `asset-manifest.json`。
 
 ## mdx
 
@@ -333,19 +300,10 @@ publicPath 配置。注：有个特殊值 `"runtime"`，表示会切换到 runti
 
 ## px2rem
 
-- 类型：`boolean`
+- 类型：`false | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[], selectorWhiteList?: string[] }`
 - 默认值：`false`
 
-是否开启 px2rem 转换。
-
-## px2remConfig
-
-- 类型：`{ root: number, propBlackList: string[], propWhiteList: string[], selectorBlackList: string[], selectorWhiteList: string[] }`
-- 默认值：`{ root: 100, propBlackList: [], propWhiteList: [], selectorBlackList: [], selectorWhiteList: [] }`
-
-px2rem 的配置。
-
-注：后续会合并到 px2rem 配置里，并将其改成 `Object` 类型。
+是否开启 px2rem 转换，启用时 `root` 的默认值为 `100`。
 
 - `root`，根节点的字体大小
 - `propBlackList`，属性黑名单
@@ -387,23 +345,14 @@ px2rem 的配置。
 
 > TODO: @辟殊。
 
-## treeShake
-
-- 类型：`"basic"`
-- 默认值：`"basic"`
-
-注：1）配置名后续会改成 `treeShaking`；2）配置值也会做调整，目前只支持 `"basic"` 模式，应该也不会同时支持多种 treeShaking 模式。
-
-注：目前只在 mode 为 "production" 时生效。
-
 ## umd
 
-- 类型：`"none" | string`
-- 默认值：`"none"`
+- 类型：`false | string`
+- 默认值：`false`
 
 是否输出 umd 格式的代码。
 
-注：1）后续会改成 `Object` 类型，支持更多子配置用于控制 umd 参数；2）`"none"` 会改成 `false` 类型。
+注：后续会改成 `Object` 类型，支持更多子配置用于控制 umd 参数。
 
 ## writeToDisk
 

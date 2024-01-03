@@ -1,1 +1,1 @@
-{ "targets": { "ie": 11 }, "umd": true }
+{ "targets": { "ie": 11 }, "umd": "lib" }

@@ -12,17 +12,21 @@ use crate::stats::StatsJsonMap;
 
 pub struct ManifestPlugin {}
 
+pub(crate) fn default_manifest_file_name() -> String {
+    "asset-manifest.json".to_string()
+}
+
 impl Plugin for ManifestPlugin {
     fn name(&self) -> &str {
         "manifest"
     }
 
     fn build_success(&self, _stats: &StatsJsonMap, context: &Arc<Context>) -> Result<Option<()>> {
-        if context.config.manifest {
+        if let Some(manifest_config) = &context.config.manifest {
             let assets = &context.stats_info.lock().unwrap().assets;
             let mut manifest: BTreeMap<String, String> = BTreeMap::new();
-            let file_name = context.config.manifest_config.file_name.clone();
-            let base_path = context.config.manifest_config.base_path.clone();
+            let file_name = manifest_config.file_name.clone();
+            let base_path = manifest_config.base_path.clone();
 
             let path = normalize_path(base_path);
 

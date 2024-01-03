@@ -33,7 +33,6 @@ mod tests {
     use super::*;
     use crate::ast::{build_js_ast, js_ast_to_code};
     use crate::compiler::Context;
-    use crate::config::DevtoolConfig::None;
 
     fn context() -> Arc<Context> {
         let mut c: Context = Default::default();

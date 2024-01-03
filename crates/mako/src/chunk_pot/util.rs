@@ -18,7 +18,7 @@ use mako_core::twox_hash::XxHash64;
 
 use crate::chunk_pot::ChunkPot;
 use crate::compiler::Context;
-use crate::config::{DevtoolConfig, Mode};
+use crate::config::Mode;
 use crate::load::file_content_hash;
 use crate::module::{Module, ModuleAst};
 use crate::runtime::AppRuntimeTemplate;
@@ -52,7 +52,7 @@ pub(crate) fn render_module_js(
     let source_map = {
         mako_core::mako_profile_scope!("build_source_map");
         match context.config.devtool {
-            DevtoolConfig::None => None,
+            None => None,
             _ => Some(build_source_map(&source_map_buf, cm)),
         }
     };
@@ -92,11 +92,7 @@ pub(crate) fn empty_module_fn_expr() -> FnExpr {
     create = "{ SizedCache::with_size(5) }"
 )]
 pub(crate) fn runtime_code(context: &Arc<Context>) -> Result<String> {
-    let umd = if context.config.umd != "none" {
-        Some(context.config.umd.clone())
-    } else {
-        None
-    };
+    let umd = context.config.umd.clone();
     let chunk_graph = context.chunk_graph.read().unwrap();
     let has_dynamic_chunks = chunk_graph.get_all_chunks().len() > 1;
     let has_hmr = context.args.watch;
