@@ -7,11 +7,25 @@ import 'zx/globals';
   await retry(3, () => {
     return (async () => {
       await $`tnpm sync @okamjs/okam`.quiet();
-      await $`tnpm info @okamjs/okam@${makoVersion}`;
+      const info =
+        await $`tnpm info --json @okamjs/okam@${makoVersion}`.quiet();
+
+      const optionDeps = JSON.parse(info.stdout)['optionalDependencies'];
+
+      await Promise.all(
+        Object.keys(optionDeps).map((key) => {
+          return $`tnpm info ${key}@${optionDeps[key]}`.quiet();
+        }),
+      );
     })();
   });
+
+  console.error(chalk.bgGreen(chalk.white('SUCCEED')), chalk.green('synced'));
 })().catch((err) => {
   console.error(err);
-  console.error('sync @okamjs/okam failed!');
+  console.error(
+    chalk.bgRed(chalk.white('FAILED')),
+    chalk.red('sync @okamjs/okam failed!'),
+  );
   process.exit(1);
 });
