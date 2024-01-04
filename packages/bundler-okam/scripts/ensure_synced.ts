@@ -6,7 +6,7 @@ import 'zx/globals';
 
   await retry(3, () => {
     return (async () => {
-      await $`tnpm sync @okamjs/okam`;
+      await $`tnpm sync @okamjs/okam`.quiet();
       await $`tnpm info @okamjs/okam@${makoVersion}`;
     })();
   });
