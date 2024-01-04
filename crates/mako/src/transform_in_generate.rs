@@ -31,6 +31,7 @@ use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToRep
 use crate::transformers::transform_dynamic_import::DynamicImport;
 use crate::transformers::transform_mako_require::MakoRequire;
 use crate::transformers::transform_meta_url_replacer::MetaUrlReplacer;
+use crate::transformers::transform_optimize_define_utils::OptimizeDefineUtils;
 use crate::util::create_thread_pool;
 
 impl Compiler {
@@ -244,6 +245,11 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()>
                                     .get_swc_comments(),
                             ),
                         ));
+
+                        ast.ast.visit_mut_with(&mut OptimizeDefineUtils {
+                            top_level_mark,
+                            unresolved_mark,
+                        });
 
                         // transform async module
                         if wrap_async {
