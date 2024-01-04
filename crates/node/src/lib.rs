@@ -58,14 +58,13 @@ pub struct BuildParams {
        alias?: Record<string, string>;
        extensions?: string[];
     };
-    manifest?: boolean;
-    manifestConfig?: {
+    manifest?: false | {
         fileName: string;
         basePath: string;
     };
     mode?: "development" | "production";
     define?: Record<string, string>;
-    devtool?: "source-map" | "inline-source-map" | "none";
+    devtool?: false | "source-map" | "inline-source-map";
     externals?: Record<
         string,
         string | {
@@ -82,36 +81,33 @@ pub struct BuildParams {
         }
     >;
     copy?: string[];
-    codeSplitting?: "auto" | "none";
+    codeSplitting?: false | "auto";
     providers?: Record<string, string[]>;
     publicPath?: string;
     inlineLimit?: number;
     targets?: Record<string, number>;
     platform?: "node" | "browser";
-    hmr?: boolean;
-    hmrPort?: string;
-    hmrHost?: string;
-    px2rem?: boolean;
-    px2remConfig?: {
-        root: number;
-        propBlackList: string[];
-        propWhiteList: string[];
-        selectorBlackList: string[];
-        selectorWhiteList: string[];
+    hmr?: false | { host?: string; port?: number };
+    px2rem?: false | {
+        root?: number;
+        propBlackList?: string[];
+        propWhiteList?: string[];
+        selectorBlackList?: string[];
+        selectorWhiteList?: string[];
     };
     stats?: boolean;
     hash?: boolean;
     autoCSSModules?: boolean;
     ignoreCSSParserErrors?: boolean;
     dynamicImportToRequire?: boolean;
-    umd?: string;
+    umd?: false | string;
     transformImport?: { libraryName: string; libraryDirectory?: string; style?: boolean | string }[];
     clean?: boolean;
     nodePolyfill?: boolean;
     ignores?: string[];
     moduleIdStrategy?: "hashed" | "named";
     minify?: boolean;
-    _minifish?: {
+    _minifish?: false | {
         mapping: Record<string, string>;
         metaPath?: string;
         inject?: Record<string, { from:string;exclude?:string; preferRequire?: boolean } |
@@ -119,7 +115,7 @@ pub struct BuildParams {
             { from:string; namespace: true; exclude?:string; preferRequire?: boolean }
             >;
     };
-    optimization?: {
+    optimization?: false | {
         skipModules?: boolean;
     };
 }"#)]

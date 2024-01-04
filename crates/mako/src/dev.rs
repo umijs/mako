@@ -44,13 +44,7 @@ impl DevServer {
         });
 
         // server
-        let port = self
-            .compiler
-            .context
-            .config
-            .hmr_port
-            .parse::<u16>()
-            .unwrap();
+        let port = self.compiler.context.config.hmr.as_ref().unwrap().port;
         // TODO: host
         // let host = self.compiler.context.config.hmr_host.clone();
         // TODO: find free port

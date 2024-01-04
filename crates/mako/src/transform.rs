@@ -227,7 +227,7 @@ fn transform_css(ast: &mut Stylesheet, context: &Arc<Context>, task: &Task) -> R
         ast.visit_mut_with(&mut CSSFlexbugs {});
     }
 
-    if context.config.px2rem {
+    if context.config.px2rem.is_some() {
         let mut px2rem = Px2Rem {
             path: &task.path,
             context,

@@ -8,9 +8,7 @@ use mako_core::tracing::debug;
 
 use crate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::compiler::Compiler;
-use crate::config::{
-    CodeSplittingStrategy, OptimizeAllowChunks, OptimizeChunkGroup, OptimizeChunkOptions,
-};
+use crate::config::{OptimizeAllowChunks, OptimizeChunkGroup, OptimizeChunkOptions};
 use crate::group_chunk::GroupUpdateResult;
 use crate::module::{Module, ModuleId, ModuleInfo};
 use crate::resolve::{ResolvedResource, ResolverResource};
@@ -80,11 +78,7 @@ impl Compiler {
         debug!("optimize hot update chunk");
 
         // skip if code splitting disabled or group result is invalid
-        if matches!(
-            &self.context.config.code_splitting,
-            CodeSplittingStrategy::None
-        ) || group_result.is_none()
-        {
+        if self.context.config.code_splitting.is_none() || group_result.is_none() {
             return;
         }
 
@@ -501,7 +495,7 @@ impl Compiler {
 
     fn get_optimize_chunk_options(&self) -> Option<OptimizeChunkOptions> {
         match &self.context.config.code_splitting {
-            crate::config::CodeSplittingStrategy::Auto => Some(OptimizeChunkOptions {
+            Some(crate::config::CodeSplittingStrategy::Auto) => Some(OptimizeChunkOptions {
                 groups: vec![
                     OptimizeChunkGroup {
                         name: "vendors".to_string(),
@@ -520,7 +514,7 @@ impl Compiler {
                 ],
                 ..Default::default()
             }),
-            crate::config::CodeSplittingStrategy::Advanced(options) => Some(options.clone()),
+            Some(crate::config::CodeSplittingStrategy::Advanced(options)) => Some(options.clone()),
             _ => None,
         }
     }

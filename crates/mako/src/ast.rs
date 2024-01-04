@@ -205,21 +205,21 @@ pub fn js_ast_to_code(
     }
 
     let sourcemap = match context.config.devtool {
-        DevtoolConfig::SourceMap | DevtoolConfig::InlineSourceMap => {
+        Some(DevtoolConfig::SourceMap | DevtoolConfig::InlineSourceMap) => {
             let src_buf = build_source_map(&source_map_buf, cm);
             String::from_utf8(src_buf).unwrap()
         }
-        DevtoolConfig::None => "".to_string(),
+        None => "".to_string(),
     };
 
-    if matches!(context.config.devtool, DevtoolConfig::SourceMap) {
+    if matches!(context.config.devtool, Some(DevtoolConfig::SourceMap)) {
         // separate sourcemap file
         buf.append(
             &mut format!("\n//# sourceMappingURL={filename}.map")
                 .as_bytes()
                 .to_vec(),
         );
-    } else if matches!(context.config.devtool, DevtoolConfig::InlineSourceMap) {
+    } else if matches!(context.config.devtool, Some(DevtoolConfig::InlineSourceMap)) {
         // inline sourcemap
         buf.append(
             &mut format!(
@@ -257,10 +257,10 @@ pub fn css_ast_to_code(
     let src_buf = build_source_map(&source_map, &context.meta.css.cm);
     let sourcemap = String::from_utf8(src_buf).unwrap();
 
-    if matches!(context.config.devtool, DevtoolConfig::SourceMap) {
+    if matches!(context.config.devtool, Some(DevtoolConfig::SourceMap)) {
         // separate sourcemap file
         css_code.push_str(format!("\n/*# sourceMappingURL={filename}.map*/").as_str());
-    } else if matches!(context.config.devtool, DevtoolConfig::InlineSourceMap) {
+    } else if matches!(context.config.devtool, Some(DevtoolConfig::InlineSourceMap)) {
         // inline sourcemap
         css_code.push_str(
             format!(
@@ -316,7 +316,6 @@ mod tests {
     use crate::assert_debug_snapshot;
     use crate::ast::js_ast_to_code;
     use crate::compiler::Context;
-    use crate::config::DevtoolConfig;
     use crate::test_helper::create_mock_module;
 
     #[tokio::test(flavor = "multi_thread")]
@@ -331,7 +330,7 @@ export const bar = {
 "#,
         );
         let mut context = Context::default();
-        context.config.devtool = DevtoolConfig::None;
+        context.config.devtool = None;
         let (code, _) = js_ast_to_code(
             module.info.unwrap().ast.as_script_mut(),
             &Arc::new(context),

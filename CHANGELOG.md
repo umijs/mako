@@ -1,13 +1,37 @@
+## 0.2.1
+
+`2024-01-04`
+
+> @alipay/bigfish@4.1.14
+
+* 修复模块中对相同模块同时使用 import 和 require 时，skipModules 优化时误删依赖模块的问题 by [@stormslowly](https://github.com/stormslowly) in [#842](https://github.com/umijs/mako/pull/842)
+
+## 0.2.0
+
+`2024-01-04`
+
+> @alipay/bigfish@4.1.14
+
+* BREAK CHANGE：调整和合并配置项 by [@PeachScript](https://github.com/PeachScript) in [#837](https://github.com/umijs/mako/pull/837)
+* 优化 optimizePackageImports 功能，支持缓存、export * 和深度桶文件 by [@sorrycc](https://github.com/sorrycc) in [#810](https://github.com/umijs/mako/pull/810)
+* 优化 tree shaking，实现 skip modules 以进一步减少产物尺寸 by [@stormslowly](https://github.com/stormslowly) in [#807](https://github.com/umijs/mako/pull/807)
+* 优化 stats，添加 entry 信息 by [@PeachScript](https://github.com/PeachScript) in [#823](https://github.com/umijs/mako/pull/823) #829
+* 修复 runtime 里一处 es5 不兼容的代码 in [#830](https://github.com/umijs/mako/pull/830)
+* 修复 cjs 模块被插入 esm helpers 导致变成 esm 模块的问题 by [@stormslowly](https://github.com/stormslowly) in [#831](https://github.com/umijs/mako/pull/831)
+* 修复 optimizePackageImports default export 的处理 by [@zhangpanweb](https://github.com/zhangpanweb) in [#832](https://github.com/umijs/mako/pull/832)
+* 优化 skip modules 的性能问题 by [@stormslowly](https://github.com/stormslowly) in [#826](https://github.com/umijs/mako/pull/826)
+* 优化一处细节性能问题 by [@stormslowly](https://github.com/stormslowly) in [#835](https://github.com/umijs/mako/pull/835)
+
 ## 0.1.15
 
 `2023-12-18`
 
 > @alipay/bigfish@4.1.12
 
-* 新增 支持显示 less 代码 sourcemap by [@jiesia](https://github.com/jiesia) in [755](https://github.com/umijs/mako/pull/775)
-* 修复 require context 不支持后缀 require 的问题 by [@PeachScript](https://github.com/PeachScript) in [806](https://github.com/umijs/mako/pull/806)
-* 修复 entry chunk 和 vendor chunk 中模块重复的问题 by [@PeachScript](https://github.com/PeachScript) in [809](https://github.com/umijs/mako/pull/809)
-* 修复 dynamicImportToRequire 开启后遗漏动态引用模块的问题 by [@stormslowly](https://github.com/stormslowly)  in [811](https://github.com/umijs/mako/pull/811)
+* 新增 支持显示 less 代码 sourcemap by [@jiesia](https://github.com/jiesia) in [#755](https://github.com/umijs/mako/pull/775)
+* 修复 require context 不支持后缀 require 的问题 by [@PeachScript](https://github.com/PeachScript) in [#806](https://github.com/umijs/mako/pull/806)
+* 修复 entry chunk 和 vendor chunk 中模块重复的问题 by [@PeachScript](https://github.com/PeachScript) in [#809](https://github.com/umijs/mako/pull/809)
+* 修复 dynamicImportToRequire 开启后遗漏动态引用模块的问题 by [@stormslowly](https://github.com/stormslowly)  in [#811](https://github.com/umijs/mako/pull/811)
 
 ## 0.1.14
 

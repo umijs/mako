@@ -20,7 +20,7 @@ use crate::chunk::{Chunk, ChunkType};
 use crate::chunk_pot::util::{pot_to_chunk_module, pot_to_module_object, runtime_code};
 use crate::chunk_pot::{get_css_chunk_filename, util, ChunkPot};
 use crate::compiler::Context;
-use crate::config::{DevtoolConfig, Mode};
+use crate::config::Mode;
 use crate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::load::file_content_hash;
 use crate::minify::{minify_css, minify_js};
@@ -79,7 +79,7 @@ pub(crate) fn render_css_chunk(
 
     let cm = &context.meta.css.cm;
     let source_map = match context.config.devtool {
-        DevtoolConfig::None => None,
+        None => None,
         _ => {
             mako_profile_scope!("build_source_map");
             // source map chain
