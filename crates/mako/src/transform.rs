@@ -279,7 +279,7 @@ App;
         assert_eq!(
             code,
             r#"
-Object.defineProperty(exports, "__esModule", {
+__mako_require__.d(exports, "__esModule", {
     value: true
 });
 var _jsxdevruntime = __mako_require__("react/jsx-dev-runtime");
@@ -336,7 +336,7 @@ b;
         assert_eq!(
             code,
             r#"
-Object.defineProperty(exports, "__esModule", {
+__mako_require__.d(exports, "__esModule", {
     value: true
 });
 var _interop_require_default = __mako_require__("@swc/helpers/_/_interop_require_default");
@@ -363,7 +363,7 @@ foo;
         assert_eq!(
             code,
             r#"
-Object.defineProperty(exports, "__esModule", {
+__mako_require__.d(exports, "__esModule", {
     value: true
 });
 var _foo = __mako_require__("./foo");
@@ -387,7 +387,7 @@ foo.bar;
         assert_eq!(
             code,
             r#"
-Object.defineProperty(exports, "__esModule", {
+__mako_require__.d(exports, "__esModule", {
     value: true
 });
 var _interop_require_wildcard = __mako_require__("@swc/helpers/_/_interop_require_wildcard");
@@ -482,7 +482,7 @@ React;
         assert_eq!(
             code,
             r#"
-Object.defineProperty(exports, "__esModule", {
+__mako_require__.d(exports, "__esModule", {
     value: true
 });
 var _interop_require_default = __mako_require__("@swc/helpers/_/_interop_require_default");
@@ -698,7 +698,7 @@ console.log(fs1, fs2, fs3);
         assert_eq!(
             code,
             r#"
-Object.defineProperty(exports, "__esModule", {
+__mako_require__.d(exports, "__esModule", {
     value: true
 });
 var _interop_require_default = __mako_require__("@swc/helpers/_/_interop_require_default");
