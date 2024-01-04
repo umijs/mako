@@ -13,7 +13,7 @@ assert.match(
   content,
   moduleReg(
     "src/assets/person.svg",
-    'Object.defineProperty(exports, "ReactComponent", {',
+    '__mako_require__.d(exports, "ReactComponent", {',
     true
   ),
   "person.svg's content is not correct"
