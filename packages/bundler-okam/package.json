@@ -18,6 +18,10 @@
     "rimraf": "5.0.1",
     "webpack-5-chain": "8.0.1"
   },
+  "scripts": {
+    "prepublishOnly": "esno ./scripts/ensure_synced.ts",
+    "sync": "esno ./scripts/ensure_synced.ts"
+  },
   "publishConfig": {
     "registry": "https://registry.antgroup-inc.cn"
   },
