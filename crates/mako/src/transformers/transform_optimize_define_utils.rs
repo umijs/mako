@@ -8,78 +8,6 @@ pub struct OptimizeDefineUtils {
     pub unresolved_mark: Mark,
 }
 
-fn as_call_expr(item: &mut ModuleItem) -> Option<&mut CallExpr> {
-    item.as_mut_stmt()
-        .and_then(|stmt| stmt.as_mut_expr())
-        .and_then(|expr| expr.expr.as_mut_call())
-}
-
-fn is_object_define(expr: &Expr) -> bool {
-    expr.as_member()
-        .map(|member| {
-            let is_object = member
-                .obj
-                .as_ident()
-                .map(|ident| ident.sym.to_string() == "Object")
-                .unwrap_or(false);
-
-            is_object
-                && member
-                    .prop
-                    .as_ident()
-                    .map(|ident| ident.sym.to_string() == "defineProperty")
-                    .unwrap_or(false)
-        })
-        .unwrap_or(false)
-}
-
-fn is_export_arg(arg: Option<&ExprOrSpread>) -> bool {
-    arg.map(|arg| {
-        arg.spread.is_none()
-            && arg
-                .expr
-                .as_ident()
-                .map(|ident| ident.sym.to_string() == "exports")
-                .unwrap_or(false)
-    })
-    .unwrap_or(false)
-}
-
-fn is_string_lit_arg(arg: Option<&ExprOrSpread>) -> bool {
-    arg.map(|arg| {
-        arg.spread.is_none()
-            && arg
-                .expr
-                .as_lit()
-                .map(|lit| matches!(lit, Lit::Str(_)))
-                .unwrap_or(false)
-    })
-    .unwrap_or(false)
-}
-
-fn is_string_lit_arg_with_value(arg: Option<&ExprOrSpread>, value: &str) -> bool {
-    arg.map(|arg| {
-        arg.spread.is_none()
-            && arg
-                .expr
-                .as_lit()
-                .map(|lit| {
-                    if let Lit::Str(str_lit) = lit {
-                        str_lit.value.to_string() == value
-                    } else {
-                        false
-                    }
-                })
-                .unwrap_or(false)
-    })
-    .unwrap_or(false)
-}
-
-fn is_obj_lit_arg(arg: Option<&ExprOrSpread>) -> bool {
-    arg.map(|arg| arg.spread.is_none() && arg.expr.as_object().map(|_| true).unwrap_or(false))
-        .unwrap_or(false)
-}
-
 impl VisitMut for OptimizeDefineUtils {
     fn visit_mut_module_items(&mut self, items: &mut Vec<ModuleItem>) {
         let mut no_directive_index = 0;
@@ -154,4 +82,76 @@ impl VisitMut for OptimizeDefineUtils {
             }
         }
     }
+}
+
+fn as_call_expr(item: &mut ModuleItem) -> Option<&mut CallExpr> {
+    item.as_mut_stmt()
+        .and_then(|stmt| stmt.as_mut_expr())
+        .and_then(|expr| expr.expr.as_mut_call())
+}
+
+fn is_object_define(expr: &Expr) -> bool {
+    expr.as_member()
+        .map(|member| {
+            let is_object = member
+                .obj
+                .as_ident()
+                .map(|ident| ident.sym.to_string() == "Object")
+                .unwrap_or(false);
+
+            is_object
+                && member
+                    .prop
+                    .as_ident()
+                    .map(|ident| ident.sym.to_string() == "defineProperty")
+                    .unwrap_or(false)
+        })
+        .unwrap_or(false)
+}
+
+fn is_export_arg(arg: Option<&ExprOrSpread>) -> bool {
+    arg.map(|arg| {
+        arg.spread.is_none()
+            && arg
+                .expr
+                .as_ident()
+                .map(|ident| ident.sym.to_string() == "exports")
+                .unwrap_or(false)
+    })
+    .unwrap_or(false)
+}
+
+fn is_string_lit_arg(arg: Option<&ExprOrSpread>) -> bool {
+    arg.map(|arg| {
+        arg.spread.is_none()
+            && arg
+                .expr
+                .as_lit()
+                .map(|lit| matches!(lit, Lit::Str(_)))
+                .unwrap_or(false)
+    })
+    .unwrap_or(false)
+}
+
+fn is_string_lit_arg_with_value(arg: Option<&ExprOrSpread>, value: &str) -> bool {
+    arg.map(|arg| {
+        arg.spread.is_none()
+            && arg
+                .expr
+                .as_lit()
+                .map(|lit| {
+                    if let Lit::Str(str_lit) = lit {
+                        str_lit.value.to_string() == value
+                    } else {
+                        false
+                    }
+                })
+                .unwrap_or(false)
+    })
+    .unwrap_or(false)
+}
+
+fn is_obj_lit_arg(arg: Option<&ExprOrSpread>) -> bool {
+    arg.map(|arg| arg.spread.is_none() && arg.expr.as_object().map(|_| true).unwrap_or(false))
+        .unwrap_or(false)
 }
