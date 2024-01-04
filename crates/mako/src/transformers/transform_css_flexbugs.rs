@@ -174,7 +174,7 @@ mod test {
 
     use crate::ast::{build_css_ast, css_ast_to_code};
     use crate::compiler::Context;
-    use crate::config::{Config, DevtoolConfig, Mode};
+    use crate::config::{Config, Mode};
 
     // migrate from https://github.com/luisrudge/postcss-flexbugs-fixes/blob/683560e1f0a4e67009331b564d530ccfefb831ad/specs/bug4Spec.js
     #[test]
@@ -312,7 +312,7 @@ mod test {
         let context: Arc<Context> = Arc::new(Context {
             config: Config {
                 mode: Mode::Production,
-                devtool: DevtoolConfig::None,
+                devtool: None,
                 minify: true,
                 ..Default::default()
             },

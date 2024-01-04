@@ -37,7 +37,7 @@ impl Watch {
 
     fn should_ignore_watch(path: &Path) -> bool {
         let path = path.to_string_lossy();
-        let ignore_list = [".git", "node_modules", ".DS_Store", "dist"];
+        let ignore_list = [".git", "node_modules", ".DS_Store", "dist", ".node"];
         ignore_list.iter().any(|ignored| path.ends_with(ignored))
     }
 

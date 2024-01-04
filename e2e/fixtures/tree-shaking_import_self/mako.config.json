@@ -1,6 +1,5 @@
 {
   "mode": "production",
   "minify": false,
-  "hmr": false,
-  "codeSplitting": "none"
+  "hmr": false
 }

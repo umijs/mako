@@ -219,14 +219,13 @@ mod tests {
     use crate::analyze_deps::analyze_deps;
     use crate::ast::{build_js_ast, js_ast_to_code};
     use crate::compiler::Context;
-    use crate::config::DevtoolConfig;
     use crate::module::ModuleAst;
     use crate::plugin::PluginDriver;
     use crate::plugins::javascript::JavaScriptPlugin;
 
     fn apply_inject_to_code(injects: HashMap<String, &Inject>, code: &str) -> String {
         let mut context = Context::default();
-        context.config.devtool = DevtoolConfig::None;
+        context.config.devtool = None;
         let context = Arc::new(context);
 
         let mut ast = build_js_ast("cut.js", code, &context).unwrap();
@@ -497,7 +496,7 @@ my.call("toast");
             plugin_driver: PluginDriver::new(vec![Arc::new(JavaScriptPlugin {})]),
             ..Context::default()
         };
-        context.config.devtool = DevtoolConfig::None;
+        context.config.devtool = None;
         let context = Arc::new(context);
 
         let mut ast = build_js_ast("cut.js", code, &context).unwrap();

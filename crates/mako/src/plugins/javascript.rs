@@ -33,8 +33,8 @@ impl Plugin for JavaScriptPlugin {
             .is_match(vec!["js", "jsx", "ts", "tsx", "cjs", "mjs"])
         {
             if param.task.is_entry && param.task.request.has_query("hmr") {
-                let port = &context.config.hmr_port.to_string();
-                let host = &context.config.hmr_host.to_string();
+                let port = &context.config.hmr.as_ref().unwrap().port.to_string();
+                let host = &context.config.hmr.as_ref().unwrap().host.to_string();
                 let host = if host == "0.0.0.0" { "127.0.0.1" } else { host };
                 let mut content = format!(
                     "module.exports = require(\"{}\");",

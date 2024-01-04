@@ -2,7 +2,7 @@
   "mode": "production",
   "minify": false,
   "hmr": false,
-  "treeShake": "basic",
+  "_treeShaking": "basic",
   "optimization": {
     "skipModules": true
   }

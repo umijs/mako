@@ -6,7 +6,7 @@ use mako_core::anyhow::{anyhow, Result};
 use mako_core::clap::ValueEnum;
 use mako_core::colored::Colorize;
 use mako_core::regex::Regex;
-use mako_core::serde::Deserialize;
+use mako_core::serde::{Deserialize, Deserializer};
 use mako_core::serde_json::Value;
 use mako_core::swc_ecma_ast::EsVersion;
 use mako_core::thiserror::Error;
@@ -14,8 +14,50 @@ use mako_core::twox_hash::XxHash64;
 use mako_core::{clap, config, thiserror};
 use serde::Serialize;
 
-use crate::optimize_chunk;
 use crate::plugins::node_polyfill::get_all_modules;
+use crate::{optimize_chunk, plugins, transformers};
+
+/**
+ * a macro to create deserialize function that allow false value for optional struct
+ */
+macro_rules! create_deserialize_fn {
+    ($fn_name:ident, $struct_type:ty) => {
+        pub fn $fn_name<'de, D>(deserializer: D) -> Result<Option<$struct_type>, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            let value: serde_json::Value = serde_json::Value::deserialize(deserializer)?;
+
+            match value {
+                // allow false value for optional struct
+                serde_json::Value::Bool(false) => Ok(None),
+                // try deserialize
+                serde_json::Value::Object(obj) => Ok(Some(
+                    serde_json::from_value::<$struct_type>(serde_json::Value::Object(obj))
+                        .map_err(serde::de::Error::custom)?,
+                )),
+                serde_json::Value::String(s) => Ok(Some(
+                    serde_json::from_value::<$struct_type>(serde_json::Value::String(s.clone()))
+                        .map_err(serde::de::Error::custom)?,
+                )),
+                _ => Err(serde::de::Error::custom(format!(
+                    "invalid `{}` value: {}",
+                    stringify!($fn_name).replace("deserialize_", ""),
+                    value
+                ))),
+            }
+        }
+    };
+}
+create_deserialize_fn!(deserialize_hmr, HmrConfig);
+create_deserialize_fn!(deserialize_manifest, ManifestConfig);
+create_deserialize_fn!(deserialize_code_splitting, CodeSplittingStrategy);
+create_deserialize_fn!(deserialize_px2rem, Px2RemConfig);
+create_deserialize_fn!(deserialize_umd, String);
+create_deserialize_fn!(deserialize_devtool, DevtoolConfig);
+create_deserialize_fn!(deserialize_tree_shaking, TreeShakingStrategy);
+create_deserialize_fn!(deserialize_optimization, OptimizationConfig);
+create_deserialize_fn!(deserialize_minifish, MinifishConfig);
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -33,9 +75,12 @@ pub struct OutputConfig {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ManifestConfig {
-    #[serde(rename(deserialize = "fileName"))]
+    #[serde(
+        rename(deserialize = "fileName"),
+        default = "plugins::manifest::default_manifest_file_name"
+    )]
     pub file_name: String,
-    #[serde(rename(deserialize = "basePath"))]
+    #[serde(rename(deserialize = "basePath"), default)]
     pub base_path: String,
 }
 
@@ -91,17 +136,6 @@ pub enum DevtoolConfig {
     /// Generate inline sourcemap
     #[serde(rename = "inline-source-map")]
     InlineSourceMap,
-    #[serde(rename = "none")]
-    None,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct LessConfig {
-    pub theme: HashMap<String, String>,
-    #[serde(rename(deserialize = "lesscPath"))]
-    pub lessc_path: String,
-    #[serde(rename(deserialize = "javascriptEnabled"))]
-    pub javascript_enabled: bool,
 }
 
 #[derive(Deserialize, Serialize, Clone, Copy, Debug)]
@@ -116,31 +150,28 @@ pub enum ModuleIdStrategy {
 pub enum CodeSplittingStrategy {
     #[serde(rename = "auto")]
     Auto,
-    #[serde(rename = "none")]
-    None,
     #[serde(untagged)]
     Advanced(OptimizeChunkOptions),
 }
 #[derive(Deserialize, Serialize, Clone, Copy, Debug)]
-pub enum TreeShakeStrategy {
+pub enum TreeShakingStrategy {
     #[serde(rename = "basic")]
     Basic,
     #[serde(rename = "advanced")]
     Advanced,
-    #[serde(rename = "none")]
-    None,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Px2RemConfig {
+    #[serde(default = "transformers::transform_px2rem::default_root")]
     pub root: f64,
-    #[serde(rename = "propBlackList")]
+    #[serde(rename = "propBlackList", default)]
     pub prop_black_list: Vec<String>,
-    #[serde(rename = "propWhiteList")]
+    #[serde(rename = "propWhiteList", default)]
     pub prop_white_list: Vec<String>,
-    #[serde(rename = "selectorBlackList")]
+    #[serde(rename = "selectorBlackList", default)]
     pub selector_black_list: Vec<String>,
-    #[serde(rename = "selectorWhiteList")]
+    #[serde(rename = "selectorWhiteList", default)]
     pub selector_white_list: Vec<String>,
 }
 
@@ -254,6 +285,12 @@ pub struct MinifishConfig {
 pub struct OptimizationConfig {
     pub skip_modules: Option<bool>,
 }
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct HmrConfig {
+    pub host: String,
+    pub port: u16,
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -261,11 +298,12 @@ pub struct Config {
     pub entry: HashMap<String, PathBuf>,
     pub output: OutputConfig,
     pub resolve: ResolveConfig,
-    pub manifest: bool,
-    pub manifest_config: ManifestConfig,
+    #[serde(deserialize_with = "deserialize_manifest", default)]
+    pub manifest: Option<ManifestConfig>,
     pub mode: Mode,
     pub minify: bool,
-    pub devtool: DevtoolConfig,
+    #[serde(deserialize_with = "deserialize_devtool")]
+    pub devtool: Option<DevtoolConfig>,
     pub externals: HashMap<String, ExternalConfig>,
     pub providers: Providers,
     pub copy: Vec<String>,
@@ -277,35 +315,39 @@ pub struct Config {
     pub define: HashMap<String, Value>,
     pub stats: bool,
     pub mdx: bool,
-    pub less: LessConfig,
-    // temp solution
-    pub hmr: bool,
-    pub hmr_port: String,
-    pub hmr_host: String,
-    pub code_splitting: CodeSplittingStrategy,
-    pub px2rem: bool,
-    #[serde(rename = "px2remConfig")]
-    pub px2rem_config: Px2RemConfig,
+    #[serde(deserialize_with = "deserialize_hmr")]
+    pub hmr: Option<HmrConfig>,
+    #[serde(deserialize_with = "deserialize_code_splitting", default)]
+    pub code_splitting: Option<CodeSplittingStrategy>,
+    #[serde(deserialize_with = "deserialize_px2rem", default)]
+    pub px2rem: Option<Px2RemConfig>,
     pub hash: bool,
-    pub tree_shake: TreeShakeStrategy,
+    #[serde(rename = "_treeShaking", deserialize_with = "deserialize_tree_shaking")]
+    pub _tree_shaking: Option<TreeShakingStrategy>,
     #[serde(rename = "autoCSSModules")]
     pub auto_css_modules: bool,
     #[serde(rename = "ignoreCSSParserErrors")]
     pub ignore_css_parser_errors: bool,
     pub dynamic_import_to_require: bool,
-    pub umd: String,
+    #[serde(deserialize_with = "deserialize_umd", default)]
+    pub umd: Option<String>,
     pub write_to_disk: bool,
     pub transform_import: Vec<TransformImportConfig>,
     pub dev_eval: bool,
     pub clean: bool,
     pub node_polyfill: bool,
     pub ignores: Vec<String>,
-    #[serde(rename = "_minifish")]
+    #[serde(
+        rename = "_minifish",
+        deserialize_with = "deserialize_minifish",
+        default
+    )]
     pub _minifish: Option<MinifishConfig>,
     #[serde(rename = "optimizePackageImports")]
     pub optimize_package_imports: bool,
     pub emotion: bool,
     pub flex_bugs: bool,
+    #[serde(deserialize_with = "deserialize_optimization")]
     pub optimization: Option<OptimizationConfig>,
 }
 
@@ -435,31 +477,22 @@ const DEFAULT_CONFIG: &str = r#"
     "targets": { "chrome": 80 },
     "less": { "theme": {}, "lesscPath": "", javascriptEnabled: true },
     "define": {},
-    "manifest": false,
-    "manifestConfig": { "fileName": "asset-manifest.json", "basePath": "" },
     "stats": false,
     "mdx": false,
     "platform": "browser",
-    "hmr": true,
-    "hmrHost": "127.0.0.1",
-    "hmrPort": "3000",
+    "hmr": { "host": "127.0.0.1", "port": 3000 },
     "moduleIdStrategy": "named",
-    "codeSplitting": "none",
     "hash": false,
-    "px2rem": false,
-    "px2remConfig": { "root": 100, "propBlackList": [], "propWhiteList": [], "selectorBlackList": [], "selectorWhiteList": [] },
-    "treeShake": "basic",
+    "_treeShaking": "basic",
     "autoCSSModules": false,
     "ignoreCSSParserErrors": false,
     "dynamicImportToRequire": false,
-    "umd": "none",
     "writeToDisk": true,
     "transformImport": [],
     "devEval": false,
     "clean": true,
     "nodePolyfill": true,
     "ignores": [],
-    "_minifish": null,
     "optimizePackageImports": false,
     "emotion": false,
     "flexBugs": false,
@@ -643,10 +676,8 @@ impl Default for Config {
     }
 }
 
-fn get_default_chunk_loading_global(umd: String, root: &Path) -> String {
-    let unique_name = if umd != "none" {
-        umd
-    } else {
+fn get_default_chunk_loading_global(umd: Option<String>, root: &Path) -> String {
+    let unique_name = umd.unwrap_or_else(|| {
         let pkg_json_path = root.join("package.json");
         let mut pkg_name = "global".to_string();
 
@@ -660,7 +691,7 @@ fn get_default_chunk_loading_global(umd: String, root: &Path) -> String {
         }
 
         pkg_name
-    };
+    });
 
     format!("makoChunk_{}", unique_name)
 }

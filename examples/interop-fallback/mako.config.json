@@ -1,4 +1,3 @@
 {
-  "minify": false,
-  "codeSplitting": "none"
+  "minify": false
 }

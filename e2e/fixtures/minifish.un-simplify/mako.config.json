@@ -9,7 +9,7 @@
     "preserveModulesRoot": "./src",
     "asciiOnly": false
   },
-  "devtool": "none",
+  "devtool": false,
   "_minifish": {
     "mapping": {}
   }
