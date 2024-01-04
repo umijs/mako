@@ -1,3 +1,10 @@
+## 0.2.1
+
+`2024-01-04`
+
+> @alipay/bigfish@4.1.14
+
+* 修复模块中对相同模块同时使用 import 和 require 时，skipModules 优化时误删依赖模块的问题 by [@stormslowly](https://github.com/stormslowly) in [#842](https://github.com/umijs/mako/pull/842)
 
 ## 0.2.0
 
