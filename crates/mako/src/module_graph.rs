@@ -8,7 +8,7 @@ use mako_core::petgraph::visit::IntoEdgeReferences;
 use mako_core::petgraph::Direction;
 use mako_core::tracing::debug;
 
-use crate::module::{Dependencies, Dependency, Module, ModuleId};
+use crate::module::{Dependencies, Dependency, Module, ModuleId, ResolveType};
 
 #[derive(Debug)]
 pub struct ModuleGraph {
@@ -238,13 +238,21 @@ impl ModuleGraph {
         targets
     }
 
-    pub fn remove_dependency_module_by_source(&mut self, module_id: &ModuleId, source: &String) {
+    pub fn remove_dependency_module_by_source_and_resolve_type(
+        &mut self,
+        module_id: &ModuleId,
+        source: &String,
+        resolve_type: ResolveType,
+    ) {
         let mut edges = self.get_edges(module_id, Direction::Outgoing);
 
         while let Some((edge_index, _node_index)) = edges.next(&self.graph) {
             let dependencies = self.graph.edge_weight_mut(edge_index).unwrap();
 
-            if let Some(to_del_dep) = dependencies.iter().position(|dep| *source == dep.source) {
+            if let Some(to_del_dep) = dependencies
+                .iter()
+                .position(|dep| *source == dep.source && dep.resolve_type == resolve_type)
+            {
                 dependencies.take(&dependencies.iter().nth(to_del_dep).unwrap().clone());
 
                 if dependencies.is_empty() {
