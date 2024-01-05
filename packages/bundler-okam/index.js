@@ -23,7 +23,7 @@ const onCompileLess = async function (opts, filePath) {
     plugins: [resolvePlugin],
     modifyVars,
     sourceMap,
-    relativeUrls: true,
+    rewriteUrls: 'all',
   });
   return result.css;
 };
