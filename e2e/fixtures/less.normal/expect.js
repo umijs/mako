@@ -18,3 +18,15 @@ assert(
   ),
   "should not panic when parsing grid-template"
 );
+assert(
+  files["index.css"].includes(
+    `.foo {`
+  ),
+  "should support none-root css imports"
+);
+assert(
+  files["index.css"].includes(
+    `background: url(data:image/png;base64,`
+  ),
+  "should support none-root urls"
+);
