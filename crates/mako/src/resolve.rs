@@ -24,20 +24,15 @@ enum ResolveError {
     ResolveError { path: String, from: String },
 }
 
-#[derive(Debug, PartialEq)]
-enum ResolverType {
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub enum ResolverType {
     Cjs,
     Esm,
     Css,
     Ctxt,
 }
 
-pub struct Resolvers {
-    cjs: Resolver,
-    esm: Resolver,
-    css: Resolver,
-    ctxt: Resolver,
-}
+pub type Resolvers = HashMap<ResolverType, Resolver>;
 
 #[derive(Debug, Clone)]
 pub struct ExternalResource {
@@ -95,14 +90,15 @@ pub fn resolve(
     mako_core::mako_profile_function!();
     mako_core::mako_profile_scope!("resolve", &dep.source);
     let resolver = if parse_path(&dep.source)?.has_query("context") {
-        &resolvers.ctxt
+        resolvers.get(&ResolverType::Ctxt)
     } else if dep.resolve_type == ResolveType::Require {
-        &resolvers.cjs
+        resolvers.get(&ResolverType::Cjs)
     } else if dep.resolve_type == ResolveType::Css {
-        &resolvers.css
+        resolvers.get(&ResolverType::Css)
     } else {
-        &resolvers.esm
-    };
+        resolvers.get(&ResolverType::Esm)
+    }
+    .unwrap();
 
     let source = dep.resolve_as.as_ref().unwrap_or(&dep.source);
 
@@ -297,12 +293,14 @@ pub fn get_resolvers(config: &Config) -> Resolvers {
     let esm_resolver = get_resolver(config, ResolverType::Esm);
     let css_resolver = get_resolver(config, ResolverType::Css);
     let ctxt_resolver = get_resolver(config, ResolverType::Ctxt);
-    Resolvers {
-        cjs: cjs_resolver,
-        esm: esm_resolver,
-        css: css_resolver,
-        ctxt: ctxt_resolver,
-    }
+
+    let mut resolvers = HashMap::new();
+    resolvers.insert(ResolverType::Cjs, cjs_resolver);
+    resolvers.insert(ResolverType::Esm, esm_resolver);
+    resolvers.insert(ResolverType::Css, css_resolver);
+    resolvers.insert(ResolverType::Ctxt, ctxt_resolver);
+
+    resolvers
 }
 
 pub fn get_module_extensions() -> Vec<String> {
@@ -406,6 +404,12 @@ fn parse_alias(alias: HashMap<String, String>) -> Vec<(String, Vec<AliasMap>)> {
         result.push((key, alias_map));
     }
     result
+}
+
+pub fn clear_resolver_cache(resolvers: &Resolvers) {
+    resolvers
+        .iter()
+        .for_each(|(_, resolver)| resolver.clear_entries());
 }
 
 #[cfg(test)]
