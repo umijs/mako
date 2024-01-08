@@ -181,19 +181,22 @@ pub fn js_ast_to_code(
     let mut buf = vec![];
     let mut source_map_buf = Vec::new();
     let cm = &context.meta.script.cm;
-    let comments = context.meta.script.output_comments.read().unwrap();
+    let comments = context.meta.script.origin_comments.read().unwrap();
     let swc_comments = comments.get_swc_comments();
     {
+        let with_minify = context.config.minify && matches!(context.config.mode, Mode::Production);
         let mut emitter = Emitter {
             cfg: JsCodegenConfig::default()
-                .with_minify(
-                    context.config.minify && matches!(context.config.mode, Mode::Production),
-                )
+                .with_minify(with_minify)
                 .with_target(context.config.output.es_version)
                 .with_ascii_only(context.config.output.ascii_only)
                 .with_omit_last_semi(true),
             cm: cm.clone(),
-            comments: Some(swc_comments),
+            comments: if with_minify {
+                None
+            } else {
+                Some(swc_comments)
+            },
             wr: Box::new(JsWriter::new(
                 cm.clone(),
                 "\n",

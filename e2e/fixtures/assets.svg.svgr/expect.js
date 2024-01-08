@@ -18,12 +18,7 @@ assert.match(
   ),
   "person.svg's content is not correct"
 );
-assert.match(
-  content,
-  moduleReg(
-    "src/assets/person.svg",
-    'const SvgComponent = (props)=>(0, _jsxdevruntime.jsxDEV)("svg", {',
-    true
-  ),
+assert(
+  content.includes(`const SvgComponent = (props)=>/*#__PURE__*/ (0, _jsxdevruntime.jsxDEV)("svg", {`),
   "person.svg's content is not correct"
 );

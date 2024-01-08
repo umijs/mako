@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use mako_core::anyhow::Result;
-use mako_core::swc_common::comments::NoopComments;
 use mako_core::swc_common::errors::HANDLER;
 use mako_core::swc_common::pass::Optional;
 use mako_core::swc_common::sync::Lrc;
@@ -77,6 +76,9 @@ fn transform_js(
             HELPERS.set(&Helpers::new(true), || {
                 HANDLER.set(handler, || {
                     ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
+
+                    let origin_comments = context.meta.script.origin_comments.read().unwrap();
+
                     // strip should be ts only
                     // since when use this in js, it will remove all unused imports
                     // which is not expected as what webpack does
@@ -84,7 +86,7 @@ fn transform_js(
                         ast.visit_mut_with(&mut strip_with_jsx(
                             cm.clone(),
                             Default::default(),
-                            NoopComments,
+                            origin_comments.get_swc_comments(),
                             top_level_mark,
                         ));
                     }
@@ -137,7 +139,7 @@ fn transform_js(
                     // TODO: polyfill
                     let preset_env = swc_preset_env::preset_env(
                         unresolved_mark,
-                        Some(NoopComments),
+                        Some(origin_comments.get_swc_comments()),
                         swc_preset_env::Config {
                             mode: Some(swc_preset_env::Mode::Entry),
                             targets: Some(targets::swc_preset_env_targets_from_map(
@@ -283,8 +285,8 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 var _jsxdevruntime = __mako_require__("react/jsx-dev-runtime");
-const App = ()=>(0, _jsxdevruntime.jsxDEV)(_jsxdevruntime.Fragment, {
-        children: (0, _jsxdevruntime.jsxDEV)("h1", {
+const App = ()=>/*#__PURE__*/ (0, _jsxdevruntime.jsxDEV)(_jsxdevruntime.Fragment, {
+        children: /*#__PURE__*/ (0, _jsxdevruntime.jsxDEV)("h1", {
             children: "Hello World"
         }, void 0, false, {
             fileName: "test.tsx",
@@ -340,7 +342,7 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 var _interop_require_default = __mako_require__("@swc/helpers/_/_interop_require_default");
-var _foo = _interop_require_default._(__mako_require__("foo"));
+var _foo = /*#__PURE__*/ _interop_require_default._(__mako_require__("foo"));
 _foo.default;
 const b = 1;
 b;
@@ -391,7 +393,7 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 var _interop_require_wildcard = __mako_require__("@swc/helpers/_/_interop_require_wildcard");
-var _foo = _interop_require_wildcard._(__mako_require__("./foo"));
+var _foo = /*#__PURE__*/ _interop_require_wildcard._(__mako_require__("./foo"));
 _foo.bar;
 
 //# sourceMappingURL=index.js.map
@@ -486,7 +488,7 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 var _interop_require_default = __mako_require__("@swc/helpers/_/_interop_require_default");
-var _react = _interop_require_default._(__mako_require__("react"));
+var _react = /*#__PURE__*/ _interop_require_default._(__mako_require__("react"));
 _react.default;
 
 //# sourceMappingURL=index.js.map
@@ -702,7 +704,7 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 var _interop_require_default = __mako_require__("@swc/helpers/_/_interop_require_default");
-var _nodefs = _interop_require_default._(require("node:fs"));
+var _nodefs = /*#__PURE__*/ _interop_require_default._(require("node:fs"));
 const fs2 = require('fs');
 const fs3 = require('fs/promises');
 console.log(_nodefs.default, fs2, fs3);

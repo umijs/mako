@@ -153,7 +153,7 @@ fn to_module_line(
     let mut buf = vec![];
     let mut source_map_buf = Vec::new();
     let cm = context.meta.script.cm.clone();
-    let comments = context.meta.script.output_comments.read().unwrap();
+    let comments = context.meta.script.origin_comments.read().unwrap();
     let swc_comments = comments.get_swc_comments();
 
     let mut emitter = Emitter {
