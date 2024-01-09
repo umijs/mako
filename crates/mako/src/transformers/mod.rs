@@ -8,6 +8,7 @@ pub mod transform_dynamic_import_to_require;
 pub mod transform_env_replacer;
 pub mod transform_mako_require;
 pub mod transform_meta_url_replacer;
+pub mod transform_optimize_define_utils;
 pub mod transform_optimize_package_imports;
 pub mod transform_provide;
 pub mod transform_px2rem;

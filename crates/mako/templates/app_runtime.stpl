@@ -52,6 +52,16 @@ function createRuntime(makoModules, entryModuleId) {
   // module execution interceptor
   requireModule.requireInterceptors = [];
 
+  // module utils
+  requireModule.e = function(target, all) {
+    for (var name in all)
+      Object.defineProperty(target, name, {
+        enumerable: true,
+        get: all[name],
+      });
+  };
+  requireModule.d = Object.defineProperty.bind(Object);
+
 <% if has_dynamic_chunks || has_hmr { %>
   /* mako/runtime/ensure chunk */
   !(function () {
