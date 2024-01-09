@@ -13,12 +13,14 @@ if (!fs.existsSync(tmp)) {
 const port = 3000;
 const DELAY_TIME = 500;
 
-async function cleanup({ process, browser }) {
-  await killMakoDevServer();
-  await browser.close();
-  if (fs.existsSync(tmp)) {
-    fs.rmSync(tmp, { recursive: true });
-  }
+async function cleanup({ process, browser } = {}) {
+  try {
+    await killMakoDevServer();
+    await browser?.close();
+    if (fs.existsSync(tmp)) {
+      fs.rmSync(tmp, { recursive: true });
+    }
+  } catch (e) {}
 }
 
 const tests = {};
@@ -987,6 +989,34 @@ export default A;
   );
 });
 
+runTest('add missing dep after watch start', async () => {
+  await commonTest(
+    {
+      '/src/index.tsx': `
+        import React from 'react';
+        import ReactDOM from "react-dom/client";
+        import App from './App';
+        ReactDOM.createRoot(document.getElementById("root")!).render(<><App /><section>{Math.random()}</section></>);
+      `,
+    },
+    (lastResult) => {
+      assert.equal(lastResult.html, '', 'Initial render');
+    },
+    {
+      '/src/App.tsx': `
+        function App() {
+          return <div>App</div>;
+        }
+        export default App;
+      `,
+    },
+    (thisResult) => {
+      assert.equal(thisResult.html, '<div>App</div>', 'Second render');
+    },
+    true,
+  );
+});
+
 function normalizeFiles(files, makoConfig = {}) {
   return {
     '/public/index.html': `
@@ -1076,7 +1106,7 @@ function normalizeHtml(html) {
   // e.g. <div>App<section>0.7551619733386135</section></div>
   const re = /<section>(.+?)<\/section>/;
   const match = html.match(re);
-  const random = match[1];
+  const random = match?.[1];
   html = html.replace(re, '');
   return { html, random };
 }
@@ -1119,7 +1149,12 @@ async function commonTest(
     console.log(`> ${chalk.green(name)}`);
     await fn();
   }
-})().catch((e) => {
+})().catch(async (e) => {
   console.error(chalk.red(e));
+  await cleanup();
   process.exit(1);
+});
+
+process.on('exit', async () => {
+  await cleanup();
 });

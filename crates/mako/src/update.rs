@@ -10,7 +10,7 @@ use mako_core::tracing::debug;
 use crate::build::BuildError;
 use crate::compiler::Compiler;
 use crate::module::{Dependency, Module, ModuleId};
-use crate::resolve;
+use crate::resolve::{self, clear_resolver_cache};
 use crate::task::{Task, TaskType};
 use crate::transform_in_generate::transform_modules;
 use crate::transformers::transform_virtual_css_modules::is_css_path;
@@ -111,6 +111,8 @@ impl Compiler {
         // if found, add to modified queue
         if has_added {
             debug!("checking modules_with_missing_deps... since has added modules");
+            // clear resolver cache before resolving to avoid wrong result, i.e. add missing dep after watch started
+            clear_resolver_cache(&self.context.resolvers);
             let mut modules_with_missing_deps =
                 self.context.modules_with_missing_deps.write().unwrap();
             let mut module_graph = self.context.module_graph.write().unwrap();
