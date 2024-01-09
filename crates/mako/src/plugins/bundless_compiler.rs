@@ -223,7 +223,7 @@ pub fn transform_js_generate(
                             //         && matches!(context.config.mode, Mode::Production)
                             //     {
                             //         let comments =
-                            //             context.meta.script.output_comments.read().unwrap();
+                            //             context.meta.script.origin_comments.read().unwrap();
                             //         let mut unused_statement_sweep =
                             //             UnusedStatementSweep::new(id, &comments);
                             //         ast.ast.visit_mut_with(&mut unused_statement_sweep);

@@ -64,11 +64,12 @@ pub fn mako_react(
         noop()
     };
 
+    let origin_comments = context.meta.script.origin_comments.read().unwrap();
     let visit = chain!(
         emotion,
         react(
             cm,
-            Some(NoopComments),
+            Some(origin_comments.get_swc_comments().clone()),
             Options {
                 import_source: Some(import_source.to_string()),
                 pragma: Some(pragma.into()),
