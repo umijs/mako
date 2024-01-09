@@ -204,6 +204,7 @@ pub(super) fn skip_module_optimize(
                                     if match_ident == replace.re_export_ident {
                                         matched_ident = Some(named.local.take());
                                         matched_index = Some(index);
+                                        break;
                                     }
                                 }
                                 ImportSpecifier::Default(_default_specifier) => {}
