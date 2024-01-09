@@ -1,5 +1,6 @@
 {
   "minify": false,
+  "moduleIdStrategy": "hashed",
   "resolve": {
     "alias": {
       "@": "./foo"

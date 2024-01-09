@@ -133,6 +133,7 @@ pub(crate) fn render_normal_js_chunk(
     let module = pot_to_chunk_module(
         chunk_pot,
         context.config.output.chunk_loading_global.clone(),
+        context,
     )?;
 
     let mut ast = GLOBALS.set(&context.meta.script.globals, || Ast {
@@ -280,7 +281,7 @@ fn render_entry_chunk_js_without_full_hash(
     let modules_lit: Stmt = {
         mako_core::mako_profile_scope!("to_module_object");
 
-        pot_to_module_object(pot)?
+        pot_to_module_object(pot, context)?
             .into_var_decl(VarDeclKind::Var, quote_ident!("m").into())
             .into()
     };

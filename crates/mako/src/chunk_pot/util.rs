@@ -15,12 +15,16 @@ use mako_core::swc_ecma_codegen::text_writer::JsWriter;
 use mako_core::swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
 use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
 use mako_core::twox_hash::XxHash64;
+use swc_core::base::try_with_handler;
+use swc_core::common::comments::{Comment, CommentKind, Comments};
+use swc_core::common::errors::HANDLER;
+use swc_core::common::{Span, GLOBALS};
 
 use crate::chunk_pot::ChunkPot;
 use crate::compiler::Context;
 use crate::config::Mode;
 use crate::load::file_content_hash;
-use crate::module::{Module, ModuleAst};
+use crate::module::{relative_to_root, Module, ModuleAst};
 use crate::runtime::AppRuntimeTemplate;
 use crate::sourcemap::build_source_map;
 
@@ -150,7 +154,7 @@ pub(super) fn to_array_lit(elems: Vec<ExprOrSpread>) -> ArrayLit {
     }
 }
 
-pub(crate) fn pot_to_module_object(pot: &ChunkPot) -> Result<ObjectLit> {
+pub(crate) fn pot_to_module_object(pot: &ChunkPot, context: &Arc<Context>) -> Result<ObjectLit> {
     mako_core::mako_profile_function!();
 
     let mut sorted_kv = pot
@@ -162,17 +166,39 @@ pub(crate) fn pot_to_module_object(pot: &ChunkPot) -> Result<ObjectLit> {
 
     let mut props = Vec::new();
 
-    for (module_id_str, module) in sorted_kv {
-        let fn_expr = to_module_fn_expr(module.0)?;
+    let origin_comments = context.meta.script.origin_comments.read().unwrap();
+    let comments = origin_comments.get_swc_comments();
 
-        let pv: PropOrSpread = Prop::KeyValue(KeyValueProp {
-            key: quote_str!(module_id_str.clone()).into(),
-            value: fn_expr.into(),
+    let cm = context.meta.script.cm.clone();
+    GLOBALS.set(&context.meta.script.globals, || {
+        try_with_handler(cm.clone(), Default::default(), |handler| {
+            HANDLER.set(handler, || {
+                for (module_id_str, module) in sorted_kv {
+                    let fn_expr = to_module_fn_expr(module.0)?;
+
+                    let span = Span::dummy_with_cmt();
+                    let id = module.0.id.id.clone();
+                    let id = relative_to_root(id, &context.root);
+                    comments.add_leading(
+                        span.hi,
+                        Comment {
+                            kind: CommentKind::Block,
+                            span: DUMMY_SP,
+                            text: id.into(),
+                        },
+                    );
+                    let pv: PropOrSpread = Prop::KeyValue(KeyValueProp {
+                        key: quote_str!(span, module_id_str.clone()).into(),
+                        value: fn_expr.into(),
+                    })
+                    .into();
+
+                    props.push(pv);
+                }
+                Ok(())
+            })
         })
-        .into();
-
-        props.push(pv);
-    }
+    })?;
 
     Ok(ObjectLit {
         span: DUMMY_SP,
@@ -180,10 +206,14 @@ pub(crate) fn pot_to_module_object(pot: &ChunkPot) -> Result<ObjectLit> {
     })
 }
 
-pub(crate) fn pot_to_chunk_module(pot: &ChunkPot, global: String) -> Result<SwcModule> {
+pub(crate) fn pot_to_chunk_module(
+    pot: &ChunkPot,
+    global: String,
+    context: &Arc<Context>,
+) -> Result<SwcModule> {
     mako_core::mako_profile_function!();
 
-    let module_object = pot_to_module_object(pot)?;
+    let module_object = pot_to_module_object(pot, context)?;
 
     // (globalThis['makoChunk_global'] = globalThis['makoChunk_global'] || []).push([["module_id"], { module object }])
     let chunk_global_expr =
@@ -227,7 +257,7 @@ pub(crate) fn pot_to_chunk_module(pot: &ChunkPot, global: String) -> Result<SwcM
     create = "{ SizedCache::with_size(20000) }",
     convert = r#"{format!("{}.{:x}",file_content_hash(&module.id.id),module.info.as_ref().unwrap().raw_hash)}"#
 )]
-pub fn to_module_fn_expr(module: &Module) -> Result<FnExpr> {
+fn to_module_fn_expr(module: &Module) -> Result<FnExpr> {
     mako_core::mako_profile_function!(&module.id.id);
 
     match &module.info.as_ref().unwrap().ast {
