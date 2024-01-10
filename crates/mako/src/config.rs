@@ -496,7 +496,7 @@ const DEFAULT_CONFIG: &str = r#"
     "optimizePackageImports": false,
     "emotion": false,
     "flexBugs": false,
-    "optimization": { "skipModules": true }
+    "optimization": { "skipModules": false }
 }
 "#;
 
