@@ -10,7 +10,7 @@ const {
 } = require('@umijs/bundler-utils/compiled/http-proxy-middleware');
 
 function lessLoader(fn, opts) {
-  return async function(filePath) {
+  return async function (filePath) {
     if (filePath.endsWith('.less')) {
       const { alias, modifyVars, config, sourceMap } = opts;
       const less = require('@umijs/bundler-utils/compiled/less');
