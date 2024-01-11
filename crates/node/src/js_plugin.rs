@@ -74,7 +74,7 @@ impl Plugin for JsPlugin {
     }
 
     fn before_write_fs(&self, path: &std::path::Path, content: &[u8]) -> Result<()> {
-        if let Some(hook) = &self.hooks.on_generate_file {
+        if let Some(hook) = &self.hooks._on_generate_file {
             let (tx, rx) = mpsc::channel::<napi::Result<()>>();
             hook.call(
                 WriteRequest {

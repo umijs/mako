@@ -20,7 +20,7 @@ pub struct JsHooks {
     }}) =>void ;")]
     pub generate_end: Option<JsFunction>,
     #[napi(ts_type = "(path: string, content: Buffer) => Promise<void>;")]
-    pub on_generate_file: Option<JsFunction>,
+    pub _on_generate_file: Option<JsFunction>,
     #[napi(ts_type = "() => Promise<void>;")]
     pub build_start: Option<JsFunction>,
 }
@@ -31,7 +31,7 @@ pub struct TsFnHooks {
         Option<threadsafe_function::ThreadsafeFunction<ReadMessage<PluginGenerateEndParams, ()>>>,
     pub load:
         Option<threadsafe_function::ThreadsafeFunction<ReadMessage<String, Option<LoadResult>>>>,
-    pub on_generate_file: Option<threadsafe_function::ThreadsafeFunction<WriteRequest>>,
+    pub _on_generate_file: Option<threadsafe_function::ThreadsafeFunction<WriteRequest>>,
 }
 
 impl TsFnHooks {
@@ -103,7 +103,7 @@ impl TsFnHooks {
                 )
                 .unwrap()
             }),
-            on_generate_file: hooks.on_generate_file.as_ref().map(|hook| {
+            _on_generate_file: hooks._on_generate_file.as_ref().map(|hook| {
                 threadsafe_function::ThreadsafeFunction::create(
                     env.raw(),
                     unsafe { hook.raw() },
