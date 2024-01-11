@@ -246,13 +246,14 @@ moduleId 的生成策略。
 - `preserveModules`，是否保留模块目录结构（注：Bundless Only）
 - `preserveModulesRoot`，保留模块目录结构的根目录（注：Bundless Only）
 
-## optimization 
+## optimization
+
 - 类型：`object`
 - 默认值：`{ skipModules: false }`
 
-优化构建产物配置选项，目前支持
+优化构建产物的配置。目前支持子配置项如下。
 
-- skipModules 通过跳过无副作用的模块，优化尺寸；`true` 开启
+- `skipModules`，通过跳过无副作用的模块，优化尺寸（注：目前默认为 `false`，后续稳定后会改为默认 `true`）
 
 ## optimizePackageImports
 

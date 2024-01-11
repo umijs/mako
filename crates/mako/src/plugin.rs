@@ -40,6 +40,19 @@ pub struct PluginDepAnalyzeParam<'a> {
     pub ast: &'a ModuleAst,
 }
 
+#[derive(Clone)]
+pub struct PluginGenerateEndParams {
+    pub is_first_compile: bool,
+    pub time: u64,
+    pub stats: PluginGenerateStats,
+}
+
+#[derive(Clone)]
+pub struct PluginGenerateStats {
+    pub start_time: u64,
+    pub end_time: u64,
+}
+
 pub trait Plugin: Any + Send + Sync {
     fn name(&self) -> &str;
 
@@ -98,6 +111,18 @@ pub trait Plugin: Any + Send + Sync {
     }
 
     fn build_success(&self, _stats: &StatsJsonMap, _context: &Arc<Context>) -> Result<Option<()>> {
+        Ok(None)
+    }
+
+    fn build_start(&self, _context: &Arc<Context>) -> Result<Option<()>> {
+        Ok(None)
+    }
+
+    fn generate_end(
+        &self,
+        _params: &PluginGenerateEndParams,
+        _context: &Arc<Context>,
+    ) -> Result<Option<()>> {
         Ok(None)
     }
 
@@ -222,6 +247,24 @@ impl PluginDriver {
             }
         }
         Err(anyhow!("None of the plugins generate content"))
+    }
+
+    pub fn build_start(&self, context: &Arc<Context>) -> Result<Option<()>> {
+        for plugin in &self.plugins {
+            plugin.build_start(context)?;
+        }
+        Ok(None)
+    }
+
+    pub fn generate_end(
+        &self,
+        param: &PluginGenerateEndParams,
+        context: &Arc<Context>,
+    ) -> Result<Option<()>> {
+        for plugin in &self.plugins {
+            plugin.generate_end(param, context)?;
+        }
+        Ok(None)
     }
 
     pub fn build_success(
