@@ -25,17 +25,6 @@ pub struct JsHooks {
     pub build_start: Option<JsFunction>,
 }
 
-pub struct WriteRequest {
-    pub path: PathBuf,
-    pub content: Vec<u8>,
-    pub tx: Sender<Result<()>>,
-}
-
-pub struct LoadResult {
-    pub content: String,
-    pub content_type: String,
-}
-
 pub struct TsFnHooks {
     pub build_start: Option<threadsafe_function::ThreadsafeFunction<ReadMessage<(), ()>>>,
     pub generate_end:
@@ -255,4 +244,15 @@ fn await_promise_with_void(
 pub struct ReadMessage<T, V> {
     pub message: T,
     pub tx: Sender<Result<V>>,
+}
+
+pub struct WriteRequest {
+    pub path: PathBuf,
+    pub content: Vec<u8>,
+    pub tx: Sender<Result<()>>,
+}
+
+pub struct LoadResult {
+    pub content: String,
+    pub content_type: String,
 }
