@@ -1,3 +1,19 @@
+## 0.2.3
+
+`2024-01-10`
+
+> @alipay/bigfish@4.1.14
+
+* 暂时关闭 skipModules 优化 by [@stormslowly](https://github.com/stormslowly) in [#854](https://github.com/umijs/mako/pull/854)
+
+## 0.2.2
+
+`2024-01-09`
+
+> @alipay/bigfish@4.1.14
+
+* 修复 import/export 语句中使用 `as` 对同一导出使用多次导致的变量 undefined 问题 by [@stormslowly](https://github.com/stormslowly) in [#850](https://github.com/umijs/mako/pull/850)
+
 ## 0.2.1
 
 `2024-01-04`
