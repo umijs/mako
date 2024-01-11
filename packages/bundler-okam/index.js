@@ -194,7 +194,7 @@ exports.dev = async function (opts) {
       root: cwd,
       config: okamConfig,
       hooks: {
-        onCompileLess: onCompileLess.bind(null, {
+        load: lessLoader(null, {
           cwd,
           config: opts.config,
           alias: okamConfig.resolve.alias,
