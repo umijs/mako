@@ -230,8 +230,6 @@ impl Compiler {
             plugins.extend(extra_plugins);
         }
         let builtin_plugins: Vec<Arc<dyn Plugin>> = vec![
-            // js hooks
-            // Arc::new(plugins::js_hooks::JsHooksPlugin {}),
             // features
             Arc::new(plugins::manifest::ManifestPlugin {}),
             Arc::new(plugins::copy::CopyPlugin {}),
