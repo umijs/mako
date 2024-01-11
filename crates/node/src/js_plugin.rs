@@ -1,6 +1,7 @@
 use std::sync::{mpsc, Arc};
 
-use crate::{threadsafe_function, LoadResult, ReadMessage, TsFnHooks, WriteRequest};
+use crate::threadsafe_function;
+use crate::tsfn::{LoadResult, ReadMessage, TsFnHooks, WriteRequest};
 
 pub struct JsPlugin {
     pub hooks: TsFnHooks,
