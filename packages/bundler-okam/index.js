@@ -9,27 +9,33 @@ const {
   createProxyMiddleware,
 } = require('@umijs/bundler-utils/compiled/http-proxy-middleware');
 
-const onCompileLess = async function (opts, filePath) {
-  const { alias, modifyVars, config, sourceMap } = opts;
-  const less = require('@umijs/bundler-utils/compiled/less');
-  const input = fs.readFileSync(filePath, 'utf-8');
-  const resolvePlugin = new (require('less-plugin-resolve'))({
-    aliases: alias,
-  });
-  const result = await less.render(input, {
-    filename: filePath,
-    javascriptEnabled: true,
-    math: config.lessLoader?.math,
-    plugins: [resolvePlugin],
-    modifyVars,
-    sourceMap,
-    rewriteUrls: 'all',
-  });
-  return result.css;
-};
+function lessLoader(fn, opts) {
+  return async function(filePath) {
+    if (filePath.endsWith('.less')) {
+      const { alias, modifyVars, config, sourceMap } = opts;
+      const less = require('@umijs/bundler-utils/compiled/less');
+      const input = fs.readFileSync(filePath, 'utf-8');
+      const resolvePlugin = new (require('less-plugin-resolve'))({
+        aliases: alias,
+      });
+      const result = await less.render(input, {
+        filename: filePath,
+        javascriptEnabled: true,
+        math: config.lessLoader?.math,
+        plugins: [resolvePlugin],
+        modifyVars,
+        sourceMap,
+        rewriteUrls: 'all',
+      });
+      return { content: result.css, type: 'css' };
+    } else {
+      fn && fn(filePath);
+    }
+  };
+}
 
 // export for test only
-exports._onCompileLess = onCompileLess;
+exports._lessLoader = lessLoader;
 
 exports.build = async function (opts) {
   assert(opts, 'opts should be supplied');
@@ -56,7 +62,7 @@ exports.build = async function (opts) {
       root: cwd,
       config: okamConfig,
       hooks: {
-        onCompileLess: onCompileLess.bind(null, {
+        load: lessLoader(null, {
           cwd,
           config: opts.config,
           // NOTICE: 有个缺点是 如果 alias 配置是 mako 插件修改的 less 这边就感知到不了
@@ -195,7 +201,7 @@ exports.dev = async function (opts) {
           modifyVars: opts.config.theme,
           sourceMap: getLessSourceMapConfig(okamConfig.devtool),
         }),
-        onBuildComplete: (args) => {
+        generateEnd: (args) => {
           opts.onDevCompileDone(args);
         },
       },

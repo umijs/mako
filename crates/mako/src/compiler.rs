@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
-use std::time::Instant;
+use std::time::{Instant, UNIX_EPOCH};
 
 use mako_core::anyhow::{anyhow, Error, Result};
 use mako_core::colored::Colorize;
@@ -16,7 +16,7 @@ use crate::comments::Comments;
 use crate::config::{hash_config, Config, OutputMode};
 use crate::module_graph::ModuleGraph;
 use crate::optimize_chunk::OptimizeChunksInfo;
-use crate::plugin::{Plugin, PluginDriver};
+use crate::plugin::{Plugin, PluginDriver, PluginGenerateEndParams, PluginGenerateStats};
 use crate::plugins;
 use crate::plugins::minifish::Inject;
 use crate::resolve::{get_resolvers, Resolvers};
@@ -230,6 +230,8 @@ impl Compiler {
             plugins.extend(extra_plugins);
         }
         let builtin_plugins: Vec<Arc<dyn Plugin>> = vec![
+            // js hooks
+            // Arc::new(plugins::js_hooks::JsHooksPlugin {}),
             // features
             Arc::new(plugins::manifest::ManifestPlugin {}),
             Arc::new(plugins::copy::CopyPlugin {}),
@@ -361,6 +363,7 @@ impl Compiler {
         }
 
         let t_compiler = Instant::now();
+        let start_time = std::time::SystemTime::now();
         let is_prod = self.context.config.mode == crate::config::Mode::Production;
         let building_with_message = format!(
             "Building with {} for {}...",
@@ -377,19 +380,32 @@ impl Compiler {
             mako_core::mako_profile_scope!("Generate Stage");
             self.generate()
         };
-        let t_compiler = t_compiler.elapsed();
+        let t_compiler_duration = t_compiler.elapsed();
         if result.is_ok() {
             println!(
                 "{}",
                 format!(
                     "✓ Built in {}",
-                    format!("{}ms", t_compiler.as_millis()).bold()
+                    format!("{}ms", t_compiler_duration.as_millis()).bold()
                 )
                 .green()
             );
             if !self.context.args.watch {
                 println!("{}", "Complete!".bold());
             }
+            let end_time = std::time::SystemTime::now();
+            let params = PluginGenerateEndParams {
+                is_first_compile: true,
+                time: t_compiler.elapsed().as_millis() as u64,
+                stats: PluginGenerateStats {
+                    start_time: start_time.duration_since(UNIX_EPOCH).unwrap().as_millis() as u64,
+                    end_time: end_time.duration_since(UNIX_EPOCH).unwrap().as_millis() as u64,
+                },
+            };
+            self.context
+                .plugin_driver
+                .generate_end(&params, &self.context)
+                .unwrap();
             Ok(())
         } else {
             result

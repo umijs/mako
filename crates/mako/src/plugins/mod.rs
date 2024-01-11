@@ -10,6 +10,7 @@ pub mod ignore;
 pub mod import;
 pub mod invalid_syntax;
 pub mod javascript;
+// pub mod js_hooks;
 pub mod json;
 pub mod manifest;
 pub mod md;

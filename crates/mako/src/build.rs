@@ -53,6 +53,7 @@ impl Compiler {
     pub fn build(&self) -> Result<()> {
         debug!("build");
         let t_build = Instant::now();
+        self.context.plugin_driver.build_start(&self.context)?;
         let entries: Vec<&PathBuf> = self.context.config.entry.values().collect();
         let tasks = entries
             .iter()
