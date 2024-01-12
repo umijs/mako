@@ -4,7 +4,7 @@ use crate::plugins::farm_tree_shake::shake::strip_context;
 use crate::plugins::farm_tree_shake::statement_graph::{ExportSpecifierInfo, ImportSpecifierInfo};
 
 impl TreeShakeModule {
-    pub fn find_export_source(&self, ident: &String) -> Option<ReExportSource> {
+    pub fn find_skipable_export_source(&self, ident: &String) -> Option<ReExportSource> {
         let mut local_ident = None;
         let mut re_export_type = None;
 
@@ -144,10 +144,14 @@ impl TreeShakeModule {
                             }
                             ImportSpecifierInfo::Default(name) => {
                                 if local == name {
-                                    return Some(ReExportSource {
-                                        re_export_type: ReExportType::Default,
-                                        source: Some(import_info.source.clone()),
-                                    });
+
+                                    return None;
+
+
+                                    // return Some(ReExportSource {
+                                    //     re_export_type: ReExportType::Default,
+                                    //     source: Some(import_info.source.clone()),
+                                    // });
                                 }
                             }
                         }
@@ -192,7 +196,7 @@ mod tests {
     fn test_find_import_default_export_named() {
         let tsm = tsm_with_code(r#" import a from "./a.js"; export {a}; "#);
 
-        let re_export_source = tsm.find_export_source(&"a".to_string());
+        let re_export_source = tsm.find_skipable_export_source(&"a".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -204,7 +208,7 @@ mod tests {
     fn test_find_import_default_export_default() {
         let tsm = tsm_with_code(r#" import a from "./a.js"; export default a;"#);
 
-        let re_export_source = tsm.find_export_source(&"default".to_string());
+        let re_export_source = tsm.find_skipable_export_source(&"default".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -215,7 +219,7 @@ mod tests {
     fn test_find_import_named_export_default() {
         let tsm = tsm_with_code(r#" import {a} from "./a.js"; export default a;"#);
 
-        let re_export_source = tsm.find_export_source(&"default".to_string());
+        let re_export_source = tsm.find_skipable_export_source(&"default".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -227,7 +231,7 @@ mod tests {
     fn test_find_import_named_renamed_export_default() {
         let tsm = tsm_with_code(r#" import {z as a} from "./a.js"; export default a;"#);
 
-        let re_export_source = tsm.find_export_source(&"default".to_string());
+        let re_export_source = tsm.find_skipable_export_source(&"default".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -239,7 +243,7 @@ mod tests {
     fn test_find_import_namespace_export_default() {
         let tsm = tsm_with_code(r#" import * as a from "./a.js"; export default a;"#);
 
-        let re_export_source = tsm.find_export_source(&"a".to_string());
+        let re_export_source = tsm.find_skipable_export_source(&"a".to_string());
 
         assert!(re_export_source.is_none());
     }
@@ -248,7 +252,7 @@ mod tests {
     fn test_find_import_namespace_export_named() {
         let tsm = tsm_with_code(r#" import * as a from "./a.js"; export { a };"#);
 
-        let re_export_source = tsm.find_export_source(&"a".to_string());
+        let re_export_source = tsm.find_skipable_export_source(&"a".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -260,7 +264,7 @@ mod tests {
     fn test_find_import_named_export_named() {
         let tsm = tsm_with_code(r#" import { a } from "./a.js"; export { a };"#);
 
-        let re_export_source = tsm.find_export_source(&"a".to_string());
+        let re_export_source = tsm.find_skipable_export_source(&"a".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -272,7 +276,7 @@ mod tests {
     fn test_find_import_named_export_renamed() {
         let tsm = tsm_with_code(r#" import { a } from "./a.js"; export { a as b };"#);
 
-        let re_export_source = tsm.find_export_source(&"b".to_string());
+        let re_export_source = tsm.find_skipable_export_source(&"b".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -284,7 +288,7 @@ mod tests {
     fn test_find_import_renamed_export_renamed() {
         let tsm = tsm_with_code(r#" import { a as b } from "./a.js"; export { b as c };"#);
 
-        let re_export_source = tsm.find_export_source(&"c".to_string());
+        let re_export_source = tsm.find_skipable_export_source(&"c".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -296,7 +300,7 @@ mod tests {
     fn test_find_export_default_from() {
         let tsm = tsm_with_code(r#" export { default }  from "./a.js" "#);
 
-        let re_export_source = tsm.find_export_source(&"default".to_string());
+        let re_export_source = tsm.find_skipable_export_source(&"default".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -308,7 +312,7 @@ mod tests {
     fn test_find_export_default_as_from() {
         let tsm = tsm_with_code(r#" export { default as a }  from "./a.js" "#);
 
-        let re_export_source = tsm.find_export_source(&"a".to_string());
+        let re_export_source = tsm.find_skipable_export_source(&"a".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -320,7 +324,7 @@ mod tests {
     fn test_find_export_named_from() {
         let tsm = tsm_with_code(r#" export { a }  from "./a.js" "#);
 
-        let re_export_source = tsm.find_export_source(&"a".to_string());
+        let re_export_source = tsm.find_skipable_export_source(&"a".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -332,7 +336,7 @@ mod tests {
     fn test_find_export_named_as_from() {
         let tsm = tsm_with_code(r#" export { b as a }  from "./a.js" "#);
 
-        let re_export_source = tsm.find_export_source(&"a".to_string());
+        let re_export_source = tsm.find_skipable_export_source(&"a".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -344,7 +348,7 @@ mod tests {
     fn test_find_export_star_as_from() {
         let tsm = tsm_with_code(r#" export * as a from "./a.js" "#);
 
-        let re_export_source = tsm.find_export_source(&"a".to_string());
+        let re_export_source = tsm.find_skipable_export_source(&"a".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -358,7 +362,7 @@ mod tests {
     fn test_find_export_star_from() {
         let tsm = tsm_with_code(r#" export * from "./a.js" "#);
 
-        let re_export_source = tsm.find_export_source(&"a".to_string());
+        let re_export_source = tsm.find_skipable_export_source(&"a".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -370,7 +374,7 @@ mod tests {
     fn test_find_export_default_local_ident() {
         let tsm = tsm_with_code(r#"const a=1; export default a "#);
 
-        let re_export_source = tsm.find_export_source(&"default".to_string());
+        let re_export_source = tsm.find_skipable_export_source(&"default".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -382,7 +386,7 @@ mod tests {
     fn test_find_export_default_function() {
         let tsm = tsm_with_code(r#"export default function test(){} "#);
 
-        let re_export_source = tsm.find_export_source(&"default".to_string());
+        let re_export_source = tsm.find_skipable_export_source(&"default".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -394,7 +398,7 @@ mod tests {
     fn test_find_export_default_class() {
         let tsm = tsm_with_code(r#" export default class Test{} "#);
 
-        let re_export_source = tsm.find_export_source(&"default".to_string());
+        let re_export_source = tsm.find_skipable_export_source(&"default".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -406,7 +410,7 @@ mod tests {
     fn test_find_export_named_class() {
         let tsm = tsm_with_code(r#" export class TestClass{} "#);
 
-        let re_export_source = tsm.find_export_source(&"TestClass".to_string());
+        let re_export_source = tsm.find_skipable_export_source(&"TestClass".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -418,7 +422,7 @@ mod tests {
     fn test_find_export_named_fn() {
         let tsm = tsm_with_code(r#" export function fnTest(){} "#);
 
-        let re_export_source = tsm.find_export_source(&"fnTest".to_string());
+        let re_export_source = tsm.find_skipable_export_source(&"fnTest".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
@@ -430,7 +434,7 @@ mod tests {
     fn test_find_export_dec_expr() {
         let tsm = tsm_with_code(r#" export const a = 1 "#);
 
-        let re_export_source = tsm.find_export_source(&"a".to_string());
+        let re_export_source = tsm.find_skipable_export_source(&"a".to_string());
 
         assert_eq!(
             re_export_source.unwrap().describe(),
