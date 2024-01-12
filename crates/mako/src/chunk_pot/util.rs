@@ -268,7 +268,13 @@ fn to_module_fn_expr(module: &Module) -> Result<FnExpr> {
 
             for n in script.ast.body.iter() {
                 match n.as_stmt() {
-                    None => return Err(anyhow!("Error: {:?} not a stmt in ", module.id.id)),
+                    None => {
+                        return Err(anyhow!(
+                            "Error: not a stmt found in {:?}, ast: {:?}",
+                            module.id.id,
+                            n,
+                        ));
+                    }
                     Some(stmt) => {
                         stmts.push(stmt.clone());
                     }

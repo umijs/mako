@@ -210,6 +210,34 @@ impl Compiler {
         });
     }
 
+    pub fn create_module_from_error(
+        err: String,
+        task: &Task,
+        context: &Arc<Context>,
+    ) -> Result<Module> {
+        let module_id = ModuleId::new(task.path.clone());
+        let code = format!("throw new Error(`Module build failed:\n{:}`)", err);
+        let ast = build_js_ast(&task.path, code.as_str(), context)?;
+        let info = ModuleInfo {
+            ast: ModuleAst::Script(ast),
+            path: task.path.clone(),
+            external: None,
+            raw: "".to_string(),
+            raw_hash: 0,
+            missing_deps: Default::default(),
+            ignored_deps: vec![],
+            top_level_await: false,
+            is_async: false,
+            resolved_resource: task.parent_resource.clone(),
+            source_map_chain: vec![],
+            import_map: vec![],
+            export_map: vec![],
+            is_barrel: false,
+        };
+        let module = Module::new(module_id, task.is_entry, Some(info));
+        Ok(module)
+    }
+
     pub fn create_module(
         resource: &ResolverResource,
         dep_module_id: &ModuleId,
@@ -268,6 +296,22 @@ module.exports = new Promise((resolve, reject) => {{
     }
 
     pub fn build_module(
+        context: &Arc<Context>,
+        task: task::Task,
+    ) -> Result<(Module, ModuleDeps, Task)> {
+        let result = Compiler::build_module_inner(context, task.clone());
+        if let Err(err) = &result {
+            if context.args.watch {
+                let module =
+                    Self::create_module_from_error(err.to_string(), &task, context).unwrap();
+                eprintln!("{}", err);
+                return Ok((module, vec![], task));
+            }
+        }
+        result
+    }
+
+    pub fn build_module_inner(
         context: &Arc<Context>,
         task: task::Task,
     ) -> Result<(Module, ModuleDeps, Task)> {
