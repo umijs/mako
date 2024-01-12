@@ -202,9 +202,9 @@ impl Compiler {
     ) {
         pool.spawn(move || {
             let result = if with_cache {
-                cached_build_module(&context, task.clone())
+                cached_build_module(&context, task)
             } else {
-                Compiler::build_module(&context, task.clone())
+                Compiler::build_module(&context, task)
             };
             rs.send(result).unwrap();
         });
