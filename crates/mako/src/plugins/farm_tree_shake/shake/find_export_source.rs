@@ -144,14 +144,7 @@ impl TreeShakeModule {
                             }
                             ImportSpecifierInfo::Default(name) => {
                                 if local == name {
-
                                     return None;
-
-
-                                    // return Some(ReExportSource {
-                                    //     re_export_type: ReExportType::Default,
-                                    //     source: Some(import_info.source.clone()),
-                                    // });
                                 }
                             }
                         }
@@ -198,10 +191,7 @@ mod tests {
 
         let re_export_source = tsm.find_skipable_export_source(&"a".to_string());
 
-        assert_eq!(
-            re_export_source.unwrap().describe(),
-            "ReExport from ./a.js by Default"
-        );
+        assert!(re_export_source.is_none());
     }
 
     #[test]
@@ -210,10 +200,7 @@ mod tests {
 
         let re_export_source = tsm.find_skipable_export_source(&"default".to_string());
 
-        assert_eq!(
-            re_export_source.unwrap().describe(),
-            "ReExport from ./a.js by Default"
-        );
+        assert!(re_export_source.is_none());
     }
     #[test]
     fn test_find_import_named_export_default() {
