@@ -1,4 +1,5 @@
 import assert from 'assert';
+import { execSync } from 'child_process';
 import { chromium, devices } from 'playwright';
 import 'zx/globals';
 
@@ -6,6 +7,7 @@ function skip() {}
 
 const root = process.cwd();
 const tmp = path.join(root, 'tmp', 'hmr');
+const tmpPackages = path.join(root, 'tmp', 'packages');
 if (!fs.existsSync(tmp)) {
   fs.mkdirSync(tmp, { recursive: true });
 }
@@ -1067,6 +1069,68 @@ runTest('issue: 861', async () => {
   await cleanup({ process, browser });
 });
 
+runTest('link npm packages', async () => {
+  await commonTest(
+    () => {
+      write(
+        normalizeFiles({
+          '/src/index.tsx': `
+  import React from 'react';
+  import ReactDOM from "react-dom/client";
+  import { foo } from "mako-test-package-link";
+  function App() {
+    return <div>{foo}<section>{Math.random()}</section></div>;
+  }
+  ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
+      `,
+        }),
+      );
+      writePackage(
+        'mako-test-package-link',
+        normalizeFiles({
+          'package.json': `
+  {
+    "name": "mako-test-package-link",
+    "version": "1.0.0",
+    "main": "index.js"
+  }
+      `,
+          'index.js': `
+  export * from './src/index';
+      `,
+          'src/index.js': `
+  const foo = 'foo';
+  export { foo };
+      `,
+        }),
+      );
+      execSync(
+        'cd ./tmp/packages/mako-test-package-link && pnpm link --global',
+      );
+      execSync('pnpm link --global mako-test-package-link');
+    },
+    (lastResult) => {
+      assert.equal(lastResult.html, '<div>foo</div>', 'Initial render');
+    },
+    () => {
+      writePackage(
+        'mako-test-package-link',
+        normalizeFiles({
+          'src/index.js': `
+const foo = 'bar';
+export { foo };
+    `,
+        }),
+      );
+    },
+    (thisResult) => {
+      assert.equal(thisResult.html, '<div>bar</div>', 'Second render');
+      fs.unlinkSync('./node_modules/mako-test-package-link');
+    },
+    true,
+  );
+});
+
 function normalizeFiles(files, makoConfig = {}) {
   return {
     '/public/index.html': `
@@ -1101,6 +1165,14 @@ function normalizeFiles(files, makoConfig = {}) {
 function write(files) {
   for (const [file, content] of Object.entries(files)) {
     const p = path.join(tmp, file);
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, content, 'utf-8');
+  }
+}
+
+function writePackage(packageName, files) {
+  for (const [file, content] of Object.entries(files)) {
+    const p = path.join(tmpPackages, packageName, file);
     fs.mkdirSync(path.dirname(p), { recursive: true });
     fs.writeFileSync(p, content, 'utf-8');
   }
@@ -1162,13 +1234,15 @@ function normalizeHtml(html) {
 }
 
 async function commonTest(
-  files = {},
+  initFilesOrFunc = {},
   lastResultCallback = () => {},
   modifyFilesOrCallback = () => {},
   thisResultCallback = () => {},
   shouldReload = false,
 ) {
-  write(normalizeFiles(files));
+  typeof initFilesOrFunc === 'function'
+    ? await initFilesOrFunc()
+    : write(normalizeFiles(files));
   await startMakoDevServer();
   await delay(DELAY_TIME);
   const { browser, page } = await startBrowser();

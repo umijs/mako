@@ -171,7 +171,7 @@ impl DevServer {
         // let mut watcher = RecommendedWatcher::new(tx, notify::Config::default())?;
         let mut debouncer = new_debouncer(Duration::from_millis(10), None, tx).unwrap();
         let watcher = debouncer.watcher();
-        Watch::watch(&root, watcher)?;
+        Watch::watch(&root, watcher, &compiler)?;
 
         let initial_hash = compiler.full_hash();
         let mut last_cache_hash = Box::new(initial_hash);

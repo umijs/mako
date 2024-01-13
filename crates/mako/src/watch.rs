@@ -1,10 +1,13 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
+use std::sync::Arc;
 
-use mako_core::anyhow;
+use mako_core::anyhow::{self, Ok};
 use mako_core::notify::{self, EventKind, Watcher};
 use mako_core::notify_debouncer_full::DebouncedEvent;
+
+use crate::compiler::Compiler;
 
 pub struct Watch {
     pub root: PathBuf,
@@ -14,7 +17,11 @@ pub struct Watch {
 
 impl Watch {
     // pub fn watch(root: &PathBuf, watcher: &mut notify::RecommendedWatcher) -> anyhow::Result<()> {
-    pub fn watch(root: &PathBuf, watcher: &mut notify::RecommendedWatcher) -> anyhow::Result<()> {
+    pub fn watch(
+        root: &PathBuf,
+        watcher: &mut notify::RecommendedWatcher,
+        compiler: &Arc<Compiler>,
+    ) -> anyhow::Result<()> {
         let items = std::fs::read_dir(root)?;
         items
             .into_iter()
@@ -32,6 +39,19 @@ impl Watch {
                 }
                 Ok(())
             })?;
+
+        let module_graph = compiler.context.module_graph.read().unwrap();
+        let (dependencies, _) = module_graph.toposort();
+        dependencies
+            .into_iter()
+            .try_for_each(|module_id| -> anyhow::Result<()> {
+                let path = Path::new(&module_id.id);
+                if path.is_file() {
+                    watcher.watch(Path::new(&path), notify::RecursiveMode::NonRecursive)?;
+                }
+                Ok(())
+            })?;
+
         Ok(())
     }
 
