@@ -8,6 +8,7 @@ use mako_core::notify::{self, EventKind, Watcher};
 use mako_core::notify_debouncer_full::DebouncedEvent;
 
 use crate::compiler::Compiler;
+use crate::resolve::ResolverResource;
 
 pub struct Watch {
     pub root: PathBuf,
@@ -43,11 +44,17 @@ impl Watch {
         let module_graph = compiler.context.module_graph.read().unwrap();
         let (dependencies, _) = module_graph.toposort();
         dependencies
-            .into_iter()
+            .iter()
             .try_for_each(|module_id| -> anyhow::Result<()> {
-                let path = Path::new(&module_id.id);
-                if path.is_file() {
-                    watcher.watch(Path::new(&path), notify::RecursiveMode::NonRecursive)?;
+                if let Some(module) = module_graph.get_module(module_id) {
+                    if let Some(ResolverResource::Resolved(resource)) = module
+                        .info
+                        .as_ref()
+                        .and_then(|info| info.resolved_resource.as_ref())
+                    {
+                        let path = &resource.0.path;
+                        watcher.watch(Path::new(&path), notify::RecursiveMode::NonRecursive)?;
+                    }
                 }
                 Ok(())
             })?;

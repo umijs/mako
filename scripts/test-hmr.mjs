@@ -1070,65 +1070,101 @@ runTest('issue: 861', async () => {
 });
 
 runTest('link npm packages', async () => {
-  await commonTest(
-    () => {
-      write(
-        normalizeFiles({
-          '/src/index.tsx': `
-  import React from 'react';
-  import ReactDOM from "react-dom/client";
-  import { foo } from "mako-test-package-link";
-  function App() {
-    return <div>{foo}<section>{Math.random()}</section></div>;
-  }
-  ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
-      `,
-        }),
-      );
-      writePackage(
-        'mako-test-package-link',
-        normalizeFiles({
-          'package.json': `
-  {
-    "name": "mako-test-package-link",
-    "version": "1.0.0",
-    "main": "index.js"
-  }
-      `,
-          'index.js': `
-  export * from './src/index';
-      `,
-          'src/index.js': `
-  const foo = 'foo';
-  export { foo };
-      `,
-        }),
-      );
-      execSync(
-        'cd ./tmp/packages/mako-test-package-link && pnpm link --global',
-      );
-      execSync('pnpm link --global mako-test-package-link');
-    },
-    (lastResult) => {
-      assert.equal(lastResult.html, '<div>foo</div>', 'Initial render');
-    },
-    () => {
-      writePackage(
-        'mako-test-package-link',
-        normalizeFiles({
-          'src/index.js': `
-const foo = 'bar';
-export { foo };
+  write(
+    normalizeFiles({
+      '/src/index.tsx': `
+import React from 'react';
+import ReactDOM from "react-dom/client";
+import { foo } from "mako-test-package-link";
+function App() {
+  return <div>{foo}<section>{Math.random()}</section></div>;
+}
+ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
     `,
-        }),
-      );
-    },
-    (thisResult) => {
-      assert.equal(thisResult.html, '<div>bar</div>', 'Second render');
-      fs.unlinkSync('./node_modules/mako-test-package-link');
-    },
-    true,
+    }),
   );
+  writePackage(
+    'mako-test-package-link',
+    normalizeFiles({
+      'package.json': `
+{
+"name": "mako-test-package-link",
+"version": "1.0.0",
+"main": "index.js"
+}
+  `,
+      'index.js': `
+export * from './src/index';
+  `,
+      'src/index.js': `
+const foo = 'foo';
+export { foo };
+  `,
+    }),
+  );
+  execSync('cd ./tmp/packages/mako-test-package-link && pnpm link --global');
+  execSync('pnpm link --global mako-test-package-link');
+  await startMakoDevServer();
+  await delay(DELAY_TIME);
+  const { browser, page } = await startBrowser();
+  let lastResult;
+  let thisResult;
+  let isReload;
+  lastResult = normalizeHtml(await getRootHtml(page));
+  assert.equal(lastResult.html, '<div>foo</div>', 'Initial render');
+
+  // modify package file content
+  writePackage(
+    'mako-test-package-link',
+    normalizeFiles({
+      'src/index.js': `
+      const foo = 'foo2';
+      export { foo };
+    `,
+    }),
+  );
+  await delay(DELAY_TIME);
+  thisResult = normalizeHtml(await getRootHtml(page));
+  assert.equal(thisResult.html, '<div>foo2</div>', 'Second render');
+  isReload = lastResult.random !== thisResult.random;
+  assert.equal(isReload, true, 'should reload');
+  lastResult = thisResult;
+
+  //   // add files
+  //   writePackage(
+  //     'mako-test-package-link',
+  //     normalizeFiles({
+  //       'src/index2.js': `
+  //         const bar = 'bar';
+  //         export { bar };
+  //       `,
+  //       'index.js': `
+  //     export * from './src/index';
+  //     export * from './src/index2';
+  //       `,
+  //     }),
+  //   );
+  //   write(
+  //     normalizeFiles({
+  //       '/src/index.tsx': `
+  // import React from 'react';
+  // import ReactDOM from "react-dom/client";
+  // import { foo, bar } from "mako-test-package-link";
+  // function App() {
+  //   return <div>{foo}{bar}<section>{Math.random()}</section></div>;
+  // }
+  // ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
+  //     `,
+  //     }),
+  //   );
+  //   await delay(DELAY_TIME);
+  //   thisResult = normalizeHtml(await getRootHtml(page));
+  //   assert.equal(thisResult.html, '<div>foo2bar</div>', 'Third render');
+  //   isReload = lastResult.random !== thisResult.random;
+  //   assert.equal(isReload, true, 'should reload');
+
+  await cleanup({ process, browser });
+  fs.unlinkSync('./node_modules/mako-test-package-link');
 });
 
 function normalizeFiles(files, makoConfig = {}) {
