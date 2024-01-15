@@ -245,7 +245,7 @@ mod tests {
     use crate::assert_display_snapshot;
     use crate::ast::build_js_ast;
     use crate::compiler::Context;
-    use crate::module::{Dependency, ModuleId, ResolveType};
+    use crate::module::{Dependency, Module, ModuleId, ResolveType};
     use crate::test_helper::transform_ast_with;
     use crate::transformers::test_helper::transform_js_code;
     use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
@@ -266,6 +266,16 @@ mod tests {
             };
 
             let cloned = context.clone();
+
+            cloned.module_graph.write().unwrap().add_module(
+                Module {
+                    id: "index.jsx".to_string().into(),
+                    is_entry: false,
+                    info: None,
+                    side_effects: false,
+                }
+            );
+
             let module_id = ModuleId::new("index.jsx".to_string());
             let mut visitor: Box<dyn VisitMut> = Box::new(chain!(
                 resolver(ast.unresolved_mark, ast.top_level_mark, false),
@@ -385,9 +395,17 @@ mod tests {
     }
 
     fn transform_code(code: &str) -> String {
-        let context = Arc::new(Default::default());
+        let context: Arc<Context> = Arc::new(Default::default());
         let unresolved_mark = Default::default();
         let top_level_mark = Default::default();
+
+        context.module_graph.write().unwrap().add_module(Module {
+            id: "index.jsx".to_string().into(),
+            is_entry: false,
+            info: None,
+            side_effects: false,
+        });
+
         let mut visitor = DepReplacer {
             module_id: &ModuleId::new("index.jsx".into()),
             to_replace: &DependenciesToReplace {

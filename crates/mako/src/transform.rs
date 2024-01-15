@@ -262,7 +262,7 @@ mod tests {
     use crate::chunk_graph::ChunkGraph;
     use crate::compiler::{Context, Meta};
     use crate::config::{hash_config, Config};
-    use crate::module::ModuleId;
+    use crate::module::{Module, ModuleId};
     use crate::module_graph::ModuleGraph;
     use crate::resolve::get_resolvers;
     use crate::task::Task;
@@ -758,6 +758,21 @@ const require = window.require;
         let mut chunk_graph = ChunkGraph::new();
         chunk_graph.add_chunk(Chunk::new("./foo".to_string().into(), ChunkType::Async));
 
+        let mut module_graph = ModuleGraph::new();
+
+        module_graph.add_module(Module {
+            id: "test".to_string().into(),
+            is_entry: false,
+            info: None,
+            side_effects: false,
+        });
+        module_graph.add_module(Module {
+            id: "index.jsx".to_string().into(),
+            is_entry: false,
+            info: None,
+            side_effects: false,
+        });
+
         let resolvers = get_resolvers(&config);
         let config_hash = hash_config(&config);
 
@@ -766,7 +781,7 @@ const require = window.require;
             config_hash,
             args: Default::default(),
             root: root.clone(),
-            module_graph: RwLock::new(ModuleGraph::new()),
+            module_graph: RwLock::new(module_graph),
             chunk_graph: RwLock::new(chunk_graph),
             assets_info: Mutex::new(HashMap::new()),
             modules_with_missing_deps: RwLock::new(Vec::new()),
