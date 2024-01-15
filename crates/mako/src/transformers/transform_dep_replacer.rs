@@ -102,16 +102,31 @@ impl VisitMut for DepReplacer<'_> {
                                 spread: None,
                                 expr: Box::new(miss_throw_stmt(&source_string)),
                             };
+                            return;
                         }
                         None => {
                             self.replace_source(source);
                         }
                     }
 
+                    let is_dep_replaceable = || {
+                        let module_graph = self.context.module_graph.read().unwrap();
+                        // 必须用 source 来查 dep_module_id , to_replace 数据中的 module id 可能是压缩过的
+                        let dep_module_id = module_graph
+                            .get_dependency_module_by_source(self.module_id, &source_string);
+                        dep_module_id.map_or(false, |module_id| {
+                            let file_request = parse_path(&module_id.id).unwrap();
+                            is_css_path(&file_request.path)
+                                && (file_request.query.is_empty()
+                                    || file_request.has_query("modules"))
+                        })
+                    };
+
                     let file_request = parse_path(&source_string).unwrap();
-                    if is_css_path(&file_request.path)
-                        && (file_request.query.is_empty() || file_request.has_query("modules"))
-                    {
+                    let is_source_replaceable = is_css_path(&file_request.path)
+                        && (file_request.query.is_empty() || file_request.has_query("modules"));
+
+                    if is_source_replaceable || is_dep_replaceable() {
                         // remove `require('./xxx.css');`
                         if is_commonjs_require_flag {
                             *expr = Expr::Lit(quote_str!("").into())
