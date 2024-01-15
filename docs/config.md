@@ -352,7 +352,22 @@ publicPath 配置。注：有个特殊值 `"runtime"`，表示会切换到 runti
 
 ## transformImport
 
-> TODO: @辟殊。
+- 类型：`false | { libraryName: string, libraryDirectory: string, style: boolean }`
+- 默认值：`false`
+
+简化版 babel-plugin-import，仅支持 libraryName、libraryDirectory 及 style 三个配置项，用于满足存量项目 antd v4 样式按需加载的需求。
+
+比如：
+
+```ts
+{
+  transformImport: {
+    libraryName: "antd",
+    libraryDirectory: "es",
+    style: true,
+  },
+}
+```
 
 ## umd
 
