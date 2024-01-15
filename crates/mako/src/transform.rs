@@ -593,7 +593,10 @@ require("foo");
         let (code, _sourcemap) = transform_js_code(
             code,
             None,
-            HashMap::from([("foo".to_string(), "./bar".to_string())]),
+            HashMap::from([(
+                "foo".to_string(),
+                ("./bar".to_string(), "./bar".to_string()),
+            )]),
         );
         println!(">> CODE\n{}", code);
         assert_eq!(
@@ -624,7 +627,10 @@ if(true) { console.log("1"); } else { console.log("2"); }
         let (code, _sourcemap) = transform_js_code(
             code,
             None,
-            HashMap::from([("foo".to_string(), "./bar".to_string())]),
+            HashMap::from([(
+                "foo".to_string(),
+                ("./bar".to_string(), "./bar".to_string()),
+            )]),
         );
         println!(">> CODE\n{}", code);
         assert_eq!(
@@ -654,7 +660,10 @@ if(/x/ === /x/) { "should keep" }
         let (code, _sourcemap) = transform_js_code(
             code,
             None,
-            HashMap::from([("foo".to_string(), "./bar".to_string())]),
+            HashMap::from([(
+                "foo".to_string(),
+                ("./bar".to_string(), "./bar".to_string()),
+            )]),
         );
         println!(">> CODE\n{}", code);
         assert_eq!(
@@ -738,7 +747,7 @@ const require = window.require;
     fn transform_js_code(
         origin: &str,
         path: Option<&str>,
-        dep: HashMap<String, String>,
+        dep: HashMap<String, (String, String)>,
     ) -> (String, String) {
         let path = path.unwrap_or("test.tsx");
         let current_dir = std::env::current_dir().unwrap();

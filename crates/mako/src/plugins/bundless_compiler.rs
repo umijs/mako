@@ -163,15 +163,13 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
                         }
                     };
 
-                    Ok((dep.source.clone(), replacement))
+                    Ok((dep.source.clone(), (replacement.clone(), replacement)))
                 })
                 .collect::<Result<Vec<_>>>();
 
-            let resolved_deps: HashMap<String, String> = resolved_deps?.into_iter().collect();
-            let _assets_map: HashMap<String, String> = deps
-                .into_iter()
-                .map(|(id, dep)| (dep.source.clone(), id.id.clone()))
-                .collect();
+            let resolved_deps: HashMap<String, (String, String)> =
+                resolved_deps?.into_iter().collect();
+
             drop(module_graph);
 
             // let deps: Vec<(&ModuleId, &crate::module::Dependency)> =

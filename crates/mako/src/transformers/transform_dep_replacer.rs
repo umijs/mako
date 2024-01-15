@@ -26,7 +26,7 @@ pub struct DepReplacer<'a> {
 
 #[derive(Debug, Clone)]
 pub struct DependenciesToReplace {
-    pub resolved: HashMap<String, String>,
+    pub resolved: HashMap<String, (String, String)>,
     pub missing: HashMap<String, Dependency>,
     pub ignored: Vec<String>,
 }
@@ -110,16 +110,14 @@ impl VisitMut for DepReplacer<'_> {
                     }
 
                     let is_dep_replaceable = || {
-                        let module_graph = self.context.module_graph.read().unwrap();
-                        // 必须用 source 来查 dep_module_id , to_replace 数据中的 module id 可能是压缩过的
-                        let dep_module_id = module_graph
-                            .get_dependency_module_by_source(self.module_id, &source_string);
-                        dep_module_id.map_or(false, |module_id| {
-                            let file_request = parse_path(&module_id.id).unwrap();
+                        if let Some((_, raw_id)) = self.to_replace.resolved.get(&source_string) {
+                            let file_request = parse_path(raw_id).unwrap();
                             is_css_path(&file_request.path)
                                 && (file_request.query.is_empty()
                                     || file_request.has_query("modules"))
-                        })
+                        } else {
+                            false
+                        }
                     };
 
                     let file_request = parse_path(&source_string).unwrap();
@@ -129,7 +127,8 @@ impl VisitMut for DepReplacer<'_> {
                     if is_source_replaceable || is_dep_replaceable() {
                         // remove `require('./xxx.css');`
                         if is_commonjs_require_flag {
-                            *expr = Expr::Lit(quote_str!("").into())
+                            *expr = Expr::Lit(quote_str!("").into());
+                            return;
                         } else {
                             // `import('./xxx.css')` 中的 css 模块会被拆分到单独的 chunk, 这里需要改为加载 css chunk
                             let module_graph = self.context.module_graph.read().unwrap();
@@ -146,11 +145,14 @@ impl VisitMut for DepReplacer<'_> {
                                     // `import('./xxx.css')` => `__mako_require__.ensure('./xxx.css')`
                                     *expr = member_expr!(DUMMY_SP, __mako_require__.ensure)
                                         .as_call(DUMMY_SP, vec![quote_str!(chunk_id).as_arg()]);
+                                    return;
                                 } else {
-                                    *expr = Expr::Lit(quote_str!("").into())
+                                    *expr = Expr::Lit(quote_str!("").into());
+                                    return;
                                 }
                             } else {
-                                *expr = Expr::Lit(quote_str!("").into())
+                                *expr = Expr::Lit(quote_str!("").into());
+                                return;
                             }
                         }
                     }
@@ -183,7 +185,7 @@ impl DepReplacer<'_> {
     fn replace_source(&mut self, source: &mut Str) {
         let to_replace =
             if let Some(replacement) = self.to_replace.resolved.get(&source.value.to_string()) {
-                replacement.clone()
+                replacement.0.clone()
             } else if self.to_replace.ignored.contains(&source.value.to_string()) {
                 "$$IGNORED$$".to_string()
             } else {
@@ -255,26 +257,28 @@ mod tests {
         let context: Arc<Context> = Arc::new(Default::default());
 
         GLOBALS.set(&context.meta.script.globals, || {
-            let mut ast = build_js_ast("index.jsx",
-                                       r#"require("react")"#
-                                       , &context.clone()).unwrap();
+            let mut ast =
+                build_js_ast("index.jsx", r#"require("react")"#, &context.clone()).unwrap();
 
-            let to_replace  = DependenciesToReplace {
-                resolved: hashmap! {"react".to_string()=> "/root/node_modules/react/index.js".to_string()},
+            let to_replace = DependenciesToReplace {
+                resolved: hashmap! {"react".to_string()=>
+                    (
+                        "/root/node_modules/react/index.js".to_string(),
+                        "/root/node_modules/react/index.js".to_string()
+                    )
+                },
                 missing: HashMap::new(),
                 ignored: vec![],
             };
 
             let cloned = context.clone();
 
-            cloned.module_graph.write().unwrap().add_module(
-                Module {
-                    id: "index.jsx".to_string().into(),
-                    is_entry: false,
-                    info: None,
-                    side_effects: false,
-                }
-            );
+            cloned.module_graph.write().unwrap().add_module(Module {
+                id: "index.jsx".to_string().into(),
+                is_entry: false,
+                info: None,
+                side_effects: false,
+            });
 
             let module_id = ModuleId::new("index.jsx".to_string());
             let mut visitor: Box<dyn VisitMut> = Box::new(chain!(
@@ -288,7 +292,11 @@ mod tests {
                 }
             ));
 
-            assert_display_snapshot!(transform_ast_with(&mut ast.ast, &mut visitor, &context.meta.script.cm));
+            assert_display_snapshot!(transform_ast_with(
+                &mut ast.ast,
+                &mut visitor,
+                &context.meta.script.cm
+            ));
         });
     }
 
@@ -410,7 +418,12 @@ mod tests {
             module_id: &ModuleId::new("index.jsx".into()),
             to_replace: &DependenciesToReplace {
                 resolved: hashmap! {
-                    "x".to_string() => "/x/index.js".to_string()
+                    "x".to_string() =>
+                    (
+
+                     "/x/index.js".to_string(),
+                     "/x/index.js".to_string()
+                    )
                 },
                 missing: hashmap! {},
                 ignored: vec![],
