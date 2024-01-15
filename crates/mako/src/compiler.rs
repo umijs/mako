@@ -103,7 +103,6 @@ impl Context {
 
     pub fn get_static_content<T: AsRef<str>>(&self, path: T) -> Option<Vec<u8>> {
         let map = self.static_cache.read().unwrap();
-
         map.read(path)
     }
 }
@@ -220,7 +219,9 @@ impl Compiler {
         args: Args,
         extra_plugins: Option<Vec<Arc<dyn Plugin>>>,
     ) -> Result<Self> {
-        assert!(root.is_absolute(), "root path must be absolute");
+        if !root.is_absolute() {
+            return Err(anyhow!("root path must be absolute"));
+        }
 
         // why add plugins before builtin plugins?
         // because plugins like less-loader need to be added before assets plugin
@@ -357,7 +358,7 @@ impl Compiler {
     pub fn compile(&self) -> Result<()> {
         // 先清空 dist 目录
         if self.context.config.clean {
-            self.clean_dist();
+            self.clean_dist()?;
         }
 
         let t_compiler = Instant::now();
@@ -396,14 +397,13 @@ impl Compiler {
                 is_first_compile: true,
                 time: t_compiler.elapsed().as_millis() as u64,
                 stats: PluginGenerateStats {
-                    start_time: start_time.duration_since(UNIX_EPOCH).unwrap().as_millis() as u64,
-                    end_time: end_time.duration_since(UNIX_EPOCH).unwrap().as_millis() as u64,
+                    start_time: start_time.duration_since(UNIX_EPOCH)?.as_millis() as u64,
+                    end_time: end_time.duration_since(UNIX_EPOCH)?.as_millis() as u64,
                 },
             };
             self.context
                 .plugin_driver
-                .generate_end(&params, &self.context)
-                .unwrap();
+                .generate_end(&params, &self.context)?;
             Ok(())
         } else {
             result
@@ -414,15 +414,15 @@ impl Compiler {
         mako_core::mako_profile_function!();
         let cg = self.context.chunk_graph.read().unwrap();
         let mg = self.context.module_graph.read().unwrap();
-
         cg.full_hash(&mg)
     }
 
-    pub fn clean_dist(&self) {
+    pub fn clean_dist(&self) -> Result<()> {
         // compiler 前清除 dist，如果后续 dev 环境不在 output_path 里，需要再补上 dev 的逻辑
         let output_path = &self.context.config.output.path;
         if fs::metadata(output_path).is_ok() {
-            fs::remove_dir_all(output_path).unwrap();
+            fs::remove_dir_all(output_path)?;
         }
+        Ok(())
     }
 }
