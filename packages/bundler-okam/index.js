@@ -75,6 +75,7 @@ exports.build = async function (opts) {
     });
   } catch (e) {
     console.error(e.message);
+    opts.onBuildError?.(e);
     const err = new Error('Build with mako failed.');
     err.stack = null;
     throw err;
@@ -208,6 +209,7 @@ exports.dev = async function (opts) {
       watch: true,
     });
   } catch (e) {
+    opts.onBuildError?.(e);
     console.error(e.message);
     const err = new Error('Build with mako failed.');
     err.stack = null;
@@ -424,7 +426,11 @@ async function getOkamConfig(opts) {
   let makoConfig = {};
   const makoConfigPath = path.join(opts.cwd, 'mako.config.json');
   if (fs.existsSync(makoConfigPath)) {
-    makoConfig = JSON.parse(fs.readFileSync(makoConfigPath, 'utf-8'));
+    try {
+      makoConfig = JSON.parse(fs.readFileSync(makoConfigPath, 'utf-8'));
+    } catch (e) {
+      throw new Error(`Parse mako.config.json failed: ${e.message}`);
+    }
   }
 
   const {
