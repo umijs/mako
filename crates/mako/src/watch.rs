@@ -42,20 +42,19 @@ impl Watch {
             })?;
 
         let module_graph = compiler.context.module_graph.read().unwrap();
-        let (dependencies, _) = module_graph.toposort();
-        dependencies
+        module_graph
+            .modules()
             .iter()
-            .try_for_each(|module_id| -> anyhow::Result<()> {
-                if let Some(module) = module_graph.get_module(module_id) {
-                    if let Some(ResolverResource::Resolved(resource)) = module
-                        .info
-                        .as_ref()
-                        .and_then(|info| info.resolved_resource.as_ref())
-                    {
-                        let path = &resource.0.path;
-                        watcher.watch(Path::new(&path), notify::RecursiveMode::NonRecursive)?;
-                    }
+            .try_for_each(|module| -> anyhow::Result<()> {
+                if let Some(ResolverResource::Resolved(resource)) = module
+                    .info
+                    .as_ref()
+                    .and_then(|info| info.resolved_resource.as_ref())
+                {
+                    let path = &resource.0.path;
+                    watcher.watch(Path::new(&path), notify::RecursiveMode::NonRecursive)?;
                 }
+
                 Ok(())
             })?;
 
