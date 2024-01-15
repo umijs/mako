@@ -14,3 +14,9 @@ assert(
   !content.includes(`myCss`),
   "should remove aliased css file"
 );
+
+
+assert(
+  content.includes(`__mako_require__("src/css.module.css?asmodule")`),
+  "should keep css module"
+);
