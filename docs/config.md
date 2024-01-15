@@ -170,7 +170,12 @@ import("./a.js")
 
 ## ignoreCSSParserErrors
 
-> 注：已废弃，待移除。
+- 类型：`boolean`
+- 默认值：`false`
+
+是否忽略 CSS 解析错误。
+
+默认配置是，项目 CSS 有错误就报错，node_modules 下的 CSS 不报错，因为 node_modules 下的 CSS 有很多是不符合规范的，但却不是自己可控的。`ignoreCSSParserErrors` 配置的作用是忽略项目下的 CSS 报错，比如用 Less 编译 less 文件时，会把 node_modules 下的 less 文件也编译进去，此时不能区分是否来自 node_modules 下，而用户对来自 node_modules 下的代码又没有控制权，所以加此配置项。
 
 ## ignores
 
@@ -262,7 +267,7 @@ moduleId 的生成策略。
 
 是否优化 package imports。
 
-注：实现属性，暂时勿用。
+注：实验属性，暂时勿用。
 
 ## platform
 
