@@ -26,6 +26,8 @@ pub struct DepReplacer<'a> {
 
 #[derive(Debug, Clone)]
 pub struct DependenciesToReplace {
+    // resolved stores the "source" maps to (generate_id, raw_module_id)
+    // e.g. "react" => ("hashed_id", "/abs/to/react/index.js")
     pub resolved: HashMap<String, (String, String)>,
     pub missing: HashMap<String, Dependency>,
     pub ignored: Vec<String>,
@@ -109,22 +111,17 @@ impl VisitMut for DepReplacer<'_> {
                         }
                     }
 
-                    let is_dep_replaceable = || {
-                        if let Some((_, raw_id)) = self.to_replace.resolved.get(&source_string) {
-                            let file_request = parse_path(raw_id).unwrap();
-                            is_css_path(&file_request.path)
-                                && (file_request.query.is_empty()
-                                    || file_request.has_query("modules"))
-                        } else {
-                            false
-                        }
+                    let is_dep_replaceable = if let Some((_, raw_id)) =
+                        self.to_replace.resolved.get(&source_string)
+                    {
+                        let file_request = parse_path(raw_id).unwrap();
+                        is_css_path(&file_request.path)
+                            && (file_request.query.is_empty() || file_request.has_query("modules"))
+                    } else {
+                        false
                     };
 
-                    let file_request = parse_path(&source_string).unwrap();
-                    let is_source_replaceable = is_css_path(&file_request.path)
-                        && (file_request.query.is_empty() || file_request.has_query("modules"));
-
-                    if is_source_replaceable || is_dep_replaceable() {
+                    if is_dep_replaceable {
                         // remove `require('./xxx.css');`
                         if is_commonjs_require_flag {
                             *expr = Expr::Lit(quote_str!("").into());
