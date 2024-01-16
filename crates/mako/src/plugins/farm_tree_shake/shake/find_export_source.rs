@@ -8,6 +8,8 @@ impl TreeShakeModule {
         let mut local_ident = None;
         let mut re_export_type = None;
 
+        let mut ambiguous_named = vec![];
+
         for stmt in self.stmt_graph.stmts() {
             if let Some(export_info) = &stmt.export_info {
                 if let Some(export_specifier) = export_info.find_export_specifier(ident) {
@@ -21,10 +23,17 @@ impl TreeShakeModule {
                                     });
                                 }
                             }
-                            ExportSpecifierInfo::Ambiguous(_) => {
-                                // TODO
-                                // Ambiguous usually means mixed with cjs, currently cjs
-                                // always has side effects
+                            ExportSpecifierInfo::Ambiguous(all_exports) => {
+                                let reexport_source = ReExportSource {
+                                    re_export_type: ReExportType::Named(strip_context(ident)),
+                                    source: Some(source.clone()),
+                                };
+
+                                if all_exports.iter().any(|i| is_ident_sym_equal(i, ident)) {
+                                    return Some(reexport_source);
+                                } else {
+                                    ambiguous_named.push(reexport_source);
+                                }
                             }
                             ExportSpecifierInfo::Named { exported, local } => {
                                 let stripped_local = strip_context(local);
@@ -54,7 +63,10 @@ impl TreeShakeModule {
                             ExportSpecifierInfo::Default(_) => {
                                 // Never when export with source
                                 // export default from "x" is not supported in mako
-                                return None;
+
+                                if ident == "default" {
+                                    return None;
+                                }
                             }
                             // export * as x from "x"
                             ExportSpecifierInfo::Namespace(name) => {
@@ -65,8 +77,6 @@ impl TreeShakeModule {
                                         source: Some(source.clone()),
                                     });
                                 }
-
-                                return None;
                             }
                         }
                     } else {
@@ -110,6 +120,10 @@ impl TreeShakeModule {
                     }
                 }
             }
+        }
+
+        if ambiguous_named.len() == 1 {
+            return ambiguous_named.pop();
         }
 
         if let Some(local) = &local_ident {

@@ -554,6 +554,12 @@ fn find_ident_export_source(
                                 from_module_id: next_replace.from_module_id.clone(),
                                 re_export_source: next_replace.re_export_source,
                             });
+                        } else {
+                            return Some(ReExportReplace {
+                                re_export_ident: used_ident.clone(),
+                                from_module_id: next_tsm.module_id.clone(),
+                                re_export_source,
+                            });
                         }
                     } else {
                         return Some(ReExportReplace {
