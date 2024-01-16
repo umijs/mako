@@ -106,6 +106,12 @@ importers:
         specifier: ^2.14.8
         version: 2.14.8
 
+  e2e/fixtures.umi/react-16:
+    dependencies:
+      react:
+        specifier: '16'
+        version: 16.14.0
+
   examples/config-externals:
     devDependencies:
       '@alipay/umi-bundler-okam':
@@ -11285,6 +11291,15 @@ packages:
       prop-types: 15.8.1
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
+
+  /react@16.14.0:
+    resolution: {integrity: sha512-0X2CImDkJGApiAlcf0ODKIneSwBPhqJawOa5wCtKbu7ZECrmS26NvtSILynQ66cgkT/RJ4LidJOc3bUESwmU8g==}
+    engines: {node: '>=0.10.0'}
+    dependencies:
+      loose-envify: 1.4.0
+      object-assign: 4.1.1
+      prop-types: 15.8.1
+    dev: false
 
   /react@18.1.0:
     resolution: {integrity: sha512-4oL8ivCz5ZEPyclFQXaNksK3adutVS8l2xzZU0cqEFrE9Sb7fC0EFK5uEk74wIreL1DERyjvsU915j1pcT2uEQ==}

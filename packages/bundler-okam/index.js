@@ -565,6 +565,7 @@ async function getOkamConfig(opts) {
     externals: externalsConfig,
     clean,
     flexBugs: true,
+    react: opts.react || {},
     ...(opts.disableCopy ? { copy: [] } : { copy: ['public'].concat(copy) }),
   };
 
