@@ -407,13 +407,6 @@ mod tests {
         let unresolved_mark = Default::default();
         let top_level_mark = Default::default();
 
-        context.module_graph.write().unwrap().add_module(Module {
-            id: "index.jsx".to_string().into(),
-            is_entry: false,
-            info: None,
-            side_effects: false,
-        });
-
         let mut visitor = DepReplacer {
             module_id: &ModuleId::new("index.jsx".into()),
             to_replace: &DependenciesToReplace {
