@@ -153,6 +153,7 @@ pub enum CodeSplittingStrategy {
     #[serde(untagged)]
     Advanced(OptimizeChunkOptions),
 }
+
 #[derive(Deserialize, Serialize, Clone, Copy, Debug)]
 pub enum TreeShakingStrategy {
     #[serde(rename = "basic")]
@@ -274,6 +275,24 @@ pub struct InjectItem {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+pub enum ReactRuntimeConfig {
+    #[serde(rename = "automatic")]
+    Automatic,
+    #[serde(rename = "classic")]
+    Classic,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct ReactConfig {
+    pub pragma: String,
+    #[serde(rename = "importSource")]
+    pub import_source: String,
+    pub runtime: ReactRuntimeConfig,
+    #[serde(rename = "pragmaFrag")]
+    pub pragma_frag: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct MinifishConfig {
     pub mapping: HashMap<String, String>,
@@ -349,6 +368,7 @@ pub struct Config {
     pub flex_bugs: bool,
     #[serde(deserialize_with = "deserialize_optimization")]
     pub optimization: Option<OptimizationConfig>,
+    pub react: ReactConfig,
 }
 
 pub(crate) fn hash_config(c: &Config) -> u64 {
@@ -496,7 +516,13 @@ const DEFAULT_CONFIG: &str = r#"
     "optimizePackageImports": false,
     "emotion": false,
     "flexBugs": false,
-    "optimization": { "skipModules": false }
+    "optimization": { "skipModules": false },
+    "react": {
+      "pragma": "React.createElement",
+      "importSource": "react",
+      "runtime": "automatic",
+      "pragmaFrag": "React.Fragment"
+    },
 }
 "#;
 
