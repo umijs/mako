@@ -325,6 +325,40 @@ publicPath 配置。注：有个特殊值 `"runtime"`，表示会切换到 runti
 - `selectorBlackList`，选择器黑名单
 - `selectorWhiteList`，选择器白名单
 
+## react
+
+- 类型：`{ runtime: "automatic" | "classic", pragma: string, import_source: string, pragma_frag: string }`
+- 默认值：`{ runtime: "automatic", pragma: "React.createElement", import_source: "react", pragma_frag: "React.Fragment" }`
+
+react 编译相关配置。
+
+比如。
+
+```tsx
+function App() {
+  return <div>1</div>;
+}
+```
+
+runtime 为 automatic 时的产物如下，
+
+```ts
+import { jsx as _jsx } from "react/jsx-runtime";
+function App() {
+  return /*#__PURE__*/_jsx("div", {
+    children: "1"
+  });
+}
+```
+
+runtime 为 classic 时的产物如下，
+
+```ts
+function App() {
+  return /*#__PURE__*/React.createElement("div", null, "1");
+}
+```
+
 ## resolve
 
 - 类型：`{ alias: Record<string, string>, extensions: string[] }`

@@ -103,6 +103,12 @@ pub struct BuildParams {
     optimization?: false | {
         skipModules?: boolean;
     };
+    react?: {
+        runtime?: "automatic" | "classic";
+        pragma?: string;
+        importSource?: string;
+        pragmaFrag?: string;
+    };
 }"#)]
     pub config: serde_json::Value,
     pub hooks: JsHooks,
