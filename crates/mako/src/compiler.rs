@@ -235,6 +235,7 @@ impl Compiler {
             Arc::new(plugins::copy::CopyPlugin {}),
             Arc::new(plugins::import::ImportPlugin {}),
             // file types
+            Arc::new(plugins::raw::RawPlugin {}),
             Arc::new(plugins::css::CSSPlugin {}),
             Arc::new(plugins::context_module::ContextModulePlugin {}),
             Arc::new(plugins::javascript::JavaScriptPlugin {}),
