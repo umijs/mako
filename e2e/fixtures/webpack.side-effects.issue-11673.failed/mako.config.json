@@ -1,0 +1,9 @@
+{
+  "entry": {
+    "index": "index.js"
+  },
+  "optimization": {
+    "skipModules": true
+  },
+  "ignores": ["worker_threads"]
+}

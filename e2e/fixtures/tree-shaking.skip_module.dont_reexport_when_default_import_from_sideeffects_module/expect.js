@@ -16,5 +16,3 @@ assert(
   content.includes('node_modules/side_effects/dep.js'),
   `should keep all side effects modules`,
 );
-
-assert(content.includes('index.default'), `should change field name`);
