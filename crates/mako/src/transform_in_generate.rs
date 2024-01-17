@@ -103,18 +103,21 @@ pub fn transform_modules_in_thread(
         pool.spawn(move || {
             let module_graph = context.module_graph.read().unwrap();
             let deps = module_graph.get_dependencies(&module_id);
-            let mut resolved_deps: HashMap<String, String> = deps
+            let mut resolved_deps: HashMap<String, (String, String)> = deps
                 .into_iter()
                 .map(|(id, dep)| {
                     (
                         dep.source.clone(),
-                        if dep.resolve_type == ResolveType::Worker {
-                            let chunk_id = id.generate(&context);
-                            let chunk_graph = context.chunk_graph.read().unwrap();
-                            chunk_graph.chunk(&chunk_id.into()).unwrap().filename()
-                        } else {
-                            id.generate(&context)
-                        },
+                        (
+                            if dep.resolve_type == ResolveType::Worker {
+                                let chunk_id = id.generate(&context);
+                                let chunk_graph = context.chunk_graph.read().unwrap();
+                                chunk_graph.chunk(&chunk_id.into()).unwrap().filename()
+                            } else {
+                                id.generate(&context)
+                            },
+                            id.id.clone(),
+                        ),
                     )
                 })
                 .collect();
@@ -173,7 +176,7 @@ pub fn transform_modules_in_thread(
     Ok(())
 }
 
-fn insert_swc_helper_replace(map: &mut HashMap<String, String>, context: &Arc<Context>) {
+fn insert_swc_helper_replace(map: &mut HashMap<String, (String, String)>, context: &Arc<Context>) {
     let helpers = vec![
         "@swc/helpers/_/_interop_require_default",
         "@swc/helpers/_/_interop_require_wildcard",
@@ -182,7 +185,7 @@ fn insert_swc_helper_replace(map: &mut HashMap<String, String>, context: &Arc<Co
 
     helpers.into_iter().for_each(|h| {
         let m_id: ModuleId = h.to_string().into();
-        map.insert(m_id.id.clone(), m_id.generate(context));
+        map.insert(m_id.id.clone(), (m_id.generate(context), h.to_string()));
     });
 }
 
