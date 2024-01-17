@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
-use std::time::Instant;
+use std::time::{Instant, UNIX_EPOCH};
 
 use mako_core::anyhow::{anyhow, Error, Result};
 use mako_core::colored::Colorize;
@@ -16,7 +16,7 @@ use crate::comments::Comments;
 use crate::config::{hash_config, Config, OutputMode};
 use crate::module_graph::ModuleGraph;
 use crate::optimize_chunk::OptimizeChunksInfo;
-use crate::plugin::{Plugin, PluginDriver};
+use crate::plugin::{Plugin, PluginDriver, PluginGenerateEndParams, PluginGenerateStats};
 use crate::plugins;
 use crate::plugins::minifish::Inject;
 use crate::resolve::{get_resolvers, Resolvers};
@@ -103,7 +103,6 @@ impl Context {
 
     pub fn get_static_content<T: AsRef<str>>(&self, path: T) -> Option<Vec<u8>> {
         let map = self.static_cache.read().unwrap();
-
         map.read(path)
     }
 }
@@ -220,7 +219,9 @@ impl Compiler {
         args: Args,
         extra_plugins: Option<Vec<Arc<dyn Plugin>>>,
     ) -> Result<Self> {
-        assert!(root.is_absolute(), "root path must be absolute");
+        if !root.is_absolute() {
+            return Err(anyhow!("root path must be absolute"));
+        }
 
         // why add plugins before builtin plugins?
         // because plugins like less-loader need to be added before assets plugin
@@ -357,10 +358,11 @@ impl Compiler {
     pub fn compile(&self) -> Result<()> {
         // 先清空 dist 目录
         if self.context.config.clean {
-            self.clean_dist();
+            self.clean_dist()?;
         }
 
         let t_compiler = Instant::now();
+        let start_time = std::time::SystemTime::now();
         let is_prod = self.context.config.mode == crate::config::Mode::Production;
         let building_with_message = format!(
             "Building with {} for {}...",
@@ -377,19 +379,31 @@ impl Compiler {
             mako_core::mako_profile_scope!("Generate Stage");
             self.generate()
         };
-        let t_compiler = t_compiler.elapsed();
+        let t_compiler_duration = t_compiler.elapsed();
         if result.is_ok() {
             println!(
                 "{}",
                 format!(
                     "✓ Built in {}",
-                    format!("{}ms", t_compiler.as_millis()).bold()
+                    format!("{}ms", t_compiler_duration.as_millis()).bold()
                 )
                 .green()
             );
             if !self.context.args.watch {
                 println!("{}", "Complete!".bold());
             }
+            let end_time = std::time::SystemTime::now();
+            let params = PluginGenerateEndParams {
+                is_first_compile: true,
+                time: t_compiler.elapsed().as_millis() as u64,
+                stats: PluginGenerateStats {
+                    start_time: start_time.duration_since(UNIX_EPOCH)?.as_millis() as u64,
+                    end_time: end_time.duration_since(UNIX_EPOCH)?.as_millis() as u64,
+                },
+            };
+            self.context
+                .plugin_driver
+                .generate_end(&params, &self.context)?;
             Ok(())
         } else {
             result
@@ -400,15 +414,15 @@ impl Compiler {
         mako_core::mako_profile_function!();
         let cg = self.context.chunk_graph.read().unwrap();
         let mg = self.context.module_graph.read().unwrap();
-
         cg.full_hash(&mg)
     }
 
-    pub fn clean_dist(&self) {
+    pub fn clean_dist(&self) -> Result<()> {
         // compiler 前清除 dist，如果后续 dev 环境不在 output_path 里，需要再补上 dev 的逻辑
         let output_path = &self.context.config.output.path;
         if fs::metadata(output_path).is_ok() {
-            fs::remove_dir_all(output_path).unwrap();
+            fs::remove_dir_all(output_path)?;
         }
+        Ok(())
     }
 }

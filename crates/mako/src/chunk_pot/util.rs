@@ -179,6 +179,8 @@ pub(crate) fn pot_to_module_object(pot: &ChunkPot, context: &Arc<Context>) -> Re
                     let span = Span::dummy_with_cmt();
                     let id = module.0.id.id.clone();
                     let id = relative_to_root(id, &context.root);
+                    // to avoid comment broken by glob=**/* for context module
+                    let id = id.replace("*/", "*\\/");
                     comments.add_leading(
                         span.hi,
                         Comment {
@@ -266,7 +268,13 @@ fn to_module_fn_expr(module: &Module) -> Result<FnExpr> {
 
             for n in script.ast.body.iter() {
                 match n.as_stmt() {
-                    None => return Err(anyhow!("Error: {:?} not a stmt in ", module.id.id)),
+                    None => {
+                        return Err(anyhow!(
+                            "Error: not a stmt found in {:?}, ast: {:?}",
+                            module.id.id,
+                            n,
+                        ));
+                    }
                     Some(stmt) => {
                         stmts.push(stmt.clone());
                     }

@@ -1,0 +1,7 @@
+{"minify": false,
+  "resolve": {
+    "alias": {
+      "myCss": "./src/index.css"
+    }
+  }
+}

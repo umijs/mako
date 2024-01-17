@@ -15,6 +15,7 @@ use mako_core::tungstenite::Message;
 use mako_core::{hyper, hyper_staticfile, hyper_tungstenite, tokio};
 
 use crate::compiler::{Compiler, Context};
+use crate::plugin::{PluginGenerateEndParams, PluginGenerateStats};
 use crate::watch::Watch;
 
 pub struct DevServer {
@@ -281,6 +282,20 @@ impl DevServer {
             );
 
             let end_time = std::time::SystemTime::now();
+            let params = PluginGenerateEndParams {
+                is_first_compile: false,
+                time: t_compiler.elapsed().as_millis() as u64,
+                stats: PluginGenerateStats {
+                    start_time: start_time.duration_since(UNIX_EPOCH).unwrap().as_millis() as u64,
+                    end_time: end_time.duration_since(UNIX_EPOCH).unwrap().as_millis() as u64,
+                },
+            };
+            compiler
+                .context
+                .plugin_driver
+                .generate_end(&params, &compiler.context)
+                .unwrap();
+            // TODO: remove this?
             callback(OnDevCompleteParams {
                 is_first_compile: false,
                 time: t_compiler.elapsed().as_millis() as u64,

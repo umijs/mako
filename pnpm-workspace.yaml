@@ -3,3 +3,4 @@ packages:
   - 'crates/node'
   - 'packages/*'
   - 'crates/mako/test/compile/auto-code-splitting'
+  - 'e2e/fixtures.umi/react-16'

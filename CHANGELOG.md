@@ -1,3 +1,12 @@
+## 0.3.1
+
+`2024-01-11`
+
+> @alipay/bigfish@4.1.15
+
+* 修复产物中模块 ID 的注释被 glob 表达式意外切断导致运行报错的问题 by [@PeachScript](https://github.com/PeachScript) in [#856](https://github.com/umijs/mako/pull/856)
+* 优化内置插件钩子及暴露的 js hooks by [@sorrycc](https://github.com/sorrycc) in [#855](https://github.com/umijs/mako/pull/855)
+
 ## 0.2.3
 
 `2024-01-10`
@@ -13,6 +22,10 @@
 > @alipay/bigfish@4.1.14
 
 * 修复 import/export 语句中使用 `as` 对同一导出使用多次导致的变量 undefined 问题 by [@stormslowly](https://github.com/stormslowly) in [#850](https://github.com/umijs/mako/pull/850)
+* 修复 dev 启动时缺少的依赖在补齐后仍然构建失败的问题 by [@zhangpanweb](https://github.com/zhangpanweb) in [#845](https://github.com/umijs/mako/pull/845)
+* 修复 less 文件中引入相对路径的 css 可能解析失败的问题 by [@sorrycc](https://github.com/sorrycc) in [#844](https://github.com/umijs/mako/pull/844)
+* 优化产物生成，在不压缩时保留注释便于开发者排查问题 by [@sorrycc](https://github.com/sorrycc) in [#848](https://github.com/umijs/mako/pull/848)
+* 优化产物生成，为模块声明添加 ID 注释便于开发者排查问题 by [@sorrycc](https://github.com/sorrycc) in [#849](https://github.com/umijs/mako/pull/849)
 
 ## 0.2.1
 

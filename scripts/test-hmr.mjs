@@ -1017,6 +1017,56 @@ runTest('add missing dep after watch start', async () => {
   );
 });
 
+runTest('issue: 861', async () => {
+  write(
+    normalizeFiles({
+      '/src/index.tsx': `
+        import React from 'react';
+        import ReactDOM from "react-dom/client";
+        import App from './App';
+        ReactDOM.createRoot(document.getElementById("root")!).render(<><App /><section>{Math.random()}</section></>);
+      `,
+      '/src/App.tsx': `
+        // import './foo';
+        function App() {
+          return <div>App</div>;
+        }
+        export default App;
+      `,
+      '/src/foo.ts': `
+        console.log\('foo/foo');
+      `,
+    }),
+  );
+  await startMakoDevServer();
+  await delay(DELAY_TIME);
+  const { browser, page } = await startBrowser();
+  let lastResult;
+  let thisResult;
+  lastResult = normalizeHtml(await getRootHtml(page));
+  assert.equal(lastResult.html, '<div>App</div>', 'Initial render');
+  write({
+    '/src/App.tsx': `
+      import './foo';
+      function App() {
+        return <div>App</div>;
+      }
+      export default App;
+    `,
+  });
+  await delay(DELAY_TIME);
+  write({
+    '/src/foo.ts': `
+      console.log('foo/foo');
+    `,
+  });
+  await delay(DELAY_TIME);
+  thisResult = lastResult;
+  lastResult = normalizeHtml(await getRootHtml(page));
+  assert.equal(lastResult.html, '<div>App</div>', 'Second render');
+  await cleanup({ process, browser });
+});
+
 function normalizeFiles(files, makoConfig = {}) {
   return {
     '/public/index.html': `

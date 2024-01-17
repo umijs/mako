@@ -3,7 +3,7 @@
 const path = require('path');
 const fs = require('fs');
 const { build } = require('@okamjs/okam');
-const { _onCompileLess } = require('@alipay/umi-bundler-okam');
+const { _lessLoader } = require('@alipay/umi-bundler-okam');
 const cwd = process.argv[2];
 const isWatch = process.argv.includes('--watch');
 
@@ -22,11 +22,17 @@ const okamConfig = {
   resolve: { alias },
 };
 console.log('> run mako build for', cwd);
+let hooks = {};
+const hooksPath = path.join(cwd, 'hooks.config.js');
+if (fs.existsSync(hooksPath)) {
+  hooks = require(hooksPath);
+}
 build({
   root: cwd,
   config: okamConfig,
   hooks: {
-    onCompileLess: _onCompileLess.bind(null, {
+    ...hooks,
+    load: _lessLoader(null, {
       cwd,
       alias,
       modifyVars: makoConfig.less?.theme || {},

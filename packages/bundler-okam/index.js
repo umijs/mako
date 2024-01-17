@@ -9,27 +9,33 @@ const {
   createProxyMiddleware,
 } = require('@umijs/bundler-utils/compiled/http-proxy-middleware');
 
-const onCompileLess = async function (opts, filePath) {
-  const { alias, modifyVars, config, sourceMap } = opts;
-  const less = require('@umijs/bundler-utils/compiled/less');
-  const input = fs.readFileSync(filePath, 'utf-8');
-  const resolvePlugin = new (require('less-plugin-resolve'))({
-    aliases: alias,
-  });
-  const result = await less.render(input, {
-    filename: filePath,
-    javascriptEnabled: true,
-    math: config.lessLoader?.math,
-    plugins: [resolvePlugin],
-    modifyVars,
-    sourceMap,
-    rewriteUrls: 'all',
-  });
-  return result.css;
-};
+function lessLoader(fn, opts) {
+  return async function (filePath) {
+    if (filePath.endsWith('.less')) {
+      const { alias, modifyVars, config, sourceMap } = opts;
+      const less = require('@umijs/bundler-utils/compiled/less');
+      const input = fs.readFileSync(filePath, 'utf-8');
+      const resolvePlugin = new (require('less-plugin-resolve'))({
+        aliases: alias,
+      });
+      const result = await less.render(input, {
+        filename: filePath,
+        javascriptEnabled: true,
+        math: config.lessLoader?.math,
+        plugins: [resolvePlugin],
+        modifyVars,
+        sourceMap,
+        rewriteUrls: 'all',
+      });
+      return { content: result.css, type: 'css' };
+    } else {
+      fn && fn(filePath);
+    }
+  };
+}
 
 // export for test only
-exports._onCompileLess = onCompileLess;
+exports._lessLoader = lessLoader;
 
 exports.build = async function (opts) {
   assert(opts, 'opts should be supplied');
@@ -56,12 +62,12 @@ exports.build = async function (opts) {
       root: cwd,
       config: okamConfig,
       hooks: {
-        onCompileLess: onCompileLess.bind(null, {
+        load: lessLoader(null, {
           cwd,
           config: opts.config,
           // NOTICE: 有个缺点是 如果 alias 配置是 mako 插件修改的 less 这边就感知到不了
           alias: okamConfig.resolve.alias,
-          modifyVars: opts.config.theme,
+          modifyVars: opts.config.lessLoader?.modifyVars || opts.config.theme,
           sourceMap: getLessSourceMapConfig(okamConfig.devtool),
         }),
       },
@@ -69,6 +75,7 @@ exports.build = async function (opts) {
     });
   } catch (e) {
     console.error(e.message);
+    opts.onBuildError?.(e);
     const err = new Error('Build with mako failed.');
     err.stack = null;
     throw err;
@@ -188,20 +195,21 @@ exports.dev = async function (opts) {
       root: cwd,
       config: okamConfig,
       hooks: {
-        onCompileLess: onCompileLess.bind(null, {
+        load: lessLoader(null, {
           cwd,
           config: opts.config,
           alias: okamConfig.resolve.alias,
           modifyVars: opts.config.theme,
           sourceMap: getLessSourceMapConfig(okamConfig.devtool),
         }),
-        onBuildComplete: (args) => {
+        generateEnd: (args) => {
           opts.onDevCompileDone(args);
         },
       },
       watch: true,
     });
   } catch (e) {
+    opts.onBuildError?.(e);
     console.error(e.message);
     const err = new Error('Build with mako failed.');
     err.stack = null;
@@ -418,7 +426,11 @@ async function getOkamConfig(opts) {
   let makoConfig = {};
   const makoConfigPath = path.join(opts.cwd, 'mako.config.json');
   if (fs.existsSync(makoConfigPath)) {
-    makoConfig = JSON.parse(fs.readFileSync(makoConfigPath, 'utf-8'));
+    try {
+      makoConfig = JSON.parse(fs.readFileSync(makoConfigPath, 'utf-8'));
+    } catch (e) {
+      throw new Error(`Parse mako.config.json failed: ${e.message}`);
+    }
   }
 
   const {
@@ -553,6 +565,7 @@ async function getOkamConfig(opts) {
     externals: externalsConfig,
     clean,
     flexBugs: true,
+    react: opts.react || {},
     ...(opts.disableCopy ? { copy: [] } : { copy: ['public'].concat(copy) }),
   };
 

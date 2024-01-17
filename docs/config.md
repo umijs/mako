@@ -170,7 +170,12 @@ import("./a.js")
 
 ## ignoreCSSParserErrors
 
-> 注：已废弃，待移除。
+- 类型：`boolean`
+- 默认值：`false`
+
+是否忽略 CSS 解析错误。
+
+默认配置是，项目 CSS 有错误就报错，node_modules 下的 CSS 不报错，因为 node_modules 下的 CSS 有很多是不符合规范的，但却不是自己可控的。`ignoreCSSParserErrors` 配置的作用是忽略项目下的 CSS 报错，比如用 Less 编译 less 文件时，会把 node_modules 下的 less 文件也编译进去，此时不能区分是否来自 node_modules 下，而用户对来自 node_modules 下的代码又没有控制权，所以加此配置项。
 
 ## ignores
 
@@ -246,13 +251,14 @@ moduleId 的生成策略。
 - `preserveModules`，是否保留模块目录结构（注：Bundless Only）
 - `preserveModulesRoot`，保留模块目录结构的根目录（注：Bundless Only）
 
-## optimization 
+## optimization
+
 - 类型：`object`
 - 默认值：`{ skipModules: false }`
 
-优化构建产物配置选项，目前支持
+优化构建产物的配置。目前支持子配置项如下。
 
-- skipModules 通过跳过无副作用的模块，优化尺寸；`true` 开启
+- `skipModules`，通过跳过无副作用的模块，优化尺寸（注：目前默认为 `false`，后续稳定后会改为默认 `true`）
 
 ## optimizePackageImports
 
@@ -261,7 +267,7 @@ moduleId 的生成策略。
 
 是否优化 package imports。
 
-注：实现属性，暂时勿用。
+注：实验属性，暂时勿用。
 
 ## platform
 
@@ -319,6 +325,40 @@ publicPath 配置。注：有个特殊值 `"runtime"`，表示会切换到 runti
 - `selectorBlackList`，选择器黑名单
 - `selectorWhiteList`，选择器白名单
 
+## react
+
+- 类型：`{ runtime: "automatic" | "classic", pragma: string, import_source: string, pragma_frag: string }`
+- 默认值：`{ runtime: "automatic", pragma: "React.createElement", import_source: "react", pragma_frag: "React.Fragment" }`
+
+react 编译相关配置。
+
+比如。
+
+```tsx
+function App() {
+  return <div>1</div>;
+}
+```
+
+runtime 为 automatic 时的产物如下，
+
+```ts
+import { jsx as _jsx } from "react/jsx-runtime";
+function App() {
+  return /*#__PURE__*/_jsx("div", {
+    children: "1"
+  });
+}
+```
+
+runtime 为 classic 时的产物如下，
+
+```ts
+function App() {
+  return /*#__PURE__*/React.createElement("div", null, "1");
+}
+```
+
 ## resolve
 
 - 类型：`{ alias: Record<string, string>, extensions: string[] }`
@@ -351,7 +391,22 @@ publicPath 配置。注：有个特殊值 `"runtime"`，表示会切换到 runti
 
 ## transformImport
 
-> TODO: @辟殊。
+- 类型：`false | { libraryName: string, libraryDirectory: string, style: boolean }`
+- 默认值：`false`
+
+简化版 babel-plugin-import，仅支持 libraryName、libraryDirectory 及 style 三个配置项，用于满足存量项目 antd v4 样式按需加载的需求。
+
+比如：
+
+```ts
+{
+  transformImport: {
+    libraryName: "antd",
+    libraryDirectory: "es",
+    style: true,
+  },
+}
+```
 
 ## umd
 

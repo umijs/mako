@@ -38,8 +38,8 @@ await build({
 
 ```ts
 {
-  onCompileLess?: (filePath: string) => Promise<string>;
-  onBuildComplete?: (data: {
+  buildStart?: () => void;
+  generateEnd?: (data: {
     isFirstCompile: boolean;
     time: number;
     stats: {
@@ -47,6 +47,7 @@ await build({
       endTime: number;
     };
   }) => void;
+  load?: (filePath: string) => Promise<{ content: string, type: 'css'|'javascript' }>;
 }
 ```
 
@@ -54,8 +55,9 @@ await build({
 
 hooks 是一些钩子函数，用于扩展 Mako 的编译过程。
 
-- `onCompileLess`，用于编译 Less 文件，返回编译后的内容（注：接口近期可能还会有变，因为目前没有支持 SourceMap）
-- `onBuildComplete`，在 Build 完成后会调用（注：目前仅在 watch 为 true 时会调用，后续会在 watch 为 false 时也被调用）
+- `buildStart`，在 Build 开始前会调用
+- `generateEnd`，在 Generate 完成后会调用，通过 `isFirstCompile` 可以判断是否是第一次编译，`time` 为编译时间，`stats` 为编译统计信息
+- `load`，用于加载文件，返回文件内容和类型，类型支持 `css`、`javascript`
 
 ### watch
 

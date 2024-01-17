@@ -64,3 +64,11 @@ assert.match(
   moduleReg("src/index.ts", '"." \\+ file', true),
   "should replace bin left string @/i18n with .",
 );
+
+assert.doesNotMatch(
+  content,
+  // /*.../glob=**/**/ should be escaped to /*.../glob=**\/**/
+  //                                                     ^^
+  /glob=\*\*\/\*\s*\*\//,
+  "should escape glob pattern in module id debug comment"
+);
