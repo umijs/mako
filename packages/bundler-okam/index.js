@@ -67,7 +67,7 @@ exports.build = async function (opts) {
           config: opts.config,
           // NOTICE: 有个缺点是 如果 alias 配置是 mako 插件修改的 less 这边就感知到不了
           alias: okamConfig.resolve.alias,
-          modifyVars: opts.config.theme,
+          modifyVars: opts.config.lessLoader?.modifyVars || opts.config.theme,
           sourceMap: getLessSourceMapConfig(okamConfig.devtool),
         }),
       },
