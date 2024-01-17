@@ -297,7 +297,7 @@ mod tests {
             code.trim(),
             r#"
 import "/test/path?modules";
-export default {"b": `b-KOXpblx_ a`,"c": `c-WTxpkVWA c`,"a": `a-hlnPCer-`}
+export default {"a": `a-hlnPCer-`,"b": `b-KOXpblx_ a`,"c": `c-WTxpkVWA c`}
         "#
             .trim()
         );

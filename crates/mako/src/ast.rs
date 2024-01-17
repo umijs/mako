@@ -133,7 +133,7 @@ pub fn build_css_ast(
         legacy_ie: true,
         ..Default::default()
     };
-    let lexer = swc_css_parser::lexer::Lexer::new(StringInput::from(&*fm), config);
+    let lexer = swc_css_parser::lexer::Lexer::new(StringInput::from(&*fm), None, config);
     let mut parser = swc_css_parser::parser::Parser::new(lexer, config);
     let parse_result = parser.parse_all();
 
@@ -328,7 +328,7 @@ mod tests {
             r#"
 export const foo = "我是中文";
 export const bar = {
-    中文: "xxx"
+    "中文": "xxx"
 }
 "#,
         );

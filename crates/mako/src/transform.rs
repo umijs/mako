@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use mako_core::anyhow::Result;
+use mako_core::swc_common::comments::NoopComments;
 use mako_core::swc_common::errors::HANDLER;
 use mako_core::swc_common::pass::Optional;
 use mako_core::swc_common::sync::Lrc;
@@ -8,7 +9,7 @@ use mako_core::swc_common::util::take::Take;
 use mako_core::swc_common::{chain, Mark, GLOBALS};
 use mako_core::swc_css_ast::Stylesheet;
 use mako_core::swc_css_visit::VisitMutWith as CssVisitMutWith;
-use mako_core::swc_ecma_ast::Module;
+use mako_core::swc_ecma_ast::{Module, Program};
 use mako_core::swc_ecma_preset_env::{self as swc_preset_env};
 use mako_core::swc_ecma_transforms::feature::FeatureFlag;
 use mako_core::swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
@@ -16,7 +17,8 @@ use mako_core::swc_ecma_transforms::{resolver, Assumptions};
 use mako_core::swc_ecma_transforms_optimization::simplifier;
 use mako_core::swc_ecma_transforms_optimization::simplify::{dce, Config as SimpilifyConfig};
 use mako_core::swc_ecma_transforms_proposals::decorators;
-use mako_core::swc_ecma_transforms_typescript::strip_with_jsx;
+use mako_core::swc_ecma_transforms_react::{default_pragma, default_pragma_frag};
+use mako_core::swc_ecma_transforms_typescript as typescript;
 use mako_core::swc_ecma_visit::{Fold, VisitMutWith};
 use mako_core::swc_error_reporters::handler::try_with_handler;
 use swc_core::ecma::ast::ModuleItem;
@@ -83,12 +85,20 @@ fn transform_js(
                     // since when use this in js, it will remove all unused imports
                     // which is not expected as what webpack does
                     if is_ts {
-                        ast.visit_mut_with(&mut strip_with_jsx(
+                        let mut program = Program::Module(ast.clone());
+                        program.visit_mut_with(&mut typescript::tsx(
                             cm.clone(),
-                            Default::default(),
-                            origin_comments.get_swc_comments(),
+                            typescript::Config::default(),
+                            typescript::TsxConfig {
+                                pragma: Some(default_pragma()),
+                                pragma_frag: Some(default_pragma_frag()),
+                            },
+                            NoopComments,
                             top_level_mark,
                         ));
+                        if let Program::Module(ast_copy) = program {
+                            ast.body = ast_copy.body;
+                        }
                     }
 
                     ast.visit_mut_with(&mut mako_react(

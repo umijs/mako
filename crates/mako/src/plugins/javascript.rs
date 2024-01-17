@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use mako_core::anyhow::Result;
-use mako_core::swc_atoms::js_word;
 use mako_core::swc_common::collections::AHashSet;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{self, Mark, GLOBALS};
@@ -229,11 +228,11 @@ pub fn is_import_meta_url(expr: &Expr) -> bool {
                 }),
             prop:
                 MemberProp::Ident(Ident {
-                    sym: js_word!("url"),
+                    sym,
                     ..
                 }),
             ..
-        })
+        }) if sym == "url"
     )
 }
 
