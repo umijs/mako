@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt;
 use std::hash::Hasher;
 use std::path::{Path, PathBuf};
 
@@ -12,10 +13,50 @@ use mako_core::swc_ecma_ast::EsVersion;
 use mako_core::thiserror::Error;
 use mako_core::twox_hash::XxHash64;
 use mako_core::{clap, config, thiserror};
+use miette::{miette, ByteOffset, Diagnostic, NamedSource, SourceOffset, SourceSpan};
 use serde::Serialize;
 
 use crate::plugins::node_polyfill::get_all_modules;
 use crate::{optimize_chunk, plugins, transformers};
+
+#[derive(Debug, Diagnostic)]
+#[diagnostic(code("mako.config.json parsed failed"))]
+struct ConfigParseError {
+    #[source_code]
+    src: NamedSource,
+    #[label("Error here.")]
+    span: SourceSpan,
+    message: String,
+}
+
+impl std::error::Error for ConfigParseError {}
+
+impl fmt::Display for ConfigParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+fn validate_mako_config(abs_config_file: String) -> miette::Result<()> {
+    if Path::new(&abs_config_file).exists() {
+        let content = std::fs::read_to_string(abs_config_file.clone())
+            .map_err(|e| miette!("Failed to read file '{}': {}", &abs_config_file, e))?;
+        let result: Result<Value, serde_json::Error> = serde_json::from_str(&content);
+        if let Err(e) = result {
+            let line = e.line();
+            let column = e.column();
+            let start = SourceOffset::from_location(&content, line, column);
+            let span = SourceSpan::new(start, (1 as ByteOffset).into());
+            return Err(ConfigParseError {
+                src: NamedSource::new("mako.config.json", content),
+                span,
+                message: e.to_string(),
+            }
+            .into());
+        }
+    }
+    Ok(())
+}
 
 /**
  * a macro to create deserialize function that allow false value for optional struct
@@ -526,10 +567,6 @@ const DEFAULT_CONFIG: &str = r#"
 }
 "#;
 
-// TODO:
-// - support .ts file
-// - add validation
-
 impl Config {
     pub fn new(
         root: &Path,
@@ -553,6 +590,9 @@ impl Config {
         } else {
             c
         };
+        // validate user config
+        validate_mako_config(abs_config_file.to_string())
+            .map_err(|e| anyhow!("{}", format!("{:?}", e)))?;
         // user config
         let c = c.add_source(config::File::with_name(abs_config_file).required(false));
         // cli config
