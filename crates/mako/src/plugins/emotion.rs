@@ -1,0 +1,84 @@
+use std::path::Path;
+
+use mako_core::anyhow::Ok;
+use mako_core::swc_common::sync::Lrc;
+use mako_core::swc_common::SourceMap;
+use mako_core::swc_ecma_ast::Module;
+use mako_core::swc_ecma_visit::{Fold, VisitMut, VisitMutWith};
+use mako_core::swc_emotion::{emotion, EmotionOptions};
+use swc_core::common::comments::NoopComments;
+
+use crate::config::{Mode, ReactConfig};
+use crate::plugin::Plugin;
+
+pub struct EmotionPlugin {}
+
+impl Plugin for EmotionPlugin {
+    fn name(&self) -> &str {
+        "emotion"
+    }
+
+    fn modify_config(
+        &self,
+        config: &mut crate::config::Config,
+        _root: &std::path::Path,
+        _args: &crate::compiler::Args,
+    ) -> mako_core::anyhow::Result<()> {
+        if config.emotion {
+            config.react = ReactConfig {
+                pragma: "jsx".into(),
+                import_source: "@emotion/react".into(),
+                pragma_frag: config.react.pragma_frag.clone(),
+                runtime: config.react.runtime.clone(),
+            }
+        }
+        Ok(())
+    }
+
+    fn transform_js(
+        &self,
+        param: &crate::plugin::PluginTransformJsParam,
+        ast: &mut mako_core::swc_ecma_ast::Module,
+        context: &std::sync::Arc<crate::compiler::Context>,
+    ) -> mako_core::anyhow::Result<()> {
+        if context.config.emotion {
+            ast.visit_mut_with(&mut Emotion {
+                mode: context.config.mode.clone(),
+                cm: context.meta.script.cm.clone(),
+                path: param.path.into(),
+            });
+        }
+
+        Ok(())
+    }
+}
+
+struct Emotion {
+    cm: Lrc<SourceMap>,
+    path: String,
+    mode: Mode,
+}
+
+impl VisitMut for Emotion {
+    fn visit_mut_module(&mut self, module: &mut Module) {
+        let is_dev = matches!(self.mode, Mode::Development);
+        let pos = self.cm.lookup_char_pos(module.span.lo);
+        let hash = pos.file.src_hash as u32;
+        let mut folder = emotion(
+            EmotionOptions {
+                enabled: Some(true),
+                sourcemap: Some(true),
+                auto_label: Some(is_dev),
+                import_map: None,
+                ..Default::default()
+            },
+            Path::new(&self.path),
+            hash,
+            self.cm.clone(),
+            NoopComments,
+        );
+        module.body = folder.fold_module(module.clone()).body;
+
+        module.visit_mut_children_with(self);
+    }
+}

@@ -254,6 +254,7 @@ impl Compiler {
             Arc::new(plugins::hmr_runtime::HMRRuntimePlugin {}),
             Arc::new(plugins::wasm_runtime::WasmRuntimePlugin {}),
             Arc::new(plugins::async_runtime::AsyncRuntimePlugin {}),
+            Arc::new(plugins::emotion::EmotionPlugin {}),
         ];
         plugins.extend(builtin_plugins);
 
