@@ -9,7 +9,7 @@
 * 修复 HMR 无法从文件错误中恢复的问题 by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/863
 * 修复 Less 参数取值优先读取 modifyVars 字段，其次 theme by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/874
 * 修复 style 文件导入语句未删除的问题 by [@stormslowly](https://github.com/stormslowly) in https://github.com/umijs/mako/pull/869
-* 修复 skipModule 优化是丢失 default 导入的副作用。[@stormslowly](https://github.com/stormslowly) in  https://github.com/umijs/mako/pull/862
+* 修复 skipModule 优化是丢失 default 导入的副作用。[@stormslowly](https://github.com/stormslowly) in https://github.com/umijs/mako/pull/862
 
 ## 0.3.1
 
