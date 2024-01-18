@@ -6,7 +6,7 @@ const content = files["index.js"];
 
 assert(
   content.includes(
-    'const Hello = \\"Hello\\";\\nconst World = `World`;\\n'
+    'module.exports = "const Hello = \\"Hello\\";\\nconst World = `World`;\\n"'
   ),
   "support convert js"
 );
