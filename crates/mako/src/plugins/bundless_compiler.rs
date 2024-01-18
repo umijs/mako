@@ -21,7 +21,7 @@ use mako_core::tracing::warn;
 
 use crate::ast::{js_ast_to_code, Ast};
 use crate::compiler::{Args, Context};
-use crate::config::{Config, Mode};
+use crate::config::Config;
 use crate::module::{ModuleAst, ModuleId};
 use crate::plugin::{Plugin, PluginTransformJsParam};
 use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
@@ -202,7 +202,6 @@ pub fn transform_js_generate(
     dep_map: &DependenciesToReplace,
     _is_entry: bool,
 ) {
-    let _is_dev = matches!(context.config.mode, Mode::Development);
     GLOBALS
         .set(&context.meta.script.globals, || {
             try_with_handler(
