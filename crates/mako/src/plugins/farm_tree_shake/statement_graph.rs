@@ -119,6 +119,8 @@ pub enum ExportInfoMatch {
 
 impl ExportInfo {
     pub fn find_export_specifier(&self, ident: &String) -> Option<&ExportSpecifierInfo> {
+        let mut ambiguous_specifier_candidates = vec![];
+
         for specifier in self.specifiers.iter() {
             match specifier {
                 ExportSpecifierInfo::Default(_) => {
@@ -154,9 +156,13 @@ impl ExportInfo {
                         return Some(specifier);
                     }
 
-                    return None;
+                    ambiguous_specifier_candidates.push(specifier);
                 }
             }
+        }
+
+        if ambiguous_specifier_candidates.len() == 1 {
+            return ambiguous_specifier_candidates.pop();
         }
 
         None

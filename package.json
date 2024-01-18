@@ -18,6 +18,7 @@
     "@biomejs/biome": "^1.4.1",
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
+    "@jest/expect": "^29.7.0",
     "@okamjs/okam": "workspace:*",
     "@swc/helpers": "0.5.1",
     "@types/express": "^4.17.21",
@@ -43,4 +44,3 @@
   },
   "repository": "git@github.com:umijs/mako.git"
 }
-

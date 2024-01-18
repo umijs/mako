@@ -525,7 +525,7 @@ fn find_ident_export_source(
             return None;
         }
 
-        if let Some(re_export_source) = proxy_tsm.find_export_source(used_ident) {
+        if let Some(re_export_source) = proxy_tsm.find_skipable_export_source(used_ident) {
             if let Some(source) = &re_export_source.source {
                 if let Some(next_tsm_rc) =
                     get_imported_tree_shake_module(proxy_module_id, source, module_graph, tsm_map)
@@ -553,6 +553,12 @@ fn find_ident_export_source(
                                 re_export_ident: used_ident.clone(),
                                 from_module_id: next_replace.from_module_id.clone(),
                                 re_export_source: next_replace.re_export_source,
+                            });
+                        } else {
+                            return Some(ReExportReplace {
+                                re_export_ident: used_ident.clone(),
+                                from_module_id: next_tsm.module_id.clone(),
+                                re_export_source,
                             });
                         }
                     } else {

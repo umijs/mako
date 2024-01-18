@@ -121,6 +121,12 @@ export interface BuildParams {
       | {
           skipModules?: boolean;
         };
+    react?: {
+      runtime?: 'automatic' | 'classic';
+      pragma?: string;
+      importSource?: string;
+      pragmaFrag?: string;
+    };
   };
   hooks: JsHooks;
   watch: boolean;

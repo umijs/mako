@@ -1,4 +1,7 @@
 {
   "optimization": { "skipModules": true },
-  "optimizePackageImports": false
+  "optimizePackageImports": false,
+  "entry":{
+    "index": "src/index.js"
+  }
 }

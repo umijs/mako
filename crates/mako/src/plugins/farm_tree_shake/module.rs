@@ -1,5 +1,3 @@
-mod import_exports;
-
 use std::collections::{HashMap, HashSet};
 
 use mako_core::swc_common::SyntaxContext;

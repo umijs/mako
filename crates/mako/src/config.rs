@@ -557,7 +557,7 @@ const DEFAULT_CONFIG: &str = r#"
     "optimizePackageImports": false,
     "emotion": false,
     "flexBugs": false,
-    "optimization": { "skipModules": false },
+    "optimization": { "skipModules": true },
     "react": {
       "pragma": "React.createElement",
       "importSource": "react",
