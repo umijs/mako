@@ -3,5 +3,6 @@
   "_treeShaking": "basic",
   "minify": true,
   "moduleIdStrategy": "named",
-  "optimizePackageImports": true
+  "optimizePackageImports": true,
+  "optimization": { "skipModules": true }
 }

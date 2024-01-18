@@ -48,8 +48,7 @@ exports.build = async function (opts) {
   checkConfig(opts);
 
   const okamConfig = await getOkamConfig(opts);
-  const mode = process.argv.includes('--dev') ? 'development' : 'production';
-  okamConfig.mode = mode;
+  okamConfig.mode = 'production';
   okamConfig.manifest = {};
   okamConfig.hash = !!opts.config.hash;
   if (okamConfig.hash) {
@@ -67,7 +66,7 @@ exports.build = async function (opts) {
           config: opts.config,
           // NOTICE: 有个缺点是 如果 alias 配置是 mako 插件修改的 less 这边就感知到不了
           alias: okamConfig.resolve.alias,
-          modifyVars: opts.config.theme,
+          modifyVars: opts.config.lessLoader?.modifyVars || opts.config.theme,
           sourceMap: getLessSourceMapConfig(okamConfig.devtool),
         }),
       },
@@ -565,6 +564,7 @@ async function getOkamConfig(opts) {
     externals: externalsConfig,
     clean,
     flexBugs: true,
+    react: opts.react || {},
     ...(opts.disableCopy ? { copy: [] } : { copy: ['public'].concat(copy) }),
   };
 

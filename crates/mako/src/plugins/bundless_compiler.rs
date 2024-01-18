@@ -21,7 +21,7 @@ use mako_core::tracing::warn;
 
 use crate::ast::{js_ast_to_code, Ast};
 use crate::compiler::{Args, Context};
-use crate::config::{Config, Mode};
+use crate::config::Config;
 use crate::module::{ModuleAst, ModuleId};
 use crate::plugin::{Plugin, PluginTransformJsParam};
 use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
@@ -163,15 +163,13 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
                         }
                     };
 
-                    Ok((dep.source.clone(), replacement))
+                    Ok((dep.source.clone(), (replacement.clone(), replacement)))
                 })
                 .collect::<Result<Vec<_>>>();
 
-            let resolved_deps: HashMap<String, String> = resolved_deps?.into_iter().collect();
-            let _assets_map: HashMap<String, String> = deps
-                .into_iter()
-                .map(|(id, dep)| (dep.source.clone(), id.id.clone()))
-                .collect();
+            let resolved_deps: HashMap<String, (String, String)> =
+                resolved_deps?.into_iter().collect();
+
             drop(module_graph);
 
             // let deps: Vec<(&ModuleId, &crate::module::Dependency)> =
@@ -204,7 +202,6 @@ pub fn transform_js_generate(
     dep_map: &DependenciesToReplace,
     _is_entry: bool,
 ) {
-    let _is_dev = matches!(context.config.mode, Mode::Development);
     GLOBALS
         .set(&context.meta.script.globals, || {
             try_with_handler(

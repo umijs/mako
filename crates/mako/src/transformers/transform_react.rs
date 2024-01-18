@@ -11,7 +11,7 @@ use mako_core::swc_emotion::{emotion, EmotionOptions};
 
 use crate::ast::build_js_ast;
 use crate::compiler::Context;
-use crate::config::Mode;
+use crate::config::{Mode, ReactRuntimeConfig};
 use crate::task::Task;
 
 pub struct PrefixCode {
@@ -51,7 +51,15 @@ pub fn mako_react(
     let (import_source, pragma) = if context.config.emotion {
         ("@emotion/react", "jsx")
     } else {
-        ("react", "React.createElement")
+        (
+            context.config.react.import_source.as_str(),
+            context.config.react.pragma.as_str(),
+        )
+    };
+    let runtime = if matches!(context.config.react.runtime, ReactRuntimeConfig::Automatic) {
+        Runtime::Automatic
+    } else {
+        Runtime::Classic
     };
 
     let emotion = if context.config.emotion {
@@ -72,10 +80,10 @@ pub fn mako_react(
             Some(origin_comments.get_swc_comments().clone()),
             Options {
                 import_source: Some(import_source.to_string()),
-                pragma: Some(pragma.into()),
-                pragma_frag: Some("React.Fragment".into()),
+                pragma: Some(pragma.to_string()),
+                pragma_frag: Some(context.config.react.pragma_frag.clone()),
                 // support react 17 + only
-                runtime: Some(Runtime::Automatic),
+                runtime: Some(runtime),
                 development: Some(is_dev),
                 // to avoid throw error for svg namespace element
                 throw_if_namespace: Some(false),

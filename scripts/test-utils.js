@@ -120,8 +120,31 @@ const moduleReg = (key, contentReg, autoEscape) => {
   );
 };
 
+const injectSimpleJest = () => {
+  function it(testName, fn) {
+    try {
+      fn();
+      console.log('\x1B[34m\x1B[102mPASS\x1B[49m\x1B[39m', ':', testName);
+    } catch (e) {
+      throw e;
+    }
+  }
+
+  function ignore(testName, fn) {
+    // chalk.blueBright(chalk.bgYellowBright('IGNORED'))
+    console.log('\x1B[94m\x1B[103mIGNORED\x1B[49m\x1B[39m', ':', testName);
+  }
+
+  global.it = it;
+  global.it.skip = ignore;
+  global.xit = ignore;
+
+  global.expect = require('@jest/expect').jestExpect;
+};
+
 exports.parseBuildResult = parseBuildResult;
 exports.trim = trim;
 exports.string2RegExp = string2RegExp;
 exports.moduleReg = moduleReg;
 exports.testWithBrowser = testWithBrowser;
+exports.injectSimpleJest = injectSimpleJest;
