@@ -48,8 +48,7 @@ exports.build = async function (opts) {
   checkConfig(opts);
 
   const okamConfig = await getOkamConfig(opts);
-  const mode = process.argv.includes('--dev') ? 'development' : 'production';
-  okamConfig.mode = mode;
+  okamConfig.mode = 'production';
   okamConfig.manifest = {};
   okamConfig.hash = !!opts.config.hash;
   if (okamConfig.hash) {
