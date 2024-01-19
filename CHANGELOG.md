@@ -1,3 +1,19 @@
+## 0.4.0
+
+`2024-01-18`
+
+> @alipay/bigfish@4.1.17
+
+* 新增 react 配置项，支持不同的 react runtime 参数配置 by [@sorrycc](https://github.com/sorrycc) in [#872](https://github.com/umijs/mako/pull/872)
+* 新增 mako.config.json 中有错误时，输出友好提示 by [@sorrycc](https://github.com/sorrycc) in [#875](https://github.com/umijs/mako/pull/875)
+* 修复 HMR 无法从文件错误中恢复的问题 by [@sorrycc](https://github.com/sorrycc) in [#863](https://github.com/umijs/mako/pull/863)
+* 修复 Less 参数取值优先读取 modifyVars 字段，其次 theme by [@sorrycc](https://github.com/sorrycc) in [#874](https://github.com/umijs/mako/pull/874)
+* 修复 style 文件导入语句未删除的问题 by [@stormslowly](https://github.com/stormslowly) in [#869](https://github.com/umijs/mako/pull/869)
+* 修复 skipModule 优化时丢失 default 导入的副作用 [@stormslowly](https://github.com/stormslowly) in [#862](https://github.com/umijs/mako/pull/862)
+
+
+
+
 ## 0.3.1
 
 `2024-01-11`
