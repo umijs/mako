@@ -315,7 +315,7 @@ pub struct InjectItem {
     pub prefer_require: Option<bool>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub enum ReactRuntimeConfig {
     #[serde(rename = "automatic")]
     Automatic,
