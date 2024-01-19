@@ -13,8 +13,7 @@ pub use swc_core::css::{
 pub use swc_core::ecma::transforms::{
     base as swc_ecma_transforms, module as swc_ecma_transforms_modules,
     optimization as swc_ecma_transforms_optimization, proposal as swc_ecma_transforms_proposals,
-    react as swc_ecma_transforms_react, testing as swc_ecma_transforms_testing,
-    typescript as swc_ecma_transforms_typescript,
+    react as swc_ecma_transforms_react, typescript as swc_ecma_transforms_typescript,
 };
 pub use swc_core::ecma::{
     ast as swc_ecma_ast, atoms as swc_atoms, codegen as swc_ecma_codegen,

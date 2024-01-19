@@ -85,7 +85,7 @@ fn transform_js(
                     // since when use this in js, it will remove all unused imports
                     // which is not expected as what webpack does
                     if is_ts {
-                        let mut program = Program::Module(ast.clone());
+                        let mut program = Program::Module(ast.take());
                         program.visit_mut_with(&mut typescript::tsx(
                             cm.clone(),
                             typescript::Config::default(),
@@ -97,7 +97,7 @@ fn transform_js(
                             top_level_mark,
                         ));
                         if let Program::Module(ast_copy) = program {
-                            ast.body = ast_copy.body;
+                            *ast = ast_copy;
                         }
                     }
 
