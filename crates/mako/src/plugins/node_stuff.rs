@@ -25,10 +25,10 @@ impl Plugin for NodeStuffPlugin {
         if matches!(config.platform, Platform::Browser) {
             config
                 .define
-                .insert("__dirname".into(), Value::String("/index.js".into()));
+                .insert("__dirname".into(), Value::String("'/'".into()));
             config
                 .define
-                .insert("__filename".into(), Value::String("/".into()));
+                .insert("__filename".into(), Value::String("'/index.js'".into()));
         }
 
         Ok(())
@@ -83,7 +83,7 @@ impl VisitMut for NodeStuff<'_> {
                 let value = if is_filename {
                     path
                 } else {
-                    path.parent().unwrap().into()
+                    path.parent().unwrap_or(&PathBuf::from("")).into()
                 };
 
                 *expr = Expr::Lit(Lit::Str(Str {
