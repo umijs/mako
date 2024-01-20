@@ -3,8 +3,11 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use mako_core::anyhow::{self, Ok};
+use mako_core::colored::Colorize;
 use mako_core::notify::{self, EventKind, Watcher as NotifyWatcher};
 use mako_core::notify_debouncer_full::DebouncedEvent;
+use mako_core::tokio::time::Instant;
+use mako_core::tracing::debug;
 
 use crate::compiler::Compiler;
 use crate::resolve::ResolverResource;
@@ -34,43 +37,65 @@ impl<'a> Watcher<'a> {
 
     // pub fn watch(root: &PathBuf, watcher: &mut notify::RecommendedWatcher) -> anyhow::Result<()> {
     pub fn watch(&mut self) -> anyhow::Result<()> {
-        self.watch_dir_recursive(
-            self.root.into(),
-            &[".git", "node_modules", ".DS_Store", "dist", ".node"],
-        )?;
+        let t_watch = Instant::now();
+
+        let ignore_list = [".git", "node_modules", ".DS_Store", ".node"];
+
+        let mut root_ignore_list = ignore_list.to_vec();
+        root_ignore_list.push(self.compiler.context.config.output.path.to_str().unwrap());
+        self.watch_dir_recursive(self.root.into(), &root_ignore_list)?;
 
         let module_graph = self.compiler.context.module_graph.read().unwrap();
-        module_graph
-            .modules()
-            .iter()
-            .try_for_each(|module| -> anyhow::Result<()> {
-                if let Some(ResolverResource::Resolved(resource)) = module
-                    .info
-                    .as_ref()
-                    .and_then(|info| info.resolved_resource.as_ref())
-                {
-                    if let Some(dir) = &resource.0.description {
-                        let dir = dir.dir().as_ref();
-                        // not in root dir or is root's parent dir
-                        if dir.strip_prefix(self.root).is_err()
-                            && self.root.clone().strip_prefix(dir).is_err()
-                        {
-                            self.watch_dir_recursive(
-                                dir.into(),
-                                &[".git", "node_modules", ".DS_Store", ".node"],
-                            )?;
-                        }
+        let mut dirs = HashSet::new();
+        module_graph.modules().iter().for_each(|module| {
+            if let Some(ResolverResource::Resolved(resource)) = module
+                .info
+                .as_ref()
+                .and_then(|info| info.resolved_resource.as_ref())
+            {
+                if let Some(dir) = &resource.0.description {
+                    let dir = dir.dir().as_ref();
+                    // not in root dir or is root's parent dir
+                    if dir.strip_prefix(self.root).is_err() && self.root.strip_prefix(dir).is_err()
+                    {
+                        dirs.insert(dir);
                     }
                 }
+            }
+        });
+        dirs.iter().try_for_each(|dir| {
+            self.watch_dir_recursive(dir.into(), ignore_list.as_slice())?;
+            Ok(())
+        })?;
 
-                Ok(())
-            })?;
+        let t_watch_duration = t_watch.elapsed();
+        debug!(
+            "{}",
+            format!(
+                "✓ watch in {}",
+                format!("{}ms", t_watch_duration.as_millis()).bold()
+            )
+            .green()
+        );
 
         Ok(())
     }
 
     pub fn refresh_watch(&mut self) -> anyhow::Result<()> {
+        let t_refresh_watch = Instant::now();
+
         self.watch()?;
+
+        let t_refresh_watch_duration = t_refresh_watch.elapsed();
+        debug!(
+            "{}",
+            format!(
+                "✓ refresh watch in {}",
+                format!("{}ms", t_refresh_watch_duration.as_millis()).bold()
+            )
+            .green()
+        );
+
         Ok(())
     }
 
