@@ -17,6 +17,7 @@ pub mod md;
 pub mod meta;
 pub mod minifish;
 pub mod node_polyfill;
+pub mod node_stuff;
 pub mod raw;
 pub mod runtime;
 pub mod svg;
