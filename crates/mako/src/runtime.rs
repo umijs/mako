@@ -9,4 +9,5 @@ pub struct AppRuntimeTemplate {
     pub umd: Option<String>,
     pub cjs: bool,
     pub chunk_loading_global: String,
+    pub is_browser: bool,
 }
