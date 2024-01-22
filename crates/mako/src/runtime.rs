@@ -7,5 +7,6 @@ pub struct AppRuntimeTemplate {
     pub has_dynamic_chunks: bool,
     pub has_hmr: bool,
     pub umd: Option<String>,
+    pub cjs: bool,
     pub chunk_loading_global: String,
 }

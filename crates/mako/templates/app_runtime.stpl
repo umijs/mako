@@ -314,13 +314,13 @@ function createRuntime(makoModules, entryModuleId) {
 
   // __inject_runtime_code__
 
-<% if umd.is_some() { %>
+<% if umd.is_some() || cjs { %>
   var exports = requireModule(entryModuleId);
 <% } else { %>
   requireModule(entryModuleId);
 <% } %>
   return {
-<% if umd.is_some() { %>
+<% if umd.is_some() || cjs { %>
     exports: exports,
 <% } %>
     requireModule: requireModule,
@@ -334,7 +334,7 @@ function createRuntime(makoModules, entryModuleId) {
   };
 }
 
-<% if has_dynamic_chunks || has_hmr || umd.is_some() { %>
+<% if has_dynamic_chunks || has_hmr || umd.is_some() || cjs { %>
 var runtime = createRuntime(m, e);
 <% } else { %>
 createRuntime(m, e);
@@ -360,4 +360,10 @@ root.makoModuleHotUpdate = runtime._makoModuleHotUpdate;
 })(typeof self !== 'undefined' ? self : this, function () {
   return runtime.exports;
 });
+<% } %>
+
+<% if cjs { %>
+(function makoCommonJS() {
+  module.exports = runtime.exports;
+})();
 <% } %>

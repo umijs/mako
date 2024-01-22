@@ -18,6 +18,13 @@
 
 是否在 build 前清理输出目录。
 
+## cjs
+
+- 类型：`boolean`
+- 默认值：`false`
+
+是否输出 cjs 格式的代码。
+
 ## codeSplitting
 
 - 类型：`false | "auto" | object`
