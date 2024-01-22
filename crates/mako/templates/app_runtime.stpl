@@ -86,6 +86,7 @@ function createRuntime(makoModules, entryModuleId) {
     requireModule.jsonpInstalled = {};
     var installedChunks = requireModule.jsonpInstalled;
 
+    <% if is_browser { %>
     requireModule.chunkEnsures.jsonp = function (chunkId, promises) {
       var data = installedChunks[chunkId];
       if (data === 0) return;
@@ -125,6 +126,14 @@ function createRuntime(makoModules, entryModuleId) {
         return promise;
       }
     };
+    <% } else { %>
+    requireModule.chunkEnsures.require = (chunkId, promises) => {
+      if(!installedChunks[chunkId]) {
+        require("./" + chunksIdToUrlMap[chunkId]);
+        installedChunks[chunkId] = true;
+      }
+    };
+    <% } %>
   })();
   // chunk and async load
 

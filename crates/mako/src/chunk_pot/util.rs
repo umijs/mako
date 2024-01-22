@@ -109,6 +109,7 @@ pub(crate) fn runtime_code(context: &Arc<Context>) -> Result<String> {
         has_dynamic_chunks,
         has_hmr,
         umd,
+        is_browser: matches!(context.config.platform, crate::config::Platform::Browser),
         cjs: context.config.cjs,
         chunk_loading_global: context.config.output.chunk_loading_global.clone(),
     };
