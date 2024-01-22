@@ -391,6 +391,7 @@ pub struct Config {
     pub dynamic_import_to_require: bool,
     #[serde(deserialize_with = "deserialize_umd", default)]
     pub umd: Option<String>,
+    pub cjs: bool,
     pub write_to_disk: bool,
     pub transform_import: Vec<TransformImportConfig>,
     pub dev_eval: bool,
@@ -557,6 +558,7 @@ const DEFAULT_CONFIG: &str = r#"
     "optimizePackageImports": false,
     "emotion": false,
     "flexBugs": false,
+    "cjs": false,
     "optimization": { "skipModules": true },
     "react": {
       "pragma": "React.createElement",
@@ -631,6 +633,11 @@ impl Config {
                     );
                     println!("{}", warn_message);
                 }
+            }
+
+            // cjs and umd cannot be used at the same time
+            if config.cjs && config.umd.is_some() {
+                return Err(anyhow!("cjs and umd cannot be used at the same time",));
             }
 
             let mode = format!("\"{}\"", config.mode);

@@ -109,6 +109,7 @@ pub(crate) fn runtime_code(context: &Arc<Context>) -> Result<String> {
         has_dynamic_chunks,
         has_hmr,
         umd,
+        cjs: context.config.cjs,
         chunk_loading_global: context.config.output.chunk_loading_global.clone(),
     };
     let app_runtime = app_runtime.render_once()?;
