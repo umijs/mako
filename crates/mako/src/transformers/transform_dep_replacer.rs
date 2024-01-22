@@ -386,17 +386,35 @@ mod tests {
 
     #[test]
     fn test_import_replace() {
-        assert_display_snapshot!(transform_code("import x from 'x'"));
+        let context: Arc<Context> = Arc::new(Default::default());
+
+        GLOBALS.set(&context.meta.script.globals, || {
+            let code = transform_code("import x from 'x'");
+
+            assert_eq!(code, r#"import x from "/x/index.js";"#);
+        });
     }
 
     #[test]
     fn test_export_from_replace() {
-        assert_display_snapshot!(transform_code("export {x} from 'x'"));
+        let context: Arc<Context> = Arc::new(Default::default());
+
+        GLOBALS.set(&context.meta.script.globals, || {
+            let code = transform_code("export {x} from 'x'");
+
+            assert_eq!(code, r#"export { x } from "/x/index.js";"#);
+        })
     }
 
     #[test]
     fn test_dynamic_import_from_replace() {
-        assert_display_snapshot!(transform_code("const x = import('x')"));
+        let context: Arc<Context> = Arc::new(Default::default());
+
+        GLOBALS.set(&context.meta.script.globals, || {
+            let code = transform_code("const x = import('x')");
+
+            assert_eq!(code, r#"const x = import("/x/index.js");"#);
+        })
     }
 
     fn transform_code(code: &str) -> String {

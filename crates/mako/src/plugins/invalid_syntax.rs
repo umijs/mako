@@ -92,13 +92,13 @@ fn is_member_prop(
         ..
     } = expr
     {
-        let is_obj_match = &ident.sym == obj;
+        let is_obj_match = ident.sym == obj;
         let has_binding = if let Some(bindings) = bindings {
             bindings.contains(&(ident.sym.clone(), ident.span.ctxt))
         } else {
             false
         };
-        let is_prop_match = &prop_ident.sym == prop;
+        let is_prop_match = prop_ident.sym == prop;
         is_obj_match && (check_obj_binding && !has_binding) && is_prop_match
     } else {
         false
