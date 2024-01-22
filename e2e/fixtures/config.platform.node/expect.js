@@ -24,3 +24,13 @@ assert.match(
   /require\("fs\/promises"\)/,
   "should keep require for standard module subpath"
 );
+assert.match(
+  content,
+  /readFileSync\("src\/index.ts"/,
+  "should transform __filename"
+)
+assert.match(
+  content,
+  /console\.log\('dirname', "src"\);/,
+  "should transform __dirname"
+)
