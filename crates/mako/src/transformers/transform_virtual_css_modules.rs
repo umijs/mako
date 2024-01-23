@@ -49,9 +49,7 @@ impl VisitMut for VirtualCSSModules<'_> {
                 {
                     let origin_import_str = import_str.value.as_str();
 
-                    if is_css_modules_path(origin_import_str)
-                        || (self.context.config.auto_css_modules && is_css_path(origin_import_str))
-                    {
+                    if is_css_modules_path(origin_import_str) {
                         let replaced = format!("{}?asmodule", origin_import_str);
                         *source = quote_str!(replaced).as_arg();
                     }
@@ -93,7 +91,7 @@ mod tests {
         let mut ast = build_js_ast(
             "sut.js",
             r#"
-            import('./styles.module.css');
+            import('./styles.module.css').then();
             "#,
             &context,
         )
@@ -114,7 +112,10 @@ mod tests {
 
         let (code, _) = js_ast_to_code(&ast.ast, &context, "sut.js").unwrap();
 
-        assert_eq!(code.trim(), r#"import("./styles.module.css?asmodule");"#)
+        assert_eq!(
+            code.trim(),
+            r#"import("./styles.module.css?asmodule").then();"#
+        )
     }
 
     #[test]
@@ -127,7 +128,7 @@ mod tests {
         let mut ast = build_js_ast(
             "sut.js",
             r#"
-            import('./styles.module.css');
+            import("./styles.css").then();
             "#,
             &context,
         )
@@ -148,6 +149,6 @@ mod tests {
 
         let (code, _) = js_ast_to_code(&ast.ast, &context, "sut.js").unwrap();
 
-        assert_eq!(code.trim(), r#"import("./styles.module.css?asmodule");"#)
+        assert_eq!(code.trim(), r#"import("./styles.css").then();"#)
     }
 }
