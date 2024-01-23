@@ -67,6 +67,13 @@
 
 需要拷贝的文件或目录，默认会拷贝 `public` 目录下的文件到输出目录。
 
+## cssModulesExportOnlyLocales
+
+- 类型：`boolean`
+- 默认值：`false`
+
+是否只导出 CSS Modules 的类名，而不导出 CSS Modules 的值。通常用于服务端渲染场景，因为服务端渲染时不需要 CSS Modules 的值，只需要类名即可。
+
 ## define
 
 - 类型：`Record<string, string>`
@@ -110,6 +117,13 @@ Source Map 类型。
 import("./a.js")
 // => require("./a.js")
 ```
+
+## emitAssets
+
+- 类型：`boolean`
+- 默认值：`true`
+
+是否输出 assets 文件。通常用于构建纯服务端渲染的项目时设置为 `false`，因为此时不需要输出 assets 文件。
 
 ## emotion
 

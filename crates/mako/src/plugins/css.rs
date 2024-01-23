@@ -42,7 +42,11 @@ impl Plugin for CSSPlugin {
             import_url_to_href(&mut ast);
             // parse css module as js
             if has_asmodule_query {
-                let code = generate_code_for_css_modules(&param.task.request.path, &mut ast);
+                let code = generate_code_for_css_modules(
+                    &param.task.request.path,
+                    &mut ast,
+                    context.config.css_modules_export_only_locales,
+                );
                 let js_ast = build_js_ast(&param.task.request.path, &code, context)?;
                 return Ok(Some(ModuleAst::Script(js_ast)));
             } else {
@@ -111,7 +115,11 @@ fn compile_css_modules(path: &str, ast: &mut Stylesheet) -> TransformResult {
     )
 }
 
-fn generate_code_for_css_modules(path: &str, ast: &mut Stylesheet) -> String {
+fn generate_code_for_css_modules(
+    path: &str,
+    ast: &mut Stylesheet,
+    css_modules_export_only_locales: bool,
+) -> String {
     let stylesheet = compile_css_modules(path, ast);
 
     let mut export_names = Vec::new();
@@ -140,13 +148,22 @@ fn generate_code_for_css_modules(path: &str, ast: &mut Stylesheet) -> String {
         .collect::<Vec<String>>()
         .join(",");
 
-    format!(
-        r#"
+    if css_modules_export_only_locales {
+        format!(
+            r#"
+export default {{{}}}
+"#,
+            export_names
+        )
+    } else {
+        format!(
+            r#"
 import "{}?modules";
 export default {{{}}}
 "#,
-        path, export_names
-    )
+            path, export_names
+        )
+    }
 }
 
 // Why do this?
@@ -307,7 +324,7 @@ export default {"a": `a-hlnPCer-`,"b": `b-KOXpblx_ a`,"c": `c-WTxpkVWA c`}
         let path = "/test/path";
         let mut ast = build_css_ast(path, code, &Arc::new(Default::default()), true).unwrap();
 
-        generate_code_for_css_modules(path, &mut ast)
+        generate_code_for_css_modules(path, &mut ast, false)
     }
 
     #[test]

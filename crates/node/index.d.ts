@@ -84,6 +84,8 @@ export interface BuildParams {
     ignoreCSSParserErrors?: boolean;
     dynamicImportToRequire?: boolean;
     umd?: false | string;
+    cjs?: boolean;
+    writeToDisk?: boolean;
     transformImport?: {
       libraryName: string;
       libraryDirectory?: string;
@@ -127,6 +129,8 @@ export interface BuildParams {
       importSource?: string;
       pragmaFrag?: string;
     };
+    emitAssets: boolean;
+    cssModulesExportOnlyLocales: boolean;
   };
   hooks: JsHooks;
   watch: boolean;

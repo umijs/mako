@@ -103,23 +103,24 @@ impl Compiler {
         let (t_generate_chunks, t_ast_to_code_and_write) = self.write_chunk_files(full_hash)?;
 
         // write assets
-        let t_write_assets = Instant::now();
-        debug!("write assets");
-        // why {} block? unlock assets_info
-        {
-            let assets_info = &(*self.context.assets_info.lock().unwrap());
-            for (k, v) in assets_info {
-                let asset_path = &self.context.root.join(k);
-                let asset_output_path = &config.output.path.join(v);
-                if asset_path.exists() {
-                    fs::copy(asset_path, asset_output_path)?;
-                } else {
-                    return Err(anyhow!("asset not found: {}", asset_path.display()));
+        if config.emit_assets {
+            let t_write_assets = Instant::now();
+            debug!("write assets");
+            {
+                let assets_info = &(*self.context.assets_info.lock().unwrap());
+                for (k, v) in assets_info {
+                    let asset_path = &self.context.root.join(k);
+                    let asset_output_path = &config.output.path.join(v);
+                    if asset_path.exists() {
+                        fs::copy(asset_path, asset_output_path)?;
+                    } else {
+                        return Err(anyhow!("asset not found: {}", asset_path.display()));
+                    }
                 }
             }
+            let t_write_assets = t_write_assets.elapsed();
+            debug!("  - write assets: {}ms", t_write_assets.as_millis());
         }
-
-        let t_write_assets = t_write_assets.elapsed();
 
         // generate stats
         let stats = create_stats_info(0, self);
@@ -150,7 +151,6 @@ impl Compiler {
             "  - ast to code and write: {}ms",
             t_ast_to_code_and_write.as_millis()
         );
-        debug!("  - write assets: {}ms", t_write_assets.as_millis());
 
         Ok(())
     }
