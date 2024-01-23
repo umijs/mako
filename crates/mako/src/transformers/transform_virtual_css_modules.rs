@@ -57,7 +57,7 @@ impl VisitMut for VirtualCSSModules<'_> {
 }
 
 impl VirtualCSSModules<'_> {
-    fn replace_first_arg(&mut self, args: &mut Vec<ExprOrSpread>) {
+    fn replace_first_arg(&mut self, args: &mut [ExprOrSpread]) {
         if let Some(first_arg) = args.get_mut(0) {
             if let Some(lit) = first_arg.expr.as_lit()
                 && let Lit::Str(import_str) = lit
