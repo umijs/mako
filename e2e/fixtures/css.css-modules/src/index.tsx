@@ -1,13 +1,16 @@
+// css module
 import styles from "./index.css";
 console.log(styles);
 
+
+// non css module
 import('./a.css');
 require('./b.css');
 import "./c.css";
-
-// css modules
-import d from './d.css';
-d;
 const e = require('./e.css');
-e;
-// import('./f.css').then(f => f);
+import('./f.css').then(f => f);
+
+console.log (e);
+
+
+
