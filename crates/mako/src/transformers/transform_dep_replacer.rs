@@ -14,7 +14,7 @@ use crate::module::{Dependency, ModuleId};
 use crate::plugins::css::is_url_ignored;
 use crate::plugins::javascript::{is_commonjs_require, is_dynamic_import};
 use crate::task::parse_path;
-use crate::transformers::transform_virtual_css_modules::is_css_path;
+use crate::transformers::transform_virtual_css_modules::{is_css_modules_path, is_css_path};
 
 pub struct DepReplacer<'a> {
     pub module_id: &'a ModuleId,
@@ -111,45 +111,35 @@ impl VisitMut for DepReplacer<'_> {
                         }
                     }
 
-                    let is_dep_replaceable = if let Some((_, raw_id)) =
-                        self.to_replace.resolved.get(&source_string)
-                    {
+                    if let Some((_, raw_id)) = self.to_replace.resolved.get(&source_string) {
                         let file_request = parse_path(raw_id).unwrap();
-                        is_css_path(&file_request.path)
-                            && (file_request.query.is_empty() || file_request.has_query("modules"))
-                    } else {
-                        false
-                    };
+                        let will_replace = is_css_path(&file_request.path)
+                            && (file_request.query.is_empty() || file_request.has_query("modules"));
 
-                    if is_dep_replaceable {
-                        // remove `require('./xxx.css');`
-                        if is_commonjs_require_flag {
-                            *expr = Expr::Lit(quote_str!("").into());
-                            return;
-                        } else {
-                            // `import('./xxx.css')` 中的 css 模块会被拆分到单独的 chunk, 这里需要改为加载 css chunk
-                            let module_graph = self.context.module_graph.read().unwrap();
-                            let dep_module_id = module_graph
-                                .get_dependency_module_by_source(self.module_id, &source_string);
+                        if will_replace {
+                            // remove `require('./xxx.css');`
+                            if is_commonjs_require_flag {
+                                *expr = Expr::Lit(quote_str!("").into());
+                                return;
+                            }
 
-                            if let Some(dep_module_id) = dep_module_id {
+                            // replace `import("./xxx.css")`
+                            let is_css_module =
+                                file_request.has_query("asmodule") || is_css_modules_path(raw_id);
+                            if !is_css_module {
                                 let chunk_graph = self.context.chunk_graph.read().unwrap();
                                 let chunk =
-                                    chunk_graph.get_chunk_for_module(&dep_module_id.clone());
+                                    chunk_graph.get_chunk_for_module(&raw_id.clone().into());
 
                                 if let Some(chunk) = chunk {
-                                    let chunk_id = chunk.id.id.clone();
-                                    // `import('./xxx.css')` => `__mako_require__.ensure('./xxx.css')`
-                                    *expr = member_expr!(DUMMY_SP, __mako_require__.ensure)
-                                        .as_call(DUMMY_SP, vec![quote_str!(chunk_id).as_arg()]);
+                                    *expr = Self::dynamic_css_import_replacement(&chunk.id.id);
                                     return;
                                 } else {
                                     *expr = Expr::Lit(quote_str!("").into());
                                     return;
                                 }
                             } else {
-                                *expr = Expr::Lit(quote_str!("").into());
-                                return;
+                                // dynamic css module import will be handled by DynamicImport transformer
                             }
                         }
                     }
@@ -179,6 +169,17 @@ impl VisitMut for DepReplacer<'_> {
 }
 
 impl DepReplacer<'_> {
+    /*
+        import('./xxx.css')
+          ||
+          \/
+        __mako_require__.ensure('chunk_id')
+    */
+    fn dynamic_css_import_replacement(chunk_id: &String) -> Expr {
+        member_expr!(DUMMY_SP, __mako_require__.ensure)
+            .as_call(DUMMY_SP, vec![quote_str!(chunk_id.clone()).as_arg()])
+    }
+
     fn replace_source(&mut self, source: &mut Str) {
         let to_replace =
             if let Some(replacement) = self.to_replace.resolved.get(&source.value.to_string()) {
