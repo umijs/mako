@@ -5,7 +5,7 @@ use mako_core::regex::Regex;
 use mako_core::swc_common::Mark;
 use mako_core::swc_ecma_ast::{ImportDecl, Str};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
-use swc_core::ecma::ast::{CallExpr, Callee, Lit};
+use swc_core::ecma::ast::{CallExpr, ExprOrSpread, Lit};
 use swc_core::ecma::utils::{quote_str, ExprFactory};
 
 use crate::compiler::Context;
@@ -29,6 +29,21 @@ pub fn is_css_path(path: &str) -> bool {
 }
 
 impl VisitMut for VirtualCSSModules<'_> {
+    fn visit_mut_call_expr(&mut self, n: &mut CallExpr) {
+        if n.args.len() == 1 {
+            if n.callee.is_import() {
+                self.replace_first_arg(&mut n.args);
+            } else if let Some(call_expr) = n.callee.as_expr()
+                && let Some(callee_ident) = call_expr.as_ident()
+                && callee_ident.span.ctxt.outer() == self.unresolved_mark
+                && callee_ident.sym.as_str() == "require"
+            {
+                self.replace_first_arg(&mut n.args);
+            }
+        }
+
+        n.visit_mut_children_with(self);
+    }
     fn visit_mut_import_decl(&mut self, import_decl: &mut ImportDecl) {
         if is_css_modules_path(&import_decl.src.value)
             || (self.context.config.auto_css_modules
@@ -39,29 +54,24 @@ impl VisitMut for VirtualCSSModules<'_> {
         }
         import_decl.visit_mut_children_with(self);
     }
-    fn visit_mut_call_expr(&mut self, n: &mut CallExpr) {
-        if let Callee::Import(_) = n.callee
-            && n.args.len() == 1
-        {
-            if let Some(source) = n.args.get_mut(0) {
-                if let Some(lit) = source.expr.as_lit()
-                    && let Lit::Str(import_str) = lit
-                {
-                    let origin_import_str = import_str.value.as_str();
-
-                    if is_css_modules_path(origin_import_str) {
-                        let replaced = format!("{}?asmodule", origin_import_str);
-                        *source = quote_str!(replaced).as_arg();
-                    }
-                }
-            }
-        }
-
-        n.visit_mut_children_with(self);
-    }
 }
 
 impl VirtualCSSModules<'_> {
+    fn replace_first_arg(&mut self, args: &mut Vec<ExprOrSpread>) {
+        if let Some(first_arg) = args.get_mut(0) {
+            if let Some(lit) = first_arg.expr.as_lit()
+                && let Lit::Str(import_str) = lit
+            {
+                let origin_import_str = import_str.value.as_str();
+
+                if is_css_modules_path(origin_import_str) {
+                    let replaced = format!("{}?asmodule", origin_import_str);
+                    *first_arg = quote_str!(replaced).as_arg();
+                }
+            }
+        }
+    }
+
     fn replace_source(&mut self, source: &mut Str) {
         let to_replace = format!("{}?asmodule", &source.value.to_string());
         let span = source.span;
@@ -84,33 +94,11 @@ mod tests {
 
     #[test]
     fn test_dynamic_import_css_module() {
-        let mut context: Context = Default::default();
-        context.config.devtool = None;
-        let context: Arc<Context> = Arc::new(context);
-
-        let mut ast = build_js_ast(
-            "sut.js",
+        let code = act_replace(
             r#"
             import('./styles.module.css').then();
             "#,
-            &context,
-        )
-        .unwrap();
-
-        GLOBALS.set(&context.meta.script.globals, || {
-            ast.ast.visit_mut_with(&mut resolver(
-                ast.unresolved_mark,
-                ast.top_level_mark,
-                false,
-            ));
-
-            ast.ast.visit_mut_with(&mut VirtualCSSModules {
-                context: &context,
-                unresolved_mark: ast.unresolved_mark,
-            });
-        });
-
-        let (code, _) = js_ast_to_code(&ast.ast, &context, "sut.js").unwrap();
+        );
 
         assert_eq!(
             code.trim(),
@@ -119,20 +107,36 @@ mod tests {
     }
 
     #[test]
-    fn test_dynamic_import_css_when_enable_auto_css_module() {
-        let mut context: Context = Default::default();
-        context.config.devtool = None;
-        context.config.auto_css_modules = true;
-        let context: Arc<Context> = Arc::new(context);
-
-        let mut ast = build_js_ast(
-            "sut.js",
+    fn test_dynamic_import_non_css_module() {
+        let code = act_replace(
             r#"
             import("./styles.css").then();
             "#,
-            &context,
-        )
-        .unwrap();
+        );
+
+        assert_eq!(code.trim(), r#"import("./styles.css").then();"#)
+    }
+
+    #[test]
+    fn test_require_css_module() {
+        let code = act_replace(r#"require("./style.module.css")"#);
+
+        assert_eq!(code.trim(), r#"require("./style.module.css?asmodule");"#)
+    }
+
+    #[test]
+    fn test_require_no_css_module() {
+        let code = act_replace(r#"require("./style.css")"#);
+
+        assert_eq!(code.trim(), r#"require("./style.css");"#)
+    }
+
+    fn act_replace(code: &str) -> String {
+        let mut context: Context = Default::default();
+        context.config.devtool = None;
+        let context: Arc<Context> = Arc::new(context);
+
+        let mut ast = build_js_ast("sut.js", code, &context).unwrap();
 
         GLOBALS.set(&context.meta.script.globals, || {
             ast.ast.visit_mut_with(&mut resolver(
@@ -148,7 +152,6 @@ mod tests {
         });
 
         let (code, _) = js_ast_to_code(&ast.ast, &context, "sut.js").unwrap();
-
-        assert_eq!(code.trim(), r#"import("./styles.css").then();"#)
+        code
     }
 }
