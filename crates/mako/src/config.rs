@@ -411,6 +411,9 @@ pub struct Config {
     #[serde(deserialize_with = "deserialize_optimization")]
     pub optimization: Option<OptimizationConfig>,
     pub react: ReactConfig,
+    pub emit_assets: bool,
+    #[serde(rename = "cssModulesExportOnlyLocales")]
+    pub css_modules_export_only_locales: bool,
 }
 
 pub(crate) fn hash_config(c: &Config) -> u64 {
@@ -566,6 +569,8 @@ const DEFAULT_CONFIG: &str = r#"
       "runtime": "automatic",
       "pragmaFrag": "React.Fragment"
     },
+    "emitAssets": true,
+    "cssModulesExportOnlyLocales": false,
 }
 "#;
 

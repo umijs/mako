@@ -1,0 +1,5 @@
+{
+  "minify": false,
+  "platform": "node",
+  "emitAssets": false
+}

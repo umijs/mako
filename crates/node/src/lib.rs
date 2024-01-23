@@ -86,6 +86,8 @@ pub struct BuildParams {
     ignoreCSSParserErrors?: boolean;
     dynamicImportToRequire?: boolean;
     umd?: false | string;
+    cjs?: boolean;
+    writeToDisk?: boolean;
     transformImport?: { libraryName: string; libraryDirectory?: string; style?: boolean | string }[];
     clean?: boolean;
     nodePolyfill?: boolean;
@@ -109,6 +111,8 @@ pub struct BuildParams {
         importSource?: string;
         pragmaFrag?: string;
     };
+    emitAssets: boolean;
+    cssModulesExportOnlyLocales: boolean;
 }"#)]
     pub config: serde_json::Value,
     pub hooks: JsHooks,
