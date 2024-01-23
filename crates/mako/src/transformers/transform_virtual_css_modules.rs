@@ -44,20 +44,16 @@ impl VisitMut for VirtualCSSModules<'_> {
             && n.args.len() == 1
         {
             if let Some(source) = n.args.get_mut(0) {
-                if let Some(lit) = source.expr.as_lit() {
-                    match lit {
-                        Lit::Str(import_str) => {
-                            let origin_import_str = import_str.value.as_str();
+                if let Some(lit) = source.expr.as_lit()
+                    && let Lit::Str(import_str) = lit
+                {
+                    let origin_import_str = import_str.value.as_str();
 
-                            if is_css_modules_path(origin_import_str)
-                                || (self.context.config.auto_css_modules
-                                    && is_css_path(origin_import_str))
-                            {
-                                let replaced = format!("{}?asmodule", origin_import_str);
-                                *source = quote_str!(replaced).as_arg();
-                            }
-                        }
-                        _ => {}
+                    if is_css_modules_path(origin_import_str)
+                        || (self.context.config.auto_css_modules && is_css_path(origin_import_str))
+                    {
+                        let replaced = format!("{}?asmodule", origin_import_str);
+                        *source = quote_str!(replaced).as_arg();
                     }
                 }
             }
@@ -122,7 +118,7 @@ mod tests {
     }
 
     #[test]
-    fn test_dynamic_import_css_when_enable_autoCSSModule() {
+    fn test_dynamic_import_css_when_enable_auto_css_module() {
         let mut context: Context = Default::default();
         context.config.devtool = None;
         context.config.auto_css_modules = true;

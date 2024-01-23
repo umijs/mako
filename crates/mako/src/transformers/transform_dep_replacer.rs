@@ -175,9 +175,9 @@ impl DepReplacer<'_> {
           \/
         __mako_require__.ensure('chunk_id')
     */
-    fn dynamic_css_import_replacement(chunk_id: &String) -> Expr {
+    fn dynamic_css_import_replacement(chunk_id: &str) -> Expr {
         member_expr!(DUMMY_SP, __mako_require__.ensure)
-            .as_call(DUMMY_SP, vec![quote_str!(chunk_id.clone()).as_arg()])
+            .as_call(DUMMY_SP, vec![quote_str!(chunk_id.to_owned()).as_arg()])
     }
 
     fn replace_source(&mut self, source: &mut Str) {
