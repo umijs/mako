@@ -22,7 +22,7 @@ use swc_core::common::{Span, GLOBALS};
 
 use crate::chunk_pot::ChunkPot;
 use crate::compiler::Context;
-use crate::config::Mode;
+use crate::config::{get_pkg_name, Mode};
 use crate::load::file_content_hash;
 use crate::module::{relative_to_root, Module, ModuleAst};
 use crate::runtime::AppRuntimeTemplate;
@@ -112,6 +112,7 @@ pub(crate) fn runtime_code(context: &Arc<Context>) -> Result<String> {
         is_browser: matches!(context.config.platform, crate::config::Platform::Browser),
         cjs: context.config.cjs,
         chunk_loading_global: context.config.output.chunk_loading_global.clone(),
+        pkg_name: get_pkg_name(&context.root),
     };
     let app_runtime = app_runtime.render_once()?;
     let app_runtime = app_runtime.replace(

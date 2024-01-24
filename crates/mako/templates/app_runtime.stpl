@@ -259,9 +259,19 @@ function createRuntime(makoModules, entryModuleId) {
       if (inProgress[url]) {
         return inProgress[url].push(done);
       }
-      var script = document.createElement('script');
-      script.timeout = 120;
-      script.src = url;
+      var script = document.querySelector(
+        'script[src="' + url + '"]'
+        <% if pkg_name.is_some() { %>
+        + ', script[data-mako="' + '<%= pkg_name.clone().unwrap() %>' + ':' + key + '"]'
+        <% } %>
+      );
+
+      if (!script) {
+        script = document.createElement('script');
+        script.timeout = 120;
+        script.src = url;
+      }
+
       inProgress[url] = [done];
       var onLoadEnd = function (prev, event) {
         clearTimeout(timeout);
