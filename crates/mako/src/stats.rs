@@ -64,8 +64,8 @@ pub struct StatsJsonModuleItem {
     #[serde(flatten)]
     pub module_type: StatsJsonType,
     pub size: u64,
-    pub module_id: String,
-    pub chunk_id: String,
+    pub id: String,
+    pub chunks: Vec<String>,
 }
 #[derive(Serialize, Debug)]
 pub struct StatsJsonChunkItem {
@@ -225,9 +225,9 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
                     let module = StatsJsonModuleItem {
                         module_type: StatsJsonType::Module("module".to_string()),
                         size,
-                        module_id: id,
-                        // TODO: 现在是从每个 chunk 中找到包含的 module, 所以 chunk_id 是单个, 但是一个 module 有可能存在于多个 chunk 中, 后续需要把 chunk_id 改成 Vec
-                        chunk_id: chunk.id.id.clone(),
+                        id,
+                        // TODO: 现在是从每个 chunk 中找到包含的 module, 所以 chunk_id 是单个, 但是一个 module 有可能存在于多个 chunk 中
+                        chunks: vec![chunk.id.id.clone()],
                     };
 
                     modules_vec.borrow_mut().push(module.clone());
