@@ -82,6 +82,7 @@ pub struct StatsJsonEntryItem {
     pub chunks: Vec<String>,
 }
 #[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct StatsJsonMap {
     hash: u64,
     time: u128,
