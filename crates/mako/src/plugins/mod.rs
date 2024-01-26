@@ -20,6 +20,7 @@ pub mod node_polyfill;
 pub mod node_stuff;
 pub mod raw;
 pub mod runtime;
+pub mod styled_components;
 pub mod svg;
 pub mod toml;
 pub mod wasm;

@@ -19,6 +19,10 @@ use serde::Serialize;
 use crate::plugins::node_polyfill::get_all_modules;
 use crate::{optimize_chunk, plugins, transformers};
 
+fn true_by_default() -> bool {
+    true
+}
+
 #[derive(Debug, Diagnostic)]
 #[diagnostic(code("mako.config.json parsed failed"))]
 struct ConfigParseError {
@@ -99,6 +103,7 @@ create_deserialize_fn!(deserialize_devtool, DevtoolConfig);
 create_deserialize_fn!(deserialize_tree_shaking, TreeShakingStrategy);
 create_deserialize_fn!(deserialize_optimization, OptimizationConfig);
 create_deserialize_fn!(deserialize_minifish, MinifishConfig);
+create_deserialize_fn!(deserialize_styled_components, StyledComponentsConfig);
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -351,6 +356,30 @@ pub struct HmrConfig {
     pub host: String,
     pub port: u16,
 }
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct StyledComponentsConfig {
+    #[serde(default = "true_by_default")]
+    pub display_name: bool,
+    #[serde(default = "true_by_default")]
+    pub ssr: bool,
+    #[serde(default = "true_by_default")]
+    pub file_name: bool,
+    #[serde(default)]
+    pub meaningless_file_names: Vec<String>,
+    #[serde(default)]
+    pub top_level_import_paths: Vec<String>,
+    #[serde(default)]
+    pub namespace: String,
+    #[serde(default)]
+    pub transpile_template_literals: bool,
+    #[serde(default)]
+    pub minify: bool,
+    #[serde(default)]
+    pub pure: bool,
+    #[serde(default = "true_by_default")]
+    pub css_prop: bool,
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -407,6 +436,11 @@ pub struct Config {
     #[serde(rename = "optimizePackageImports")]
     pub optimize_package_imports: bool,
     pub emotion: bool,
+    #[serde(
+        rename = "styledComponents",
+        deserialize_with = "deserialize_styled_components"
+    )]
+    pub styled_components: Option<StyledComponentsConfig>,
     pub flex_bugs: bool,
     #[serde(deserialize_with = "deserialize_optimization")]
     pub optimization: Option<OptimizationConfig>,
@@ -560,6 +594,7 @@ const DEFAULT_CONFIG: &str = r#"
     "ignores": [],
     "optimizePackageImports": false,
     "emotion": false,
+    "styledComponents": false,
     "flexBugs": false,
     "cjs": false,
     "optimization": { "skipModules": true },

@@ -1,0 +1,8 @@
+{
+  "styledComponents": {
+    "namespace": "mako_app"
+  },
+  "optimization": {},
+  "minify": false,
+  "moduleIdStrategy": "named"
+}

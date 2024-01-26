@@ -255,6 +255,7 @@ impl Compiler {
             Arc::new(plugins::wasm_runtime::WasmRuntimePlugin {}),
             Arc::new(plugins::async_runtime::AsyncRuntimePlugin {}),
             Arc::new(plugins::emotion::EmotionPlugin {}),
+            Arc::new(plugins::styled_components::StyledComponentsPlugin {}),
             Arc::new(plugins::node_stuff::NodeStuffPlugin {}),
         ];
         plugins.extend(builtin_plugins);

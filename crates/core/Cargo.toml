@@ -47,6 +47,8 @@ swc_core = { workspace = true, features = [
 swc_error_reporters = "0.17.12"
 swc_node_comments   = "0.20.12"
 swc_emotion         = "0.67.0"
+swc_common          = "=0.33.12"
+styled_components   = "0.87.0"
 
 base64                = "0.21.2"
 petgraph              = "0.6.3"
