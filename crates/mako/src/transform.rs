@@ -109,7 +109,7 @@ fn transform_js(
                         &unresolved_mark,
                     ));
 
-                    let mut env_replacer = EnvReplacer::new(Lrc::new(env_map));
+                    let mut env_replacer = EnvReplacer::new(Lrc::new(env_map), unresolved_mark);
                     ast.visit_mut_with(&mut env_replacer);
 
                     let mut try_resolve = TryResolve {
@@ -119,7 +119,8 @@ fn transform_js(
                     };
                     ast.visit_mut_with(&mut try_resolve);
 
-                    let mut provide = Provide::new(context.config.providers.clone());
+                    let mut provide =
+                        Provide::new(context.config.providers.clone(), unresolved_mark);
                     ast.visit_mut_with(&mut provide);
 
                     let mut import_css_in_js = VirtualCSSModules {

@@ -2,13 +2,11 @@ use std::path::{Path, PathBuf};
 
 use mako_core::anyhow::{Ok, Result};
 use mako_core::pathdiff::diff_paths;
-use mako_core::swc_common::collections::AHashSet;
 use mako_core::swc_common::sync::Lrc;
-use mako_core::swc_ecma_ast::{Expr, Id, Lit, Module, Str};
-use mako_core::swc_ecma_utils::collect_decls;
+use mako_core::swc_ecma_ast::{Expr, Lit, Module, Str};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 use serde_json::Value;
-use swc_core::common::DUMMY_SP;
+use swc_core::common::{Mark, DUMMY_SP};
 
 use crate::compiler::Args;
 use crate::config::{Config, Platform};
@@ -44,7 +42,7 @@ impl Plugin for NodeStuffPlugin {
             let current_path = param.path;
 
             ast.visit_mut_with(&mut NodeStuff {
-                bindings: Default::default(),
+                unresolved_mark: param.unresolved_mark,
                 current_path: &current_path.into(),
                 root: &context.root,
             });
@@ -55,27 +53,16 @@ impl Plugin for NodeStuffPlugin {
 }
 
 struct NodeStuff<'a> {
-    bindings: Lrc<AHashSet<Id>>,
+    unresolved_mark: Mark,
     current_path: &'a PathBuf,
     root: &'a PathBuf,
 }
 
 impl VisitMut for NodeStuff<'_> {
-    fn visit_mut_module(&mut self, module: &mut Module) {
-        self.bindings = Lrc::new(collect_decls(&*module));
-        module.visit_mut_children_with(self);
-    }
-
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
-        if let Expr::Ident(ident) = expr {
-            if self
-                .bindings
-                .contains(&(ident.sym.clone(), ident.span.ctxt))
-            {
-                expr.visit_mut_children_with(self);
-                return;
-            }
-
+        if let Expr::Ident(ident) = expr
+            && ident.span.ctxt.outer() == self.unresolved_mark
+        {
             let is_filename = ident.sym == "__filename";
             let is_dirname = ident.sym == "__dirname";
             if is_filename || is_dirname {
