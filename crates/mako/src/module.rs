@@ -151,6 +151,11 @@ impl ResolveType {
 }
 
 #[derive(Debug, Clone)]
+pub enum OptimsType {
+    UselessModule,
+}
+
+#[derive(Debug, Clone)]
 pub struct ModuleInfo {
     pub ast: ModuleAst,
     pub file: File,
@@ -168,6 +173,7 @@ pub struct ModuleInfo {
     pub resolved_resource: Option<ResolverResource>,
     /// The transformed source map chain of this module
     pub source_map_chain: Vec<Vec<u8>>,
+    pub optims: Vec<OptimsType>,
 }
 
 impl Default for ModuleInfo {
@@ -185,6 +191,7 @@ impl Default for ModuleInfo {
             resolved_resource: None,
             source_map_chain: vec![],
             is_ignored: false,
+            optims: vec![],
         }
     }
 }
