@@ -169,7 +169,7 @@ pub(super) fn skip_module_optimize(
 
         let module = module_graph.get_module_mut(module_id).unwrap();
 
-        let swc_module = module.info.as_mut().unwrap().ast.as_script_mut();
+        let swc_module = module.info.as_mut().unwrap().ast.as_script_ast_mut();
 
         let mut stmt = swc_module.body.get(stmt_id).unwrap().clone();
         let mut to_insert = vec![];
@@ -488,7 +488,7 @@ pub(super) fn skip_module_optimize(
                 .as_ref()
                 .unwrap()
                 .ast
-                .as_script();
+                .as_script_ast();
 
             tsm.update_stmt_graph(swc_module);
         }

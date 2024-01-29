@@ -353,7 +353,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
                 .as_mut()
                 .unwrap()
                 .ast
-                .as_script_mut()
+                .as_script_ast_mut()
                 .body = swc_module.body.clone();
         }
     }

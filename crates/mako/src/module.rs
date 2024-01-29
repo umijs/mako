@@ -208,7 +208,21 @@ pub enum ModuleAst {
 }
 
 impl ModuleAst {
-    pub fn as_script(&self) -> &SwcModule {
+    pub fn as_script(&self) -> Option<&Ast> {
+        match self {
+            ModuleAst::Script(ast) => Some(ast),
+            _ => None,
+        }
+    }
+
+    pub fn script_mut(&mut self) -> Option<&mut Ast> {
+        match self {
+            ModuleAst::Script(ast) => Some(ast),
+            _ => None,
+        }
+    }
+
+    pub fn as_script_ast(&self) -> &SwcModule {
         if let Self::Script(script) = self {
             &script.ast
         } else {
@@ -216,7 +230,7 @@ impl ModuleAst {
         }
     }
 
-    pub fn as_script_mut(&mut self) -> &mut SwcModule {
+    pub fn as_script_ast_mut(&mut self) -> &mut SwcModule {
         if let Self::Script(script) = self {
             &mut script.ast
         } else {

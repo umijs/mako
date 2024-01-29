@@ -430,7 +430,7 @@ module.exports = new Promise((resolve, reject) => {{
         if !is_script {
             return (vec![], vec![], false);
         }
-        let ast = ast.as_script();
+        let ast = ast.as_script_ast();
         let mut import_map = vec![];
         let mut export_map = vec![];
         let mut is_barrel = true;
