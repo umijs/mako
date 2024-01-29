@@ -1,21 +1,20 @@
 use mako_core::indexmap::IndexMap;
-use mako_core::swc_common::collections::AHashSet;
-use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::DUMMY_SP;
-use mako_core::swc_ecma_ast::{Expr, Id, Ident, MemberExpr, Module, ModuleItem, VarDeclKind};
-use mako_core::swc_ecma_utils::{collect_decls, quote_ident, quote_str, ExprFactory};
+use mako_core::swc_ecma_ast::{Expr, Ident, MemberExpr, Module, ModuleItem, VarDeclKind};
+use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+use swc_core::common::Mark;
 
 use crate::config::Providers;
 pub struct Provide {
-    bindings: Lrc<AHashSet<Id>>,
+    unresolved_mark: Mark,
     providers: Providers,
     var_decls: IndexMap<String, ModuleItem>,
 }
 impl Provide {
-    pub fn new(providers: Providers) -> Self {
+    pub fn new(providers: Providers, unresolved_mark: Mark) -> Self {
         Self {
-            bindings: Default::default(),
+            unresolved_mark,
             providers,
             var_decls: Default::default(),
         }
@@ -23,7 +22,6 @@ impl Provide {
 }
 impl VisitMut for Provide {
     fn visit_mut_module(&mut self, module: &mut Module) {
-        self.bindings = Lrc::new(collect_decls(&*module));
         module.visit_mut_children_with(self);
         module
             .body
@@ -31,7 +29,7 @@ impl VisitMut for Provide {
     }
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Ident(Ident { ref sym, span, .. }) = expr {
-            let has_binding = self.bindings.contains(&(sym.clone(), span.ctxt));
+            let has_binding = span.ctxt.outer() != self.unresolved_mark;
             let name = &sym.to_string();
             let provider = self.providers.get(name);
             if !has_binding && provider.is_some() {
@@ -77,6 +75,8 @@ impl VisitMut for Provide {
 mod tests {
     use std::collections::HashMap;
 
+    use swc_core::common::Mark;
+
     #[test]
     fn test_provide_normal() {
         // TODO: fix binding test problem
@@ -100,7 +100,7 @@ function foo() {
         let mut providers = HashMap::new();
         providers.insert("process".into(), ("process".into(), "".into()));
         providers.insert("Buffer".into(), ("buffer".into(), "Buffer".into()));
-        let mut visitor = super::Provide::new(providers);
+        let mut visitor = super::Provide::new(providers, Mark::root());
         crate::transformers::test_helper::transform_js_code(code, &mut visitor, &context)
     }
 }

@@ -1,14 +1,11 @@
 use std::sync::Arc;
 
 use mako_core::anyhow::Result;
-use mako_core::swc_common::collections::AHashSet;
-use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{self, Mark, GLOBALS};
 use mako_core::swc_ecma_ast::{
-    CallExpr, Callee, Expr, Id, Ident, Import, Lit, MemberExpr, MemberProp, MetaPropExpr,
-    MetaPropKind, Module, ModuleDecl, NewExpr, Str,
+    CallExpr, Callee, Expr, Ident, Import, Lit, MemberExpr, MemberProp, MetaPropExpr, MetaPropKind,
+    ModuleDecl, NewExpr, Str,
 };
-use mako_core::swc_ecma_utils::collect_decls;
 use mako_core::swc_ecma_visit::{Visit, VisitWith};
 
 use super::css::is_url_ignored;
@@ -84,7 +81,6 @@ impl Plugin for JavaScriptPlugin {
 }
 
 struct DepCollectVisitor {
-    bindings: Lrc<AHashSet<Id>>,
     dependencies: Vec<Dependency>,
     order: usize,
     unresolved_mark: Mark,
@@ -93,7 +89,6 @@ struct DepCollectVisitor {
 impl DepCollectVisitor {
     fn new(unresolved_mark: Mark) -> Self {
         Self {
-            bindings: Default::default(),
             dependencies: vec![],
             // start with 1
             // 0 for swc helpers
@@ -119,10 +114,6 @@ impl DepCollectVisitor {
 }
 
 impl Visit for DepCollectVisitor {
-    fn visit_module(&mut self, module: &Module) {
-        self.bindings = Lrc::new(collect_decls(module));
-        module.visit_children_with(self);
-    }
     fn visit_module_decl(&mut self, n: &ModuleDecl) {
         match n {
             ModuleDecl::Import(import) => {

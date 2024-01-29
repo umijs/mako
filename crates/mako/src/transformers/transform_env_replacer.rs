@@ -4,16 +4,17 @@ use std::sync::Arc;
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::serde_json::Value;
 use mako_core::swc_atoms::{js_word, JsWord};
-use mako_core::swc_common::collections::{AHashMap, AHashSet};
+use mako_core::swc_common::collections::AHashMap;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{
-    ArrayLit, Bool, ComputedPropName, Expr, ExprOrSpread, Id, Ident, KeyValueProp, Lit, MemberExpr,
-    MemberProp, MetaPropExpr, MetaPropKind, Module, ModuleItem, Null, Number, ObjectLit, Prop,
-    PropName, PropOrSpread, Stmt, Str,
+    ArrayLit, Bool, ComputedPropName, Expr, ExprOrSpread, Ident, KeyValueProp, Lit, MemberExpr,
+    MemberProp, MetaPropExpr, MetaPropKind, ModuleItem, Null, Number, ObjectLit, Prop, PropName,
+    PropOrSpread, Stmt, Str,
 };
-use mako_core::swc_ecma_utils::{collect_decls, quote_ident, ExprExt};
+use mako_core::swc_ecma_utils::{quote_ident, ExprExt};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+use swc_core::common::Mark;
 
 use crate::ast::build_js_ast;
 use crate::compiler::Context;
@@ -26,12 +27,12 @@ enum EnvsType {
 
 #[derive(Debug)]
 pub struct EnvReplacer {
-    bindings: Lrc<AHashSet<Id>>,
+    unresolved_mark: Mark,
     envs: Lrc<AHashMap<JsWord, Expr>>,
     meta_envs: Lrc<AHashMap<String, Expr>>,
 }
 impl EnvReplacer {
-    pub fn new(envs: Lrc<AHashMap<JsWord, Expr>>) -> Self {
+    pub fn new(envs: Lrc<AHashMap<JsWord, Expr>>, unresolved_mark: Mark) -> Self {
         let mut meta_env_map = AHashMap::default();
 
         // generate meta_envs from envs
@@ -47,7 +48,7 @@ impl EnvReplacer {
         }
 
         Self {
-            bindings: Default::default(),
+            unresolved_mark,
             envs,
             meta_envs: Lrc::new(meta_env_map),
         }
@@ -61,17 +62,12 @@ impl EnvReplacer {
     }
 }
 impl VisitMut for EnvReplacer {
-    fn visit_mut_module(&mut self, module: &mut Module) {
-        self.bindings = Lrc::new(collect_decls(&*module));
-        module.visit_mut_children_with(self);
-    }
-
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Ident(Ident { ref sym, span, .. }) = expr {
             let envs = EnvsType::Node(self.envs.clone());
 
             // 先判断 env 中的变量名称，是否是上下文中已经存在的变量名称
-            if self.bindings.contains(&(sym.clone(), span.ctxt)) {
+            if span.ctxt.outer() != self.unresolved_mark {
                 expr.visit_mut_children_with(self);
                 return;
             }
@@ -327,7 +323,7 @@ if (undefined === 'true') {
 
         let globals = Globals::default();
         GLOBALS.set(&globals, || {
-            let mut env_replacer = EnvReplacer::new(Default::default());
+            let mut env_replacer = EnvReplacer::new(Default::default(), ast.unresolved_mark);
             ast.ast.visit_mut_with(&mut env_replacer);
         });
 

@@ -1,9 +1,8 @@
 use mako_core::swc_common::errors::Handler;
-use mako_core::swc_common::sync::Lrc;
-use mako_core::swc_ecma_ast::{Expr, MemberExpr, MemberProp, Module};
-use mako_core::swc_ecma_utils::collect_decls;
+use mako_core::swc_ecma_ast::{Expr, MemberExpr, MemberProp};
 use mako_core::swc_ecma_visit::{Visit, VisitWith};
-use mako_core::{anyhow, swc_common, swc_ecma_ast};
+use mako_core::{anyhow, swc_ecma_ast};
+use swc_core::common::Mark;
 
 use crate::plugin::Plugin;
 
@@ -27,7 +26,7 @@ impl Plugin for InvalidSyntaxPlugin {
             return Ok(());
         }
         ast.visit_with(&mut InvalidSyntaxVisitor {
-            bindings: None,
+            unresolved_mark: param.unresolved_mark,
             handler: param.handler,
             path: param.path,
         });
@@ -36,19 +35,15 @@ impl Plugin for InvalidSyntaxPlugin {
 }
 
 pub struct InvalidSyntaxVisitor<'a> {
-    pub bindings: Option<Lrc<swc_common::collections::AHashSet<swc_ecma_ast::Id>>>,
+    unresolved_mark: Mark,
     pub handler: &'a Handler,
     pub path: &'a str,
 }
 
 impl<'a> Visit for InvalidSyntaxVisitor<'a> {
-    fn visit_module(&mut self, module: &Module) {
-        self.bindings = Some(Lrc::new(collect_decls(module)));
-        module.visit_children_with(self);
-    }
     fn visit_member_expr(&mut self, expr: &swc_ecma_ast::MemberExpr) {
-        let bindings = self.bindings.clone();
-        let is_require_ensure = is_member_prop(expr, "require", "ensure", true, bindings);
+        let is_require_ensure =
+            is_member_prop(expr, "require", "ensure", true, self.unresolved_mark);
         if is_require_ensure {
             self.handler
                 .struct_span_err(expr.span, "require.ensure syntax is not supported yet")
@@ -58,14 +53,9 @@ impl<'a> Visit for InvalidSyntaxVisitor<'a> {
         }
     }
     fn visit_ident(&mut self, n: &swc_ecma_ast::Ident) {
-        let bindings = self.bindings.clone();
         // why keep __webpack_nonce__? since styled-components is using it
         let is_webpack_prefix = n.sym.starts_with("__webpack_") && &n.sym != "__webpack_nonce__";
-        let has_binding = if let Some(bindings) = bindings {
-            bindings.contains(&(n.sym.clone(), n.span.ctxt))
-        } else {
-            false
-        };
+        let has_binding = n.span.ctxt.outer() != self.unresolved_mark;
         if is_webpack_prefix && !has_binding {
             self.handler
                 .struct_span_err(
@@ -84,7 +74,7 @@ fn is_member_prop(
     obj: &str,
     prop: &str,
     check_obj_binding: bool,
-    bindings: Option<Lrc<swc_common::collections::AHashSet<swc_ecma_ast::Id>>>,
+    unresolved_mark: Mark,
 ) -> bool {
     if let MemberExpr {
         obj: box Expr::Ident(ident),
@@ -93,11 +83,7 @@ fn is_member_prop(
     } = expr
     {
         let is_obj_match = ident.sym == obj;
-        let has_binding = if let Some(bindings) = bindings {
-            bindings.contains(&(ident.sym.clone(), ident.span.ctxt))
-        } else {
-            false
-        };
+        let has_binding = ident.span.ctxt.outer() != unresolved_mark;
         let is_prop_match = prop_ident.sym == prop;
         is_obj_match && (check_obj_binding && !has_binding) && is_prop_match
     } else {
