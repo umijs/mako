@@ -9,6 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use mako_core::colored::*;
 use mako_core::pathdiff::diff_paths;
 use mako_core::serde::Serialize;
+use swc_core::common::source_map::Pos;
 
 use crate::chunk::ChunkType;
 use crate::compiler::Compiler;
@@ -64,17 +65,28 @@ pub struct StatsJsonModuleItem {
     #[serde(flatten)]
     pub module_type: StatsJsonType,
     pub size: u64,
-    pub module_id: String,
-    pub chunk_id: String,
+    pub id: String,
+    pub chunks: Vec<String>,
+}
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct StatsJsonChunkOriginItem {
+    pub module: String,
+    pub module_identifier: String,
+    pub module_name: String,
+    pub loc: String,
+    pub request: String,
 }
 #[derive(Serialize, Debug)]
 pub struct StatsJsonChunkItem {
     #[serde(flatten)]
     pub chunk_type: StatsJsonType,
-    pub chunk_id: String,
+    pub id: String,
     pub files: Vec<String>,
     pub entry: bool,
     pub modules: Vec<StatsJsonModuleItem>,
+    pub siblings: Vec<String>,
+    pub origins: Vec<StatsJsonChunkOriginItem>,
 }
 #[derive(Serialize, Debug)]
 pub struct StatsJsonEntryItem {
@@ -82,6 +94,7 @@ pub struct StatsJsonEntryItem {
     pub chunks: Vec<String>,
 }
 #[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct StatsJsonMap {
     hash: u64,
     time: u128,
@@ -194,6 +207,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
         .collect();
 
     let chunk_graph = compiler.context.chunk_graph.read().unwrap();
+    let module_graph = compiler.context.module_graph.read().unwrap();
     let chunks = chunk_graph.get_chunks();
 
     // 在 chunks 中获取 modules
@@ -224,9 +238,9 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
                     let module = StatsJsonModuleItem {
                         module_type: StatsJsonType::Module("module".to_string()),
                         size,
-                        module_id: id,
-                        // TODO: 现在是从每个 chunk 中找到包含的 module, 所以 chunk_id 是单个, 但是一个 module 有可能存在于多个 chunk 中, 后续需要把 chunk_id 改成 Vec
-                        chunk_id: chunk.id.id.clone(),
+                        id,
+                        // TODO: 现在是从每个 chunk 中找到包含的 module, 所以 chunk_id 是单个, 但是一个 module 有可能存在于多个 chunk 中
+                        chunks: vec![chunk.id.id.clone()],
                     };
 
                     modules_vec.borrow_mut().push(module.clone());
@@ -240,13 +254,41 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
                 .filter(|asset| asset.chunk_id == id)
                 .map(|asset| asset.name.clone())
                 .collect();
+            let siblings = chunk_graph
+                .sync_dependencies_chunk(&chunk.id)
+                .iter()
+                .map(|id| id.id.clone())
+                .collect::<Vec<_>>();
+            let origins = module_graph
+                .get_dependents(chunk.modules.last().unwrap())
+                .iter()
+                .map(|(id, dep)| StatsJsonChunkOriginItem {
+                    module: id.id.clone(),
+                    module_identifier: id.id.clone(),
+                    module_name: module_graph
+                        .get_module(id)
+                        .unwrap()
+                        .info
+                        .clone()
+                        .map(|info| info.path)
+                        .unwrap_or("".to_string()),
+                    // -> "lo-hi"
+                    loc: dep
+                        .span
+                        .map(|span| format!("{}-{}", span.lo.to_u32(), span.hi.to_u32()))
+                        .unwrap_or("".to_string()),
+                    request: dep.source.clone(),
+                })
+                .collect::<Vec<_>>();
 
             StatsJsonChunkItem {
                 chunk_type: StatsJsonType::Chunk("chunk".to_string()),
-                chunk_id: id,
+                id,
                 files,
                 entry,
                 modules: chunk_modules,
+                siblings,
+                origins,
             }
         })
         .collect();
