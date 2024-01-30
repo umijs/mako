@@ -11,7 +11,7 @@ use crate::plugin::{Plugin, PluginTransformJsParam};
 
 mod module;
 mod module_side_effects_flag;
-mod remove_useless_stmts;
+pub(crate) mod remove_useless_stmts;
 mod shake;
 mod statement_graph;
 

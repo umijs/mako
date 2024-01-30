@@ -9,7 +9,7 @@ use mako_core::petgraph::visit::IntoEdgeReferences;
 use mako_core::petgraph::Direction;
 use mako_core::tracing::debug;
 
-use crate::module::{Dependencies, Dependency, Module, ModuleId, ResolveType};
+use crate::module::{Dependencies, Dependency, Module, ModuleId, OptimsType, ResolveType};
 
 #[derive(Debug)]
 pub struct ModuleGraph {
@@ -70,7 +70,15 @@ impl ModuleGraph {
         self.remove_module(module_id)
     }
 
-    #[allow(dead_code)]
+    pub fn module_to_useless(&mut self, module_id: &ModuleId) {
+        let module = self
+            .get_module_mut(module_id)
+            .unwrap_or_else(|| panic!("module_id {:?} should in the module graph", module_id));
+        let optims = &mut module.info.as_mut().unwrap().optims;
+
+        optims.push(OptimsType::UselessModule);
+    }
+
     pub fn remove_module(&mut self, module_id: &ModuleId) -> Module {
         let index = self
             .id_index_map

@@ -23,7 +23,8 @@ use mako_core::tracing::debug;
 
 use crate::ast::js_ast::JsAst;
 use crate::compiler::{Compiler, Context};
-use crate::module::{Dependency, ModuleAst, ModuleId, ModuleType, ResolveType};
+use crate::module::{Dependency, ModuleAst, ModuleId, ModuleType, OptimsType, ResolveType};
+use crate::plugins::farm_tree_shake::remove_useless_stmts::remove_useless_stmts;
 use crate::utils::thread_pool;
 use crate::visitors::async_module::{mark_async, AsyncModule};
 use crate::visitors::css_imports::CSSImports;
@@ -82,6 +83,18 @@ pub fn transform_modules_in_thread(
             .clone();
         thread_pool::spawn(move || {
             let module_graph = context.module_graph.read().unwrap();
+            let module = module_graph.get_module(&module_id).unwrap();
+            let info = module.info.as_ref().unwrap();
+
+            // skip useless modules
+            if info
+                .optims
+                .iter()
+                .any(|o| matches!(o, OptimsType::UselessModule))
+            {
+                return;
+            }
+
             let deps = module_graph.get_dependencies(&module_id);
             let mut resolved_deps: HashMap<String, (String, String)> = deps
                 .into_iter()
@@ -102,16 +115,15 @@ pub fn transform_modules_in_thread(
                 })
                 .collect();
             insert_swc_helper_replace(&mut resolved_deps, &context);
-            let module = module_graph.get_module(&module_id).unwrap();
-            let info = module.info.as_ref().unwrap();
             let ast = info.ast.clone();
             let deps_to_replace = DependenciesToReplace {
                 resolved: resolved_deps,
                 missing: info.deps.missing_deps.clone(),
             };
             if let ModuleAst::Script(mut ast) = ast {
-                let wrap_async = info.is_async && info.external.is_none();
+                remove_useless_stmts(info, &mut ast.ast);
 
+                let wrap_async = info.is_async && info.external.is_none();
                 let ret = transform_js_generate(TransformJsParam {
                     module_id: &module.id,
                     context: &context,

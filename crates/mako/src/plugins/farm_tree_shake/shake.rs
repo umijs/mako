@@ -280,19 +280,17 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
             let module = module_graph
                 .get_module_mut(&tree_shake_module.module_id)
                 .unwrap();
-            let ast = &mut module.info.as_mut().unwrap().ast;
+            let ast = &module.info.as_ref().unwrap().ast;
 
-            if let ModuleAst::Script(swc_module) = ast {
+            if let ModuleAst::Script(_) = ast {
                 // remove useless statements and useless imports/exports identifiers, then all preserved import info and export info will be added to the used_exports.
+                let info = module.info.as_mut().unwrap();
 
-                let mut shadow = swc_module.ast.clone();
+                // empty optimis info
+                info.optims.clear();
 
-                let (used_imports, used_exports_from) = remove_useless_stmts::remove_useless_stmts(
-                    tree_shake_module.deref_mut(),
-                    &mut shadow,
-                );
-
-                tree_shake_module.updated_ast = Some(shadow);
+                let (used_imports, used_exports_from) =
+                    remove_useless_stmts::mark_useless_stmts(tree_shake_module.deref_mut(), info);
 
                 // 解决模块自己引用自己，导致 tree_shake_module 同时存在多个可变引用
                 drop(tree_shake_module);
@@ -363,17 +361,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
         let tsm = tsm.borrow();
 
         if tsm.not_used() {
-            module_graph.remove_module(module_id);
-        } else if let Some(swc_module) = &tsm.updated_ast {
-            module_graph
-                .get_module_mut(module_id)
-                .unwrap()
-                .info
-                .as_mut()
-                .unwrap()
-                .ast
-                .as_script_ast_mut()
-                .body = swc_module.body.clone();
+            module_graph.module_to_useless(module_id);
         }
     }
 

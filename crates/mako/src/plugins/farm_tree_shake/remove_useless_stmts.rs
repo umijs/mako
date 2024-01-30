@@ -1,9 +1,9 @@
 use mako_core::swc_ecma_ast::{
-    Decl, ExportDecl, ExportSpecifier, ImportDecl, ImportSpecifier, Module as SwcModule,
-    ModuleExportName,
+    Decl, ExportDecl, ExportSpecifier, ImportDecl, ImportSpecifier, Module, ModuleExportName,
 };
-use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith, VisitWith};
+use mako_core::swc_ecma_visit::{Visit, VisitWith};
 
+use crate::module::{ModuleInfo, OptimsType, UselessStmtType};
 use crate::plugins::farm_tree_shake::module::TreeShakeModule;
 use crate::plugins::farm_tree_shake::statement_graph::analyze_imports_and_exports::{
     analyze_imports_and_exports, StatementInfo,
@@ -13,9 +13,9 @@ use crate::plugins::farm_tree_shake::statement_graph::{
     ExportInfo, ExportSpecifierInfo as UsedExportSpecInfo, ImportInfo, ImportSpecifierInfo,
 };
 
-pub fn remove_useless_stmts(
+pub fn mark_useless_stmts(
     tree_shake_module: &mut TreeShakeModule,
-    swc_module: &mut SwcModule,
+    module_info: &mut ModuleInfo,
 ) -> (Vec<ImportInfo>, Vec<ExportInfo>) {
     // analyze the statement graph start from the used statements
     let used_stmts = tree_shake_module
@@ -25,10 +25,11 @@ pub fn remove_useless_stmts(
 
     let mut used_import_infos = vec![];
     let mut used_export_from_infos = vec![];
+    let swc_module = module_info.ast.as_script().unwrap();
 
     // remove unused specifiers in export statement and import statement
     for (stmt_id, used_defined_idents) in &used_stmts {
-        let module_item = &mut swc_module.body[*stmt_id];
+        let module_item = &swc_module.ast.body[*stmt_id];
 
         let StatementInfo {
             import_info,
@@ -44,9 +45,12 @@ pub fn remove_useless_stmts(
         if let Some(import_info) = import_info {
             used_import_infos.push(import_info.clone());
 
-            let mut remover = UselessImportStmtsRemover { import_info };
+            let mut remover = UselessImportStmtsMarker {
+                import_info,
+                module_optims: &mut module_info.optims,
+            };
 
-            module_item.visit_mut_with(&mut remover);
+            module_item.visit_with(&mut remover);
         }
 
         if let Some(mut export_info) = export_info {
@@ -59,9 +63,12 @@ pub fn remove_useless_stmts(
                 // export {} from "x"
                 if export_info.specifiers.is_empty() {
                     used_export_from_infos.push(export_info.clone());
-                    let mut remover = UselessExportStmtRemover { export_info };
+                    let mut remover = UselessExportStmtMarker {
+                        export_info,
+                        module_optims: &mut module_info.optims,
+                    };
 
-                    module_item.visit_mut_with(&mut remover);
+                    module_item.visit_with(&mut remover);
                 } else {
                     // export * from  "x"
                     if matches!(export_info.specifiers[0], UsedExportSpecInfo::All(_)) {
@@ -74,16 +81,22 @@ pub fn remove_useless_stmts(
                         // export {a,b } from "x"
                         used_export_from_infos.push(export_info.clone());
 
-                        let mut remover = UselessExportStmtRemover { export_info };
+                        let mut remover = UselessExportStmtMarker {
+                            export_info,
+                            module_optims: &mut module_info.optims,
+                        };
 
-                        module_item.visit_mut_with(&mut remover);
+                        module_item.visit_with(&mut remover);
                     }
                 }
             } else {
                 // export { a ,b } or export default a;
-                let mut remover = UselessExportStmtRemover { export_info };
+                let mut remover = UselessExportStmtMarker {
+                    export_info,
+                    module_optims: &mut module_info.optims,
+                };
 
-                module_item.visit_mut_with(&mut remover);
+                module_item.visit_with(&mut remover);
             }
         }
     }
@@ -97,7 +110,7 @@ pub fn remove_useless_stmts(
         .collect::<Vec<_>>();
 
     // remove the unused statements from the module
-    for (index, _) in swc_module.body.iter().enumerate() {
+    for (index, _) in swc_module.ast.body.iter().enumerate() {
         if !used_stmts_indexes.contains(&&index) {
             stmts_to_remove.push(index);
         }
@@ -107,23 +120,67 @@ pub fn remove_useless_stmts(
     stmts_to_remove.reverse();
 
     for stmt in stmts_to_remove {
-        swc_module.body.remove(stmt);
+        module_info
+            .optims
+            .push(OptimsType::UselessStmt(stmt, UselessStmtType::Stmt));
     }
 
     (used_import_infos, used_export_from_infos)
 }
 
-pub struct UselessImportStmtsRemover {
-    import_info: ImportInfo,
+pub fn remove_useless_stmts(module_info: &ModuleInfo, swc_module: &mut Module) {
+    module_info.optims.iter().for_each(|optim| match optim {
+        OptimsType::UselessStmt(stmt_id, useless_stmt_type) => match useless_stmt_type {
+            UselessStmtType::ImportSpecifier(sp_index) => {
+                swc_module.body[*stmt_id]
+                    .as_mut_module_decl()
+                    .unwrap()
+                    .as_mut_import()
+                    .unwrap()
+                    .specifiers
+                    .remove(*sp_index);
+            }
+            UselessStmtType::ExportDecl(decl_index) => {
+                swc_module.body[*stmt_id]
+                    .as_mut_module_decl()
+                    .unwrap()
+                    .as_mut_export_decl()
+                    .unwrap()
+                    .decl
+                    .as_mut_var()
+                    .unwrap()
+                    .decls
+                    .remove(*decl_index);
+            }
+            UselessStmtType::ExportSpecifier(sp_index) => {
+                swc_module.body[*stmt_id]
+                    .as_mut_module_decl()
+                    .unwrap()
+                    .as_mut_export_named()
+                    .unwrap()
+                    .specifiers
+                    .remove(*sp_index);
+            }
+            UselessStmtType::Stmt => {
+                swc_module.body.remove(*stmt_id);
+            }
+        },
+        _ => unreachable!(),
+    });
 }
 
-impl VisitMut for UselessImportStmtsRemover {
+pub struct UselessImportStmtsMarker<'a> {
+    import_info: ImportInfo,
+    module_optims: &'a mut Vec<OptimsType>,
+}
+
+impl<'a> Visit for UselessImportStmtsMarker<'a> {
     // 1. import { a } from 'x';
     // 2. import a from 'x';
     // 3. import * as a from 'x';
     // if specifier is not used and x has sideEffect, convert to import 'x';
 
-    fn visit_mut_import_decl(&mut self, import_decl: &mut ImportDecl) {
+    fn visit_import_decl(&mut self, import_decl: &ImportDecl) {
         let mut specifiers_to_remove = vec![];
 
         for (index, specifier) in import_decl.specifiers.iter().enumerate() {
@@ -151,21 +208,25 @@ impl VisitMut for UselessImportStmtsRemover {
         specifiers_to_remove.reverse();
 
         for index in specifiers_to_remove {
-            import_decl.specifiers.remove(index);
+            self.module_optims.push(OptimsType::UselessStmt(
+                self.import_info.stmt_id,
+                UselessStmtType::ImportSpecifier(index),
+            ));
         }
     }
 }
 
-pub struct UselessExportStmtRemover {
+pub struct UselessExportStmtMarker<'a> {
     export_info: ExportInfo,
+    module_optims: &'a mut Vec<OptimsType>,
 }
 
-impl VisitMut for UselessExportStmtRemover {
-    fn visit_mut_export_decl(&mut self, export_decl: &mut ExportDecl) {
-        if let Decl::Var(var_decl) = &mut export_decl.decl {
+impl<'a> Visit for UselessExportStmtMarker<'a> {
+    fn visit_export_decl(&mut self, export_decl: &ExportDecl) {
+        if let Decl::Var(var_decl) = &export_decl.decl {
             let mut decls_to_remove = vec![];
 
-            for (index, decl) in var_decl.decls.iter_mut().enumerate() {
+            for (index, decl) in var_decl.decls.iter().enumerate() {
                 if !self.export_info.specifiers.iter().any(
                     |export_specifier| match export_specifier {
                         UsedExportSpecInfo::Named { local, .. } => {
@@ -184,12 +245,15 @@ impl VisitMut for UselessExportStmtRemover {
             decls_to_remove.reverse();
 
             for index in decls_to_remove {
-                var_decl.decls.remove(index);
+                self.module_optims.push(OptimsType::UselessStmt(
+                    self.export_info.stmt_id,
+                    UselessStmtType::ExportDecl(index),
+                ));
             }
         }
     }
 
-    fn visit_mut_export_specifiers(&mut self, specifiers: &mut Vec<ExportSpecifier>) {
+    fn visit_export_specifiers(&mut self, specifiers: &[ExportSpecifier]) {
         let mut specifiers_to_remove = vec![];
 
         for (index, specifier) in specifiers.iter().enumerate() {
@@ -226,7 +290,10 @@ impl VisitMut for UselessExportStmtRemover {
         specifiers_to_remove.reverse();
 
         for index in specifiers_to_remove {
-            specifiers.remove(index);
+            self.module_optims.push(OptimsType::UselessStmt(
+                self.export_info.stmt_id,
+                UselessStmtType::ExportSpecifier(index),
+            ));
         }
     }
 }
@@ -277,17 +344,18 @@ mod tests {
             file: Some("test.js".to_string()),
             content: Some(code.to_string()),
         });
+        let mut module_info = ModuleInfo::default();
 
-        tu.ast
-            .js_mut()
-            .ast
-            .visit_mut_with(&mut UselessImportStmtsRemover {
-                import_info: ImportInfo {
-                    source: "m".to_string(),
-                    specifiers: vec![used_import_specifier],
-                    stmt_id: 0,
-                },
-            });
+        tu.ast.js().ast.visit_with(&mut UselessImportStmtsMarker {
+            import_info: ImportInfo {
+                source: "m".to_string(),
+                specifiers: vec![used_import_specifier],
+                stmt_id: 0,
+            },
+            module_optims: &mut module_info.optims,
+        });
+
+        remove_useless_stmts(&module_info, &mut tu.ast.js_mut().ast);
 
         tu.js_ast_to_code()
     }

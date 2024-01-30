@@ -17,7 +17,7 @@ use crate::generate::chunk::{Chunk, ChunkType};
 pub use crate::generate::chunk_pot::util::CHUNK_FILE_NAME_HASH_LENGTH;
 use crate::generate::chunk_pot::util::{hash_hashmap, hash_vec};
 use crate::generate::generate_chunks::ChunkFile;
-use crate::module::{Module, ModuleAst, ModuleId};
+use crate::module::{Module, ModuleAst, ModuleId, OptimsType};
 use crate::module_graph::ModuleGraph;
 
 pub struct ChunkPot<'a> {
@@ -165,6 +165,16 @@ impl<'cp> ChunkPot<'cp> {
             }
 
             let module_info = module.info.as_ref().unwrap();
+
+            // skip useless modules
+            if module_info
+                .optims
+                .iter()
+                .any(|o| matches!(o, OptimsType::UselessModule))
+            {
+                continue;
+            }
+
             let ast = &module_info.ast;
 
             if let ModuleAst::Script(_) = ast {

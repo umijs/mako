@@ -151,8 +151,17 @@ impl ResolveType {
 }
 
 #[derive(Debug, Clone)]
+pub enum UselessStmtType {
+    Stmt,
+    ImportSpecifier(usize),
+    ExportDecl(usize),
+    ExportSpecifier(usize),
+}
+
+#[derive(Debug, Clone)]
 pub enum OptimsType {
     UselessModule,
+    UselessStmt(usize, UselessStmtType),
 }
 
 #[derive(Debug, Clone)]
