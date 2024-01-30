@@ -96,14 +96,14 @@ importers:
   crates/node:
     optionalDependencies:
       '@okamjs/okam-darwin-arm64':
-        specifier: 0.4.0
-        version: 0.4.0
+        specifier: 0.4.1
+        version: 0.4.1
       '@okamjs/okam-darwin-x64':
-        specifier: 0.4.0
-        version: 0.4.0
+        specifier: 0.4.1
+        version: 0.4.1
       '@okamjs/okam-linux-x64-gnu':
-        specifier: 0.4.0
-        version: 0.4.0
+        specifier: 0.4.1
+        version: 0.4.1
     devDependencies:
       '@napi-rs/cli':
         specifier: ^2.14.8
@@ -336,7 +336,7 @@ importers:
   packages/bundler-okam:
     dependencies:
       '@okamjs/okam':
-        specifier: 0.4.0
+        specifier: 0.4.1
         version: link:../../crates/node
       '@swc/helpers':
         specifier: 0.5.1
@@ -3489,8 +3489,8 @@ packages:
       fastq: 1.15.0
     dev: true
 
-  /@okamjs/okam-darwin-arm64@0.4.0:
-    resolution: {integrity: sha512-QuDork5eoBwHzznmeXzijSuP5Xay0TutWSayA/jIT43UBLBF9oN7TxLpLRyEcKFw02oNHS75CeG1Hr5+VH62Jw==}
+  /@okamjs/okam-darwin-arm64@0.4.1:
+    resolution: {integrity: sha512-X3kJ9bKcwHAMOlIXpv86By9PJDDEBzW6hwaZlTM4NbX+QTsnB21OdlGxP/hkigz0fyJPIBU1mNYhLBteb4yXSA==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
@@ -3498,8 +3498,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-darwin-x64@0.4.0:
-    resolution: {integrity: sha512-fO4Bfg2MwEXFiihBi+/Vq1CsiIZiH1UhhgnROSoRXrsSniplCgzh1jAX6S+QkXS+esDuvlpay87t550KfLrOvA==}
+  /@okamjs/okam-darwin-x64@0.4.1:
+    resolution: {integrity: sha512-M8Hydgss9tn5owbNu/MifJjCVfbphISbrc62eJK9H9HTXZ2K62kUTzjIeScKXbtuDegU0c4QeY6Gv2DbHB+KoA==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
@@ -3507,8 +3507,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-linux-x64-gnu@0.4.0:
-    resolution: {integrity: sha512-M2Ks9cNVEFjSAgIZlnRq+JiOIz6pOkPP0euUEAhq8S5RbiaIWg1xQjm72v1gXiAvo+5yPK0wZFXNMgEREgDtiQ==}
+  /@okamjs/okam-linux-x64-gnu@0.4.1:
+    resolution: {integrity: sha512-/APzUruA8yb1evey0Jg+uX0UoIa1I3JMWPNyvkIG12BbtUiPB194DEdc4JKziNyBAPfm7J8/e5C2JSMIYgFH6g==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
