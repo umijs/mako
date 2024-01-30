@@ -198,7 +198,7 @@ exports.dev = async function (opts) {
           cwd,
           config: opts.config,
           alias: okamConfig.resolve.alias,
-          modifyVars: opts.config.theme,
+          modifyVars: opts.config.lessLoader?.modifyVars || opts.config.theme,
           sourceMap: getLessSourceMapConfig(okamConfig.devtool),
         }),
         generateEnd: (args) => {
