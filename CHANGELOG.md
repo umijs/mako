@@ -39,9 +39,6 @@
 * 修复 style 文件导入语句未删除的问题 by [@stormslowly](https://github.com/stormslowly) in [#869](https://github.com/umijs/mako/pull/869)
 * 修复 skipModule 优化时丢失 default 导入的副作用 [@stormslowly](https://github.com/stormslowly) in [#862](https://github.com/umijs/mako/pull/862)
 
-
-
-
 ## 0.3.1
 
 `2024-01-11`
@@ -99,7 +96,7 @@
 
 `2023-12-18`
 
-> @alipay/bigfish@4.1.12
+> @alipay/bigfish@4.1.13
 
 * 新增 支持显示 less 代码 sourcemap by [@jiesia](https://github.com/jiesia) in [#755](https://github.com/umijs/mako/pull/775)
 * 修复 require context 不支持后缀 require 的问题 by [@PeachScript](https://github.com/PeachScript) in [#806](https://github.com/umijs/mako/pull/806)
@@ -110,7 +107,7 @@
 
 `2023-12-18`
 
-> @alipay/bigfish@4.1.11
+> @alipay/bigfish@4.1.12
 
 * 优化 chunk cache 在 build 时默认不使用 cache by [@zhangpanweb](https://github.com/zhangpanweb) in [#800](https://github.com/umijs/mako/pull/800)
 * 修复由于 hashed id 策略导致的 build 后 chunk 可能加载失败的问题 by [@PeachScript](https://github.com/PeachScript) in [#805](https://github.com/umijs/mako/pull/805)
