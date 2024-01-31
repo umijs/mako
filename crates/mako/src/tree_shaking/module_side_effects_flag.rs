@@ -1,6 +1,9 @@
+use std::path::{Path, PathBuf};
+
+use glob_match::glob_match;
 use mako_core::glob::Pattern;
 
-use crate::module::ModuleInfo;
+use crate::module::{relative_to_root, ModuleInfo};
 use crate::resolve::{ResolvedResource, ResolverResource};
 
 impl ModuleInfo {
@@ -13,7 +16,12 @@ impl ModuleInfo {
                     let value = data.raw();
                     let side_effects = value.get("sideEffects".to_string());
 
-                    side_effects.map(|side_effect| self.match_flag(side_effect))
+                    let root: &Path = desc.dir().as_ref();
+                    let root: PathBuf = root.into();
+
+                    side_effects.map(|side_effect| {
+                        Self::match_flag(side_effect, relative_to_root(&self.path, &root).as_str())
+                    })
                 }
                 None => None,
             }
@@ -36,7 +44,15 @@ impl ModuleInfo {
                     let side_effects = value.get("sideEffects".to_string());
 
                     match side_effects {
-                        Some(side_effect) => self.match_flag(side_effect),
+                        Some(side_effect) => {
+                            let root: &Path = desc.dir().as_ref();
+                            let root: PathBuf = root.into();
+
+                            Self::match_flag(
+                                side_effect,
+                                relative_to_root(&self.path, &root).as_str(),
+                            )
+                        }
                         None => true,
                     }
                 }
@@ -46,13 +62,14 @@ impl ModuleInfo {
             true
         }
     }
-    #[allow(dead_code)]
-    fn match_flag(&self, flag: &serde_json::Value) -> bool {
+    fn match_flag(flag: &serde_json::Value, path: &str) -> bool {
         match flag {
             // NOTE: 口径需要对齐这里：https://github.com/webpack/webpack/blob/main/lib/optimize/SideEffectsFlagPlugin.js#L331
             serde_json::Value::Bool(flag) => *flag,
-            serde_json::Value::String(flag) => match_glob_pattern(flag, &self.path),
-            serde_json::Value::Array(flags) => flags.iter().any(|flag| self.match_flag(flag)),
+            serde_json::Value::String(flag) => match_glob_pattern(flag, path),
+            serde_json::Value::Array(flags) => {
+                flags.iter().any(|flag| Self::match_flag(flag, path))
+            }
             _ => true,
         }
     }
@@ -66,14 +83,29 @@ fn match_glob_pattern(pattern: &str, path: &str) -> bool {
             .unwrap()
             .matches(path);
     }
-    Pattern::new(pattern).unwrap().matches(path)
+
+    glob_match(pattern, path)
 }
 
 #[cfg(test)]
 mod tests {
     use mako_core::tokio;
 
+    use super::match_glob_pattern;
     use crate::test_helper::{get_module, setup_compiler};
+
+    #[test]
+    fn test_path_side_effects_flag() {
+        assert!(match_glob_pattern("./src/index.js", "./src/index.js",));
+    }
+
+    #[test]
+    fn test_wild_effects_flag() {
+        assert!(match_glob_pattern(
+            "./src/lib/**/*.s.js",
+            "./src/lib/apple/pie/index.s.js",
+        ));
+    }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_side_effects_flag() {
