@@ -125,7 +125,7 @@ pub fn generate_module_id(origin_module_id: String, context: &Arc<Context>) -> S
     }
 }
 
-pub fn relative_to_root(module_path: String, root: &PathBuf) -> String {
+pub fn relative_to_root(module_path: &String, root: &PathBuf) -> String {
     let absolute_path = PathBuf::from(module_path);
     let relative_path = diff_paths(&absolute_path, root).unwrap_or(absolute_path);
     // diff_paths result always starts with ".."/"." or not
