@@ -180,8 +180,7 @@ pub(crate) fn pot_to_module_object(pot: &ChunkPot, context: &Arc<Context>) -> Re
                     let fn_expr = to_module_fn_expr(module.0)?;
 
                     let span = Span::dummy_with_cmt();
-                    let id = module.0.id.id.clone();
-                    let id = relative_to_root(id, &context.root);
+                    let id = relative_to_root(&module.0.id.id, &context.root);
                     // to avoid comment broken by glob=**/* for context module
                     let id = id.replace("*/", "*\\/");
                     comments.add_leading(
