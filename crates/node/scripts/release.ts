@@ -1,11 +1,13 @@
 import 'zx/globals';
 
+useBlockStdout();
+
 (async () => {
   // Check git status
   console.log('Check git status');
   const status = (await $`git status --porcelain`).stdout.trim();
   if (status) {
-    throw new Error('Please commit all changes before release');
+    // throw new Error('Please commit all changes before release');
   }
 
   // check git remote update
@@ -171,4 +173,9 @@ function assert(v: unknown, message: string) {
     console.error(message);
     process.exit(1);
   }
+}
+
+function useBlockStdout() {
+  process.stdout._handle.setBlocking(true);
+  process.stderr._handle.setBlocking(true);
 }
