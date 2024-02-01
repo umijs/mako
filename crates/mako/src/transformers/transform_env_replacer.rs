@@ -79,53 +79,38 @@ impl VisitMut for EnvReplacer {
             }
         }
 
-        if let Expr::Member(MemberExpr {
-            obj: box obj, prop, ..
-        }) = expr
-        {
-            if match obj {
-                Expr::Member(MemberExpr {
-                    prop: MemberProp::Ident(Ident { sym, .. }),
-                    ..
-                }) => sym == "env",
-                _ => false,
-            } {
+        if let Expr::Member(MemberExpr { obj, prop, .. }) = expr {
+            if let Expr::Member(MemberExpr {
+                obj: first_obj,
+                prop:
+                    MemberProp::Ident(Ident {
+                        sym: js_word!("env"),
+                        ..
+                    }),
+                ..
+            }) = &**obj
+            {
                 // handle `env.XX`
                 let mut envs = EnvsType::Node(self.envs.clone());
 
-                if let Expr::Member(MemberExpr {
-                    obj: box first_obj, ..
-                }) = obj
-                {
-                    if match first_obj {
-                        Expr::Ident(Ident { sym, .. }) => sym == "process",
-                        Expr::MetaProp(MetaPropExpr {
-                            kind: MetaPropKind::ImportMeta,
-                            ..
-                        }) => {
-                            envs = EnvsType::Browser(self.meta_envs.clone());
-                            true
-                        }
-                        _ => false,
-                    } {
-                        // handle `process.env.XX` and `import.meta.env.XX`
-                        match prop {
-                            MemberProp::Computed(ComputedPropName { expr: c, .. }) => {
-                                if let Expr::Lit(Lit::Str(Str { value: sym, .. })) = &**c {
-                                    if let Some(env) = EnvReplacer::get_env(&envs, sym) {
-                                        // replace with real value if env found
-                                        *expr = env;
-                                    } else {
-                                        // replace with `undefined` if env not found
-                                        *expr = *Box::new(Expr::Ident(Ident::new(
-                                            js_word!("undefined"),
-                                            DUMMY_SP,
-                                        )));
-                                    }
-                                }
-                            }
-
-                            MemberProp::Ident(Ident { sym, .. }) => {
+                if match &**first_obj {
+                    Expr::Ident(Ident {
+                        sym: js_word!("process"),
+                        ..
+                    }) => true,
+                    Expr::MetaProp(MetaPropExpr {
+                        kind: MetaPropKind::ImportMeta,
+                        ..
+                    }) => {
+                        envs = EnvsType::Browser(self.meta_envs.clone());
+                        true
+                    }
+                    _ => false,
+                } {
+                    // handle `process.env.XX` and `import.meta.env.XX`
+                    match prop {
+                        MemberProp::Computed(ComputedPropName { expr: c, .. }) => {
+                            if let Expr::Lit(Lit::Str(Str { value: sym, .. })) = &**c {
                                 if let Some(env) = EnvReplacer::get_env(&envs, sym) {
                                     // replace with real value if env found
                                     *expr = env;
@@ -137,22 +122,37 @@ impl VisitMut for EnvReplacer {
                                     )));
                                 }
                             }
-                            _ => {}
                         }
+
+                        MemberProp::Ident(Ident { sym, .. }) => {
+                            if let Some(env) = EnvReplacer::get_env(&envs, sym) {
+                                // replace with real value if env found
+                                *expr = env;
+                            } else {
+                                // replace with `undefined` if env not found
+                                *expr = *Box::new(Expr::Ident(Ident::new(
+                                    js_word!("undefined"),
+                                    DUMMY_SP,
+                                )));
+                            }
+                        }
+                        _ => {}
                     }
                 }
-            } else if match expr {
-                Expr::Member(MemberExpr {
-                    obj:
-                        box Expr::MetaProp(MetaPropExpr {
-                            kind: MetaPropKind::ImportMeta,
-                            ..
-                        }),
-                    prop: MemberProp::Ident(Ident { sym, .. }),
-                    ..
-                }) => sym == "env",
-                _ => false,
-            } {
+            } else if let Expr::Member(MemberExpr {
+                obj:
+                    box Expr::MetaProp(MetaPropExpr {
+                        kind: MetaPropKind::ImportMeta,
+                        ..
+                    }),
+                prop:
+                    MemberProp::Ident(Ident {
+                        sym: js_word!("env"),
+                        ..
+                    }),
+                ..
+            }) = *expr
+            {
                 // replace independent `import.meta.env` to json object
                 let mut props = Vec::new();
 

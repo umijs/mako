@@ -85,12 +85,6 @@ impl VisitMut for TryResolve<'_> {
 
 #[cfg(test)]
 mod tests {
-    use mako_core::swc_common::GLOBALS;
-    use mako_core::swc_ecma_transforms::resolver;
-    use mako_core::swc_ecma_visit::VisitMutWith;
-
-    use crate::ast::build_js_ast;
-
     #[test]
     fn test_try_require() {
         crate::assert_display_snapshot!(transform(
@@ -131,25 +125,12 @@ mod tests {
     }
 
     fn transform(code: &str) -> String {
-        let context: std::sync::Arc<crate::compiler::Context> =
-            std::sync::Arc::new(Default::default());
-        GLOBALS.set(&context.meta.script.globals, || {
-            let mut ast = build_js_ast("test.js", code, &context).unwrap();
-            ast.ast.visit_mut_with(&mut resolver(
-                ast.unresolved_mark,
-                ast.top_level_mark,
-                false,
-            ));
-            let mut visitor = super::TryResolve {
-                path: "test.js".to_string(),
-                context: &context,
-                unresolved_mark: ast.unresolved_mark,
-            };
-            crate::test_helper::transform_ast_with(
-                &mut ast.ast,
-                &mut visitor,
-                &context.meta.script.cm,
-            )
-        })
+        let context = std::sync::Arc::new(Default::default());
+        let mut visitor = super::TryResolve {
+            path: "test.js".to_string(),
+            context: &context,
+            unresolved_mark: Default::default(),
+        };
+        crate::transformers::test_helper::transform_js_code(code, &mut visitor, &context)
     }
 }
