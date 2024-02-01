@@ -1,3 +1,12 @@
+## 0.4.3
+
+`2024-02-01`
+
+> @alipay/bigfish@4.1.17
+
+- 修复 skipModules 在边界情况下找错导出来源的问题 by [@stormslowly](https://github.com/stormslowly) in [#906](https://github.com/umijs/mako/pull/906)
+- 回滚 SWC 升级的 PR [#876](https://github.com/umijs/mako/pull/876) by [@stormslowly](https://github.com/stormslowly) in [#907](https://github.com/umijs/mako/pull/907)
+
 ## 0.4.2
 
 `2024-01-31`
