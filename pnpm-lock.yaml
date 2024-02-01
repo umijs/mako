@@ -96,14 +96,14 @@ importers:
   crates/node:
     optionalDependencies:
       '@okamjs/okam-darwin-arm64':
-        specifier: 0.4.2
-        version: 0.4.2
+        specifier: 0.4.3
+        version: 0.4.3
       '@okamjs/okam-darwin-x64':
-        specifier: 0.4.2
-        version: 0.4.2
+        specifier: 0.4.3
+        version: 0.4.3
       '@okamjs/okam-linux-x64-gnu':
-        specifier: 0.4.2
-        version: 0.4.2
+        specifier: 0.4.3
+        version: 0.4.3
     devDependencies:
       '@napi-rs/cli':
         specifier: ^2.14.8
@@ -336,7 +336,7 @@ importers:
   packages/bundler-okam:
     dependencies:
       '@okamjs/okam':
-        specifier: 0.4.2
+        specifier: 0.4.3
         version: link:../../crates/node
       '@swc/helpers':
         specifier: 0.5.1
@@ -3489,8 +3489,8 @@ packages:
       fastq: 1.15.0
     dev: true
 
-  /@okamjs/okam-darwin-arm64@0.4.2:
-    resolution: {integrity: sha512-E+4e9cgYnMYsWmVHuW/w/izEOn2MrrcpJCkvcWizQY+2rWG6O+bpnlIekZveLhovfQuiyKBZCc07r55Y2T+FYw==}
+  /@okamjs/okam-darwin-arm64@0.4.3:
+    resolution: {integrity: sha512-uJBY+Zybyzh1CQfT3Tq3yfWUkTqOsZodoIshY+yZIsAraaU8zBbVel9eMVdtSuDMi76058Bgaye9udNpQ+eiPw==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
@@ -3498,8 +3498,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-darwin-x64@0.4.2:
-    resolution: {integrity: sha512-UpOJcTczrKjaOsDSE5bl2ZP7HVWB95TawrcQSN7zz9xF9NS12YaBhRy/mVUtR1kAahG39+qYnBFxu/fzi02SaQ==}
+  /@okamjs/okam-darwin-x64@0.4.3:
+    resolution: {integrity: sha512-Y6pe7scEFOnmadCgkeBAl+0WZjCsNiBjko9D3MYkxeR0bBp/OF5cr0u1GoV1njTMSfuSJH9WZiVFTQG82jaedw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
@@ -3507,8 +3507,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-linux-x64-gnu@0.4.2:
-    resolution: {integrity: sha512-gRbZtWVuM7T55QVD/PyQhpBgNSLMiXWL3qNmv3lcIqOCMeEDLJdEb0JLWNLIhC+6idv8O4fyYhZ0pOacZ2tzcg==}
+  /@okamjs/okam-linux-x64-gnu@0.4.3:
+    resolution: {integrity: sha512-iva1d5/ULOp31Uzv4EAYBbF2pDq7y04Me5vjQX/w0oMx88CQrRD4Nba495Hb/nUIb2T65X0w2xe0I1wblGnhwQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
