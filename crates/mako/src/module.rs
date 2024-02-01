@@ -208,6 +208,7 @@ pub enum ModuleAst {
 }
 
 impl ModuleAst {
+    #[allow(dead_code)]
     pub fn as_script(&self) -> Option<&Ast> {
         match self {
             ModuleAst::Script(ast) => Some(ast),
