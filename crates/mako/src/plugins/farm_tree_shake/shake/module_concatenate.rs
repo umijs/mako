@@ -20,7 +20,7 @@ use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 use utils::uniq_module_prefix;
 
 use crate::compiler::Context;
-use crate::module::ModuleId;
+use crate::module::{ModuleId, ResolveType};
 use crate::module_graph::ModuleGraph;
 use crate::plugins::farm_tree_shake::module::{AllExports, TreeShakeModule};
 use crate::tree_shaking::tree_shaking_module::ModuleSystem;
@@ -49,12 +49,27 @@ pub fn optimize_module_graph(
 
         let can_be_root = true;
         let mut can_be_inner = true;
+        /*
+           - [ ] chunk 模式下的不能为 root
+           - [ ] 被 import * all from 的不能为 inner
+        */
 
         if let Some(tsm) = tree_shake_modules_map.get(module_id) {
             let tsm = tsm.borrow();
 
             if tsm.module_system != ModuleSystem::ESModule {
                 continue;
+            }
+
+            let incoming_deps = module_graph.dependant_dependencies(module_id);
+
+            let dynamic_imported = incoming_deps.iter().any(|&deps| {
+                deps.iter()
+                    .any(|d| matches!(d.resolve_type, ResolveType::DynamicImport))
+            });
+
+            if dynamic_imported {
+                can_be_inner = false;
             }
 
             // 必须要有清晰的导出

@@ -216,6 +216,18 @@ impl ModuleGraph {
         deps
     }
 
+    pub fn dependant_dependencies(&self, module_id: &ModuleId) -> Vec<&Dependencies> {
+        let mut edges = self.get_edges(module_id, Direction::Incoming);
+
+        let mut deps = vec![];
+
+        while let Some((edge_index, _)) = edges.next(&self.graph) {
+            let depencies = self.graph.edge_weight(edge_index).unwrap();
+            deps.push(depencies);
+        }
+        deps
+    }
+
     pub fn dependant_module_ids(&self, module_id: &ModuleId) -> Vec<ModuleId> {
         let mut edges = self.get_edges(module_id, Direction::Incoming);
         let mut targets: Vec<ModuleId> = vec![];

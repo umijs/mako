@@ -20,8 +20,10 @@ mod tests {
     use super::*;
 
     fn default_context() -> Arc<Context> {
-        let mut context = Context::default();
-        context.root = "/my/root/path".into();
+        let context = Context {
+            root: "/my/root/path".into(),
+            ..Context::default()
+        };
         Arc::new(context)
     }
 
