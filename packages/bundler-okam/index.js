@@ -374,7 +374,9 @@ function checkConfig(opts) {
   ['beforeBabelPlugins', 'extraBabelPlugins', 'config.extraBabelPlugins']
     .reduce((acc, key) => acc.concat(lodash.get(opts, key) || []), [])
     .some((p) => {
-      if (!/^import$|babel-plugin-import/.test(p[0])) {
+      const isImportPlugin = /^import$|babel-plugin-import/.test(p[0]);
+      const isEmotionPlugin = p === '@emotion' || p === '@emotion/babel-plugin';
+      if (!isImportPlugin && !isEmotionPlugin) {
         warningKeys.push('extraBabelPlugins');
         return true;
       }
@@ -497,10 +499,11 @@ async function getOkamConfig(opts) {
     minify = false;
   }
   // transform babel-plugin-import plugins to transformImport
-  const transformImport = [
+  const extraBabelPlugins = [
     ...(opts.extraBabelPlugins || []),
     ...(opts.config.extraBabelPlugins || []),
-  ]
+  ];
+  const transformImport = extraBabelPlugins
     .filter((p) => /^import$|babel-plugin-import/.test(p[0]))
     .map(([_, v]) => {
       const { libraryName, libraryDirectory, style, ...others } = v;
@@ -521,6 +524,9 @@ async function getOkamConfig(opts) {
 
       return { libraryName, libraryDirectory, style };
     });
+  const emotion = extraBabelPlugins.some((p) => {
+    return p === '@emotion' || p === '@emotion/babel-plugin';
+  });
   // transform externals
   const externalsConfig = Object.entries(externals).reduce((ret, [k, v]) => {
     // handle [string] with script type
@@ -583,6 +589,7 @@ async function getOkamConfig(opts) {
     clean,
     flexBugs: true,
     react: opts.react || {},
+    emotion,
     ...(opts.disableCopy ? { copy: [] } : { copy: ['public'].concat(copy) }),
   };
 
