@@ -68,7 +68,9 @@ impl<'a> VisitMut for RootTransformer<'a> {
                     ModuleDecl::TsNamespaceExport(_) => {}
                 }
 
-                replaces.push((index, items));
+                if !items.is_empty() {
+                    replaces.push((index, items));
+                }
             }
         }
 
