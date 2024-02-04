@@ -186,7 +186,7 @@ pub fn optimize_module_graph(
                     span: DUMMY_SP,
                     text: format!(
                         " CONCATENATED MODULE: {}",
-                        relative_to_root(id.id.clone(), &context.root)
+                        relative_to_root(&id.id, &context.root)
                     )
                     .into(),
                 },
@@ -297,9 +297,9 @@ impl<'a> VisitMut for InnerTransform<'a> {
             if let Some(module_decl) = item.as_mut_module_decl() {
                 match module_decl {
                     ModuleDecl::Import(import) => {
-                        let src = import.src.value.as_str();
+                        let src = import.src.value.to_string();
 
-                        if let Some(src_module_id) = self.src_to_module.get(&src.to_string())
+                        if let Some(src_module_id) = self.src_to_module.get(&src)
                             && self.modules_in_scope.contains(src_module_id)
                         {
                             stmts = Some(vec![]);

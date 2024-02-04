@@ -1,5 +1,7 @@
 import 'zx/globals';
 
+useBlockStdout();
+
 (async () => {
   // Check git status
   console.log('Check git status');
@@ -171,4 +173,9 @@ function assert(v: unknown, message: string) {
     console.error(message);
     process.exit(1);
   }
+}
+
+function useBlockStdout() {
+  process.stdout._handle.setBlocking(true);
+  process.stderr._handle.setBlocking(true);
 }

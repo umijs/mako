@@ -34,7 +34,7 @@ impl<'a> VisitMut for RootTransformer<'a> {
                     kind: CommentKind::Line,
                     text: format!(
                         " ROOT MODULE: {}",
-                        relative_to_root(self.current_module_id.id.clone(), &self.context.root)
+                        relative_to_root(&self.current_module_id.id, &self.context.root)
                     )
                     .into(),
                     span: DUMMY_SP,
@@ -48,14 +48,11 @@ impl<'a> VisitMut for RootTransformer<'a> {
 
                 match module_dc {
                     ModuleDecl::Import(import_decl) => {
-                        let source = import_decl.src.value.as_str();
+                        let source = import_decl.src.value.to_string();
 
                         let imported_module = self
                             .module_graph
-                            .get_dependency_module_by_source(
-                                self.current_module_id,
-                                &source.to_string(),
-                            )
+                            .get_dependency_module_by_source(self.current_module_id, &source)
                             .unwrap();
 
                         for x in &import_decl.specifiers {

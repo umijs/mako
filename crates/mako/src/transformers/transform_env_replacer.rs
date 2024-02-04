@@ -4,16 +4,17 @@ use std::sync::Arc;
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::serde_json::Value;
 use mako_core::swc_atoms::{js_word, JsWord};
-use mako_core::swc_common::collections::{AHashMap, AHashSet};
+use mako_core::swc_common::collections::AHashMap;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{
-    ArrayLit, Bool, ComputedPropName, Expr, ExprOrSpread, Id, Ident, KeyValueProp, Lit, MemberExpr,
-    MemberProp, MetaPropExpr, MetaPropKind, Module, ModuleItem, Null, Number, ObjectLit, Prop,
-    PropName, PropOrSpread, Stmt, Str,
+    ArrayLit, Bool, ComputedPropName, Expr, ExprOrSpread, Ident, KeyValueProp, Lit, MemberExpr,
+    MemberProp, MetaPropExpr, MetaPropKind, ModuleItem, Null, Number, ObjectLit, Prop, PropName,
+    PropOrSpread, Stmt, Str,
 };
-use mako_core::swc_ecma_utils::{collect_decls, quote_ident, ExprExt};
+use mako_core::swc_ecma_utils::{quote_ident, ExprExt};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+use swc_core::common::Mark;
 
 use crate::ast::build_js_ast;
 use crate::compiler::Context;
@@ -26,12 +27,12 @@ enum EnvsType {
 
 #[derive(Debug)]
 pub struct EnvReplacer {
-    bindings: Lrc<AHashSet<Id>>,
+    unresolved_mark: Mark,
     envs: Lrc<AHashMap<JsWord, Expr>>,
     meta_envs: Lrc<AHashMap<String, Expr>>,
 }
 impl EnvReplacer {
-    pub fn new(envs: Lrc<AHashMap<JsWord, Expr>>) -> Self {
+    pub fn new(envs: Lrc<AHashMap<JsWord, Expr>>, unresolved_mark: Mark) -> Self {
         let mut meta_env_map = AHashMap::default();
 
         // generate meta_envs from envs
@@ -47,7 +48,7 @@ impl EnvReplacer {
         }
 
         Self {
-            bindings: Default::default(),
+            unresolved_mark,
             envs,
             meta_envs: Lrc::new(meta_env_map),
         }
@@ -61,17 +62,12 @@ impl EnvReplacer {
     }
 }
 impl VisitMut for EnvReplacer {
-    fn visit_mut_module(&mut self, module: &mut Module) {
-        self.bindings = Lrc::new(collect_decls(&*module));
-        module.visit_mut_children_with(self);
-    }
-
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Ident(Ident { ref sym, span, .. }) = expr {
             let envs = EnvsType::Node(self.envs.clone());
 
             // 先判断 env 中的变量名称，是否是上下文中已经存在的变量名称
-            if self.bindings.contains(&(sym.clone(), span.ctxt)) {
+            if span.ctxt.outer() != self.unresolved_mark {
                 expr.visit_mut_children_with(self);
                 return;
             }
@@ -83,53 +79,38 @@ impl VisitMut for EnvReplacer {
             }
         }
 
-        if let Expr::Member(MemberExpr {
-            obj: box obj, prop, ..
-        }) = expr
-        {
-            if match obj {
-                Expr::Member(MemberExpr {
-                    prop: MemberProp::Ident(Ident { sym, .. }),
-                    ..
-                }) => sym == "env",
-                _ => false,
-            } {
+        if let Expr::Member(MemberExpr { obj, prop, .. }) = expr {
+            if let Expr::Member(MemberExpr {
+                obj: first_obj,
+                prop:
+                    MemberProp::Ident(Ident {
+                        sym: js_word!("env"),
+                        ..
+                    }),
+                ..
+            }) = &**obj
+            {
                 // handle `env.XX`
                 let mut envs = EnvsType::Node(self.envs.clone());
 
-                if let Expr::Member(MemberExpr {
-                    obj: box first_obj, ..
-                }) = obj
-                {
-                    if match first_obj {
-                        Expr::Ident(Ident { sym, .. }) => sym == "process",
-                        Expr::MetaProp(MetaPropExpr {
-                            kind: MetaPropKind::ImportMeta,
-                            ..
-                        }) => {
-                            envs = EnvsType::Browser(self.meta_envs.clone());
-                            true
-                        }
-                        _ => false,
-                    } {
-                        // handle `process.env.XX` and `import.meta.env.XX`
-                        match prop {
-                            MemberProp::Computed(ComputedPropName { expr: c, .. }) => {
-                                if let Expr::Lit(Lit::Str(Str { value: sym, .. })) = &**c {
-                                    if let Some(env) = EnvReplacer::get_env(&envs, sym) {
-                                        // replace with real value if env found
-                                        *expr = env;
-                                    } else {
-                                        // replace with `undefined` if env not found
-                                        *expr = *Box::new(Expr::Ident(Ident::new(
-                                            js_word!("undefined"),
-                                            DUMMY_SP,
-                                        )));
-                                    }
-                                }
-                            }
-
-                            MemberProp::Ident(Ident { sym, .. }) => {
+                if match &**first_obj {
+                    Expr::Ident(Ident {
+                        sym: js_word!("process"),
+                        ..
+                    }) => true,
+                    Expr::MetaProp(MetaPropExpr {
+                        kind: MetaPropKind::ImportMeta,
+                        ..
+                    }) => {
+                        envs = EnvsType::Browser(self.meta_envs.clone());
+                        true
+                    }
+                    _ => false,
+                } {
+                    // handle `process.env.XX` and `import.meta.env.XX`
+                    match prop {
+                        MemberProp::Computed(ComputedPropName { expr: c, .. }) => {
+                            if let Expr::Lit(Lit::Str(Str { value: sym, .. })) = &**c {
                                 if let Some(env) = EnvReplacer::get_env(&envs, sym) {
                                     // replace with real value if env found
                                     *expr = env;
@@ -141,22 +122,37 @@ impl VisitMut for EnvReplacer {
                                     )));
                                 }
                             }
-                            _ => {}
                         }
+
+                        MemberProp::Ident(Ident { sym, .. }) => {
+                            if let Some(env) = EnvReplacer::get_env(&envs, sym) {
+                                // replace with real value if env found
+                                *expr = env;
+                            } else {
+                                // replace with `undefined` if env not found
+                                *expr = *Box::new(Expr::Ident(Ident::new(
+                                    js_word!("undefined"),
+                                    DUMMY_SP,
+                                )));
+                            }
+                        }
+                        _ => {}
                     }
                 }
-            } else if match expr {
-                Expr::Member(MemberExpr {
-                    obj:
-                        box Expr::MetaProp(MetaPropExpr {
-                            kind: MetaPropKind::ImportMeta,
-                            ..
-                        }),
-                    prop: MemberProp::Ident(Ident { sym, .. }),
-                    ..
-                }) => sym == "env",
-                _ => false,
-            } {
+            } else if let Expr::Member(MemberExpr {
+                obj:
+                    box Expr::MetaProp(MetaPropExpr {
+                        kind: MetaPropKind::ImportMeta,
+                        ..
+                    }),
+                prop:
+                    MemberProp::Ident(Ident {
+                        sym: js_word!("env"),
+                        ..
+                    }),
+                ..
+            }) = *expr
+            {
                 // replace independent `import.meta.env` to json object
                 let mut props = Vec::new();
 
@@ -327,7 +323,7 @@ if (undefined === 'true') {
 
         let globals = Globals::default();
         GLOBALS.set(&globals, || {
-            let mut env_replacer = EnvReplacer::new(Default::default());
+            let mut env_replacer = EnvReplacer::new(Default::default(), ast.unresolved_mark);
             ast.ast.visit_mut_with(&mut env_replacer);
         });
 

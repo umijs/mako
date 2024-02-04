@@ -17,6 +17,7 @@ serde_json = { workspace = true }
 cached     = { workspace = true }
 swc_core   = { workspace = true, features = ["swc_ecma_quote_macros"] }
 miette     = { version = "5.10.0", features = ["fancy"] }
+glob-match = "0.2.1"
 heck       = "0.4.1"
 
 [dev-dependencies]

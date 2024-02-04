@@ -13,7 +13,7 @@ impl VisitMut for OptimizeDefineUtils {
         let mut no_directive_index = 0;
         for (index, item) in items.iter().enumerate() {
             if let Some(stmt) = item.as_stmt()
-                && stmt.directive_continue()
+                && stmt.is_directive()
             {
                 no_directive_index = index + 1
             } else {
@@ -67,7 +67,7 @@ impl VisitMut for OptimizeDefineUtils {
                     && call_expr.args.len() == 2
                     && is_export_arg(call_expr.args.first())
                     && is_obj_lit_arg(call_expr.args.get(1))
-                    && callee_ident.sym == "_export"
+                    && callee_ident.sym.to_string() == "_export"
                     // is private ident
                     && !callee_ident
                         .span
@@ -96,14 +96,14 @@ fn is_object_define(expr: &Expr) -> bool {
             let is_object = member
                 .obj
                 .as_ident()
-                .map(|ident| ident.sym == "Object")
+                .map(|ident| ident.sym.to_string() == "Object")
                 .unwrap_or(false);
 
             is_object
                 && member
                     .prop
                     .as_ident()
-                    .map(|ident| ident.sym == "defineProperty")
+                    .map(|ident| ident.sym.to_string() == "defineProperty")
                     .unwrap_or(false)
         })
         .unwrap_or(false)
@@ -115,7 +115,7 @@ fn is_export_arg(arg: Option<&ExprOrSpread>) -> bool {
             && arg
                 .expr
                 .as_ident()
-                .map(|ident| ident.sym == "exports")
+                .map(|ident| ident.sym.to_string() == "exports")
                 .unwrap_or(false)
     })
     .unwrap_or(false)
@@ -141,7 +141,7 @@ fn is_string_lit_arg_with_value(arg: Option<&ExprOrSpread>, value: &str) -> bool
                 .as_lit()
                 .map(|lit| {
                     if let Lit::Str(str_lit) = lit {
-                        str_lit.value == value
+                        str_lit.value.to_string() == value
                     } else {
                         false
                     }

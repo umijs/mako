@@ -754,22 +754,23 @@ impl Default for Config {
     }
 }
 
+pub(crate) fn get_pkg_name(root: &Path) -> Option<String> {
+    let pkg_json_path = root.join("package.json");
+
+    if pkg_json_path.exists() {
+        let pkg_json = std::fs::read_to_string(pkg_json_path).unwrap();
+        let pkg_json: serde_json::Value = serde_json::from_str(&pkg_json).unwrap();
+
+        pkg_json
+            .get("name")
+            .map(|name| name.as_str().unwrap().to_string())
+    } else {
+        None
+    }
+}
+
 fn get_default_chunk_loading_global(umd: Option<String>, root: &Path) -> String {
-    let unique_name = umd.unwrap_or_else(|| {
-        let pkg_json_path = root.join("package.json");
-        let mut pkg_name = "global".to_string();
-
-        if pkg_json_path.exists() {
-            let pkg_json = std::fs::read_to_string(pkg_json_path).unwrap();
-            let pkg_json: serde_json::Value = serde_json::from_str(&pkg_json).unwrap();
-
-            if let Some(name) = pkg_json.get("name") {
-                pkg_name = name.as_str().unwrap().to_string();
-            }
-        }
-
-        pkg_name
-    });
+    let unique_name = umd.unwrap_or_else(|| get_pkg_name(root).unwrap_or("global".to_string()));
 
     format!("makoChunk_{}", unique_name)
 }

@@ -122,7 +122,7 @@ impl TreeShakeModule {
             }
         }
 
-        if ambiguous_named.len() == 1 {
+        if local_ident.is_none() && ambiguous_named.len() == 1 {
             return ambiguous_named.pop();
         }
 

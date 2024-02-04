@@ -1,3 +1,40 @@
+## 0.4.3
+
+`2024-02-01`
+
+> @alipay/bigfish@4.1.17
+
+- 修复 skipModules 在边界情况下找错导出来源的问题 by [@stormslowly](https://github.com/stormslowly) in [#906](https://github.com/umijs/mako/pull/906)
+- 回滚 SWC 升级的 PR [#876](https://github.com/umijs/mako/pull/876) by [@stormslowly](https://github.com/stormslowly) in [#907](https://github.com/umijs/mako/pull/907)
+
+## 0.4.2
+
+`2024-01-31`
+
+> @alipay/bigfish@4.1.17
+
+- 修复 lessLoader.modifyVars dev 环境不生效的问题 by [@sorrycc](https://github.com/sorrycc) in [#900](https://github.com/umijs/mako/pull/900)
+- 修复 node binding 因为 stout/stderr 模式不匹配导致的 OS error 35 by [@sorrycc](https://github.com/sorrycc) in [#901](https://github.com/umijs/mako/pull/901)
+- 修复 package.json 中 sideEffects 配置为相对路径时，sideEffects 匹配错误的 bug by [@stormslowly](https://github.com/stormslowly) in [#902](https://github.com/umijs/mako/pull/902)
+
+## 0.4.1
+
+`2024-01-30`
+
+> @alipay/bigfish@4.1.17
+
+* 新增 HMR 支持 link 的 npm 包的调试 by [@zhangpanweb](https://github.com/zhangpanweb) in [#864](https://github.com/umijs/mako/pull/864)
+* 新增支持类似 raw-loader 的能力，通过加 ?raw query 开启 by [@ctts](https://github.com/ctts) in [#877](https://github.com/umijs/mako/pull/877)
+* 新增 cjs 输出配置 by [@sorrycc](https://github.com/sorrycc) in [#886](https://github.com/umijs/mako/pull/886)
+* 新增 async script 的 preload 支持 by [@PeachScript](https://github.com/PeachScript) in [#895](https://github.com/umijs/mako/pull/895)
+* 新增 emit_assets 和 css_modules_export_only_locales 配置 by [@sorrycc](https://github.com/sorrycc) in [#890](https://github.com/umijs/mako/pull/890)
+* 升级 swc 到 86 by [@goo-yyh](https://github.com/goo-yyh) in [#876](https://github.com/umijs/mako/pull/876)
+* 优化 node 场景下对 __dirname 和 __filename 的支持 by [@zhangpanweb](https://github.com/zhangpanweb) in [#885](https://github.com/umijs/mako/pull/885)
+* 优化 platform: node 场景下的 code splitting 支持 by [@sorrycc](https://github.com/sorrycc) in [#887](https://github.com/umijs/mako/pull/887)
+* 优化检测变量是否声明的方法，以提升速度 by [@zhangpanweb](https://github.com/zhangpanweb) in [#897](https://github.com/umijs/mako/pull/897)
+* 优化 stats 信息，添加 siblings 和 origins 信息 by [@PeachScript](https://github.com/PeachScript) in [#893](https://github.com/umijs/mako/pull/893)
+* 重构 emotion 插件的实现 by [@zhangpanweb](https://github.com/zhangpanweb) in [#884](https://github.com/umijs/mako/pull/884)
+
 ## 0.4.0
 
 `2024-01-18`
@@ -10,9 +47,6 @@
 * 修复 Less 参数取值优先读取 modifyVars 字段，其次 theme by [@sorrycc](https://github.com/sorrycc) in [#874](https://github.com/umijs/mako/pull/874)
 * 修复 style 文件导入语句未删除的问题 by [@stormslowly](https://github.com/stormslowly) in [#869](https://github.com/umijs/mako/pull/869)
 * 修复 skipModule 优化时丢失 default 导入的副作用 [@stormslowly](https://github.com/stormslowly) in [#862](https://github.com/umijs/mako/pull/862)
-
-
-
 
 ## 0.3.1
 
@@ -71,7 +105,7 @@
 
 `2023-12-18`
 
-> @alipay/bigfish@4.1.12
+> @alipay/bigfish@4.1.13
 
 * 新增 支持显示 less 代码 sourcemap by [@jiesia](https://github.com/jiesia) in [#755](https://github.com/umijs/mako/pull/775)
 * 修复 require context 不支持后缀 require 的问题 by [@PeachScript](https://github.com/PeachScript) in [#806](https://github.com/umijs/mako/pull/806)
@@ -82,7 +116,7 @@
 
 `2023-12-18`
 
-> @alipay/bigfish@4.1.11
+> @alipay/bigfish@4.1.12
 
 * 优化 chunk cache 在 build 时默认不使用 cache by [@zhangpanweb](https://github.com/zhangpanweb) in [#800](https://github.com/umijs/mako/pull/800)
 * 修复由于 hashed id 策略导致的 build 后 chunk 可能加载失败的问题 by [@PeachScript](https://github.com/PeachScript) in [#805](https://github.com/umijs/mako/pull/805)

@@ -37,6 +37,22 @@ function lessLoader(fn, opts) {
 // export for test only
 exports._lessLoader = lessLoader;
 
+// ref:
+// https://github.com/vercel/next.js/pull/51883
+function blockStdout() {
+  if (process.platform === 'darwin') {
+    // rust needs stdout to be blocking, otherwise it will throw an error (on macOS at least) when writing a lot of data (logs) to it
+    // see https://github.com/napi-rs/napi-rs/issues/1630
+    // and https://github.com/nodejs/node/blob/main/doc/api/process.md#a-note-on-process-io
+    if (process.stdout._handle != null) {
+      process.stdout._handle.setBlocking(true);
+    }
+    if (process.stderr._handle != null) {
+      process.stderr._handle.setBlocking(true);
+    }
+  }
+}
+
 exports.build = async function (opts) {
   assert(opts, 'opts should be supplied');
   const {
@@ -55,6 +71,7 @@ exports.build = async function (opts) {
     okamConfig.moduleIdStrategy = 'hashed';
   }
 
+  blockStdout();
   const { build } = require('@okamjs/okam');
   try {
     await build({
@@ -185,6 +202,7 @@ exports.dev = async function (opts) {
   server.on('upgrade', wsProxy.upgrade);
 
   // okam dev
+  blockStdout();
   const { build } = require('@okamjs/okam');
   const okamConfig = await getOkamConfig(opts);
   okamConfig.hmr = { port: hmrPort, host: opts.host };
@@ -198,7 +216,7 @@ exports.dev = async function (opts) {
           cwd,
           config: opts.config,
           alias: okamConfig.resolve.alias,
-          modifyVars: opts.config.theme,
+          modifyVars: opts.config.lessLoader?.modifyVars || opts.config.theme,
           sourceMap: getLessSourceMapConfig(okamConfig.devtool),
         }),
         generateEnd: (args) => {
@@ -356,7 +374,9 @@ function checkConfig(opts) {
   ['beforeBabelPlugins', 'extraBabelPlugins', 'config.extraBabelPlugins']
     .reduce((acc, key) => acc.concat(lodash.get(opts, key) || []), [])
     .some((p) => {
-      if (!/^import$|babel-plugin-import/.test(p[0])) {
+      const isImportPlugin = /^import$|babel-plugin-import/.test(p[0]);
+      const isEmotionPlugin = p === '@emotion' || p === '@emotion/babel-plugin';
+      if (!isImportPlugin && !isEmotionPlugin) {
         warningKeys.push('extraBabelPlugins');
         return true;
       }
@@ -479,10 +499,11 @@ async function getOkamConfig(opts) {
     minify = false;
   }
   // transform babel-plugin-import plugins to transformImport
-  const transformImport = [
+  const extraBabelPlugins = [
     ...(opts.extraBabelPlugins || []),
     ...(opts.config.extraBabelPlugins || []),
-  ]
+  ];
+  const transformImport = extraBabelPlugins
     .filter((p) => /^import$|babel-plugin-import/.test(p[0]))
     .map(([_, v]) => {
       const { libraryName, libraryDirectory, style, ...others } = v;
@@ -503,6 +524,9 @@ async function getOkamConfig(opts) {
 
       return { libraryName, libraryDirectory, style };
     });
+  const emotion = extraBabelPlugins.some((p) => {
+    return p === '@emotion' || p === '@emotion/babel-plugin';
+  });
   // transform externals
   const externalsConfig = Object.entries(externals).reduce((ret, [k, v]) => {
     // handle [string] with script type
@@ -565,6 +589,7 @@ async function getOkamConfig(opts) {
     clean,
     flexBugs: true,
     react: opts.react || {},
+    emotion,
     ...(opts.disableCopy ? { copy: [] } : { copy: ['public'].concat(copy) }),
   };
 

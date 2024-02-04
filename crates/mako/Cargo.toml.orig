@@ -1,0 +1,33 @@
+[package]
+name       = "mako"
+version    = "0.1.0"
+edition    = "2021"
+repository = "https://github.com/umijs/mako"
+license    = "MIT"
+
+[[bin]]
+name = "mako"
+path = "src/main.rs"
+test = false
+
+[dependencies]
+mako_core  = { path = "../core" }
+serde      = { workspace = true }
+serde_json = { workspace = true }
+cached     = { workspace = true }
+swc_core   = { workspace = true, features = ["swc_ecma_quote_macros"] }
+miette     = { version = "5.10.0", features = ["fancy"] }
+<<<<<<< HEAD
+heck       = "0.4.1"
+=======
+glob-match = "0.2.1"
+>>>>>>> master
+
+[dev-dependencies]
+insta                       = { version = "1.30.0", features = ["yaml"] }
+maplit                      = "1.0.2"
+testing                     = "0.35.10"
+swc_ecma_transforms_testing = "0.136.2"
+
+[features]
+profile = ["mako_core/profile"]

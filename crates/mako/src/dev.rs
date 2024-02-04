@@ -16,7 +16,7 @@ use mako_core::{hyper, hyper_staticfile, hyper_tungstenite, tokio};
 
 use crate::compiler::{Compiler, Context};
 use crate::plugin::{PluginGenerateEndParams, PluginGenerateStats};
-use crate::watch::Watch;
+use crate::watch::Watcher;
 
 pub struct DevServer {
     root: PathBuf,
@@ -170,15 +170,15 @@ impl DevServer {
         let (tx, rx) = mpsc::channel();
         // let mut watcher = RecommendedWatcher::new(tx, notify::Config::default())?;
         let mut debouncer = new_debouncer(Duration::from_millis(10), None, tx).unwrap();
-        let watcher = debouncer.watcher();
-        Watch::watch(&root, watcher)?;
+        let mut watcher = Watcher::new(&root, debouncer.watcher(), &compiler);
+        watcher.watch()?;
 
         let initial_hash = compiler.full_hash();
         let mut last_cache_hash = Box::new(initial_hash);
         let mut hmr_hash = Box::new(initial_hash);
 
         for result in rx {
-            let paths = Watch::normalize_events(result.unwrap());
+            let paths = Watcher::normalize_events(result.unwrap());
             if !paths.is_empty() {
                 let compiler = compiler.clone();
                 let txws = txws.clone();
@@ -194,6 +194,7 @@ impl DevServer {
                     eprintln!("Error rebuilding: {:?}", e);
                 }
             }
+            watcher.refresh_watch()?;
         }
         Ok(())
     }
