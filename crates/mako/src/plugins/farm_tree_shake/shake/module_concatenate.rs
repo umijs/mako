@@ -2,15 +2,16 @@ mod root_transformer;
 mod utils;
 
 use std::cell::RefCell;
+use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::ops::Deref;
 use std::sync::Arc;
 
-use heck::ToSnakeCase;
 use mako_core::swc_common::util::take::Take;
 use root_transformer::RootTransformer;
 use swc_core::common::collections::AHashSet;
-use swc_core::common::{Span, SyntaxContext, GLOBALS};
+use swc_core::common::comments::{Comment, CommentKind};
+use swc_core::common::{Span, Spanned, SyntaxContext, DUMMY_SP, GLOBALS};
 use swc_core::ecma::ast::{
     DefaultDecl, Expr, Id, Module, ModuleDecl, ModuleItem, Stmt, VarDeclKind,
 };
@@ -20,7 +21,7 @@ use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 use utils::uniq_module_prefix;
 
 use crate::compiler::Context;
-use crate::module::{ModuleId, ResolveType};
+use crate::module::{relative_to_root, ModuleId, ResolveType};
 use crate::module_graph::ModuleGraph;
 use crate::plugins::farm_tree_shake::module::{AllExports, TreeShakeModule};
 use crate::tree_shaking::tree_shaking_module::ModuleSystem;
@@ -39,7 +40,7 @@ pub fn optimize_module_graph(
     let mut root_candidates = vec![];
     let mut inner_candidates = HashSet::new();
 
-    for module_id in sorted_module_ids.iter() {
+    for (order, module_id) in sorted_module_ids.iter().enumerate() {
         // TODO async module should not be candidate
 
         // 环上的节点先不碰
@@ -55,7 +56,9 @@ pub fn optimize_module_graph(
         */
 
         if let Some(tsm) = tree_shake_modules_map.get(module_id) {
-            let tsm = tsm.borrow();
+            let mut tsm = tsm.borrow_mut();
+
+            tsm.topo_order = order;
 
             if tsm.module_system != ModuleSystem::ESModule {
                 continue;
@@ -77,45 +80,82 @@ pub fn optimize_module_graph(
             if matches!(tsm.all_exports, AllExports::Ambiguous(_)) {
                 can_be_inner = false;
             }
-        }
 
-        if can_be_root {
-            root_candidates.push(module_id.clone());
-        }
+            if can_be_root {
+                root_candidates.push(module_id.clone());
+            }
 
-        if can_be_inner {
-            inner_candidates.insert(module_id.clone());
+            if can_be_inner {
+                inner_candidates.insert(module_id.clone());
+            }
         }
     }
 
     let mut concat_configurations = vec![];
     let mut used_as_inner = HashSet::new();
 
-    for root in root_candidates.iter() {
-        let mut config = ConcatenateConfig::new(root.clone());
+    fn collect_inner_modules(
+        current_module_id: &ModuleId,
+        config: &mut ConcatenateConfig,
+        candidate: &HashSet<ModuleId>,
+        module_graph: &ModuleGraph,
+    ) {
+        let deps = module_graph.get_dependencies(current_module_id);
 
-        let deps = module_graph.get_dependencies(root);
+        let mut children = vec![];
 
-        for (dep_module_id, _) in deps {
-            if inner_candidates.contains(dep_module_id) {
-                config.add_inner(dep_module_id.clone());
-                used_as_inner.insert(dep_module_id.clone());
+        for (module_id, _dep) in deps {
+            if candidate.contains(module_id) && !(config.contains(module_id)) {
+                config.add_inner(module_id.clone());
+                children.push(module_id.clone());
             }
         }
 
-        used_as_inner.insert(config.root.clone());
+        for m in children.iter() {
+            collect_inner_modules(m, config, candidate, module_graph);
+        }
+    }
 
-        concat_configurations.push(config);
+    for root in root_candidates.iter() {
+        if used_as_inner.contains(root) {
+            continue;
+        }
+        let mut config = ConcatenateConfig::new(root.clone());
+
+        collect_inner_modules(root, &mut config, &inner_candidates, module_graph);
+
+        if config.is_empty() {
+        } else {
+            used_as_inner.insert(config.root.clone());
+            used_as_inner.extend(config.inners.iter().cloned());
+
+            config.sort_inner(|m1, m2| {
+                let m1_order = tree_shake_modules_map.get(m1).unwrap().borrow().topo_order;
+                let m2_order = tree_shake_modules_map.get(m2).unwrap().borrow().topo_order;
+
+                m2_order.cmp(&m1_order)
+            });
+
+            concat_configurations.push(config);
+        }
     }
 
     let mut module_items: Vec<ModuleItem> = Vec::new();
 
     let config = concat_configurations.first().unwrap();
 
-    for id in config.inners.iter() {
-        let module = module_graph.get_module_mut(id).unwrap();
+    let mut modules_in_current_scope = HashSet::new();
 
-        let _module_var_prefix = module.id.generate(context).to_snake_case();
+    for id in config.inners.iter() {
+        let dep = module_graph.get_dependencies(id);
+
+        let mut src_2_module_id = HashMap::new();
+
+        for (module, dep) in dep {
+            src_2_module_id.insert(dep.source.clone(), module.clone());
+        }
+
+        let module = module_graph.get_module_mut(id).unwrap();
 
         let module_info = module.info.as_mut().unwrap();
 
@@ -125,15 +165,33 @@ pub fn optimize_module_graph(
             let top_ctx = SyntaxContext::empty().apply_mark(script_ast.top_level_mark);
 
             let mut ter = InnerTransform {
-                module_id: id,
+                modules_in_scope: &modules_in_current_scope,
                 top_level_ctx: top_ctx,
                 uniq_prefix: uniq_module_prefix(id, context),
+                src_to_module: &src_2_module_id,
             };
 
             script_ast.ast.visit_mut_with(&mut ter);
-            script_ast.ast.visit_mut_with(&mut CleanSyntaxContext {})
+            script_ast.ast.visit_mut_with(&mut CleanSyntaxContext {});
         });
 
+        modules_in_current_scope.insert(id.clone());
+
+        if let Some(item) = script_ast.ast.body.first() {
+            let mut comments = context.meta.script.origin_comments.write().unwrap();
+            comments.add_leading_comment_at(
+                item.span_lo(),
+                Comment {
+                    kind: CommentKind::Line,
+                    span: DUMMY_SP,
+                    text: format!(
+                        " CONCATENATED MODULE: {}",
+                        relative_to_root(id.id.clone(), &context.root)
+                    )
+                    .into(),
+                },
+            );
+        }
         module_items.append(&mut script_ast.ast.body.clone());
     }
 
@@ -153,8 +211,9 @@ pub fn optimize_module_graph(
             context,
         });
 
-        root_module_ast.body.splice(0..0, module_items);
         root_module_ast.visit_mut_with(&mut CleanSyntaxContext {});
+
+        root_module_ast.body.splice(0..0, module_items);
         root_module_ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
     });
 
@@ -170,6 +229,7 @@ pub fn optimize_module_graph(
     Ok(())
 }
 
+#[derive(Debug)]
 struct ConcatenateConfig {
     root: ModuleId,
     inners: Vec<ModuleId>,
@@ -188,6 +248,21 @@ impl ConcatenateConfig {
     fn add_inner(&mut self, inner: ModuleId) {
         self.inners.push(inner);
     }
+
+    pub fn contains(&self, module_id: &ModuleId) -> bool {
+        self.root.eq(module_id) || self.inners.contains(module_id)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.inners.is_empty()
+    }
+
+    pub fn sort_inner<F>(&mut self, compare: F)
+    where
+        F: FnMut(&ModuleId, &ModuleId) -> Ordering,
+    {
+        self.inners.sort_by(compare);
+    }
 }
 
 impl VisitMut for CleanSyntaxContext {
@@ -197,9 +272,11 @@ impl VisitMut for CleanSyntaxContext {
 }
 
 struct InnerTransform<'a> {
-    module_id: &'a ModuleId,
+    modules_in_scope: &'a HashSet<ModuleId>,
+    // module_id: &'a ModuleId,
     top_level_ctx: SyntaxContext,
     uniq_prefix: String,
+    src_to_module: &'a HashMap<String, ModuleId>,
 }
 
 impl<'a> VisitMut for InnerTransform<'a> {
@@ -210,12 +287,24 @@ impl<'a> VisitMut for InnerTransform<'a> {
         n.visit_mut_children_with(self);
     }
     fn visit_mut_module_items(&mut self, items: &mut Vec<ModuleItem>) {
-        for index in (00..items.len()).rev() {
+        let mut replaces = vec![];
+
+        for index in (0..items.len()).rev() {
+            let mut stmts = None;
+
             let item = items.get_mut(index).unwrap();
 
             if let Some(module_decl) = item.as_mut_module_decl() {
                 match module_decl {
-                    ModuleDecl::Import(_) => {}
+                    ModuleDecl::Import(import) => {
+                        let src = import.src.value.as_str();
+
+                        if let Some(src_module_id) = self.src_to_module.get(&src.to_string())
+                            && self.modules_in_scope.contains(src_module_id)
+                        {
+                            stmts = Some(vec![]);
+                        }
+                    }
                     ModuleDecl::ExportDecl(export_decl) => {
                         let decl = export_decl.decl.take();
 
@@ -297,6 +386,14 @@ impl<'a> VisitMut for InnerTransform<'a> {
                     ModuleDecl::TsNamespaceExport(_) => {}
                 }
             }
+
+            if let Some(to_replace) = stmts {
+                replaces.push((index, to_replace));
+            }
+        }
+
+        for (index, rep) in replaces {
+            items.splice(index..index + 1, rep);
         }
     }
 }

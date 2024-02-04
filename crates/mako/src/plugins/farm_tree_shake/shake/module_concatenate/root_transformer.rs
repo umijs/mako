@@ -1,12 +1,14 @@
 use std::sync::Arc;
 
+use swc_core::common::comments::{Comment, CommentKind};
+use swc_core::common::{Spanned, DUMMY_SP};
 use swc_core::ecma::ast::{ImportSpecifier, Module, ModuleDecl, ModuleItem, Stmt, VarDeclKind};
 use swc_core::ecma::utils::{quote_ident, ExprFactory};
 use swc_core::ecma::visit::VisitMut;
 
 use super::utils::uniq_module_prefix;
 use crate::compiler::Context;
-use crate::module::ModuleId;
+use crate::module::{relative_to_root, ModuleId};
 use crate::module_graph::ModuleGraph;
 
 pub(in crate::plugins) struct RootTransformer<'a> {
@@ -18,6 +20,27 @@ pub(in crate::plugins) struct RootTransformer<'a> {
 impl<'a> VisitMut for RootTransformer<'a> {
     fn visit_mut_module(&mut self, n: &mut Module) {
         let mut replaces = vec![];
+
+        if let Some(first_stmt) = n
+            .body
+            .iter()
+            .find(|&item| matches!(item, ModuleItem::Stmt(_)))
+        {
+            let mut comments = self.context.meta.script.origin_comments.write().unwrap();
+
+            comments.add_leading_comment_at(
+                first_stmt.span_lo(),
+                Comment {
+                    kind: CommentKind::Line,
+                    text: format!(
+                        " ROOT MODULE: {}",
+                        relative_to_root(self.current_module_id.id.clone(), &self.context.root)
+                    )
+                    .into(),
+                    span: DUMMY_SP,
+                },
+            );
+        }
 
         for (index, module_item) in n.body.iter().enumerate().rev() {
             if let Some(module_dc) = module_item.as_module_decl() {
@@ -68,14 +91,12 @@ impl<'a> VisitMut for RootTransformer<'a> {
                     ModuleDecl::TsNamespaceExport(_) => {}
                 }
 
-                if !items.is_empty() {
-                    replaces.push((index, items));
-                }
+                replaces.push((index, items));
             }
         }
 
         for (i, items) in replaces {
-            n.body.splice(i..1, items);
+            n.body.splice(i..i + 1, items);
         }
     }
 }
