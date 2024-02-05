@@ -1,6 +1,6 @@
-use std::collections::{HashMap, HashSet};
 use std::fmt;
 
+use mako_core::collections::{HashMap, HashSet};
 use mako_core::petgraph::stable_graph::{NodeIndex, StableDiGraph};
 use mako_core::petgraph::visit::{EdgeRef, IntoEdgeReferences};
 use mako_core::swc_ecma_ast::Module;
@@ -25,7 +25,7 @@ pub struct StatementGraph {
 impl StatementGraph {
     pub fn new(module: &Module) -> Self {
         let mut graph = StableDiGraph::new();
-        let mut id_index_map = HashMap::new();
+        let mut id_index_map = HashMap::default();
 
         // 只分析 body 顶层的声明语句
         for (index, statement) in module.body.iter().enumerate() {
@@ -46,7 +46,7 @@ impl StatementGraph {
     pub fn empty() -> Self {
         Self {
             graph: StableDiGraph::new(),
-            id_index_map: HashMap::new(),
+            id_index_map: HashMap::default(),
         }
     }
 
@@ -95,7 +95,7 @@ impl StatementGraph {
         let mut edges_to_add = Vec::new();
         for statement in self.get_statements() {
             for def_statement in self.get_statements() {
-                let mut deps_ident = HashSet::new();
+                let mut deps_ident = HashSet::default();
                 for def_ident in def_statement.get_defined_ident() {
                     if let Some(used_ident) = statement.get_used_ident() {
                         if used_ident.contains(def_ident) {

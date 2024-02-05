@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
+use mako_core::collections::HashMap;
 use mako_core::swc_common::{Mark, DUMMY_SP};
 use mako_core::swc_ecma_ast::{
     AssignOp, BlockStmt, Expr, ExprOrSpread, FnExpr, Function, Ident, ImportDecl, Lit, NamedExport,
@@ -233,13 +233,13 @@ pub fn resolve_web_worker_mut(new_expr: &mut NewExpr, unresolved_mark: Mark) -> 
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
     use std::sync::Arc;
 
+    use mako_core::collections::HashMap;
+    use mako_core::hashmap;
     use mako_core::swc_common::{chain, GLOBALS};
     use mako_core::swc_ecma_transforms::resolver;
     use mako_core::swc_ecma_visit::VisitMut;
-    use maplit::hashmap;
 
     use crate::assert_display_snapshot;
     use crate::ast::build_js_ast;
@@ -264,7 +264,7 @@ mod tests {
                         "/root/node_modules/react/index.js".to_string()
                     )
                 },
-                missing: HashMap::new(),
+                missing: HashMap::default(),
                 ignored: vec![],
             };
 
@@ -306,7 +306,7 @@ mod tests {
                 build_js_ast("index.jsx", r#"require("react")"#, &context.clone()).unwrap();
 
             let to_replace = DependenciesToReplace {
-                resolved: HashMap::new(),
+                resolved: HashMap::default(),
                 missing: hashmap! {"react".to_string() => Dependency {
                     resolve_type: ResolveType::Import,
                     source: "react".to_string(),
@@ -352,7 +352,7 @@ mod tests {
             .unwrap();
 
             let to_replace = DependenciesToReplace {
-                resolved: HashMap::new(),
+                resolved: HashMap::default(),
                 missing: hashmap! {"react".to_string() => Dependency {
                     resolve_type: ResolveType::Import,
                     source: "react".to_string(),

@@ -1,10 +1,10 @@
-use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Instant, UNIX_EPOCH};
 
 use mako_core::anyhow::{anyhow, Error, Result};
+use mako_core::collections::HashMap;
 use mako_core::colored::Colorize;
 use mako_core::regex::Regex;
 use mako_core::swc_common::sync::Lrc;
@@ -50,7 +50,7 @@ pub struct MemoryChunkFileCache {
 impl MemoryChunkFileCache {
     pub fn new(root: Option<PathBuf>) -> Self {
         Self {
-            content_map: HashMap::new(),
+            content_map: HashMap::default(),
             root,
         }
     }
@@ -119,7 +119,7 @@ impl Default for Context {
             root: PathBuf::from(""),
             module_graph: RwLock::new(ModuleGraph::new()),
             chunk_graph: RwLock::new(ChunkGraph::new()),
-            assets_info: Mutex::new(HashMap::new()),
+            assets_info: Mutex::new(HashMap::default()),
             modules_with_missing_deps: RwLock::new(Vec::new()),
             meta: Meta::new(),
             plugin_driver: Default::default(),
@@ -271,7 +271,7 @@ impl Compiler {
 
         if let Some(minifish_config) = &config._minifish {
             let inject = if let Some(inject) = &minifish_config.inject {
-                let mut map = HashMap::new();
+                let mut map = HashMap::default();
 
                 for (k, ii) in inject.iter() {
                     let exclude = if let Some(exclude) = &ii.exclude {
@@ -342,7 +342,7 @@ impl Compiler {
                 root,
                 module_graph: RwLock::new(ModuleGraph::new()),
                 chunk_graph: RwLock::new(ChunkGraph::new()),
-                assets_info: Mutex::new(HashMap::new()),
+                assets_info: Mutex::new(HashMap::default()),
                 modules_with_missing_deps: RwLock::new(Vec::new()),
                 meta: Meta::new(),
                 plugin_driver,

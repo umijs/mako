@@ -1,9 +1,9 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use cached::proc_macro::cached;
 use mako_core::anyhow::Result;
 use mako_core::cached::SizedCache;
+use mako_core::collections::HashMap;
 use mako_core::swc_common::{Mark, DUMMY_SP, GLOBALS};
 use mako_core::swc_css_ast::Stylesheet;
 use mako_core::swc_css_codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};

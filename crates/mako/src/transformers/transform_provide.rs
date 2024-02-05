@@ -73,8 +73,7 @@ impl VisitMut for Provide {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
+    use mako_core::collections::HashMap;
     use swc_core::common::Mark;
 
     #[test]
@@ -97,7 +96,7 @@ function foo() {
 
     fn transform(code: &str) -> String {
         let context = std::sync::Arc::new(Default::default());
-        let mut providers = HashMap::new();
+        let mut providers = HashMap::default();
         providers.insert("process".into(), ("process".into(), "".into()));
         providers.insert("Buffer".into(), ("buffer".into(), "Buffer".into()));
         let mut visitor = super::Provide::new(providers, Mark::root());

@@ -1,10 +1,10 @@
-use std::collections::HashMap;
 use std::fmt;
 use std::hash::Hasher;
 use std::path::{Path, PathBuf};
 
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::clap::ValueEnum;
+use mako_core::collections::HashMap;
 use mako_core::colored::Colorize;
 use mako_core::regex::Regex;
 use mako_core::serde::{Deserialize, Deserializer};
@@ -729,7 +729,7 @@ impl Config {
                 let target = config.targets.get("node").unwrap_or(&14.0);
 
                 // set target to node version
-                config.targets = HashMap::from([("node".into(), *target)]);
+                config.targets = HashMap::from_iter([("node".into(), *target)]);
 
                 // ignore standard library
                 config

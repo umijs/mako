@@ -20,7 +20,7 @@ impl Compiler {
         mako_core::mako_profile_function!();
         debug!("group_chunk");
 
-        let mut visited = HashSet::new();
+        let mut visited = HashSet::default();
         let mut edges = vec![];
         let module_graph = self.context.module_graph.read().unwrap();
         let mut chunk_graph = self.context.chunk_graph.write().unwrap();

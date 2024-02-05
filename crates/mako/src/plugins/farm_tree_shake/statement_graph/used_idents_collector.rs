@@ -1,5 +1,4 @@
-use std::collections::HashSet;
-
+use mako_core::collections::HashSet;
 use mako_core::swc_ecma_ast::Ident;
 use mako_core::swc_ecma_visit::Visit;
 
@@ -10,7 +9,7 @@ pub struct UsedIdentsCollector {
 impl UsedIdentsCollector {
     pub fn new() -> Self {
         Self {
-            used_idents: HashSet::new(),
+            used_idents: HashSet::default(),
         }
     }
 }

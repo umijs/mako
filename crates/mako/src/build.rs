@@ -1,4 +1,3 @@
-use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
@@ -6,6 +5,7 @@ use std::time::Instant;
 
 use cached::proc_macro::cached;
 use mako_core::anyhow::{anyhow, Result};
+use mako_core::collections::{HashMap, HashSet};
 use mako_core::colored::Colorize;
 use mako_core::lazy_static::lazy_static;
 use mako_core::rayon::ThreadPool;
@@ -82,7 +82,7 @@ impl Compiler {
     pub fn build_tasks(&self, tasks: Vec<Task>, with_cache: bool) -> Result<HashSet<ModuleId>> {
         debug!("build tasks: {:?}", tasks);
         if tasks.is_empty() {
-            return Ok(HashSet::new());
+            return Ok(HashSet::default());
         }
 
         let (pool, rs, rr) = create_thread_pool::<Result<(Module, ModuleDeps, Task)>>();
@@ -99,7 +99,7 @@ impl Compiler {
         }
 
         let mut errors = vec![];
-        let mut module_ids = HashSet::new();
+        let mut module_ids = HashSet::default();
         for r in rr {
             count -= 1;
             match r {
@@ -279,7 +279,7 @@ module.exports = new Promise((resolve, reject) => {{
                         raw: code,
                         raw_hash: 0,
                         resolved_resource: Some(resource.clone()),
-                        missing_deps: HashMap::new(),
+                        missing_deps: HashMap::default(),
                         ignored_deps: vec![],
                         top_level_await: false,
                         is_async: has_script,
@@ -342,7 +342,7 @@ module.exports = new Promise((resolve, reject) => {{
         // resolve
         let mut dep_resolve_err = None;
         let mut dependencies_resource = Vec::new();
-        let mut missing_deps = HashMap::new();
+        let mut missing_deps = HashMap::default();
         let mut ignored_deps = Vec::new();
 
         for dep in deps {
@@ -370,7 +370,7 @@ module.exports = new Promise((resolve, reject) => {{
             let source = e.1;
             let span = e.3;
             // 使用 hasMap 记录循环依赖
-            let mut target_map: HashMap<String, i32> = HashMap::new();
+            let mut target_map: HashMap<String, i32> = HashMap::default();
             target_map.insert(target, 1);
 
             let mut err = format!("Module not found: Can't resolve '{}'", source);

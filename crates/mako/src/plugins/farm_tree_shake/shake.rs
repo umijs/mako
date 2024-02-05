@@ -6,6 +6,7 @@ use std::ops::DerefMut;
 use std::sync::Arc;
 
 use mako_core::anyhow::Result;
+use mako_core::collections::HashMap;
 use mako_core::swc_common::comments::{Comment, CommentKind};
 use mako_core::swc_common::{DUMMY_SP, GLOBALS};
 
@@ -38,7 +39,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
     };
 
     let mut tree_shake_modules_ids = vec![];
-    let mut tree_shake_modules_map = std::collections::HashMap::new();
+    let mut tree_shake_modules_map = HashMap::default();
 
     let mut order: usize = 0;
     for module_id in topo_sorted_modules.iter() {
@@ -364,7 +365,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
 // Add all imported to used_exports
 // returns (added, imported_module_topo_order)
 fn add_used_exports_by_import_info(
-    tree_shake_modules_map: &std::collections::HashMap<ModuleId, RefCell<TreeShakeModule>>,
+    tree_shake_modules_map: &HashMap<ModuleId, RefCell<TreeShakeModule>>,
     module_graph: &ModuleGraph,
     tree_shake_module_id: &ModuleId,
     import_info: &ImportInfo,
@@ -439,7 +440,7 @@ fn add_used_exports_by_import_info(
 
 /// All all exported to used_exports
 fn add_used_exports_by_export_info(
-    tree_shake_modules_map: &std::collections::HashMap<ModuleId, RefCell<TreeShakeModule>>,
+    tree_shake_modules_map: &HashMap<ModuleId, RefCell<TreeShakeModule>>,
     module_graph: &ModuleGraph,
     tree_shake_module_id: &ModuleId,
     has_side_effects: bool,

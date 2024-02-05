@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-
+use mako_core::collections::HashMap;
 use mako_core::swc_ecma_preset_env::Targets as SwcPresetEnvTargets;
 
 pub fn swc_preset_env_targets_from_map(map: HashMap<String, f32>) -> SwcPresetEnvTargets {

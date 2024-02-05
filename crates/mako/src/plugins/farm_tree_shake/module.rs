@@ -1,5 +1,4 @@
-use std::collections::{HashMap, HashSet};
-
+use mako_core::collections::{HashMap, HashSet};
 use mako_core::swc_common::SyntaxContext;
 use mako_core::swc_ecma_ast::{Module as SwcModule, ModuleItem};
 
@@ -334,7 +333,7 @@ impl TreeShakeModule {
     pub fn used_statements(&self) -> HashMap<StatementId, HashSet<String>> {
         // 1. get used exports
         let used_exports_idents = self.used_exports_idents();
-        let mut stmt_used_idents_map = HashMap::new();
+        let mut stmt_used_idents_map = HashMap::default();
 
         for (used_ident, stmt_id) in used_exports_idents {
             let used_idents: &mut HashSet<UsedIdent> =
@@ -357,7 +356,7 @@ impl TreeShakeModule {
                     //   // find the defined ident
                     //   stmt_used_idents_map
                     //   .entry(stmt.id)
-                    //   .or_insert(HashSet::new());
+                    //   .or_insert(HashSet::default());
 
                     //   for stmt_inner in self.stmt_graph.stmts() {
                     //     if stmt_inner.id == stmt.id {
@@ -374,7 +373,7 @@ impl TreeShakeModule {
                     //     {
                     //       let used_idents = stmt_used_idents_map
                     //         .entry(stmt_inner.id)
-                    //         .or_insert(HashSet::new());
+                    //         .or_insert(HashSet::default());
                     //       used_idents.insert(UsedIdent::SwcIdent(used_ident.clone()));
                     //     }
                     //   }
@@ -391,7 +390,7 @@ impl TreeShakeModule {
         // for imp in self.imports() {
         //     if imp.source.contains("@swc/helpers") {
         //         used.entry(imp.stmt_id)
-        //             .or_insert(HashSet::new());
+        //             .or_insert(HashSet::default());
         //     }
         // }
         //

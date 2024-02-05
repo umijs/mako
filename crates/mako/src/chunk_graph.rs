@@ -1,6 +1,6 @@
-use std::collections::{HashMap, HashSet};
 use std::hash::Hasher;
 
+use mako_core::collections::{HashMap, HashSet};
 use mako_core::petgraph::stable_graph::{DefaultIx, NodeIndex, StableDiGraph};
 use mako_core::petgraph::visit::Dfs;
 use mako_core::petgraph::Direction;
@@ -19,7 +19,7 @@ impl ChunkGraph {
     pub fn new() -> Self {
         Self {
             graph: StableDiGraph::new(),
-            id_index_map: HashMap::new(),
+            id_index_map: HashMap::default(),
         }
     }
 

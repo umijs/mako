@@ -1,8 +1,8 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use mako_core::anyhow::Result;
+use mako_core::collections::HashMap;
 use mako_core::swc_common::util::take::Take;
 use swc_core::common::{Span, Spanned};
 use swc_core::ecma::ast::{
@@ -153,7 +153,7 @@ pub(super) fn skip_module_optimize(
     let mut re_export_replace_map: HashMap<
         ModuleId,
         Vec<(StatementId, Vec<ReExportReplace>, String)>,
-    > = HashMap::new();
+    > = HashMap::default();
 
     let mut current_index: usize = 0;
     let len = tree_shake_modules_ids.len();

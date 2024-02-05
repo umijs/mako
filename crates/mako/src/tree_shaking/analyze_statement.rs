@@ -1,5 +1,4 @@
-use std::collections::HashSet;
-
+use mako_core::collections::HashSet;
 use mako_core::swc_ecma_ast;
 use mako_core::swc_ecma_ast::{ModuleExportName, ModuleItem};
 use mako_core::swc_ecma_visit::VisitWith;
@@ -15,8 +14,8 @@ use crate::tree_shaking::used_ident_collector::UsedIdentCollector;
  * 分析当前传入的 esm ast，返回 StatementType
  */
 pub fn analyze_statement(id: StatementId, statement: &ModuleItem) -> StatementType {
-    let mut top_level_defined_ident = HashSet::new();
-    let mut used_ident = HashSet::new();
+    let mut top_level_defined_ident = HashSet::default();
+    let mut used_ident = HashSet::default();
     let mut is_self_executed = false;
 
     let mut analyze_used_ident_from_statement =

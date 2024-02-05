@@ -251,10 +251,10 @@ fn is_esm_modules(swc_module: &Module) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
     use std::path::PathBuf;
     use std::sync::{Arc, Mutex, RwLock};
 
+    use mako_core::collections::HashMap;
     use mako_core::indexmap::IndexSet;
 
     use super::transform_js;
@@ -277,7 +277,7 @@ const App = () => <><h1>Hello World</h1></>;
 App;
         "#
         .trim();
-        let (code, _) = transform_js_code(code, None, HashMap::new());
+        let (code, _) = transform_js_code(code, None, HashMap::default());
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -310,7 +310,7 @@ const Foo: string = "foo";
 Foo;
         "#
         .trim();
-        let (code, _) = transform_js_code(code, None, HashMap::new());
+        let (code, _) = transform_js_code(code, None, HashMap::default());
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -334,7 +334,7 @@ const b: X = 1;
 b;
         "#
         .trim();
-        let (code, _) = transform_js_code(code, None, HashMap::new());
+        let (code, _) = transform_js_code(code, None, HashMap::default());
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -361,7 +361,7 @@ import { foo } from './foo';
 foo;
         "#
         .trim();
-        let (code, _) = transform_js_code(code, None, HashMap::new());
+        let (code, _) = transform_js_code(code, None, HashMap::default());
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -385,7 +385,7 @@ import * as foo from './foo';
 foo.bar;
         "#
         .trim();
-        let (code, _) = transform_js_code(code, None, HashMap::new());
+        let (code, _) = transform_js_code(code, None, HashMap::default());
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -410,7 +410,7 @@ const foo = import('./foo');
 foo;
         "#
         .trim();
-        let (code, _) = transform_js_code(code, None, HashMap::new());
+        let (code, _) = transform_js_code(code, None, HashMap::default());
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -441,7 +441,7 @@ function foo() {
 foo();
         "#
         .trim();
-        let (code, _) = transform_js_code(code, None, HashMap::new());
+        let (code, _) = transform_js_code(code, None, HashMap::default());
         println!(">> CODE\n{}", code);
         let common = r#"
 console.log(process);
@@ -480,7 +480,7 @@ import React from 'react';
 React;
         "#
         .trim();
-        let (code, _) = transform_js_code(code, None, HashMap::new());
+        let (code, _) = transform_js_code(code, None, HashMap::default());
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -523,7 +523,7 @@ e;
 f;
         "#
         .trim();
-        let (code, _sourcemap) = transform_js_code(code, None, HashMap::new());
+        let (code, _sourcemap) = transform_js_code(code, None, HashMap::default());
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -570,7 +570,7 @@ const b = window.a?.b;
 b;
         "#
         .trim();
-        let (code, _sourcemap) = transform_js_code(code, None, HashMap::new());
+        let (code, _sourcemap) = transform_js_code(code, None, HashMap::default());
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
@@ -594,7 +594,7 @@ require("foo");
         let (code, _sourcemap) = transform_js_code(
             code,
             None,
-            HashMap::from([(
+            HashMap::from_iter([(
                 "foo".to_string(),
                 ("./bar".to_string(), "./bar".to_string()),
             )]),
@@ -628,7 +628,7 @@ if(true) { console.log("1"); } else { console.log("2"); }
         let (code, _sourcemap) = transform_js_code(
             code,
             None,
-            HashMap::from([(
+            HashMap::from_iter([(
                 "foo".to_string(),
                 ("./bar".to_string(), "./bar".to_string()),
             )]),
@@ -661,7 +661,7 @@ if(/x/ === /x/) { "should keep" }
         let (code, _sourcemap) = transform_js_code(
             code,
             None,
-            HashMap::from([(
+            HashMap::from_iter([(
                 "foo".to_string(),
                 ("./bar".to_string(), "./bar".to_string()),
             )]),
@@ -690,7 +690,7 @@ if (/x/ === /x/) "should keep";
         }
 "#
         .trim();
-        let (_code, _sourcemap) = transform_js_code(code, None, HashMap::from([]));
+        let (_code, _sourcemap) = transform_js_code(code, None, HashMap::from_iter([]));
     }
 
     #[test]
@@ -705,7 +705,7 @@ const fs3 = require('fs/promises');
 console.log(fs1, fs2, fs3);
 "#
         .trim();
-        let (code, _sourcemap) = transform_js_code(code, None, HashMap::from([]));
+        let (code, _sourcemap) = transform_js_code(code, None, HashMap::from_iter([]));
 
         assert_eq!(
             code,
@@ -732,7 +732,7 @@ console.log(_nodefs.default, fs2, fs3);
 const require = window.require;
 "#
         .trim();
-        let (code, _sourcemap) = transform_js_code(code, None, HashMap::from([]));
+        let (code, _sourcemap) = transform_js_code(code, None, HashMap::from_iter([]));
 
         assert_eq!(
             code,
@@ -778,7 +778,7 @@ const require = window.require;
             root: root.clone(),
             module_graph: RwLock::new(ModuleGraph::new()),
             chunk_graph: RwLock::new(chunk_graph),
-            assets_info: Mutex::new(HashMap::new()),
+            assets_info: Mutex::new(HashMap::default()),
             modules_with_missing_deps: RwLock::new(Vec::new()),
             meta: Meta::new(),
             plugin_driver: Default::default(),
@@ -823,7 +823,7 @@ const require = window.require;
             ast: &mut ast,
             dep_map: &DependenciesToReplace {
                 resolved: dep,
-                missing: HashMap::new(),
+                missing: HashMap::default(),
                 ignored: vec![],
             },
             async_deps: &vec![],

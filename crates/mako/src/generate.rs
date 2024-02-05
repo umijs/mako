@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::fs;
 use std::ops::DerefMut;
 use std::path::PathBuf;
@@ -6,6 +5,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use mako_core::anyhow::{anyhow, Result};
+use mako_core::collections::HashSet;
 use mako_core::indexmap::IndexSet;
 use mako_core::rayon::prelude::*;
 use mako_core::serde::Serialize;

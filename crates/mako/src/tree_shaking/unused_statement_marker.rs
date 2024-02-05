@@ -1,5 +1,4 @@
-use std::collections::HashSet;
-
+use mako_core::collections::HashSet;
 use mako_core::swc_ecma_ast;
 use mako_core::swc_ecma_ast::{Decl, ExportDecl, ImportDecl, ModuleExportName, VarDeclarator};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith, VisitWith};

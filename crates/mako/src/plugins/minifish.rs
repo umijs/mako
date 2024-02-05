@@ -1,13 +1,13 @@
 mod inject;
 mod unsimplify;
 
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 pub(crate) use inject::Inject;
 use inject::MyInjector;
 use mako_core::anyhow::{anyhow, Result};
+use mako_core::collections::HashMap;
 use mako_core::rayon::prelude::*;
 use mako_core::swc_ecma_visit::VisitMutWith;
 use serde::Serialize;
@@ -88,7 +88,7 @@ impl Plugin for MinifishPlugin {
                 return Ok(());
             }
 
-            let mut matched_injects = HashMap::new();
+            let mut matched_injects = HashMap::default();
 
             for (k, i) in inject {
                 if let Some(exclude) = &i.exclude {

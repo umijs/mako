@@ -1,8 +1,8 @@
-use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Instant;
 
 use mako_core::anyhow::Result;
+use mako_core::collections::{HashMap, HashSet};
 use mako_core::swc_common::errors::HANDLER;
 use mako_core::swc_common::GLOBALS;
 use mako_core::swc_css_visit::VisitMutWith as CSSVisitMutWith;
@@ -64,7 +64,7 @@ fn mark_async(
     context: &Arc<Context>,
 ) -> HashMap<ModuleId, Vec<Dependency>> {
     mako_core::mako_profile_function!();
-    let mut async_deps_by_module_id = HashMap::new();
+    let mut async_deps_by_module_id = HashMap::default();
     let mut module_graph = context.module_graph.write().unwrap();
     // TODO: 考虑成环的场景
     module_ids.iter().for_each(|module_id| {
@@ -157,7 +157,8 @@ pub fn transform_modules_in_thread(
     }
     drop(rs);
 
-    let mut transform_map: HashMap<ModuleId, (ModuleAst, Option<HashSet<String>>)> = HashMap::new();
+    let mut transform_map: HashMap<ModuleId, (ModuleAst, Option<HashSet<String>>)> =
+        HashMap::default();
     for r in rr {
         let (module_id, ast, swc_helpers) = r?;
         transform_map.insert(module_id, (ast, swc_helpers));

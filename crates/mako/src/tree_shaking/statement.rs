@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use mako_core::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub enum ImportSpecifier {

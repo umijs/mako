@@ -1,7 +1,7 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
+use mako_core::collections::HashMap;
 use mako_core::serde_json::Value;
 use mako_core::swc_atoms::{js_word, JsWord};
 use mako_core::swc_common::collections::AHashMap;
@@ -253,10 +253,10 @@ fn get_env_expr(v: Value, context: &Arc<Context>) -> Result<Expr> {
 mod tests {
     use std::sync::Arc;
 
+    use mako_core::hashmap;
     use mako_core::serde_json::json;
     use mako_core::swc_common::{Globals, GLOBALS};
     use mako_core::swc_ecma_visit::VisitMutWith;
-    use maplit::hashmap;
 
     use super::EnvReplacer;
     use crate::ast::{build_js_ast, js_ast_to_code};

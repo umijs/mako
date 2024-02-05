@@ -1,9 +1,9 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use cached::proc_macro::cached;
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::cached::SizedCache;
+use mako_core::collections::HashMap;
 use mako_core::rayon::prelude::*;
 use mako_core::swc_ecma_codegen::text_writer::JsWriter;
 use mako_core::swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
@@ -223,11 +223,7 @@ fn pot_to_chunk_module_object_string(pot: &ChunkPot, context: &Arc<Context>) -> 
     let sorted_kv = {
         mako_core::mako_profile_scope!("collect_&_sort");
 
-        let mut sorted_kv = pot
-            .module_map
-            .iter()
-            .map(|(k, v)| (k, v))
-            .collect::<Vec<_>>();
+        let mut sorted_kv = pot.module_map.iter().collect::<Vec<_>>();
 
         if context.config.hash {
             sorted_kv.sort_by_key(|(k, _)| *k);

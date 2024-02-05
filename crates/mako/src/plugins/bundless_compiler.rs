@@ -1,10 +1,10 @@
-use std::collections::HashMap;
 use std::fs;
 use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
+use mako_core::collections::HashMap;
 use mako_core::pathdiff::diff_paths;
 use mako_core::rayon::prelude::*;
 use mako_core::swc_common::errors::HANDLER;

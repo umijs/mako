@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
+use mako_core::collections::HashMap;
 use mako_core::indexmap::IndexSet;
 use mako_core::regex::Regex;
 use mako_core::swc_common::{Mark, Span, SyntaxContext, DUMMY_SP};
@@ -211,9 +211,9 @@ impl Inject {
 mod tests {
     use std::sync::Arc;
 
+    use mako_core::hashmap;
     use mako_core::swc_common::GLOBALS;
     use mako_core::swc_ecma_transforms::resolver;
-    use maplit::hashmap;
 
     use super::*;
     use crate::analyze_deps::analyze_deps;

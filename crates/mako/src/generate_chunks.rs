@@ -1,10 +1,10 @@
-use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 use std::vec;
 
 use mako_core::anyhow::{anyhow, Result};
+use mako_core::collections::HashMap;
 use mako_core::indexmap::IndexSet;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_css_ast::Stylesheet;
@@ -187,8 +187,8 @@ impl Compiler {
     fn chunk_maps(
         non_entry_chunk_files: &[ChunkFile],
     ) -> (HashMap<String, String>, HashMap<String, String>) {
-        let mut js_chunk_map: HashMap<String, String> = HashMap::new();
-        let mut css_chunk_map: HashMap<String, String> = HashMap::new();
+        let mut js_chunk_map: HashMap<String, String> = HashMap::default();
+        let mut css_chunk_map: HashMap<String, String> = HashMap::default();
 
         for f in non_entry_chunk_files.iter() {
             match f.file_type {

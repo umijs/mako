@@ -1,5 +1,4 @@
-use std::collections::HashSet;
-
+use mako_core::collections::HashSet;
 use mako_core::swc_ecma_ast::{ObjectPatProp, Pat};
 use mako_core::swc_ecma_visit::{Visit, VisitWith};
 
@@ -14,8 +13,8 @@ pub struct DefinedIdentCollector {
 impl DefinedIdentCollector {
     pub fn new() -> Self {
         Self {
-            defined_ident: HashSet::new(),
-            used_ident: HashSet::new(),
+            defined_ident: HashSet::default(),
+            used_ident: HashSet::default(),
         }
     }
 }

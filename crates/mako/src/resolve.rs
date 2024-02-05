@@ -1,9 +1,9 @@
-use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::vec;
 
 use mako_core::anyhow::{anyhow, Result};
+use mako_core::collections::HashMap;
 use mako_core::convert_case::{Case, Casing};
 use mako_core::nodejs_resolver::{AliasMap, Options, ResolveResult, Resolver, Resource};
 use mako_core::regex::{Captures, Regex};
@@ -294,7 +294,7 @@ pub fn get_resolvers(config: &Config) -> Resolvers {
     let css_resolver = get_resolver(config, ResolverType::Css);
     let ctxt_resolver = get_resolver(config, ResolverType::Ctxt);
 
-    let mut resolvers = HashMap::new();
+    let mut resolvers = HashMap::default();
     resolvers.insert(ResolverType::Cjs, cjs_resolver);
     resolvers.insert(ResolverType::Esm, esm_resolver);
     resolvers.insert(ResolverType::Css, css_resolver);
@@ -324,7 +324,7 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
         (ResolverType::Cjs, true) => Options {
             alias,
             extensions,
-            condition_names: HashSet::from([
+            condition_names: std::collections::HashSet::from_iter([
                 "require".to_string(),
                 "module".to_string(),
                 "webpack".to_string(),
@@ -341,7 +341,7 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
         (ResolverType::Esm, true) => Options {
             alias,
             extensions,
-            condition_names: HashSet::from([
+            condition_names: std::collections::HashSet::from_iter([
                 "import".to_string(),
                 "module".to_string(),
                 "webpack".to_string(),
@@ -358,7 +358,7 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
         (ResolverType::Esm, false) => Options {
             alias,
             extensions,
-            condition_names: HashSet::from([
+            condition_names: std::collections::HashSet::from_iter([
                 "import".to_string(),
                 "module".to_string(),
                 "webpack".to_string(),
@@ -369,7 +369,7 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
         (ResolverType::Cjs, false) => Options {
             alias,
             extensions,
-            condition_names: HashSet::from([
+            condition_names: std::collections::HashSet::from_iter([
                 "require".to_string(),
                 "module".to_string(),
                 "webpack".to_string(),
@@ -382,7 +382,7 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
             extensions: vec![".css".to_string(), ".less".to_string()],
             alias,
             main_fields: vec!["css".to_string(), "style".to_string(), "main".to_string()],
-            condition_names: HashSet::from(["style".to_string()]),
+            condition_names: std::collections::HashSet::from_iter(["style".to_string()]),
             prefer_relative: true,
             browser_field: true,
             ..Default::default()
@@ -414,7 +414,7 @@ pub fn clear_resolver_cache(resolvers: &Resolvers) {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use mako_core::collections::HashMap;
 
     use crate::config::{
         Config, ExternalAdvanced, ExternalAdvancedSubpath, ExternalAdvancedSubpathConverter,
@@ -459,7 +459,7 @@ mod tests {
 
     #[test]
     fn test_resolve_alias() {
-        let alias = HashMap::from([("bar".to_string(), "foo".to_string())]);
+        let alias = HashMap::from_iter([("bar".to_string(), "foo".to_string())]);
         let x = resolve(
             "test/resolve/normal",
             Some(alias.clone()),
@@ -480,7 +480,7 @@ mod tests {
 
     #[test]
     fn test_resolve_externals() {
-        let externals = HashMap::from([
+        let externals = HashMap::from_iter([
             (
                 "react".to_string(),
                 ExternalConfig::Basic("react".to_string()),
@@ -514,7 +514,7 @@ mod tests {
 
     #[test]
     fn test_resolve_advanced_externals() {
-        let externals = HashMap::from([
+        let externals = HashMap::from_iter([
             (
                 "antd".to_string(),
                 ExternalConfig::Advanced(ExternalAdvanced {

@@ -1,9 +1,9 @@
-use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::fmt::Debug;
 use std::path::PathBuf;
 
 use mako_core::anyhow::{anyhow, Ok, Result};
+use mako_core::collections::{HashMap, HashSet};
 use mako_core::rayon::prelude::*;
 use mako_core::tracing::debug;
 
@@ -303,7 +303,7 @@ impl Compiler {
                     .collect();
                 drop(module_graph);
 
-                let mut add_modules: HashMap<ModuleId, Module> = HashMap::new();
+                let mut add_modules: HashMap<ModuleId, Module> = HashMap::default();
                 let mut target_dependencies: Vec<(ModuleId, Dependency)> = vec![];
                 dependencies.into_iter().for_each(|(resource, dep)| {
                     let resolved_path = resource.get_resolved_path();
@@ -322,7 +322,7 @@ impl Compiler {
         let result = result?;
 
         let mut added = vec![];
-        let mut modified_module_ids = HashSet::new();
+        let mut modified_module_ids = HashSet::default();
 
         let mut module_graph = self.context.module_graph.write().unwrap();
         for (module, add, remove, mut add_modules) in result {
@@ -367,8 +367,8 @@ impl Compiler {
 
     fn build_by_remove(&self, removed: Vec<PathBuf>) -> (HashSet<ModuleId>, HashSet<ModuleId>) {
         let mut module_graph = self.context.module_graph.write().unwrap();
-        let mut removed_module_ids = HashSet::new();
-        let mut affected_module_ids = HashSet::new();
+        let mut removed_module_ids = HashSet::default();
+        let mut affected_module_ids = HashSet::default();
         for path in removed {
             let module_id = ModuleId::from_path(path);
             let dependants = module_graph.dependant_module_ids(&module_id);
@@ -395,8 +395,8 @@ fn diff(origin: Vec<(ModuleId, Dependency)>, target: Vec<(ModuleId, Dependency)>
         .iter()
         .map(|(module_id, _dep)| module_id)
         .collect::<HashSet<_>>();
-    let mut added: HashSet<(ModuleId, Dependency)> = HashSet::new();
-    let mut removed: HashSet<(ModuleId, Dependency)> = HashSet::new();
+    let mut added: HashSet<(ModuleId, Dependency)> = HashSet::default();
+    let mut removed: HashSet<(ModuleId, Dependency)> = HashSet::default();
     target
         .iter()
         .filter(|(module_id, _dep)| !origin_module_ids.contains(module_id))

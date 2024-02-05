@@ -1,6 +1,6 @@
-use std::collections::{HashMap, HashSet};
 use std::{fmt, vec};
 
+use mako_core::collections::{HashMap, HashSet};
 use mako_core::tracing::Level;
 use mako_core::{swc_ecma_ast, tracing};
 
@@ -118,7 +118,7 @@ impl UsedReExportHashMap {
     }
     #[allow(dead_code)]
     pub fn get_all_used_statement_ids(&self) -> HashSet<StatementId> {
-        let mut ids = HashSet::new();
+        let mut ids = HashSet::default();
         self.0
             .iter()
             .for_each(|(export_statement_id, import_statement)| {
@@ -182,8 +182,8 @@ impl TreeShakingModule {
 
     #[allow(dead_code)]
     pub fn get_used_re_exports(&self) -> UsedReExportHashMap {
-        let mut used_export_statement_hashmap = HashMap::new();
-        let mut keys = HashSet::new();
+        let mut used_export_statement_hashmap = HashMap::default();
+        let mut keys = HashSet::default();
         self.get_used_export_ident()
             .into_iter()
             .for_each(|(_, id)| {
@@ -216,7 +216,7 @@ impl TreeShakingModule {
     #[tracing::instrument(ret(level = Level::DEBUG),skip(self))]
     pub fn get_used_export_statement(&self) -> UsedIdentHashMap {
         let used_exports_ident = self.get_used_export_ident();
-        let mut stmt_used_ident_map: HashMap<StatementId, HashSet<UsedIdent>> = HashMap::new();
+        let mut stmt_used_ident_map: HashMap<StatementId, HashSet<UsedIdent>> = HashMap::default();
 
         for (used_ident, stmt_id) in &used_exports_ident {
             let used_idents: &mut HashSet<UsedIdent> =
@@ -232,12 +232,12 @@ impl TreeShakingModule {
             let deps = self.statement_graph.get_dependencies(id);
 
             // 当前导出是 reexport
-            if is_re_export(stmt, &mut HashMap::new(), deps) {
+            if is_re_export(stmt, &mut HashMap::default(), deps) {
                 re_export_ids.push(id);
             }
 
             // 查找当前的依赖变量
-            let mut visited = HashSet::new();
+            let mut visited = HashSet::default();
             self.analyze_statement_used_ident(&mut stmt_used_ident_map, stmt, &mut visited);
         }
 
@@ -255,8 +255,8 @@ impl TreeShakingModule {
         for stmt in &all_stmts {
             let is_final_side_effects_flag = stmt.get_is_self_executed();
             if is_final_side_effects_flag {
-                let mut visited = HashSet::new();
-                let mut current_used_ident_map = HashMap::new();
+                let mut visited = HashSet::default();
+                let mut current_used_ident_map = HashMap::default();
                 self.analyze_statement_used_ident(&mut current_used_ident_map, stmt, &mut visited);
 
                 let side_effects_available_ids = current_used_ident_map
@@ -532,8 +532,9 @@ pub fn should_skip(url: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
     use std::path::PathBuf;
+
+    use mako_core::collections::HashSet;
 
     use super::TreeShakingModule;
     use crate::test_helper::create_mock_module;

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use mako_core::collections::HashMap;
 
 use crate::compiler::Compiler;
 use crate::module::ModuleId;

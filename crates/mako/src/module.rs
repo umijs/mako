@@ -1,10 +1,10 @@
-use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::base64::engine::{general_purpose, Engine};
+use mako_core::collections::{HashMap, HashSet};
 use mako_core::pathdiff::diff_paths;
 use mako_core::swc_common::{Span, DUMMY_SP};
 use mako_core::swc_ecma_ast::{BlockStmt, FnExpr, Function, Module as SwcModule};

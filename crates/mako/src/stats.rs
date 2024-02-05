@@ -1,11 +1,11 @@
 use std::cell::RefCell;
 use std::cmp::Ordering;
-use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use mako_core::collections::HashMap;
 use mako_core::colored::*;
 use mako_core::pathdiff::diff_paths;
 use mako_core::serde::Serialize;
@@ -118,7 +118,7 @@ impl StatsJsonMap {
             assets: vec![],
             modules: vec![],
             chunks: vec![],
-            entrypoints: HashMap::new(),
+            entrypoints: HashMap::default(),
         }
     }
 }

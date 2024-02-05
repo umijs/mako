@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-
+use mako_core::collections::HashMap;
 use mako_core::swc_ecma_visit::VisitMutWith;
 use mako_core::tracing::debug;
 
@@ -218,7 +217,7 @@ impl Compiler {
         sorted_modules: Vec<crate::module::ModuleId>,
     ) -> (Vec<ModuleId>, HashMap<ModuleId, TreeShakingModule>) {
         let mut tree_shaking_module_ids = vec![];
-        let mut tree_shaking_module_map = HashMap::new();
+        let mut tree_shaking_module_map = HashMap::default();
         for module_id in sorted_modules {
             let mut dependencies_of_module: Vec<ModuleId> = vec![];
             {

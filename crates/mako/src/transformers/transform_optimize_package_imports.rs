@@ -1,8 +1,8 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use cached::proc_macro::cached;
 use mako_core::anyhow::Result;
+use mako_core::collections::HashMap;
 use mako_core::nodejs_resolver::DescriptionData;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{
@@ -242,8 +242,8 @@ fn parse_barrel_file(
         return Ok(None);
     }
     // build hash maps
-    let mut export_infos = HashMap::new();
-    let mut import_infos = HashMap::new();
+    let mut export_infos = HashMap::default();
+    let mut import_infos = HashMap::default();
     info.import_map.iter().for_each(|import| {
         import
             .specifiers
@@ -260,7 +260,7 @@ fn parse_barrel_file(
                 }
             });
     });
-    let mut resolver_resource_infos = HashMap::new();
+    let mut resolver_resource_infos = HashMap::default();
     deps.iter().for_each(|dep| {
         resolver_resource_infos.insert(dep.1.source.clone(), dep.0.clone());
     });

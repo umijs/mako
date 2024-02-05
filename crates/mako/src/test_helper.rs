@@ -1,8 +1,8 @@
-use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use mako_core::collections::HashMap;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::SourceMap;
 use mako_core::swc_ecma_ast::Module as SwcModule;
@@ -61,7 +61,7 @@ pub fn create_mock_module(path: PathBuf, code: &str) -> Module {
         raw: code.to_string(),
         raw_hash: 0,
         resolved_resource: None,
-        missing_deps: HashMap::new(),
+        missing_deps: HashMap::default(),
         ignored_deps: vec![],
         top_level_await: false,
         is_async: false,

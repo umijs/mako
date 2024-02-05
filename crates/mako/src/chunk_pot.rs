@@ -2,11 +2,11 @@ mod ast_impl;
 mod str_impl;
 pub mod util;
 
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::vec;
 
 use mako_core::anyhow::Result;
+use mako_core::collections::HashMap;
 use mako_core::indexmap::IndexSet;
 use mako_core::swc_css_ast::Stylesheet;
 use mako_core::ternary;

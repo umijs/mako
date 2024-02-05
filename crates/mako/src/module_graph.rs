@@ -1,6 +1,6 @@
-use std::collections::{HashMap, HashSet};
 use std::fmt;
 
+use mako_core::collections::{HashMap, HashSet};
 use mako_core::petgraph::graph::{DefaultIx, NodeIndex};
 use mako_core::petgraph::prelude::EdgeRef;
 use mako_core::petgraph::stable_graph::{StableDiGraph, WalkNeighbors};
@@ -20,9 +20,9 @@ pub struct ModuleGraph {
 impl ModuleGraph {
     pub fn new() -> Self {
         Self {
-            id_index_map: HashMap::new(),
+            id_index_map: HashMap::default(),
             graph: StableDiGraph::new(),
-            entries: HashSet::new(),
+            entries: HashSet::default(),
         }
     }
 
@@ -150,7 +150,7 @@ impl ModuleGraph {
             let edges = self.graph.edge_weight_mut(dep).unwrap();
             edges.insert(edge);
         } else {
-            let mut edges = Dependencies::new();
+            let mut edges = Dependencies::default();
             edges.insert(edge);
             self.graph.update_edge(*from, *to, edges);
         }
@@ -319,7 +319,7 @@ impl ModuleGraph {
         let mut entries = self.entries.iter().collect::<Vec<_>>();
         entries.sort();
 
-        let mut visited = HashSet::new();
+        let mut visited = HashSet::default();
 
         for entry in entries {
             let mut res = vec![];

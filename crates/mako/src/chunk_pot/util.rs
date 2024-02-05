@@ -1,10 +1,10 @@
-use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
 use cached::proc_macro::cached;
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::cached::SizedCache;
+use mako_core::collections::HashMap;
 use mako_core::sailfish::TemplateOnce;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{
@@ -127,7 +127,7 @@ where
     K: Hash + Eq + Ord,
     V: Hash,
 {
-    let mut sorted_kv = map.iter().map(|(k, v)| (k, v)).collect::<Vec<_>>();
+    let mut sorted_kv = map.iter().collect::<Vec<_>>();
     sorted_kv.sort_by_key(|(k, _)| *k);
 
     let mut hasher: XxHash64 = Default::default();
@@ -160,11 +160,7 @@ pub(super) fn to_array_lit(elems: Vec<ExprOrSpread>) -> ArrayLit {
 pub(crate) fn pot_to_module_object(pot: &ChunkPot, context: &Arc<Context>) -> Result<ObjectLit> {
     mako_core::mako_profile_function!();
 
-    let mut sorted_kv = pot
-        .module_map
-        .iter()
-        .map(|(k, v)| (k, v))
-        .collect::<Vec<_>>();
+    let mut sorted_kv = pot.module_map.iter().collect::<Vec<_>>();
     sorted_kv.sort_by_key(|(k, _)| *k);
 
     let mut props = Vec::new();

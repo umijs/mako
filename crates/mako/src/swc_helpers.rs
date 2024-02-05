@@ -1,6 +1,6 @@
-use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use mako_core::collections::{HashMap, HashSet};
 use mako_core::swc_ecma_ast::{
     CallExpr, Callee, Decl, Expr, Lit, Module, ModuleItem, Stmt, VarDecl, VarDeclarator,
 };
@@ -18,7 +18,7 @@ impl SwcHelpers {
         let helpers = if let Some(helpers) = helpers {
             helpers
         } else {
-            HashSet::new()
+            HashSet::default()
         };
         Self { helpers }
     }
@@ -33,7 +33,7 @@ impl SwcHelpers {
 
     // for watch mode
     pub fn full_helpers() -> HashSet<String> {
-        let mut helpers = HashSet::new();
+        let mut helpers = HashSet::default();
         helpers.insert("@swc/helpers/_/_interop_require_default".into());
         helpers.insert("@swc/helpers/_/_interop_require_wildcard".into());
         helpers.insert("@swc/helpers/_/_export_star".into());
@@ -53,7 +53,7 @@ impl SwcHelpers {
                 (key, h)
             })
             .collect();
-        let mut swc_helpers = HashSet::new();
+        let mut swc_helpers = HashSet::default();
         // Top level require only
         // why top level only? because swc helpers is only used in top level
         // why require only? because cjs transform is done before this

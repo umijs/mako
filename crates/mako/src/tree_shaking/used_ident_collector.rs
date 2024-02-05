@@ -1,5 +1,4 @@
-use std::collections::HashSet;
-
+use mako_core::collections::HashSet;
 use mako_core::swc_ecma_ast::{Decl, Ident};
 use mako_core::swc_ecma_visit::{Visit, VisitWith};
 
@@ -11,8 +10,8 @@ use crate::tree_shaking::defined_ident_collector::DefinedIdentCollector;
 impl UsedIdentCollector {
     pub fn new() -> Self {
         Self {
-            used_ident: HashSet::new(),
-            defined_ident: HashSet::new(),
+            used_ident: HashSet::default(),
+            defined_ident: HashSet::default(),
         }
     }
 }

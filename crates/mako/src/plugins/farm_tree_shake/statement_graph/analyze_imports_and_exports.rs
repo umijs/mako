@@ -1,6 +1,6 @@
-use std::collections::{HashMap, HashSet};
 use std::ops::Deref;
 
+use mako_core::collections::{HashMap, HashSet};
 use mako_core::swc_common::{Span, SyntaxContext, DUMMY_SP};
 use mako_core::swc_ecma_ast;
 use mako_core::swc_ecma_ast::{Expr, ModuleExportName, ModuleItem, VarDecl};
@@ -29,9 +29,9 @@ pub fn analyze_imports_and_exports(
     used_defined_idents: Option<HashSet<String>>,
     unresolve_ctxt: SyntaxContext,
 ) -> StatementInfo {
-    let mut defined_idents = HashSet::new();
-    let mut used_idents = HashSet::new();
-    let mut defined_idents_map = HashMap::new();
+    let mut defined_idents = HashSet::default();
+    let mut used_idents = HashSet::default();
+    let mut defined_idents_map = HashMap::default();
 
     let mut imports = None;
     let mut exports = None;
@@ -164,7 +164,7 @@ pub fn analyze_imports_and_exports(
                 init.visit_with(&mut used_idents_collector);
               }
 
-              let mut local_used_idents = HashSet::new();
+              let mut local_used_idents = HashSet::default();
               local_used_idents.extend(used_idents_collector.used_idents);
               local_used_idents.extend(defined_idents_collector.used_idents);
               used_idents.extend(local_used_idents.clone());
@@ -257,8 +257,10 @@ pub fn analyze_imports_and_exports(
 
                             if export_named.src.is_none() {
                                 used_idents.insert(local.to_string());
-                                defined_idents_map
-                                    .insert(local.to_string(), [local.to_string()].into());
+                                defined_idents_map.insert(
+                                    local.to_string(),
+                                    HashSet::from_iter([local.to_string()]),
+                                );
                             }
 
                             specifiers.push(ExportSpecifierInfo::Named {
@@ -404,7 +406,7 @@ pub fn analyze_imports_and_exports(
                             init.visit_with(&mut used_idents_collector);
                         }
 
-                        let mut local_used_idents = HashSet::new();
+                        let mut local_used_idents = HashSet::default();
                         local_used_idents.extend(used_idents_collector.used_idents);
                         local_used_idents.extend(defined_idents_collector.used_idents);
                         used_idents.extend(local_used_idents.clone());

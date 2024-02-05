@@ -1,8 +1,8 @@
-use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use mako_core::anyhow::{self, Ok};
+use mako_core::collections::{HashMap, HashSet};
 use mako_core::colored::Colorize;
 use mako_core::notify::{self, EventKind, Watcher as NotifyWatcher};
 use mako_core::notify_debouncer_full::DebouncedEvent;
@@ -30,8 +30,8 @@ impl<'a> Watcher<'a> {
             root,
             watcher,
             compiler,
-            watched_dirs: HashSet::new(),
-            watched_files: HashSet::new(),
+            watched_dirs: HashSet::default(),
+            watched_files: HashSet::default(),
         }
     }
 
@@ -46,7 +46,7 @@ impl<'a> Watcher<'a> {
         self.watch_dir_recursive(self.root.into(), &root_ignore_list)?;
 
         let module_graph = self.compiler.context.module_graph.read().unwrap();
-        let mut dirs = HashSet::new();
+        let mut dirs = HashSet::default();
         module_graph.modules().iter().for_each(|module| {
             if let Some(ResolverResource::Resolved(resource)) = module
                 .info
@@ -156,7 +156,7 @@ impl<'a> Watcher<'a> {
     // TODO: support notify::Event mode
     pub fn normalize_events(events: Vec<DebouncedEvent>) -> Vec<PathBuf> {
         let mut paths = vec![];
-        let mut create_paths = HashMap::new();
+        let mut create_paths = HashMap::default();
         events.iter().for_each(|debounced_event| {
             let kind = &debounced_event.event.kind;
             debounced_event.event.paths.iter().for_each(|path| {

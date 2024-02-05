@@ -1,5 +1,6 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::VecDeque;
 
+use mako_core::collections::{HashMap, HashSet};
 use mako_core::petgraph;
 use mako_core::petgraph::stable_graph::NodeIndex;
 use mako_core::swc_ecma_ast::{Module as SwcModule, ModuleItem};
@@ -244,10 +245,7 @@ impl Statement {
         } = analyze_imports_and_exports(&id, stmt, None, unresolved_ctxt);
 
         // transform defined_idents_map from HashMap<Ident, Vec<Ident>> to HashMap<String, Ident> using ToString
-        let defined_idents_map = defined_idents_map
-            .into_iter()
-            .map(|(key, value)| (key, value))
-            .collect();
+        let defined_idents_map = defined_idents_map.into_iter().collect();
 
         Self {
             id,
@@ -275,7 +273,7 @@ pub struct StatementGraph {
 impl StatementGraph {
     pub fn new(module: &SwcModule, unresolved_ctxt: SyntaxContext) -> Self {
         let mut g = petgraph::graph::Graph::new();
-        let mut id_index_map = HashMap::new();
+        let mut id_index_map = HashMap::default();
 
         for (index, stmt) in module.body.iter().enumerate() {
             let statement = Statement::new(index, stmt, unresolved_ctxt);
@@ -290,7 +288,7 @@ impl StatementGraph {
         for stmt in graph.stmts() {
             // find the statement that defines the ident
             for def_stmt in graph.stmts() {
-                let mut deps_idents = HashSet::new();
+                let mut deps_idents = HashSet::default();
 
                 for di in &def_stmt.defined_idents {
                     if stmt.used_idents.contains(di) {
@@ -314,7 +312,7 @@ impl StatementGraph {
     pub fn empty() -> Self {
         Self {
             g: petgraph::graph::Graph::new(),
-            id_index_map: HashMap::new(),
+            id_index_map: HashMap::default(),
         }
     }
 
@@ -377,15 +375,15 @@ impl StatementGraph {
         &self,
         used_exports: HashMap<StatementId, HashSet<UsedIdent>>,
     ) -> HashMap<StatementId, HashSet<String>> {
-        let mut used_statements: HashMap<usize, HashSet<String>> = HashMap::new();
+        let mut used_statements: HashMap<usize, HashSet<String>> = HashMap::default();
 
         // sort used_exports by statement id
         let mut used_exports: Vec<_> = used_exports.into_iter().collect();
         used_exports.sort_by(|a, b| a.0.cmp(&b.0));
 
         for (stmt_id, used_export_idents) in used_exports {
-            let mut used_dep_idents = HashSet::new();
-            let mut used_defined_idents = HashSet::new();
+            let mut used_dep_idents = HashSet::default();
+            let mut used_defined_idents = HashSet::default();
             let mut skip = false;
 
             for ident in used_export_idents {
@@ -407,12 +405,12 @@ impl StatementGraph {
                         if let Some(specifiers) = used_statements.get_mut(&stmt_id) {
                             specifiers.insert(specifier);
                         } else {
-                            used_statements.insert(stmt_id, [specifier].into());
+                            used_statements.insert(stmt_id, HashSet::from_iter([specifier]));
                         }
                         skip = true;
                     }
                     UsedIdent::ExportAll => {
-                        used_statements.insert(stmt_id, ["*".to_string()].into());
+                        used_statements.insert(stmt_id, HashSet::from_iter(["*".to_string()]));
                         skip = true;
                     }
                 }
@@ -423,7 +421,7 @@ impl StatementGraph {
             }
 
             let mut stmts = VecDeque::from([(stmt_id, used_defined_idents, used_dep_idents)]);
-            let mut visited = HashSet::new();
+            let mut visited = HashSet::default();
 
             let hash_stmt = |stmt_id: &StatementId, used_defined_idents: &HashSet<String>| {
                 let mut sorted_idents =
@@ -453,8 +451,8 @@ impl StatementGraph {
 
                 for (dep_stmt, dep_idents) in deps {
                     if dep_idents.iter().any(|di| used_dep_idents.contains(di)) {
-                        let mut dep_stmt_idents = HashSet::new();
-                        let mut dep_used_defined_idents = HashSet::new();
+                        let mut dep_stmt_idents = HashSet::default();
+                        let mut dep_used_defined_idents = HashSet::default();
 
                         for ident in &used_dep_idents {
                             if let Some(dep_idents) =

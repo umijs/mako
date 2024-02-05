@@ -29,6 +29,8 @@ pub use {
     tracing_subscriber, tungstenite, twox_hash,
 };
 
+pub mod collections;
+
 #[macro_export]
 macro_rules! mako_profile_scope {
     ($id:expr) => {

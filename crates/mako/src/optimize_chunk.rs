@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use std::string::String;
 
+use mako_core::collections::HashMap;
 use mako_core::indexmap::{IndexMap, IndexSet};
 use mako_core::nodejs_resolver::Resource;
 use mako_core::regex::Regex;
@@ -323,7 +323,10 @@ impl Compiler {
                         } else {
                             size_map.insert(
                                 pkg_name.to_string(),
-                                (module_size, HashMap::from([(mtc.0.clone(), mtc.1.clone())])),
+                                (
+                                    module_size,
+                                    HashMap::from_iter([(mtc.0.clone(), mtc.1.clone())]),
+                                ),
                             );
                         }
                         size_map
@@ -379,7 +382,7 @@ impl Compiler {
     }
 
     fn apply_optimize_infos(&self, optimize_chunks_infos: &Vec<OptimizeChunksInfo>) {
-        let mut edges_map: HashMap<ModuleId, IndexSet<ModuleId>> = HashMap::new();
+        let mut edges_map: HashMap<ModuleId, IndexSet<ModuleId>> = HashMap::default();
         let mut chunk_graph = self.context.chunk_graph.write().unwrap();
 
         for info in optimize_chunks_infos {
@@ -433,7 +436,7 @@ impl Compiler {
     }
 
     fn apply_hot_update_optimize_infos(&self, optimize_chunks_infos: &Vec<OptimizeChunksInfo>) {
-        let mut edges = HashMap::new();
+        let mut edges = HashMap::default();
         let mut chunk_graph = self.context.chunk_graph.write().unwrap();
         for info in optimize_chunks_infos {
             // update group chunk
