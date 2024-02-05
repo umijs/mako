@@ -53,7 +53,7 @@ impl VisitMut for UnusedStatementMarker<'_, '_> {
 
     // 清理 export { } 这里面的变量
     fn visit_mut_export_specifiers(&mut self, specifiers: &mut Vec<swc_ecma_ast::ExportSpecifier>) {
-        for (_, specifier) in specifiers.iter().enumerate() {
+        for specifier in specifiers.iter() {
             match specifier {
                 swc_ecma_ast::ExportSpecifier::Namespace(_) => {}
                 swc_ecma_ast::ExportSpecifier::Default(_) => {}
