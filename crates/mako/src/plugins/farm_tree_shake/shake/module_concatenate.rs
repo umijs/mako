@@ -1,27 +1,24 @@
+mod exports_transform;
+mod inner_transformer;
 mod root_transformer;
 mod utils;
 
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
-use std::ops::Deref;
 use std::sync::Arc;
 
+use inner_transformer::InnerTransform;
 use mako_core::swc_common::util::take::Take;
 use root_transformer::RootTransformer;
-use swc_core::common::collections::AHashSet;
-use swc_core::common::comments::{Comment, CommentKind};
-use swc_core::common::{Span, Spanned, SyntaxContext, DUMMY_SP, GLOBALS};
-use swc_core::ecma::ast::{
-    DefaultDecl, Expr, Id, Module, ModuleDecl, ModuleItem, Stmt, VarDeclKind,
-};
+use swc_core::common::{Span, SyntaxContext, GLOBALS};
+use swc_core::ecma::ast::ModuleItem;
 use swc_core::ecma::transforms::base::resolver;
-use swc_core::ecma::utils::{collect_decls_with_ctxt, quote_ident, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 use utils::uniq_module_prefix;
 
 use crate::compiler::Context;
-use crate::module::{relative_to_root, ModuleId, ResolveType};
+use crate::module::{ModuleId, ResolveType};
 use crate::module_graph::ModuleGraph;
 use crate::plugins::farm_tree_shake::module::{AllExports, TreeShakeModule};
 use crate::tree_shaking::tree_shaking_module::ModuleSystem;
@@ -140,14 +137,8 @@ pub fn optimize_module_graph(
         }
     }
 
-    let mut module_items: Vec<ModuleItem> = Vec::new();
-
-    let config = concat_configurations.first().unwrap();
-
-    let mut modules_in_current_scope = HashSet::new();
-
-    for id in config.inners.iter() {
-        let dep = module_graph.get_dependencies(id);
+    fn source_to_module_id(module_id: &ModuleId, mg: &ModuleGraph) -> HashMap<String, ModuleId> {
+        let dep = mg.get_dependencies(module_id);
 
         let mut src_2_module_id = HashMap::new();
 
@@ -155,78 +146,79 @@ pub fn optimize_module_graph(
             src_2_module_id.insert(dep.source.clone(), module.clone());
         }
 
-        let module = module_graph.get_module_mut(id).unwrap();
+        src_2_module_id
+    }
 
-        let module_info = module.info.as_mut().unwrap();
+    GLOBALS.set(&context.meta.script.globals, || {
+        let mut module_items: Vec<ModuleItem> = Vec::new();
 
-        let script_ast = module_info.ast.script_mut().unwrap();
+        let config = concat_configurations.first().unwrap();
 
-        GLOBALS.set(&context.meta.script.globals, || {
-            let top_ctx = SyntaxContext::empty().apply_mark(script_ast.top_level_mark);
+        let mut modules_in_current_scope = HashMap::new();
+        let mut all_top_level_vars = HashSet::new();
 
-            let mut ter = InnerTransform {
-                modules_in_scope: &modules_in_current_scope,
-                top_level_ctx: top_ctx,
-                uniq_prefix: uniq_module_prefix(id, context),
-                src_to_module: &src_2_module_id,
-            };
+        for id in config.inners.iter() {
+            let import_source_to_module_id = source_to_module_id(id, module_graph);
+
+            let module = module_graph.get_module_mut(id).unwrap();
+
+            let module_info = module.info.as_mut().unwrap();
+            let script_ast = module_info.ast.script_mut().unwrap();
+
+            let mut ter = InnerTransform::new(
+                &mut modules_in_current_scope,
+                &mut all_top_level_vars,
+                id,
+                uniq_module_prefix(id, context),
+                &import_source_to_module_id,
+                context,
+                script_ast.top_level_mark,
+            );
 
             script_ast.ast.visit_mut_with(&mut ter);
             script_ast.ast.visit_mut_with(&mut CleanSyntaxContext {});
-        });
 
-        modules_in_current_scope.insert(id.clone());
-
-        if let Some(item) = script_ast.ast.body.first() {
-            let mut comments = context.meta.script.origin_comments.write().unwrap();
-            comments.add_leading_comment_at(
-                item.span_lo(),
-                Comment {
-                    kind: CommentKind::Line,
-                    span: DUMMY_SP,
-                    text: format!(
-                        " CONCATENATED MODULE: {}",
-                        relative_to_root(&id.id, &context.root)
-                    )
-                    .into(),
-                },
-            );
+            module_items.append(&mut script_ast.ast.body.clone());
         }
-        module_items.append(&mut script_ast.ast.body.clone());
-    }
 
-    let root_module = module_graph.get_module_mut(&config.root).unwrap();
+        let root_module = module_graph.get_module_mut(&config.root).unwrap();
 
-    let ast = &mut root_module.info.as_mut().unwrap().ast;
+        let ast = &mut root_module.info.as_mut().unwrap().ast;
 
-    let ast_script = ast.script_mut().unwrap();
+        let ast_script = ast.script_mut().unwrap();
 
-    let mut root_module_ast = ast_script.ast.take();
-    let unresolved_mark = ast_script.unresolved_mark;
-    let top_level_mark = ast_script.top_level_mark;
-    GLOBALS.set(&context.meta.script.globals, || {
+        let mut root_module_ast = ast_script.ast.take();
+        let unresolved_mark = ast_script.unresolved_mark;
+        let top_level_mark = ast_script.top_level_mark;
+        let src_2_module_id = source_to_module_id(&config.root, module_graph);
+
         root_module_ast.visit_mut_with(&mut RootTransformer {
             module_graph,
             current_module_id: &config.root,
             context,
+            modules_in_scope: &modules_in_current_scope,
+            top_level_vars: &all_top_level_vars,
+            top_level_mark,
+            import_source_to_module_id: &src_2_module_id,
+            renames: Default::default(),
         });
 
         root_module_ast.visit_mut_with(&mut CleanSyntaxContext {});
 
         root_module_ast.body.splice(0..0, module_items);
         root_module_ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
-    });
 
-    let root_module = module_graph.get_module_mut(&config.root).unwrap();
-    let ast = &mut root_module.info.as_mut().unwrap().ast;
-    let ast_script = ast.script_mut().unwrap();
-    ast_script.ast = root_module_ast;
+        let root_module = module_graph.get_module_mut(&config.root).unwrap();
+        let ast = &mut root_module.info.as_mut().unwrap().ast;
+        let ast_script = ast.script_mut().unwrap();
+        ast_script.ast = root_module_ast;
 
-    for inner in config.inners.iter() {
-        module_graph.remove_module(inner);
-    }
+        for inner in config.inners.iter() {
+            module_graph.remove_module(inner);
+        }
 
-    Ok(())
+        Ok(())
+    })
 }
 
 #[derive(Debug)]
@@ -236,6 +228,12 @@ struct ConcatenateConfig {
 }
 
 pub struct CleanSyntaxContext;
+
+impl VisitMut for CleanSyntaxContext {
+    fn visit_mut_span(&mut self, n: &mut Span) {
+        n.ctxt = SyntaxContext::empty();
+    }
+}
 
 impl ConcatenateConfig {
     fn new(root: ModuleId) -> Self {
@@ -262,138 +260,5 @@ impl ConcatenateConfig {
         F: FnMut(&ModuleId, &ModuleId) -> Ordering,
     {
         self.inners.sort_by(compare);
-    }
-}
-
-impl VisitMut for CleanSyntaxContext {
-    fn visit_mut_span(&mut self, n: &mut Span) {
-        n.ctxt = SyntaxContext::empty();
-    }
-}
-
-struct InnerTransform<'a> {
-    modules_in_scope: &'a HashSet<ModuleId>,
-    // module_id: &'a ModuleId,
-    top_level_ctx: SyntaxContext,
-    uniq_prefix: String,
-    src_to_module: &'a HashMap<String, ModuleId>,
-}
-
-impl<'a> VisitMut for InnerTransform<'a> {
-    fn visit_mut_module(&mut self, n: &mut Module) {
-        let top_ctx = self.top_level_ctx;
-        let _tops: AHashSet<Id> = collect_decls_with_ctxt(n, top_ctx);
-
-        n.visit_mut_children_with(self);
-    }
-    fn visit_mut_module_items(&mut self, items: &mut Vec<ModuleItem>) {
-        let mut replaces = vec![];
-
-        for index in (0..items.len()).rev() {
-            let mut stmts = None;
-
-            let item = items.get_mut(index).unwrap();
-
-            if let Some(module_decl) = item.as_mut_module_decl() {
-                match module_decl {
-                    ModuleDecl::Import(import) => {
-                        let src = import.src.value.to_string();
-
-                        if let Some(src_module_id) = self.src_to_module.get(&src)
-                            && self.modules_in_scope.contains(src_module_id)
-                        {
-                            stmts = Some(vec![]);
-                        }
-                    }
-                    ModuleDecl::ExportDecl(export_decl) => {
-                        let decl = export_decl.decl.take();
-
-                        let stmt: Stmt = decl.into();
-
-                        *item = stmt.into();
-                    }
-                    ModuleDecl::ExportNamed(_) => {}
-                    ModuleDecl::ExportDefaultDecl(export_default_dcl) => {
-                        match &mut export_default_dcl.decl {
-                            DefaultDecl::Class(dcl) => {
-                                items[index] = dcl.take().into_stmt().into();
-                            }
-                            DefaultDecl::Fn(dcl) => {
-                                items[index] = dcl.take().into_stmt().into();
-                            }
-                            DefaultDecl::TsInterfaceDecl(_) => {}
-                        }
-                    }
-                    ModuleDecl::ExportDefaultExpr(export_default_expr) => {
-                        println!("ModuleDecl::ExportDefaultExpr :{:?}", export_default_expr);
-
-                        match export_default_expr.expr.deref() {
-                            Expr::This(_) => {}
-                            Expr::Array(_) => {}
-                            Expr::Object(_) => {}
-                            Expr::Fn(_) => {}
-                            Expr::Unary(_) => {}
-                            Expr::Update(_) => {}
-                            Expr::Bin(_) => {}
-                            Expr::Assign(_) => {}
-                            Expr::Member(_) => {}
-                            Expr::SuperProp(_) => {}
-                            Expr::Cond(_) => {}
-                            Expr::Call(_) => {}
-                            Expr::New(_) => {}
-                            Expr::Seq(_) => {}
-                            Expr::Ident(_) => {}
-                            Expr::Lit(_) => {
-                                let expr = export_default_expr.expr.take();
-
-                                let stmt: Stmt = expr
-                                    .to_owned()
-                                    .into_var_decl(
-                                        VarDeclKind::Const,
-                                        quote_ident!(format!("{}_0", self.uniq_prefix)).into(),
-                                    )
-                                    .into();
-
-                                *item = stmt.into();
-                            }
-                            Expr::Tpl(_) => {}
-                            Expr::TaggedTpl(_) => {}
-                            Expr::Arrow(_) => {}
-                            Expr::Class(_) => {}
-                            Expr::Yield(_) => {}
-                            Expr::MetaProp(_) => {}
-                            Expr::Await(_) => {}
-                            Expr::Paren(_) => {}
-                            Expr::JSXMember(_) => {}
-                            Expr::JSXNamespacedName(_) => {}
-                            Expr::JSXEmpty(_) => {}
-                            Expr::JSXElement(_) => {}
-                            Expr::JSXFragment(_) => {}
-                            Expr::TsTypeAssertion(_) => {}
-                            Expr::TsConstAssertion(_) => {}
-                            Expr::TsNonNull(_) => {}
-                            Expr::TsAs(_) => {}
-                            Expr::TsInstantiation(_) => {}
-                            Expr::TsSatisfies(_) => {}
-                            Expr::PrivateName(_) => {}
-                            Expr::OptChain(_) => {}
-                            Expr::Invalid(_) => {}
-                        }
-                    }
-                    ModuleDecl::ExportAll(_) => {}
-                    ModuleDecl::TsImportEquals(_) => {}
-                    ModuleDecl::TsExportAssignment(_) => {}
-                    ModuleDecl::TsNamespaceExport(_) => {}
-                }
-            }
-
-            if let Some(to_replace) = stmts {
-                replaces.push((index, to_replace));
-            }
-        }
-
-        for (index, rep) in replaces {
-            items.splice(index..index + 1, rep);
-        }
     }
 }
