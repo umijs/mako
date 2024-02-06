@@ -7,7 +7,6 @@ use swc_core::ecma::ast::{Id, ImportSpecifier, Module, ModuleDecl, ModuleExportN
 use swc_core::ecma::utils::IdentRenamer;
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
-use super::utils::uniq_module_default_export_name;
 use crate::compiler::Context;
 use crate::module::{relative_to_root, ModuleId};
 use crate::module_graph::ModuleGraph;
@@ -95,14 +94,13 @@ impl<'a> VisitMut for RootTransformer<'a> {
                                             ));
                                         }
                                         ImportSpecifier::Default(default_specifier) => {
+                                            let mapped_default =
+                                                mapped_exports.get("default").unwrap();
+
                                             self.request_rename((
                                                 Id::from(default_specifier.local.clone()),
                                                 (
-                                                    uniq_module_default_export_name(
-                                                        imported_module_id,
-                                                        self.context,
-                                                    )
-                                                    .into(),
+                                                    mapped_default.clone().into(),
                                                     default_specifier.local.span.ctxt,
                                                 ),
                                             ));

@@ -15,10 +15,6 @@ pub fn uniq_module_prefix(module_id: &ModuleId, context: &Arc<Context>) -> Strin
     )
 }
 
-pub fn uniq_module_default_export_name(module_id: &ModuleId, context: &Arc<Context>) -> String {
-    format!("{}_0", uniq_module_prefix(module_id, context))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

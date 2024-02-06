@@ -15,7 +15,7 @@ use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 use super::exports_transform::collect_exports_map;
 use crate::compiler::Context;
 use crate::module::{relative_to_root, ModuleId};
-use crate::plugins::farm_tree_shake::shake::module_concatenate::utils::uniq_module_default_export_name;
+use crate::plugins::farm_tree_shake::shake::module_concatenate::utils::uniq_module_prefix;
 
 pub(super) struct InnerTransform<'a> {
     pub context: &'a Arc<Context>,
@@ -94,6 +94,42 @@ impl<'a> InnerTransform<'a> {
         let mut renamer = IdentRenamer::new(&map);
         n.visit_mut_with(&mut renamer);
     }
+
+    fn get_non_conflict_name(&self, name: &String) -> String {
+        let mut new_name = name.to_string();
+        let mut i = 0;
+        while self.current_top_level_vars.contains(&new_name)
+            || self.my_top_decls.contains(&new_name)
+        {
+            new_name = format!("{}_{}", name, i);
+            i += 1;
+        }
+        new_name
+    }
+
+    fn resolve_conflict(&mut self) {
+        let conflicts: Vec<_> = self
+            .current_top_level_vars
+            .intersection(&self.my_top_decls)
+            .cloned()
+            .collect();
+
+        let ctxt = SyntaxContext::empty().apply_mark(self.top_level_mark);
+        let default_name = uniq_module_default_export_name(self.module_id, self.context);
+        for conflicted_name in conflicts {
+            self.my_top_decls.remove(&conflicted_name);
+
+            let new_name = self.get_non_conflict_name(&conflicted_name);
+
+            if conflicted_name == default_name {
+                self.exports.insert("default".to_string(), new_name.clone());
+            }
+
+            self.my_top_decls.insert(new_name.clone());
+            self.rename_request
+                .push(((conflicted_name.into(), ctxt), (new_name.into(), ctxt)));
+        }
+    }
 }
 
 impl<'a> VisitMut for InnerTransform<'a> {
@@ -107,12 +143,14 @@ impl<'a> VisitMut for InnerTransform<'a> {
 
         n.visit_mut_children_with(self);
 
-        self.add_leading_comment(n);
-
+        self.resolve_conflict();
         self.apply_renames(n);
+        self.add_leading_comment(n);
 
         self.modules_in_scope
             .insert(self.module_id.clone(), self.exports.clone());
+        self.current_top_level_vars
+            .extend(self.my_top_decls.iter().cloned());
     }
 
     fn visit_mut_module_items(&mut self, items: &mut Vec<ModuleItem>) {
@@ -238,11 +276,20 @@ impl<'a> VisitMut for InnerTransform<'a> {
                             Expr::Lit(_) => {
                                 let expr = export_default_expr.expr.take();
 
+                                let span = export_default_expr.span.apply_mark(self.top_level_mark);
+
                                 let stmt: Stmt = expr
                                     .to_owned()
                                     .into_var_decl(
                                         VarDeclKind::Const,
-                                        quote_ident!(format!("{}_0", self.uniq_prefix)).into(),
+                                        quote_ident!(
+                                            span,
+                                            uniq_module_default_export_name(
+                                                self.module_id,
+                                                self.context
+                                            )
+                                        )
+                                        .into(),
                                     )
                                     .into();
 
@@ -288,4 +335,8 @@ impl<'a> VisitMut for InnerTransform<'a> {
             items.splice(index..index + 1, rep);
         }
     }
+}
+
+fn uniq_module_default_export_name(module_id: &ModuleId, context: &Arc<Context>) -> String {
+    format!("{}_0", uniq_module_prefix(module_id, context))
 }
