@@ -42,5 +42,6 @@
     "@okamjs/okam-darwin-arm64": "0.4.3",
     "@okamjs/okam-darwin-x64": "0.4.3",
     "@okamjs/okam-linux-x64-gnu": "0.4.3"
-  }
+  },
+  "repository": "git@github.com:umijs/mako.git"
 }
