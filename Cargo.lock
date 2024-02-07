@@ -153,10 +153,12 @@ dependencies = [
  "cached",
  "mako",
  "mako_core",
+ "mimalloc-rust",
  "napi",
  "napi-build",
  "napi-derive",
  "serde_json",
+ "tikv-jemallocator",
 ]
 
 [[package]]
