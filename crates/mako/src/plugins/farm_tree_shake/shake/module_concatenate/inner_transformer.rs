@@ -1,21 +1,20 @@
 use std::collections::{HashMap, HashSet};
-use std::ops::Deref;
 use std::sync::Arc;
 
 use mako_core::swc_common::util::take::Take;
 use swc_core::common::comments::{Comment, CommentKind};
 use swc_core::common::{Mark, Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
-    DefaultDecl, Expr, Id, ImportSpecifier, Module, ModuleDecl, ModuleExportName, ModuleItem, Stmt,
+    DefaultDecl, Id, ImportSpecifier, Module, ModuleDecl, ModuleExportName, ModuleItem, Stmt,
     VarDeclKind,
 };
 use swc_core::ecma::utils::{collect_decls_with_ctxt, quote_ident, ExprFactory, IdentRenamer};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use super::exports_transform::collect_exports_map;
+use super::utils::uniq_module_prefix;
 use crate::compiler::Context;
 use crate::module::{relative_to_root, ModuleId};
-use crate::plugins::farm_tree_shake::shake::module_concatenate::utils::uniq_module_prefix;
 
 pub(super) struct InnerTransform<'a> {
     pub context: &'a Arc<Context>,
@@ -254,67 +253,22 @@ impl<'a> VisitMut for InnerTransform<'a> {
                         }
                     }
                     ModuleDecl::ExportDefaultExpr(export_default_expr) => {
-                        match export_default_expr.expr.deref() {
-                            Expr::This(_) => {}
-                            Expr::Array(_) => {}
-                            Expr::Object(_) => {}
-                            Expr::Fn(_) => {}
-                            Expr::Unary(_) => {}
-                            Expr::Update(_) => {}
-                            Expr::Bin(_) => {}
-                            Expr::Assign(_) => {}
-                            Expr::Member(_) => {}
-                            Expr::SuperProp(_) => {}
-                            Expr::Cond(_) => {}
-                            Expr::Call(_) => {}
-                            Expr::New(_) => {}
-                            Expr::Seq(_) => {}
-                            Expr::Ident(_) => {}
-                            Expr::Lit(_) => {
-                                let expr = export_default_expr.expr.take();
+                        let span = export_default_expr.span.apply_mark(self.top_level_mark);
 
-                                let span = export_default_expr.span.apply_mark(self.top_level_mark);
+                        let stmt: Stmt = export_default_expr
+                            .expr
+                            .take()
+                            .into_var_decl(
+                                VarDeclKind::Const,
+                                quote_ident!(
+                                    span,
+                                    uniq_module_default_export_name(self.module_id, self.context)
+                                )
+                                .into(),
+                            )
+                            .into();
 
-                                let stmt: Stmt = expr
-                                    .to_owned()
-                                    .into_var_decl(
-                                        VarDeclKind::Const,
-                                        quote_ident!(
-                                            span,
-                                            uniq_module_default_export_name(
-                                                self.module_id,
-                                                self.context
-                                            )
-                                        )
-                                        .into(),
-                                    )
-                                    .into();
-
-                                *item = stmt.into();
-                            }
-                            Expr::Tpl(_) => {}
-                            Expr::TaggedTpl(_) => {}
-                            Expr::Arrow(_) => {}
-                            Expr::Class(_) => {}
-                            Expr::Yield(_) => {}
-                            Expr::MetaProp(_) => {}
-                            Expr::Await(_) => {}
-                            Expr::Paren(_) => {}
-                            Expr::JSXMember(_) => {}
-                            Expr::JSXNamespacedName(_) => {}
-                            Expr::JSXEmpty(_) => {}
-                            Expr::JSXElement(_) => {}
-                            Expr::JSXFragment(_) => {}
-                            Expr::TsTypeAssertion(_) => {}
-                            Expr::TsConstAssertion(_) => {}
-                            Expr::TsNonNull(_) => {}
-                            Expr::TsAs(_) => {}
-                            Expr::TsInstantiation(_) => {}
-                            Expr::TsSatisfies(_) => {}
-                            Expr::PrivateName(_) => {}
-                            Expr::OptChain(_) => {}
-                            Expr::Invalid(_) => {}
-                        }
+                        *item = stmt.into();
                     }
                     ModuleDecl::ExportAll(_) => {}
                     ModuleDecl::TsImportEquals(_) => {}
