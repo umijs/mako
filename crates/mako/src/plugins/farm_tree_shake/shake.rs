@@ -360,7 +360,14 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
         }
     }
 
-    optimize_module_graph(module_graph, &tree_shake_modules_map, context)?;
+    if context
+        .config
+        .optimization
+        .as_ref()
+        .map_or(false, |o| o.concatenate_modules.unwrap_or(false))
+    {
+        optimize_module_graph(module_graph, &tree_shake_modules_map, context)?;
+    }
 
     Ok(())
 }

@@ -15,7 +15,6 @@ use swc_core::common::{Span, SyntaxContext, GLOBALS};
 use swc_core::ecma::ast::ModuleItem;
 use swc_core::ecma::transforms::base::resolver;
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
-use utils::uniq_module_prefix;
 
 use crate::compiler::Context;
 use crate::module::{ModuleId, ResolveType};
@@ -169,7 +168,6 @@ pub fn optimize_module_graph(
                 &mut modules_in_current_scope,
                 &mut all_top_level_vars,
                 id,
-                uniq_module_prefix(id, context),
                 &import_source_to_module_id,
                 context,
                 script_ast.top_level_mark,

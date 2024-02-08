@@ -24,7 +24,6 @@ pub(super) struct InnerTransform<'a> {
     pub src_to_module: &'a HashMap<String, ModuleId>,
     pub current_top_level_vars: &'a mut HashSet<String>,
     pub top_level_mark: Mark,
-    pub uniq_prefix: String,
 
     my_top_decls: HashSet<String>,
     exports: HashMap<String, String>,
@@ -36,7 +35,6 @@ impl<'a> InnerTransform<'a> {
         modules_in_scope: &'a mut HashMap<ModuleId, HashMap<String, String>>,
         top_level_var: &'a mut HashSet<String>,
         module_id: &'a ModuleId,
-        uniq_prefix: String,
         src_to_module: &'a HashMap<String, ModuleId>,
         context: &'a Arc<Context>,
         top_level_mark: Mark,
@@ -48,7 +46,6 @@ impl<'a> InnerTransform<'a> {
             modules_in_scope,
             current_top_level_vars: top_level_var,
             module_id,
-            uniq_prefix,
             src_to_module,
             context,
             top_level_mark,
