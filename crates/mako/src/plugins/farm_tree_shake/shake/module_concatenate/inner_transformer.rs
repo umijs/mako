@@ -244,12 +244,38 @@ impl<'a> VisitMut for InnerTransform<'a> {
                     ModuleDecl::ExportDefaultDecl(export_default_dcl) => {
                         match &mut export_default_dcl.decl {
                             DefaultDecl::Class(dcl) => {
-                                items[index] = dcl.take().into_stmt().into();
+                                let stmt: Stmt = dcl
+                                    .take()
+                                    .into_var_decl(
+                                        VarDeclKind::Const,
+                                        quote_ident!(uniq_module_default_export_name(
+                                            self.module_id,
+                                            self.context
+                                        ))
+                                        .into(),
+                                    )
+                                    .into();
+
+                                items[index] = stmt.into();
                             }
                             DefaultDecl::Fn(dcl) => {
-                                items[index] = dcl.take().into_stmt().into();
+                                let stmt: Stmt = dcl
+                                    .take()
+                                    .into_var_decl(
+                                        VarDeclKind::Const,
+                                        quote_ident!(uniq_module_default_export_name(
+                                            self.module_id,
+                                            self.context
+                                        ))
+                                        .into(),
+                                    )
+                                    .into();
+
+                                items[index] = stmt.into();
                             }
-                            DefaultDecl::TsInterfaceDecl(_) => {}
+                            DefaultDecl::TsInterfaceDecl(_) => {
+                                unreachable!("TS should already be stripped")
+                            }
                         }
                     }
                     ModuleDecl::ExportDefaultExpr(export_default_expr) => {
