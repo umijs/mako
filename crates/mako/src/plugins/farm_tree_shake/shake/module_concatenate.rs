@@ -1,32 +1,33 @@
 mod exports_transform;
+mod external_transformer;
 mod inner_transformer;
 mod root_transformer;
 mod utils;
 
 use std::cell::RefCell;
-use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use external_transformer::ExternalTransformer;
 use inner_transformer::InnerTransform;
 use mako_core::swc_common::util::take::Take;
 use root_transformer::RootTransformer;
-use swc_core::common::{Span, SyntaxContext, GLOBALS};
-use swc_core::ecma::ast::ModuleItem;
+use swc_core::common::{Span, SyntaxContext, DUMMY_SP, GLOBALS};
+use swc_core::ecma::ast::{ModuleItem, Stmt, VarDeclKind};
 use swc_core::ecma::transforms::base::resolver;
+use swc_core::ecma::utils::{quote_ident, quote_str, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::compiler::Context;
-use crate::module::{ModuleId, ResolveType};
+use crate::module::{generate_module_id, Dependency, ModuleId, ResolveType};
 use crate::module_graph::ModuleGraph;
 use crate::plugins::farm_tree_shake::module::{AllExports, TreeShakeModule};
+use crate::plugins::farm_tree_shake::shake::module_concatenate::utils::uniq_module_prefix;
 use crate::tree_shaking::tree_shaking_module::ModuleSystem;
 
 pub fn optimize_module_graph(
     module_graph: &mut ModuleGraph,
-
     tree_shake_modules_map: &HashMap<ModuleId, RefCell<TreeShakeModule>>,
-
     context: &Arc<Context>,
 ) -> mako_core::anyhow::Result<()> {
     let (sorted_module_ids, circles) = module_graph.toposort();
@@ -73,6 +74,7 @@ pub fn optimize_module_graph(
 
             // 必须要有清晰的导出
             // ? 是不是不能有 export * from 'foo' 的语法
+            // ： 可以有，但是不能有模糊的 export *
             if matches!(tsm.all_exports, AllExports::Ambiguous(_)) {
                 can_be_inner = false;
             }
@@ -101,14 +103,46 @@ pub fn optimize_module_graph(
         let mut children = vec![];
 
         for (module_id, _dep) in deps {
-            if candidate.contains(module_id) && !(config.contains(module_id)) {
-                config.add_inner(module_id.clone());
-                children.push(module_id.clone());
+            if candidate.contains(module_id) {
+                if !(config.contains(module_id)) {
+                    config.add_inner(module_id.clone());
+                    children.push(module_id.clone());
+                }
+            } else {
+                config.add_external(module_id.clone());
             }
         }
 
         for m in children.iter() {
             collect_inner_modules(m, config, candidate, module_graph);
+        }
+    }
+
+    fn extends_external_modules(config: &mut ConcatenateConfig, module_graph: &ModuleGraph) {
+        let mut visited = HashSet::new();
+
+        for ext in config.externals.iter() {
+            if visited.contains(ext) {
+                continue;
+            }
+
+            let mut dfs = module_graph.dfs(ext);
+
+            while let Some(node) = dfs.next(&module_graph.graph) {
+                let m = &module_graph.graph[node];
+
+                if visited.contains(&m.id) {
+                    continue;
+                }
+
+                visited.insert(m.id.clone());
+            }
+        }
+        for visited in visited {
+            if config.inners.contains(&visited) {
+                config.inners.remove(&visited);
+                config.externals.insert(visited);
+            }
         }
     }
 
@@ -120,17 +154,12 @@ pub fn optimize_module_graph(
 
         collect_inner_modules(root, &mut config, &inner_candidates, module_graph);
 
+        extends_external_modules(&mut config, module_graph);
+
         if config.is_empty() {
         } else {
             used_as_inner.insert(config.root.clone());
             used_as_inner.extend(config.inners.iter().cloned());
-
-            config.sort_inner(|m1, m2| {
-                let m1_order = tree_shake_modules_map.get(m1).unwrap().borrow().topo_order;
-                let m2_order = tree_shake_modules_map.get(m2).unwrap().borrow().topo_order;
-
-                m2_order.cmp(&m1_order)
-            });
 
             concat_configurations.push(config);
         }
@@ -154,15 +183,65 @@ pub fn optimize_module_graph(
         let config = concat_configurations.first().unwrap();
 
         let mut modules_in_current_scope = HashMap::new();
+        let mut external_module_namespace = HashMap::new();
         let mut all_top_level_vars = HashSet::new();
 
-        for id in config.inners.iter() {
+        for id in &config.sorted_modules(module_graph) {
+            if id.eq(&config.root) {
+                continue;
+            }
+
             let import_source_to_module_id = source_to_module_id(id, module_graph);
+
+            if config.is_external(id) {
+                let base_name = uniq_module_prefix(id, context);
+                let mut uniq_name = base_name.to_string();
+
+                let mut post_fix = 0;
+                while all_top_level_vars.contains(&uniq_name) {
+                    post_fix += 1;
+                    uniq_name = format!("{}_{}", id.id, post_fix);
+                }
+                all_top_level_vars.insert(uniq_name.clone());
+                external_module_namespace.insert(id.clone(), uniq_name.clone());
+
+                let stmt: Stmt = quote_ident!("require")
+                    .as_call(
+                        DUMMY_SP,
+                        vec![
+                            quote_str!(DUMMY_SP, generate_module_id(id.id.clone(), context))
+                                .as_arg(),
+                        ],
+                    )
+                    .into_var_decl(VarDeclKind::Var, quote_ident!(uniq_name).into())
+                    .into();
+
+                module_items.push(stmt.into());
+
+                module_graph.add_dependency(
+                    &config.root,
+                    id,
+                    Dependency {
+                        source: id.id.clone(),
+                        resolve_as: None,
+                        resolve_type: ResolveType::Require,
+                        order: 0,
+                        span: None,
+                    },
+                );
+                continue;
+            }
 
             let module = module_graph.get_module_mut(id).unwrap();
 
             let module_info = module.info.as_mut().unwrap();
             let script_ast = module_info.ast.script_mut().unwrap();
+
+            let mut ext_trans = ExternalTransformer {
+                src_to_module: &import_source_to_module_id,
+                current_external_map: &external_module_namespace,
+            };
+            script_ast.ast.visit_mut_with(&mut ext_trans);
 
             let mut ter = InnerTransform::new(
                 &mut modules_in_current_scope,
@@ -189,6 +268,12 @@ pub fn optimize_module_graph(
         let unresolved_mark = ast_script.unresolved_mark;
         let top_level_mark = ast_script.top_level_mark;
         let src_2_module_id = source_to_module_id(&config.root, module_graph);
+
+        let mut ext_trans = ExternalTransformer {
+            src_to_module: &src_2_module_id,
+            current_external_map: &external_module_namespace,
+        };
+        root_module_ast.visit_mut_with(&mut ext_trans);
 
         root_module_ast.visit_mut_with(&mut RootTransformer {
             module_graph,
@@ -222,8 +307,11 @@ pub fn optimize_module_graph(
 #[derive(Debug)]
 struct ConcatenateConfig {
     root: ModuleId,
-    inners: Vec<ModuleId>,
+    inners: HashSet<ModuleId>,
+    externals: HashSet<ModuleId>,
 }
+
+impl ConcatenateConfig {}
 
 pub struct CleanSyntaxContext;
 
@@ -237,12 +325,13 @@ impl ConcatenateConfig {
     fn new(root: ModuleId) -> Self {
         Self {
             root,
-            inners: vec![],
+            inners: Default::default(),
+            externals: Default::default(),
         }
     }
 
     fn add_inner(&mut self, inner: ModuleId) {
-        self.inners.push(inner);
+        self.inners.insert(inner);
     }
 
     pub fn contains(&self, module_id: &ModuleId) -> bool {
@@ -253,10 +342,49 @@ impl ConcatenateConfig {
         self.inners.is_empty()
     }
 
-    pub fn sort_inner<F>(&mut self, compare: F)
-    where
-        F: FnMut(&ModuleId, &ModuleId) -> Ordering,
-    {
-        self.inners.sort_by(compare);
+    pub fn add_external(&mut self, external_id: ModuleId) {
+        self.externals.insert(external_id);
+    }
+
+    pub fn sorted_modules(&self, module_graph: &ModuleGraph) -> Vec<ModuleId> {
+        let mut modules = vec![];
+
+        fn walk<'a>(
+            root: &'a ModuleId,
+            orders: &mut Vec<ModuleId>,
+            module_graph: &'a ModuleGraph,
+            config: &ConcatenateConfig,
+        ) {
+            let deps = module_graph.get_dependencies(root);
+
+            if deps.is_empty() {
+                orders.push(root.clone());
+                return;
+            }
+
+            for (module_id, _dep) in deps {
+                if orders.contains(module_id) {
+                    continue;
+                }
+
+                if config.is_external(module_id) {
+                    orders.push(module_id.clone());
+                    continue;
+                }
+
+                if config.contains(module_id) {
+                    walk(module_id, orders, module_graph, config);
+                }
+            }
+
+            orders.push(root.clone());
+        }
+
+        walk(&self.root, &mut modules, module_graph, self);
+
+        modules
+    }
+    fn is_external(&self, module_id: &ModuleId) -> bool {
+        self.externals.contains(module_id)
     }
 }

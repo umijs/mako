@@ -1,8 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
+use fixedbitset::FixedBitSet;
 use mako_core::petgraph::graph::{DefaultIx, NodeIndex};
-use mako_core::petgraph::prelude::EdgeRef;
+use mako_core::petgraph::prelude::{Dfs, EdgeRef};
 use mako_core::petgraph::stable_graph::{StableDiGraph, WalkNeighbors};
 use mako_core::petgraph::visit::IntoEdgeReferences;
 use mako_core::petgraph::Direction;
@@ -357,6 +358,10 @@ impl ModuleGraph {
             .collect::<Vec<_>>();
         references.sort_by_key(|id| id.to_string());
         references
+    }
+
+    pub fn dfs(&self, start: &ModuleId) -> Dfs<NodeIndex, FixedBitSet> {
+        Dfs::new(&self.graph, *self.id_index_map.get(start).unwrap())
     }
 }
 
