@@ -62,7 +62,7 @@ impl Visit for ExportsCollector {
                     self.exports.insert(class_decl.ident.sym.to_string());
                 }
                 Decl::Fn(fn_decl) => {
-                    self.exports.insert(fn_decl.ident.to_string());
+                    self.exports.insert(fn_decl.ident.sym.to_string());
                 }
                 Decl::Var(var_decl) => {
                     for x in var_decl.decls.iter() {
