@@ -15,6 +15,12 @@ mako_core   = { path = "../core" }
 serde_json  = { workspace = true }
 cached      = { workspace = true }
 
+[target.'cfg(not(target_os = "linux"))'.dependencies]
+mimalloc-rust = { workspace = true }
+
+[target.'cfg(all(target_os = "linux", target_env = "gnu", any(target_arch = "x86_64", target_arch = "aarch64")))'.dependencies]
+tikv-jemallocator = { workspace = true }
+
 [build-dependencies]
 napi-build = "2.0.1"
 
