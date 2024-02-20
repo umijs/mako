@@ -275,16 +275,15 @@ pub fn optimize_module_graph(
         };
         root_module_ast.visit_mut_with(&mut ext_trans);
 
-        root_module_ast.visit_mut_with(&mut RootTransformer {
+        root_module_ast.visit_mut_with(&mut RootTransformer::new(
             module_graph,
-            current_module_id: &config.root,
+            &config.root,
             context,
-            modules_in_scope: &modules_in_current_scope,
-            top_level_vars: &all_top_level_vars,
+            &modules_in_current_scope,
+            &all_top_level_vars,
             top_level_mark,
-            import_source_to_module_id: &src_2_module_id,
-            renames: Default::default(),
-        });
+            &src_2_module_id,
+        ));
 
         root_module_ast.visit_mut_with(&mut CleanSyntaxContext {});
 

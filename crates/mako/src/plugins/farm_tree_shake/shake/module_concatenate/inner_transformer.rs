@@ -5,8 +5,8 @@ use mako_core::swc_common::util::take::Take;
 use swc_core::common::comments::{Comment, CommentKind};
 use swc_core::common::{Mark, Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
-    DefaultDecl, Id, ImportSpecifier, Module, ModuleDecl, ModuleExportName, ModuleItem, Stmt,
-    VarDeclKind,
+    DefaultDecl, ExportSpecifier, Id, ImportSpecifier, Module, ModuleDecl, ModuleExportName,
+    ModuleItem, Stmt, VarDeclKind,
 };
 use swc_core::ecma::utils::{collect_decls_with_ctxt, quote_ident, ExprFactory, IdentRenamer};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
@@ -121,6 +121,9 @@ impl<'a> InnerTransform<'a> {
                 self.exports.insert("default".to_string(), new_name.clone());
             }
 
+            self.exports
+                .entry(conflicted_name.clone())
+                .and_modify(|e| *e = new_name.clone());
             self.my_top_decls.insert(new_name.clone());
             self.rename_request
                 .push(((conflicted_name.into(), ctxt), (new_name.into(), ctxt)));
@@ -153,7 +156,7 @@ impl<'a> VisitMut for InnerTransform<'a> {
         let mut replaces = vec![];
 
         for index in (0..items.len()).rev() {
-            let mut stmts = None;
+            let mut stmts: Option<Vec<ModuleItem>> = None;
 
             let item = items.get_mut(index).unwrap();
 
@@ -165,8 +168,6 @@ impl<'a> VisitMut for InnerTransform<'a> {
                         if let Some(src_module_id) = self.src_to_module.get(&src)
                             && let Some(exports_map) = self.modules_in_scope.get(src_module_id)
                         {
-                            // let mut to_replace_stmts = vec![];
-
                             for import_specifier in import.specifiers.iter() {
                                 match &import_specifier {
                                     ImportSpecifier::Named(named_import) => {
@@ -240,7 +241,51 @@ impl<'a> VisitMut for InnerTransform<'a> {
 
                         *item = stmt.into();
                     }
-                    ModuleDecl::ExportNamed(_) => {}
+                    ModuleDecl::ExportNamed(named_export) => {
+                        if let Some(export_src) = &named_export.src {
+                            let msg = format!(
+                                "export from {:?} not supported in inner module yet",
+                                export_src.value
+                            );
+                            todo!("{}", msg);
+                        } else {
+                            let mut dcl_stmts: Vec<ModuleItem> = vec![];
+
+                            for export_spec in &named_export.specifiers {
+                                match export_spec {
+                                    ExportSpecifier::Namespace(_) => {
+                                        unreachable!("namespace export unreachable when no src")
+                                    }
+                                    ExportSpecifier::Default(_) => {
+                                        unreachable!("default export unreachable when no src")
+                                    }
+                                    ExportSpecifier::Named(named) => {
+                                        match (&named.exported, &named.orig) {
+                                            (
+                                                Some(ModuleExportName::Ident(exported_ident)),
+                                                ModuleExportName::Ident(orig_ident),
+                                            ) => {
+                                                let dccl = exported_ident.clone().into_var_decl(
+                                                    VarDeclKind::Var,
+                                                    orig_ident.clone().into(),
+                                                );
+                                                dcl_stmts.push(dccl.into());
+                                            }
+                                            (None, ModuleExportName::Ident(_)) => {
+                                                // do nothing
+                                            }
+                                            (_, ModuleExportName::Str(_))
+                                            | (Some(ModuleExportName::Str(_)), _) => {
+                                                unimplemented!("export 'str' not supported now");
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            stmts = Some(dcl_stmts);
+                        }
+                    }
                     ModuleDecl::ExportDefaultDecl(export_default_dcl) => {
                         match &mut export_default_dcl.decl {
                             DefaultDecl::Class(dcl) => {
