@@ -11,10 +11,8 @@ use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::compiler::Context;
 use crate::module::{relative_to_root, ModuleId};
-use crate::module_graph::ModuleGraph;
 
 pub(super) struct RootTransformer<'a> {
-    pub module_graph: &'a ModuleGraph,
     pub current_module_id: &'a ModuleId,
     pub context: &'a Arc<Context>,
     pub modules_in_scope: &'a HashMap<ModuleId, HashMap<String, String>>,
@@ -27,7 +25,6 @@ pub(super) struct RootTransformer<'a> {
 
 impl RootTransformer<'_> {
     pub fn new<'a>(
-        module_graph: &'a ModuleGraph,
         current_module_id: &'a ModuleId,
         context: &'a Arc<Context>,
         modules_in_scope: &'a HashMap<ModuleId, HashMap<String, String>>,
@@ -36,7 +33,6 @@ impl RootTransformer<'_> {
         import_source_to_module_id: &'a HashMap<String, ModuleId>,
     ) -> RootTransformer<'a> {
         RootTransformer {
-            module_graph,
             current_module_id,
             context,
             modules_in_scope,

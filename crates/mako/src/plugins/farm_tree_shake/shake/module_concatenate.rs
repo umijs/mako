@@ -276,7 +276,6 @@ pub fn optimize_module_graph(
         root_module_ast.visit_mut_with(&mut ext_trans);
 
         root_module_ast.visit_mut_with(&mut RootTransformer::new(
-            module_graph,
             &config.root,
             context,
             &modules_in_current_scope,
