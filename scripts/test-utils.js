@@ -142,9 +142,12 @@ const injectSimpleJest = () => {
   global.expect = require('@jest/expect').jestExpect;
 };
 
+const moduleDefinitionOf = (moduleName) => `"${moduleName}": function(module, exports, __mako_require__) {`
+
 exports.parseBuildResult = parseBuildResult;
 exports.trim = trim;
 exports.string2RegExp = string2RegExp;
 exports.moduleReg = moduleReg;
 exports.testWithBrowser = testWithBrowser;
 exports.injectSimpleJest = injectSimpleJest;
+exports.moduleDefinitionOf = moduleDefinitionOf;
