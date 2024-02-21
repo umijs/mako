@@ -3,14 +3,17 @@ use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use bitflags::bitflags;
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::base64::engine::{general_purpose, Engine};
 use mako_core::pathdiff::diff_paths;
+use mako_core::serde::Serialize;
 use mako_core::swc_common::{Span, DUMMY_SP};
-use mako_core::swc_ecma_ast::{BlockStmt, FnExpr, Function, Module as SwcModule};
+use mako_core::swc_ecma_ast::{
+    BlockStmt, FnExpr, Function, ImportDecl, ImportSpecifier, Module as SwcModule,
+};
 use mako_core::swc_ecma_utils::quote_ident;
 use mako_core::{md5, swc_css_ast};
-use serde::Serialize;
 
 use crate::ast::Ast;
 use crate::compiler::Context;
@@ -28,15 +31,58 @@ pub struct Dependency {
     pub span: Option<Span>,
 }
 
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Default)]
+    pub struct ImportType: u16 {
+        const Default = 1;
+        const Named = 1<<2;
+        const Namespace = 1<<3;
+        const SideEffect = 1<<4 ;
+    }
+}
+
+impl From<&ImportDecl> for ImportType {
+    fn from(decl: &ImportDecl) -> Self {
+        if decl.specifiers.is_empty() {
+            ImportType::SideEffect
+        } else {
+            let mut import_type = ImportType::empty();
+            for specifier in &decl.specifiers {
+                match specifier {
+                    ImportSpecifier::Named(_) => {
+                        import_type |= ImportType::Named;
+                    }
+                    ImportSpecifier::Default(_) => {
+                        import_type |= ImportType::Default;
+                    }
+                    ImportSpecifier::Namespace(_) => {
+                        import_type |= ImportType::Namespace;
+                    }
+                }
+            }
+            import_type
+        }
+    }
+}
+
 #[derive(Eq, Hash, PartialEq, Serialize, Debug, Clone, Copy)]
 pub enum ResolveType {
-    Import,
+    Import(ImportType),
     ExportNamed,
     ExportAll,
     Require,
     DynamicImport,
     Css,
     Worker,
+}
+
+impl ResolveType {
+    pub fn same_enum(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Import(_), Self::Import(_)) => true,
+            (_, _) => self == other,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -252,6 +298,7 @@ impl ModuleType {
         matches!(self, ModuleType::Script)
     }
 }
+
 #[derive(Clone)]
 pub struct Module {
     pub id: ModuleId,

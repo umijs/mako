@@ -12,7 +12,7 @@ use swc_core::ecma::utils::{quote_ident, quote_str};
 use swc_core::quote;
 
 use crate::compiler::Context;
-use crate::module::{Dependency, ModuleId, ResolveType};
+use crate::module::{Dependency, ImportType, ModuleId, ResolveType};
 use crate::module_graph::ModuleGraph;
 use crate::plugins::farm_tree_shake::module::{is_ident_sym_equal, TreeShakeModule};
 use crate::plugins::farm_tree_shake::shake::strip_context;
@@ -60,12 +60,14 @@ impl ReExportReplace {
     }
 
     pub(crate) fn to_import_dep(&self, span: Span) -> Dependency {
+        let import_type: ImportType = (&self.re_export_source.re_export_type).into();
+
         Dependency {
             source: self.from_module_id.id.clone(),
             span: Some(span),
             order: 0,
             resolve_as: None,
-            resolve_type: ResolveType::Import,
+            resolve_type: ResolveType::Import(import_type),
         }
     }
 
@@ -142,6 +144,16 @@ pub enum ReExportType {
     Named(String),
 }
 
+impl From<&ReExportType> for ImportType {
+    fn from(re_export_type: &ReExportType) -> Self {
+        match re_export_type {
+            ReExportType::Namespace => ImportType::Namespace,
+            ReExportType::Default => ImportType::Default,
+            ReExportType::Named(_) => ImportType::Named,
+        }
+    }
+}
+
 pub(super) fn skip_module_optimize(
     module_graph: &mut ModuleGraph,
 
@@ -175,12 +187,12 @@ pub(super) fn skip_module_optimize(
         let mut to_insert = vec![];
         let mut to_insert_deps = vec![];
         let mut to_delete = false;
-        let mut resolve_type = None;
+        let mut resolve_type: Option<ResolveType> = None;
 
         match &mut stmt {
             ModuleItem::ModuleDecl(module_decl) => match module_decl {
                 ModuleDecl::Import(import_decl) => {
-                    resolve_type = Some(ResolveType::Import);
+                    resolve_type = Some(ResolveType::Import(ImportType::empty()));
 
                     for replace in replaces {
                         let mut matched_index = None;

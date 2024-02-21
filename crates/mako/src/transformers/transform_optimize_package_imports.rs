@@ -86,7 +86,7 @@ impl Fold for OptimizePackageImports {
                 let dep = Dependency {
                     source: raw_src.clone(),
                     resolve_as: None,
-                    resolve_type: ResolveType::Import,
+                    resolve_type: ResolveType::Import(import_decl.into()),
                     order: 0,
                     span: None,
                 };

@@ -264,7 +264,7 @@ impl ModuleGraph {
 
             if let Some(to_del_dep) = dependencies
                 .iter()
-                .position(|dep| *source == dep.source && dep.resolve_type == resolve_type)
+                .position(|dep| *source == dep.source && dep.resolve_type.same_enum(&resolve_type))
             {
                 dependencies.take(&dependencies.iter().nth(to_del_dep).unwrap().clone());
 

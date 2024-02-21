@@ -14,7 +14,7 @@ use crate::compiler::Context;
 use crate::generate_chunks::build_props;
 use crate::load::read_content;
 use crate::module::ModuleAst::Script;
-use crate::module::{Dependency, ModuleAst, ResolveType};
+use crate::module::{Dependency, ImportType, ModuleAst, ResolveType};
 use crate::plugin::Plugin;
 use crate::resolve::resolve;
 use crate::task::Task;
@@ -121,7 +121,7 @@ impl MakoRuntime {
                 resolve_as: None,
                 order: 0,
                 span: None,
-                resolve_type: ResolveType::Import,
+                resolve_type: ResolveType::Import(ImportType::empty()),
             },
             &context.resolvers,
             context,

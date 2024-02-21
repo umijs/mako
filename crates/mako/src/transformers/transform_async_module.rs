@@ -363,7 +363,7 @@ mod tests {
     use crate::ast::{build_js_ast, js_ast_to_code};
     use crate::chunk::{Chunk, ChunkType};
     use crate::compiler::Context;
-    use crate::module::{Dependency, ModuleId, ResolveType};
+    use crate::module::{Dependency, ImportType, ModuleId, ResolveType};
 
     #[test]
     fn test_async_module() {
@@ -414,7 +414,7 @@ __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
         GLOBALS.set(&globals, || {
             let mut async_module = AsyncModule {
                 async_deps: &vec![Dependency {
-                    resolve_type: ResolveType::Import,
+                    resolve_type: ResolveType::Import(ImportType::empty()),
                     source: String::from("./async"),
                     resolve_as: None,
                     span: Some(DUMMY_SP),

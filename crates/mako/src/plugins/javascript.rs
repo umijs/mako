@@ -13,7 +13,7 @@ use crate::ast::build_js_ast;
 use crate::compiler::Context;
 use crate::config::Platform;
 use crate::load::{read_content, Content};
-use crate::module::{Dependency, ModuleAst, ResolveType};
+use crate::module::{Dependency, ImportType, ModuleAst, ResolveType};
 use crate::plugin::{Plugin, PluginDepAnalyzeParam, PluginLoadParam, PluginParseParam};
 
 pub struct JavaScriptPlugin {}
@@ -121,7 +121,8 @@ impl Visit for DepCollectVisitor {
                     return;
                 }
                 let src = import.src.value.to_string();
-                self.bind_dependency(src, ResolveType::Import, Some(import.src.span));
+                let import_type: ImportType = import.into();
+                self.bind_dependency(src, ResolveType::Import(import_type), Some(import.src.span));
             }
             ModuleDecl::ExportNamed(export) => {
                 if let Some(src) = &export.src {
