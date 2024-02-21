@@ -19,7 +19,7 @@ use swc_core::ecma::utils::{quote_ident, quote_str, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::compiler::Context;
-use crate::module::{generate_module_id, Dependency, ModuleId, ResolveType};
+use crate::module::{generate_module_id, Dependency, ImportType, ModuleId, ResolveType};
 use crate::module_graph::ModuleGraph;
 use crate::plugins::farm_tree_shake::module::{AllExports, TreeShakeModule};
 use crate::plugins::farm_tree_shake::shake::module_concatenate::utils::uniq_module_prefix;
@@ -103,7 +103,17 @@ pub fn optimize_module_graph(
         let mut children = vec![];
 
         for (module_id, _dep) in deps {
-            if candidate.contains(module_id) {
+            let esm_import = match _dep.resolve_type {
+                ResolveType::Import(_) => true,
+                ResolveType::ExportNamed => true,
+                ResolveType::ExportAll => true,
+                ResolveType::Require => false,
+                ResolveType::DynamicImport => false,
+                ResolveType::Css => false,
+                ResolveType::Worker => false,
+            };
+
+            if candidate.contains(module_id) && esm_import {
                 if !(config.contains(module_id)) {
                     config.add_inner(module_id.clone());
                     children.push(module_id.clone());
@@ -178,126 +188,134 @@ pub fn optimize_module_graph(
     }
 
     GLOBALS.set(&context.meta.script.globals, || {
-        let mut module_items: Vec<ModuleItem> = Vec::new();
+        for config in &concat_configurations {
+            let mut module_items: Vec<ModuleItem> = Vec::new();
 
-        let config = concat_configurations.first().unwrap();
+            let mut modules_in_current_scope = HashMap::new();
+            let mut external_module_namespace = HashMap::new();
+            let mut all_top_level_vars = HashSet::new();
 
-        let mut modules_in_current_scope = HashMap::new();
-        let mut external_module_namespace = HashMap::new();
-        let mut all_top_level_vars = HashSet::new();
-
-        for id in &config.sorted_modules(module_graph) {
-            if id.eq(&config.root) {
-                continue;
-            }
-
-            let import_source_to_module_id = source_to_module_id(id, module_graph);
-
-            if config.is_external(id) {
-                let base_name = uniq_module_prefix(id, context);
-                let mut uniq_name = base_name.to_string();
-
-                let mut post_fix = 0;
-                while all_top_level_vars.contains(&uniq_name) {
-                    post_fix += 1;
-                    uniq_name = format!("{}_{}", id.id, post_fix);
+            for id in &config.sorted_modules(module_graph) {
+                if id.eq(&config.root) {
+                    continue;
                 }
-                all_top_level_vars.insert(uniq_name.clone());
-                external_module_namespace.insert(id.clone(), uniq_name.clone());
 
-                let stmt: Stmt = quote_ident!("require")
-                    .as_call(
-                        DUMMY_SP,
-                        vec![
-                            quote_str!(DUMMY_SP, generate_module_id(id.id.clone(), context))
-                                .as_arg(),
-                        ],
-                    )
-                    .into_var_decl(VarDeclKind::Var, quote_ident!(uniq_name).into())
-                    .into();
+                let import_source_to_module_id = source_to_module_id(id, module_graph);
 
-                module_items.push(stmt.into());
+                if config.is_external(id) {
+                    let base_name = uniq_module_prefix(id, context);
+                    let mut uniq_name = base_name.to_string();
 
-                module_graph.add_dependency(
-                    &config.root,
+                    let mut post_fix = 0;
+                    while all_top_level_vars.contains(&uniq_name) {
+                        post_fix += 1;
+                        uniq_name = format!("{}_{}", id.id, post_fix);
+                    }
+                    all_top_level_vars.insert(uniq_name.clone());
+                    external_module_namespace.insert(id.clone(), uniq_name.clone());
+
+                    let stmt: Stmt = quote_ident!("require")
+                        .as_call(
+                            DUMMY_SP,
+                            vec![
+                                quote_str!(DUMMY_SP, generate_module_id(id.id.clone(), context))
+                                    .as_arg(),
+                            ],
+                        )
+                        .into_var_decl(VarDeclKind::Var, quote_ident!(uniq_name).into())
+                        .into();
+
+                    module_items.push(stmt.into());
+
+                    module_graph.add_dependency(
+                        &config.root,
+                        id,
+                        Dependency {
+                            source: id.id.clone(),
+                            resolve_as: None,
+                            resolve_type: ResolveType::Require,
+                            order: 0,
+                            span: None,
+                        },
+                    );
+                    continue;
+                }
+
+                let mut all_import_type = ImportType::empty();
+
+                module_graph.get_dependents(id).iter().for_each(|(_, dep)| {
+                    if let ResolveType::Import(import_type) = &dep.resolve_type {
+                        all_import_type |= *import_type
+                    };
+                });
+
+                let module = module_graph.get_module_mut(id).unwrap();
+
+                let module_info = module.info.as_mut().unwrap();
+                let script_ast = module_info.ast.script_mut().unwrap();
+
+                let mut ext_trans = ExternalTransformer {
+                    src_to_module: &import_source_to_module_id,
+                    current_external_map: &external_module_namespace,
+                };
+                script_ast.ast.visit_mut_with(&mut ext_trans);
+
+                let mut inner_transformer = InnerTransform::new(
+                    &mut modules_in_current_scope,
+                    &mut all_top_level_vars,
                     id,
-                    Dependency {
-                        source: id.id.clone(),
-                        resolve_as: None,
-                        resolve_type: ResolveType::Require,
-                        order: 0,
-                        span: None,
-                    },
+                    &import_source_to_module_id,
+                    context,
+                    script_ast.top_level_mark,
                 );
-                continue;
+                inner_transformer.imported(all_import_type);
+
+                script_ast.ast.visit_mut_with(&mut inner_transformer);
+                script_ast.ast.visit_mut_with(&mut CleanSyntaxContext {});
+
+                module_items.append(&mut script_ast.ast.body.clone());
             }
 
-            let module = module_graph.get_module_mut(id).unwrap();
+            let root_module = module_graph.get_module_mut(&config.root).unwrap();
 
-            let module_info = module.info.as_mut().unwrap();
-            let script_ast = module_info.ast.script_mut().unwrap();
+            let ast = &mut root_module.info.as_mut().unwrap().ast;
+
+            let ast_script = ast.script_mut().unwrap();
+
+            let mut root_module_ast = ast_script.ast.take();
+            let unresolved_mark = ast_script.unresolved_mark;
+            let top_level_mark = ast_script.top_level_mark;
+            let src_2_module_id = source_to_module_id(&config.root, module_graph);
 
             let mut ext_trans = ExternalTransformer {
-                src_to_module: &import_source_to_module_id,
+                src_to_module: &src_2_module_id,
                 current_external_map: &external_module_namespace,
             };
-            script_ast.ast.visit_mut_with(&mut ext_trans);
+            root_module_ast.visit_mut_with(&mut ext_trans);
 
-            let mut ter = InnerTransform::new(
-                &mut modules_in_current_scope,
-                &mut all_top_level_vars,
-                id,
-                &import_source_to_module_id,
+            root_module_ast.visit_mut_with(&mut RootTransformer::new(
+                &config.root,
                 context,
-                script_ast.top_level_mark,
-            );
+                &modules_in_current_scope,
+                &all_top_level_vars,
+                top_level_mark,
+                &src_2_module_id,
+            ));
 
-            script_ast.ast.visit_mut_with(&mut ter);
-            script_ast.ast.visit_mut_with(&mut CleanSyntaxContext {});
+            root_module_ast.visit_mut_with(&mut CleanSyntaxContext {});
 
-            module_items.append(&mut script_ast.ast.body.clone());
+            root_module_ast.body.splice(0..0, module_items);
+            root_module_ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
+
+            let root_module = module_graph.get_module_mut(&config.root).unwrap();
+            let ast = &mut root_module.info.as_mut().unwrap().ast;
+            let ast_script = ast.script_mut().unwrap();
+            ast_script.ast = root_module_ast;
+
+            for inner in config.inners.iter() {
+                module_graph.remove_module(inner);
+            }
         }
-
-        let root_module = module_graph.get_module_mut(&config.root).unwrap();
-
-        let ast = &mut root_module.info.as_mut().unwrap().ast;
-
-        let ast_script = ast.script_mut().unwrap();
-
-        let mut root_module_ast = ast_script.ast.take();
-        let unresolved_mark = ast_script.unresolved_mark;
-        let top_level_mark = ast_script.top_level_mark;
-        let src_2_module_id = source_to_module_id(&config.root, module_graph);
-
-        let mut ext_trans = ExternalTransformer {
-            src_to_module: &src_2_module_id,
-            current_external_map: &external_module_namespace,
-        };
-        root_module_ast.visit_mut_with(&mut ext_trans);
-
-        root_module_ast.visit_mut_with(&mut RootTransformer::new(
-            &config.root,
-            context,
-            &modules_in_current_scope,
-            &all_top_level_vars,
-            top_level_mark,
-            &src_2_module_id,
-        ));
-
-        root_module_ast.visit_mut_with(&mut CleanSyntaxContext {});
-
-        root_module_ast.body.splice(0..0, module_items);
-        root_module_ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
-
-        let root_module = module_graph.get_module_mut(&config.root).unwrap();
-        let ast = &mut root_module.info.as_mut().unwrap().ast;
-        let ast_script = ast.script_mut().unwrap();
-        ast_script.ast = root_module_ast;
-
-        for inner in config.inners.iter() {
-            module_graph.remove_module(inner);
-        }
-
         Ok(())
     })
 }

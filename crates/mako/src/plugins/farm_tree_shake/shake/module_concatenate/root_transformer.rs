@@ -176,8 +176,22 @@ impl<'a> VisitMut for RootTransformer<'a> {
                                                 ),
                                             ));
                                         }
-                                        ImportSpecifier::Namespace(_) => {
-                                            todo!("later will be never ? lazy pshu!");
+                                        ImportSpecifier::Namespace(namespace) => {
+                                            let mapped_namespace = mapped_exports.get("*").unwrap();
+
+                                            if !namespace.local.sym.to_string().eq(mapped_namespace)
+                                            {
+                                                let var_decl_stmt: Stmt =
+                                                    quote_ident!(mapped_namespace.clone())
+                                                        .into_var_decl(
+                                                            VarDeclKind::Var,
+                                                            namespace.local.clone().into(),
+                                                        )
+                                                        .into();
+                                                if let Some(a) = items.as_mut() {
+                                                    a.push(var_decl_stmt.into());
+                                                }
+                                            }
                                         }
                                     }
                                 }

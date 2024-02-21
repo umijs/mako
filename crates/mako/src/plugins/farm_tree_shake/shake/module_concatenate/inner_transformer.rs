@@ -5,16 +5,18 @@ use mako_core::swc_common::util::take::Take;
 use swc_core::common::comments::{Comment, CommentKind};
 use swc_core::common::{Mark, Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
-    DefaultDecl, ExportSpecifier, Id, ImportSpecifier, Module, ModuleDecl, ModuleExportName,
-    ModuleItem, Stmt, VarDeclKind,
+    DefaultDecl, ExportSpecifier, Id, ImportSpecifier, KeyValueProp, Module, ModuleDecl,
+    ModuleExportName, ModuleItem, ObjectLit, Prop, PropOrSpread, Stmt, VarDeclKind,
 };
-use swc_core::ecma::utils::{collect_decls_with_ctxt, quote_ident, ExprFactory, IdentRenamer};
+use swc_core::ecma::utils::{
+    collect_decls_with_ctxt, member_expr, quote_ident, ExprFactory, IdentRenamer,
+};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use super::exports_transform::collect_exports_map;
 use super::utils::uniq_module_prefix;
 use crate::compiler::Context;
-use crate::module::{relative_to_root, ModuleId};
+use crate::module::{relative_to_root, ImportType, ModuleId};
 
 pub(super) struct InnerTransform<'a> {
     pub context: &'a Arc<Context>,
@@ -27,6 +29,7 @@ pub(super) struct InnerTransform<'a> {
     my_top_decls: HashSet<String>,
     exports: HashMap<String, String>,
     rename_request: Vec<(Id, Id)>,
+    imported_type: ImportType,
 }
 
 impl<'a> InnerTransform<'a> {
@@ -51,7 +54,12 @@ impl<'a> InnerTransform<'a> {
             exports: Default::default(),
             my_top_decls: Default::default(),
             rename_request: vec![],
+            imported_type: Default::default(),
         }
+    }
+
+    pub fn imported(&mut self, imported_type: ImportType) {
+        self.imported_type = imported_type;
     }
 
     fn collect_exports(&mut self, n: &Module) {
@@ -146,6 +154,53 @@ impl<'a> VisitMut for InnerTransform<'a> {
         self.apply_renames(n);
         self.add_leading_comment(n);
 
+        if (self.imported_type & ImportType::Namespace) == ImportType::Namespace {
+            let ns_name = self
+                .get_non_conflict_name(&uniq_module_namespace_name(self.module_id, self.context));
+            let ns_ident = quote_ident!(ns_name.clone());
+
+            let empty_obj = ObjectLit {
+                span: DUMMY_SP,
+                props: vec![],
+            };
+
+            let init_stmt: Stmt = empty_obj
+                .into_var_decl(VarDeclKind::Var, ns_ident.clone().into())
+                .into();
+
+            let mut key_value_props: Vec<PropOrSpread> = vec![];
+
+            for (exported_name, local_name) in self.exports.iter() {
+                key_value_props.push(
+                    Prop::KeyValue(KeyValueProp {
+                        key: quote_ident!(exported_name.clone()).into(),
+                        value: quote_ident!(local_name.clone()).into_lazy_fn(vec![]).into(),
+                    })
+                    .into(),
+                )
+            }
+
+            let define_exports: Stmt = member_expr!(DUMMY_SP, __mako_require__.e)
+                .as_call(
+                    DUMMY_SP,
+                    vec![
+                        ns_ident.as_arg(),
+                        ObjectLit {
+                            span: DUMMY_SP,
+                            props: key_value_props,
+                        }
+                        .as_arg(),
+                    ],
+                )
+                .into_stmt();
+
+            self.exports.insert("*".to_string(), ns_name.clone());
+            self.my_top_decls.insert(ns_name);
+
+            n.body.push(init_stmt.into());
+            n.body.push(define_exports.into());
+        }
+
         self.modules_in_scope
             .insert(self.module_id.clone(), self.exports.clone());
         self.current_top_level_vars
@@ -164,6 +219,7 @@ impl<'a> VisitMut for InnerTransform<'a> {
                 match module_decl {
                     ModuleDecl::Import(import) => {
                         let src = import.src.value.to_string();
+                        stmts = Some(vec![]);
 
                         if let Some(src_module_id) = self.src_to_module.get(&src)
                             && let Some(exports_map) = self.modules_in_scope.get(src_module_id)
@@ -213,25 +269,25 @@ impl<'a> VisitMut for InnerTransform<'a> {
                                         }
                                     }
                                     ImportSpecifier::Default(default_import) => {
-                                        self.rename_request.push((
-                                            Id::from(default_import.local.clone()),
-                                            (
-                                                uniq_module_default_export_name(
-                                                    self.module_id,
-                                                    self.context,
-                                                )
-                                                .into(),
-                                                default_import.local.span.ctxt,
-                                            ),
-                                        ));
+                                        if let Some(default_export_name) =
+                                            exports_map.get("default")
+                                        {
+                                            let stmt: Stmt =
+                                                quote_ident!(default_export_name.clone())
+                                                    .into_var_decl(
+                                                        VarDeclKind::Var,
+                                                        default_import.local.clone().into(),
+                                                    )
+                                                    .into();
+
+                                            stmts.as_mut().unwrap().push(stmt.into());
+                                        }
                                     }
                                     ImportSpecifier::Namespace(_) => {
                                         // should never here
                                     }
                                 }
                             }
-
-                            stmts = Some(vec![]);
                         }
                     }
                     ModuleDecl::ExportDecl(export_decl) => {
@@ -244,8 +300,8 @@ impl<'a> VisitMut for InnerTransform<'a> {
                     ModuleDecl::ExportNamed(named_export) => {
                         if let Some(export_src) = &named_export.src {
                             let msg = format!(
-                                "export from {:?} not supported in inner module yet",
-                                export_src.value
+                                "export from {:?} not supported in inner module({}) yet",
+                                export_src.value, self.module_id.id
                             );
                             todo!("{}", msg);
                         } else {
@@ -272,7 +328,7 @@ impl<'a> VisitMut for InnerTransform<'a> {
                                                 dcl_stmts.push(dccl.into());
                                             }
                                             (None, ModuleExportName::Ident(_)) => {
-                                                // do nothing
+                                                // do nothing, it will be removed
                                             }
                                             (_, ModuleExportName::Str(_))
                                             | (Some(ModuleExportName::Str(_)), _) => {
@@ -361,4 +417,8 @@ impl<'a> VisitMut for InnerTransform<'a> {
 
 fn uniq_module_default_export_name(module_id: &ModuleId, context: &Arc<Context>) -> String {
     format!("{}_0", uniq_module_prefix(module_id, context))
+}
+
+fn uniq_module_namespace_name(module_id: &ModuleId, context: &Arc<Context>) -> String {
+    format!("{}_ns", uniq_module_prefix(module_id, context))
 }
