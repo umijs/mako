@@ -3,9 +3,9 @@ resolver = "2"
 members  = ["crates/*"]
 
 [workspace.dependencies]
+cached            = "0.46.1"
 mimalloc-rust     = { version = "=0.2.1" }
 serde             = { version = "1.0.171", features = ["derive"] }
 serde_json        = "1.0.100"
-cached            = "0.46.1"
 swc_core          = { version = "=0.83.19", default-features = false }
 tikv-jemallocator = { version = "=0.5.4", features = ["disable_initial_exec_tls"] }

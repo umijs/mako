@@ -32,6 +32,9 @@ importers:
       '@swc/helpers':
         specifier: 0.5.1
         version: 0.5.1
+      '@taplo/cli':
+        specifier: ^0.7.0
+        version: 0.7.0
       '@types/express':
         specifier: ^4.17.21
         version: 4.17.21
@@ -3978,6 +3981,11 @@ packages:
       '@tanstack/query-core': 5.0.0-alpha.21
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
+
+  /@taplo/cli@0.7.0:
+    resolution: {integrity: sha512-Ck3zFhQhIhi02Hl6T4ZmJsXdnJE+wXcJz5f8klxd4keRYgenMnip3JDPMGDRLbnC/2iGd8P0sBIQqI3KxfVjBg==}
+    hasBin: true
+    dev: true
 
   /@trysound/sax@0.2.0:
     resolution: {integrity: sha512-L7z9BgrNEcYyUYtF+HaEfiS5ebkh9jXqbszz7pC0hRBPaatV0XjSD3+eHrpqFemQfgwiFF0QPIarnIihIDn7OA==}
