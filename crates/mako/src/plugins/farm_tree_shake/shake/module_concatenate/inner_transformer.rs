@@ -235,19 +235,19 @@ impl<'a> VisitMut for InnerTransform<'a> {
 
                                             let local = named_import.local.sym.to_string();
 
-                                            self.my_top_decls.remove(&local);
-
                                             if let Some(mapped_export) =
                                                 exports_map.get(&imported_name)
                                             {
                                                 if local != *mapped_export {
-                                                    self.rename_request.push((
-                                                        Id::from(named_import.local.clone()),
-                                                        (
-                                                            mapped_export.clone().into(),
-                                                            named_import.local.span.ctxt,
-                                                        ),
-                                                    ));
+                                                    let stmt: Stmt =
+                                                        quote_ident!(mapped_export.clone())
+                                                            .into_var_decl(
+                                                                VarDeclKind::Var,
+                                                                named_import.local.clone().into(),
+                                                            )
+                                                            .into();
+
+                                                    stmts.as_mut().unwrap().push(stmt.into());
                                                 }
                                             }
                                         } else {
@@ -257,13 +257,15 @@ impl<'a> VisitMut for InnerTransform<'a> {
 
                                             if let Some(mapped_export) = exports_map.get(&local) {
                                                 if *mapped_export != local {
-                                                    self.rename_request.push((
-                                                        Id::from(named_import.local.clone()),
-                                                        (
-                                                            mapped_export.clone().into(),
-                                                            named_import.local.span.ctxt,
-                                                        ),
-                                                    ));
+                                                    let stmt: Stmt =
+                                                        quote_ident!(mapped_export.clone())
+                                                            .into_var_decl(
+                                                                VarDeclKind::Var,
+                                                                named_import.local.clone().into(),
+                                                            )
+                                                            .into();
+
+                                                    stmts.as_mut().unwrap().push(stmt.into());
                                                 }
                                             }
                                         }
@@ -283,8 +285,15 @@ impl<'a> VisitMut for InnerTransform<'a> {
                                             stmts.as_mut().unwrap().push(stmt.into());
                                         }
                                     }
-                                    ImportSpecifier::Namespace(_) => {
-                                        // should never here
+                                    ImportSpecifier::Namespace(namespace) => {
+                                        let exported_namespace = exports_map.get("*").unwrap();
+                                        let stmt: Stmt = quote_ident!(exported_namespace.clone())
+                                            .into_var_decl(
+                                                VarDeclKind::Var,
+                                                namespace.local.clone().into(),
+                                            )
+                                            .into();
+                                        stmts.as_mut().unwrap().push(stmt.into());
                                     }
                                 }
                             }
