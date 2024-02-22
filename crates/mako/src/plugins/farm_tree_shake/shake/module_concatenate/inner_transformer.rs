@@ -5,7 +5,7 @@ use mako_core::swc_common::util::take::Take;
 use swc_core::common::comments::{Comment, CommentKind};
 use swc_core::common::{Mark, Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
-    DefaultDecl, ExportSpecifier, Id, ImportSpecifier, KeyValueProp, Module, ModuleDecl,
+    DefaultDecl, ExportSpecifier, Id, Ident, ImportSpecifier, KeyValueProp, Module, ModuleDecl,
     ModuleExportName, ModuleItem, ObjectLit, Prop, PropOrSpread, Stmt, VarDeclKind,
 };
 use swc_core::ecma::utils::{
@@ -227,46 +227,27 @@ impl<'a> VisitMut for InnerTransform<'a> {
                             for import_specifier in import.specifiers.iter() {
                                 match &import_specifier {
                                     ImportSpecifier::Named(named_import) => {
-                                        if let Some(imported) = &named_import.imported {
-                                            let imported_name = match &imported {
-                                                ModuleExportName::Ident(id) => id.sym.to_string(),
-                                                ModuleExportName::Str(str) => str.value.to_string(),
-                                            };
-
-                                            let local = named_import.local.sym.to_string();
-
-                                            if let Some(mapped_export) =
-                                                exports_map.get(&imported_name)
-                                            {
-                                                if local != *mapped_export {
-                                                    let stmt: Stmt =
-                                                        quote_ident!(mapped_export.clone())
-                                                            .into_var_decl(
-                                                                VarDeclKind::Var,
-                                                                named_import.local.clone().into(),
-                                                            )
-                                                            .into();
-
-                                                    stmts.as_mut().unwrap().push(stmt.into());
-                                                }
+                                        let imported_name = match &named_import.imported {
+                                            None => named_import.local.sym.to_string(),
+                                            Some(ModuleExportName::Ident(id)) => id.sym.to_string(),
+                                            Some(ModuleExportName::Str(_)) => {
+                                                unimplemented!("")
                                             }
-                                        } else {
-                                            let local = named_import.local.sym.to_string();
+                                        };
 
-                                            self.my_top_decls.remove(&local);
+                                        let local = named_import.local.sym.to_string();
 
-                                            if let Some(mapped_export) = exports_map.get(&local) {
-                                                if *mapped_export != local {
-                                                    let stmt: Stmt =
-                                                        quote_ident!(mapped_export.clone())
-                                                            .into_var_decl(
-                                                                VarDeclKind::Var,
-                                                                named_import.local.clone().into(),
-                                                            )
-                                                            .into();
+                                        if let Some(mapped_export) = exports_map.get(&imported_name)
+                                        {
+                                            if local != *mapped_export {
+                                                let stmt: Stmt = declare_var_with_init(
+                                                    named_import.local.clone(),
+                                                    mapped_export,
+                                                );
 
-                                                    stmts.as_mut().unwrap().push(stmt.into());
-                                                }
+                                                stmts.as_mut().unwrap().push(stmt.into());
+                                            } else {
+                                                self.my_top_decls.remove(&local);
                                             }
                                         }
                                     }
@@ -430,4 +411,11 @@ fn uniq_module_default_export_name(module_id: &ModuleId, context: &Arc<Context>)
 
 fn uniq_module_namespace_name(module_id: &ModuleId, context: &Arc<Context>) -> String {
     format!("{}_ns", uniq_module_prefix(module_id, context))
+}
+
+fn declare_var_with_init(name: Ident, init: &str) -> Stmt {
+    let stmt: Stmt = quote_ident!(init)
+        .into_var_decl(VarDeclKind::Var, name.into())
+        .into();
+    stmt
 }
