@@ -1,6 +1,12 @@
 include = ["Cargo.toml", "crates/*/*.toml"]
 
 [formatting]
-align_entries = true
-column_width = 120
+align_entries       = true
 allowed_blank_lines = 1
+column_width        = 120
+
+[[rule]]
+keys = ["dependencies", "*-dependencies", "workspace.dependencies", "workspace.*-dependencies","target.*.dependencies", "target.*.*-dependencies"]
+
+[rule.formatting]
+reorder_keys = true
