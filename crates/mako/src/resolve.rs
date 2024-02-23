@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::vec;
 
+use cached::proc_macro::cached;
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::convert_case::{Case, Casing};
 use mako_core::nodejs_resolver::{AliasMap, Options, ResolveResult, Resolver, Resource};
@@ -105,6 +106,11 @@ pub fn resolve(
     do_resolve(path, source, resolver, Some(&context.config.externals))
 }
 
+#[cached(key = "String", convert = r#"{ re.to_string() }"#)]
+fn create_external_regex(re: &str) -> Regex {
+    Regex::new(re).unwrap()
+}
+
 fn get_external_target(
     externals: &HashMap<String, ExternalConfig>,
     source: &str,
@@ -136,11 +142,11 @@ fn get_external_target(
         externals.iter().find_map(|(key, config)| {
             match config {
                 ExternalConfig::Advanced(config) if config.subpath.is_some() => {
-                    if let Some(caps) =
-                        Regex::new(&format!(r#"(?:^|/node_modules/|[a-zA-Z\d]@){}(/|$)"#, key))
-                            .ok()
-                            .unwrap()
-                            .captures(source)
+                    if let Some(caps) = create_external_regex(&format!(
+                        r#"(?:^|/node_modules/|[a-zA-Z\d]@){}(/|$)"#,
+                        key
+                    ))
+                    .captures(source)
                     {
                         let subpath = source.split(&caps[0]).collect::<Vec<_>>()[1].to_string();
                         let subpath_config = config.subpath.as_ref().unwrap();
@@ -149,9 +155,7 @@ fn get_external_target(
                             // skip if source is excluded
                             Some(exclude)
                                 if exclude.iter().any(|e| {
-                                    Regex::new(&format!("(^|/){}(/|$)", e))
-                                        .ok()
-                                        .unwrap()
+                                    create_external_regex(&format!("(^|/){}(/|$)", e))
                                         .is_match(subpath.as_str())
                                 }) =>
                             {
@@ -171,7 +175,7 @@ fn get_external_target(
         // ex. import Button from 'antd/es/button';
         // find matched subpath rule
         if let Some((rule, caps)) = subpath_config.rules.iter().find_map(|r| {
-            let regex = Regex::new(r.regex.as_str()).ok().unwrap();
+            let regex = create_external_regex(r.regex.as_str());
 
             if regex.is_match(subpath.as_str()) {
                 Some((r, regex.captures(subpath.as_str()).unwrap()))
@@ -187,7 +191,7 @@ fn get_external_target(
                 }
                 // external to target template
                 ExternalAdvancedSubpathTarget::Tpl(target) => {
-                    let regex = Regex::new(r"\$(\d+)").ok().unwrap();
+                    let regex = create_external_regex(r"\$(\d+)");
 
                     // replace $1, $2, ... with captured groups
                     let mut replaced = regex
