@@ -14,6 +14,7 @@ use mako_core::swc_ecma_ast::{
 };
 use mako_core::swc_ecma_utils::quote_ident;
 use mako_core::{md5, swc_css_ast};
+use swc_core::ecma::ast::{ExportSpecifier, ModuleExportName, NamedExport};
 
 use crate::ast::Ast;
 use crate::compiler::Context;
@@ -38,6 +39,13 @@ bitflags! {
         const Named = 1<<2;
         const Namespace = 1<<3;
         const SideEffect = 1<<4 ;
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Default)]
+    pub struct NamedExportType: u16 {
+        const Named = 1;
+        const Default = 1<<2;
+        const Namespace = 1<<3;
     }
 }
 
@@ -65,10 +73,32 @@ impl From<&ImportDecl> for ImportType {
     }
 }
 
+impl From<&NamedExport> for NamedExportType {
+    fn from(decl: &NamedExport) -> Self {
+        let mut res = Self::Named;
+
+        decl.specifiers
+            .iter()
+            .for_each(|specifier| match specifier {
+                ExportSpecifier::Namespace(_) => res.insert(Self::Namespace),
+                ExportSpecifier::Default(_) => res.insert(Self::Default),
+                ExportSpecifier::Named(named) => {
+                    if let ModuleExportName::Ident(orig) = &named.orig
+                        && orig.sym.eq("default")
+                    {
+                        res.insert(Self::Default);
+                    }
+                }
+            });
+
+        res
+    }
+}
+
 #[derive(Eq, Hash, PartialEq, Serialize, Debug, Clone, Copy)]
 pub enum ResolveType {
     Import(ImportType),
-    ExportNamed,
+    ExportNamed(NamedExportType),
     ExportAll,
     Require,
     DynamicImport,

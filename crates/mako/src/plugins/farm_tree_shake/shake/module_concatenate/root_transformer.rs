@@ -4,13 +4,17 @@ use std::sync::Arc;
 use swc_core::common::comments::{Comment, CommentKind};
 use swc_core::common::{Mark, Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
-    Id, ImportSpecifier, Module, ModuleDecl, ModuleExportName, ModuleItem, Stmt, VarDeclKind,
+    Decl, ExportDecl, ExportNamedSpecifier, ExportSpecifier, Id, Ident, ImportSpecifier, Module,
+    ModuleDecl, ModuleExportName, ModuleItem, NamedExport, Stmt, VarDeclKind,
 };
 use swc_core::ecma::utils::{collect_decls_with_ctxt, quote_ident, ExprFactory, IdentRenamer};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::compiler::Context;
 use crate::module::{relative_to_root, ModuleId};
+use crate::plugins::farm_tree_shake::shake::module_concatenate::utils::{
+    declare_var_with_init, MODULE_CONCATENATE_ERROR_STR_MODULE_NAME,
+};
 
 pub(super) struct RootTransformer<'a> {
     pub current_module_id: &'a ModuleId,
@@ -104,6 +108,12 @@ impl RootTransformer<'_> {
 
         let mut rename = IdentRenamer::new(&map2);
         n.visit_mut_with(&mut rename);
+    }
+
+    fn src_exports(&self, src: &str) -> Option<&HashMap<String, String>> {
+        self.import_source_to_module_id
+            .get(src)
+            .and_then(|module_id| self.modules_in_scope.get(module_id))
     }
 }
 
@@ -199,7 +209,68 @@ impl<'a> VisitMut for RootTransformer<'a> {
                         }
                     }
                     ModuleDecl::ExportDecl(_) => {}
-                    ModuleDecl::ExportNamed(_) => {}
+                    ModuleDecl::ExportNamed(export_named) => {
+                        if let Some(imported_src) = &export_named.src {
+                            if let Some(export_map) = self.src_exports(imported_src.value.as_ref())
+                            {
+                                items = Some(vec![]);
+
+                                for spec in &export_named.specifiers {
+                                    match spec {
+                                        ExportSpecifier::Namespace(_) => {
+                                            todo!();
+                                        }
+                                        ExportSpecifier::Default(_) => {
+                                            todo!();
+                                        }
+                                        ExportSpecifier::Named(named) => {
+                                            let (local, exported) =
+                                                export_named_specifier_to_local_and_exported(named);
+
+                                            if let Some(mapped_export) = export_map.get(&exported) {
+                                                let i = items.as_mut().unwrap();
+
+                                                if local.sym.eq(mapped_export) {
+                                                    let module_dcl: ModuleDecl = NamedExport {
+                                                        span: Default::default(),
+                                                        specifiers: vec![ExportNamedSpecifier {
+                                                            span: Default::default(),
+                                                            orig: ModuleExportName::Ident(
+                                                                local.clone(),
+                                                            ),
+                                                            exported: None,
+                                                            is_type_only: false,
+                                                        }
+                                                        .into()],
+                                                        type_only: false,
+                                                        src: None,
+                                                        with: None,
+                                                    }
+                                                    .into();
+
+                                                    i.push(module_dcl.into());
+                                                } else {
+                                                    let export_decl: ModuleDecl = ExportDecl {
+                                                        span: Default::default(),
+                                                        decl: Decl::Var(
+                                                            declare_var_with_init(
+                                                                local.clone(),
+                                                                mapped_export,
+                                                            )
+                                                            .into(),
+                                                        ),
+                                                    }
+                                                    .into();
+
+                                                    i.push(export_decl.into());
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                     ModuleDecl::ExportDefaultDecl(_) => {}
                     ModuleDecl::ExportDefaultExpr(_) => {}
                     ModuleDecl::ExportAll(_) => {}
@@ -223,5 +294,17 @@ impl<'a> VisitMut for RootTransformer<'a> {
         n.visit_mut_with(&mut renamer);
 
         self.resolve_conflicts(n);
+    }
+}
+
+fn export_named_specifier_to_local_and_exported(named: &ExportNamedSpecifier) -> (Ident, String) {
+    match (&named.exported, &named.orig) {
+        (None, ModuleExportName::Ident(orig)) => (orig.clone(), orig.sym.to_string()),
+        (Some(ModuleExportName::Ident(exported_ident)), ModuleExportName::Ident(orig_ident)) => {
+            (exported_ident.clone(), orig_ident.sym.to_string())
+        }
+        (_, _) => {
+            unimplemented!("{}", MODULE_CONCATENATE_ERROR_STR_MODULE_NAME)
+        }
     }
 }

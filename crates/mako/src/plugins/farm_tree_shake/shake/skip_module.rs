@@ -12,7 +12,7 @@ use swc_core::ecma::utils::{quote_ident, quote_str};
 use swc_core::quote;
 
 use crate::compiler::Context;
-use crate::module::{Dependency, ImportType, ModuleId, ResolveType};
+use crate::module::{Dependency, ImportType, ModuleId, NamedExportType, ResolveType};
 use crate::module_graph::ModuleGraph;
 use crate::plugins::farm_tree_shake::module::{is_ident_sym_equal, TreeShakeModule};
 use crate::plugins::farm_tree_shake::shake::strip_context;
@@ -72,10 +72,16 @@ impl ReExportReplace {
     }
 
     pub(crate) fn to_export_dep(&self, span: Span) -> Dependency {
+        let resolve_type = match &self.re_export_source.re_export_type {
+            ReExportType::Namespace => ResolveType::ExportAll,
+            ReExportType::Default => ResolveType::ExportNamed(NamedExportType::Default),
+            ReExportType::Named(_) => ResolveType::ExportNamed(NamedExportType::Named),
+        };
+
         Dependency {
             source: self.from_module_id.id.clone(),
             resolve_as: None,
-            resolve_type: ResolveType::ExportNamed,
+            resolve_type,
             order: 0,
             span: Some(span),
         }
@@ -156,10 +162,8 @@ impl From<&ReExportType> for ImportType {
 
 pub(super) fn skip_module_optimize(
     module_graph: &mut ModuleGraph,
-
     tree_shake_modules_ids: &Vec<ModuleId>,
     tree_shake_modules_map: &HashMap<ModuleId, RefCell<TreeShakeModule>>,
-
     _context: &Arc<Context>,
 ) -> Result<()> {
     let mut re_export_replace_map: HashMap<
@@ -246,7 +250,7 @@ pub(super) fn skip_module_optimize(
                 ModuleDecl::ExportDecl(_) => {}
                 ModuleDecl::ExportNamed(export_named) => {
                     if export_named.src.is_some() {
-                        resolve_type = Some(ResolveType::ExportNamed);
+                        resolve_type = Some(ResolveType::ExportNamed(NamedExportType::empty()));
 
                         for replace in replaces {
                             let mut matched_index = None;

@@ -5,7 +5,7 @@ use mako_core::swc_common::util::take::Take;
 use swc_core::common::comments::{Comment, CommentKind};
 use swc_core::common::{Mark, Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
-    DefaultDecl, ExportSpecifier, Id, Ident, ImportSpecifier, KeyValueProp, Module, ModuleDecl,
+    DefaultDecl, ExportSpecifier, Id, ImportSpecifier, KeyValueProp, Module, ModuleDecl,
     ModuleExportName, ModuleItem, ObjectLit, Prop, PropOrSpread, Stmt, VarDeclKind,
 };
 use swc_core::ecma::utils::{
@@ -14,7 +14,10 @@ use swc_core::ecma::utils::{
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use super::exports_transform::collect_exports_map;
-use super::utils::uniq_module_prefix;
+use super::utils::{
+    declare_var_with_init_stmt, uniq_module_prefix, MODULE_CONCATENATE_ERROR,
+    MODULE_CONCATENATE_ERROR_STR_MODULE_NAME,
+};
 use crate::compiler::Context;
 use crate::module::{relative_to_root, ImportType, ModuleId};
 
@@ -240,7 +243,7 @@ impl<'a> VisitMut for InnerTransform<'a> {
                                         if let Some(mapped_export) = exports_map.get(&imported_name)
                                         {
                                             if local != *mapped_export {
-                                                let stmt: Stmt = declare_var_with_init(
+                                                let stmt: Stmt = declare_var_with_init_stmt(
                                                     named_import.local.clone(),
                                                     mapped_export,
                                                 );
@@ -289,11 +292,90 @@ impl<'a> VisitMut for InnerTransform<'a> {
                     }
                     ModuleDecl::ExportNamed(named_export) => {
                         if let Some(export_src) = &named_export.src {
-                            let msg = format!(
-                                "export from {:?} not supported in inner module({}) yet",
-                                export_src.value, self.module_id.id
-                            );
-                            todo!("{}", msg);
+                            println!("{}", self.module_id.id);
+                            dbg!(&export_src);
+                            dbg!(&self.src_to_module);
+                            dbg!(&self.modules_in_scope);
+
+                            if let Some(imported_module_id) =
+                                self.src_to_module.get(&export_src.value.to_string())
+                                && let Some(export_map) =
+                                    self.modules_in_scope.get(imported_module_id)
+                            {
+                                stmts = Some(vec![]);
+
+                                for spec in &named_export.specifiers {
+                                    dbg!(&spec);
+                                    match spec {
+                                        ExportSpecifier::Namespace(ns) => {
+                                            let exported_namespace = export_map.get("*").unwrap();
+
+                                            match &ns.name {
+                                                ModuleExportName::Ident(name_ident) => {
+                                                    let stmt: Stmt = declare_var_with_init_stmt(
+                                                        name_ident.clone(),
+                                                        exported_namespace,
+                                                    );
+                                                    stmts.as_mut().unwrap().push(stmt.into());
+                                                }
+                                                ModuleExportName::Str(_) => {
+                                                    unimplemented!(
+                                                        "{}",
+                                                        MODULE_CONCATENATE_ERROR_STR_MODULE_NAME
+                                                    );
+                                                }
+                                            }
+                                        }
+                                        ExportSpecifier::Default(default_reexport) => {
+                                            let default_export_name =
+                                                export_map.get("default").unwrap();
+
+                                            let stmt: Stmt = declare_var_with_init_stmt(
+                                                default_reexport.exported.clone(),
+                                                default_export_name,
+                                            );
+
+                                            stmts.as_mut().unwrap().push(stmt.into());
+                                        }
+                                        ExportSpecifier::Named(named) => {
+                                            let (exported_ident, orig_name) =
+                                                match (&named.exported, &named.orig) {
+                                                    (None, ModuleExportName::Ident(orig)) => {
+                                                        (orig.clone(), orig.sym.to_string())
+                                                    }
+                                                    (
+                                                        Some(ModuleExportName::Ident(
+                                                            exported_ident,
+                                                        )),
+                                                        ModuleExportName::Ident(orig_ident),
+                                                    ) => (
+                                                        exported_ident.clone(),
+                                                        orig_ident.sym.to_string(),
+                                                    ),
+                                                    (_, _) => {
+                                                        unimplemented!(
+                                                            "{}",
+                                                            MODULE_CONCATENATE_ERROR_STR_MODULE_NAME
+                                                        )
+                                                    }
+                                                };
+
+                                            if let Some(mapped_export) = export_map.get(&orig_name)
+                                            {
+                                                stmts.as_mut().unwrap().push(
+                                                    declare_var_with_init_stmt(
+                                                        exported_ident,
+                                                        mapped_export,
+                                                    )
+                                                    .into(),
+                                                );
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                unreachable!("{}", MODULE_CONCATENATE_ERROR);
+                            }
                         } else {
                             let mut dcl_stmts: Vec<ModuleItem> = vec![];
 
@@ -311,11 +393,12 @@ impl<'a> VisitMut for InnerTransform<'a> {
                                                 Some(ModuleExportName::Ident(exported_ident)),
                                                 ModuleExportName::Ident(orig_ident),
                                             ) => {
-                                                let dccl = exported_ident.clone().into_var_decl(
-                                                    VarDeclKind::Var,
-                                                    orig_ident.clone().into(),
-                                                );
-                                                dcl_stmts.push(dccl.into());
+                                                let decl_stmt =
+                                                    exported_ident.clone().into_var_decl(
+                                                        VarDeclKind::Var,
+                                                        orig_ident.clone().into(),
+                                                    );
+                                                dcl_stmts.push(decl_stmt.into());
                                             }
                                             (None, ModuleExportName::Ident(_)) => {
                                                 // do nothing, it will be removed
@@ -411,11 +494,4 @@ fn uniq_module_default_export_name(module_id: &ModuleId, context: &Arc<Context>)
 
 fn uniq_module_namespace_name(module_id: &ModuleId, context: &Arc<Context>) -> String {
     format!("{}_ns", uniq_module_prefix(module_id, context))
-}
-
-fn declare_var_with_init(name: Ident, init: &str) -> Stmt {
-    let stmt: Stmt = quote_ident!(init)
-        .into_var_decl(VarDeclKind::Var, name.into())
-        .into();
-    stmt
 }

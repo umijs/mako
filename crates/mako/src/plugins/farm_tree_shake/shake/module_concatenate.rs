@@ -1,3 +1,4 @@
+mod concatenate_context;
 mod exports_transform;
 mod external_transformer;
 mod inner_transformer;
@@ -18,11 +19,12 @@ use swc_core::ecma::transforms::base::resolver;
 use swc_core::ecma::utils::{quote_ident, quote_str, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
+use self::concatenate_context::Interops;
+use self::utils::uniq_module_prefix;
 use crate::compiler::Context;
 use crate::module::{generate_module_id, Dependency, ImportType, ModuleId, ResolveType};
 use crate::module_graph::ModuleGraph;
 use crate::plugins::farm_tree_shake::module::{AllExports, TreeShakeModule};
-use crate::plugins::farm_tree_shake::shake::module_concatenate::utils::uniq_module_prefix;
 use crate::tree_shaking::tree_shaking_module::ModuleSystem;
 
 pub fn optimize_module_graph(
@@ -105,7 +107,7 @@ pub fn optimize_module_graph(
         for (module_id, _dep) in deps {
             let esm_import = match _dep.resolve_type {
                 ResolveType::Import(_) => true,
-                ResolveType::ExportNamed => true,
+                ResolveType::ExportNamed(_) => true,
                 ResolveType::ExportAll => true,
                 ResolveType::Require => false,
                 ResolveType::DynamicImport => false,
@@ -131,7 +133,7 @@ pub fn optimize_module_graph(
     fn extends_external_modules(config: &mut ConcatenateConfig, module_graph: &ModuleGraph) {
         let mut visited = HashSet::new();
 
-        for ext in config.externals.iter() {
+        for (ext, _) in config.externals.iter() {
             if visited.contains(ext) {
                 continue;
             }
@@ -151,7 +153,7 @@ pub fn optimize_module_graph(
         for visited in visited {
             if config.inners.contains(&visited) {
                 config.inners.remove(&visited);
-                config.externals.insert(visited);
+                config.externals.insert(visited, Default::default());
             }
         }
     }
@@ -170,6 +172,18 @@ pub fn optimize_module_graph(
         } else {
             used_as_inner.insert(config.root.clone());
             used_as_inner.extend(config.inners.iter().cloned());
+
+            if config.externals.is_empty() {
+                // wildcard interop can handle all interop case
+            } else {
+                for module_id in &config.inners {
+                    for (dep_module_id, _dep) in module_graph.get_dependencies(module_id) {
+                        if config.externals.contains_key(dep_module_id) {
+                            todo!("use from trait");
+                        }
+                    }
+                }
+            }
 
             concat_configurations.push(config);
         }
@@ -324,7 +338,7 @@ pub fn optimize_module_graph(
 struct ConcatenateConfig {
     root: ModuleId,
     inners: HashSet<ModuleId>,
-    externals: HashSet<ModuleId>,
+    externals: HashMap<ModuleId, Interops>,
 }
 
 impl ConcatenateConfig {}
@@ -359,7 +373,7 @@ impl ConcatenateConfig {
     }
 
     pub fn add_external(&mut self, external_id: ModuleId) {
-        self.externals.insert(external_id);
+        self.externals.insert(external_id, Default::default());
     }
 
     pub fn sorted_modules(&self, module_graph: &ModuleGraph) -> Vec<ModuleId> {
@@ -401,6 +415,6 @@ impl ConcatenateConfig {
         modules
     }
     fn is_external(&self, module_id: &ModuleId) -> bool {
-        self.externals.contains(module_id)
+        self.externals.contains_key(module_id)
     }
 }
