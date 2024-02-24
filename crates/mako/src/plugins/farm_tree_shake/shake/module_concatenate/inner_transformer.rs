@@ -292,11 +292,6 @@ impl<'a> VisitMut for InnerTransform<'a> {
                     }
                     ModuleDecl::ExportNamed(named_export) => {
                         if let Some(export_src) = &named_export.src {
-                            println!("{}", self.module_id.id);
-                            dbg!(&export_src);
-                            dbg!(&self.src_to_module);
-                            dbg!(&self.modules_in_scope);
-
                             if let Some(imported_module_id) =
                                 self.src_to_module.get(&export_src.value.to_string())
                                 && let Some(export_map) =
@@ -305,7 +300,6 @@ impl<'a> VisitMut for InnerTransform<'a> {
                                 stmts = Some(vec![]);
 
                                 for spec in &named_export.specifiers {
-                                    dbg!(&spec);
                                     match spec {
                                         ExportSpecifier::Namespace(ns) => {
                                             let exported_namespace = export_map.get("*").unwrap();
@@ -393,12 +387,14 @@ impl<'a> VisitMut for InnerTransform<'a> {
                                                 Some(ModuleExportName::Ident(exported_ident)),
                                                 ModuleExportName::Ident(orig_ident),
                                             ) => {
-                                                let decl_stmt =
-                                                    exported_ident.clone().into_var_decl(
-                                                        VarDeclKind::Var,
-                                                        orig_ident.clone().into(),
-                                                    );
-                                                dcl_stmts.push(decl_stmt.into());
+                                                if !exported_ident.sym.eq("default") {
+                                                    let decl_stmt =
+                                                        exported_ident.clone().into_var_decl(
+                                                            VarDeclKind::Var,
+                                                            orig_ident.clone().into(),
+                                                        );
+                                                    dcl_stmts.push(decl_stmt.into());
+                                                }
                                             }
                                             (None, ModuleExportName::Ident(_)) => {
                                                 // do nothing, it will be removed

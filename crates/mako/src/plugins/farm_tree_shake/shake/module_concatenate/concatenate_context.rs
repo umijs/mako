@@ -1,5 +1,8 @@
 use bitflags::bitflags;
 use serde::Serialize;
+use swc_core::common::DUMMY_SP;
+use swc_core::ecma::ast::{Expr, MemberExpr, ModuleItem, Stmt, VarDeclKind};
+use swc_core::ecma::utils::{quote_ident, quote_str, ExprFactory};
 
 use crate::module::{ImportType, NamedExportType, ResolveType};
 
@@ -11,6 +14,74 @@ bitflags! {
         const ExportAll = 1<<3;
     }
 }
+
+impl Interops {
+    pub fn require_expr(&self, src: &str) -> Expr {
+        let mut interopee =
+            quote_ident!("require").as_call(DUMMY_SP, vec![quote_str!(DUMMY_SP, src).as_arg()]);
+
+        if self.contains(Interops::ExportAll) {
+            interopee = MemberExpr {
+                span: DUMMY_SP,
+                obj: quote_ident!("_export_star").into(),
+                prop: quote_ident!("_").into(),
+            }
+            .as_call(
+                DUMMY_SP,
+                vec![interopee.as_arg(), quote_ident!("exports").as_arg()],
+            );
+        }
+
+        if self.contains(Interops::Wildcard) {
+            return MemberExpr {
+                span: DUMMY_SP,
+                obj: quote_ident!("_interop_require_wildcard").into(),
+                prop: quote_ident!("_").into(),
+            }
+            .as_call(DUMMY_SP, vec![interopee.as_arg()]);
+        }
+
+        if self.contains(Interops::Default) {
+            return MemberExpr {
+                span: DUMMY_SP,
+                obj: quote_ident!("_interop_require_default").into(),
+                prop: quote_ident!("_").into(),
+            }
+            .as_call(DUMMY_SP, vec![interopee.as_arg()]);
+        }
+
+        interopee
+    }
+
+    pub fn inject_items(&self) -> Vec<ModuleItem> {
+        let mut res = vec![];
+
+        if self.contains(Interops::Default) {
+            let stmt: Stmt = quote_ident!("require")
+                .as_call(
+                    DUMMY_SP,
+                    vec![quote_str!(DUMMY_SP, "@swc/helpers/_/_interop_require_default").as_arg()],
+                )
+                .into_var_decl(
+                    VarDeclKind::Var,
+                    quote_ident!("_interop_require_default").into(),
+                )
+                .into();
+            res.push(stmt.into());
+        }
+
+        if self.contains(Interops::Wildcard) {
+            todo!("require wildcard");
+        }
+
+        if self.contains(Interops::ExportAll) {
+            todo!("require export all");
+        }
+
+        res
+    }
+}
+
 impl From<&ImportType> for Interops {
     fn from(value: &ImportType) -> Self {
         let mut interops = Interops::empty();

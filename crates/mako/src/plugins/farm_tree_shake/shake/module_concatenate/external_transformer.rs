@@ -1,18 +1,150 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use swc_core::common::{Spanned, DUMMY_SP};
 use swc_core::ecma::ast::{
-    EmptyStmt, ImportSpecifier, MemberExpr, Module, ModuleDecl, ModuleExportName, ModuleItem, Stmt,
-    VarDecl, VarDeclKind,
+    EmptyStmt, ExportNamedSpecifier, ExportSpecifier, ImportSpecifier, MemberExpr, Module,
+    ModuleDecl, ModuleExportName, ModuleItem, NamedExport, Stmt, VarDecl, VarDeclKind,
 };
 use swc_core::ecma::utils::{member_expr, quote_ident, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
+use crate::compiler::Context;
 use crate::module::ModuleId;
+use crate::plugins::farm_tree_shake::shake::module_concatenate::utils::uniq_module_prefix;
 
 pub(super) struct ExternalTransformer<'a> {
     pub src_to_module: &'a HashMap<String, ModuleId>,
     pub current_external_map: &'a HashMap<ModuleId, String>,
+    pub context: &'a Arc<Context>,
+    pub module_id: &'a ModuleId,
+}
+
+impl<'a> ExternalTransformer<'_> {
+    fn src_to_export_name(&'a self, src: &str) -> Option<&'a String> {
+        self.src_to_module
+            .get(src)
+            .and_then(|module_id| self.current_external_map.get(module_id))
+    }
+
+    fn named_export_specifier_to_repalce_items(
+        &self,
+        specifiers: &Vec<ExportSpecifier>,
+        name: &String,
+    ) -> Vec<ModuleItem> {
+        let mut var_decorators: Vec<ExportSpecifier> = vec![];
+
+        let mut stmts: Vec<ModuleItem> = vec![];
+
+        for spec in specifiers {
+            match spec {
+                ExportSpecifier::Namespace(namespace) => {
+                    match &namespace.name {
+                        ModuleExportName::Ident(local) => {
+                            let spec = ExportNamedSpecifier {
+                                span: DUMMY_SP,
+                                orig: ModuleExportName::Ident(quote_ident!(name.clone())),
+                                exported: Some(ModuleExportName::Ident(local.clone())),
+                                is_type_only: false,
+                            };
+                            var_decorators.push(spec.into());
+                        }
+                        ModuleExportName::Str(_) => {}
+                    };
+                }
+                ExportSpecifier::Default(default_spec) => {
+                    let default_export_var_decl = MemberExpr {
+                        span: DUMMY_SP,
+                        obj: quote_ident!(name.clone()).into(),
+                        prop: quote_ident!("default").into(),
+                    }
+                    .into_var_decl(VarDeclKind::Var, default_spec.exported.clone().into());
+
+                    stmts.push(default_export_var_decl.into());
+
+                    let spec = ExportNamedSpecifier {
+                        span: DUMMY_SP,
+                        orig: ModuleExportName::Ident(quote_ident!(name.clone())),
+                        exported: Some(ModuleExportName::Ident(quote_ident!("default"))),
+                        is_type_only: false,
+                    };
+                    var_decorators.push(spec.into());
+                }
+                ExportSpecifier::Named(named) => match (&named.orig, &named.exported) {
+                    (ModuleExportName::Ident(orig), Some(ModuleExportName::Ident(exported))) => {
+                        let local_proxy_name = if exported.sym.eq("default") {
+                            quote_ident!(uniq_module_default_export_name(
+                                self.module_id,
+                                self.context
+                            ))
+                        } else {
+                            exported.clone()
+                        };
+
+                        let export_name_decl = MemberExpr {
+                            span: DUMMY_SP,
+                            obj: quote_ident!(name.clone()).into(),
+                            prop: orig.clone().into(),
+                        }
+                        .into_var_decl(VarDeclKind::Var, local_proxy_name.clone().into());
+                        stmts.push(export_name_decl.into());
+
+                        var_decorators.push(
+                            ExportNamedSpecifier {
+                                span: Default::default(),
+                                orig: local_proxy_name.into(),
+                                exported: named.exported.clone(),
+                                is_type_only: false,
+                            }
+                            .into(),
+                        );
+                    }
+                    (ModuleExportName::Ident(orig), None) => {
+                        let local_proxy_name = if orig.sym.eq("default") {
+                            quote_ident!(uniq_module_default_export_name(
+                                self.module_id,
+                                self.context
+                            ))
+                        } else {
+                            orig.clone()
+                        };
+
+                        let var_decl = MemberExpr {
+                            span: DUMMY_SP,
+                            obj: quote_ident!(name.clone()).into(),
+                            prop: orig.clone().into(),
+                        }
+                        .into_var_decl(VarDeclKind::Var, local_proxy_name.clone().into());
+                        stmts.push(var_decl.into());
+
+                        var_decorators.push(
+                            ExportNamedSpecifier {
+                                span: DUMMY_SP,
+                                orig: local_proxy_name.clone().into(),
+                                exported: Some(ModuleExportName::Ident(orig.clone())),
+                                is_type_only: false,
+                            }
+                            .into(),
+                        );
+                    }
+                    (_, _) => {}
+                },
+            }
+        }
+
+        let md: ModuleDecl = NamedExport {
+            span: Default::default(),
+            specifiers: var_decorators,
+            src: None,
+            type_only: false,
+            with: None,
+        }
+        .into();
+
+        stmts.push(md.into());
+
+        stmts
+    }
 }
 
 impl VisitMut for ExternalTransformer<'_> {
@@ -28,7 +160,9 @@ impl VisitMut for ExternalTransformer<'_> {
     }
 
     fn visit_mut_module_items(&mut self, module_items: &mut Vec<ModuleItem>) {
-        for item in module_items.iter_mut() {
+        let mut replaces = vec![];
+
+        for (index, item) in module_items.iter_mut().enumerate() {
             if let ModuleItem::ModuleDecl(module_decl) = item {
                 match module_decl {
                     ModuleDecl::Import(import_decl) => {
@@ -125,7 +259,19 @@ impl VisitMut for ExternalTransformer<'_> {
                     }
 
                     ModuleDecl::ExportDecl(_) => {}
-                    ModuleDecl::ExportNamed(_) => {}
+                    ModuleDecl::ExportNamed(named_export) => {
+                        if let Some(src) = &named_export.src
+                            && let Some(external_module_namespace) =
+                                self.src_to_export_name(src.value.as_ref())
+                        {
+                            let items = self.named_export_specifier_to_repalce_items(
+                                &named_export.specifiers,
+                                external_module_namespace,
+                            );
+
+                            replaces.push((index, items));
+                        }
+                    }
                     ModuleDecl::ExportDefaultDecl(_) => {}
                     ModuleDecl::ExportDefaultExpr(_) => {}
                     ModuleDecl::ExportAll(_) => {}
@@ -135,7 +281,15 @@ impl VisitMut for ExternalTransformer<'_> {
                 }
             }
         }
+
+        for (index, items) in replaces {
+            module_items.splice(index..index + 1, items);
+        }
     }
+}
+
+fn uniq_module_default_export_name(module_id: &ModuleId, context: &Arc<Context>) -> String {
+    format!("{}_0", uniq_module_prefix(module_id, context))
 }
 
 #[cfg(test)]
@@ -165,6 +319,8 @@ mod tests {
         let mut t = ExternalTransformer {
             src_to_module: &src_2_module,
             current_external_map: &current_external_map,
+            context: &context,
+            module_id: &ModuleId::from("sut.js"),
         };
 
         ast.ast.visit_mut_with(&mut t);

@@ -13,10 +13,10 @@ use external_transformer::ExternalTransformer;
 use inner_transformer::InnerTransform;
 use mako_core::swc_common::util::take::Take;
 use root_transformer::RootTransformer;
-use swc_core::common::{Span, SyntaxContext, DUMMY_SP, GLOBALS};
+use swc_core::common::{Span, SyntaxContext, GLOBALS};
 use swc_core::ecma::ast::{ModuleItem, Stmt, VarDeclKind};
 use swc_core::ecma::transforms::base::resolver;
-use swc_core::ecma::utils::{quote_ident, quote_str, ExprFactory};
+use swc_core::ecma::utils::{quote_ident, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use self::concatenate_context::Interops;
@@ -177,9 +177,10 @@ pub fn optimize_module_graph(
                 // wildcard interop can handle all interop case
             } else {
                 for module_id in &config.inners {
-                    for (dep_module_id, _dep) in module_graph.get_dependencies(module_id) {
-                        if config.externals.contains_key(dep_module_id) {
-                            todo!("use from trait");
+                    for (dep_module_id, dep) in module_graph.get_dependencies(module_id) {
+                        if let Some(curr_interops) = config.externals.get_mut(dep_module_id) {
+                            let it: Interops = (&dep.resolve_type).into();
+                            curr_interops.insert(it);
                         }
                     }
                 }
@@ -209,6 +210,9 @@ pub fn optimize_module_graph(
             let mut external_module_namespace = HashMap::new();
             let mut all_top_level_vars = HashSet::new();
 
+            let all_interops = config.merged_interops();
+            module_items.extend(all_interops.inject_items());
+
             for id in &config.sorted_modules(module_graph) {
                 if id.eq(&config.root) {
                     continue;
@@ -216,7 +220,7 @@ pub fn optimize_module_graph(
 
                 let import_source_to_module_id = source_to_module_id(id, module_graph);
 
-                if config.is_external(id) {
+                if let Some(interop) = config.external_interops(id) {
                     let base_name = uniq_module_prefix(id, context);
                     let mut uniq_name = base_name.to_string();
 
@@ -228,17 +232,12 @@ pub fn optimize_module_graph(
                     all_top_level_vars.insert(uniq_name.clone());
                     external_module_namespace.insert(id.clone(), uniq_name.clone());
 
-                    let stmt: Stmt = quote_ident!("require")
-                        .as_call(
-                            DUMMY_SP,
-                            vec![
-                                quote_str!(DUMMY_SP, generate_module_id(id.id.clone(), context))
-                                    .as_arg(),
-                            ],
-                        )
+                    let require_src = generate_module_id(id.id.clone(), context);
+
+                    let stmt: Stmt = interop
+                        .require_expr(&require_src)
                         .into_var_decl(VarDeclKind::Var, quote_ident!(uniq_name).into())
                         .into();
-
                     module_items.push(stmt.into());
 
                     module_graph.add_dependency(
@@ -271,6 +270,8 @@ pub fn optimize_module_graph(
                 let mut ext_trans = ExternalTransformer {
                     src_to_module: &import_source_to_module_id,
                     current_external_map: &external_module_namespace,
+                    module_id: id,
+                    context,
                 };
                 script_ast.ast.visit_mut_with(&mut ext_trans);
 
@@ -304,6 +305,8 @@ pub fn optimize_module_graph(
             let mut ext_trans = ExternalTransformer {
                 src_to_module: &src_2_module_id,
                 current_external_map: &external_module_namespace,
+                module_id: &config.root,
+                context,
             };
             root_module_ast.visit_mut_with(&mut ext_trans);
 
@@ -416,5 +419,19 @@ impl ConcatenateConfig {
     }
     fn is_external(&self, module_id: &ModuleId) -> bool {
         self.externals.contains_key(module_id)
+    }
+
+    fn external_interops(&self, module_id: &ModuleId) -> Option<Interops> {
+        self.externals.get(module_id).copied()
+    }
+
+    fn merged_interops(&self) -> Interops {
+        let mut interops = Interops::empty();
+
+        for (_, v) in self.externals.iter() {
+            interops |= *v;
+        }
+
+        interops
     }
 }

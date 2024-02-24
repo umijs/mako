@@ -4,17 +4,15 @@ use std::sync::Arc;
 use swc_core::common::comments::{Comment, CommentKind};
 use swc_core::common::{Mark, Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
-    Decl, ExportDecl, ExportNamedSpecifier, ExportSpecifier, Id, Ident, ImportSpecifier, Module,
-    ModuleDecl, ModuleExportName, ModuleItem, NamedExport, Stmt, VarDeclKind,
+    ExportNamedSpecifier, ExportSpecifier, Id, Ident, ImportSpecifier, Module, ModuleDecl,
+    ModuleExportName, ModuleItem, NamedExport, Stmt, VarDeclKind,
 };
 use swc_core::ecma::utils::{collect_decls_with_ctxt, quote_ident, ExprFactory, IdentRenamer};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::compiler::Context;
 use crate::module::{relative_to_root, ModuleId};
-use crate::plugins::farm_tree_shake::shake::module_concatenate::utils::{
-    declare_var_with_init, MODULE_CONCATENATE_ERROR_STR_MODULE_NAME,
-};
+use crate::plugins::farm_tree_shake::shake::module_concatenate::utils::MODULE_CONCATENATE_ERROR_STR_MODULE_NAME;
 
 pub(super) struct RootTransformer<'a> {
     pub current_module_id: &'a ModuleId,
@@ -224,19 +222,19 @@ impl<'a> VisitMut for RootTransformer<'a> {
                                             todo!();
                                         }
                                         ExportSpecifier::Named(named) => {
-                                            let (local, exported) =
-                                                export_named_specifier_to_local_and_exported(named);
+                                            let (exported_1, orig) =
+                                                export_named_specifier_to_orig_and_exported(named);
 
-                                            if let Some(mapped_export) = export_map.get(&exported) {
+                                            if let Some(mapped_export) = export_map.get(&orig) {
                                                 let i = items.as_mut().unwrap();
 
-                                                if local.sym.eq(mapped_export) {
+                                                if exported_1.sym.eq(mapped_export) {
                                                     let module_dcl: ModuleDecl = NamedExport {
                                                         span: Default::default(),
                                                         specifiers: vec![ExportNamedSpecifier {
                                                             span: Default::default(),
                                                             orig: ModuleExportName::Ident(
-                                                                local.clone(),
+                                                                exported_1.clone(),
                                                             ),
                                                             exported: None,
                                                             is_type_only: false,
@@ -250,15 +248,22 @@ impl<'a> VisitMut for RootTransformer<'a> {
 
                                                     i.push(module_dcl.into());
                                                 } else {
-                                                    let export_decl: ModuleDecl = ExportDecl {
+                                                    let export_decl: ModuleDecl = NamedExport {
                                                         span: Default::default(),
-                                                        decl: Decl::Var(
-                                                            declare_var_with_init(
-                                                                local.clone(),
-                                                                mapped_export,
-                                                            )
-                                                            .into(),
-                                                        ),
+                                                        specifiers: vec![ExportNamedSpecifier {
+                                                            span: Default::default(),
+                                                            orig: ModuleExportName::Ident(
+                                                                quote_ident!(mapped_export.clone()),
+                                                            ),
+                                                            exported: Some(
+                                                                ModuleExportName::Ident(exported_1),
+                                                            ),
+                                                            is_type_only: false,
+                                                        }
+                                                        .into()],
+                                                        src: None,
+                                                        type_only: false,
+                                                        with: None,
                                                     }
                                                     .into();
 
@@ -297,7 +302,7 @@ impl<'a> VisitMut for RootTransformer<'a> {
     }
 }
 
-fn export_named_specifier_to_local_and_exported(named: &ExportNamedSpecifier) -> (Ident, String) {
+fn export_named_specifier_to_orig_and_exported(named: &ExportNamedSpecifier) -> (Ident, String) {
     match (&named.exported, &named.orig) {
         (None, ModuleExportName::Ident(orig)) => (orig.clone(), orig.sym.to_string()),
         (Some(ModuleExportName::Ident(exported_ident)), ModuleExportName::Ident(orig_ident)) => {
