@@ -21,14 +21,17 @@ pub(super) struct ExternalTransformer<'a> {
 }
 
 impl<'a> ExternalTransformer<'_> {
-    fn src_to_export_name(&'a self, src: &str) -> Option<&'a String> {
-        self.src_to_module
-            .get(src)
-            .and_then(|module_id| self.current_external_map.get(module_id))
+    fn src_to_export_name(&'a self, src: &str) -> Option<(&'a String, &'a ModuleId)> {
+        self.src_to_module.get(src).and_then(|module_id| {
+            self.current_external_map
+                .get(module_id)
+                .map(|export_name| (export_name, module_id))
+        })
     }
 
-    fn named_export_specifier_to_repalce_items(
+    fn named_export_specifier_to_replace_items(
         &self,
+        src_module_id: &ModuleId,
         specifiers: &Vec<ExportSpecifier>,
         name: &String,
     ) -> Vec<ModuleItem> {
@@ -53,19 +56,33 @@ impl<'a> ExternalTransformer<'_> {
                     };
                 }
                 ExportSpecifier::Default(default_spec) => {
+                    // when support export default from "m"
+                    let local_default_name = if default_spec.exported.sym.eq("default") {
+                        quote_ident!(uniq_module_default_export_name(
+                            self.module_id,
+                            self.context
+                        ))
+                    } else {
+                        quote_ident!(uniq_module_export_name(
+                            src_module_id,
+                            &default_spec.exported.sym,
+                            self.context
+                        ))
+                    };
+
                     let default_export_var_decl = MemberExpr {
                         span: DUMMY_SP,
                         obj: quote_ident!(name.clone()).into(),
                         prop: quote_ident!("default").into(),
                     }
-                    .into_var_decl(VarDeclKind::Var, default_spec.exported.clone().into());
+                    .into_var_decl(VarDeclKind::Var, local_default_name.clone().into());
 
                     stmts.push(default_export_var_decl.into());
 
                     let spec = ExportNamedSpecifier {
                         span: DUMMY_SP,
-                        orig: ModuleExportName::Ident(quote_ident!(name.clone())),
-                        exported: Some(ModuleExportName::Ident(quote_ident!("default"))),
+                        orig: ModuleExportName::Ident(local_default_name),
+                        exported: Some(ModuleExportName::Ident(default_spec.exported.clone())),
                         is_type_only: false,
                     };
                     var_decorators.push(spec.into());
@@ -78,7 +95,11 @@ impl<'a> ExternalTransformer<'_> {
                                 self.context
                             ))
                         } else {
-                            exported.clone()
+                            quote_ident!(uniq_module_export_name(
+                                src_module_id,
+                                &orig.sym,
+                                self.context
+                            ))
                         };
 
                         let export_name_decl = MemberExpr {
@@ -106,7 +127,11 @@ impl<'a> ExternalTransformer<'_> {
                                 self.context
                             ))
                         } else {
-                            orig.clone()
+                            quote_ident!(uniq_module_export_name(
+                                src_module_id,
+                                &orig.sym,
+                                self.context
+                            ))
                         };
 
                         let var_decl = MemberExpr {
@@ -121,7 +146,11 @@ impl<'a> ExternalTransformer<'_> {
                             ExportNamedSpecifier {
                                 span: DUMMY_SP,
                                 orig: local_proxy_name.clone().into(),
-                                exported: Some(ModuleExportName::Ident(orig.clone())),
+                                exported: if local_proxy_name.sym.eq(&orig.sym) {
+                                    None
+                                } else {
+                                    Some(ModuleExportName::Ident(orig.clone()))
+                                },
                                 is_type_only: false,
                             }
                             .into(),
@@ -206,7 +235,7 @@ impl VisitMut for ExternalTransformer<'_> {
                                                     }
                                                 }
                                             } else {
-                                                let x = MemberExpr {
+                                                let var_decl = MemberExpr {
                                                     span: DUMMY_SP,
                                                     obj: quote_ident!(
                                                         external_module_namespace.clone()
@@ -219,7 +248,7 @@ impl VisitMut for ExternalTransformer<'_> {
                                                     named.local.clone().into(),
                                                 );
 
-                                                var_decorators.extend(x.decls);
+                                                var_decorators.extend(var_decl.decls);
                                             }
                                         }
                                         ImportSpecifier::Default(default) => {
@@ -261,10 +290,11 @@ impl VisitMut for ExternalTransformer<'_> {
                     ModuleDecl::ExportDecl(_) => {}
                     ModuleDecl::ExportNamed(named_export) => {
                         if let Some(src) = &named_export.src
-                            && let Some(external_module_namespace) =
+                            && let Some((external_module_namespace, src_module_id)) =
                                 self.src_to_export_name(src.value.as_ref())
                         {
-                            let items = self.named_export_specifier_to_repalce_items(
+                            let items = self.named_export_specifier_to_replace_items(
+                                src_module_id,
                                 &named_export.specifiers,
                                 external_module_namespace,
                             );
@@ -292,6 +322,10 @@ fn uniq_module_default_export_name(module_id: &ModuleId, context: &Arc<Context>)
     format!("{}_0", uniq_module_prefix(module_id, context))
 }
 
+fn uniq_module_export_name(module_id: &ModuleId, name: &str, context: &Arc<Context>) -> String {
+    format!("{}_{name}", uniq_module_prefix(module_id, context))
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
@@ -307,7 +341,7 @@ mod tests {
         context.config.devtool = None;
         let context: Arc<Context> = Arc::new(context);
 
-        let mut ast = build_js_ast("sut.js", code, &context).unwrap();
+        let mut ast = build_js_ast("mut.js", code, &context).unwrap();
 
         let src_2_module: HashMap<String, ModuleId> = hashmap! {
             "external".to_string() => ModuleId::from("external")
@@ -320,7 +354,7 @@ mod tests {
             src_to_module: &src_2_module,
             current_external_map: &current_external_map,
             context: &context,
-            module_id: &ModuleId::from("sut.js"),
+            module_id: &ModuleId::from("mut.js"),
         };
 
         ast.ast.visit_mut_with(&mut t);
@@ -430,6 +464,124 @@ mod tests {
             import { imported as named } from "inner";
             "#
             .trim()
+        );
+    }
+
+    #[test]
+    fn test_export_named_from_external() {
+        let code = transform_with_external_replace(
+            r#"
+            export { named } from "external";
+            "#,
+        );
+
+        assert_eq!(
+            code,
+            r#"
+var __mako_external_named = external_namespace.named;
+export { __mako_external_named as named };
+            "#
+            .trim()
+        );
+    }
+    #[test]
+    fn test_export_named_as_from_external() {
+        let code = transform_with_external_replace(
+            r#"
+            export { named as foo} from "external";
+            "#,
+        );
+
+        assert_eq!(
+            code,
+            r#"
+var __mako_external_named = external_namespace.named;
+export { __mako_external_named as foo };
+            "#
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_export_namespace_from_external() {
+        let code = transform_with_external_replace(
+            r#"
+            export * as foo from "external";
+            "#,
+        );
+
+        assert_eq!(code, r#" export { external_namespace as foo }; "#.trim());
+    }
+
+    #[test]
+    fn test_export_named_default_from_external() {
+        let code = transform_with_external_replace(
+            r#"
+            export { default } from "external";
+            "#,
+        );
+
+        assert_eq!(
+            code,
+            r#"
+var __mako_mut_js_0 = external_namespace.default;
+export { __mako_mut_js_0 as default };
+         "#
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_export_named_as_default_from_external() {
+        let code = transform_with_external_replace(
+            r#"
+            export { foo as default } from "external";
+            "#,
+        );
+
+        assert_eq!(
+            code,
+            r#"
+var __mako_mut_js_0 = external_namespace.foo;
+export { __mako_mut_js_0 as default };
+         "#
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_export_default_with_name_from_external() {
+        let code = transform_with_external_replace(
+            r#"
+            export x from "external";
+            "#,
+        );
+
+        assert_eq!(
+            code,
+            r#"
+var __mako_external_x = external_namespace.default;
+export { __mako_external_x as x };
+         "#
+            .trim(),
+        );
+    }
+
+    #[test]
+    fn test_export_default_as_default_from_external() {
+        let code = transform_with_external_replace(
+            r#"
+            export default from "external";
+            "#,
+        );
+
+        assert_eq!(
+            code,
+            r#"
+var __mako_mut_js_0 = external_namespace.default;
+export { __mako_mut_js_0 as default };
+         "#
+            .trim(),
         );
     }
 }
