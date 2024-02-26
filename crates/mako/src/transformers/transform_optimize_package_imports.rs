@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use cached::proc_macro::cached;
 use mako_core::anyhow::Result;
-use mako_core::nodejs_resolver::DescriptionData;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{
     ImportDecl, ImportNamedSpecifier, ImportSpecifier, ModuleDecl, ModuleExportName, ModuleItem,
@@ -11,6 +10,7 @@ use mako_core::swc_ecma_ast::{
 use mako_core::swc_ecma_utils::{quote_ident, quote_str};
 use mako_core::swc_ecma_visit::Fold;
 use mako_core::tracing::debug;
+use oxc_resolver::PackageJson;
 
 use crate::build::cached_build_module;
 use crate::compiler::Context;
@@ -127,9 +127,12 @@ impl Fold for OptimizePackageImports {
     }
 }
 
-#[cached(key = "String", convert = r#"{ format!("{:?}", description.dir()) }"#)]
-pub fn has_side_effects(description: &Arc<DescriptionData>) -> bool {
-    let pkg_json = description.data().raw();
+#[cached(
+    key = "String",
+    convert = r#"{ format!("{:?}", package_json.directory()) }"#
+)]
+pub fn has_side_effects(package_json: &Arc<PackageJson>) -> bool {
+    let pkg_json = package_json.raw_json();
     if pkg_json.is_object() {
         if let Some(side_effects) = pkg_json.as_object().unwrap().get("sideEffects") {
             match side_effects {
@@ -222,8 +225,8 @@ fn parse_barrel_file(
     }
     let resolved = resolved.unwrap();
     // handle side effects
-    let side_effects = if let Some(description) = &resolved.0.description {
-        has_side_effects(description)
+    let side_effects = if let Some(package_json) = &resolved.0.package_json() {
+        has_side_effects(package_json)
     } else {
         true
     };

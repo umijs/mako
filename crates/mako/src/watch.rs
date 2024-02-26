@@ -53,8 +53,8 @@ impl<'a> Watcher<'a> {
                 .as_ref()
                 .and_then(|info| info.resolved_resource.as_ref())
             {
-                if let Some(dir) = &resource.0.description {
-                    let dir = dir.dir().as_ref();
+                if let Some(dir) = &resource.0.package_json() {
+                    let dir = dir.directory();
                     // not in root dir or is root's parent dir
                     if dir.strip_prefix(self.root).is_err() && self.root.strip_prefix(dir).is_err()
                     {
