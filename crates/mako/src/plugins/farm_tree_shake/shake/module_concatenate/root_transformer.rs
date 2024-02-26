@@ -222,19 +222,19 @@ impl<'a> VisitMut for RootTransformer<'a> {
                                             todo!();
                                         }
                                         ExportSpecifier::Named(named) => {
-                                            let (exported_1, orig) =
+                                            let (exported_ident, orig) =
                                                 export_named_specifier_to_orig_and_exported(named);
 
                                             if let Some(mapped_export) = export_map.get(&orig) {
                                                 let i = items.as_mut().unwrap();
 
-                                                if exported_1.sym.eq(mapped_export) {
+                                                if exported_ident.sym.eq(mapped_export) {
                                                     let module_dcl: ModuleDecl = NamedExport {
                                                         span: Default::default(),
                                                         specifiers: vec![ExportNamedSpecifier {
                                                             span: Default::default(),
                                                             orig: ModuleExportName::Ident(
-                                                                exported_1.clone(),
+                                                                exported_ident.clone(),
                                                             ),
                                                             exported: None,
                                                             is_type_only: false,
@@ -256,7 +256,9 @@ impl<'a> VisitMut for RootTransformer<'a> {
                                                                 quote_ident!(mapped_export.clone()),
                                                             ),
                                                             exported: Some(
-                                                                ModuleExportName::Ident(exported_1),
+                                                                ModuleExportName::Ident(
+                                                                    exported_ident,
+                                                                ),
                                                             ),
                                                             is_type_only: false,
                                                         }
