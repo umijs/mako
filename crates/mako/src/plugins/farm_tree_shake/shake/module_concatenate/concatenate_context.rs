@@ -1,10 +1,12 @@
+use std::collections::{HashMap, HashSet};
+
 use bitflags::bitflags;
 use serde::Serialize;
 use swc_core::common::DUMMY_SP;
 use swc_core::ecma::ast::{Expr, MemberExpr, ModuleItem, Stmt, VarDeclKind};
 use swc_core::ecma::utils::{quote_ident, quote_str, ExprFactory};
 
-use crate::module::{ImportType, NamedExportType, ResolveType};
+use crate::module::{ImportType, ModuleId, NamedExportType, ResolveType};
 
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Default)]
@@ -53,7 +55,7 @@ impl Interops {
         interopee
     }
 
-    pub fn inject_items(&self) -> Vec<ModuleItem> {
+    pub fn inject_interop_items(&self) -> Vec<ModuleItem> {
         let mut res = vec![];
 
         if self.contains(Interops::Default) {
@@ -71,11 +73,22 @@ impl Interops {
         }
 
         if self.contains(Interops::Wildcard) {
-            todo!("require wildcard");
+            let stmt: Stmt = quote_ident!("require")
+                .as_call(
+                    DUMMY_SP,
+                    vec![quote_str!(DUMMY_SP, "@swc/helpers/_/_interop_require_wildcard").as_arg()],
+                )
+                .into_var_decl(
+                    VarDeclKind::Var,
+                    quote_ident!("_interop_require_wildcard").into(),
+                )
+                .into();
+            res.push(stmt.into());
         }
 
         if self.contains(Interops::ExportAll) {
-            todo!("require export all");
+            // do nothing here
+            // export * will be transformed to all named exports
         }
 
         res
@@ -132,4 +145,8 @@ impl From<&ResolveType> for Interops {
     }
 }
 
-pub struct ConcatenateContext {}
+#[derive(Debug, Default)]
+pub struct ConcatenateContext {
+    pub modules_in_scope: HashMap<ModuleId, HashMap<String, String>>,
+    pub top_level_vars: HashSet<String>,
+}

@@ -4,10 +4,13 @@ use std::sync::Arc;
 use swc_core::common::comments::{Comment, CommentKind};
 use swc_core::common::{Mark, Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
-    ExportNamedSpecifier, ExportSpecifier, Id, Ident, ImportSpecifier, Module, ModuleDecl,
-    ModuleExportName, ModuleItem, NamedExport, Stmt, VarDeclKind,
+    ExportNamedSpecifier, ExportSpecifier, Id, Ident, ImportSpecifier, KeyValueProp, Module,
+    ModuleDecl, ModuleExportName, ModuleItem, NamedExport, ObjectLit, Prop, PropOrSpread, Stmt,
+    VarDeclKind,
 };
-use swc_core::ecma::utils::{collect_decls_with_ctxt, quote_ident, ExprFactory, IdentRenamer};
+use swc_core::ecma::utils::{
+    collect_decls_with_ctxt, member_expr, quote_ident, ExprFactory, IdentRenamer,
+};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::compiler::Context;
@@ -280,7 +283,40 @@ impl<'a> VisitMut for RootTransformer<'a> {
                     }
                     ModuleDecl::ExportDefaultDecl(_) => {}
                     ModuleDecl::ExportDefaultExpr(_) => {}
-                    ModuleDecl::ExportAll(_) => {}
+                    ModuleDecl::ExportAll(export_all) => {
+                        if let Some(module_exports) =
+                            self.src_exports(export_all.src.value.as_ref())
+                        {
+                            let mut key_value_props: Vec<PropOrSpread> = vec![];
+                            for (exported_name, local_name) in module_exports.iter() {
+                                key_value_props.push(
+                                    Prop::KeyValue(KeyValueProp {
+                                        key: quote_ident!(exported_name.clone()).into(),
+                                        value: quote_ident!(local_name.clone())
+                                            .into_lazy_fn(vec![])
+                                            .into(),
+                                    })
+                                    .into(),
+                                )
+                            }
+
+                            let define_exports: Stmt = member_expr!(DUMMY_SP, __mako_require__.e)
+                                .as_call(
+                                    DUMMY_SP,
+                                    vec![
+                                        quote_ident!("exports").as_arg(),
+                                        ObjectLit {
+                                            span: DUMMY_SP,
+                                            props: key_value_props,
+                                        }
+                                        .as_arg(),
+                                    ],
+                                )
+                                .into_stmt();
+
+                            items = Some(vec![define_exports.into()]);
+                        }
+                    }
                     ModuleDecl::TsImportEquals(_) => {}
                     ModuleDecl::TsExportAssignment(_) => {}
                     ModuleDecl::TsNamespaceExport(_) => {}

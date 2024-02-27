@@ -21,6 +21,7 @@ use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use self::concatenate_context::Interops;
 use self::utils::uniq_module_prefix;
+use crate::ast::js_ast_to_code;
 use crate::compiler::Context;
 use crate::module::{generate_module_id, Dependency, ImportType, ModuleId, ResolveType};
 use crate::module_graph::ModuleGraph;
@@ -64,13 +65,20 @@ pub fn optimize_module_graph(
             }
 
             let incoming_deps = module_graph.dependant_dependencies(module_id);
-
             let dynamic_imported = incoming_deps.iter().any(|&deps| {
                 deps.iter()
                     .any(|d| matches!(d.resolve_type, ResolveType::DynamicImport))
             });
 
             if dynamic_imported {
+                can_be_inner = false;
+            }
+
+            let export_all = module_graph
+                .get_dependencies(module_id)
+                .into_iter()
+                .any(|(_, dep)| dep.resolve_type == ResolveType::ExportAll);
+            if export_all {
                 can_be_inner = false;
             }
 
@@ -203,6 +211,10 @@ pub fn optimize_module_graph(
     }
 
     GLOBALS.set(&context.meta.script.globals, || {
+        if cfg!(debug_assertions) {
+            dbg!(&concat_configurations);
+        }
+
         for config in &concat_configurations {
             let mut module_items: Vec<ModuleItem> = Vec::new();
 
@@ -211,7 +223,7 @@ pub fn optimize_module_graph(
             let mut all_top_level_vars = HashSet::new();
 
             let all_interops = config.merged_interops();
-            module_items.extend(all_interops.inject_items());
+            module_items.extend(all_interops.inject_interop_items());
 
             for id in &config.sorted_modules(module_graph) {
                 if id.eq(&config.root) {
@@ -219,6 +231,11 @@ pub fn optimize_module_graph(
                 }
 
                 let import_source_to_module_id = source_to_module_id(id, module_graph);
+
+                if cfg!(debug_assertions) {
+                    println!("\n*** start for {}", id.id);
+                    dbg!(&config.external_interops(id));
+                }
 
                 if let Some(interop) = config.external_interops(id) {
                     let base_name = uniq_module_prefix(id, context);
@@ -267,6 +284,11 @@ pub fn optimize_module_graph(
                 let module_info = module.info.as_mut().unwrap();
                 let script_ast = module_info.ast.script_mut().unwrap();
 
+                if cfg!(debug_assertions) {
+                    let code_map = js_ast_to_code(&script_ast.ast, context, &id.id).unwrap();
+                    println!("code:\n\n{}\n", code_map.0);
+                }
+
                 let mut ext_trans = ExternalTransformer {
                     src_to_module: &import_source_to_module_id,
                     current_external_map: &external_module_namespace,
@@ -275,6 +297,10 @@ pub fn optimize_module_graph(
                 };
                 script_ast.ast.visit_mut_with(&mut ext_trans);
 
+                if cfg!(debug_assertions) {
+                    let code_map = js_ast_to_code(&script_ast.ast, context, &id.id).unwrap();
+                    println!("after external:\n{}\n", code_map.0);
+                }
                 let mut inner_transformer = InnerTransform::new(
                     &mut modules_in_current_scope,
                     &mut all_top_level_vars,
@@ -288,6 +314,10 @@ pub fn optimize_module_graph(
                 script_ast.ast.visit_mut_with(&mut inner_transformer);
                 script_ast.ast.visit_mut_with(&mut CleanSyntaxContext {});
 
+                if cfg!(debug_assertions) {
+                    let code_map = js_ast_to_code(&script_ast.ast, context, &id.id).unwrap();
+                    println!("after inner:\n{}\n", code_map.0);
+                }
                 module_items.append(&mut script_ast.ast.body.clone());
             }
 

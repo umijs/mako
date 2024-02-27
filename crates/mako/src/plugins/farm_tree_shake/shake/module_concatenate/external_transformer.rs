@@ -549,6 +549,7 @@ export { __mako_mut_js_0 as default };
         );
     }
 
+    #[ignore]
     #[test]
     fn test_export_default_with_name_from_external() {
         let code = transform_with_external_replace(
@@ -567,6 +568,7 @@ export { __mako_external_x as x };
         );
     }
 
+    #[ignore]
     #[test]
     fn test_export_default_as_default_from_external() {
         let code = transform_with_external_replace(

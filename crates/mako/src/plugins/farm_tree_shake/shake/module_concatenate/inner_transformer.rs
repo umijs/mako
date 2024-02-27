@@ -100,11 +100,20 @@ impl<'a> InnerTransform<'a> {
         let map = self.rename_request.iter().cloned().collect();
         let mut renamer = IdentRenamer::new(&map);
         n.visit_mut_with(&mut renamer);
+
+        // todo performance?
+        for (from, to) in &map {
+            self.exports.iter_mut().for_each(|(_k, v)| {
+                if from.0.eq(v) {
+                    *v = to.0.to_string();
+                }
+            });
+        }
     }
 
     fn get_non_conflict_name(&self, name: &String) -> String {
         let mut new_name = name.to_string();
-        let mut i = 0;
+        let mut i = 1;
         while self.current_top_level_vars.contains(&new_name)
             || self.my_top_decls.contains(&new_name)
         {
@@ -371,7 +380,7 @@ impl<'a> VisitMut for InnerTransform<'a> {
                                 unreachable!("{}", MODULE_CONCATENATE_ERROR);
                             }
                         } else {
-                            let mut dcl_stmts: Vec<ModuleItem> = vec![];
+                            let dcl_stmts: Vec<ModuleItem> = vec![];
 
                             for export_spec in &named_export.specifiers {
                                 match export_spec {
@@ -388,12 +397,10 @@ impl<'a> VisitMut for InnerTransform<'a> {
                                                 ModuleExportName::Ident(orig_ident),
                                             ) => {
                                                 if !exported_ident.sym.eq("default") {
-                                                    let decl_stmt =
-                                                        exported_ident.clone().into_var_decl(
-                                                            VarDeclKind::Var,
-                                                            orig_ident.clone().into(),
-                                                        );
-                                                    dcl_stmts.push(decl_stmt.into());
+                                                    self.exports.insert(
+                                                        exported_ident.sym.to_string(),
+                                                        orig_ident.sym.to_string(),
+                                                    );
                                                 }
                                             }
                                             (None, ModuleExportName::Ident(_)) => {
@@ -490,4 +497,175 @@ fn uniq_module_default_export_name(module_id: &ModuleId, context: &Arc<Context>)
 
 fn uniq_module_namespace_name(module_id: &ModuleId, context: &Arc<Context>) -> String {
     format!("{}_ns", uniq_module_prefix(module_id, context))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    use maplit::{hashmap, hashset};
+    use swc_core::common::GLOBALS;
+    use swc_core::ecma::transforms::base::resolver;
+    use swc_core::ecma::visit::VisitMutWith;
+
+    use super::InnerTransform;
+    use crate::ast::{build_js_ast, js_ast_to_code};
+    use crate::compiler::Context;
+    use crate::config::{Config, Mode, OptimizationConfig};
+    use crate::module::ModuleId;
+    use crate::plugins::farm_tree_shake::shake::module_concatenate::concatenate_context::ConcatenateContext;
+
+    #[test]
+    fn test_export_as() {
+        let mut ccn_ctx = ConcatenateContext::default();
+
+        let code = inner_trans_code("var n = some.named;export { n as named };", &mut ccn_ctx);
+
+        assert_eq!(code, "var n = some.named;");
+        assert_eq!(ccn_ctx.top_level_vars, hashset!("n".to_string()));
+        assert_eq!(
+            current_export_map(&ccn_ctx),
+            &hashmap!("named".to_string() => "n".to_string())
+        );
+    }
+
+    #[test]
+    fn test_export_as_with_conflict() {
+        let mut ccn_ctx = ConcatenateContext {
+            top_level_vars: hashset!("n".to_string()),
+            ..Default::default()
+        };
+
+        let code = inner_trans_code("var n = some.named;export { n as named };", &mut ccn_ctx);
+
+        assert_eq!(code, "var n_1 = some.named;");
+        assert_eq!(
+            ccn_ctx.top_level_vars,
+            hashset!("n".to_string(), "n_1".to_string())
+        );
+        assert_eq!(
+            current_export_map(&ccn_ctx),
+            &hashmap!("named".to_string() => "n_1".to_string())
+        );
+    }
+
+    #[test]
+    fn test_export_as_twice_with_conflict() {
+        let mut ccn_ctx = ConcatenateContext {
+            top_level_vars: hashset!("n".to_string()),
+            ..Default::default()
+        };
+
+        let code = inner_trans_code(
+            "var n = some.named;export { n as named, n as foo };",
+            &mut ccn_ctx,
+        );
+
+        assert_eq!(code, "var n_1 = some.named;");
+        assert_eq!(
+            ccn_ctx.top_level_vars,
+            hashset!("n".to_string(), "n_1".to_string())
+        );
+        assert_eq!(
+            current_export_map(&ccn_ctx),
+            &hashmap!(
+                "named".to_string() => "n_1".to_string(),
+                "foo".to_string() => "n_1".to_string()
+            )
+        );
+    }
+
+    #[test]
+    fn test_short_named_export() {
+        let mut ccn_ctx = ConcatenateContext::default();
+
+        let code = inner_trans_code("var named = some.named;export { named };", &mut ccn_ctx);
+
+        assert_eq!(code, "var named = some.named;");
+        assert_eq!(ccn_ctx.top_level_vars, hashset!("named".to_string()));
+        assert_eq!(
+            current_export_map(&ccn_ctx),
+            &hashmap!(
+                "named".to_string() => "named".to_string()
+            )
+        );
+    }
+
+    #[test]
+    fn test_short_named_export_with_conflict() {
+        let mut ccn_ctx = ConcatenateContext {
+            top_level_vars: hashset!("named".to_string()),
+            ..Default::default()
+        };
+
+        let code = inner_trans_code("var named = some.named;export { named };", &mut ccn_ctx);
+
+        assert_eq!(code, "var named_1 = some.named;");
+        assert_eq!(
+            ccn_ctx.top_level_vars,
+            hashset!("named".to_string(), "named_1".to_string())
+        );
+        assert_eq!(
+            current_export_map(&ccn_ctx),
+            &hashmap!(
+                "named".to_string() => "named_1".to_string()
+            )
+        );
+    }
+
+    fn inner_trans_code(code: &str, concatenate_context: &mut ConcatenateContext) -> String {
+        let context = Arc::new(Context {
+            config: Config {
+                devtool: None,
+                optimization: Some(OptimizationConfig {
+                    concatenate_modules: Some(true),
+                    skip_modules: Some(true),
+                }),
+                mode: Mode::Production,
+                minify: false,
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+        let mut ast = build_js_ast("mut.js", code, &context).unwrap();
+        let module_id = ModuleId::from("mut.js");
+
+        let src_to_module = Default::default();
+
+        GLOBALS.set(&context.meta.script.globals, || {
+            let mut inner = InnerTransform::new(
+                &mut concatenate_context.modules_in_scope,
+                &mut concatenate_context.top_level_vars,
+                &module_id,
+                &src_to_module,
+                &context,
+                ast.top_level_mark,
+            );
+
+            ast.ast.visit_mut_with(&mut resolver(
+                ast.unresolved_mark,
+                ast.top_level_mark,
+                false,
+            ));
+            ast.ast.visit_mut_with(&mut inner);
+
+            {
+                // do not need comments
+                let mut comment = context.meta.script.origin_comments.write().unwrap();
+                *comment = Default::default();
+            }
+
+            let (code, _) = js_ast_to_code(&ast.ast, &context, "mut.js").unwrap();
+            code.trim().to_string()
+        })
+    }
+
+    fn current_export_map(ccn_ctx: &ConcatenateContext) -> &HashMap<String, String> {
+        ccn_ctx
+            .modules_in_scope
+            .get(&ModuleId::from("mut.js"))
+            .unwrap()
+    }
 }
