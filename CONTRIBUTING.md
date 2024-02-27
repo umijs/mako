@@ -49,6 +49,7 @@ $ just ready-lite
 Test.
 
 ```bash
+$ pnpm playwright install # only need to run before the first time you run "jest test"
 $ just test
 # test specified testcase
 $ cargo nextest run transformers::transform_try_resolve::tests
