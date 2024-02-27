@@ -104,7 +104,7 @@ fn transform_js(
 
                     let mut try_resolve = TryResolve {
                         path: task.path.clone(),
-                        context,
+                        context: context.clone(),
                         unresolved_mark,
                     };
                     ast.visit_mut_with(&mut try_resolve);

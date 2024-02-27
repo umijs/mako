@@ -12,7 +12,11 @@ use mako_core::swc_ecma_utils::quote_ident;
 use mako_core::{md5, swc_css_ast};
 use serde::Serialize;
 
+use crate::analyze_deps_2::AnalyzeDepsResult;
 use crate::ast::Ast;
+use crate::ast_2::css_ast::CssAst;
+use crate::ast_2::file::File;
+use crate::ast_2::js_ast::JsAst;
 use crate::compiler::Context;
 use crate::config::ModuleIdStrategy;
 use crate::resolve::ResolverResource;
@@ -42,6 +46,8 @@ pub enum ResolveType {
 #[derive(Debug, Clone)]
 pub struct ModuleInfo {
     pub ast: ModuleAst,
+    pub file: File,
+    pub deps: AnalyzeDepsResult,
     pub path: String,
     pub external: Option<String>,
     pub raw: String,
@@ -59,6 +65,29 @@ pub struct ModuleInfo {
     pub import_map: Vec<ImportInfo>,
     pub export_map: Vec<ExportInfo>,
     pub is_barrel: bool,
+}
+
+impl Default for ModuleInfo {
+    fn default() -> Self {
+        Self {
+            ast: ModuleAst::None,
+            file: Default::default(),
+            deps: Default::default(),
+            path: "".to_string(),
+            external: None,
+            raw: "".to_string(),
+            raw_hash: 0,
+            missing_deps: HashMap::new(),
+            ignored_deps: vec![],
+            top_level_await: false,
+            is_async: false,
+            resolved_resource: None,
+            source_map_chain: vec![],
+            import_map: vec![],
+            export_map: vec![],
+            is_barrel: false,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -201,9 +230,8 @@ impl From<PathBuf> for ModuleId {
 
 #[derive(Debug, Clone)]
 pub enum ModuleAst {
-    Script(Ast),
-    Css(swc_css_ast::Stylesheet),
-    #[allow(dead_code)]
+    Script(JsAst),
+    Css(CssAst),
     None,
 }
 

@@ -4,8 +4,11 @@
 #![feature(result_option_inspect)]
 
 mod analyze_deps;
+mod analyze_deps_2;
 mod ast;
+mod ast_2;
 mod build;
+mod build_2;
 mod chunk;
 mod chunk_graph;
 mod chunk_pot;
@@ -19,12 +22,14 @@ mod generate_chunks;
 mod group_chunk;
 mod hmr;
 pub mod load;
+pub mod load_2;
 pub mod logger;
 mod minify;
 mod module;
 mod module_graph;
 mod optimize_chunk;
 mod parse;
+mod parse_2;
 pub mod plugin;
 mod plugins;
 mod profile_gui;
@@ -38,9 +43,11 @@ mod task;
 #[cfg(test)]
 mod test_helper;
 mod transform;
+mod transform_2;
 mod transform_in_generate;
 mod transformers;
 mod tree_shaking;
 mod update;
 mod util;
+mod visitors;
 mod watch;

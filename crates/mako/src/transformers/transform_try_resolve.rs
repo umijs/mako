@@ -12,13 +12,13 @@ use crate::plugins::javascript::{get_first_arg_str, is_commonjs_require};
 use crate::resolve;
 use crate::transformers::transform_dep_replacer::miss_throw_stmt;
 
-pub struct TryResolve<'a> {
+pub struct TryResolve {
     pub path: String,
-    pub context: &'a Arc<Context>,
+    pub context: Arc<Context>,
     pub unresolved_mark: Mark,
 }
 
-impl TryResolve<'_> {
+impl TryResolve {
     pub fn handle_call_expr(&mut self, call_expr: &mut CallExpr) {
         if is_commonjs_require(call_expr, &self.unresolved_mark) {
             let first_arg = get_first_arg_str(call_expr);
@@ -33,7 +33,7 @@ impl TryResolve<'_> {
                         span: None,
                     },
                     &self.context.resolvers,
-                    self.context,
+                    &self.context,
                 );
                 if result.is_err() {
                     call_expr.args[0] = ExprOrSpread {
@@ -46,7 +46,7 @@ impl TryResolve<'_> {
     }
 }
 
-impl VisitMut for TryResolve<'_> {
+impl VisitMut for TryResolve {
     fn visit_mut_stmt(&mut self, stmt: &mut Stmt) {
         if let Stmt::Try(box TryStmt {
             block: BlockStmt { stmts, .. },
@@ -128,7 +128,7 @@ mod tests {
         let context = std::sync::Arc::new(Default::default());
         let mut visitor = super::TryResolve {
             path: "test.js".to_string(),
-            context: &context,
+            context,
             unresolved_mark: Default::default(),
         };
         crate::transformers::test_helper::transform_js_code(code, &mut visitor, &context)
