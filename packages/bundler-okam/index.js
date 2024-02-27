@@ -64,8 +64,10 @@ exports.build = async function (opts) {
   checkConfig(opts);
 
   const okamConfig = await getOkamConfig(opts);
+  const originStats = okamConfig.stats;
+  // always enable stats to provide json for onBuildComplete hook
+  okamConfig.stats = true;
   okamConfig.mode = 'production';
-  okamConfig.manifest = {};
   okamConfig.hash = !!opts.config.hash;
   if (okamConfig.hash) {
     okamConfig.moduleIdStrategy = 'hashed';
@@ -97,27 +99,27 @@ exports.build = async function (opts) {
     throw err;
   }
 
-  // TODO: use stats
-  const manifest = JSON.parse(
-    fs.readFileSync(
-      path.join(
-        cwd,
-        'dist',
-        okamConfig.manifest?.fileName || 'asset-manifest.json',
-      ),
-    ),
-  );
-  const assets = Object.keys(manifest)
-    .filter((key) => !key.endsWith('.map'))
-    .reduce((obj, key) => {
-      obj[manifest[key]] = 1;
-      return obj;
-    }, {});
+  const statsJsonPath = path.join(cwd, 'dist', 'stats.json');
+  const statsJson = JSON.parse(fs.readFileSync(statsJsonPath, 'utf-8'));
+
+  // remove stats.json file if user did not enable it
+  if (originStats !== true) fs.rmSync(statsJsonPath);
+
   const stats = {
-    compilation: { assets },
+    compilation: {
+      ...statsJson,
+      // convert assets to [key: value] for compilation data
+      assets: statsJson.assets.reduce(
+        (acc, asset) => ({
+          ...acc,
+          [asset.name]: { size: asset.size },
+        }),
+        {},
+      ),
+    },
     hasErrors: () => false,
   };
-  onBuildComplete({
+  await onBuildComplete({
     err: null,
     stats,
   });
@@ -576,7 +578,7 @@ async function getOkamConfig(opts) {
     targets: targets || {
       chrome: 80,
     },
-    manifest: manifest,
+    manifest,
     mdx: !!mdx,
     codeSplitting: codeSplitting === false ? false : 'auto',
     devtool: devtool === false ? false : 'source-map',
