@@ -7,7 +7,6 @@ use mako_core::anyhow::{anyhow, Ok, Result};
 use mako_core::rayon::prelude::*;
 use mako_core::tracing::debug;
 
-use crate::build::BuildError;
 use crate::compiler::Compiler;
 use crate::module::{Dependency, Module, ModuleId};
 use crate::resolve::{self, clear_resolver_cache};

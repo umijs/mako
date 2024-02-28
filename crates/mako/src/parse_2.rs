@@ -41,6 +41,7 @@ impl Parse {
         }
 
         // css
+        // TODO: support css modules
         if let Some(Content::Css(content)) = &file.content {
             debug!("parse css: {:?}", file.path);
             let ast = CssAst::new(file, context)?;

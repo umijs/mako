@@ -6,9 +6,9 @@ use mako_core::swc_ecma_ast::{
 };
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
+use crate::ast_2::utils::{get_first_str_arg, is_commonjs_require};
 use crate::compiler::Context;
 use crate::module::{Dependency, ResolveType};
-use crate::plugins::javascript::{get_first_arg_str, is_commonjs_require};
 use crate::resolve;
 use crate::transformers::transform_dep_replacer::miss_throw_stmt;
 
@@ -21,7 +21,7 @@ pub struct TryResolve {
 impl TryResolve {
     pub fn handle_call_expr(&mut self, call_expr: &mut CallExpr) {
         if is_commonjs_require(call_expr, &self.unresolved_mark) {
-            let first_arg = get_first_arg_str(call_expr);
+            let first_arg = get_first_str_arg(call_expr);
             if let Some(source) = first_arg {
                 let result = resolve::resolve(
                     self.path.as_str(),

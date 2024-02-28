@@ -13,7 +13,6 @@ use mako_core::tracing::debug;
 
 use crate::ast_2::file::{Content, File};
 use crate::compiler::Context;
-use crate::load::handle_asset;
 
 #[derive(Debug, Error)]
 enum LoadError {
@@ -113,7 +112,7 @@ impl Load {
                 path: file.path.to_string_lossy().to_string(),
                 reason: err.to_string(),
             })?;
-            let asset_path = handle_asset(&context, file.path.to_string_lossy().to_string(), true)?;
+            let asset_path = Self::handle_asset(file, true, context.clone())?;
             return Ok(Content::Js(format!(
                 "{}\nexport default {};",
                 svgr_transformed, asset_path
@@ -170,7 +169,7 @@ impl Load {
         }
 
         // assets
-        let asset_path = handle_asset(&context, file.path.to_string_lossy().as_ref(), true)?;
+        let asset_path = Self::handle_asset(&file, true, context.clone())?;
         Ok(Content::Js(format!("module.exports = {};", asset_path)))
     }
 

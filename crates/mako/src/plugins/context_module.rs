@@ -10,9 +10,9 @@ use mako_core::swc_ecma_ast::{
 use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprExt, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
-use super::javascript::{is_commonjs_require, is_dynamic_import};
+use crate::ast_2::utils::{is_commonjs_require, is_dynamic_import};
 use crate::compiler::Context;
-use crate::load::Content;
+use crate::ast_2::file::Content;
 use crate::plugin::{Plugin, PluginLoadParam, PluginTransformJsParam};
 use crate::resolve::get_module_extensions;
 

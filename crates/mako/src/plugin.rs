@@ -9,7 +9,7 @@ use mako_core::swc_ecma_ast::Module;
 
 use crate::compiler::{Args, Context};
 use crate::config::Config;
-use crate::load::Content;
+use crate::ast_2::file::Content;
 use crate::module::{Dependency, ModuleAst};
 use crate::module_graph::ModuleGraph;
 use crate::stats::StatsJsonMap;

@@ -23,7 +23,7 @@ pub enum BuildError {
 }
 
 impl Compiler {
-    pub fn build_2(&self, files: Vec<File>) -> Result<HashSet<ModuleId>> {
+    pub fn build(&self, files: Vec<File>) -> Result<HashSet<ModuleId>> {
         if files.is_empty() {
             return Ok(HashSet::new());
         }

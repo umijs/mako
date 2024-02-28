@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use mako_core::anyhow::Result;
 use mako_core::colored::*;
 use mako_core::pathdiff::diff_paths;
 use mako_core::serde::Serialize;
@@ -13,7 +14,6 @@ use swc_core::common::source_map::Pos;
 
 use crate::chunk::ChunkType;
 use crate::compiler::Compiler;
-use crate::load::file_size;
 
 #[derive(Debug, PartialEq, Eq)]
 // name 记录实际 filename , 用在 stats.json 中, hashname 用在产物描述和 manifest 中
@@ -452,4 +452,9 @@ pub fn print_stats(compiler: &Compiler) {
     }
 
     println!("{}", s.trim_end_matches('\n'));
+}
+
+fn file_size(path: &str) -> Result<u64> {
+    let metadata = fs::metadata(path)?;
+    Ok(metadata.len())
 }

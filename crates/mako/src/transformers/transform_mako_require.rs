@@ -6,7 +6,6 @@ use mako_core::swc_ecma_ast::{CallExpr, Callee, Expr, ExprOrSpread, Ident, Lit, 
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::compiler::Context;
-use crate::plugins::javascript::is_native_ident;
 
 pub struct MakoRequire {
     unresolved_mark: Mark,
@@ -62,4 +61,10 @@ impl VisitMut for MakoRequire {
     fn visit_mut_ident(&mut self, ident: &mut Ident) {
         self.try_to_replace_require(ident);
     }
+}
+
+fn is_native_ident(ident: &Ident, unresolved_mark: &Mark) -> bool {
+    let outer = ident.span.ctxt.outer();
+
+    outer == *unresolved_mark
 }

@@ -7,7 +7,7 @@ use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 use super::utils::{id, member_call, member_prop, promise_all, require_ensure};
 use crate::chunk::ChunkId;
 use crate::compiler::Context;
-use crate::plugins::javascript::is_dynamic_import;
+use crate::ast_2::utils::is_dynamic_import;
 
 pub struct DynamicImport<'a> {
     pub context: &'a Arc<Context>,

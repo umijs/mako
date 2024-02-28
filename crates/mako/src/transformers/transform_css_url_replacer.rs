@@ -3,10 +3,11 @@ use std::sync::Arc;
 use mako_core::swc_css_ast::{Url, UrlValue};
 use mako_core::swc_css_visit::VisitMut;
 
+use crate::ast_2::file::File;
+use crate::ast_2::utils::{is_remote, remove_first_tilde};
 use crate::compiler::Context;
-use crate::load::handle_asset;
+use crate::load_2::Load;
 use crate::module::Dependency;
-use crate::plugins::css::{handle_css_url, is_url_ignored};
 use crate::resolve::{self, Resolvers};
 
 pub struct CSSUrlReplacer<'a> {
@@ -28,10 +29,10 @@ impl VisitMut for CSSUrlReplacer<'_> {
             box UrlValue::Raw(s) => s.value.to_string(),
         };
 
-        if is_url_ignored(&url) {
+        if is_remote(&url) {
             return;
         }
-        let url = handle_css_url(url);
+        let url = remove_first_tilde(url);
         let dep = Dependency {
             source: url,
             resolve_as: None,
@@ -42,7 +43,11 @@ impl VisitMut for CSSUrlReplacer<'_> {
         let resolved = resolve::resolve(self.path, &dep, self.resolvers, self.context);
         if let Ok(resource) = resolved {
             let resolved_path = resource.get_resolved_path();
-            let asset_content = handle_asset(self.context, &resolved_path, false);
+            let asset_content = Load::handle_asset(
+                &File::new(resolved_path, self.context.clone()),
+                false,
+                self.context.clone(),
+            );
             let asset_content = asset_content.unwrap_or_else(|_| resolved_path.clone());
             match n.value {
                 Some(box UrlValue::Str(ref mut s)) => {

@@ -72,7 +72,7 @@ impl Visit for JSDepAnalyzer {
     fn visit_call_expr(&mut self, expr: &CallExpr) {
         // e.g.
         // require('a')
-        if utils::is_cjs_require(expr, &self.unresolved_mark) {
+        if utils::is_commonjs_require(expr, &self.unresolved_mark) {
             if let Some(src) = utils::get_first_str_arg(expr) {
                 self.add_dependency(src, ResolveType::Require, Some(expr.span));
                 return;

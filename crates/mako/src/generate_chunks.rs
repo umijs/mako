@@ -247,7 +247,7 @@ pub fn modules_to_js_stmts(
             {
                 merged_css_modules.remove(index);
             }
-            merged_css_modules.push((module.id.id.clone(), ast.clone()));
+            merged_css_modules.push((module.id.id.clone(), ast.ast.clone()));
         }
     }
     if !merged_css_modules.is_empty() {

@@ -18,7 +18,7 @@ use crate::module_graph::ModuleGraph;
 use crate::optimize_chunk::OptimizeChunksInfo;
 use crate::plugin::{Plugin, PluginDriver, PluginGenerateEndParams, PluginGenerateStats};
 use crate::plugins;
-use crate::plugins::minifish::Inject;
+// use crate::plugins::minifish::Inject;
 use crate::resolve::{get_resolvers, Resolvers};
 use crate::stats::StatsInfo;
 use crate::swc_helpers::SwcHelpers;
@@ -236,18 +236,18 @@ impl Compiler {
             Arc::new(plugins::copy::CopyPlugin {}),
             Arc::new(plugins::import::ImportPlugin {}),
             // file types
-            Arc::new(plugins::raw::RawPlugin {}),
-            Arc::new(plugins::css::CSSPlugin {}),
+            // Arc::new(plugins::raw::RawPlugin {}),
+            // Arc::new(plugins::css::CSSPlugin {}),
             Arc::new(plugins::context_module::ContextModulePlugin {}),
-            Arc::new(plugins::javascript::JavaScriptPlugin {}),
-            Arc::new(plugins::json::JSONPlugin {}),
-            Arc::new(plugins::md::MdPlugin {}),
-            Arc::new(plugins::svg::SVGPlugin {}),
-            Arc::new(plugins::toml::TOMLPlugin {}),
-            Arc::new(plugins::wasm::WASMPlugin {}),
-            Arc::new(plugins::xml::XMLPlugin {}),
-            Arc::new(plugins::yaml::YAMLPlugin {}),
-            Arc::new(plugins::assets::AssetsPlugin {}),
+            // Arc::new(plugins::javascript::JavaScriptPlugin {}),
+            // Arc::new(plugins::json::JSONPlugin {}),
+            // Arc::new(plugins::md::MdPlugin {}),
+            // Arc::new(plugins::svg::SVGPlugin {}),
+            // Arc::new(plugins::toml::TOMLPlugin {}),
+            // Arc::new(plugins::wasm::WASMPlugin {}),
+            // Arc::new(plugins::xml::XMLPlugin {}),
+            // Arc::new(plugins::yaml::YAMLPlugin {}),
+            // Arc::new(plugins::assets::AssetsPlugin {}),
             Arc::new(plugins::runtime::MakoRuntime {}),
             Arc::new(plugins::farm_tree_shake::FarmTreeShake {}),
             Arc::new(plugins::invalid_syntax::InvalidSyntaxPlugin {}),
@@ -269,47 +269,48 @@ impl Compiler {
             plugins.insert(0, Arc::new(plugins::bundless_compiler::BundlessCompiler {}));
         }
 
-        if let Some(minifish_config) = &config._minifish {
-            let inject = if let Some(inject) = &minifish_config.inject {
-                let mut map = HashMap::new();
+        // TODO: enable minifish
+        // if let Some(minifish_config) = &config._minifish {
+        //     let inject = if let Some(inject) = &minifish_config.inject {
+        //         let mut map = HashMap::new();
 
-                for (k, ii) in inject.iter() {
-                    let exclude = if let Some(exclude) = &ii.exclude {
-                        if let Ok(regex) = Regex::new(exclude) {
-                            Some(regex)
-                        } else {
-                            return Err(anyhow!("Config Error invalid regex: {}", exclude));
-                        }
-                    } else {
-                        None
-                    };
+        //         for (k, ii) in inject.iter() {
+        //             let exclude = if let Some(exclude) = &ii.exclude {
+        //                 if let Ok(regex) = Regex::new(exclude) {
+        //                     Some(regex)
+        //                 } else {
+        //                     return Err(anyhow!("Config Error invalid regex: {}", exclude));
+        //                 }
+        //             } else {
+        //                 None
+        //             };
 
-                    map.insert(
-                        k.clone(),
-                        Inject {
-                            from: ii.from.clone(),
-                            name: k.clone(),
-                            named: ii.named.clone(),
-                            namespace: ii.namespace,
-                            exclude,
-                            prefer_require: ii.prefer_require.map_or(false, |v| v),
-                        },
-                    );
-                }
-                Some(map)
-            } else {
-                None
-            };
+        //             map.insert(
+        //                 k.clone(),
+        //                 Inject {
+        //                     from: ii.from.clone(),
+        //                     name: k.clone(),
+        //                     named: ii.named.clone(),
+        //                     namespace: ii.namespace,
+        //                     exclude,
+        //                     prefer_require: ii.prefer_require.map_or(false, |v| v),
+        //                 },
+        //             );
+        //         }
+        //         Some(map)
+        //     } else {
+        //         None
+        //     };
 
-            plugins.insert(
-                0,
-                Arc::new(plugins::minifish::MinifishPlugin {
-                    mapping: minifish_config.mapping.clone(),
-                    meta_path: minifish_config.meta_path.clone(),
-                    inject,
-                }),
-            );
-        }
+        //     plugins.insert(
+        //         0,
+        //         Arc::new(plugins::minifish::MinifishPlugin {
+        //             mapping: minifish_config.mapping.clone(),
+        //             meta_path: minifish_config.meta_path.clone(),
+        //             inject,
+        //         }),
+        //     );
+        // }
 
         if !config.ignores.is_empty() {
             let ignore_regex = config
@@ -376,7 +377,19 @@ impl Compiler {
         println!("{}", building_with_message);
         {
             mako_core::mako_profile_scope!("Build Stage");
-            self.build()?;
+            let files = self
+                .context
+                .config
+                .entry
+                .values()
+                .map(|entry| {
+                    crate::ast_2::file::File::new(
+                        entry.to_string_lossy().to_string(),
+                        self.context.clone(),
+                    )
+                })
+                .collect();
+            self.build(files)?;
         }
         let result = {
             mako_core::mako_profile_scope!("Generate Stage");

@@ -9,11 +9,10 @@ use mako_core::pathdiff::diff_paths;
 use mako_core::swc_common::{Span, DUMMY_SP};
 use mako_core::swc_ecma_ast::{BlockStmt, FnExpr, Function, Module as SwcModule};
 use mako_core::swc_ecma_utils::quote_ident;
-use mako_core::{md5, swc_css_ast};
+use mako_core::md5;
 use serde::Serialize;
 
 use crate::analyze_deps_2::AnalyzeDepsResult;
-use crate::ast::Ast;
 use crate::ast_2::css_ast::CssAst;
 use crate::ast_2::file::File;
 use crate::ast_2::js_ast::JsAst;

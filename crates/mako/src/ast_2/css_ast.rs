@@ -20,8 +20,8 @@ use std::fmt;
 
 #[derive(Clone)]
 pub struct CssAst {
-    ast: Stylesheet,
-    path: String,
+    pub ast: Stylesheet,
+    pub path: String,
     context: Arc<Context>,
 }
 
@@ -61,7 +61,7 @@ impl CssAst {
                 })
                 .collect::<Vec<String>>();
             return Err(anyhow!(error::ParseError::CSSParseError {
-                message: errors.join("\n")
+                messages: errors.join("\n")
             }));
         }
         let ast = parse_result./*safe*/unwrap();

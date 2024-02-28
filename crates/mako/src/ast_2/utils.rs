@@ -41,7 +41,7 @@ pub fn is_dynamic_import(call_expr: &CallExpr) -> bool {
     matches!(&call_expr.callee, Callee::Import(Import { .. }))
 }
 
-pub fn is_cjs_require(call_expr: &CallExpr, unresolved_mark: &Mark) -> bool {
+pub fn is_commonjs_require(call_expr: &CallExpr, unresolved_mark: &Mark) -> bool {
     if let Some(ident) = get_call_expr_ident(call_expr) {
         is_ident_undefined(ident, "require", unresolved_mark)
         // TODO: remove this, it's special logic

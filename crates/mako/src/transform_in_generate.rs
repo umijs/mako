@@ -19,7 +19,7 @@ use mako_core::swc_error_reporters::handler::try_with_handler;
 use mako_core::tracing::debug;
 use mako_core::{swc_css_ast, swc_css_prefixer};
 
-use crate::ast::Ast;
+use crate::ast_2::js_ast::JsAst;
 use crate::compiler::{Compiler, Context};
 use crate::config::OutputMode;
 use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
@@ -192,7 +192,7 @@ fn insert_swc_helper_replace(map: &mut HashMap<String, (String, String)>, contex
 pub struct TransformJsParam<'a> {
     pub module_id: &'a ModuleId,
     pub context: &'a Arc<Context>,
-    pub ast: &'a mut Ast,
+    pub ast: &'a mut JsAst,
     pub dep_map: &'a DependenciesToReplace,
     pub async_deps: &'a Vec<Dependency>,
     pub wrap_async: bool,

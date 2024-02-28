@@ -184,7 +184,8 @@ mod tests {
     use swc_core::common::GLOBALS;
 
     use super::TreeShakeModule;
-    use crate::ast::build_js_ast;
+    use crate::ast_2::file::File;
+    use crate::ast_2::js_ast::JsAst;
     use crate::compiler::Context;
     use crate::module::{Module, ModuleAst, ModuleInfo};
     use crate::plugins::farm_tree_shake::shake::skip_module::ReExportSource;
@@ -448,7 +449,8 @@ mod tests {
 
         let module_graph = context.module_graph.write().unwrap();
 
-        let ast = build_js_ast("test.js", code, &context).unwrap();
+        let file = File::new("test.js".to_string(), context.clone());
+        let ast = JsAst::new(&file, context.clone()).unwrap();
 
         let mako_module = Module {
             id: "test.js".into(),
@@ -456,6 +458,8 @@ mod tests {
             info: Some(ModuleInfo {
                 ast: ModuleAst::Script(ast),
                 path: "test".to_string(),
+                file,
+                deps: Default::default(),
                 external: None,
                 raw: "".to_string(),
                 raw_hash: 0,

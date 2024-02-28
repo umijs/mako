@@ -1,6 +1,7 @@
+use std::path::Path;
+
 use mako_core::anyhow::Result;
 
-use crate::load::ext_name;
 use crate::resolve::ResolverResource;
 
 pub enum TaskType {
@@ -97,6 +98,14 @@ impl FileRequest {
     pub fn has_query(&self, key: &str) -> bool {
         self.query.iter().any(|(k, _)| *k == key)
     }
+}
+
+pub fn ext_name(path: &str) -> Option<&str> {
+    let path = Path::new(path);
+    if let (true, Some(ext)) = (path.is_file(), path.extension()) {
+        return ext.to_str();
+    }
+    None
 }
 
 #[cfg(test)]

@@ -10,10 +10,10 @@ use crate::compiler::Context;
 
 #[derive(Debug, Error)]
 pub enum ParseError {
-    #[error("{message:}")]
+    #[error("{messages:}")]
     JsParseError { messages: String },
-    #[error("{message:}")]
-    CSSParseError { message: String },
+    #[error("{messages:}")]
+    CSSParseError { messages: String },
 }
 
 #[derive(Debug, Error)]
