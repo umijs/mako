@@ -33,8 +33,8 @@ impl Compiler {
             let rs = rs.clone();
             let context = self.context.clone();
             pool.spawn(move || {
-                let result = Self::build_module_2(&file, parent_resource, context);
-                let result = Self::handle_build_result(result, &file, parent_resource, context);
+                let result = Self::build_module_2(&file, parent_resource, context.clone());
+                let result = Self::handle_build_result(result, &file, context);
                 rs.send(result).unwrap();
             });
         };
@@ -53,8 +53,10 @@ impl Compiler {
             // handle build_module error
             if build_result.is_err() {
                 errors.push(build_result.err().unwrap());
+                continue;
             }
             let module = build_result.unwrap();
+            let module_id = module.id.clone();
 
             let mut module_graph = self.context.module_graph.write().unwrap();
 
@@ -62,23 +64,22 @@ impl Compiler {
             // TODO
 
             // handle current module
-            // TODO: 统一 entry 和非 entry 的处理逻辑
-            // entry 也可以先 create_module，存 module_graph，build 完成后添加 info
             let info = module.info.as_ref().unwrap();
-            if info.file.is_entry {
-                module_ids.insert(module.id.clone());
-                module_graph.add_module(module);
-            } else {
-                let m = module_graph.get_module_mut(&module.id).unwrap();
+            let resolved_deps = info.deps.resolved_deps.clone();
+            let m = module_graph.get_module_mut(&module.id);
+            if let Some(m) = m {
                 // TODO: add_info > set_info
                 m.add_info(module.info);
+            } else {
+                module_ids.insert(module.id.clone());
+                module_graph.add_module(module);
             }
 
             // handle deps
-            for dep in info.deps.resolved_deps {
+            for dep in resolved_deps {
                 let path = dep.resolver_resource.get_resolved_path();
                 let is_external = dep.resolver_resource.get_external().is_some();
-                let dep_module_id = ModuleId::new(path);
+                let dep_module_id = ModuleId::new(path.clone());
                 if !module_graph.has_module(&dep_module_id) {
                     let module = if is_external {
                         Self::create_external_module(&dep.resolver_resource, self.context.clone())
@@ -95,7 +96,7 @@ impl Compiler {
                     module_ids.insert(module.id.clone());
                     module_graph.add_module(module);
                 }
-                module_graph.add_dependency(&module.id, &dep_module_id, dep.dependency);
+                module_graph.add_dependency(&module_id, &dep_module_id, dep.dependency);
             }
             if count == 0 {
                 break;
@@ -110,7 +111,7 @@ impl Compiler {
         Ok(module_ids)
     }
 
-    fn create_external_module(
+    pub fn create_external_module(
         resolved_resource: &ResolverResource,
         context: Arc<Context>,
     ) -> Module {
@@ -119,8 +120,9 @@ impl Compiler {
             // safe
             .unwrap();
         let external_script = resolved_resource.get_script();
+        let is_async = external_script.is_some();
         let path = format!("virtual:external_{}", external_name);
-        let mut file = File::new(path, context);
+        let mut file = File::new(path.clone(), context.clone());
         let code = if let Some(url) = external_script {
             format!(
                 r#"
@@ -134,29 +136,30 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
             format!("module.exports = {};", external_name)
         };
         file.set_content(Content::Js(code));
-        let ast = Parse::parse(&file, context.clone())
+        let ast = Parse::parse(&file, context)
             // safe
             .unwrap();
+        let file_path = file.path.to_string_lossy().to_string();
+        let raw = file.get_content_raw();
         let info = ModuleInfo {
             file,
             ast,
             // TODO: update
             external: Some(external_name),
-            is_async: external_script.is_some(),
+            is_async,
             resolved_resource: Some(resolved_resource.clone()),
             // TODO: remove
             path,
-            raw: file.get_content_raw(),
+            raw,
             ..Default::default()
         };
-        let module_id = ModuleId::new(file.path.to_string_lossy().to_string());
+        let module_id = ModuleId::new(file_path);
         Module::new(module_id, false, Some(info))
     }
 
     fn create_error_module(
         file: &File,
         err: String,
-        resolved_resource: Option<ResolverResource>,
         context: Arc<Context>,
     ) -> Result<Module> {
         let mut file = file.clone();
@@ -165,32 +168,30 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         let ast = Parse::parse(&file, context.clone())?;
         let path = file.path.to_string_lossy().to_string();
         let module_id = ModuleId::new(path.clone());
+        let raw = file.get_content_raw();
         let info = ModuleInfo {
             file,
             ast,
             path,
-            resolved_resource,
-            raw: file.get_content_raw(),
+            raw,
             ..Default::default()
         };
         Ok(Module::new(module_id, false, Some(info)))
     }
 
-    fn create_empty_module(module_id: &ModuleId) -> Module {
+    pub fn create_empty_module(module_id: &ModuleId) -> Module {
         Module::new(module_id.clone(), false, None)
     }
 
     pub fn handle_build_result(
         result: Result<Module>,
         file: &File,
-        resolved_resource: Option<ResolverResource>,
         context: Arc<Context>,
     ) -> Result<Module> {
         if result.is_err() && context.args.watch {
             let module = Self::create_error_module(
                 file,
                 result.err().unwrap().to_string(),
-                resolved_resource,
                 context.clone(),
             )?;
             Ok(module)
@@ -222,6 +223,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         // TODO: update info
         let path = file.path.to_string_lossy().to_string();
         let module_id = ModuleId::new(path.clone());
+        let raw = file.get_content_raw();
         let info = ModuleInfo {
             file,
             deps,
@@ -235,7 +237,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
             resolved_resource: parent_resource, /* TODO: rename */
             // TODO: remove
             path,
-            raw: file.get_content_raw(),
+            raw,
             missing_deps: HashMap::new(),
             ignored_deps: vec![],
             import_map: vec![],

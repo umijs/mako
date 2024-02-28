@@ -7,10 +7,10 @@ use mako_core::anyhow::{anyhow, Ok, Result};
 use mako_core::rayon::prelude::*;
 use mako_core::tracing::debug;
 
+use crate::build_2::BuildError;
 use crate::compiler::Compiler;
 use crate::module::{Dependency, Module, ModuleId};
 use crate::resolve::{self, clear_resolver_cache};
-use crate::task::{Task, TaskType};
 use crate::transform_in_generate::transform_modules;
 use crate::transformers::transform_virtual_css_modules::is_css_path;
 
@@ -264,22 +264,21 @@ impl Compiler {
                 };
 
                 let path = entry.to_string_lossy().to_string();
-                let task_type = if is_entry {
-                    TaskType::Entry(path)
+                let file = if is_entry {
+                    crate::ast_2::file::File::new_entry(path, self.context.clone())
                 } else {
-                    TaskType::Normal(path)
+                    crate::ast_2::file::File::new(path, self.context.clone())
                 };
-                let (module, dependencies, _task) =
-                    Compiler::build_module(&self.context, Task::new(task_type, None))
-                        .map_err(|err| BuildError::BuildTasksError { errors: vec![err] })?;
+                let module = Self::build_module_2(&file, None, self.context.clone())
+                    .map_err(|err| BuildError::BuildTasksError { errors: vec![err] })?;
 
                 debug!(
                     "  > missing deps: {:?}",
-                    module.info.clone().unwrap().missing_deps
+                    module.info.as_ref().unwrap().missing_deps
                 );
 
                 // update modules_with_missing_deps
-                if module.info.clone().unwrap().missing_deps.is_empty() {
+                if module.info.as_ref().unwrap().missing_deps.is_empty() {
                     self.context
                         .modules_with_missing_deps
                         .write()
@@ -304,12 +303,17 @@ impl Compiler {
 
                 let mut add_modules: HashMap<ModuleId, Module> = HashMap::new();
                 let mut target_dependencies: Vec<(ModuleId, Dependency)> = vec![];
-                dependencies.into_iter().for_each(|(resource, dep)| {
-                    let resolved_path = resource.get_resolved_path();
+                let resolved_deps = &module.info.as_ref().unwrap().deps.resolved_deps;
+                resolved_deps.into_iter().for_each(|dep| {
+                    let resolved_path = dep.resolver_resource.get_resolved_path();
+                    let is_external = dep.resolver_resource.get_external().is_some();
                     let module_id = ModuleId::new(resolved_path);
-                    // TODO: handle error
-                    let module = Self::create_module(&resource, &module_id, &self.context).unwrap();
-                    target_dependencies.push((module_id.clone(), dep));
+                    let module = if is_external {
+                        Self::create_external_module(&dep.resolver_resource, self.context.clone())
+                    } else {
+                        Self::create_empty_module(&module_id)
+                    };
+                    target_dependencies.push((module_id.clone(), dep.dependency.clone()));
                     add_modules.insert(module_id, module);
                 });
 
@@ -353,15 +357,16 @@ impl Compiler {
     }
 
     fn build_by_add(&self, added: &[PathBuf]) -> Result<HashSet<ModuleId>> {
-        let tasks = added
+        let files = added
             .iter()
             .map(|path| {
-                let path = path.to_string_lossy().to_string();
-                let task_type = TaskType::Normal(path);
-                Task::new(task_type, None)
+                crate::ast_2::file::File::new(
+                    path.to_string_lossy().to_string(),
+                    self.context.clone(),
+                )
             })
-            .collect::<Vec<_>>();
-        self.build_tasks(tasks, false)
+            .collect();
+        self.build(files)
     }
 
     fn build_by_remove(&self, removed: Vec<PathBuf>) -> (HashSet<ModuleId>, HashSet<ModuleId>) {

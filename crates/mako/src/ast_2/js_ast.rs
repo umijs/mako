@@ -116,7 +116,7 @@ impl JsAst {
     pub fn transform(
         &mut self,
         mut_visitors: &mut Vec<Box<dyn swc_ecma_visit::VisitMut>>,
-        folders: Vec<Box<dyn swc_ecma_visit::Fold>>,
+        folders: &mut Vec<Box<dyn swc_ecma_visit::Fold>>,
         should_inject_helpers: bool,
     ) -> Result<()>
      {
@@ -139,8 +139,8 @@ impl JsAst {
                             shebang: ast.shebang.clone(),
                             body,
                         };
-                        for folder in folders.iter() {
-                            module = folder.fold_module(module);
+                        for folder in folders {
+                            module = folder.as_mut().fold_module(module);
                         }
                         ast.body = module.body;
 

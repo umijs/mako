@@ -8,15 +8,14 @@ use crate::ast_2::utils::{is_remote, remove_first_tilde};
 use crate::compiler::Context;
 use crate::load_2::Load;
 use crate::module::Dependency;
-use crate::resolve::{self, Resolvers};
+use crate::resolve;
 
-pub struct CSSUrlReplacer<'a> {
-    pub resolvers: &'a Resolvers,
-    pub context: &'a Arc<Context>,
-    pub path: &'a str,
+pub struct CSSUrlReplacer {
+    pub context: Arc<Context>,
+    pub path: String,
 }
 
-impl VisitMut for CSSUrlReplacer<'_> {
+impl VisitMut for CSSUrlReplacer {
     // e.g.
     // .foo { background: url(foo.png) }
     fn visit_mut_url(&mut self, n: &mut Url) {
@@ -40,15 +39,15 @@ impl VisitMut for CSSUrlReplacer<'_> {
             order: 0,
             span: None,
         };
-        let resolved = resolve::resolve(self.path, &dep, self.resolvers, self.context);
+        let resolved = resolve::resolve(&self.path, &dep, &self.context.resolvers, &self.context);
         if let Ok(resource) = resolved {
             let resolved_path = resource.get_resolved_path();
             let asset_content = Load::handle_asset(
-                &File::new(resolved_path, self.context.clone()),
+                &File::new(resolved_path.clone(), self.context.clone()),
                 false,
                 self.context.clone(),
             );
-            let asset_content = asset_content.unwrap_or_else(|_| resolved_path.clone());
+            let asset_content = asset_content.unwrap_or_else(|_| resolved_path);
             match n.value {
                 Some(box UrlValue::Str(ref mut s)) => {
                     s.value = asset_content.into();

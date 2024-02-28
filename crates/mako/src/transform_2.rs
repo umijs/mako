@@ -40,10 +40,11 @@ impl Transform {
                 // since when use this in js, it will remove all unused imports
                 // which is not expected as what webpack does
                 if is_ts {
+                    let comments = origin_comments.get_swc_comments().clone();
                     visitors.push(Box::new(strip_with_jsx(
                         cm.clone(),
                         Default::default(),
-                        origin_comments.get_swc_comments(),
+                        comments,
                         top_level_mark,
                     )))
                 }
@@ -51,7 +52,7 @@ impl Transform {
                 // TODO: env replacer
                 visitors.push(Box::new(TryResolve {
                     path: file.path.to_string_lossy().to_string(),
-                    context,
+                    context: context.clone(),
                     unresolved_mark,
                 }));
                 // TODO: provide
@@ -60,9 +61,11 @@ impl Transform {
 
                 // folders
                 let mut folders: Vec<Box<dyn Fold>> = vec![];
+                // TODO: is it a problem to clone comments?
+                let comments = origin_comments.get_swc_comments().clone();
                 folders.push(Box::new(swc_preset_env::preset_env(
                     unresolved_mark,
-                    Some(origin_comments.get_swc_comments()),
+                    Some(comments),
                     swc_preset_env::Config {
                         mode: Some(swc_preset_env::Mode::Entry),
                         targets: Some(targets::swc_preset_env_targets_from_map(
@@ -100,23 +103,24 @@ impl Transform {
                 //     ),
                 // }));
 
-                ast.transform(&mut visitors, folders, true)
+                ast.transform(&mut visitors, &mut folders, true)
             }
             ModuleAst::Css(ast) => {
                 let mut visitors: Vec<Box<dyn swc_css_visit::VisitMut>> = vec![];
+                let path = file.path.to_string_lossy().to_string();
                 visitors.push(Box::new(CSSUrlReplacer {
-                    resolvers: &context.resolvers,
-                    path: file.path.to_str().unwrap(),
-                    context: &context,
+                    path,
+                    context: context.clone(),
                 }));
                 // same ability as postcss-flexbugs-fixes
                 if context.config.flex_bugs {
                     visitors.push(Box::new(CSSFlexbugs {}));
                 }
                 if context.config.px2rem.is_some() {
+                    let context = context.clone();
                     visitors.push(Box::new(Px2Rem {
-                        path: file.path.to_str().unwrap(),
-                        context: &context,
+                        path: file.path.to_string_lossy().to_string(),
+                        context: context.clone(),
                         current_decl: None,
                         current_selector: None,
                     }));

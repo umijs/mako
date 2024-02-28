@@ -34,7 +34,7 @@ impl Default for AnalyzeDepsResult {
 }
 
 #[derive(Debug, Clone)]
-struct ResolvedDep {
+pub struct ResolvedDep {
     pub resolver_resource: ResolverResource,
     pub dependency: Dependency,
 }
@@ -48,13 +48,13 @@ impl AnalyzeDeps {
         context: Arc<Context>,
     ) -> Result<AnalyzeDepsResult> {
         mako_core::mako_profile_function!();
-        let mut deps = match ast {
+        let deps = match ast {
             ModuleAst::Script(ast) => ast.analyze_deps(),
             ModuleAst::Css(ast) => ast.analyze_deps(),
             _ => vec![],
         };
         // TODO: plugin driver
-        Self::check_deps(&deps, file);
+        Self::check_deps(&deps, file)?;
 
         let mut resolved_deps = vec![];
         let mut missing_deps = vec![];
@@ -79,7 +79,7 @@ impl AnalyzeDeps {
                         });
                     }
                 }
-                Err(err) => {
+                Err(_err) => {
                     missing_deps.push(dep);
                 }
             }

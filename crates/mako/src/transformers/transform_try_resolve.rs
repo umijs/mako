@@ -85,6 +85,8 @@ impl VisitMut for TryResolve {
 
 #[cfg(test)]
 mod tests {
+    use crate::compiler::Context;
+
     #[test]
     fn test_try_require() {
         crate::assert_display_snapshot!(transform(
@@ -125,10 +127,10 @@ mod tests {
     }
 
     fn transform(code: &str) -> String {
-        let context = std::sync::Arc::new(Default::default());
+        let context = std::sync::Arc::new(Context::default());
         let mut visitor = super::TryResolve {
             path: "test.js".to_string(),
-            context,
+            context: context.clone(),
             unresolved_mark: Default::default(),
         };
         crate::transformers::test_helper::transform_js_code(code, &mut visitor, &context)

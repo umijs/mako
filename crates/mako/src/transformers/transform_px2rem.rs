@@ -9,15 +9,15 @@ pub(crate) fn default_root() -> f64 {
     100.0
 }
 
-pub struct Px2Rem<'a> {
-    pub context: &'a Arc<Context>,
-    pub path: &'a str,
+pub struct Px2Rem {
+    pub context: Arc<Context>,
+    pub path: String,
     pub current_decl: Option<String>,
     // TODO: support selector
     pub current_selector: Option<String>,
 }
 
-impl Px2Rem<'_> {
+impl Px2Rem {
     fn should_transform(&self) -> bool {
         if let Some(current_decl) = &self.current_decl {
             let is_in_whitelist = self
@@ -50,7 +50,7 @@ impl Px2Rem<'_> {
     }
 }
 
-impl VisitMut for Px2Rem<'_> {
+impl VisitMut for Px2Rem {
     fn visit_mut_declaration(&mut self, n: &mut swc_css_ast::Declaration) {
         self.current_decl = match n.name {
             swc_css_ast::DeclarationName::Ident(ref ident) => Some(ident.value.to_string()),
