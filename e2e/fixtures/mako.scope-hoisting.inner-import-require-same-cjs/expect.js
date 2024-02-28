@@ -9,6 +9,8 @@ injectSimpleJest();
 require("./dist/index.js");
 
 
-// TODO expect(files["index.js"]).not.toContain("@swc/helpers")
-expect(files["index.js"]).toContain(moduleDefinitionOf("a.js"))
+// assert require cjs resolved
+expect(files["index.js"]).toContain(`__mako_require__("cjs.js")`)
+expect(files["index.js"]).not.toContain(`__mako_require__("./cjs")`)
+
 expect(files["index.js"]).not.toContain(moduleDefinitionOf("b.js"))
