@@ -28,3 +28,8 @@ assert(
   trim(files["index.css"]).includes(`.e{`),
   "const e = require('./e.css') should not be css modules"
 );
+
+assert(
+  files["index.js"].includes(`__mako_require__.ensure("src/f.css").then((f)=>f);`),
+  "import('./f.css') should ensure chunk first"
+);
