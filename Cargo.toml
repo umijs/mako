@@ -1,6 +1,6 @@
 [workspace]
-resolver = "2"
 members  = ["crates/*"]
+resolver = "2"
 
 [workspace.dependencies]
 cached            = "0.46.1"
