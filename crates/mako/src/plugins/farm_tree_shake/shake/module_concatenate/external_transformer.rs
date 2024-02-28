@@ -1,31 +1,35 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use swc_core::common::{Spanned, DUMMY_SP};
+use swc_core::common::{Mark, Spanned, DUMMY_SP};
 use swc_core::ecma::ast::{
-    EmptyStmt, ExportNamedSpecifier, ExportSpecifier, ImportSpecifier, MemberExpr, Module,
-    ModuleDecl, ModuleExportName, ModuleItem, NamedExport, Stmt, VarDecl, VarDeclKind,
+    EmptyStmt, ExportNamedSpecifier, ExportSpecifier, Expr, ExprOrSpread, ImportSpecifier, Lit,
+    MemberExpr, Module, ModuleDecl, ModuleExportName, ModuleItem, NamedExport, Stmt, VarDecl,
+    VarDeclKind,
 };
 use swc_core::ecma::utils::{member_expr, quote_ident, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::compiler::Context;
 use crate::module::ModuleId;
+use crate::plugins::farm_tree_shake::shake::module_concatenate::concatenate_context::ConcatenateContext;
 use crate::plugins::farm_tree_shake::shake::module_concatenate::utils::uniq_module_prefix;
+use crate::plugins::javascript::is_commonjs_require;
 
 pub(super) struct ExternalTransformer<'a> {
+    pub concatenate_context: &'a mut ConcatenateContext,
     pub src_to_module: &'a HashMap<String, ModuleId>,
-    pub current_external_map: &'a HashMap<ModuleId, String>,
     pub context: &'a Arc<Context>,
     pub module_id: &'a ModuleId,
+    pub unresolved_mark: Mark,
 }
 
 impl<'a> ExternalTransformer<'_> {
-    fn src_to_export_name(&'a self, src: &str) -> Option<(&'a String, &'a ModuleId)> {
+    fn src_to_export_name(&'a self, src: &str) -> Option<(&'a (String, String), &'a ModuleId)> {
         self.src_to_module.get(src).and_then(|module_id| {
-            self.current_external_map
-                .get(module_id)
-                .map(|export_name| (export_name, module_id))
+            self.concatenate_context
+                .external_expose_names(module_id)
+                .map(|export_names| (export_names, module_id))
         })
     }
 
@@ -174,14 +178,31 @@ impl<'a> ExternalTransformer<'_> {
 
         stmts
     }
+
+    fn require_arg_to_module_namespace(
+        &self,
+        args: &Vec<ExprOrSpread>,
+    ) -> Option<(&(String, String), &ModuleId)> {
+        if args.len() == 1
+            && let Some(arg) = args.first()
+            && arg.spread.is_none()
+            && let Some(lit) = arg.expr.as_lit()
+            && let Lit::Str(str) = lit
+        {
+            self.src_to_export_name(str.value.as_ref())
+        } else {
+            None
+        }
+    }
 }
 
 impl VisitMut for ExternalTransformer<'_> {
     fn visit_mut_module(&mut self, n: &mut Module) {
-        let contains_external = self
-            .src_to_module
-            .values()
-            .any(|module_id| self.current_external_map.contains_key(module_id));
+        let contains_external = self.src_to_module.values().any(|module_id| {
+            self.concatenate_context
+                .external_module_namespace
+                .contains_key(module_id)
+        });
 
         if contains_external {
             n.visit_mut_children_with(self);
@@ -197,8 +218,9 @@ impl VisitMut for ExternalTransformer<'_> {
                     ModuleDecl::Import(import_decl) => {
                         if let Some(imported_module_id) =
                             self.src_to_module.get(&import_decl.src.value.to_string())
-                            && let Some(external_module_namespace) =
-                                self.current_external_map.get(imported_module_id)
+                            && let Some((_, exposed_esm)) = self
+                                .concatenate_context
+                                .external_expose_names(imported_module_id)
                         {
                             if import_decl.specifiers.is_empty() {
                                 let empty_stmt: Stmt = EmptyStmt { span: DUMMY_SP }.into();
@@ -215,10 +237,8 @@ impl VisitMut for ExternalTransformer<'_> {
                                                     ModuleExportName::Ident(imported_ident) => {
                                                         let x = MemberExpr {
                                                             span: DUMMY_SP,
-                                                            obj: quote_ident!(
-                                                                external_module_namespace.clone()
-                                                            )
-                                                            .into(),
+                                                            obj: quote_ident!(exposed_esm.clone())
+                                                                .into(),
                                                             prop: imported_ident.clone().into(),
                                                         }
                                                         .into_var_decl(
@@ -237,10 +257,7 @@ impl VisitMut for ExternalTransformer<'_> {
                                             } else {
                                                 let var_decl = MemberExpr {
                                                     span: DUMMY_SP,
-                                                    obj: quote_ident!(
-                                                        external_module_namespace.clone()
-                                                    )
-                                                    .into(),
+                                                    obj: quote_ident!(exposed_esm.clone()).into(),
                                                     prop: named.local.clone().into(),
                                                 }
                                                 .into_var_decl(
@@ -253,7 +270,7 @@ impl VisitMut for ExternalTransformer<'_> {
                                         }
                                         ImportSpecifier::Default(default) => {
                                             let x = member_expr!(@EXT, DUMMY_SP,
-                                            quote_ident!(default.span, external_module_namespace
+                                            quote_ident!(default.span, exposed_esm
                                                 .clone()).into()
                                             , default)
                                             .into_var_decl(
@@ -264,12 +281,11 @@ impl VisitMut for ExternalTransformer<'_> {
                                             var_decorators.extend(x.decls);
                                         }
                                         ImportSpecifier::Namespace(namespace) => {
-                                            let var_dec =
-                                                quote_ident!(external_module_namespace.clone())
-                                                    .into_var_decl(
-                                                        VarDeclKind::Var,
-                                                        namespace.local.clone().into(),
-                                                    );
+                                            let var_dec = quote_ident!(exposed_esm.clone())
+                                                .into_var_decl(
+                                                    VarDeclKind::Var,
+                                                    namespace.local.clone().into(),
+                                                );
 
                                             var_decorators.extend(var_dec.decls);
                                         }
@@ -290,7 +306,7 @@ impl VisitMut for ExternalTransformer<'_> {
                     ModuleDecl::ExportDecl(_) => {}
                     ModuleDecl::ExportNamed(named_export) => {
                         if let Some(src) = &named_export.src
-                            && let Some((external_module_namespace, src_module_id)) =
+                            && let Some(((_, external_module_namespace), src_module_id)) =
                                 self.src_to_export_name(src.value.as_ref())
                         {
                             let items = self.named_export_specifier_to_replace_items(
@@ -309,11 +325,24 @@ impl VisitMut for ExternalTransformer<'_> {
                     ModuleDecl::TsExportAssignment(_) => {}
                     ModuleDecl::TsNamespaceExport(_) => {}
                 }
+            } else {
+                item.visit_mut_children_with(self);
             }
         }
 
         for (index, items) in replaces {
             module_items.splice(index..index + 1, items);
+        }
+    }
+
+    fn visit_mut_expr(&mut self, n: &mut Expr) {
+        if let Expr::Call(call_expr) = n
+            && is_commonjs_require(call_expr, &self.unresolved_mark)
+        {
+            if let Some(((namespace, _), _)) = self.require_arg_to_module_namespace(&call_expr.args)
+            {
+                *n = quote_ident!(namespace.clone()).into();
+            }
         }
     }
 }
@@ -331,6 +360,8 @@ mod tests {
     use std::sync::Arc;
 
     use maplit::hashmap;
+    use swc_core::common::GLOBALS;
+    use swc_core::ecma::transforms::base::resolver;
 
     use super::*;
     use crate::ast::{build_js_ast, js_ast_to_code};
@@ -347,22 +378,38 @@ mod tests {
             "external".to_string() => ModuleId::from("external")
         };
         let current_external_map = hashmap! {
-            ModuleId::from("external") => "external_namespace".to_string()
+            ModuleId::from("external") => (
+                "external_namespace_cjs".to_string(), "external_namespace".to_string()
+            )
         };
 
-        let mut t = ExternalTransformer {
-            src_to_module: &src_2_module,
-            current_external_map: &current_external_map,
-            context: &context,
-            module_id: &ModuleId::from("mut.js"),
+        let mut concatenate_context = ConcatenateContext {
+            external_module_namespace: current_external_map,
+            ..Default::default()
         };
 
-        ast.ast.visit_mut_with(&mut t);
-        js_ast_to_code(&ast.ast, &context, "sut.js")
-            .unwrap()
-            .0
-            .trim()
-            .to_string()
+        GLOBALS.set(&context.meta.script.globals, || {
+            ast.ast.visit_mut_with(&mut resolver(
+                ast.unresolved_mark,
+                ast.top_level_mark,
+                false,
+            ));
+
+            let mut t = ExternalTransformer {
+                src_to_module: &src_2_module,
+                concatenate_context: &mut concatenate_context,
+                context: &context,
+                module_id: &ModuleId::from("mut.js"),
+                unresolved_mark: ast.unresolved_mark,
+            };
+
+            ast.ast.visit_mut_with(&mut t);
+            js_ast_to_code(&ast.ast, &context, "sut.js")
+                .unwrap()
+                .0
+                .trim()
+                .to_string()
+        })
     }
 
     #[test]
@@ -547,6 +594,13 @@ export { __mako_mut_js_0 as default };
          "#
             .trim()
         );
+    }
+
+    #[test]
+    fn test_require_from_external() {
+        let code = transform_with_external_replace(r#"let e = require("external");"#);
+
+        assert_eq!(code, r#"let e = external_namespace_cjs;"#.trim());
     }
 
     #[ignore]

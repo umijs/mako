@@ -9,19 +9,19 @@ use swc_core::ecma::ast::{
     VarDeclKind,
 };
 use swc_core::ecma::utils::{
-    collect_decls_with_ctxt, member_expr, quote_ident, ExprFactory, IdentRenamer,
+    collect_decls_with_ctxt, member_expr, quote_expr, quote_ident, ExprFactory, IdentRenamer,
 };
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::compiler::Context;
 use crate::module::{relative_to_root, ModuleId};
+use crate::plugins::farm_tree_shake::shake::module_concatenate::concatenate_context::ConcatenateContext;
 use crate::plugins::farm_tree_shake::shake::module_concatenate::utils::MODULE_CONCATENATE_ERROR_STR_MODULE_NAME;
 
 pub(super) struct RootTransformer<'a> {
+    pub concatenate_context: &'a mut ConcatenateContext,
     pub current_module_id: &'a ModuleId,
     pub context: &'a Arc<Context>,
-    pub modules_in_scope: &'a HashMap<ModuleId, HashMap<String, String>>,
-    pub top_level_vars: &'a HashSet<String>,
     pub top_level_mark: Mark,
     pub import_source_to_module_id: &'a HashMap<String, ModuleId>,
     pub renames: Vec<(Id, Id)>,
@@ -30,27 +30,21 @@ pub(super) struct RootTransformer<'a> {
 
 impl RootTransformer<'_> {
     pub fn new<'a>(
+        concatenate_context: &'a mut ConcatenateContext,
         current_module_id: &'a ModuleId,
         context: &'a Arc<Context>,
-        modules_in_scope: &'a HashMap<ModuleId, HashMap<String, String>>,
-        top_level_vars: &'a HashSet<String>,
         top_level_mark: Mark,
         import_source_to_module_id: &'a HashMap<String, ModuleId>,
     ) -> RootTransformer<'a> {
         RootTransformer {
+            concatenate_context,
             current_module_id,
             context,
-            modules_in_scope,
-            top_level_vars,
             top_level_mark,
             import_source_to_module_id,
             renames: vec![],
             my_top_decls: HashSet::new(),
         }
-    }
-
-    fn request_rename(&mut self, req: (Id, Id)) {
-        self.renames.push(req);
     }
 
     fn add_comment(&mut self, n: &mut Module) {
@@ -84,6 +78,7 @@ impl RootTransformer<'_> {
                 .collect();
 
         let conflicts_idents: HashSet<_> = self
+            .concatenate_context
             .top_level_vars
             .intersection(&my_top_decls)
             .cloned()
@@ -96,7 +91,9 @@ impl RootTransformer<'_> {
 
             let mut post_fix = 0;
             let mut new_name = format!("{}_{}", new_name_base, post_fix);
-            while self.top_level_vars.contains(&new_name) || self.my_top_decls.contains(&new_name) {
+            while self.concatenate_context.top_level_vars.contains(&new_name)
+                || self.my_top_decls.contains(&new_name)
+            {
                 post_fix += 1;
                 new_name = format!("{}_{}", new_name_base, post_fix);
             }
@@ -114,7 +111,7 @@ impl RootTransformer<'_> {
     fn src_exports(&self, src: &str) -> Option<&HashMap<String, String>> {
         self.import_source_to_module_id
             .get(src)
-            .and_then(|module_id| self.modules_in_scope.get(module_id))
+            .and_then(|module_id| self.concatenate_context.modules_in_scope.get(module_id))
     }
 }
 
@@ -134,13 +131,15 @@ impl<'a> VisitMut for RootTransformer<'a> {
                         if let Some(imported_module_id) =
                             self.import_source_to_module_id.get(&source)
                         {
-                            if let Some(mapped_exports) =
-                                self.modules_in_scope.get(imported_module_id)
+                            if let Some(mapped_exports) = self
+                                .concatenate_context
+                                .modules_in_scope
+                                .get(imported_module_id)
                             {
                                 items = Some(vec![]);
 
-                                for x in &import_decl.specifiers {
-                                    match x {
+                                for import_specifier in &import_decl.specifiers {
+                                    match import_specifier {
                                         ImportSpecifier::Named(named_specifier) => {
                                             // handle conflict name in top level
 
@@ -176,16 +175,33 @@ impl<'a> VisitMut for RootTransformer<'a> {
                                             }
                                         }
                                         ImportSpecifier::Default(default_specifier) => {
-                                            let mapped_default =
-                                                mapped_exports.get("default").unwrap();
+                                            if let Some(ex) = mapped_exports.get("default") {
+                                                let stmt: Stmt = quote_ident!(ex.clone())
+                                                    .into_var_decl(
+                                                        VarDeclKind::Var,
+                                                        default_specifier.local.clone().into(),
+                                                    )
+                                                    .into();
 
-                                            self.request_rename((
-                                                Id::from(default_specifier.local.clone()),
-                                                (
-                                                    mapped_default.clone().into(),
-                                                    default_specifier.local.span.ctxt,
-                                                ),
-                                            ));
+                                                items.as_mut().unwrap().push(stmt.into());
+                                            } else {
+                                                println!(
+                                                    "try get defaut from {}({}) in {}",
+                                                    source,
+                                                    imported_module_id.id,
+                                                    self.current_module_id.id
+                                                );
+                                                println!("the map {:?}", mapped_exports);
+
+                                                let stmt: Stmt = quote_expr!(DUMMY_SP, null)
+                                                    .into_var_decl(
+                                                        VarDeclKind::Var,
+                                                        default_specifier.local.clone().into(),
+                                                    )
+                                                    .into();
+
+                                                items.as_mut().unwrap().push(stmt.into());
+                                            }
                                         }
                                         ImportSpecifier::Namespace(namespace) => {
                                             let mapped_namespace = mapped_exports.get("*").unwrap();
@@ -289,15 +305,17 @@ impl<'a> VisitMut for RootTransformer<'a> {
                         {
                             let mut key_value_props: Vec<PropOrSpread> = vec![];
                             for (exported_name, local_name) in module_exports.iter() {
-                                key_value_props.push(
-                                    Prop::KeyValue(KeyValueProp {
-                                        key: quote_ident!(exported_name.clone()).into(),
-                                        value: quote_ident!(local_name.clone())
-                                            .into_lazy_fn(vec![])
-                                            .into(),
-                                    })
-                                    .into(),
-                                )
+                                if exported_name.ne("default") {
+                                    key_value_props.push(
+                                        Prop::KeyValue(KeyValueProp {
+                                            key: quote_ident!(exported_name.clone()).into(),
+                                            value: quote_ident!(local_name.clone())
+                                                .into_lazy_fn(vec![])
+                                                .into(),
+                                        })
+                                        .into(),
+                                    )
+                                }
                             }
 
                             let define_exports: Stmt = member_expr!(DUMMY_SP, __mako_require__.e)

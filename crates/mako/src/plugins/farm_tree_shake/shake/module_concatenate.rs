@@ -14,9 +14,8 @@ use inner_transformer::InnerTransform;
 use mako_core::swc_common::util::take::Take;
 use root_transformer::RootTransformer;
 use swc_core::common::{Span, SyntaxContext, GLOBALS};
-use swc_core::ecma::ast::{ModuleItem, Stmt, VarDeclKind};
+use swc_core::ecma::ast::ModuleItem;
 use swc_core::ecma::transforms::base::resolver;
-use swc_core::ecma::utils::{quote_ident, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use self::concatenate_context::Interops;
@@ -26,6 +25,7 @@ use crate::compiler::Context;
 use crate::module::{generate_module_id, Dependency, ImportType, ModuleId, ResolveType};
 use crate::module_graph::ModuleGraph;
 use crate::plugins::farm_tree_shake::module::{AllExports, TreeShakeModule};
+use crate::plugins::farm_tree_shake::shake::module_concatenate::concatenate_context::ConcatenateContext;
 use crate::tree_shaking::tree_shaking_module::ModuleSystem;
 
 pub fn optimize_module_graph(
@@ -108,6 +108,17 @@ pub fn optimize_module_graph(
         candidate: &HashSet<ModuleId>,
         module_graph: &ModuleGraph,
     ) {
+        if current_module_id.ne(&config.root) {
+            let parents = module_graph.dependant_module_ids(current_module_id);
+
+            let is_all_parents_in_config = parents.iter().all(|p| config.contains(p));
+
+            if !is_all_parents_in_config {
+                config.add_external(current_module_id.clone());
+                return;
+            }
+        }
+
         let deps = module_graph.get_dependencies(current_module_id);
 
         let mut children = vec![];
@@ -192,6 +203,13 @@ pub fn optimize_module_graph(
                         }
                     }
                 }
+
+                for (dep_module_id, dep) in module_graph.get_dependencies(&config.root) {
+                    if let Some(curr_interops) = config.externals.get_mut(dep_module_id) {
+                        let it: Interops = (&dep.resolve_type).into();
+                        curr_interops.insert(it);
+                    }
+                }
             }
 
             concat_configurations.push(config);
@@ -211,19 +229,16 @@ pub fn optimize_module_graph(
     }
 
     GLOBALS.set(&context.meta.script.globals, || {
-        if cfg!(debug_assertions) {
-            dbg!(&concat_configurations);
-        }
-
         for config in &concat_configurations {
+            if cfg!(debug_assertions) {
+                dbg!(&config);
+            }
             let mut module_items: Vec<ModuleItem> = Vec::new();
 
-            let mut modules_in_current_scope = HashMap::new();
-            let mut external_module_namespace = HashMap::new();
-            let mut all_top_level_vars = HashSet::new();
+            let mut concatenate_context = ConcatenateContext::default();
 
             let all_interops = config.merged_interops();
-            module_items.extend(all_interops.inject_interop_items());
+            module_items.extend(all_interops.inject_interop_runtime_helpers());
 
             for id in &config.sorted_modules(module_graph) {
                 if id.eq(&config.root) {
@@ -234,29 +249,29 @@ pub fn optimize_module_graph(
 
                 if cfg!(debug_assertions) {
                     println!("\n*** start for {}", id.id);
-                    dbg!(&config.external_interops(id));
+                    println!(
+                        "config.external_interops(id) {:?} ",
+                        &config.external_interops(id)
+                    );
                 }
 
                 if let Some(interop) = config.external_interops(id) {
                     let base_name = uniq_module_prefix(id, context);
-                    let mut uniq_name = base_name.to_string();
 
-                    let mut post_fix = 0;
-                    while all_top_level_vars.contains(&uniq_name) {
-                        post_fix += 1;
-                        uniq_name = format!("{}_{}", id.id, post_fix);
-                    }
-                    all_top_level_vars.insert(uniq_name.clone());
-                    external_module_namespace.insert(id.clone(), uniq_name.clone());
+                    let cjs_name = concatenate_context.request_safe_var_name(&base_name);
+                    let esm_name =
+                        concatenate_context.request_safe_var_name(&format!("{}_esm", base_name));
+                    let exposed_names = (cjs_name, esm_name);
 
                     let require_src = generate_module_id(id.id.clone(), context);
+                    module_items.extend(
+                        interop
+                            .inject_var_decl_stmts(&require_src, &exposed_names)
+                            .into_iter()
+                            .map(|st| st.into()),
+                    );
 
-                    let stmt: Stmt = interop
-                        .require_expr(&require_src)
-                        .into_var_decl(VarDeclKind::Var, quote_ident!(uniq_name).into())
-                        .into();
-                    module_items.push(stmt.into());
-
+                    concatenate_context.add_external_names(id, exposed_names);
                     module_graph.add_dependency(
                         &config.root,
                         id,
@@ -284,26 +299,27 @@ pub fn optimize_module_graph(
                 let module_info = module.info.as_mut().unwrap();
                 let script_ast = module_info.ast.script_mut().unwrap();
 
-                if cfg!(debug_assertions) {
+                let p = false;
+                if cfg!(debug_assertions) && p {
                     let code_map = js_ast_to_code(&script_ast.ast, context, &id.id).unwrap();
                     println!("code:\n\n{}\n", code_map.0);
                 }
 
                 let mut ext_trans = ExternalTransformer {
                     src_to_module: &import_source_to_module_id,
-                    current_external_map: &external_module_namespace,
+                    concatenate_context: &mut concatenate_context,
                     module_id: id,
                     context,
+                    unresolved_mark: script_ast.unresolved_mark,
                 };
                 script_ast.ast.visit_mut_with(&mut ext_trans);
 
-                if cfg!(debug_assertions) {
+                if cfg!(debug_assertions) && p {
                     let code_map = js_ast_to_code(&script_ast.ast, context, &id.id).unwrap();
                     println!("after external:\n{}\n", code_map.0);
                 }
                 let mut inner_transformer = InnerTransform::new(
-                    &mut modules_in_current_scope,
-                    &mut all_top_level_vars,
+                    &mut concatenate_context,
                     id,
                     &import_source_to_module_id,
                     context,
@@ -314,7 +330,7 @@ pub fn optimize_module_graph(
                 script_ast.ast.visit_mut_with(&mut inner_transformer);
                 script_ast.ast.visit_mut_with(&mut CleanSyntaxContext {});
 
-                if cfg!(debug_assertions) {
+                if cfg!(debug_assertions) && p {
                     let code_map = js_ast_to_code(&script_ast.ast, context, &id.id).unwrap();
                     println!("after inner:\n{}\n", code_map.0);
                 }
@@ -332,19 +348,25 @@ pub fn optimize_module_graph(
             let top_level_mark = ast_script.top_level_mark;
             let src_2_module_id = source_to_module_id(&config.root, module_graph);
 
+            let p = false;
+            if cfg!(debug_assertions) && p {
+                let code_map = js_ast_to_code(&root_module_ast, context, &config.root.id).unwrap();
+                println!("root:\n{}\n", code_map.0);
+            }
+
             let mut ext_trans = ExternalTransformer {
                 src_to_module: &src_2_module_id,
-                current_external_map: &external_module_namespace,
+                concatenate_context: &mut concatenate_context,
                 module_id: &config.root,
                 context,
+                unresolved_mark,
             };
             root_module_ast.visit_mut_with(&mut ext_trans);
 
             root_module_ast.visit_mut_with(&mut RootTransformer::new(
+                &mut concatenate_context,
                 &config.root,
                 context,
-                &modules_in_current_scope,
-                &all_top_level_vars,
                 top_level_mark,
                 &src_2_module_id,
             ));
