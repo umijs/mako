@@ -1,13 +1,13 @@
 use std::collections::{HashSet, VecDeque};
 use std::vec;
 
+use mako_core::anyhow::Result;
 use mako_core::tracing::debug;
 
 use crate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::chunk_graph::ChunkGraph;
 use crate::compiler::Compiler;
 use crate::module::{ModuleId, ResolveType};
-use crate::task::parse_path;
 use crate::update::UpdateResult;
 
 pub type GroupUpdateResult = Option<(Vec<ChunkId>, Vec<(ModuleId, ChunkId, ChunkType)>)>;
@@ -485,5 +485,41 @@ where
         visited.insert(id.clone());
 
         queue.extend(callback(&id));
+    }
+}
+
+// TODO: REMOVE THIS
+fn parse_path(path: &str) -> Result<FileRequest> {
+    let mut iter = path.split('?');
+    let path = iter.next().unwrap();
+    let query = iter.next().unwrap_or("");
+    let mut query_vec = vec![];
+    for pair in query.split('&') {
+        if pair.contains('=') {
+            let mut it = pair.split('=').take(2);
+            let kv = match (it.next(), it.next()) {
+                (Some(k), Some(v)) => (k.to_string(), v.to_string()),
+                _ => continue,
+            };
+            query_vec.push(kv);
+        } else if !pair.is_empty() {
+            query_vec.push((pair.to_string(), "".to_string()));
+        }
+    }
+    Ok(FileRequest {
+        path: path.to_string(),
+        query: query_vec,
+    })
+}
+
+#[derive(Debug, Clone)]
+pub struct FileRequest {
+    pub path: String,
+    pub query: Vec<(String, String)>,
+}
+
+impl FileRequest {
+    pub fn has_query(&self, key: &str) -> bool {
+        self.query.iter().any(|(k, _)| *k == key)
     }
 }

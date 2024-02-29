@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use mako_core::anyhow::Result;
 use mako_core::swc_common::{Mark, DUMMY_SP};
 use mako_core::swc_ecma_ast::{
     AssignOp, BlockStmt, Expr, ExprOrSpread, FnExpr, Function, Ident, ImportDecl, Lit, NamedExport,
@@ -9,10 +10,9 @@ use mako_core::swc_ecma_ast::{
 use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
+use crate::ast_2::utils::{is_commonjs_require, is_dynamic_import, is_remote};
 use crate::compiler::Context;
 use crate::module::{Dependency, ModuleId};
-use crate::ast_2::utils::{is_commonjs_require, is_dynamic_import, is_remote};
-use crate::task::parse_path;
 use crate::transformers::transform_virtual_css_modules::is_css_path;
 
 pub struct DepReplacer<'a> {
@@ -228,6 +228,42 @@ pub fn resolve_web_worker_mut(new_expr: &mut NewExpr, unresolved_mark: Mark) -> 
     }
 
     None
+}
+
+// TODO: REMOVE THIS, pass file to visitor instead
+fn parse_path(path: &str) -> Result<FileRequest> {
+    let mut iter = path.split('?');
+    let path = iter.next().unwrap();
+    let query = iter.next().unwrap_or("");
+    let mut query_vec = vec![];
+    for pair in query.split('&') {
+        if pair.contains('=') {
+            let mut it = pair.split('=').take(2);
+            let kv = match (it.next(), it.next()) {
+                (Some(k), Some(v)) => (k.to_string(), v.to_string()),
+                _ => continue,
+            };
+            query_vec.push(kv);
+        } else if !pair.is_empty() {
+            query_vec.push((pair.to_string(), "".to_string()));
+        }
+    }
+    Ok(FileRequest {
+        path: path.to_string(),
+        query: query_vec,
+    })
+}
+
+#[derive(Debug, Clone)]
+pub struct FileRequest {
+    pub path: String,
+    pub query: Vec<(String, String)>,
+}
+
+impl FileRequest {
+    pub fn has_query(&self, key: &str) -> bool {
+        self.query.iter().any(|(k, _)| *k == key)
+    }
 }
 
 #[cfg(test)]

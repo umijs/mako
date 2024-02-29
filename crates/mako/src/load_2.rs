@@ -57,7 +57,7 @@ impl Load {
         }
 
         // file exists check must after virtual modules handling
-        if !file.is_exists {
+        if !file.path.exists() || !file.path.is_file() {
             return Err(anyhow!(LoadError::FileNotFound {
                 path: file.path.to_string_lossy().to_string(),
             }));

@@ -10,9 +10,9 @@ use mako_core::swc_ecma_ast::{
 use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprExt, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
+use crate::ast_2::file::Content;
 use crate::ast_2::utils::{is_commonjs_require, is_dynamic_import};
 use crate::compiler::Context;
-use crate::ast_2::file::Content;
 use crate::plugin::{Plugin, PluginLoadParam, PluginTransformJsParam};
 use crate::resolve::get_module_extensions;
 
@@ -24,22 +24,21 @@ impl Plugin for ContextModulePlugin {
     }
 
     fn load(&self, param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
-        if let (Some(glob_pattern), None) = (
+        if let (Some(glob_pattern), true) = (
             param
-                .task
-                .request
-                .query
+                .file
+                .params
                 .iter()
                 .find_map(|(k, v)| k.eq("glob").then_some(v)),
-            param.task.ext_name.as_ref(),
+            param.file.path.is_dir(),
         ) {
-            let glob_pattern = PathBuf::from(param.task.request.path.clone()).join(glob_pattern);
+            let glob_pattern = PathBuf::from(param.file.pathname.clone()).join(glob_pattern);
             let paths = glob(glob_pattern.to_str().unwrap())?;
             let mut key_values = vec![];
 
             for path in paths {
                 let path = path?;
-                let rlt_path = path.strip_prefix(param.task.request.path.clone())?;
+                let rlt_path = path.strip_prefix(&param.file.pathname)?;
 
                 // full path `./i18n/zh_CN.json`
                 let mut keys = vec![format!("./{}", rlt_path.to_string_lossy())];

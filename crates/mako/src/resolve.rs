@@ -16,7 +16,6 @@ use crate::config::{
     Platform,
 };
 use crate::module::{Dependency, ResolveType};
-use crate::task::parse_path;
 
 #[derive(Debug, Error)]
 enum ResolveError {
@@ -410,6 +409,42 @@ pub fn clear_resolver_cache(resolvers: &Resolvers) {
     resolvers
         .iter()
         .for_each(|(_, resolver)| resolver.clear_entries());
+}
+
+// TODO: REMOVE THIS, pass file to resolve instead
+fn parse_path(path: &str) -> Result<FileRequest> {
+    let mut iter = path.split('?');
+    let path = iter.next().unwrap();
+    let query = iter.next().unwrap_or("");
+    let mut query_vec = vec![];
+    for pair in query.split('&') {
+        if pair.contains('=') {
+            let mut it = pair.split('=').take(2);
+            let kv = match (it.next(), it.next()) {
+                (Some(k), Some(v)) => (k.to_string(), v.to_string()),
+                _ => continue,
+            };
+            query_vec.push(kv);
+        } else if !pair.is_empty() {
+            query_vec.push((pair.to_string(), "".to_string()));
+        }
+    }
+    Ok(FileRequest {
+        path: path.to_string(),
+        query: query_vec,
+    })
+}
+
+#[derive(Debug, Clone)]
+pub struct FileRequest {
+    pub path: String,
+    pub query: Vec<(String, String)>,
+}
+
+impl FileRequest {
+    pub fn has_query(&self, key: &str) -> bool {
+        self.query.iter().any(|(k, _)| *k == key)
+    }
 }
 
 #[cfg(test)]

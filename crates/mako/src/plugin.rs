@@ -9,20 +9,18 @@ use mako_core::swc_ecma_ast::Module;
 
 use crate::compiler::{Args, Context};
 use crate::config::Config;
-use crate::ast_2::file::Content;
+use crate::ast_2::file::{Content, File};
 use crate::module::{Dependency, ModuleAst};
 use crate::module_graph::ModuleGraph;
 use crate::stats::StatsJsonMap;
-use crate::task::Task;
 
 #[derive(Debug)]
 pub struct PluginLoadParam<'a> {
-    pub task: &'a Task,
+    pub file: &'a File,
 }
 
 pub struct PluginParseParam<'a> {
-    pub task: &'a Task,
-    pub content: &'a Content,
+    pub file: &'a File,
 }
 
 pub struct PluginCheckAstParam<'a> {

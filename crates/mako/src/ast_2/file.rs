@@ -34,7 +34,6 @@ pub struct File {
     pub is_under_node_modules: bool,
     pub is_css_modules: bool,
     pub is_virtual: bool,
-    pub is_exists: bool,
     pub is_entry: bool,
     pub pathname: String,
     pub search: String,
@@ -51,7 +50,6 @@ impl Default for File {
             is_under_node_modules: false,
             is_css_modules: false,
             is_virtual: false,
-            is_exists: false,
             is_entry: false,
             pathname: "".to_string(),
             search: "".to_string(),
@@ -73,41 +71,28 @@ impl File {
             return File {
                 path: path.clone(),
                 relative_path: path,
-                extname: "".to_string(),
-                content: None,
-                is_under_node_modules: false,
-                is_css_modules: false,
                 is_virtual,
-                is_exists: false,
-                pathname: "".to_string(),
-                search: "".to_string(),
-                params: vec![],
-                is_entry: false,
+                ..Default::default()
             };
         } else {
             let path = PathBuf::from(path);
-            // TODO: support symlink
-            let is_exists = path.exists() && path.is_file();
             let relative_path = diff_paths(&path, &context.root).unwrap_or(path.clone());
             let under_node_modules = path.to_string_lossy().contains("node_modules");
-            let extname = relative_path
+            let extname = path
                 .extension()
                 .map(|ext| ext.to_string_lossy().to_string())
                 .unwrap_or_default();
             let (pathname, search, params) = parse_path(&path.to_string_lossy()).unwrap();
             File {
                 is_virtual,
-                is_exists,
                 path,
                 relative_path,
                 extname,
-                content: None,
                 is_under_node_modules: under_node_modules,
                 pathname,
                 search,
                 params,
-                is_css_modules: false,
-                is_entry: false,
+                ..Default::default()
             }
         }
     }

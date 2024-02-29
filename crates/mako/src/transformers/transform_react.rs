@@ -7,9 +7,9 @@ use mako_core::swc_ecma_transforms_react::{react, Options, RefreshOptions, Runti
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::ast::build_js_ast;
+use crate::ast_2::file::File;
 use crate::compiler::Context;
 use crate::config::{Mode, ReactRuntimeConfig};
-use crate::task::Task;
 
 pub struct PrefixCode {
     pub code: String,
@@ -19,7 +19,7 @@ pub struct PrefixCode {
 pub fn mako_react(
     cm: Lrc<SourceMap>,
     context: &Arc<Context>,
-    task: &Task,
+    file: &File,
     top_level_mark: &Mark,
     unresolved_mark: &Mark,
 ) -> Box<dyn VisitMut> {
@@ -28,17 +28,17 @@ pub fn mako_react(
     let use_refresh = is_dev
         && context.args.watch
         && context.config.hmr.is_some()
-        && !task.path.contains("/node_modules/")
+        && !file.is_under_node_modules
         && is_browser;
 
-    let is_jsx = task.path.ends_with(".jsx")
-        || task.path.ends_with(".js")
-        || task.path.ends_with(".ts")
-        || task.path.ends_with(".tsx")
-        || task.path.ends_with(".svg");
+    let is_jsx = file.pathname.ends_with(".jsx")
+        || file.pathname.ends_with(".js")
+        || file.pathname.ends_with(".ts")
+        || file.pathname.ends_with(".tsx")
+        || file.pathname.ends_with(".svg");
 
     if !is_jsx {
-        return if task.is_entry && use_refresh {
+        return if file.is_entry && use_refresh {
             Box::new(chain!(react_refresh_inject_runtime_only(context), noop()))
         } else {
             Box::new(noop())
@@ -188,8 +188,8 @@ mod tests {
 
     use crate::assert_display_snapshot;
     use crate::ast::build_js_ast;
+    use crate::ast_2::file::File;
     use crate::compiler::{Args, Context};
-    use crate::task::{Task, TaskType};
     use crate::test_helper::transform_ast_with;
     use crate::transformers::transform_react::mako_react;
 
@@ -266,17 +266,17 @@ mod tests {
         GLOBALS.set(&context.meta.script.globals, || {
             let mut ast = build_js_ast("index.jsx", &task.code, &context).unwrap();
 
-            let task_type = if task.is_entry {
-                TaskType::Entry(task.path.clone())
+            let file = if task.is_entry {
+                File::new_entry(task.path.clone(), context)
             } else {
-                TaskType::Normal(task.path.clone())
+                File::new(task.path.clone(), context)
             };
             let mut visitor: Box<dyn VisitMut> = Box::new(chain!(
                 resolver(Mark::new(), Mark::new(), false),
                 mako_react(
                     Default::default(),
                     &context,
-                    &Task::new(task_type, None),
+                    &file,
                     &Mark::new(),
                     &Mark::new(),
                 )
