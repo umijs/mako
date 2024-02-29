@@ -103,7 +103,7 @@ impl<'a> InnerTransform<'a> {
         }
     }
 
-    fn get_non_conflict_name(&self, name: &String) -> String {
+    fn get_non_conflict_name(&self, name: &str) -> String {
         self.concatenate_context
             .negotiate_safe_var_name(&self.my_top_decls, name)
     }

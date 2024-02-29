@@ -1,11 +1,11 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use swc_core::common::{Mark, Spanned, DUMMY_SP};
+use swc_core::common::{Mark, DUMMY_SP};
 use swc_core::ecma::ast::{
-    EmptyStmt, ExportNamedSpecifier, ExportSpecifier, Expr, ExprOrSpread, ImportSpecifier, Lit,
-    MemberExpr, Module, ModuleDecl, ModuleExportName, ModuleItem, NamedExport, Stmt, VarDecl,
-    VarDeclKind,
+    EmptyStmt, ExportNamedSpecifier, ExportSpecifier, Expr, ExprOrSpread, ImportDecl,
+    ImportSpecifier, Lit, MemberExpr, Module, ModuleDecl, ModuleExportName, ModuleItem,
+    NamedExport, Stmt, VarDecl, VarDeclKind, VarDeclarator,
 };
 use swc_core::ecma::utils::{member_expr, quote_ident, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
@@ -17,6 +17,17 @@ use crate::plugins::farm_tree_shake::shake::module_concatenate::utils::{
     uniq_module_default_export_name, uniq_module_export_name,
 };
 use crate::plugins::javascript::is_commonjs_require;
+
+macro_rules! var {
+    ($left:ident = $init:expr) => {
+        VarDeclarator {
+            span: $left.span,
+            name: $left.local.clone().into(),
+            init: Some($init.into()),
+            definite: false,
+        }
+    };
+}
 
 pub(super) struct ExternalTransformer<'a> {
     pub concatenate_context: &'a mut ConcatenateContext,
@@ -45,7 +56,7 @@ impl<'a> ExternalTransformer<'_> {
         &mut self,
         src_module_id: &ModuleId,
         specifiers: &Vec<ExportSpecifier>,
-        external_module_namespace: &String,
+        external_module_namespace: &str,
     ) -> Vec<ModuleItem> {
         let mut var_decorators: Vec<ExportSpecifier> = vec![];
 
@@ -59,7 +70,7 @@ impl<'a> ExternalTransformer<'_> {
                             let spec = ExportNamedSpecifier {
                                 span: DUMMY_SP,
                                 orig: ModuleExportName::Ident(quote_ident!(
-                                    external_module_namespace.clone()
+                                    external_module_namespace.to_string()
                                 )),
                                 exported: Some(ModuleExportName::Ident(local.clone())),
                                 is_type_only: false,
@@ -86,7 +97,7 @@ impl<'a> ExternalTransformer<'_> {
 
                     let default_export_var_decl = MemberExpr {
                         span: DUMMY_SP,
-                        obj: quote_ident!(external_module_namespace.clone()).into(),
+                        obj: quote_ident!(external_module_namespace.to_string()).into(),
                         prop: quote_ident!("default").into(),
                     }
                     .into_var_decl(VarDeclKind::Var, local_default_name.clone().into());
@@ -117,7 +128,7 @@ impl<'a> ExternalTransformer<'_> {
 
                         let export_name_decl = MemberExpr {
                             span: DUMMY_SP,
-                            obj: quote_ident!(external_module_namespace.clone()).into(),
+                            obj: quote_ident!(external_module_namespace.to_string()).into(),
                             prop: orig.clone().into(),
                         }
                         .into_var_decl(VarDeclKind::Var, local_proxy_name.clone().into());
@@ -148,7 +159,7 @@ impl<'a> ExternalTransformer<'_> {
 
                         let var_decl = MemberExpr {
                             span: DUMMY_SP,
-                            obj: quote_ident!(external_module_namespace.clone()).into(),
+                            obj: quote_ident!(external_module_namespace.to_string()).into(),
                             prop: orig.clone().into(),
                         }
                         .into_var_decl(VarDeclKind::Var, local_proxy_name.clone().into());
@@ -201,9 +212,78 @@ impl<'a> ExternalTransformer<'_> {
             None
         }
     }
+
+    fn import_decl_to_var_decl(
+        &self,
+        import_decl: &ImportDecl,
+        namespace: &str,
+    ) -> Option<VarDecl> {
+        let var_decorators: Vec<_> = import_decl
+            .specifiers
+            .iter()
+            .map(|spec| Self::import_specifier_to_var_declarator(spec, namespace))
+            .collect();
+        let mut var_decl = VarDecl {
+            span: import_decl.span,
+            decls: var_decorators,
+            declare: false,
+            kind: VarDeclKind::Var,
+        };
+        var_decl.span = import_decl.span;
+
+        Some(var_decl)
+    }
+
+    fn import_specifier_to_var_declarator(
+        specifier: &ImportSpecifier,
+        exposed_esm: &str,
+    ) -> VarDeclarator {
+        match specifier {
+            ImportSpecifier::Named(named) => {
+                let var_init_val = match &named.imported {
+                    None => MemberExpr {
+                        span: DUMMY_SP,
+                        obj: quote_ident!(exposed_esm).into(),
+                        prop: named.local.clone().into(),
+                    },
+                    Some(ModuleExportName::Ident(imported_ident)) => MemberExpr {
+                        span: imported_ident.span,
+                        obj: quote_ident!(exposed_esm).into(),
+                        prop: imported_ident.clone().into(),
+                    },
+                    Some(ModuleExportName::Str(_)) => {
+                        unimplemented!(r#"export "str" not supported"#);
+                    }
+                };
+
+                var!(named = var_init_val)
+            }
+            ImportSpecifier::Default(default) => {
+                var!(
+                    default = member_expr!(@EXT, DUMMY_SP,
+                            quote_ident!(exposed_esm).into(),
+                            default)
+                )
+            }
+            ImportSpecifier::Namespace(namespace) => {
+                var!(namespace = quote_ident!(exposed_esm))
+            }
+        }
+    }
 }
 
 impl VisitMut for ExternalTransformer<'_> {
+    fn visit_mut_expr(&mut self, n: &mut Expr) {
+        if let Expr::Call(call_expr) = n
+            && is_commonjs_require(call_expr, &self.unresolved_mark)
+        {
+            if let Some(((namespace, _), _)) = self.require_arg_to_module_namespace(&call_expr.args)
+            {
+                *n = quote_ident!(namespace.clone()).into();
+            }
+        }
+    }
+
     fn visit_mut_module(&mut self, n: &mut Module) {
         let contains_external = self.src_to_module.values().any(|module_id| {
             self.concatenate_context
@@ -223,94 +303,24 @@ impl VisitMut for ExternalTransformer<'_> {
             if let ModuleItem::ModuleDecl(module_decl) = item {
                 match module_decl {
                     ModuleDecl::Import(import_decl) => {
-                        if let Some(imported_module_id) =
-                            self.src_to_module.get(&import_decl.src.value.to_string())
-                            && let Some((_, exposed_esm)) = self
-                                .concatenate_context
-                                .external_expose_names(imported_module_id)
+                        if let Some(((_, esm_namespace), _)) =
+                            self.src_to_export_name(import_decl.src.value.as_ref())
                         {
                             if import_decl.specifiers.is_empty() {
-                                let empty_stmt: Stmt = EmptyStmt { span: DUMMY_SP }.into();
-
-                                *item = empty_stmt.into();
-                            } else {
-                                let mut var_decorators = vec![];
-
-                                for specifier in &import_decl.specifiers {
-                                    match specifier {
-                                        ImportSpecifier::Named(named) => {
-                                            if let Some(imported) = &named.imported {
-                                                match imported {
-                                                    ModuleExportName::Ident(imported_ident) => {
-                                                        let x = MemberExpr {
-                                                            span: DUMMY_SP,
-                                                            obj: quote_ident!(exposed_esm.clone())
-                                                                .into(),
-                                                            prop: imported_ident.clone().into(),
-                                                        }
-                                                        .into_var_decl(
-                                                            VarDeclKind::Var,
-                                                            named.local.clone().into(),
-                                                        );
-
-                                                        var_decorators.extend(x.decls);
-                                                    }
-                                                    ModuleExportName::Str(_) => {
-                                                        unimplemented!(
-                                                            r#"export "str" not supported"#
-                                                        )
-                                                    }
-                                                }
-                                            } else {
-                                                let var_decl = MemberExpr {
-                                                    span: DUMMY_SP,
-                                                    obj: quote_ident!(exposed_esm.clone()).into(),
-                                                    prop: named.local.clone().into(),
-                                                }
-                                                .into_var_decl(
-                                                    VarDeclKind::Var,
-                                                    named.local.clone().into(),
-                                                );
-
-                                                var_decorators.extend(var_decl.decls);
-                                            }
-                                        }
-                                        ImportSpecifier::Default(default) => {
-                                            let x = member_expr!(@EXT, DUMMY_SP,
-                                            quote_ident!(default.span, exposed_esm
-                                                .clone()).into()
-                                            , default)
-                                            .into_var_decl(
-                                                VarDeclKind::Var,
-                                                default.local.clone().into(),
-                                            );
-
-                                            var_decorators.extend(x.decls);
-                                        }
-                                        ImportSpecifier::Namespace(namespace) => {
-                                            let var_dec = quote_ident!(exposed_esm.clone())
-                                                .into_var_decl(
-                                                    VarDeclKind::Var,
-                                                    namespace.local.clone().into(),
-                                                );
-
-                                            var_decorators.extend(var_dec.decls);
-                                        }
-                                    }
-                                }
-
-                                *item = VarDecl {
-                                    span: item.span(),
-                                    decls: var_decorators,
-                                    declare: false,
-                                    kind: VarDeclKind::Var,
+                                let empty: Stmt = EmptyStmt {
+                                    span: import_decl.span,
                                 }
                                 .into();
+                                *item = empty.into();
+                            } else {
+                                self.import_decl_to_var_decl(import_decl, &esm_namespace)
+                                    .and_then(|var_dcl| {
+                                        *item = var_dcl.into();
+                                        None::<()>
+                                    });
                             }
                         }
                     }
-
-                    ModuleDecl::ExportDecl(_) => {}
                     ModuleDecl::ExportNamed(named_export) => {
                         if let Some(src) = &named_export.src
                             && let Some(((_, external_module_namespace), src_module_id)) =
@@ -325,9 +335,10 @@ impl VisitMut for ExternalTransformer<'_> {
                             replaces.push((index, items));
                         }
                     }
+                    ModuleDecl::ExportDecl(_) => {}
+                    ModuleDecl::ExportAll(_) => {}
                     ModuleDecl::ExportDefaultDecl(_) => {}
                     ModuleDecl::ExportDefaultExpr(_) => {}
-                    ModuleDecl::ExportAll(_) => {}
                     ModuleDecl::TsImportEquals(_) => {}
                     ModuleDecl::TsExportAssignment(_) => {}
                     ModuleDecl::TsNamespaceExport(_) => {}
@@ -339,17 +350,6 @@ impl VisitMut for ExternalTransformer<'_> {
 
         for (index, items) in replaces {
             module_items.splice(index..index + 1, items);
-        }
-    }
-
-    fn visit_mut_expr(&mut self, n: &mut Expr) {
-        if let Expr::Call(call_expr) = n
-            && is_commonjs_require(call_expr, &self.unresolved_mark)
-        {
-            if let Some(((namespace, _), _)) = self.require_arg_to_module_namespace(&call_expr.args)
-            {
-                *n = quote_ident!(namespace.clone()).into();
-            }
         }
     }
 }
@@ -417,6 +417,13 @@ mod tests {
                 .trim()
                 .to_string()
         })
+    }
+
+    #[test]
+    fn test_external_import_transfer() {
+        let code = transform_with_external_replace(r#"import "external";"#);
+
+        assert_eq!(code, ";");
     }
 
     #[test]
