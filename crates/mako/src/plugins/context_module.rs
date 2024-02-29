@@ -164,6 +164,8 @@ impl VisitMut for ContextModuleVisitor {
                         then
                     )
                     .as_callee();
+                    // TODO: allow use await in args
+                    // eg: import(`./i18n${await xxx()}`)
                     expr.args = vec![quote_ident!("m")
                         .as_call(DUMMY_SP, expr.args.clone())
                         .as_expr()
@@ -173,6 +175,8 @@ impl VisitMut for ContextModuleVisitor {
                 }
             }
         }
+
+        expr.visit_mut_children_with(self);
     }
 }
 

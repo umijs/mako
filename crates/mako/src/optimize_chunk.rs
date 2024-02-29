@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::string::String;
 
 use mako_core::indexmap::{IndexMap, IndexSet};
-use mako_core::nodejs_resolver::Resource;
 use mako_core::regex::Regex;
 use mako_core::tracing::debug;
 
@@ -300,19 +299,18 @@ impl Compiler {
                                     Some(ModuleInfo {
                                         resolved_resource:
                                             Some(ResolverResource::Resolved(ResolvedResource(
-                                                Resource {
-                                                    description: Some(module_desc),
-                                                    ..
-                                                },
+                                                resolution,
                                             ))),
                                         ..
                                     }),
                                 ..
-                            }) => module_desc.data().raw().get("name"),
-                            _ => None,
-                        }
-                        .map(|n| n.as_str().unwrap())
-                        .unwrap_or("unknown");
+                            }) => resolution.package_json().map_or("unknown", |json| {
+                                json.raw_json()
+                                    .get("name")
+                                    .map_or("unknown", |n| n.as_str().unwrap())
+                            }),
+                            _ => "unknown",
+                        };
 
                         let module_size = module_graph.get_module(mtc.0).unwrap().get_module_size();
 

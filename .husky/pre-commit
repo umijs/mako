@@ -7,6 +7,8 @@ cargo fmt
 # for js code
 npm run biome:format
 
+# for toml files
+npx taplo format
+
 # only add staged files though cargo fmt all projects
 git add $(git diff --name-only --cached --diff-filter=AM)
-

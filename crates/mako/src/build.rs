@@ -437,7 +437,7 @@ module.exports = new Promise((resolve, reject) => {{
         let has_side_effects = if let Some(ResolverResource::Resolved(ResolvedResource(x))) =
             task.parent_resource.clone()
         {
-            if let Some(d) = &x.description {
+            if let Some(d) = &x.package_json() {
                 has_side_effects(d)
             } else {
                 true

@@ -1,14 +1,18 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::vec;
 
+use cached::proc_macro::cached;
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::convert_case::{Case, Casing};
-use mako_core::nodejs_resolver::{AliasMap, Options, ResolveResult, Resolver, Resource};
 use mako_core::regex::{Captures, Regex};
 use mako_core::thiserror::Error;
 use mako_core::tracing::debug;
+use oxc_resolver::{Alias, AliasValue, ResolveError as OxcResolveError, ResolveOptions, Resolver};
+
+mod resource;
+pub(crate) use resource::{ExternalResource, ResolvedResource, ResolverResource};
 
 use crate::compiler::Context;
 use crate::config::{
@@ -19,9 +23,10 @@ use crate::module::{Dependency, ResolveType};
 use crate::task::parse_path;
 
 #[derive(Debug, Error)]
-enum ResolveError {
-    #[error("Resolve {path:?} failed from {from:?}")]
-    ResolveError { path: String, from: String },
+#[error("Resolve {path:?} failed from {from:?}")]
+struct ResolveError {
+    path: String,
+    from: String,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -33,53 +38,6 @@ pub enum ResolverType {
 }
 
 pub type Resolvers = HashMap<ResolverType, Resolver>;
-
-#[derive(Debug, Clone)]
-pub struct ExternalResource {
-    pub source: String,
-    pub external: String,
-    pub script: Option<String>,
-}
-
-#[derive(Debug, Clone)]
-pub struct ResolvedResource(pub Resource);
-
-#[derive(Debug, Clone)]
-pub enum ResolverResource {
-    External(ExternalResource),
-    Resolved(ResolvedResource),
-    Ignored,
-}
-
-impl ResolverResource {
-    pub fn get_resolved_path(&self) -> String {
-        match self {
-            ResolverResource::External(ExternalResource { source, .. }) => source.to_string(),
-            ResolverResource::Resolved(ResolvedResource(resource)) => {
-                let mut path = resource.path.to_string_lossy().to_string();
-                if resource.query.is_some() {
-                    path = format!("{}{}", path, resource.query.as_ref().unwrap());
-                }
-                path
-            }
-            ResolverResource::Ignored => "".to_string(),
-        }
-    }
-    pub fn get_external(&self) -> Option<String> {
-        match self {
-            ResolverResource::External(ExternalResource { external, .. }) => Some(external.clone()),
-            ResolverResource::Resolved(_) => None,
-            ResolverResource::Ignored => None,
-        }
-    }
-    pub fn get_script(&self) -> Option<String> {
-        match self {
-            ResolverResource::External(ExternalResource { script, .. }) => script.clone(),
-            ResolverResource::Resolved(_) => None,
-            ResolverResource::Ignored => None,
-        }
-    }
-}
 
 pub fn resolve(
     path: &str,
@@ -103,6 +61,11 @@ pub fn resolve(
     let source = dep.resolve_as.as_ref().unwrap_or(&dep.source);
 
     do_resolve(path, source, resolver, Some(&context.config.externals))
+}
+
+#[cached(key = "String", convert = r#"{ re.to_string() }"#)]
+fn create_external_regex(re: &str) -> Regex {
+    Regex::new(re).unwrap()
 }
 
 fn get_external_target(
@@ -136,11 +99,11 @@ fn get_external_target(
         externals.iter().find_map(|(key, config)| {
             match config {
                 ExternalConfig::Advanced(config) if config.subpath.is_some() => {
-                    if let Some(caps) =
-                        Regex::new(&format!(r#"(?:^|/node_modules/|[a-zA-Z\d]@){}(/|$)"#, key))
-                            .ok()
-                            .unwrap()
-                            .captures(source)
+                    if let Some(caps) = create_external_regex(&format!(
+                        r#"(?:^|/node_modules/|[a-zA-Z\d]@){}(/|$)"#,
+                        key
+                    ))
+                    .captures(source)
                     {
                         let subpath = source.split(&caps[0]).collect::<Vec<_>>()[1].to_string();
                         let subpath_config = config.subpath.as_ref().unwrap();
@@ -149,9 +112,7 @@ fn get_external_target(
                             // skip if source is excluded
                             Some(exclude)
                                 if exclude.iter().any(|e| {
-                                    Regex::new(&format!("(^|/){}(/|$)", e))
-                                        .ok()
-                                        .unwrap()
+                                    create_external_regex(&format!("(^|/){}(/|$)", e))
                                         .is_match(subpath.as_str())
                                 }) =>
                             {
@@ -171,7 +132,7 @@ fn get_external_target(
         // ex. import Button from 'antd/es/button';
         // find matched subpath rule
         if let Some((rule, caps)) = subpath_config.rules.iter().find_map(|r| {
-            let regex = Regex::new(r.regex.as_str()).ok().unwrap();
+            let regex = create_external_regex(r.regex.as_str());
 
             if regex.is_match(subpath.as_str()) {
                 Some((r, regex.captures(subpath.as_str()).unwrap()))
@@ -187,7 +148,7 @@ fn get_external_target(
                 }
                 // external to target template
                 ExternalAdvancedSubpathTarget::Tpl(target) => {
-                    let regex = Regex::new(r"\$(\d+)").ok().unwrap();
+                    let regex = create_external_regex(r"\$(\d+)");
 
                     // replace $1, $2, ... with captured groups
                     let mut replaced = regex
@@ -248,42 +209,38 @@ fn do_resolve(
         let parent = path.parent().unwrap();
         debug!("parent: {:?}, source: {:?}", parent, source);
         let result = resolver.resolve(parent, source);
-        if let Ok(result) = result {
-            match result {
-                ResolveResult::Resource(resource) => {
-                    // TODO: 只在 watch 时且二次编译时才做这个检查
-                    // TODO: 临时方案，需要改成删除文件时删 resolve cache 里的内容
-                    // 比如把 util.ts 改名为 util.tsx，目前应该是还有问题的
-                    if resource.path.exists() {
-                        Ok(ResolverResource::Resolved(ResolvedResource(Resource {
-                            query: resource.query.or_else(|| {
-                                // 手动为 context resolve 补全 query，因为 nodejs_resolver 不会和 enhanced-resolve 一样保留 query
-                                // TODO: 看看能否 PR 上游后移除该逻辑
-                                source
-                                    .split('#')
-                                    .next()
-                                    .and_then(|head| head.split('?').nth(1))
-                                    .map(|query| format!("?{}", query))
-                            }),
-                            ..resource
-                        })))
-                    } else {
-                        Err(anyhow!(ResolveError::ResolveError {
-                            path: source.to_string(),
-                            from: path.to_string_lossy().to_string(),
-                        }))
-                    }
+        match result {
+            Ok(resolution) => {
+                // TODO: 只在 watch 时且二次编译时才做这个检查
+                // TODO: 临时方案，需要改成删除文件时删 resolve cache 里的内容
+                // 比如把 util.ts 改名为 util.tsx，目前应该是还有问题的
+                if resolution.path().exists() {
+                    Ok(ResolverResource::Resolved(ResolvedResource(resolution)))
+                } else {
+                    Err(anyhow!(ResolveError {
+                        path: source.to_string(),
+                        from: path.to_string_lossy().to_string(),
+                    }))
                 }
-                ResolveResult::Ignored => {
+            }
+            Err(oxc_resolve_err) => match oxc_resolve_err {
+                OxcResolveError::Ignored(_) => {
                     debug!("resolve ignored: {:?}", source);
                     Ok(ResolverResource::Ignored)
                 }
-            }
-        } else {
-            Err(anyhow!(ResolveError::ResolveError {
-                path: source.to_string(),
-                from: path.to_string_lossy().to_string(),
-            }))
+                _ => {
+                    eprintln!(
+                        "failed to resolve {} from {} with oxc-resolver err: {:?}",
+                        source,
+                        path.to_string_lossy(),
+                        oxc_resolve_err
+                    );
+                    Err(anyhow!(ResolveError {
+                        path: source.to_string(),
+                        from: path.to_string_lossy().to_string(),
+                    }))
+                }
+            },
         }
     }
 }
@@ -321,73 +278,73 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
     let extensions = get_module_extensions();
 
     let options = match (resolver_type, is_browser) {
-        (ResolverType::Cjs, true) => Options {
+        (ResolverType::Cjs, true) => ResolveOptions {
             alias,
             extensions,
-            condition_names: HashSet::from([
+            condition_names: vec![
                 "require".to_string(),
                 "module".to_string(),
                 "webpack".to_string(),
                 "browser".to_string(),
-            ]),
+            ],
             main_fields: vec![
                 "browser".to_string(),
                 "module".to_string(),
                 "main".to_string(),
             ],
-            browser_field: true,
+            alias_fields: vec![vec!["browser".to_string()]],
             ..Default::default()
         },
-        (ResolverType::Esm, true) => Options {
+        (ResolverType::Esm, true) => ResolveOptions {
             alias,
             extensions,
-            condition_names: HashSet::from([
+            condition_names: vec![
                 "import".to_string(),
                 "module".to_string(),
                 "webpack".to_string(),
                 "browser".to_string(),
-            ]),
+            ],
             main_fields: vec![
                 "browser".to_string(),
                 "module".to_string(),
                 "main".to_string(),
             ],
-            browser_field: true,
+            alias_fields: vec![vec!["browser".to_string()]],
             ..Default::default()
         },
-        (ResolverType::Esm, false) => Options {
+        (ResolverType::Esm, false) => ResolveOptions {
             alias,
             extensions,
-            condition_names: HashSet::from([
+            condition_names: vec![
                 "import".to_string(),
                 "module".to_string(),
                 "webpack".to_string(),
-            ]),
+            ],
             main_fields: vec!["module".to_string(), "main".to_string()],
             ..Default::default()
         },
-        (ResolverType::Cjs, false) => Options {
+        (ResolverType::Cjs, false) => ResolveOptions {
             alias,
             extensions,
-            condition_names: HashSet::from([
+            condition_names: vec![
                 "require".to_string(),
                 "module".to_string(),
                 "webpack".to_string(),
-            ]),
+            ],
             main_fields: vec!["module".to_string(), "main".to_string()],
             ..Default::default()
         },
         // css must be browser
-        (ResolverType::Css, _) => Options {
+        (ResolverType::Css, _) => ResolveOptions {
             extensions: vec![".css".to_string(), ".less".to_string()],
             alias,
             main_fields: vec!["css".to_string(), "style".to_string(), "main".to_string()],
-            condition_names: HashSet::from(["style".to_string()]),
+            condition_names: vec!["style".to_string()],
             prefer_relative: true,
-            browser_field: true,
+            alias_fields: vec![vec!["browser".to_string()]],
             ..Default::default()
         },
-        (ResolverType::Ctxt, _) => Options {
+        (ResolverType::Ctxt, _) => ResolveOptions {
             alias,
             resolve_to_context: true,
             ..Default::default()
@@ -397,11 +354,11 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
     Resolver::new(options)
 }
 
-fn parse_alias(alias: HashMap<String, String>) -> Vec<(String, Vec<AliasMap>)> {
+fn parse_alias(alias: HashMap<String, String>) -> Alias {
     let mut result = vec![];
     for (key, value) in alias {
-        let alias_map = vec![AliasMap::Target(value)];
-        result.push((key, alias_map));
+        let alias_vec = vec![AliasValue::Path(value)];
+        result.push((key, alias_vec));
     }
     result
 }
@@ -409,7 +366,7 @@ fn parse_alias(alias: HashMap<String, String>) -> Vec<(String, Vec<AliasMap>)> {
 pub fn clear_resolver_cache(resolvers: &Resolvers) {
     resolvers
         .iter()
-        .for_each(|(_, resolver)| resolver.clear_entries());
+        .for_each(|(_, resolver)| resolver.clear_cache());
 }
 
 #[cfg(test)]

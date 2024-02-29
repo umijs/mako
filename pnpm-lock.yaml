@@ -32,6 +32,9 @@ importers:
       '@swc/helpers':
         specifier: 0.5.1
         version: 0.5.1
+      '@taplo/cli':
+        specifier: ^0.7.0
+        version: 0.7.0
       '@types/express':
         specifier: ^4.17.21
         version: 4.17.21
@@ -96,14 +99,14 @@ importers:
   crates/node:
     optionalDependencies:
       '@okamjs/okam-darwin-arm64':
-        specifier: 0.4.3
-        version: 0.4.3
+        specifier: 0.4.4
+        version: 0.4.4
       '@okamjs/okam-darwin-x64':
-        specifier: 0.4.3
-        version: 0.4.3
+        specifier: 0.4.4
+        version: 0.4.4
       '@okamjs/okam-linux-x64-gnu':
-        specifier: 0.4.3
-        version: 0.4.3
+        specifier: 0.4.4
+        version: 0.4.4
     devDependencies:
       '@napi-rs/cli':
         specifier: ^2.14.8
@@ -336,7 +339,7 @@ importers:
   packages/bundler-okam:
     dependencies:
       '@okamjs/okam':
-        specifier: 0.4.3
+        specifier: 0.4.4
         version: link:../../crates/node
       '@swc/helpers':
         specifier: 0.5.1
@@ -3489,8 +3492,8 @@ packages:
       fastq: 1.15.0
     dev: true
 
-  /@okamjs/okam-darwin-arm64@0.4.3:
-    resolution: {integrity: sha512-uJBY+Zybyzh1CQfT3Tq3yfWUkTqOsZodoIshY+yZIsAraaU8zBbVel9eMVdtSuDMi76058Bgaye9udNpQ+eiPw==}
+  /@okamjs/okam-darwin-arm64@0.4.4:
+    resolution: {integrity: sha512-RYDzWBH92fq5AqFdyAfJB21Gt1MH/WwvQJAsqX++oFkQLZmGp3SNpWk2Q3xd9l/CKCRZuip8IEgK96oYTYtQLw==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
@@ -3498,8 +3501,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-darwin-x64@0.4.3:
-    resolution: {integrity: sha512-Y6pe7scEFOnmadCgkeBAl+0WZjCsNiBjko9D3MYkxeR0bBp/OF5cr0u1GoV1njTMSfuSJH9WZiVFTQG82jaedw==}
+  /@okamjs/okam-darwin-x64@0.4.4:
+    resolution: {integrity: sha512-DKHKSlSWv7FDreihOd3iS5fRWvvmewJ80Oqt3Zlei384ILROxx/Nhgf6bU9v01D4gatMFCCBj2bIAorjVc0RzA==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
@@ -3507,8 +3510,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-linux-x64-gnu@0.4.3:
-    resolution: {integrity: sha512-iva1d5/ULOp31Uzv4EAYBbF2pDq7y04Me5vjQX/w0oMx88CQrRD4Nba495Hb/nUIb2T65X0w2xe0I1wblGnhwQ==}
+  /@okamjs/okam-linux-x64-gnu@0.4.4:
+    resolution: {integrity: sha512-O3Px2jjO1AXULJaFruv1cs8fBpMNDaLoUf73ZviDa/fydqetXizfqnQ8q3GZqadaaSChPB8/q7IEG4zcM7rgJw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
@@ -3978,6 +3981,11 @@ packages:
       '@tanstack/query-core': 5.0.0-alpha.21
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
+
+  /@taplo/cli@0.7.0:
+    resolution: {integrity: sha512-Ck3zFhQhIhi02Hl6T4ZmJsXdnJE+wXcJz5f8klxd4keRYgenMnip3JDPMGDRLbnC/2iGd8P0sBIQqI3KxfVjBg==}
+    hasBin: true
+    dev: true
 
   /@trysound/sax@0.2.0:
     resolution: {integrity: sha512-L7z9BgrNEcYyUYtF+HaEfiS5ebkh9jXqbszz7pC0hRBPaatV0XjSD3+eHrpqFemQfgwiFF0QPIarnIihIDn7OA==}

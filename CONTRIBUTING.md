@@ -49,6 +49,7 @@ $ just ready-lite
 Test.
 
 ```bash
+$ pnpm playwright install # only need to run before the first time you run "jest test"
 $ just test
 # test specified testcase
 $ cargo nextest run transformers::transform_try_resolve::tests
@@ -99,6 +100,42 @@ $ cargo build --release --features profile
 $ ./target/release/mako examples/normal --mode=production
 ```
 
+Performance analysis with [Xcode instruments](https://help.apple.com/instruments/mac).
+
+- Install Xcode App from Mac AppStore and switch xcode dev tool with:
+
+```bash
+$ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+```
+
+- Install [cargo-instruments](https://crates.io/crates/cargo-instruments) with:
+
+```bash
+$ cargo install cargo-instruments
+
+# see instruments template:
+$ cargo instruments --list-templates
+```
+
+- Add the following section in ./crates/mako/Cargo.toml
+
+```toml
+[profile.release]
+debug = true
+```
+
+- capture instruments trace with:
+
+```bash
+$ cargo instruments --release -t sys --package mako --bin mako examples/with-antd
+```
+
+- you can open the trace file with instruments again with:
+
+```bash
+$ open target/instruments/mako_System-Trace_xxx.trace
+```
+
 Use mako in umi or bigfish.
 
 ```bash
@@ -114,7 +151,7 @@ You can release mako with ci or locally.
 
 ### Release with CI
 
-> NOTICE: *canary* and *dev* tags are now supported to be released with CI.
+> NOTICE: _canary_ and _dev_ tags are now supported to be released with CI.
 
 ```bash
 # Make sure everything is ok
@@ -226,6 +263,7 @@ crates/mako/src
 Flow of mako:
 
 <!-- https://asciiflow.com/#/share/eJzlWE9v2jAU%2FypPPvTUoa4c1vW4HqZJ%2FQiRwAMTPBInikNb1lSaOO%2FAAaEe9hF2mnaq%2BDT9JHUMCYnjgB1o0bSnHBzj9%2F%2B9X565Rwz7BF0iH4%2BCznn77KL9Hp0iD09IJHbvHXTnoMuPH9qnDpqI1fnFmVjF5C4WLw4CY3qeL%2F%2BTx3GYVVjMDxuJ%2B6fUL46hvisIrgI%2FpB6J5JsF7a3cwh9z3pVybTkCjly%2Bo%2F0UFXLzh9kzg35Ebwjc0ngIoTd2KeOphJ9m7MtMK%2FFpvHGm1srcUbi6%2FlJzcvEksssG1LUHHcEq6OuYen3bQJS82jCmEl3CSIRjsicKClF9yuOsabflvBrHxZNBzvVat9VLqQbnaiAWf7bmvDccsxE3zLmu5rf1hwm0Pc%2BnCj8PxlGP%2BDjMzdqIM8WWnJKdaFI%2BAYA5JzHX%2BFAbgylwElHs0e%2Bkak2y0171RC8IJzAQwKhAxuJgnz7p6CfZYYr%2FpSOf1z2jRqjVahWjI5wX4HMCtzjuDRtWSqL9obviNMSxDAxV2U06vuDCPnhR9MKesxKIKcQRIe%2F4EI8oc7PW6ZaNhXSMbPUk%2Bra%2B8YCBYohkyvFVbPzSKqsgybbnUWPIQaI2BT%2Fojz0CboTDYS52VvclTowHgBoPf0v5Og%2BlZZUwNUir9YySFBZVA4CHnvhwr5H8lZQc10v1xGEV7FOrq6KwKDotmP2tKbqZxlSBAZjxQRD569ZY59zGiCl4Ae5nrSU3NIoAhJbC5ARNFJ0U7JVYc8zg12FaTce%2FdSE2D8bBzdikvYQrZkq041VSGi%2FewNcSJZWFaml5yjmQgtIJi4sxS%2F%2FeSe%2FmmT2FpUrqT69%2BBbZoOMvM2sx6MzvxTYxfA2Qnnz0koq0uCB3KBoF8T%2FdlkxTOrWZky0iZj1tLq%2Fns0Uq8faQakj2W2JKDHtDDCzhoQJg%3D) -->
+
 ```bash
                                           ┌────────────────────────────────────────────────────────────────────────────┐
                                           │                               incremental compile                          │
