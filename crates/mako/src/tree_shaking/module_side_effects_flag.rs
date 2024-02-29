@@ -10,13 +10,12 @@ impl ModuleInfo {
     pub fn described_side_effect(&self) -> Option<bool> {
         if let Some(ResolverResource::Resolved(ResolvedResource(source))) = &self.resolved_resource
         {
-            match &source.description {
+            match &source.package_json() {
                 Some(desc) => {
-                    let data = desc.data();
-                    let value = data.raw();
+                    let value = desc.raw_json();
                     let side_effects = value.get("sideEffects".to_string());
 
-                    let root: &Path = desc.dir().as_ref();
+                    let root: &Path = desc.directory();
                     let root: PathBuf = root.into();
 
                     side_effects.map(|side_effect| {
@@ -37,15 +36,14 @@ impl ModuleInfo {
     pub fn get_side_effects_flag(&self) -> bool {
         if let Some(ResolverResource::Resolved(ResolvedResource(source))) = &self.resolved_resource
         {
-            match &source.description {
+            match &source.package_json() {
                 Some(desc) => {
-                    let data = desc.data();
-                    let value = data.raw();
+                    let value = desc.raw_json();
                     let side_effects = value.get("sideEffects".to_string());
 
                     match side_effects {
                         Some(side_effect) => {
-                            let root: &Path = desc.dir().as_ref();
+                            let root: &Path = desc.directory();
                             let root: PathBuf = root.into();
 
                             Self::match_flag(

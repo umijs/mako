@@ -49,6 +49,7 @@ $ just ready-lite
 Test.
 
 ```bash
+$ pnpm playwright install # only need to run before the first time you run "jest test"
 $ just test
 # test specified testcase
 $ cargo nextest run transformers::transform_try_resolve::tests
@@ -126,8 +127,7 @@ debug = true
 - capture instruments trace with:
 
 ```bash
-$ cargo build --release
-$ cargo instruments -t sys --package mako --bin mako examples/with-antd
+$ cargo instruments --release -t sys --package mako --bin mako examples/with-antd
 ```
 
 - you can open the trace file with instruments again with:

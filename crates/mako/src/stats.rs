@@ -252,7 +252,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
                 .assets
                 .iter()
                 .filter(|asset| asset.chunk_id == id)
-                .map(|asset| asset.name.clone())
+                .map(|asset| asset.hashname.clone())
                 .collect();
             let siblings = chunk_graph
                 .sync_dependencies_chunk(&chunk.id)

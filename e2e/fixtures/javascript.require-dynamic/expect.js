@@ -4,7 +4,7 @@ const { files } = parseBuildResult(__dirname);
 
 const names = Object.keys(files);
 const content = files["index.js"];
-const asyncContent = files[names.find((name) => name.startsWith("src_i18n_"))];
+const asyncContent = names.filter((name) => name.startsWith("src_i18n_")).reduce((acc, name) => acc + files[name], "");
 
 assert.match(
   content,
@@ -49,6 +49,12 @@ assert.match(
 
 assert.match(
   content,
+  moduleReg("src/index.ts", 'ensure("src/i18n\\?context&glob=\\*\\*/\\*")', true),
+  "should generate async require for import dynamic module with then callback",
+);
+
+assert.match(
+  content,
   moduleReg("src/index.ts", "`./\\${lang}.json`", true),
   "should replace string template prefix ./i18n/ with ./",
 );
@@ -57,6 +63,12 @@ assert.match(
   content,
   moduleReg("src/index.ts", '__mako_require__("src/i18n\\?context&glob=\\*\\*/\\*")', true),
   "should generate sync require for require dynamic module",
+);
+
+assert.match(
+  content,
+  moduleReg("src/index.ts", '__mako_require__("src/ext\\?context&glob=\\*\\*/\\*")', true),
+  "should generate nested sync require in dynamic require/import args",
 );
 
 assert.match(

@@ -23,8 +23,8 @@ pub use swc_core::ecma::{
 pub use {
     anyhow, base64, cached, clap, colored, config, convert_case, fs_extra, futures, glob, hyper,
     hyper_staticfile, hyper_tungstenite, indexmap, lazy_static, md5, mdxjs, merge_source_map,
-    mime_guess, nodejs_resolver, notify, notify_debouncer_full, path_clean, pathdiff, petgraph,
-    rayon, regex, sailfish, serde, serde_json, serde_xml_rs, serde_yaml, svgr_rs, swc_emotion,
+    mime_guess, notify, notify_debouncer_full, path_clean, pathdiff, petgraph, rayon, regex,
+    sailfish, serde, serde_json, serde_xml_rs, serde_yaml, svgr_rs, swc_emotion,
     swc_error_reporters, swc_node_comments, thiserror, tokio, tokio_tungstenite, toml, tracing,
     tracing_subscriber, tungstenite, twox_hash,
 };
