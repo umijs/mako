@@ -4,7 +4,6 @@
 #![feature(result_option_inspect)]
 
 mod analyze_deps;
-mod analyze_deps_2;
 mod ast;
 pub mod ast_2;
 mod build_2;
@@ -20,7 +19,7 @@ mod generate;
 mod generate_chunks;
 mod group_chunk;
 mod hmr;
-pub mod load_2;
+mod load_2;
 pub mod logger;
 mod minify;
 mod module;

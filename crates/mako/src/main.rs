@@ -17,7 +17,6 @@ use crate::logger::init_logger;
 use crate::profile_gui::ProfileApp;
 
 mod analyze_deps;
-mod analyze_deps_2;
 mod ast;
 mod ast_2;
 mod build_2;

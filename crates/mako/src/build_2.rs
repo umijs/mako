@@ -6,7 +6,7 @@ use mako_core::anyhow::Result;
 use mako_core::colored::Colorize;
 use mako_core::thiserror::Error;
 
-use crate::analyze_deps_2::AnalyzeDeps;
+use crate::analyze_deps::AnalyzeDeps;
 use crate::ast_2::file::{Content, File};
 use crate::compiler::{Compiler, Context};
 use crate::load_2::Load;

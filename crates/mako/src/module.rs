@@ -12,7 +12,7 @@ use mako_core::swc_ecma_utils::quote_ident;
 use mako_core::md5;
 use serde::Serialize;
 
-use crate::analyze_deps_2::AnalyzeDepsResult;
+use crate::analyze_deps::AnalyzeDepsResult;
 use crate::ast_2::css_ast::CssAst;
 use crate::ast_2::file::File;
 use crate::ast_2::js_ast::JsAst;
