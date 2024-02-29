@@ -383,7 +383,7 @@ impl Compiler {
                 .entry
                 .values()
                 .map(|entry| {
-                    crate::ast_2::file::File::new(
+                    crate::ast_2::file::File::new_entry(
                         entry.to_string_lossy().to_string(),
                         self.context.clone(),
                     )

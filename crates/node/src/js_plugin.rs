@@ -7,7 +7,7 @@ pub struct JsPlugin {
     pub hooks: TsFnHooks,
 }
 use mako::compiler::Context;
-use mako::load::Content;
+use mako::ast_2::file::Content;
 use mako::plugin::{Plugin, PluginGenerateEndParams, PluginLoadParam};
 use mako_core::anyhow::{anyhow, Result};
 

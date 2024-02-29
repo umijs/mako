@@ -6,7 +6,7 @@
 mod analyze_deps;
 mod analyze_deps_2;
 mod ast;
-mod ast_2;
+pub mod ast_2;
 mod build_2;
 mod chunk;
 mod chunk_graph;

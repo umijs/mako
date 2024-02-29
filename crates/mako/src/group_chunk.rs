@@ -27,6 +27,7 @@ impl Compiler {
         chunk_graph.clear();
 
         let entries = module_graph.get_entry_modules();
+        debug!("entries: {:?}", entries);
         for entry in entries {
             let mut entry_chunk_name = "index";
 

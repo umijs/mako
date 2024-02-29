@@ -78,13 +78,24 @@ impl Compiler {
             return self.generate_with_plugin_driver();
         }
 
+        // {
+        //     let module_graph = self.context.module_graph.read().unwrap();
+        //     println!("module_graph: {:}", module_graph);
+        // }
+
         let t_group_chunks = Instant::now();
         self.group_chunk();
         let t_group_chunks = t_group_chunks.elapsed();
 
+        // {
+        //     let chunks = self.context.chunk_graph.read().unwrap();
+        //     println!("chunks: {:}", chunks);
+        // }
+
         let t_optimize_chunks = Instant::now();
         self.optimize_chunk();
         let t_optimize_chunks = t_optimize_chunks.elapsed();
+
 
         // 为啥单独提前 transform modules？
         // 因为放 chunks 的循环里，一个 module 可能存在于多个 chunk 里，可能会被编译多遍

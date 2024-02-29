@@ -224,6 +224,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         let path = file.path.to_string_lossy().to_string();
         let module_id = ModuleId::new(path.clone());
         let raw = file.get_content_raw();
+        let is_entry = file.is_entry;
         let info = ModuleInfo {
             file,
             deps,
@@ -246,7 +247,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
             // TODO: use Default::default() after unnecessary fields are removed
             // ..Default::default()
         };
-        let module = Module::new(module_id, false, Some(info));
+        let module = Module::new(module_id, is_entry, Some(info));
         Ok(module)
     }
 }
