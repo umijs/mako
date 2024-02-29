@@ -18,6 +18,7 @@ use crate::plugins::farm_tree_shake::shake::module_concatenate::utils::{
 };
 use crate::plugins::javascript::is_commonjs_require;
 
+// for define ast: `left = init;`
 macro_rules! var {
     ($left:ident = $init:expr) => {
         VarDeclarator {
@@ -26,6 +27,30 @@ macro_rules! var {
             init: Some($init.into()),
             definite: false,
         }
+    };
+}
+
+// for define ast: `export { orig as exported }`
+macro_rules! export {
+    ( $orig:expr => $exported:expr ) => {
+        ExportNamedSpecifier {
+            span: DUMMY_SP,
+            orig: ModuleExportName::Ident($orig),
+            exported: Some(ModuleExportName::Ident($exported.clone())),
+            is_type_only: false,
+        }
+    };
+}
+
+// for define stmt ast: `var local_proxy_name = external.orig;`
+macro_rules! dcl {
+    ($external:tt.$orig:expr => $local_proxy_name:expr) => {
+        MemberExpr {
+            span: DUMMY_SP,
+            obj: $external().into(),
+            prop: $orig.into(),
+        }
+        .into_var_decl(VarDeclKind::Var, $local_proxy_name.clone().into())
     };
 }
 
@@ -62,32 +87,28 @@ impl<'a> ExternalTransformer<'_> {
 
         let mut stmts: Vec<ModuleItem> = vec![];
 
+        let external_module = || quote_ident!(external_module_namespace.to_string());
+
         for spec in specifiers {
             match spec {
                 ExportSpecifier::Namespace(namespace) => {
                     match &namespace.name {
-                        ModuleExportName::Ident(local) => {
-                            let spec = ExportNamedSpecifier {
-                                span: DUMMY_SP,
-                                orig: ModuleExportName::Ident(quote_ident!(
-                                    external_module_namespace.to_string()
-                                )),
-                                exported: Some(ModuleExportName::Ident(local.clone())),
-                                is_type_only: false,
-                            };
+                        ModuleExportName::Ident(exported) => {
+                            let spec = export!( external_module() => exported);
                             var_decorators.push(spec.into());
                         }
                         ModuleExportName::Str(_) => {}
                     };
                 }
                 ExportSpecifier::Default(default_spec) => {
-                    // when support export default from "m"
                     let local_default_name = if default_spec.exported.sym.eq("default") {
+                        // export default from "m"  -> __mako_xxx_0
                         quote_ident!(self.request_safe_var_name(&uniq_module_default_export_name(
                             self.module_id,
                             self.context
                         )))
                     } else {
+                        // export foo from "m"  -> __mako_external_orig
                         quote_ident!(self.request_safe_var_name(&uniq_module_export_name(
                             src_module_id,
                             &default_spec.exported.sym,
@@ -95,21 +116,12 @@ impl<'a> ExternalTransformer<'_> {
                         )))
                     };
 
-                    let default_export_var_decl = MemberExpr {
-                        span: DUMMY_SP,
-                        obj: quote_ident!(external_module_namespace.to_string()).into(),
-                        prop: quote_ident!("default").into(),
-                    }
-                    .into_var_decl(VarDeclKind::Var, local_default_name.clone().into());
+                    // for foo = external.default
+                    let default = quote_ident!("default");
+                    stmts.push(dcl!( external_module.default => local_default_name.clone()).into());
 
-                    stmts.push(default_export_var_decl.into());
-
-                    let spec = ExportNamedSpecifier {
-                        span: DUMMY_SP,
-                        orig: ModuleExportName::Ident(local_default_name),
-                        exported: Some(ModuleExportName::Ident(default_spec.exported.clone())),
-                        is_type_only: false,
-                    };
+                    // for export { foo as default }
+                    let spec = export!( local_default_name => default_spec.exported);
                     var_decorators.push(spec.into());
                 }
                 ExportSpecifier::Named(named) => match (&named.orig, &named.exported) {
@@ -125,24 +137,10 @@ impl<'a> ExternalTransformer<'_> {
                                 self.context
                             )))
                         };
+                        let orig = orig.clone();
 
-                        let export_name_decl = MemberExpr {
-                            span: DUMMY_SP,
-                            obj: quote_ident!(external_module_namespace.to_string()).into(),
-                            prop: orig.clone().into(),
-                        }
-                        .into_var_decl(VarDeclKind::Var, local_proxy_name.clone().into());
-                        stmts.push(export_name_decl.into());
-
-                        var_decorators.push(
-                            ExportNamedSpecifier {
-                                span: Default::default(),
-                                orig: local_proxy_name.into(),
-                                exported: named.exported.clone(),
-                                is_type_only: false,
-                            }
-                            .into(),
-                        );
+                        stmts.push(dcl!(external_module.orig  => local_proxy_name.clone()).into());
+                        var_decorators.push(export!(local_proxy_name => exported ).into());
                     }
                     (ModuleExportName::Ident(orig), None) => {
                         let local_proxy_name = if orig.sym.eq("default") {
@@ -156,28 +154,11 @@ impl<'a> ExternalTransformer<'_> {
                                 self.context
                             )))
                         };
+                        let orig = orig.clone();
+                        let exported = orig.clone();
 
-                        let var_decl = MemberExpr {
-                            span: DUMMY_SP,
-                            obj: quote_ident!(external_module_namespace.to_string()).into(),
-                            prop: orig.clone().into(),
-                        }
-                        .into_var_decl(VarDeclKind::Var, local_proxy_name.clone().into());
-                        stmts.push(var_decl.into());
-
-                        var_decorators.push(
-                            ExportNamedSpecifier {
-                                span: DUMMY_SP,
-                                orig: local_proxy_name.clone().into(),
-                                exported: if local_proxy_name.sym.eq(&orig.sym) {
-                                    None
-                                } else {
-                                    Some(ModuleExportName::Ident(orig.clone()))
-                                },
-                                is_type_only: false,
-                            }
-                            .into(),
-                        );
+                        stmts.push(dcl!(external_module.orig => local_proxy_name.clone()).into());
+                        var_decorators.push(export!( local_proxy_name => exported).into());
                     }
                     (_, _) => {}
                 },
