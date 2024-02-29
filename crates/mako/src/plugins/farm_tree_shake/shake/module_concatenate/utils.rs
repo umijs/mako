@@ -17,6 +17,18 @@ pub fn uniq_module_prefix(module_id: &ModuleId, context: &Arc<Context>) -> Strin
     )
 }
 
+pub fn uniq_module_default_export_name(module_id: &ModuleId, context: &Arc<Context>) -> String {
+    format!("{}_0", uniq_module_prefix(module_id, context))
+}
+
+pub fn uniq_module_namespace_name(module_id: &ModuleId, context: &Arc<Context>) -> String {
+    format!("{}_ns", uniq_module_prefix(module_id, context))
+}
+
+pub fn uniq_module_export_name(module_id: &ModuleId, name: &str, context: &Arc<Context>) -> String {
+    format!("{}_{name}", uniq_module_prefix(module_id, context))
+}
+
 pub fn declare_var_with_init_stmt(name: Ident, init: &str) -> Stmt {
     declare_var_with_init(name, init).into()
 }

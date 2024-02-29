@@ -24,7 +24,6 @@ pub(super) struct RootTransformer<'a> {
     pub context: &'a Arc<Context>,
     pub top_level_mark: Mark,
     pub import_source_to_module_id: &'a HashMap<String, ModuleId>,
-    pub renames: Vec<(Id, Id)>,
     my_top_decls: HashSet<String>,
 }
 
@@ -42,7 +41,6 @@ impl RootTransformer<'_> {
             context,
             top_level_mark,
             import_source_to_module_id,
-            renames: vec![],
             my_top_decls: HashSet::new(),
         }
     }
@@ -88,15 +86,9 @@ impl RootTransformer<'_> {
         let syntax = SyntaxContext::empty().apply_mark(self.top_level_mark);
         for conflict in conflicts_idents {
             let new_name_base = format!("__{}", conflict);
-
-            let mut post_fix = 0;
-            let mut new_name = format!("{}_{}", new_name_base, post_fix);
-            while self.concatenate_context.top_level_vars.contains(&new_name)
-                || self.my_top_decls.contains(&new_name)
-            {
-                post_fix += 1;
-                new_name = format!("{}_{}", new_name_base, post_fix);
-            }
+            let new_name = self
+                .concatenate_context
+                .negotiate_safe_var_name(&self.my_top_decls, &new_name_base);
 
             my_top_decls.insert(new_name.clone());
             map.push(((conflict.clone().into(), syntax), (new_name.into(), syntax)));
@@ -349,10 +341,6 @@ impl<'a> VisitMut for RootTransformer<'a> {
         for (i, items) in replaces {
             n.body.splice(i..i + 1, items);
         }
-
-        let map = self.renames.iter().cloned().collect();
-        let mut renamer = IdentRenamer::new(&map);
-        n.visit_mut_with(&mut renamer);
 
         self.resolve_conflicts(n);
     }

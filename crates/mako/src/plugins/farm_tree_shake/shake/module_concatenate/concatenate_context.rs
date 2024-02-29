@@ -177,6 +177,12 @@ impl ConcatenateContext {
             .insert(external_id.clone(), names);
     }
     pub fn request_safe_var_name(&mut self, base_name: &str) -> String {
+        let name = self.get_safe_var_name(base_name);
+        self.add_top_level_var(&name);
+        name
+    }
+
+    pub fn get_safe_var_name(&self, base_name: &str) -> String {
         let mut name = base_name.to_string();
 
         let mut post_fix = 0;
@@ -184,10 +190,25 @@ impl ConcatenateContext {
             post_fix += 1;
             name = format!("{}_{}", base_name, post_fix);
         }
-        self.add_top_level_var(&name);
+        name
+    }
+
+    pub fn negotiate_safe_var_name(
+        &self,
+        occupied_names: &HashSet<String>,
+        base_name: &str,
+    ) -> String {
+        let mut name = base_name.to_string();
+
+        let mut post_fix = 0;
+        while self.top_level_vars.contains(&name) || occupied_names.contains(&name) {
+            post_fix += 1;
+            name = format!("{}_{}", base_name, post_fix);
+        }
 
         name
     }
+
     pub fn external_expose_names(&self, module_id: &ModuleId) -> Option<&(String, String)> {
         self.external_module_namespace.get(module_id)
     }

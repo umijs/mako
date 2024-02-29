@@ -15,8 +15,8 @@ use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use super::exports_transform::collect_exports_map;
 use super::utils::{
-    declare_var_with_init_stmt, uniq_module_prefix, MODULE_CONCATENATE_ERROR,
-    MODULE_CONCATENATE_ERROR_STR_MODULE_NAME,
+    declare_var_with_init_stmt, uniq_module_default_export_name, uniq_module_namespace_name,
+    MODULE_CONCATENATE_ERROR, MODULE_CONCATENATE_ERROR_STR_MODULE_NAME,
 };
 use crate::compiler::Context;
 use crate::module::{relative_to_root, ImportType, ModuleId};
@@ -104,15 +104,8 @@ impl<'a> InnerTransform<'a> {
     }
 
     fn get_non_conflict_name(&self, name: &String) -> String {
-        let mut new_name = name.to_string();
-        let mut i = 1;
-        while self.concatenate_context.top_level_vars.contains(&new_name)
-            || self.my_top_decls.contains(&new_name)
-        {
-            new_name = format!("{}_{}", name, i);
-            i += 1;
-        }
-        new_name
+        self.concatenate_context
+            .negotiate_safe_var_name(&self.my_top_decls, name)
     }
 
     fn resolve_conflict(&mut self) {
@@ -124,15 +117,11 @@ impl<'a> InnerTransform<'a> {
             .collect();
 
         let ctxt = SyntaxContext::empty().apply_mark(self.top_level_mark);
-        let default_name = uniq_module_default_export_name(self.module_id, self.context);
+
         for conflicted_name in conflicts {
             self.my_top_decls.remove(&conflicted_name);
 
             let new_name = self.get_non_conflict_name(&conflicted_name);
-
-            if conflicted_name == default_name {
-                self.exports.insert("default".to_string(), new_name.clone());
-            }
 
             self.exports
                 .entry(conflicted_name.clone())
@@ -151,7 +140,6 @@ impl<'a> VisitMut for InnerTransform<'a> {
                 .iter()
                 .map(|id: &Id| id.0.to_string())
                 .collect();
-        dbg!(&self.my_top_decls);
 
         self.collect_exports(n);
 
@@ -333,11 +321,12 @@ impl<'a> VisitMut for InnerTransform<'a> {
                                             let default_export_name =
                                                 export_map.get("default").unwrap();
 
-                                            let default_binding_name =
-                                                uniq_module_default_export_name(
+                                            let default_binding_name = self.get_non_conflict_name(
+                                                &uniq_module_default_export_name(
                                                     self.module_id,
                                                     self.context,
-                                                );
+                                                ),
+                                            );
 
                                             let stmt: Stmt = declare_var_with_init_stmt(
                                                 quote_ident!(default_binding_name.clone()),
@@ -377,10 +366,12 @@ impl<'a> VisitMut for InnerTransform<'a> {
                                             {
                                                 let exported_ident =
                                                     if exported_ident.sym.eq("default") {
-                                                        let default_binding =
-                                                            uniq_module_default_export_name(
-                                                                self.module_id,
-                                                                self.context,
+                                                        let default_binding = self
+                                                            .get_non_conflict_name(
+                                                                &uniq_module_default_export_name(
+                                                                    self.module_id,
+                                                                    self.context,
+                                                                ),
                                                             );
                                                         self.my_top_decls
                                                             .insert(default_binding.clone());
@@ -446,8 +437,9 @@ impl<'a> VisitMut for InnerTransform<'a> {
                         }
                     }
                     ModuleDecl::ExportDefaultDecl(export_default_dcl) => {
-                        let default_binding_name =
-                            uniq_module_default_export_name(self.module_id, self.context);
+                        let default_binding_name = self.get_non_conflict_name(
+                            &uniq_module_default_export_name(self.module_id, self.context),
+                        );
 
                         match &mut export_default_dcl.decl {
                             DefaultDecl::Class(class_expr) => {
@@ -535,8 +527,9 @@ impl<'a> VisitMut for InnerTransform<'a> {
                     ModuleDecl::ExportDefaultExpr(export_default_expr) => {
                         let span = export_default_expr.span.apply_mark(self.top_level_mark);
 
-                        let default_binding_name =
-                            uniq_module_default_export_name(self.module_id, self.context);
+                        let default_binding_name = self.get_non_conflict_name(
+                            &uniq_module_default_export_name(self.module_id, self.context),
+                        );
 
                         let stmt: Stmt = export_default_expr
                             .expr
@@ -567,14 +560,6 @@ impl<'a> VisitMut for InnerTransform<'a> {
             items.splice(index..index + 1, rep);
         }
     }
-}
-
-fn uniq_module_default_export_name(module_id: &ModuleId, context: &Arc<Context>) -> String {
-    format!("{}_0", uniq_module_prefix(module_id, context))
-}
-
-fn uniq_module_namespace_name(module_id: &ModuleId, context: &Arc<Context>) -> String {
-    format!("{}_ns", uniq_module_prefix(module_id, context))
 }
 
 #[cfg(test)]
@@ -625,6 +610,34 @@ mod tests {
         assert_eq!(
             current_export_map(&ccn_ctx),
             &hashmap!("named".to_string() => "n_1".to_string())
+        );
+    }
+
+    #[test]
+    fn test_export_default_with_conflict() {
+        let mut ccn_ctx = ConcatenateContext {
+            top_level_vars: hashset!("__mako_mut_js_0".to_string()),
+            ..Default::default()
+        };
+
+        let code = inner_trans_code("var n = 1;export default n;", &mut ccn_ctx);
+
+        assert_eq!(
+            code,
+            r#"var n = 1;
+var __mako_mut_js_0_1 = n;"#
+        );
+        assert_eq!(
+            ccn_ctx.top_level_vars,
+            hashset!(
+                "n".to_string(),
+                "__mako_mut_js_0_1".to_string(),
+                "__mako_mut_js_0".to_string(),
+            )
+        );
+        assert_eq!(
+            current_export_map(&ccn_ctx),
+            &hashmap!("default".to_string() => "__mako_mut_js_0_1".to_string())
         );
     }
 

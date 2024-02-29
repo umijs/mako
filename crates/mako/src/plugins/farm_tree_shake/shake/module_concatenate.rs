@@ -14,8 +14,9 @@ use inner_transformer::InnerTransform;
 use mako_core::swc_common::util::take::Take;
 use root_transformer::RootTransformer;
 use swc_core::common::{Span, SyntaxContext, GLOBALS};
-use swc_core::ecma::ast::ModuleItem;
+use swc_core::ecma::ast::{Id, ModuleItem};
 use swc_core::ecma::transforms::base::resolver;
+use swc_core::ecma::utils::collect_decls_with_ctxt;
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use self::concatenate_context::Interops;
@@ -238,6 +239,7 @@ pub fn optimize_module_graph(
             let mut concatenate_context = ConcatenateContext::default();
 
             let all_interops = config.merged_interops();
+            // FIXME 对应的 interop 的变量应该放入到 context 的 top_level_vars
             module_items.extend(all_interops.inject_interop_runtime_helpers());
 
             for id in &config.sorted_modules(module_graph) {
@@ -272,6 +274,7 @@ pub fn optimize_module_graph(
                     );
 
                     concatenate_context.add_external_names(id, exposed_names);
+
                     module_graph.add_dependency(
                         &config.root,
                         id,
@@ -305,12 +308,21 @@ pub fn optimize_module_graph(
                     println!("code:\n\n{}\n", code_map.0);
                 }
 
+                let mut current_module_top_level_vars: HashSet<String> = collect_decls_with_ctxt(
+                    &script_ast.ast,
+                    SyntaxContext::empty().apply_mark(script_ast.top_level_mark),
+                )
+                .iter()
+                .map(|id: &Id| id.0.to_string())
+                .collect();
+
                 let mut ext_trans = ExternalTransformer {
                     src_to_module: &import_source_to_module_id,
                     concatenate_context: &mut concatenate_context,
                     module_id: id,
                     context,
                     unresolved_mark: script_ast.unresolved_mark,
+                    my_top_level_vars: &mut current_module_top_level_vars,
                 };
                 script_ast.ast.visit_mut_with(&mut ext_trans);
 
@@ -354,12 +366,21 @@ pub fn optimize_module_graph(
                 println!("root:\n{}\n", code_map.0);
             }
 
+            let mut current_module_top_level_vars: HashSet<String> = collect_decls_with_ctxt(
+                &root_module_ast,
+                SyntaxContext::empty().apply_mark(top_level_mark),
+            )
+            .iter()
+            .map(|id: &Id| id.0.to_string())
+            .collect();
+
             let mut ext_trans = ExternalTransformer {
                 src_to_module: &src_2_module_id,
                 concatenate_context: &mut concatenate_context,
                 module_id: &config.root,
                 context,
                 unresolved_mark,
+                my_top_level_vars: &mut current_module_top_level_vars,
             };
             root_module_ast.visit_mut_with(&mut ext_trans);
 

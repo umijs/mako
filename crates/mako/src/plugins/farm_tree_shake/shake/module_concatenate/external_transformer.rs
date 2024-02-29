@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use swc_core::common::{Mark, Spanned, DUMMY_SP};
@@ -13,7 +13,9 @@ use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 use crate::compiler::Context;
 use crate::module::ModuleId;
 use crate::plugins::farm_tree_shake::shake::module_concatenate::concatenate_context::ConcatenateContext;
-use crate::plugins::farm_tree_shake::shake::module_concatenate::utils::uniq_module_prefix;
+use crate::plugins::farm_tree_shake::shake::module_concatenate::utils::{
+    uniq_module_default_export_name, uniq_module_export_name,
+};
 use crate::plugins::javascript::is_commonjs_require;
 
 pub(super) struct ExternalTransformer<'a> {
@@ -22,22 +24,28 @@ pub(super) struct ExternalTransformer<'a> {
     pub context: &'a Arc<Context>,
     pub module_id: &'a ModuleId,
     pub unresolved_mark: Mark,
+    pub my_top_level_vars: &'a mut HashSet<String>,
 }
 
 impl<'a> ExternalTransformer<'_> {
-    fn src_to_export_name(&'a self, src: &str) -> Option<(&'a (String, String), &'a ModuleId)> {
+    fn src_to_export_name(&'a self, src: &str) -> Option<((String, String), ModuleId)> {
         self.src_to_module.get(src).and_then(|module_id| {
             self.concatenate_context
                 .external_expose_names(module_id)
-                .map(|export_names| (export_names, module_id))
+                .map(|export_names| (export_names.clone(), module_id.clone()))
         })
     }
 
+    fn request_safe_var_name(&self, name: &str) -> String {
+        self.concatenate_context
+            .negotiate_safe_var_name(self.my_top_level_vars, name)
+    }
+
     fn named_export_specifier_to_replace_items(
-        &self,
+        &mut self,
         src_module_id: &ModuleId,
         specifiers: &Vec<ExportSpecifier>,
-        name: &String,
+        external_module_namespace: &String,
     ) -> Vec<ModuleItem> {
         let mut var_decorators: Vec<ExportSpecifier> = vec![];
 
@@ -50,7 +58,9 @@ impl<'a> ExternalTransformer<'_> {
                         ModuleExportName::Ident(local) => {
                             let spec = ExportNamedSpecifier {
                                 span: DUMMY_SP,
-                                orig: ModuleExportName::Ident(quote_ident!(name.clone())),
+                                orig: ModuleExportName::Ident(quote_ident!(
+                                    external_module_namespace.clone()
+                                )),
                                 exported: Some(ModuleExportName::Ident(local.clone())),
                                 is_type_only: false,
                             };
@@ -62,21 +72,21 @@ impl<'a> ExternalTransformer<'_> {
                 ExportSpecifier::Default(default_spec) => {
                     // when support export default from "m"
                     let local_default_name = if default_spec.exported.sym.eq("default") {
-                        quote_ident!(uniq_module_default_export_name(
+                        quote_ident!(self.request_safe_var_name(&uniq_module_default_export_name(
                             self.module_id,
                             self.context
-                        ))
+                        )))
                     } else {
-                        quote_ident!(uniq_module_export_name(
+                        quote_ident!(self.request_safe_var_name(&uniq_module_export_name(
                             src_module_id,
                             &default_spec.exported.sym,
                             self.context
-                        ))
+                        )))
                     };
 
                     let default_export_var_decl = MemberExpr {
                         span: DUMMY_SP,
-                        obj: quote_ident!(name.clone()).into(),
+                        obj: quote_ident!(external_module_namespace.clone()).into(),
                         prop: quote_ident!("default").into(),
                     }
                     .into_var_decl(VarDeclKind::Var, local_default_name.clone().into());
@@ -94,21 +104,20 @@ impl<'a> ExternalTransformer<'_> {
                 ExportSpecifier::Named(named) => match (&named.orig, &named.exported) {
                     (ModuleExportName::Ident(orig), Some(ModuleExportName::Ident(exported))) => {
                         let local_proxy_name = if exported.sym.eq("default") {
-                            quote_ident!(uniq_module_default_export_name(
-                                self.module_id,
-                                self.context
+                            quote_ident!(self.request_safe_var_name(
+                                &uniq_module_default_export_name(self.module_id, self.context)
                             ))
                         } else {
-                            quote_ident!(uniq_module_export_name(
+                            quote_ident!(self.request_safe_var_name(&uniq_module_export_name(
                                 src_module_id,
                                 &orig.sym,
                                 self.context
-                            ))
+                            )))
                         };
 
                         let export_name_decl = MemberExpr {
                             span: DUMMY_SP,
-                            obj: quote_ident!(name.clone()).into(),
+                            obj: quote_ident!(external_module_namespace.clone()).into(),
                             prop: orig.clone().into(),
                         }
                         .into_var_decl(VarDeclKind::Var, local_proxy_name.clone().into());
@@ -126,21 +135,20 @@ impl<'a> ExternalTransformer<'_> {
                     }
                     (ModuleExportName::Ident(orig), None) => {
                         let local_proxy_name = if orig.sym.eq("default") {
-                            quote_ident!(uniq_module_default_export_name(
-                                self.module_id,
-                                self.context
+                            quote_ident!(self.request_safe_var_name(
+                                &uniq_module_default_export_name(self.module_id, self.context)
                             ))
                         } else {
-                            quote_ident!(uniq_module_export_name(
+                            quote_ident!(self.request_safe_var_name(&uniq_module_export_name(
                                 src_module_id,
                                 &orig.sym,
                                 self.context
-                            ))
+                            )))
                         };
 
                         let var_decl = MemberExpr {
                             span: DUMMY_SP,
-                            obj: quote_ident!(name.clone()).into(),
+                            obj: quote_ident!(external_module_namespace.clone()).into(),
                             prop: orig.clone().into(),
                         }
                         .into_var_decl(VarDeclKind::Var, local_proxy_name.clone().into());
@@ -173,7 +181,6 @@ impl<'a> ExternalTransformer<'_> {
             with: None,
         }
         .into();
-
         stmts.push(md.into());
 
         stmts
@@ -182,7 +189,7 @@ impl<'a> ExternalTransformer<'_> {
     fn require_arg_to_module_namespace(
         &self,
         args: &Vec<ExprOrSpread>,
-    ) -> Option<(&(String, String), &ModuleId)> {
+    ) -> Option<((String, String), ModuleId)> {
         if args.len() == 1
             && let Some(arg) = args.first()
             && arg.spread.is_none()
@@ -310,9 +317,9 @@ impl VisitMut for ExternalTransformer<'_> {
                                 self.src_to_export_name(src.value.as_ref())
                         {
                             let items = self.named_export_specifier_to_replace_items(
-                                src_module_id,
+                                &src_module_id,
                                 &named_export.specifiers,
-                                external_module_namespace,
+                                &external_module_namespace,
                             );
 
                             replaces.push((index, items));
@@ -347,21 +354,15 @@ impl VisitMut for ExternalTransformer<'_> {
     }
 }
 
-fn uniq_module_default_export_name(module_id: &ModuleId, context: &Arc<Context>) -> String {
-    format!("{}_0", uniq_module_prefix(module_id, context))
-}
-
-fn uniq_module_export_name(module_id: &ModuleId, name: &str, context: &Arc<Context>) -> String {
-    format!("{}_{name}", uniq_module_prefix(module_id, context))
-}
-
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
 
     use maplit::hashmap;
     use swc_core::common::GLOBALS;
+    use swc_core::ecma::ast::Id;
     use swc_core::ecma::transforms::base::resolver;
+    use swc_core::ecma::utils::collect_decls;
 
     use super::*;
     use crate::ast::{build_js_ast, js_ast_to_code};
@@ -395,12 +396,18 @@ mod tests {
                 false,
             ));
 
+            let mut my_top_vars: HashSet<String> = collect_decls(&ast.ast)
+                .iter()
+                .map(|id: &Id| id.0.to_string())
+                .collect();
+
             let mut t = ExternalTransformer {
                 src_to_module: &src_2_module,
                 concatenate_context: &mut concatenate_context,
                 context: &context,
                 module_id: &ModuleId::from("mut.js"),
                 unresolved_mark: ast.unresolved_mark,
+                my_top_level_vars: &mut my_top_vars,
             };
 
             ast.ast.visit_mut_with(&mut t);
