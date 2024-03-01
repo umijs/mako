@@ -4,18 +4,18 @@ use std::sync::Arc;
 use swc_core::common::comments::{Comment, CommentKind};
 use swc_core::common::{Mark, Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
-    ExportNamedSpecifier, ExportSpecifier, Id, Ident, ImportSpecifier, KeyValueProp, Module,
-    ModuleDecl, ModuleExportName, ModuleItem, NamedExport, ObjectLit, Prop, PropOrSpread, Stmt,
-    VarDeclKind,
+    ExportNamedSpecifier, ExportSpecifier, Id, Ident, KeyValueProp, Module, ModuleDecl,
+    ModuleExportName, ModuleItem, NamedExport, ObjectLit, Prop, PropOrSpread, Stmt,
 };
 use swc_core::ecma::utils::{
-    collect_decls_with_ctxt, member_expr, quote_expr, quote_ident, ExprFactory, IdentRenamer,
+    collect_decls_with_ctxt, member_expr, quote_ident, ExprFactory, IdentRenamer,
 };
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::compiler::Context;
 use crate::module::{relative_to_root, ModuleId};
 use crate::plugins::farm_tree_shake::shake::module_concatenate::concatenate_context::ConcatenateContext;
+use crate::plugins::farm_tree_shake::shake::module_concatenate::inner_transformer::inner_import_specifier_to_stmts;
 use crate::plugins::farm_tree_shake::shake::module_concatenate::utils::MODULE_CONCATENATE_ERROR_STR_MODULE_NAME;
 
 pub(super) struct RootTransformer<'a> {
@@ -113,109 +113,133 @@ impl<'a> VisitMut for RootTransformer<'a> {
 
         let mut replaces = vec![];
         for (index, module_item) in n.body.iter().enumerate().rev() {
-            if let Some(module_dc) = module_item.as_module_decl() {
+            if let Some(module_decl) = module_item.as_module_decl() {
                 let mut items: Option<Vec<ModuleItem>> = None;
 
-                match module_dc {
+                match module_decl {
                     ModuleDecl::Import(import_decl) => {
-                        let source = import_decl.src.value.to_string();
-
-                        if let Some(imported_module_id) =
-                            self.import_source_to_module_id.get(&source)
+                        items = if let Some(src_module_id) = self
+                            .import_source_to_module_id
+                            .get(import_decl.src.value.as_ref())
+                            && let Some(exports_map) =
+                                self.concatenate_context.modules_in_scope.get(src_module_id)
                         {
-                            if let Some(mapped_exports) = self
-                                .concatenate_context
-                                .modules_in_scope
-                                .get(imported_module_id)
-                            {
-                                items = Some(vec![]);
+                            Some(
+                                import_decl
+                                    .specifiers
+                                    .iter()
+                                    .flat_map(|spec| {
+                                        inner_import_specifier_to_stmts(
+                                            &mut self.my_top_decls,
+                                            spec,
+                                            exports_map,
+                                        )
+                                    })
+                                    .map(|st| st.into())
+                                    .collect(),
+                            )
+                        } else {
+                            None
+                        };
 
-                                for import_specifier in &import_decl.specifiers {
-                                    match import_specifier {
-                                        ImportSpecifier::Named(named_specifier) => {
-                                            // handle conflict name in top level
+                        // let source = import_decl.src.value.to_string();
 
-                                            let imported_symbol = if let Some(imported) =
-                                                &named_specifier.imported
-                                                && let ModuleExportName::Ident(imported_ident) =
-                                                    imported
-                                            {
-                                                imported_ident.sym.to_string()
-                                            } else {
-                                                named_specifier.local.sym.to_string()
-                                            };
-
-                                            let mapped_export =
-                                                mapped_exports.get(&imported_symbol).unwrap();
-
-                                            if !named_specifier
-                                                .local
-                                                .sym
-                                                .to_string()
-                                                .eq(mapped_export)
-                                            {
-                                                let var_decl_stmt: Stmt =
-                                                    quote_ident!(mapped_export.clone())
-                                                        .into_var_decl(
-                                                            VarDeclKind::Var,
-                                                            named_specifier.local.clone().into(),
-                                                        )
-                                                        .into();
-                                                if let Some(a) = items.as_mut() {
-                                                    a.push(var_decl_stmt.into());
-                                                }
-                                            }
-                                        }
-                                        ImportSpecifier::Default(default_specifier) => {
-                                            if let Some(ex) = mapped_exports.get("default") {
-                                                let stmt: Stmt = quote_ident!(ex.clone())
-                                                    .into_var_decl(
-                                                        VarDeclKind::Var,
-                                                        default_specifier.local.clone().into(),
-                                                    )
-                                                    .into();
-
-                                                items.as_mut().unwrap().push(stmt.into());
-                                            } else {
-                                                println!(
-                                                    "try get defaut from {}({}) in {}",
-                                                    source,
-                                                    imported_module_id.id,
-                                                    self.current_module_id.id
-                                                );
-                                                println!("the map {:?}", mapped_exports);
-
-                                                let stmt: Stmt = quote_expr!(DUMMY_SP, null)
-                                                    .into_var_decl(
-                                                        VarDeclKind::Var,
-                                                        default_specifier.local.clone().into(),
-                                                    )
-                                                    .into();
-
-                                                items.as_mut().unwrap().push(stmt.into());
-                                            }
-                                        }
-                                        ImportSpecifier::Namespace(namespace) => {
-                                            let mapped_namespace = mapped_exports.get("*").unwrap();
-
-                                            if !namespace.local.sym.to_string().eq(mapped_namespace)
-                                            {
-                                                let var_decl_stmt: Stmt =
-                                                    quote_ident!(mapped_namespace.clone())
-                                                        .into_var_decl(
-                                                            VarDeclKind::Var,
-                                                            namespace.local.clone().into(),
-                                                        )
-                                                        .into();
-                                                if let Some(a) = items.as_mut() {
-                                                    a.push(var_decl_stmt.into());
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        // if let Some(imported_module_id) =
+                        //     self.import_source_to_module_id.get(&source)
+                        // {
+                        //     if let Some(mapped_exports) = self
+                        //         .concatenate_context
+                        //         .modules_in_scope
+                        //         .get(imported_module_id)
+                        //     {
+                        //         items = Some(vec![]);
+                        //
+                        //         for import_specifier in &import_decl.specifiers {
+                        //             match import_specifier {
+                        //                 ImportSpecifier::Named(named_specifier) => {
+                        //                     // handle conflict name in top level
+                        //
+                        //                     let imported_symbol = if let Some(imported) =
+                        //                         &named_specifier.imported
+                        //                         && let ModuleExportName::Ident(imported_ident) =
+                        //                             imported
+                        //                     {
+                        //                         imported_ident.sym.to_string()
+                        //                     } else {
+                        //                         named_specifier.local.sym.to_string()
+                        //                     };
+                        //
+                        //                     let mapped_export =
+                        //                         mapped_exports.get(&imported_symbol).unwrap();
+                        //
+                        //                     if !named_specifier
+                        //                         .local
+                        //                         .sym
+                        //                         .to_string()
+                        //                         .eq(mapped_export)
+                        //                     {
+                        //                         let var_decl_stmt: Stmt =
+                        //                             quote_ident!(mapped_export.clone())
+                        //                                 .into_var_decl(
+                        //                                     VarDeclKind::Var,
+                        //                                     named_specifier.local.clone().into(),
+                        //                                 )
+                        //                                 .into();
+                        //                         if let Some(a) = items.as_mut() {
+                        //                             a.push(var_decl_stmt.into());
+                        //                         }
+                        //                     }
+                        //                 }
+                        //                 ImportSpecifier::Default(default_specifier) => {
+                        //                     if let Some(ex) = mapped_exports.get("default") {
+                        //                         let stmt: Stmt = quote_ident!(ex.clone())
+                        //                             .into_var_decl(
+                        //                                 VarDeclKind::Var,
+                        //                                 default_specifier.local.clone().into(),
+                        //                             )
+                        //                             .into();
+                        //
+                        //                         items.as_mut().unwrap().push(stmt.into());
+                        //                     } else {
+                        //                         println!(
+                        //                             "try get defaut from {}({}) in {}",
+                        //                             source,
+                        //                             imported_module_id.id,
+                        //                             self.current_module_id.id
+                        //                         );
+                        //                         println!("the map {:?}", mapped_exports);
+                        //
+                        //                         let stmt: Stmt = quote_expr!(DUMMY_SP, null)
+                        //                             .into_var_decl(
+                        //                                 VarDeclKind::Var,
+                        //                                 default_specifier.local.clone().into(),
+                        //                             )
+                        //                             .into();
+                        //
+                        //                         items.as_mut().unwrap().push(stmt.into());
+                        //                     }
+                        //                 }
+                        //                 ImportSpecifier::Namespace(namespace) => {
+                        //                     let mapped_namespace = mapped_exports.get("*").unwrap();
+                        //
+                        //                     if !namespace.local.sym.to_string().eq(mapped_namespace)
+                        //                     {
+                        //                         let var_decl_stmt: Stmt =
+                        //                             quote_ident!(mapped_namespace.clone())
+                        //                                 .into_var_decl(
+                        //                                     VarDeclKind::Var,
+                        //                                     namespace.local.clone().into(),
+                        //                                 )
+                        //                                 .into();
+                        //                         if let Some(a) = items.as_mut() {
+                        //                             a.push(var_decl_stmt.into());
+                        //                         }
+                        //                     }
+                        //                 }
+                        //             }
+                        //         }
+                        //     }
+                        // }
                     }
                     ModuleDecl::ExportDecl(_) => {}
                     ModuleDecl::ExportNamed(export_named) => {
