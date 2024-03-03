@@ -1,32 +1,38 @@
-use std::sync::Arc;
+use std::cmp::max;
+use std::path::Path;
 
 use heck::ToSnakeCase;
 use swc_core::ecma::ast::{Ident, Stmt, VarDecl, VarDeclKind};
 use swc_core::ecma::utils::{quote_ident, ExprFactory};
 
-use crate::compiler::Context;
 use crate::module::ModuleId;
 
-pub fn uniq_module_prefix(module_id: &ModuleId, context: &Arc<Context>) -> String {
+pub fn uniq_module_prefix(module_id: &ModuleId) -> String {
+    let path = Path::new(&module_id.id);
+    let len = path.components().count() as i32;
+    let mut skip = max(len - 3, 0);
+    let mut p = path.components();
+    while skip > 0 {
+        p.next();
+        skip -= 1;
+    }
+
     format!(
-        "__mako_{}",
-        module_id
-            .generate(context)
-            .replace("..", "u")
-            .to_snake_case()
+        "__$m_{}",
+        p.as_path().to_string_lossy().to_string().to_snake_case()
     )
 }
 
-pub fn uniq_module_default_export_name(module_id: &ModuleId, context: &Arc<Context>) -> String {
-    format!("{}_0", uniq_module_prefix(module_id, context))
+pub fn uniq_module_default_export_name(module_id: &ModuleId) -> String {
+    format!("{}_0", uniq_module_prefix(module_id))
 }
 
-pub fn uniq_module_namespace_name(module_id: &ModuleId, context: &Arc<Context>) -> String {
-    format!("{}_ns", uniq_module_prefix(module_id, context))
+pub fn uniq_module_namespace_name(module_id: &ModuleId) -> String {
+    format!("{}_ns", uniq_module_prefix(module_id))
 }
 
-pub fn uniq_module_export_name(module_id: &ModuleId, name: &str, context: &Arc<Context>) -> String {
-    format!("{}_{name}", uniq_module_prefix(module_id, context))
+pub fn uniq_module_export_name(module_id: &ModuleId, name: &str) -> String {
+    format!("{}_{name}", uniq_module_prefix(module_id))
 }
 
 pub fn declare_var_with_init_stmt(name: Ident, init: &str) -> Stmt {
@@ -46,38 +52,38 @@ pub const MODULE_CONCATENATE_ERROR_STR_MODULE_NAME: &str =
 mod tests {
     use super::*;
 
-    fn default_context() -> Arc<Context> {
-        let context = Context {
-            root: "/my/root/path".into(),
-            ..Context::default()
-        };
-        Arc::new(context)
+    #[test]
+    fn long_files_name() {
+        let module_id = ModuleId::from("/a/very/very/deep/deep/module.js");
+        let name = uniq_module_prefix(&module_id);
+        assert_eq!(name, "__$m_deep_deep_module_js");
     }
 
     #[test]
-    fn root_file_name() {
-        let context = default_context();
-
-        let module_id = ModuleId::from("/my/root/path/module.js");
-        let name = uniq_module_prefix(&module_id, &context);
-        assert_eq!(name, "__mako_module_js");
+    fn long_files_name_with_query() {
+        let module_id = ModuleId::from("/a/very/very/deep/deep/module.js?aQuery");
+        let name = uniq_module_prefix(&module_id);
+        assert_eq!(name, "__$m_deep_deep_module_js_a_query");
     }
 
     #[test]
-    fn nested_file_name() {
-        let context = default_context();
-
-        let module_id = ModuleId::from("/my/root/path/nested/module.js");
-        let name = uniq_module_prefix(&module_id, &context);
-        assert_eq!(name, "__mako_nested_module_js");
+    fn just_file_name() {
+        let module_id = ModuleId::from("module.js");
+        let name = uniq_module_prefix(&module_id);
+        assert_eq!(name, "__$m_module_js");
     }
 
     #[test]
-    fn out_of_root_file_name() {
-        let context = default_context();
+    fn short_file_name() {
+        let module_id = ModuleId::from("/module.js");
+        let name = uniq_module_prefix(&module_id);
+        assert_eq!(name, "__$m_module_js");
+    }
 
-        let module_id = ModuleId::from("/my/out/of/module.js");
-        let name = uniq_module_prefix(&module_id, &context);
-        assert_eq!(name, "__mako_u_u_out_of_module_js");
+    #[test]
+    fn short_file_name_with_query() {
+        let module_id = ModuleId::from("/module.js?asmodules");
+        let name = uniq_module_prefix(&module_id);
+        assert_eq!(name, "__$m_module_js_asmodules");
     }
 }

@@ -258,7 +258,7 @@ pub fn optimize_module_graph(
                 }
 
                 if let Some(interop) = config.external_interops(id) {
-                    let base_name = uniq_module_prefix(id, context);
+                    let base_name = uniq_module_prefix(id);
 
                     let cjs_name = concatenate_context.request_safe_var_name(&base_name);
                     let esm_name =
@@ -320,7 +320,6 @@ pub fn optimize_module_graph(
                     src_to_module: &import_source_to_module_id,
                     concatenate_context: &mut concatenate_context,
                     module_id: id,
-                    context,
                     unresolved_mark: script_ast.unresolved_mark,
                     my_top_level_vars: &mut current_module_top_level_vars,
                 };
@@ -378,7 +377,6 @@ pub fn optimize_module_graph(
                 src_to_module: &src_2_module_id,
                 concatenate_context: &mut concatenate_context,
                 module_id: &config.root,
-                context,
                 unresolved_mark,
                 my_top_level_vars: &mut current_module_top_level_vars,
             };

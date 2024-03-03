@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
 
 use swc_core::common::{Mark, DUMMY_SP};
 use swc_core::ecma::ast::{
@@ -10,7 +9,6 @@ use swc_core::ecma::ast::{
 use swc_core::ecma::utils::{member_expr, quote_ident, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
-use crate::compiler::Context;
 use crate::module::ModuleId;
 use crate::plugins::farm_tree_shake::shake::module_concatenate::concatenate_context::ConcatenateContext;
 use crate::plugins::farm_tree_shake::shake::module_concatenate::utils::{
@@ -57,7 +55,6 @@ macro_rules! dcl {
 pub(super) struct ExternalTransformer<'a> {
     pub concatenate_context: &'a mut ConcatenateContext,
     pub src_to_module: &'a HashMap<String, ModuleId>,
-    pub context: &'a Arc<Context>,
     pub module_id: &'a ModuleId,
     pub unresolved_mark: Mark,
     pub my_top_level_vars: &'a mut HashSet<String>,
@@ -102,17 +99,15 @@ impl<'a> ExternalTransformer<'_> {
                 }
                 ExportSpecifier::Default(default_spec) => {
                     let local_default_name = if default_spec.exported.sym.eq("default") {
-                        // export default from "m"  -> __mako_xxx_0
+                        // export default from "m"  -> __$m_xxx_0
                         quote_ident!(self.request_safe_var_name(&uniq_module_default_export_name(
                             self.module_id,
-                            self.context
                         )))
                     } else {
-                        // export foo from "m"  -> __mako_external_orig
+                        // export foo from "m"  -> __$m_external_orig
                         quote_ident!(self.request_safe_var_name(&uniq_module_export_name(
                             src_module_id,
                             &default_spec.exported.sym,
-                            self.context
                         )))
                     };
 
@@ -128,13 +123,12 @@ impl<'a> ExternalTransformer<'_> {
                     (ModuleExportName::Ident(orig), Some(ModuleExportName::Ident(exported))) => {
                         let local_proxy_name = if exported.sym.eq("default") {
                             quote_ident!(self.request_safe_var_name(
-                                &uniq_module_default_export_name(self.module_id, self.context)
+                                &uniq_module_default_export_name(self.module_id)
                             ))
                         } else {
                             quote_ident!(self.request_safe_var_name(&uniq_module_export_name(
                                 src_module_id,
                                 &orig.sym,
-                                self.context
                             )))
                         };
                         let orig = orig.clone();
@@ -145,13 +139,12 @@ impl<'a> ExternalTransformer<'_> {
                     (ModuleExportName::Ident(orig), None) => {
                         let local_proxy_name = if orig.sym.eq("default") {
                             quote_ident!(self.request_safe_var_name(
-                                &uniq_module_default_export_name(self.module_id, self.context)
+                                &uniq_module_default_export_name(self.module_id)
                             ))
                         } else {
                             quote_ident!(self.request_safe_var_name(&uniq_module_export_name(
                                 src_module_id,
                                 &orig.sym,
-                                self.context
                             )))
                         };
                         let orig = orig.clone();
@@ -385,7 +378,6 @@ mod tests {
             let mut t = ExternalTransformer {
                 src_to_module: &src_2_module,
                 concatenate_context: &mut concatenate_context,
-                context: &context,
                 module_id: &ModuleId::from("mut.js"),
                 unresolved_mark: ast.unresolved_mark,
                 my_top_level_vars: &mut my_top_vars,
@@ -520,8 +512,8 @@ mod tests {
         assert_eq!(
             code,
             r#"
-var __mako_external_named = external_namespace.named;
-export { __mako_external_named as named };
+var __$m_external_named = external_namespace.named;
+export { __$m_external_named as named };
             "#
             .trim()
         );
@@ -537,8 +529,8 @@ export { __mako_external_named as named };
         assert_eq!(
             code,
             r#"
-var __mako_external_named = external_namespace.named;
-export { __mako_external_named as foo };
+var __$m_external_named = external_namespace.named;
+export { __$m_external_named as foo };
             "#
             .trim()
         );
@@ -566,8 +558,8 @@ export { __mako_external_named as foo };
         assert_eq!(
             code,
             r#"
-var __mako_mut_js_0 = external_namespace.default;
-export { __mako_mut_js_0 as default };
+var __$m_mut_js_0 = external_namespace.default;
+export { __$m_mut_js_0 as default };
          "#
             .trim()
         );
@@ -584,8 +576,8 @@ export { __mako_mut_js_0 as default };
         assert_eq!(
             code,
             r#"
-var __mako_mut_js_0 = external_namespace.foo;
-export { __mako_mut_js_0 as default };
+var __$m_mut_js_0 = external_namespace.foo;
+export { __$m_mut_js_0 as default };
          "#
             .trim()
         );
@@ -610,8 +602,8 @@ export { __mako_mut_js_0 as default };
         assert_eq!(
             code,
             r#"
-var __mako_external_x = external_namespace.default;
-export { __mako_external_x as x };
+var __$m_external_x = external_namespace.default;
+export { __$m_external_x as x };
          "#
             .trim(),
         );
@@ -629,8 +621,8 @@ export { __mako_external_x as x };
         assert_eq!(
             code,
             r#"
-var __mako_mut_js_0 = external_namespace.default;
-export { __mako_mut_js_0 as default };
+var __$m_mut_js_0 = external_namespace.default;
+export { __$m_mut_js_0 as default };
          "#
             .trim(),
         );

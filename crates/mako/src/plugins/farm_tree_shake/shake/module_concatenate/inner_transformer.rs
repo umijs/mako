@@ -170,8 +170,7 @@ impl<'a> VisitMut for InnerTransform<'a> {
         self.add_leading_comment(n);
 
         if (self.imported_type & ImportType::Namespace) == ImportType::Namespace {
-            let ns_name = self
-                .get_non_conflict_name(&uniq_module_namespace_name(self.module_id, self.context));
+            let ns_name = self.get_non_conflict_name(&uniq_module_namespace_name(self.module_id));
             let ns_ident = quote_ident!(ns_name.clone());
 
             let empty_obj = ObjectLit {
@@ -279,10 +278,7 @@ impl<'a> VisitMut for InnerTransform<'a> {
                                                 export_map.get("default").unwrap();
 
                                             let default_binding_name = self.get_non_conflict_name(
-                                                &uniq_module_default_export_name(
-                                                    self.module_id,
-                                                    self.context,
-                                                ),
+                                                &uniq_module_default_export_name(self.module_id),
                                             );
 
                                             let stmt: Stmt = declare_var_with_init_stmt(
@@ -327,7 +323,6 @@ impl<'a> VisitMut for InnerTransform<'a> {
                                                             .get_non_conflict_name(
                                                                 &uniq_module_default_export_name(
                                                                     self.module_id,
-                                                                    self.context,
                                                                 ),
                                                             );
                                                         self.my_top_decls
@@ -395,7 +390,7 @@ impl<'a> VisitMut for InnerTransform<'a> {
                     }
                     ModuleDecl::ExportDefaultDecl(export_default_dcl) => {
                         let default_binding_name = self.get_non_conflict_name(
-                            &uniq_module_default_export_name(self.module_id, self.context),
+                            &uniq_module_default_export_name(self.module_id),
                         );
 
                         match &mut export_default_dcl.decl {
@@ -485,7 +480,7 @@ impl<'a> VisitMut for InnerTransform<'a> {
                         let span = export_default_expr.span.apply_mark(self.top_level_mark);
 
                         let default_binding_name = self.get_non_conflict_name(
-                            &uniq_module_default_export_name(self.module_id, self.context),
+                            &uniq_module_default_export_name(self.module_id),
                         );
 
                         let stmt: Stmt = export_default_expr
@@ -787,7 +782,7 @@ mod tests {
     #[test]
     fn test_export_default_with_conflict() {
         let mut ccn_ctx = ConcatenateContext {
-            top_level_vars: hashset!("__mako_mut_js_0".to_string()),
+            top_level_vars: hashset!("__$m_mut_js_0".to_string()),
             ..Default::default()
         };
 
@@ -796,19 +791,19 @@ mod tests {
         assert_eq!(
             code,
             r#"var n = 1;
-var __mako_mut_js_0_1 = n;"#
+var __$m_mut_js_0_1 = n;"#
         );
         assert_eq!(
             ccn_ctx.top_level_vars,
             hashset!(
                 "n".to_string(),
-                "__mako_mut_js_0_1".to_string(),
-                "__mako_mut_js_0".to_string(),
+                "__$m_mut_js_0_1".to_string(),
+                "__$m_mut_js_0".to_string(),
             )
         );
         assert_eq!(
             current_export_map(&ccn_ctx),
-            &hashmap!("default".to_string() => "__mako_mut_js_0_1".to_string())
+            &hashmap!("default".to_string() => "__$m_mut_js_0_1".to_string())
         );
     }
 
@@ -881,15 +876,15 @@ var __mako_mut_js_0_1 = n;"#
         let mut ccn_ctx = ConcatenateContext::default();
         let code = inner_trans_code("export default 42", &mut ccn_ctx);
 
-        assert_eq!(code, "var __mako_mut_js_0 = 42;");
+        assert_eq!(code, "var __$m_mut_js_0 = 42;");
         assert_eq!(
             ccn_ctx.top_level_vars,
-            hashset!("__mako_mut_js_0".to_string())
+            hashset!("__$m_mut_js_0".to_string())
         );
         assert_eq!(
             current_export_map(&ccn_ctx),
             &hashmap!(
-                "default".to_string() => "__mako_mut_js_0".to_string()
+                "default".to_string() => "__$m_mut_js_0".to_string()
             )
         );
     }
@@ -902,16 +897,16 @@ var __mako_mut_js_0_1 = n;"#
         assert_eq!(
             code,
             r#"let t = 1;
-var __mako_mut_js_0 = t;"#
+var __$m_mut_js_0 = t;"#
         );
         assert_eq!(
             ccn_ctx.top_level_vars,
-            hashset!("__mako_mut_js_0".to_string(), "t".to_string())
+            hashset!("__$m_mut_js_0".to_string(), "t".to_string())
         );
         assert_eq!(
             current_export_map(&ccn_ctx),
             &hashmap!(
-                "default".to_string() => "__mako_mut_js_0".to_string()
+                "default".to_string() => "__$m_mut_js_0".to_string()
             )
         );
     }
@@ -981,15 +976,15 @@ var __mako_mut_js_0 = t;"#
         };
         let code = inner_trans_code(r#"export { default } from "./src""#, &mut ccn_ctx);
 
-        assert_eq!(code, r#"var __mako_mut_js_0 = my_default;"#);
+        assert_eq!(code, r#"var __$m_mut_js_0 = my_default;"#);
         assert_eq!(
             ccn_ctx.top_level_vars,
-            hashset!("__mako_mut_js_0".to_string())
+            hashset!("__$m_mut_js_0".to_string())
         );
         assert_eq!(
             current_export_map(&ccn_ctx),
             &hashmap!(
-                "default".to_string() => "__mako_mut_js_0".to_string()
+                "default".to_string() => "__$m_mut_js_0".to_string()
             )
         );
     }
