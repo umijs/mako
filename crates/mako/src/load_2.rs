@@ -10,9 +10,11 @@ use mako_core::svgr_rs;
 use mako_core::thiserror::Error;
 use mako_core::toml::{from_str as from_toml_str, Value as TomlValue};
 use mako_core::tracing::debug;
+use mako_core::mdxjs::{compile, Options as MdxOptions};
 
 use crate::ast_2::file::{Content, File};
 use crate::compiler::Context;
+use crate::config::Mode;
 use crate::plugin::PluginLoadParam;
 
 #[derive(Debug, Error)]
@@ -40,6 +42,7 @@ lazy_static! {
     static ref WASM_EXTENSIONS: Vec<&'static str> = vec!["wasm"];
     static ref TOML_EXTENSIONS: Vec<&'static str> = vec!["toml"];
     static ref SVG_EXTENSIONS: Vec<&'static str> = vec!["svg"];
+    static ref MD_EXTENSIONS: Vec<&'static str> = vec!["md", "mdx"];
     static ref UNSUPPORTED_EXTENSIONS: Vec<&'static str> = vec!["sass", "scss", "stylus"];
     static ref SVGR_NAMED_EXPORT: String = r#"ReactComponent"#.to_string();
 }
@@ -95,7 +98,23 @@ impl Load {
         }
 
         // md & mdx
-        // TODO: implement this
+        if MD_EXTENSIONS.contains(&file.extname.as_str()) {
+            let content = FileSystem::read_file(&file.path)?;
+            let options = MdxOptions {
+                development: matches!(context.config.mode, Mode::Development),
+                ..Default::default()
+            };
+            let content = match compile(&content, &options) {
+                Ok(js_string) => js_string,
+                Err(reason) => {
+                    return Err(anyhow!(LoadError::CompileMdError {
+                        path: file.path.to_string_lossy().to_string(),
+                        reason,
+                    }));
+                }
+            };
+            return Ok(Content::Js(content));
+        }
 
         // svg
         // TODO: Not all svg files need to be converted to React Component, unnecessary performance consumption here
