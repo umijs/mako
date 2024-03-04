@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use mako_core::anyhow::Result;
+use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_css_visit;
 use mako_core::swc_ecma_preset_env::{self as swc_preset_env};
 use mako_core::swc_ecma_transforms::feature::FeatureFlag;
@@ -18,8 +19,13 @@ use crate::module::ModuleAst;
 use crate::targets;
 use crate::transformers::transform_css_flexbugs::CSSFlexbugs;
 use crate::transformers::transform_css_url_replacer::CSSUrlReplacer;
+use crate::transformers::transform_dynamic_import_to_require::DynamicImportToRequire;
+use crate::transformers::transform_env_replacer::{build_env_map, EnvReplacer};
+use crate::transformers::transform_provide::Provide;
 use crate::transformers::transform_px2rem::Px2Rem;
+use crate::transformers::transform_react::mako_react;
 use crate::transformers::transform_try_resolve::TryResolve;
+use crate::transformers::transform_virtual_css_modules::VirtualCSSModules;
 
 pub struct Transform {}
 
@@ -50,16 +56,46 @@ impl Transform {
                             top_level_mark,
                         )))
                     }
-                    // TODO: react
-                    // TODO: env replacer
+                    // TODO: refact mako_react
+                    visitors.push(Box::new(mako_react(
+                        cm,
+                        &context,
+                        file,
+                        &top_level_mark,
+                        &unresolved_mark,
+                    )));
+                    // TODO: refact env replacer
+                    {
+                        let mut define = context.config.define.clone();
+                        let mode = context.config.mode.to_string();
+                        define
+                            .entry("NODE_ENV".to_string())
+                            .or_insert_with(|| format!("\"{}\"", mode).into());
+                        let env_map = build_env_map(define, &context)?;
+                        visitors.push(Box::new(EnvReplacer::new(
+                            Lrc::new(env_map),
+                            unresolved_mark,
+                        )));
+                    }
                     visitors.push(Box::new(TryResolve {
                         path: file.path.to_string_lossy().to_string(),
                         context: context.clone(),
                         unresolved_mark,
                     }));
-                    // TODO: provide
-                    // TODO: import_css_in_js ?
-                    // TODO: dynamic_import_to_require
+                    // TODO: refact provide
+                    visitors.push(Box::new(Provide::new(
+                        context.config.providers.clone(),
+                        unresolved_mark,
+                    )));
+                    visitors.push(Box::new(VirtualCSSModules {
+                        context: context.clone(),
+                        unresolved_mark,
+                    }));
+                    if context.config.dynamic_import_to_require {
+                        visitors.push(Box::new(
+                            DynamicImportToRequire { unresolved_mark }
+                        ));
+                    }
 
                     // folders
                     let mut folders: Vec<Box<dyn Fold>> = vec![];
