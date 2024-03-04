@@ -34,7 +34,7 @@ impl Parse {
         }
 
         // js
-        if let Some(Content::Js(content)) = &file.content {
+        if let Some(Content::Js(_)) = &file.content {
             debug!("parse js: {:?}", file.path);
             let ast = JsAst::new(file, context)?;
             return Ok(ModuleAst::Script(ast));
@@ -42,7 +42,7 @@ impl Parse {
 
         // css
         // TODO: support css modules
-        if let Some(Content::Css(content)) = &file.content {
+        if let Some(Content::Css(_)) = &file.content {
             debug!("parse css: {:?}", file.path);
             let ast = CssAst::new(file, context)?;
             return Ok(ModuleAst::Css(ast));

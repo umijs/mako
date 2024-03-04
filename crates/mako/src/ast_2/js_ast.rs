@@ -1,3 +1,4 @@
+use std::fmt;
 use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
@@ -11,6 +12,7 @@ use mako_core::swc_ecma_parser::error::SyntaxError;
 use mako_core::swc_ecma_parser::lexer::Lexer;
 use mako_core::swc_ecma_parser::{EsConfig, Parser, StringInput, Syntax, TsConfig};
 use mako_core::swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
+use mako_core::swc_ecma_utils::contains_top_level_await;
 use mako_core::swc_ecma_visit;
 use mako_core::swc_ecma_visit::{VisitMutWith, VisitWith};
 use swc_core::base::try_with_handler;
@@ -23,7 +25,6 @@ use crate::config::{DevtoolConfig, Mode};
 use crate::module::Dependency;
 use crate::sourcemap::build_source_map;
 use crate::visitors::js_dep_analyzer::JSDepAnalyzer;
-use std::fmt;
 
 #[derive(Clone)]
 pub struct JsAst {
@@ -31,6 +32,7 @@ pub struct JsAst {
     pub unresolved_mark: Mark,
     pub top_level_mark: Mark,
     path: String,
+    pub contains_top_level_await: bool,
     context: Arc<Context>,
 }
 
@@ -103,12 +105,14 @@ impl JsAst {
         GLOBALS.set(&context.meta.script.globals, || {
             let top_level_mark = Mark::new();
             let unresolved_mark = Mark::new();
+            let contains_top_level_await = contains_top_level_await(&ast);
             Ok(JsAst {
                 ast,
                 unresolved_mark,
                 top_level_mark,
                 path: file.relative_path.to_string_lossy().to_string(),
                 context: context.clone(),
+                contains_top_level_await,
             })
         })
     }
@@ -118,8 +122,7 @@ impl JsAst {
         mut_visitors: &mut Vec<Box<dyn swc_ecma_visit::VisitMut>>,
         folders: &mut Vec<Box<dyn swc_ecma_visit::Fold>>,
         should_inject_helpers: bool,
-    ) -> Result<()>
-     {
+    ) -> Result<()> {
         let cm = self.context.meta.script.cm.clone();
         GLOBALS.set(&self.context.meta.script.globals, || {
             try_with_handler(cm, Default::default(), |handler| {

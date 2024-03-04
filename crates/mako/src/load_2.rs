@@ -71,7 +71,7 @@ impl Load {
             }));
         }
 
-        // raw
+        // ?raw
         if file.has_param("raw") {
             let content = FileSystem::read_file(&file.path)?;
             let content = serde_json::to_string(&content)?;

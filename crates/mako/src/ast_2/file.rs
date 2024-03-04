@@ -7,10 +7,12 @@ use mako_core::base64::alphabet::STANDARD;
 use mako_core::base64::{engine, Engine};
 use mako_core::lazy_static::lazy_static;
 use mako_core::pathdiff::diff_paths;
+use mako_core::regex::Regex;
 use mako_core::thiserror::Error;
 use mako_core::{md5, mime_guess};
 
 use crate::compiler::Context;
+use crate::util::base64_decode;
 
 #[derive(Debug, Clone)]
 pub enum Content {
@@ -61,6 +63,11 @@ impl Default for File {
 // e.g.
 lazy_static! {
     static ref VIRTUAL: String = "virtual:".to_string();
+}
+
+lazy_static! {
+    static ref CSS_SOURCE_MAP_REGEXP: Regex =
+        Regex::new(r"/\*# sourceMappingURL=data:application/json;base64,(.*?) \*/").unwrap();
 }
 
 impl File {
@@ -170,6 +177,25 @@ impl File {
 
     pub fn has_param(&self, key: &str) -> bool {
         self.params.iter().any(|(k, _)| k == key)
+    }
+
+    pub fn get_source_map_chain(&self, context: Arc<Context>) -> Vec<Vec<u8>> {
+        if context.config.devtool.is_none() {
+            return vec![];
+        }
+        let mut chain = vec![];
+        match &self.content {
+            Some(Content::Css(content)) => {
+                if let Some(captures) = CSS_SOURCE_MAP_REGEXP.captures(&content) {
+                    let source_map_base64 = captures.get(1).unwrap().as_str().to_string();
+                    chain.push(base64_decode(source_map_base64.as_bytes()));
+                }
+            },
+            // TODO: support js source map chain
+            Some(Content::Js(_)) => {},
+            None => {},
+        }
+        chain
     }
 }
 
