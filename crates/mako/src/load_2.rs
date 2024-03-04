@@ -13,6 +13,7 @@ use mako_core::tracing::debug;
 
 use crate::ast_2::file::{Content, File};
 use crate::compiler::Context;
+use crate::plugin::PluginLoadParam;
 
 #[derive(Debug, Error)]
 enum LoadError {
@@ -50,8 +51,11 @@ impl Load {
         mako_core::mako_profile_function!(file.path.to_str());
         debug!("load: {:?}", file);
 
-        // TODO: plugin_driver
-        let content: Option<Content> = None;
+        // plugin first
+        let content: Option<Content> = context
+            .plugin_driver
+            .load(&PluginLoadParam { file }, &context)?;
+
         if content.is_some() {
             return Ok(content.unwrap());
         }
