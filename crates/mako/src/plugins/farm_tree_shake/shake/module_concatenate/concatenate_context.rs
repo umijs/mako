@@ -9,20 +9,39 @@ use swc_core::ecma::utils::{quote_ident, quote_str, ExprFactory};
 use crate::module::{ImportType, ModuleId, NamedExportType, ResolveType};
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Default)]
-    pub struct Interops: u16 {
+    pub struct EesmDependantFlags: u16 {
         const Default = 1;
         const Named = 1<<2;
-        const Wildcard = 1<<3;
-        const ExportAll = 1<<4;
+        const ExportAll = 1<<3;
+        const Namespace = 1<<4; // import * as foo, export * as foo
+    }
+
+}
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Default)]
+    pub struct RuntimeFlags: u16 {
+        const DefaultInterOp  =1;
+        const WildcardInterOp = 1<<2;
+        const ExportStartInterOp = 1<<3;
     }
 }
 
-impl Interops {
-    pub fn inject_var_decl_stmts(&self, src: &str, names: &(String, String)) -> Vec<Stmt> {
-        let mut interopee =
-            quote_ident!("require").as_call(DUMMY_SP, vec![quote_str!(DUMMY_SP, src).as_arg()]);
+macro_rules! require {
+    ($src: expr) => {
+        quote_ident!("require").as_call(DUMMY_SP, vec![quote_str!(DUMMY_SP, $src).as_arg()])
+    };
+}
 
-        if self.contains(Interops::ExportAll) {
+impl EesmDependantFlags {
+    pub fn inject_external_export_decl(
+        &self,
+        src: &str,
+        names: &(String, String),
+    ) -> Vec<ModuleItem> {
+        let mut interopee = require!(src);
+        let runtime_helpers: RuntimeFlags = self.into();
+
+        if self.contains(EesmDependantFlags::ExportAll) {
             interopee = MemberExpr {
                 span: DUMMY_SP,
                 obj: quote_ident!("_export_star").into(),
@@ -34,12 +53,12 @@ impl Interops {
             );
         }
 
-        let cjs_expose_stmt: Stmt = interopee
+        let cjs_expose_dcl: ModuleItem = interopee
             .into_var_decl(VarDeclKind::Var, quote_ident!(names.0.clone()).into())
             .into();
 
-        if self.contains(Interops::Wildcard) || self.contains(Interops::Named | Interops::Default) {
-            let ems_expose_stmt: Stmt = MemberExpr {
+        if runtime_helpers.contains(RuntimeFlags::WildcardInterOp) {
+            let ems_expose_dcl: ModuleItem = MemberExpr {
                 span: DUMMY_SP,
                 obj: quote_ident!("_interop_require_wildcard").into(),
                 prop: quote_ident!("_").into(),
@@ -48,11 +67,11 @@ impl Interops {
             .into_var_decl(VarDeclKind::Var, quote_ident!(names.1.clone()).into())
             .into();
 
-            return vec![cjs_expose_stmt, ems_expose_stmt];
+            return vec![cjs_expose_dcl, ems_expose_dcl];
         }
 
-        if self.contains(Interops::Default) {
-            let esm_expose_stmt: Stmt = MemberExpr {
+        if runtime_helpers.contains(RuntimeFlags::DefaultInterOp) {
+            let esm_expose_stmt: ModuleItem = MemberExpr {
                 span: DUMMY_SP,
                 obj: quote_ident!("_interop_require_default").into(),
                 prop: quote_ident!("_").into(),
@@ -61,70 +80,107 @@ impl Interops {
             .into_var_decl(VarDeclKind::Var, quote_ident!(names.1.clone()).into())
             .into();
 
-            return vec![cjs_expose_stmt, esm_expose_stmt];
+            return vec![cjs_expose_dcl, esm_expose_stmt];
         }
 
-        let ems_expose_stmt: Stmt = quote_ident!(names.0.clone())
+        if names.0.eq(&names.1) {
+            return vec![cjs_expose_dcl];
+        }
+
+        let ems_expose_stmt: ModuleItem = quote_ident!(names.0.clone())
             .into_var_decl(VarDeclKind::Var, quote_ident!(names.1.clone()).into())
             .into();
 
-        vec![cjs_expose_stmt, ems_expose_stmt]
-    }
-
-    pub fn inject_interop_runtime_helpers(&self) -> Vec<ModuleItem> {
-        let mut res = vec![];
-
-        let stmt: Stmt = quote_ident!("require")
-            .as_call(
-                DUMMY_SP,
-                vec![quote_str!(DUMMY_SP, "@swc/helpers/_/_interop_require_default").as_arg()],
-            )
-            .into_var_decl(
-                VarDeclKind::Var,
-                quote_ident!("_interop_require_default").into(),
-            )
-            .into();
-        res.push(stmt.into());
-
-        let stmt: Stmt = quote_ident!("require")
-            .as_call(
-                DUMMY_SP,
-                vec![quote_str!(DUMMY_SP, "@swc/helpers/_/_interop_require_wildcard").as_arg()],
-            )
-            .into_var_decl(
-                VarDeclKind::Var,
-                quote_ident!("_interop_require_wildcard").into(),
-            )
-            .into();
-        res.push(stmt.into());
-
-        if self.contains(Interops::ExportAll) {
-            let stmt: Stmt = quote_ident!("require")
-                .as_call(
-                    DUMMY_SP,
-                    vec![quote_str!(DUMMY_SP, "@swc/helpers/_/_export_star").as_arg()],
-                )
-                .into_var_decl(VarDeclKind::Var, quote_ident!("_export_star").into())
-                .into();
-            res.push(stmt.into());
-        }
-
-        res
+        vec![cjs_expose_dcl, ems_expose_stmt]
     }
 }
 
-impl From<&ImportType> for Interops {
+macro_rules! dcl {
+    ($name: expr, $init:expr ) => {
+        $init
+            .into_var_decl(VarDeclKind::Var, quote_ident!(stringify!($name)).into())
+            .into()
+    };
+}
+
+impl RuntimeFlags {
+    pub fn need_op(&self) -> bool {
+        self.contains(RuntimeFlags::DefaultInterOp) || self.contains(RuntimeFlags::WildcardInterOp)
+    }
+
+    pub fn interop_runtime_helpers(&self) -> (Vec<ModuleItem>, Vec<String>) {
+        let mut items = vec![];
+        let mut vars = vec![];
+
+        self.iter().for_each(|flag| match flag {
+            RuntimeFlags::WildcardInterOp => {
+                let stmt: Stmt = dcl!(
+                    _interop_require_wildcard,
+                    require!("@swc/helpers/_/_interop_require_wildcard")
+                );
+                items.push(stmt.into());
+                vars.push("_interop_require_wildcard".to_string());
+            }
+            RuntimeFlags::DefaultInterOp => {
+                let stmt: Stmt = dcl!(
+                    _interop_require_default,
+                    require!("@swc/helpers/_/_interop_require_default")
+                );
+                items.push(stmt.into());
+                vars.push("_interop_require_default".to_string());
+            }
+            RuntimeFlags::ExportStartInterOp => {
+                let stmt: Stmt = dcl!(_export_star, require!("@swc/helpers/_/_export_star"));
+                items.push(stmt.into());
+                vars.push("_export_star".to_string());
+            }
+            _ => {}
+        });
+
+        (items, vars)
+    }
+}
+
+impl From<&EesmDependantFlags> for RuntimeFlags {
+    fn from(value: &EesmDependantFlags) -> Self {
+        let mut rt_flags = RuntimeFlags::empty();
+        if value.contains(EesmDependantFlags::Default) {
+            rt_flags.insert(RuntimeFlags::DefaultInterOp);
+        }
+
+        if value.contains(EesmDependantFlags::Namespace)
+            || value.contains(EesmDependantFlags::Named | EesmDependantFlags::Default)
+        {
+            rt_flags.remove(RuntimeFlags::DefaultInterOp);
+            rt_flags.insert(RuntimeFlags::WildcardInterOp);
+        }
+
+        if value.contains(EesmDependantFlags::ExportAll) {
+            rt_flags.insert(RuntimeFlags::ExportStartInterOp)
+        }
+
+        rt_flags
+    }
+}
+
+impl From<EesmDependantFlags> for RuntimeFlags {
+    fn from(value: EesmDependantFlags) -> Self {
+        (&value).into()
+    }
+}
+
+impl From<&ImportType> for EesmDependantFlags {
     fn from(value: &ImportType) -> Self {
-        let mut interops = Interops::empty();
+        let mut interops = EesmDependantFlags::empty();
         value.iter().for_each(|x| match x {
             ImportType::Default => {
-                interops.insert(Interops::Default);
+                interops.insert(EesmDependantFlags::Default);
             }
             ImportType::Namespace => {
-                interops.insert(Interops::Wildcard);
+                interops.insert(EesmDependantFlags::Namespace);
             }
             ImportType::Named => {
-                interops.insert(Interops::Named);
+                interops.insert(EesmDependantFlags::Named);
             }
             _ => {}
         });
@@ -132,17 +188,19 @@ impl From<&ImportType> for Interops {
     }
 }
 
-impl From<&NamedExportType> for Interops {
+impl From<&NamedExportType> for EesmDependantFlags {
     fn from(value: &NamedExportType) -> Self {
         let mut res = Self::empty();
 
         value.iter().for_each(|x| match x {
             NamedExportType::Default => {
-                res.insert(Interops::Default);
+                res.insert(EesmDependantFlags::Default);
             }
-            NamedExportType::Named => {}
+            NamedExportType::Named => {
+                res.insert(EesmDependantFlags::Named);
+            }
             NamedExportType::Namespace => {
-                res.insert(Interops::Wildcard);
+                res.insert(EesmDependantFlags::Namespace);
             }
             _ => {}
         });
@@ -150,16 +208,16 @@ impl From<&NamedExportType> for Interops {
     }
 }
 
-impl From<&ResolveType> for Interops {
+impl From<&ResolveType> for EesmDependantFlags {
     fn from(value: &ResolveType) -> Self {
         match value {
             ResolveType::Import(import_type) => import_type.into(),
             ResolveType::ExportNamed(named_export_type) => named_export_type.into(),
-            ResolveType::ExportAll => Interops::ExportAll,
-            ResolveType::Require => Interops::empty(),
-            ResolveType::DynamicImport => Interops::empty(),
-            ResolveType::Css => Interops::empty(),
-            ResolveType::Worker => Interops::empty(),
+            ResolveType::ExportAll => EesmDependantFlags::ExportAll,
+            ResolveType::Require => EesmDependantFlags::empty(),
+            ResolveType::DynamicImport => EesmDependantFlags::empty(),
+            ResolveType::Css => EesmDependantFlags::empty(),
+            ResolveType::Worker => EesmDependantFlags::empty(),
         }
     }
 }

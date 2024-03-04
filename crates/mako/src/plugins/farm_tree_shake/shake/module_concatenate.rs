@@ -19,14 +19,16 @@ use swc_core::ecma::transforms::base::resolver;
 use swc_core::ecma::utils::collect_decls_with_ctxt;
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
-use self::concatenate_context::Interops;
+use self::concatenate_context::EesmDependantFlags;
 use self::utils::uniq_module_prefix;
 use crate::ast::js_ast_to_code;
 use crate::compiler::Context;
 use crate::module::{generate_module_id, Dependency, ImportType, ModuleId, ResolveType};
 use crate::module_graph::ModuleGraph;
 use crate::plugins::farm_tree_shake::module::{AllExports, TreeShakeModule};
-use crate::plugins::farm_tree_shake::shake::module_concatenate::concatenate_context::ConcatenateContext;
+use crate::plugins::farm_tree_shake::shake::module_concatenate::concatenate_context::{
+    ConcatenateContext, RuntimeFlags,
+};
 use crate::tree_shaking::tree_shaking_module::ModuleSystem;
 
 pub fn optimize_module_graph(
@@ -199,7 +201,7 @@ pub fn optimize_module_graph(
                 for module_id in &config.inners {
                     for (dep_module_id, dep) in module_graph.get_dependencies(module_id) {
                         if let Some(curr_interops) = config.externals.get_mut(dep_module_id) {
-                            let it: Interops = (&dep.resolve_type).into();
+                            let it: EesmDependantFlags = (&dep.resolve_type).into();
                             curr_interops.insert(it);
                         }
                     }
@@ -207,7 +209,7 @@ pub fn optimize_module_graph(
 
                 for (dep_module_id, dep) in module_graph.get_dependencies(&config.root) {
                     if let Some(curr_interops) = config.externals.get_mut(dep_module_id) {
-                        let it: Interops = (&dep.resolve_type).into();
+                        let it: EesmDependantFlags = (&dep.resolve_type).into();
                         curr_interops.insert(it);
                     }
                 }
@@ -238,9 +240,10 @@ pub fn optimize_module_graph(
 
             let mut concatenate_context = ConcatenateContext::default();
 
-            let all_interops = config.merged_interops();
-            // FIXME 对应的 interop 的变量应该放入到 context 的 top_level_vars
-            module_items.extend(all_interops.inject_interop_runtime_helpers());
+            let runtime_flags = config.merged_runtime_flags();
+            let (items, vars) = runtime_flags.interop_runtime_helpers();
+            module_items.extend(items);
+            concatenate_context.top_level_vars.extend(vars);
 
             for id in &config.sorted_modules(module_graph) {
                 if id.eq(&config.root) {
@@ -259,18 +262,20 @@ pub fn optimize_module_graph(
 
                 if let Some(interop) = config.external_interops(id) {
                     let base_name = uniq_module_prefix(id);
+                    let runtime_flags: RuntimeFlags = interop.into();
 
                     let cjs_name = concatenate_context.request_safe_var_name(&base_name);
-                    let esm_name =
-                        concatenate_context.request_safe_var_name(&format!("{}_esm", base_name));
-                    let exposed_names = (cjs_name, esm_name);
+                    let exposed_names = if runtime_flags.need_op() {
+                        let esm_name = concatenate_context
+                            .request_safe_var_name(&format!("{}_esm", base_name));
+                        (cjs_name, esm_name)
+                    } else {
+                        (cjs_name.clone(), cjs_name)
+                    };
 
                     let require_src = generate_module_id(id.id.clone(), context);
                     module_items.extend(
-                        interop
-                            .inject_var_decl_stmts(&require_src, &exposed_names)
-                            .into_iter()
-                            .map(|st| st.into()),
+                        interop.inject_external_export_decl(&require_src, &exposed_names),
                     );
 
                     concatenate_context.add_external_names(id, exposed_names);
@@ -412,7 +417,7 @@ pub fn optimize_module_graph(
 struct ConcatenateConfig {
     root: ModuleId,
     inners: HashSet<ModuleId>,
-    externals: HashMap<ModuleId, Interops>,
+    externals: HashMap<ModuleId, EesmDependantFlags>,
 }
 
 impl ConcatenateConfig {}
@@ -492,17 +497,18 @@ impl ConcatenateConfig {
         self.externals.contains_key(module_id)
     }
 
-    fn external_interops(&self, module_id: &ModuleId) -> Option<Interops> {
+    fn external_interops(&self, module_id: &ModuleId) -> Option<EesmDependantFlags> {
         self.externals.get(module_id).copied()
     }
 
-    fn merged_interops(&self) -> Interops {
-        let mut interops = Interops::empty();
+    fn merged_runtime_flags(&self) -> RuntimeFlags {
+        let mut rt_flags = RuntimeFlags::empty();
 
-        for (_, v) in self.externals.iter() {
-            interops |= *v;
-        }
+        self.externals.iter().for_each(|(_, v)| {
+            let f: RuntimeFlags = v.into();
+            rt_flags |= f;
+        });
 
-        interops
+        rt_flags
     }
 }
