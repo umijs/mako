@@ -72,86 +72,93 @@ static GLOBAL: mimalloc_rust::GlobalMiMalloc = mimalloc_rust::GlobalMiMalloc;
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    // logger
-    init_logger();
+fn main() -> Result<()> {
+    let fut = async {
+        // logger
+        init_logger();
 
-    // cli
-    let cli = cli::Cli::parse();
-    debug!(
-        "cli: watch = {}, mode = {}, root = {}",
-        cli.watch,
-        cli.mode,
-        cli.root.to_str().unwrap()
-    );
-    let root = if cli.root.is_absolute() {
-        cli.root
-    } else {
-        std::env::current_dir()?.join(cli.root)
-    };
-    let root = root
-        .canonicalize()
-        .map_err(|_| anyhow!("Root directory {:?} not found", root))?;
+        // cli
+        let cli = cli::Cli::parse();
+        debug!(
+            "cli: watch = {}, mode = {}, root = {}",
+            cli.watch,
+            cli.mode,
+            cli.root.to_str().unwrap()
+        );
+        let root = if cli.root.is_absolute() {
+            cli.root
+        } else {
+            std::env::current_dir()?.join(cli.root)
+        };
+        let root = root
+            .canonicalize()
+            .map_err(|_| anyhow!("Root directory {:?} not found", root))?;
 
-    // config
-    let cli_args = format!(
-        r#"
+        // config
+        let cli_args = format!(
+            r#"
         {{
             "mode": "{}"
         }}
         "#,
-        cli.mode
-    );
-    let mut config = config::Config::new(&root, None, Some(cli_args.as_str()))
-        .map_err(|e| anyhow!(format!("Load config failed: {}", e)))?;
+            cli.mode
+        );
+        let mut config = config::Config::new(&root, None, Some(cli_args.as_str()))
+            .map_err(|e| anyhow!(format!("Load config failed: {}", e)))?;
 
-    config.mode = cli.mode;
+        config.mode = cli.mode;
 
-    debug!("config: {:?}", config);
+        debug!("config: {:?}", config);
 
-    // compiler
-    let compiler = compiler::Compiler::new(config, root.clone(), Args { watch: cli.watch }, None)?;
-    let compiler = Arc::new(compiler);
+        // compiler
+        let compiler =
+            compiler::Compiler::new(config, root.clone(), Args { watch: cli.watch }, None)?;
+        let compiler = Arc::new(compiler);
 
-    #[cfg(feature = "profile")]
-    {
-        let notify = Arc::new(Notify::new());
-        let to_be_notify = notify.clone();
+        #[cfg(feature = "profile")]
+        {
+            let notify = Arc::new(Notify::new());
+            let to_be_notify = notify.clone();
 
-        tokio::spawn(async move {
-            let compiler = compiler.clone();
+            tokio::spawn(async move {
+                let compiler = compiler.clone();
 
-            to_be_notify.notified().await;
+                to_be_notify.notified().await;
 
-            compiler.compile().unwrap();
+                compiler.compile().unwrap();
 
+                if cli.watch {
+                    let d = crate::dev::DevServer::new(root.clone(), compiler.clone());
+                    d.serve(move |_params| {}).await;
+                }
+            });
+
+            mako_core::puffin::set_scopes_on(true);
+            let native_options = Default::default();
+            let _ = mako_core::eframe::run_native(
+                "puffin egui eframe",
+                native_options,
+                Box::new(move |_cc| Box::new(ProfileApp::new(notify))),
+            );
+        }
+
+        #[cfg(not(feature = "profile"))]
+        {
+            if let Err(e) = compiler.compile() {
+                eprintln!("{}", e);
+                std::process::exit(1);
+            }
             if cli.watch {
-                let d = crate::dev::DevServer::new(root.clone(), compiler.clone());
+                let d = crate::dev::DevServer::new(root.clone(), compiler);
+                // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
                 d.serve(move |_params| {}).await;
             }
-        });
-
-        mako_core::puffin::set_scopes_on(true);
-        let native_options = Default::default();
-        let _ = mako_core::eframe::run_native(
-            "puffin egui eframe",
-            native_options,
-            Box::new(move |_cc| Box::new(ProfileApp::new(notify))),
-        );
-    }
-
-    #[cfg(not(feature = "profile"))]
-    {
-        if let Err(e) = compiler.compile() {
-            eprintln!("{}", e);
-            std::process::exit(1);
         }
-        if cli.watch {
-            let d = crate::dev::DevServer::new(root.clone(), compiler);
-            // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
-            d.serve(move |_params| {}).await;
-        }
-    }
-    Ok(())
+        Ok(())
+    };
+
+    tokio::runtime::Builder::new_current_thread()
+        .build()
+        .expect("Failed to create tokio runtime.")
+        .block_on(fut)
 }
