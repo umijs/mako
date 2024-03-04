@@ -9,6 +9,7 @@ use crate::ast_2::file::{Content, File};
 use crate::ast_2::js_ast::JsAst;
 use crate::compiler::Context;
 use crate::module::ModuleAst;
+use crate::plugin::PluginParseParam;
 
 #[derive(Debug, Error)]
 pub enum ParseError {
@@ -22,13 +23,10 @@ impl Parse {
     pub fn parse(file: &File, context: Arc<Context>) -> Result<ModuleAst> {
         mako_core::mako_profile_function!(file.path);
 
-        // let ast = context
-        //     .plugin_driver
-        //     .parse(&PluginParseParam { task, content }, context)?
-        //     .unwrap();
-
-        // TODO: plugin_driver
-        let ast: Option<ModuleAst> = None;
+        // plugin first
+        let ast = context
+            .plugin_driver
+            .parse(&PluginParseParam { file }, &context)?;
         if ast.is_some() {
             return Ok(ast.unwrap());
         }
