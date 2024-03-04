@@ -42,8 +42,22 @@ impl Parse {
         // TODO: support css modules
         if let Some(Content::Css(_)) = &file.content {
             debug!("parse css: {:?}", file.path);
-            let ast = CssAst::new(file, context)?;
-            return Ok(ModuleAst::Css(ast));
+            let is_modules = file.has_param("modules");
+            let is_asmodule = file.has_param("asmodule");
+            let css_modules = is_modules || is_asmodule;
+            let mut ast = CssAst::new(file, context.clone(), css_modules)?;
+            if is_asmodule {
+                let mut file = file.clone();
+                file.set_content(Content::Js(CssAst::generate_css_modules_exports(
+                    file.path.to_str().unwrap(),
+                    &mut ast.ast,
+                    context.config.css_modules_export_only_locales,
+                )));
+                let ast = JsAst::new(&file, context)?;
+                return Ok(ModuleAst::Script(ast));
+            } else {
+                return Ok(ModuleAst::Css(ast));
+            }
         }
 
         Err(anyhow!(ParseError::UnsupportedContent {

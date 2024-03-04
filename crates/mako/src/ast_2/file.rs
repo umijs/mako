@@ -104,6 +104,12 @@ impl File {
         }
     }
 
+    pub fn with_content(path: String, content: Content, context: Arc<Context>) -> Self {
+        let mut file = File::new(path, context);
+        file.content = Some(content);
+        file
+    }
+
     pub fn new_entry(path: String, context: Arc<Context>) -> Self {
         let mut file = File::new(path, context);
         file.is_entry = true;

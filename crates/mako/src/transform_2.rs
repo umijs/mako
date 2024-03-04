@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use mako_core::anyhow::Result;
 use mako_core::swc_common::sync::Lrc;
-use mako_core::swc_css_visit;
+use mako_core::swc_css_ast::{AtRule, AtRulePrelude, ImportHref, Rule, Str, Stylesheet, UrlValue};
+use mako_core::swc_css_compat::compiler::{self, Compiler};
 use mako_core::swc_ecma_preset_env::{self as swc_preset_env};
 use mako_core::swc_ecma_transforms::feature::FeatureFlag;
 use mako_core::swc_ecma_transforms::{resolver, Assumptions};
@@ -11,8 +12,10 @@ use mako_core::swc_ecma_transforms_optimization::simplify::{dce, Config as Simpi
 use mako_core::swc_ecma_transforms_proposals::decorators;
 use mako_core::swc_ecma_transforms_typescript::strip_with_jsx;
 use mako_core::swc_ecma_visit::{Fold, VisitMut};
+use mako_core::{swc_css_compat, swc_css_visit};
 use swc_core::common::GLOBALS;
 
+use crate::ast_2::css_ast::CssAst;
 use crate::ast_2::file::File;
 use crate::compiler::Context;
 use crate::module::ModuleAst;
@@ -92,9 +95,7 @@ impl Transform {
                         unresolved_mark,
                     }));
                     if context.config.dynamic_import_to_require {
-                        visitors.push(Box::new(
-                            DynamicImportToRequire { unresolved_mark }
-                        ));
+                        visitors.push(Box::new(DynamicImportToRequire { unresolved_mark }));
                     }
 
                     // folders
@@ -145,7 +146,12 @@ impl Transform {
                 })
             }
             ModuleAst::Css(ast) => {
+                // replace @import url() to @import before CSSUrlReplacer
+                import_url_to_href(&mut ast.ast);
                 let mut visitors: Vec<Box<dyn swc_css_visit::VisitMut>> = vec![];
+                visitors.push(Box::new(Compiler::new(compiler::Config {
+                    process: swc_css_compat::feature::Features::NESTING,
+                })));
                 let path = file.path.to_string_lossy().to_string();
                 visitors.push(Box::new(CSSUrlReplacer {
                     path,
@@ -164,9 +170,48 @@ impl Transform {
                         current_selector: None,
                     }));
                 }
-                ast.transform(&mut visitors)
+                ast.transform(&mut visitors)?;
+
+                // css modules
+                let is_modules = file.has_param("modules");
+                if is_modules {
+                    CssAst::compile_css_modules(file.path.to_str().unwrap(), &mut ast.ast);
+                }
+
+                Ok(())
             }
             ModuleAst::None => Ok(()),
         }
     }
+}
+
+// TODO: use visitor instead
+// Why do this?
+// 为了修复 @import url() 会把 css 当 asset 处理，返回 base64 的问题
+// 把 @import url() 转成 @import 之后，所有 url() 就都是 rule 里的了
+// e.g. @import url("foo") => @import "foo"
+fn import_url_to_href(ast: &mut Stylesheet) {
+    ast.rules.iter_mut().for_each(|rule| {
+        if let Rule::AtRule(box AtRule {
+            prelude: Some(box AtRulePrelude::ImportPrelude(preclude)),
+            ..
+        }) = rule
+        {
+            if let box ImportHref::Url(url) = &mut preclude.href {
+                let href_string = url
+                    .value
+                    .as_ref()
+                    .map(|box value| match value {
+                        UrlValue::Str(str) => str.value.to_string(),
+                        UrlValue::Raw(raw) => raw.value.to_string(),
+                    })
+                    .unwrap_or_default();
+                preclude.href = Box::new(ImportHref::Str(Str {
+                    span: url.span,
+                    value: href_string.into(),
+                    raw: None,
+                }));
+            }
+        }
+    });
 }

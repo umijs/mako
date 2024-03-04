@@ -1,12 +1,16 @@
+use std::fmt;
 use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
+use mako_core::base64::engine::general_purpose;
+use mako_core::base64::Engine;
 use mako_core::swc_css_ast::Stylesheet;
 use mako_core::swc_css_codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};
 use mako_core::swc_css_codegen::{CodeGenerator, CodegenConfig, Emit};
+use mako_core::swc_css_modules::{compile, CssClassName, TransformConfig, TransformResult};
 use mako_core::swc_css_visit::{VisitMutWith, VisitWith};
 use mako_core::swc_ecma_parser::StringInput;
-use mako_core::{swc_css_parser, swc_css_visit};
+use mako_core::{md5, swc_atoms, swc_css_parser, swc_css_visit};
 use swc_core::common::FileName;
 
 use crate::ast_2::file::File;
@@ -16,7 +20,6 @@ use crate::config::{DevtoolConfig, Mode};
 use crate::module::Dependency;
 use crate::sourcemap::build_source_map;
 use crate::visitors::css_dep_analyzer::CSSDepAnalyzer;
-use std::fmt;
 
 #[derive(Clone)]
 pub struct CssAst {
@@ -32,13 +35,13 @@ impl fmt::Debug for CssAst {
 }
 
 impl CssAst {
-    pub fn new(file: &File, context: Arc<Context>) -> Result<Self> {
+    pub fn new(file: &File, context: Arc<Context>, css_modules: bool) -> Result<Self> {
         let fm = context.meta.css.cm.new_source_file(
             FileName::Real(file.relative_path.clone()),
             file.get_content_raw(),
         );
         let config = swc_css_parser::parser::ParserConfig {
-            css_modules: file.is_css_modules,
+            css_modules,
             legacy_ie: true,
             ..Default::default()
         };
@@ -127,9 +130,88 @@ impl CssAst {
 
         Ok(CSSAstGenerated { code, sourcemap })
     }
+
+    pub fn compile_css_modules(path: &str, ast: &mut Stylesheet) -> TransformResult {
+        compile(
+            ast,
+            CssModuleRename {
+                path: path.to_string(),
+            },
+        )
+    }
+
+    pub fn generate_css_modules_exports(
+        path: &str,
+        ast: &mut Stylesheet,
+        export_only: bool,
+    ) -> String {
+        let result = Self::compile_css_modules(path, ast);
+        let mut export_names = Vec::new();
+        for (name, classes) in result.renamed.iter() {
+            let mut after_transform_classes = Vec::new();
+            for v in classes {
+                match v {
+                    CssClassName::Local { name } => {
+                        after_transform_classes.push(name.value.to_string());
+                    }
+                    CssClassName::Global { name } => {
+                        // e.g. composes foo from global
+                        after_transform_classes.push(name.value.to_string());
+                    }
+                    CssClassName::Import { name, from: _ } => {
+                        // TODO: support composes from external files
+                        after_transform_classes.push(name.value.to_string());
+                    }
+                }
+            }
+            export_names.push((name, after_transform_classes));
+        }
+        let export_names = export_names
+            .iter()
+            .map(|(name, classes)| format!("\"{}\": `{}`", name, classes.join(" ").trim()))
+            .collect::<Vec<String>>()
+            .join(",");
+
+        if export_only {
+            format!(
+                r#"
+export default {{{}}}
+"#,
+                export_names
+            )
+        } else {
+            format!(
+                r#"
+import "{}?modules";
+export default {{{}}}
+"#,
+                path, export_names
+            )
+        }
+    }
 }
 
 pub struct CSSAstGenerated {
     pub code: String,
     pub sourcemap: String,
+}
+
+struct CssModuleRename {
+    pub path: String,
+}
+
+impl TransformConfig for CssModuleRename {
+    fn new_name_for(&self, local: &swc_atoms::JsWord) -> swc_atoms::JsWord {
+        let name = local.to_string();
+        let new_name = ident_name(&self.path, &name);
+        new_name.into()
+    }
+}
+
+fn ident_name(path: &str, name: &str) -> String {
+    let source = format!("{}__{}", path, name);
+    let digest = md5::compute(source);
+    let hash = general_purpose::URL_SAFE.encode(digest.0);
+    let hash_slice = hash[..8].to_string();
+    format!("{}-{}", name, hash_slice)
 }
