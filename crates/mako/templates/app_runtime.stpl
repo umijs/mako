@@ -61,6 +61,9 @@ function createRuntime(makoModules, entryModuleId) {
       });
   };
   requireModule.d = Object.defineProperty.bind(Object);
+  requireModule.c = function(e){
+    requireModule.d(e, "__esModule", { value: true });
+  }
 
 <% if has_dynamic_chunks || has_hmr { %>
   /* mako/runtime/ensure chunk */

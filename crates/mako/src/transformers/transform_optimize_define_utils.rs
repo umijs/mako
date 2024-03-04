@@ -1,6 +1,6 @@
 use swc_core::common::{Mark, DUMMY_SP};
 use swc_core::ecma::ast::{CallExpr, Expr, ExprOrSpread, Lit, ModuleItem};
-use swc_core::ecma::utils::{member_expr, IsDirective};
+use swc_core::ecma::utils::{member_expr, ExprFactory, IsDirective};
 use swc_core::ecma::visit::VisitMut;
 
 pub struct OptimizeDefineUtils {
@@ -35,8 +35,13 @@ impl VisitMut for OptimizeDefineUtils {
                 && is_string_lit_arg_with_value(call_expr.args.get(1), "__esModule")
                 && is_obj_lit_arg(call_expr.args.get(2))
             {
-                call_expr.callee =
-                    member_expr!(DUMMY_SP.apply_mark(self.unresolved_mark), require.d).into();
+                // call_expr.callee =
+                //     member_expr!(DUMMY_SP.apply_mark(self.unresolved_mark), require.d).into();
+
+                *item = member_expr!(DUMMY_SP.apply_mark(self.unresolved_mark), require.c)
+                    .as_call(DUMMY_SP, vec![call_expr.args.first().unwrap().clone()])
+                    .into_stmt()
+                    .into();
             } else {
                 return;
             }

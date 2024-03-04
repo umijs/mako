@@ -282,9 +282,7 @@ App;
         assert_eq!(
             code,
             r#"
-__mako_require__.d(exports, "__esModule", {
-    value: true
-});
+__mako_require__.c(exports);
 var _jsxdevruntime = __mako_require__("react/jsx-dev-runtime");
 const App = ()=>/*#__PURE__*/ (0, _jsxdevruntime.jsxDEV)(_jsxdevruntime.Fragment, {
         children: /*#__PURE__*/ (0, _jsxdevruntime.jsxDEV)("h1", {
@@ -339,9 +337,7 @@ b;
         assert_eq!(
             code,
             r#"
-__mako_require__.d(exports, "__esModule", {
-    value: true
-});
+__mako_require__.c(exports);
 var _interop_require_default = __mako_require__("@swc/helpers/_/_interop_require_default");
 var _foo = /*#__PURE__*/ _interop_require_default._(__mako_require__("foo"));
 _foo.default;
@@ -366,9 +362,7 @@ foo;
         assert_eq!(
             code,
             r#"
-__mako_require__.d(exports, "__esModule", {
-    value: true
-});
+__mako_require__.c(exports);
 var _foo = __mako_require__("./foo");
 _foo.foo;
 
@@ -390,9 +384,7 @@ foo.bar;
         assert_eq!(
             code,
             r#"
-__mako_require__.d(exports, "__esModule", {
-    value: true
-});
+__mako_require__.c(exports);
 var _interop_require_wildcard = __mako_require__("@swc/helpers/_/_interop_require_wildcard");
 var _foo = /*#__PURE__*/ _interop_require_wildcard._(__mako_require__("./foo"));
 _foo.bar;
@@ -485,9 +477,7 @@ React;
         assert_eq!(
             code,
             r#"
-__mako_require__.d(exports, "__esModule", {
-    value: true
-});
+__mako_require__.c(exports);
 var _interop_require_default = __mako_require__("@swc/helpers/_/_interop_require_default");
 var _react = /*#__PURE__*/ _interop_require_default._(__mako_require__("react"));
 _react.default;
@@ -710,9 +700,7 @@ console.log(fs1, fs2, fs3);
         assert_eq!(
             code,
             r#"
-__mako_require__.d(exports, "__esModule", {
-    value: true
-});
+__mako_require__.c(exports);
 var _interop_require_default = __mako_require__("@swc/helpers/_/_interop_require_default");
 var _nodefs = /*#__PURE__*/ _interop_require_default._(require("node:fs"));
 const fs2 = require('fs');
