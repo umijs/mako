@@ -9,11 +9,11 @@ use mako_core::thiserror::Error;
 use crate::analyze_deps::AnalyzeDeps;
 use crate::ast_2::file::{Content, File};
 use crate::compiler::{Compiler, Context};
-use crate::load_2::Load;
+use crate::load::Load;
 use crate::module::{Module, ModuleAst, ModuleId, ModuleInfo};
-use crate::parse_2::Parse;
+use crate::parse::Parse;
 use crate::resolve::ResolverResource;
-use crate::transform_2::Transform;
+use crate::transform::Transform;
 use crate::util::create_thread_pool;
 
 #[derive(Debug, Error)]
