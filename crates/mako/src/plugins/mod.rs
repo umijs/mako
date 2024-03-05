@@ -9,7 +9,6 @@ pub mod ignore;
 pub mod import;
 pub mod invalid_syntax;
 pub mod manifest;
-pub mod meta;
 // pub mod minifish;
 pub mod node_polyfill;
 pub mod node_stuff;

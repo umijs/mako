@@ -236,9 +236,7 @@ impl Compiler {
             Arc::new(plugins::copy::CopyPlugin {}),
             Arc::new(plugins::import::ImportPlugin {}),
             // file types
-            // Arc::new(plugins::css::CSSPlugin {}),
             Arc::new(plugins::context_module::ContextModulePlugin {}),
-            // Arc::new(plugins::md::MdPlugin {}),
             Arc::new(plugins::runtime::MakoRuntime {}),
             Arc::new(plugins::farm_tree_shake::FarmTreeShake {}),
             Arc::new(plugins::invalid_syntax::InvalidSyntaxPlugin {}),
