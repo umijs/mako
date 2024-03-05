@@ -5,11 +5,11 @@ use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::base64::engine::{general_purpose, Engine};
+use mako_core::md5;
 use mako_core::pathdiff::diff_paths;
 use mako_core::swc_common::{Span, DUMMY_SP};
 use mako_core::swc_ecma_ast::{BlockStmt, FnExpr, Function, Module as SwcModule};
 use mako_core::swc_ecma_utils::quote_ident;
-use mako_core::md5;
 use serde::Serialize;
 
 use crate::analyze_deps::AnalyzeDepsResult;

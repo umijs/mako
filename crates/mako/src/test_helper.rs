@@ -54,10 +54,7 @@ pub fn create_mock_module(path: PathBuf, code: &str) -> Module {
     setup_logger();
 
     let context = Arc::new(Context::default());
-    let mut file = File::new(
-        path.to_string_lossy().to_string(),
-        context.clone(),
-    );
+    let mut file = File::new(path.to_string_lossy().to_string(), context.clone());
     file.set_content(crate::ast_2::file::Content::Js(code.to_string()));
     let ast = JsAst::new(&file, context.clone()).unwrap();
     let module_id = ModuleId::from_path(path.clone());

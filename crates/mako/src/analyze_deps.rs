@@ -6,8 +6,7 @@ use mako_core::thiserror::Error;
 use crate::ast_2::error;
 use crate::ast_2::file::File;
 use crate::compiler::Context;
-use crate::module::Dependency;
-use crate::module::ModuleAst;
+use crate::module::{Dependency, ModuleAst};
 use crate::resolve::{resolve, ResolverResource};
 
 #[derive(Debug, Error)]

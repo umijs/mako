@@ -196,10 +196,10 @@ impl File {
                     let source_map_base64 = captures.get(1).unwrap().as_str().to_string();
                     chain.push(base64_decode(source_map_base64.as_bytes()));
                 }
-            },
+            }
             // TODO: support js source map chain
-            Some(Content::Js(_)) => {},
-            None => {},
+            Some(Content::Js(_)) => {}
+            None => {}
         }
         chain
     }

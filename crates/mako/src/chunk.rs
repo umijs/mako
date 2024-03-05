@@ -1,12 +1,12 @@
 use std::hash::Hasher;
 use std::path::{Component, Path};
 
+use mako_core::anyhow::Result;
 use mako_core::base64::engine::general_purpose;
 use mako_core::base64::Engine;
 use mako_core::indexmap::IndexSet;
 use mako_core::md5;
 use mako_core::twox_hash::XxHash64;
-use mako_core::anyhow::Result;
 
 use crate::module::ModuleId;
 use crate::module_graph::ModuleGraph;

@@ -6,8 +6,8 @@ use crate::tsfn::{LoadResult, ReadMessage, TsFnHooks, WriteRequest};
 pub struct JsPlugin {
     pub hooks: TsFnHooks,
 }
-use mako::compiler::Context;
 use mako::ast_2::file::Content;
+use mako::compiler::Context;
 use mako::plugin::{Plugin, PluginGenerateEndParams, PluginLoadParam};
 use mako_core::anyhow::{anyhow, Result};
 
@@ -34,7 +34,7 @@ impl Plugin for JsPlugin {
             let (tx, rx) = mpsc::channel::<napi::Result<Option<LoadResult>>>();
             hook.call(
                 ReadMessage {
-                    message: param.task.request.path.clone(),
+                    message: param.file.pathname.clone(),
                     tx,
                 },
                 threadsafe_function::ThreadsafeFunctionCallMode::Blocking,

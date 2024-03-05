@@ -4,13 +4,13 @@ use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::lazy_static::lazy_static;
+use mako_core::mdxjs::{compile, Options as MdxOptions};
 use mako_core::serde_xml_rs::from_str as from_xml_str;
 use mako_core::serde_yaml::{from_str as from_yaml_str, Value as YamlValue};
 use mako_core::svgr_rs;
 use mako_core::thiserror::Error;
 use mako_core::toml::{from_str as from_toml_str, Value as TomlValue};
 use mako_core::tracing::debug;
-use mako_core::mdxjs::{compile, Options as MdxOptions};
 
 use crate::ast_2::file::{Content, File};
 use crate::compiler::Context;

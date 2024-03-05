@@ -94,6 +94,7 @@ impl Compiler {
                     // 拿到依赖之后需要直接添加 module 到 module_graph 里，不能等依赖 build 完再添加
                     // 是因为由于是异步处理各个模块，后者会导致大量重复任务的 build_module 任务（3 倍左右）
                     module_ids.insert(module.id.clone());
+                    println!("add module to module_graph {:#?}", module.id);
                     module_graph.add_module(module);
                 }
                 module_graph.add_dependency(&module_id, &dep_module_id, dep.dependency);
@@ -121,7 +122,8 @@ impl Compiler {
             .unwrap();
         let external_script = resolved_resource.get_script();
         let is_async = external_script.is_some();
-        let path = format!("virtual:external_{}", external_name);
+        let origin_path = resolved_resource.get_resolved_path();
+        let path = format!("virtual:external_{}", origin_path);
         let mut file = File::new(path.clone(), context.clone());
         let code = if let Some(url) = external_script {
             format!(
@@ -153,7 +155,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
             raw,
             ..Default::default()
         };
-        let module_id = ModuleId::new(file_path);
+        let module_id = ModuleId::new(origin_path.to_string());
         Module::new(module_id, false, Some(info))
     }
 

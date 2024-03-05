@@ -96,7 +96,6 @@ impl Compiler {
         self.optimize_chunk();
         let t_optimize_chunks = t_optimize_chunks.elapsed();
 
-
         // 为啥单独提前 transform modules？
         // 因为放 chunks 的循环里，一个 module 可能存在于多个 chunk 里，可能会被编译多遍
         let t_transform_modules = Instant::now();

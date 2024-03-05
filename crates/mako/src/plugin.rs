@@ -7,9 +7,9 @@ use mako_core::swc_common::errors::Handler;
 use mako_core::swc_common::Mark;
 use mako_core::swc_ecma_ast::Module;
 
+use crate::ast_2::file::{Content, File};
 use crate::compiler::{Args, Context};
 use crate::config::Config;
-use crate::ast_2::file::{Content, File};
 use crate::module::{Dependency, ModuleAst};
 use crate::module_graph::ModuleGraph;
 use crate::stats::StatsJsonMap;

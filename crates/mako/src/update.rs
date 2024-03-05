@@ -307,9 +307,13 @@ impl Compiler {
                 resolved_deps.into_iter().for_each(|dep| {
                     let resolved_path = dep.resolver_resource.get_resolved_path();
                     let is_external = dep.resolver_resource.get_external().is_some();
-                    let module_id = ModuleId::new(resolved_path);
+                    let module_id = ModuleId::new(resolved_path.clone());
                     let module = if is_external {
-                        Self::create_external_module(&dep.resolver_resource, self.context.clone())
+                        Self::create_external_module(
+                            &resolved_path,
+                            &dep.resolver_resource,
+                            self.context.clone(),
+                        )
                     } else {
                         Self::create_empty_module(&module_id)
                     };

@@ -17,7 +17,9 @@ use mako_core::{mako_profile_scope, ternary};
 
 use crate::ast::{build_js_ast, Ast};
 use crate::chunk::{Chunk, ChunkType};
-use crate::chunk_pot::util::{file_content_hash, pot_to_chunk_module, pot_to_module_object, runtime_code};
+use crate::chunk_pot::util::{
+    file_content_hash, pot_to_chunk_module, pot_to_module_object, runtime_code,
+};
 use crate::chunk_pot::{get_css_chunk_filename, util, ChunkPot};
 use crate::compiler::Context;
 use crate::config::Mode;
