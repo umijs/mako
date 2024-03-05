@@ -47,7 +47,7 @@ impl VisitMut for CSSUrlReplacer {
                 false,
                 self.context.clone(),
             );
-            let asset_content = asset_content.unwrap_or_else(|_| resolved_path);
+            let asset_content = asset_content.unwrap_or(resolved_path);
             match n.value {
                 Some(box UrlValue::Str(ref mut s)) => {
                     s.value = asset_content.into();

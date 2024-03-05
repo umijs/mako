@@ -94,7 +94,6 @@ impl Compiler {
                     // 拿到依赖之后需要直接添加 module 到 module_graph 里，不能等依赖 build 完再添加
                     // 是因为由于是异步处理各个模块，后者会导致大量重复任务的 build_module 任务（3 倍左右）
                     module_ids.insert(module.id.clone());
-                    println!("add module to module_graph {:#?}", module.id);
                     module_graph.add_module(module);
                 }
                 module_graph.add_dependency(&module_id, &dep_module_id, dep.dependency);
@@ -141,7 +140,6 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         let ast = Parse::parse(&file, context)
             // safe
             .unwrap();
-        let file_path = file.path.to_string_lossy().to_string();
         let raw = file.get_content_raw();
         let info = ModuleInfo {
             file,

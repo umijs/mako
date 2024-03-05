@@ -304,7 +304,7 @@ impl Compiler {
                 let mut add_modules: HashMap<ModuleId, Module> = HashMap::new();
                 let mut target_dependencies: Vec<(ModuleId, Dependency)> = vec![];
                 let resolved_deps = &module.info.as_ref().unwrap().deps.resolved_deps;
-                resolved_deps.into_iter().for_each(|dep| {
+                resolved_deps.iter().for_each(|dep| {
                     let resolved_path = dep.resolver_resource.get_resolved_path();
                     let is_external = dep.resolver_resource.get_external().is_some();
                     let module_id = ModuleId::new(resolved_path.clone());

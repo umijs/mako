@@ -19,11 +19,11 @@ pub fn is_remote(url: &str) -> bool {
 }
 
 pub fn remove_first_tilde(url: String) -> String {
-    if url.starts_with('~') {
+    if let Some(stripped) = url.strip_prefix('~') {
         if url.starts_with("~/") {
             url
         } else {
-            url[1..].to_string()
+            stripped.to_string()
         }
     } else {
         url

@@ -15,21 +15,11 @@ pub enum AnalyzeDepsError {
     ModuleNotFound { message: String },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct AnalyzeDepsResult {
     pub resolved_deps: Vec<ResolvedDep>,
     pub missing_deps: Vec<Dependency>,
     pub ignored_deps: Vec<Dependency>,
-}
-
-impl Default for AnalyzeDepsResult {
-    fn default() -> Self {
-        AnalyzeDepsResult {
-            resolved_deps: vec![],
-            missing_deps: vec![],
-            ignored_deps: vec![],
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -52,7 +42,6 @@ impl AnalyzeDeps {
             ModuleAst::Css(ast) => ast.analyze_deps(),
             _ => vec![],
         };
-        // TODO: plugin driver
         Self::check_deps(&deps, file)?;
 
         let mut resolved_deps = vec![];
@@ -84,7 +73,7 @@ impl AnalyzeDeps {
             }
         }
 
-        if missing_deps.len() > 0 {
+        if !missing_deps.is_empty() {
             let messages = missing_deps
                 .iter()
                 .map(|dep| Self::get_resolved_error(dep, context.clone()))
@@ -126,11 +115,10 @@ impl AnalyzeDeps {
 
     pub fn get_resolved_error(dep: &Dependency, context: Arc<Context>) -> String {
         let message = format!("Module not found: Can't resolve '{}'", dep.source);
-        let message = if dep.span.is_some() {
+        if dep.span.is_some() {
             error::code_frame(dep.span.unwrap(), &message, context)
         } else {
             message
-        };
-        message
+        }
     }
 }

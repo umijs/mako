@@ -21,8 +21,6 @@ use crate::plugin::PluginLoadParam;
 enum LoadError {
     #[error("Unsupported ext name: {ext_name:?} in {path:?}")]
     UnsupportedExtName { ext_name: String, path: String },
-    #[error("To base64 error: {path:?}")]
-    ToBase64Error { path: String },
     #[error("File not found: {path:?}")]
     FileNotFound { path: String },
     #[error("Read file size error: {path:?}")]
@@ -59,8 +57,8 @@ impl Load {
             .plugin_driver
             .load(&PluginLoadParam { file }, &context)?;
 
-        if content.is_some() {
-            return Ok(content.unwrap());
+        if let Some(content) = content {
+            return Ok(content);
         }
 
         // file exists check must after virtual modules handling
@@ -192,7 +190,7 @@ impl Load {
         }
 
         // assets
-        let asset_path = Self::handle_asset(&file, true, context.clone())?;
+        let asset_path = Self::handle_asset(file, true, context.clone())?;
         Ok(Content::Js(format!("module.exports = {};", asset_path)))
     }
 

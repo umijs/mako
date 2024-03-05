@@ -75,12 +75,12 @@ impl File {
         let is_virtual = path.starts_with(&*VIRTUAL);
         if is_virtual {
             let path = PathBuf::from(path);
-            return File {
+            File {
                 path: path.clone(),
                 relative_path: path,
                 is_virtual,
                 ..Default::default()
-            };
+            }
         } else {
             let path = PathBuf::from(path);
             let relative_path = diff_paths(&path, &context.root).unwrap_or(path.clone());
@@ -104,6 +104,7 @@ impl File {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_content(path: String, content: Content, context: Arc<Context>) -> Self {
         let mut file = File::new(path, context);
         file.content = Some(content);
@@ -192,7 +193,7 @@ impl File {
         let mut chain = vec![];
         match &self.content {
             Some(Content::Css(content)) => {
-                if let Some(captures) = CSS_SOURCE_MAP_REGEXP.captures(&content) {
+                if let Some(captures) = CSS_SOURCE_MAP_REGEXP.captures(content) {
                     let source_map_base64 = captures.get(1).unwrap().as_str().to_string();
                     chain.push(base64_decode(source_map_base64.as_bytes()));
                 }
@@ -205,7 +206,10 @@ impl File {
     }
 }
 
-fn parse_path(path: &str) -> Result<(String, String, Vec<(String, String)>)> {
+type PathName = String;
+type Search = String;
+type Params = Vec<(String, String)>;
+fn parse_path(path: &str) -> Result<(PathName, Search, Params)> {
     let mut iter = path.split('?');
     let path = iter.next().unwrap();
     let query = iter.next().unwrap_or("");
@@ -222,7 +226,7 @@ fn parse_path(path: &str) -> Result<(String, String, Vec<(String, String)>)> {
             query_vec.push((pair.to_string(), "".to_string()));
         }
     }
-    let search = if query == "" {
+    let search = if query.is_empty() {
         "".to_string()
     } else {
         format!("?{}", query)

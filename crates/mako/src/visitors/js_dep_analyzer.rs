@@ -110,6 +110,7 @@ fn resolve_web_worker(expr: &NewExpr, unresolved_mark: Mark) -> Option<&Str> {
     }
 
     if let box Expr::Ident(ident) = &expr.callee {
+        #[allow(clippy::needless_borrow)]
         if utils::is_ident_undefined(&ident, "Worker", &unresolved_mark) {
             let args = expr.args.as_ref().unwrap();
             if let Expr::New(expr) = &*args[0].expr {
@@ -122,6 +123,7 @@ fn resolve_web_worker(expr: &NewExpr, unresolved_mark: Mark) -> Option<&Str> {
                 }
 
                 if let box Expr::Ident(ident) = &expr.callee {
+                    #[allow(clippy::needless_borrow)]
                     if utils::is_ident_undefined(&ident, "URL", &unresolved_mark) {
                         let args = expr.args.as_ref().unwrap();
                         if args

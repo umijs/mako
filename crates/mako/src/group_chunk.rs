@@ -508,18 +508,10 @@ fn parse_path(path: &str) -> Result<FileRequest> {
     }
     Ok(FileRequest {
         path: path.to_string(),
-        query: query_vec,
     })
 }
 
 #[derive(Debug, Clone)]
-pub struct FileRequest {
+struct FileRequest {
     pub path: String,
-    pub query: Vec<(String, String)>,
-}
-
-impl FileRequest {
-    pub fn has_query(&self, key: &str) -> bool {
-        self.query.iter().any(|(k, _)| *k == key)
-    }
 }

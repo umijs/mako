@@ -115,6 +115,7 @@ pub fn build_js_ast(path: &str, content: &str, context: &Arc<Context>) -> Result
     })
 }
 
+#[allow(dead_code)]
 pub fn build_css_ast(
     path: &str,
     content: &str,

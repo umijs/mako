@@ -27,8 +27,8 @@ impl Parse {
         let ast = context
             .plugin_driver
             .parse(&PluginParseParam { file }, &context)?;
-        if ast.is_some() {
-            return Ok(ast.unwrap());
+        if let Some(ast) = ast {
+            return Ok(ast);
         }
 
         // js

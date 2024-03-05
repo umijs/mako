@@ -84,7 +84,7 @@ impl JsAst {
         if ast.is_err() {
             ast_errors.push(ast.clone().unwrap_err());
         }
-        if ast_errors.len() > 0 {
+        if !ast_errors.is_empty() {
             let errors = ast_errors
                 .iter()
                 .map(|err| {
@@ -188,6 +188,7 @@ impl JsAst {
         })
     }
 
+    #[allow(dead_code)]
     pub fn generate(&self) -> Result<JSAstGenerated> {
         let context = self.context.clone();
         let mut buf = vec![];

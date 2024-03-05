@@ -52,7 +52,7 @@ impl CssAst {
         if parse_result.is_err() {
             ast_errors.push(parse_result.clone().unwrap_err());
         };
-        if ast_errors.len() > 0 && !file.is_under_node_modules {
+        if !ast_errors.is_empty() && !file.is_under_node_modules {
             let errors = ast_errors
                 .iter()
                 .map(|err| {
@@ -92,6 +92,7 @@ impl CssAst {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn generate(&self) -> Result<CSSAstGenerated> {
         let context = self.context.clone();
         let mut code = String::new();
