@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use oxc_resolver::Resolution;
 
 #[derive(Debug, Clone)]
@@ -14,7 +16,7 @@ pub struct ResolvedResource(pub Resolution);
 pub enum ResolverResource {
     External(ExternalResource),
     Resolved(ResolvedResource),
-    Ignored,
+    Ignored(PathBuf),
 }
 
 impl ResolverResource {
@@ -24,21 +26,7 @@ impl ResolverResource {
             ResolverResource::Resolved(ResolvedResource(resolution)) => {
                 resolution.full_path().to_string_lossy().to_string()
             }
-            ResolverResource::Ignored => "".to_string(),
-        }
-    }
-    pub fn get_external(&self) -> Option<String> {
-        match self {
-            ResolverResource::External(ExternalResource { external, .. }) => Some(external.clone()),
-            ResolverResource::Resolved(_) => None,
-            ResolverResource::Ignored => None,
-        }
-    }
-    pub fn get_script(&self) -> Option<String> {
-        match self {
-            ResolverResource::External(ExternalResource { script, .. }) => script.clone(),
-            ResolverResource::Resolved(_) => None,
-            ResolverResource::Ignored => None,
+            ResolverResource::Ignored(path) => path.to_string_lossy().to_string(),
         }
     }
 }

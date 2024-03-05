@@ -16,10 +16,15 @@ pub struct Task {
     pub is_entry: bool,
     pub parent_resource: Option<ResolverResource>,
     pub ext_name: Option<String>,
+    pub ignore: bool,
 }
 
 impl Task {
-    pub fn new(task_type: TaskType, parent_resource: Option<ResolverResource>) -> Self {
+    pub fn new(
+        task_type: TaskType,
+        parent_resource: Option<ResolverResource>,
+        ignore: bool,
+    ) -> Self {
         let (path, is_entry) = match task_type {
             TaskType::Entry(path) => (path, true),
             TaskType::Normal(path) => (path, false),
@@ -32,12 +37,13 @@ impl Task {
             is_entry,
             request,
             ext_name,
+            ignore,
         }
     }
 
-    pub fn from_normal_path(path: String) -> Self {
+    pub fn from_normal_path(path: String, ignore: bool) -> Self {
         let task_type = TaskType::Normal(path);
-        Self::new(task_type, None)
+        Self::new(task_type, None, ignore)
     }
 
     pub fn is_match(&self, ext_names: Vec<&str>) -> bool {
@@ -60,6 +66,7 @@ impl Default for Task {
                 query: vec![],
             },
             ext_name: None,
+            ignore: false,
         }
     }
 }

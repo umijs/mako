@@ -276,7 +276,7 @@ mod tests {
                 mako_react(
                     Default::default(),
                     &context,
-                    &Task::new(task_type, None),
+                    &Task::new(task_type, None, false),
                     &Mark::new(),
                     &Mark::new(),
                 )

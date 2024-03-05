@@ -271,7 +271,7 @@ impl Compiler {
                     TaskType::Normal(path)
                 };
                 let (module, dependencies, _task) =
-                    Compiler::build_module(&self.context, Task::new(task_type, None))
+                    Compiler::build_module(&self.context, Task::new(task_type, None, false))
                         .map_err(|err| BuildError::BuildTasksError { errors: vec![err] })?;
 
                 debug!(
@@ -359,7 +359,7 @@ impl Compiler {
             .map(|path| {
                 let path = path.to_string_lossy().to_string();
                 let task_type = TaskType::Normal(path);
-                Task::new(task_type, None)
+                Task::new(task_type, None, false)
             })
             .collect::<Vec<_>>();
         self.build_tasks(tasks, false)

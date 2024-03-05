@@ -460,7 +460,6 @@ mod tests {
                 raw: "".to_string(),
                 raw_hash: 0,
                 missing_deps: Default::default(),
-                ignored_deps: vec![],
                 top_level_await: false,
                 is_async: false,
                 resolved_resource: None,

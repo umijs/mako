@@ -21,7 +21,7 @@ use mako_core::{anyhow, thiserror};
 
 use crate::analyze_deps::analyze_deps;
 use crate::ast::{build_js_ast, generate_code_frame};
-use crate::chunk_pot::util::{hash_hashmap, hash_vec};
+use crate::chunk_pot::util::hash_hashmap;
 use crate::compiler::{Compiler, Context};
 use crate::config::Mode;
 use crate::load::{ext_name, load, Content};
@@ -31,7 +31,7 @@ use crate::module::{
 };
 use crate::parse::parse;
 use crate::plugin::PluginCheckAstParam;
-use crate::resolve::{resolve, ResolvedResource, ResolverResource};
+use crate::resolve::{resolve, ExternalResource, ResolvedResource, ResolverResource};
 use crate::task::{self, Task};
 use crate::transform::transform;
 use crate::transformers::transform_optimize_package_imports::has_side_effects;
@@ -65,7 +65,7 @@ impl Compiler {
                 {
                     entry = format!("{}?hmr", entry);
                 }
-                task::Task::new(task::TaskType::Entry(entry), None)
+                task::Task::new(task::TaskType::Entry(entry), None, false)
             })
             .collect::<Vec<_>>();
         let with_cache = self.context.config.optimize_package_imports;
@@ -138,8 +138,6 @@ impl Compiler {
                     // deps
                     deps.into_iter().for_each(|(resource, dep)| {
                         let resolved_path = resource.get_resolved_path();
-                        let external = resource.get_external();
-                        let is_external = external.is_some();
                         let dep_module_id = ModuleId::new(resolved_path.clone());
                         let dependency = dep;
 
@@ -147,6 +145,11 @@ impl Compiler {
                             let module = Self::create_module(&resource, &dep_module_id, &context);
                             match module {
                                 Ok(module) => {
+                                    let (is_external, is_ignore) = match resource {
+                                        ResolverResource::Resolved(_) => (false, false),
+                                        ResolverResource::External(_) => (true, false),
+                                        ResolverResource::Ignored(_) => (false, true),
+                                    };
                                     if !is_external {
                                         count += 1;
                                         Self::build_with_pool(
@@ -155,6 +158,7 @@ impl Compiler {
                                             task::Task::new(
                                                 task::TaskType::Normal(resolved_path),
                                                 Some(resource),
+                                                is_ignore,
                                             ),
                                             rs.clone(),
                                             with_cache,
@@ -225,7 +229,6 @@ impl Compiler {
             raw: "".to_string(),
             raw_hash: 0,
             missing_deps: Default::default(),
-            ignored_deps: vec![],
             top_level_await: false,
             is_async: false,
             resolved_resource: task.parent_resource.clone(),
@@ -243,11 +246,12 @@ impl Compiler {
         dep_module_id: &ModuleId,
         context: &Arc<Context>,
     ) -> Result<Module> {
-        let external = resource.get_external();
-        let resolved_path = resource.get_resolved_path();
-        let script = resource.get_script();
-        let module = match external {
-            Some(external) => {
+        let module = match resource {
+            ResolverResource::External(ExternalResource {
+                source,
+                external,
+                script,
+            }) => {
                 let has_script = script.is_some();
 
                 let code = if let Some(url) = script {
@@ -264,7 +268,7 @@ module.exports = new Promise((resolve, reject) => {{
                 };
 
                 let ast = build_js_ast(
-                    format!("external_{}", &resolved_path).as_str(),
+                    format!("external_{}", &source).as_str(),
                     code.as_str(),
                     context,
                 )?;
@@ -274,13 +278,12 @@ module.exports = new Promise((resolve, reject) => {{
                     false,
                     Some(ModuleInfo {
                         ast: ModuleAst::Script(ast),
-                        path: resolved_path,
-                        external: Some(external),
+                        path: source.clone(),
+                        external: Some(external.clone()),
                         raw: code,
                         raw_hash: 0,
                         resolved_resource: Some(resource.clone()),
                         missing_deps: HashMap::new(),
-                        ignored_deps: vec![],
                         top_level_await: false,
                         is_async: has_script,
                         source_map_chain: vec![],
@@ -290,7 +293,7 @@ module.exports = new Promise((resolve, reject) => {{
                     }),
                 )
             }
-            None => Module::new(dep_module_id.clone(), false, None),
+            _ => Module::new(dep_module_id.clone(), false, None),
         };
         Ok(module)
     }
@@ -311,7 +314,7 @@ module.exports = new Promise((resolve, reject) => {{
         result
     }
 
-    pub fn build_module_inner(
+    fn build_module_inner(
         context: &Arc<Context>,
         task: task::Task,
     ) -> Result<(Module, ModuleDeps, Task)> {
@@ -343,16 +346,11 @@ module.exports = new Promise((resolve, reject) => {{
         let mut dep_resolve_err = None;
         let mut dependencies_resource = Vec::new();
         let mut missing_deps = HashMap::new();
-        let mut ignored_deps = Vec::new();
 
         for dep in deps {
             let ret = resolve(&task.path, &dep, &context.resolvers, context);
             match ret {
                 Ok(resolved_resource) => {
-                    if matches!(resolved_resource, ResolverResource::Ignored) {
-                        ignored_deps.push(dep.source.clone());
-                        continue;
-                    }
                     dependencies_resource.push((resolved_resource, dep.clone()));
                 }
                 Err(_) => {
@@ -396,7 +394,7 @@ module.exports = new Promise((resolve, reject) => {{
 
         let raw_hash = content
             .raw_hash(context.config_hash)
-            .wrapping_add(hash_hashmap(&missing_deps).wrapping_add(hash_vec(&ignored_deps)));
+            .wrapping_add(hash_hashmap(&missing_deps));
 
         // create module info
         let (import_map, export_map, is_barrel) = Self::build_import_export_map(&ast, &task);
@@ -407,7 +405,6 @@ module.exports = new Promise((resolve, reject) => {{
             raw: content.raw(),
             raw_hash,
             missing_deps,
-            ignored_deps,
             top_level_await,
             is_async: top_level_await || is_async_module(&task.path),
             resolved_resource: task.parent_resource.clone(),

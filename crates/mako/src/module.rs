@@ -47,7 +47,6 @@ pub struct ModuleInfo {
     pub raw: String,
     pub raw_hash: u64,
     pub missing_deps: HashMap<String, Dependency>,
-    pub ignored_deps: Vec<String>,
     /// Modules with top-level-await
     pub top_level_await: bool,
     /// The top-level-await module must be an async module, in addition, for example, wasm is also an async module

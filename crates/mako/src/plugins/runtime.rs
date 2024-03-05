@@ -133,7 +133,11 @@ impl MakoRuntime {
         let ast = build_js_ast(&resolved, &content, context)?;
         let mut script = ModuleAst::Script(ast);
 
-        transform(&mut script, context, &Task::from_normal_path(resolved))?;
+        transform(
+            &mut script,
+            context,
+            &Task::from_normal_path(resolved, false),
+        )?;
 
         let module_id = source.into();
 
@@ -149,7 +153,6 @@ impl MakoRuntime {
             dep_map: &DependenciesToReplace {
                 resolved: Default::default(),
                 missing: Default::default(),
-                ignored: vec![],
             },
             async_deps: &Vec::<Dependency>::new(),
             module_id: &module_id,

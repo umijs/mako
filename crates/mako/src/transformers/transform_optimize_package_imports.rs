@@ -237,7 +237,7 @@ fn parse_barrel_file(
     }
     // build_module
     let path = resource.get_resolved_path();
-    let task = Task::new(TaskType::Normal(path), Some(resource.clone()));
+    let task = Task::new(TaskType::Normal(path), Some(resource.clone()), false);
     let (m, deps, task) = cached_build_module(context, task)?;
     let info = m.info.as_ref().unwrap();
     if !exports_all && !info.is_barrel {

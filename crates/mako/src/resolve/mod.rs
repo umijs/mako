@@ -224,9 +224,9 @@ fn do_resolve(
                 }
             }
             Err(oxc_resolve_err) => match oxc_resolve_err {
-                OxcResolveError::Ignored(_) => {
+                OxcResolveError::Ignored(path) => {
                     debug!("resolve ignored: {:?}", source);
-                    Ok(ResolverResource::Ignored)
+                    Ok(ResolverResource::Ignored(path))
                 }
                 _ => {
                     eprintln!(
@@ -377,7 +377,7 @@ mod tests {
         Config, ExternalAdvanced, ExternalAdvancedSubpath, ExternalAdvancedSubpathConverter,
         ExternalAdvancedSubpathRule, ExternalAdvancedSubpathTarget, ExternalConfig,
     };
-    use crate::resolve::ResolverType;
+    use crate::resolve::{ExternalResource, ResolverResource, ResolverType};
 
     #[test]
     fn test_resolve() {
@@ -677,8 +677,12 @@ mod tests {
         )
         .unwrap();
         let path = resource.get_resolved_path();
-        let external = resource.get_external();
-        let script = resource.get_script();
+        let (external, script) = match resource {
+            ResolverResource::External(ExternalResource {
+                external, script, ..
+            }) => (Some(external), script),
+            _ => (None, None),
+        };
         println!("> path: {:?}, {:?}", path, external);
         let path = path.replace(format!("{}/", fixture.to_str().unwrap()).as_str(), "");
         (path, external, script)

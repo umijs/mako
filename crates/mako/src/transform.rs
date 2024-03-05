@@ -812,6 +812,7 @@ const require = window.require;
             &Task::new(
                 crate::task::TaskType::Normal(root.join(path).to_string_lossy().to_string()),
                 None,
+                false,
             ),
             ast.top_level_mark,
             ast.unresolved_mark,
@@ -824,7 +825,6 @@ const require = window.require;
             dep_map: &DependenciesToReplace {
                 resolved: dep,
                 missing: HashMap::new(),
-                ignored: vec![],
             },
             async_deps: &vec![],
             wrap_async: false,
