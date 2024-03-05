@@ -115,7 +115,9 @@ impl TreeShakeModule {
                             }
                             //  never happen when export without source
                             ExportSpecifierInfo::Namespace(_)
-                            | ExportSpecifierInfo::Ambiguous(_) => return None,
+                            | ExportSpecifierInfo::Ambiguous(_) => {
+                                return None;
+                            }
                         }
                     }
                 }
@@ -184,7 +186,7 @@ mod tests {
     use swc_core::common::GLOBALS;
 
     use super::TreeShakeModule;
-    use crate::ast_2::file::File;
+    use crate::ast_2::file::{Content, File};
     use crate::ast_2::js_ast::JsAst;
     use crate::compiler::Context;
     use crate::module::{Module, ModuleAst, ModuleInfo};
@@ -449,7 +451,11 @@ mod tests {
 
         let module_graph = context.module_graph.write().unwrap();
 
-        let file = File::new("test.js".to_string(), context.clone());
+        let file = File::with_content(
+            "test.js".to_string(),
+            Content::Js(code.to_string()),
+            context.clone(),
+        );
         let ast = JsAst::new(&file, context.clone()).unwrap();
 
         let mako_module = Module {
