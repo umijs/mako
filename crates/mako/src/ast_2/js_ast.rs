@@ -33,7 +33,6 @@ pub struct JsAst {
     pub top_level_mark: Mark,
     path: String,
     pub contains_top_level_await: bool,
-    context: Arc<Context>,
 }
 
 impl fmt::Debug for JsAst {
@@ -111,7 +110,6 @@ impl JsAst {
                 unresolved_mark,
                 top_level_mark,
                 path: file.relative_path.to_string_lossy().to_string(),
-                context: context.clone(),
                 contains_top_level_await,
             })
         })
@@ -122,9 +120,10 @@ impl JsAst {
         mut_visitors: &mut Vec<Box<dyn swc_ecma_visit::VisitMut>>,
         folders: &mut Vec<Box<dyn swc_ecma_visit::Fold>>,
         should_inject_helpers: bool,
+        context: Arc<Context>,
     ) -> Result<()> {
-        let cm = self.context.meta.script.cm.clone();
-        GLOBALS.set(&self.context.meta.script.globals, || {
+        let cm = context.meta.script.cm.clone();
+        GLOBALS.set(&context.meta.script.globals, || {
             try_with_handler(cm, Default::default(), |handler| {
                 HELPERS.set(&Helpers::new(true), || {
                     HANDLER.set(handler, || {
@@ -180,17 +179,16 @@ impl JsAst {
         })
     }
 
-    pub fn analyze_deps(&self) -> Vec<Dependency> {
+    pub fn analyze_deps(&self, context: Arc<Context>) -> Vec<Dependency> {
         let mut visitor = JSDepAnalyzer::new(self.unresolved_mark);
-        GLOBALS.set(&self.context.meta.script.globals, || {
+        GLOBALS.set(&context.meta.script.globals, || {
             self.ast.visit_with(&mut visitor);
             visitor.dependencies
         })
     }
 
     #[allow(dead_code)]
-    pub fn generate(&self) -> Result<JSAstGenerated> {
-        let context = self.context.clone();
+    pub fn generate(&self, context: Arc<Context>) -> Result<JSAstGenerated> {
         let mut buf = vec![];
         let mut source_map_buf = vec![];
         let cm = context.meta.script.cm.clone();

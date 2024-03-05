@@ -25,7 +25,6 @@ use crate::visitors::css_dep_analyzer::CSSDepAnalyzer;
 pub struct CssAst {
     pub ast: Stylesheet,
     pub path: String,
-    context: Arc<Context>,
 }
 
 impl fmt::Debug for CssAst {
@@ -71,7 +70,6 @@ impl CssAst {
         Ok(Self {
             ast,
             path: file.relative_path.to_string_lossy().to_string(),
-            context: context.clone(),
         })
     }
 
@@ -93,8 +91,7 @@ impl CssAst {
     }
 
     #[allow(dead_code)]
-    pub fn generate(&self) -> Result<CSSAstGenerated> {
-        let context = self.context.clone();
+    pub fn generate(&self, context: Arc<Context>) -> Result<CSSAstGenerated> {
         let mut code = String::new();
         let mut source_map = Vec::new();
         let writer = BasicCssWriter::new(

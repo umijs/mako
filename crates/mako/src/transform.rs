@@ -142,7 +142,7 @@ impl Transform {
                     //     ),
                     // }));
 
-                    ast.transform(&mut visitors, &mut folders, true)
+                    ast.transform(&mut visitors, &mut folders, true, context.clone())
                 })
             }
             ModuleAst::Css(ast) => {

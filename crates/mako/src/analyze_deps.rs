@@ -38,7 +38,7 @@ impl AnalyzeDeps {
     ) -> Result<AnalyzeDepsResult> {
         mako_core::mako_profile_function!();
         let deps = match ast {
-            ModuleAst::Script(ast) => ast.analyze_deps(),
+            ModuleAst::Script(ast) => ast.analyze_deps(context.clone()),
             ModuleAst::Css(ast) => ast.analyze_deps(),
             _ => vec![],
         };
