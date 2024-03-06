@@ -188,21 +188,26 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
 
     fn create_ignored_module(path: &str, context: Arc<Context>) -> Module {
         let module_id = ModuleId::new(path.to_owned());
-        let mut module = Module::new(module_id, false, None);
-        let file = File::with_content(
-            path.to_owned(),
-            Content::Js("".to_string()),
-            context.clone(),
-        );
 
-        let ast = Parse::parse(&file, context.clone()).unwrap();
-        let info = ModuleInfo {
-            file,
-            ast,
-            ..Default::default()
+        let mut module = Module::new(module_id, false, None);
+
+        let info = {
+            let file = File::with_content(
+                path.to_owned(),
+                Content::Js("".to_string()),
+                context.clone(),
+            );
+            let ast = Parse::parse(&file, context.clone()).unwrap();
+
+            ModuleInfo {
+                file,
+                ast,
+                ..Default::default()
+            }
         };
 
         module.add_info(Some(info));
+
         module
     }
 
