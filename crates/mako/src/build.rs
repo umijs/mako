@@ -53,7 +53,11 @@ impl Compiler {
             // handle build_module error
             if build_result.is_err() {
                 errors.push(build_result.err().unwrap());
-                continue;
+                if count == 0 {
+                    break;
+                } else {
+                    continue;
+                }
             }
             let module = build_result.unwrap();
             let module_id = module.id.clone();

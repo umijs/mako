@@ -72,9 +72,12 @@ lazy_static! {
 
 impl File {
     pub fn new(path: String, context: Arc<Context>) -> Self {
-        let is_virtual = path.starts_with(&*VIRTUAL);
+        let path = PathBuf::from(path);
+        let (pathname, search, params) = parse_path(&path.to_string_lossy()).unwrap();
+        let is_virtual = path.starts_with(&*VIRTUAL) ||
+            // TODO: remove this specific logic
+            params.iter().any(|(k, _)| k == "asmodule");
         if is_virtual {
-            let path = PathBuf::from(path);
             File {
                 path: path.clone(),
                 relative_path: path,
@@ -85,11 +88,10 @@ impl File {
             let path = PathBuf::from(path);
             let relative_path = diff_paths(&path, &context.root).unwrap_or(path.clone());
             let under_node_modules = path.to_string_lossy().contains("node_modules");
-            let extname = path
+            let extname = PathBuf::from(pathname.clone())
                 .extension()
                 .map(|ext| ext.to_string_lossy().to_string())
                 .unwrap_or_default();
-            let (pathname, search, params) = parse_path(&path.to_string_lossy()).unwrap();
             File {
                 is_virtual,
                 path,
