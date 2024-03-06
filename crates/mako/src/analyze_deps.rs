@@ -19,7 +19,6 @@ pub enum AnalyzeDepsError {
 pub struct AnalyzeDepsResult {
     pub resolved_deps: Vec<ResolvedDep>,
     pub missing_deps: Vec<Dependency>,
-    pub ignored_deps: Vec<Dependency>,
 }
 
 #[derive(Debug, Clone)]
@@ -46,7 +45,6 @@ impl AnalyzeDeps {
 
         let mut resolved_deps = vec![];
         let mut missing_deps = vec![];
-        let mut ignored_deps = vec![];
         let path = file.path.to_str().unwrap();
         for dep in deps {
             let result = resolve(
@@ -58,14 +56,10 @@ impl AnalyzeDeps {
             );
             match result {
                 Ok(resolver_resource) => {
-                    if matches!(resolver_resource, ResolverResource::Ignored) {
-                        ignored_deps.push(dep);
-                    } else {
-                        resolved_deps.push(ResolvedDep {
-                            resolver_resource,
-                            dependency: dep,
-                        });
-                    }
+                    resolved_deps.push(ResolvedDep {
+                        resolver_resource,
+                        dependency: dep,
+                    });
                 }
                 Err(_err) => {
                     missing_deps.push(dep);
@@ -93,7 +87,6 @@ impl AnalyzeDeps {
         Ok(AnalyzeDepsResult {
             resolved_deps,
             missing_deps,
-            ignored_deps,
         })
     }
 

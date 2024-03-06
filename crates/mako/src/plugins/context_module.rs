@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use mako_core::anyhow::Result;
@@ -32,7 +31,7 @@ impl Plugin for ContextModulePlugin {
                 .find_map(|(k, v)| k.eq("glob").then_some(v)),
             param.file.path.is_dir(),
         ) {
-            let glob_pattern = PathBuf::from(param.file.pathname.clone()).join(glob_pattern);
+            let glob_pattern = param.file.pathname.clone().join(glob_pattern);
             let paths = glob(glob_pattern.to_str().unwrap())?;
             let mut key_values = vec![];
 

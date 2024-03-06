@@ -128,7 +128,6 @@ pub fn transform_modules_in_thread(
             let deps_to_replace = DependenciesToReplace {
                 resolved: resolved_deps,
                 missing: info.missing_deps.clone(),
-                ignored: info.ignored_deps.clone(),
             };
             if let ModuleAst::Script(mut ast) = ast {
                 let ret = transform_js_generate(TransformJsParam {

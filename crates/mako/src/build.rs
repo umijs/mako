@@ -82,9 +82,13 @@ impl Compiler {
             // handle deps
             for dep in resolved_deps {
                 let path = dep.resolver_resource.get_resolved_path();
-                let is_external = dep.resolver_resource.get_external().is_some();
                 let dep_module_id = ModuleId::new(path.clone());
                 if !module_graph.has_module(&dep_module_id) {
+                    let (is_external, is_ignore) = match dep.resolver_resource {
+                        ResolverResource::Resolved(_) => (false, false),
+                        ResolverResource::External(_) => (true, false),
+                        ResolverResource::Ignored(_) => (false, true),
+                    };
                     let module = if is_external {
                         Self::create_external_module(&dep.resolver_resource, self.context.clone())
                     } else {
@@ -92,7 +96,15 @@ impl Compiler {
                     };
                     if !is_external {
                         count += 1;
-                        let file = File::new(path.clone(), self.context.clone());
+                        let file = if !is_ignore {
+                            File::new(path.clone(), self.context.clone())
+                        } else {
+                            File::new_ignore_with_content(
+                                path.clone(),
+                                Content::Js("".to_string()),
+                                self.context.clone(),
+                            )
+                        };
                         build_with_pool(file, Some(dep.resolver_resource.clone()));
                     }
                     // 拿到依赖之后需要直接添加 module 到 module_graph 里，不能等依赖 build 完再添加
@@ -250,7 +262,6 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
             path,
             raw,
             missing_deps: HashMap::new(),
-            ignored_deps: vec![],
             import_map: vec![],
             export_map: vec![],
             is_barrel: false,

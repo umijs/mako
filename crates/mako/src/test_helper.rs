@@ -68,7 +68,6 @@ pub fn create_mock_module(path: PathBuf, code: &str) -> Module {
         raw_hash: 0,
         resolved_resource: None,
         missing_deps: HashMap::new(),
-        ignored_deps: vec![],
         top_level_await: false,
         is_async: false,
         source_map_chain: vec![],

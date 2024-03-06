@@ -29,6 +29,8 @@ enum LoadError {
     ToSvgrError { path: String, reason: String },
     #[error("Compile md error: {path:?}, reason: {reason:?}")]
     CompileMdError { path: String, reason: String },
+    #[error("File without content: {path:?}")]
+    IgnoreFileNoContent { path: String },
 }
 
 lazy_static! {
@@ -49,8 +51,18 @@ pub struct Load {}
 
 impl Load {
     pub fn load(file: &File, context: Arc<Context>) -> Result<Content> {
-        mako_core::mako_profile_function!(file.path.to_str());
+        mako_core::mako_profile_function!(file.path.to_string_lossy());
         debug!("load: {:?}", file);
+
+        if file.is_ignore {
+            if let Some(content) = &file.content {
+                return Ok(content.clone());
+            } else {
+                return Err(anyhow!(LoadError::IgnoreFileNoContent {
+                    path: file.path.to_string_lossy().to_string()
+                }));
+            }
+        }
 
         // plugin first
         let content: Option<Content> = context

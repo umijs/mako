@@ -29,7 +29,6 @@ pub struct DependenciesToReplace {
     // e.g. "react" => ("hashed_id", "/abs/to/react/index.js")
     pub resolved: HashMap<String, (String, String)>,
     pub missing: HashMap<String, Dependency>,
-    pub ignored: Vec<String>,
 }
 
 pub fn miss_throw_stmt<T: AsRef<str>>(source: T) -> Expr {
@@ -179,18 +178,12 @@ impl VisitMut for DepReplacer<'_> {
 
 impl DepReplacer<'_> {
     fn replace_source(&mut self, source: &mut Str) {
-        let to_replace =
-            if let Some(replacement) = self.to_replace.resolved.get(&source.value.to_string()) {
-                replacement.0.clone()
-            } else if self.to_replace.ignored.contains(&source.value.to_string()) {
-                "$$IGNORED$$".to_string()
-            } else {
-                return;
-            };
-
-        let span = source.span;
-        *source = Str::from(to_replace);
-        source.span = span;
+        if let Some(replacement) = self.to_replace.resolved.get(&source.value.to_string()) {
+            let module_id = replacement.0.clone();
+            let span = source.span;
+            *source = Str::from(module_id);
+            source.span = span;
+        }
     }
 }
 
@@ -300,7 +293,6 @@ mod tests {
                     )
                 },
                 missing: HashMap::new(),
-                ignored: vec![],
             };
 
             let cloned = context.clone();
@@ -349,7 +341,6 @@ mod tests {
                     span: None,
                     order: 0,
                 }},
-                ignored: vec![],
             };
 
             let cloned = context.clone();
@@ -395,7 +386,6 @@ mod tests {
                     span: None,
                     order: 0,
                 }},
-                ignored: vec![],
             };
 
             let cloned = context.clone();
@@ -451,7 +441,6 @@ mod tests {
                     )
                 },
                 missing: hashmap! {},
-                ignored: vec![],
             },
             context: &context,
             unresolved_mark,

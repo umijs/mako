@@ -37,6 +37,7 @@ pub struct File {
     pub is_css_modules: bool,
     pub is_virtual: bool,
     pub is_entry: bool,
+    pub is_ignore: bool,
     pub pathname: PathBuf,
     pub search: String,
     pub params: Vec<(String, String)>,
@@ -53,6 +54,7 @@ impl Default for File {
             is_css_modules: false,
             is_virtual: false,
             is_entry: false,
+            is_ignore: false,
             pathname: PathBuf::new(),
             search: "".to_string(),
             params: vec![],
@@ -79,7 +81,8 @@ impl File {
             // TODO: remove this specific logic
             params.iter().any(|(k, _)| k == "asmodule");
         let is_under_node_modules = path.to_string_lossy().contains("node_modules");
-        let extname = PathBuf::from(pathname.clone())
+        let extname = pathname
+            .clone()
             .extension()
             .map(|ext| ext.to_string_lossy().to_string())
             .unwrap_or_default();
@@ -121,6 +124,12 @@ impl File {
     pub fn new_entry(path: String, context: Arc<Context>) -> Self {
         let mut file = File::new(path, context);
         file.is_entry = true;
+        file
+    }
+
+    pub fn new_ignore_with_content(path: String, content: Content, context: Arc<Context>) -> Self {
+        let mut file = File::with_content(path, content, context);
+        file.is_ignore = true;
         file
     }
 
