@@ -29,7 +29,7 @@ enum LoadError {
     ToSvgrError { path: String, reason: String },
     #[error("Compile md error: {path:?}, reason: {reason:?}")]
     CompileMdError { path: String, reason: String },
-    #[error("File without content: {path:?}")]
+    #[error("Ignord file without content: {path:?}")]
     IgnoreFileNoContent { path: String },
 }
 
