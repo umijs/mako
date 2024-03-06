@@ -34,7 +34,8 @@ impl Plugin for JsPlugin {
             let (tx, rx) = mpsc::channel::<napi::Result<Option<LoadResult>>>();
             hook.call(
                 ReadMessage {
-                    message: param.file.pathname.clone(),
+                    // TODO: 感觉这里应该发 param.file.path
+                    message: param.file.pathname.to_string_lossy().to_string(),
                     tx,
                 },
                 threadsafe_function::ThreadsafeFunctionCallMode::Blocking,
