@@ -90,6 +90,7 @@ impl Compiler {
 
                             let file = File::new(path.clone(), self.context.clone());
                             build_with_pool(file, Some(dep.resolver_resource.clone()));
+
                             Self::create_empty_module(&dep_module_id)
                         }
                         ResolverResource::External(_) => Self::create_external_module(
