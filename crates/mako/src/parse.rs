@@ -49,7 +49,7 @@ impl Parse {
             if is_asmodule {
                 let mut file = file.clone();
                 file.set_content(Content::Js(CssAst::generate_css_modules_exports(
-                    file.path.to_str().unwrap(),
+                    &file.pathname.to_string_lossy().to_string(),
                     &mut ast.ast,
                     context.config.css_modules_export_only_locales,
                 )));

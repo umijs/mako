@@ -37,7 +37,7 @@ pub struct File {
     pub is_css_modules: bool,
     pub is_virtual: bool,
     pub is_entry: bool,
-    pub pathname: String,
+    pub pathname: PathBuf,
     pub search: String,
     pub params: Vec<(String, String)>,
 }
@@ -53,7 +53,7 @@ impl Default for File {
             is_css_modules: false,
             is_virtual: false,
             is_entry: false,
-            pathname: "".to_string(),
+            pathname: PathBuf::new(),
             search: "".to_string(),
             params: vec![],
         }
@@ -74,6 +74,7 @@ impl File {
     pub fn new(path: String, context: Arc<Context>) -> Self {
         let path = PathBuf::from(path);
         let (pathname, search, params) = parse_path(&path.to_string_lossy()).unwrap();
+        let pathname = PathBuf::from(pathname);
         let is_virtual = path.starts_with(&*VIRTUAL) ||
             // TODO: remove this specific logic
             params.iter().any(|(k, _)| k == "asmodule");
