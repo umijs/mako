@@ -23,6 +23,7 @@ use crate::ast_2::{error, utils};
 use crate::compiler::Context;
 use crate::config::{DevtoolConfig, Mode};
 use crate::module::Dependency;
+use crate::plugin::PluginTransformJsParam;
 use crate::sourcemap::build_source_map;
 use crate::visitors::js_dep_analyzer::JSDepAnalyzer;
 
@@ -119,6 +120,7 @@ impl JsAst {
         &mut self,
         mut_visitors: &mut Vec<Box<dyn swc_ecma_visit::VisitMut>>,
         folders: &mut Vec<Box<dyn swc_ecma_visit::Fold>>,
+        file: &File,
         should_inject_helpers: bool,
         context: Arc<Context>,
     ) -> Result<()> {
@@ -145,6 +147,18 @@ impl JsAst {
                             module = folder.as_mut().fold_module(module);
                         }
                         ast.body = module.body;
+
+                        // transform with plugin
+                        context.plugin_driver.transform_js(
+                            &PluginTransformJsParam {
+                                handler,
+                                path: file.path.to_str().unwrap(),
+                                top_level_mark: self.top_level_mark,
+                                unresolved_mark: self.unresolved_mark,
+                            },
+                            ast,
+                            &context,
+                        )?;
 
                         // FIXME: remove this, it's special logic
                         // inject helpers

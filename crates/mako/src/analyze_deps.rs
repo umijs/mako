@@ -37,11 +37,12 @@ impl AnalyzeDeps {
         context: Arc<Context>,
     ) -> Result<AnalyzeDepsResult> {
         mako_core::mako_profile_function!();
-        let deps = match ast {
+        let mut deps = match ast {
             ModuleAst::Script(ast) => ast.analyze_deps(context.clone()),
             ModuleAst::Css(ast) => ast.analyze_deps(),
             _ => vec![],
         };
+        context.plugin_driver.before_resolve(&mut deps, &context)?;
         Self::check_deps(&deps, file)?;
 
         let mut resolved_deps = vec![];
