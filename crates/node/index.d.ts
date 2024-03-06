@@ -31,6 +31,7 @@ export interface BuildParams {
       preserveModulesRoot?: string;
       asciiOnly?: boolean;
       skipWrite?: boolean;
+      keepComments?: boolean;
     };
     resolve?: {
       alias?: Record<string, string>;

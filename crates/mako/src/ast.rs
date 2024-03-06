@@ -1,6 +1,7 @@
 use std::fmt;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use swc_core::common::comments::Comments;
 
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::base64::engine::general_purpose;
@@ -185,6 +186,11 @@ pub fn js_ast_to_code(
     let swc_comments = comments.get_swc_comments();
     {
         let with_minify = context.config.minify && matches!(context.config.mode, Mode::Production);
+        let keep_comments = context
+            .config
+            .output
+            .keep_comments
+            .map_or_else(|| !with_minify, |v| v);
         let mut emitter = Emitter {
             cfg: JsCodegenConfig::default()
                 .with_minify(with_minify)
@@ -192,11 +198,7 @@ pub fn js_ast_to_code(
                 .with_ascii_only(context.config.output.ascii_only)
                 .with_omit_last_semi(true),
             cm: cm.clone(),
-            comments: if with_minify {
-                None
-            } else {
-                Some(swc_comments)
-            },
+            comments: keep_comments.then(|| swc_comments as &dyn Comments),
             wr: Box::new(JsWriter::new(
                 cm.clone(),
                 "\n",
