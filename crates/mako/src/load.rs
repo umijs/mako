@@ -29,8 +29,8 @@ enum LoadError {
     ToSvgrError { path: String, reason: String },
     #[error("Compile md error: {path:?}, reason: {reason:?}")]
     CompileMdError { path: String, reason: String },
-    #[error("Ignord file without content: {path:?}")]
-    IgnoreFileNoContent { path: String },
+    #[error("Ignored file without content: {path:?}")]
+    IgnoredFileNoContent { path: String },
 }
 
 lazy_static! {
@@ -58,7 +58,7 @@ impl Load {
             if let Some(content) = &file.content {
                 return Ok(content.clone());
             } else {
-                return Err(anyhow!(LoadError::IgnoreFileNoContent {
+                return Err(anyhow!(LoadError::IgnoredFileNoContent {
                     path: file.path.to_string_lossy().to_string()
                 }));
             }
