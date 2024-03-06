@@ -112,7 +112,6 @@ pub struct OutputConfig {
     pub preserve_modules: bool,
     pub preserve_modules_root: PathBuf,
     pub skip_write: bool,
-    pub keep_comments: Option<bool>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
