@@ -84,29 +84,23 @@ impl Compiler {
                 let path = dep.resolver_resource.get_resolved_path();
                 let dep_module_id = ModuleId::new(path.clone());
                 if !module_graph.has_module(&dep_module_id) {
-                    let (is_external, is_ignore) = match dep.resolver_resource {
-                        ResolverResource::Resolved(_) => (false, false),
-                        ResolverResource::External(_) => (true, false),
-                        ResolverResource::Ignored(_) => (false, true),
+                    let module = match dep.resolver_resource {
+                        ResolverResource::Resolved(_) => {
+                            count += 1;
+
+                            let file = File::new(path.clone(), self.context.clone());
+                            build_with_pool(file, Some(dep.resolver_resource.clone()));
+                            Self::create_empty_module(&dep_module_id)
+                        }
+                        ResolverResource::External(_) => Self::create_external_module(
+                            &dep.resolver_resource,
+                            self.context.clone(),
+                        ),
+                        ResolverResource::Ignored(_) => {
+                            Self::create_ignored_module(&path, self.context.clone())
+                        }
                     };
-                    let module = if is_external {
-                        Self::create_external_module(&dep.resolver_resource, self.context.clone())
-                    } else {
-                        Self::create_empty_module(&dep_module_id)
-                    };
-                    if !is_external {
-                        count += 1;
-                        let file = if !is_ignore {
-                            File::new(path.clone(), self.context.clone())
-                        } else {
-                            File::new_ignore_with_content(
-                                path.clone(),
-                                Content::Js("".to_string()),
-                                self.context.clone(),
-                            )
-                        };
-                        build_with_pool(file, Some(dep.resolver_resource.clone()));
-                    }
+
                     // 拿到依赖之后需要直接添加 module 到 module_graph 里，不能等依赖 build 完再添加
                     // 是因为由于是异步处理各个模块，后者会导致大量重复任务的 build_module 任务（3 倍左右）
                     module_ids.insert(module.id.clone());
@@ -189,6 +183,26 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
             ..Default::default()
         };
         Ok(Module::new(module_id, false, Some(info)))
+    }
+
+    fn create_ignored_module(path: &str, context: Arc<Context>) -> Module {
+        let module_id = ModuleId::new(path.to_owned());
+        let mut module = Module::new(module_id, false, None);
+        let file = File::with_content(
+            path.to_owned(),
+            Content::Js("".to_string()),
+            context.clone(),
+        );
+
+        let ast = Parse::parse(&file, context.clone()).unwrap();
+        let info = ModuleInfo {
+            file,
+            ast,
+            ..Default::default()
+        };
+
+        module.add_info(Some(info));
+        module
     }
 
     pub fn create_empty_module(module_id: &ModuleId) -> Module {
