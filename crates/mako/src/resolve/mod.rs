@@ -223,9 +223,9 @@ fn do_resolve(
                 }
             }
             Err(oxc_resolve_err) => match oxc_resolve_err {
-                OxcResolveError::Ignored(_) => {
+                OxcResolveError::Ignored(path) => {
                     debug!("resolve ignored: {:?}", source);
-                    Ok(ResolverResource::Ignored)
+                    Ok(ResolverResource::Ignored(path))
                 }
                 _ => {
                     eprintln!(

@@ -21,7 +21,7 @@ pub struct Parse {}
 
 impl Parse {
     pub fn parse(file: &File, context: Arc<Context>) -> Result<ModuleAst> {
-        mako_core::mako_profile_function!(file.path);
+        mako_core::mako_profile_function!(file.path.to_string_lossy());
 
         // plugin first
         let ast = context
@@ -49,7 +49,7 @@ impl Parse {
             if is_asmodule {
                 let mut file = file.clone();
                 file.set_content(Content::Js(CssAst::generate_css_modules_exports(
-                    &file.pathname.to_string_lossy().to_string(),
+                    &file.pathname.to_string_lossy(),
                     &mut ast.ast,
                     context.config.css_modules_export_only_locales,
                 )));

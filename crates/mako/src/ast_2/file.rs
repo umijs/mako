@@ -79,7 +79,8 @@ impl File {
             // TODO: remove this specific logic
             params.iter().any(|(k, _)| k == "asmodule");
         let is_under_node_modules = path.to_string_lossy().contains("node_modules");
-        let extname = PathBuf::from(pathname.clone())
+        let extname = pathname
+            .clone()
             .extension()
             .map(|ext| ext.to_string_lossy().to_string())
             .unwrap_or_default();

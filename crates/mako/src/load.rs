@@ -49,7 +49,7 @@ pub struct Load {}
 
 impl Load {
     pub fn load(file: &File, context: Arc<Context>) -> Result<Content> {
-        mako_core::mako_profile_function!(file.path.to_str());
+        mako_core::mako_profile_function!(file.path.to_string_lossy());
         debug!("load: {:?}", file);
 
         // plugin first
