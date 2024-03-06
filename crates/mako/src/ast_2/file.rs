@@ -77,27 +77,31 @@ impl File {
         let is_virtual = path.starts_with(&*VIRTUAL) ||
             // TODO: remove this specific logic
             params.iter().any(|(k, _)| k == "asmodule");
+        let is_under_node_modules = path.to_string_lossy().contains("node_modules");
+        let extname = PathBuf::from(pathname.clone())
+            .extension()
+            .map(|ext| ext.to_string_lossy().to_string())
+            .unwrap_or_default();
         if is_virtual {
             File {
                 path: path.clone(),
                 relative_path: path,
                 is_virtual,
+                pathname,
+                search,
+                params,
+                is_under_node_modules,
+                extname,
                 ..Default::default()
             }
         } else {
-            let path = PathBuf::from(path);
             let relative_path = diff_paths(&path, &context.root).unwrap_or(path.clone());
-            let under_node_modules = path.to_string_lossy().contains("node_modules");
-            let extname = PathBuf::from(pathname.clone())
-                .extension()
-                .map(|ext| ext.to_string_lossy().to_string())
-                .unwrap_or_default();
             File {
                 is_virtual,
                 path,
                 relative_path,
                 extname,
-                is_under_node_modules: under_node_modules,
+                is_under_node_modules,
                 pathname,
                 search,
                 params,

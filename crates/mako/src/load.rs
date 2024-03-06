@@ -1,5 +1,5 @@
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
@@ -62,7 +62,8 @@ impl Load {
         }
 
         // file exists check must after virtual modules handling
-        if !file.path.exists() || !file.path.is_file() {
+        let path_without_search = PathBuf::from(file.pathname.clone());
+        if !path_without_search.exists() || !path_without_search.is_file() {
             return Err(anyhow!(LoadError::FileNotFound {
                 path: file.path.to_string_lossy().to_string(),
             }));
@@ -78,26 +79,26 @@ impl Load {
 
         // ?raw
         if file.has_param("raw") {
-            let content = FileSystem::read_file(&file.path)?;
+            let content = FileSystem::read_file(&path_without_search)?;
             let content = serde_json::to_string(&content)?;
             return Ok(Content::Js(format!("module.exports = {}", content)));
         }
 
         // js
         if JS_EXTENSIONS.contains(&file.extname.as_str()) {
-            let content = FileSystem::read_file(&file.path)?;
+            let content = FileSystem::read_file(&path_without_search)?;
             return Ok(Content::Js(content));
         }
 
         // css
         if CSS_EXTENSIONS.contains(&file.extname.as_str()) {
-            let content = FileSystem::read_file(&file.path)?;
+            let content = FileSystem::read_file(&path_without_search)?;
             return Ok(Content::Css(content));
         }
 
         // md & mdx
         if MD_EXTENSIONS.contains(&file.extname.as_str()) {
-            let content = FileSystem::read_file(&file.path)?;
+            let content = FileSystem::read_file(&path_without_search)?;
             let options = MdxOptions {
                 development: matches!(context.config.mode, Mode::Development),
                 ..Default::default()
@@ -117,7 +118,7 @@ impl Load {
         // svg
         // TODO: Not all svg files need to be converted to React Component, unnecessary performance consumption here
         if SVG_EXTENSIONS.contains(&file.extname.as_str()) {
-            let content = FileSystem::read_file(&file.path)?;
+            let content = FileSystem::read_file(&path_without_search)?;
             let svgr_transformed = svgr_rs::transform(
                 content,
                 svgr_rs::Config {
@@ -142,7 +143,7 @@ impl Load {
 
         // toml
         if TOML_EXTENSIONS.contains(&file.extname.as_str()) {
-            let content = FileSystem::read_file(&file.path)?;
+            let content = FileSystem::read_file(&path_without_search)?;
             let content = from_toml_str::<TomlValue>(&content)?;
             let content = serde_json::to_string(&content)?;
             return Ok(Content::Js(format!("module.exports = {}", content)));
@@ -168,7 +169,7 @@ impl Load {
 
         // xml
         if XML_EXTENSIONS.contains(&file.extname.as_str()) {
-            let content = FileSystem::read_file(&file.path)?;
+            let content = FileSystem::read_file(&path_without_search)?;
             let content = from_xml_str::<serde_json::Value>(&content)?;
             let content = serde_json::to_string(&content)?;
             return Ok(Content::Js(format!("module.exports = {}", content)));
@@ -176,7 +177,7 @@ impl Load {
 
         // yaml
         if YAML_EXTENSIONS.contains(&file.extname.as_str()) {
-            let content = FileSystem::read_file(&file.path)?;
+            let content = FileSystem::read_file(&path_without_search)?;
             let content = from_yaml_str::<YamlValue>(&content)?;
             let content = serde_json::to_string(&content)?;
             return Ok(Content::Js(format!("module.exports = {}", content)));
@@ -185,7 +186,7 @@ impl Load {
         // json
         // TODO: json5 should be more complex
         if JSON_EXTENSIONS.contains(&file.extname.as_str()) {
-            let content = FileSystem::read_file(&file.path)?;
+            let content = FileSystem::read_file(&path_without_search)?;
             return Ok(Content::Js(format!("module.exports = {}", content)));
         }
 
