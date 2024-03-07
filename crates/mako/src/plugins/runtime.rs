@@ -56,7 +56,7 @@ impl MakoRuntime {
                 let code = Self::get_swc_helper_code(&source).unwrap();
                 let module_id: ModuleId = source.into();
                 let module_id = module_id.generate(context);
-                format!("'{}': {}", module_id, code)
+                format!("\"{}\": {}", module_id, code)
             })
             .collect::<Vec<_>>()
             .join(",\n");
