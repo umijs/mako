@@ -89,13 +89,14 @@ impl VisitMut for MyInjector<'_> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct Inject {
     pub from: String,
     pub name: String,
     pub named: Option<String>,
     pub namespace: Option<bool>,
     pub exclude: Option<Regex>,
+    pub include: Option<Regex>,
     pub prefer_require: bool,
 }
 
@@ -254,6 +255,7 @@ mod tests {
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            include: None,
             prefer_require: false,
         };
 
@@ -280,6 +282,7 @@ my.call("toast");
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            include: None,
             prefer_require: false,
         };
 
@@ -307,6 +310,7 @@ export { };
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            include: None,
             prefer_require: false,
         };
 
@@ -333,6 +337,7 @@ my.call("toast");
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            include: None,
             prefer_require: false,
         };
 
@@ -359,6 +364,7 @@ export { };
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            include: None,
             prefer_require: false,
         };
 
@@ -384,6 +390,7 @@ my.call("toast");
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            include: None,
             prefer_require: false,
         };
 
@@ -411,6 +418,7 @@ export { };
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            include: None,
             prefer_require: false,
         };
 
@@ -437,6 +445,7 @@ my.call("toast");
             from: "mock-lib".to_string(),
             namespace: Some(true),
             exclude: None,
+            include: None,
             prefer_require: false,
         };
         let code = apply_inject_to_code(
@@ -463,6 +472,7 @@ export { };
             from: "mock-lib".to_string(),
             namespace: Some(true),
             exclude: None,
+            include: None,
             prefer_require: false,
         };
         let code = apply_inject_to_code(
@@ -489,6 +499,7 @@ my.call("toast");
             from: "mock-lib".to_string(),
             namespace: Some(true),
             exclude: None,
+            include: None,
             prefer_require: false,
         };
 
@@ -527,6 +538,7 @@ my.call("toast");
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            include: None,
             prefer_require: true,
         };
 
@@ -554,6 +566,7 @@ export { };
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            include: None,
             prefer_require: true,
         };
 

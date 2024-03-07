@@ -1,6 +1,6 @@
 {
   "name": "@okamjs/okam",
-  "version": "0.4.4",
+  "version": "0.4.5-dev.20240306.1",
   "main": "index.js",
   "types": "index.d.ts",
   "napi": {
@@ -39,9 +39,9 @@
     "release": "esno scripts/release.ts"
   },
   "optionalDependencies": {
-    "@okamjs/okam-darwin-arm64": "0.4.4",
-    "@okamjs/okam-darwin-x64": "0.4.4",
-    "@okamjs/okam-linux-x64-gnu": "0.4.4"
+    "@okamjs/okam-darwin-arm64": "0.4.5-dev.20240306.1",
+    "@okamjs/okam-darwin-x64": "0.4.5-dev.20240306.1",
+    "@okamjs/okam-linux-x64-gnu": "0.4.5-dev.20240306.1"
   },
   "repository": "git@github.com:umijs/mako.git"
 }

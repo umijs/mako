@@ -22,6 +22,7 @@ use crate::plugins::minifish::Inject;
 use crate::resolve::{get_resolvers, Resolvers};
 use crate::stats::StatsInfo;
 use crate::swc_helpers::SwcHelpers;
+use crate::util::ParseRegex;
 
 pub struct Context {
     pub module_graph: RwLock<ModuleGraph>,
@@ -274,16 +275,6 @@ impl Compiler {
                 let mut map = HashMap::new();
 
                 for (k, ii) in inject.iter() {
-                    let exclude = if let Some(exclude) = &ii.exclude {
-                        if let Ok(regex) = Regex::new(exclude) {
-                            Some(regex)
-                        } else {
-                            return Err(anyhow!("Config Error invalid regex: {}", exclude));
-                        }
-                    } else {
-                        None
-                    };
-
                     map.insert(
                         k.clone(),
                         Inject {
@@ -291,7 +282,8 @@ impl Compiler {
                             name: k.clone(),
                             named: ii.named.clone(),
                             namespace: ii.namespace,
-                            exclude,
+                            exclude: ii.exclude.parse_into_regex()?,
+                            include: ii.include.parse_into_regex()?,
                             prefer_require: ii.prefer_require.map_or(false, |v| v),
                         },
                     );

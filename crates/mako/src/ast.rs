@@ -22,6 +22,7 @@ use mako_core::swc_ecma_parser::lexer::Lexer;
 use mako_core::swc_ecma_parser::{EsConfig, Parser, StringInput, Syntax, TsConfig};
 use mako_core::swc_error_reporters::{GraphicalReportHandler, PrettyEmitter, PrettyEmitterConfig};
 use mako_core::thiserror::Error;
+use swc_core::common::comments::Comments;
 
 use crate::compiler::Context;
 use crate::config::{DevtoolConfig, Mode};
@@ -192,11 +193,7 @@ pub fn js_ast_to_code(
                 .with_ascii_only(context.config.output.ascii_only)
                 .with_omit_last_semi(true),
             cm: cm.clone(),
-            comments: if with_minify {
-                None
-            } else {
-                Some(swc_comments)
-            },
+            comments: (!with_minify).then_some(swc_comments as &dyn Comments),
             wr: Box::new(JsWriter::new(
                 cm.clone(),
                 "\n",
