@@ -29,7 +29,7 @@ impl Plugin for ContextModulePlugin {
                 .params
                 .iter()
                 .find_map(|(k, v)| k.eq("glob").then_some(v)),
-            param.file.path.is_dir(),
+            param.file.pathname.is_dir(),
         ) {
             let glob_pattern = param.file.pathname.clone().join(glob_pattern);
             let paths = glob(glob_pattern.to_str().unwrap())?;
