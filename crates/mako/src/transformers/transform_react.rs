@@ -18,7 +18,7 @@ pub struct PrefixCode {
 
 pub fn mako_react(
     cm: Lrc<SourceMap>,
-    context: &Arc<Context>,
+    context: Arc<Context>,
     file: &File,
     top_level_mark: &Mark,
     unresolved_mark: &Mark,
@@ -31,15 +31,15 @@ pub fn mako_react(
         && !file.is_under_node_modules
         && is_browser;
 
-    let is_jsx = file.pathname.ends_with(".jsx")
-        || file.pathname.ends_with(".js")
-        || file.pathname.ends_with(".ts")
-        || file.pathname.ends_with(".tsx")
-        || file.pathname.ends_with(".svg");
+    let is_jsx = file.extname == "jsx"
+        || file.extname == "js"
+        || file.extname == "ts"
+        || file.extname == "tsx"
+        || file.extname == "svg";
 
     if !is_jsx {
         return if file.is_entry && use_refresh {
-            Box::new(chain!(react_refresh_inject_runtime_only(context), noop()))
+            Box::new(chain!(react_refresh_inject_runtime_only(&context), noop()))
         } else {
             Box::new(noop())
         };
@@ -77,8 +77,8 @@ pub fn mako_react(
     if use_refresh {
         Box::new(chain!(
             visit,
-            react_refresh_module_prefix(context),
-            react_refresh_module_postfix(context)
+            react_refresh_module_prefix(&context),
+            react_refresh_module_postfix(&context)
         ))
     } else {
         Box::new(visit)

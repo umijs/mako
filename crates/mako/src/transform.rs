@@ -62,7 +62,7 @@ impl Transform {
                     // TODO: refact mako_react
                     visitors.push(Box::new(mako_react(
                         cm,
-                        &context,
+                        context.clone(),
                         file,
                         &top_level_mark,
                         &unresolved_mark,
