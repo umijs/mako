@@ -56,7 +56,7 @@ impl CssAst {
                 .iter()
                 .map(|err| {
                     error::code_frame(
-                        (*err.clone().into_inner()).0,
+                        error::ErrorSpan::CSS((*err.clone().into_inner()).0),
                         err.message().to_string().as_str(),
                         context.clone(),
                     )

@@ -89,7 +89,7 @@ impl JsAst {
                 .iter()
                 .map(|err| {
                     error::code_frame(
-                        err.span(),
+                        error::ErrorSpan::Js(err.span()),
                         err.kind().msg().to_string().as_str(),
                         context.clone(),
                     )

@@ -110,7 +110,8 @@ impl AnalyzeDeps {
     pub fn get_resolved_error(dep: &Dependency, context: Arc<Context>) -> String {
         let message = format!("Module not found: Can't resolve '{}'", dep.source);
         if dep.span.is_some() {
-            error::code_frame(dep.span.unwrap(), &message, context)
+            // TODO: support css resolved error
+            error::code_frame(error::ErrorSpan::Js(dep.span.unwrap()), &message, context)
         } else {
             message
         }
