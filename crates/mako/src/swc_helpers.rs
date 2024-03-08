@@ -1,16 +1,55 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use mako_core::swc_ecma_ast::{
-    CallExpr, Callee, Decl, Expr, Lit, Module, ModuleItem, Stmt, VarDecl, VarDeclarator,
-};
+use mako_core::lazy_static::lazy_static;
+use mako_core::swc_ecma_ast::Module;
+use swc_core::ecma::visit::VisitWith;
 
 use crate::compiler::Context;
 use crate::config::ModuleIdStrategy;
-use crate::module::ModuleId;
+use crate::transformers::transform_interop_probe::InteropProbe;
 
 pub struct SwcHelpers {
     pub helpers: HashSet<String>,
+}
+
+lazy_static! {
+    static ref HAHSED_HELPERS: HashMap<String, String> = [
+        (
+            "d3__vuQ2".to_string(),
+            "@swc/helpers/_/_interop_require_default".to_string(),
+        ),
+        (
+            "hSu6qSb4".to_string(),
+            "@swc/helpers/_/_interop_require_wildcard".to_string(),
+        ),
+        (
+            "0XUdfEQ8".to_string(),
+            "@swc/helpers/_/_export_star".to_string(),
+        ),
+    ]
+    .iter()
+    .cloned()
+    .collect();
+}
+
+lazy_static! {
+    static ref RAW_HELPERS: HashMap<String, String> = [
+        (
+            "@swc/helpers/_/_interop_require_default".to_string(),
+            "@swc/helpers/_/_interop_require_default".to_string(),
+        ),
+        (
+            "@swc/helpers/_/_interop_require_wildcard".to_string(),
+            "@swc/helpers/_/_interop_require_wildcard".to_string(),
+        ),
+        (
+            "@swc/helpers/_/_export_star".to_string(),
+            "@swc/helpers/_/_export_star".to_string(),
+        ),
+    ]
+    .into_iter()
+    .collect();
 }
 
 impl SwcHelpers {
@@ -33,74 +72,50 @@ impl SwcHelpers {
 
     // for watch mode
     pub fn full_helpers() -> HashSet<String> {
-        let mut helpers = HashSet::new();
-        helpers.insert("@swc/helpers/_/_interop_require_default".into());
-        helpers.insert("@swc/helpers/_/_interop_require_wildcard".into());
-        helpers.insert("@swc/helpers/_/_export_star".into());
-        helpers
+        RAW_HELPERS.keys().cloned().collect()
     }
 
     pub fn get_swc_helpers(ast: &Module, context: &Arc<Context>) -> HashSet<String> {
         let is_hashed = matches!(context.config.module_id_strategy, ModuleIdStrategy::Hashed);
-        let helpers: HashMap<String, String> = Self::full_helpers()
-            .into_iter()
-            .map(|h| {
-                let key = if is_hashed {
-                    ModuleId::new(h.clone()).generate(context)
-                } else {
-                    h.clone()
-                };
-                (key, h)
-            })
-            .collect();
-        let mut swc_helpers = HashSet::new();
-        // Top level require only
-        // why top level only? because swc helpers is only used in top level
-        // why require only? because cjs transform is done before this
-        ast.body.iter().for_each(|stmt| {
-            // e.g.
-            // var _interop_require_wildcard = __mako_require__("@swc/helpers/_/_interop_require_wildcard");
-            if let ModuleItem::Stmt(Stmt::Decl(Decl::Var(box VarDecl { decls, .. }))) = stmt {
-                if decls.is_empty() {
-                    return;
-                }
-                let decl = decls.first().unwrap();
-                if let VarDeclarator {
-                    init: Some(box Expr::Call(CallExpr { callee, args, .. })),
-                    ..
-                } = decl
-                {
-                    let is_require = if let Callee::Expr(box Expr::Ident(ident)) = &callee {
-                        ident.sym.as_ref() == "__mako_require__"
-                    } else {
-                        false
-                    };
-                    if !is_require {
-                        return;
-                    }
-                    if let Some(arg) = args.first() {
-                        if let Expr::Lit(Lit::Str(dep)) = arg.expr.as_ref() {
-                            let is_swc_helper =
-                                helpers.contains_key(dep.value.to_string().as_str());
-                            if is_swc_helper {
-                                swc_helpers.insert(
-                                    helpers
-                                        .get(dep.value.to_string().as_str())
-                                        .unwrap()
-                                        .to_string(),
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-        });
-        swc_helpers
+        let needles: &HashMap<String, String> = if is_hashed {
+            &HAHSED_HELPERS
+        } else {
+            &RAW_HELPERS
+        };
+
+        let mut probe = InteropProbe::new(needles, 1);
+        ast.visit_with(&mut probe);
+
+        probe.probed
     }
 }
 
 impl Default for SwcHelpers {
     fn default() -> Self {
         Self::new(None)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::{Config, ModuleIdStrategy};
+    use crate::module::ModuleId;
+
+    #[test]
+    fn ensure_hash_consistent() {
+        let config = Config {
+            module_id_strategy: ModuleIdStrategy::Hashed,
+            ..Default::default()
+        };
+
+        let context = Arc::new(Context {
+            config,
+            ..Default::default()
+        });
+
+        for (k, v) in HAHSED_HELPERS.iter() {
+            assert_eq!(*k, ModuleId::from(v.as_str()).generate(&context));
+        }
     }
 }
