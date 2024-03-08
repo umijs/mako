@@ -18,7 +18,7 @@ use crate::module_graph::ModuleGraph;
 use crate::optimize_chunk::OptimizeChunksInfo;
 use crate::plugin::{Plugin, PluginDriver, PluginGenerateEndParams, PluginGenerateStats};
 use crate::plugins;
-// use crate::plugins::minifish::Inject;
+use crate::plugins::minifish::Inject;
 use crate::resolve::{get_resolvers, Resolvers};
 use crate::stats::StatsInfo;
 use crate::swc_helpers::SwcHelpers;
@@ -259,47 +259,47 @@ impl Compiler {
         }
 
         // TODO: enable minifish
-        // if let Some(minifish_config) = &config._minifish {
-        //     let inject = if let Some(inject) = &minifish_config.inject {
-        //         let mut map = HashMap::new();
+        if let Some(minifish_config) = &config._minifish {
+            let inject = if let Some(inject) = &minifish_config.inject {
+                let mut map = HashMap::new();
 
-        //         for (k, ii) in inject.iter() {
-        //             let exclude = if let Some(exclude) = &ii.exclude {
-        //                 if let Ok(regex) = Regex::new(exclude) {
-        //                     Some(regex)
-        //                 } else {
-        //                     return Err(anyhow!("Config Error invalid regex: {}", exclude));
-        //                 }
-        //             } else {
-        //                 None
-        //             };
+                for (k, ii) in inject.iter() {
+                    let exclude = if let Some(exclude) = &ii.exclude {
+                        if let Ok(regex) = Regex::new(exclude) {
+                            Some(regex)
+                        } else {
+                            return Err(anyhow!("Config Error invalid regex: {}", exclude));
+                        }
+                    } else {
+                        None
+                    };
 
-        //             map.insert(
-        //                 k.clone(),
-        //                 Inject {
-        //                     from: ii.from.clone(),
-        //                     name: k.clone(),
-        //                     named: ii.named.clone(),
-        //                     namespace: ii.namespace,
-        //                     exclude,
-        //                     prefer_require: ii.prefer_require.map_or(false, |v| v),
-        //                 },
-        //             );
-        //         }
-        //         Some(map)
-        //     } else {
-        //         None
-        //     };
+                    map.insert(
+                        k.clone(),
+                        Inject {
+                            from: ii.from.clone(),
+                            name: k.clone(),
+                            named: ii.named.clone(),
+                            namespace: ii.namespace,
+                            exclude,
+                            prefer_require: ii.prefer_require.map_or(false, |v| v),
+                        },
+                    );
+                }
+                Some(map)
+            } else {
+                None
+            };
 
-        //     plugins.insert(
-        //         0,
-        //         Arc::new(plugins::minifish::MinifishPlugin {
-        //             mapping: minifish_config.mapping.clone(),
-        //             meta_path: minifish_config.meta_path.clone(),
-        //             inject,
-        //         }),
-        //     );
-        // }
+            plugins.insert(
+                0,
+                Arc::new(plugins::minifish::MinifishPlugin {
+                    mapping: minifish_config.mapping.clone(),
+                    meta_path: minifish_config.meta_path.clone(),
+                    inject,
+                }),
+            );
+        }
 
         if !config.ignores.is_empty() {
             let ignore_regex = config

@@ -15,10 +15,19 @@ use crate::compiler::Context;
 use crate::util::base64_decode;
 
 #[derive(Debug, Clone)]
+pub struct Asset {
+    pub path: String,
+    pub content: String,
+}
+
+#[derive(Debug, Clone)]
 pub enum Content {
     Js(String),
     Css(String),
-    // Assets(Asset),
+    // TODO: unify the assets handler
+    // it's used in minifish plugin(bundless mode) only
+    // and bundle mode will emit assets to context.assets_info
+    Assets(Asset),
 }
 
 #[derive(Debug, Error)]
@@ -132,6 +141,7 @@ impl File {
     pub fn get_content_raw(&self) -> String {
         match &self.content {
             Some(Content::Js(content)) | Some(Content::Css(content)) => content.clone(),
+            Some(Content::Assets(asset)) => asset.content.clone(),
             None => "".to_string(),
         }
     }
@@ -208,7 +218,7 @@ impl File {
             }
             // TODO: support js source map chain
             Some(Content::Js(_)) => {}
-            None => {}
+            _ => {}
         }
         chain
     }

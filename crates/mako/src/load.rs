@@ -243,10 +243,11 @@ impl Load {
     }
 }
 
-struct FileSystem {}
+// TODO: move to separate module
+pub struct FileSystem {}
 
 impl FileSystem {
-    fn read_file<P: AsRef<Path>>(path: P) -> Result<String> {
+    pub fn read_file<P: AsRef<Path>>(path: P) -> Result<String> {
         let mut file = std::fs::File::open(path.as_ref())?;
         let mut buf = vec![];
         file.read_to_end(&mut buf)?;

@@ -26,13 +26,13 @@ pub enum GenerateError {
 
 pub enum ErrorSpan {
     Js(Span),
-    CSS(Span),
+    Css(Span),
 }
 
 pub fn code_frame(span: ErrorSpan, message: &str, context: Arc<Context>) -> String {
     let (span, cm) = match span {
         ErrorSpan::Js(span) => (span, context.meta.script.cm.clone()),
-        ErrorSpan::CSS(span) => (span, context.meta.css.cm.clone()),
+        ErrorSpan::Css(span) => (span, context.meta.css.cm.clone()),
     };
     let wr = Box::<LockedWriter>::default();
     let emitter = PrettyEmitter::new(

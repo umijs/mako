@@ -13,9 +13,9 @@ use mako_core::swc_ecma_visit::VisitMutWith;
 use serde::Serialize;
 use unsimplify::UnSimplify;
 
+use crate::ast_2::file::{Asset, Content};
 use crate::compiler::Context;
-use crate::load::Content::Assets;
-use crate::load::{read_content, Asset, Content};
+use crate::load::FileSystem;
 use crate::module::{Dependency as ModuleDependency, ModuleAst, ResolveType};
 use crate::plugin::{Plugin, PluginLoadParam, PluginParseParam, PluginTransformJsParam};
 use crate::plugins::bundless_compiler::to_dist_path;
@@ -35,9 +35,9 @@ impl Plugin for MinifishPlugin {
     }
 
     fn load(&self, param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
-        if param.task.is_match(vec!["json", "json5"]) {
+        if param.file.extname == "json" || param.file.extname == "json5" {
             let root = _context.root.clone();
-            let to: PathBuf = param.task.request.path.clone().into();
+            let to = param.file.pathname.clone();
 
             let relative = to
                 .strip_prefix(root)
@@ -49,14 +49,15 @@ impl Plugin for MinifishPlugin {
                 Some(js_content) => Ok(Some(Content::Js(js_content.to_string()))),
 
                 None => {
-                    let content = read_content(param.task.path.as_str())?;
+                    let content = FileSystem::read_file(&param.file.pathname)?;
+                    // let content = read_content(param.file.pathname)?;
 
                     let asset = Asset {
-                        path: param.task.path.clone(),
+                        path: param.file.pathname.to_string_lossy().to_string(),
                         content,
                     };
 
-                    Ok(Some(Assets(asset)))
+                    Ok(Some(Content::Assets(asset)))
                 }
             };
         }
@@ -68,8 +69,8 @@ impl Plugin for MinifishPlugin {
         param: &PluginParseParam,
         _context: &Arc<Context>,
     ) -> Result<Option<ModuleAst>> {
-        if param.task.request.path.ends_with(".json") {
-            if let Assets(_) = param.content {
+        if param.file.extname == "json" {
+            if let Some(Content::Assets(_)) = param.file.content {
                 return Ok(Some(ModuleAst::None));
             }
         }
