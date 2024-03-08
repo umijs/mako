@@ -85,6 +85,21 @@ impl Load {
 
         // js
         if JS_EXTENSIONS.contains(&file.extname.as_str()) {
+            // entry with ?hmr
+            // TODO: should be more general
+            if file.is_entry && file.has_param("hmr") {
+                let port = &context.config.hmr.as_ref().unwrap().port.to_string();
+                let host = &context.config.hmr.as_ref().unwrap().host.to_string();
+                let host = if host == "0.0.0.0" { "127.0.0.1" } else { host };
+                let content = format!(
+                    "{}\nmodule.exports = require(\"{}\");\n",
+                    include_str!("./runtime/runtime_hmr_entry.js"),
+                    file.pathname.to_string_lossy(),
+                )
+                .replace("__PORT__", port)
+                .replace("__HOST__", host);
+                return Ok(Content::Js(content));
+            }
             let content = FileSystem::read_file(&file.pathname)?;
             return Ok(Content::Js(content));
         }

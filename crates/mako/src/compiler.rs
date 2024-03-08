@@ -258,7 +258,6 @@ impl Compiler {
             plugins.insert(0, Arc::new(plugins::bundless_compiler::BundlessCompiler {}));
         }
 
-        // TODO: enable minifish
         if let Some(minifish_config) = &config._minifish {
             let inject = if let Some(inject) = &minifish_config.inject {
                 let mut map = HashMap::new();
@@ -372,10 +371,17 @@ impl Compiler {
                 .entry
                 .values()
                 .map(|entry| {
-                    crate::ast_2::file::File::new_entry(
-                        entry.to_string_lossy().to_string(),
-                        self.context.clone(),
-                    )
+                    let mut entry = entry.to_string_lossy().to_string();
+                    let is_browser = matches!(
+                        self.context.config.platform,
+                        crate::config::Platform::Browser
+                    );
+                    let watch = self.context.args.watch;
+                    let hmr = self.context.config.hmr.is_some();
+                    if is_browser && watch && hmr {
+                        entry = format!("{}?hmr", entry);
+                    }
+                    crate::ast_2::file::File::new_entry(entry, self.context.clone())
                 })
                 .collect();
             self.build(files)?;
