@@ -39,7 +39,6 @@ impl Parse {
         }
 
         // css
-        // TODO: support css modules
         if let Some(Content::Css(_)) = &file.content {
             debug!("parse css: {:?}", file.path);
             let is_modules = file.has_param("modules");

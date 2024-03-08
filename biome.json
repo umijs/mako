@@ -12,7 +12,8 @@
       "./crates/mako/test/**/*",
       "./test/**/dist/*",
       "./test/build/tmp/**/*",
-      "./e2e/**/*"
+      "./e2e/**",
+      "./tmp/**"
     ]
   },
   "formatter": {

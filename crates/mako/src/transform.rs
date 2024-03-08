@@ -177,7 +177,7 @@ impl Transform {
                 // css modules
                 let is_modules = file.has_param("modules");
                 if is_modules {
-                    CssAst::compile_css_modules(file.path.to_str().unwrap(), &mut ast.ast);
+                    CssAst::compile_css_modules(file.pathname.to_str().unwrap(), &mut ast.ast);
                 }
 
                 Ok(())
