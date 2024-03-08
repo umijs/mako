@@ -8,6 +8,7 @@ use mako_core::thiserror::Error;
 
 use crate::analyze_deps::AnalyzeDeps;
 use crate::ast_2::file::{Content, File};
+use crate::chunk_pot::util::hash_vec;
 use crate::compiler::{Compiler, Context};
 use crate::load::Load;
 use crate::module::{Module, ModuleAst, ModuleId, ModuleInfo};
@@ -33,7 +34,7 @@ impl Compiler {
             let rs = rs.clone();
             let context = self.context.clone();
             pool.spawn(move || {
-                let result = Self::build_module_2(&file, parent_resource, context.clone());
+                let result = Self::build_module(&file, parent_resource, context.clone());
                 let result = Self::handle_build_result(result, &file, context);
                 rs.send(result).unwrap();
             });
@@ -232,7 +233,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         }
     }
 
-    pub fn build_module_2(
+    pub fn build_module(
         file: &File,
         parent_resource: Option<ResolverResource>,
         context: Arc<Context>,
@@ -264,9 +265,16 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         };
         let is_async_module = file.extname == "wasm";
         let is_async = is_async_module || top_level_await;
-        // let raw_hash = content
-        //     .raw_hash(context.config_hash)
-        //     .wrapping_add(hash_hashmap(&missing_deps).wrapping_add(hash_vec(&ignored_deps)));
+
+        // raw_hash is only used in watch mode
+        // so we don't need to calculate when watch is off
+        let raw_hash = if context.args.watch {
+            file
+            .get_raw_hash(context.config_hash)
+            .wrapping_add(hash_vec(&deps.missing_deps))
+        } else {
+            0
+        };
         let info = ModuleInfo {
             file,
             deps,
@@ -275,9 +283,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
             source_map_chain,
             top_level_await,
             is_async,
-            // TODO: update
-            // raw_hash is used in watch mode only
-            raw_hash: 0,
+            raw_hash,
             // TODO: remove
             path,
             raw,
@@ -285,7 +291,6 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
             import_map: vec![],
             export_map: vec![],
             is_barrel: false,
-            // TODO: use Default::default() after unnecessary fields are removed
             ..Default::default()
         };
         let module = Module::new(module_id, is_entry, Some(info));

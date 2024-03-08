@@ -1,3 +1,4 @@
+use std::hash::Hasher;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -9,6 +10,7 @@ use mako_core::lazy_static::lazy_static;
 use mako_core::pathdiff::diff_paths;
 use mako_core::regex::Regex;
 use mako_core::thiserror::Error;
+use mako_core::twox_hash::XxHash64;
 use mako_core::{md5, mime_guess};
 
 use crate::compiler::Context;
@@ -143,6 +145,23 @@ impl File {
             Some(Content::Js(content)) | Some(Content::Css(content)) => content.clone(),
             Some(Content::Assets(asset)) => asset.content.clone(),
             None => "".to_string(),
+        }
+    }
+
+    pub fn get_raw_hash(&self, init: u64) -> u64 {
+        let mut hasher: XxHash64 = Default::default();
+        if let Some(content) = &self.content {
+            match content {
+                Content::Js(content)
+                | Content::Css(content)
+                | Content::Assets(Asset { content, .. }) => {
+                    hasher.write_u64(init);
+                    hasher.write(content.as_bytes());
+                    hasher.finish()
+                }
+            }
+        } else {
+            0
         }
     }
 

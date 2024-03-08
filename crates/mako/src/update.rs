@@ -269,7 +269,7 @@ impl Compiler {
                 } else {
                     crate::ast_2::file::File::new(path, self.context.clone())
                 };
-                let module = Self::build_module_2(&file, None, self.context.clone())
+                let module = Self::build_module(&file, None, self.context.clone())
                     .map_err(|err| BuildError::BuildTasksError { errors: vec![err] })?;
 
                 debug!(
