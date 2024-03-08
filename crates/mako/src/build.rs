@@ -15,6 +15,7 @@ use crate::load::Load;
 use crate::module::{Module, ModuleAst, ModuleId, ModuleInfo};
 use crate::parse::Parse;
 use crate::resolve::ResolverResource;
+use crate::thread_pool;
 use crate::transform::Transform;
 
 #[derive(Debug, Error)]
@@ -34,7 +35,7 @@ impl Compiler {
         let build_with_pool = |file: File, parent_resource: Option<ResolverResource>| {
             let rs = rs.clone();
             let context = self.context.clone();
-            crate::thread_pool::spawn(move || {
+            thread_pool::spawn(move || {
                 let result = Self::build_module(&file, parent_resource, context.clone());
                 let result = Self::handle_build_result(result, &file, context);
                 rs.send(result).unwrap();
@@ -270,9 +271,8 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         // raw_hash is only used in watch mode
         // so we don't need to calculate when watch is off
         let raw_hash = if context.args.watch {
-            file
-            .get_raw_hash(context.config_hash)
-            .wrapping_add(hash_vec(&deps.missing_deps))
+            file.get_raw_hash(context.config_hash)
+                .wrapping_add(hash_vec(&deps.missing_deps))
         } else {
             0
         };

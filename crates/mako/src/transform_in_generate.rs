@@ -25,7 +25,6 @@ use crate::compiler::{Compiler, Context};
 use crate::config::OutputMode;
 use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
 use crate::swc_helpers::SwcHelpers;
-use crate::targets;
 use crate::transformers::transform_async_module::AsyncModule;
 use crate::transformers::transform_css_handler::CssHandler;
 use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
@@ -33,6 +32,7 @@ use crate::transformers::transform_dynamic_import::DynamicImport;
 use crate::transformers::transform_mako_require::MakoRequire;
 use crate::transformers::transform_meta_url_replacer::MetaUrlReplacer;
 use crate::transformers::transform_optimize_define_utils::OptimizeDefineUtils;
+use crate::{targets, thread_pool};
 
 impl Compiler {
     pub fn transform_all(&self) -> Result<()> {
@@ -101,7 +101,7 @@ pub fn transform_modules_in_thread(
         let rs = rs.clone();
         let module_id = module_id.clone();
         let async_deps = async_deps_by_module_id.get(&module_id).unwrap().clone();
-        crate::thread_pool::spawn(move || {
+        thread_pool::spawn(move || {
             let module_graph = context.module_graph.read().unwrap();
             let deps = module_graph.get_dependencies(&module_id);
             let mut resolved_deps: HashMap<String, (String, String)> = deps

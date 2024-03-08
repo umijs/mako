@@ -16,6 +16,7 @@ use crate::chunk::{Chunk, ChunkType};
 use crate::chunk_pot::ChunkPot;
 use crate::compiler::{Compiler, Context};
 use crate::module::{ModuleAst, ModuleId};
+use crate::thread_pool;
 use crate::transform_in_generate::transform_css_generate;
 
 #[derive(Clone)]
@@ -150,7 +151,7 @@ impl Compiler {
                 let rs = rs.clone();
                 let context = self.context.clone();
                 let chunk_id = chunk.id.clone();
-                crate::thread_pool::spawn(move || {
+                thread_pool::spawn(move || {
                     let chunk_graph = context.chunk_graph.read().unwrap();
                     let module_graph = context.module_graph.read().unwrap();
                     let chunk = chunk_graph.chunk(&chunk_id).unwrap();
