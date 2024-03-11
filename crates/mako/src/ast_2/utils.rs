@@ -10,6 +10,7 @@ pub fn base64_encode<T: AsRef<[u8]>>(raw: T) -> String {
     general_purpose::STANDARD.encode(raw)
 }
 
+// TODO: more accurate
 pub fn is_remote(url: &str) -> bool {
     let lower_url = url.to_lowercase();
     lower_url.starts_with("http://")
@@ -20,6 +21,7 @@ pub fn is_remote(url: &str) -> bool {
 
 pub fn remove_first_tilde(url: String) -> String {
     if let Some(stripped) = url.strip_prefix('~') {
+        // ~/ is the case when use ~ as alias or folder
         if url.starts_with("~/") {
             url
         } else {
