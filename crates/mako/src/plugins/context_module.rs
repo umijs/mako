@@ -33,6 +33,9 @@ impl Plugin for ContextModulePlugin {
         ) {
             let glob_pattern = param.file.pathname.clone().join(glob_pattern);
             let paths = glob(glob_pattern.to_str().unwrap())?;
+
+            let is_async = param.file.params.iter().any(|(k, _)| k.eq("async"));
+
             let mut key_values = vec![];
 
             for path in paths {
@@ -75,9 +78,11 @@ impl Plugin for ContextModulePlugin {
                 }
 
                 for key in keys {
+                    let load_by = if is_async { "import" } else { "require" };
                     key_values.push(format!(
-                        "'{}': () => require('{}')",
+                        "'{}': () => {}('{}')",
                         key,
+                        load_by,
                         path.to_string_lossy()
                     ));
                 }
@@ -143,9 +148,11 @@ impl VisitMut for ContextModuleVisitor {
             )
             .map(|(prefix, suffix)| (prefix, format!("**/*{}", suffix.unwrap_or("".to_string()),)))
             {
-                let ctxt_call_expr = CallExpr {
+                let args_literals = format!("{}?context&glob={}", from, glob);
+
+                let mut ctxt_call_expr = CallExpr {
                     callee: expr.callee.clone(),
-                    args: vec![quote_str!(format!("{}?context&glob={}", from, glob)).as_arg()],
+                    args: vec![quote_str!(args_literals.clone()).as_arg()],
                     span: DUMMY_SP,
                     type_args: None,
                 };
@@ -154,6 +161,10 @@ impl VisitMut for ContextModuleVisitor {
                     // require('./i18n' + n) -> require('./i18n?context&glob=**/*')('.' + n)
                     expr.callee = ctxt_call_expr.as_callee();
                 } else {
+                    // mark async import in params
+                    ctxt_call_expr.args =
+                        vec![quote_str!(format!("{}&{}", args_literals, "async")).as_arg()];
+
                     // import('./i18n' + n) -> import('./i18n?context&glob=**/*').then(m => m('.' + n))
                     expr.callee = member_expr!(
                         @EXT,
