@@ -312,6 +312,7 @@ pub struct InjectItem {
     pub named: Option<String>,
     pub namespace: Option<bool>,
     pub exclude: Option<String>,
+    pub include: Option<String>,
     pub prefer_require: Option<bool>,
 }
 
