@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
@@ -18,7 +19,9 @@ pub enum AnalyzeDepsError {
 #[derive(Debug, Clone, Default)]
 pub struct AnalyzeDepsResult {
     pub resolved_deps: Vec<ResolvedDep>,
-    pub missing_deps: Vec<Dependency>,
+    // why use hash map?
+    // since we need source as key to replace in generate step
+    pub missing_deps: HashMap<String, Dependency>,
 }
 
 #[derive(Debug, Clone)]
@@ -45,7 +48,7 @@ impl AnalyzeDeps {
         Self::check_deps(&deps, file)?;
 
         let mut resolved_deps = vec![];
-        let mut missing_deps = vec![];
+        let mut missing_deps = HashMap::new();
         let path = file.path.to_str().unwrap();
         for dep in deps {
             let result = resolve(
@@ -63,7 +66,7 @@ impl AnalyzeDeps {
                     });
                 }
                 Err(_err) => {
-                    missing_deps.push(dep);
+                    missing_deps.insert(dep.source.clone(), dep);
                 }
             }
         }
@@ -71,7 +74,7 @@ impl AnalyzeDeps {
         if !missing_deps.is_empty() {
             let messages = missing_deps
                 .iter()
-                .map(|dep| Self::get_resolved_error(dep, context.clone()))
+                .map(|(_key, dep)| Self::get_resolved_error(dep, context.clone()))
                 .collect::<Vec<String>>()
                 .join("\n");
             // TODO:
