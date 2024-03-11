@@ -299,9 +299,6 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
             // TODO: remove
             path,
             raw,
-            import_map: vec![],
-            export_map: vec![],
-            is_barrel: false,
             ..Default::default()
         };
         let module = Module::new(module_id, is_entry, Some(info));

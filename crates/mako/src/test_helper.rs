@@ -62,16 +62,8 @@ pub fn create_mock_module(path: PathBuf, code: &str) -> Module {
         path: path.to_string_lossy().to_string(),
         file,
         deps: Default::default(),
-        external: None,
         raw: code.to_string(),
-        raw_hash: 0,
-        resolved_resource: None,
-        top_level_await: false,
-        is_async: false,
-        source_map_chain: vec![],
-        export_map: vec![],
-        import_map: vec![],
-        is_barrel: false,
+        ..Default::default()
     };
     Module::new(module_id, false, Some(info))
 }

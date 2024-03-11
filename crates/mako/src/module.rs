@@ -59,9 +59,6 @@ pub struct ModuleInfo {
     pub resolved_resource: Option<ResolverResource>,
     /// The transformed source map chain of this module
     pub source_map_chain: Vec<Vec<u8>>,
-    pub import_map: Vec<String>,
-    pub export_map: Vec<String>,
-    pub is_barrel: bool,
 }
 
 impl Default for ModuleInfo {
@@ -78,9 +75,6 @@ impl Default for ModuleInfo {
             is_async: false,
             resolved_resource: None,
             source_map_chain: vec![],
-            import_map: vec![],
-            export_map: vec![],
-            is_barrel: false,
         }
     }
 }
