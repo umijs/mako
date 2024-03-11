@@ -73,8 +73,8 @@ impl AnalyzeDeps {
 
         if !missing_deps.is_empty() {
             let messages = missing_deps
-                .iter()
-                .map(|(_key, dep)| Self::get_resolved_error(dep, context.clone()))
+                .values()
+                .map(|dep| Self::get_resolved_error(dep, context.clone()))
                 .collect::<Vec<String>>()
                 .join("\n");
             // TODO:
