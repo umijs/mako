@@ -469,7 +469,6 @@ mod tests {
                 external: None,
                 raw: "".to_string(),
                 raw_hash: 0,
-                missing_deps: Default::default(),
                 top_level_await: false,
                 is_async: false,
                 resolved_resource: None,

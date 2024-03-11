@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -51,7 +51,6 @@ pub struct ModuleInfo {
     pub external: Option<String>,
     pub raw: String,
     pub raw_hash: u64,
-    pub missing_deps: HashMap<String, Dependency>,
     /// Modules with top-level-await
     pub top_level_await: bool,
     /// The top-level-await module must be an async module, in addition, for example, wasm is also an async module
@@ -75,7 +74,6 @@ impl Default for ModuleInfo {
             external: None,
             raw: "".to_string(),
             raw_hash: 0,
-            missing_deps: HashMap::new(),
             top_level_await: false,
             is_async: false,
             resolved_resource: None,

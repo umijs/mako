@@ -267,7 +267,6 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         let deps = AnalyzeDeps::analyze_deps(&ast, &file, context.clone())?;
 
         // 5. create module
-        // TODO: update info
         let path = file.path.to_string_lossy().to_string();
         let module_id = ModuleId::new(path.clone());
         let raw = file.get_content_raw();
@@ -288,8 +287,6 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         } else {
             0
         };
-        // TODO: remove this
-        let missing_deps = deps.missing_deps.clone();
         let info = ModuleInfo {
             file,
             deps,
@@ -302,7 +299,6 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
             // TODO: remove
             path,
             raw,
-            missing_deps,
             import_map: vec![],
             export_map: vec![],
             is_barrel: false,

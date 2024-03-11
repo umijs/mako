@@ -118,7 +118,7 @@ impl Compiler {
             for module_id in modules_with_missing_deps.clone().iter() {
                 let id = ModuleId::new(module_id.clone());
                 let module = module_graph.get_module_mut(&id).unwrap();
-                let missing_deps = module.info.clone().unwrap().missing_deps;
+                let missing_deps = module.info.clone().unwrap().deps.missing_deps;
                 for (_source, dep) in missing_deps {
                     let resolved =
                         resolve::resolve(module_id, &dep, &self.context.resolvers, &self.context);
@@ -129,8 +129,8 @@ impl Compiler {
                         );
                         modified.push(PathBuf::from(module_id.clone()));
                         let info = module.info.as_mut().unwrap();
-                        info.missing_deps.remove(&dep.source);
-                        if info.missing_deps.is_empty() {
+                        info.deps.missing_deps.remove(&dep.source);
+                        if info.deps.missing_deps.is_empty() {
                             debug!("  > remove {} from modules_with_missing_deps", module_id);
                             modules_with_missing_deps.retain(|x| x == module_id);
                         }
@@ -274,11 +274,11 @@ impl Compiler {
 
                 debug!(
                     "  > missing deps: {:?}",
-                    module.info.as_ref().unwrap().missing_deps
+                    module.info.as_ref().unwrap().deps.missing_deps
                 );
 
                 // update modules_with_missing_deps
-                if module.info.as_ref().unwrap().missing_deps.is_empty() {
+                if module.info.as_ref().unwrap().deps.missing_deps.is_empty() {
                     self.context
                         .modules_with_missing_deps
                         .write()
