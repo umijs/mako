@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 
@@ -9,7 +9,7 @@ use mako_core::thiserror::Error;
 
 use crate::analyze_deps::AnalyzeDeps;
 use crate::ast_2::file::{Content, File};
-use crate::chunk_pot::util::hash_vec;
+use crate::chunk_pot::util::hash_hashmap;
 use crate::compiler::{Compiler, Context};
 use crate::load::Load;
 use crate::module::{Module, ModuleAst, ModuleId, ModuleInfo};
@@ -65,10 +65,24 @@ impl Compiler {
             let module = build_result.unwrap();
             let module_id = module.id.clone();
 
-            let mut module_graph = self.context.module_graph.write().unwrap();
-
             // update context.modules_with_missing_deps (watch only)
-            // TODO
+            if self.context.args.watch {
+                if module.info.as_ref().unwrap().deps.missing_deps.is_empty() {
+                    self.context
+                        .modules_with_missing_deps
+                        .write()
+                        .unwrap()
+                        .retain(|id| id != &module_id.id);
+                } else {
+                    self.context
+                        .modules_with_missing_deps
+                        .write()
+                        .unwrap()
+                        .push(module_id.id.clone());
+                }
+            }
+
+            let mut module_graph = self.context.module_graph.write().unwrap();
 
             // handle current module
             let info = module.info.as_ref().unwrap();
@@ -255,7 +269,6 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         let deps = AnalyzeDeps::analyze_deps(&ast, &file, context.clone())?;
 
         // 5. create module
-        // TODO: update info
         let path = file.path.to_string_lossy().to_string();
         let module_id = ModuleId::new(path.clone());
         let raw = file.get_content_raw();
@@ -272,7 +285,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         // so we don't need to calculate when watch is off
         let raw_hash = if context.args.watch {
             file.get_raw_hash(context.config_hash)
-                .wrapping_add(hash_vec(&deps.missing_deps))
+                .wrapping_add(hash_hashmap(&deps.missing_deps))
         } else {
             0
         };
@@ -288,10 +301,6 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
             // TODO: remove
             path,
             raw,
-            missing_deps: HashMap::new(),
-            import_map: vec![],
-            export_map: vec![],
-            is_barrel: false,
             ..Default::default()
         };
         let module = Module::new(module_id, is_entry, Some(info));

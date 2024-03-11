@@ -144,3 +144,80 @@ fn resolve_web_worker(expr: &NewExpr, unresolved_mark: Mark) -> Option<&Str> {
 
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use mako_core::swc_ecma_visit::VisitWith;
+    use swc_core::common::GLOBALS;
+
+    use crate::ast_2::tests::TestUtils;
+
+    #[test]
+    fn test_normal() {
+        assert_eq!(run(r#"import 'a';"#), vec!["a"]);
+        // import default
+        assert_eq!(run(r#"import a from 'a';"#), vec!["a"]);
+        // import named
+        assert_eq!(run(r#"import { a } from 'a';"#), vec!["a"]);
+        // import default and named
+        assert_eq!(run(r#"import a, { b } from 'a';"#), vec!["a"]);
+        // import all
+        assert_eq!(run(r#"import * as a from 'a';"#), vec!["a"]);
+        // export named
+        assert_eq!(run(r#"export { a } from "a";"#), vec!["a"]);
+        // export all
+        assert_eq!(run(r#"export * from "a";"#), vec!["a"]);
+    }
+
+    #[test]
+    fn test_dynamic_import() {
+        assert_eq!(run(r#"import('a');"#), vec!["a"]);
+    }
+
+    #[test]
+    fn test_require() {
+        assert_eq!(run(r#"require('a');"#), vec!["a"]);
+        assert!(run(r#"const require = 'a'; require('a');"#).is_empty());
+        assert!(run(r#"require(a);"#).is_empty());
+    }
+
+    #[test]
+    fn test_worker() {
+        assert_eq!(
+            run(r#"new Worker(new URL('a', import.meta.url));"#),
+            vec!["a"]
+        );
+        // Worker is defined
+        assert!(run(r#"const Worker = 1;new Worker(new URL('a', import.meta.url));"#).is_empty());
+        // URL is defined
+        assert!(run(r#"const URL = 1;new Worker(new URL('a', import.meta.url));"#).is_empty());
+        // no import.meta.url
+        assert!(run(r#"new Worker(new URL('a'));"#).is_empty());
+        // no new URL
+        assert!(run(r#"new Worker('a');"#).is_empty());
+        // ignore remote
+        assert!(run(r#"new Worker(new URL('https://a', import.meta.url));"#).is_empty());
+    }
+
+    #[test]
+    fn test_embedded() {
+        assert_eq!(run(r#"export function a() { require('b') }"#), vec!["b"]);
+        assert_eq!(run(r#"export function a() { import('b') }"#), vec!["b"]);
+        assert_eq!(run(r#"require(require("b"))"#), vec!["b"]);
+    }
+
+    fn run(js_code: &str) -> Vec<String> {
+        let mut test_utils = TestUtils::gen_js_ast(js_code.to_string());
+        let ast = test_utils.ast.js_mut();
+        let mut analyzer = super::JSDepAnalyzer::new(ast.unresolved_mark);
+        GLOBALS.set(&test_utils.context.meta.script.globals, || {
+            ast.ast.visit_with(&mut analyzer);
+        });
+        let sources = analyzer
+            .dependencies
+            .iter()
+            .map(|dep| dep.source.clone())
+            .collect();
+        sources
+    }
+}

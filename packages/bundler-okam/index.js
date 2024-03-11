@@ -559,6 +559,9 @@ async function getOkamConfig(opts) {
       alias: {
         ...alias,
         ...makoConfig.resolve?.alias,
+        // we still need @swc/helpers
+        // since features like decorator or legacy browser support will
+        // inject helper functions in the build transform step
         '@swc/helpers': path.dirname(
           require.resolve('@swc/helpers/package.json'),
         ),

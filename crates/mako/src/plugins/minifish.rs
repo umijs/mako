@@ -27,7 +27,19 @@ pub struct MinifishPlugin {
     pub inject: Option<HashMap<String, Inject>>,
 }
 
-impl MinifishPlugin {}
+impl MinifishPlugin {
+    fn qualified(path: &str, inject: &Inject) -> bool {
+        if let Some(exclude) = &inject.exclude {
+            if exclude.is_match(path) {
+                return false;
+            }
+        }
+        inject
+            .include
+            .as_ref()
+            .map_or(true, |include| include.is_match(path))
+    }
+}
 
 impl Plugin for MinifishPlugin {
     fn name(&self) -> &str {
@@ -92,11 +104,7 @@ impl Plugin for MinifishPlugin {
             let mut matched_injects = HashMap::new();
 
             for (k, i) in inject {
-                if let Some(exclude) = &i.exclude {
-                    if !exclude.is_match(param.path) {
-                        matched_injects.insert(k.clone(), i);
-                    }
-                } else {
+                if Self::qualified(param.path, i) {
                     matched_injects.insert(k.clone(), i);
                 }
             }
@@ -219,4 +227,55 @@ struct Module {
 struct Dependency {
     module: String,
     import_type: ResolveType,
+}
+
+#[cfg(test)]
+mod tests {
+    use mako_core::regex::Regex;
+
+    use super::*;
+
+    #[test]
+    fn test_qualify_all_none() {
+        let inject = Inject {
+            include: None,
+            exclude: None,
+            ..Default::default()
+        };
+        assert!(MinifishPlugin::qualified("src/index.js", &inject));
+    }
+
+    #[test]
+    fn test_qualify_only_include() {
+        let inject = Inject {
+            include: Some(Regex::new("src").unwrap()),
+            exclude: None,
+            ..Default::default()
+        };
+        assert!(MinifishPlugin::qualified("src/index.js", &inject));
+        assert!(!MinifishPlugin::qualified("lib/index.js", &inject));
+    }
+
+    #[test]
+    fn test_qualify_only_exclude() {
+        let inject = Inject {
+            include: None,
+            exclude: Some(Regex::new("src").unwrap()),
+            ..Default::default()
+        };
+        assert!(!MinifishPlugin::qualified("src/index.js", &inject));
+        assert!(MinifishPlugin::qualified("lib/index.js", &inject));
+    }
+
+    #[test]
+    fn test_qualify_both() {
+        let inject = Inject {
+            include: Some(Regex::new("index.js").unwrap()),
+            exclude: Some(Regex::new("src").unwrap()),
+            ..Default::default()
+        };
+        assert!(!MinifishPlugin::qualified("src/a.js", &inject));
+        assert!(!MinifishPlugin::qualified("src/index.js", &inject));
+        assert!(MinifishPlugin::qualified("lib/index.js", &inject));
+    }
 }

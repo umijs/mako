@@ -78,19 +78,9 @@ impl Compiler {
             return self.generate_with_plugin_driver();
         }
 
-        // {
-        //     let module_graph = self.context.module_graph.read().unwrap();
-        //     println!("module_graph: {:}", module_graph);
-        // }
-
         let t_group_chunks = Instant::now();
         self.group_chunk();
         let t_group_chunks = t_group_chunks.elapsed();
-
-        // {
-        //     let chunks = self.context.chunk_graph.read().unwrap();
-        //     println!("chunks: {:}", chunks);
-        // }
 
         let t_optimize_chunks = Instant::now();
         self.optimize_chunk();

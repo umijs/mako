@@ -59,3 +59,62 @@ impl Visit for CSSDepAnalyzer {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use mako_core::swc_css_visit::VisitWith;
+
+    use crate::ast_2::tests::TestUtils;
+
+    #[test]
+    fn test_normal() {
+        assert_eq!(run(r#"@import url(a.css);"#), vec!["a.css"]);
+        assert_eq!(run(r#"@import url("a.css");"#), vec!["a.css"]);
+        assert_eq!(run(r#"@import url('a.css');"#), vec!["a.css"]);
+        assert_eq!(run(r#"@import "a.css";"#), vec!["a.css"]);
+        assert_eq!(run(r#"@import 'a.css';"#), vec!["a.css"]);
+    }
+
+    #[test]
+    fn test_with_tidle() {
+        assert_eq!(run(r#"@import url(~a.css);"#), vec!["a.css"]);
+        assert_eq!(run(r#"@import url("~a.css");"#), vec!["a.css"]);
+        assert_eq!(run(r#"@import url('~a.css');"#), vec!["a.css"]);
+        assert_eq!(run(r#"@import "~a.css";"#), vec!["a.css"]);
+        assert_eq!(run(r#"@import '~a.css';"#), vec!["a.css"]);
+        // ignore ~/
+        assert_eq!(run(r#"@import url(~/a.css);"#), vec!["~/a.css"]);
+    }
+
+    #[test]
+    fn test_remote() {
+        assert!(run(r#"@import url(https://a.com/a.css);"#).is_empty());
+        assert!(run(r#"@import url(http://a.com/a.css);"#).is_empty());
+        assert!(run(r#"@import url(data://a.com/a.css);"#).is_empty());
+        assert!(run(r#"@import url(//a.com/a.css);"#).is_empty());
+    }
+
+    #[test]
+    fn test_multiple() {
+        assert_eq!(
+            run(r#"
+            @import url(a.css);
+            @import url(b.css);
+            "#),
+            vec!["a.css", "b.css"]
+        );
+    }
+
+    fn run(css_code: &str) -> Vec<String> {
+        let mut test_utils = TestUtils::gen_css_ast(css_code.to_string());
+        let ast = test_utils.ast.css_mut();
+        let mut analyzer = super::CSSDepAnalyzer::new();
+        ast.ast.visit_with(&mut analyzer);
+        let sources = analyzer
+            .dependencies
+            .iter()
+            .map(|dep| dep.source.clone())
+            .collect();
+        sources
+    }
+}

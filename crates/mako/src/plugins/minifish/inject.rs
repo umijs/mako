@@ -89,13 +89,14 @@ impl VisitMut for MyInjector<'_> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct Inject {
     pub from: String,
     pub name: String,
     pub named: Option<String>,
     pub namespace: Option<bool>,
     pub exclude: Option<Regex>,
+    pub include: Option<Regex>,
     pub prefer_require: bool,
 }
 
@@ -216,12 +217,12 @@ mod tests {
     use maplit::hashmap;
 
     use super::*;
-    // use crate::analyze_deps::analyze_deps;
+    use crate::analyze_deps::AnalyzeDeps;
     use crate::ast::{build_js_ast, js_ast_to_code};
+    use crate::ast_2::file::File;
+    use crate::ast_2::js_ast::JsAst;
     use crate::compiler::Context;
-    // use crate::module::ModuleAst;
-    // use crate::plugin::PluginDriver;
-    // use crate::plugins::javascript::JavaScriptPlugin;
+    use crate::module::ModuleAst;
 
     fn apply_inject_to_code(injects: HashMap<String, &Inject>, code: &str) -> String {
         let mut context = Context::default();
@@ -254,6 +255,7 @@ mod tests {
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            include: None,
             prefer_require: false,
         };
 
@@ -280,6 +282,7 @@ my.call("toast");
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            include: None,
             prefer_require: false,
         };
 
@@ -307,6 +310,7 @@ export { };
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            include: None,
             prefer_require: false,
         };
 
@@ -333,6 +337,7 @@ my.call("toast");
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            include: None,
             prefer_require: false,
         };
 
@@ -359,6 +364,7 @@ export { };
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            include: None,
             prefer_require: false,
         };
 
@@ -384,6 +390,7 @@ my.call("toast");
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            include: None,
             prefer_require: false,
         };
 
@@ -411,6 +418,7 @@ export { };
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            include: None,
             prefer_require: false,
         };
 
@@ -437,6 +445,7 @@ my.call("toast");
             from: "mock-lib".to_string(),
             namespace: Some(true),
             exclude: None,
+            include: None,
             prefer_require: false,
         };
         let code = apply_inject_to_code(
@@ -463,6 +472,7 @@ export { };
             from: "mock-lib".to_string(),
             namespace: Some(true),
             exclude: None,
+            include: None,
             prefer_require: false,
         };
         let code = apply_inject_to_code(
@@ -482,41 +492,43 @@ my.call("toast");
 
     #[test]
     fn injected_require_treat_as_dep() {
-        // let code = r#"my.call("toast");"#;
-        // let injects = Inject {
-        //     name: "my".to_string(),
-        //     named: None,
-        //     from: "mock-lib".to_string(),
-        //     namespace: Some(true),
-        //     exclude: None,
-        //     prefer_require: false,
-        // };
+        let code = r#"my.call("toast");"#;
+        let mut context = Context::default();
+        context.args = crate::compiler::Args { watch: true };
+        let context = Arc::new(context);
+        let file = File::with_content(
+            "cut.js".to_string(),
+            crate::ast_2::file::Content::Js(code.to_string()),
+            context.clone(),
+        );
+        let mut ast = JsAst::new(&file, context.clone()).unwrap();
 
-        // let mut context = Context {
-        //     plugin_driver: PluginDriver::new(vec![Arc::new(JavaScriptPlugin {})]),
-        //     ..Context::default()
-        // };
-        // context.config.devtool = None;
-        // let context = Arc::new(context);
+        GLOBALS.set(&context.meta.script.globals, || {
+            let unresolved_mark = ast.unresolved_mark;
+            let top_level_mark = ast.top_level_mark;
+            ast.ast
+                .visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
+            let injects = Inject {
+                name: "my".to_string(),
+                named: None,
+                from: "mock-lib".to_string(),
+                namespace: Some(true),
+                exclude: None,
+                include: None,
+                prefer_require: false,
+            };
+            ast.ast.visit_mut_with(&mut MyInjector::new(
+                ast.unresolved_mark,
+                hashmap! {"my".to_string() =>&injects},
+            ));
+        });
 
-        // let mut ast = build_js_ast("cut.js", code, &context).unwrap();
+        let module_ast = ModuleAst::Script(ast);
+        let deps = AnalyzeDeps::analyze_deps(&module_ast, &file, context.clone()).unwrap();
+        println!("deps: {:?}", deps);
 
-        // let mut injector =
-        //     MyInjector::new(ast.unresolved_mark, hashmap! {"my".to_string() =>&injects});
-        // GLOBALS.set(&context.meta.script.globals, || {
-        //     ast.ast.visit_mut_with(&mut resolver(
-        //         ast.unresolved_mark,
-        //         ast.top_level_mark,
-        //         false,
-        //     ));
-        //     ast.ast.visit_mut_with(&mut injector);
-        // });
-
-        // let module_ast = ModuleAst::Script(ast);
-
-        // let deps = analyze_deps(&module_ast, &"cut.js".to_string(), &context).unwrap();
-
-        // assert_eq!(deps.len(), 1);
+        assert_eq!(deps.resolved_deps.len(), 0);
+        assert_eq!(deps.missing_deps.len(), 1);
     }
 
     #[test]
@@ -527,6 +539,7 @@ my.call("toast");
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            include: None,
             prefer_require: true,
         };
 
@@ -554,6 +567,7 @@ export { };
             from: "mock-lib".to_string(),
             namespace: None,
             exclude: None,
+            include: None,
             prefer_require: true,
         };
 
