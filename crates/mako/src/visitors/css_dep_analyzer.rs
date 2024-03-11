@@ -88,10 +88,10 @@ mod tests {
 
     #[test]
     fn test_remote() {
-        assert_eq!(run(r#"@import url(https://a.com/a.css);"#).is_empty(), true);
-        assert_eq!(run(r#"@import url(http://a.com/a.css);"#).is_empty(), true);
-        assert_eq!(run(r#"@import url(data://a.com/a.css);"#).is_empty(), true);
-        assert_eq!(run(r#"@import url(//a.com/a.css);"#).is_empty(), true);
+        assert!(run(r#"@import url(https://a.com/a.css);"#).is_empty());
+        assert!(run(r#"@import url(http://a.com/a.css);"#).is_empty());
+        assert!(run(r#"@import url(data://a.com/a.css);"#).is_empty());
+        assert!(run(r#"@import url(//a.com/a.css);"#).is_empty());
     }
 
     #[test]

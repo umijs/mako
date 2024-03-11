@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::sync::mpsc::channel;
 use std::sync::Arc;
 
 use mako_core::anyhow;
@@ -14,8 +15,8 @@ use crate::load::Load;
 use crate::module::{Module, ModuleAst, ModuleId, ModuleInfo};
 use crate::parse::Parse;
 use crate::resolve::ResolverResource;
+use crate::thread_pool;
 use crate::transform::Transform;
-use crate::util::create_thread_pool;
 
 #[derive(Debug, Error)]
 pub enum BuildError {
@@ -29,11 +30,12 @@ impl Compiler {
             return Ok(HashSet::new());
         }
 
-        let (pool, rs, rr) = create_thread_pool::<Result<Module>>();
+        let (rs, rr) = channel::<Result<Module>>();
+
         let build_with_pool = |file: File, parent_resource: Option<ResolverResource>| {
             let rs = rs.clone();
             let context = self.context.clone();
-            pool.spawn(move || {
+            thread_pool::spawn(move || {
                 let result = Self::build_module(&file, parent_resource, context.clone());
                 let result = Self::handle_build_result(result, &file, context);
                 rs.send(result).unwrap();

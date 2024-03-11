@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::time::Instant;
 use std::vec;
@@ -15,8 +16,8 @@ use crate::chunk::{Chunk, ChunkType};
 use crate::chunk_pot::ChunkPot;
 use crate::compiler::{Compiler, Context};
 use crate::module::{ModuleAst, ModuleId};
+use crate::thread_pool;
 use crate::transform_in_generate::transform_css_generate;
-use crate::util::create_thread_pool;
 
 #[derive(Clone)]
 pub enum ChunkFileType {
@@ -139,7 +140,9 @@ impl Compiler {
         mako_core::mako_profile_function!();
         let chunk_graph = self.context.chunk_graph.read().unwrap();
         let chunks = chunk_graph.get_chunks();
-        let (pool, rs, rr) = create_thread_pool::<Result<Vec<ChunkFile>>>();
+
+        let (rs, rr) = channel::<Result<Vec<ChunkFile>>>();
+
         for chunk in chunks.iter() {
             if !matches!(
                 chunk.chunk_type,
@@ -148,7 +151,7 @@ impl Compiler {
                 let rs = rs.clone();
                 let context = self.context.clone();
                 let chunk_id = chunk.id.clone();
-                pool.spawn(move || {
+                thread_pool::spawn(move || {
                     let chunk_graph = context.chunk_graph.read().unwrap();
                     let module_graph = context.module_graph.read().unwrap();
                     let chunk = chunk_graph.chunk(&chunk_id).unwrap();

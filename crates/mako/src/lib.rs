@@ -37,6 +37,7 @@ mod swc_helpers;
 mod targets;
 #[cfg(test)]
 mod test_helper;
+mod thread_pool;
 mod transform;
 mod transform_in_generate;
 mod transformers;

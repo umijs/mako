@@ -311,16 +311,14 @@ mod tests {
     use std::path::PathBuf;
     use std::sync::Arc;
 
-    use mako_core::tokio;
-
     use super::build_js_ast;
     use crate::assert_debug_snapshot;
     use crate::ast::js_ast_to_code;
     use crate::compiler::Context;
     use crate::test_helper::create_mock_module;
 
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_chinese_ascii() {
+    #[test]
+    fn test_chinese_ascii() {
         let module = create_mock_module(
             PathBuf::from("/path/to/test"),
             r#"

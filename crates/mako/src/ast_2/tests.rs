@@ -70,11 +70,10 @@ impl TestUtils {
     }
 
     pub fn gen_css_ast(content: String) -> TestUtils {
-        let test_utils = TestUtils::new(TestUtilsOpts {
+        TestUtils::new(TestUtilsOpts {
             file: Some("test.css".to_string()),
             content: Some(content),
-        });
-        test_utils
+        })
     }
 
     pub fn gen_js_ast(content: String) -> TestUtils {

@@ -1,12 +1,12 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::Instant;
 
 use mako_core::anyhow::{self, Ok};
 use mako_core::colored::Colorize;
 use mako_core::notify::{self, EventKind, Watcher as NotifyWatcher};
 use mako_core::notify_debouncer_full::DebouncedEvent;
-use mako_core::tokio::time::Instant;
 use mako_core::tracing::debug;
 
 use crate::compiler::Compiler;

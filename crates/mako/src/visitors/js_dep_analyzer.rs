@@ -177,11 +177,8 @@ mod tests {
     #[test]
     fn test_require() {
         assert_eq!(run(r#"require('a');"#), vec!["a"]);
-        assert_eq!(
-            run(r#"const require = 'a'; require('a');"#).is_empty(),
-            true
-        );
-        assert_eq!(run(r#"require(a);"#).is_empty(), true);
+        assert!(run(r#"const require = 'a'; require('a');"#).is_empty());
+        assert!(run(r#"require(a);"#).is_empty());
     }
 
     #[test]
@@ -191,24 +188,15 @@ mod tests {
             vec!["a"]
         );
         // Worker is defined
-        assert_eq!(
-            run(r#"const Worker = 1;new Worker(new URL('a', import.meta.url));"#).is_empty(),
-            true
-        );
+        assert!(run(r#"const Worker = 1;new Worker(new URL('a', import.meta.url));"#).is_empty());
         // URL is defined
-        assert_eq!(
-            run(r#"const URL = 1;new Worker(new URL('a', import.meta.url));"#).is_empty(),
-            true
-        );
+        assert!(run(r#"const URL = 1;new Worker(new URL('a', import.meta.url));"#).is_empty());
         // no import.meta.url
-        assert_eq!(run(r#"new Worker(new URL('a'));"#).is_empty(), true);
+        assert!(run(r#"new Worker(new URL('a'));"#).is_empty());
         // no new URL
-        assert_eq!(run(r#"new Worker('a');"#).is_empty(), true);
+        assert!(run(r#"new Worker('a');"#).is_empty());
         // ignore remote
-        assert_eq!(
-            run(r#"new Worker(new URL('https://a', import.meta.url));"#).is_empty(),
-            true
-        );
+        assert!(run(r#"new Worker(new URL('https://a', import.meta.url));"#).is_empty());
     }
 
     #[test]
