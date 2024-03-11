@@ -93,6 +93,3 @@ twox-hash             = "1.6.3"
 
 [features]
 profile = ["dep:eframe", "dep:puffin", "dep:puffin_egui"]
-
-[dev-dependencies]
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
