@@ -34,8 +34,6 @@ impl Plugin for ContextModulePlugin {
             let glob_pattern = param.file.pathname.clone().join(glob_pattern);
             let paths = glob(glob_pattern.to_str().unwrap())?;
 
-            let is_async = param.file.params.iter().any(|(k, _)| k.eq("async"));
-
             let mut key_values = vec![];
 
             for path in paths {
@@ -76,6 +74,8 @@ impl Plugin for ContextModulePlugin {
                         }
                     }
                 }
+
+                let is_async = param.file.has_param("async");
 
                 for key in keys {
                     let load_by = if is_async { "import" } else { "require" };

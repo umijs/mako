@@ -55,7 +55,7 @@ assert.match(
 
 assert.match(
   asyncContent,
-  moduleReg("src/i18n/zh-CN.json", "English", true),
+  moduleReg("src/i18n/en-US.json", "English", true),
   "should generate context module with correct map in async chunk",
 );
 
