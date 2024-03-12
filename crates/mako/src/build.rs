@@ -211,7 +211,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         let info = {
             let file = File::with_content(
                 path.to_owned(),
-                Content::Js("".to_string()),
+                Content::Js("export {};".to_string()),
                 context.clone(),
             );
             let ast = Parse::parse(&file, context.clone()).unwrap();
