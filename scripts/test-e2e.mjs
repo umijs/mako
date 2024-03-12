@@ -16,7 +16,9 @@ const dirs = fs.readdirSync(fixtures).filter((dir) => {
     onlyDir = dir;
   }
   return (
-    !dir.startsWith('.') && fs.statSync(path.join(fixtures, dir)).isDirectory()
+    !dir.startsWith('.') &&
+    fs.statSync(path.join(fixtures, dir)).isDirectory() &&
+    fs.existsSync(path.join(fixtures, dir, 'expect.js'))
   );
 });
 

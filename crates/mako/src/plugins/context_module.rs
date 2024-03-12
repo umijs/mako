@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use mako_core::anyhow::Result;
@@ -10,9 +9,9 @@ use mako_core::swc_ecma_ast::{
 use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprExt, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
-use super::javascript::{is_commonjs_require, is_dynamic_import};
+use crate::ast_2::file::Content;
+use crate::ast_2::utils::{is_commonjs_require, is_dynamic_import};
 use crate::compiler::Context;
-use crate::load::Content;
 use crate::plugin::{Plugin, PluginLoadParam, PluginTransformJsParam};
 use crate::resolve::get_module_extensions;
 
@@ -24,22 +23,22 @@ impl Plugin for ContextModulePlugin {
     }
 
     fn load(&self, param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
-        if let (Some(glob_pattern), None) = (
+        if let (Some(glob_pattern), true) = (
             param
-                .task
-                .request
-                .query
+                .file
+                .params
                 .iter()
                 .find_map(|(k, v)| k.eq("glob").then_some(v)),
-            param.task.ext_name.as_ref(),
+            param.file.pathname.is_dir(),
         ) {
-            let glob_pattern = PathBuf::from(param.task.request.path.clone()).join(glob_pattern);
+            let glob_pattern = param.file.pathname.clone().join(glob_pattern);
             let paths = glob(glob_pattern.to_str().unwrap())?;
+
             let mut key_values = vec![];
 
             for path in paths {
                 let path = path?;
-                let rlt_path = path.strip_prefix(param.task.request.path.clone())?;
+                let rlt_path = path.strip_prefix(&param.file.pathname)?;
 
                 // full path `./i18n/zh_CN.json`
                 let mut keys = vec![format!("./{}", rlt_path.to_string_lossy())];
@@ -76,10 +75,14 @@ impl Plugin for ContextModulePlugin {
                     }
                 }
 
+                let is_async = param.file.has_param("async");
+
                 for key in keys {
+                    let load_by = if is_async { "import" } else { "require" };
                     key_values.push(format!(
-                        "'{}': () => require('{}')",
+                        "'{}': () => {}('{}')",
                         key,
+                        load_by,
                         path.to_string_lossy()
                     ));
                 }
@@ -145,9 +148,11 @@ impl VisitMut for ContextModuleVisitor {
             )
             .map(|(prefix, suffix)| (prefix, format!("**/*{}", suffix.unwrap_or("".to_string()),)))
             {
-                let ctxt_call_expr = CallExpr {
+                let args_literals = format!("{}?context&glob={}", from, glob);
+
+                let mut ctxt_call_expr = CallExpr {
                     callee: expr.callee.clone(),
-                    args: vec![quote_str!(format!("{}?context&glob={}", from, glob)).as_arg()],
+                    args: vec![quote_str!(args_literals.clone()).as_arg()],
                     span: DUMMY_SP,
                     type_args: None,
                 };
@@ -156,6 +161,10 @@ impl VisitMut for ContextModuleVisitor {
                     // require('./i18n' + n) -> require('./i18n?context&glob=**/*')('.' + n)
                     expr.callee = ctxt_call_expr.as_callee();
                 } else {
+                    // mark async import in params
+                    ctxt_call_expr.args =
+                        vec![quote_str!(format!("{}&{}", args_literals, "async")).as_arg()];
+
                     // import('./i18n' + n) -> import('./i18n?context&glob=**/*').then(m => m('.' + n))
                     expr.callee = member_expr!(
                         @EXT,

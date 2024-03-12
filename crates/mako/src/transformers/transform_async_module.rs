@@ -9,8 +9,8 @@ use swc_core::ecma::ast::ParenExpr;
 use swc_core::ecma::utils::{member_expr, quote_expr, quote_ident, ExprFactory};
 use swc_core::ecma::visit::VisitMutWith;
 
+use crate::ast_2::utils::is_commonjs_require;
 use crate::module::Dependency;
-use crate::plugins::javascript::is_commonjs_require;
 
 const ASYNC_IMPORTED_MODULE: &str = "_async__mako_imported_module_";
 
@@ -217,7 +217,7 @@ mod tests {
     use crate::compiler::Context;
     use crate::config::Config;
     use crate::module::ModuleId;
-    use crate::plugins::javascript::DepCollectVisitor;
+    use crate::visitors::js_dep_analyzer::JSDepAnalyzer;
 
     #[test]
     fn test_default_import_async_module() {
@@ -417,7 +417,7 @@ __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
                     false,
                 ));
 
-                let mut dep_collector = DepCollectVisitor::new(ast.unresolved_mark);
+                let mut dep_collector = JSDepAnalyzer::new(ast.unresolved_mark);
                 ast.ast.visit_with(&mut dep_collector);
 
                 let import_interop = ImportInterop::Swc;
@@ -433,10 +433,8 @@ __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
                     None,
                 ));
 
-                dbg!(dep_collector.dependencies());
-
                 let mut async_module =
-                    AsyncModule::new(dep_collector.dependencies(), ast.unresolved_mark, true);
+                    AsyncModule::new(&dep_collector.dependencies, ast.unresolved_mark, true);
 
                 ast.ast.visit_mut_with(&mut async_module);
             })

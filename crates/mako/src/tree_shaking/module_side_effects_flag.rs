@@ -87,8 +87,6 @@ fn match_glob_pattern(pattern: &str, path: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use mako_core::tokio;
-
     use super::match_glob_pattern;
     use crate::test_helper::{get_module, setup_compiler};
 
@@ -105,8 +103,8 @@ mod tests {
         ));
     }
 
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_side_effects_flag() {
+    #[test]
+    fn test_side_effects_flag() {
         let compiler = setup_compiler("test/build/side-effects-flag", false);
         compiler.compile().unwrap();
         let foo = get_module(&compiler, "node_modules/foo/index.ts");

@@ -168,7 +168,7 @@ impl<'cp> ChunkPot<'cp> {
                 {
                     merged_css_modules.remove(index);
                 }
-                merged_css_modules.push((module.id.id.clone(), ast));
+                merged_css_modules.push((module.id.id.clone(), &ast.ast));
                 css_raw_hashes.push(module_info.raw_hash);
             }
         }

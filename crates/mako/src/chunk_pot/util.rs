@@ -5,6 +5,7 @@ use std::sync::Arc;
 use cached::proc_macro::cached;
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::cached::SizedCache;
+use mako_core::md5;
 use mako_core::sailfish::TemplateOnce;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{
@@ -23,7 +24,6 @@ use swc_core::common::{Span, GLOBALS};
 use crate::chunk_pot::ChunkPot;
 use crate::compiler::Context;
 use crate::config::{get_pkg_name, Mode};
-use crate::load::file_content_hash;
 use crate::module::{relative_to_root, Module, ModuleAst};
 use crate::runtime::AppRuntimeTemplate;
 use crate::sourcemap::build_source_map;
@@ -309,4 +309,10 @@ fn to_module_fn_expr(module: &Module) -> Result<FnExpr> {
         ModuleAst::Css(_) => Ok(empty_module_fn_expr()),
         ModuleAst::None => Err(anyhow!("ModuleAst::None({}) cannot concert", module.id.id)),
     }
+}
+
+pub fn file_content_hash<T: AsRef<[u8]>>(content: T) -> String {
+    let digest = md5::compute(content);
+    let hash = format!("{:x}", digest);
+    hash[0..8].to_string()
 }

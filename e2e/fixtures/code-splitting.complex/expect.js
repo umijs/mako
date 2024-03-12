@@ -49,20 +49,10 @@ assert.match(
   "should ensure splitting dependent chunks on demand (not-full)"
 );
 
-assert.match(
+assert.doesNotMatch(
   files["common-async.js"],
-  moduleReg("src/should-be-common.ts", "tooLongText"),
-  "should merge common async chunk to common chunk"
-);
-
-assert.match(
-  files["index.js"].replace(/\s/g, ""),
-  new RegExp(`Promise.all\\(\\[${
-    [
-      "common"
-    ].map((f) => `__mako_require__.ensure\\("${f}"\\)`).join(",")
-  }\\]\\).then\\(__mako_require__.bind\\(__mako_require__,"src\\/should-be-common.ts"\\)\\)`),
-  "should load merged common async chunk with common chunk and without self"
+  moduleReg("src/should-not-be-common.ts", "tooLongText"),
+  "should not merge common async chunk to common chunk"
 );
 
 assert(

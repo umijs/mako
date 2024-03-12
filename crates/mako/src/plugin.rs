@@ -7,26 +7,20 @@ use mako_core::swc_common::errors::Handler;
 use mako_core::swc_common::Mark;
 use mako_core::swc_ecma_ast::Module;
 
+use crate::ast_2::file::{Content, File};
 use crate::compiler::{Args, Context};
 use crate::config::Config;
-use crate::load::Content;
 use crate::module::{Dependency, ModuleAst};
 use crate::module_graph::ModuleGraph;
 use crate::stats::StatsJsonMap;
-use crate::task::Task;
 
 #[derive(Debug)]
 pub struct PluginLoadParam<'a> {
-    pub task: &'a Task,
+    pub file: &'a File,
 }
 
 pub struct PluginParseParam<'a> {
-    pub task: &'a Task,
-    pub content: &'a Content,
-}
-
-pub struct PluginCheckAstParam<'a> {
-    pub ast: &'a ModuleAst,
+    pub file: &'a File,
 }
 
 pub struct PluginTransformJsParam<'a> {
@@ -34,10 +28,6 @@ pub struct PluginTransformJsParam<'a> {
     pub path: &'a str,
     pub top_level_mark: Mark,
     pub unresolved_mark: Mark,
-}
-
-pub struct PluginDepAnalyzeParam<'a> {
-    pub ast: &'a ModuleAst,
 }
 
 #[derive(Clone)]
@@ -72,10 +62,7 @@ pub trait Plugin: Any + Send + Sync {
         Ok(None)
     }
 
-    fn check_ast(&self, _param: &PluginCheckAstParam, _context: &Arc<Context>) -> Result<()> {
-        Ok(())
-    }
-
+    #[allow(dead_code)]
     fn transform_js(
         &self,
         _param: &PluginTransformJsParam,
@@ -92,14 +79,6 @@ pub trait Plugin: Any + Send + Sync {
         _context: &Arc<Context>,
     ) -> Result<()> {
         Ok(())
-    }
-
-    fn analyze_deps(
-        &self,
-        _param: &mut PluginDepAnalyzeParam,
-        _context: &Arc<Context>,
-    ) -> Result<Option<Vec<Dependency>>> {
-        Ok(None)
     }
 
     fn before_resolve(&self, _deps: &mut Vec<Dependency>, _context: &Arc<Context>) -> Result<()> {
@@ -183,13 +162,7 @@ impl PluginDriver {
         Ok(None)
     }
 
-    pub fn check_ast(&self, param: &PluginCheckAstParam, context: &Arc<Context>) -> Result<()> {
-        for plugin in &self.plugins {
-            plugin.check_ast(param, context)?;
-        }
-        Ok(())
-    }
-
+    #[allow(dead_code)]
     pub fn transform_js(
         &self,
         param: &PluginTransformJsParam,
@@ -214,20 +187,7 @@ impl PluginDriver {
         Ok(())
     }
 
-    pub fn analyze_deps(
-        &self,
-        param: &mut PluginDepAnalyzeParam,
-        context: &Arc<Context>,
-    ) -> Result<Vec<Dependency>> {
-        for plugin in &self.plugins {
-            let ret = plugin.analyze_deps(param, context)?;
-            if let Some(ret) = ret {
-                return Ok(ret);
-            }
-        }
-        Ok(vec![])
-    }
-
+    #[allow(dead_code)]
     pub fn before_resolve(
         &self,
         param: &mut Vec<Dependency>,
@@ -249,6 +209,7 @@ impl PluginDriver {
         Err(anyhow!("None of the plugins generate content"))
     }
 
+    #[allow(dead_code)]
     pub fn build_start(&self, context: &Arc<Context>) -> Result<Option<()>> {
         for plugin in &self.plugins {
             plugin.build_start(context)?;

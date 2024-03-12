@@ -3,7 +3,7 @@ use mako_core::swc_ecma_ast::{CondExpr, Expr};
 use mako_core::swc_ecma_utils::member_expr;
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
-use crate::plugins::javascript::is_import_meta_url;
+use crate::ast_2::utils::is_import_meta_url;
 
 pub struct MetaUrlReplacer {}
 

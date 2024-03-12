@@ -3,7 +3,7 @@ use mako_core::swc_ecma_ast::{Expr, ExprOrSpread, Lit};
 use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
-use crate::plugins::javascript::is_dynamic_import;
+use crate::ast_2::utils::is_dynamic_import;
 
 pub struct DynamicImportToRequire {
     pub unresolved_mark: Mark,

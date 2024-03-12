@@ -5,6 +5,7 @@
 
 mod analyze_deps;
 mod ast;
+pub mod ast_2;
 mod build;
 mod chunk;
 mod chunk_graph;
@@ -18,7 +19,7 @@ mod generate;
 mod generate_chunks;
 mod group_chunk;
 mod hmr;
-pub mod load;
+mod load;
 pub mod logger;
 mod minify;
 mod module;
@@ -34,13 +35,14 @@ mod sourcemap;
 mod stats;
 mod swc_helpers;
 mod targets;
-mod task;
 #[cfg(test)]
 mod test_helper;
+mod thread_pool;
 mod transform;
 mod transform_in_generate;
 mod transformers;
 mod tree_shaking;
 mod update;
 mod util;
+mod visitors;
 mod watch;

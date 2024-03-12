@@ -18,6 +18,7 @@ use crate::profile_gui::ProfileApp;
 
 mod analyze_deps;
 mod ast;
+mod ast_2;
 mod build;
 mod chunk;
 mod chunk_graph;
@@ -48,15 +49,16 @@ mod sourcemap;
 mod stats;
 mod swc_helpers;
 mod targets;
-mod task;
 #[cfg(test)]
 mod test_helper;
+mod thread_pool;
 mod transform;
 mod transform_in_generate;
 mod transformers;
 mod tree_shaking;
 mod update;
 mod util;
+mod visitors;
 mod watch;
 
 #[cfg(not(target_os = "linux"))]
@@ -71,8 +73,16 @@ static GLOBAL: mimalloc_rust::GlobalMiMalloc = mimalloc_rust::GlobalMiMalloc;
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
+    let fut = async { run().await };
+
+    tokio::runtime::Builder::new_current_thread()
+        .build()
+        .expect("Failed to create tokio runtime.")
+        .block_on(fut)
+}
+
+async fn run() -> Result<()> {
     // logger
     init_logger();
 

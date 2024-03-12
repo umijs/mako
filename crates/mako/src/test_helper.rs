@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -11,8 +10,9 @@ use mako_core::swc_ecma_codegen::Emitter;
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 use mako_core::tracing_subscriber::{fmt, EnvFilter};
 
-use crate::ast::build_js_ast;
-use crate::compiler::{self, Compiler};
+use crate::ast_2::file::File;
+use crate::ast_2::js_ast::JsAst;
+use crate::compiler::{self, Compiler, Context};
 use crate::config::{Config, Mode};
 use crate::module::{Module, ModuleId, ModuleInfo};
 
@@ -52,23 +52,18 @@ macro_rules! assert_debug_snapshot {
 pub fn create_mock_module(path: PathBuf, code: &str) -> Module {
     setup_logger();
 
-    let ast = build_js_ast(path.to_str().unwrap(), code, &Arc::new(Default::default())).unwrap();
+    let context = Arc::new(Context::default());
+    let mut file = File::new(path.to_string_lossy().to_string(), context.clone());
+    file.set_content(crate::ast_2::file::Content::Js(code.to_string()));
+    let ast = JsAst::new(&file, context.clone()).unwrap();
     let module_id = ModuleId::from_path(path.clone());
     let info = ModuleInfo {
         ast: crate::module::ModuleAst::Script(ast),
         path: path.to_string_lossy().to_string(),
-        external: None,
+        file,
+        deps: Default::default(),
         raw: code.to_string(),
-        raw_hash: 0,
-        resolved_resource: None,
-        missing_deps: HashMap::new(),
-        ignored_deps: vec![],
-        top_level_await: false,
-        is_async: false,
-        source_map_chain: vec![],
-        export_map: vec![],
-        import_map: vec![],
-        is_barrel: false,
+        ..Default::default()
     };
     Module::new(module_id, false, Some(info))
 }
