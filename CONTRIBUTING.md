@@ -97,6 +97,7 @@ Benchmark three10x.
 
 ```bash
 $ just setup-bench
+# default: --baseline master --case tmp/three10x
 $ just bench
 $ just bench --baseline v0.4.4
 $ just bench --baseline v0.4.4 --case examples/with-antd

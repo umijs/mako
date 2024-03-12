@@ -33,6 +33,7 @@ import 'zx/globals';
 
   // build baseline mako
   if (isBaselineMaster) {
+    // master may change, so always build except --skip-baseline-build is supplied
     if (!argv.skipBaselineBuild) {
       await buildBaselineMako();
     }
