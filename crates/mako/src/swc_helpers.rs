@@ -1,12 +1,10 @@
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
 
 use mako_core::lazy_static::lazy_static;
 use mako_core::swc_ecma_ast::Module;
 use swc_core::ecma::visit::VisitWith;
 
-use crate::compiler::Context;
-use crate::config::ModuleIdStrategy;
+use crate::config::{Config, ModuleIdStrategy};
 use crate::transformers::transform_interop_probe::InteropProbe;
 
 pub struct SwcHelpers {
@@ -75,15 +73,15 @@ impl SwcHelpers {
         RAW_HELPERS.keys().cloned().collect()
     }
 
-    pub fn get_swc_helpers(ast: &Module, context: &Arc<Context>) -> HashSet<String> {
-        let is_hashed = matches!(context.config.module_id_strategy, ModuleIdStrategy::Hashed);
+    pub fn get_swc_helpers(ast: &Module, config: &Config, deep: u32) -> HashSet<String> {
+        let is_hashed = matches!(config.module_id_strategy, ModuleIdStrategy::Hashed);
         let needles: &HashMap<String, String> = if is_hashed {
             &HAHSED_HELPERS
         } else {
             &RAW_HELPERS
         };
 
-        let mut probe = InteropProbe::new(needles, 1);
+        let mut probe = InteropProbe::new(needles, deep);
         ast.visit_with(&mut probe);
 
         probe.probed
@@ -98,7 +96,10 @@ impl Default for SwcHelpers {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::*;
+    use crate::compiler::Context;
     use crate::config::{Config, ModuleIdStrategy};
     use crate::module::ModuleId;
 

@@ -131,13 +131,15 @@ pub fn transform_modules_in_thread(
                 ignored: info.ignored_deps.clone(),
             };
             if let ModuleAst::Script(mut ast) = ast {
+                let wrap_async = info.is_async && info.external.is_none();
+
                 let ret = transform_js_generate(TransformJsParam {
                     module_id: &module.id,
                     context: &context,
                     ast: &mut ast,
                     dep_map: &deps_to_replace,
                     async_deps: &async_deps,
-                    wrap_async: info.is_async && info.external.is_none(),
+                    wrap_async,
                     top_level_await: info.top_level_await,
                 });
                 let message = match ret {
@@ -145,7 +147,11 @@ pub fn transform_modules_in_thread(
                         let swc_helpers = if context.args.watch {
                             None
                         } else {
-                            Some(SwcHelpers::get_swc_helpers(&ast.ast, &context))
+                            Some(SwcHelpers::get_swc_helpers(
+                                &ast.ast,
+                                &context.config,
+                                if wrap_async { 1 } else { 0 },
+                            ))
                         };
                         Ok((module_id, ModuleAst::Script(ast), swc_helpers))
                     }
