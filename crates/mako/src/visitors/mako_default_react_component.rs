@@ -71,12 +71,14 @@ mod tests {
     use swc_core::common::comments::NoopComments;
     use swc_core::ecma::transforms::testing::test;
 
-    use crate::visitors::mako_default_react_component::MakoDefaultReactComponent;
     #[test]
     fn test_normal() {
-        assert_eq!(run("export default function(){} let a=1;let b=2").as_str(), "export default function Component$$1() {}\nlet a = 1;\nlet b = 2;\n");
+        assert_eq!(
+            run("export default function(){} let a=1;let b=2").as_str(),
+            "export default function Component$$1() {}\nlet a = 1;\nlet b = 2;\n"
+        );
     }
-    fn run(js_code: &str)-> String {
+    fn run(js_code: &str) -> String {
         let cm: Lrc<SourceMap> = Default::default();
         let handler = Handler::with_tty_emitter(ColorConfig::Auto, false, false, Some(cm.clone()));
 
@@ -110,7 +112,7 @@ mod tests {
 
         // 获取生成的字符串
         // let mark = module.span.ctxt().outer();
-        let mut default = MakoDefaultReactComponent::new(cm);
+        let mut default = super::MakoDefaultReactComponent::new(cm);
         module.visit_mut_children_with(&mut default);
         module_to_string(&module)
         // })
