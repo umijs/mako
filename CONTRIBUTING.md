@@ -93,6 +93,13 @@ $ time ./target/release/mako examples/with-antd
 $ hyperfine --runs 10 "./target/release/mako examples/with-antd"
 ```
 
+Benchmark three10x.
+
+```bash
+$ just setup-bench
+$ just bench
+```
+
 Performance analysis with puffin.
 
 ```bash
