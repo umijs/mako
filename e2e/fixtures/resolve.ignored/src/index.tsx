@@ -1,8 +1,16 @@
-import assert from "assert";
 import * as import_wildcard from "ignored";
 import { some as import_partial } from "ignored";
 import import_default from "ignored";
 
-assert.deepEqual(import_wildcard, {}, `ignored module should compile to empty es module`)
-assert.equal(import_partial, undefined, `ignored module should not export anything`)
-assert.equal(import_default, undefined, `ignored module should not have a valued export default`)
+it("ignored module should compile to empty es module", () => {
+  expect(import_wildcard).toStrictEqual({})
+})
+
+it("ignored module should not export anything", () => {
+  expect(import_partial).toBe(undefined)
+})
+
+it("ignored module should not have a valued export default", () => {
+  expect(import_default).toBe(undefined)
+})
+

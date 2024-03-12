@@ -19,6 +19,7 @@
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
     "@jest/expect": "^29.7.0",
+    "@types/jest": "^29.5.12",
     "@okamjs/okam": "workspace:*",
     "@swc/helpers": "0.5.1",
     "@taplo/cli": "^0.7.0",
