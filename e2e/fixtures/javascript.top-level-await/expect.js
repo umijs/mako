@@ -1,19 +1,16 @@
 const assert = require("assert");
-const { parseBuildResult, trim, moduleReg } = require("../../../scripts/test-utils");
+const { parseBuildResult, trim, moduleReg, injectSimpleJest } = require("../../../scripts/test-utils");
 const { files } = parseBuildResult(__dirname);
 
+injectSimpleJest();
 const content = files["index.js"];
 
 assert.match(
   content,
   moduleReg(
     "src/index.tsx",
-    `__mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
-\\s*async function af() {}
-\\s*await af();
-\\s*asyncResult();
-\\s*}, 1);`,
-    true
-  ),
+    `__mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{`, true),
   "should have __mako_require__._async"
 );
+
+require("./dist/index.js");
