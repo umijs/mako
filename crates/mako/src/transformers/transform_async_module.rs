@@ -18,8 +18,8 @@ pub struct AsyncModule<'a> {
     async_deps: &'a Vec<Dependency>,
     async_deps_idents: Vec<Ident>,
     found: bool,
-    last_dep_pos: usize,
-    require_module_items: Vec<ModuleItem>,
+    first_async_dep_import_pos: usize,
+    prepend_module_items: Vec<ModuleItem>,
     top_level_await: bool,
     unresolved_mark: Mark,
 }
@@ -34,8 +34,8 @@ impl<'a> AsyncModule<'a> {
             async_deps,
             async_deps_idents: vec![],
             found: false,
-            last_dep_pos: 0,
-            require_module_items: vec![],
+            first_async_dep_import_pos: 0,
+            prepend_module_items: vec![],
             top_level_await,
             unresolved_mark,
         }
@@ -64,7 +64,7 @@ impl VisitMut for AsyncModule<'_> {
                             .take()
                             .into_var_decl(VarDeclKind::Var, ident_name.clone().into())
                             .into();
-                        self.require_module_items.push(require_stmt.into());
+                        self.prepend_module_items.push(require_stmt.into());
 
                         *n = ident_name.into();
 
@@ -91,13 +91,13 @@ impl VisitMut for AsyncModule<'_> {
             module_item.visit_mut_with(self);
             if self.found && fist_import_pos.is_none() {
                 fist_import_pos = Some(i);
-                self.last_dep_pos = i;
+                self.first_async_dep_import_pos = i;
             }
         }
 
         if !self.async_deps_idents.is_empty() {
             // Insert code after the last import statement: `var __mako_async_dependencies__ = handleAsyncDeps([async1, async2]);`
-            self.require_module_items.push(ModuleItem::Stmt(
+            self.prepend_module_items.push(ModuleItem::Stmt(
                 quote_ident!("handleAsyncDeps")
                     .as_call(
                         DUMMY_SP,
@@ -119,7 +119,7 @@ impl VisitMut for AsyncModule<'_> {
             ));
 
             // Insert code: `[async1, async2] = __mako_async_dependencies__.then ? (await __mako_async_dependencies__)() : __mako_async_dependencies__;`
-            self.require_module_items.push(ModuleItem::Stmt(
+            self.prepend_module_items.push(ModuleItem::Stmt(
                 AssignExpr {
                     op: AssignOp::Assign,
                     left: ArrayLit {
@@ -154,8 +154,8 @@ impl VisitMut for AsyncModule<'_> {
         }
 
         module_items.splice(
-            self.last_dep_pos..self.last_dep_pos,
-            self.require_module_items.take(),
+            self.first_async_dep_import_pos..self.first_async_dep_import_pos,
+            self.prepend_module_items.take(),
         );
 
         // Insert code: `asyncResult()`
