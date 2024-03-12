@@ -1,5 +1,5 @@
 use mako_core::lazy_static::lazy_static;
-use mako_core::rayon::{ThreadPool, ThreadPoolBuilder};
+use mako_core::rayon::{Scope, ThreadPool, ThreadPoolBuilder};
 
 lazy_static! {
     static ref THREAD_POOL: ThreadPool = ThreadPoolBuilder::new()
@@ -13,4 +13,12 @@ where
     F: FnOnce() + Send + 'static,
 {
     THREAD_POOL.spawn(func)
+}
+
+pub fn scope<'scope, OP, R>(op: OP) -> R
+where
+    OP: FnOnce(&Scope<'scope>) -> R + Send,
+    R: Send,
+{
+    THREAD_POOL.scope(op)
 }
