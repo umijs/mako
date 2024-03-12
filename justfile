@@ -74,7 +74,7 @@ cli +args:
 
 setup-bench:
   git clone --branch r108 --depth 1 git@github.com:mrdoob/three.js.git ./tmp/three
-  echo "import * as three from './src/Three.js'; export { three }" > tmp/three/entry.ts
+  echo "import * as three from './src/Three.js'; export { three }" > tmp/three/index.ts
   mkdir -p tmp/three10x
   for i in {1..10}; do cp -r ./tmp/three/src ./tmp/three10x/copy$i/; done
   echo > tmp/three10x/index.ts
