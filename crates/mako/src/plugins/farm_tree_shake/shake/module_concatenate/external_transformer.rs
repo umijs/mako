@@ -9,12 +9,12 @@ use swc_core::ecma::ast::{
 use swc_core::ecma::utils::{member_expr, quote_ident, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
+use crate::ast_2::utils::is_commonjs_require;
 use crate::module::ModuleId;
 use crate::plugins::farm_tree_shake::shake::module_concatenate::concatenate_context::ConcatenateContext;
 use crate::plugins::farm_tree_shake::shake::module_concatenate::utils::{
     uniq_module_default_export_name, uniq_module_export_name,
 };
-use crate::plugins::javascript::is_commonjs_require;
 
 // for define ast: `left = init;`
 macro_rules! var {

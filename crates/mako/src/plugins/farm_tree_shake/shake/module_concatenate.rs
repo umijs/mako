@@ -274,9 +274,8 @@ pub fn optimize_module_graph(
                     };
 
                     let require_src = generate_module_id(id.id.clone(), context);
-                    module_items.extend(
-                        interop.inject_external_export_decl(&require_src, &exposed_names),
-                    );
+                    module_items
+                        .extend(interop.inject_external_export_decl(&require_src, &exposed_names));
 
                     concatenate_context.add_external_names(id, exposed_names);
 
