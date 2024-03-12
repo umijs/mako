@@ -11,6 +11,7 @@ pub struct MakoDefaultReactComponent {
     cm: Lrc<SourceMap>,
 }
 impl MakoDefaultReactComponent {
+    #[allow(dead_code)]
     pub fn new(cm: Lrc<SourceMap>) -> Self {
         Self {
             js_word_indents: vec![],
