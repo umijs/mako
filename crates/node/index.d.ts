@@ -103,17 +103,24 @@ export interface BuildParams {
           metaPath?: string;
           inject?: Record<
             string,
-            | { from: string; exclude?: string; preferRequire?: boolean }
+            | {
+                from: string;
+                exclude?: string;
+                include?: string;
+                preferRequire?: boolean;
+              }
             | {
                 from: string;
                 named: string;
                 exclude?: string;
+                include?: string;
                 preferRequire?: boolean;
               }
             | {
                 from: string;
                 namespace: true;
                 exclude?: string;
+                include?: string;
                 preferRequire?: boolean;
               }
           >;

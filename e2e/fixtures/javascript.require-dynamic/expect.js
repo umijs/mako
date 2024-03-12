@@ -37,19 +37,37 @@ assert.match(
 
 assert.match(
   asyncContent,
-  moduleReg("src/i18n\\?context&glob=\\*\\*/\\*.json", "'./zh-CN.json': ()=>__mako_require__(\"src/i18n/zh-CN.json\")", true),
+  moduleReg("src/i18n\\?context&glob=\\*\\*/\\*.json&async", "'./zh-CN.json': ()=>Promise.all([\n.*__mako_require__.ensure(\"src/i18n/zh-CN.json\")\n.*]).then(__mako_require__.bind(__mako_require__, \"src/i18n/zh-CN.json\"))", true),
+  "should generate context module with correct map in async chunk",
+);
+
+assert.match(
+  asyncContent,
+  moduleReg("src/i18n/zh-CN.json", "中文", true),
+  "should generate context module with correct map in async chunk",
+);
+
+assert.match(
+  asyncContent,
+  moduleReg("src/i18n\\?context&glob=\\*\\*/\\*.json&async", "'./en-US.json': ()=>Promise.all([\n.*__mako_require__.ensure(\"src/i18n/en-US.json\")\n.*]).then(__mako_require__.bind(__mako_require__, \"src/i18n/en-US.json\"))", true),
+  "should generate context module with correct map in async chunk",
+);
+
+assert.match(
+  asyncContent,
+  moduleReg("src/i18n/en-US.json", "English", true),
   "should generate context module with correct map in async chunk",
 );
 
 assert.match(
   content,
-  moduleReg("src/index.ts", '__mako_require__.ensure("src/i18n\\?context&glob=\\*\\*/\\*.json")', true),
+  moduleReg("src/index.ts", '__mako_require__.ensure("src/i18n\\?context&glob=\\*\\*/\\*.json&async")', true),
   "should generate async require for import dynamic module",
 );
 
 assert.match(
   content,
-  moduleReg("src/index.ts", 'ensure("src/i18n\\?context&glob=\\*\\*/\\*")', true),
+  moduleReg("src/index.ts", 'ensure("src/i18n\\?context&glob=\\*\\*/\\*&async")', true),
   "should generate async require for import dynamic module with then callback",
 );
 

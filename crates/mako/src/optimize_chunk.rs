@@ -185,6 +185,13 @@ impl Compiler {
     ) {
         let chunk_graph = self.context.chunk_graph.read().unwrap();
         let chunks = chunk_graph.get_all_chunks();
+        let async_chunk_root_modules = chunks
+            .iter()
+            .filter_map(|chunk| match chunk.chunk_type {
+                ChunkType::Async => chunk.modules.last(),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
         let modules_in_chunk = match modules_in_chunk {
             Some(modules_in_chunk) => modules_in_chunk,
             None => chunks.iter().fold(vec![], |mut acc, chunk| {
@@ -192,10 +199,18 @@ impl Compiler {
                     &mut chunk
                         .modules
                         .iter()
-                        .filter_map(|m| match &chunk.chunk_type {
-                            // entry module of entry chunk should not be optimized
-                            ChunkType::Entry(entry_id, _, false) if m.id == entry_id.id => None,
-                            _ => Some((m, &chunk.id, &chunk.chunk_type)),
+                        .filter_map(|m| {
+                            match (&chunk.chunk_type, async_chunk_root_modules.contains(&m)) {
+                                // async chunk root module should not be optimized
+                                (_, true) => None,
+                                // entry module of entry chunk should not be optimized
+                                (ChunkType::Entry(entry_id, _, false), _)
+                                    if m.id == entry_id.id =>
+                                {
+                                    None
+                                }
+                                _ => Some((m, &chunk.id, &chunk.chunk_type)),
+                            }
                         })
                         .collect::<Vec<_>>(),
                 );

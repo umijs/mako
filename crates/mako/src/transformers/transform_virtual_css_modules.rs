@@ -8,8 +8,8 @@ use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::compiler::Context;
 
-pub struct VirtualCSSModules<'a> {
-    pub context: &'a Arc<Context>,
+pub struct VirtualCSSModules {
+    pub context: Arc<Context>,
     pub unresolved_mark: Mark,
 }
 
@@ -26,7 +26,7 @@ pub fn is_css_path(path: &str) -> bool {
     CSS_PATH_REGEX.is_match(path)
 }
 
-impl VisitMut for VirtualCSSModules<'_> {
+impl VisitMut for VirtualCSSModules {
     fn visit_mut_import_decl(&mut self, import_decl: &mut ImportDecl) {
         if is_css_modules_path(&import_decl.src.value)
             || (self.context.config.auto_css_modules
@@ -39,7 +39,7 @@ impl VisitMut for VirtualCSSModules<'_> {
     }
 }
 
-impl VirtualCSSModules<'_> {
+impl VirtualCSSModules {
     fn replace_source(&mut self, source: &mut Str) {
         let to_replace = format!("{}?asmodule", &source.value.to_string());
         let span = source.span;

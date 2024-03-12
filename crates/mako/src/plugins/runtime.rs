@@ -1,26 +1,11 @@
 use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
-use mako_core::swc_common::DUMMY_SP as span;
-use mako_core::swc_ecma_ast::{
-    BlockStmt, FnExpr, Function, Module, ModuleItem, ObjectLit, PropOrSpread, Stmt, UnaryExpr,
-    UnaryOp,
-};
-use mako_core::swc_ecma_utils::{quote_ident, ExprFactory, StmtOrModuleItem};
 use mako_core::tracing::debug;
 
-use crate::ast::{build_js_ast, js_ast_to_code};
 use crate::compiler::Context;
-use crate::generate_chunks::build_props;
-use crate::load::read_content;
-use crate::module::ModuleAst::Script;
-use crate::module::{Dependency, ImportType, ModuleAst, ResolveType};
+use crate::module::ModuleId;
 use crate::plugin::Plugin;
-use crate::resolve::resolve;
-use crate::task::Task;
-use crate::transform::transform;
-use crate::transform_in_generate::{transform_js_generate, TransformJsParam};
-use crate::transformers::transform_dep_replacer::DependenciesToReplace;
 
 pub struct MakoRuntime {}
 
@@ -65,130 +50,137 @@ impl MakoRuntime {
             return Ok("".to_string());
         }
 
-        let props = helpers
+        let helpers = helpers
             .into_iter()
-            .map(|source| self.build_module_prop(source.to_string(), context).unwrap())
-            .collect::<Vec<_>>();
+            .map(|source| {
+                let code = Self::get_swc_helper_code(&source).unwrap();
+                let module_id: ModuleId = source.into();
+                let module_id = module_id.generate(context);
+                format!("\"{}\": {}", module_id, code)
+            })
+            .collect::<Vec<_>>()
+            .join(",\n");
 
-        let obj_expr = ObjectLit { span, props };
-
-        let module = Module {
-            span,
-            body: vec![ModuleItem::Stmt(
-                UnaryExpr {
-                    op: UnaryOp::Bang,
-                    span,
-                    arg: FnExpr {
-                        ident: None,
-                        function: Function {
-                            params: vec![],
-                            decorators: vec![],
-                            span,
-                            body: Some(BlockStmt {
-                                span,
-                                stmts: vec![quote_ident!("registerModules")
-                                    // registerModules({})
-                                    .as_call(span, vec![obj_expr.as_arg()])
-                                    .into_stmt()],
-                            }),
-                            is_generator: false,
-                            is_async: false,
-                            type_params: None,
-                            return_type: None,
-                        }
-                        .into(),
-                    }
-                    .as_iife()
-                    .into(),
-                }
-                .into_stmt(),
-            )],
-            shebang: None,
-        };
-
-        let (code, _) = js_ast_to_code(&module, context, "dummy.js").unwrap();
-
-        Ok(code)
+        Ok(format!(
+            r#"
+  /* mako/runtime/helpers */
+  registerModules({{
+    {}
+  }});
+        "#,
+            helpers
+        ))
     }
 
-    fn build_module_prop(&self, source: String, context: &Arc<Context>) -> Result<PropOrSpread> {
-        let virtual_js = context.root.join("__v.js");
-
-        let resolved = resolve(
-            virtual_js.to_str().unwrap(),
-            &Dependency {
-                source: source.clone(),
-                resolve_as: None,
-                order: 0,
-                span: None,
-                resolve_type: ResolveType::Import(ImportType::empty()),
-            },
-            &context.resolvers,
-            context,
-        )?
-        .get_resolved_path();
-
-        let content = read_content(&resolved)?;
-
-        let ast = build_js_ast(&resolved, &content, context)?;
-        let mut script = ModuleAst::Script(ast);
-
-        transform(&mut script, context, &Task::from_normal_path(resolved))?;
-
-        let module_id = source.into();
-
-        let mut ast = if let Script(ast) = script {
-            ast
-        } else {
-            unreachable!()
+    fn get_swc_helper_code(path: &str) -> Result<String> {
+        let code = match path {
+            "@swc/helpers/_/_interop_require_default" => r#"
+function(module, exports, __mako_require__) {
+    __mako_require__.d(exports, "__esModule", {
+        value: true
+    });
+    function _export(target, all) {
+        for(var name in all)Object.defineProperty(target, name, {
+            enumerable: true,
+            get: all[name]
+        });
+    }
+    __mako_require__.e(exports, {
+        _interop_require_default: function() {
+            return _interop_require_default;
+        },
+        _: function() {
+            return _interop_require_default;
+        }
+    });
+    function _interop_require_default(obj) {
+        return obj && obj.__esModule ? obj : {
+            default: obj
         };
-
-        transform_js_generate(TransformJsParam {
-            wrap_async: false,
-            top_level_await: false,
-            dep_map: &DependenciesToReplace {
-                resolved: Default::default(),
-                missing: Default::default(),
-                ignored: vec![],
-            },
-            async_deps: &Vec::<Dependency>::new(),
-            module_id: &module_id,
-            context,
-            ast: &mut ast,
-        })?;
-
-        let stmts: Result<Vec<Stmt>> = ast
-            .ast
-            .body
-            .into_iter()
-            .map(|s| {
-                s.into_stmt()
-                    .map_err(|e| anyhow!("{:?} not a statement!", e))
-            })
-            .collect();
-        let stmts = stmts.unwrap();
-
-        let factor_decl = FnExpr {
-            ident: None,
-            function: Function {
-                params: vec![
-                    quote_ident!("module").into(),
-                    quote_ident!("exports").into(),
-                    quote_ident!("__mako_require__").into(),
-                ],
-                is_async: false,
-                span,
-                decorators: vec![],
-                return_type: None,
-                type_params: None,
-                body: Some(BlockStmt { stmts, span }),
-                is_generator: false,
-            }
-            .into(),
+    }
+}
+            "#.trim(),
+            "@swc/helpers/_/_interop_require_wildcard" => r#"
+function(module, exports, __mako_require__) {
+    __mako_require__.d(exports, "__esModule", {
+        value: true
+    });
+    function _export(target, all) {
+        for(var name in all)Object.defineProperty(target, name, {
+            enumerable: true,
+            get: all[name]
+        });
+    }
+    __mako_require__.e(exports, {
+        _interop_require_wildcard: function() {
+            return _interop_require_wildcard;
+        },
+        _: function() {
+            return _interop_require_wildcard;
+        }
+    });
+    function _getRequireWildcardCache(nodeInterop) {
+        if (typeof WeakMap !== "function") return null;
+        var cacheBabelInterop = new WeakMap();
+        var cacheNodeInterop = new WeakMap();
+        return (_getRequireWildcardCache = function(nodeInterop) {
+            return nodeInterop ? cacheNodeInterop : cacheBabelInterop;
+        })(nodeInterop);
+    }
+    function _interop_require_wildcard(obj, nodeInterop) {
+        if (!nodeInterop && obj && obj.__esModule) return obj;
+        if (obj === null || typeof obj !== "object" && typeof obj !== "function") return {
+            default: obj
         };
-
-        let obj_prop = build_props(&module_id.generate(context), factor_decl.into());
-
-        Ok(obj_prop)
+        var cache = _getRequireWildcardCache(nodeInterop);
+        if (cache && cache.has(obj)) return cache.get(obj);
+        var newObj = {};
+        var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor;
+        for(var key in obj)if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) {
+            var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null;
+            if (desc && (desc.get || desc.set)) Object.defineProperty(newObj, key, desc);
+            else newObj[key] = obj[key];
+        }
+        newObj.default = obj;
+        if (cache) cache.set(obj, newObj);
+        return newObj;
+    }
+}
+            "#.trim(),
+            "@swc/helpers/_/_export_star" => r#"
+function(module, exports, __mako_require__) {
+    __mako_require__.d(exports, "__esModule", {
+        value: true
+    });
+    function _export(target, all) {
+        for(var name in all)Object.defineProperty(target, name, {
+            enumerable: true,
+            get: all[name]
+        });
+    }
+    __mako_require__.e(exports, {
+        _export_star: function() {
+            return _export_star;
+        },
+        _: function() {
+            return _export_star;
+        }
+    });
+    function _export_star(from, to) {
+        Object.keys(from).forEach(function(k) {
+            if (k !== "default" && !Object.prototype.hasOwnProperty.call(to, k)) Object.defineProperty(to, k, {
+                enumerable: true,
+                get: function() {
+                    return from[k];
+                }
+            });
+        });
+        return from;
+    }
+}
+            "#.trim(),
+            _ => return Err(anyhow!("swc helper not found: {}", path)),
+        };
+        Ok(code.to_string())
     }
 }

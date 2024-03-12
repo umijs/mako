@@ -115,7 +115,9 @@ impl TreeShakeModule {
                             }
                             //  never happen when export without source
                             ExportSpecifierInfo::Namespace(_)
-                            | ExportSpecifierInfo::Ambiguous(_) => return None,
+                            | ExportSpecifierInfo::Ambiguous(_) => {
+                                return None;
+                            }
                         }
                     }
                 }
@@ -184,7 +186,8 @@ mod tests {
     use swc_core::common::GLOBALS;
 
     use super::TreeShakeModule;
-    use crate::ast::build_js_ast;
+    use crate::ast_2::file::{Content, File};
+    use crate::ast_2::js_ast::JsAst;
     use crate::compiler::Context;
     use crate::module::{Module, ModuleAst, ModuleInfo};
     use crate::plugins::farm_tree_shake::shake::skip_module::ReExportSource;
@@ -448,7 +451,12 @@ mod tests {
 
         let module_graph = context.module_graph.write().unwrap();
 
-        let ast = build_js_ast("test.js", code, &context).unwrap();
+        let file = File::with_content(
+            "test.js".to_string(),
+            Content::Js(code.to_string()),
+            context.clone(),
+        );
+        let ast = JsAst::new(&file, context.clone()).unwrap();
 
         let mako_module = Module {
             id: "test.js".into(),
@@ -456,18 +464,8 @@ mod tests {
             info: Some(ModuleInfo {
                 ast: ModuleAst::Script(ast),
                 path: "test".to_string(),
-                external: None,
-                raw: "".to_string(),
-                raw_hash: 0,
-                missing_deps: Default::default(),
-                ignored_deps: vec![],
-                top_level_await: false,
-                is_async: false,
-                resolved_resource: None,
-                source_map_chain: vec![],
-                import_map: vec![],
-                export_map: vec![],
-                is_barrel: false,
+                file,
+                ..Default::default()
             }),
             side_effects: false,
         };

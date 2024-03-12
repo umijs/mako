@@ -9,7 +9,7 @@ import * as icons from '@ant-design/icons';
 import context from './context';
 import common from './common';
 // make sure `should-be-split-self` has 2+ parents
-import other from './should-be-common';
+import other from './should-not-be-common';
 
 console.log(React, ReactDOM, less, overlay, refresh, antd, icons, context, common, other);
 

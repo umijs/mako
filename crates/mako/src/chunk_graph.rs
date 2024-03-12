@@ -1,3 +1,4 @@
+use core::fmt;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hasher;
 
@@ -195,5 +196,17 @@ impl ChunkGraph {
 impl Default for ChunkGraph {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl fmt::Display for ChunkGraph {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut nodes = self
+            .graph
+            .node_weights()
+            .map(|node| &node.id.id)
+            .collect::<Vec<_>>();
+        nodes.sort_by_key(|id| id.to_string());
+        write!(f, "graph\n nodes:{:?}", &nodes)
     }
 }

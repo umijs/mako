@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use mako_core::anyhow::Result;
 use mako_core::swc_common::{Mark, DUMMY_SP};
 use mako_core::swc_ecma_ast::{
     AssignOp, BlockStmt, Expr, ExprOrSpread, FnExpr, Function, Ident, ImportDecl, Lit, NamedExport,
@@ -9,11 +10,9 @@ use mako_core::swc_ecma_ast::{
 use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
+use crate::ast_2::utils::{is_commonjs_require, is_dynamic_import, is_remote};
 use crate::compiler::Context;
 use crate::module::{Dependency, ModuleId};
-use crate::plugins::css::is_url_ignored;
-use crate::plugins::javascript::{is_commonjs_require, is_dynamic_import};
-use crate::task::parse_path;
 use crate::transformers::transform_virtual_css_modules::is_css_path;
 
 pub struct DepReplacer<'a> {
@@ -30,7 +29,6 @@ pub struct DependenciesToReplace {
     // e.g. "react" => ("hashed_id", "/abs/to/react/index.js")
     pub resolved: HashMap<String, (String, String)>,
     pub missing: HashMap<String, Dependency>,
-    pub ignored: Vec<String>,
 }
 
 pub fn miss_throw_stmt<T: AsRef<str>>(source: T) -> Expr {
@@ -180,18 +178,12 @@ impl VisitMut for DepReplacer<'_> {
 
 impl DepReplacer<'_> {
     fn replace_source(&mut self, source: &mut Str) {
-        let to_replace =
-            if let Some(replacement) = self.to_replace.resolved.get(&source.value.to_string()) {
-                replacement.0.clone()
-            } else if self.to_replace.ignored.contains(&source.value.to_string()) {
-                "$$IGNORED$$".to_string()
-            } else {
-                return;
-            };
-
-        let span = source.span;
-        *source = Str::from(to_replace);
-        source.span = span;
+        if let Some(replacement) = self.to_replace.resolved.get(&source.value.to_string()) {
+            let module_id = replacement.0.clone();
+            let span = source.span;
+            *source = Str::from(module_id);
+            source.span = span;
+        }
     }
 }
 
@@ -218,7 +210,7 @@ pub fn resolve_web_worker_mut(new_expr: &mut NewExpr, unresolved_mark: Mark) -> 
                         // new URL('');
                         let args = new_expr.args.as_mut().unwrap();
                         if let box Expr::Lit(Lit::Str(ref mut str)) = &mut args[0].expr {
-                            if !is_url_ignored(&str.value) {
+                            if !is_remote(&str.value) {
                                 return Some(str);
                             }
                         }
@@ -229,6 +221,42 @@ pub fn resolve_web_worker_mut(new_expr: &mut NewExpr, unresolved_mark: Mark) -> 
     }
 
     None
+}
+
+// TODO: REMOVE THIS, pass file to visitor instead
+fn parse_path(path: &str) -> Result<FileRequest> {
+    let mut iter = path.split('?');
+    let path = iter.next().unwrap();
+    let query = iter.next().unwrap_or("");
+    let mut query_vec = vec![];
+    for pair in query.split('&') {
+        if pair.contains('=') {
+            let mut it = pair.split('=').take(2);
+            let kv = match (it.next(), it.next()) {
+                (Some(k), Some(v)) => (k.to_string(), v.to_string()),
+                _ => continue,
+            };
+            query_vec.push(kv);
+        } else if !pair.is_empty() {
+            query_vec.push((pair.to_string(), "".to_string()));
+        }
+    }
+    Ok(FileRequest {
+        path: path.to_string(),
+        query: query_vec,
+    })
+}
+
+#[derive(Debug, Clone)]
+pub struct FileRequest {
+    pub path: String,
+    pub query: Vec<(String, String)>,
+}
+
+impl FileRequest {
+    pub fn has_query(&self, key: &str) -> bool {
+        self.query.iter().any(|(k, _)| *k == key)
+    }
 }
 
 #[cfg(test)]
@@ -265,7 +293,6 @@ mod tests {
                     )
                 },
                 missing: HashMap::new(),
-                ignored: vec![],
             };
 
             let cloned = context.clone();
@@ -314,7 +341,6 @@ mod tests {
                     span: None,
                     order: 0,
                 }},
-                ignored: vec![],
             };
 
             let cloned = context.clone();
@@ -360,7 +386,6 @@ mod tests {
                     span: None,
                     order: 0,
                 }},
-                ignored: vec![],
             };
 
             let cloned = context.clone();
@@ -416,7 +441,6 @@ mod tests {
                     )
                 },
                 missing: hashmap! {},
-                ignored: vec![],
             },
             context: &context,
             unresolved_mark,

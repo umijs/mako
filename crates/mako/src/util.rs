@@ -1,19 +1,12 @@
 use std::path::PathBuf;
-use std::sync::mpsc::{channel, Receiver, Sender};
-use std::sync::Arc;
 
+use mako_core::anyhow::{anyhow, Result};
 use mako_core::base64::engine::general_purpose;
 use mako_core::base64::Engine;
 use mako_core::merge_source_map::sourcemap::SourceMap;
 use mako_core::merge_source_map::{merge, MergeOptions};
 use mako_core::pathdiff::diff_paths;
-use mako_core::rayon::{ThreadPool, ThreadPoolBuilder};
-
-pub fn create_thread_pool<T>() -> (Arc<ThreadPool>, Sender<T>, Receiver<T>) {
-    let pool = Arc::new(ThreadPoolBuilder::new().build().unwrap());
-    let (rs, rr) = channel();
-    (pool, rs, rr)
-}
+use mako_core::regex::Regex;
 
 pub fn base64_decode(bytes: &[u8]) -> Vec<u8> {
     general_purpose::STANDARD.decode(bytes).unwrap()
@@ -40,4 +33,18 @@ pub fn merge_source_map(source_map_chain: Vec<Vec<u8>>, root: PathBuf) -> Vec<u8
     let mut buf = vec![];
     merged.to_writer(&mut buf).unwrap();
     buf
+}
+
+pub trait ParseRegex {
+    fn parse_into_regex(&self) -> Result<Option<Regex>>;
+}
+
+impl ParseRegex for Option<String> {
+    fn parse_into_regex(&self) -> Result<Option<Regex>> {
+        self.as_ref().map_or(Ok(None), |v| {
+            Regex::new(v)
+                .map(Some)
+                .map_err(|_| anyhow!("Config Error invalid regex: {}", v))
+        })
+    }
 }

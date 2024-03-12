@@ -22,6 +22,7 @@ use crate::plugins::minifish::Inject;
 use crate::resolve::{get_resolvers, Resolvers};
 use crate::stats::StatsInfo;
 use crate::swc_helpers::SwcHelpers;
+use crate::util::ParseRegex;
 
 pub struct Context {
     pub module_graph: RwLock<ModuleGraph>,
@@ -236,18 +237,7 @@ impl Compiler {
             Arc::new(plugins::copy::CopyPlugin {}),
             Arc::new(plugins::import::ImportPlugin {}),
             // file types
-            Arc::new(plugins::raw::RawPlugin {}),
-            Arc::new(plugins::css::CSSPlugin {}),
             Arc::new(plugins::context_module::ContextModulePlugin {}),
-            Arc::new(plugins::javascript::JavaScriptPlugin {}),
-            Arc::new(plugins::json::JSONPlugin {}),
-            Arc::new(plugins::md::MdPlugin {}),
-            Arc::new(plugins::svg::SVGPlugin {}),
-            Arc::new(plugins::toml::TOMLPlugin {}),
-            Arc::new(plugins::wasm::WASMPlugin {}),
-            Arc::new(plugins::xml::XMLPlugin {}),
-            Arc::new(plugins::yaml::YAMLPlugin {}),
-            Arc::new(plugins::assets::AssetsPlugin {}),
             Arc::new(plugins::runtime::MakoRuntime {}),
             Arc::new(plugins::farm_tree_shake::FarmTreeShake {}),
             Arc::new(plugins::invalid_syntax::InvalidSyntaxPlugin {}),
@@ -274,16 +264,6 @@ impl Compiler {
                 let mut map = HashMap::new();
 
                 for (k, ii) in inject.iter() {
-                    let exclude = if let Some(exclude) = &ii.exclude {
-                        if let Ok(regex) = Regex::new(exclude) {
-                            Some(regex)
-                        } else {
-                            return Err(anyhow!("Config Error invalid regex: {}", exclude));
-                        }
-                    } else {
-                        None
-                    };
-
                     map.insert(
                         k.clone(),
                         Inject {
@@ -291,7 +271,8 @@ impl Compiler {
                             name: k.clone(),
                             named: ii.named.clone(),
                             namespace: ii.namespace,
-                            exclude,
+                            exclude: ii.exclude.parse_into_regex()?,
+                            include: ii.include.parse_into_regex()?,
                             prefer_require: ii.prefer_require.map_or(false, |v| v),
                         },
                     );
@@ -376,7 +357,26 @@ impl Compiler {
         println!("{}", building_with_message);
         {
             mako_core::mako_profile_scope!("Build Stage");
-            self.build()?;
+            let files = self
+                .context
+                .config
+                .entry
+                .values()
+                .map(|entry| {
+                    let mut entry = entry.to_string_lossy().to_string();
+                    let is_browser = matches!(
+                        self.context.config.platform,
+                        crate::config::Platform::Browser
+                    );
+                    let watch = self.context.args.watch;
+                    let hmr = self.context.config.hmr.is_some();
+                    if is_browser && watch && hmr {
+                        entry = format!("{}?hmr", entry);
+                    }
+                    crate::ast_2::file::File::new_entry(entry, self.context.clone())
+                })
+                .collect();
+            self.build(files)?;
         }
         let result = {
             mako_core::mako_profile_scope!("Generate Stage");

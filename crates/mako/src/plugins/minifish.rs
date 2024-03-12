@@ -13,9 +13,9 @@ use mako_core::swc_ecma_visit::VisitMutWith;
 use serde::Serialize;
 use unsimplify::UnSimplify;
 
+use crate::ast_2::file::{Asset, Content};
 use crate::compiler::Context;
-use crate::load::Content::Assets;
-use crate::load::{read_content, Asset, Content};
+use crate::load::FileSystem;
 use crate::module::{Dependency as ModuleDependency, ModuleAst, ResolveType};
 use crate::plugin::{Plugin, PluginLoadParam, PluginParseParam, PluginTransformJsParam};
 use crate::plugins::bundless_compiler::to_dist_path;
@@ -27,7 +27,19 @@ pub struct MinifishPlugin {
     pub inject: Option<HashMap<String, Inject>>,
 }
 
-impl MinifishPlugin {}
+impl MinifishPlugin {
+    fn qualified(path: &str, inject: &Inject) -> bool {
+        if let Some(exclude) = &inject.exclude {
+            if exclude.is_match(path) {
+                return false;
+            }
+        }
+        inject
+            .include
+            .as_ref()
+            .map_or(true, |include| include.is_match(path))
+    }
+}
 
 impl Plugin for MinifishPlugin {
     fn name(&self) -> &str {
@@ -35,9 +47,9 @@ impl Plugin for MinifishPlugin {
     }
 
     fn load(&self, param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
-        if param.task.is_match(vec!["json", "json5"]) {
+        if param.file.extname == "json" || param.file.extname == "json5" {
             let root = _context.root.clone();
-            let to: PathBuf = param.task.request.path.clone().into();
+            let to = param.file.pathname.clone();
 
             let relative = to
                 .strip_prefix(root)
@@ -49,14 +61,15 @@ impl Plugin for MinifishPlugin {
                 Some(js_content) => Ok(Some(Content::Js(js_content.to_string()))),
 
                 None => {
-                    let content = read_content(param.task.path.as_str())?;
+                    let content = FileSystem::read_file(&param.file.pathname)?;
+                    // let content = read_content(param.file.pathname)?;
 
                     let asset = Asset {
-                        path: param.task.path.clone(),
+                        path: param.file.pathname.to_string_lossy().to_string(),
                         content,
                     };
 
-                    Ok(Some(Assets(asset)))
+                    Ok(Some(Content::Assets(asset)))
                 }
             };
         }
@@ -68,8 +81,8 @@ impl Plugin for MinifishPlugin {
         param: &PluginParseParam,
         _context: &Arc<Context>,
     ) -> Result<Option<ModuleAst>> {
-        if param.task.request.path.ends_with(".json") {
-            if let Assets(_) = param.content {
+        if param.file.extname == "json" {
+            if let Some(Content::Assets(_)) = param.file.content {
                 return Ok(Some(ModuleAst::None));
             }
         }
@@ -91,11 +104,7 @@ impl Plugin for MinifishPlugin {
             let mut matched_injects = HashMap::new();
 
             for (k, i) in inject {
-                if let Some(exclude) = &i.exclude {
-                    if !exclude.is_match(param.path) {
-                        matched_injects.insert(k.clone(), i);
-                    }
-                } else {
+                if Self::qualified(param.path, i) {
                     matched_injects.insert(k.clone(), i);
                 }
             }
@@ -218,4 +227,55 @@ struct Module {
 struct Dependency {
     module: String,
     import_type: ResolveType,
+}
+
+#[cfg(test)]
+mod tests {
+    use mako_core::regex::Regex;
+
+    use super::*;
+
+    #[test]
+    fn test_qualify_all_none() {
+        let inject = Inject {
+            include: None,
+            exclude: None,
+            ..Default::default()
+        };
+        assert!(MinifishPlugin::qualified("src/index.js", &inject));
+    }
+
+    #[test]
+    fn test_qualify_only_include() {
+        let inject = Inject {
+            include: Some(Regex::new("src").unwrap()),
+            exclude: None,
+            ..Default::default()
+        };
+        assert!(MinifishPlugin::qualified("src/index.js", &inject));
+        assert!(!MinifishPlugin::qualified("lib/index.js", &inject));
+    }
+
+    #[test]
+    fn test_qualify_only_exclude() {
+        let inject = Inject {
+            include: None,
+            exclude: Some(Regex::new("src").unwrap()),
+            ..Default::default()
+        };
+        assert!(!MinifishPlugin::qualified("src/index.js", &inject));
+        assert!(MinifishPlugin::qualified("lib/index.js", &inject));
+    }
+
+    #[test]
+    fn test_qualify_both() {
+        let inject = Inject {
+            include: Some(Regex::new("index.js").unwrap()),
+            exclude: Some(Regex::new("src").unwrap()),
+            ..Default::default()
+        };
+        assert!(!MinifishPlugin::qualified("src/a.js", &inject));
+        assert!(!MinifishPlugin::qualified("src/index.js", &inject));
+        assert!(MinifishPlugin::qualified("lib/index.js", &inject));
+    }
 }
