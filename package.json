@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "benchmark": "esno scripts/benchmark.ts",
     "changelog:format": "esno scripts/format-changelog.ts",
     "prepare": "husky install",
     "biome:format": "biome check --apply .",

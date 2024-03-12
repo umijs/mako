@@ -98,6 +98,8 @@ Benchmark three10x.
 ```bash
 $ just setup-bench
 $ just bench
+$ just bench --baseline v0.4.4
+$ just bench --baseline v0.4.4 --case examples/with-antd
 ```
 
 Performance analysis with puffin.

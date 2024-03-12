@@ -80,5 +80,5 @@ setup-bench:
   echo > tmp/three10x/entry.ts
   for i in {1..10}; do echo "import * as three$i from './copy$i/Three.js'; export { three$i }" >> tmp/three10x/entry.ts; done
 
-bench:
-  hyperfine --runs 10 "./target/release/mako ./tmp/three10x --mode production"
+bench +args='':
+  npm run benchmark -- {{args}}
