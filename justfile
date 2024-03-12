@@ -77,7 +77,7 @@ setup-bench:
   echo "import * as three from './src/Three.js'; export { three }" > tmp/three/entry.ts
   mkdir -p tmp/three10x
   for i in {1..10}; do cp -r ./tmp/three/src ./tmp/three10x/copy$i/; done
-  echo > tmp/three10x/entry.ts
+  echo > tmp/three10x/index.ts
   for i in {1..10}; do echo "import * as three$i from './copy$i/Three.js'; export { three$i }" >> tmp/three10x/index.ts; done
 
 bench +args='':
