@@ -78,7 +78,7 @@ setup-bench:
   mkdir -p tmp/three10x
   for i in {1..10}; do cp -r ./tmp/three/src ./tmp/three10x/copy$i/; done
   echo > tmp/three10x/entry.ts
-  for i in {1..10}; do echo "import * as three$i from './copy$i/Three.js'; export { three$i }" >> tmp/three10x/entry.ts; done
+  for i in {1..10}; do echo "import * as three$i from './copy$i/Three.js'; export { three$i }" >> tmp/three10x/index.ts; done
 
 bench +args='':
   npm run benchmark -- {{args}}
