@@ -256,14 +256,8 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()>
 
                         // transform async module
                         if wrap_async {
-                            let mut async_module = AsyncModule {
-                                async_deps,
-                                async_deps_idents: Vec::new(),
-                                last_dep_pos: 0,
-                                top_level_await,
-                                context,
-                                unresolved_mark,
-                            };
+                            let mut async_module =
+                                AsyncModule::new(async_deps, unresolved_mark, top_level_await);
                             ast.ast.visit_mut_with(&mut async_module);
                         }
 

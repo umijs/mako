@@ -80,14 +80,14 @@ impl Plugin for JavaScriptPlugin {
     }
 }
 
-struct DepCollectVisitor {
+pub struct DepCollectVisitor {
     dependencies: Vec<Dependency>,
     order: usize,
     unresolved_mark: Mark,
 }
 
 impl DepCollectVisitor {
-    fn new(unresolved_mark: Mark) -> Self {
+    pub(crate) fn new(unresolved_mark: Mark) -> Self {
         Self {
             dependencies: vec![],
             // start with 1
@@ -96,6 +96,12 @@ impl DepCollectVisitor {
             unresolved_mark,
         }
     }
+
+    #[cfg(test)]
+    pub(crate) fn dependencies(&self) -> &Vec<Dependency> {
+        &self.dependencies
+    }
+
     fn bind_dependency(
         &mut self,
         source: String,
