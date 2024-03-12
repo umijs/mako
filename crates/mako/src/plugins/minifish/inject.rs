@@ -221,7 +221,7 @@ mod tests {
     use crate::ast::{build_js_ast, js_ast_to_code};
     use crate::ast_2::file::File;
     use crate::ast_2::js_ast::JsAst;
-    use crate::compiler::Context;
+    use crate::compiler::{Args, Context};
     use crate::module::ModuleAst;
 
     fn apply_inject_to_code(injects: HashMap<String, &Inject>, code: &str) -> String {
@@ -493,8 +493,10 @@ my.call("toast");
     #[test]
     fn injected_require_treat_as_dep() {
         let code = r#"my.call("toast");"#;
-        let mut context = Context::default();
-        context.args = crate::compiler::Args { watch: true };
+        let context = Context {
+            args: Args { watch: true },
+            ..Context::default()
+        };
         let context = Arc::new(context);
         let file = File::with_content(
             "cut.js".to_string(),
