@@ -8,6 +8,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use mako_core::anyhow::Result;
 use mako_core::colored::*;
+use mako_core::indexmap::IndexMap;
 use mako_core::pathdiff::diff_paths;
 use mako_core::serde::Serialize;
 use swc_core::common::source_map::Pos;
@@ -259,27 +260,50 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
                 .iter()
                 .map(|id| id.id.clone())
                 .collect::<Vec<_>>();
-            let origins = module_graph
-                .get_dependents(chunk.modules.last().unwrap())
-                .iter()
-                .map(|(id, dep)| StatsJsonChunkOriginItem {
-                    module: id.id.clone(),
-                    module_identifier: id.id.clone(),
-                    module_name: module_graph
-                        .get_module(id)
-                        .unwrap()
-                        .info
-                        .clone()
-                        .map(|info| info.path)
-                        .unwrap_or("".to_string()),
-                    // -> "lo-hi"
-                    loc: dep
-                        .span
-                        .map(|span| format!("{}-{}", span.lo.to_u32(), span.hi.to_u32()))
-                        .unwrap_or("".to_string()),
-                    request: dep.source.clone(),
-                })
-                .collect::<Vec<_>>();
+            let origin_chunk_modules = match chunk.chunk_type {
+                // sync chunk is the common dependency of async chunk
+                // so the origin chunk module within its dependent async chunk rather than itself
+                ChunkType::Sync => chunk_graph
+                    .dependents_chunk(&chunk.id)
+                    .iter()
+                    .filter_map(|chunk_id| chunk_graph.chunk(chunk_id).unwrap().modules.last())
+                    .collect::<Vec<_>>(),
+                _ => vec![chunk.modules.last().unwrap()],
+            };
+            let mut origins_set = IndexMap::new();
+            for origin_chunk_module in origin_chunk_modules {
+                let origin_deps = module_graph.get_dependents(origin_chunk_module);
+
+                for (id, dep) in origin_deps {
+                    let unique_key = format!("{}:{}", id.id, dep.source);
+
+                    if !origins_set.contains_key(&unique_key) {
+                        origins_set.insert(
+                            unique_key,
+                            StatsJsonChunkOriginItem {
+                                module: id.id.clone(),
+                                module_identifier: id.id.clone(),
+                                module_name: module_graph
+                                    .get_module(id)
+                                    .unwrap()
+                                    .info
+                                    .clone()
+                                    .map(|info| info.path)
+                                    .unwrap_or("".to_string()),
+                                // -> "lo-hi"
+                                loc: dep
+                                    .span
+                                    .map(|span| {
+                                        format!("{}-{}", span.lo.to_u32(), span.hi.to_u32())
+                                    })
+                                    .unwrap_or("".to_string()),
+                                request: dep.source.clone(),
+                            },
+                        );
+                    }
+                }
+            }
+            let origins = origins_set.into_values().collect::<Vec<_>>();
 
             StatsJsonChunkItem {
                 chunk_type: StatsJsonType::Chunk("chunk".to_string()),
