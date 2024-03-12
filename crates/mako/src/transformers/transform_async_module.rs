@@ -9,9 +9,9 @@ use mako_core::swc_ecma_ast::{
 };
 use mako_core::swc_ecma_visit::VisitMut;
 
+use crate::ast_2::utils::is_commonjs_require;
 use crate::compiler::Context;
 use crate::module::Dependency;
-use crate::plugins::javascript::is_commonjs_require;
 
 const ASYNC_DEPS_IDENT: &str = "__mako_async_dependencies__";
 const ASYNC_IMPORTED_MODULE: &str = "_async__mako_imported_module_";

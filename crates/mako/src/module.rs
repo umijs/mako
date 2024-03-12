@@ -1,18 +1,21 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::base64::engine::{general_purpose, Engine};
+use mako_core::md5;
 use mako_core::pathdiff::diff_paths;
 use mako_core::swc_common::{Span, DUMMY_SP};
 use mako_core::swc_ecma_ast::{BlockStmt, FnExpr, Function, Module as SwcModule};
 use mako_core::swc_ecma_utils::quote_ident;
-use mako_core::{md5, swc_css_ast};
 use serde::Serialize;
 
-use crate::ast::Ast;
+use crate::analyze_deps::AnalyzeDepsResult;
+use crate::ast_2::css_ast::CssAst;
+use crate::ast_2::file::File;
+use crate::ast_2::js_ast::JsAst;
 use crate::compiler::Context;
 use crate::config::ModuleIdStrategy;
 use crate::resolve::ResolverResource;
@@ -42,12 +45,12 @@ pub enum ResolveType {
 #[derive(Debug, Clone)]
 pub struct ModuleInfo {
     pub ast: ModuleAst,
+    pub file: File,
+    pub deps: AnalyzeDepsResult,
     pub path: String,
     pub external: Option<String>,
     pub raw: String,
     pub raw_hash: u64,
-    pub missing_deps: HashMap<String, Dependency>,
-    pub ignored_deps: Vec<String>,
     /// Modules with top-level-await
     pub top_level_await: bool,
     /// The top-level-await module must be an async module, in addition, for example, wasm is also an async module
@@ -56,55 +59,24 @@ pub struct ModuleInfo {
     pub resolved_resource: Option<ResolverResource>,
     /// The transformed source map chain of this module
     pub source_map_chain: Vec<Vec<u8>>,
-    pub import_map: Vec<ImportInfo>,
-    pub export_map: Vec<ExportInfo>,
-    pub is_barrel: bool,
 }
 
-#[derive(Debug, Clone)]
-pub struct ImportInfo {
-    pub source: String,
-    pub specifiers: Vec<ImportSpecifierInfo>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ImportSpecifierInfo {
-    Namespace(String),
-    Named {
-        local: String,
-        imported: Option<String>,
-    },
-    Default(String),
-}
-
-#[derive(Debug, Clone)]
-pub enum ExportInfo {
-    Named {
-        source: Option<String>,
-        specifiers: Vec<ExportSpecifierInfo>,
-    },
-    // export * from 'foo';
-    All {
-        source: String,
-    },
-    Decl {
-        ident: String,
-    },
-}
-
-#[derive(Debug, Clone)]
-pub enum ExportSpecifierInfo {
-    // export * from 'foo';
-    // All(Vec<String>),
-    // export { foo, bar, default as zoo } from 'foo';
-    Named {
-        local: String,
-        exported: Option<String>,
-    },
-    // export default xxx;
-    Default(String),
-    // export * as foo from 'foo';
-    Namespace(String),
+impl Default for ModuleInfo {
+    fn default() -> Self {
+        Self {
+            ast: ModuleAst::None,
+            file: Default::default(),
+            deps: Default::default(),
+            path: "".to_string(),
+            external: None,
+            raw: "".to_string(),
+            raw_hash: 0,
+            top_level_await: false,
+            is_async: false,
+            resolved_resource: None,
+            source_map_chain: vec![],
+        }
+    }
 }
 
 fn md5_hash(source_str: &str, lens: usize) -> String {
@@ -201,9 +173,8 @@ impl From<PathBuf> for ModuleId {
 
 #[derive(Debug, Clone)]
 pub enum ModuleAst {
-    Script(Ast),
-    Css(swc_css_ast::Stylesheet),
-    #[allow(dead_code)]
+    Script(JsAst),
+    Css(CssAst),
     None,
 }
 

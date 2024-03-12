@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -19,12 +20,11 @@ use mako_core::swc_error_reporters::handler::try_with_handler;
 use mako_core::tracing::debug;
 use mako_core::{swc_css_ast, swc_css_prefixer};
 
-use crate::ast::Ast;
+use crate::ast_2::js_ast::JsAst;
 use crate::compiler::{Compiler, Context};
 use crate::config::OutputMode;
 use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
 use crate::swc_helpers::SwcHelpers;
-use crate::targets;
 use crate::transformers::transform_async_module::AsyncModule;
 use crate::transformers::transform_css_handler::CssHandler;
 use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
@@ -32,7 +32,7 @@ use crate::transformers::transform_dynamic_import::DynamicImport;
 use crate::transformers::transform_mako_require::MakoRequire;
 use crate::transformers::transform_meta_url_replacer::MetaUrlReplacer;
 use crate::transformers::transform_optimize_define_utils::OptimizeDefineUtils;
-use crate::util::create_thread_pool;
+use crate::{targets, thread_pool};
 
 impl Compiler {
     pub fn transform_all(&self) -> Result<()> {
@@ -93,14 +93,15 @@ pub fn transform_modules_in_thread(
     async_deps_by_module_id: HashMap<ModuleId, Vec<Dependency>>,
 ) -> Result<()> {
     mako_core::mako_profile_function!();
-    let (pool, rs, rr) =
-        create_thread_pool::<Result<(ModuleId, ModuleAst, Option<HashSet<String>>)>>();
+
+    let (rs, rr) = channel::<Result<(ModuleId, ModuleAst, Option<HashSet<String>>)>>();
+
     for module_id in module_ids {
         let context = context.clone();
         let rs = rs.clone();
         let module_id = module_id.clone();
         let async_deps = async_deps_by_module_id.get(&module_id).unwrap().clone();
-        pool.spawn(move || {
+        thread_pool::spawn(move || {
             let module_graph = context.module_graph.read().unwrap();
             let deps = module_graph.get_dependencies(&module_id);
             let mut resolved_deps: HashMap<String, (String, String)> = deps
@@ -127,8 +128,7 @@ pub fn transform_modules_in_thread(
             let ast = info.ast.clone();
             let deps_to_replace = DependenciesToReplace {
                 resolved: resolved_deps,
-                missing: info.missing_deps.clone(),
-                ignored: info.ignored_deps.clone(),
+                missing: info.deps.missing_deps.clone(),
             };
             if let ModuleAst::Script(mut ast) = ast {
                 let ret = transform_js_generate(TransformJsParam {
@@ -192,7 +192,7 @@ fn insert_swc_helper_replace(map: &mut HashMap<String, (String, String)>, contex
 pub struct TransformJsParam<'a> {
     pub module_id: &'a ModuleId,
     pub context: &'a Arc<Context>,
-    pub ast: &'a mut Ast,
+    pub ast: &'a mut JsAst,
     pub dep_map: &'a DependenciesToReplace,
     pub async_deps: &'a Vec<Dependency>,
     pub wrap_async: bool,

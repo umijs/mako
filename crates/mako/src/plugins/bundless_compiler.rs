@@ -19,7 +19,8 @@ use mako_core::swc_ecma_visit::VisitMutWith;
 use mako_core::swc_error_reporters::handler::try_with_handler;
 use mako_core::tracing::warn;
 
-use crate::ast::{js_ast_to_code, Ast};
+use crate::ast::js_ast_to_code;
+use crate::ast_2::js_ast::JsAst;
 use crate::compiler::{Args, Context};
 use crate::config::Config;
 use crate::module::{ModuleAst, ModuleId};
@@ -181,8 +182,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
 
             let deps_to_replace = DependenciesToReplace {
                 resolved: resolved_deps,
-                missing: info.missing_deps.clone(),
-                ignored: vec![],
+                missing: info.deps.missing_deps.clone(),
             };
 
             if let ModuleAst::Script(ast) = ast {
@@ -198,7 +198,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
 pub fn transform_js_generate(
     module_id: &ModuleId,
     context: &Arc<Context>,
-    ast: &mut Ast,
+    ast: &mut JsAst,
     dep_map: &DependenciesToReplace,
     _is_entry: bool,
 ) {
