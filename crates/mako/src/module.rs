@@ -76,11 +76,22 @@ impl From<&ImportDecl> for ImportType {
     }
 }
 
+impl From<&NamedExportType> for ImportType {
+    fn from(value: &NamedExportType) -> Self {
+        let mut res = Self::empty();
+        value.iter().for_each(|b| match b {
+            NamedExportType::Default => res.insert(Self::Default),
+            NamedExportType::Named => res.insert(Self::Named),
+            NamedExportType::Namespace => res.insert(Self::Namespace),
+            _ => {}
+        });
+        res
+    }
+}
+
 impl From<&NamedExport> for NamedExportType {
     fn from(decl: &NamedExport) -> Self {
         let mut res = Self::empty();
-
-        dbg!(&decl.specifiers);
 
         decl.specifiers
             .iter()
