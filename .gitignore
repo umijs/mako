@@ -15,4 +15,3 @@
 /crates/mako/test/compile/auto-code-splitting/node_modules
 .DS_Store
 /.idea
-e2e/fixtures/webpack.scope-hoisting.*
