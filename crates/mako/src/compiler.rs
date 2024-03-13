@@ -384,11 +384,9 @@ impl Compiler {
             let (rs, rr) = channel::<Result<()>>();
             // need to put all rayon parallel iterators run in the existed scope, or else rayon
             // will create a new thread pool for those parallel iterators
-            thread_pool::scope(|s| {
-                s.spawn(|_| {
-                    let res = self.generate();
-                    rs.send(res).unwrap();
-                });
+            thread_pool::install(|| {
+                let res = self.generate();
+                rs.send(res).unwrap();
             });
             rr.recv().unwrap()
         };
