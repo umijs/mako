@@ -20,7 +20,7 @@ import 'zx/globals';
 
   async function buildBaselineMako() {
     if (!isGitClean) {
-      await $`git stash`;
+      await $`git stash --include-untracked`;
     }
     await $`git checkout ${baseline}`;
     await $`cargo build --release`;
@@ -52,5 +52,5 @@ import 'zx/globals';
   await $`cargo build --release`;
 
   // run benchmark
-  await $`hyperfine --warmup 1 --runs 3 "./target/release/mako ${casePath} --mode production" "./tmp/${makoBaselineName} ${casePath} --mode production"`;
+  await $`hyperfine --warmup 3 --runs 10 "./target/release/mako ${casePath} --mode production" "./tmp/${makoBaselineName} ${casePath} --mode production"`;
 })();
