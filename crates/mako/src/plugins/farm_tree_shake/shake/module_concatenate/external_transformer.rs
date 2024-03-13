@@ -2,14 +2,15 @@ use std::collections::{HashMap, HashSet};
 
 use swc_core::common::{Mark, DUMMY_SP};
 use swc_core::ecma::ast::{
-    EmptyStmt, ExportNamedSpecifier, ExportSpecifier, Expr, ExprOrSpread, ImportDecl,
-    ImportSpecifier, Lit, MemberExpr, Module, ModuleDecl, ModuleExportName, ModuleItem,
-    NamedExport, Stmt, VarDecl, VarDeclKind, VarDeclarator,
+    EmptyStmt, ExportSpecifier, Expr, ExprOrSpread, ImportDecl, ImportSpecifier, Lit, MemberExpr,
+    Module, ModuleDecl, ModuleExportName, ModuleItem, NamedExport, Stmt, VarDecl, VarDeclKind,
+    VarDeclarator,
 };
 use swc_core::ecma::utils::{member_expr, quote_ident, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast_2::utils::is_commonjs_require;
+use crate::export_as;
 use crate::module::ModuleId;
 use crate::plugins::farm_tree_shake::shake::module_concatenate::concatenate_context::ConcatenateContext;
 use crate::plugins::farm_tree_shake::shake::module_concatenate::utils::{
@@ -24,18 +25,6 @@ macro_rules! var {
             name: $left.local.clone().into(),
             init: Some($init.into()),
             definite: false,
-        }
-    };
-}
-
-// for define ast: `export { orig as exported }`
-macro_rules! export {
-    ( $orig:expr => $exported:expr ) => {
-        ExportNamedSpecifier {
-            span: DUMMY_SP,
-            orig: ModuleExportName::Ident($orig),
-            exported: Some(ModuleExportName::Ident($exported.clone())),
-            is_type_only: false,
         }
     };
 }
@@ -91,8 +80,8 @@ impl<'a> ExternalTransformer<'_> {
                 ExportSpecifier::Namespace(namespace) => {
                     match &namespace.name {
                         ModuleExportName::Ident(exported) => {
-                            let spec = export!( external_module() => exported);
-                            var_decorators.push(spec.into());
+                            let spec = export_as!( external_module() => exported);
+                            var_decorators.push(spec);
                         }
                         ModuleExportName::Str(_) => {}
                     };
@@ -116,8 +105,8 @@ impl<'a> ExternalTransformer<'_> {
                     stmts.push(dcl!( external_module.default => local_default_name.clone()).into());
 
                     // for export { foo as default }
-                    let spec = export!( local_default_name => default_spec.exported);
-                    var_decorators.push(spec.into());
+                    let spec = export_as!( local_default_name => default_spec.exported);
+                    var_decorators.push(spec);
                 }
                 ExportSpecifier::Named(named) => match (&named.orig, &named.exported) {
                     (ModuleExportName::Ident(orig), Some(ModuleExportName::Ident(exported))) => {
@@ -134,7 +123,7 @@ impl<'a> ExternalTransformer<'_> {
                         let orig = orig.clone();
 
                         stmts.push(dcl!(external_module.orig  => local_proxy_name.clone()).into());
-                        var_decorators.push(export!(local_proxy_name => exported ).into());
+                        var_decorators.push(export_as!(local_proxy_name => exported ));
                     }
                     (ModuleExportName::Ident(orig), None) => {
                         let local_proxy_name = if orig.sym.eq("default") {
@@ -151,7 +140,7 @@ impl<'a> ExternalTransformer<'_> {
                         let exported = orig.clone();
 
                         stmts.push(dcl!(external_module.orig => local_proxy_name.clone()).into());
-                        var_decorators.push(export!( local_proxy_name => exported).into());
+                        var_decorators.push(export_as!( local_proxy_name => exported));
                     }
                     (_, _) => {}
                 },

@@ -17,6 +17,7 @@ use crate::module::{relative_to_root, ModuleId};
 use crate::plugins::farm_tree_shake::shake::module_concatenate::concatenate_context::ConcatenateContext;
 use crate::plugins::farm_tree_shake::shake::module_concatenate::inner_transformer::inner_import_specifier_to_stmts;
 use crate::plugins::farm_tree_shake::shake::module_concatenate::utils::MODULE_CONCATENATE_ERROR_STR_MODULE_NAME;
+use crate::{export, export_as};
 
 pub(super) struct RootTransformer<'a> {
     pub concatenate_context: &'a mut ConcatenateContext,
@@ -151,8 +152,35 @@ impl<'a> VisitMut for RootTransformer<'a> {
 
                                 for spec in &export_named.specifiers {
                                     match spec {
-                                        ExportSpecifier::Namespace(_) => {
-                                            todo!();
+                                        ExportSpecifier::Namespace(namespace) => {
+                                            let i = items.as_mut().unwrap();
+
+                                            match &namespace.name {
+                                                ModuleExportName::Ident(ident) => {
+                                                    let orig_symbol =
+                                                        export_map.get(&"*".to_string()).unwrap();
+                                                    let orig = quote_ident!(orig_symbol.clone());
+
+                                                    i.push(
+                                                        ModuleDecl::ExportNamed(NamedExport {
+                                                            specifiers: vec![export_as!(
+                                                                 orig => ident
+                                                            )],
+                                                            src: None,
+                                                            type_only: false,
+                                                            with: None,
+                                                            span: Default::default(),
+                                                        })
+                                                        .into(),
+                                                    )
+                                                }
+                                                ModuleExportName::Str(_) => {
+                                                    unimplemented!(
+                                                        "{}",
+                                                        MODULE_CONCATENATE_ERROR_STR_MODULE_NAME
+                                                    );
+                                                }
+                                            }
                                         }
                                         ExportSpecifier::Default(_) => {
                                             todo!();
@@ -167,15 +195,7 @@ impl<'a> VisitMut for RootTransformer<'a> {
                                                 if exported_ident.sym.eq(mapped_export) {
                                                     let module_dcl: ModuleDecl = NamedExport {
                                                         span: Default::default(),
-                                                        specifiers: vec![ExportNamedSpecifier {
-                                                            span: Default::default(),
-                                                            orig: ModuleExportName::Ident(
-                                                                exported_ident.clone(),
-                                                            ),
-                                                            exported: None,
-                                                            is_type_only: false,
-                                                        }
-                                                        .into()],
+                                                        specifiers: vec![export!(exported_ident)],
                                                         type_only: false,
                                                         src: None,
                                                         with: None,
@@ -222,7 +242,7 @@ impl<'a> VisitMut for RootTransformer<'a> {
                         {
                             let mut key_value_props: Vec<PropOrSpread> = vec![];
                             for (exported_name, local_name) in module_exports.iter() {
-                                if exported_name.ne("default") {
+                                if exported_name.ne("default") && exported_name.ne("*") {
                                     key_value_props.push(
                                         Prop::KeyValue(KeyValueProp {
                                             key: quote_ident!(exported_name.clone()).into(),

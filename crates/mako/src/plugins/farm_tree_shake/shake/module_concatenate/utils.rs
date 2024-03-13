@@ -23,6 +23,37 @@ pub fn uniq_module_prefix(module_id: &ModuleId) -> String {
     )
 }
 
+// for define ast: `export { orig as exported }`
+#[macro_export]
+macro_rules! export_as {
+    ( $orig:expr => $exported:expr ) => {
+        mako_core::swc_ecma_ast::ExportSpecifier::Named(
+            mako_core::swc_ecma_ast::ExportNamedSpecifier {
+                span: DUMMY_SP,
+                orig: mako_core::swc_ecma_ast::ModuleExportName::Ident($orig),
+                exported: Some(mako_core::swc_ecma_ast::ModuleExportName::Ident(
+                    $exported.clone(),
+                )),
+                is_type_only: false,
+            },
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! export {
+    ( $orig:expr ) => {
+        mako_core::swc_ecma_ast::ExportSpecifier::Named(
+            mako_core::swc_ecma_ast::ExportNamedSpecifier {
+                span: DUMMY_SP,
+                orig: mako_core::swc_ecma_ast::ModuleExportName::Ident($orig),
+                exported: None,
+                is_type_only: false,
+            },
+        )
+    };
+}
+
 pub fn uniq_module_default_export_name(module_id: &ModuleId) -> String {
     format!("{}_0", uniq_module_prefix(module_id))
 }
