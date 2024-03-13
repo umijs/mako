@@ -296,9 +296,13 @@ pub fn optimize_module_graph(
                 let mut all_import_type = ImportType::empty();
 
                 module_graph.get_dependents(id).iter().for_each(|(_, dep)| {
-                    if let ResolveType::Import(import_type) = &dep.resolve_type {
-                        all_import_type |= *import_type
-                    };
+                    match &dep.resolve_type {
+                        ResolveType::Import(import_type) => all_import_type |= *import_type,
+                        ResolveType::ExportNamed(named_export_type) => {
+                            all_import_type |= named_export_type.into();
+                        }
+                        _ => {}
+                    }
                 });
 
                 let module = module_graph.get_module_mut(id).unwrap();
@@ -398,6 +402,11 @@ pub fn optimize_module_graph(
 
             root_module_ast.body.splice(0..0, module_items);
             root_module_ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
+
+            if cfg!(debug_assertions) && p {
+                let code_map = js_ast_to_code(&root_module_ast, context, &config.root.id).unwrap();
+                println!("root after all:\n{}\n", code_map.0);
+            }
 
             let root_module = module_graph.get_module_mut(&config.root).unwrap();
             let ast = &mut root_module.info.as_mut().unwrap().ast;

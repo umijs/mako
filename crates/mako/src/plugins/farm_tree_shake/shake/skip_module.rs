@@ -73,7 +73,7 @@ impl ReExportReplace {
 
     pub(crate) fn to_export_dep(&self, span: Span) -> Dependency {
         let resolve_type = match &self.re_export_source.re_export_type {
-            ReExportType::Namespace => ResolveType::ExportAll,
+            ReExportType::Namespace => ResolveType::ExportNamed(NamedExportType::Namespace),
             ReExportType::Default => ResolveType::ExportNamed(NamedExportType::Default),
             ReExportType::Named(_) => ResolveType::ExportNamed(NamedExportType::Named),
         };
@@ -298,11 +298,11 @@ pub(super) fn skip_module_optimize(
                             to_delete = export_named.specifiers.is_empty();
 
                             if let Some(ident) = matched_ident
-                                && let Some(specifier) = specifier
+                                && specifier.is_some()
                             {
                                 let module_item = replace.to_export_module_item(ident);
                                 to_insert.push(module_item);
-                                to_insert_deps.push(replace.to_export_dep(specifier.span()));
+                                to_insert_deps.push(replace.to_export_dep(export_named.span()));
                             }
                         }
                     }
