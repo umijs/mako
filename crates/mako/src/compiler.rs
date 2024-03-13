@@ -382,6 +382,8 @@ impl Compiler {
         let result = {
             mako_core::mako_profile_scope!("Generate Stage");
             let (rs, rr) = channel::<Result<()>>();
+            // need to put all rayon parallel iterators run in the existed scope, or else rayon
+            // will create a new thread pool for those parallel iterators
             thread_pool::scope(|s| {
                 s.spawn(|_| {
                     let res = self.generate();
