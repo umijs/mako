@@ -38,7 +38,9 @@ mod tests {
     fn test_normal() {
         assert!(run1(r#"export default function(){}"#).contains("Component$$"));
         assert!(run1(r#"export default function(){} let Component$$ = 1"#).contains("Component$$1"));
-        assert!(run1(r#"let Component$$ = 1; export default function(){}"#).contains("Component$$1"));
+        assert!(
+            run1(r#"let Component$$ = 1; export default function(){}"#).contains("Component$$1")
+        );
     }
     fn run1(js_code: &str) -> String {
         let mut test_utils = TestUtils::gen_js_ast(js_code.to_string());
