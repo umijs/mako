@@ -10,7 +10,7 @@ use mako_core::swc_ecma_ast::{
 use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
-use crate::ast_2::utils::{is_commonjs_require, is_dynamic_import, is_remote};
+use crate::ast_2::utils::{is_commonjs_require, is_dynamic_import, is_remote_or_data};
 use crate::compiler::Context;
 use crate::module::{Dependency, ModuleId};
 use crate::transformers::transform_virtual_css_modules::is_css_path;
@@ -210,7 +210,7 @@ pub fn resolve_web_worker_mut(new_expr: &mut NewExpr, unresolved_mark: Mark) -> 
                         // new URL('');
                         let args = new_expr.args.as_mut().unwrap();
                         if let box Expr::Lit(Lit::Str(ref mut str)) = &mut args[0].expr {
-                            if !is_remote(&str.value) {
+                            if !is_remote_or_data(&str.value) {
                                 return Some(str);
                             }
                         }
