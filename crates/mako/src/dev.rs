@@ -12,10 +12,11 @@ use mako_core::notify_debouncer_full::new_debouncer;
 use mako_core::tokio::sync::broadcast;
 use mako_core::tracing::debug;
 use mako_core::tungstenite::Message;
-use mako_core::{hyper, hyper_staticfile, hyper_tungstenite, tokio};
+use mako_core::{hyper, hyper_staticfile, hyper_tungstenite};
 
 use crate::compiler::{Compiler, Context};
 use crate::plugin::{PluginGenerateEndParams, PluginGenerateStats};
+use crate::tokio_runtime;
 use crate::watch::Watcher;
 
 pub struct DevServer {
@@ -93,7 +94,7 @@ impl DevServer {
                     debug!("new websocket connection");
                     let (response, websocket) = hyper_tungstenite::upgrade(req, None).unwrap();
                     let txws = txws.clone();
-                    tokio::spawn(async move {
+                    tokio_runtime::spawn(async move {
                         let receiver = txws.subscribe();
                         Self::handle_websocket(websocket, receiver).await.unwrap();
                     });
@@ -138,7 +139,7 @@ impl DevServer {
     ) -> Result<()> {
         let websocket = websocket.await?;
         let (mut sender, mut ws_recv) = websocket.split();
-        let task = tokio::spawn(async move {
+        let task = tokio_runtime::spawn(async move {
             loop {
                 if let Ok(msg) = receiver.recv().await {
                     if sender
