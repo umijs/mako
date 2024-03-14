@@ -75,12 +75,10 @@ cli +args:
 setup-bench:
   git clone --branch r108 --depth 1 git@github.com:mrdoob/three.js.git ./tmp/three
   echo "import * as three from './src/Three.js'; export { three }" > tmp/three/index.ts
-  mkdir -p tmp/three10x/multiChunks
+  mkdir -p tmp/three10x
   for i in {1..10}; do cp -r ./tmp/three/src ./tmp/three10x/copy$i/; done
   echo > tmp/three10x/index.ts
   for i in {1..10}; do echo "import * as three$i from './copy$i/Three.js'; export { three$i }" >> tmp/three10x/index.ts; done
-  echo > tmp/three10x/multiChunks/index.ts
-  for i in {1..10}; do echo "import('../copy$i/Three.js');" >> tmp/three10x/multiChunks/index.ts; done
 
 bench +args='':
   npm run benchmark -- {{args}}
