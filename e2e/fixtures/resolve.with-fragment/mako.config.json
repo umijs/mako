@@ -1,4 +1,3 @@
 {
-  "minify": false,
-  "_treeShaking": false
+  "minify": false
 }
