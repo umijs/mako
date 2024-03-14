@@ -317,32 +317,9 @@ impl<'a> VisitMut for InnerTransform<'a> {
 
                                             if let Some(mapped_export) = export_map.get(&orig_name)
                                             {
-                                                let exported_ident =
-                                                    if exported_ident.sym.eq("default") {
-                                                        let default_binding = self
-                                                            .get_non_conflict_name(
-                                                                &uniq_module_default_export_name(
-                                                                    self.module_id,
-                                                                ),
-                                                            );
-                                                        self.my_top_decls
-                                                            .insert(default_binding.clone());
-                                                        self.exports.insert(
-                                                            "default".to_string(),
-                                                            default_binding.clone(),
-                                                        );
-
-                                                        quote_ident!(default_binding)
-                                                    } else {
-                                                        exported_ident
-                                                    };
-
-                                                stmts.as_mut().unwrap().push(
-                                                    declare_var_with_init_stmt(
-                                                        exported_ident,
-                                                        mapped_export,
-                                                    )
-                                                    .into(),
+                                                self.exports.insert(
+                                                    exported_ident.sym.to_string(),
+                                                    mapped_export.clone(),
                                                 );
                                             }
                                         }
@@ -965,26 +942,46 @@ var __$m_mut_js_0 = t;"#
     }
 
     #[test]
-    fn test_export_default_with_src() {
+    fn test_export_named_with_src() {
         let mut ccn_ctx = ConcatenateContext {
             modules_in_scope: hashmap! {
                 ModuleId::from("src/index.js") => hashmap! {
-                    "default".to_string() => "my_default".to_string()
+                    "named".to_string() => "named".to_string()
                 }
             },
             ..Default::default()
         };
-        let code = inner_trans_code(r#"export { default } from "./src""#, &mut ccn_ctx);
+        let code = inner_trans_code(r#"export { named } from "./src""#, &mut ccn_ctx);
 
-        assert_eq!(code, r#"var __$m_mut_js_0 = my_default;"#);
-        assert_eq!(
-            ccn_ctx.top_level_vars,
-            hashset!("__$m_mut_js_0".to_string())
-        );
+        assert_eq!(code, r#""#);
+        assert!(ccn_ctx.top_level_vars.is_empty());
         assert_eq!(
             current_export_map(&ccn_ctx),
             &hashmap!(
-                "default".to_string() => "__$m_mut_js_0".to_string()
+                "named".to_string() => "named".to_string()
+            )
+        );
+    }
+
+    #[test]
+    fn test_export_default_with_src() {
+        let mut ccn_ctx = ConcatenateContext {
+            modules_in_scope: hashmap! {
+                ModuleId::from("src/index.js") => hashmap! {
+                    "default".to_string() => "src_index_default".to_string()
+                }
+            },
+            ..Default::default()
+        };
+        let orig_top_level_vars = ccn_ctx.top_level_vars.clone();
+        let code = inner_trans_code(r#"export { default } from "./src""#, &mut ccn_ctx);
+
+        assert_eq!(code, r#""#);
+        assert_eq!(ccn_ctx.top_level_vars, orig_top_level_vars);
+        assert_eq!(
+            current_export_map(&ccn_ctx),
+            &hashmap!(
+                "default".to_string() => "src_index_default".to_string()
             )
         );
     }
