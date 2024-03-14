@@ -19,6 +19,7 @@ oxc_resolver = "1.5.4"
 serde        = { workspace = true }
 serde_json   = { workspace = true }
 swc_core     = { workspace = true, features = ["swc_ecma_quote_macros"] }
+url          = { version = "2.5.0" }
 
 [target.'cfg(not(target_os = "linux"))'.dependencies]
 mimalloc-rust = { workspace = true }
