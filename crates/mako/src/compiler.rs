@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Instant, UNIX_EPOCH};
 
@@ -17,12 +18,12 @@ use crate::config::{hash_config, Config, OutputMode};
 use crate::module_graph::ModuleGraph;
 use crate::optimize_chunk::OptimizeChunksInfo;
 use crate::plugin::{Plugin, PluginDriver, PluginGenerateEndParams, PluginGenerateStats};
-use crate::plugins;
 use crate::plugins::minifish::Inject;
 use crate::resolve::{get_resolvers, Resolvers};
 use crate::stats::StatsInfo;
 use crate::swc_helpers::SwcHelpers;
 use crate::util::ParseRegex;
+use crate::{plugins, thread_pool};
 
 pub struct Context {
     pub module_graph: RwLock<ModuleGraph>,
@@ -380,7 +381,14 @@ impl Compiler {
         }
         let result = {
             mako_core::mako_profile_scope!("Generate Stage");
-            self.generate()
+            let (rs, rr) = channel::<Result<()>>();
+            // need to put all rayon parallel iterators run in the existed scope, or else rayon
+            // will create a new thread pool for those parallel iterators
+            thread_pool::install(|| {
+                let res = self.generate();
+                rs.send(res).unwrap();
+            });
+            rr.recv().unwrap()
         };
         let t_compiler_duration = t_compiler.elapsed();
         if result.is_ok() {
