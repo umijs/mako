@@ -4,7 +4,7 @@ use mako_core::swc_css_ast::{Url, UrlValue};
 use mako_core::swc_css_visit::VisitMut;
 
 use crate::ast_2::file::File;
-use crate::ast_2::utils::{is_remote, remove_first_tilde};
+use crate::ast_2::utils::{is_remote_or_data_or_hash, remove_first_tilde};
 use crate::compiler::Context;
 use crate::load::Load;
 use crate::module::Dependency;
@@ -28,7 +28,7 @@ impl VisitMut for CSSUrlReplacer {
             box UrlValue::Raw(s) => s.value.to_string(),
         };
 
-        if is_remote(&url) {
+        if is_remote_or_data_or_hash(&url) {
             return;
         }
         let url = remove_first_tilde(url);
