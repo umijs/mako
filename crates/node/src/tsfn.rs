@@ -10,9 +10,7 @@ use crate::threadsafe_function;
 
 #[napi(object)]
 pub struct JsHooks {
-    #[napi(
-        ts_type = "(filePath: string) => Promise<{ content: string, type: 'css'|'javascript' }> ;"
-    )]
+    #[napi(ts_type = "(filePath: string) => Promise<{ content: string, type: 'css'|'js' }> ;")]
     pub load: Option<JsFunction>,
     #[napi(ts_type = "(data: {isFirstCompile: boolean; time: number; stats: {
         startTime: number;
