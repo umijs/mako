@@ -460,18 +460,24 @@ impl<'a> VisitMut for InnerTransform<'a> {
                             &uniq_module_default_export_name(self.module_id),
                         );
 
-                        let stmt: Stmt = export_default_expr
-                            .expr
-                            .take()
-                            .into_var_decl(
-                                VarDeclKind::Var,
-                                quote_ident!(span, default_binding_name.clone()).into(),
-                            )
-                            .into();
-                        self.my_top_decls.insert(default_binding_name.clone());
-                        self.exports
-                            .insert("default".to_string(), default_binding_name);
-                        *item = stmt.into();
+                        if let Some(exported_ident) = export_default_expr.expr.as_ident() {
+                            self.exports
+                                .insert("default".to_string(), exported_ident.sym.to_string());
+                            stmts = Some(vec![]);
+                        } else {
+                            let stmt: Stmt = export_default_expr
+                                .expr
+                                .take()
+                                .into_var_decl(
+                                    VarDeclKind::Var,
+                                    quote_ident!(span, default_binding_name.clone()).into(),
+                                )
+                                .into();
+                            self.my_top_decls.insert(default_binding_name.clone());
+                            self.exports
+                                .insert("default".to_string(), default_binding_name);
+                            *item = stmt.into();
+                        }
                     }
                     ModuleDecl::ExportAll(_) => {}
                     ModuleDecl::TsImportEquals(_) => {}
@@ -763,20 +769,12 @@ mod tests {
             ..Default::default()
         };
 
-        let code = inner_trans_code("var n = 1;export default n;", &mut ccn_ctx);
+        let code = inner_trans_code("export default 1;", &mut ccn_ctx);
 
-        assert_eq!(
-            code,
-            r#"var n = 1;
-var __$m_mut_js_0_1 = n;"#
-        );
+        assert_eq!(code, r#"var __$m_mut_js_0_1 = 1;"#);
         assert_eq!(
             ccn_ctx.top_level_vars,
-            hashset!(
-                "n".to_string(),
-                "__$m_mut_js_0_1".to_string(),
-                "__$m_mut_js_0".to_string(),
-            )
+            hashset!("__$m_mut_js_0_1".to_string(), "__$m_mut_js_0".to_string(),)
         );
         assert_eq!(
             current_export_map(&ccn_ctx),
@@ -867,18 +865,29 @@ var __$m_mut_js_0_1 = n;"#
     }
 
     #[test]
-    fn test_export_decl_var_expr() {
+    fn test_export_decl_ident_expr() {
         let mut ccn_ctx = ConcatenateContext::default();
         let code = inner_trans_code("let t = 1; export default t", &mut ccn_ctx);
 
+        assert_eq!(code, r#"let t = 1;"#);
+        assert_eq!(ccn_ctx.top_level_vars, hashset!("t".to_string()));
         assert_eq!(
-            code,
-            r#"let t = 1;
-var __$m_mut_js_0 = t;"#
+            current_export_map(&ccn_ctx),
+            &hashmap!(
+                "default".to_string() => "t".to_string()
+            )
         );
+    }
+
+    #[test]
+    fn test_export_decl_un_namable_expr() {
+        let mut ccn_ctx = ConcatenateContext::default();
+        let code = inner_trans_code("export default 40+2", &mut ccn_ctx);
+
+        assert_eq!(code, r#"var __$m_mut_js_0 = 40 + 2;"#);
         assert_eq!(
             ccn_ctx.top_level_vars,
-            hashset!("__$m_mut_js_0".to_string(), "t".to_string())
+            hashset!("__$m_mut_js_0".to_string())
         );
         assert_eq!(
             current_export_map(&ccn_ctx),
