@@ -14,11 +14,3 @@ where
 {
     THREAD_POOL.spawn(func)
 }
-
-pub fn install<OP, R>(op: OP) -> R
-where
-    OP: FnOnce() -> R + Send,
-    R: Send,
-{
-    THREAD_POOL.install(op)
-}
