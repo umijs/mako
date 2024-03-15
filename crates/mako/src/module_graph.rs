@@ -223,8 +223,8 @@ impl ModuleGraph {
         let mut deps = vec![];
 
         while let Some((edge_index, _)) = edges.next(&self.graph) {
-            let depencies = self.graph.edge_weight(edge_index).unwrap();
-            deps.push(depencies);
+            let dependencies = self.graph.edge_weight(edge_index).unwrap();
+            deps.push(dependencies);
         }
         deps
     }
