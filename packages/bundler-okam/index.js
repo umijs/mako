@@ -5,6 +5,7 @@ const assert = require('assert');
 const { createProxy, createHttpsServer } = require('@umijs/bundler-utils');
 const lodash = require('lodash');
 const chalk = require('chalk');
+const { TypeChecker } = require('./plugins/fork-ts-checker/index');
 const {
   createProxyMiddleware,
 } = require('@umijs/bundler-utils/compiled/http-proxy-middleware');
@@ -97,6 +98,12 @@ exports.build = async function (opts) {
     const err = new Error('Build with mako failed.');
     err.stack = null;
     throw err;
+  }
+
+  // 后置ts校验,不影响打包速度
+  if (!!okamConfig.tsChecker) {
+    const typeChecker = new TypeChecker(cwd);
+    typeChecker.check();
   }
 
   const statsJsonPath = path.join(cwd, 'dist', 'stats.json');
@@ -467,6 +474,7 @@ async function getOkamConfig(opts) {
     externals,
     copy = [],
     clean,
+    tsChecker,
   } = opts.config;
   const outputPath = path.join(opts.cwd, 'dist');
   // TODO:
@@ -595,6 +603,7 @@ async function getOkamConfig(opts) {
     flexBugs: true,
     react: opts.react || {},
     emotion,
+    tsChecker,
     ...(opts.disableCopy ? { copy: [] } : { copy: ['public'].concat(copy) }),
   };
 

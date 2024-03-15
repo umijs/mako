@@ -383,6 +383,9 @@ importers:
       rimraf:
         specifier: 5.0.1
         version: 5.0.1
+      typescript:
+        specifier: ^5.4.2
+        version: 5.4.2
       webpack-5-chain:
         specifier: 8.0.1
         version: 8.0.1
@@ -12301,6 +12304,7 @@ packages:
       object-assign: 4.1.1
       prop-types: 15.8.1
     dev: false
+    bundledDependencies: false
 
   /react@18.1.0:
     resolution: {integrity: sha512-4oL8ivCz5ZEPyclFQXaNksK3adutVS8l2xzZU0cqEFrE9Sb7fC0EFK5uEk74wIreL1DERyjvsU915j1pcT2uEQ==}
@@ -13593,6 +13597,12 @@ packages:
     engines: {node: '>=12.20'}
     hasBin: true
     dev: true
+
+  /typescript@5.4.2:
+    resolution: {integrity: sha512-+2/g0Fds1ERlP6JsakQQDXjZdZMM+rqpamFZJEKh4kwTIn3iDkgKtby0CeNd5ATNZ4Ry1ax15TMx0W2V+miizQ==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+    dev: false
 
   /umi@4.0.70(@babel/core@7.22.1)(@types/node@20.4.2)(@types/react@18.2.7)(eslint@8.41.0)(postcss@8.4.24)(prettier@2.8.8)(react-dom@18.2.0)(react@18.2.0)(styled-components@5.3.10)(stylelint@14.16.1)(typescript@5.0.4)(webpack@5.84.1):
     resolution: {integrity: sha512-e6GwzZXC1U+XPJhLaOMIr6IBWpi8mGap6ExRkApidfbYZ8HxilvrVHnaLUYSykp206RhZBnJWI7r99mYu3e5eQ==}
