@@ -1,5 +1,5 @@
-use mako_core::swc_atoms::JsWord;
 use mako_core::swc_ecma_ast::*;
+use mako_core::swc_ecma_utils::private_ident;
 use mako_core::swc_ecma_visit::VisitMut;
 
 pub struct MakoDefaultReactComponent {}
@@ -10,11 +10,61 @@ impl MakoDefaultReactComponent {
     }
 }
 impl VisitMut for MakoDefaultReactComponent {
+    fn visit_mut_export_default_expr(&mut self, decl: &mut ExportDefaultExpr) {
+        // TODO: 箭头函数变量名重复场景未覆盖
+        if let Expr::Arrow(ArrowExpr {
+            params,
+            body,
+            is_async,
+            is_generator,
+            return_type,
+            type_params,
+            span,
+            ..
+        }) = *decl.expr.clone()
+        {
+            let fn_body = match *body {
+                BlockStmtOrExpr::BlockStmt(block_stmt) => block_stmt,
+                BlockStmtOrExpr::Expr(expr) => {
+                    BlockStmt {
+                        span, // 使用正确的 span
+                        stmts: vec![Stmt::Return(ReturnStmt {
+                            span, // 使用正确的 span
+                            arg: Some(expr),
+                        })],
+                    }
+                }
+            };
+            let fn_params: Vec<Param> = params
+                .iter()
+                .cloned()
+                .map(|pat: Pat| Param {
+                    span,
+                    decorators: vec![],
+                    pat,
+                })
+                .collect::<Vec<_>>();
+            // 箭头函数
+            let function_expr = Expr::Fn(FnExpr {
+                ident: Some(private_ident!("Component$$")), // 将标识符设置为 None
+                function: Box::new(Function {
+                    params: fn_params,
+                    body: Some(fn_body),
+                    is_async,
+                    is_generator,
+                    span,
+                    return_type,
+                    type_params,
+                    decorators: vec![],
+                }),
+            });
+            decl.expr = Box::new(function_expr);
+        }
+    }
     fn visit_mut_export_default_decl(&mut self, decl: &mut ExportDefaultDecl) {
         if let DefaultDecl::Fn(fn_expr) = &mut decl.decl {
             if fn_expr.ident.is_none() {
-                let ident = Ident::new(JsWord::from("Component$$"), fn_expr.function.span);
-                fn_expr.ident = Some(ident.clone());
+                fn_expr.ident = Some(private_ident!("Component$$"));
             }
         }
     }
@@ -84,8 +134,7 @@ mod tests {
         }
 
         // 将缓存字符串转换为实际的 Rust 字符串
-        let output = String::from_utf8(output_buf).unwrap();
 
-        output
+        String::from_utf8(output_buf).unwrap()
     }
 }
