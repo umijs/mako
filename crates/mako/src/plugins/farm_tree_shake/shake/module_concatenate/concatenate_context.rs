@@ -9,7 +9,7 @@ use swc_core::ecma::utils::{quote_ident, quote_str, ExprFactory};
 use crate::module::{ImportType, ModuleId, NamedExportType, ResolveType};
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Default)]
-    pub struct EesmDependantFlags: u16 {
+    pub struct EsmDependantFlags: u16 {
         const Default = 1;
         const Named = 1<<2;
         const ExportAll = 1<<3;
@@ -32,7 +32,7 @@ macro_rules! require {
     };
 }
 
-impl EesmDependantFlags {
+impl EsmDependantFlags {
     pub fn inject_external_export_decl(
         &self,
         src: &str,
@@ -41,7 +41,7 @@ impl EesmDependantFlags {
         let mut interopee = require!(src);
         let runtime_helpers: RuntimeFlags = self.into();
 
-        if self.contains(EesmDependantFlags::ExportAll) {
+        if self.contains(EsmDependantFlags::ExportAll) {
             interopee = MemberExpr {
                 span: DUMMY_SP,
                 obj: quote_ident!("_export_star").into(),
@@ -141,21 +141,21 @@ impl RuntimeFlags {
     }
 }
 
-impl From<&EesmDependantFlags> for RuntimeFlags {
-    fn from(value: &EesmDependantFlags) -> Self {
+impl From<&EsmDependantFlags> for RuntimeFlags {
+    fn from(value: &EsmDependantFlags) -> Self {
         let mut rt_flags = RuntimeFlags::empty();
-        if value.contains(EesmDependantFlags::Default) {
+        if value.contains(EsmDependantFlags::Default) {
             rt_flags.insert(RuntimeFlags::DefaultInterOp);
         }
 
-        if value.contains(EesmDependantFlags::Namespace)
-            || value.contains(EesmDependantFlags::Named | EesmDependantFlags::Default)
+        if value.contains(EsmDependantFlags::Namespace)
+            || value.contains(EsmDependantFlags::Named | EsmDependantFlags::Default)
         {
             rt_flags.remove(RuntimeFlags::DefaultInterOp);
             rt_flags.insert(RuntimeFlags::WildcardInterOp);
         }
 
-        if value.contains(EesmDependantFlags::ExportAll) {
+        if value.contains(EsmDependantFlags::ExportAll) {
             rt_flags.insert(RuntimeFlags::ExportStartInterOp)
         }
 
@@ -163,24 +163,24 @@ impl From<&EesmDependantFlags> for RuntimeFlags {
     }
 }
 
-impl From<EesmDependantFlags> for RuntimeFlags {
-    fn from(value: EesmDependantFlags) -> Self {
+impl From<EsmDependantFlags> for RuntimeFlags {
+    fn from(value: EsmDependantFlags) -> Self {
         (&value).into()
     }
 }
 
-impl From<&ImportType> for EesmDependantFlags {
+impl From<&ImportType> for EsmDependantFlags {
     fn from(value: &ImportType) -> Self {
-        let mut interops = EesmDependantFlags::empty();
+        let mut interops = EsmDependantFlags::empty();
         value.iter().for_each(|x| match x {
             ImportType::Default => {
-                interops.insert(EesmDependantFlags::Default);
+                interops.insert(EsmDependantFlags::Default);
             }
             ImportType::Namespace => {
-                interops.insert(EesmDependantFlags::Namespace);
+                interops.insert(EsmDependantFlags::Namespace);
             }
             ImportType::Named => {
-                interops.insert(EesmDependantFlags::Named);
+                interops.insert(EsmDependantFlags::Named);
             }
             _ => {}
         });
@@ -188,19 +188,19 @@ impl From<&ImportType> for EesmDependantFlags {
     }
 }
 
-impl From<&NamedExportType> for EesmDependantFlags {
+impl From<&NamedExportType> for EsmDependantFlags {
     fn from(value: &NamedExportType) -> Self {
         let mut res = Self::empty();
 
         value.iter().for_each(|x| match x {
             NamedExportType::Default => {
-                res.insert(EesmDependantFlags::Default);
+                res.insert(EsmDependantFlags::Default);
             }
             NamedExportType::Named => {
-                res.insert(EesmDependantFlags::Named);
+                res.insert(EsmDependantFlags::Named);
             }
             NamedExportType::Namespace => {
-                res.insert(EesmDependantFlags::Namespace);
+                res.insert(EsmDependantFlags::Namespace);
             }
             _ => {}
         });
@@ -208,16 +208,16 @@ impl From<&NamedExportType> for EesmDependantFlags {
     }
 }
 
-impl From<&ResolveType> for EesmDependantFlags {
+impl From<&ResolveType> for EsmDependantFlags {
     fn from(value: &ResolveType) -> Self {
         match value {
             ResolveType::Import(import_type) => import_type.into(),
             ResolveType::ExportNamed(named_export_type) => named_export_type.into(),
-            ResolveType::ExportAll => EesmDependantFlags::ExportAll,
-            ResolveType::Require => EesmDependantFlags::empty(),
-            ResolveType::DynamicImport => EesmDependantFlags::empty(),
-            ResolveType::Css => EesmDependantFlags::empty(),
-            ResolveType::Worker => EesmDependantFlags::empty(),
+            ResolveType::ExportAll => EsmDependantFlags::ExportAll,
+            ResolveType::Require => EsmDependantFlags::empty(),
+            ResolveType::DynamicImport => EsmDependantFlags::empty(),
+            ResolveType::Css => EsmDependantFlags::empty(),
+            ResolveType::Worker => EsmDependantFlags::empty(),
         }
     }
 }

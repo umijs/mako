@@ -19,7 +19,7 @@ use swc_core::ecma::transforms::base::resolver;
 use swc_core::ecma::utils::collect_decls_with_ctxt;
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
-use self::concatenate_context::EesmDependantFlags;
+use self::concatenate_context::EsmDependantFlags;
 use self::utils::uniq_module_prefix;
 use crate::ast::js_ast_to_code;
 use crate::compiler::Context;
@@ -201,7 +201,7 @@ pub fn optimize_module_graph(
                 for module_id in &config.inners {
                     for (dep_module_id, dep) in module_graph.get_dependencies(module_id) {
                         if let Some(curr_interops) = config.externals.get_mut(dep_module_id) {
-                            let it: EesmDependantFlags = (&dep.resolve_type).into();
+                            let it: EsmDependantFlags = (&dep.resolve_type).into();
                             curr_interops.insert(it);
                         }
                     }
@@ -209,7 +209,7 @@ pub fn optimize_module_graph(
 
                 for (dep_module_id, dep) in module_graph.get_dependencies(&config.root) {
                     if let Some(curr_interops) = config.externals.get_mut(dep_module_id) {
-                        let it: EesmDependantFlags = (&dep.resolve_type).into();
+                        let it: EsmDependantFlags = (&dep.resolve_type).into();
                         curr_interops.insert(it);
                     }
                 }
@@ -425,7 +425,7 @@ pub fn optimize_module_graph(
 struct ConcatenateConfig {
     root: ModuleId,
     inners: HashSet<ModuleId>,
-    externals: HashMap<ModuleId, EesmDependantFlags>,
+    externals: HashMap<ModuleId, EsmDependantFlags>,
 }
 
 impl ConcatenateConfig {}
@@ -505,7 +505,7 @@ impl ConcatenateConfig {
         self.externals.contains_key(module_id)
     }
 
-    fn external_interops(&self, module_id: &ModuleId) -> Option<EesmDependantFlags> {
+    fn external_interops(&self, module_id: &ModuleId) -> Option<EsmDependantFlags> {
         self.externals.get(module_id).copied()
     }
 
