@@ -5,9 +5,9 @@ use mako_core::swc_common::util::take::Take;
 use swc_core::common::comments::{Comment, CommentKind};
 use swc_core::common::{Mark, Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
-    ClassDecl, DefaultDecl, ExportSpecifier, FnDecl, Id, ImportDecl, ImportSpecifier, KeyValueProp,
-    Module, ModuleDecl, ModuleExportName, ModuleItem, ObjectLit, Prop, PropOrSpread, Stmt,
-    VarDeclKind,
+    ClassDecl, DefaultDecl, ExportDecl, ExportDefaultDecl, ExportDefaultExpr, ExportSpecifier,
+    FnDecl, Id, ImportDecl, ImportSpecifier, KeyValueProp, Module, ModuleExportName, ModuleItem,
+    NamedExport, ObjectLit, Prop, PropOrSpread, Stmt, VarDeclKind,
 };
 use swc_core::ecma::utils::{
     collect_decls_with_ctxt, member_expr, quote_ident, ExprFactory, IdentRenamer,
@@ -35,6 +35,8 @@ pub(super) struct InnerTransform<'a> {
     exports: HashMap<String, String>,
     rename_request: Vec<(Id, Id)>,
     imported_type: ImportType,
+    current_stmt_index: usize,
+    replaces: Vec<(usize, Vec<ModuleItem>)>,
 }
 
 impl<'a> InnerTransform<'a> {
@@ -58,6 +60,8 @@ impl<'a> InnerTransform<'a> {
             my_top_decls: Default::default(),
             rename_request: vec![],
             imported_type: Default::default(),
+            replaces: vec![],
+            current_stmt_index: 0,
         }
     }
 
@@ -151,9 +155,136 @@ impl<'a> InnerTransform<'a> {
             None
         }
     }
+
+    fn remove_current_stmt(&mut self) {
+        self.replaces.push((self.current_stmt_index, vec![]));
+    }
+    fn replace_current_stmt_with(&mut self, stmts: Vec<ModuleItem>) {
+        self.replaces.push((self.current_stmt_index, stmts));
+    }
 }
 
 impl<'a> VisitMut for InnerTransform<'a> {
+    fn visit_mut_export_decl(&mut self, export_decl: &mut ExportDecl) {
+        let decl = export_decl.decl.take();
+
+        let stmt: Stmt = decl.into();
+        self.replaces
+            .push((self.current_stmt_index, vec![stmt.into()]));
+    }
+
+    fn visit_mut_export_default_decl(&mut self, export_default_dcl: &mut ExportDefaultDecl) {
+        let default_binding_name =
+            self.get_non_conflict_name(&uniq_module_default_export_name(self.module_id));
+
+        match &mut export_default_dcl.decl {
+            DefaultDecl::Class(class_expr) => {
+                let stmt: Stmt = match &class_expr.ident {
+                    None => {
+                        self.exports
+                            .insert("default".to_string(), default_binding_name.clone());
+                        self.my_top_decls.insert(default_binding_name.clone());
+
+                        class_expr
+                            .take()
+                            .into_var_decl(
+                                VarDeclKind::Var,
+                                quote_ident!(default_binding_name).into(),
+                            )
+                            .into()
+                    }
+                    Some(ident) => {
+                        let export_default_ident = ident.clone();
+                        self.exports
+                            .insert("default".to_string(), export_default_ident.sym.to_string());
+                        self.my_top_decls
+                            .insert(export_default_ident.sym.to_string());
+
+                        let class_decl = ClassDecl {
+                            ident: ident.clone(),
+                            declare: false,
+                            class: class_expr.class.take(),
+                        };
+
+                        class_decl.into()
+                    }
+                };
+
+                self.replace_current_stmt_with(vec![stmt.into()]);
+            }
+            DefaultDecl::Fn(default_fn_dcl) => {
+                let stmt: Stmt = match &default_fn_dcl.ident {
+                    None => {
+                        let stmt: Stmt = default_fn_dcl
+                            .take()
+                            .into_var_decl(
+                                VarDeclKind::Var,
+                                quote_ident!(default_binding_name.clone()).into(),
+                            )
+                            .into();
+
+                        self.exports
+                            .insert("default".to_string(), default_binding_name.clone());
+                        self.my_top_decls.insert(default_binding_name);
+                        stmt
+                    }
+                    Some(fn_ident) => {
+                        let default_binding_name = fn_ident.sym.to_string();
+
+                        self.exports
+                            .insert("default".to_string(), default_binding_name.clone());
+                        self.my_top_decls.insert(default_binding_name);
+
+                        let fn_decl = FnDecl {
+                            ident: fn_ident.clone(),
+                            declare: false,
+                            function: default_fn_dcl.function.take(),
+                        };
+
+                        fn_decl.into()
+                    }
+                };
+
+                self.replace_current_stmt_with(vec![stmt.into()]);
+            }
+            DefaultDecl::TsInterfaceDecl(_) => {
+                unreachable!("TS should already be stripped")
+            }
+        }
+    }
+
+    fn visit_mut_export_default_expr(&mut self, export_default_expr: &mut ExportDefaultExpr) {
+        let span = export_default_expr.span.apply_mark(self.top_level_mark);
+
+        let default_binding_name =
+            self.get_non_conflict_name(&uniq_module_default_export_name(self.module_id));
+
+        if let Some(exported_ident) = export_default_expr.expr.as_ident() {
+            self.exports
+                .insert("default".to_string(), exported_ident.sym.to_string());
+            self.remove_current_stmt();
+        } else {
+            let stmt: Stmt = export_default_expr
+                .expr
+                .take()
+                .into_var_decl(
+                    VarDeclKind::Var,
+                    quote_ident!(span, default_binding_name.clone()).into(),
+                )
+                .into();
+            self.my_top_decls.insert(default_binding_name.clone());
+            self.exports
+                .insert("default".to_string(), default_binding_name);
+            self.replace_current_stmt_with(vec![stmt.into()]);
+        }
+    }
+
+    fn visit_mut_import_decl(&mut self, import_decl: &mut ImportDecl) {
+        if let Some(stmts) = self.import_decl_to_replace_items(import_decl) {
+            self.replaces.push((self.current_stmt_index, stmts));
+        }
+    }
+
     fn visit_mut_module(&mut self, n: &mut Module) {
         self.my_top_decls =
             collect_decls_with_ctxt(n, SyntaxContext::empty().apply_mark(self.top_level_mark))
@@ -224,275 +355,123 @@ impl<'a> VisitMut for InnerTransform<'a> {
     }
 
     fn visit_mut_module_items(&mut self, items: &mut Vec<ModuleItem>) {
-        let mut replaces = vec![];
-
         for index in (0..items.len()).rev() {
-            let mut stmts: Option<Vec<ModuleItem>> = None;
-
+            self.current_stmt_index = index;
             let item = items.get_mut(index).unwrap();
 
             if let Some(module_decl) = item.as_mut_module_decl() {
-                match module_decl {
-                    ModuleDecl::Import(import) => stmts = self.import_decl_to_replace_items(import),
-                    ModuleDecl::ExportDecl(export_decl) => {
-                        let decl = export_decl.decl.take();
-
-                        let stmt: Stmt = decl.into();
-
-                        *item = stmt.into();
-                    }
-                    ModuleDecl::ExportNamed(named_export) => {
-                        if let Some(export_src) = &named_export.src {
-                            if let Some(imported_module_id) =
-                                self.src_to_module.get(&export_src.value.to_string())
-                                && let Some(export_map) = self
-                                    .concatenate_context
-                                    .modules_in_scope
-                                    .get(imported_module_id)
-                            {
-                                stmts = Some(vec![]);
-
-                                for spec in &named_export.specifiers {
-                                    match spec {
-                                        ExportSpecifier::Namespace(ns) => {
-                                            let exported_namespace = export_map.get("*").unwrap();
-
-                                            match &ns.name {
-                                                ModuleExportName::Ident(name_ident) => {
-                                                    let stmt: Stmt = declare_var_with_init_stmt(
-                                                        name_ident.clone(),
-                                                        exported_namespace,
-                                                    );
-                                                    stmts.as_mut().unwrap().push(stmt.into());
-                                                }
-                                                ModuleExportName::Str(_) => {
-                                                    unimplemented!(
-                                                        "{}",
-                                                        MODULE_CONCATENATE_ERROR_STR_MODULE_NAME
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        ExportSpecifier::Default(_) => {
-                                            let default_export_name =
-                                                export_map.get("default").unwrap();
-
-                                            let default_binding_name = self.get_non_conflict_name(
-                                                &uniq_module_default_export_name(self.module_id),
-                                            );
-
-                                            let stmt: Stmt = declare_var_with_init_stmt(
-                                                quote_ident!(default_binding_name.clone()),
-                                                default_export_name,
-                                            );
-                                            self.my_top_decls.insert(default_binding_name.clone());
-                                            self.exports.insert(
-                                                "default".to_string(),
-                                                default_binding_name,
-                                            );
-                                            stmts.as_mut().unwrap().push(stmt.into());
-                                        }
-                                        ExportSpecifier::Named(named) => {
-                                            let (exported_ident, orig_name) =
-                                                match (&named.exported, &named.orig) {
-                                                    (None, ModuleExportName::Ident(orig)) => {
-                                                        (orig.clone(), orig.sym.to_string())
-                                                    }
-                                                    (
-                                                        Some(ModuleExportName::Ident(
-                                                            exported_ident,
-                                                        )),
-                                                        ModuleExportName::Ident(orig_ident),
-                                                    ) => (
-                                                        exported_ident.clone(),
-                                                        orig_ident.sym.to_string(),
-                                                    ),
-                                                    (_, _) => {
-                                                        unimplemented!(
-                                                            "{}",
-                                                            MODULE_CONCATENATE_ERROR_STR_MODULE_NAME
-                                                        )
-                                                    }
-                                                };
-
-                                            if let Some(mapped_export) = export_map.get(&orig_name)
-                                            {
-                                                self.exports.insert(
-                                                    exported_ident.sym.to_string(),
-                                                    mapped_export.clone(),
-                                                );
-                                            }
-                                        }
-                                    }
-                                }
-                            } else {
-                                unreachable!("{}", MODULE_CONCATENATE_ERROR);
-                            }
-                        } else {
-                            let dcl_stmts: Vec<ModuleItem> = vec![];
-
-                            for export_spec in &named_export.specifiers {
-                                match export_spec {
-                                    ExportSpecifier::Namespace(_) => {
-                                        unreachable!("namespace export unreachable when no src")
-                                    }
-                                    ExportSpecifier::Default(_) => {
-                                        unreachable!("default export unreachable when no src")
-                                    }
-                                    ExportSpecifier::Named(named) => {
-                                        match (&named.exported, &named.orig) {
-                                            (
-                                                Some(ModuleExportName::Ident(exported_ident)),
-                                                ModuleExportName::Ident(orig_ident),
-                                            ) => {
-                                                self.exports.insert(
-                                                    exported_ident.sym.to_string(),
-                                                    orig_ident.sym.to_string(),
-                                                );
-                                            }
-                                            (None, ModuleExportName::Ident(_)) => {
-                                                // do nothing, it will be removed
-                                            }
-                                            (_, ModuleExportName::Str(_))
-                                            | (Some(ModuleExportName::Str(_)), _) => {
-                                                unimplemented!("export 'str' not supported now");
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            stmts = Some(dcl_stmts);
-                        }
-                    }
-                    ModuleDecl::ExportDefaultDecl(export_default_dcl) => {
-                        let default_binding_name = self.get_non_conflict_name(
-                            &uniq_module_default_export_name(self.module_id),
-                        );
-
-                        match &mut export_default_dcl.decl {
-                            DefaultDecl::Class(class_expr) => {
-                                let stmt: Stmt = match &class_expr.ident {
-                                    None => {
-                                        self.exports.insert(
-                                            "default".to_string(),
-                                            default_binding_name.clone(),
-                                        );
-                                        self.my_top_decls.insert(default_binding_name.clone());
-
-                                        class_expr
-                                            .take()
-                                            .into_var_decl(
-                                                VarDeclKind::Var,
-                                                quote_ident!(default_binding_name).into(),
-                                            )
-                                            .into()
-                                    }
-                                    Some(ident) => {
-                                        let export_default_ident = ident.clone();
-                                        self.exports.insert(
-                                            "default".to_string(),
-                                            export_default_ident.sym.to_string(),
-                                        );
-                                        self.my_top_decls
-                                            .insert(export_default_ident.sym.to_string());
-
-                                        let class_decl = ClassDecl {
-                                            ident: ident.clone(),
-                                            declare: false,
-                                            class: class_expr.class.take(),
-                                        };
-
-                                        class_decl.into()
-                                    }
-                                };
-
-                                items[index] = stmt.into();
-                            }
-                            DefaultDecl::Fn(default_fn_dcl) => {
-                                let stmt: Stmt = match &default_fn_dcl.ident {
-                                    None => {
-                                        let stmt: Stmt = default_fn_dcl
-                                            .take()
-                                            .into_var_decl(
-                                                VarDeclKind::Var,
-                                                quote_ident!(default_binding_name.clone()).into(),
-                                            )
-                                            .into();
-
-                                        self.exports.insert(
-                                            "default".to_string(),
-                                            default_binding_name.clone(),
-                                        );
-                                        self.my_top_decls.insert(default_binding_name);
-                                        stmt
-                                    }
-                                    Some(fn_ident) => {
-                                        let default_binding_name = fn_ident.sym.to_string();
-
-                                        self.exports.insert(
-                                            "default".to_string(),
-                                            default_binding_name.clone(),
-                                        );
-                                        self.my_top_decls.insert(default_binding_name);
-
-                                        let fn_decl = FnDecl {
-                                            ident: fn_ident.clone(),
-                                            declare: false,
-                                            function: default_fn_dcl.function.take(),
-                                        };
-
-                                        fn_decl.into()
-                                    }
-                                };
-
-                                items[index] = stmt.into();
-                            }
-                            DefaultDecl::TsInterfaceDecl(_) => {
-                                unreachable!("TS should already be stripped")
-                            }
-                        }
-                    }
-                    ModuleDecl::ExportDefaultExpr(export_default_expr) => {
-                        let span = export_default_expr.span.apply_mark(self.top_level_mark);
-
-                        let default_binding_name = self.get_non_conflict_name(
-                            &uniq_module_default_export_name(self.module_id),
-                        );
-
-                        if let Some(exported_ident) = export_default_expr.expr.as_ident() {
-                            self.exports
-                                .insert("default".to_string(), exported_ident.sym.to_string());
-                            stmts = Some(vec![]);
-                        } else {
-                            let stmt: Stmt = export_default_expr
-                                .expr
-                                .take()
-                                .into_var_decl(
-                                    VarDeclKind::Var,
-                                    quote_ident!(span, default_binding_name.clone()).into(),
-                                )
-                                .into();
-                            self.my_top_decls.insert(default_binding_name.clone());
-                            self.exports
-                                .insert("default".to_string(), default_binding_name);
-                            *item = stmt.into();
-                        }
-                    }
-                    ModuleDecl::ExportAll(_) => {}
-                    ModuleDecl::TsImportEquals(_) => {}
-                    ModuleDecl::TsExportAssignment(_) => {}
-                    ModuleDecl::TsNamespaceExport(_) => {}
-                }
-            }
-
-            if let Some(to_replace) = stmts {
-                replaces.push((index, to_replace));
+                module_decl.visit_mut_with(self);
             }
         }
 
-        for (index, rep) in replaces {
+        for (index, rep) in self.replaces.take() {
             items.splice(index..index + 1, rep);
+        }
+    }
+
+    fn visit_mut_named_export(&mut self, named_export: &mut NamedExport) {
+        if let Some(export_src) = &named_export.src {
+            if let Some(imported_module_id) = self.src_to_module.get(&export_src.value.to_string())
+                && let Some(export_map) = self
+                    .concatenate_context
+                    .modules_in_scope
+                    .get(imported_module_id)
+            {
+                let mut stmts: Vec<ModuleItem> = vec![];
+
+                for spec in &named_export.specifiers {
+                    match spec {
+                        ExportSpecifier::Namespace(ns) => {
+                            let exported_namespace = export_map.get("*").unwrap();
+
+                            match &ns.name {
+                                ModuleExportName::Ident(name_ident) => {
+                                    self.exports.insert(
+                                        name_ident.sym.to_string(),
+                                        exported_namespace.clone(),
+                                    );
+                                }
+                                ModuleExportName::Str(_) => {
+                                    unimplemented!("{}", MODULE_CONCATENATE_ERROR_STR_MODULE_NAME);
+                                }
+                            }
+                        }
+                        ExportSpecifier::Default(_) => {
+                            let default_export_name = export_map.get("default").unwrap();
+
+                            let default_binding_name = self.get_non_conflict_name(
+                                &uniq_module_default_export_name(self.module_id),
+                            );
+
+                            let stmt: Stmt = declare_var_with_init_stmt(
+                                quote_ident!(default_binding_name.clone()),
+                                default_export_name,
+                            );
+                            self.my_top_decls.insert(default_binding_name.clone());
+                            self.exports
+                                .insert("default".to_string(), default_binding_name);
+                            stmts.push(stmt.into());
+                        }
+                        ExportSpecifier::Named(named) => {
+                            let (exported_ident, orig_name) = match (&named.exported, &named.orig) {
+                                (None, ModuleExportName::Ident(orig)) => {
+                                    (orig.clone(), orig.sym.to_string())
+                                }
+                                (
+                                    Some(ModuleExportName::Ident(exported_ident)),
+                                    ModuleExportName::Ident(orig_ident),
+                                ) => (exported_ident.clone(), orig_ident.sym.to_string()),
+                                (_, _) => {
+                                    unimplemented!("{}", MODULE_CONCATENATE_ERROR_STR_MODULE_NAME)
+                                }
+                            };
+
+                            if let Some(mapped_export) = export_map.get(&orig_name) {
+                                self.exports
+                                    .insert(exported_ident.sym.to_string(), mapped_export.clone());
+                            }
+                        }
+                    }
+                }
+
+                self.replaces.push((self.current_stmt_index, stmts));
+            } else {
+                unreachable!("{}", MODULE_CONCATENATE_ERROR);
+            }
+        } else {
+            for export_spec in &named_export.specifiers {
+                match export_spec {
+                    ExportSpecifier::Namespace(_) => {
+                        unreachable!("namespace export unreachable when no src")
+                    }
+                    ExportSpecifier::Default(_) => {
+                        unreachable!("default export unreachable when no src")
+                    }
+                    ExportSpecifier::Named(named) => {
+                        match (&named.exported, &named.orig) {
+                            (
+                                Some(ModuleExportName::Ident(exported_ident)),
+                                ModuleExportName::Ident(orig_ident),
+                            ) => {
+                                self.exports.insert(
+                                    exported_ident.sym.to_string(),
+                                    orig_ident.sym.to_string(),
+                                );
+                            }
+                            (None, ModuleExportName::Ident(_)) => {
+                                // nothing to do
+                                // export map already set as ident-ident
+                                // module item it will be removed
+                            }
+                            (_, ModuleExportName::Str(_)) | (Some(ModuleExportName::Str(_)), _) => {
+                                unimplemented!("export 'str' not supported now");
+                            }
+                        }
+                    }
+                }
+            }
+
+            self.remove_current_stmt();
         }
     }
 }
@@ -558,517 +537,4 @@ pub fn inner_import_specifier_to_stmts(
 }
 
 #[cfg(test)]
-mod tests {
-    use std::collections::HashMap;
-    use std::sync::Arc;
-
-    use maplit::{hashmap, hashset};
-    use swc_core::common::GLOBALS;
-    use swc_core::ecma::transforms::base::resolver;
-    use swc_core::ecma::visit::VisitMutWith;
-
-    use super::InnerTransform;
-    use crate::ast::{build_js_ast, js_ast_to_code};
-    use crate::compiler::Context;
-    use crate::config::{Config, Mode, OptimizationConfig};
-    use crate::module::ModuleId;
-    use crate::plugins::farm_tree_shake::shake::module_concatenate::concatenate_context::ConcatenateContext;
-
-    #[test]
-    fn test_import_default_from_inner() {
-        let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
-        let mut expected_top_vars = ccn_ctx.top_level_vars.clone();
-        expected_top_vars.insert("x".to_string());
-
-        let code = inner_trans_code(r#"import x from "./src""#, &mut ccn_ctx);
-
-        assert_eq!(code, "var x = inner_default_export;");
-        assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-        assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
-    }
-    #[test]
-    fn test_import_default_from_inner_and_conflict_with_other_name() {
-        let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
-        let mut expected_top_vars = ccn_ctx.top_level_vars.clone();
-        expected_top_vars.insert("will_conflict_1".to_string());
-
-        let code = inner_trans_code(
-            r#"import will_conflict from "./src";will_conflict;"#,
-            &mut ccn_ctx,
-        );
-
-        assert_eq!(
-            code,
-            "var will_conflict_1 = inner_default_export;\nwill_conflict_1;"
-        );
-        assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-        assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
-    }
-
-    #[test]
-    fn test_import_default_from_inner_and_conflict_with_orig_name() {
-        let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
-        let expected_top_vars = ccn_ctx.top_level_vars.clone();
-
-        let code = inner_trans_code(
-            r#"import inner_default_export from "./src";inner_default_export;"#,
-            &mut ccn_ctx,
-        );
-
-        assert_eq!(code, "inner_default_export;");
-        assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-        assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
-    }
-
-    #[test]
-    fn test_import_named_from_inner() {
-        let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
-        let mut expected_top_vars = ccn_ctx.top_level_vars.clone();
-        expected_top_vars.insert("foo".to_string());
-
-        let code = inner_trans_code(r#"import {foo} from "./src""#, &mut ccn_ctx);
-
-        assert_eq!(code, "var foo = bar;");
-        assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-        assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
-    }
-
-    #[test]
-    fn test_import_named_from_inner_conflict_with_orig_name() {
-        let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
-        let expected_top_vars = ccn_ctx.top_level_vars.clone();
-
-        let code = inner_trans_code(r#"import {named} from "./src";named"#, &mut ccn_ctx);
-
-        assert_eq!(code, "named;");
-        assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-        assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
-    }
-
-    #[test]
-    fn test_import_named_as_from_inner() {
-        let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
-        let mut expected_top_vars = ccn_ctx.top_level_vars.clone();
-        expected_top_vars.insert("myFoo".to_string());
-
-        let code = inner_trans_code(r#"import {foo as myFoo} from "./src""#, &mut ccn_ctx);
-
-        assert_eq!(code, "var myFoo = bar;");
-        assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-        assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
-    }
-
-    #[test]
-    fn test_import_named_as_from_inner_and_conflict_with_orig_name() {
-        let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
-        let expected_top_vars = ccn_ctx.top_level_vars.clone();
-
-        let code = inner_trans_code(r#"import {foo as bar} from "./src";bar;"#, &mut ccn_ctx);
-
-        assert_eq!(code, "bar;");
-        assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-        assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
-    }
-
-    #[test]
-    fn test_import_named_as_from_inner_and_conflict_with_other_name() {
-        let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
-        let mut expected_top_vars = ccn_ctx.top_level_vars.clone();
-        expected_top_vars.insert("will_conflict_1".to_string());
-
-        let code = inner_trans_code(
-            r#"import {foo as will_conflict} from "./src";will_conflict;"#,
-            &mut ccn_ctx,
-        );
-
-        assert_eq!(code, "var will_conflict_1 = bar;\nwill_conflict_1;");
-        assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-        assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
-    }
-
-    #[test]
-    fn test_import_namespace_from_inner() {
-        let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
-        let mut expected_top_vars = ccn_ctx.top_level_vars.clone();
-        expected_top_vars.insert("ns".to_string());
-
-        let code = inner_trans_code(r#"import * as ns from "./src""#, &mut ccn_ctx);
-
-        assert_eq!(code, "var ns = inner_namespace;");
-        assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-        assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
-    }
-
-    #[test]
-    fn test_import_namespace_from_inner_with_conflict() {
-        let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
-        let mut expected_top_vars = ccn_ctx.top_level_vars.clone();
-        expected_top_vars.insert("bar_1".to_string());
-
-        let code = inner_trans_code(r#"import * as bar from "./src";bar;"#, &mut ccn_ctx);
-
-        assert_eq!(code, "var bar_1 = inner_namespace;\nbar_1;");
-        assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-        assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
-    }
-
-    #[test]
-    fn test_import_namespace_from_inner_and_conflict_with_namespace() {
-        let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
-        let expected_top_vars = ccn_ctx.top_level_vars.clone();
-
-        let code = inner_trans_code(
-            r#"import * as inner_namespace from "./src";inner_namespace;
-        "#,
-            &mut ccn_ctx,
-        );
-
-        assert_eq!(code, "inner_namespace;");
-        assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-        assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
-    }
-
-    #[test]
-    fn test_export_as() {
-        let mut ccn_ctx = ConcatenateContext::default();
-
-        let code = inner_trans_code("var n = some.named;export { n as named };", &mut ccn_ctx);
-
-        assert_eq!(code, "var n = some.named;");
-        assert_eq!(ccn_ctx.top_level_vars, hashset!("n".to_string()));
-        assert_eq!(
-            current_export_map(&ccn_ctx),
-            &hashmap!("named".to_string() => "n".to_string())
-        );
-    }
-
-    #[test]
-    fn test_export_as_with_conflict() {
-        let mut ccn_ctx = ConcatenateContext {
-            top_level_vars: hashset!("n".to_string()),
-            ..Default::default()
-        };
-
-        let code = inner_trans_code("var n = some.named;export { n as named };", &mut ccn_ctx);
-
-        assert_eq!(code, "var n_1 = some.named;");
-        assert_eq!(
-            ccn_ctx.top_level_vars,
-            hashset!("n".to_string(), "n_1".to_string())
-        );
-        assert_eq!(
-            current_export_map(&ccn_ctx),
-            &hashmap!("named".to_string() => "n_1".to_string())
-        );
-    }
-
-    #[test]
-    fn test_export_default_with_conflict() {
-        let mut ccn_ctx = ConcatenateContext {
-            top_level_vars: hashset!("__$m_mut_js_0".to_string()),
-            ..Default::default()
-        };
-
-        let code = inner_trans_code("export default 1;", &mut ccn_ctx);
-
-        assert_eq!(code, r#"var __$m_mut_js_0_1 = 1;"#);
-        assert_eq!(
-            ccn_ctx.top_level_vars,
-            hashset!("__$m_mut_js_0_1".to_string(), "__$m_mut_js_0".to_string(),)
-        );
-        assert_eq!(
-            current_export_map(&ccn_ctx),
-            &hashmap!("default".to_string() => "__$m_mut_js_0_1".to_string())
-        );
-    }
-
-    #[test]
-    fn test_export_as_twice_with_conflict() {
-        let mut ccn_ctx = ConcatenateContext {
-            top_level_vars: hashset!("n".to_string()),
-            ..Default::default()
-        };
-
-        let code = inner_trans_code(
-            "var n = some.named;export { n as named, n as foo };",
-            &mut ccn_ctx,
-        );
-
-        assert_eq!(code, "var n_1 = some.named;");
-        assert_eq!(
-            ccn_ctx.top_level_vars,
-            hashset!("n".to_string(), "n_1".to_string())
-        );
-        assert_eq!(
-            current_export_map(&ccn_ctx),
-            &hashmap!(
-                "named".to_string() => "n_1".to_string(),
-                "foo".to_string() => "n_1".to_string()
-            )
-        );
-    }
-
-    #[test]
-    fn test_short_named_export() {
-        let mut ccn_ctx = ConcatenateContext::default();
-
-        let code = inner_trans_code("var named = some.named;export { named };", &mut ccn_ctx);
-
-        assert_eq!(code, "var named = some.named;");
-        assert_eq!(ccn_ctx.top_level_vars, hashset!("named".to_string()));
-        assert_eq!(
-            current_export_map(&ccn_ctx),
-            &hashmap!(
-                "named".to_string() => "named".to_string()
-            )
-        );
-    }
-
-    #[test]
-    fn test_short_named_export_with_conflict() {
-        let mut ccn_ctx = ConcatenateContext {
-            top_level_vars: hashset!("named".to_string()),
-            ..Default::default()
-        };
-
-        let code = inner_trans_code("var named = some.named;export { named };", &mut ccn_ctx);
-
-        assert_eq!(code, "var named_1 = some.named;");
-        assert_eq!(
-            ccn_ctx.top_level_vars,
-            hashset!("named".to_string(), "named_1".to_string())
-        );
-        assert_eq!(
-            current_export_map(&ccn_ctx),
-            &hashmap!(
-                "named".to_string() => "named_1".to_string()
-            )
-        );
-    }
-
-    #[test]
-    fn test_export_decl_literal_expr() {
-        let mut ccn_ctx = ConcatenateContext::default();
-        let code = inner_trans_code("export default 42", &mut ccn_ctx);
-
-        assert_eq!(code, "var __$m_mut_js_0 = 42;");
-        assert_eq!(
-            ccn_ctx.top_level_vars,
-            hashset!("__$m_mut_js_0".to_string())
-        );
-        assert_eq!(
-            current_export_map(&ccn_ctx),
-            &hashmap!(
-                "default".to_string() => "__$m_mut_js_0".to_string()
-            )
-        );
-    }
-
-    #[test]
-    fn test_export_decl_ident_expr() {
-        let mut ccn_ctx = ConcatenateContext::default();
-        let code = inner_trans_code("let t = 1; export default t", &mut ccn_ctx);
-
-        assert_eq!(code, r#"let t = 1;"#);
-        assert_eq!(ccn_ctx.top_level_vars, hashset!("t".to_string()));
-        assert_eq!(
-            current_export_map(&ccn_ctx),
-            &hashmap!(
-                "default".to_string() => "t".to_string()
-            )
-        );
-    }
-
-    #[test]
-    fn test_export_decl_un_namable_expr() {
-        let mut ccn_ctx = ConcatenateContext::default();
-        let code = inner_trans_code("export default 40+2", &mut ccn_ctx);
-
-        assert_eq!(code, r#"var __$m_mut_js_0 = 40 + 2;"#);
-        assert_eq!(
-            ccn_ctx.top_level_vars,
-            hashset!("__$m_mut_js_0".to_string())
-        );
-        assert_eq!(
-            current_export_map(&ccn_ctx),
-            &hashmap!(
-                "default".to_string() => "__$m_mut_js_0".to_string()
-            )
-        );
-    }
-
-    #[test]
-    fn test_export_decl_function() {
-        let mut ccn_ctx = ConcatenateContext::default();
-        let code = inner_trans_code("export default function a(){}", &mut ccn_ctx);
-
-        assert_eq!(code, "function a() {}");
-        assert_eq!(ccn_ctx.top_level_vars, hashset!("a".to_string()));
-        assert_eq!(
-            current_export_map(&ccn_ctx),
-            &hashmap!(
-                "default".to_string() => "a".to_string()
-            )
-        );
-    }
-
-    #[test]
-    fn test_export_decl_class() {
-        let mut ccn_ctx = ConcatenateContext::default();
-        let code = inner_trans_code("export default class A{}", &mut ccn_ctx);
-
-        assert_eq!(
-            code,
-            "class A {
-}"
-        );
-        assert_eq!(ccn_ctx.top_level_vars, hashset!("A".to_string()));
-        assert_eq!(
-            current_export_map(&ccn_ctx),
-            &hashmap!(
-                "default".to_string() => "A".to_string()
-            )
-        );
-    }
-
-    #[test]
-    fn test_export_variable_as_default() {
-        let mut ccn_ctx = ConcatenateContext::default();
-        let code = inner_trans_code("function a(){}; export {a as default}", &mut ccn_ctx);
-
-        assert_eq!(
-            code,
-            r#"function a() {}
-;"#
-        );
-        assert_eq!(ccn_ctx.top_level_vars, hashset!("a".to_string()));
-        assert_eq!(
-            current_export_map(&ccn_ctx),
-            &hashmap!(
-                "default".to_string() => "a".to_string()
-            )
-        );
-    }
-
-    #[test]
-    fn test_export_named_with_src() {
-        let mut ccn_ctx = ConcatenateContext {
-            modules_in_scope: hashmap! {
-                ModuleId::from("src/index.js") => hashmap! {
-                    "named".to_string() => "named".to_string()
-                }
-            },
-            ..Default::default()
-        };
-        let code = inner_trans_code(r#"export { named } from "./src""#, &mut ccn_ctx);
-
-        assert_eq!(code, r#""#);
-        assert!(ccn_ctx.top_level_vars.is_empty());
-        assert_eq!(
-            current_export_map(&ccn_ctx),
-            &hashmap!(
-                "named".to_string() => "named".to_string()
-            )
-        );
-    }
-
-    #[test]
-    fn test_export_default_with_src() {
-        let mut ccn_ctx = ConcatenateContext {
-            modules_in_scope: hashmap! {
-                ModuleId::from("src/index.js") => hashmap! {
-                    "default".to_string() => "src_index_default".to_string()
-                }
-            },
-            ..Default::default()
-        };
-        let orig_top_level_vars = ccn_ctx.top_level_vars.clone();
-        let code = inner_trans_code(r#"export { default } from "./src""#, &mut ccn_ctx);
-
-        assert_eq!(code, r#""#);
-        assert_eq!(ccn_ctx.top_level_vars, orig_top_level_vars);
-        assert_eq!(
-            current_export_map(&ccn_ctx),
-            &hashmap!(
-                "default".to_string() => "src_index_default".to_string()
-            )
-        );
-    }
-
-    fn concatenate_context_fixture_with_inner_module() -> ConcatenateContext {
-        ConcatenateContext {
-            top_level_vars: hashset! {
-                "bar".to_string(),
-                "inner_default_export".to_string(),
-                "inner_namespace".to_string(),
-                "named".to_string(),
-                "will_conflict".to_string(),
-            },
-            modules_in_scope: hashmap! {
-                ModuleId::from("src/index.js") => hashmap!{
-                    "*".to_string() => "inner_namespace".to_string(),
-                    "default".to_string() => "inner_default_export".to_string(),
-                    "foo".to_string() => "bar".to_string(),
-                    "named".to_string() => "named".to_string(),
-                }
-            },
-            ..Default::default()
-        }
-    }
-
-    fn inner_trans_code(code: &str, concatenate_context: &mut ConcatenateContext) -> String {
-        let context = Arc::new(Context {
-            config: Config {
-                devtool: None,
-                optimization: Some(OptimizationConfig {
-                    concatenate_modules: Some(true),
-                    skip_modules: Some(true),
-                }),
-                mode: Mode::Production,
-                minify: false,
-                ..Default::default()
-            },
-            ..Default::default()
-        });
-
-        let mut ast = build_js_ast("mut.js", code, &context).unwrap();
-        let module_id = ModuleId::from("mut.js");
-
-        let src_to_module = hashmap! {
-            "./src".to_string() => ModuleId::from("src/index.js")
-        };
-
-        GLOBALS.set(&context.meta.script.globals, || {
-            let mut inner = InnerTransform::new(
-                concatenate_context,
-                &module_id,
-                &src_to_module,
-                &context,
-                ast.top_level_mark,
-            );
-
-            ast.ast.visit_mut_with(&mut resolver(
-                ast.unresolved_mark,
-                ast.top_level_mark,
-                false,
-            ));
-            ast.ast.visit_mut_with(&mut inner);
-
-            {
-                // do not need comments
-                let mut comment = context.meta.script.origin_comments.write().unwrap();
-                *comment = Default::default();
-            }
-
-            let (code, _) = js_ast_to_code(&ast.ast, &context, "mut.js").unwrap();
-            code.trim().to_string()
-        })
-    }
-
-    fn current_export_map(ccn_ctx: &ConcatenateContext) -> &HashMap<String, String> {
-        ccn_ctx
-            .modules_in_scope
-            .get(&ModuleId::from("mut.js"))
-            .unwrap()
-    }
-}
+mod tests;
