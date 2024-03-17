@@ -314,7 +314,7 @@ fn test_short_named_export_with_conflict() {
 }
 
 #[test]
-fn test_export_decl_literal_expr() {
+fn test_export_default_decl_literal_expr() {
     let mut ccn_ctx = ConcatenateContext::default();
     let code = inner_trans_code("export default 42", &mut ccn_ctx);
 
@@ -332,7 +332,7 @@ fn test_export_decl_literal_expr() {
 }
 
 #[test]
-fn test_export_decl_ident_expr() {
+fn test_export_default_decl_ident_expr() {
     let mut ccn_ctx = ConcatenateContext::default();
     let code = inner_trans_code("let t = 1; export default t", &mut ccn_ctx);
 
@@ -365,7 +365,7 @@ fn test_export_decl_un_nameable_expr() {
 }
 
 #[test]
-fn test_export_default_decl_function() {
+fn test_export_default_decl_named_function() {
     let mut ccn_ctx = ConcatenateContext::default();
     let code = inner_trans_code("export default function a(){}", &mut ccn_ctx);
 
@@ -429,7 +429,7 @@ fn test_export_decl_var() {
 }
 
 #[test]
-fn test_export_default_decl_class() {
+fn test_export_default_decl_named_class() {
     let mut ccn_ctx = ConcatenateContext::default();
     let code = inner_trans_code("export default class A{}", &mut ccn_ctx);
 
@@ -448,20 +448,41 @@ fn test_export_default_decl_class() {
 }
 
 #[test]
-fn test_export_variable_as_default() {
+fn test_export_default_anonymous_decl_class() {
     let mut ccn_ctx = ConcatenateContext::default();
-    let code = inner_trans_code("function a(){}; export {a as default}", &mut ccn_ctx);
+    let code = inner_trans_code("export default class {}", &mut ccn_ctx);
 
     assert_eq!(
         code,
-        r#"function a() {}
-;"#
+        "var __$m_mut_js_0 = class {
+};"
     );
-    assert_eq!(ccn_ctx.top_level_vars, hashset!("a".to_string()));
+    assert_eq!(
+        ccn_ctx.top_level_vars,
+        hashset!("__$m_mut_js_0".to_string())
+    );
     assert_eq!(
         current_export_map(&ccn_ctx),
         &hashmap!(
-            "default".to_string() => "a".to_string()
+            "default".to_string() => "__$m_mut_js_0".to_string()
+        )
+    );
+}
+
+#[test]
+fn test_export_default_anonymous_decl_fn() {
+    let mut ccn_ctx = ConcatenateContext::default();
+    let code = inner_trans_code("export default function() {}", &mut ccn_ctx);
+
+    assert_eq!(code, "var __$m_mut_js_0 = function() {};");
+    assert_eq!(
+        ccn_ctx.top_level_vars,
+        hashset!("__$m_mut_js_0".to_string())
+    );
+    assert_eq!(
+        current_export_map(&ccn_ctx),
+        &hashmap!(
+            "default".to_string() => "__$m_mut_js_0".to_string()
         )
     );
 }

@@ -159,8 +159,55 @@ impl<'a> InnerTransform<'a> {
     fn remove_current_stmt(&mut self) {
         self.replaces.push((self.current_stmt_index, vec![]));
     }
+
     fn replace_current_stmt_with(&mut self, stmts: Vec<ModuleItem>) {
         self.replaces.push((self.current_stmt_index, stmts));
+    }
+
+    fn append_namespace_declare(&mut self, n: &mut Module) {
+        let ns_name = self.get_non_conflict_name(&uniq_module_namespace_name(self.module_id));
+        let ns_ident = quote_ident!(ns_name.clone());
+
+        let empty_obj = ObjectLit {
+            span: DUMMY_SP,
+            props: vec![],
+        };
+
+        let init_stmt: Stmt = empty_obj
+            .into_var_decl(VarDeclKind::Var, ns_ident.clone().into())
+            .into();
+
+        let mut key_value_props: Vec<PropOrSpread> = vec![];
+
+        for (exported_name, local_name) in self.exports.iter() {
+            key_value_props.push(
+                Prop::KeyValue(KeyValueProp {
+                    key: quote_ident!(exported_name.clone()).into(),
+                    value: quote_ident!(local_name.clone()).into_lazy_fn(vec![]).into(),
+                })
+                .into(),
+            )
+        }
+
+        let define_exports: Stmt = member_expr!(DUMMY_SP, __mako_require__.e)
+            .as_call(
+                DUMMY_SP,
+                vec![
+                    ns_ident.as_arg(),
+                    ObjectLit {
+                        span: DUMMY_SP,
+                        props: key_value_props,
+                    }
+                    .as_arg(),
+                ],
+            )
+            .into_stmt();
+
+        self.exports.insert("*".to_string(), ns_name.clone());
+        self.my_top_decls.insert(ns_name);
+
+        n.body.push(init_stmt.into());
+        n.body.push(define_exports.into());
     }
 }
 
@@ -300,50 +347,8 @@ impl<'a> VisitMut for InnerTransform<'a> {
         self.apply_renames(n);
         self.add_leading_comment(n);
 
-        if (self.imported_type & ImportType::Namespace) == ImportType::Namespace {
-            let ns_name = self.get_non_conflict_name(&uniq_module_namespace_name(self.module_id));
-            let ns_ident = quote_ident!(ns_name.clone());
-
-            let empty_obj = ObjectLit {
-                span: DUMMY_SP,
-                props: vec![],
-            };
-
-            let init_stmt: Stmt = empty_obj
-                .into_var_decl(VarDeclKind::Var, ns_ident.clone().into())
-                .into();
-
-            let mut key_value_props: Vec<PropOrSpread> = vec![];
-
-            for (exported_name, local_name) in self.exports.iter() {
-                key_value_props.push(
-                    Prop::KeyValue(KeyValueProp {
-                        key: quote_ident!(exported_name.clone()).into(),
-                        value: quote_ident!(local_name.clone()).into_lazy_fn(vec![]).into(),
-                    })
-                    .into(),
-                )
-            }
-
-            let define_exports: Stmt = member_expr!(DUMMY_SP, __mako_require__.e)
-                .as_call(
-                    DUMMY_SP,
-                    vec![
-                        ns_ident.as_arg(),
-                        ObjectLit {
-                            span: DUMMY_SP,
-                            props: key_value_props,
-                        }
-                        .as_arg(),
-                    ],
-                )
-                .into_stmt();
-
-            self.exports.insert("*".to_string(), ns_name.clone());
-            self.my_top_decls.insert(ns_name);
-
-            n.body.push(init_stmt.into());
-            n.body.push(define_exports.into());
+        if self.imported_type.contains(ImportType::Namespace) {
+            self.append_namespace_declare(n);
         }
 
         self.concatenate_context
@@ -475,6 +480,8 @@ impl<'a> VisitMut for InnerTransform<'a> {
         }
     }
 }
+
+impl<'a> InnerTransform<'a> {}
 
 pub fn inner_import_specifier_to_stmts(
     local_top_decls: &mut HashSet<String>,
