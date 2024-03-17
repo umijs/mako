@@ -1,6 +1,7 @@
 use mako_core::swc_ecma_ast::*;
 use mako_core::swc_ecma_utils::private_ident;
 use mako_core::swc_ecma_visit::VisitMut;
+use swc_core::common::DUMMY_SP;
 
 pub struct MakoDefaultReactComponent {}
 impl MakoDefaultReactComponent {
@@ -10,61 +11,69 @@ impl MakoDefaultReactComponent {
     }
 }
 impl VisitMut for MakoDefaultReactComponent {
-    fn visit_mut_export_default_expr(&mut self, decl: &mut ExportDefaultExpr) {
-        // TODO: 箭头函数变量名重复场景未覆盖
-        if let Expr::Arrow(ArrowExpr {
-            params,
-            body,
-            is_async,
-            is_generator,
-            return_type,
-            type_params,
-            span,
-            ..
-        }) = *decl.expr.clone()
-        {
-            let fn_body = match *body {
-                BlockStmtOrExpr::BlockStmt(block_stmt) => block_stmt,
-                BlockStmtOrExpr::Expr(expr) => {
-                    BlockStmt {
-                        span, // 使用正确的 span
-                        stmts: vec![Stmt::Return(ReturnStmt {
-                            span, // 使用正确的 span
-                            arg: Some(expr),
-                        })],
+    fn visit_mut_module_item(&mut self, item: &mut ModuleItem) {
+        // 将表达式改成函数声明 swc_core 不会认为增加了变量，因此 hygiene_with_config 不会修改重复的变量，因此将代码调整到 module_item
+        if let ModuleItem::ModuleDecl(module_decl) = item {
+            match module_decl {
+                ModuleDecl::ExportDefaultExpr(decl) => {
+                    if let Expr::Arrow(ArrowExpr {
+                        params,
+                        body,
+                        is_async,
+                        is_generator,
+                        return_type,
+                        type_params,
+                        span,
+                        ..
+                    }) = *decl.expr.clone()
+                    {
+                        *item = ModuleItem::ModuleDecl(ModuleDecl::ExportDefaultDecl(
+                            ExportDefaultDecl {
+                                span: DUMMY_SP,
+                                decl: DefaultDecl::Fn(FnExpr {
+                                    ident: Some(private_ident!("Component$$")), // 无名的默认导出函数
+                                    function: Box::new(Function {
+                                        params: params
+                                            .iter()
+                                            .cloned()
+                                            .map(|pat: Pat| Param {
+                                                span,
+                                                decorators: vec![],
+                                                pat,
+                                            })
+                                            .collect::<Vec<_>>(),
+                                        body: Some(match *body {
+                                            BlockStmtOrExpr::BlockStmt(block_stmt) => block_stmt,
+                                            BlockStmtOrExpr::Expr(expr) => {
+                                                BlockStmt {
+                                                    span, // 使用正确的 span
+                                                    stmts: vec![Stmt::Return(ReturnStmt {
+                                                        span, // 使用正确的 span
+                                                        arg: Some(expr),
+                                                    })],
+                                                }
+                                            }
+                                        }),
+                                        is_async,
+                                        is_generator,
+                                        span,
+                                        return_type,
+                                        type_params,
+                                        decorators: vec![],
+                                    }),
+                                }),
+                            },
+                        ));
                     }
                 }
-            };
-            let fn_params: Vec<Param> = params
-                .iter()
-                .cloned()
-                .map(|pat: Pat| Param {
-                    span,
-                    decorators: vec![],
-                    pat,
-                })
-                .collect::<Vec<_>>();
-            // 箭头函数
-            let function_expr = Expr::Fn(FnExpr {
-                ident: Some(private_ident!("Component$$")), // 将标识符设置为 None
-                function: Box::new(Function {
-                    params: fn_params,
-                    body: Some(fn_body),
-                    is_async,
-                    is_generator,
-                    span,
-                    return_type,
-                    type_params,
-                    decorators: vec![],
-                }),
-            });
-            decl.expr = Box::new(function_expr);
-        }
-    }
-    fn visit_mut_export_default_decl(&mut self, decl: &mut ExportDefaultDecl) {
-        if let DefaultDecl::Fn(fn_expr) = &mut decl.decl {
-            if fn_expr.ident.is_none() {
-                fn_expr.ident = Some(private_ident!("Component$$"));
+                ModuleDecl::ExportDefaultDecl(decl) => {
+                    if let DefaultDecl::Fn(fn_expr) = &mut decl.decl {
+                        if fn_expr.ident.is_none() {
+                            fn_expr.ident = Some(private_ident!("Component$$"));
+                        }
+                    }
+                }
+                _ => (),
             }
         }
     }
@@ -86,6 +95,9 @@ mod tests {
     use crate::ast_2::tests::TestUtils;
     #[test]
     fn test_normal() {
+        run1(r#"export default ()=>{}"#).contains("function");
+        run1(r#"export default ()=>{};const Component$$=1;"#).contains("Component$$1");
+        run1(r#"const Component$$=1;export default ()=>{};"#).contains("Component$$1");
         assert!(run1(r#"export default function(){}"#).contains("Component$$"));
         assert!(run1(r#"export default function(){} let Component$$ = 1"#).contains("Component$$1"));
         assert!(
@@ -135,6 +147,8 @@ mod tests {
 
         // 将缓存字符串转换为实际的 Rust 字符串
 
-        String::from_utf8(output_buf).unwrap()
+        let output = String::from_utf8(output_buf).unwrap();
+        println!("output:{}", output);
+        output
     }
 }

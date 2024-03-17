@@ -12,5 +12,4 @@ assert(
 );
 assert(!jsxFnNodeModulesMapContent.includes("Component$$"), "should not have node_modules")
 assert(jsxFnIndexContent.includes("Component$$1") && jsxFnIndexContent.includes("Component$$"), "support modify a repeating variable and support tsx");
-assert(jsxArrowIndex1.includes("Component$$") , "support covert arrow function");
-// TODO: 暂时没有覆盖箭头函数导出重复变量的问题
+assert(jsxArrowIndex1.includes("Component$$1") && jsxArrowIndex1.includes("Component$$"), "support covert arrow function");
