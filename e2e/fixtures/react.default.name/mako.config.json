@@ -1,0 +1,9 @@
+{
+  "minify": false,
+  "entry":{
+    "jsxFnIndex":"./src/index.tsx",
+    "jsxArrowIndex1":"./src/index1.tsx",
+    "jsxFnNodeModulesMap":"./node_modules/index.tsx",
+    "index":"./src/index.js"
+  }
+}
