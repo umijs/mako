@@ -46,6 +46,11 @@ pub fn resolve(
 ) -> Result<ResolverResource> {
     mako_core::mako_profile_function!();
     mako_core::mako_profile_scope!("resolve", &dep.source);
+
+    if dep.source.starts_with("virtual:") {
+        return Ok(ResolverResource::Virtual(PathBuf::from(&dep.source)));
+    }
+
     let resolver = if parse_path(&dep.source)?.has_query("context") {
         resolvers.get(&ResolverType::Ctxt)
     } else if dep.resolve_type == ResolveType::Require {

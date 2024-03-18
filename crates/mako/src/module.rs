@@ -194,6 +194,14 @@ impl ModuleAst {
             panic!("ModuleAst is not Script")
         }
     }
+
+    pub fn as_css_mut(&mut self) -> &mut CssAst {
+        if let Self::Css(css) = self {
+            css
+        } else {
+            panic!("ModuleAst is not Css")
+        }
+    }
 }
 
 #[derive(PartialEq, Eq, Debug)]

@@ -205,6 +205,15 @@ import("./a.js")
 
 需要忽略的文件。忽略的文件会输出空模块。
 
+## inlineCSS
+
+- 类型：`{} | false`
+- 默认值：`false`
+
+是否以内联到 JS 的方式输出 CSS。
+
+注：此配置只能在 umd 开始时使用，因为注入 CSS 并不是推荐的方式，可能有潜在的性能问题。
+
 ## inlineLimit
 
 - 类型：`number`

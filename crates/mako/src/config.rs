@@ -345,6 +345,8 @@ pub struct OptimizationConfig {
     pub skip_modules: Option<bool>,
 }
 #[derive(Deserialize, Serialize, Debug)]
+pub struct InlineCssConfig {}
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct HmrConfig {
     pub host: String,
@@ -413,6 +415,8 @@ pub struct Config {
     pub emit_assets: bool,
     #[serde(rename = "cssModulesExportOnlyLocales")]
     pub css_modules_export_only_locales: bool,
+    #[serde(rename = "inlineCSS")]
+    pub inline_css: Option<InlineCssConfig>,
 }
 
 #[allow(dead_code)]
@@ -633,9 +637,12 @@ impl Config {
                 }
             }
 
-            // cjs and umd cannot be used at the same time
             if config.cjs && config.umd.is_some() {
                 return Err(anyhow!("cjs and umd cannot be used at the same time",));
+            }
+
+            if config.inline_css.is_some() && config.umd.is_none() {
+                return Err(anyhow!("inlineCSS can only be used with umd",));
             }
 
             let mode = format!("\"{}\"", config.mode);

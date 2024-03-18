@@ -136,6 +136,7 @@ export interface BuildParams {
     };
     emitAssets: boolean;
     cssModulesExportOnlyLocales: boolean;
+    inlineCSS?: false | {};
   };
   hooks: JsHooks;
   watch: boolean;

@@ -1,0 +1,5 @@
+{
+  "minify": false,
+  "inlineCSS": {},
+  "umd": "fooo"
+}
