@@ -1,6 +1,7 @@
 use mako_core::swc_ecma_ast::*;
 use mako_core::swc_ecma_utils::private_ident;
 use mako_core::swc_ecma_visit::VisitMut;
+use swc_core::common::util::take::Take;
 use swc_core::common::DUMMY_SP;
 
 pub struct MakoDefaultReactComponent {}
@@ -16,22 +17,22 @@ impl VisitMut for MakoDefaultReactComponent {
         if let ModuleItem::ModuleDecl(module_decl) = item {
             match module_decl {
                 ModuleDecl::ExportDefaultExpr(decl) => {
-                    if let Expr::Arrow(ArrowExpr {
-                        params,
-                        body,
-                        is_async,
-                        is_generator,
-                        return_type,
-                        type_params,
-                        span,
-                        ..
-                    }) = *decl.expr.clone()
-                    {
+                    if let Expr::Arrow(arrow_expr) = *decl.expr.take() {
+                        let ArrowExpr {
+                            params,
+                            body,
+                            is_async,
+                            is_generator,
+                            return_type,
+                            type_params,
+                            span,
+                            ..
+                        } = arrow_expr.clone();
                         *item = ModuleItem::ModuleDecl(ModuleDecl::ExportDefaultDecl(
                             ExportDefaultDecl {
                                 span: DUMMY_SP,
                                 decl: DefaultDecl::Fn(FnExpr {
-                                    ident: Some(private_ident!("Component$$")), // 无名的默认导出函数
+                                    ident: Some(private_ident!("Component$$")),
                                     function: Box::new(Function {
                                         params: params
                                             .iter()
@@ -44,15 +45,13 @@ impl VisitMut for MakoDefaultReactComponent {
                                             .collect::<Vec<_>>(),
                                         body: Some(match *body {
                                             BlockStmtOrExpr::BlockStmt(block_stmt) => block_stmt,
-                                            BlockStmtOrExpr::Expr(expr) => {
-                                                BlockStmt {
-                                                    span, // 使用正确的 span
-                                                    stmts: vec![Stmt::Return(ReturnStmt {
-                                                        span, // 使用正确的 span
-                                                        arg: Some(expr),
-                                                    })],
-                                                }
-                                            }
+                                            BlockStmtOrExpr::Expr(expr) => BlockStmt {
+                                                span,
+                                                stmts: vec![Stmt::Return(ReturnStmt {
+                                                    span,
+                                                    arg: Some(expr),
+                                                })],
+                                            },
                                         }),
                                         is_async,
                                         is_generator,
@@ -94,17 +93,52 @@ mod tests {
 
     use crate::ast_2::tests::TestUtils;
     #[test]
-    fn test_normal() {
-        run1(r#"export default ()=>{}"#).contains("function");
-        run1(r#"export default ()=>{};const Component$$=1;"#).contains("Component$$1");
-        run1(r#"const Component$$=1;export default ()=>{};"#).contains("Component$$1");
-        assert!(run1(r#"export default function(){}"#).contains("Component$$"));
-        assert!(run1(r#"export default function(){} let Component$$ = 1"#).contains("Component$$1"));
-        assert!(
-            run1(r#"let Component$$ = 1; export default function(){}"#).contains("Component$$1")
+    fn test_export_default_anonymous_function() {
+        assert_eq!(
+            run(r#"export default function(){}"#),
+            "export default function Component$$() {}\n"
         );
     }
-    fn run1(js_code: &str) -> String {
+    #[test]
+    fn test_export_default_anonymous_function_with_conflict() {
+        assert_eq!(
+            run(r#"export default function(){} let Component$$ = 1"#),
+            "export default function Component$$() {}\nlet Component$$1 = 1;\n"
+        );
+        assert_eq!(
+            run(r#"let Component$$ = 1; export default function(){}"#),
+            "let Component$$ = 1;\nexport default function Component$$1() {}\n"
+        );
+        assert_eq!(
+          run(r#"
+          let Component$$ = 1;export default function (){console.log(Component$$);}
+         "#),
+          "let Component$$ = 1;\nexport default function Component$$1() {\n    console.log(Component$$);\n}\n"
+      );
+    }
+    #[test]
+    fn test_export_default_arrow_function() {
+        assert_eq!(
+            run(r#"export default ()=>{}"#),
+            "export default function Component$$() {}\n"
+        );
+    }
+    #[test]
+    fn test_export_default_arrow_function_with_conflict() {
+        assert_eq!(
+            run(r#"let Component$$=1;export default ()=>{};"#),
+            "let Component$$ = 1;\nexport default function Component$$1() {}\n"
+        );
+        assert_eq!(
+            run(r#"let Component$$=1;export default ()=>{};"#),
+            "let Component$$ = 1;\nexport default function Component$$1() {}\n"
+        );
+        assert_eq!(
+          run(r#"let Component$$=1;export default ()=>{console.log(Component$$);};"#),
+          "let Component$$ = 1;\nexport default function Component$$1() {\n    console.log(Component$$);\n}\n"
+      );
+    }
+    fn run(js_code: &str) -> String {
         let mut test_utils = TestUtils::gen_js_ast(js_code.to_string());
         let ast = test_utils.ast.js_mut();
         let mut analyzer = super::MakoDefaultReactComponent::new();
@@ -120,13 +154,8 @@ mod tests {
         module_to_string(&ast.ast)
     }
     pub fn module_to_string(module: &Module) -> String {
-        // 初始化 SourceMap 和 Handler，它们对于 Emitter 是必要的
-
-        // 初始化一个缓存字符串，它将存储生成的代码
         let mut output_buf = vec![];
-
         {
-            // 创建一个代码生成器（Emitter）来写入代码到缓存字符串
             let cfg = Config::default();
             let writer = Box::new(JsWriter::new(
                 Lrc::new(SourceMap::default()),
@@ -135,20 +164,15 @@ mod tests {
                 None,
             ));
             let mut emitter = Emitter {
-                cfg, // 你可以配置输出选项
+                cfg,
                 comments: Some(&NoopComments),
                 cm: Lrc::new(SourceMap::default()),
                 wr: writer,
             };
 
-            // 使用 Emitter 将 Module 转换为代码
-            emitter.emit_module(module).unwrap(); // 注意：这里忽略错误处理
+            emitter.emit_module(module).unwrap();
         }
 
-        // 将缓存字符串转换为实际的 Rust 字符串
-
-        let output = String::from_utf8(output_buf).unwrap();
-        println!("output:{}", output);
-        output
+        String::from_utf8(output_buf).unwrap()
     }
 }
