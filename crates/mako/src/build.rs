@@ -284,7 +284,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         // raw_hash is only used in watch mode
         // so we don't need to calculate when watch is off
         let raw_hash = if context.args.watch {
-            file.get_raw_hash(context.config_hash)
+            file.get_raw_hash()
                 .wrapping_add(hash_hashmap(&deps.missing_deps))
         } else {
             0

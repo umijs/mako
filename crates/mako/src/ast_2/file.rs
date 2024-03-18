@@ -152,14 +152,14 @@ impl File {
         }
     }
 
-    pub fn get_raw_hash(&self, init: u64) -> u64 {
+    pub fn get_raw_hash(&self) -> u64 {
         let mut hasher: XxHash64 = Default::default();
         if let Some(content) = &self.content {
             match content {
                 Content::Js(content)
                 | Content::Css(content)
                 | Content::Assets(Asset { content, .. }) => {
-                    hasher.write_u64(init);
+                    // hasher.write_u64(init);
                     hasher.write(content.as_bytes());
                     hasher.finish()
                 }
