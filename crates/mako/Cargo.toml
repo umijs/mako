@@ -11,14 +11,16 @@ path = "src/main.rs"
 test = false
 
 [dependencies]
-cached       = { workspace = true }
-glob-match   = "0.2.1"
-mako_core    = { path = "../core" }
-miette       = { version = "5.10.0", features = ["fancy"] }
-oxc_resolver = "1.5.4"
-serde        = { workspace = true }
-serde_json   = { workspace = true }
-swc_core     = { workspace = true, features = ["swc_ecma_quote_macros"] }
+cached           = { workspace = true }
+glob-match       = "0.2.1"
+mako_core        = { path = "../core" }
+miette           = { version = "5.10.0", features = ["fancy"] }
+oxc_resolver     = "1.5.4"
+percent-encoding = { version = "2.3.1" }
+serde            = { workspace = true }
+serde_json       = { workspace = true }
+swc_core         = { workspace = true, features = ["swc_ecma_quote_macros"] }
+url              = { version = "2.5.0" }
 
 [target.'cfg(not(target_os = "linux"))'.dependencies]
 mimalloc-rust = { workspace = true }

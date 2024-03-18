@@ -17,6 +17,7 @@ pub enum ResolverResource {
     External(ExternalResource),
     Resolved(ResolvedResource),
     Ignored(PathBuf),
+    Virtual(PathBuf),
 }
 
 impl ResolverResource {
@@ -27,6 +28,7 @@ impl ResolverResource {
                 resolution.full_path().to_string_lossy().to_string()
             }
             ResolverResource::Ignored(path) => path.to_string_lossy().to_string(),
+            ResolverResource::Virtual(path) => path.to_string_lossy().to_string(),
         }
     }
     pub fn get_external(&self) -> Option<String> {
@@ -34,6 +36,7 @@ impl ResolverResource {
             ResolverResource::External(ExternalResource { external, .. }) => Some(external.clone()),
             ResolverResource::Resolved(_) => None,
             ResolverResource::Ignored(_) => None,
+            ResolverResource::Virtual(_) => None,
         }
     }
     pub fn get_script(&self) -> Option<String> {
@@ -41,6 +44,7 @@ impl ResolverResource {
             ResolverResource::External(ExternalResource { script, .. }) => script.clone(),
             ResolverResource::Resolved(_) => None,
             ResolverResource::Ignored(_) => None,
+            ResolverResource::Virtual(_) => None,
         }
     }
 }

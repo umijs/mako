@@ -20,7 +20,7 @@ impl CSSDepAnalyzer {
     }
 
     fn add_dependency(&mut self, url: String) {
-        if utils::is_remote(&url) {
+        if utils::is_remote_or_data_or_hash(&url) {
             return;
         }
         let url = utils::remove_first_tilde(url);
@@ -92,6 +92,7 @@ mod tests {
         assert!(run(r#"@import url(http://a.com/a.css);"#).is_empty());
         assert!(run(r#"@import url(data://a.com/a.css);"#).is_empty());
         assert!(run(r#"@import url(//a.com/a.css);"#).is_empty());
+        assert!(run(r#"@import url(#a);"#).is_empty());
     }
 
     #[test]

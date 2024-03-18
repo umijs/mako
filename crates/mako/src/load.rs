@@ -61,6 +61,30 @@ impl Load {
             return Ok(content);
         }
 
+        // virtual:inline_css:runtime
+        if file.path.to_str().unwrap() == "virtual:inline_css:runtime" {
+            return Ok(Content::Js(
+                r#"
+var memo = {};
+export function moduleToDom(css) {
+    var styleElement = document.createElement("style");
+    // TODO: support nonce
+    // styleElement.setAttribute("nonce", nonce);
+    var target = 'head';
+    function getTarget(target) {
+        if (!memo[target]) {
+            var styleTarget = document.querySelector(target);
+            memo[target] = styleTarget;
+        }
+        return memo[target];
+    }
+    target.appendChild(styleElement);
+}
+            "#
+                .to_string(),
+            ));
+        }
+
         // file exists check must after virtual modules handling
         if !file.pathname.exists() || !file.pathname.is_file() {
             return Err(anyhow!(LoadError::FileNotFound {

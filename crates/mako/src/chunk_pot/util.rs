@@ -93,13 +93,6 @@ pub(crate) fn empty_module_fn_expr() -> FnExpr {
     }
 }
 
-#[cached(
-    result = true,
-    key = "u64",
-    type = "SizedCache<u64, String>",
-    convert = r#"{context.config_hash}"#,
-    create = "{ SizedCache::with_size(5) }"
-)]
 pub(crate) fn runtime_code(context: &Arc<Context>) -> Result<String> {
     let umd = context.config.umd.clone();
     let chunk_graph = context.chunk_graph.read().unwrap();
