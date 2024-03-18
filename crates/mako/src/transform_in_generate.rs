@@ -6,6 +6,7 @@ use std::time::Instant;
 use mako_core::anyhow::Result;
 use mako_core::swc_common::errors::HANDLER;
 use mako_core::swc_common::GLOBALS;
+use mako_core::swc_css_ast;
 use mako_core::swc_css_visit::VisitMutWith as CSSVisitMutWith;
 use mako_core::swc_ecma_transforms::feature::FeatureFlag;
 use mako_core::swc_ecma_transforms::fixer::fixer;
@@ -18,13 +19,13 @@ use mako_core::swc_ecma_transforms_modules::util::{Config, ImportInterop};
 use mako_core::swc_ecma_visit::VisitMutWith;
 use mako_core::swc_error_reporters::handler::try_with_handler;
 use mako_core::tracing::debug;
-use mako_core::{swc_css_ast, swc_css_prefixer};
 
 use crate::ast_2::js_ast::JsAst;
 use crate::compiler::{Compiler, Context};
 use crate::config::OutputMode;
 use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
 use crate::swc_helpers::SwcHelpers;
+use crate::thread_pool;
 use crate::transformers::transform_async_module::AsyncModule;
 use crate::transformers::transform_css_handler::CssHandler;
 use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
@@ -32,7 +33,6 @@ use crate::transformers::transform_dynamic_import::DynamicImport;
 use crate::transformers::transform_mako_require::MakoRequire;
 use crate::transformers::transform_meta_url_replacer::MetaUrlReplacer;
 use crate::transformers::transform_optimize_define_utils::OptimizeDefineUtils;
-use crate::{targets, thread_pool};
 
 impl Compiler {
     pub fn transform_all(&self) -> Result<()> {
@@ -309,19 +309,11 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()>
     })
 }
 
-pub fn transform_css_generate(ast: &mut swc_css_ast::Stylesheet, context: &Arc<Context>) {
+pub fn transform_css_generate(ast: &mut swc_css_ast::Stylesheet, _context: &Arc<Context>) {
     mako_core::mako_profile_function!();
     // replace deps
     let mut css_handler = CssHandler {};
     ast.visit_mut_with(&mut css_handler);
-
-    // prefixer
-    let mut prefixer = swc_css_prefixer::prefixer(swc_css_prefixer::options::Options {
-        env: Some(targets::swc_preset_env_targets_from_map(
-            context.config.targets.clone(),
-        )),
-    });
-    ast.visit_mut_with(&mut prefixer);
 }
 
 #[cfg(test)]

@@ -2,7 +2,7 @@ use mako_core::swc_common::util::take::Take;
 use mako_core::swc_css_ast::{AtRule, AtRulePrelude, ImportHref, Rule, Stylesheet, UrlValue};
 use mako_core::swc_css_visit::{VisitMut, VisitMutWith};
 
-use crate::ast_2::utils::is_remote;
+use crate::ast_2::utils::is_remote_or_data_or_hash;
 
 pub struct CssHandler;
 
@@ -51,7 +51,7 @@ impl VisitMut for CssHandler {
                             }
                             box ImportHref::Str(str) => str.value.to_string(),
                         };
-                        is_remote(&href_string)
+                        is_remote_or_data_or_hash(&href_string)
                     } else {
                         true
                     }

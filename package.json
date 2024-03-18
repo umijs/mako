@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "benchmark": "esno scripts/benchmark.ts",
     "changelog:format": "esno scripts/format-changelog.ts",
     "prepare": "husky install",
     "biome:format": "biome check --apply .",
@@ -19,6 +20,7 @@
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
     "@jest/expect": "^29.7.0",
+    "@types/jest": "^29.5.12",
     "@okamjs/okam": "workspace:*",
     "@swc/helpers": "0.5.1",
     "@taplo/cli": "^0.7.0",

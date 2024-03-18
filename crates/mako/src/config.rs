@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::fmt;
-use std::hash::Hasher;
 use std::path::{Path, PathBuf};
 
 use mako_core::anyhow::{anyhow, Result};
@@ -11,7 +10,6 @@ use mako_core::serde::{Deserialize, Deserializer};
 use mako_core::serde_json::Value;
 use mako_core::swc_ecma_ast::EsVersion;
 use mako_core::thiserror::Error;
-use mako_core::twox_hash::XxHash64;
 use mako_core::{clap, config, thiserror};
 use miette::{miette, ByteOffset, Diagnostic, NamedSource, SourceOffset, SourceSpan};
 use serde::Serialize;
@@ -348,6 +346,8 @@ pub struct OptimizationConfig {
     pub concatenate_modules: Option<bool>,
 }
 #[derive(Deserialize, Serialize, Debug)]
+pub struct InlineCssConfig {}
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct HmrConfig {
     pub host: String,
@@ -416,12 +416,8 @@ pub struct Config {
     pub emit_assets: bool,
     #[serde(rename = "cssModulesExportOnlyLocales")]
     pub css_modules_export_only_locales: bool,
-}
-
-pub(crate) fn hash_config(c: &Config) -> u64 {
-    let mut hasher = XxHash64::default();
-    hasher.write(serde_json::to_string(c).unwrap().as_bytes());
-    hasher.finish()
+    #[serde(rename = "inlineCSS")]
+    pub inline_css: Option<InlineCssConfig>,
 }
 
 #[allow(dead_code)]
@@ -642,9 +638,12 @@ impl Config {
                 }
             }
 
-            // cjs and umd cannot be used at the same time
             if config.cjs && config.umd.is_some() {
                 return Err(anyhow!("cjs and umd cannot be used at the same time",));
+            }
+
+            if config.inline_css.is_some() && config.umd.is_none() {
+                return Err(anyhow!("inlineCSS can only be used with umd",));
             }
 
             let mode = format!("\"{}\"", config.mode);

@@ -12,6 +12,8 @@ use mako_core::regex::Regex;
 use mako_core::thiserror::Error;
 use mako_core::twox_hash::XxHash64;
 use mako_core::{md5, mime_guess};
+use percent_encoding::percent_decode_str;
+use url::Url;
 
 use crate::compiler::Context;
 use crate::util::base64_decode;
@@ -51,6 +53,7 @@ pub struct File {
     pub pathname: PathBuf,
     pub search: String,
     pub params: Vec<(String, String)>,
+    pub fragment: Option<String>,
 }
 
 impl Default for File {
@@ -67,6 +70,7 @@ impl Default for File {
             pathname: PathBuf::new(),
             search: "".to_string(),
             params: vec![],
+            fragment: None,
         }
     }
 }
@@ -84,7 +88,7 @@ lazy_static! {
 impl File {
     pub fn new(path: String, context: Arc<Context>) -> Self {
         let path = PathBuf::from(path);
-        let (pathname, search, params) = parse_path(&path.to_string_lossy()).unwrap();
+        let (pathname, search, params, fragment) = parse_path(&path.to_string_lossy()).unwrap();
         let pathname = PathBuf::from(pathname);
         let is_virtual = path.starts_with(&*VIRTUAL) ||
             // TODO: remove this specific logic
@@ -103,6 +107,7 @@ impl File {
                 pathname,
                 search,
                 params,
+                fragment,
                 is_under_node_modules,
                 extname,
                 ..Default::default()
@@ -148,14 +153,14 @@ impl File {
         }
     }
 
-    pub fn get_raw_hash(&self, init: u64) -> u64 {
+    pub fn get_raw_hash(&self) -> u64 {
         let mut hasher: XxHash64 = Default::default();
         if let Some(content) = &self.content {
             match content {
                 Content::Js(content)
                 | Content::Css(content)
                 | Content::Assets(Asset { content, .. }) => {
-                    hasher.write_u64(init);
+                    // hasher.write_u64(init);
                     hasher.write(content.as_bytes());
                     hasher.finish()
                 }
@@ -246,27 +251,20 @@ impl File {
 type PathName = String;
 type Search = String;
 type Params = Vec<(String, String)>;
-fn parse_path(path: &str) -> Result<(PathName, Search, Params)> {
-    let mut iter = path.split('?');
-    let path = iter.next().unwrap();
-    let query = iter.next().unwrap_or("");
-    let mut query_vec = vec![];
-    for pair in query.split('&') {
-        if pair.contains('=') {
-            let mut it = pair.split('=').take(2);
-            let kv = match (it.next(), it.next()) {
-                (Some(k), Some(v)) => (k.to_string(), v.to_string()),
-                _ => continue,
-            };
-            query_vec.push(kv);
-        } else if !pair.is_empty() {
-            query_vec.push((pair.to_string(), "".to_string()));
-        }
-    }
-    let search = if query.is_empty() {
-        "".to_string()
-    } else {
-        format!("?{}", query)
-    };
-    Ok((path.to_string(), search, query_vec))
+type Fragment = Option<String>;
+fn parse_path(path: &str) -> Result<(PathName, Search, Params, Fragment)> {
+    let base = "http://a.com/";
+    let base_url = Url::parse(base)?;
+    let full_url = base_url.join(path)?;
+    let path = full_url.path().to_string();
+    let fragment = full_url.fragment().map(|s| s.to_string());
+    let search = full_url.query().unwrap_or("").to_string();
+    let query_vec = full_url
+        .query_pairs()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+    // dir or filename may contains space or other special characters
+    // so we need to decode it, e.g. "a%20b" -> "a b"
+    let path = percent_decode_str(&path).decode_utf8()?;
+    Ok((path.to_string(), search, query_vec, fragment))
 }

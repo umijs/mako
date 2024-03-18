@@ -135,7 +135,7 @@ fn resolve_web_worker(expr: &NewExpr, unresolved_mark: Mark) -> Option<&Str> {
                             .is_some_and(|arg| utils::is_import_meta_url(&arg.expr))
                         {
                             if let box Expr::Lit(Lit::Str(ref str)) = &args[0].expr {
-                                if !utils::is_remote(&str.value) {
+                                if !utils::is_remote_or_data(&str.value) {
                                     return Some(str);
                                 }
                             }

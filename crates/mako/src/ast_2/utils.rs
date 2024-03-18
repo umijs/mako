@@ -10,13 +10,23 @@ pub fn base64_encode<T: AsRef<[u8]>>(raw: T) -> String {
     general_purpose::STANDARD.encode(raw)
 }
 
-// TODO: more accurate
-pub fn is_remote(url: &str) -> bool {
+pub fn is_remote_or_data(url: &str) -> bool {
     let lower_url = url.to_lowercase();
+    // ref:
+    // https://developer.mozilla.org/en-US/docs/Web/CSS/url
+    // https://www.ietf.org/rfc/rfc3986
     lower_url.starts_with("http://")
         || lower_url.starts_with("https://")
         || lower_url.starts_with("data:")
         || lower_url.starts_with("//")
+}
+
+pub fn is_remote_or_data_or_hash(url: &str) -> bool {
+    let lower_url = url.to_lowercase();
+    is_remote_or_data(url)
+        // css url() should not resolve hash only url
+        // e.g. fill: url(#gradient)
+        || lower_url.starts_with('#')
 }
 
 pub fn remove_first_tilde(url: String) -> String {

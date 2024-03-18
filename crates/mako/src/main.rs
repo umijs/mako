@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::clap::Parser;
-use mako_core::tokio;
 #[cfg(feature = "profile")]
 use mako_core::tokio::sync::Notify;
 use mako_core::tracing::debug;
@@ -52,6 +51,7 @@ mod targets;
 #[cfg(test)]
 mod test_helper;
 mod thread_pool;
+mod tokio_runtime;
 mod transform;
 mod transform_in_generate;
 mod transformers;
@@ -76,10 +76,7 @@ static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 fn main() -> Result<()> {
     let fut = async { run().await };
 
-    tokio::runtime::Builder::new_current_thread()
-        .build()
-        .expect("Failed to create tokio runtime.")
-        .block_on(fut)
+    tokio_runtime::block_on(fut)
 }
 
 async fn run() -> Result<()> {
@@ -128,7 +125,7 @@ async fn run() -> Result<()> {
         let notify = Arc::new(Notify::new());
         let to_be_notify = notify.clone();
 
-        tokio::spawn(async move {
+        tokio_runtime::spawn(async move {
             let compiler = compiler.clone();
 
             to_be_notify.notified().await;
