@@ -15,8 +15,8 @@ use crate::plugins::farm_tree_shake::statement_graph::{
 
 pub fn remove_useless_stmts(
     tree_shake_module: &mut TreeShakeModule,
-    swc_module: &mut SwcModule,
-) -> (Vec<ImportInfo>, Vec<ExportInfo>) {
+    swc_module: &SwcModule,
+) -> (Vec<ImportInfo>, Vec<ExportInfo>, SwcModule) {
     // analyze the statement graph start from the used statements
     let mut used_stmts = tree_shake_module
         .used_statements()
@@ -29,6 +29,7 @@ pub fn remove_useless_stmts(
     let mut used_export_from_infos = vec![];
 
     // remove unused specifiers in export statement and import statement
+    let mut swc_module = swc_module.clone();
     for (stmt_id, used_defined_idents) in &used_stmts {
         let module_item = &mut swc_module.body[*stmt_id];
 
@@ -112,7 +113,7 @@ pub fn remove_useless_stmts(
         swc_module.body.remove(stmt);
     }
 
-    (used_import_infos, used_export_from_infos)
+    (used_import_infos, used_export_from_infos, swc_module)
 }
 
 pub struct UselessImportStmtsRemover {
