@@ -12,7 +12,7 @@ use mako_core::swc_ecma_transforms_optimization::simplify::{dce, Config as Simpi
 use mako_core::swc_ecma_transforms_proposals::decorators;
 use mako_core::swc_ecma_transforms_typescript::strip_with_jsx;
 use mako_core::swc_ecma_visit::{Fold, VisitMut};
-use mako_core::{swc_css_compat, swc_css_visit};
+use mako_core::{swc_css_compat, swc_css_prefixer, swc_css_visit};
 use swc_core::common::GLOBALS;
 
 use crate::ast_2::css_ast::CssAst;
@@ -172,6 +172,14 @@ impl Transform {
                         current_selector: None,
                     }));
                 }
+                // prefixer
+                visitors.push(Box::new(swc_css_prefixer::prefixer(
+                    swc_css_prefixer::options::Options {
+                        env: Some(targets::swc_preset_env_targets_from_map(
+                            context.config.targets.clone(),
+                        )),
+                    },
+                )));
                 ast.transform(&mut visitors)?;
 
                 // css modules

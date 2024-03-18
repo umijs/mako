@@ -102,7 +102,7 @@ impl Compiler {
                 let dep_module_id = ModuleId::new(path.clone());
                 if !module_graph.has_module(&dep_module_id) {
                     let module = match dep.resolver_resource {
-                        ResolverResource::Resolved(_) => {
+                        ResolverResource::Virtual(_) | ResolverResource::Resolved(_) => {
                             count += 1;
 
                             let file = File::new(path.clone(), self.context.clone());
