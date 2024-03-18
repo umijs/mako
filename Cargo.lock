@@ -2550,6 +2550,7 @@ dependencies = [
  "miette 5.10.0",
  "mimalloc-rust",
  "oxc_resolver",
+ "percent-encoding",
  "serde",
  "serde_json",
  "swc_core 0.83.19",

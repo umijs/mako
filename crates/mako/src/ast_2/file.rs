@@ -12,6 +12,7 @@ use mako_core::regex::Regex;
 use mako_core::thiserror::Error;
 use mako_core::twox_hash::XxHash64;
 use mako_core::{md5, mime_guess};
+use percent_encoding::percent_decode_str;
 use url::Url;
 
 use crate::compiler::Context;
@@ -253,7 +254,7 @@ type Params = Vec<(String, String)>;
 type Fragment = Option<String>;
 fn parse_path(path: &str) -> Result<(PathName, Search, Params, Fragment)> {
     let base = "http://a.com/";
-    let base_url = Url::parse(base)?;
+    let base_url = Url::options().parse(base)?;
     let full_url = base_url.join(path)?;
     let path = full_url.path().to_string();
     let fragment = full_url.fragment().map(|s| s.to_string());
@@ -262,5 +263,8 @@ fn parse_path(path: &str) -> Result<(PathName, Search, Params, Fragment)> {
         .query_pairs()
         .map(|(k, v)| (k.to_string(), v.to_string()))
         .collect();
+    // dir or filename may contains space or other special characters
+    // so we need to decode it, e.g. "a%20b" -> "a b"
+    let path = percent_decode_str(&path).decode_utf8()?;
     Ok((path.to_string(), search, query_vec, fragment))
 }
