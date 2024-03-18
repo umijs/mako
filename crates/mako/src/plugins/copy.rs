@@ -2,23 +2,24 @@ use std::path::Path;
 use std::sync::Arc;
 
 use mako_core::anyhow::Result;
+use mako_core::fs_extra;
 use mako_core::glob::glob;
 use mako_core::notify::event::{CreateKind, DataChange, ModifyKind, RenameMode};
 use mako_core::notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use mako_core::tokio::sync::mpsc::channel;
 use mako_core::tracing::debug;
-use mako_core::{fs_extra, tokio};
 
 use crate::compiler::Context;
 use crate::plugin::Plugin;
 use crate::stats::StatsJsonMap;
+use crate::tokio_runtime;
 
 pub struct CopyPlugin {}
 
 impl CopyPlugin {
     fn watch(context: &Arc<Context>) {
         let context = context.clone();
-        tokio::spawn(async move {
+        tokio_runtime::spawn(async move {
             let (tx, mut rx) = channel(2);
             let mut watcher = RecommendedWatcher::new(
                 move |res| {
