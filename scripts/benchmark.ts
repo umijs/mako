@@ -3,7 +3,8 @@ import 'zx/globals';
 (async () => {
   const baseline = argv.baseline || 'master';
   const multiChunks = argv.multiChunks;
-  const casePath = argv.case || multiChunks ? './tmp/three10x/multiChunks' : './tmp/three10x';
+  const casePath =
+    argv.case || multiChunks ? './tmp/three10x/multiChunks' : './tmp/three10x';
 
   const currentBranch = (
     await $`git rev-parse --abbrev-ref HEAD`
