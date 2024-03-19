@@ -3,6 +3,8 @@ use mako_core::swc_ecma_utils::private_ident;
 use mako_core::swc_ecma_visit::VisitMut;
 use swc_core::common::DUMMY_SP;
 
+const DEFAULT_COMPONENT_NAME: &str = "Component$$";
+
 pub struct NamedExportDefault {}
 
 impl NamedExportDefault {
@@ -35,7 +37,7 @@ impl VisitMut for NamedExportDefault {
                             ExportDefaultDecl {
                                 span: DUMMY_SP,
                                 decl: DefaultDecl::Fn(FnExpr {
-                                    ident: Some(private_ident!("Component$$")),
+                                    ident: Some(private_ident!(DEFAULT_COMPONENT_NAME)),
                                     function: Box::new(Function {
                                         params: params
                                             .iter()
@@ -71,7 +73,7 @@ impl VisitMut for NamedExportDefault {
                 ModuleDecl::ExportDefaultDecl(decl) => {
                     if let DefaultDecl::Fn(fn_expr) = &mut decl.decl {
                         if fn_expr.ident.is_none() {
-                            fn_expr.ident = Some(private_ident!("Component$$"));
+                            fn_expr.ident = Some(private_ident!(DEFAULT_COMPONENT_NAME));
                         }
                     }
                 }
