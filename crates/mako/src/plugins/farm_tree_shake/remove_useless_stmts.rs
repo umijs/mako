@@ -123,7 +123,7 @@ impl VisitMut for UselessImportStmtsRemover {
     // 1. import { a } from 'x';
     // 2. import a from 'x';
     // 3. import * as a from 'x';
-    // if specifier not use and x has sideEffect, become import 'x';
+    // if specifier is not used and x has sideEffect, convert to import 'x';
 
     fn visit_mut_import_decl(&mut self, import_decl: &mut ImportDecl) {
         let mut specifiers_to_remove = vec![];
