@@ -214,17 +214,16 @@ pub(super) fn skip_module_optimize(
                                 }
                             }
                         }
-                        let remove_specifier =
+                        let removed_specifier =
                             matched_index.map(|i| import_decl.specifiers.remove(i));
 
                         to_delete = import_decl.specifiers.is_empty();
 
                         if let Some(ident) = matched_ident
-                            && let Some(specifier) = remove_specifier
+                            && removed_specifier.is_some()
                         {
-                            let span = specifier.span();
                             let module_item = replace.to_import_module_item(ident);
-                            let dep = replace.to_import_dep(span);
+                            let dep = replace.to_import_dep(import_decl.span());
 
                             to_insert.push(module_item);
                             to_insert_deps.push(dep);
@@ -276,17 +275,17 @@ pub(super) fn skip_module_optimize(
                                 }
                             }
 
-                            let specifier =
+                            let removed_specifier =
                                 matched_index.map(|index| export_named.specifiers.remove(index));
 
                             to_delete = export_named.specifiers.is_empty();
 
                             if let Some(ident) = matched_ident
-                                && let Some(specifier) = specifier
+                                && removed_specifier.is_some()
                             {
                                 let module_item = replace.to_export_module_item(ident);
                                 to_insert.push(module_item);
-                                to_insert_deps.push(replace.to_export_dep(specifier.span()));
+                                to_insert_deps.push(replace.to_export_dep(export_named.span()));
                             }
                         }
                     }
