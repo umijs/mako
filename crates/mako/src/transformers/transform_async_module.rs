@@ -217,7 +217,7 @@ mod tests {
     use crate::compiler::Context;
     use crate::config::Config;
     use crate::module::ModuleId;
-    use crate::visitors::js_dep_analyzer::JSDepAnalyzer;
+    use crate::visitors::dep_analyzer::DepAnalyzer;
 
     #[test]
     fn test_default_import_async_module() {
@@ -417,7 +417,7 @@ __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
                     false,
                 ));
 
-                let mut dep_collector = JSDepAnalyzer::new(ast.unresolved_mark);
+                let mut dep_collector = DepAnalyzer::new(ast.unresolved_mark);
                 ast.ast.visit_with(&mut dep_collector);
 
                 let import_interop = ImportInterop::Swc;

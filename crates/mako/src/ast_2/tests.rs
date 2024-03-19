@@ -5,7 +5,7 @@ use mako_core::swc_ecma_transforms::resolver;
 use mako_core::swc_ecma_visit::VisitMutWith;
 use swc_core::common::GLOBALS;
 
-use super::css_ast::CssAst;
+use super::css_ast::{CSSAstGenerated, CssAst};
 use super::file::{Content, File};
 use super::js_ast::{JSAstGenerated, JsAst};
 use crate::compiler::Context;
@@ -105,6 +105,12 @@ impl TestUtils {
                 }));
         });
         let JSAstGenerated { code, sourcemap: _ } = ast.generate(self.context.clone()).unwrap();
+        code.trim_end().to_string()
+    }
+
+    pub fn css_ast_to_code(&mut self) -> String {
+        let ast = self.ast.css_mut();
+        let CSSAstGenerated { code, sourcemap: _ } = ast.generate(self.context.clone()).unwrap();
         code.trim_end().to_string()
     }
 }
