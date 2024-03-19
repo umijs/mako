@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
+use mako_core::swc_ecma_transforms::hygiene::{self, hygiene_with_config};
 use mako_core::swc_ecma_transforms::resolver;
 use mako_core::swc_ecma_visit::VisitMutWith;
 use swc_core::common::GLOBALS;
 
 use super::css_ast::CssAst;
 use super::file::{Content, File};
-use super::js_ast::JsAst;
+use super::js_ast::{JSAstGenerated, JsAst};
 use crate::compiler::Context;
 
 pub struct TestUtilsOpts {
@@ -40,7 +41,7 @@ pub struct TestUtils {
 }
 
 impl TestUtils {
-    pub fn new(opts: TestUtilsOpts) -> TestUtils {
+    pub fn new(opts: TestUtilsOpts) -> Self {
         let context = Arc::new(Context {
             ..Default::default()
         });
@@ -66,18 +67,18 @@ impl TestUtils {
         } else {
             TestAst::Js(JsAst::new(&file, context.clone()).unwrap())
         };
-        TestUtils { ast, context }
+        Self { ast, context }
     }
 
-    pub fn gen_css_ast(content: String) -> TestUtils {
-        TestUtils::new(TestUtilsOpts {
+    pub fn gen_css_ast(content: String) -> Self {
+        Self::new(TestUtilsOpts {
             file: Some("test.css".to_string()),
             content: Some(content),
         })
     }
 
-    pub fn gen_js_ast(content: String) -> TestUtils {
-        let mut test_utils = TestUtils::new(TestUtilsOpts {
+    pub fn gen_js_ast(content: String) -> Self {
+        let mut test_utils = Self::new(TestUtilsOpts {
             file: Some("test.js".to_string()),
             content: Some(content),
         });
@@ -89,5 +90,21 @@ impl TestUtils {
                 .visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
         });
         test_utils
+    }
+
+    pub fn js_ast_to_code(&mut self) -> String {
+        let ast = self.ast.js_mut();
+        let top_level_mark = ast.top_level_mark;
+        GLOBALS.set(&self.context.meta.script.globals, || {
+            ast.ast
+                .visit_mut_with(&mut hygiene_with_config(hygiene::Config {
+                    top_level_mark,
+                    ..Default::default()
+                }));
+        });
+        let JSAstGenerated { code, sourcemap: _ } = ast.generate(self.context.clone()).unwrap();
+        code.replace("//# sourceMappingURL=test.js.map", "")
+            .trim_end()
+            .to_string()
     }
 }

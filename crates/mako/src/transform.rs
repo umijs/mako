@@ -29,7 +29,7 @@ use crate::transformers::transform_px2rem::Px2Rem;
 use crate::transformers::transform_react::mako_react;
 use crate::transformers::transform_try_resolve::TryResolve;
 use crate::transformers::transform_virtual_css_modules::VirtualCSSModules;
-use crate::visitors::mako_default_react_component::MakoDefaultReactComponent;
+use crate::visitors::named_export_default::NamedExportDefault;
 
 pub struct Transform {}
 
@@ -44,8 +44,6 @@ impl Transform {
                     let cm = context.meta.script.cm.clone();
                     let origin_comments = context.meta.script.origin_comments.read().unwrap();
                     let is_ts = file.extname == "ts" || file.extname == "tsx";
-                    let is_hmr = (file.extname == "tsx" || file.extname == "jsx")
-                        && (!file.is_under_node_modules);
 
                     // visitors
                     let mut visitors: Vec<Box<dyn VisitMut>> = vec![];
@@ -62,8 +60,12 @@ impl Transform {
                             top_level_mark,
                         )))
                     }
-                    if is_hmr {
-                        visitors.push(Box::new(MakoDefaultReactComponent::new()));
+                    // named default export
+                    let could_be_react_component =
+                        file.extname == "tsx" || file.extname == "jsx" || file.extname == "js";
+                    if context.args.watch && !file.is_under_node_modules && could_be_react_component
+                    {
+                        visitors.push(Box::new(NamedExportDefault::new()));
                     }
                     // TODO: refact mako_react
                     visitors.push(Box::new(mako_react(

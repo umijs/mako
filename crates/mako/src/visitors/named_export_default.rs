@@ -1,23 +1,26 @@
 use mako_core::swc_ecma_ast::*;
 use mako_core::swc_ecma_utils::private_ident;
 use mako_core::swc_ecma_visit::VisitMut;
-use swc_core::common::util::take::Take;
 use swc_core::common::DUMMY_SP;
 
-pub struct MakoDefaultReactComponent {}
-impl MakoDefaultReactComponent {
-    #[allow(dead_code)]
+pub struct NamedExportDefault {}
+
+impl NamedExportDefault {
     pub fn new() -> Self {
-        Self {}
+        NamedExportDefault {}
     }
 }
-impl VisitMut for MakoDefaultReactComponent {
+
+impl VisitMut for NamedExportDefault {
     fn visit_mut_module_item(&mut self, item: &mut ModuleItem) {
-        // 将表达式改成函数声明 swc_core 不会认为增加了变量，因此 hygiene_with_config 不会修改重复的变量，因此将代码调整到 module_item
+        // modify in module_item so hygiene_with_config rename will work
         if let ModuleItem::ModuleDecl(module_decl) = item {
             match module_decl {
                 ModuleDecl::ExportDefaultExpr(decl) => {
-                    if let Expr::Arrow(arrow_expr) = *decl.expr.take() {
+                    if let Expr::Arrow(arrow_expr) = decl.expr.as_ref() {
+                        if arrow_expr.is_async || arrow_expr.is_generator {
+                            return;
+                        }
                         let ArrowExpr {
                             params,
                             body,
@@ -80,99 +83,67 @@ impl VisitMut for MakoDefaultReactComponent {
 
 #[cfg(test)]
 mod tests {
-    use mako_core::swc_common::sync::Lrc;
-    use mako_core::swc_common::SourceMap;
-    use mako_core::swc_ecma_ast::*;
-    use mako_core::swc_ecma_codegen::text_writer::JsWriter;
-    use mako_core::swc_ecma_codegen::{Config, Emitter};
-    use mako_core::swc_ecma_transforms::hygiene::hygiene_with_config;
     use mako_core::swc_ecma_visit::VisitMutWith;
-    use swc_core::common::comments::NoopComments;
     use swc_core::common::GLOBALS;
-    use swc_core::ecma::transforms::testing::test;
 
+    use super::NamedExportDefault;
     use crate::ast_2::tests::TestUtils;
+
     #[test]
-    fn test_export_default_anonymous_function() {
+    fn test_normal() {
         assert_eq!(
             run(r#"export default function(){}"#),
-            "export default function Component$$() {}\n"
+            "export default function Component$$() {}"
         );
     }
+
     #[test]
-    fn test_export_default_anonymous_function_with_conflict() {
+    fn test_conflicts() {
         assert_eq!(
-            run(r#"export default function(){} let Component$$ = 1"#),
-            "export default function Component$$() {}\nlet Component$$1 = 1;\n"
+            run(r#"export default function(){} let Component$$ = 1; Component$$ +=1;"#),
+            "export default function Component$$() {}\nlet Component$$1 = 1;\nComponent$$1 += 1;"
         );
         assert_eq!(
-            run(r#"let Component$$ = 1; export default function(){}"#),
-            "let Component$$ = 1;\nexport default function Component$$1() {}\n"
+            run(r#"let Component$$ = 1;export default function(){} Component$$ += 1;"#),
+            "let Component$$ = 1;\nexport default function Component$$1() {}\nComponent$$ += 1;"
         );
-        assert_eq!(
-          run(r#"
-          let Component$$ = 1;export default function (){console.log(Component$$);}
-         "#),
-          "let Component$$ = 1;\nexport default function Component$$1() {\n    console.log(Component$$);\n}\n"
-      );
     }
+
     #[test]
-    fn test_export_default_arrow_function() {
+    fn test_arrow_function() {
         assert_eq!(
             run(r#"export default ()=>{}"#),
-            "export default function Component$$() {}\n"
+            "export default function Component$$() {}"
         );
     }
+
     #[test]
-    fn test_export_default_arrow_function_with_conflict() {
+    fn test_arrow_function_exclude_cases() {
         assert_eq!(
-            run(r#"let Component$$=1;export default ()=>{};"#),
-            "let Component$$ = 1;\nexport default function Component$$1() {}\n"
+            run(r#"export default async ()=>{};"#),
+            "export default async ()=>{};"
         );
-        assert_eq!(
-            run(r#"let Component$$=1;export default ()=>{};"#),
-            "let Component$$ = 1;\nexport default function Component$$1() {}\n"
-        );
-        assert_eq!(
-          run(r#"let Component$$=1;export default ()=>{console.log(Component$$);};"#),
-          "let Component$$ = 1;\nexport default function Component$$1() {\n    console.log(Component$$);\n}\n"
-      );
     }
+
+    #[test]
+    fn test_arrow_function_conflict() {
+        assert_eq!(
+            run(r#"let Component$$=1;export default ()=>{};Component$$+=1;"#),
+            "let Component$$ = 1;\nexport default function Component$$1() {}\nComponent$$ += 1;"
+        );
+        assert_eq!(
+            run(r#"export default ()=>{};let Component$$=1;Component$$+=1;"#),
+            "export default function Component$$() {}\nlet Component$$1 = 1;\nComponent$$1 += 1;"
+        );
+    }
+
     fn run(js_code: &str) -> String {
         let mut test_utils = TestUtils::gen_js_ast(js_code.to_string());
         let ast = test_utils.ast.js_mut();
-        let mut analyzer = super::MakoDefaultReactComponent::new();
         GLOBALS.set(&test_utils.context.meta.script.globals, || {
-            ast.ast.visit_mut_children_with(&mut analyzer);
+            let mut visitor = NamedExportDefault::new();
+            ast.ast.visit_mut_children_with(&mut visitor);
         });
-        // 使用 hygiene 模块修改重复的变量名
-        let config = mako_core::swc_ecma_transforms::hygiene::Config {
-            ..Default::default()
-        };
-        let mut hygiene_transform = hygiene_with_config(config);
-        ast.ast.visit_mut_with(&mut hygiene_transform);
-        module_to_string(&ast.ast)
-    }
-    pub fn module_to_string(module: &Module) -> String {
-        let mut output_buf = vec![];
-        {
-            let cfg = Config::default();
-            let writer = Box::new(JsWriter::new(
-                Lrc::new(SourceMap::default()),
-                "\n",
-                &mut output_buf,
-                None,
-            ));
-            let mut emitter = Emitter {
-                cfg,
-                comments: Some(&NoopComments),
-                cm: Lrc::new(SourceMap::default()),
-                wr: writer,
-            };
-
-            emitter.emit_module(module).unwrap();
-        }
-
-        String::from_utf8(output_buf).unwrap()
+        test_utils.js_ast_to_code()
     }
 }
