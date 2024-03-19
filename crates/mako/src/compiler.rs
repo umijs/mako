@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Instant, UNIX_EPOCH};
 
@@ -377,14 +376,9 @@ impl Compiler {
         }
         let result = {
             mako_core::mako_profile_scope!("Generate Stage");
-            let (rs, rr) = channel::<Result<()>>();
             // need to put all rayon parallel iterators run in the existed scope, or else rayon
             // will create a new thread pool for those parallel iterators
-            thread_pool::install(|| {
-                let res = self.generate();
-                rs.send(res).unwrap();
-            });
-            rr.recv().unwrap()
+            thread_pool::scope(|_| self.generate())
         };
         let t_compiler_duration = t_compiler.elapsed();
         if result.is_ok() {
