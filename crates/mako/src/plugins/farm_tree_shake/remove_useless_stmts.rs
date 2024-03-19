@@ -10,7 +10,7 @@ use crate::plugins::farm_tree_shake::statement_graph::analyze_imports_and_export
 };
 use crate::plugins::farm_tree_shake::statement_graph::defined_idents_collector::DefinedIdentsCollector;
 use crate::plugins::farm_tree_shake::statement_graph::{
-    ExportInfo, ExportSpecifierInfo as UsedExportSpecInfo, ImportInfo,
+    ExportInfo, ExportSpecifierInfo as UsedExportSpecInfo, ImportInfo, ImportSpecifierInfo,
 };
 
 pub fn remove_useless_stmts(
@@ -120,21 +120,33 @@ pub struct UselessImportStmtsRemover {
 }
 
 impl VisitMut for UselessImportStmtsRemover {
+    // 1. import { a } from 'x';
+    // 2. import a from 'x';
+    // 3. import * as a from 'x';
+    // if specifier not use and x has sideEffect, become import 'x';
+
     fn visit_mut_import_decl(&mut self, import_decl: &mut ImportDecl) {
         let mut specifiers_to_remove = vec![];
 
         for (index, specifier) in import_decl.specifiers.iter().enumerate() {
-            if let ImportSpecifier::Named(named_specifier) = specifier {
-                if !self.
-                    import_info.specifiers
-          .iter()
-          .any(|specifier| match specifier {
-            crate::plugins::farm_tree_shake::statement_graph::ImportSpecifierInfo::Named { local, .. } => named_specifier.local.to_string() == *local,
-            _ => false,
-          })
-        {
-          specifiers_to_remove.push(index);
-        }
+            if !self.import_info.specifiers.iter().any(|specifier_info| {
+                match (specifier_info, specifier) {
+                    (
+                        ImportSpecifierInfo::Named { local, .. },
+                        ImportSpecifier::Named(named_specifier),
+                    ) => named_specifier.local.to_string() == *local,
+                    (
+                        ImportSpecifierInfo::Default(str),
+                        ImportSpecifier::Default(default_specifier),
+                    ) => default_specifier.local.to_string() == *str,
+                    (
+                        ImportSpecifierInfo::Namespace(str),
+                        ImportSpecifier::Namespace(namespace_specifier),
+                    ) => namespace_specifier.local.to_string() == *str,
+                    _ => false,
+                }
+            }) {
+                specifiers_to_remove.push(index);
             }
         }
 
