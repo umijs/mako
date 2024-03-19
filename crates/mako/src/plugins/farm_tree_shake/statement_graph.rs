@@ -243,12 +243,6 @@ impl Statement {
             has_side_effects,
         } = analyze_imports_and_exports(&id, stmt, None, unresolved_ctxt);
 
-        // transform defined_idents_map from HashMap<Ident, Vec<Ident>> to HashMap<String, Ident> using ToString
-        let defined_idents_map = defined_idents_map
-            .into_iter()
-            .map(|(key, value)| (key, value))
-            .collect();
-
         Self {
             id,
             import_info,
