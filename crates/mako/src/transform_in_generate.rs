@@ -26,12 +26,12 @@ use crate::config::OutputMode;
 use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
 use crate::thread_pool;
 use crate::transformers::transform_async_module::AsyncModule;
-use crate::transformers::transform_css_handler::CssHandler;
 use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
 use crate::transformers::transform_dynamic_import::DynamicImport;
 use crate::transformers::transform_mako_require::MakoRequire;
 use crate::transformers::transform_meta_url_replacer::MetaUrlReplacer;
 use crate::transformers::transform_optimize_define_utils::OptimizeDefineUtils;
+use crate::visitors::css_imports::CSSImports;
 
 impl Compiler {
     pub fn transform_all(&self) -> Result<()> {
@@ -294,7 +294,7 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()>
 pub fn transform_css_generate(ast: &mut swc_css_ast::Stylesheet, _context: &Arc<Context>) {
     mako_core::mako_profile_function!();
     // replace deps
-    let mut css_handler = CssHandler {};
+    let mut css_handler = CSSImports {};
     ast.visit_mut_with(&mut css_handler);
 }
 
