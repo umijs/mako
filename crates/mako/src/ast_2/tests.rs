@@ -42,9 +42,11 @@ pub struct TestUtils {
 
 impl TestUtils {
     pub fn new(opts: TestUtilsOpts) -> Self {
-        let context = Arc::new(Context {
+        let mut context = Context {
             ..Default::default()
-        });
+        };
+        context.config.devtool = None;
+        let context = Arc::new(context);
         let file = if let Some(file) = opts.file {
             file
         } else {
@@ -103,8 +105,6 @@ impl TestUtils {
                 }));
         });
         let JSAstGenerated { code, sourcemap: _ } = ast.generate(self.context.clone()).unwrap();
-        code.replace("//# sourceMappingURL=test.js.map", "")
-            .trim_end()
-            .to_string()
+        code.trim_end().to_string()
     }
 }
