@@ -142,7 +142,7 @@ mod tests {
         let ast = test_utils.ast.js_mut();
         GLOBALS.set(&test_utils.context.meta.script.globals, || {
             let mut visitor = NamedExportDefault::new();
-            ast.ast.visit_mut_children_with(&mut visitor);
+            ast.ast.visit_mut_with(&mut visitor);
         });
         test_utils.js_ast_to_code()
     }
