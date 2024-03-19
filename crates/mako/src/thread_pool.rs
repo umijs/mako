@@ -1,6 +1,6 @@
 use std::sync::OnceLock;
 
-use mako_core::rayon::{ThreadPool, ThreadPoolBuilder};
+use mako_core::rayon::{Scope, ThreadPool, ThreadPoolBuilder};
 
 static THREAD_POOL: OnceLock<ThreadPool> = OnceLock::new();
 
@@ -18,10 +18,10 @@ where
     THREAD_POOL.get_or_init(build_rayon_thread_pool).spawn(func)
 }
 
-pub fn install<OP, R>(op: OP) -> R
+pub fn scope<'scope, OP, R>(op: OP) -> R
 where
-    OP: FnOnce() -> R + Send,
+    OP: FnOnce(&Scope<'scope>) -> R + Send,
     R: Send,
 {
-    THREAD_POOL.get_or_init(build_rayon_thread_pool).install(op)
+    THREAD_POOL.get_or_init(build_rayon_thread_pool).scope(op)
 }
