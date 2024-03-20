@@ -13,7 +13,7 @@ use crate::compiler::Context;
 use crate::module::ModuleAst;
 use crate::plugin::PluginParseParam;
 use crate::transform::Transform;
-use crate::transformers::transform_css_handler::CssHandler;
+use crate::visitors::css_imports::CSSImports;
 
 #[derive(Debug, Error)]
 pub enum ParseError {
@@ -88,7 +88,7 @@ impl Parse {
                     let ast = ast.as_css_mut();
                     // transform (remove @imports)
                     // TODO: Render::transform(&mut ast, &file, context.clone())?;
-                    let mut css_handler = CssHandler {};
+                    let mut css_handler = CSSImports {};
                     ast.ast.visit_mut_with(&mut css_handler);
                     // ast to code
                     let code = ast.generate(context.clone())?.code;

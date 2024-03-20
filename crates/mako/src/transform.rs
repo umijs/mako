@@ -29,6 +29,7 @@ use crate::transformers::transform_px2rem::Px2Rem;
 use crate::transformers::transform_react::mako_react;
 use crate::transformers::transform_try_resolve::TryResolve;
 use crate::transformers::transform_virtual_css_modules::VirtualCSSModules;
+use crate::visitors::default_export_namer::DefaultExportNamer;
 
 pub struct Transform {}
 
@@ -58,6 +59,13 @@ impl Transform {
                             comments,
                             top_level_mark,
                         )))
+                    }
+                    // named default export
+                    let could_be_react_component =
+                        file.extname == "tsx" || file.extname == "jsx" || file.extname == "js";
+                    if context.args.watch && !file.is_under_node_modules && could_be_react_component
+                    {
+                        visitors.push(Box::new(DefaultExportNamer::new()));
                     }
                     // TODO: refact mako_react
                     visitors.push(Box::new(mako_react(

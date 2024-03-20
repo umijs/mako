@@ -4,16 +4,19 @@ use mako_core::swc_css_visit::{VisitMut, VisitMutWith};
 
 use crate::ast_2::utils::is_remote_or_data_or_hash;
 
-pub struct CssHandler;
+pub struct CSSImports;
 
-impl VisitMut for CssHandler {
-    // remove @import,
-    // http(s) will not be removed
+// TODO:
+// 1. hoist and remove relative could be done in separate visitors
+// 2. hoist could be done in transform phase
+impl VisitMut for CSSImports {
     fn visit_mut_stylesheet(&mut self, n: &mut Stylesheet) {
-        // move all @import to the top of other rules
+        // hoist all import
+        // if import is not hoisted, it's not invalid in browser render
+        // relative imports will be removed later
+        // so only non-relative imports make sense here
         n.rules.sort_by_key(|rule| {
             let mut ret: i8 = 1;
-
             if let Rule::AtRule {
                 0:
                     box AtRule {
@@ -25,11 +28,10 @@ impl VisitMut for CssHandler {
             {
                 ret = 0;
             }
-
             ret
         });
 
-        // filter non-url @import
+        // keep non-relative imports
         n.rules = n
             .rules
             .take()
@@ -60,5 +62,63 @@ impl VisitMut for CssHandler {
             })
             .collect();
         n.visit_mut_children_with(self);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use mako_core::swc_css_visit::VisitMutWith;
+
+    use crate::ast_2::tests::TestUtils;
+
+    #[test]
+    fn test_keep_none_relative() {
+        assert_eq!(
+            run(r#"
+@import url(//a);
+@import url(http://a);
+@import url(https://a);
+@import url(data://a);
+@import url(#a);
+@import url(a.css);
+@import url(b.css);
+                "#),
+            r#"
+@import url(//a);
+@import url(http://a);
+@import url(https://a);
+@import url(data://a);
+@import url(#a);
+                "#
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_hoist_imports() {
+        assert_eq!(
+            run(r#"
+.a {}
+@import url(//a);
+.b {}
+@import url(//b);
+                    "#),
+            r#"
+@import url(//a);
+@import url(//b);
+.a {}
+.b {}
+                    "#
+            .trim()
+        );
+    }
+
+    fn run(css_code: &str) -> String {
+        let mut test_utils = TestUtils::gen_css_ast(css_code.to_string());
+        let ast = test_utils.ast.css_mut();
+        let mut visitor = super::CSSImports {};
+        ast.ast.visit_mut_with(&mut visitor);
+        test_utils.css_ast_to_code()
     }
 }

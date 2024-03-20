@@ -133,6 +133,20 @@ impl ResolveType {
     }
 }
 
+impl ResolveType {
+    pub fn is_esm(&self) -> bool {
+        match self {
+            ResolveType::Import(_) => true,
+            ResolveType::ExportNamed(_) => true,
+            ResolveType::ExportAll => true,
+            ResolveType::Require => false,
+            ResolveType::DynamicImport => true,
+            ResolveType::Css => false,
+            ResolveType::Worker => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ModuleInfo {
     pub ast: ModuleAst,

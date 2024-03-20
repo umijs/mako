@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
-use mako_core::tracing::debug;
 
 use crate::compiler::Context;
 use crate::module::ModuleId;
 use crate::plugin::Plugin;
+use crate::swc_helpers::SwcHelpers;
 
 pub struct MakoRuntime {}
 
@@ -43,14 +43,7 @@ impl MakoRuntime {
     }
 
     fn helper_runtime(&self, context: &Arc<Context>) -> Result<String> {
-        let helpers = context.swc_helpers.lock().unwrap().get_helpers();
-        debug!("swc helpers: {:?}", helpers);
-
-        if helpers.is_empty() {
-            return Ok("".to_string());
-        }
-
-        let helpers = helpers
+        let helpers = SwcHelpers::full_helpers()
             .into_iter()
             .map(|source| {
                 let code = Self::get_swc_helper_code(&source).unwrap();

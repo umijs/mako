@@ -1,353 +1,199 @@
-use std::sync::Arc;
-
+use mako_core::swc_common::util::take::Take;
 use mako_core::swc_common::{Mark, DUMMY_SP};
 use mako_core::swc_ecma_ast::{
-    ArrayLit, ArrowExpr, AssignExpr, AssignOp, AwaitExpr, BindingIdent, BlockStmt, BlockStmtOrExpr,
-    CallExpr, Callee, CondExpr, Decl, Expr, ExprOrSpread, ExprStmt, Ident, Lit, MemberExpr,
-    MemberProp, ModuleItem, ParenExpr, Pat, PatOrExpr, Stmt, Str, VarDecl, VarDeclKind,
-    VarDeclarator,
+    ArrayLit, AssignExpr, AssignOp, AwaitExpr, BlockStmt, BlockStmtOrExpr, CondExpr, Expr, Ident,
+    Lit, ModuleItem, Stmt, VarDeclKind,
 };
 use mako_core::swc_ecma_visit::VisitMut;
+use swc_core::ecma::ast::ParenExpr;
+use swc_core::ecma::utils::{member_expr, quote_expr, quote_ident, ExprFactory};
+use swc_core::ecma::visit::VisitMutWith;
 
 use crate::ast_2::utils::is_commonjs_require;
-use crate::compiler::Context;
 use crate::module::Dependency;
 
-const ASYNC_DEPS_IDENT: &str = "__mako_async_dependencies__";
 const ASYNC_IMPORTED_MODULE: &str = "_async__mako_imported_module_";
 
 pub struct AsyncModule<'a> {
-    pub async_deps: &'a Vec<Dependency>,
-    pub async_deps_idents: Vec<BindingIdent>,
-    pub last_dep_pos: usize,
-    pub top_level_await: bool,
-    pub context: &'a Arc<Context>,
-    pub unresolved_mark: Mark,
+    async_deps: &'a Vec<Dependency>,
+    async_deps_idents: Vec<Ident>,
+    found: bool,
+    first_async_dep_import_pos: usize,
+    prepend_module_items: Vec<ModuleItem>,
+    top_level_await: bool,
+    unresolved_mark: Mark,
+}
+
+impl<'a> AsyncModule<'a> {
+    pub fn new(
+        async_deps: &'a Vec<Dependency>,
+        unresolved_mark: Mark,
+        top_level_await: bool,
+    ) -> Self {
+        Self {
+            async_deps,
+            async_deps_idents: vec![],
+            found: false,
+            first_async_dep_import_pos: 0,
+            prepend_module_items: vec![],
+            top_level_await,
+            unresolved_mark,
+        }
+    }
 }
 
 impl VisitMut for AsyncModule<'_> {
+    fn visit_mut_expr(&mut self, n: &mut Expr) {
+        if let Expr::Call(call_expr) = n
+            && is_commonjs_require(call_expr, &self.unresolved_mark)
+            && let box Expr::Lit(Lit::Str(str)) = &call_expr.args[0].expr
+        {
+            let source = str.value.to_string();
+            for (idx, dep) in self.async_deps.iter().enumerate() {
+                // not only source map, but also span compare
+                if dep.source == source
+                    && dep.resolve_type.is_esm()
+                    && let Some(dep_span) = dep.span
+                    && dep_span.contains(str.span)
+                {
+                    let ident_name = quote_ident!(format!("{}{}__", ASYNC_IMPORTED_MODULE, idx));
+                    if !self.async_deps_idents.contains(&ident_name) {
+                        self.async_deps_idents.push(ident_name.clone());
+
+                        let require_stmt: Stmt = n
+                            .take()
+                            .into_var_decl(VarDeclKind::Var, ident_name.clone().into())
+                            .into();
+                        self.prepend_module_items.push(require_stmt.into());
+
+                        *n = ident_name.into();
+
+                        self.found = true;
+                        return;
+                    } else {
+                        *n = ident_name.into();
+                        self.found = true;
+                        return;
+                    }
+                }
+            }
+        }
+
+        n.visit_mut_children_with(self);
+    }
+
     fn visit_mut_module_items(&mut self, module_items: &mut Vec<ModuleItem>) {
+        let mut fist_import_pos: Option<usize> = None;
+
         // Collect the idents of all async deps, while recording the position of the last import statement
         for (i, module_item) in module_items.iter_mut().enumerate() {
-            if let ModuleItem::Stmt(stmt) = module_item {
-                match stmt {
-                    // `require('./async');` => `var _async__mako_imported_module_n__ = require('./async');`
-                    Stmt::Expr(expr_stmt) => {
-                        if let Expr::Call(call_expr) = &*expr_stmt.expr {
-                            if is_commonjs_require(call_expr, &self.unresolved_mark) {
-                                if let Expr::Lit(Lit::Str(Str { value, .. })) =
-                                    &*call_expr.args[0].expr
-                                {
-                                    let source = value.to_string();
-                                    if self.async_deps.iter().any(|dep| dep.source == source) {
-                                        let ident_name: BindingIdent = Ident::new(
-                                            format!("{}{}__", ASYNC_IMPORTED_MODULE, i).into(),
-                                            DUMMY_SP,
-                                        )
-                                        .into();
-                                        *stmt = Stmt::Decl(Decl::Var(Box::new(VarDecl {
-                                            span: DUMMY_SP,
-                                            kind: VarDeclKind::Var,
-                                            declare: false,
-                                            decls: vec![VarDeclarator {
-                                                span: DUMMY_SP,
-                                                name: Pat::Ident(ident_name.clone()),
-                                                init: Some(Box::new(*expr_stmt.expr.clone())),
-                                                definite: false,
-                                            }],
-                                        })));
-                                        self.async_deps_idents.push(ident_name.clone());
-                                        self.last_dep_pos = i;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // `var async = require('./async');`
-                    Stmt::Decl(Decl::Var(var_decl)) => {
-                        for decl in &var_decl.decls {
-                            if let Some(box Expr::Call(call_expr)) = &decl.init {
-                                if is_commonjs_require(call_expr, &self.unresolved_mark) {
-                                    if let Expr::Lit(Lit::Str(Str { value, .. })) =
-                                        &*call_expr.args[0].expr
-                                    {
-                                        let source = value.to_string();
-                                        if self.async_deps.iter().any(|dep| dep.source == source) {
-                                            // filter the async deps
-                                            if let Pat::Ident(binding_ident) = &decl.name {
-                                                self.async_deps_idents.push(binding_ident.clone());
-                                                self.last_dep_pos = i;
-                                            }
-                                        }
-                                    }
-                                } else if let Callee::Expr(box Expr::Member(MemberExpr {
-                                    obj,
-                                    prop,
-                                    ..
-                                })) = &call_expr.callee
-                                {
-                                    if let Some(Ident { sym: obj_sym, .. }) = obj.clone().ident() {
-                                        if &obj_sym == "_interop_require_default"
-                                            || &obj_sym == "_interop_require_wildcard"
-                                        {
-                                            if let Some(Ident { sym, .. }) = prop.clone().ident() {
-                                                if &sym == "_" {
-                                                    if let Expr::Call(call_expr) =
-                                                        &*call_expr.args[0].expr
-                                                    {
-                                                        if is_commonjs_require(
-                                                            call_expr,
-                                                            &self.unresolved_mark,
-                                                        ) {
-                                                            if let Expr::Lit(Lit::Str(Str {
-                                                                value,
-                                                                ..
-                                                            })) = &*call_expr.args[0].expr
-                                                            {
-                                                                let source = value.to_string();
-                                                                if self
-                                                                    .async_deps
-                                                                    .iter()
-                                                                    .any(|dep| dep.source == source)
-                                                                {
-                                                                    // filter the async deps
-                                                                    if let Pat::Ident(
-                                                                        binding_ident,
-                                                                    ) = &decl.name
-                                                                    {
-                                                                        let binding_ident_default = BindingIdent {
-                                                                            id: Ident {
-                                                                                sym: format!("{}.default", binding_ident.id.sym).into(),
-                                                                                ..binding_ident.id.clone()
-                                                                            },
-                                                                            ..binding_ident.clone()
-                                                                        };
-
-                                                                        if &obj_sym == "_interop_require_default" {
-                                                                            // ex. _react.default
-                                                                            self.async_deps_idents.push(binding_ident_default.clone());
-                                                                        } else if &obj_sym == "_interop_require_wildcard" {
-                                                                            // ex. _react
-                                                                            self.async_deps_idents.push(binding_ident.clone());
-                                                                            // why also push the default import?
-                                                                            // adapt both default import and wildcard import for the same module
-                                                                            self.async_deps_idents.push(binding_ident_default.clone());
-                                                                        } else {
-                                                                            unreachable!();
-                                                                        }
-
-                                                                        self.last_dep_pos = i;
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    _ => {}
-                }
+            self.found = false;
+            module_item.visit_mut_with(self);
+            if self.found && fist_import_pos.is_none() {
+                fist_import_pos = Some(i);
+                self.first_async_dep_import_pos = i;
             }
         }
 
         if !self.async_deps_idents.is_empty() {
             // Insert code after the last import statement: `var __mako_async_dependencies__ = handleAsyncDeps([async1, async2]);`
-            module_items.insert(
-                self.last_dep_pos + 1,
-                ModuleItem::Stmt(Stmt::Decl(Decl::Var(Box::new(VarDecl {
-                    span: DUMMY_SP,
-                    kind: VarDeclKind::Var,
-                    declare: false,
-                    decls: vec![VarDeclarator {
-                        span: DUMMY_SP,
-                        name: Pat::Ident(BindingIdent {
-                            id: Ident {
-                                span: DUMMY_SP,
-                                sym: ASYNC_DEPS_IDENT.into(),
-                                optional: false,
-                            },
-                            type_ann: None,
-                        }),
-                        init: Some(Box::new(Expr::Call(CallExpr {
-                            span: DUMMY_SP,
-                            callee: Callee::Expr(Box::new(Expr::Ident(Ident {
-                                span: DUMMY_SP,
-                                sym: "handleAsyncDeps".into(),
-                                optional: false,
-                            }))),
-                            args: vec![ExprOrSpread {
-                                spread: None,
-                                expr: Box::new(Expr::Array(ArrayLit {
-                                    span: DUMMY_SP,
-                                    elems: self
-                                        .async_deps_idents
-                                        .iter()
-                                        .map(|ident| {
-                                            Some(ExprOrSpread {
-                                                spread: None,
-                                                expr: Box::new(Expr::Ident(ident.id.clone())),
-                                            })
-                                        })
-                                        .collect(),
-                                })),
-                            }],
-                            type_args: None,
-                        }))),
-                        definite: false,
-                    }],
-                })))),
-            );
-
-            // Insert code: `[async1, async2] = __mako_async_dependencies__.then ? (await __mako_async_dependencies__)() : __mako_async_dependencies__;`
-            module_items.insert(
-                self.last_dep_pos + 2,
-                ModuleItem::Stmt(Stmt::Expr(ExprStmt {
-                    span: DUMMY_SP,
-                    expr: Box::new(Expr::Assign(AssignExpr {
-                        span: DUMMY_SP,
-                        left: PatOrExpr::Expr(Box::new(Expr::Array(ArrayLit {
+            self.prepend_module_items.push(ModuleItem::Stmt(
+                quote_ident!("handleAsyncDeps")
+                    .as_call(
+                        DUMMY_SP,
+                        vec![ArrayLit {
                             span: DUMMY_SP,
                             elems: self
                                 .async_deps_idents
                                 .iter()
-                                .map(|ident| {
-                                    Some(ExprOrSpread {
-                                        spread: None,
-                                        expr: Box::new(Expr::Ident(ident.id.clone())),
-                                    })
-                                })
+                                .map(|ident| Some(ident.clone().as_arg()))
                                 .collect(),
-                        }))),
-                        right: Box::new(Expr::Cond(CondExpr {
+                        }
+                        .as_arg()],
+                    )
+                    .into_var_decl(
+                        VarDeclKind::Var,
+                        quote_ident!("__mako_async_dependencies__").into(),
+                    )
+                    .into(),
+            ));
+
+            // Insert code: `[async1, async2] = __mako_async_dependencies__.then ? (await __mako_async_dependencies__)() : __mako_async_dependencies__;`
+            self.prepend_module_items.push(ModuleItem::Stmt(
+                AssignExpr {
+                    op: AssignOp::Assign,
+                    left: ArrayLit {
+                        span: DUMMY_SP,
+                        elems: self
+                            .async_deps_idents
+                            .iter()
+                            .map(|ident| Some(ident.clone().as_arg()))
+                            .collect(),
+                    }
+                    .as_pat_or_expr(),
+                    right: CondExpr {
+                        test: member_expr!(DUMMY_SP, __mako_async_dependencies__.then),
+                        cons: ParenExpr {
+                            expr: AwaitExpr {
+                                span: DUMMY_SP,
+                                arg: quote_ident!("__mako_async_dependencies__").into(),
+                            }
+                            .into(),
                             span: DUMMY_SP,
-                            test: Box::new(Expr::Member(MemberExpr {
-                                span: DUMMY_SP,
-                                obj: Box::new(Expr::Ident(Ident {
-                                    span: DUMMY_SP,
-                                    sym: ASYNC_DEPS_IDENT.into(),
-                                    optional: false,
-                                })),
-                                prop: MemberProp::Ident(Ident {
-                                    span: DUMMY_SP,
-                                    sym: "then".into(),
-                                    optional: false,
-                                }),
-                            })),
-                            cons: Box::new(Expr::Call(CallExpr {
-                                span: DUMMY_SP,
-                                callee: Callee::Expr(Box::new(Expr::Paren(ParenExpr {
-                                    span: DUMMY_SP,
-                                    expr: Box::new(Expr::Await(AwaitExpr {
-                                        span: DUMMY_SP,
-                                        arg: Box::new(Expr::Ident(Ident {
-                                            span: DUMMY_SP,
-                                            sym: ASYNC_DEPS_IDENT.into(),
-                                            optional: false,
-                                        })),
-                                    })),
-                                }))),
-                                args: vec![],
-                                type_args: None,
-                            })),
-                            alt: Box::new(Expr::Ident(Ident {
-                                span: DUMMY_SP,
-                                sym: ASYNC_DEPS_IDENT.into(),
-                                optional: false,
-                            })),
-                        })),
-                        op: AssignOp::Assign,
-                    })),
-                })),
-            );
+                        }
+                        .as_call(DUMMY_SP, vec![])
+                        .into(),
+                        alt: quote_ident!("__mako_async_dependencies__").into(),
+                        span: DUMMY_SP,
+                    }
+                    .into(),
+                    span: DUMMY_SP,
+                }
+                .into_stmt(),
+            ));
         }
 
-        // Insert code: `asyncResult()`
-        module_items.push(ModuleItem::Stmt(Stmt::Expr(ExprStmt {
-            span: DUMMY_SP,
-            expr: Box::new(Expr::Call(CallExpr {
-                span: DUMMY_SP,
-                callee: Callee::Expr(Box::new(Expr::Ident(Ident {
-                    span: DUMMY_SP,
-                    sym: "asyncResult".into(),
-                    optional: false,
-                }))),
-                type_args: None,
-                args: vec![],
-            })),
-        })));
+        module_items.splice(
+            self.first_async_dep_import_pos..self.first_async_dep_import_pos,
+            self.prepend_module_items.take(),
+        );
 
-        // Wrap async module with `require._async(module, async (handleAsyncDeps, asyncResult) => { });`
-        *module_items = vec![ModuleItem::Stmt(Stmt::Expr(ExprStmt {
-            span: DUMMY_SP,
-            expr: Box::new(Expr::Call(CallExpr {
-                span: DUMMY_SP,
-                callee: Callee::Expr(Box::new(Expr::Member(MemberExpr {
-                    span: DUMMY_SP,
-                    obj: Box::new(Expr::Ident(self.context.meta.script.require_ident.clone())),
-                    prop: MemberProp::Ident(Ident {
-                        span: DUMMY_SP,
-                        sym: "_async".into(),
-                        optional: false,
-                    }),
-                }))),
-                type_args: None,
-                args: vec![
-                    ExprOrSpread {
-                        spread: None,
-                        expr: Box::new(Expr::Ident(self.context.meta.script.module_ident.clone())),
-                    },
-                    ExprOrSpread {
-                        spread: None,
-                        expr: Box::new(Expr::Arrow(ArrowExpr {
-                            is_async: true,
-                            is_generator: false,
-                            type_params: None,
-                            return_type: None,
-                            span: DUMMY_SP,
-                            params: vec![
-                                Pat::Ident(BindingIdent {
-                                    id: Ident {
-                                        span: DUMMY_SP,
-                                        sym: "handleAsyncDeps".into(),
-                                        optional: false,
-                                    },
-                                    type_ann: None,
-                                }),
-                                Pat::Ident(BindingIdent {
-                                    id: Ident {
-                                        span: DUMMY_SP,
-                                        sym: "asyncResult".into(),
-                                        optional: false,
-                                    },
-                                    type_ann: None,
-                                }),
-                            ],
-                            body: Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
+        // Insert code: `asyncResult()`
+        let call_async_result = quote_ident!("asyncResult")
+            .as_call(DUMMY_SP, vec![])
+            .into_stmt();
+        module_items.push(call_async_result.into());
+
+        // Wrap async module with `__mako_require__._async(
+        //   module, async (handleAsyncDeps, asyncResult) => { }, bool
+        // );`
+        *module_items = vec![ModuleItem::Stmt(
+            member_expr!(DUMMY_SP, __mako_require__._async)
+                .as_call(
+                    DUMMY_SP,
+                    vec![
+                        quote_ident!("module").as_arg(),
+                        {
+                            let mut arrow_fn = quote_expr!(DUMMY_SP, null).into_lazy_arrow(vec![
+                                quote_ident!("handleAsyncDeps").into(),
+                                quote_ident!("asyncResult").into(),
+                            ]);
+                            arrow_fn.is_async = true;
+                            arrow_fn.body = BlockStmtOrExpr::BlockStmt(BlockStmt {
                                 span: DUMMY_SP,
                                 stmts: module_items
                                     .iter()
                                     .map(|stmt| stmt.as_stmt().unwrap().clone())
                                     .collect(),
-                            })),
-                        })),
-                    },
-                    ExprOrSpread {
-                        spread: None,
-                        expr: Box::new(Expr::Ident(Ident {
-                            span: DUMMY_SP,
-                            sym: if self.top_level_await { "1" } else { "0" }.into(),
-                            optional: false,
-                        })),
-                    },
-                ],
-            })),
-        }))];
+                            })
+                            .into();
+                            arrow_fn.as_arg()
+                        },
+                        Lit::from(self.top_level_await).as_arg(),
+                    ],
+                )
+                .into_stmt(),
+        )];
     }
 }
 
@@ -355,18 +201,136 @@ impl VisitMut for AsyncModule<'_> {
 mod tests {
     use std::sync::Arc;
 
-    use mako_core::swc_common::{Globals, DUMMY_SP, GLOBALS};
+    use mako_core::swc_common::GLOBALS;
     use mako_core::swc_ecma_transforms::resolver;
-    use mako_core::swc_ecma_visit::VisitMutWith;
+    use mako_core::swc_ecma_visit::{VisitMutWith, VisitWith};
+    use mako_core::swc_node_comments::SwcComments;
+    use swc_core::ecma::transforms::base::feature::FeatureFlag;
+    use swc_core::ecma::transforms::base::helpers::{inject_helpers, Helpers, HELPERS};
+    use swc_core::ecma::transforms::module::common_js;
+    use swc_core::ecma::transforms::module::import_analysis::import_analyzer;
+    use swc_core::ecma::transforms::module::util::ImportInterop;
 
     use super::AsyncModule;
     use crate::ast::{build_js_ast, js_ast_to_code};
     use crate::chunk::{Chunk, ChunkType};
     use crate::compiler::Context;
-    use crate::module::{Dependency, ImportType, ModuleId, ResolveType};
+    use crate::config::Config;
+    use crate::module::ModuleId;
+    use crate::visitors::dep_analyzer::DepAnalyzer;
 
     #[test]
-    fn test_async_module() {
+    fn test_default_import_async_module() {
+        let code = r#"
+import add from './async';
+add(1, 2);
+        "#
+        .trim();
+        let (code, _) = transform_code(code, None);
+        println!(">> CODE\n{}", code);
+        assert_eq!(
+            code,
+            r#"__mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
+    "use strict";
+    Object.defineProperty(exports, "__esModule", {
+        value: true
+    });
+    var _interop_require_default = require("@swc/helpers/_/_interop_require_default");
+    var _async__mako_imported_module_0__ = require("./async");
+    var __mako_async_dependencies__ = handleAsyncDeps([
+        _async__mako_imported_module_0__
+    ]);
+    [
+        _async__mako_imported_module_0__
+    ] = __mako_async_dependencies__.then ? (await __mako_async_dependencies__)() : __mako_async_dependencies__;
+    var _async = _interop_require_default._(_async__mako_imported_module_0__);
+    0, _async.default(1, 2);
+    asyncResult();
+}, true);
+"#
+                .trim()
+        );
+    }
+
+    #[test]
+    fn test_two_import_async_module() {
+        let code = r#"
+import add from './async';
+add(1, 2);
+import foo from "./async_2"
+console.log(foo)
+        "#
+        .trim();
+        let (code, _) = transform_code(code, None);
+        println!(">> CODE\n{}", code);
+        assert_eq!(
+            code,
+            r#"
+__mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
+    "use strict";
+    Object.defineProperty(exports, "__esModule", {
+        value: true
+    });
+    var _interop_require_default = require("@swc/helpers/_/_interop_require_default");
+    var _async__mako_imported_module_0__ = require("./async");
+    var _async__mako_imported_module_1__ = require("./async_2");
+    var __mako_async_dependencies__ = handleAsyncDeps([
+        _async__mako_imported_module_0__,
+        _async__mako_imported_module_1__
+    ]);
+    [
+        _async__mako_imported_module_0__,
+        _async__mako_imported_module_1__
+    ] = __mako_async_dependencies__.then ? (await __mako_async_dependencies__)() : __mako_async_dependencies__;
+    var _async = _interop_require_default._(_async__mako_imported_module_0__);
+    var _async_2 = _interop_require_default._(_async__mako_imported_module_1__);
+    0, _async.default(1, 2);
+    console.log(_async_2.default);
+    asyncResult();
+}, true);
+"#
+                .trim()
+        );
+    }
+
+    #[test]
+    fn test_deep_interop_async_module() {
+        let code = r#"
+import add from './async';
+export * from "./async";
+add(1, 2);
+        "#
+        .trim();
+        let (code, _) = transform_code(code, None);
+        println!(">> CODE\n{}", code);
+        assert_eq!(
+            code,
+            r#"
+__mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
+    "use strict";
+    Object.defineProperty(exports, "__esModule", {
+        value: true
+    });
+    var _export_star = require("@swc/helpers/_/_export_star");
+    var _interop_require_default = require("@swc/helpers/_/_interop_require_default");
+    var _async__mako_imported_module_0__ = require("./async");
+    var __mako_async_dependencies__ = handleAsyncDeps([
+        _async__mako_imported_module_0__
+    ]);
+    [
+        _async__mako_imported_module_0__
+    ] = __mako_async_dependencies__.then ? (await __mako_async_dependencies__)() : __mako_async_dependencies__;
+    var _async = _interop_require_default._(_export_star._(_async__mako_imported_module_0__, exports));
+    0, _async.default(1, 2);
+    asyncResult();
+}, true);
+"#
+                .trim()
+        );
+    }
+
+    #[test]
+    fn test_require_async_module() {
         let code = r#"
 const _async = require('./async');
 _async.add(1, 2);
@@ -378,26 +342,61 @@ _async.add(1, 2);
             code,
             r#"
 __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
+    "use strict";
     const _async = require('./async');
-    var __mako_async_dependencies__ = handleAsyncDeps([
-        _async
-    ]);
-    [
-        _async
-    ] = __mako_async_dependencies__.then ? (await __mako_async_dependencies__)() : __mako_async_dependencies__;
     _async.add(1, 2);
     asyncResult();
-}, 1);
-
-//# sourceMappingURL=index.js.map
-            "#
+}, true);
+"#
             .trim()
+        );
+    }
+
+    #[test]
+    fn test_mix_async_module() {
+        let code = r#"
+import add from "./miexed_async";
+async.add(1, 2);
+const async = require('./miexed_async');
+        "#
+        .trim();
+        let (code, _) = transform_code(code, None);
+        println!(">> CODE\n{}", code);
+        assert_eq!(
+            code,
+            r#"
+__mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
+    "use strict";
+    Object.defineProperty(exports, "__esModule", {
+        value: true
+    });
+    var _interop_require_default = require("@swc/helpers/_/_interop_require_default");
+    var _async__mako_imported_module_0__ = require("./miexed_async");
+    var __mako_async_dependencies__ = handleAsyncDeps([
+        _async__mako_imported_module_0__
+    ]);
+    [
+        _async__mako_imported_module_0__
+    ] = __mako_async_dependencies__.then ? (await __mako_async_dependencies__)() : __mako_async_dependencies__;
+    var _miexed_async = _interop_require_default._(_async__mako_imported_module_0__);
+    async.add(1, 2);
+    const async = require('./miexed_async');
+    asyncResult();
+}, true);
+"#.trim()
         );
     }
 
     fn transform_code(origin: &str, path: Option<&str>) -> (String, String) {
         let path = if let Some(p) = path { p } else { "test.tsx" };
-        let context: Arc<Context> = Arc::new(Default::default());
+        let config = Config {
+            devtool: None,
+            ..Default::default()
+        };
+        let context: Arc<Context> = Arc::new(Context {
+            config,
+            ..Default::default()
+        });
 
         let module_id: ModuleId = "./async".to_string().into();
         let mut chunk = Chunk::new(
@@ -410,32 +409,38 @@ __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
 
         let mut ast = build_js_ast(path, origin, &context).unwrap();
 
-        let globals = Globals::default();
-        GLOBALS.set(&globals, || {
-            let mut async_module = AsyncModule {
-                async_deps: &vec![Dependency {
-                    resolve_type: ResolveType::Import(ImportType::empty()),
-                    source: String::from("./async"),
-                    resolve_as: None,
-                    span: Some(DUMMY_SP),
-                    order: 1,
-                }],
-                async_deps_idents: Vec::new(),
-                last_dep_pos: 0,
-                top_level_await: true,
-                context: &context,
-                unresolved_mark: ast.unresolved_mark,
-            };
-            ast.ast.visit_mut_with(&mut resolver(
-                ast.unresolved_mark,
-                ast.top_level_mark,
-                false,
-            ));
-            ast.ast.visit_mut_with(&mut async_module);
+        GLOBALS.set(&context.meta.script.globals, || {
+            HELPERS.set(&Helpers::new(true), || {
+                ast.ast.visit_mut_with(&mut resolver(
+                    ast.unresolved_mark,
+                    ast.top_level_mark,
+                    false,
+                ));
+
+                let mut dep_collector = DepAnalyzer::new(ast.unresolved_mark);
+                ast.ast.visit_with(&mut dep_collector);
+
+                let import_interop = ImportInterop::Swc;
+                ast.ast
+                    .visit_mut_with(&mut import_analyzer(import_interop, true));
+                ast.ast
+                    .visit_mut_with(&mut inject_helpers(ast.unresolved_mark));
+
+                ast.ast.visit_mut_with(&mut common_js::<SwcComments>(
+                    ast.unresolved_mark,
+                    Default::default(),
+                    FeatureFlag::empty(),
+                    None,
+                ));
+
+                let mut async_module =
+                    AsyncModule::new(&dep_collector.dependencies, ast.unresolved_mark, true);
+
+                ast.ast.visit_mut_with(&mut async_module);
+            })
         });
 
         let (code, _sourcemap) = js_ast_to_code(&ast.ast, &context, "index.js").unwrap();
-        let code = code.replace("\"use strict\";", "");
         let code = code.trim().to_string();
         (code, _sourcemap)
     }

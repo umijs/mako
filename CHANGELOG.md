@@ -1,3 +1,31 @@
+## 0.4.6
+
+`2024-03-20`
+
+> @alipay/bigfish@4.1.17
+
+* 修复 resolve fragment 问题，支持 a#b.ts 的场景 by @sorrycc in #966
+
+## 0.4.5
+
+`2024-03-20`
+
+> @alipay/bigfish@4.1.17
+
+* 重构 build 部分的代码 by [@sorrycc](https://github.com/sorrycc) in [#923](https://github.com/umijs/mako/pull/923)
+* 新增 HMR Fast Refresh 支持匿名函数的场景 by [@JackGuiYang12](https://github.com/JackGuiYang12) in [#947](https://github.com/umijs/mako/pull/947)
+* 新增 inline_css 配置，实现类 style-loader 的能力 by [@sorrycc](https://github.com/sorrycc) in [#957](https://github.com/umijs/mako/pull/957)
+* 优化 rayon 使用，generate 复用 build 阶段的 rayon 线程 by [@xusd320](https://github.com/xusd320) in [#959](https://github.com/umijs/mako/pull/959)
+* 优化 minifish inject 功能，支持 include 配置项 by [@stormslowly](https://github.com/stormslowly) in [#930](https://github.com/umijs/mako/pull/930)
+* 修复 async chunk 不应该拆分 root module by [@PeachScript](https://github.com/PeachScript) in [#929](https://github.com/umijs/mako/pull/929)
+* 修复 css url() 应该支持 # 前缀 by [@sorrycc](https://github.com/sorrycc) in [#949](https://github.com/umijs/mako/pull/949)
+* 修复 async module 的实现 by [@stormslowly](https://github.com/stormslowly) in [#943](https://github.com/umijs/mako/pull/943)
+* 修复 js 和 css resolve 依赖时对 # fragment 的支持 by [@sorrycc](https://github.com/sorrycc) in [#952](https://github.com/umijs/mako/pull/952)
+* 修复非 ascii 路径的支持，比如空格和中文 by [@sorrycc](https://github.com/sorrycc) in [#958](https://github.com/umijs/mako/pull/958)
+* 修复 ignored 模块应该被编译成空的 es 模块 by [@xusd320](https://github.com/xusd320) in [#946](https://github.com/umijs/mako/pull/946)
+* 修复 context module 场景下 async import 应该被拆分的问题 by [@xusd320](https://github.com/xusd320) in [#940](https://github.com/umijs/mako/pull/940)
+* 修复 sync chunk 的 stats 信息 by [@PeachScript](https://github.com/PeachScript) in [#928](https://github.com/umijs/mako/pull/928)
+
 ## 0.4.4
 
 `2024-02-29`
@@ -10,6 +38,7 @@
 - 优化 external 特性中正则表达式实例化的开销，m1 pro yuyanAssets build 稳定提升 3900ms 左右 by [@PeachScript](https://github.com/PeachScript) in [#916](https://github.com/umijs/mako/pull/916)
 - 调用 onBuildComplete hook 时传入全量的 stats compilation 数据 by [@PeachScript](https://github.com/PeachScript) in [#917](https://github.com/umijs/mako/pull/917)
 - 从 nodejs-resolver 切换至 oxc_resolver by [@xusd320](https://github.com/xusd320) in [#919](https://github.com/umijs/mako/pull/919)
+
 ## 0.4.3
 
 `2024-02-01`

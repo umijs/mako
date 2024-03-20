@@ -6,13 +6,13 @@ use swc_core::common::Mark;
 use crate::ast_2::utils;
 use crate::module::{Dependency, ResolveType};
 
-pub struct JSDepAnalyzer {
+pub struct DepAnalyzer {
     pub dependencies: Vec<Dependency>,
     order: usize,
     unresolved_mark: Mark,
 }
 
-impl JSDepAnalyzer {
+impl DepAnalyzer {
     pub fn new(unresolved_mark: Mark) -> Self {
         Self {
             dependencies: vec![],
@@ -32,7 +32,7 @@ impl JSDepAnalyzer {
     }
 }
 
-impl Visit for JSDepAnalyzer {
+impl Visit for DepAnalyzer {
     fn visit_module_decl(&mut self, decl: &ModuleDecl) {
         match decl {
             // e.g.
@@ -213,7 +213,7 @@ mod tests {
     fn run(js_code: &str) -> Vec<String> {
         let mut test_utils = TestUtils::gen_js_ast(js_code.to_string());
         let ast = test_utils.ast.js_mut();
-        let mut analyzer = super::JSDepAnalyzer::new(ast.unresolved_mark);
+        let mut analyzer = super::DepAnalyzer::new(ast.unresolved_mark);
         GLOBALS.set(&test_utils.context.meta.script.globals, || {
             ast.ast.visit_with(&mut analyzer);
         });
