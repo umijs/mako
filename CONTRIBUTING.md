@@ -99,6 +99,7 @@ Benchmark three10x.
 $ just setup-bench
 # default: --baseline master --case tmp/three10x
 $ just bench
+$ just bench --multiChunks
 $ just bench --baseline v0.4.4
 $ just bench --baseline v0.4.4 --case examples/with-antd
 ```
@@ -127,7 +128,7 @@ $ cargo install cargo-instruments
 $ cargo instruments --list-templates
 ```
 
-- Add the following section in ./crates/mako/Cargo.toml
+- Add the following section in ./Cargo.toml
 
 ```toml
 [profile.release]
