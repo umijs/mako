@@ -43,7 +43,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
     );
 
     // fill tree shake module all exported ident in reversed topo-sort order
-    fill_modules_exported_idents(
+    fill_modules_exported_idents_by_rev(
         &tree_shake_modules_ids,
         &tree_shake_modules_map,
         module_graph,
@@ -59,7 +59,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
             context,
         )?;
         // fill tree shake module all exported ident in reversed topo-sort order
-        fill_modules_exported_idents(
+        fill_modules_exported_idents_by_rev(
             &tree_shake_modules_ids,
             &tree_shake_modules_map,
             module_graph,
@@ -206,7 +206,7 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
     Ok(())
 }
 
-fn fill_modules_exported_idents(
+fn fill_modules_exported_idents_by_rev(
     tree_shake_modules_ids: &[ModuleId],
     tree_shake_modules_map: &HashMap<ModuleId, RefCell<TreeShakeModule>>,
     module_graph: &mut ModuleGraph,
