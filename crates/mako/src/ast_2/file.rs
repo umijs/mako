@@ -88,7 +88,19 @@ lazy_static! {
 impl File {
     pub fn new(path: String, context: Arc<Context>) -> Self {
         let path = PathBuf::from(path);
-        let (pathname, search, params, fragment) = parse_path(&path.to_string_lossy()).unwrap();
+        // if path exists, it has no search and fragment
+        // support ./a#b.ts when a#b.ts is a real file
+        // e.g. https://unpkg.com/browse/es5-ext@0.10.64/string/
+        let (pathname, search, params, fragment) = if path.exists() {
+            (
+                path.to_string_lossy().to_string(),
+                "".to_string(),
+                vec![],
+                None,
+            )
+        } else {
+            parse_path(&path.to_string_lossy()).unwrap()
+        };
         let pathname = PathBuf::from(pathname);
         let is_virtual = path.starts_with(&*VIRTUAL) ||
             // TODO: remove this specific logic
