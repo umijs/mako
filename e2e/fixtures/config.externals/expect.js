@@ -78,7 +78,7 @@ assert.match(
   content,
   moduleReg(
     "src/index.tsx",
-    "handleAsyncDeps\\(\\[\\s+_script.default\\s+\\]\\)",
+    `handleAsyncDeps\\(\\[\\s+_async__mako_imported_module_0__\\s+\\]\\)`,
   ),
   "should handle async script external"
 );

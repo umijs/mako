@@ -25,7 +25,7 @@ use crate::config::{DevtoolConfig, Mode};
 use crate::module::Dependency;
 use crate::plugin::PluginTransformJsParam;
 use crate::sourcemap::build_source_map;
-use crate::visitors::js_dep_analyzer::JSDepAnalyzer;
+use crate::visitors::dep_analyzer::DepAnalyzer;
 
 #[derive(Clone)]
 pub struct JsAst {
@@ -194,7 +194,7 @@ impl JsAst {
     }
 
     pub fn analyze_deps(&self, context: Arc<Context>) -> Vec<Dependency> {
-        let mut visitor = JSDepAnalyzer::new(self.unresolved_mark);
+        let mut visitor = DepAnalyzer::new(self.unresolved_mark);
         GLOBALS.set(&context.meta.script.globals, || {
             self.ast.visit_with(&mut visitor);
             visitor.dependencies
