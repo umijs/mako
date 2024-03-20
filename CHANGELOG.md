@@ -1,3 +1,11 @@
+## 0.4.6
+
+`2024-03-20`
+
+> @alipay/bigfish@4.1.17
+
+* 修复 resolve fragment 问题，支持 a#b.ts 的场景 by @sorrycc in #966
+
 ## 0.4.5
 
 `2024-03-20`
