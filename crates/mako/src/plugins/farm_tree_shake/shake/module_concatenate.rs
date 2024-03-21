@@ -1,4 +1,5 @@
 mod concatenate_context;
+mod esm_hoister;
 mod exports_transform;
 mod external_transformer;
 mod inner_transformer;
@@ -29,6 +30,7 @@ use crate::plugins::farm_tree_shake::module::{AllExports, TreeShakeModule};
 use crate::plugins::farm_tree_shake::shake::module_concatenate::concatenate_context::{
     ConcatenateContext, RuntimeFlags,
 };
+use crate::plugins::farm_tree_shake::shake::module_concatenate::esm_hoister::EsmHoister;
 use crate::tree_shaking::tree_shaking_module::ModuleSystem;
 
 pub fn optimize_module_graph(
@@ -323,6 +325,8 @@ pub fn optimize_module_graph(
                 .iter()
                 .map(|id: &Id| id.0.to_string())
                 .collect();
+
+                script_ast.ast.visit_mut_with(&mut EsmHoister::new());
 
                 let mut ext_trans = ExternalTransformer {
                     src_to_module: &import_source_to_module_id,
