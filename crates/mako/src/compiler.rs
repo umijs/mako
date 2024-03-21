@@ -364,6 +364,7 @@ impl Compiler {
                 })
                 .collect();
             self.build(files)?;
+            println!("finish build");
         }
         let result = {
             mako_core::mako_profile_scope!("Generate Stage");

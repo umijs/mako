@@ -693,13 +693,7 @@ impl Config {
                 .entry
                 .clone()
                 .into_iter()
-                .map(|(k, v)| {
-                    if let Ok(entry_path) = root.join(v).canonicalize() {
-                        Ok((k, entry_path))
-                    } else {
-                        Err(anyhow!("entry:{} not found", k,))
-                    }
-                })
+                .map(|(k, v)| Ok((k, root.join(v))))
                 .collect::<Result<Vec<_>>>()?;
             config.entry = entry_tuples.into_iter().collect();
 

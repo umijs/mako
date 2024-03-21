@@ -2,6 +2,7 @@
 #![feature(let_chains)]
 #![feature(result_option_inspect)]
 
+use std::fs;
 use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
@@ -92,15 +93,22 @@ async fn run() -> Result<()> {
         cli.mode,
         cli.root.to_str().unwrap()
     );
+
+    for entry in fs::read_dir("/examples/normal")? {
+        let dir = entry?;
+        println!("{:?}", dir.path());
+    }
+
     let root = if cli.root.is_absolute() {
         cli.root
     } else {
         std::env::current_dir()?.join(cli.root)
     };
-    let root = root
-        .canonicalize()
-        .map_err(|_| anyhow!("Root directory {:?} not found", root))?;
 
+    // let root = root
+    //     .canonicalize()
+    //     .map_err(|e| anyhow!("Root directory {:?} not found {}", root, e))?;
+    //
     // config
     let cli_args = format!(
         r#"

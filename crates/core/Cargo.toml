@@ -8,7 +8,6 @@ license    = "MIT"
 [dependencies]
 swc_core = { workspace = true, features = [
   "__ecma",
-  "__ecma_plugin_transform",
   "__ecma_transforms",
   "__parser",
   "__testing_transform",
@@ -69,7 +68,7 @@ pathdiff           = "0.2.1"
 petgraph           = "0.6.3"
 puffin             = { version = "0.16.0", optional = true }
 puffin_egui        = { version = "0.22.0", optional = true }
-rayon              = "1.7.0"
+rayon              = "1.8.0"
 regex              = "1.9.3"
 sailfish           = "0.8.3"
 serde              = { workspace = true }
@@ -93,7 +92,7 @@ hyper-staticfile      = "0.9.5"
 hyper-tungstenite     = "0.10.0"
 notify                = { version = "6.1.1", default-features = false, features = ["macos_kqueue"] }
 notify-debouncer-full = { version = "0.3.1", default-features = false }
-swc_core              = { workspace = true, features = ["base_node"] }
+swc_core              = { workspace = true, features = ["__ecma_plugin_transform", "base_node"] }
 tokio                 = { version = "1", features = ["rt-multi-thread", "sync"] }
 
 [features]
