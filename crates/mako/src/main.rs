@@ -59,9 +59,10 @@ mod tree_shaking;
 mod update;
 mod util;
 mod visitors;
+#[cfg(not(target_family = "wasm"))]
 mod watch;
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(all(not(target_os = "linux"), not(target_family = "wasm")))]
 #[global_allocator]
 static GLOBAL: mimalloc_rust::GlobalMiMalloc = mimalloc_rust::GlobalMiMalloc;
 

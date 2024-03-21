@@ -4,8 +4,11 @@ use std::sync::Arc;
 use mako_core::anyhow::Result;
 use mako_core::fs_extra;
 use mako_core::glob::glob;
-use mako_core::notify::event::{CreateKind, DataChange, ModifyKind, RenameMode};
-use mako_core::notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+#[cfg(not(target_family = "wasm"))]
+use mako_core::notify::{
+    event::{CreateKind, DataChange, ModifyKind, RenameMode},
+    EventKind, RecommendedWatcher, RecursiveMode, Watcher,
+};
 use mako_core::tokio::sync::mpsc::channel;
 use mako_core::tracing::debug;
 
@@ -16,6 +19,7 @@ use crate::tokio_runtime;
 
 pub struct CopyPlugin {}
 
+#[cfg(not(target_family = "wasm"))]
 impl CopyPlugin {
     fn watch(context: &Arc<Context>) {
         let context = context.clone();
@@ -75,6 +79,7 @@ impl Plugin for CopyPlugin {
         "copy"
     }
 
+    #[cfg(not(target_family = "wasm"))]
     fn build_success(&self, _stats: &StatsJsonMap, context: &Arc<Context>) -> Result<Option<()>> {
         CopyPlugin::copy(context)?;
         if context.args.watch {
@@ -82,8 +87,14 @@ impl Plugin for CopyPlugin {
         }
         Ok(None)
     }
+
+    #[cfg(all(target_family = "wasm", target_os = "wasi"))]
+    fn build_success(&self, _stats: &StatsJsonMap, context: &Arc<Context>) -> Result<Option<()>> {
+        unimplemented!()
+    }
 }
 
+#[cfg(not(target_family = "wasm"))]
 fn copy(src: &Path, dest: &Path) -> Result<()> {
     let paths = glob(src.to_str().unwrap())?;
 

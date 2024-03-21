@@ -15,8 +15,8 @@ use mako_core::swc_ecma_ast::{
 use mako_core::swc_ecma_codegen::text_writer::JsWriter;
 use mako_core::swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
 use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
+use mako_core::swc_error_reporters::handler::try_with_handler;
 use mako_core::twox_hash::XxHash64;
-use swc_core::base::try_with_handler;
 use swc_core::common::comments::{Comment, CommentKind, Comments};
 use swc_core::common::errors::HANDLER;
 use swc_core::common::{Span, GLOBALS};

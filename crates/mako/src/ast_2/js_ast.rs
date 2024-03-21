@@ -15,7 +15,7 @@ use mako_core::swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
 use mako_core::swc_ecma_utils::contains_top_level_await;
 use mako_core::swc_ecma_visit;
 use mako_core::swc_ecma_visit::{VisitMutWith, VisitWith};
-use swc_core::base::try_with_handler;
+use mako_core::swc_error_reporters::handler::try_with_handler;
 use swc_core::common::Spanned;
 
 use crate::ast_2::file::File;

@@ -5,18 +5,25 @@ use std::time::{Duration, Instant, UNIX_EPOCH};
 use mako_core::anyhow::{self, Result};
 use mako_core::colored::Colorize;
 use mako_core::futures::{SinkExt, StreamExt};
-use mako_core::hyper::header::CONTENT_TYPE;
-use mako_core::hyper::service::{make_service_fn, service_fn};
-use mako_core::hyper::{Body, Request, Server};
-use mako_core::notify_debouncer_full::new_debouncer;
 use mako_core::tokio::sync::broadcast;
 use mako_core::tracing::debug;
 use mako_core::tungstenite::Message;
-use mako_core::{hyper, hyper_staticfile, hyper_tungstenite};
+#[cfg(not(target_family = "wasm"))]
+use mako_core::{
+    hyper::{
+        self,
+        header::CONTENT_TYPE,
+        service::{make_service_fn, service_fn},
+        {Body, Request, Server},
+    },
+    hyper_staticfile, hyper_tungstenite,
+    notify_debouncer_full::new_debouncer,
+};
 
 use crate::compiler::{Compiler, Context};
 use crate::plugin::{PluginGenerateEndParams, PluginGenerateStats};
 use crate::tokio_runtime;
+#[cfg(not(target_family = "wasm"))]
 use crate::watch::Watcher;
 
 pub struct DevServer {
@@ -24,6 +31,7 @@ pub struct DevServer {
     compiler: Arc<Compiler>,
 }
 
+#[cfg(not(target_family = "wasm"))]
 impl DevServer {
     pub fn new(root: PathBuf, compiler: Arc<Compiler>) -> Self {
         Self { root, compiler }
@@ -316,6 +324,20 @@ impl DevServer {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(all(target_family = "wasm", target_os = "wasi"))]
+impl DevServer {
+    pub fn new(root: PathBuf, compiler: Arc<Compiler>) -> Self {
+        unimplemented!();
+    }
+
+    pub async fn serve(
+        &self,
+        callback: impl Fn(OnDevCompleteParams) + Send + Sync + Clone + 'static,
+    ) {
+        unimplemented!()
     }
 }
 

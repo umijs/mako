@@ -1,5 +1,15 @@
 #[cfg(feature = "profile")]
 pub use eframe;
+#[cfg(not(target_family = "wasm"))]
+pub use hyper;
+#[cfg(not(target_family = "wasm"))]
+pub use hyper_staticfile;
+#[cfg(not(target_family = "wasm"))]
+pub use hyper_tungstenite;
+#[cfg(not(target_family = "wasm"))]
+pub use notify;
+#[cfg(not(target_family = "wasm"))]
+pub use notify_debouncer_full;
 #[cfg(feature = "profile")]
 pub use puffin;
 #[cfg(feature = "profile")]
@@ -21,12 +31,11 @@ pub use swc_core::ecma::{
     utils as swc_ecma_utils, visit as swc_ecma_visit,
 };
 pub use {
-    anyhow, base64, cached, clap, colored, config, convert_case, fs_extra, futures, glob, hyper,
-    hyper_staticfile, hyper_tungstenite, indexmap, lazy_static, md5, mdxjs, merge_source_map,
-    mime_guess, notify, notify_debouncer_full, path_clean, pathdiff, petgraph, rayon, regex,
-    sailfish, serde, serde_json, serde_xml_rs, serde_yaml, svgr_rs, swc_emotion,
-    swc_error_reporters, swc_node_comments, thiserror, tokio, tokio_tungstenite, toml, tracing,
-    tracing_subscriber, tungstenite, twox_hash,
+    anyhow, base64, cached, clap, colored, config, convert_case, fs_extra, futures, glob, indexmap,
+    lazy_static, md5, mdxjs, merge_source_map, mime_guess, path_clean, pathdiff, petgraph, rayon,
+    regex, sailfish, serde, serde_json, serde_xml_rs, serde_yaml, svgr_rs, swc_emotion,
+    swc_error_reporters, swc_node_comments, thiserror, tokio, toml, tracing, tracing_subscriber,
+    tungstenite, twox_hash,
 };
 
 #[macro_export]

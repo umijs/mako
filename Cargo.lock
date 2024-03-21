@@ -2567,6 +2567,7 @@ dependencies = [
  "anyhow",
  "base64 0.21.2",
  "cached",
+ "cfg-if",
  "clap",
  "colored",
  "config",
@@ -2605,7 +2606,6 @@ dependencies = [
  "swc_node_comments",
  "thiserror",
  "tokio",
- "tokio-tungstenite",
  "toml 0.7.6",
  "tracing",
  "tracing-subscriber",
@@ -3464,18 +3464,18 @@ dependencies = [
 
 [[package]]
 name = "pin-project"
-version = "1.1.0"
+version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c95a7476719eab1e366eaf73d0260af3021184f18177925b07f54b30089ceead"
+checksum = "b6bf43b791c5b9e34c3d182969b4abb522f9343702850a2e57f460d00d09b4b3"
 dependencies = [
  "pin-project-internal",
 ]
 
 [[package]]
 name = "pin-project-internal"
-version = "1.1.0"
+version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39407670928234ebc5e6e580247dd567ad73a3578460c5990f9503df207e8f07"
+checksum = "2f38a4412a78282e09a2cf38d195ea5420d15ba0602cb375210efbc877243965"
 dependencies = [
  "proc-macro2",
  "quote",

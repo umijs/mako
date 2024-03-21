@@ -46,4 +46,5 @@ mod tree_shaking;
 mod update;
 mod util;
 mod visitors;
+#[cfg(not(target_family = "wasm"))]
 mod watch;
