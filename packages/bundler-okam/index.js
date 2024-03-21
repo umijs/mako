@@ -5,7 +5,7 @@ const assert = require('assert');
 const { createProxy, createHttpsServer } = require('@umijs/bundler-utils');
 const lodash = require('lodash');
 const chalk = require('chalk');
-const { TypeChecker } = require('./plugins/fork-ts-checker/index');
+const { ForkTsChecker } = require('./plugins/fork-ts-checker/index');
 const {
   createProxyMiddleware,
 } = require('@umijs/bundler-utils/compiled/http-proxy-middleware');
@@ -101,9 +101,9 @@ exports.build = async function (opts) {
   }
 
   // 后置 ts 校验，不影响打包速度
-  if (!!okamConfig.tsChecker) {
-    const typeChecker = new TypeChecker(cwd);
-    typeChecker.check();
+  if (!!okamConfig.forkTsChecker) {
+    const forkTypeChecker = new ForkTsChecker(cwd);
+    forkTypeChecker.runTypeCheck();
   }
 
   const statsJsonPath = path.join(cwd, 'dist', 'stats.json');
@@ -474,7 +474,7 @@ async function getOkamConfig(opts) {
     externals,
     copy = [],
     clean,
-    tsChecker,
+    forkTsChecker,
   } = opts.config;
   const outputPath = path.join(opts.cwd, 'dist');
   // TODO:
@@ -603,7 +603,7 @@ async function getOkamConfig(opts) {
     flexBugs: true,
     react: opts.react || {},
     emotion,
-    tsChecker,
+    forkTsChecker,
     ...(opts.disableCopy ? { copy: [] } : { copy: ['public'].concat(copy) }),
   };
 

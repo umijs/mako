@@ -429,6 +429,13 @@ function App() {
 }
 ```
 
+## forkTsChecker
+
+- 类型：`boolean`
+- 默认值：`false`
+
+是否开启构建时 ts 校验。
+
 ## umd
 
 - 类型：`false | string`
@@ -445,9 +452,3 @@ function App() {
 
 是否在 mode 为 development 时将构建结果写入磁盘。
 
-## tsChecker
-
-- 类型：`boolean`
-- 默认值：`false`
-
-是否开启构建ts校验

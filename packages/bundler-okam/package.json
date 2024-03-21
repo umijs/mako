@@ -16,7 +16,6 @@
     "react-error-overlay": "6.0.9",
     "react-refresh": "^0.14.0",
     "rimraf": "5.0.1",
-    "typescript": "^5.4.2",
     "webpack-5-chain": "8.0.1"
   },
   "scripts": {

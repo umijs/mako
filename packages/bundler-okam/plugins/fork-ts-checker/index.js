@@ -1,97 +1,30 @@
-const ts = require('typescript');
+const { fork } = require('child_process');
 const path = require('path');
-const fs = require('fs').promises;
+const { TypeChecker } = require('./ts-checker');
 
-class TypeChecker {
+class ForkTsChecker {
   constructor(projectRoot) {
     this.projectRoot = projectRoot;
   }
+  async runTypeCheck() {
+    const typeChecker = new TypeChecker(projectRoot);
+    await typeChecker.check();
+  }
 
-  async check() {
-    try {
-      const configPath = ts.findConfigFile(
-        this.projectRoot,
-        ts.sys.fileExists,
-        'tsconfig.json',
-      );
-      if (!configPath) {
-        console.error(
-          'Could not find a valid "tsconfig.json" file in the project root:',
-          this.projectRoot,
-        );
-        return;
-      }
-      let configFileText = '';
-      try {
-        configFileText = await fs.readFile(configPath, 'utf8');
-      } catch (readError) {
-        console.error(
-          `Error reading the "tsconfig.json" file at ${configPath}:`,
-          readError,
-        );
-        return;
-      }
-      const configFile = ts.parseConfigFileTextToJson(
-        configPath,
-        configFileText,
-      );
-      if (configFile.error) {
-        console.error('Error parsing "tsconfig.json" file:', configFile.error);
-        return;
-      }
-      let parsedCommandLine;
-      try {
-        parsedCommandLine = ts.parseJsonConfigFileContent(
-          configFile.config,
-          ts.sys,
-          path.dirname(configPath),
-        );
-      } catch (parseError) {
-        console.error(
-          'Error parsing the configuration from "tsconfig.json":',
-          parseError,
-        );
-        return;
-      }
-      let program;
-      try {
-        program = ts.createProgram({
-          rootNames: parsedCommandLine.fileNames,
-          options: { ...parsedCommandLine.options, noEmit: true },
-        });
-      } catch (programError) {
-        console.error('Error creating the TypeScript program:', programError);
-        return;
-      }
-      const diagnostics = ts.getPreEmitDiagnostics(program);
-      if (diagnostics.length > 0) {
-        diagnostics.forEach((diagnostic) => {
-          const message = ts.flattenDiagnosticMessageText(
-            diagnostic.messageText,
-            '\n',
-          );
-          if (diagnostic.file && typeof diagnostic.start === 'number') {
-            const { line, character } =
-              diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
-            console.error(
-              `${diagnostic.file.fileName} (${line + 1}, ${
-                character + 1
-              }): ${message}`,
-            );
-          } else {
-            console.error(message);
-          }
-        });
+  runTypeCheckInChildProcess() {
+    const workerScript = path.join(__dirname, 'child_process_fork.js');
+    const child = fork(workerScript, [projectRoot], {
+      stdio: 'inherit',
+    });
+
+    child.on('exit', (code) => {
+      if (code === 0) {
+        console.log('Type checking completed successfully.');
       } else {
-        console.log('No type errors found.');
+        console.error('Type checking failed.');
       }
-    } catch (error) {
-      console.error(
-        'An unexpected error occurred during type checking:',
-        error,
-      );
-    }
+    });
   }
 }
 
-module.exports = { TypeChecker };
+module.exports = { ForkTsChecker };
