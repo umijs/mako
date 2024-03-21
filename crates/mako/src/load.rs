@@ -196,7 +196,7 @@ export function moduleToDom(css) {
                 file.extname
             );
             context.emit_assets(
-                file.path.to_string_lossy().to_string(),
+                file.pathname.to_string_lossy().to_string(),
                 final_file_name.clone(),
             );
             return Ok(Content::Js(format!(
@@ -238,10 +238,11 @@ export function moduleToDom(css) {
         inject_public_path: bool,
         context: Arc<Context>,
     ) -> Result<String> {
-        let path = file.path.to_string_lossy().to_string();
         let file_size = file
             .get_file_size()
-            .map_err(|_| LoadError::ReadFileSizeError { path })?;
+            .map_err(|_| LoadError::ReadFileSizeError {
+                path: file.path.to_string_lossy().to_string(),
+            })?;
         let emit_assets = || -> Result<String> {
             let final_file_name = Self::emit_asset(file, context.clone());
             if inject_public_path {
@@ -270,7 +271,7 @@ export function moduleToDom(css) {
     }
 
     pub fn emit_asset(file: &File, context: Arc<Context>) -> String {
-        let path = file.path.to_string_lossy().to_string();
+        let path = file.pathname.to_string_lossy().to_string();
         let final_file_name = format!(
             "{}.{}.{}",
             file.get_file_stem(),
