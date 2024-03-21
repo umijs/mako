@@ -9,3 +9,12 @@ serde             = { version = "1.0.171", features = ["derive"] }
 serde_json        = "1.0.100"
 swc_core          = { version = "=0.83.19", default-features = false }
 tikv-jemallocator = { version = "=0.5.4", features = ["disable_initial_exec_tls"] }
+
+[profile.release]
+debug = false
+
+# Use the `--profile release-debug` flag to show symbols in release mode.
+# e.g. `cargo build --profile release-debug`
+[profile.release-debug]
+debug    = true
+inherits = "release"

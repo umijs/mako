@@ -128,17 +128,10 @@ $ cargo install cargo-instruments
 $ cargo instruments --list-templates
 ```
 
-- Add the following section in ./Cargo.toml
-
-```toml
-[profile.release]
-debug = true
-```
-
 - capture instruments trace with:
 
 ```bash
-$ cargo instruments --release -t sys --package mako --bin mako examples/with-antd
+$ cargo instruments -t sys --profile release-debug --package mako --bin mako examples/with-antd
 ```
 
 - you can open the trace file with instruments again with:
