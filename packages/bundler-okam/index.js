@@ -100,7 +100,7 @@ exports.build = async function (opts) {
     throw err;
   }
 
-  // 后置ts校验,不影响打包速度
+  // 后置 ts 校验，不影响打包速度
   if (!!okamConfig.tsChecker) {
     const typeChecker = new TypeChecker(cwd);
     typeChecker.check();
