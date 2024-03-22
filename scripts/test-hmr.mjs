@@ -1,7 +1,7 @@
 import assert from 'assert';
 import { execSync } from 'child_process';
 import { chromium, devices } from 'playwright';
-import * as waitPort from 'wait-port';
+import waitPort from 'wait-port';
 import 'zx/globals';
 
 function skip() {}
