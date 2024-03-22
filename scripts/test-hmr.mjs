@@ -1,6 +1,7 @@
 import assert from 'assert';
 import { execSync } from 'child_process';
 import { chromium, devices } from 'playwright';
+import * as waitPort from 'wait-port';
 import 'zx/globals';
 
 function skip() {}
@@ -55,6 +56,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
   );
   const { process } = await startMakoDevServer();
   await delay(DELAY_TIME);
+  await waitPort({ port: 3000, timeout: 10000 });
   const { browser, page } = await startBrowser();
   let lastResult;
   let thisResult;
@@ -98,7 +100,8 @@ runTest('js: anonymize default export hmr', async () => {
     }),
   );
   const { process } = await startMakoDevServer();
-  await delay(DELAY_TIME);
+  await waitPort({ port: 3000, timeout: 10000 });
+
   const { browser, page } = await startBrowser();
   let lastResult;
   let thisResult;
@@ -139,7 +142,8 @@ runTest('js: anonymize default export hmr (arrow function)', async () => {
     }),
   );
   const { process } = await startMakoDevServer();
-  await delay(DELAY_TIME);
+  await waitPort({ port: 3000, timeout: 10000 });
+
   const { browser, page } = await startBrowser();
   let lastResult;
   let thisResult;
@@ -179,7 +183,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
     }),
   );
   await startMakoDevServer();
-  await delay(DELAY_TIME);
+  await waitPort({ port: 3000, timeout: 10000 });
+
   const { browser, page } = await startBrowser();
   let lastResult;
   let thisResult;
@@ -217,7 +222,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
     }),
   );
   await startMakoDevServer();
-  await delay(DELAY_TIME);
+  await waitPort({ port: 3000, timeout: 10000 });
+
   const { browser, page } = await startBrowser();
   let lastResult;
   let thisResult;
@@ -259,6 +265,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(<><App /><section>{
   );
   await startMakoDevServer();
   await delay(DELAY_TIME);
+  await waitPort({ port: 3000, timeout: 10000 });
+
   const { browser, page } = await startBrowser();
   let lastResult;
   let thisResult;
@@ -322,7 +330,8 @@ runTest('css: entry > css hmr with hostname runtime public', async () => {
     ),
   );
   await startMakoDevServer();
-  await delay(DELAY_TIME);
+  await waitPort({ port: 3000, timeout: 10000 });
+
   const { browser, page } = await startBrowser();
   let lastResult;
   let thisResult;
@@ -382,7 +391,8 @@ runTest('css: entry > css chunk hmr with hashed chunk id', async () => {
     ),
   );
   await startMakoDevServer();
-  await delay(DELAY_TIME);
+  await waitPort({ port: 3000, timeout: 10000 });
+
   const { browser, page } = await startBrowser();
   let lastResult;
   let thisResult;
@@ -424,7 +434,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(<><App /><section>{
     }),
   );
   await startMakoDevServer();
-  await delay(DELAY_TIME);
+  await waitPort({ port: 3000, timeout: 10000 });
+
   const { browser, page } = await startBrowser();
   let lastResult;
   let thisResult;
@@ -477,7 +488,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(<><App /><section>{
       }),
     );
     await startMakoDevServer();
-    await delay(DELAY_TIME);
+    await waitPort({ port: 3000, timeout: 10000 });
+
     const { browser, page } = await startBrowser();
     let lastResult;
     let thisResult;
@@ -525,6 +537,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(<><App /><section>{
     }),
   );
   await startMakoDevServer();
+  await waitPort({ port: 3000, timeout: 10000 });
+
   const { browser, page } = await startBrowser();
   let lastResult;
   let thisResult;
@@ -1432,6 +1446,7 @@ async function startMakoDevServer() {
     'scripts',
     'mako.js',
   )} ${tmp} --watch`.nothrow();
+  await waitPort({ port: 3000, timeout: 10000 });
   return { process: p };
 }
 
@@ -1487,7 +1502,9 @@ async function commonTest(
     ? await initFilesOrFunc()
     : write(normalizeFiles(initFilesOrFunc));
   await startMakoDevServer();
-  await delay(DELAY_TIME);
+
+  await waitPort({ port: 3000, timeout: 10000 });
+
   const { browser, page } = await startBrowser();
   let lastResult;
   let thisResult;
