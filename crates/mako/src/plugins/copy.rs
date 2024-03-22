@@ -15,6 +15,7 @@ use mako_core::tracing::debug;
 use crate::compiler::Context;
 use crate::plugin::Plugin;
 use crate::stats::StatsJsonMap;
+#[cfg(not(target_family = "wasm"))]
 use crate::tokio_runtime;
 
 pub struct CopyPlugin {}
@@ -90,7 +91,7 @@ impl Plugin for CopyPlugin {
 
     #[cfg(all(target_family = "wasm", target_os = "wasi"))]
     fn build_success(&self, _stats: &StatsJsonMap, context: &Arc<Context>) -> Result<Option<()>> {
-        unimplemented!()
+        Ok(None)
     }
 }
 

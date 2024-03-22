@@ -10,6 +10,7 @@ use mako_core::regex::Regex;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{Globals, SourceMap, DUMMY_SP};
 use mako_core::swc_ecma_ast::Ident;
+use mako_core::tracing::debug;
 
 use crate::chunk_graph::ChunkGraph;
 use crate::comments::Comments;
@@ -332,6 +333,7 @@ impl Compiler {
             self.clean_dist()?;
         }
 
+        debug!("clean dist");
         let t_compiler = Instant::now();
         let start_time = std::time::SystemTime::now();
         let is_prod = self.context.config.mode == crate::config::Mode::Production;

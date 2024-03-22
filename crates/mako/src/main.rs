@@ -52,7 +52,7 @@ mod targets;
 #[cfg(test)]
 mod test_helper;
 mod thread_pool;
-mod tokio_runtime;
+// mod tokio_runtime;
 mod transform;
 mod transform_in_generate;
 mod transformers;
@@ -76,9 +76,49 @@ static GLOBAL: mimalloc_rust::GlobalMiMalloc = mimalloc_rust::GlobalMiMalloc;
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 fn main() -> Result<()> {
-    let fut = async { run().await };
+    // logger
+    init_logger();
 
-    tokio_runtime::block_on(fut)
+    // cli
+    let cli = cli::Cli::parse();
+    debug!(
+        "cli: watch = {}, mode = {}, root = {}",
+        cli.watch,
+        cli.mode,
+        cli.root.to_str().unwrap()
+    );
+
+    let root = if cli.root.is_absolute() {
+        cli.root
+    } else {
+        std::env::current_dir()?.join(cli.root)
+    };
+
+    // let root = root
+    //     .canonicalize()
+    //     .map_err(|e| anyhow!("Root directory {:?} not found {}", root, e))?;
+    //
+    // config
+    let cli_args = format!(
+        r#"
+        {{
+            "mode": "{}"
+        }}
+        "#,
+        cli.mode
+    );
+    let mut config = config::Config::new(&root, None, Some(cli_args.as_str()))
+        .map_err(|e| anyhow!(format!("Load config failed: {}", e)))?;
+
+    config.mode = cli.mode;
+
+    debug!("config: {:?}", config);
+
+    // compiler
+    let compiler = compiler::Compiler::new(config, root.clone(), Args { watch: cli.watch }, None)?;
+    let compiler = Arc::new(compiler);
+
+    compiler.compile()
 }
 
 async fn run() -> Result<()> {

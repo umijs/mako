@@ -1,6 +1,6 @@
 use std::sync::OnceLock;
 
-use mako_core::rayon::{Scope, ThreadPool, ThreadPoolBuilder};
+use mako_core::rayon::{self, Scope, ThreadPool, ThreadPoolBuilder};
 
 static THREAD_POOL: OnceLock<ThreadPool> = OnceLock::new();
 
@@ -34,7 +34,7 @@ pub fn spawn<F>(func: F)
 where
     F: FnOnce() + Send + 'static,
 {
-    rayon::spawn(func)
+    func()
 }
 
 #[cfg(all(target_family = "wasm", target_os = "wasi"))]

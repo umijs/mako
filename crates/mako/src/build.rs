@@ -6,6 +6,7 @@ use mako_core::anyhow;
 use mako_core::anyhow::Result;
 use mako_core::colored::Colorize;
 use mako_core::thiserror::Error;
+use mako_core::tracing::debug;
 
 use crate::analyze_deps::AnalyzeDeps;
 use crate::ast_2::file::{Content, File};
@@ -35,11 +36,12 @@ impl Compiler {
         let build_with_pool = |file: File, parent_resource: Option<ResolverResource>| {
             let rs = rs.clone();
             let context = self.context.clone();
-            thread_pool::spawn(move || {
-                let result = Self::build_module(&file, parent_resource, context.clone());
-                let result = Self::handle_build_result(result, &file, context);
-                rs.send(result).unwrap();
-            });
+            debug!("build_with_pool");
+            // thread_pool::spawn(move || {
+            let result = Self::build_module(&file, parent_resource, context.clone());
+            let result = Self::handle_build_result(result, &file, context);
+            rs.send(result).unwrap();
+            // });
         };
         let mut count = 0;
         for file in files {
@@ -254,6 +256,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         parent_resource: Option<ResolverResource>,
         context: Arc<Context>,
     ) -> Result<Module> {
+        debug!("build_module");
         // 1. load
         let mut file = file.clone();
         let content = Load::load(&file, context.clone())?;

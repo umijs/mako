@@ -22,6 +22,7 @@ use mako_core::{
 
 use crate::compiler::{Compiler, Context};
 use crate::plugin::{PluginGenerateEndParams, PluginGenerateStats};
+#[cfg(not(target_family = "wasm"))]
 use crate::tokio_runtime;
 #[cfg(not(target_family = "wasm"))]
 use crate::watch::Watcher;
