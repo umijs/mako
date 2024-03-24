@@ -1,6 +1,7 @@
 import assert from 'assert';
 import { execSync } from 'child_process';
 import { chromium, devices } from 'playwright';
+import waitPort from 'wait-port';
 import 'zx/globals';
 
 function skip() {}
@@ -1432,6 +1433,7 @@ async function startMakoDevServer() {
     'scripts',
     'mako.js',
   )} ${tmp} --watch`.nothrow();
+  await waitPort({ port: 3000, timeout: 10000 });
   return { process: p };
 }
 
