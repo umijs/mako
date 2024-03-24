@@ -14,7 +14,7 @@ if (!fs.existsSync(tmp)) {
 }
 // TODO: check port
 const port = 3000;
-const DELAY_TIME = 500;
+const DELAY_TIME = parseInt(process.env.DELAY_TIME) || 500;
 
 async function cleanup({ process, browser } = {}) {
   try {
