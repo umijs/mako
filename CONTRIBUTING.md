@@ -99,6 +99,7 @@ Benchmark three10x.
 $ just setup-bench
 # default: --baseline master --case tmp/three10x
 $ just bench
+$ just bench --multiChunks
 $ just bench --baseline v0.4.4
 $ just bench --baseline v0.4.4 --case examples/with-antd
 ```
@@ -127,17 +128,10 @@ $ cargo install cargo-instruments
 $ cargo instruments --list-templates
 ```
 
-- Add the following section in ./crates/mako/Cargo.toml
-
-```toml
-[profile.release]
-debug = true
-```
-
 - capture instruments trace with:
 
 ```bash
-$ cargo instruments --release -t sys --package mako --bin mako examples/with-antd
+$ cargo instruments -t sys --profile release-debug --package mako --bin mako examples/with-antd
 ```
 
 - you can open the trace file with instruments again with:
