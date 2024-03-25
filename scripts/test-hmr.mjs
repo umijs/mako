@@ -501,7 +501,7 @@ return 'bar'+bar();
     assert.equal(
       thisResult.html,
       '<div>App barbar</div>',
-      `Second render: unexpect html ${thisResult.html}`,
+      `Second render: unexpected html ${thisResult.html}`,
     );
     isReload = lastResult.random !== thisResult.random;
     assert.equal(isReload, true, 'should reload');
