@@ -8,6 +8,7 @@ use mako_core::swc_common::Mark;
 use mako_core::swc_ecma_ast::Module;
 
 use crate::ast_2::file::{Content, File};
+use crate::chunk_graph::ChunkGraph;
 use crate::compiler::{Args, Context};
 use crate::config::Config;
 use crate::module::{Dependency, ModuleAst};
@@ -111,6 +112,15 @@ pub trait Plugin: Any + Send + Sync {
 
     fn optimize_module_graph(
         &self,
+        _module_graph: &mut ModuleGraph,
+        _context: &Arc<Context>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    fn optimize_chunk(
+        &self,
+        _chunk_graph: &mut ChunkGraph,
         _module_graph: &mut ModuleGraph,
         _context: &Arc<Context>,
     ) -> Result<()> {
@@ -254,6 +264,19 @@ impl PluginDriver {
     ) -> Result<()> {
         for p in &self.plugins {
             p.optimize_module_graph(module_graph, context)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn optimize_chunk(
+        &self,
+        chunk_graph: &mut ChunkGraph,
+        module_graph: &mut ModuleGraph,
+        context: &Arc<Context>,
+    ) -> Result<()> {
+        for p in &self.plugins {
+            p.optimize_chunk(chunk_graph, module_graph, context)?;
         }
 
         Ok(())

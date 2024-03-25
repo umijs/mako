@@ -71,7 +71,10 @@ fn mark_async(
         let async_deps: Vec<Dependency> = deps
             .into_iter()
             .filter(|(_, dep, is_async)| {
-                matches!(dep.resolve_type, ResolveType::Import | ResolveType::Require) && *is_async
+                matches!(
+                    dep.resolve_type,
+                    ResolveType::Import(_) | ResolveType::Require
+                ) && *is_async
             })
             .map(|(_, dep, _)| dep.clone())
             .collect();

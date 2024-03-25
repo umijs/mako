@@ -1,8 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
+use fixedbitset::FixedBitSet;
 use mako_core::petgraph::graph::{DefaultIx, NodeIndex};
-use mako_core::petgraph::prelude::EdgeRef;
+use mako_core::petgraph::prelude::{Dfs, EdgeRef};
 use mako_core::petgraph::stable_graph::{StableDiGraph, WalkNeighbors};
 use mako_core::petgraph::visit::IntoEdgeReferences;
 use mako_core::petgraph::Direction;
@@ -216,6 +217,18 @@ impl ModuleGraph {
         deps
     }
 
+    pub fn dependant_dependencies(&self, module_id: &ModuleId) -> Vec<&Dependencies> {
+        let mut edges = self.get_edges(module_id, Direction::Incoming);
+
+        let mut deps = vec![];
+
+        while let Some((edge_index, _)) = edges.next(&self.graph) {
+            let dependencies = self.graph.edge_weight(edge_index).unwrap();
+            deps.push(dependencies);
+        }
+        deps
+    }
+
     pub fn dependant_module_ids(&self, module_id: &ModuleId) -> Vec<ModuleId> {
         let mut edges = self.get_edges(module_id, Direction::Incoming);
         let mut targets: Vec<ModuleId> = vec![];
@@ -251,7 +264,7 @@ impl ModuleGraph {
 
             if let Some(to_del_dep) = dependencies
                 .iter()
-                .position(|dep| *source == dep.source && dep.resolve_type == resolve_type)
+                .position(|dep| *source == dep.source && dep.resolve_type.same_enum(&resolve_type))
             {
                 dependencies.take(&dependencies.iter().nth(to_del_dep).unwrap().clone());
 
@@ -345,6 +358,10 @@ impl ModuleGraph {
             .collect::<Vec<_>>();
         references.sort_by_key(|id| id.to_string());
         references
+    }
+
+    pub fn dfs(&self, start: &ModuleId) -> Dfs<NodeIndex, FixedBitSet> {
+        Dfs::new(&self.graph, *self.id_index_map.get(start).unwrap())
     }
 }
 

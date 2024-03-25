@@ -1,10 +1,20 @@
+
+## 0.4.7
+
+`2024-03-22`
+
+> @alipay/bigfish@4.1.17
+
+* 修复 fast refresh 在函数内生成组件时的边界场景 by [@sorrycc](https://github.com/sorrycc) in [#972](https://github.com/umijs/mako/pull/972)
+* 修复引用 assets 带 query 时的场景 by [@sorrycc](https://github.com/sorrycc) in [#975](https://github.com/umijs/mako/pull/975)
+
 ## 0.4.6
 
 `2024-03-20`
 
 > @alipay/bigfish@4.1.17
 
-* 修复 resolve fragment 问题，支持 a#b.ts 的场景 by @sorrycc in #966
+* 修复 resolve fragment 问题，支持 a#b.ts 的场景 by [@sorrycc](https://github.com/sorrycc) in [#966](https://github.com/umijs/mako/pull/966)
 
 ## 0.4.5
 

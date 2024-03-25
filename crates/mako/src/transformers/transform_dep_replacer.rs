@@ -275,7 +275,7 @@ mod tests {
     use crate::assert_display_snapshot;
     use crate::ast::build_js_ast;
     use crate::compiler::Context;
-    use crate::module::{Dependency, Module, ModuleId, ResolveType};
+    use crate::module::{Dependency, ImportType, Module, ModuleId, ResolveType};
     use crate::test_helper::transform_ast_with;
     use crate::transformers::test_helper::transform_js_code;
     use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
@@ -338,7 +338,7 @@ mod tests {
             let to_replace = DependenciesToReplace {
                 resolved: HashMap::new(),
                 missing: hashmap! {"react".to_string() => Dependency {
-                    resolve_type: ResolveType::Import,
+                    resolve_type: ResolveType::Import(ImportType::Default),
                     source: "react".to_string(),
                     resolve_as: None,
                     span: None,
@@ -383,7 +383,7 @@ mod tests {
             let to_replace = DependenciesToReplace {
                 resolved: HashMap::new(),
                 missing: hashmap! {"react".to_string() => Dependency {
-                    resolve_type: ResolveType::Import,
+                    resolve_type: ResolveType::Import(ImportType::Default),
                     source: "react".to_string(),
                     resolve_as: None,
                     span: None,

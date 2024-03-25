@@ -87,7 +87,7 @@ impl Compiler {
                     let module = module_graph
                         .get_module_mut(&tree_shaking_module.id)
                         .unwrap();
-                    let ast = module.info.as_mut().unwrap().ast.as_script_mut();
+                    let ast = module.info.as_mut().unwrap().ast.as_script_ast_mut();
 
                     let unused = tree_shaking_module.get_used_export_statement();
                     // 把没有用到的 stmt 删除
