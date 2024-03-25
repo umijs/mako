@@ -1,5 +1,6 @@
 import assert from 'assert';
 import { execSync } from 'child_process';
+import getPort, { clearLockedPorts } from 'get-port';
 import { chromium, devices } from 'playwright';
 import waitPort from 'wait-port';
 import 'zx/globals';
@@ -82,7 +83,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App />);
   await cleanup({ process, browser });
 });
 
-runTest('js: anonymize default export hmr', async () => {
+runTest('js: anonymous default export hmr', async () => {
   write(
     normalizeFiles({
       '/src/App.tsx': `
@@ -497,7 +498,11 @@ return 'bar'+bar();
     });
     await delay(DELAY_TIME);
     thisResult = normalizeHtml(await getRootHtml(page));
-    assert.equal(thisResult.html, '<div>App barbar</div>', 'Second render');
+    assert.equal(
+      thisResult.html,
+      '<div>App barbar</div>',
+      `Second render: unexpect html ${thisResult.html}`,
+    );
     isReload = lastResult.random !== thisResult.random;
     assert.equal(isReload, true, 'should reload');
     lastResult = thisResult;
@@ -1467,6 +1472,16 @@ async function killMakoDevServer() {
   const res = await $`ps -ax | grep mako | grep -v grep | awk '{print $1}'`;
   console.error('stdout', res.stdout);
   await $`ps -ax | grep mako | grep -v grep | awk '{print $1}' | xargs kill -9`;
+  let waited = 0;
+  while (waited < 10000) {
+    await delay(1000);
+    clearLockedPorts();
+    let port = await getPort({ port: 3000 });
+    if (port == 3000) {
+      break;
+    }
+    waited += 1000;
+  }
 }
 
 function normalizeHtml(html) {
@@ -1513,7 +1528,7 @@ async function commonTest(
 }
 
 (async () => {
-  console.log('tests', Object.keys(tests).join(', '));
+  console.log('tests', Object.keys(tests).join(',\n'));
   for (const [name, fn] of Object.entries(tests)) {
     console.log(`> ${chalk.green(name)}`);
     await fn();

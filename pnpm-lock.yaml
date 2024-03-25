@@ -62,6 +62,9 @@ importers:
       express:
         specifier: ^4.18.2
         version: 4.18.2
+      get-port:
+        specifier: ^7.1.0
+        version: 7.1.0
       husky:
         specifier: ^8.0.3
         version: 8.0.3
@@ -7924,6 +7927,11 @@ packages:
   /get-package-type@0.1.0:
     resolution: {integrity: sha512-pjzuKtY64GYfWizNAJ0fr9VqttZkNiK2iS430LtIHzjBEr6bX8Am2zm4sW4Ro5wjWW5cAlRL1qAMTcXbjNAO2Q==}
     engines: {node: '>=8.0.0'}
+    dev: true
+
+  /get-port@7.1.0:
+    resolution: {integrity: sha512-QB9NKEeDg3xxVwCCwJQ9+xycaz6pBB6iQ76wiWMl1927n0Kir6alPiP+yuiICLLU4jpMe08dXfpebuQppFA2zw==}
+    engines: {node: '>=16'}
     dev: true
 
   /get-stream@6.0.1:

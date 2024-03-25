@@ -32,6 +32,7 @@
     "es-check": "^7.1.1",
     "esno": "^4",
     "express": "^4.18.2",
+    "get-port": "^7.1.0",
     "husky": "^8.0.3",
     "less": "^4.2.0",
     "node-libs-browser-okam": "2.2.4",
