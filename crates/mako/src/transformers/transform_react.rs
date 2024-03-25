@@ -142,9 +142,11 @@ import 'react-refresh';
 pub fn react_refresh_module_postfix(context: &Arc<Context>) -> Box<dyn VisitMut> {
     Box::new(PostfixCode {
         context: context.clone(),
+        // why add if guard?
+        // ref: https://github.com/umijs/mako/issues/971
         code: r#"
-self.$RefreshReg$ = prevRefreshReg;
-self.$RefreshSig$ = prevRefreshSig;
+if (prevRefreshReg) self.$RefreshReg$ = prevRefreshReg;
+if (prevRefreshSig) self.$RefreshSig$ = prevRefreshSig;
 function $RefreshIsReactComponentLike$(moduleExports) {
   if (RefreshRuntime.isLikelyComponentType(moduleExports.default || moduleExports)) {
     return true;

@@ -2,5 +2,3 @@ tab_spaces = 4
 edition = "2021"
 group_imports = "StdExternalCrate"
 imports_granularity = "Module"
-ignore = ["crates/mako/src/plugins/javascript.rs"]
-

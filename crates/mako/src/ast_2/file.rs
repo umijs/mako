@@ -190,15 +190,15 @@ impl File {
     }
 
     pub fn get_file_size(&self) -> Result<u64> {
-        let metadata = std::fs::metadata(&self.path)?;
+        let metadata = std::fs::metadata(&self.pathname)?;
         Ok(metadata.len())
     }
 
     pub fn get_base64(&self) -> Result<String> {
-        let content = std::fs::read(&self.path)?;
+        let content = std::fs::read(&self.pathname)?;
         let engine = engine::GeneralPurpose::new(&STANDARD, engine::general_purpose::PAD);
         let content = engine.encode(content);
-        let guess = mime_guess::from_path(&self.path);
+        let guess = mime_guess::from_path(&self.pathname);
         if let Some(mime) = guess.first() {
             Ok(format!(
                 "data:{};base64,{}",
@@ -213,7 +213,7 @@ impl File {
     }
 
     pub fn get_content_hash(&self) -> Result<String> {
-        let file = std::fs::File::open(&self.path)?;
+        let file = std::fs::File::open(&self.pathname)?;
         let len = file.metadata()?.len();
         // Decide on a reasonable buffer size (1MB in this case, fastest will depend on hardware)
         let buf_len = len.min(1_000_000) as usize;
