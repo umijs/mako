@@ -1,5 +1,6 @@
 import assert from 'assert';
 import { execSync } from 'child_process';
+import getPort, { clearLockedPorts } from 'get-port';
 import { chromium, devices } from 'playwright';
 import waitPort from 'wait-port';
 import 'zx/globals';
@@ -13,8 +14,8 @@ if (!fs.existsSync(tmp)) {
   fs.mkdirSync(tmp, { recursive: true });
 }
 // TODO: check port
-const port = 3000;
-const DELAY_TIME = 500;
+const MAKO_DEV_PORT = 3000;
+const DELAY_TIME = parseInt(process.env.DELAY_TIME) || 500;
 
 async function cleanup({ process, browser } = {}) {
   try {
@@ -56,7 +57,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
   );
   const { process } = await startMakoDevServer();
   await delay(DELAY_TIME);
-  await waitPort({ port: 3000, timeout: 10000 });
   const { browser, page } = await startBrowser();
   let lastResult;
   let thisResult;
@@ -83,7 +83,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App />);
   await cleanup({ process, browser });
 });
 
-runTest('js: anonymize default export hmr', async () => {
+runTest('js: anonymous default export hmr', async () => {
   write(
     normalizeFiles({
       '/src/App.tsx': `
@@ -100,8 +100,7 @@ runTest('js: anonymize default export hmr', async () => {
     }),
   );
   const { process } = await startMakoDevServer();
-  await waitPort({ port: 3000, timeout: 10000 });
-
+  await delay(DELAY_TIME);
   const { browser, page } = await startBrowser();
   let lastResult;
   let thisResult;
@@ -142,8 +141,7 @@ runTest('js: anonymize default export hmr (arrow function)', async () => {
     }),
   );
   const { process } = await startMakoDevServer();
-  await waitPort({ port: 3000, timeout: 10000 });
-
+  await delay(DELAY_TIME);
   const { browser, page } = await startBrowser();
   let lastResult;
   let thisResult;
@@ -183,8 +181,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
     }),
   );
   await startMakoDevServer();
-  await waitPort({ port: 3000, timeout: 10000 });
-
+  await delay(DELAY_TIME);
   const { browser, page } = await startBrowser();
   let lastResult;
   let thisResult;
@@ -222,8 +219,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
     }),
   );
   await startMakoDevServer();
-  await waitPort({ port: 3000, timeout: 10000 });
-
+  await delay(DELAY_TIME);
   const { browser, page } = await startBrowser();
   let lastResult;
   let thisResult;
@@ -265,8 +261,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(<><App /><section>{
   );
   await startMakoDevServer();
   await delay(DELAY_TIME);
-  await waitPort({ port: 3000, timeout: 10000 });
-
   const { browser, page } = await startBrowser();
   let lastResult;
   let thisResult;
@@ -330,8 +324,7 @@ runTest('css: entry > css hmr with hostname runtime public', async () => {
     ),
   );
   await startMakoDevServer();
-  await waitPort({ port: 3000, timeout: 10000 });
-
+  await delay(DELAY_TIME);
   const { browser, page } = await startBrowser();
   let lastResult;
   let thisResult;
@@ -391,8 +384,7 @@ runTest('css: entry > css chunk hmr with hashed chunk id', async () => {
     ),
   );
   await startMakoDevServer();
-  await waitPort({ port: 3000, timeout: 10000 });
-
+  await delay(DELAY_TIME);
   const { browser, page } = await startBrowser();
   let lastResult;
   let thisResult;
@@ -434,8 +426,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(<><App /><section>{
     }),
   );
   await startMakoDevServer();
-  await waitPort({ port: 3000, timeout: 10000 });
-
+  await delay(DELAY_TIME);
   const { browser, page } = await startBrowser();
   let lastResult;
   let thisResult;
@@ -488,8 +479,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(<><App /><section>{
       }),
     );
     await startMakoDevServer();
-    await waitPort({ port: 3000, timeout: 10000 });
-
+    await delay(DELAY_TIME);
     const { browser, page } = await startBrowser();
     let lastResult;
     let thisResult;
@@ -508,7 +498,11 @@ return 'bar'+bar();
     });
     await delay(DELAY_TIME);
     thisResult = normalizeHtml(await getRootHtml(page));
-    assert.equal(thisResult.html, '<div>App barbar</div>', 'Second render');
+    assert.equal(
+      thisResult.html,
+      '<div>App barbar</div>',
+      `Second render: unexpected html ${thisResult.html}`,
+    );
     isReload = lastResult.random !== thisResult.random;
     assert.equal(isReload, true, 'should reload');
     lastResult = thisResult;
@@ -537,8 +531,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(<><App /><section>{
     }),
   );
   await startMakoDevServer();
-  await waitPort({ port: 3000, timeout: 10000 });
-
   const { browser, page } = await startBrowser();
   let lastResult;
   let thisResult;
@@ -1446,7 +1438,7 @@ async function startMakoDevServer() {
     'scripts',
     'mako.js',
   )} ${tmp} --watch`.nothrow();
-  await waitPort({ port: 3000, timeout: 10000 });
+  await waitPort({ port: MAKO_DEV_PORT, timeout: 10000 });
   return { process: p };
 }
 
@@ -1454,7 +1446,7 @@ async function startBrowser() {
   const browser = await chromium.launch();
   const context = await browser.newContext(devices['iPhone 11']);
   const page = await context.newPage();
-  await page.goto(`http://localhost:${port}`);
+  await page.goto(`http://localhost:${MAKO_DEV_PORT}`);
   return { browser, page };
 }
 
@@ -1480,6 +1472,17 @@ async function killMakoDevServer() {
   const res = await $`ps -ax | grep mako | grep -v grep | awk '{print $1}'`;
   console.error('stdout', res.stdout);
   await $`ps -ax | grep mako | grep -v grep | awk '{print $1}' | xargs kill -9`;
+  let waited = 0;
+  while (waited < 10000) {
+    await delay(1000);
+    clearLockedPorts();
+    let port = await getPort({ port: MAKO_DEV_PORT });
+    if (port == MAKO_DEV_PORT) {
+      return;
+    }
+    waited += 1000;
+  }
+  throw Error(`port(${MAKO_DEV_PORT}) not released for ${waited}ms`);
 }
 
 function normalizeHtml(html) {
@@ -1502,9 +1505,7 @@ async function commonTest(
     ? await initFilesOrFunc()
     : write(normalizeFiles(initFilesOrFunc));
   await startMakoDevServer();
-
-  await waitPort({ port: 3000, timeout: 10000 });
-
+  await delay(DELAY_TIME);
   const { browser, page } = await startBrowser();
   let lastResult;
   let thisResult;
@@ -1528,7 +1529,7 @@ async function commonTest(
 }
 
 (async () => {
-  console.log('tests', Object.keys(tests).join(', '));
+  console.log('tests', Object.keys(tests).join(',\n'));
   for (const [name, fn] of Object.entries(tests)) {
     console.log(`> ${chalk.green(name)}`);
     await fn();
