@@ -331,7 +331,7 @@ export const bar = {
         let mut context = Context::default();
         context.config.devtool = None;
         let (code, _) = js_ast_to_code(
-            module.info.unwrap().ast.as_script_mut(),
+            module.info.unwrap().ast.as_script_ast_mut(),
             &Arc::new(context),
             "testfile.js",
         )

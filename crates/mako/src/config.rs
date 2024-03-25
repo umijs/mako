@@ -343,6 +343,7 @@ pub struct MinifishConfig {
 #[serde(rename_all = "camelCase")]
 pub struct OptimizationConfig {
     pub skip_modules: Option<bool>,
+    pub concatenate_modules: Option<bool>,
 }
 #[derive(Deserialize, Serialize, Debug)]
 pub struct InlineCssConfig {}
@@ -559,7 +560,7 @@ const DEFAULT_CONFIG: &str = r#"
     "emotion": false,
     "flexBugs": false,
     "cjs": false,
-    "optimization": { "skipModules": true },
+    "optimization": { "skipModules": true, "concatenateModules": false },
     "react": {
       "pragma": "React.createElement",
       "importSource": "react",

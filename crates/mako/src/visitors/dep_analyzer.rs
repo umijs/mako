@@ -42,7 +42,11 @@ impl Visit for DepAnalyzer {
                     return;
                 }
                 let src = import.src.value.to_string();
-                self.add_dependency(src, ResolveType::Import, Some(import.src.span));
+                self.add_dependency(
+                    src,
+                    ResolveType::Import(import.into()),
+                    Some(import.src.span),
+                );
             }
             // e.g.
             // export { a, b, c } from './module';
@@ -50,7 +54,7 @@ impl Visit for DepAnalyzer {
                 if let Some(src) = &export.src {
                     self.add_dependency(
                         src.value.to_string(),
-                        ResolveType::ExportNamed,
+                        ResolveType::ExportNamed(export.into()),
                         Some(src.span),
                     );
                 }
