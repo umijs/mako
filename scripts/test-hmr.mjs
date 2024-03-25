@@ -124,7 +124,7 @@ export default function() {
   await cleanup({ process, browser });
 });
 
-runTest('js: anonymize default export hmr (arrow function)', async () => {
+runTest('js: anonymous default export hmr (arrow function)', async () => {
   write(
     normalizeFiles({
       '/src/App.tsx': `
