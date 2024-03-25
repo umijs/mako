@@ -6,6 +6,8 @@
     "skipModules": true,
     "concatenateModules": true
   },
-  "platform": "node"
-
+  "platform": "node",
+  "output" :{
+    "chunkLoadingGlobal": "webpack.scope-hoisting.esModule"
+  }
 }
