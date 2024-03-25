@@ -14,7 +14,7 @@ if (!fs.existsSync(tmp)) {
   fs.mkdirSync(tmp, { recursive: true });
 }
 // TODO: check port
-const port = 3000;
+const MAKO_DEV_PORT = 3000;
 const DELAY_TIME = parseInt(process.env.DELAY_TIME) || 500;
 
 async function cleanup({ process, browser } = {}) {
@@ -1438,7 +1438,7 @@ async function startMakoDevServer() {
     'scripts',
     'mako.js',
   )} ${tmp} --watch`.nothrow();
-  await waitPort({ port: 3000, timeout: 10000 });
+  await waitPort({ port: MAKO_DEV_PORT, timeout: 10000 });
   return { process: p };
 }
 
@@ -1446,7 +1446,7 @@ async function startBrowser() {
   const browser = await chromium.launch();
   const context = await browser.newContext(devices['iPhone 11']);
   const page = await context.newPage();
-  await page.goto(`http://localhost:${port}`);
+  await page.goto(`http://localhost:${MAKO_DEV_PORT}`);
   return { browser, page };
 }
 
@@ -1476,12 +1476,13 @@ async function killMakoDevServer() {
   while (waited < 10000) {
     await delay(1000);
     clearLockedPorts();
-    let port = await getPort({ port: 3000 });
-    if (port == 3000) {
-      break;
+    let port = await getPort({ port: MAKO_DEV_PORT });
+    if (port == MAKO_DEV_PORT) {
+      return;
     }
     waited += 1000;
   }
+  throw Error(`port(${MAKO_DEV_PORT}) not released for ${waited}ms`);
 }
 
 function normalizeHtml(html) {
