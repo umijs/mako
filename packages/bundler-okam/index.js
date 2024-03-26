@@ -16,7 +16,7 @@ function lessLoader(fn, opts) {
     try {
       pathname = url.parse(filePath).pathname;
     } catch (e) {
-      // do nothing
+      return;
     }
     if (pathname?.endsWith('.less')) {
       const { alias, modifyVars, config, sourceMap } = opts;
