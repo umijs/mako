@@ -8,8 +8,8 @@ assert(
 );
 
 assert(
-  files["index.js"].includes("src_vancant_ts-async.js"),
-  "vancant dependences should connect to chunksIdToUrlMap"
+  files["index.js"].includes("src_vacant_ts-async.js"),
+  "vacant dependences should connect to chunksIdToUrlMap"
 )
 assert(
   Object.keys(files).every((f) => !f.includes("_isNumeric_js")),
