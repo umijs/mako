@@ -331,12 +331,6 @@ pub enum ModuleType {
     Raw,
 }
 
-impl ModuleType {
-    pub fn is_script(&self) -> bool {
-        matches!(self, ModuleType::Script)
-    }
-}
-
 #[derive(Clone)]
 pub struct Module {
     pub id: ModuleId,

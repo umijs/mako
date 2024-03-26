@@ -42,7 +42,6 @@ mod tokio_runtime;
 mod transform;
 mod transform_in_generate;
 mod transformers;
-mod tree_shaking;
 mod update;
 mod util;
 mod visitors;

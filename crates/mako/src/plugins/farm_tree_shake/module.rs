@@ -8,7 +8,6 @@ use crate::module_graph::ModuleGraph;
 use crate::plugins::farm_tree_shake::statement_graph::{
     ExportInfo, ExportInfoMatch, ExportSpecifierInfo, ImportInfo, StatementGraph, StatementId,
 };
-use crate::tree_shaking::tree_shaking_module::ModuleSystem;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum UsedIdent {
@@ -31,6 +30,13 @@ impl ToString for UsedIdent {
             UsedIdent::ExportAll => "*".to_string(),
         }
     }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum ModuleSystem {
+    CommonJS,
+    ESModule,
+    Custom,
 }
 
 #[derive(Debug, Clone)]

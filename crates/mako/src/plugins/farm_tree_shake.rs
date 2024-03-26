@@ -7,6 +7,7 @@ use crate::module_graph::ModuleGraph;
 use crate::plugin::Plugin;
 
 mod module;
+mod module_side_effects_flag;
 mod remove_useless_stmts;
 mod shake;
 mod statement_graph;
