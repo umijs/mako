@@ -25,7 +25,7 @@ use crate::compiler::{Compiler, Context};
 use crate::config::OutputMode;
 use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
 use crate::thread_pool;
-use crate::transformers::transform_async_module::AsyncModule;
+use crate::transformers::transform_async_module::{mark_async, AsyncModule};
 use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
 use crate::transformers::transform_dynamic_import::DynamicImport;
 use crate::transformers::transform_mako_require::MakoRequire;
@@ -34,16 +34,20 @@ use crate::transformers::transform_optimize_define_utils::OptimizeDefineUtils;
 use crate::visitors::css_imports::CSSImports;
 
 impl Compiler {
-    pub fn transform_all(&self) -> Result<()> {
-        let context = &self.context;
+    pub fn transform_all(&self, async_deps_map: HashMap<ModuleId, Vec<Dependency>>) -> Result<()> {
         let t = Instant::now();
-        let module_graph = context.module_graph.read().unwrap();
-        // Reversed after topo sorting, in order to better handle async module
-        let (mut module_ids, _) = module_graph.toposort();
-        module_ids.reverse();
-        drop(module_graph);
-        debug!(">> toposort & reverse in {}ms", t.elapsed().as_millis());
-        transform_modules(module_ids, context)?;
+        let context = &self.context;
+        let module_ids = {
+            let module_graph = context.module_graph.read().unwrap();
+            module_graph
+                .modules()
+                .into_iter()
+                .map(|m| m.id.clone())
+                .collect::<Vec<_>>()
+        };
+
+        transform_modules_in_thread(&module_ids, context, async_deps_map)?;
+        debug!(">> transform modules in {}ms", t.elapsed().as_millis());
         Ok(())
     }
 }
@@ -56,37 +60,6 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
     transform_modules_in_thread(&module_ids, context, async_deps_by_module_id)?;
     debug!(">> transform modules in {}ms", t.elapsed().as_millis());
     Ok(())
-}
-
-fn mark_async(
-    module_ids: &[ModuleId],
-    context: &Arc<Context>,
-) -> HashMap<ModuleId, Vec<Dependency>> {
-    mako_core::mako_profile_function!();
-    let mut async_deps_by_module_id = HashMap::new();
-    let mut module_graph = context.module_graph.write().unwrap();
-    // TODO: 考虑成环的场景
-    module_ids.iter().for_each(|module_id| {
-        let deps = module_graph.get_dependencies_info(module_id);
-        let async_deps: Vec<Dependency> = deps
-            .into_iter()
-            .filter(|(_, dep, is_async)| {
-                matches!(
-                    dep.resolve_type,
-                    ResolveType::Import(_) | ResolveType::Require
-                ) && *is_async
-            })
-            .map(|(_, dep, _)| dep.clone())
-            .collect();
-        let module = module_graph.get_module_mut(module_id).unwrap();
-        let info = module.info.as_mut().unwrap();
-        // a module with async deps need to be polluted into async module
-        if !info.is_async && !async_deps.is_empty() {
-            info.is_async = true;
-        }
-        async_deps_by_module_id.insert(module_id.clone(), async_deps);
-    });
-    async_deps_by_module_id
 }
 
 pub fn transform_modules_in_thread(
