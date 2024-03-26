@@ -1,6 +1,7 @@
 import React from 'react';
 import context from './context';
 
-console.log(React, context);
+const vancant = React.lazy(() => import('./vancant'));
+console.log(React, context, vancant);
 
 export default 1;

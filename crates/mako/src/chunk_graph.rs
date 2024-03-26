@@ -191,6 +191,29 @@ impl ChunkGraph {
         let idx = self.id_index_map.remove(chunk_id).unwrap();
         self.graph.remove_node(idx);
     }
+
+    pub fn connect_vacant_nodes_to_entry_chunk(&mut self, entry_chunk_id: &ChunkId) {
+        let vacant_nodes = self
+            .graph
+            .node_indices()
+            .filter(|node| {
+                self.graph
+                    .edges_directed(*node, Direction::Outgoing)
+                    .count()
+                    == 0
+                    && self
+                        .graph
+                        .edges_directed(*node, Direction::Incoming)
+                        .count()
+                        == 0
+            })
+            .collect::<Vec<_>>();
+
+        for node in vacant_nodes {
+            let to = self.id_index_map.get(entry_chunk_id).unwrap();
+            self.graph.add_edge(*to, node, ());
+        }
+    }
 }
 
 impl Default for ChunkGraph {
