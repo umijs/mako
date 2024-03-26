@@ -34,7 +34,7 @@ impl Plugin for JsPlugin {
             let (tx, rx) = mpsc::channel::<napi::Result<Option<LoadResult>>>();
             hook.call(
                 ReadMessage {
-                    message: (param.file.path.to_string_lossy()).to_string(),
+                    message: param.file.path.to_string_lossy().to_string(),
                     tx,
                 },
                 threadsafe_function::ThreadsafeFunctionCallMode::Blocking,
