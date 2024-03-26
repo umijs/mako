@@ -172,7 +172,6 @@ pub(crate) fn render_entry_js_chunk(
     css_map: &HashMap<String, String>,
     chunk: &Chunk,
     context: &Arc<Context>,
-    _cache_hash: u64,
     hmr_hash: u64,
 ) -> Result<ChunkFile> {
     mako_core::mako_profile_function!();

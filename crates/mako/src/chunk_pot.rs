@@ -89,7 +89,6 @@ impl<'cp> ChunkPot<'cp> {
         js_map: &HashMap<String, String>,
         css_map: &HashMap<String, String>,
         chunk: &Chunk,
-        cache_hash: u64,
         hmr_hash: u64,
     ) -> Result<Vec<ChunkFile>> {
         mako_core::mako_profile_function!();
@@ -104,25 +103,17 @@ impl<'cp> ChunkPot<'cp> {
 
             files.push(css_chunk_file);
             files.push(if self.use_eval(context) {
-                str_impl::render_entry_js_chunk(
-                    self, js_map, &css_map, chunk, context, cache_hash, hmr_hash,
-                )?
+                str_impl::render_entry_js_chunk(self, js_map, &css_map, chunk, context, hmr_hash)?
             } else {
-                ast_impl::render_entry_js_chunk(
-                    self, js_map, &css_map, chunk, context, cache_hash, hmr_hash,
-                )?
+                ast_impl::render_entry_js_chunk(self, js_map, &css_map, chunk, context, hmr_hash)?
             });
         } else {
             mako_core::mako_profile_scope!("EntryDevJsChunk", &self.chunk_id);
 
             files.push(if self.use_eval(context) {
-                str_impl::render_entry_js_chunk(
-                    self, js_map, css_map, chunk, context, cache_hash, hmr_hash,
-                )?
+                str_impl::render_entry_js_chunk(self, js_map, css_map, chunk, context, hmr_hash)?
             } else {
-                ast_impl::render_entry_js_chunk(
-                    self, js_map, css_map, chunk, context, cache_hash, hmr_hash,
-                )?
+                ast_impl::render_entry_js_chunk(self, js_map, css_map, chunk, context, hmr_hash)?
             });
         }
 

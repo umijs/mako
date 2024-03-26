@@ -55,7 +55,7 @@ impl ChunkFile {
 }
 
 impl Compiler {
-    pub fn generate_chunk_files(&self, cache_hash: u64, hmr_hash: u64) -> Result<Vec<ChunkFile>> {
+    pub fn generate_chunk_files(&self, hmr_hash: u64) -> Result<Vec<ChunkFile>> {
         mako_core::mako_profile_function!();
 
         let module_graph = self.context.module_graph.read().unwrap();
@@ -101,7 +101,6 @@ impl Compiler {
                         &js_chunk_map,
                         &css_chunk_map,
                         chunk,
-                        cache_hash,
                         hmr_hash,
                     );
                     debug!("generate_entry_chunk_files {}ms", t.elapsed().as_millis());
@@ -124,7 +123,6 @@ impl Compiler {
         js_map: &HashMap<String, String>,
         css_map: &HashMap<String, String>,
         chunk: &Chunk,
-        cache_hash: u64,
         hmr_hash: u64,
     ) -> Result<Vec<ChunkFile>> {
         mako_core::mako_profile_function!();
@@ -132,7 +130,7 @@ impl Compiler {
             // generate shared chunk as normal chunk
             pot.to_normal_chunk_files(chunk, &self.context)
         } else {
-            pot.to_entry_chunk_files(&self.context, js_map, css_map, chunk, cache_hash, hmr_hash)
+            pot.to_entry_chunk_files(&self.context, js_map, css_map, chunk, hmr_hash)
         }
     }
 

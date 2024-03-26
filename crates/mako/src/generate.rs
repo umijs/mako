@@ -163,7 +163,7 @@ impl Compiler {
         // generate chunks
         let t_generate_chunks = Instant::now();
         debug!("generate chunks");
-        let chunk_files = self.generate_chunk_files(full_hash, full_hash)?;
+        let chunk_files = self.generate_chunk_files(full_hash)?;
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         let t_ast_to_code_and_write = if self.context.args.watch {
@@ -205,7 +205,7 @@ impl Compiler {
         emit_chunk_file(&self.context, chunk_file);
     }
 
-    pub fn emit_dev_chunks(&self, cache_hash: u64, hmr_hash: u64) -> Result<()> {
+    pub fn emit_dev_chunks(&self, hmr_hash: u64) -> Result<()> {
         mako_core::mako_profile_function!("emit_dev_chunks");
 
         debug!("generate(hmr-fullbuild)");
@@ -220,7 +220,7 @@ impl Compiler {
 
         // generate chunks
         let t_generate_chunks = Instant::now();
-        let chunk_files = self.generate_chunk_files(cache_hash, hmr_hash)?;
+        let chunk_files = self.generate_chunk_files(hmr_hash)?;
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         // ast to code and sourcemap, then write
@@ -262,7 +262,7 @@ impl Compiler {
     pub fn generate_hot_update_chunks(
         &self,
         updated_modules: UpdateResult,
-        last_cache_hash: u64,
+        last_code_snapshot_hash: u64,
         last_hmr_hash: u64,
     ) -> Result<(u64, u64)> {
         debug!("generate_hot_update_chunks start");
@@ -295,15 +295,15 @@ impl Compiler {
         debug!(
             "{} {} {}",
             current_cache_hash,
-            if current_cache_hash == last_cache_hash {
+            if current_cache_hash == last_code_snapshot_hash {
                 "equals"
             } else {
                 "not equals"
             },
-            last_cache_hash
+            last_code_snapshot_hash
         );
 
-        if current_cache_hash == last_cache_hash {
+        if current_cache_hash == last_code_snapshot_hash {
             return Ok((current_cache_hash, current_hmr_hash));
         }
 

@@ -175,7 +175,7 @@ impl DevServer {
         watcher.watch()?;
 
         let initial_hash = compiler.full_hash();
-        let mut last_cache_hash = Box::new(initial_hash);
+        let mut code_snapshot_hash = Box::new(initial_hash);
         let mut hmr_hash = Box::new(initial_hash);
 
         for result in rx {
@@ -188,7 +188,7 @@ impl DevServer {
                     paths,
                     compiler,
                     txws,
-                    &mut last_cache_hash,
+                    &mut code_snapshot_hash,
                     &mut hmr_hash,
                     callback,
                 ) {
@@ -204,7 +204,7 @@ impl DevServer {
         paths: Vec<PathBuf>,
         compiler: Arc<Compiler>,
         txws: broadcast::Sender<WsMessage>,
-        last_cache_hash: &mut Box<u64>,
+        last_code_snapshot_hash: &mut Box<u64>,
         hmr_hash: &mut Box<u64>,
         callback: impl Fn(OnDevCompleteParams),
     ) -> Result<()> {
@@ -241,7 +241,8 @@ impl DevServer {
 
         let t_compiler = Instant::now();
         let start_time = std::time::SystemTime::now();
-        let next_hash = compiler.generate_hot_update_chunks(res, **last_cache_hash, **hmr_hash);
+        let next_hash =
+            compiler.generate_hot_update_chunks(res, **last_code_snapshot_hash, **hmr_hash);
         debug!(
             "hot update chunks generated, next_full_hash: {:?}",
             next_hash
@@ -256,23 +257,23 @@ impl DevServer {
             eprintln!("Error in watch: {:?}", e);
             return Err(e);
         }
-        let (next_cache_hash, next_hmr_hash) = next_hash.unwrap();
+        let (next_code_snapshot_hash, next_hmr_hash) = next_hash.unwrap();
         debug!(
             "hash info, next: {:?}, last: {:?}, is_equal: {}",
-            next_cache_hash,
-            last_cache_hash,
-            next_cache_hash == **last_cache_hash
+            next_code_snapshot_hash,
+            last_code_snapshot_hash,
+            next_code_snapshot_hash == **last_code_snapshot_hash
         );
-        if next_cache_hash == **last_cache_hash {
+        if next_code_snapshot_hash == **last_code_snapshot_hash {
             debug!("hash equals, will not do full rebuild");
             return Ok(());
         } else {
-            **last_cache_hash = next_cache_hash;
+            **last_code_snapshot_hash = next_code_snapshot_hash;
             **hmr_hash = next_hmr_hash;
         }
 
         debug!("full rebuild...");
-        if let Err(e) = compiler.emit_dev_chunks(next_cache_hash, next_hmr_hash) {
+        if let Err(e) = compiler.emit_dev_chunks(next_hmr_hash) {
             debug!("  > build failed: {:?}", e);
             return Err(e);
         }
