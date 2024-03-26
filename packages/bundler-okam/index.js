@@ -5,7 +5,7 @@ const assert = require('assert');
 const { createProxy, createHttpsServer } = require('@umijs/bundler-utils');
 const lodash = require('lodash');
 const chalk = require('chalk');
-const { ForkTsChecker } = require('./plugins/fork-ts-checker/index');
+const { ForkTsChecker } = require('./fork-ts-checker/index');
 const {
   createProxyMiddleware,
 } = require('@umijs/bundler-utils/compiled/http-proxy-middleware');
@@ -101,9 +101,9 @@ exports.build = async function (opts) {
   }
 
   // 后置 ts 校验，不影响打包速度
-  if (!!okamConfig.forkTsChecker) {
+  if (okamConfig.forkTsChecker) {
     const forkTypeChecker = new ForkTsChecker(cwd);
-    forkTypeChecker.runTypeCheck();
+    forkTypeChecker.runTypeCheckInChildProcess();
   }
 
   const statsJsonPath = path.join(cwd, 'dist', 'stats.json');

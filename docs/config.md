@@ -173,6 +173,13 @@ import("./a.js")
 
 是否修复 flexbugs。
 
+## forkTsChecker
+
+- 类型：`boolean`
+- 默认值：`false`
+
+是否开启构建时 ts 校验。
+
 ## hash
 
 - 类型：`boolean`
@@ -428,13 +435,6 @@ function App() {
   },
 }
 ```
-
-## forkTsChecker
-
-- 类型：`boolean`
-- 默认值：`false`
-
-是否开启构建时 ts 校验。
 
 ## umd
 
