@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 
 use mako_core::swc_common::SyntaxContext;
 use mako_core::swc_ecma_ast::{Module as SwcModule, ModuleItem};
@@ -331,10 +331,10 @@ impl TreeShakeModule {
         exports
     }
 
-    pub fn used_statements(&self) -> HashMap<StatementId, HashSet<String>> {
+    pub fn used_statements(&self) -> BTreeMap<StatementId, HashSet<String>> {
         // 1. get used exports
         let used_exports_idents = self.used_exports_idents();
-        let mut stmt_used_idents_map = HashMap::new();
+        let mut stmt_used_idents_map = BTreeMap::new();
 
         for (used_ident, stmt_id) in used_exports_idents {
             let used_idents: &mut HashSet<UsedIdent> =
