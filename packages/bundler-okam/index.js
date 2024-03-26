@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const url = require('url');
 const http = require('http');
 const assert = require('assert');
 const { createProxy, createHttpsServer } = require('@umijs/bundler-utils');
@@ -11,15 +12,16 @@ const {
 
 function lessLoader(fn, opts) {
   return async function (filePath) {
-    if (filePath.endsWith('.less')) {
+    const pathname = url.parse(filePath).pathname;
+    if (pathname.endsWith('.less')) {
       const { alias, modifyVars, config, sourceMap } = opts;
       const less = require('@umijs/bundler-utils/compiled/less');
-      const input = fs.readFileSync(filePath, 'utf-8');
+      const input = fs.readFileSync(pathname, 'utf-8');
       const resolvePlugin = new (require('less-plugin-resolve'))({
         aliases: alias,
       });
       const result = await less.render(input, {
-        filename: filePath,
+        filename: pathname,
         javascriptEnabled: true,
         math: config.lessLoader?.math,
         plugins: [resolvePlugin],
