@@ -25,11 +25,10 @@ use crate::ast::js_ast_to_code;
 use crate::compiler::Context;
 use crate::module::{generate_module_id, Dependency, ImportType, ModuleId, ResolveType};
 use crate::module_graph::ModuleGraph;
-use crate::plugins::farm_tree_shake::module::{AllExports, TreeShakeModule};
+use crate::plugins::farm_tree_shake::module::{AllExports, ModuleSystem, TreeShakeModule};
 use crate::plugins::farm_tree_shake::shake::module_concatenate::concatenate_context::{
     ConcatenateContext, RuntimeFlags,
 };
-use crate::tree_shaking::tree_shaking_module::ModuleSystem;
 
 pub fn optimize_module_graph(
     module_graph: &mut ModuleGraph,

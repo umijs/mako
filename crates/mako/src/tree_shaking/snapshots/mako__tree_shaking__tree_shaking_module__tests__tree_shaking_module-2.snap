@@ -1,8 +1,0 @@
----
-source: crates/mako/src/tree_shaking/tree_shaking_module.rs
-expression: "&tree_shaking_module"
----
-graph
- nodes:[(0, "import [\"x#0\"] - false"), (1, "import [] - true"), (2, "stmt [\"f0#0\"] - [] - false"), (3, "export [\"f1#0\"] - []"), (4, "export [\"f2#0\"] - [\"x#0\"]")]
- 
- references:["4 -> 0"]
