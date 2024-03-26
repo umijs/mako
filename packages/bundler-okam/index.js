@@ -12,8 +12,13 @@ const {
 
 function lessLoader(fn, opts) {
   return async function (filePath) {
-    const pathname = url.parse(filePath).pathname;
-    if (pathname.endsWith('.less')) {
+    let pathname = '';
+    try {
+      pathname = url.parse(filePath).pathname;
+    } catch (e) {
+      // do nothing
+    }
+    if (pathname?.endsWith('.less')) {
       const { alias, modifyVars, config, sourceMap } = opts;
       const less = require('@umijs/bundler-utils/compiled/less');
       const input = fs.readFileSync(pathname, 'utf-8');
