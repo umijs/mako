@@ -52,6 +52,7 @@ watch command:
 fmt:
   cargo fmt
   taplo format
+  pnpm biome:format
 
 # Run cargo check
 check:

@@ -97,11 +97,12 @@ Benchmark three10x.
 
 ```bash
 $ just setup-bench
-# default: --baseline master --case tmp/three10x
+# default: --baseline master --case tmp/three10x --warmup 3 --runs 10
 $ just bench
 $ just bench --multiChunks
 $ just bench --baseline v0.4.4
 $ just bench --baseline v0.4.4 --case examples/with-antd
+$ just bench --no-build
 ```
 
 Performance analysis with puffin.
