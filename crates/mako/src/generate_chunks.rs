@@ -159,18 +159,15 @@ impl Compiler {
         let mut chunk_files = vec![];
         let mut errors = vec![];
 
-        for cf in chunk_file_results {
-            match cf {
-                Ok(cf) => {
-                    for chunk_file in cf {
-                        chunk_files.push(chunk_file);
-                    }
-                }
-                Err(e) => {
-                    errors.push(e.to_string());
-                }
+        chunk_file_results.into_iter().for_each(|cfs| match cfs {
+            Ok(cfs) => {
+                chunk_files.extend(cfs);
             }
-        }
+            Err(e) => {
+                errors.push(e.to_string());
+            }
+        });
+
         if !errors.is_empty() {
             return Err(anyhow!(errors.join(", ")));
         }
