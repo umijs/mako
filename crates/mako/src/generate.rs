@@ -262,7 +262,7 @@ impl Compiler {
     pub fn generate_hot_update_chunks(
         &self,
         updated_modules: UpdateResult,
-        last_code_snapshot_hash: u64,
+        last_snapshot_hash: u64,
         last_hmr_hash: u64,
     ) -> Result<(u64, u64)> {
         debug!("generate_hot_update_chunks start");
@@ -288,23 +288,23 @@ impl Compiler {
         let t_transform_modules = t_transform_modules.elapsed();
 
         let t_calculate_hash = Instant::now();
-        let current_cache_hash = self.full_hash();
-        let current_hmr_hash = last_hmr_hash.wrapping_add(current_cache_hash);
+        let current_snapshot_hash = self.full_hash();
+        let current_hmr_hash = last_hmr_hash.wrapping_add(current_snapshot_hash);
         let t_calculate_hash = t_calculate_hash.elapsed();
 
         debug!(
             "{} {} {}",
-            current_cache_hash,
-            if current_cache_hash == last_code_snapshot_hash {
+            current_snapshot_hash,
+            if current_snapshot_hash == last_snapshot_hash {
                 "equals"
             } else {
                 "not equals"
             },
-            last_code_snapshot_hash
+            last_snapshot_hash
         );
 
-        if current_cache_hash == last_code_snapshot_hash {
-            return Ok((current_cache_hash, current_hmr_hash));
+        if current_snapshot_hash == last_snapshot_hash {
+            return Ok((current_snapshot_hash, current_hmr_hash));
         }
 
         // ensure output dir exists
@@ -385,9 +385,9 @@ impl Compiler {
             "  - generate hmr chunk: {}ms",
             t_generate_hmr_chunk.as_millis()
         );
-        debug!("  - next full hash: {}", current_cache_hash);
+        debug!("  - next full hash: {}", current_snapshot_hash);
 
-        Ok((current_cache_hash, current_hmr_hash))
+        Ok((current_snapshot_hash, current_hmr_hash))
     }
 
     pub fn write_to_dist<P: AsRef<std::path::Path>, C: AsRef<[u8]>>(
