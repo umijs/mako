@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use std::path::Path;
-use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::time::Instant;
 use std::vec;
 
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::indexmap::IndexSet;
+use mako_core::rayon::prelude::*;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_css_ast::Stylesheet;
 use mako_core::swc_ecma_ast::{Expr, KeyValueProp, Prop, PropName, PropOrSpread, Str};
@@ -16,7 +16,6 @@ use crate::chunk::{Chunk, ChunkType};
 use crate::chunk_pot::ChunkPot;
 use crate::compiler::{Compiler, Context};
 use crate::module::{ModuleAst, ModuleId};
-use crate::thread_pool;
 use crate::transform_in_generate::transform_css_generate;
 
 #[derive(Clone)]
@@ -55,7 +54,7 @@ impl ChunkFile {
 }
 
 impl Compiler {
-    pub fn generate_chunk_files(&self, cache_hash: u64, hmr_hash: u64) -> Result<Vec<ChunkFile>> {
+    pub fn generate_chunk_files(&self, hmr_hash: u64) -> Result<Vec<ChunkFile>> {
         mako_core::mako_profile_function!();
 
         let module_graph = self.context.module_graph.read().unwrap();
@@ -101,7 +100,6 @@ impl Compiler {
                         &js_chunk_map,
                         &css_chunk_map,
                         chunk,
-                        cache_hash,
                         hmr_hash,
                     );
                     debug!("generate_entry_chunk_files {}ms", t.elapsed().as_millis());
@@ -124,7 +122,6 @@ impl Compiler {
         js_map: &HashMap<String, String>,
         css_map: &HashMap<String, String>,
         chunk: &Chunk,
-        cache_hash: u64,
         hmr_hash: u64,
     ) -> Result<Vec<ChunkFile>> {
         mako_core::mako_profile_function!();
@@ -132,7 +129,7 @@ impl Compiler {
             // generate shared chunk as normal chunk
             pot.to_normal_chunk_files(chunk, &self.context)
         } else {
-            pot.to_entry_chunk_files(&self.context, js_map, css_map, chunk, cache_hash, hmr_hash)
+            pot.to_entry_chunk_files(&self.context, js_map, css_map, chunk, hmr_hash)
         }
     }
 
@@ -141,50 +138,40 @@ impl Compiler {
         let chunk_graph = self.context.chunk_graph.read().unwrap();
         let chunks = chunk_graph.get_chunks();
 
-        let (rs, rr) = channel::<Result<Vec<ChunkFile>>>();
-
-        for chunk in chunks.iter() {
-            if !matches!(
-                chunk.chunk_type,
-                ChunkType::Entry(_, _, _) | ChunkType::Worker(_)
-            ) {
-                let rs = rs.clone();
-                let context = self.context.clone();
-                let chunk_id = chunk.id.clone();
-                thread_pool::spawn(move || {
+        let chunk_file_results: Vec<_> = chunks
+            .par_iter()
+            .filter_map(|chunk| match chunk.chunk_type {
+                ChunkType::Entry(_, _, _) | ChunkType::Worker(_) => None,
+                _ => {
+                    let context = self.context.clone();
+                    let chunk_id = chunk.id.clone();
                     let chunk_graph = context.chunk_graph.read().unwrap();
                     let module_graph = context.module_graph.read().unwrap();
                     let chunk = chunk_graph.chunk(&chunk_id).unwrap();
-                    let pot = ChunkPot::from(chunk, &module_graph, &context);
-                    if let Err(e) = pot {
-                        rs.send(Err(e)).unwrap();
-                    } else {
-                        let pot = pot.unwrap();
-                        let chunk_files = pot.to_normal_chunk_files(chunk, &context);
-                        rs.send(chunk_files).unwrap();
-                    }
-                });
-            }
-        }
-        drop(rs);
-        let mut fs = vec![];
+                    let chunk_files = ChunkPot::from(chunk, &module_graph, &context)
+                        .map_or_else(Err, |pot| pot.to_normal_chunk_files(chunk, &context));
+
+                    Some(chunk_files)
+                }
+            })
+            .collect();
+
+        let mut chunk_files = vec![];
         let mut errors = vec![];
-        for cf in rr {
-            match cf {
-                Ok(cf) => {
-                    for chunk_file in cf {
-                        fs.push(chunk_file);
-                    }
-                }
-                Err(e) => {
-                    errors.push(e.to_string());
-                }
+
+        chunk_file_results.into_iter().for_each(|cfs| match cfs {
+            Ok(cfs) => {
+                chunk_files.extend(cfs);
             }
-        }
+            Err(e) => {
+                errors.push(e.to_string());
+            }
+        });
+
         if !errors.is_empty() {
             return Err(anyhow!(errors.join(", ")));
         }
-        Ok(fs)
+        Ok(chunk_files)
     }
 
     fn chunk_maps(

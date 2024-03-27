@@ -163,7 +163,7 @@ impl Compiler {
         // generate chunks
         let t_generate_chunks = Instant::now();
         debug!("generate chunks");
-        let chunk_files = self.generate_chunk_files(full_hash, full_hash)?;
+        let chunk_files = self.generate_chunk_files(full_hash)?;
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         let t_ast_to_code_and_write = if self.context.args.watch {
@@ -205,7 +205,7 @@ impl Compiler {
         emit_chunk_file(&self.context, chunk_file);
     }
 
-    pub fn emit_dev_chunks(&self, cache_hash: u64, hmr_hash: u64) -> Result<()> {
+    pub fn emit_dev_chunks(&self, hmr_hash: u64) -> Result<()> {
         mako_core::mako_profile_function!("emit_dev_chunks");
 
         debug!("generate(hmr-fullbuild)");
@@ -220,7 +220,7 @@ impl Compiler {
 
         // generate chunks
         let t_generate_chunks = Instant::now();
-        let chunk_files = self.generate_chunk_files(cache_hash, hmr_hash)?;
+        let chunk_files = self.generate_chunk_files(hmr_hash)?;
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         // ast to code and sourcemap, then write
@@ -262,7 +262,7 @@ impl Compiler {
     pub fn generate_hot_update_chunks(
         &self,
         updated_modules: UpdateResult,
-        last_cache_hash: u64,
+        last_snapshot_hash: u64,
         last_hmr_hash: u64,
     ) -> Result<(u64, u64)> {
         debug!("generate_hot_update_chunks start");
@@ -288,23 +288,23 @@ impl Compiler {
         let t_transform_modules = t_transform_modules.elapsed();
 
         let t_calculate_hash = Instant::now();
-        let current_cache_hash = self.full_hash();
-        let current_hmr_hash = last_hmr_hash.wrapping_add(current_cache_hash);
+        let current_snapshot_hash = self.full_hash();
+        let current_hmr_hash = last_hmr_hash.wrapping_add(current_snapshot_hash);
         let t_calculate_hash = t_calculate_hash.elapsed();
 
         debug!(
             "{} {} {}",
-            current_cache_hash,
-            if current_cache_hash == last_cache_hash {
+            current_snapshot_hash,
+            if current_snapshot_hash == last_snapshot_hash {
                 "equals"
             } else {
                 "not equals"
             },
-            last_cache_hash
+            last_snapshot_hash
         );
 
-        if current_cache_hash == last_cache_hash {
-            return Ok((current_cache_hash, current_hmr_hash));
+        if current_snapshot_hash == last_snapshot_hash {
+            return Ok((current_snapshot_hash, current_hmr_hash));
         }
 
         // ensure output dir exists
@@ -385,9 +385,9 @@ impl Compiler {
             "  - generate hmr chunk: {}ms",
             t_generate_hmr_chunk.as_millis()
         );
-        debug!("  - next full hash: {}", current_cache_hash);
+        debug!("  - next full hash: {}", current_snapshot_hash);
 
-        Ok((current_cache_hash, current_hmr_hash))
+        Ok((current_snapshot_hash, current_hmr_hash))
     }
 
     pub fn write_to_dist<P: AsRef<std::path::Path>, C: AsRef<[u8]>>(
