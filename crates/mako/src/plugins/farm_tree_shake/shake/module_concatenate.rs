@@ -232,9 +232,6 @@ pub fn optimize_module_graph(
 
     GLOBALS.set(&context.meta.script.globals, || {
         for config in &concat_configurations {
-            if cfg!(debug_assertions) {
-                dbg!(&config);
-            }
             let mut module_items: Vec<ModuleItem> = Vec::new();
 
             let mut concatenate_context = ConcatenateContext::default();
@@ -250,14 +247,6 @@ pub fn optimize_module_graph(
                 }
 
                 let import_source_to_module_id = source_to_module_id(id, module_graph);
-
-                if cfg!(debug_assertions) {
-                    println!("\n*** start for {}", id.id);
-                    println!(
-                        "config.external_interops(id) {:?} ",
-                        &config.external_interops(id)
-                    );
-                }
 
                 if let Some(interop) = config.external_interops(id) {
                     let base_name = uniq_module_prefix(id);
