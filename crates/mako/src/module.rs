@@ -139,10 +139,10 @@ impl ResolveType {
     }
 
     pub fn is_sync_esm(&self) -> bool {
-        match self {
-            ResolveType::Import(_) | ResolveType::ExportNamed(_) | ResolveType::ExportAll => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            ResolveType::Import(_) | ResolveType::ExportNamed(_) | ResolveType::ExportAll
+        )
     }
 }
 
