@@ -50,7 +50,7 @@ pub fn optimize_module_graph(
             continue;
         }
 
-        let can_be_root = true;
+        let mut can_be_root = true;
         let mut can_be_inner = true;
         /*
            - [ ] chunk 模式下的不能为 root
@@ -76,12 +76,25 @@ pub fn optimize_module_graph(
                 can_be_inner = false;
             }
 
-            let export_all = module_graph
-                .get_dependencies(module_id)
-                .into_iter()
-                .any(|(_, dep)| dep.resolve_type == ResolveType::ExportAll);
-            if export_all {
+            let export_all_or_has_async =
+                module_graph
+                    .get_dependencies_info(module_id)
+                    .iter()
+                    .any(|(_, dep, is_async)| {
+                        dep.resolve_type == ResolveType::ExportAll
+                            || (*is_async && dep.resolve_type.is_sync_esm())
+                    });
+            if export_all_or_has_async {
                 can_be_inner = false;
+            }
+
+            let is_async = module_graph
+                .get_module(module_id)
+                .and_then(|module| module.info.as_ref())
+                .map_or(false, |info| info.is_async);
+            if is_async {
+                can_be_inner = false;
+                can_be_root = false;
             }
 
             // 必须要有清晰的导出

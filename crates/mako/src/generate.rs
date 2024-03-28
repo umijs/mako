@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::ops::DerefMut;
 use std::path::PathBuf;
@@ -15,8 +15,9 @@ use crate::ast::base64_encode;
 use crate::compiler::{Compiler, Context};
 use crate::config::{DevtoolConfig, OutputMode, TreeShakingStrategy};
 use crate::generate_chunks::{ChunkFile, ChunkFileType};
-use crate::module::ModuleId;
+use crate::module::{Dependency, ModuleId};
 use crate::stats::{create_stats_info, print_stats, write_stats};
+use crate::transformers::transform_async_module::mark_async;
 use crate::update::UpdateResult;
 
 #[derive(Clone)]
@@ -39,12 +40,27 @@ impl Compiler {
         Ok(())
     }
 
+    fn mark_async(&self) -> HashMap<ModuleId, Vec<Dependency>> {
+        let module_ids = {
+            let module_graph = self.context.module_graph.read().unwrap();
+            let (mut module_ids, _) = module_graph.toposort();
+            // start from the leaf nodes, so reverser the sort
+            module_ids.reverse();
+            drop(module_graph);
+            module_ids
+        };
+        mark_async(&module_ids, &self.context)
+    }
+
     pub fn generate(&self) -> Result<()> {
         debug!("generate");
         let t_generate = Instant::now();
 
         debug!("tree_shaking");
         let t_tree_shaking = Instant::now();
+
+        let async_dep_map = self.mark_async();
+
         // Disable tree shaking in watch mode temporarily
         // ref: https://github.com/umijs/mako/issues/396
         if !self.context.args.watch {
@@ -94,7 +110,7 @@ impl Compiler {
         // 因为放 chunks 的循环里，一个 module 可能存在于多个 chunk 里，可能会被编译多遍
         let t_transform_modules = Instant::now();
         debug!("transform all modules");
-        self.transform_all()?;
+        self.transform_all(async_dep_map)?;
         let t_transform_modules = t_transform_modules.elapsed();
 
         // ensure output dir exists

@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use mako_core::swc_common::util::take::Take;
 use mako_core::swc_common::{Mark, DUMMY_SP};
 use mako_core::swc_ecma_ast::{
@@ -10,7 +13,8 @@ use swc_core::ecma::utils::{member_expr, quote_expr, quote_ident, ExprFactory};
 use swc_core::ecma::visit::VisitMutWith;
 
 use crate::ast_2::utils::is_commonjs_require;
-use crate::module::Dependency;
+use crate::compiler::Context;
+use crate::module::{Dependency, ModuleId};
 
 const ASYNC_IMPORTED_MODULE: &str = "_async__mako_imported_module_";
 
@@ -195,6 +199,32 @@ impl VisitMut for AsyncModule<'_> {
                 .into_stmt(),
         )];
     }
+}
+
+pub fn mark_async(
+    module_ids: &[ModuleId],
+    context: &Arc<Context>,
+) -> HashMap<ModuleId, Vec<Dependency>> {
+    mako_core::mako_profile_function!();
+    let mut async_deps_by_module_id = HashMap::new();
+    let mut module_graph = context.module_graph.write().unwrap();
+    // TODO: 考虑成环的场景
+    module_ids.iter().for_each(|module_id| {
+        let deps = module_graph.get_dependencies_info(module_id);
+        let async_deps: Vec<Dependency> = deps
+            .into_iter()
+            .filter(|(_, dep, is_async)| dep.resolve_type.is_sync_esm() && *is_async)
+            .map(|(_, dep, _)| dep.clone())
+            .collect();
+        let module = module_graph.get_module_mut(module_id).unwrap();
+        let info = module.info.as_mut().unwrap();
+        // a module with async deps need to be polluted into async module
+        if !info.is_async && !async_deps.is_empty() {
+            info.is_async = true;
+        }
+        async_deps_by_module_id.insert(module_id.clone(), async_deps);
+    });
+    async_deps_by_module_id
 }
 
 #[cfg(test)]

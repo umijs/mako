@@ -135,15 +135,14 @@ impl ResolveType {
 
 impl ResolveType {
     pub fn is_esm(&self) -> bool {
-        match self {
-            ResolveType::Import(_) => true,
-            ResolveType::ExportNamed(_) => true,
-            ResolveType::ExportAll => true,
-            ResolveType::Require => false,
-            ResolveType::DynamicImport => true,
-            ResolveType::Css => false,
-            ResolveType::Worker => false,
-        }
+        self.is_sync_esm() || matches!(self, ResolveType::DynamicImport)
+    }
+
+    pub fn is_sync_esm(&self) -> bool {
+        matches!(
+            self,
+            ResolveType::Import(_) | ResolveType::ExportNamed(_) | ResolveType::ExportAll
+        )
     }
 }
 
