@@ -1,4 +1,16 @@
 
+## 0.4.8
+
+`2024-03-23`
+
+> @alipay/bigfish@4.1.17
+
+* 新增 scope hoist 功能，配置开启 by @stormslowly in #922
+* 修复 js hook 应该使用完整 path 的问题 by @Jinbao1001 in #987
+* 减少 tree shaking 阶段的性能开销 by @xusd320 in #980
+* 删除 node_polyfill 里的正则以提升性能 by @sorrycc in #998
+* 重构 generate cache hash 的处理 by @xusd320 in #992
+
 ## 0.4.7
 
 `2024-03-22`
