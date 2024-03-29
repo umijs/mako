@@ -304,8 +304,11 @@ fn to_module_fn_expr(module: &Module) -> Result<FnExpr> {
     }
 }
 
+pub const CHUNK_FILE_NAME_HASH_LENGTH: usize = 8;
+
 pub fn file_content_hash<T: AsRef<[u8]>>(content: T) -> String {
     let digest = md5::compute(content);
-    let hash = format!("{:x}", digest);
-    hash[0..8].to_string()
+    let mut hash = format!("{:x}", digest);
+    hash.truncate(CHUNK_FILE_NAME_HASH_LENGTH);
+    hash
 }
