@@ -192,9 +192,9 @@ impl ChunkGraph {
         self.graph.remove_node(idx);
     }
 
-    pub fn connect_vacant_nodes_to_entry_chunk(&mut self, chunk_id: &ChunkId) {
+    pub fn connect_isolated_nodes_to_entry_chunk(&mut self, chunk_id: &ChunkId) {
         let from = self.id_index_map.get(chunk_id).unwrap();
-        let vacant_nodes = self
+        let isolated_nodes = self
             .graph
             .node_indices()
             .filter(|node| {
@@ -210,7 +210,7 @@ impl ChunkGraph {
             })
             .collect::<Vec<_>>();
 
-        for node in vacant_nodes {
+        for node in isolated_nodes {
             self.graph.add_edge(*from, node, ());
         }
     }
