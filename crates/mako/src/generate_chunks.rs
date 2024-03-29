@@ -199,19 +199,19 @@ impl Compiler {
             })
             .collect();
 
-        let (chunk_files, errors) = chunk_file_results.into_iter().fold(
+        let (chunk_files, err_msgs) = chunk_file_results.into_iter().fold(
             (Vec::new(), Vec::new()),
-            |(mut chunk_files, mut errors), result| {
+            |(mut chunk_files, mut err_msgs), result| {
                 match result {
                     Ok(cfs) => chunk_files.push(cfs),
-                    Err(e) => errors.push(e.to_string()),
+                    Err(e) => err_msgs.push(e.to_string()),
                 }
-                (chunk_files, errors)
+                (chunk_files, err_msgs)
             },
         );
 
-        if !errors.is_empty() {
-            return Err(anyhow!(errors.join(", ")));
+        if !err_msgs.is_empty() {
+            return Err(anyhow!(err_msgs.join(", ")));
         }
 
         Ok(chunk_files)
@@ -220,7 +220,7 @@ impl Compiler {
     fn generate_normal_chunk_files(&self, chunks: Vec<&Chunk>) -> Result<Vec<ChunkFile>> {
         let chunk_file_results: Vec<_> = chunks
             .par_iter()
-            .filter_map(|chunk| {
+            .map(|chunk| {
                 let context = self.context.clone();
                 let chunk_id = chunk.id.clone();
                 let chunk_graph = context.chunk_graph.read().unwrap();
@@ -230,23 +230,23 @@ impl Compiler {
                 let chunk_files = ChunkPot::from(chunk, &module_graph, &context)
                     .to_normal_chunk_files(chunk, &context);
 
-                Some(chunk_files)
+                chunk_files
             })
             .collect();
 
-        let (chunk_files, errors) = chunk_file_results.into_iter().fold(
+        let (chunk_files, err_msgs) = chunk_file_results.into_iter().fold(
             (Vec::new(), Vec::new()),
-            |(mut chunk_files, mut errors), result| {
+            |(mut chunk_files, mut err_msgs), result| {
                 match result {
                     Ok(cfs) => chunk_files.extend(cfs),
-                    Err(e) => errors.push(e.to_string()),
+                    Err(e) => err_msgs.push(e.to_string()),
                 }
-                (chunk_files, errors)
+                (chunk_files, err_msgs)
             },
         );
 
-        if !errors.is_empty() {
-            return Err(anyhow!(errors.join(", ")));
+        if !err_msgs.is_empty() {
+            return Err(anyhow!(err_msgs.join(", ")));
         }
 
         Ok(chunk_files)
