@@ -170,7 +170,7 @@ impl Compiler {
 
             // connect that has be optimized chunk dependents to the entry chunk
             if index == async_to_entry.len() - 1 {
-                chunk_graph.connect_isolated_nodes_to_entry_chunk(entry_chunk_id);
+                chunk_graph.connect_isolated_nodes_to_chunk(entry_chunk_id);
             }
         }
 

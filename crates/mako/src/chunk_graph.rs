@@ -192,7 +192,7 @@ impl ChunkGraph {
         self.graph.remove_node(idx);
     }
 
-    pub fn connect_isolated_nodes_to_entry_chunk(&mut self, chunk_id: &ChunkId) {
+    pub fn connect_isolated_nodes_to_chunk(&mut self, chunk_id: &ChunkId) {
         let from = self.id_index_map.get(chunk_id).unwrap();
         let isolated_nodes = self
             .graph
