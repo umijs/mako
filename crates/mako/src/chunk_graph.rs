@@ -191,6 +191,29 @@ impl ChunkGraph {
         let idx = self.id_index_map.remove(chunk_id).unwrap();
         self.graph.remove_node(idx);
     }
+
+    pub fn connect_isolated_nodes_to_chunk(&mut self, chunk_id: &ChunkId) {
+        let from = self.id_index_map.get(chunk_id).unwrap();
+        let isolated_nodes = self
+            .graph
+            .node_indices()
+            .filter(|node| {
+                self.graph
+                    .edges_directed(*node, Direction::Outgoing)
+                    .count()
+                    == 0
+                    && self
+                        .graph
+                        .edges_directed(*node, Direction::Incoming)
+                        .count()
+                        == 0
+            })
+            .collect::<Vec<_>>();
+
+        for node in isolated_nodes {
+            self.graph.add_edge(*from, node, ());
+        }
+    }
 }
 
 impl Default for ChunkGraph {
