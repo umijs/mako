@@ -199,19 +199,23 @@ impl Compiler {
             })
             .collect();
 
-        let (chunk_files, err_msgs) = chunk_file_results.into_iter().fold(
+        let (chunk_files, errors) = chunk_file_results.into_iter().fold(
             (Vec::new(), Vec::new()),
             |(mut chunk_files, mut err_msgs), result| {
                 match result {
                     Ok(cfs) => chunk_files.push(cfs),
-                    Err(e) => err_msgs.push(e.to_string()),
+                    Err(e) => err_msgs.push(e),
                 }
                 (chunk_files, err_msgs)
             },
         );
 
-        if !err_msgs.is_empty() {
-            return Err(anyhow!(err_msgs.join(", ")));
+        if !errors.is_empty() {
+            return Err(anyhow!(errors
+                .iter()
+                .map(|e| e.to_string())
+                .collect::<Vec<String>>()
+                .join(", ")));
         }
 
         Ok(chunk_files)
@@ -234,19 +238,23 @@ impl Compiler {
             })
             .collect();
 
-        let (chunk_files, err_msgs) = chunk_file_results.into_iter().fold(
+        let (chunk_files, errors) = chunk_file_results.into_iter().fold(
             (Vec::new(), Vec::new()),
             |(mut chunk_files, mut err_msgs), result| {
                 match result {
                     Ok(cfs) => chunk_files.extend(cfs),
-                    Err(e) => err_msgs.push(e.to_string()),
+                    Err(e) => err_msgs.push(e),
                 }
                 (chunk_files, err_msgs)
             },
         );
 
-        if !err_msgs.is_empty() {
-            return Err(anyhow!(err_msgs.join(", ")));
+        if !errors.is_empty() {
+            return Err(anyhow!(errors
+                .iter()
+                .map(|e| e.to_string())
+                .collect::<Vec<String>>()
+                .join(", ")));
         }
 
         Ok(chunk_files)
