@@ -201,12 +201,12 @@ impl Compiler {
 
         let (chunk_files, errors) = chunk_file_results.into_iter().fold(
             (Vec::new(), Vec::new()),
-            |(mut chunk_files, mut err_msgs), result| {
+            |(mut chunk_files, mut errors), result| {
                 match result {
-                    Ok(cfs) => chunk_files.push(cfs),
-                    Err(e) => err_msgs.push(e),
+                    Ok(cf) => chunk_files.push(cf),
+                    Err(e) => errors.push(e),
                 }
-                (chunk_files, err_msgs)
+                (chunk_files, errors)
             },
         );
 
