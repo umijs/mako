@@ -311,7 +311,7 @@ impl VisitMut for ExternalTransformer<'_> {
             }
         }
 
-        for (index, items) in replaces {
+        for (index, items) in replaces.into_iter().rev() {
             module_items.splice(index..index + 1, items);
         }
     }
@@ -339,11 +339,15 @@ mod tests {
         let mut ast = build_js_ast("mut.js", code, &context).unwrap();
 
         let src_2_module: HashMap<String, ModuleId> = hashmap! {
-            "external".to_string() => ModuleId::from("external")
+            "external".to_string() => ModuleId::from("external"),
+            "external2".to_string() => ModuleId::from("external2")
         };
         let current_external_map = hashmap! {
             ModuleId::from("external") => (
                 "external_namespace_cjs".to_string(), "external_namespace".to_string()
+            ),
+            ModuleId::from("external2") => (
+                "external_namespace_cjs2".to_string(), "external_namespace2".to_string()
             )
         };
 
@@ -507,6 +511,28 @@ export { __$m_external_named as named };
             .trim()
         );
     }
+
+    #[test]
+    fn test_multi_export_named_from_external() {
+        let code = transform_with_external_replace(
+            r#"
+            export { named } from "external";
+            export { named2 } from "external2";
+            "#,
+        );
+
+        assert_eq!(
+            code,
+            r#"
+var __$m_external_named = external_namespace.named;
+export { __$m_external_named as named };
+var __$m_external2_named2 = external_namespace2.named2;
+export { __$m_external2_named2 as named2 };
+            "#
+            .trim()
+        );
+    }
+
     #[test]
     fn test_export_named_as_from_external() {
         let code = transform_with_external_replace(
