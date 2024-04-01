@@ -200,14 +200,14 @@ fn to_module_line(
             let escaped = serde_json::to_string(&content)?;
 
             Ok(format!(
-                r#""{}" : function (module, exports, require){{
+                r#""{}" : function (module, exports, __mako_require__){{
     eval({})
   }},"#,
                 module_id_str, escaped
             ))
         }
         ModuleAst::Css(_) => Ok(format!(
-            r#""{}" : function (module, exports, require){{
+            r#""{}" : function (module, exports, __mako_require__){{
   }},"#,
             module_id_str,
         )),
