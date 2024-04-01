@@ -1,3 +1,12 @@
+## 0.4.9
+
+`2024-04-01`
+
+> @alipay/bigfish@4.1.23
+
+修复 chunk 优化中出现孤立 chunk 的问题 by @Jinbao1001 in #988
+修复 entry chunk hash 不稳定的问题 by @xusd320 in #1003
+修复 concatenateModules 无法合并多个外部模块的问题 @stormslowly in #1005
 
 ## 0.4.8
 
