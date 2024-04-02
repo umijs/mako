@@ -25,10 +25,10 @@ use crate::transformers::transform_css_url_replacer::CSSUrlReplacer;
 use crate::transformers::transform_dynamic_import_to_require::DynamicImportToRequire;
 use crate::transformers::transform_env_replacer::{build_env_map, EnvReplacer};
 use crate::transformers::transform_provide::Provide;
-use crate::transformers::transform_px2rem::Px2Rem;
 use crate::transformers::transform_react::mako_react;
 use crate::transformers::transform_try_resolve::TryResolve;
 use crate::transformers::transform_virtual_css_modules::VirtualCSSModules;
+use crate::visitors::css_px2rem::Px2Rem;
 use crate::visitors::default_export_namer::DefaultExportNamer;
 
 pub struct Transform {}

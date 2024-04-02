@@ -11,6 +11,7 @@ import styles from './style.module.css';
 function App() {
   return (
     <div>
+      <h1 className={styles.remWrapper}>测试</h1>
       <h1 className={styles.title}>Hello {foo}!</h1>
       <PersonComponent width="40px" height="40px" />
       <img src={Person} />

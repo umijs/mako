@@ -1,5 +1,6 @@
 {
   "devtool": "source-map",
   "stats": true,
-  "hash": true
+  "hash": true,
+  "px2rem": {}
 }

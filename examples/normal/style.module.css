@@ -12,3 +12,7 @@
 :global(.a) .b {
   color: red
 }
+.remWrapper{
+  width: 30px;
+  font-size: 30px;
+}
