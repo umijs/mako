@@ -197,13 +197,13 @@ fn to_module_line(
 
             // context.write_static_content(&source_map_file, source_map_content)?;
 
-            let escaped = serde_json::to_string(&content)?;
+            // let escaped = serde_json::to_string(&content)?;
 
             Ok(format!(
                 r#""{}" : function (module, exports, __mako_require__){{
-    eval({})
+    {}
   }},"#,
-                module_id_str, escaped
+                module_id_str, content
             ))
         }
         ModuleAst::Css(_) => Ok(format!(
