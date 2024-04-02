@@ -25,6 +25,7 @@ use crate::config::{DevtoolConfig, Mode};
 use crate::module::Dependency;
 use crate::plugin::PluginTransformJsParam;
 use crate::sourcemap::build_source_map;
+use crate::util::base64_encode;
 use crate::visitors::dep_analyzer::DepAnalyzer;
 
 #[derive(Clone)]
@@ -251,7 +252,7 @@ impl JsAst {
             buf.append(
                 &mut format!(
                     "\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,{}",
-                    utils::base64_encode(&sourcemap)
+                    base64_encode(&sourcemap)
                 )
                 .as_bytes()
                 .to_vec(),

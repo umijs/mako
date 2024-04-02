@@ -11,7 +11,6 @@ use mako_core::rayon::prelude::*;
 use mako_core::serde::Serialize;
 use mako_core::tracing::debug;
 
-use crate::ast::base64_encode;
 use crate::compiler::{Compiler, Context};
 use crate::config::{DevtoolConfig, OutputMode, TreeShakingStrategy};
 use crate::generate_chunks::{ChunkFile, ChunkFileType};
@@ -19,6 +18,7 @@ use crate::module::{Dependency, ModuleId};
 use crate::stats::{create_stats_info, print_stats, write_stats};
 use crate::transformers::transform_async_module::mark_async;
 use crate::update::UpdateResult;
+use crate::util::base64_encode;
 
 #[derive(Clone)]
 pub struct EmitFile {

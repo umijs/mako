@@ -13,12 +13,13 @@ use mako_core::swc_ecma_parser::StringInput;
 use mako_core::{md5, swc_atoms, swc_css_parser, swc_css_visit};
 use swc_core::common::FileName;
 
+use crate::ast_2::error;
 use crate::ast_2::file::File;
-use crate::ast_2::{error, utils};
 use crate::compiler::Context;
 use crate::config::{DevtoolConfig, Mode};
 use crate::module::Dependency;
 use crate::sourcemap::build_source_map;
+use crate::util::base64_encode;
 use crate::visitors::css_dep_analyzer::CSSDepAnalyzer;
 
 #[derive(Clone)]
@@ -120,7 +121,7 @@ impl CssAst {
             code.push_str(
                 format!(
                     "\n/*# sourceMappingURL=data:application/json;charset=utf-8;base64,{}*/",
-                    utils::base64_encode(&sourcemap)
+                    base64_encode(&sourcemap)
                 )
                 .as_str(),
             );

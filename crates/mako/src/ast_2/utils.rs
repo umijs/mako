@@ -1,14 +1,8 @@
-use mako_core::base64::engine::general_purpose;
-use mako_core::base64::Engine;
 use mako_core::swc_ecma_ast::{
     CallExpr, Callee, Expr, Ident, Import, Lit, MemberExpr, MemberProp, MetaPropExpr, MetaPropKind,
     Module, ModuleItem,
 };
 use swc_core::common::Mark;
-
-pub fn base64_encode<T: AsRef<[u8]>>(raw: T) -> String {
-    general_purpose::STANDARD.encode(raw)
-}
 
 pub fn is_remote_or_data(url: &str) -> bool {
     let lower_url = url.to_lowercase();

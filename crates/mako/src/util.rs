@@ -8,6 +8,10 @@ use mako_core::merge_source_map::{merge, MergeOptions};
 use mako_core::pathdiff::diff_paths;
 use mako_core::regex::Regex;
 
+pub fn base64_encode<T: AsRef<[u8]>>(raw: T) -> String {
+    general_purpose::STANDARD.encode(raw)
+}
+
 pub fn base64_decode(bytes: &[u8]) -> Vec<u8> {
     general_purpose::STANDARD.decode(bytes).unwrap()
 }

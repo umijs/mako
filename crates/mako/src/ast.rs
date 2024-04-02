@@ -3,8 +3,6 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use mako_core::anyhow::{anyhow, Result};
-use mako_core::base64::engine::general_purpose;
-use mako_core::base64::Engine;
 use mako_core::pathdiff::diff_paths;
 use mako_core::swc_common::errors::Handler;
 use mako_core::swc_common::sync::Lrc;
@@ -27,6 +25,7 @@ use swc_core::common::comments::Comments;
 use crate::compiler::Context;
 use crate::config::{DevtoolConfig, Mode};
 use crate::sourcemap::build_source_map;
+use crate::util::base64_encode;
 
 #[derive(Debug, Error)]
 #[error("{error_message:}")]
@@ -272,10 +271,6 @@ pub fn css_ast_to_code(
         );
     }
     (css_code, sourcemap)
-}
-
-pub fn base64_encode<T: AsRef<[u8]>>(raw: T) -> String {
-    general_purpose::STANDARD.encode(raw)
 }
 
 pub fn generate_code_frame(span: Span, message: &str, cm: Lrc<SourceMap>) -> String {
