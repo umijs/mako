@@ -15,7 +15,7 @@ use miette::{miette, ByteOffset, Diagnostic, NamedSource, SourceOffset, SourceSp
 use serde::Serialize;
 
 use crate::plugins::node_polyfill::get_all_modules;
-use crate::{optimize_chunk, plugins, transformers};
+use crate::{optimize_chunk, plugins, visitors};
 
 #[derive(Debug, Diagnostic)]
 #[diagnostic(code("mako.config.json parsed failed"))]
@@ -203,7 +203,7 @@ pub enum TreeShakingStrategy {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Px2RemConfig {
-    #[serde(default = "transformers::transform_px2rem::default_root")]
+    #[serde(default = "visitors::css_px2rem::default_root")]
     pub root: f64,
     #[serde(rename = "propBlackList", default)]
     pub prop_black_list: Vec<String>,
