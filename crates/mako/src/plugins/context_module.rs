@@ -22,7 +22,7 @@ impl Plugin for ContextModulePlugin {
         "context_module"
     }
 
-    fn load(&self, param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
+    fn load(&self, param: &PluginLoadParam, context: &Arc<Context>) -> Result<Option<Content>> {
         if let (Some(glob_pattern), true) = (
             param
                 .file
@@ -76,9 +76,14 @@ impl Plugin for ContextModulePlugin {
                 }
 
                 let is_async = param.file.has_param("async");
+                let dynamic_import_to_require = context.config.dynamic_import_to_require;
 
                 for key in keys {
-                    let load_by = if is_async { "import" } else { "require" };
+                    let load_by = if is_async && !dynamic_import_to_require {
+                        "import"
+                    } else {
+                        "require"
+                    };
                     key_values.push(format!(
                         "'{}': () => {}('{}')",
                         key,
