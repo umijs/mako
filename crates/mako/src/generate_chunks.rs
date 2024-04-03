@@ -142,7 +142,7 @@ impl Compiler {
                         |(mut acc_js, mut acc_css), descendant_chunk_id| {
                             let descendant_chunk = chunk_graph.chunk(descendant_chunk_id).unwrap();
                             // TODO: maybe we can split chunks to chunk pots before generate, because normal chunks will be
-                            // split here and fn generate_normal_chunk_files twice
+                            // splitted here and fn generate_normal_chunk_files twice
                             let chunk_pot =
                                 ChunkPot::from(descendant_chunk, &module_graph, &context);
 
