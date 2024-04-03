@@ -14,11 +14,11 @@
 
 > @alipay/bigfish@4.1.17
 
-* 新增 scope hoist 功能，配置开启 by @stormslowly in #922
-* 修复 js hook 应该使用完整 path 的问题 by @Jinbao1001 in #987
-* 减少 tree shaking 阶段的性能开销 by @xusd320 in #980
-* 删除 node_polyfill 里的正则以提升性能 by @sorrycc in #998
-* 重构 generate cache hash 的处理 by @xusd320 in #992
+* 新增 scope hoist 功能，配置开启 by [@stormslowly](https://github.com/stormslowly) in [#922](https://github.com/umijs/mako/pull/922)
+* 修复 js hook 应该使用完整 path 的问题 by [@Jinbao1001](https://github.com/Jinbao1001) in [#987](https://github.com/umijs/mako/pull/987)
+* 减少 tree shaking 阶段的性能开销 by [@xusd320](https://github.com/xusd320) in [#980](https://github.com/umijs/mako/pull/980)
+* 删除 node_polyfill 里的正则以提升性能 by [@sorrycc](https://github.com/sorrycc) in [#998](https://github.com/umijs/mako/pull/998)
+* 重构 generate cache hash 的处理 by [@xusd320](https://github.com/xusd320) in [#992](https://github.com/umijs/mako/pull/992)
 
 ## 0.4.7
 
