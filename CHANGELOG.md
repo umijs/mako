@@ -4,9 +4,9 @@
 
 > @alipay/bigfish@4.1.23
 
-* 修复 chunk 优化中出现孤立 chunk 的问题 by @Jinbao1001 in #988
-* 修复 entry chunk hash 不稳定的问题 by @xusd320 in #1003
-* 修复 concatenateModules 无法合并多个外部模块的问题 @stormslowly in #1005
+* 修复 chunk 优化中出现孤立 chunk 的问题 by [@Jinbao1001](https://github.com/Jinbao1001) in [#988](https://github.com/umijs/mako/pull/988)
+* 修复 entry chunk hash 不稳定的问题 by [@xusd320](https://github.com/xusd320) in [#1003](https://github.com/umijs/mako/pull/1003)
+* 修复 concatenateModules 无法合并多个外部模块的问题 [@stormslowly](https://github.com/stormslowly) in [#1005](https://github.com/umijs/mako/pull/1005)
 
 ## 0.4.8
 
