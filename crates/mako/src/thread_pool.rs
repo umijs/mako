@@ -25,3 +25,15 @@ where
 {
     THREAD_POOL.get_or_init(build_rayon_thread_pool).scope(op)
 }
+
+pub fn join<A, B, RA, RB>(op_a: A, op_b: B) -> (RA, RB)
+where
+    A: FnOnce() -> RA + Send,
+    B: FnOnce() -> RB + Send,
+    RA: Send,
+    RB: Send,
+{
+    THREAD_POOL
+        .get_or_init(build_rayon_thread_pool)
+        .join(op_a, op_b)
+}
