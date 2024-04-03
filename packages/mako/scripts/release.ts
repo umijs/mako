@@ -1,9 +1,19 @@
+import assert from 'assert';
 import 'zx/globals';
 
-useBlockStdout();
-
 (async () => {
-  // Check git status
+  if (argv.build) {
+    await build();
+  } else {
+    await run();
+  }
+})().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
+
+async function run() {
+  // check git status
   console.log('Check git status');
   const status = (await $`git status --porcelain`).stdout.trim();
   if (status) {
@@ -16,7 +26,7 @@ useBlockStdout();
   const gitStatus = (await $`git status --short --branch`).stdout.trim();
   assert(!gitStatus.includes('behind'), `git status is behind remote`);
 
-  // Check docker status
+  // check docker status
   console.log('Check docker status');
   await $`docker ps`;
 
@@ -48,40 +58,22 @@ useBlockStdout();
     }
   }
 
-  nodePkg.version = newVersion;
-
+  // confirm
   console.log(`${nodePkg.name}@${newVersion} will be published`);
   const willContinue = ((await question('Continue? y/[n]')) || 'n').trim();
-
   if (willContinue !== 'y') {
     console.log('Abort!');
     process.exit(0);
   }
 
+  // update version to package.json
+  nodePkg.version = newVersion;
   fs.writeFileSync(nodePkgPath, JSON.stringify(nodePkg, null, 2) + '\n');
-  // build macOs *.node
-  await $`rm -rf ./*.node`;
-  await $`find ./npm -name '*.node' | xargs rm -f`;
 
-  console.log('linux building started...');
-  const start = Date.now();
-  const cargoRoot = path.join(__dirname, '../../..');
-  await $`rm -rf ${cargoRoot}/target/release/build/sailfish*`;
-  await build_linux_binding();
-  await $`pnpm run format:dts`;
-  const duration = (Date.now() - start) / 1000;
-  console.log(`linux building done ${duration}`);
+  // build
+  await build();
 
-  await $`cargo build --lib -r --target x86_64-apple-darwin`;
-  await $`pnpm run build:mac:x86`;
-
-  await $`cargo build --lib -r  --target aarch64-apple-darwin`;
-  await $`pnpm run build:mac:aarch`;
-
-  await $`strip -x ./okam.darwin-*.node`;
-
-  await $`pnpm run artifacts:local`;
-
+  // publish
   await $`npm publish --tag ${tag} --access public`;
 
   // set new version to bundler-okam
@@ -107,27 +99,52 @@ useBlockStdout();
   // push
   console.log('Push');
   await $`git push origin ${branch} --tags`;
-})().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+}
+
+async function build() {
+  // clean
+  await $`rm -rf ./*.node`;
+  await $`find ./npm -name '*.node' | xargs rm -f`;
+  await $`rm -rf ./dist`;
+
+  // build linux *.node
+  console.log('linux building started...');
+  const start = Date.now();
+  const cargoRoot = path.join(__dirname, '../../..');
+  // clean sailfish
+  // since it's lock files may cause build error
+  await $`rm -rf ${cargoRoot}/target/release/build/sailfish*`;
+  await build_linux_binding();
+  await $`pnpm run format:dts`;
+  const duration = (Date.now() - start) / 1000;
+  console.log(`linux building done ${duration}s`);
+
+  // build macos *.node
+  await $`cargo build --lib -r --target x86_64-apple-darwin`;
+  await $`pnpm run build:mac:x86`;
+  await $`cargo build --lib -r  --target aarch64-apple-darwin`;
+  await $`pnpm run build:mac:aarch`;
+  await $`strip -x ./okam.darwin-*.node`;
+
+  // build src
+  await $`pnpm run src:build`;
+
+  // move artifacts to npm
+  await $`pnpm run artifacts:local`;
+}
 
 async function build_linux_binding() {
   const isArm = process.arch === 'arm64';
-
   const cargoBase = path.join(
-    process.env['CARGO_HOME'] || process.env['HOME'],
+    process.env['CARGO_HOME'] || process.env['HOME']!,
     '.cargo',
   );
-
   const cargoMapOption = (p) => [
     '-v',
     `${path.join(cargoBase, p)}:${path.join('/usr/local/cargo', p)}`,
   ];
-
   const rustupRoot = path.join(os.homedir(), '.rustup');
   const makoRoot = path.join(__dirname, '../../..');
-
   const volumeOptions = [
     ...cargoMapOption('config'),
     ...cargoMapOption('git/db'),
@@ -137,45 +154,27 @@ async function build_linux_binding() {
     ...[`-v`, `${rustupRoot}:/usr/local/rustup`],
     ...[`-w`, `/build`],
   ];
-
   const containerCMD = [
     'cargo build -r --lib --target x86_64-unknown-linux-gnu',
-    'cd crates/node',
+    'cd packages/mako',
     'npm run build:linux:x86',
     'strip okam.linux*.node',
   ].join('&&');
-
-  const envOptions = [];
+  const envOptions: string[] = [];
   if (process.env['RUSTUP_DIST_SERVER']) {
     envOptions.push(
       ...['-e', `RUSTUP_DIST_SERVER=${process.env['RUSTUP_DIST_SERVER']}`],
     );
   }
-
   if (process.env[`RUSTUP_UPDATE_ROOT`]) {
     envOptions.push(
       ...['-e', `RUSTUP_UPDATE_ROOT=${process.env[`RUSTUP_UPDATE_ROOT`]}`],
     );
   }
-
   const options = ['--rm', ...volumeOptions, ...envOptions];
   if (isArm) {
     options.push(...['--platform', 'linux/amd64']);
   }
-
   const image = 'ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian';
-
   await $`docker run ${options} ${image} bash -c ${containerCMD}`;
-}
-
-function assert(v: unknown, message: string) {
-  if (!v) {
-    console.error(message);
-    process.exit(1);
-  }
-}
-
-function useBlockStdout() {
-  process.stdout._handle.setBlocking(true);
-  process.stderr._handle.setBlocking(true);
 }

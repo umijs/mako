@@ -45,21 +45,21 @@ jobs:
           - host: macos-latest
             target: x86_64-apple-darwin
             build: |
-              pnpm --filter @okamjs/okam  build
-              strip -x ./crates/node/*.node
+              pnpm --filter @okamjs/okam build --target x86_64-apple-darwin
+              strip -x ./packages/mako/*.node
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian
             build: |-
               set -e &&
               pnpm --filter @okamjs/okam build --target x86_64-unknown-linux-gnu &&
-              strip ./crates/node/*.node
+              strip ./packages/mako/*.node
           - host: macos-latest
             target: aarch64-apple-darwin
             build: |
               rustup target add aarch64-apple-darwin
               pnpm --filter @okamjs/okam build --target aarch64-apple-darwin
-              strip -x ./crates/node/*.node
+              strip -x ./packages/mako/*.node
     name: stable - ${{ matrix.settings.target }} - node@18
     runs-on: ${{ matrix.settings.host }}
     steps:
@@ -129,7 +129,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: bindings-${{ matrix.settings.target }}
-          path: ./crates/node/${{ env.APP_NAME }}.*.node
+          path: ./packaegs/mako/${{ env.APP_NAME }}.*.node
           if-no-files-found: error
   publish:
     name: Publish
@@ -154,11 +154,11 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v3
         with:
-          path: crates/node/artifacts
+          path: packaegs/mako/artifacts
       - name: Move artifacts
         run: pnpm --filter @okamjs/okam artifacts
       - name: List packages
-        run: ls -R ./crates/node/npm
+        run: ls -R ./packaegs/mako/npm
         shell: bash
 
       - name: Publish
