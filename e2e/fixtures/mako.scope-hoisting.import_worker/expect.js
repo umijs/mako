@@ -6,7 +6,6 @@ const {
 const { files } = parseBuildResult(__dirname);
 injectSimpleJest();
 
-require("./dist/index.js");
 
-
-expect(files["index.js"]).not.toContain(moduleDefinitionOf("global.css"))
+// a.js treated as external
+expect(files["index.js"]).toContain(moduleDefinitionOf("a.js"))
