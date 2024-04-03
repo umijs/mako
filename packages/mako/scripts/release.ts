@@ -115,7 +115,7 @@ async function build() {
   // since it's lock files may cause build error
   await $`rm -rf ${cargoRoot}/target/release/build/sailfish*`;
   await build_linux_binding();
-  await $`pnpm run format:dts`;
+  await $`pnpm run format`;
   const duration = (Date.now() - start) / 1000;
   console.log(`linux building done ${duration}s`);
 

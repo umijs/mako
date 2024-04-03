@@ -23,6 +23,12 @@ $ cargo build
 $ cargo build --release
 ```
 
+Build js packages (include packages/mako).
+
+```bash
+$ pnpm build
+```
+
 Run.
 
 ```bash
