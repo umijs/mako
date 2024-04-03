@@ -24,7 +24,7 @@ use swc_core::common::comments::Comments;
 
 use crate::compiler::Context;
 use crate::config::{DevtoolConfig, Mode};
-use crate::sourcemap::build_source_map;
+use crate::sourcemap::build_source_map_to_buf;
 use crate::util::base64_encode;
 
 #[derive(Debug, Error)]
@@ -206,7 +206,7 @@ pub fn js_ast_to_code(
 
     let sourcemap = match context.config.devtool {
         Some(DevtoolConfig::SourceMap | DevtoolConfig::InlineSourceMap) => {
-            let src_buf = build_source_map(&source_map_buf, cm);
+            let src_buf = build_source_map_to_buf(&source_map_buf, cm);
             String::from_utf8(src_buf).unwrap()
         }
         None => "".to_string(),
@@ -254,7 +254,7 @@ pub fn css_ast_to_code(
         },
     );
     gen.emit(&ast).unwrap();
-    let src_buf = build_source_map(&source_map, &context.meta.css.cm);
+    let src_buf = build_source_map_to_buf(&source_map, &context.meta.css.cm);
     let sourcemap = String::from_utf8(src_buf).unwrap();
 
     if matches!(context.config.devtool, Some(DevtoolConfig::SourceMap)) {

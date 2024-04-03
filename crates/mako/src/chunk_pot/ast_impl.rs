@@ -25,7 +25,7 @@ use crate::compiler::Context;
 use crate::config::Mode;
 use crate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::minify::{minify_css, minify_js};
-use crate::sourcemap::build_source_map;
+use crate::sourcemap::build_source_map_to_buf;
 use crate::transform_in_generate::transform_css_generate;
 use crate::util::merge_source_map;
 
@@ -95,7 +95,7 @@ pub(crate) fn render_css_chunk(
                 }
             });
 
-            source_map_chain.push(build_source_map(&source_map, cm));
+            source_map_chain.push(build_source_map_to_buf(&source_map, cm));
 
             Some(merge_source_map(source_map_chain, context.root.clone()))
         }

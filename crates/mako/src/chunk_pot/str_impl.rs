@@ -16,7 +16,7 @@ use crate::chunk_pot::ChunkPot;
 use crate::compiler::Context;
 use crate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::module::{Module, ModuleAst};
-use crate::sourcemap::build_source_map;
+use crate::sourcemap::build_source_map_to_buf;
 use crate::util::base64_encode;
 
 pub(super) fn render_entry_js_chunk(
@@ -177,7 +177,7 @@ fn to_module_line(
 
             emitter.emit_module(&ast.ast)?;
 
-            let source_map = build_source_map(&source_map_buf, &cm);
+            let source_map = build_source_map_to_buf(&source_map_buf, &cm);
 
             let content = {
                 mako_core::mako_profile_scope!("escape");

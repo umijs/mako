@@ -1,6 +1,7 @@
 use mako_core::swc_common::source_map::SourceMapGenConfig;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{BytePos, FileName, LineCol, SourceMap};
+use swc_core::base::sourcemap;
 
 pub struct SwcSourceMapGenConfig;
 
@@ -15,14 +16,18 @@ impl SourceMapGenConfig for SwcSourceMapGenConfig {
     }
 }
 
-pub fn build_source_map(mappings: &[(BytePos, LineCol)], cm: &Lrc<SourceMap>) -> Vec<u8> {
-    let config = SwcSourceMapGenConfig;
-
+pub fn build_source_map_to_buf(mappings: &[(BytePos, LineCol)], cm: &Lrc<SourceMap>) -> Vec<u8> {
     let mut src_buf = vec![];
 
-    cm.build_source_map_with_config(mappings, None, config)
-        .to_writer(&mut src_buf)
-        .unwrap();
+    let sm = build_source_map(mappings, cm);
+
+    sm.to_writer(&mut src_buf).unwrap();
 
     src_buf
+}
+
+fn build_source_map(mappings: &[(BytePos, LineCol)], cm: &Lrc<SourceMap>) -> sourcemap::SourceMap {
+    let config = SwcSourceMapGenConfig;
+
+    cm.build_source_map_with_config(mappings, None, config)
 }
