@@ -478,7 +478,7 @@ mod tests {
     }
 
     #[test]
-    fn test_untouched() {
+    fn test_untouched_inner() {
         let code = transform_with_external_replace(
             r#"
             import { imported as named } from "inner";
