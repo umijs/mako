@@ -39,11 +39,9 @@ impl<'a> Watcher<'a> {
     pub fn watch(&mut self) -> anyhow::Result<()> {
         let t_watch = Instant::now();
 
-        let ignore_list = [".git", "node_modules", ".DS_Store", ".node"];
+        let ignore_list = self.get_ignore_list();
 
-        let mut root_ignore_list = ignore_list.to_vec();
-        root_ignore_list.push(self.compiler.context.config.output.path.to_str().unwrap());
-        self.watch_dir_recursive(self.root.into(), &root_ignore_list)?;
+        self.watch_dir_recursive(self.root.into(), &ignore_list)?;
 
         let module_graph = self.compiler.context.module_graph.read().unwrap();
         let mut dirs = HashSet::new();
@@ -64,7 +62,7 @@ impl<'a> Watcher<'a> {
             }
         });
         dirs.iter().try_for_each(|dir| {
-            self.watch_dir_recursive(dir.into(), ignore_list.as_slice())?;
+            self.watch_dir_recursive(dir.into(), &ignore_list)?;
             Ok(())
         })?;
 
@@ -99,7 +97,32 @@ impl<'a> Watcher<'a> {
         Ok(())
     }
 
-    fn watch_dir_recursive(&mut self, path: PathBuf, ignore_list: &[&str]) -> anyhow::Result<()> {
+    fn get_ignore_list(&mut self) -> Vec<PathBuf> {
+        let ignore_list = [
+            ".git",
+            "node_modules",
+            ".DS_Store",
+            ".node",
+            self.compiler.context.config.output.path.to_str().unwrap(),
+        ];
+
+        let mut dirs = vec![];
+        self.root.ancestors().for_each(|path| {
+            ignore_list.iter().for_each(|ignore| {
+                let mut path = PathBuf::from(path);
+                path.push(ignore);
+                dirs.push(path);
+            })
+        });
+
+        dirs
+    }
+
+    fn watch_dir_recursive(
+        &mut self,
+        path: PathBuf,
+        ignore_list: &[PathBuf],
+    ) -> anyhow::Result<()> {
         let items = std::fs::read_dir(path)?;
         items
             .into_iter()
@@ -111,7 +134,7 @@ impl<'a> Watcher<'a> {
         Ok(())
     }
 
-    fn watch_file_or_dir(&mut self, path: PathBuf, ignore_list: &[&str]) -> anyhow::Result<()> {
+    fn watch_file_or_dir(&mut self, path: PathBuf, ignore_list: &[PathBuf]) -> anyhow::Result<()> {
         if Self::should_ignore_watch(&path, ignore_list) {
             return Ok(());
         }
@@ -131,9 +154,11 @@ impl<'a> Watcher<'a> {
         Ok(())
     }
 
-    fn should_ignore_watch(path: &Path, ignore_list: &[&str]) -> bool {
+    fn should_ignore_watch(path: &Path, ignore_list: &[PathBuf]) -> bool {
         let path = path.to_string_lossy();
-        ignore_list.iter().any(|ignored| path.ends_with(ignored))
+        ignore_list
+            .iter()
+            .any(|ignored| path.strip_prefix(ignored.to_str().unwrap()).is_some())
     }
 
     fn should_ignore_event(path: &Path, kind: &EventKind) -> bool {
