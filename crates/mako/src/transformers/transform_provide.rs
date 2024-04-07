@@ -25,11 +25,6 @@ impl Provide {
     }
 }
 
-struct ToTopLevelVars {
-    unresolved_mark: Mark,
-    replaces_map: HashMap<String, SyntaxContext>,
-}
-
 impl VisitMut for Provide {
     fn visit_mut_module(&mut self, module: &mut Module) {
         module.visit_mut_children_with(self);
@@ -85,6 +80,11 @@ impl VisitMut for Provide {
         }
         expr.visit_mut_children_with(self);
     }
+}
+
+struct ToTopLevelVars {
+    unresolved_mark: Mark,
+    replaces_map: HashMap<String, SyntaxContext>,
 }
 
 impl ToTopLevelVars {
