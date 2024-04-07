@@ -97,6 +97,7 @@ impl Transform {
                     visitors.push(Box::new(Provide::new(
                         context.config.providers.clone(),
                         unresolved_mark,
+                        top_level_mark,
                     )));
                     visitors.push(Box::new(VirtualCSSModules {
                         context: context.clone(),
