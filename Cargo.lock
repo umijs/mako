@@ -147,21 +147,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "alipay_okam"
-version = "0.0.0"
-dependencies = [
- "cached",
- "mako",
- "mako_core",
- "mimalloc-rust",
- "napi",
- "napi-build",
- "napi-derive",
- "serde_json",
- "tikv-jemallocator",
-]
-
-[[package]]
 name = "allocator-api2"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2565,6 +2550,21 @@ dependencies = [
  "testing 0.35.10",
  "tikv-jemallocator",
  "url",
+]
+
+[[package]]
+name = "mako_binding"
+version = "0.0.0"
+dependencies = [
+ "cached",
+ "mako",
+ "mako_core",
+ "mimalloc-rust",
+ "napi",
+ "napi-build",
+ "napi-derive",
+ "serde_json",
+ "tikv-jemallocator",
 ]
 
 [[package]]

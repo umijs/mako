@@ -1,13 +1,12 @@
 [package]
 edition = "2021"
-name    = "alipay_okam"
+name    = "mako_binding"
 version = "0.0.0"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-# Default enable napi4 feature, see https://nodejs.org/api/n-api.html#node-api-version-matrix
 cached      = { workspace = true }
 mako        = { path = '../mako' }
 mako_core   = { path = "../core" }
