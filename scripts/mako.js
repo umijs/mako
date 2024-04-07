@@ -3,44 +3,45 @@
 const path = require('path');
 const fs = require('fs');
 const { build } = require('@okamjs/okam');
-const { _lessLoader } = require('@alipay/umi-bundler-okam');
 const cwd = process.argv[2];
-const isWatch = process.argv.includes('--watch');
 
-let makoConfig = {};
-const makoConfigPath = path.join(cwd, 'mako.config.json');
-if (fs.existsSync(makoConfigPath)) {
-  makoConfig = JSON.parse(fs.readFileSync(makoConfigPath, 'utf-8'));
-}
-const alias = {};
-if (makoConfig.resolve?.alias) {
-  Object.keys(makoConfig.resolve.alias).forEach((key) => {
-    alias[key] = path.join(cwd, makoConfig.resolve.alias[key]);
-  });
-}
-const okamConfig = {
-  resolve: { alias },
-};
 console.log('> run mako build for', cwd);
-let hooks = {};
-const hooksPath = path.join(cwd, 'hooks.config.js');
-if (fs.existsSync(hooksPath)) {
-  hooks = require(hooksPath);
-}
+const config = getMakoConfig();
 build({
   root: cwd,
-  config: okamConfig,
-  hooks: {
-    ...hooks,
-    load: _lessLoader(null, {
-      cwd,
-      alias,
-      modifyVars: makoConfig.less?.theme || {},
-      config: {},
-    }),
+  config,
+  less: {
+    modifyVars: config.less?.theme || {},
   },
-  watch: isWatch,
+  hooks: getHooks(),
+  watch: process.argv.includes('--watch'),
 }).catch((e) => {
   console.error(e);
   process.exit(1);
 });
+
+function getHooks() {
+  let hooks = {};
+  const hooksPath = path.join(cwd, 'hooks.config.js');
+  if (fs.existsSync(hooksPath)) {
+    hooks = require(hooksPath);
+  }
+  return hooks;
+}
+
+function getMakoConfig() {
+  let makoConfig = {};
+  const makoConfigPath = path.join(cwd, 'mako.config.json');
+  if (fs.existsSync(makoConfigPath)) {
+    makoConfig = JSON.parse(fs.readFileSync(makoConfigPath, 'utf-8'));
+  }
+  makoConfig.resolve = makoConfig.resolve || {};
+  makoConfig.resolve.alias = makoConfig.resolve.alias || {};
+  Object.keys(makoConfig.resolve.alias).forEach((key) => {
+    makoConfig.resolve.alias[key] = path.join(
+      cwd,
+      makoConfig.resolve.alias[key],
+    );
+  });
+  return makoConfig;
+}
