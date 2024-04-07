@@ -175,10 +175,7 @@ impl JsAst {
                                 let mut script_ast = swc_core::ecma::ast::Script {
                                     span: ast.span,
                                     shebang: ast.shebang.clone(),
-                                    body: body
-                                        .into_iter()
-                                        .map(|i| i.clone().stmt().unwrap())
-                                        .collect(),
+                                    body: body.into_iter().map(|i| i.stmt().unwrap()).collect(),
                                 };
                                 script_ast
                                     .visit_mut_with(&mut inject_helpers(self.unresolved_mark));
