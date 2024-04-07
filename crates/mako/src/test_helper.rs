@@ -116,7 +116,7 @@ pub fn transform_ast_with(
     emit_js(module, cm)
 }
 
-fn emit_js(module: &SwcModule, cm: &Arc<SourceMap>) -> String {
+pub fn emit_js(module: &SwcModule, cm: &Arc<SourceMap>) -> String {
     let mut buf = Vec::new();
 
     {
