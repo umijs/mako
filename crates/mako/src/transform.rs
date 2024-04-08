@@ -27,9 +27,9 @@ use crate::transformers::transform_env_replacer::{build_env_map, EnvReplacer};
 use crate::transformers::transform_provide::Provide;
 use crate::transformers::transform_px2rem::Px2Rem;
 use crate::transformers::transform_react::mako_react;
-use crate::transformers::transform_try_resolve::TryResolve;
 use crate::transformers::transform_virtual_css_modules::VirtualCSSModules;
 use crate::visitors::default_export_namer::DefaultExportNamer;
+use crate::visitors::try_resolve::TryResolve;
 
 pub struct Transform {}
 

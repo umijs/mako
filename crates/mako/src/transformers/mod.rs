@@ -12,7 +12,6 @@ pub mod transform_optimize_define_utils;
 pub mod transform_provide;
 pub mod transform_px2rem;
 pub mod transform_react;
-pub mod transform_try_resolve;
 pub mod transform_virtual_css_modules;
 pub mod utils;
 
