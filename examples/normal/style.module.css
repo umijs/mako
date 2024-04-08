@@ -10,9 +10,13 @@
 }
 
 :global(.a) .b {
-  color: red
+  color: red;
+  height: 300px;
 }
 .remWrapper{
-  width: 30px;
+  .asd .gg{
+    color: red;
+  }
+  width: 399px;
   font-size: 30px;
 }
