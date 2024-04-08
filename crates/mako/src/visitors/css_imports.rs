@@ -115,7 +115,7 @@ mod tests {
     }
 
     fn run(css_code: &str) -> String {
-        let mut test_utils = TestUtils::gen_css_ast(css_code.to_string());
+        let mut test_utils = TestUtils::gen_css_ast(css_code.to_string(), false);
         let ast = test_utils.ast.css_mut();
         let mut visitor = super::CSSImports {};
         ast.ast.visit_mut_with(&mut visitor);

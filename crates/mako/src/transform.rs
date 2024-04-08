@@ -20,16 +20,16 @@ use crate::ast_2::file::File;
 use crate::compiler::Context;
 use crate::module::ModuleAst;
 use crate::targets;
-use crate::transformers::transform_css_flexbugs::CSSFlexbugs;
 use crate::transformers::transform_css_url_replacer::CSSUrlReplacer;
 use crate::transformers::transform_dynamic_import_to_require::DynamicImportToRequire;
 use crate::transformers::transform_env_replacer::{build_env_map, EnvReplacer};
 use crate::transformers::transform_provide::Provide;
 use crate::transformers::transform_px2rem::Px2Rem;
 use crate::transformers::transform_react::mako_react;
-use crate::visitors::css_modules_virtual::VirtualCSSModules;
+use crate::visitors::css_flexbugs::CSSFlexbugs;
 use crate::visitors::default_export_namer::DefaultExportNamer;
 use crate::visitors::try_resolve::TryResolve;
+use crate::visitors::virtual_css_modules::VirtualCSSModules;
 
 pub struct Transform {}
 

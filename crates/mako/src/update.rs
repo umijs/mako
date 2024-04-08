@@ -12,7 +12,7 @@ use crate::compiler::Compiler;
 use crate::module::{Dependency, Module, ModuleId};
 use crate::resolve::{self, clear_resolver_cache};
 use crate::transform_in_generate::transform_modules;
-use crate::visitors::css_modules_virtual::is_css_path;
+use crate::visitors::virtual_css_modules::is_css_path;
 
 #[derive(Debug, Clone)]
 pub enum UpdateType {

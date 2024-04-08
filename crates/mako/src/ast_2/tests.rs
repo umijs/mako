@@ -9,10 +9,11 @@ use super::css_ast::{CSSAstGenerated, CssAst};
 use super::file::{Content, File};
 use super::js_ast::{JSAstGenerated, JsAst};
 use crate::compiler::Context;
+use crate::config::Mode;
 
 pub struct TestUtilsOpts {
-    file: Option<String>,
-    content: Option<String>,
+    pub file: Option<String>,
+    pub content: Option<String>,
 }
 
 pub enum TestAst {
@@ -47,6 +48,20 @@ impl TestUtils {
         };
         context.config.devtool = None;
         let context = Arc::new(context);
+        TestUtils::with_context(opts, context)
+    }
+
+    pub fn with_mode_production(opts: TestUtilsOpts) -> Self {
+        let mut context = Context {
+            ..Default::default()
+        };
+        context.config.devtool = None;
+        context.config.mode = Mode::Production;
+        let context = Arc::new(context);
+        TestUtils::with_context(opts, context)
+    }
+
+    pub fn with_context(opts: TestUtilsOpts, context: Arc<Context>) -> Self {
         let file = if let Some(file) = opts.file {
             file
         } else {
@@ -72,11 +87,16 @@ impl TestUtils {
         Self { ast, context }
     }
 
-    pub fn gen_css_ast(content: String) -> Self {
-        Self::new(TestUtilsOpts {
+    pub fn gen_css_ast(content: String, is_prod: bool) -> Self {
+        let opts = TestUtilsOpts {
             file: Some("test.css".to_string()),
             content: Some(content),
-        })
+        };
+        if is_prod {
+            return Self::with_mode_production(opts);
+        } else {
+            Self::new(opts)
+        }
     }
 
     pub fn gen_js_ast(content: String) -> Self {
