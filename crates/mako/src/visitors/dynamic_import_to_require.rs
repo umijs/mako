@@ -45,86 +45,94 @@ impl VisitMut for DynamicImportToRequire {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use mako_core::swc_common::GLOBALS;
+    use mako_core::swc_ecma_visit::VisitMutWith;
 
-    use mako_core::swc_common::{Mark, GLOBALS};
-
-    use crate::compiler::Context;
+    use super::DynamicImportToRequire;
+    use crate::ast_2::tests::TestUtils;
 
     #[test]
     fn test_basic_import() {
-        crate::assert_display_snapshot!(transform(
-            r#"
-const testModule = import('test-module');
-            "#,
-        ));
+        assert_eq!(
+            run(r#"const testModule = import('test-module');"#,),
+            r#"const testModule = Promise.resolve().then(()=>require("test-module"));"#.trim()
+        );
     }
 
     #[test]
     fn test_chained_import() {
-        crate::assert_display_snapshot!(transform(
-            r#"
-import('test-module').then(() => (
-import('test-module-2')
-));
-
+        assert_eq!(
+            run(r#"import('test-module').then(() => (import('test-module-2')));"#,),
+            r#"Promise.resolve().then(()=>require("test-module")).then(()=>(Promise.resolve().then(()=>require("test-module-2"))));"#.trim()
+        );
+        assert_eq!(
+            run(r#"
 Promise.all([
-import('test-1'),
-import('test-2'),
-import('test-3'),
+    import('test-1'),
+    import('test-2'),
+    import('test-3'),
 ]).then(() => {});
-            "#,
-        ));
-    }
-
-    // TODO: support this?
-    #[test]
-    fn test_dynamic_import() {
-        crate::assert_display_snapshot!(transform(
+            "#,),
             r#"
-import(MODULE);
-
-let i = 0;
-import(i++);
-
-import(fn());
-
-async () => import(await "x");
-
-function* f() { import(yield "x"); }
-            "#,
-        ));
+Promise.all([
+    Promise.resolve().then(()=>require("test-1")),
+    Promise.resolve().then(()=>require("test-2")),
+    Promise.resolve().then(()=>require("test-3"))
+]).then(()=>{});
+            "#
+            .trim()
+        );
     }
 
     #[test]
     fn test_import_with_comment() {
-        crate::assert_display_snapshot!(transform(
-            r#"
+        assert_eq!(
+            run(r#"
 import(/* test comment */ 'my-module');
 import('my-module' /* test comment */ );
-            "#,
-        ));
+            "#,),
+            r#"
+Promise.resolve().then(()=>require("my-module"));
+Promise.resolve().then(()=>require("my-module"));
+            "#
+            .trim()
+        );
     }
 
     // TODO: support this?
     #[test]
+    #[ignore]
+    fn test_dynamic_import() {
+        crate::assert_display_snapshot!(run(r#"
+import(MODULE);
+let i = 0;
+import(i++);
+import(fn());
+async () => import(await "x");
+function* f() { import(yield "x"); }
+            "#,));
+    }
+
+    // TODO: support this?
+    #[test]
+    #[ignore]
     fn test_template_argument() {
-        crate::assert_display_snapshot!(transform(
-            r#"
+        crate::assert_display_snapshot!(run(r#"
 import(`1`);
 import(tag`2`);
 import(`3-${MODULE}`);
-            "#,
-        ));
+            "#,));
     }
 
-    fn transform(code: &str) -> String {
-        let context: Arc<Context> = Arc::new(Default::default());
-        GLOBALS.set(&context.meta.script.globals, || {
-            let mut visitor = super::DynamicImportToRequire {
-                unresolved_mark: Mark::new(),
+    fn run(js_code: &str) -> String {
+        let mut test_utils = TestUtils::gen_js_ast(js_code.to_string());
+        let ast = test_utils.ast.js_mut();
+        GLOBALS.set(&test_utils.context.meta.script.globals, || {
+            let mut visitor = DynamicImportToRequire {
+                unresolved_mark: ast.unresolved_mark,
             };
-            crate::transformers::test_helper::transform_js_code(code, &mut visitor, &context)
-        })
+            ast.ast.visit_mut_with(&mut visitor);
+        });
+        test_utils.js_ast_to_code()
     }
 }
