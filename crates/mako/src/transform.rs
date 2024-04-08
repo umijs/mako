@@ -20,6 +20,7 @@ use crate::ast_2::file::File;
 use crate::compiler::Context;
 use crate::config::Mode;
 use crate::module::ModuleAst;
+use crate::plugins::context_module::ContextModuleVisitor;
 use crate::targets;
 use crate::transformers::transform_px2rem::Px2Rem;
 use crate::visitors::css_assets::CSSAssets;
@@ -115,6 +116,10 @@ impl Transform {
                     visitors.push(Box::new(VirtualCSSModules {
                         auto_css_modules: context.config.auto_css_modules,
                     }));
+                    // TODO: move ContextModuleVisitor out of plugin
+                    visitors.push(Box::new(ContextModuleVisitor { unresolved_mark }));
+                    // DynamicImportToRequire must be after ContextModuleVisitor
+                    // since ContextModuleVisitor will add extra dynamic imports
                     if context.config.dynamic_import_to_require {
                         visitors.push(Box::new(DynamicImportToRequire { unresolved_mark }));
                     }
