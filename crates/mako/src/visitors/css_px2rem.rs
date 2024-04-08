@@ -62,7 +62,29 @@ impl Px2Rem {
                 break;
             }
         }
-        is_in_is_in_whitelist_and_is_in_blacklist && is_in_is_select_black
+        let mut is_in_is_select_white = true;
+        is_in_is_select_white = if let Some(_curSelect) = &self.current_selector {
+            let selector_white_list = &self
+                .context
+                .as_ref()
+                .config
+                .px2rem
+                .as_ref()
+                .unwrap()
+                .selector_white_list;
+            for reg_string in selector_white_list {
+                let re = Regex::new(reg_string).unwrap();
+                is_in_is_select_black =
+                    re.is_match(self.current_selector.as_ref().unwrap_or(&String::from("")));
+                if is_in_is_select_black {
+                    break;
+                }
+            }
+            true
+        } else {
+            false
+        };
+        is_in_is_in_whitelist_and_is_in_blacklist && is_in_is_select_black && is_in_is_select_white
     }
 }
 
@@ -176,6 +198,9 @@ div{
     fn run(css_code: &str) -> String {
         let mut test_utils = TestUtils::gen_css_ast(css_code.to_string(), true);
         let ast = test_utils.ast.css_mut();
+
+        // &test_utils.context.as_ref().config.px2rem.unwrap().prop_black_list =  vec![String::from("value")];
+        // println!("px2Rem=={}",test_utils.context.config.px2rem.unwrap().prop_black_list);
         // test_utils.context.config
         let mut visitor = super::Px2Rem {
             context: test_utils.context.clone(),
@@ -183,10 +208,9 @@ div{
             current_decl: None,
             current_selector: None,
         };
-
+        println!("resolvers=={:?}", &test_utils.context.resolvers);
         ast.ast.visit_mut_with(&mut visitor);
 
-        // println!("{:?}",&test_utils.context.resolvers);
         // println!("css=={:?}",test_utils.css_ast_to_code());
         test_utils.css_ast_to_code()
     }

@@ -3,6 +3,7 @@
   "stats": true,
   "hash": true,
   "px2rem": {
-    "selectorBlackList": ["remkkk", "remWrapper", "renkk", "h1"]
+    "selectorBlackList": ["remkkk", "remWrapper", "renkk", "h1"],
+    "selectorWhiteList": ["image"]
   }
 }

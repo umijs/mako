@@ -8,7 +8,9 @@
   width: 180px;
   height: 180px;
 }
-
+.imageA{
+  height: 300px;
+}
 :global(.a) .b {
   color: red;
   height: 300px;
