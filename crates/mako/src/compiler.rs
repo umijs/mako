@@ -233,13 +233,13 @@ impl Compiler {
             // file types
             Arc::new(plugins::context_module::ContextModulePlugin {}),
             Arc::new(plugins::runtime::MakoRuntime {}),
-            Arc::new(plugins::farm_tree_shake::FarmTreeShake {}),
             Arc::new(plugins::invalid_syntax::InvalidSyntaxPlugin {}),
             Arc::new(plugins::hmr_runtime::HMRRuntimePlugin {}),
             Arc::new(plugins::wasm_runtime::WasmRuntimePlugin {}),
             Arc::new(plugins::async_runtime::AsyncRuntimePlugin {}),
             Arc::new(plugins::emotion::EmotionPlugin {}),
             Arc::new(plugins::node_stuff::NodeStuffPlugin {}),
+            Arc::new(plugins::farm_tree_shake::FarmTreeShake {}),
         ];
         plugins.extend(builtin_plugins);
 
