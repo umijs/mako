@@ -28,14 +28,14 @@ impl Px2Rem {
         }
     }
     fn should_transform(&self) -> bool {
+        let px2rem_config = self
+            .context
+            .config
+            .px2rem
+            .as_ref()
+            .expect("px2rem config should exist");
         let mut is_in_is_in_whitelist_and_is_in_blacklist = true;
         is_in_is_in_whitelist_and_is_in_blacklist = if let Some(current_decl) = &self.current_decl {
-            let px2rem_config = self
-                .context
-                .config
-                .px2rem
-                .as_ref()
-                .expect("px2rem config should exist");
             let is_in_whitelist = px2rem_config.prop_white_list.is_empty()
                 || px2rem_config.prop_white_list.contains(current_decl);
 
@@ -45,46 +45,25 @@ impl Px2Rem {
         } else {
             false // 或者选择一个合适的默认值
         };
-        let mut is_in_is_select_black = true;
-        let selector_black_list = &self
-            .context
-            .as_ref()
-            .config
-            .px2rem
-            .as_ref()
-            .unwrap()
-            .selector_black_list;
-        for reg_String in selector_black_list {
-            let re = Regex::new(reg_String).unwrap();
-            is_in_is_select_black =
-                !re.is_match(self.current_selector.as_ref().unwrap_or(&String::from("")));
-            if !is_in_is_select_black {
-                break;
-            }
-        }
-        let mut is_in_is_select_white = true;
-        is_in_is_select_white = if let Some(_curSelect) = &self.current_selector {
-            let selector_white_list = &self
-                .context
-                .as_ref()
-                .config
-                .px2rem
-                .as_ref()
-                .unwrap()
-                .selector_white_list;
-            for reg_string in selector_white_list {
-                let re = Regex::new(reg_string).unwrap();
-                is_in_is_select_black =
-                    re.is_match(self.current_selector.as_ref().unwrap_or(&String::from("")));
-                if is_in_is_select_black {
-                    break;
-                }
-            }
-            true
+
+        let is_in_is_select_white_and_is_in_black = if let Some(_curSelect) = &self.current_selector
+        {
+            let selector_white_list = px2rem_config.selector_white_list.is_empty()
+                || px2rem_config.selector_white_list.iter().any(|pattern| {
+                    let re = Regex::new(pattern).unwrap();
+                    re.is_match(_curSelect)
+                });
+            let selector_black_list = px2rem_config.selector_black_list.is_empty()
+                || px2rem_config.selector_black_list.iter().any(|pattern| {
+                    let re = Regex::new(pattern).unwrap();
+                    re.is_match(_curSelect)
+                });
+            !selector_black_list && selector_white_list
         } else {
-            false
+            true
         };
-        is_in_is_in_whitelist_and_is_in_blacklist && is_in_is_select_black && is_in_is_select_white
+
+        is_in_is_in_whitelist_and_is_in_blacklist && is_in_is_select_white_and_is_in_black
     }
 }
 
