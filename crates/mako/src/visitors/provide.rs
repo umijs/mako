@@ -14,6 +14,7 @@ pub struct Provide {
     providers: Providers,
     var_decls: IndexMap<String, ModuleItem>,
 }
+
 impl Provide {
     pub fn new(providers: Providers, unresolved_mark: Mark, top_level_mark: Mark) -> Self {
         Self {
@@ -31,7 +32,6 @@ impl VisitMut for Provide {
         module
             .body
             .splice(0..0, self.var_decls.iter().map(|(_, var)| var.clone()));
-
         module.visit_mut_with(&mut ToTopLevelVars::new(
             self.unresolved_mark,
             self.top_level_mark,
@@ -120,53 +120,54 @@ impl VisitMut for ToTopLevelVars {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
-    use std::sync::Arc;
 
     use swc_core::common::GLOBALS;
-    use swc_core::ecma::transforms::base::resolver;
     use swc_core::ecma::visit::VisitMutWith;
 
-    use crate::ast::build_js_ast;
-    use crate::compiler::Context;
-    use crate::test_helper::emit_js;
-    use crate::transformers::transform_provide::Provide;
+    use super::Provide;
+    use crate::ast_2::tests::TestUtils;
 
     #[test]
     fn test_provide_normal() {
-        // TODO: fix binding test problem
-        crate::assert_display_snapshot!(transform(
-            r#"
+        assert_eq!(
+            run(r#"
 console.log(process);
 console.log(process.env);
 Buffer.from('foo');
 function foo() {
-    // let process = 1;
-    // console.log(process);
-    // let Buffer = 'b';
-    // Buffer.from('foo');
+    let process = 1;
+    console.log(process);
+    let Buffer = 'b';
+    Buffer.from('foo');
 }
-            "#,
-        ));
+            "#),
+            r#"
+const process = __mako_require__("process");
+const Buffer = __mako_require__("buffer").Buffer;
+console.log(process);
+console.log(process.env);
+Buffer.from('foo');
+function foo() {
+    let process = 1;
+    console.log(process);
+    let Buffer = 'b';
+    Buffer.from('foo');
+}
+            "#
+            .trim()
+        );
     }
 
-    fn transform(code: &str) -> String {
-        let context: Arc<Context> = Arc::new(Default::default());
-        let mut providers = HashMap::new();
-        providers.insert("process".into(), ("process".into(), "".into()));
-        providers.insert("Buffer".into(), ("buffer".into(), "Buffer".into()));
-
-        GLOBALS.set(&context.meta.script.globals, || {
-            let mut ast = build_js_ast("test.js", code, &context).unwrap();
-            ast.ast.visit_mut_with(&mut resolver(
-                ast.unresolved_mark,
-                ast.top_level_mark,
-                false,
-            ));
-
+    fn run(js_code: &str) -> String {
+        let mut test_utils = TestUtils::gen_js_ast(js_code.to_string());
+        let ast = test_utils.ast.js_mut();
+        GLOBALS.set(&test_utils.context.meta.script.globals, || {
+            let mut providers = HashMap::new();
+            providers.insert("process".into(), ("process".into(), "".into()));
+            providers.insert("Buffer".into(), ("buffer".into(), "Buffer".into()));
             let mut visitor = Provide::new(providers, ast.unresolved_mark, ast.top_level_mark);
             ast.ast.visit_mut_with(&mut visitor);
-
-            emit_js(&ast.ast, &context.meta.script.cm)
-        })
+        });
+        test_utils.js_ast_to_code()
     }
 }
