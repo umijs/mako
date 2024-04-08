@@ -1,3 +1,4 @@
+pub(crate) mod css_assets;
 pub(crate) mod css_dep_analyzer;
 pub(crate) mod css_flexbugs;
 pub(crate) mod css_imports;
