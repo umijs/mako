@@ -19,6 +19,14 @@ pub struct Px2Rem {
 }
 
 impl Px2Rem {
+    pub fn new(current_decl: String, current_selector: String) -> Self {
+        Self {
+            context: Arc::new(Default::default()),
+            path: "".to_string(),
+            current_decl: Some(current_decl),
+            current_selector: Some(current_selector),
+        }
+    }
     fn should_transform(&self) -> bool {
         let mut is_in_is_in_whitelist_and_is_in_blacklist = true;
         is_in_is_in_whitelist_and_is_in_blacklist = if let Some(current_decl) = &self.current_decl {
@@ -119,5 +127,58 @@ impl VisitMut for Px2Rem {
             }
         }
         t.visit_mut_children_with(self);
+    }
+}
+#[cfg(test)]
+mod tests {
+
+    use crate::ast_2::tests::TestUtils;
+
+    #[test]
+    fn test_keep_none_relative() {
+        run(r#"@import "./foo.css";
+/* @import url("https://fonts.googleapis.com/css?family=Open+Sans"); */
+
+h1 {
+    background: url('./assets/person.svg') 200px no-repeat;
+    background-size: 20px 20px;
+    font-family: 'Open Sans';
+}
+.remkkk{
+    width: 100px;
+}
+div{
+    height: 300px;
+}
+"#);
+    }
+
+    #[test]
+    fn test_hoist_imports() {
+        assert_eq!(
+            run(r#"
+.a {}
+@import url(//a);
+.b {}
+@import url(//b);
+                    "#),
+            r#"
+@import url(//a);
+@import url(//b);
+.a {}
+.b {}
+                    "#
+            .trim()
+        );
+    }
+
+    fn run(css_code: &str) -> String {
+        let mut test_utils = TestUtils::gen_css_ast(css_code.to_string());
+        let ast = test_utils.ast.css_mut();
+        println!("ast==={:?}", ast);
+        String::from("")
+        // let mut visitor = super::CSSImports {};
+        // ast.ast.visit_mut_with(&mut visitor);
+        // test_utils.css_ast_to_code()
     }
 }
