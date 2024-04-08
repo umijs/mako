@@ -56,9 +56,9 @@ pub fn react(
     }
 }
 
-pub struct PrefixCode {
-    pub code: String,
-    pub context: Arc<Context>,
+struct PrefixCode {
+    code: String,
+    context: Arc<Context>,
 }
 
 impl VisitMut for PrefixCode {
@@ -71,7 +71,7 @@ impl VisitMut for PrefixCode {
     }
 }
 
-pub struct PostfixCode {
+struct PostfixCode {
     code: String,
     context: Arc<Context>,
 }
@@ -86,7 +86,7 @@ impl VisitMut for PostfixCode {
     }
 }
 
-pub fn react_refresh_module_prefix(context: &std::sync::Arc<Context>) -> Box<dyn VisitMut> {
+fn react_refresh_module_prefix(context: &std::sync::Arc<Context>) -> Box<dyn VisitMut> {
     Box::new(PrefixCode {
         context: context.clone(),
         code: r#"
@@ -105,7 +105,7 @@ self.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
     })
 }
 
-pub fn react_refresh_module_postfix(context: &Arc<Context>) -> Box<dyn VisitMut> {
+fn react_refresh_module_postfix(context: &Arc<Context>) -> Box<dyn VisitMut> {
     Box::new(PostfixCode {
         context: context.clone(),
         // why add `if (prevRefreshReg)` guard?
@@ -143,14 +143,14 @@ mod tests {
     use crate::ast_2::tests::TestUtils;
 
     #[test]
-    pub fn test_use_refresh() {
+    fn test_use_refresh() {
         let code = run("console.log('entry');", true);
         assert!(code.contains("self.$RefreshSig$ = RefreshRuntime."));
         assert!(code.contains("if (prevRefreshReg) self.$RefreshReg$ = prevRefreshReg;"));
     }
 
     #[test]
-    pub fn test_jsx() {
+    fn test_jsx() {
         let code = run("function Foo() { return <>foo</> }", false);
         assert_eq!(
             code,
@@ -167,7 +167,7 @@ function Foo() {
     }
 
     #[test]
-    pub fn test_svgr() {
+    fn test_svgr() {
         // ref: jsoneditor/dist/img/jsoneditor-icons.svg
         let code = run(
             r#"
