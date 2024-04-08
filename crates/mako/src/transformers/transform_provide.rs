@@ -1,31 +1,42 @@
+use std::collections::HashMap;
+
 use mako_core::indexmap::IndexMap;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{Expr, Ident, MemberExpr, Module, ModuleItem, VarDeclKind};
 use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
-use swc_core::common::Mark;
+use swc_core::common::{Mark, SyntaxContext};
 
 use crate::config::Providers;
 pub struct Provide {
     unresolved_mark: Mark,
+    top_level_mark: Mark,
     providers: Providers,
     var_decls: IndexMap<String, ModuleItem>,
 }
 impl Provide {
-    pub fn new(providers: Providers, unresolved_mark: Mark) -> Self {
+    pub fn new(providers: Providers, unresolved_mark: Mark, top_level_mark: Mark) -> Self {
         Self {
             unresolved_mark,
+            top_level_mark,
             providers,
             var_decls: Default::default(),
         }
     }
 }
+
 impl VisitMut for Provide {
     fn visit_mut_module(&mut self, module: &mut Module) {
         module.visit_mut_children_with(self);
         module
             .body
             .splice(0..0, self.var_decls.iter().map(|(_, var)| var.clone()));
+
+        module.visit_mut_with(&mut ToTopLevelVars::new(
+            self.unresolved_mark,
+            self.top_level_mark,
+            &self.var_decls,
+        ))
     }
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Ident(Ident { ref sym, span, .. }) = expr {
@@ -71,11 +82,54 @@ impl VisitMut for Provide {
     }
 }
 
+struct ToTopLevelVars {
+    unresolved_mark: Mark,
+    replaces_map: HashMap<String, SyntaxContext>,
+}
+
+impl ToTopLevelVars {
+    fn new(
+        unresolved_mark: Mark,
+        top_level_mark: Mark,
+        vars: &IndexMap<String, ModuleItem>,
+    ) -> Self {
+        let mut replaces: HashMap<String, SyntaxContext> = Default::default();
+
+        vars.iter().for_each(|(k, _)| {
+            let ctxt = SyntaxContext::empty().apply_mark(top_level_mark);
+            replaces.insert(k.clone(), ctxt);
+        });
+
+        Self {
+            unresolved_mark,
+            replaces_map: replaces,
+        }
+    }
+}
+
+impl VisitMut for ToTopLevelVars {
+    fn visit_mut_ident(&mut self, i: &mut Ident) {
+        if i.span.ctxt.outer() == self.unresolved_mark {
+            if let Some(ctxt) = self.replaces_map.get(&i.sym.to_string()) {
+                i.span.ctxt = *ctxt;
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
+    use std::sync::Arc;
 
-    use swc_core::common::Mark;
+    use swc_core::common::GLOBALS;
+    use swc_core::ecma::transforms::base::resolver;
+    use swc_core::ecma::visit::VisitMutWith;
+
+    use crate::ast::build_js_ast;
+    use crate::compiler::Context;
+    use crate::test_helper::emit_js;
+    use crate::transformers::transform_provide::Provide;
 
     #[test]
     fn test_provide_normal() {
@@ -96,11 +150,23 @@ function foo() {
     }
 
     fn transform(code: &str) -> String {
-        let context = std::sync::Arc::new(Default::default());
+        let context: Arc<Context> = Arc::new(Default::default());
         let mut providers = HashMap::new();
         providers.insert("process".into(), ("process".into(), "".into()));
         providers.insert("Buffer".into(), ("buffer".into(), "Buffer".into()));
-        let mut visitor = super::Provide::new(providers, Mark::root());
-        crate::transformers::test_helper::transform_js_code(code, &mut visitor, &context)
+
+        GLOBALS.set(&context.meta.script.globals, || {
+            let mut ast = build_js_ast("test.js", code, &context).unwrap();
+            ast.ast.visit_mut_with(&mut resolver(
+                ast.unresolved_mark,
+                ast.top_level_mark,
+                false,
+            ));
+
+            let mut visitor = Provide::new(providers, ast.unresolved_mark, ast.top_level_mark);
+            ast.ast.visit_mut_with(&mut visitor);
+
+            emit_js(&ast.ast, &context.meta.script.cm)
+        })
     }
 }
