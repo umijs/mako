@@ -1,5 +1,4 @@
 pub mod transform_async_module;
-pub mod transform_css_url_replacer;
 pub mod transform_dep_replacer;
 pub mod transform_dynamic_import;
 pub mod transform_dynamic_import_to_require;
