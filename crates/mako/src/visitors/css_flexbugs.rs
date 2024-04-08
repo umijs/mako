@@ -168,66 +168,63 @@ impl VisitMut for CSSFlexbugs {
 
 #[cfg(test)]
 mod test {
-    use std::sync::Arc;
 
     use mako_core::swc_css_visit::VisitMutWith;
 
-    use crate::ast::{build_css_ast, css_ast_to_code};
-    use crate::compiler::Context;
-    use crate::config::{Config, Mode};
+    use crate::ast_2::tests::TestUtils;
 
     // migrate from https://github.com/luisrudge/postcss-flexbugs-fixes/blob/683560e1f0a4e67009331b564d530ccfefb831ad/specs/bug4Spec.js
     #[test]
     fn bug4() {
         assert_eq!(
-            transform("div{flex:1}".into()),
+            run("div{flex:1}"),
             "div{flex:1 1}",
             "set 0% for default flex-basis and 1 for flex-shrink in flex shorthand"
         );
         assert_eq!(
-            transform("div{flex:1}".into()),
+            run("div{flex:1}"),
             "div{flex:1 1}",
             "set 0% for default flex-basis and 1 for flex-shrink in flex shorthand"
         );
         assert_eq!(
-            transform("div{flex:1 1}".into()),
+            run("div{flex:1 1}"),
             "div{flex:1 1}",
             "set 0% for default flex-basis when not specified"
         );
         assert_eq!(
-            transform("div{flex:1 0 0}".into()),
+            run("div{flex:1 0 0}"),
             "div{flex:1 0}",
             "set flex-basis === 0% for flex-basis with plain 0"
         );
         assert_eq!(
-            transform("div{flex:1 0 0px}".into()),
+            run("div{flex:1 0 0px}"),
             "div{flex:1 0}",
             "set flex-basis === 0% for flex-basis with 0px"
         );
         assert_eq!(
-            transform("div{flex:1 50%}".into()),
+            run("div{flex:1 50%}"),
             "div{flex:1 1 50%}",
             "set flex-basis when second value is not a number"
         );
 
         // do nothing
         assert_eq!(
-            transform("a{display:flex}".into()),
+            run("a{display:flex}"),
             "a{display:flex}",
             "when not flex declarations"
         );
         assert_eq!(
-            transform("div{flex:1 0 100%}".into()),
+            run("div{flex:1 0 100%}"),
             "div{flex:1 0 100%}",
             "when flex-basis with percent is set"
         );
         assert_eq!(
-            transform("div{flex:1 0 10px}".into()),
+            run("div{flex:1 0 10px}"),
             "div{flex:1 0 10px}",
             "when flex-basis with pixels is set"
         );
         assert_eq!(
-            transform("div{flex:1 1 auto}".into()),
+            run("div{flex:1 1 auto}"),
             "div{flex:1 1 auto}",
             "does not change auto flex-basis is set explicitly"
         );
@@ -236,7 +233,7 @@ mod test {
         let string_values = ["none", "auto", "content", "inherit", "initial", "unset"];
         string_values.into_iter().for_each(|s| {
             assert_eq!(
-                transform(format!("div{{flex:{}}}", s)),
+                run(&format!("div{{flex:{}}}", s)),
                 format!("div{{flex:{}}}", s),
                 "does not change for flex:{}",
                 s
@@ -244,7 +241,7 @@ mod test {
         });
 
         assert_eq!(
-            transform("div{flex:var(--foo)}".into()),
+            run("div{flex:var(--foo)}"),
             "div{flex:var(--foo)}",
             "is a custom property"
         );
@@ -254,26 +251,26 @@ mod test {
     #[test]
     fn bug6() {
         assert_eq!(
-            transform("div{flex:1}".into()),
+            run("div{flex:1}"),
             "div{flex:1 1}",
             "Set flex-shrink to 1 by default"
         );
 
         // do nothing
         assert_eq!(
-            transform("div{flex:none}".into()),
+            run("div{flex:none}"),
             "div{flex:none}",
             "when flex is set to none"
         );
 
         assert_eq!(
-            transform("div{flex:1 0 0%}".into()),
+            run("div{flex:1 0 0%}"),
             "div{flex:1 0 0%}",
             "when flex-shrink is set explicitly to zero"
         );
 
         assert_eq!(
-            transform("div{flex:1 2 0%}".into()),
+            run("div{flex:1 2 0%}"),
             "div{flex:1 2 0%}",
             "when flex-shrink is set explicitly to non-zero value"
         );
@@ -283,44 +280,36 @@ mod test {
     #[test]
     fn bug81a() {
         assert_eq!(
-            transform("a{flex:1 0 calc(1vw - 1px)}".into()),
+            run("a{flex:1 0 calc(1vw - 1px)}"),
             "a{flex-grow:1;flex-shrink:0;flex-basis:calc(1vw - 1px)}",
             "Expands the shorthand when calc() is used"
         );
 
         // do nothing
         assert_eq!(
-            transform("a{flex:0}".into()),
+            run("a{flex:0}"),
             "a{flex:0 1}",
             "when using only first value"
         );
 
         assert_eq!(
-            transform("a{flex:0 0}".into()),
+            run("a{flex:0 0}"),
             "a{flex:0 0}",
             "when using only first and second values"
         );
 
         assert_eq!(
-            transform("a{flex:0 0 1px}".into()),
+            run("a{flex:0 0 1px}"),
             "a{flex:0 0 1px}",
             "when not using calc"
         );
     }
 
-    fn transform(code: String) -> String {
-        let context: Arc<Context> = Arc::new(Context {
-            config: Config {
-                mode: Mode::Production,
-                devtool: None,
-                minify: true,
-                ..Default::default()
-            },
-            ..Default::default()
-        });
-        let mut ast = build_css_ast("test.css", &code, &context, false).unwrap();
-
-        ast.visit_mut_with(&mut super::CSSFlexbugs);
-        css_ast_to_code(&ast, &context, "text.css").0
+    fn run(css_code: &str) -> String {
+        let mut test_utils = TestUtils::gen_css_ast(css_code.to_string(), true);
+        let ast = test_utils.ast.css_mut();
+        let mut visitor = super::CSSFlexbugs {};
+        ast.ast.visit_mut_with(&mut visitor);
+        test_utils.css_ast_to_code()
     }
 }
