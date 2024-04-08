@@ -27,7 +27,7 @@ use crate::transformers::transform_env_replacer::{build_env_map, EnvReplacer};
 use crate::transformers::transform_provide::Provide;
 use crate::transformers::transform_px2rem::Px2Rem;
 use crate::transformers::transform_react::mako_react;
-use crate::transformers::transform_virtual_css_modules::VirtualCSSModules;
+use crate::visitors::css_modules_virtual::VirtualCSSModules;
 use crate::visitors::default_export_namer::DefaultExportNamer;
 use crate::visitors::try_resolve::TryResolve;
 
@@ -99,8 +99,7 @@ impl Transform {
                         unresolved_mark,
                     )));
                     visitors.push(Box::new(VirtualCSSModules {
-                        context: context.clone(),
-                        unresolved_mark,
+                        auto_css_modules: context.config.auto_css_modules,
                     }));
                     if context.config.dynamic_import_to_require {
                         visitors.push(Box::new(DynamicImportToRequire { unresolved_mark }));
