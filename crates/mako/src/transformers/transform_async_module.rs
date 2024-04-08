@@ -260,7 +260,8 @@ add(1, 2);
         println!(">> CODE\n{}", code);
         assert_eq!(
             code,
-            r#"__mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
+            r#"
+__mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
     "use strict";
     Object.defineProperty(exports, "__esModule", {
         value: true
@@ -277,8 +278,7 @@ add(1, 2);
     0, _async.default(1, 2);
     asyncResult();
 }, true);
-"#
-                .trim()
+            "#.trim()
         );
     }
 

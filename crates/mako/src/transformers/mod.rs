@@ -1,7 +1,6 @@
 pub mod transform_async_module;
 pub mod transform_dep_replacer;
 pub mod transform_dynamic_import;
-pub mod transform_env_replacer;
 pub mod transform_mako_require;
 pub mod transform_meta_url_replacer;
 pub mod transform_optimize_define_utils;

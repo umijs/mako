@@ -31,6 +31,7 @@ pub struct EnvReplacer {
     envs: Lrc<AHashMap<JsWord, Expr>>,
     meta_envs: Lrc<AHashMap<String, Expr>>,
 }
+
 impl EnvReplacer {
     pub fn new(envs: Lrc<AHashMap<JsWord, Expr>>, unresolved_mark: Mark) -> Self {
         let mut meta_env_map = AHashMap::default();
@@ -251,23 +252,23 @@ fn get_env_expr(v: Value, context: &Arc<Context>) -> Result<Expr> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
     use std::sync::Arc;
 
-    use mako_core::serde_json::json;
-    use mako_core::swc_common::{Globals, GLOBALS};
+    use mako_core::serde_json::{json, Value};
+    use mako_core::swc_common::sync::Lrc;
+    use mako_core::swc_common::GLOBALS;
     use mako_core::swc_ecma_visit::VisitMutWith;
     use maplit::hashmap;
 
-    use super::EnvReplacer;
-    use crate::ast::{build_js_ast, js_ast_to_code};
+    use super::{build_env_map, EnvReplacer};
+    use crate::ast_2::tests::TestUtils;
     use crate::compiler::Context;
-    use crate::transformers::transform_env_replacer::build_env_map;
 
     #[should_panic = "define value 'for(;;)console.log()' is not an Expression"]
     #[test]
     fn test_wrong_define_value() {
         let context: Arc<Context> = Arc::new(Default::default());
-
         build_env_map(
             hashmap! {
                 "wrong".to_string() => json!("for(;;)console.log()")
@@ -281,7 +282,6 @@ mod tests {
     #[test]
     fn test_nested_wrong_define_value() {
         let context: Arc<Context> = Arc::new(Default::default());
-
         build_env_map(
             hashmap! {
                 "parent".to_string() =>
@@ -293,43 +293,83 @@ mod tests {
     }
 
     #[test]
-    fn test_transform_undefined_env() {
-        let code = r#"
-if (process.env.UNDEFINED_ENV === 'true') {
-    console.log('UNDEFINED env is true');
-}
-        "#
-        .trim();
-        let (code, _) = transform_code(code, None);
-        println!(">> CODE\n{}", code);
+    fn test_boolean() {
         assert_eq!(
-            code,
-            r#"
-if (undefined === 'true') {
-    console.log('UNDEFINED env is true');
-}
+            run(
+                r#"log(A)"#,
+                hashmap! {
+                    "A".to_string() => json!(true)
+                }
+            ),
+            r#"log(true);"#
+        );
+    }
 
-//# sourceMappingURL=index.js.map
-                    "#
+    #[test]
+    fn test_number() {
+        assert_eq!(
+            run(
+                r#"log(A)"#,
+                hashmap! {
+                    "A".to_string() => json!(1)
+                }
+            ),
+            r#"log(1);"#
+        );
+    }
+
+    #[test]
+    fn test_string() {
+        assert_eq!(
+            run(
+                r#"log(A)"#,
+                hashmap! {
+                    "A".to_string() => json!("\"foo\"")
+                }
+            ),
+            r#"log("foo");"#
+        );
+    }
+
+    #[test]
+    fn test_array() {
+        assert_eq!(
+            run(
+                r#"log(A)"#,
+                hashmap! {
+                    "A".to_string() => json!([1, true, "\"foo\""])
+                }
+            ),
+            r#"
+log([
+    1,
+    true,
+    "foo"
+]);
+            "#
             .trim()
         );
     }
 
-    fn transform_code(origin: &str, path: Option<&str>) -> (String, String) {
-        let path = if let Some(p) = path { p } else { "test.tsx" };
-        let context: Arc<Context> = Arc::new(Default::default());
+    #[test]
+    fn test_undefined_env() {
+        assert_eq!(
+            run(
+                r#"if (process.env.UNDEFINED_ENV === "true") {}"#,
+                Default::default()
+            ),
+            r#"if (undefined === "true") {}"#
+        );
+    }
 
-        let mut ast = build_js_ast(path, origin, &context).unwrap();
-
-        let globals = Globals::default();
-        GLOBALS.set(&globals, || {
-            let mut env_replacer = EnvReplacer::new(Default::default(), ast.unresolved_mark);
-            ast.ast.visit_mut_with(&mut env_replacer);
+    fn run(js_code: &str, envs: HashMap<String, Value>) -> String {
+        let mut test_utils = TestUtils::gen_js_ast(js_code.to_string());
+        let envs = build_env_map(envs, &test_utils.context).unwrap();
+        let ast = test_utils.ast.js_mut();
+        GLOBALS.set(&test_utils.context.meta.script.globals, || {
+            let mut visitor = EnvReplacer::new(Lrc::new(envs), ast.unresolved_mark);
+            ast.ast.visit_mut_with(&mut visitor);
         });
-
-        let (code, _sourcemap) = js_ast_to_code(&ast.ast, &context, "index.js").unwrap();
-        let code = code.replace("\"use strict\";", "");
-        let code = code.trim().to_string();
-        (code, _sourcemap)
+        test_utils.js_ast_to_code()
     }
 }
