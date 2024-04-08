@@ -1,7 +1,6 @@
 mod ast_impl;
 mod str_impl;
 pub mod util;
-
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::vec;
@@ -12,6 +11,7 @@ use mako_core::swc_css_ast::Stylesheet;
 use mako_core::ternary;
 
 use crate::chunk::{Chunk, ChunkType};
+pub use crate::chunk_pot::util::CHUNK_FILE_NAME_HASH_LENGTH;
 use crate::chunk_pot::util::{hash_hashmap, hash_vec};
 use crate::compiler::Context;
 use crate::config::Mode;
@@ -25,7 +25,7 @@ pub struct ChunkPot<'a> {
     pub js_name: String,
     pub module_map: HashMap<String, (&'a Module, u64)>,
     pub js_hash: u64,
-    stylesheet: Option<CssModules<'a>>,
+    pub stylesheet: Option<CssModules<'a>>,
 }
 
 impl<'cp> ChunkPot<'cp> {
@@ -33,17 +33,17 @@ impl<'cp> ChunkPot<'cp> {
         chunk: &'a Chunk,
         mg: &'a ModuleGraph,
         context: &'cp Arc<Context>,
-    ) -> Result<Self> {
-        let (js_modules, stylesheet) = ChunkPot::split_modules(chunk.get_modules(), mg, context)?;
+    ) -> Self {
+        let (js_modules, stylesheet) = ChunkPot::split_modules(chunk.get_modules(), mg, context);
 
-        Ok(ChunkPot {
+        ChunkPot {
             js_name: chunk.filename(),
             chunk_type: chunk.chunk_type.clone(),
             chunk_id: chunk.id.id.clone(),
             module_map: js_modules.module_map,
             js_hash: js_modules.raw_hash,
             stylesheet,
-        })
+        }
     }
 
     pub fn to_normal_chunk_files(
@@ -130,7 +130,7 @@ impl<'cp> ChunkPot<'cp> {
         module_ids: &'a IndexSet<ModuleId>,
         module_graph: &'a ModuleGraph,
         context: &'a Arc<Context>,
-    ) -> Result<(JsModules<'a>, Option<CssModules<'a>>)> {
+    ) -> (JsModules<'a>, Option<CssModules<'a>>) {
         mako_core::mako_profile_function!(module_ids.len().to_string());
         let mut module_map: HashMap<String, (&Module, u64)> = Default::default();
         let mut merged_css_modules: Vec<(String, &Stylesheet)> = vec![];
@@ -177,7 +177,7 @@ impl<'cp> ChunkPot<'cp> {
 
             let css_raw_hash = hash_vec(&css_raw_hashes);
 
-            Ok((
+            (
                 JsModules {
                     module_map,
                     raw_hash,
@@ -186,15 +186,15 @@ impl<'cp> ChunkPot<'cp> {
                     stylesheets,
                     raw_hash: css_raw_hash,
                 }),
-            ))
+            )
         } else {
-            Ok((
+            (
                 JsModules {
                     module_map,
                     raw_hash,
                 },
                 None,
-            ))
+            )
         }
     }
 }
@@ -204,12 +204,12 @@ struct JsModules<'a> {
     raw_hash: u64,
 }
 
-struct CssModules<'a> {
+pub struct CssModules<'a> {
     stylesheets: Vec<&'a Stylesheet>,
     raw_hash: u64,
 }
 
-fn get_css_chunk_filename(js_chunk_filename: &str) -> String {
+pub fn get_css_chunk_filename(js_chunk_filename: &str) -> String {
     format!(
         "{}.css",
         js_chunk_filename.strip_suffix(".js").unwrap_or("")

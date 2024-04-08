@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
-use std::time::Instant;
-use std::vec;
 
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::indexmap::IndexSet;
@@ -10,12 +8,13 @@ use mako_core::rayon::prelude::*;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_css_ast::Stylesheet;
 use mako_core::swc_ecma_ast::{Expr, KeyValueProp, Prop, PropName, PropOrSpread, Str};
-use mako_core::tracing::debug;
+use nanoid::nanoid;
 
 use crate::chunk::{Chunk, ChunkType};
-use crate::chunk_pot::ChunkPot;
+use crate::chunk_pot::{get_css_chunk_filename, ChunkPot, CHUNK_FILE_NAME_HASH_LENGTH};
 use crate::compiler::{Compiler, Context};
 use crate::module::{ModuleAst, ModuleId};
+use crate::thread_pool;
 use crate::transform_in_generate::transform_css_generate;
 
 #[derive(Clone)]
@@ -53,146 +52,259 @@ impl ChunkFile {
     }
 }
 
+type ChunksHashPlaceholder = HashMap<String, String>;
+type ChunksHashReplacer = HashMap<String, String>;
+
 impl Compiler {
     pub fn generate_chunk_files(&self, hmr_hash: u64) -> Result<Vec<ChunkFile>> {
         mako_core::mako_profile_function!();
-
-        let module_graph = self.context.module_graph.read().unwrap();
         let chunk_graph = self.context.chunk_graph.read().unwrap();
-
         let chunks = chunk_graph.get_chunks();
 
-        let t = Instant::now();
-        let non_entry_chunk_files = self.generate_non_entry_chunk_files()?;
-        debug!(
-            "generate_non_entry_chunk_files {}ms",
-            t.elapsed().as_millis()
+        let (entry_chunks, normal_chunks): (Vec<&Chunk>, Vec<&Chunk>) = chunks
+            .into_iter()
+            .partition(|chunk| match chunk.chunk_type {
+                ChunkType::Entry(_, _, false) | ChunkType::Worker(_) => true,
+                ChunkType::Entry(_, _, true) => false,
+                _ => false,
+            });
+
+        let (entry_chunk_files_with_placeholder, normal_chunk_files) = thread_pool::join(
+            || self.generate_entry_chunk_files(entry_chunks, hmr_hash),
+            || self.generate_normal_chunk_files(normal_chunks),
         );
 
-        let (js_chunk_map, css_chunk_map) = Self::chunk_maps(&non_entry_chunk_files);
+        let normal_chunk_files = normal_chunk_files?;
 
-        let mut all_chunk_files = {
-            mako_core::mako_profile_scope!("collect_entry_chunks");
-            chunks
-                .iter()
-                .filter(|chunk| {
-                    matches!(
-                        chunk.chunk_type,
-                        ChunkType::Entry(_, _, _) | ChunkType::Worker(_)
-                    )
-                })
-                .map(|&chunk| {
-                    let mut pot = ChunkPot::from(chunk, &module_graph, &self.context)?;
-                    let mut js_chunk_map = js_chunk_map.clone();
-                    let mut css_chunk_map = css_chunk_map.clone();
-                    let t = Instant::now();
-                    let installable_chunks = chunk_graph
-                        .installable_descendants_chunk(&chunk.id)
-                        .into_iter()
-                        .map(|c| c.id)
-                        .collect::<Vec<_>>();
+        let mut entry_chunk_files_with_placeholder = entry_chunk_files_with_placeholder?;
 
-                    js_chunk_map.retain(|k, _| installable_chunks.contains(k));
-                    css_chunk_map.retain(|k, _| installable_chunks.contains(k));
+        if self.context.config.hash {
+            let (js_chunks_hash_replacer, css_chunks_hash_replacer) =
+                normal_chunk_files.iter().fold(
+                    (ChunksHashReplacer::new(), ChunksHashReplacer::new()),
+                    |(mut acc_js, mut acc_css), chunk_file| {
+                        match chunk_file.file_type {
+                            ChunkFileType::JS => {
+                                acc_js.insert(chunk_file.chunk_id.clone(), chunk_file.disk_name());
+                            }
+                            ChunkFileType::Css => {
+                                acc_css.insert(chunk_file.chunk_id.clone(), chunk_file.disk_name());
+                            }
+                        };
+                        (acc_js, acc_css)
+                    },
+                );
 
-                    let chunk_file = self.generate_entry_chunk_files(
-                        &mut pot,
-                        &js_chunk_map,
-                        &css_chunk_map,
-                        chunk,
-                        hmr_hash,
-                    );
-                    debug!("generate_entry_chunk_files {}ms", t.elapsed().as_millis());
-                    chunk_file
-                })
-                .collect::<Result<Vec<_>>>()?
-                .into_iter()
-                .flatten()
-                .collect::<Vec<_>>()
-        };
+            entry_chunk_files_with_placeholder
+                .par_iter_mut()
+                .try_for_each(
+                    |(chunk_files, js_chunks_hash_placeholder, css_chunks_hash_placeholder)| -> Result<()>{
+                        replace_chunks_placeholder(
+                            chunk_files,
+                            js_chunks_hash_placeholder,
+                            &js_chunks_hash_replacer,
+                        )?;
+                        replace_chunks_placeholder(
+                            chunk_files,
+                            css_chunks_hash_placeholder,
+                            &css_chunks_hash_replacer,
+                        )?;
+                        Ok(())
+                    },
+                )?;
+        }
 
-        all_chunk_files.extend(non_entry_chunk_files);
+        let entry_chunk_files = entry_chunk_files_with_placeholder
+            .into_iter()
+            .flat_map(|e| e.0)
+            .collect();
 
-        Ok(all_chunk_files)
+        Ok([entry_chunk_files, normal_chunk_files].concat())
     }
 
     fn generate_entry_chunk_files(
         &self,
-        pot: &mut ChunkPot,
-        js_map: &HashMap<String, String>,
-        css_map: &HashMap<String, String>,
-        chunk: &Chunk,
+        chunks: Vec<&Chunk>,
         hmr_hash: u64,
-    ) -> Result<Vec<ChunkFile>> {
-        mako_core::mako_profile_function!();
-        if matches!(chunk.chunk_type, ChunkType::Entry(_, _, true)) {
-            // generate shared chunk as normal chunk
-            pot.to_normal_chunk_files(chunk, &self.context)
-        } else {
-            pot.to_entry_chunk_files(&self.context, js_map, css_map, chunk, hmr_hash)
-        }
-    }
-
-    fn generate_non_entry_chunk_files(&self) -> Result<Vec<ChunkFile>> {
-        mako_core::mako_profile_function!();
-        let chunk_graph = self.context.chunk_graph.read().unwrap();
-        let chunks = chunk_graph.get_chunks();
-
+    ) -> Result<Vec<(Vec<ChunkFile>, ChunksHashPlaceholder, ChunksHashPlaceholder)>> {
         let chunk_file_results: Vec<_> = chunks
             .par_iter()
-            .filter_map(|chunk| match chunk.chunk_type {
-                ChunkType::Entry(_, _, _) | ChunkType::Worker(_) => None,
-                _ => {
-                    let context = self.context.clone();
-                    let chunk_id = chunk.id.clone();
-                    let chunk_graph = context.chunk_graph.read().unwrap();
-                    let module_graph = context.module_graph.read().unwrap();
-                    let chunk = chunk_graph.chunk(&chunk_id).unwrap();
-                    let chunk_files = ChunkPot::from(chunk, &module_graph, &context)
-                        .map_or_else(Err, |pot| pot.to_normal_chunk_files(chunk, &context));
+            .map(|chunk| {
+                let context = self.context.clone();
+                let module_graph = context.module_graph.read().unwrap();
+                let chunk_graph = self.context.chunk_graph.read().unwrap();
 
-                    Some(chunk_files)
-                }
+                let (js_chunks_hash_placeholder, css_chunks_hash_placeholder) = chunk_graph
+                    .installable_descendants_chunk(&chunk.id)
+                    .iter()
+                    .fold(
+                        (ChunksHashPlaceholder::new(), ChunksHashPlaceholder::new()),
+                        |(mut acc_js, mut acc_css), descendant_chunk_id| {
+                            let descendant_chunk = chunk_graph.chunk(descendant_chunk_id).unwrap();
+                            // TODO: maybe we can split chunks to chunk pots before generate, because normal chunks will be
+                            // split here and fn generate_normal_chunk_files twice
+                            let chunk_pot =
+                                ChunkPot::from(descendant_chunk, &module_graph, &context);
+
+                            if self.context.config.hash {
+                                let placeholder = nanoid!(CHUNK_FILE_NAME_HASH_LENGTH);
+
+                                let js_filename = chunk_pot.js_name;
+
+                                if chunk_pot.stylesheet.is_some() {
+                                    let css_filename = get_css_chunk_filename(&js_filename);
+                                    acc_css.insert(
+                                        descendant_chunk_id.id.clone(),
+                                        hash_file_name(&css_filename, &placeholder),
+                                    );
+                                }
+
+                                acc_js.insert(
+                                    descendant_chunk_id.id.clone(),
+                                    hash_file_name(&js_filename, &placeholder),
+                                );
+                            } else {
+                                let js_filename = chunk_pot.js_name;
+
+                                if chunk_pot.stylesheet.is_some() {
+                                    let css_filename = get_css_chunk_filename(&js_filename);
+                                    acc_css.insert(descendant_chunk_id.id.clone(), css_filename);
+                                }
+
+                                acc_js.insert(descendant_chunk_id.id.clone(), js_filename);
+                            }
+                            (acc_js, acc_css)
+                        },
+                    );
+
+                let chunk_files = {
+                    let chunk_pot = ChunkPot::from(chunk, &module_graph, &context);
+                    chunk_pot
+                        .to_entry_chunk_files(
+                            &context,
+                            &js_chunks_hash_placeholder,
+                            &css_chunks_hash_placeholder,
+                            chunk,
+                            hmr_hash,
+                        )
+                        .map(|chunk_files| {
+                            (
+                                chunk_files,
+                                js_chunks_hash_placeholder,
+                                css_chunks_hash_placeholder,
+                            )
+                        })
+                };
+
+                chunk_files
             })
             .collect();
 
-        let mut chunk_files = vec![];
-        let mut errors = vec![];
-
-        chunk_file_results.into_iter().for_each(|cfs| match cfs {
-            Ok(cfs) => {
-                chunk_files.extend(cfs);
-            }
-            Err(e) => {
-                errors.push(e.to_string());
-            }
-        });
+        let (chunk_files, errors) = chunk_file_results.into_iter().fold(
+            (Vec::new(), Vec::new()),
+            |(mut chunk_files, mut errors), result| {
+                match result {
+                    Ok(cf) => chunk_files.push(cf),
+                    Err(e) => errors.push(e),
+                }
+                (chunk_files, errors)
+            },
+        );
 
         if !errors.is_empty() {
-            return Err(anyhow!(errors.join(", ")));
+            return Err(anyhow!(errors
+                .iter()
+                .map(|e| e.to_string())
+                .collect::<Vec<String>>()
+                .join(", ")));
         }
+
         Ok(chunk_files)
     }
 
-    fn chunk_maps(
-        non_entry_chunk_files: &[ChunkFile],
-    ) -> (HashMap<String, String>, HashMap<String, String>) {
-        let mut js_chunk_map: HashMap<String, String> = HashMap::new();
-        let mut css_chunk_map: HashMap<String, String> = HashMap::new();
+    fn generate_normal_chunk_files(&self, chunks: Vec<&Chunk>) -> Result<Vec<ChunkFile>> {
+        let chunk_file_results: Vec<_> = chunks
+            .par_iter()
+            .map(|chunk| {
+                let context = self.context.clone();
+                let chunk_id = chunk.id.clone();
+                let chunk_graph = context.chunk_graph.read().unwrap();
+                let module_graph = context.module_graph.read().unwrap();
+                let chunk = chunk_graph.chunk(&chunk_id).unwrap();
 
-        for f in non_entry_chunk_files.iter() {
-            match f.file_type {
-                ChunkFileType::JS => {
-                    js_chunk_map.insert(f.chunk_id.clone(), f.disk_name());
+                let chunk_files = ChunkPot::from(chunk, &module_graph, &context)
+                    .to_normal_chunk_files(chunk, &context);
+
+                chunk_files
+            })
+            .collect();
+
+        let (chunk_files, errors) = chunk_file_results.into_iter().fold(
+            (Vec::new(), Vec::new()),
+            |(mut chunk_files, mut err_msgs), result| {
+                match result {
+                    Ok(cfs) => chunk_files.extend(cfs),
+                    Err(e) => err_msgs.push(e),
                 }
-                ChunkFileType::Css => {
-                    css_chunk_map.insert(f.chunk_id.clone(), f.disk_name());
-                }
-            }
+                (chunk_files, err_msgs)
+            },
+        );
+
+        if !errors.is_empty() {
+            return Err(anyhow!(errors
+                .iter()
+                .map(|e| e.to_string())
+                .collect::<Vec<String>>()
+                .join(", ")));
         }
 
-        (js_chunk_map, css_chunk_map)
+        Ok(chunk_files)
     }
+}
+
+fn replace_chunks_placeholder(
+    chunk_files: &mut [ChunkFile],
+    chunks_hash_placeholder: &ChunksHashPlaceholder,
+    chunks_hash_replacer: &ChunksHashReplacer,
+) -> Result<()> {
+    chunks_hash_placeholder.iter().try_for_each(
+        |(chunk_id, placeholder)| match chunks_hash_replacer.get(chunk_id) {
+            Some(replacer) => {
+                chunk_files
+                    .iter_mut()
+                    .filter(|cf| matches!(cf.file_type, ChunkFileType::JS))
+                    .try_for_each(|cf| {
+                        let position = cf
+                            .content
+                            .windows(placeholder.len())
+                            .position(|w| w == placeholder.as_bytes());
+
+                        position.map_or(
+                            {
+                                Err(anyhow!(
+                                    "Generate \"{}\" failed, placeholder \"{}\" not existed in chunk file.",
+                                    chunk_id,
+                                    placeholder,
+                                ))
+                            },
+                            |pos| {
+                                cf.content.splice(
+                                    pos..pos + replacer.len(),
+                                    replacer.as_bytes().to_vec(),
+                                );
+                                Ok(())
+                            },
+                        )
+                    })?;
+                Ok(())
+            }
+            _ => Err(anyhow!(
+                "Generate \"{}\" failed, replacer not found for placeholder \"{}\".",
+                chunk_id,
+                placeholder
+            )),
+        },
+    )
 }
 
 pub fn build_props(key_str: &str, value: Box<Expr>) -> PropOrSpread {

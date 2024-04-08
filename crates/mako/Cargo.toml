@@ -18,6 +18,7 @@ glob-match       = "0.2.1"
 heck             = "0.4.1"
 mako_core        = { path = "../core" }
 miette           = { version = "5.10.0", features = ["fancy"] }
+nanoid           = "0.4.0"
 oxc_resolver     = "1.5.4"
 percent-encoding = { version = "2.3.1" }
 serde            = { workspace = true }

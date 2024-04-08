@@ -107,7 +107,7 @@ mod tests {
     }
 
     fn run(css_code: &str) -> Vec<String> {
-        let mut test_utils = TestUtils::gen_css_ast(css_code.to_string());
+        let mut test_utils = TestUtils::gen_css_ast(css_code.to_string(), false);
         let ast = test_utils.ast.css_mut();
         let mut analyzer = super::CSSDepAnalyzer::new();
         ast.ast.visit_with(&mut analyzer);

@@ -1,0 +1,215 @@
+use std::sync::Arc;
+
+use mako_core::swc_common::sync::Lrc;
+use mako_core::swc_common::{chain, Mark, SourceMap};
+use mako_core::swc_ecma_ast::Module;
+use mako_core::swc_ecma_transforms_react::{react as swc_react, Options, RefreshOptions, Runtime};
+use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+
+use crate::ast::build_js_ast;
+use crate::compiler::Context;
+use crate::config::{Mode, ReactRuntimeConfig};
+
+pub fn react(
+    cm: Lrc<SourceMap>,
+    context: Arc<Context>,
+    use_refresh: bool,
+    top_level_mark: &Mark,
+    unresolved_mark: &Mark,
+) -> Box<dyn VisitMut> {
+    let origin_comments = context.meta.script.origin_comments.read().unwrap();
+    let visit = swc_react(
+        cm,
+        Some(origin_comments.get_swc_comments().clone()),
+        Options {
+            import_source: Some(context.config.react.import_source.clone()),
+            pragma: Some(context.config.react.pragma.clone()),
+            pragma_frag: Some(context.config.react.pragma_frag.clone()),
+            runtime: Some(
+                if matches!(context.config.react.runtime, ReactRuntimeConfig::Automatic) {
+                    Runtime::Automatic
+                } else {
+                    Runtime::Classic
+                },
+            ),
+            development: Some(matches!(context.config.mode, Mode::Development)),
+            // to avoid throw error for svg namespace element
+            throw_if_namespace: Some(false),
+            refresh: if use_refresh {
+                Some(RefreshOptions::default())
+            } else {
+                None
+            },
+            ..Default::default()
+        },
+        *top_level_mark,
+        *unresolved_mark,
+    );
+    if use_refresh {
+        Box::new(chain!(
+            visit,
+            react_refresh_module_prefix(&context),
+            react_refresh_module_postfix(&context)
+        ))
+    } else {
+        Box::new(visit)
+    }
+}
+
+struct PrefixCode {
+    code: String,
+    context: Arc<Context>,
+}
+
+impl VisitMut for PrefixCode {
+    fn visit_mut_module(&mut self, module: &mut Module) {
+        let post_code_snippet_module =
+            build_js_ast("_pre_code.js", &self.code, &self.context).unwrap();
+        module.body.splice(0..0, post_code_snippet_module.ast.body);
+
+        module.visit_mut_children_with(self);
+    }
+}
+
+struct PostfixCode {
+    code: String,
+    context: Arc<Context>,
+}
+
+impl VisitMut for PostfixCode {
+    fn visit_mut_module(&mut self, module: &mut Module) {
+        let post_code_snippet_module =
+            build_js_ast("_post_code.js", &self.code, &self.context).unwrap();
+        module.body.extend(post_code_snippet_module.ast.body);
+
+        module.visit_mut_children_with(self);
+    }
+}
+
+fn react_refresh_module_prefix(context: &std::sync::Arc<Context>) -> Box<dyn VisitMut> {
+    Box::new(PrefixCode {
+        context: context.clone(),
+        code: r#"
+import * as RefreshRuntime from 'react-refresh';
+var prevRefreshReg;
+var prevRefreshSig;
+
+prevRefreshReg = self.$RefreshReg$;
+prevRefreshSig = self.$RefreshSig$;
+self.$RefreshReg$ = (type, id) => {
+  RefreshRuntime.register(type, module.id + id);
+};
+self.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
+"#
+        .to_string(),
+    })
+}
+
+fn react_refresh_module_postfix(context: &Arc<Context>) -> Box<dyn VisitMut> {
+    Box::new(PostfixCode {
+        context: context.clone(),
+        // why add `if (prevRefreshReg)` guard?
+        // ref: https://github.com/umijs/mako/issues/971
+        code: r#"
+if (prevRefreshReg) self.$RefreshReg$ = prevRefreshReg;
+if (prevRefreshSig) self.$RefreshSig$ = prevRefreshSig;
+function $RefreshIsReactComponentLike$(moduleExports) {
+  if (RefreshRuntime.isLikelyComponentType(moduleExports.default || moduleExports)) {
+    return true;
+  }
+  for (var key in moduleExports) {
+    if (RefreshRuntime.isLikelyComponentType(moduleExports[key])) {
+      return true;
+    }
+  }
+  return false;
+}
+if ($RefreshIsReactComponentLike$(module.exports)) {
+    module.meta.hot.accept();
+    RefreshRuntime.performReactRefresh();
+}
+"#
+        .to_string(),
+    })
+}
+
+#[cfg(test)]
+mod tests {
+
+    use mako_core::swc_common::{Mark, GLOBALS};
+    use mako_core::swc_ecma_visit::VisitMutWith;
+
+    use super::react;
+    use crate::ast_2::tests::TestUtils;
+
+    #[test]
+    fn test_use_refresh() {
+        let code = run("console.log('entry');", true);
+        assert!(code.contains("self.$RefreshSig$ = RefreshRuntime."));
+        assert!(code.contains("if (prevRefreshReg) self.$RefreshReg$ = prevRefreshReg;"));
+    }
+
+    #[test]
+    fn test_jsx() {
+        let code = run("function Foo() { return <>foo</> }", false);
+        assert_eq!(
+            code,
+            r#"
+import { jsxDEV as _jsxDEV, Fragment as _Fragment } from "react/jsx-dev-runtime";
+function Foo() {
+    return /*#__PURE__*/ _jsxDEV(_Fragment, {
+        children: "foo"
+    }, void 0, false);
+}
+        "#
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_svgr() {
+        // ref: jsoneditor/dist/img/jsoneditor-icons.svg
+        let code = run(
+            r#"
+const Foo = () => (
+    <svg
+        xmlns:dc="http://purl.org/dc/elements/1.1/"
+        xmlns:cc="http://creativecommons.org/ns#"
+        xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+        xmlns:svg="http://www.w3.org/2000/svg"
+        xmlns="http://www.w3.org/2000/svg"
+        xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+        xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+        id="svg4136"
+        inkscape:version="0.91 r13725"
+        sodipodi:docname="jsoneditor-icons.svg"
+        {...props}
+    >
+        <metadata id="metadata4148">
+            <rdf:RDF></rdf:RDF>
+        </metadata>
+    </svg>
+)
+        "#,
+            false,
+        );
+        println!("{}", code);
+        // no panic means it's ok
+    }
+
+    fn run(js_code: &str, use_refresh: bool) -> String {
+        let mut test_utils = TestUtils::gen_js_ast(js_code.to_string());
+        let ast = test_utils.ast.js_mut();
+        GLOBALS.set(&test_utils.context.meta.script.globals, || {
+            let mut visitor = react(
+                Default::default(),
+                test_utils.context.clone(),
+                use_refresh,
+                &Mark::new(),
+                &Mark::new(),
+            );
+            ast.ast.visit_mut_with(&mut visitor);
+        });
+        test_utils.js_ast_to_code()
+    }
+}

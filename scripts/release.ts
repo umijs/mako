@@ -2,14 +2,14 @@ import { parse } from 'semver';
 import 'zx/globals';
 
 (async () => {
-  // Check branch
+  // check branch
   console.log('Check branch');
   const branch = (await $`git branch --show-current`).stdout.trim();
   if (branch !== 'master') {
     throw new Error('Please run this script in master branch');
   }
 
-  // Check git status
+  // check git status
   console.log('Check git status');
   const status = (await $`git status --porcelain`).stdout.trim();
   if (status) {

@@ -12,7 +12,7 @@ use crate::compiler::Compiler;
 use crate::module::{Dependency, Module, ModuleId};
 use crate::resolve::{self, clear_resolver_cache};
 use crate::transform_in_generate::transform_modules;
-use crate::transformers::transform_virtual_css_modules::is_css_path;
+use crate::visitors::virtual_css_modules::is_css_path;
 
 #[derive(Debug, Clone)]
 pub enum UpdateType {
@@ -258,7 +258,6 @@ impl Compiler {
                 debug!("build by modify: {:?} start", entry);
                 // first build
                 let is_entry = {
-                    // there must be a entry, so unwrap is safe
                     let mut entries = self.context.config.entry.values();
                     entries.any(|e| e.eq(entry))
                 };
@@ -336,7 +335,13 @@ impl Compiler {
 
             // add bind dependency
             for (add_module_id, dep) in &add {
-                let add_module = add_modules.remove(add_module_id).unwrap();
+                // 理论上 add_modules 里肯定存在 add 的 add_module_id，但实际场景中还是出现 unwrap() 报错，所以这里先加个 guard 判断
+                // TODO: 需要找到本质原因
+                let add_module = add_modules.remove(add_module_id);
+                if add_module.is_none() {
+                    continue;
+                }
+                let add_module = add_module.unwrap();
 
                 // 只针对非 external 的模块设置 add Task
                 if add_module.info.is_none() {

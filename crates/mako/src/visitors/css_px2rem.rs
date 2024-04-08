@@ -19,12 +19,12 @@ pub struct Px2Rem {
 }
 
 impl Px2Rem {
-    pub fn new(current_decl: String, current_selector: String) -> Self {
+    pub fn new() -> Self {
         Self {
             context: Arc::new(Default::default()),
             path: "".to_string(),
-            current_decl: Some(current_decl),
-            current_selector: Some(current_selector),
+            current_decl: None,
+            current_selector: None,
         }
     }
     fn should_transform(&self) -> bool {
@@ -131,6 +131,7 @@ impl VisitMut for Px2Rem {
 }
 #[cfg(test)]
 mod tests {
+    use swc_core::css::visit::VisitMutWith;
 
     use crate::ast_2::tests::TestUtils;
 
@@ -173,12 +174,20 @@ div{
     }
 
     fn run(css_code: &str) -> String {
-        let mut test_utils = TestUtils::gen_css_ast(css_code.to_string());
+        let mut test_utils = TestUtils::gen_css_ast(css_code.to_string(), true);
         let ast = test_utils.ast.css_mut();
-        println!("ast==={:?}", ast);
-        String::from("")
-        // let mut visitor = super::CSSImports {};
-        // ast.ast.visit_mut_with(&mut visitor);
-        // test_utils.css_ast_to_code()
+        // test_utils.context.config
+        let mut visitor = super::Px2Rem {
+            context: test_utils.context.clone(),
+            path: "".to_string(),
+            current_decl: None,
+            current_selector: None,
+        };
+
+        ast.ast.visit_mut_with(&mut visitor);
+
+        // println!("{:?}",&test_utils.context.resolvers);
+        // println!("css=={:?}",test_utils.css_ast_to_code());
+        test_utils.css_ast_to_code()
     }
 }

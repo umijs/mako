@@ -18,18 +18,20 @@ use swc_core::common::GLOBALS;
 use crate::ast_2::css_ast::CssAst;
 use crate::ast_2::file::File;
 use crate::compiler::Context;
+use crate::config::Mode;
 use crate::module::ModuleAst;
+use crate::plugins::context_module::ContextModuleVisitor;
 use crate::targets;
-use crate::transformers::transform_css_flexbugs::CSSFlexbugs;
-use crate::transformers::transform_css_url_replacer::CSSUrlReplacer;
-use crate::transformers::transform_dynamic_import_to_require::DynamicImportToRequire;
-use crate::transformers::transform_env_replacer::{build_env_map, EnvReplacer};
-use crate::transformers::transform_provide::Provide;
-use crate::transformers::transform_react::mako_react;
-use crate::transformers::transform_try_resolve::TryResolve;
-use crate::transformers::transform_virtual_css_modules::VirtualCSSModules;
+use crate::visitors::css_assets::CSSAssets;
+use crate::visitors::css_flexbugs::CSSFlexbugs;
 use crate::visitors::css_px2rem::Px2Rem;
 use crate::visitors::default_export_namer::DefaultExportNamer;
+use crate::visitors::dynamic_import_to_require::DynamicImportToRequire;
+use crate::visitors::env_replacer::{build_env_map, EnvReplacer};
+use crate::visitors::provide::Provide;
+use crate::visitors::react::react;
+use crate::visitors::try_resolve::TryResolve;
+use crate::visitors::virtual_css_modules::VirtualCSSModules;
 
 pub struct Transform {}
 
@@ -44,6 +46,11 @@ impl Transform {
                     let cm = context.meta.script.cm.clone();
                     let origin_comments = context.meta.script.origin_comments.read().unwrap();
                     let is_ts = file.extname == "ts" || file.extname == "tsx";
+                    let is_jsx = file.extname == "jsx"
+                        || file.extname == "js"
+                        || file.extname == "ts"
+                        || file.extname == "tsx"
+                        || file.extname == "svg";
 
                     // visitors
                     let mut visitors: Vec<Box<dyn VisitMut>> = vec![];
@@ -61,20 +68,27 @@ impl Transform {
                         )))
                     }
                     // named default export
-                    let could_be_react_component =
-                        file.extname == "tsx" || file.extname == "jsx" || file.extname == "js";
-                    if context.args.watch && !file.is_under_node_modules && could_be_react_component
-                    {
+                    if context.args.watch && !file.is_under_node_modules && is_jsx {
                         visitors.push(Box::new(DefaultExportNamer::new()));
                     }
-                    // TODO: refact mako_react
-                    visitors.push(Box::new(mako_react(
-                        cm,
-                        context.clone(),
-                        file,
-                        &top_level_mark,
-                        &unresolved_mark,
-                    )));
+                    // react & react-refresh
+                    let is_dev = matches!(context.config.mode, Mode::Development);
+                    let is_browser =
+                        matches!(context.config.platform, crate::config::Platform::Browser);
+                    let use_refresh = is_dev
+                        && context.args.watch
+                        && context.config.hmr.is_some()
+                        && !file.is_under_node_modules
+                        && is_browser;
+                    if is_jsx {
+                        visitors.push(react(
+                            cm,
+                            context.clone(),
+                            use_refresh,
+                            &top_level_mark,
+                            &unresolved_mark,
+                        ));
+                    }
                     // TODO: refact env replacer
                     {
                         let mut define = context.config.define.clone();
@@ -97,11 +111,15 @@ impl Transform {
                     visitors.push(Box::new(Provide::new(
                         context.config.providers.clone(),
                         unresolved_mark,
+                        top_level_mark,
                     )));
                     visitors.push(Box::new(VirtualCSSModules {
-                        context: context.clone(),
-                        unresolved_mark,
+                        auto_css_modules: context.config.auto_css_modules,
                     }));
+                    // TODO: move ContextModuleVisitor out of plugin
+                    visitors.push(Box::new(ContextModuleVisitor { unresolved_mark }));
+                    // DynamicImportToRequire must be after ContextModuleVisitor
+                    // since ContextModuleVisitor will add extra dynamic imports
                     if context.config.dynamic_import_to_require {
                         visitors.push(Box::new(DynamicImportToRequire { unresolved_mark }));
                     }
@@ -163,7 +181,7 @@ impl Transform {
                     process: swc_css_compat::feature::Features::NESTING,
                 })));
                 let path = file.path.to_string_lossy().to_string();
-                visitors.push(Box::new(CSSUrlReplacer {
+                visitors.push(Box::new(CSSAssets {
                     path,
                     context: context.clone(),
                 }));
