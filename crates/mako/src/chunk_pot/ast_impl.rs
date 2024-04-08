@@ -25,9 +25,8 @@ use crate::compiler::Context;
 use crate::config::Mode;
 use crate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::minify::{minify_css, minify_js};
-use crate::sourcemap::build_source_map_to_buf;
+use crate::sourcemap::{build_source_map_to_buf, merge_source_map};
 use crate::transform_in_generate::transform_css_generate;
-use crate::util::merge_source_map;
 
 #[cached(
     result = true,
