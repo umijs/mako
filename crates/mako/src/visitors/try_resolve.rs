@@ -73,6 +73,9 @@ impl VisitMut for TryResolve {
                             if let Some(Expr::Call(call_expr)) = decl.init.as_deref_mut() {
                                 self.handle_call_expr(call_expr);
                             }
+                            // support `const a = 1 && require('not-found-module');`
+                            // when decl.init is BinaryExpression, handle left and right recursively
+                            // ref: https://github.com/umijs/mako/issues/1007
                         }
                     }
                     _ => {}
@@ -85,54 +88,101 @@ impl VisitMut for TryResolve {
 
 #[cfg(test)]
 mod tests {
-    use crate::compiler::Context;
+    use mako_core::swc_ecma_visit::VisitMutWith;
+    use swc_core::common::GLOBALS;
+
+    use super::TryResolve;
+    use crate::ast_2::tests::TestUtils;
 
     #[test]
     fn test_try_require() {
-        crate::assert_display_snapshot!(transform(
+        assert_eq!(
+            run(r#"try{require('foo')}catch(e){}"#),
             r#"
-            try {
-                require('foo');
-            } catch (e) {
-                console.log(e);
-            }
-            "#,
-        ));
+try {
+    require(Object(function makoMissingModule() {
+        var e = new Error("Cannot find module 'foo'");
+        e.code = "MODULE_NOT_FOUND";
+        throw e;
+    }()));
+} catch (e) {}
+        "#
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_try_require_support_var_decl() {
+        assert_eq!(
+            run(r#"try{const x = require('foo')}catch(e){}"#),
+            r#"
+try {
+    const x = require(Object(function makoMissingModule() {
+        var e = new Error("Cannot find module 'foo'");
+        e.code = "MODULE_NOT_FOUND";
+        throw e;
+    }()));
+} catch (e) {}
+        "#
+            .trim()
+        );
     }
 
     #[test]
     fn test_try_require_with_exports() {
-        crate::assert_display_snapshot!(transform(
+        assert_eq!(
+            run(r#"try{exports.xxx = require('foo');}catch(e){}"#),
             r#"
-            try {
-                exports.xxx = require('foo');
-            } catch (e) {
-                console.log(e);
-            }
-            "#,
-        ));
+try {
+    exports.xxx = require(Object(function makoMissingModule() {
+        var e = new Error("Cannot find module 'foo'");
+        e.code = "MODULE_NOT_FOUND";
+        throw e;
+    }()));
+} catch (e) {}
+        "#
+            .trim()
+        );
     }
 
     #[test]
-    fn test_try_import_do_not_resolve() {
-        crate::assert_display_snapshot!(transform(
+    fn test_try_require_dont_support_import() {
+        assert_eq!(
+            run(r#"try{import('foo');}catch(e){}"#),
             r#"
-            try {
-                import('foo');
-            } catch (e) {
-                console.log(e);
-            }
-            "#,
-        ));
+try {
+    import('foo');
+} catch (e) {}
+        "#
+            .trim()
+        );
     }
 
-    fn transform(code: &str) -> String {
-        let context = std::sync::Arc::new(Context::default());
-        let mut visitor = super::TryResolve {
-            path: "test.js".to_string(),
-            context: context.clone(),
-            unresolved_mark: Default::default(),
-        };
-        crate::transformers::test_helper::transform_js_code(code, &mut visitor, &context)
+    #[test]
+    fn test_try_require_handle_require_defined() {
+        assert_eq!(
+            run(r#"try{const require=1;require('foo');}catch(e){}"#),
+            r#"
+try {
+    const require = 1;
+    require('foo');
+} catch (e) {}
+        "#
+            .trim()
+        );
+    }
+
+    fn run(js_code: &str) -> String {
+        let mut test_utils = TestUtils::gen_js_ast(js_code.to_string());
+        let ast = test_utils.ast.js_mut();
+        GLOBALS.set(&test_utils.context.meta.script.globals, || {
+            let mut visitor = TryResolve {
+                path: "/path/should/not/exists.js".to_string(),
+                context: test_utils.context.clone(),
+                unresolved_mark: ast.unresolved_mark,
+            };
+            ast.ast.visit_mut_with(&mut visitor);
+        });
+        test_utils.js_ast_to_code()
     }
 }
