@@ -21,19 +21,58 @@ impl SourceMapGenConfig for SwcSourceMapGenConfig {
 }
 
 pub fn build_source_map_to_buf(mappings: &[(BytePos, LineCol)], cm: &Lrc<SourceMap>) -> Vec<u8> {
-    let mut src_buf = vec![];
-
     let sm = build_source_map(mappings, cm);
+
+    let mut src_buf = vec![];
 
     sm.to_writer(&mut src_buf).unwrap();
 
     src_buf
 }
 
-fn build_source_map(mappings: &[(BytePos, LineCol)], cm: &Lrc<SourceMap>) -> sourcemap::SourceMap {
+pub fn build_source_map(
+    mappings: &[(BytePos, LineCol)],
+    cm: &Lrc<SourceMap>,
+) -> sourcemap::SourceMap {
     let config = SwcSourceMapGenConfig;
 
     cm.build_source_map_with_config(mappings, None, config)
+}
+
+#[derive(Clone, Default, Debug)]
+pub struct RawSourceMap {
+    pub file: Option<String>,
+    pub tokens: Vec<sourcemap::RawToken>,
+    pub names: Vec<String>,
+    pub sources: Vec<String>,
+    pub sources_content: Vec<Option<String>>,
+}
+
+impl From<sourcemap::SourceMap> for RawSourceMap {
+    fn from(sm: sourcemap::SourceMap) -> Self {
+        Self {
+            file: sm.get_file().map(|f| f.to_owned()),
+            tokens: sm.tokens().map(|t| t.get_raw_token()).collect(),
+            names: sm.names().map(|n| n.to_owned()).collect(),
+            sources: sm.sources().map(|s| s.to_owned()).collect(),
+            sources_content: sm
+                .source_contents()
+                .map(|cs| cs.map(|c| c.to_owned()))
+                .collect(),
+        }
+    }
+}
+
+impl From<RawSourceMap> for sourcemap::SourceMap {
+    fn from(rsm: RawSourceMap) -> Self {
+        Self::new(
+            rsm.file,
+            rsm.tokens,
+            rsm.names,
+            rsm.sources,
+            Some(rsm.sources_content),
+        )
+    }
 }
 
 pub fn merge_source_map(source_map_chain: Vec<Vec<u8>>, root: PathBuf) -> Vec<u8> {
