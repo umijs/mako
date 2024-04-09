@@ -4,6 +4,7 @@ pub(crate) mod css_flexbugs;
 pub(crate) mod css_imports;
 pub(crate) mod default_export_namer;
 pub(crate) mod dep_analyzer;
+pub(crate) mod dep_replacer;
 pub(crate) mod dynamic_import_to_require;
 pub(crate) mod env_replacer;
 pub(crate) mod provide;

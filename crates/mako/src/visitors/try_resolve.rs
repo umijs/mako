@@ -10,7 +10,7 @@ use crate::ast_2::utils::{get_first_str_arg, is_commonjs_require};
 use crate::compiler::Context;
 use crate::module::{Dependency, ResolveType};
 use crate::resolve;
-use crate::transformers::transform_dep_replacer::miss_throw_stmt;
+use crate::visitors::dep_replacer::miss_throw_stmt;
 
 pub struct TryResolve {
     pub path: String,
