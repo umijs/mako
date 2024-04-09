@@ -117,18 +117,30 @@ mod tests {
 
     use super::DynamicImport;
     use crate::ast_2::tests::TestUtils;
+    use crate::chunk::{Chunk, ChunkType};
 
-    // TODO: more precise test, it now has not chunks info
+    // TODO: add nested chunk test
     #[test]
     fn test_dynamic_import() {
         assert_eq!(
-            run(r#"import("./foo");"#),
-            r#"Promise.all([]).then(__mako_require__.bind(__mako_require__, "./foo"));"#
+            run(r#"import("foo");"#),
+            r#"
+Promise.all([
+    __mako_require__.ensure("foo")
+]).then(__mako_require__.bind(__mako_require__, "foo"));
+            "#
+            .trim()
         );
     }
 
     fn run(js_code: &str) -> String {
         let mut test_utils = TestUtils::gen_js_ast(js_code.to_string());
+        {
+            let mut foo = Chunk::new("foo".to_string().into(), ChunkType::Async);
+            foo.add_module("foo".to_string().into());
+            let mut cg = test_utils.context.chunk_graph.write().unwrap();
+            cg.add_chunk(foo);
+        }
         let ast = test_utils.ast.js_mut();
         GLOBALS.set(&test_utils.context.meta.script.globals, || {
             let mut visitor = DynamicImport {
@@ -136,6 +148,8 @@ mod tests {
             };
             ast.ast.visit_mut_with(&mut visitor);
         });
-        test_utils.js_ast_to_code()
+        let code = test_utils.js_ast_to_code();
+        println!("{}", code);
+        code
     }
 }

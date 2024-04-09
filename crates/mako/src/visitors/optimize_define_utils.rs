@@ -3,6 +3,7 @@ use swc_core::ecma::ast::{CallExpr, Expr, ExprOrSpread, Lit, ModuleItem};
 use swc_core::ecma::utils::{member_expr, IsDirective};
 use swc_core::ecma::visit::VisitMut;
 
+// TODO: add testcases
 pub struct OptimizeDefineUtils {
     pub top_level_mark: Mark,
     pub unresolved_mark: Mark,

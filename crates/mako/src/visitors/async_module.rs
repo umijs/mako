@@ -229,10 +229,7 @@ pub fn mark_async(
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use mako_core::swc_common::GLOBALS;
-    use mako_core::swc_ecma_transforms::resolver;
     use mako_core::swc_ecma_visit::{VisitMutWith, VisitWith};
     use mako_core::swc_node_comments::SwcComments;
     use swc_core::ecma::transforms::base::feature::FeatureFlag;
@@ -242,22 +239,17 @@ mod tests {
     use swc_core::ecma::transforms::module::util::ImportInterop;
 
     use super::AsyncModule;
-    use crate::ast::{build_js_ast, js_ast_to_code};
+    use crate::ast_2::tests::TestUtils;
     use crate::chunk::{Chunk, ChunkType};
-    use crate::compiler::Context;
-    use crate::config::Config;
-    use crate::module::ModuleId;
     use crate::visitors::dep_analyzer::DepAnalyzer;
 
     #[test]
     fn test_default_import_async_module() {
-        let code = r#"
+        let code = run(r#"
 import add from './async';
 add(1, 2);
         "#
-        .trim();
-        let (code, _) = transform_code(code, None);
-        println!(">> CODE\n{}", code);
+        .trim());
         assert_eq!(
             code,
             r#"
@@ -284,15 +276,13 @@ __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
 
     #[test]
     fn test_two_import_async_module() {
-        let code = r#"
+        let code = run(r#"
 import add from './async';
 add(1, 2);
 import foo from "./async_2"
 console.log(foo)
         "#
-        .trim();
-        let (code, _) = transform_code(code, None);
-        println!(">> CODE\n{}", code);
+        .trim());
         assert_eq!(
             code,
             r#"
@@ -325,14 +315,12 @@ __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
 
     #[test]
     fn test_deep_interop_async_module() {
-        let code = r#"
+        let code = run(r#"
 import add from './async';
 export * from "./async";
 add(1, 2);
-        "#
-        .trim();
-        let (code, _) = transform_code(code, None);
-        println!(">> CODE\n{}", code);
+                "#
+        .trim());
         assert_eq!(
             code,
             r#"
@@ -361,13 +349,11 @@ __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
 
     #[test]
     fn test_require_async_module() {
-        let code = r#"
+        let code = run(r#"
 const _async = require('./async');
 _async.add(1, 2);
-        "#
-        .trim();
-        let (code, _) = transform_code(code, None);
-        println!(">> CODE\n{}", code);
+                "#
+        .trim());
         assert_eq!(
             code,
             r#"
@@ -384,14 +370,12 @@ __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
 
     #[test]
     fn test_mix_async_module() {
-        let code = r#"
+        let code = run(r#"
 import add from "./miexed_async";
 async.add(1, 2);
 const async = require('./miexed_async');
-        "#
-        .trim();
-        let (code, _) = transform_code(code, None);
-        println!(">> CODE\n{}", code);
+                "#
+        .trim());
         assert_eq!(
             code,
             r#"
@@ -417,36 +401,22 @@ __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
         );
     }
 
-    fn transform_code(origin: &str, path: Option<&str>) -> (String, String) {
-        let path = if let Some(p) = path { p } else { "test.tsx" };
-        let config = Config {
-            devtool: None,
-            ..Default::default()
-        };
-        let context: Arc<Context> = Arc::new(Context {
-            config,
-            ..Default::default()
-        });
-
-        let module_id: ModuleId = "./async".to_string().into();
+    fn run(js_code: &str) -> String {
+        let mut test_utils = TestUtils::gen_js_ast(js_code.to_string());
         let mut chunk = Chunk::new(
             "./async".to_string().into(),
-            ChunkType::Entry(module_id, "async".to_string(), false),
+            ChunkType::Entry("./async".to_string().into(), "async".to_string(), false),
         );
         chunk.add_module("./async".to_string().into());
-
-        context.chunk_graph.write().unwrap().add_chunk(chunk);
-
-        let mut ast = build_js_ast(path, origin, &context).unwrap();
-
-        GLOBALS.set(&context.meta.script.globals, || {
+        test_utils
+            .context
+            .chunk_graph
+            .write()
+            .unwrap()
+            .add_chunk(chunk);
+        let ast = test_utils.ast.js_mut();
+        GLOBALS.set(&test_utils.context.meta.script.globals, || {
             HELPERS.set(&Helpers::new(true), || {
-                ast.ast.visit_mut_with(&mut resolver(
-                    ast.unresolved_mark,
-                    ast.top_level_mark,
-                    false,
-                ));
-
                 let mut dep_collector = DepAnalyzer::new(ast.unresolved_mark);
                 ast.ast.visit_with(&mut dep_collector);
 
@@ -469,9 +439,6 @@ __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
                 ast.ast.visit_mut_with(&mut async_module);
             })
         });
-
-        let (code, _sourcemap) = js_ast_to_code(&ast.ast, &context, "index.js").unwrap();
-        let code = code.trim().to_string();
-        (code, _sourcemap)
+        test_utils.js_ast_to_code()
     }
 }
