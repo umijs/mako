@@ -16,7 +16,7 @@ use mako_core::swc_ecma_utils::{quote_ident, ExprExt};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 use swc_core::common::Mark;
 
-use crate::ast::build_js_ast;
+use crate::ast_2::js_ast::JsAst;
 use crate::compiler::Context;
 use crate::config::ConfigError;
 
@@ -192,7 +192,7 @@ fn get_env_expr(v: Value, context: &Arc<Context>) -> Result<Expr> {
     match v {
         Value::String(v) => {
             // the string content is treat as expression, so it has to be parsed
-            let ast = build_js_ast("_define_.js", &v, context).unwrap();
+            let ast = JsAst::build("_define_.js", &v, context.clone()).unwrap();
             let module = ast.ast.body.first().unwrap();
 
             match module {

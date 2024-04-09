@@ -31,7 +31,7 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
-    use crate::ast::{build_js_ast, js_ast_to_code};
+    use crate::ast_2::js_ast::JsAst;
     use crate::compiler::Context;
 
     fn context() -> Arc<Context> {
@@ -44,12 +44,9 @@ mod tests {
     #[test]
     fn test_single_stmt_cons() {
         let ctx = context();
-        let mut ast = build_js_ast("test.js", "if(1) console.log(1)", &ctx).unwrap();
-
+        let mut ast = JsAst::build("test.js", "if(1) console.log(1)", ctx.clone()).unwrap();
         ast.ast.visit_mut_with(&mut UnSimplify {});
-
-        let (code, _) = js_ast_to_code(&ast.ast, &ctx, "dist.js").unwrap();
-
+        let code = ast.generate(ctx.clone()).unwrap().code;
         assert_eq!(
             code,
             r#"if (1) {
@@ -62,13 +59,14 @@ mod tests {
     #[test]
     fn test_if_block_stmt_cons() {
         let ctx = context();
-        let mut ast =
-            build_js_ast("test.js", "if(1) { console.log(1); console.log(2); }", &ctx).unwrap();
-
+        let mut ast = JsAst::build(
+            "test.js",
+            "if(1) { console.log(1); console.log(2); }",
+            ctx.clone(),
+        )
+        .unwrap();
         ast.ast.visit_mut_with(&mut UnSimplify {});
-
-        let (code, _) = js_ast_to_code(&ast.ast, &ctx, "dist.js").unwrap();
-
+        let code = ast.generate(ctx.clone()).unwrap().code;
         assert_eq!(
             code,
             r#"if (1) {

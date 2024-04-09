@@ -6,7 +6,7 @@ use mako_core::swc_ecma_ast::Module;
 use mako_core::swc_ecma_transforms_react::{react as swc_react, Options, RefreshOptions, Runtime};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
-use crate::ast::build_js_ast;
+use crate::ast_2::js_ast::JsAst;
 use crate::compiler::Context;
 use crate::config::{Mode, ReactRuntimeConfig};
 
@@ -63,10 +63,8 @@ struct PrefixCode {
 
 impl VisitMut for PrefixCode {
     fn visit_mut_module(&mut self, module: &mut Module) {
-        let post_code_snippet_module =
-            build_js_ast("_pre_code.js", &self.code, &self.context).unwrap();
-        module.body.splice(0..0, post_code_snippet_module.ast.body);
-
+        let ast = JsAst::build("_pre_code.js", &self.code, self.context.clone()).unwrap();
+        module.body.splice(0..0, ast.ast.body);
         module.visit_mut_children_with(self);
     }
 }
@@ -78,9 +76,8 @@ struct PostfixCode {
 
 impl VisitMut for PostfixCode {
     fn visit_mut_module(&mut self, module: &mut Module) {
-        let post_code_snippet_module =
-            build_js_ast("_post_code.js", &self.code, &self.context).unwrap();
-        module.body.extend(post_code_snippet_module.ast.body);
+        let ast = JsAst::build("_post_code.js", &self.code, self.context.clone()).unwrap();
+        module.body.extend(ast.ast.body);
 
         module.visit_mut_children_with(self);
     }

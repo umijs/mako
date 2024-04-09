@@ -17,8 +17,8 @@ use crate::config::{DevtoolConfig, OutputMode, TreeShakingStrategy};
 use crate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::module::{Dependency, ModuleId};
 use crate::stats::{create_stats_info, print_stats, write_stats};
-use crate::transformers::transform_async_module::mark_async;
 use crate::update::UpdateResult;
+use crate::visitors::async_module::mark_async;
 
 #[derive(Clone)]
 pub struct EmitFile {

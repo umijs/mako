@@ -18,6 +18,7 @@ use mako_core::swc_ecma_visit::{VisitMutWith, VisitWith};
 use swc_core::base::try_with_handler;
 use swc_core::common::Spanned;
 
+use super::file::Content;
 use crate::ast_2::file::File;
 use crate::ast_2::{error, utils};
 use crate::compiler::Context;
@@ -114,6 +115,17 @@ impl JsAst {
                 contains_top_level_await,
             })
         })
+    }
+
+    pub fn build(path: &str, content: &str, context: Arc<Context>) -> Result<Self> {
+        JsAst::new(
+            &File::with_content(
+                path.to_string(),
+                Content::Js(content.to_string()),
+                context.clone(),
+            ),
+            context.clone(),
+        )
     }
 
     pub fn transform(

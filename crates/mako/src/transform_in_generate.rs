@@ -25,13 +25,13 @@ use crate::ast_2::js_ast::JsAst;
 use crate::compiler::{Compiler, Context};
 use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
 use crate::thread_pool;
-use crate::transformers::transform_async_module::{mark_async, AsyncModule};
-use crate::transformers::transform_meta_url_replacer::MetaUrlReplacer;
-use crate::transformers::transform_optimize_define_utils::OptimizeDefineUtils;
+use crate::visitors::async_module::{mark_async, AsyncModule};
 use crate::visitors::css_imports::CSSImports;
 use crate::visitors::dep_replacer::{DepReplacer, DependenciesToReplace};
 use crate::visitors::dynamic_import::DynamicImport;
 use crate::visitors::mako_require::MakoRequire;
+use crate::visitors::meta_url_replacer::MetaUrlReplacer;
+use crate::visitors::optimize_define_utils::OptimizeDefineUtils;
 
 impl Compiler {
     pub fn transform_all(&self, async_deps_map: HashMap<ModuleId, Vec<Dependency>>) -> Result<()> {

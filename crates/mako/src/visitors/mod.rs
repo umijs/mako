@@ -1,3 +1,4 @@
+pub(crate) mod async_module;
 pub(crate) mod css_assets;
 pub(crate) mod css_dep_analyzer;
 pub(crate) mod css_flexbugs;
@@ -9,6 +10,8 @@ pub(crate) mod dynamic_import;
 pub(crate) mod dynamic_import_to_require;
 pub(crate) mod env_replacer;
 pub(crate) mod mako_require;
+pub(crate) mod meta_url_replacer;
+pub(crate) mod optimize_define_utils;
 pub(crate) mod provide;
 pub(crate) mod react;
 pub(crate) mod try_resolve;
