@@ -22,9 +22,9 @@ use crate::config::Mode;
 use crate::module::ModuleAst;
 use crate::plugins::context_module::ContextModuleVisitor;
 use crate::targets;
-use crate::transformers::transform_px2rem::Px2Rem;
 use crate::visitors::css_assets::CSSAssets;
 use crate::visitors::css_flexbugs::CSSFlexbugs;
+use crate::visitors::css_px2rem::Px2Rem;
 use crate::visitors::default_export_namer::DefaultExportNamer;
 use crate::visitors::dynamic_import_to_require::DynamicImportToRequire;
 use crate::visitors::env_replacer::{build_env_map, EnvReplacer};
@@ -192,8 +192,7 @@ impl Transform {
                 if context.config.px2rem.is_some() {
                     let context = context.clone();
                     visitors.push(Box::new(Px2Rem {
-                        path: file.path.to_string_lossy().to_string(),
-                        context: context.clone(),
+                        config: context.config.px2rem.as_ref().unwrap().clone(),
                         current_decl: None,
                         current_selector: None,
                     }));
