@@ -26,12 +26,12 @@ use crate::config::OutputMode;
 use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
 use crate::thread_pool;
 use crate::transformers::transform_async_module::{mark_async, AsyncModule};
-use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
 use crate::transformers::transform_dynamic_import::DynamicImport;
 use crate::transformers::transform_mako_require::MakoRequire;
 use crate::transformers::transform_meta_url_replacer::MetaUrlReplacer;
 use crate::transformers::transform_optimize_define_utils::OptimizeDefineUtils;
 use crate::visitors::css_imports::CSSImports;
+use crate::visitors::dep_replacer::{DepReplacer, DependenciesToReplace};
 
 impl Compiler {
     pub fn transform_all(&self, async_deps_map: HashMap<ModuleId, Vec<Dependency>>) -> Result<()> {

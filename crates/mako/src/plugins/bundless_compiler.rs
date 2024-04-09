@@ -25,8 +25,8 @@ use crate::compiler::{Args, Context};
 use crate::config::Config;
 use crate::module::{ModuleAst, ModuleId};
 use crate::plugin::{Plugin, PluginTransformJsParam};
-use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
 use crate::transformers::transform_dynamic_import::DynamicImport;
+use crate::visitors::dep_replacer::{DepReplacer, DependenciesToReplace};
 
 pub struct BundlessCompiler {
     // pub fs_write: Option<>

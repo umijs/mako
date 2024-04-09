@@ -36,7 +36,7 @@
   ],
   "scripts": {
     "artifacts": "napi artifacts",
-    "artifacts:local": "rm -rf tmp && mkdir tmp && mv *.node tmp/ && napi artifacts --dir ./tmp --dist npm",
+    "artifacts:local": "rm -rf tmp && mkdir tmp && cp *.node tmp/ && napi artifacts --dir ./tmp --dist npm",
     "build": "napi build --release --cargo-cwd ../../crates/binding --platform --js ./binding.js --dts ./binding.d.ts",
     "postbuild": "npm run format",
     "build:mac:x86": "npm run build -- --target x86_64-apple-darwin",

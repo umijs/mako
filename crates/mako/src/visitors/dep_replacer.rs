@@ -23,11 +23,14 @@ pub struct DepReplacer<'a> {
     pub top_level_mark: Mark,
 }
 
+type ResolvedModuleId = String;
+type ResolvedModulePath = String;
+
 #[derive(Debug, Clone)]
 pub struct DependenciesToReplace {
     // resolved stores the "source" maps to (generate_id, raw_module_id)
     // e.g. "react" => ("hashed_id", "/abs/to/react/index.js")
-    pub resolved: HashMap<String, (String, String)>,
+    pub resolved: HashMap<String, (ResolvedModuleId, ResolvedModulePath)>,
     pub missing: HashMap<String, Dependency>,
 }
 
@@ -94,8 +97,8 @@ impl VisitMut for DepReplacer<'_> {
                     ..
                 } = &mut call_expr.args[0]
                 {
+                    // js
                     let source_string = source.value.clone().to_string();
-
                     match self.to_replace.missing.get(&source_string) {
                         Some(_) => {
                             call_expr.args[0] = ExprOrSpread {
@@ -109,7 +112,9 @@ impl VisitMut for DepReplacer<'_> {
                         }
                     }
 
-                    let is_dep_replaceable = if let Some((_, raw_id)) =
+                    // css
+                    // TODO: add testcases for this
+                    let is_replaceable_css = if let Some((_, raw_id)) =
                         self.to_replace.resolved.get(&source_string)
                     {
                         let file_request = parse_path(raw_id).unwrap();
@@ -121,8 +126,7 @@ impl VisitMut for DepReplacer<'_> {
                     } else {
                         false
                     };
-
-                    if is_dep_replaceable {
+                    if is_replaceable_css {
                         // remove `require('./xxx.css');`
                         if is_commonjs_require_flag {
                             *expr = Expr::Lit(quote_str!("").into());
@@ -164,7 +168,6 @@ impl VisitMut for DepReplacer<'_> {
         if let Some(str) = resolve_web_worker_mut(new_expr, self.unresolved_mark) {
             self.replace_source(str);
         }
-
         new_expr.visit_mut_children_with(self);
     }
 
@@ -190,6 +193,7 @@ impl DepReplacer<'_> {
     }
 }
 
+// TODO: duplicated code with dep_analyzer.rs
 pub fn resolve_web_worker_mut(new_expr: &mut NewExpr, unresolved_mark: Mark) -> Option<&mut Str> {
     if !new_expr.args.as_ref().is_some_and(|args| !args.is_empty()) || !new_expr.callee.is_ident() {
         return None;
@@ -265,190 +269,158 @@ impl FileRequest {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
-    use std::sync::Arc;
 
-    use mako_core::swc_common::{chain, GLOBALS};
-    use mako_core::swc_ecma_transforms::resolver;
-    use mako_core::swc_ecma_visit::VisitMut;
+    use mako_core::swc_common::GLOBALS;
+    use mako_core::swc_ecma_visit::VisitMutWith;
     use maplit::hashmap;
 
-    use crate::assert_display_snapshot;
-    use crate::ast::build_js_ast;
-    use crate::compiler::Context;
-    use crate::module::{Dependency, ImportType, Module, ModuleId, ResolveType};
-    use crate::test_helper::transform_ast_with;
-    use crate::transformers::test_helper::transform_js_code;
-    use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
+    use super::{DepReplacer, DependenciesToReplace, ResolvedModuleId, ResolvedModulePath};
+    use crate::ast_2::tests::TestUtils;
+    use crate::module::{Dependency, ImportType, ModuleId, ResolveType};
 
     #[test]
-    fn test_simple_replace() {
-        let context: Arc<Context> = Arc::new(Default::default());
-
-        GLOBALS.set(&context.meta.script.globals, || {
-            let mut ast =
-                build_js_ast("index.jsx", r#"require("react")"#, &context.clone()).unwrap();
-
-            let to_replace = DependenciesToReplace {
-                resolved: hashmap! {"react".to_string()=>
-                    (
-                        "/root/node_modules/react/index.js".to_string(),
-                        "/root/node_modules/react/index.js".to_string()
-                    )
-                },
-                missing: HashMap::new(),
-            };
-
-            let cloned = context.clone();
-
-            cloned.module_graph.write().unwrap().add_module(Module {
-                id: "index.jsx".to_string().into(),
-                is_entry: false,
-                info: None,
-                side_effects: false,
-            });
-
-            let module_id = ModuleId::new("index.jsx".to_string());
-            let mut visitor: Box<dyn VisitMut> = Box::new(chain!(
-                resolver(ast.unresolved_mark, ast.top_level_mark, false),
-                DepReplacer {
-                    module_id: &module_id,
-                    to_replace: &to_replace,
-                    context: &cloned,
-                    unresolved_mark: ast.unresolved_mark,
-                    top_level_mark: ast.top_level_mark,
-                }
-            ));
-
-            assert_display_snapshot!(transform_ast_with(
-                &mut ast.ast,
-                &mut visitor,
-                &context.meta.script.cm
-            ));
-        });
+    fn test_require() {
+        assert_eq!(
+            run(
+                r#"require("react");"#,
+                build_resolved("react", "/root/node_modules/react/index.js"),
+                Default::default()
+            ),
+            r#"require("/root/node_modules/react/index.js");"#,
+        );
     }
 
     #[test]
-    fn test_replace_missing_dep() {
-        let context: Arc<Context> = Arc::new(Default::default());
-
-        GLOBALS.set(&context.meta.script.globals, || {
-            let mut ast =
-                build_js_ast("index.jsx", r#"require("react")"#, &context.clone()).unwrap();
-
-            let to_replace = DependenciesToReplace {
-                resolved: HashMap::new(),
-                missing: hashmap! {"react".to_string() => Dependency {
-                    resolve_type: ResolveType::Import(ImportType::Default),
-                    source: "react".to_string(),
-                    resolve_as: None,
-                    span: None,
-                    order: 0,
-                }},
-            };
-
-            let cloned = context.clone();
-            let module_id = ModuleId::new("index.jsx".to_string());
-            let mut visitor: Box<dyn VisitMut> = Box::new(chain!(
-                resolver(ast.unresolved_mark, ast.top_level_mark, false),
-                DepReplacer {
-                    module_id: &module_id,
-                    to_replace: &to_replace,
-                    context: &cloned,
-                    unresolved_mark: ast.unresolved_mark,
-                    top_level_mark: ast.top_level_mark,
-                }
-            ));
-
-            assert_display_snapshot!(transform_ast_with(
-                &mut ast.ast,
-                &mut visitor,
-                &context.meta.script.cm
-            ));
-        });
+    fn test_dynamic_import() {
+        assert_eq!(
+            run(
+                r#"const x = import("x");"#,
+                build_resolved("x", "/x/index.js"),
+                Default::default()
+            ),
+            r#"const x = import("/x/index.js");"#,
+        );
     }
 
     #[test]
-    fn test_replace_top_level_missing_dep_in_try() {
-        let context: Arc<Context> = Arc::new(Default::default());
+    fn test_import() {
+        assert_eq!(
+            run(
+                r#"import x from "x";"#,
+                build_resolved("x", "/x/index.js"),
+                Default::default()
+            ),
+            r#"import x from "/x/index.js";"#,
+        );
+    }
 
-        GLOBALS.set(&context.meta.script.globals, || {
-            let mut ast = build_js_ast(
-                "index.jsx",
-                r#"
-                                       try {require("react")}catch(e){}"#,
-                &context.clone(),
+    #[test]
+    fn test_export() {
+        assert_eq!(
+            run(
+                r#"export {x} from "x";"#,
+                build_resolved("x", "/x/index.js"),
+                Default::default()
+            ),
+            r#"export { x } from "/x/index.js";"#,
+        );
+    }
+
+    #[test]
+    fn test_worker() {
+        assert_eq!(
+            run(
+                r#"new Worker(new URL('x'), base)"#,
+                build_resolved("x", "/x/index.js"),
+                Default::default()
+            ),
+            r#"new Worker(new URL("/x/index.js"), base);"#,
+        );
+    }
+
+    #[test]
+    fn test_missing_dep() {
+        assert_eq!(
+            run(
+                r#"require("react");"#,
+                Default::default(),
+                build_missing("react"),
+            ),
+            r#"
+require(Object(function makoMissingModule() {
+    var e = new Error("Cannot find module 'react'");
+    e.code = "MODULE_NOT_FOUND";
+    throw e;
+}()));
+            "#
+            .trim(),
+        );
+    }
+
+    #[test]
+    fn test_missing_dep_in_try_top_level() {
+        assert_eq!(
+            run(
+                r#"try{require("react")}catch(e){}"#,
+                Default::default(),
+                build_missing("react"),
+            ),
+            r#"
+try {
+    require(Object(function makoMissingModule() {
+        var e = new Error("Cannot find module 'react'");
+        e.code = "MODULE_NOT_FOUND";
+        throw e;
+    }()));
+} catch (e) {}
+            "#
+            .trim(),
+        );
+    }
+
+    fn build_resolved(
+        key: &str,
+        module_id: &str,
+    ) -> HashMap<String, (ResolvedModuleId, ResolvedModulePath)> {
+        hashmap! {
+            key.to_string() =>
+            (
+
+             module_id.to_string(),
+             "".to_string()
             )
-            .unwrap();
+        }
+    }
 
-            let to_replace = DependenciesToReplace {
-                resolved: HashMap::new(),
-                missing: hashmap! {"react".to_string() => Dependency {
-                    resolve_type: ResolveType::Import(ImportType::Default),
-                    source: "react".to_string(),
-                    resolve_as: None,
-                    span: None,
-                    order: 0,
-                }},
+    fn build_missing(key: &str) -> HashMap<String, Dependency> {
+        hashmap! {
+            key.to_string() => Dependency {
+                resolve_type: ResolveType::Import(ImportType::Default),
+                source: key.to_string(),
+                resolve_as: None,
+                span: None,
+                order: 0,
+            }
+        }
+    }
+
+    fn run(
+        js_code: &str,
+        resolved: HashMap<String, (ResolvedModuleId, ResolvedModulePath)>,
+        missing: HashMap<String, Dependency>,
+    ) -> String {
+        let mut test_utils = TestUtils::gen_js_ast(js_code.to_string());
+        let ast = test_utils.ast.js_mut();
+        GLOBALS.set(&test_utils.context.meta.script.globals, || {
+            let mut visitor = DepReplacer {
+                module_id: &ModuleId::new("index.jsx".into()),
+                to_replace: &DependenciesToReplace { resolved, missing },
+                context: &test_utils.context,
+                unresolved_mark: ast.unresolved_mark,
+                top_level_mark: ast.top_level_mark,
             };
-
-            let cloned = context.clone();
-            let module_id = ModuleId::new("index.jsx".to_string());
-            let mut visitor: Box<dyn VisitMut> = Box::new(chain!(
-                resolver(ast.unresolved_mark, ast.top_level_mark, false),
-                DepReplacer {
-                    module_id: &module_id,
-                    to_replace: &to_replace,
-                    context: &cloned,
-                    unresolved_mark: ast.unresolved_mark,
-                    top_level_mark: ast.top_level_mark,
-                }
-            ));
-
-            assert_display_snapshot!(transform_ast_with(
-                &mut ast.ast,
-                &mut visitor,
-                &context.meta.script.cm
-            ));
+            ast.ast.visit_mut_with(&mut visitor);
         });
-    }
-
-    #[test]
-    fn test_import_replace() {
-        assert_display_snapshot!(transform_code("import x from 'x'"));
-    }
-
-    #[test]
-    fn test_export_from_replace() {
-        assert_display_snapshot!(transform_code("export {x} from 'x'"));
-    }
-
-    #[test]
-    fn test_dynamic_import_from_replace() {
-        assert_display_snapshot!(transform_code("const x = import('x')"));
-    }
-
-    fn transform_code(code: &str) -> String {
-        let context: Arc<Context> = Arc::new(Default::default());
-        let unresolved_mark = Default::default();
-        let top_level_mark = Default::default();
-
-        let mut visitor = DepReplacer {
-            module_id: &ModuleId::new("index.jsx".into()),
-            to_replace: &DependenciesToReplace {
-                resolved: hashmap! {
-                    "x".to_string() =>
-                    (
-
-                     "/x/index.js".to_string(),
-                     "/x/index.js".to_string()
-                    )
-                },
-                missing: hashmap! {},
-            },
-            context: &context,
-            unresolved_mark,
-            top_level_mark,
-        };
-        transform_js_code(code, &mut visitor, &context)
+        test_utils.js_ast_to_code()
     }
 }
