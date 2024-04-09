@@ -27,16 +27,16 @@ impl Px2Rem {
             true
         };
 
-        let is_select_black_is_select_white = if let Some(curSelect) = &self.current_selector {
+        let is_select_black_is_select_white = if let Some(cur_select) = &self.current_selector {
             let selector_white_list = self.config.selector_white_list.is_empty()
                 || self.config.selector_white_list.iter().any(|pattern| {
                     let re = Regex::new(pattern).unwrap();
-                    re.is_match(curSelect)
+                    re.is_match(cur_select)
                 });
             let selector_black_list = self.config.selector_black_list.is_empty()
                 || self.config.selector_black_list.iter().any(|pattern| {
                     let re = Regex::new(pattern).unwrap();
-                    !re.is_match(curSelect)
+                    !re.is_match(cur_select)
                 });
             selector_black_list && selector_white_list
         } else {
