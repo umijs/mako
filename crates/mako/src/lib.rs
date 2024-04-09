@@ -41,7 +41,6 @@ mod thread_pool;
 pub mod tokio_runtime;
 mod transform;
 mod transform_in_generate;
-mod transformers;
 mod update;
 mod util;
 mod visitors;
