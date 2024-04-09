@@ -83,6 +83,7 @@ impl Compiler {
         }
         let t_tree_shaking = t_tree_shaking.elapsed();
 
+        // TODO: improve this hardcode
         if self.context.config.output.mode == OutputMode::Bundless {
             return self.generate_with_plugin_driver();
         }

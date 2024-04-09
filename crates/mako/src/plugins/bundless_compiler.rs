@@ -25,12 +25,10 @@ use crate::compiler::{Args, Context};
 use crate::config::Config;
 use crate::module::{ModuleAst, ModuleId};
 use crate::plugin::{Plugin, PluginTransformJsParam};
-use crate::transformers::transform_dynamic_import::DynamicImport;
 use crate::visitors::dep_replacer::{DepReplacer, DependenciesToReplace};
+use crate::visitors::dynamic_import::DynamicImport;
 
-pub struct BundlessCompiler {
-    // pub fs_write: Option<>
-}
+pub struct BundlessCompiler {}
 
 impl BundlessCompiler {
     pub fn transform_all(&self, context: &Arc<Context>) -> Result<()> {
@@ -122,7 +120,7 @@ impl Plugin for BundlessCompiler {
     }
 }
 
-pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> Result<()> {
+fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> Result<()> {
     mako_core::mako_profile_function!();
 
     module_ids
@@ -195,7 +193,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
     Ok(())
 }
 
-pub fn transform_js_generate(
+fn transform_js_generate(
     module_id: &ModuleId,
     context: &Arc<Context>,
     ast: &mut JsAst,
@@ -242,7 +240,9 @@ pub fn transform_js_generate(
                             };
                             ast.ast.visit_mut_with(&mut dep_replacer);
 
-                            let mut dynamic_import = DynamicImport { context };
+                            let mut dynamic_import = DynamicImport {
+                                context: context.clone(),
+                            };
                             ast.ast.visit_mut_with(&mut dynamic_import);
 
                             ast.ast
