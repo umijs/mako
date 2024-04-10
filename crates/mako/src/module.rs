@@ -17,9 +17,9 @@ use swc_core::ecma::ast::{
 };
 
 use crate::analyze_deps::AnalyzeDepsResult;
-use crate::ast_2::css_ast::CssAst;
-use crate::ast_2::file::File;
-use crate::ast_2::js_ast::JsAst;
+use crate::ast::css_ast::CssAst;
+use crate::ast::file::File;
+use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
 use crate::config::ModuleIdStrategy;
 use crate::resolve::ResolverResource;

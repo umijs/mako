@@ -21,7 +21,7 @@ use mako_core::swc_ecma_visit::VisitMutWith;
 use mako_core::swc_error_reporters::handler::try_with_handler;
 use mako_core::tracing::debug;
 
-use crate::ast_2::js_ast::JsAst;
+use crate::ast::js_ast::JsAst;
 use crate::compiler::{Compiler, Context};
 use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
 use crate::thread_pool;
@@ -288,7 +288,7 @@ mod tests {
     use std::sync::Arc;
 
     use super::transform_css_generate;
-    use crate::ast_2::css_ast::CssAst;
+    use crate::ast::css_ast::CssAst;
     use crate::compiler::Context;
 
     #[test]

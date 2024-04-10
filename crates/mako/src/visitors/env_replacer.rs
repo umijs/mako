@@ -16,7 +16,7 @@ use mako_core::swc_ecma_utils::{quote_ident, ExprExt};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 use swc_core::common::Mark;
 
-use crate::ast_2::js_ast::JsAst;
+use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
 use crate::config::ConfigError;
 
@@ -262,7 +262,7 @@ mod tests {
     use maplit::hashmap;
 
     use super::{build_env_map, EnvReplacer};
-    use crate::ast_2::tests::TestUtils;
+    use crate::ast::tests::TestUtils;
     use crate::compiler::Context;
 
     #[should_panic = "define value 'for(;;)console.log()' is not an Expression"]

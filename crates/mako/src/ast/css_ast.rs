@@ -14,8 +14,8 @@ use mako_core::{md5, swc_atoms, swc_css_parser, swc_css_visit};
 use swc_core::common::FileName;
 
 use super::file::Content;
-use crate::ast_2::file::File;
-use crate::ast_2::{error, utils};
+use crate::ast::file::File;
+use crate::ast::{error, utils};
 use crate::compiler::Context;
 use crate::config::{DevtoolConfig, Mode};
 use crate::module::Dependency;

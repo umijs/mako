@@ -186,8 +186,8 @@ mod tests {
     use swc_core::common::GLOBALS;
 
     use super::TreeShakeModule;
-    use crate::ast_2::file::{Content, File};
-    use crate::ast_2::js_ast::JsAst;
+    use crate::ast::file::{Content, File};
+    use crate::ast::js_ast::JsAst;
     use crate::compiler::Context;
     use crate::module::{Module, ModuleAst, ModuleInfo};
     use crate::plugins::farm_tree_shake::shake::skip_module::ReExportSource;

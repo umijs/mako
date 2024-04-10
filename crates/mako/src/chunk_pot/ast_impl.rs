@@ -15,7 +15,7 @@ use mako_core::swc_ecma_ast::{
 use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
 use mako_core::{mako_profile_scope, ternary};
 
-use crate::ast_2::js_ast::JsAst;
+use crate::ast::js_ast::JsAst;
 use crate::chunk::{Chunk, ChunkType};
 use crate::chunk_pot::util::{
     file_content_hash, pot_to_chunk_module, pot_to_module_object, runtime_code,

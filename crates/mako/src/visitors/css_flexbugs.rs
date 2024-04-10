@@ -171,7 +171,7 @@ mod test {
 
     use mako_core::swc_css_visit::VisitMutWith;
 
-    use crate::ast_2::tests::TestUtils;
+    use crate::ast::tests::TestUtils;
 
     // migrate from https://github.com/luisrudge/postcss-flexbugs-fixes/blob/683560e1f0a4e67009331b564d530ccfefb831ad/specs/bug4Spec.js
     #[test]

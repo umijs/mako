@@ -7,7 +7,7 @@ use swc_core::ecma::transforms::base::resolver;
 use swc_core::ecma::visit::VisitMutWith;
 
 use super::InnerTransform;
-use crate::ast_2::js_ast::JsAst;
+use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
 use crate::config::{Config, Mode, OptimizationConfig};
 use crate::module::ModuleId;

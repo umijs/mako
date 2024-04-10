@@ -9,7 +9,7 @@ use swc_core::ecma::ast::{
 use swc_core::ecma::utils::{member_expr, quote_ident, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
-use crate::ast_2::utils::is_commonjs_require;
+use crate::ast::utils::is_commonjs_require;
 use crate::export_as;
 use crate::module::ModuleId;
 use crate::plugins::farm_tree_shake::shake::module_concatenate::concatenate_context::ConcatenateContext;
@@ -328,7 +328,7 @@ mod tests {
     use swc_core::ecma::utils::collect_decls;
 
     use super::*;
-    use crate::ast_2::js_ast::JsAst;
+    use crate::ast::js_ast::JsAst;
     use crate::compiler::Context;
 
     fn transform_with_external_replace(code: &str) -> String {

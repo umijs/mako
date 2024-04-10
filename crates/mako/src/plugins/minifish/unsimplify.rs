@@ -31,7 +31,7 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
-    use crate::ast_2::js_ast::JsAst;
+    use crate::ast::js_ast::JsAst;
     use crate::compiler::Context;
 
     fn context() -> Arc<Context> {

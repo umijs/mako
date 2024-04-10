@@ -5,7 +5,7 @@ use mako_core::swc_ecma_ast::{
     PropOrSpread, Stmt,
 };
 
-use crate::ast_2::js_ast::{JSAstGenerated, JsAst};
+use crate::ast::js_ast::{JSAstGenerated, JsAst};
 use crate::chunk::Chunk;
 use crate::compiler::Compiler;
 use crate::generate_chunks::modules_to_js_stmts;

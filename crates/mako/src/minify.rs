@@ -13,7 +13,7 @@ use mako_core::swc_ecma_transforms::resolver;
 use mako_core::swc_ecma_visit::VisitMutWith;
 use mako_core::swc_error_reporters::handler::try_with_handler;
 
-use crate::ast_2::js_ast::JsAst;
+use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
 
 pub fn minify_js(ast: &mut JsAst, context: &Arc<Context>) -> Result<()> {

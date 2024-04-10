@@ -218,8 +218,8 @@ mod tests {
 
     use super::*;
     use crate::analyze_deps::AnalyzeDeps;
-    use crate::ast_2::file::File;
-    use crate::ast_2::js_ast::JsAst;
+    use crate::ast::file::File;
+    use crate::ast::js_ast::JsAst;
     use crate::compiler::{Args, Context};
     use crate::module::ModuleAst;
 
@@ -493,7 +493,7 @@ my.call("toast");
         let context = Arc::new(context);
         let file = File::with_content(
             "cut.js".to_string(),
-            crate::ast_2::file::Content::Js(code.to_string()),
+            crate::ast::file::Content::Js(code.to_string()),
             context.clone(),
         );
         let mut ast = JsAst::new(&file, context.clone()).unwrap();

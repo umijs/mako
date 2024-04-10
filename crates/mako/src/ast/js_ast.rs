@@ -19,8 +19,8 @@ use swc_core::base::try_with_handler;
 use swc_core::common::Spanned;
 
 use super::file::Content;
-use crate::ast_2::file::File;
-use crate::ast_2::{error, utils};
+use crate::ast::file::File;
+use crate::ast::{error, utils};
 use crate::compiler::Context;
 use crate::config::{DevtoolConfig, Mode};
 use crate::module::Dependency;
@@ -278,7 +278,7 @@ pub struct JSAstGenerated {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_2::tests::TestUtils;
+    use crate::ast::tests::TestUtils;
 
     #[test]
     fn test_chinese_ascii() {

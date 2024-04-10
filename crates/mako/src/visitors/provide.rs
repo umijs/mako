@@ -125,7 +125,7 @@ mod tests {
     use swc_core::ecma::visit::VisitMutWith;
 
     use super::Provide;
-    use crate::ast_2::tests::TestUtils;
+    use crate::ast::tests::TestUtils;
 
     #[test]
     fn test_provide_normal() {

@@ -192,7 +192,7 @@ mod tests {
 
     use mako_core::swc_ecma_visit::VisitMutWith;
 
-    use crate::ast_2::js_ast::JsAst;
+    use crate::ast::js_ast::JsAst;
     use crate::compiler::Context;
     use crate::config::{TransformImportConfig, TransformImportStyle};
     use crate::plugins::import::ImportVisitor;
