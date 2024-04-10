@@ -12,33 +12,31 @@ pub(crate) fn default_root() -> f64 {
 pub struct Px2Rem {
     pub config: Px2RemConfig,
     pub current_decl: Option<String>,
-    // TODO: support selector
     pub current_selector: Option<String>,
 }
 
 impl Px2Rem {
     fn should_transform(&self) -> bool {
-        let is_whitelist_is_in_blacklist = if let Some(current_decl) = &self.current_decl {
+        let is_whitelist_is_in_blacklist = if let Some(decl) = &self.current_decl {
             let is_whitelist_empty = self.config.prop_white_list.is_empty();
-            let is_in_whitelist = self.config.prop_white_list.contains(current_decl);
-            let is_in_blacklist = self.config.prop_black_list.contains(current_decl);
+            let is_in_whitelist = self.config.prop_white_list.contains(decl);
+            let is_in_blacklist = self.config.prop_black_list.contains(decl);
             (is_whitelist_empty || is_in_whitelist) && !is_in_blacklist
         } else {
             true
         };
-
-        let is_select_black_is_select_white = if let Some(cur_select) = &self.current_selector {
-            let selector_white_list = self.config.selector_white_list.is_empty()
-                || self.config.selector_white_list.iter().any(|pattern| {
-                    let re = Regex::new(pattern).unwrap();
-                    re.is_match(cur_select)
-                });
-            let selector_black_list = self.config.selector_black_list.is_empty()
-                || self.config.selector_black_list.iter().any(|pattern| {
-                    let re = Regex::new(pattern).unwrap();
-                    !re.is_match(cur_select)
-                });
-            selector_black_list && selector_white_list
+        let is_select_black_is_select_white = if let Some(selector) = &self.current_selector {
+            let is_whitelist_empty = self.config.selector_white_list.is_empty();
+            let is_in_whitelist = self.config.selector_white_list.iter().any(|pattern| {
+                let re = Regex::new(pattern).unwrap();
+                re.is_match(selector)
+            });
+            let is_in_blacklist = self.config.selector_black_list.iter().any(|pattern| {
+                // TODO: should have performance issues, need benchmark
+                let re = Regex::new(pattern).unwrap();
+                re.is_match(selector)
+            });
+            (is_whitelist_empty || is_in_whitelist) && !is_in_blacklist
         } else {
             true
         };
@@ -58,14 +56,6 @@ impl VisitMut for Px2Rem {
         self.current_decl = None;
     }
 
-    fn visit_mut_length(&mut self, n: &mut Length) {
-        if n.unit.value.to_string() == "px" && self.should_transform() {
-            n.value.value /= self.config.root;
-            n.value.raw = None;
-            n.unit.value = "rem".into();
-        }
-        n.visit_mut_children_with(self);
-    }
     fn visit_mut_compound_selector(&mut self, n: &mut CompoundSelector) {
         if !n.subclass_selectors.is_empty() {
             // 假设我们只关心第一个 subclass_selector，因此获取第一个元素
@@ -92,9 +82,18 @@ impl VisitMut for Px2Rem {
         } else {
             self.current_selector = Some(String::from(""));
         }
-        // self.current_selector = match &n { CompoundSelector{..}=>Some() }
         n.visit_mut_children_with(self);
     }
+
+    fn visit_mut_length(&mut self, n: &mut Length) {
+        if n.unit.value.to_string() == "px" && self.should_transform() {
+            n.value.value /= self.config.root;
+            n.value.raw = None;
+            n.unit.value = "rem".into();
+        }
+        n.visit_mut_children_with(self);
+    }
+
     fn visit_mut_token(&mut self, t: &mut Token) {
         if let Token::Dimension(dimension) = t {
             if dimension.unit.to_string() == "px" && self.should_transform() {
@@ -149,7 +148,7 @@ mod tests {
     }
 
     #[test]
-    fn test_blacklist() {
+    fn test_prop_blacklist() {
         assert_eq!(
             run(
                 r#".a{width:100px;height:100px;}"#,
@@ -163,7 +162,7 @@ mod tests {
     }
 
     #[test]
-    fn test_whitelist() {
+    fn test_prop_whitelist() {
         assert_eq!(
             run(
                 r#".a{width:100px;height:100px;}"#,
@@ -176,33 +175,57 @@ mod tests {
             r#".a{width:1rem;height:100px}"#
         );
     }
+
     #[test]
     fn test_select_whitelist() {
         assert_eq!(
             run(
-                r#".a{width:100px;height:100px;}.b{width:100px;height:100px;}"#,
+                r#".a{width:100px;}.b{width:100px;}"#,
                 Px2RemConfig {
                     selector_white_list: vec!["a".to_string()],
                     selector_black_list: vec![],
                     ..Default::default()
                 }
             ),
-            r#".a{width:1rem;height:1rem}.b{width:100px;height:100px}"#
+            r#".a{width:1rem}.b{width:100px}"#
         );
     }
+
     #[test]
     fn test_select_blacklist() {
         assert_eq!(
             run(
-                r#".a{width:100px;height:100px;}.b{width:100px;height:100px;}"#,
+                r#".a{width:100px;}.b{width:100px;}"#,
                 Px2RemConfig {
                     selector_black_list: vec!["a".to_string()],
                     ..Default::default()
                 }
             ),
-            r#".a{width:100px;height:100px}.b{width:1rem;height:1rem}"#
+            r#".a{width:100px}.b{width:1rem}"#
+        );
+        assert_eq!(
+            run(
+                r#".a{width:100px;}.ac{width:100px;}.b{width:100px;}"#,
+                Px2RemConfig {
+                    selector_black_list: vec!["a".to_string()],
+                    ..Default::default()
+                }
+            ),
+            // .ac is matched by "a"
+            r#".a{width:100px}.ac{width:100px}.b{width:1rem}"#
+        );
+        assert_eq!(
+            run(
+                r#".a{width:100px;}.ac{width:100px;}.b{width:100px;}"#,
+                Px2RemConfig {
+                    selector_black_list: vec!["^a$".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#".a{width:100px}.ac{width:1rem}.b{width:1rem}"#
         );
     }
+
     fn run_with_default(css_code: &str) -> String {
         run(css_code, Px2RemConfig::default())
     }
