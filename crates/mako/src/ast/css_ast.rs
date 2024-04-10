@@ -13,8 +13,9 @@ use mako_core::swc_ecma_parser::StringInput;
 use mako_core::{md5, swc_atoms, swc_css_parser, swc_css_visit};
 use swc_core::common::FileName;
 
-use crate::ast_2::file::File;
-use crate::ast_2::{error, utils};
+use super::file::Content;
+use crate::ast::file::File;
+use crate::ast::{error, utils};
 use crate::compiler::Context;
 use crate::config::{DevtoolConfig, Mode};
 use crate::module::Dependency;
@@ -71,6 +72,23 @@ impl CssAst {
             ast,
             path: file.relative_path.to_string_lossy().to_string(),
         })
+    }
+
+    pub fn build(
+        path: &str,
+        content: &str,
+        context: Arc<Context>,
+        css_modules: bool,
+    ) -> Result<Self> {
+        CssAst::new(
+            &File::with_content(
+                path.to_string(),
+                Content::Css(content.to_string()),
+                context.clone(),
+            ),
+            context.clone(),
+            css_modules,
+        )
     }
 
     pub fn analyze_deps(&self) -> Vec<Dependency> {

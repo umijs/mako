@@ -264,9 +264,9 @@ impl Compiler {
 
                 let path = entry.to_string_lossy().to_string();
                 let file = if is_entry {
-                    crate::ast_2::file::File::new_entry(path, self.context.clone())
+                    crate::ast::file::File::new_entry(path, self.context.clone())
                 } else {
-                    crate::ast_2::file::File::new(path, self.context.clone())
+                    crate::ast::file::File::new(path, self.context.clone())
                 };
                 let module = Self::build_module(&file, None, self.context.clone())
                     .map_err(|err| BuildError::BuildTasksError { errors: vec![err] })?;
@@ -365,7 +365,7 @@ impl Compiler {
         let files = added
             .iter()
             .map(|path| {
-                crate::ast_2::file::File::new(
+                crate::ast::file::File::new(
                     path.to_string_lossy().to_string(),
                     self.context.clone(),
                 )

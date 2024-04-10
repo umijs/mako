@@ -6,7 +6,7 @@ use mako_core::swc_ecma_ast::Module;
 use mako_core::swc_ecma_transforms_react::{react as swc_react, Options, RefreshOptions, Runtime};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
-use crate::ast_2::js_ast::JsAst;
+use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
 use crate::config::{Mode, ReactRuntimeConfig};
 
@@ -137,7 +137,7 @@ mod tests {
     use mako_core::swc_ecma_visit::VisitMutWith;
 
     use super::react;
-    use crate::ast_2::tests::TestUtils;
+    use crate::ast::tests::TestUtils;
 
     #[test]
     fn test_use_refresh() {

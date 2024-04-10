@@ -3,8 +3,8 @@ use std::sync::Arc;
 use mako_core::swc_css_ast::{Url, UrlValue};
 use mako_core::swc_css_visit::VisitMut;
 
-use crate::ast_2::file::File;
-use crate::ast_2::utils::{is_remote_or_data_or_hash, remove_first_tilde};
+use crate::ast::file::File;
+use crate::ast::utils::{is_remote_or_data_or_hash, remove_first_tilde};
 use crate::compiler::Context;
 use crate::load::Load;
 use crate::module::{Dependency, ResolveType};
@@ -67,7 +67,7 @@ impl VisitMut for CSSAssets {
 mod tests {
     use mako_core::swc_css_visit::VisitMutWith;
 
-    use crate::ast_2::tests::TestUtils;
+    use crate::ast::tests::TestUtils;
 
     #[test]
     fn test_base64() {

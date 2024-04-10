@@ -10,7 +10,7 @@ use mako_core::swc_ecma_ast::{
 use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
-use crate::ast_2::utils::{is_commonjs_require, is_dynamic_import, is_remote_or_data};
+use crate::ast::utils::{is_commonjs_require, is_dynamic_import, is_remote_or_data};
 use crate::compiler::Context;
 use crate::module::{Dependency, ModuleId};
 use crate::visitors::virtual_css_modules::is_css_path;
@@ -275,7 +275,7 @@ mod tests {
     use maplit::hashmap;
 
     use super::{DepReplacer, DependenciesToReplace, ResolvedModuleId, ResolvedModulePath};
-    use crate::ast_2::tests::TestUtils;
+    use crate::ast::tests::TestUtils;
     use crate::module::{Dependency, ImportType, ModuleId, ResolveType};
 
     #[test]

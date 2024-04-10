@@ -6,7 +6,7 @@ use mako_core::swc_ecma_ast::{
 };
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
-use crate::ast_2::utils::{get_first_str_arg, is_commonjs_require};
+use crate::ast::utils::{get_first_str_arg, is_commonjs_require};
 use crate::compiler::Context;
 use crate::module::{Dependency, ResolveType};
 use crate::resolve;
@@ -92,7 +92,7 @@ mod tests {
     use swc_core::common::GLOBALS;
 
     use super::TryResolve;
-    use crate::ast_2::tests::TestUtils;
+    use crate::ast::tests::TestUtils;
 
     #[test]
     fn test_try_require() {

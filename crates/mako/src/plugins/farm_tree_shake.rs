@@ -93,7 +93,7 @@ mod tests {
     use swc_core::ecma::visit::VisitMutWith;
 
     use super::*;
-    use crate::ast_2::tests::TestUtils;
+    use crate::ast::tests::TestUtils;
 
     #[test]
     fn test_split_multi_declarator_decl() {

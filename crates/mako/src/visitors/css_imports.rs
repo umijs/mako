@@ -2,7 +2,7 @@ use mako_core::swc_common::util::take::Take;
 use mako_core::swc_css_ast::{AtRule, AtRulePrelude, ImportHref, Rule, Stylesheet, UrlValue};
 use mako_core::swc_css_visit::{VisitMut, VisitMutWith};
 
-use crate::ast_2::utils::is_remote_or_data_or_hash;
+use crate::ast::utils::is_remote_or_data_or_hash;
 
 pub struct CSSImports;
 
@@ -70,7 +70,7 @@ mod tests {
 
     use mako_core::swc_css_visit::VisitMutWith;
 
-    use crate::ast_2::tests::TestUtils;
+    use crate::ast::tests::TestUtils;
 
     #[test]
     fn test_keep_none_relative() {
