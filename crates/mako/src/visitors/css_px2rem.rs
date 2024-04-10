@@ -25,7 +25,7 @@ impl Px2Rem {
     }
 
     fn should_transform(&self) -> bool {
-        let is_whitelist_is_in_blacklist = if let Some(decl) = &self.current_decl {
+        let is_prop_valid = if let Some(decl) = &self.current_decl {
             let is_whitelist_empty = self.config.prop_white_list.is_empty();
             let is_in_whitelist = self.config.prop_white_list.contains(decl);
             let is_in_blacklist = self.config.prop_black_list.contains(decl);
@@ -33,7 +33,7 @@ impl Px2Rem {
         } else {
             true
         };
-        let is_select_black_is_select_white = if let Some(selector) = &self.current_selector {
+        let is_selector_valid = if let Some(selector) = &self.current_selector {
             let is_whitelist_empty = self.config.selector_white_list.is_empty();
             let is_in_whitelist = self.config.selector_white_list.iter().any(|pattern| {
                 let re = Regex::new(pattern).unwrap();
@@ -48,7 +48,7 @@ impl Px2Rem {
         } else {
             true
         };
-        is_whitelist_is_in_blacklist && is_select_black_is_select_white
+        is_prop_valid && is_selector_valid
     }
 }
 
@@ -67,7 +67,6 @@ impl VisitMut for Px2Rem {
     fn visit_mut_compound_selector(&mut self, n: &mut CompoundSelector) {
         if !n.subclass_selectors.is_empty() {
             // 假设我们只关心第一个 subclass_selector，因此获取第一个元素
-
             // 使用匹配来处理不同类型的 SubclassSelector
             self.current_selector = match n.subclass_selectors.first().unwrap() {
                 SubclassSelector::Class(class_selector) => {
@@ -77,18 +76,11 @@ impl VisitMut for Px2Rem {
                 _ => None,
             };
         } else if let Some(type_selector) = &n.type_selector {
-            self.current_selector = Some(
-                type_selector
-                    .clone()
-                    .tag_name()
-                    .unwrap()
-                    .name
-                    .value
-                    .value
-                    .to_string(),
-            )
+            if let Some(name) = type_selector.clone().tag_name() {
+                self.current_selector = Some(name.name.value.value.to_string());
+            }
         } else {
-            self.current_selector = Some(String::from(""));
+            self.current_selector = None;
         }
         n.visit_mut_children_with(self);
     }
@@ -186,7 +178,7 @@ mod tests {
     }
 
     #[test]
-    fn test_select_whitelist() {
+    fn test_selector_whitelist() {
         assert_eq!(
             run(
                 r#".a{width:100px;}.b{width:100px;}"#,
@@ -201,7 +193,7 @@ mod tests {
     }
 
     #[test]
-    fn test_select_blacklist() {
+    fn test_selector_blacklist() {
         assert_eq!(
             run(
                 r#".a{width:100px;}.b{width:100px;}"#,
@@ -232,6 +224,23 @@ mod tests {
                 }
             ),
             r#".a{width:100px}.ac{width:1rem}.b{width:1rem}"#
+        );
+    }
+
+    // TODO: FIXME
+    // 如果有多个 selector，应该「全满足 whitelist」且「全不满足 blacklist」时才做 transform
+    #[test]
+    #[ignore]
+    fn test_multi_selectors_whitelist() {
+        assert_eq!(
+            run(
+                r#".a,.b{width:100px;}"#,
+                Px2RemConfig {
+                    selector_white_list: vec!["b".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#".a,.b{width:100px}"#
         );
     }
 
