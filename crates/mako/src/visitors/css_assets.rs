@@ -71,20 +71,14 @@ mod tests {
 
     #[test]
     fn test_base64() {
-        assert_eq!(
-            run(r#".foo { background: url(umi.png) }"#)
-                .contains(".foo{background:url(data:image/png;base64,"),
-            true
-        );
+        assert!(run(r#".foo { background: url(umi.png) }"#)
+            .contains(".foo{background:url(data:image/png;base64,"));
     }
 
     #[test]
     fn test_strip_first_slash() {
-        assert_eq!(
-            run(r#".foo { background: url(~umi.png) }"#)
-                .contains(".foo{background:url(data:image/png;base64,"),
-            true
-        );
+        assert!(run(r#".foo { background: url(~umi.png) }"#)
+            .contains(".foo{background:url(data:image/png;base64,"));
     }
 
     #[test]
@@ -117,10 +111,7 @@ mod tests {
 
     #[test]
     fn test_big_image() {
-        assert_eq!(
-            run(r#".foo { background: url(big.jpg) }"#).contains(".foo{background:url(big."),
-            true
-        );
+        assert!(run(r#".foo { background: url(big.jpg) }"#).contains(".foo{background:url(big."));
     }
 
     fn run(css_code: &str) -> String {
