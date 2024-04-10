@@ -3,7 +3,7 @@ use mako_core::swc_ecma_ast::{CondExpr, Expr};
 use mako_core::swc_ecma_utils::member_expr;
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
-use crate::ast_2::utils::is_import_meta_url;
+use crate::ast::utils::is_import_meta_url;
 
 pub struct MetaUrlReplacer {}
 
@@ -29,7 +29,7 @@ mod tests {
     use swc_core::common::GLOBALS;
 
     use super::MetaUrlReplacer;
-    use crate::ast_2::tests::TestUtils;
+    use crate::ast::tests::TestUtils;
 
     #[test]
     fn test_normal() {

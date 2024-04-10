@@ -4,8 +4,8 @@ use std::sync::Arc;
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::thiserror::Error;
 
-use crate::ast_2::error;
-use crate::ast_2::file::File;
+use crate::ast::error;
+use crate::ast::file::File;
 use crate::compiler::Context;
 use crate::module::{Dependency, ModuleAst};
 use crate::resolve::{resolve, ResolverResource};

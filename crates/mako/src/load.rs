@@ -12,7 +12,7 @@ use mako_core::thiserror::Error;
 use mako_core::toml::{from_str as from_toml_str, Value as TomlValue};
 use mako_core::tracing::debug;
 
-use crate::ast_2::file::{Content, File};
+use crate::ast::file::{Content, File};
 use crate::compiler::Context;
 use crate::config::Mode;
 use crate::plugin::PluginLoadParam;

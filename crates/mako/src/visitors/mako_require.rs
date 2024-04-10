@@ -3,7 +3,7 @@ use mako_core::swc_common::Mark;
 use mako_core::swc_ecma_ast::{CallExpr, Callee, Expr, ExprOrSpread, Ident, Lit, Str};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
-use crate::ast_2::utils::is_ident_undefined;
+use crate::ast::utils::is_ident_undefined;
 
 const MAKO_REQUIRE: &str = "__mako_require__";
 
@@ -55,7 +55,7 @@ mod tests {
     use swc_core::common::GLOBALS;
 
     use super::MakoRequire;
-    use crate::ast_2::tests::TestUtils;
+    use crate::ast::tests::TestUtils;
 
     #[test]
     fn test_require_ident() {
