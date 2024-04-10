@@ -32,7 +32,8 @@
   },
   "files": [
     "bin",
-    "dist"
+    "dist",
+    "binding.*"
   ],
   "scripts": {
     "artifacts": "napi artifacts",
