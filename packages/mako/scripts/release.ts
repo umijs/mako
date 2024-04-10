@@ -63,7 +63,7 @@ async function run() {
   const willContinue = ((await question('Continue? y/[n]')) || 'n').trim();
   if (willContinue !== 'y') {
     console.log('Abort!');
-    process.exit(0);
+    process.exit(1);
   }
 
   // update version to package.json
