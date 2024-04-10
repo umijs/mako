@@ -4,7 +4,7 @@ use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{ArrayLit, Expr, ExprOrSpread, Lit};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
-use crate::ast_2::utils::{
+use crate::ast::utils::{
     id, is_dynamic_import, member_call, member_prop, promise_all, require_ensure,
 };
 use crate::chunk::ChunkId;
@@ -116,7 +116,7 @@ mod tests {
     use mako_core::swc_ecma_visit::VisitMutWith;
 
     use super::DynamicImport;
-    use crate::ast_2::tests::TestUtils;
+    use crate::ast::tests::TestUtils;
     use crate::chunk::{Chunk, ChunkType};
 
     // TODO: add nested chunk test

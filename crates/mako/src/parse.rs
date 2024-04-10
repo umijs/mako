@@ -6,9 +6,9 @@ use mako_core::thiserror::Error;
 use mako_core::tracing::debug;
 
 use crate::analyze_deps::AnalyzeDeps;
-use crate::ast_2::css_ast::CssAst;
-use crate::ast_2::file::{Content, File};
-use crate::ast_2::js_ast::JsAst;
+use crate::ast::css_ast::CssAst;
+use crate::ast::file::{Content, File};
+use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
 use crate::module::ModuleAst;
 use crate::plugin::PluginParseParam;

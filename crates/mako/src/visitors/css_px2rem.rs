@@ -113,7 +113,7 @@ mod tests {
     use mako_core::swc_css_visit::VisitMutWith;
 
     use super::Px2Rem;
-    use crate::ast_2::tests::TestUtils;
+    use crate::ast::tests::TestUtils;
     use crate::config::Px2RemConfig;
 
     #[test]

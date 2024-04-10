@@ -87,7 +87,7 @@ mod tests {
     use swc_core::common::GLOBALS;
 
     use super::DefaultExportNamer;
-    use crate::ast_2::tests::TestUtils;
+    use crate::ast::tests::TestUtils;
 
     #[test]
     fn test_normal() {
