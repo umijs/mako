@@ -1,6 +1,5 @@
 mod ast_impl;
 mod str_impl;
-mod str_impl_2;
 pub mod util;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -60,8 +59,8 @@ impl<'cp> ChunkPot<'cp> {
             self.use_eval(context),
             ternary!(
                 context.args.watch,
-                str_impl_2::render_normal_js_chunk,
-                str_impl_2::render_normal_js_chunk_no_cache
+                str_impl::render_normal_js_chunk,
+                str_impl::render_normal_js_chunk_no_cache
             ),
             ternary!(
                 context.args.watch,
@@ -104,7 +103,7 @@ impl<'cp> ChunkPot<'cp> {
 
             files.push(css_chunk_file);
             files.push(if self.use_eval(context) {
-                str_impl_2::render_entry_js_chunk(self, js_map, &css_map, chunk, context, hmr_hash)?
+                str_impl::render_entry_js_chunk(self, js_map, &css_map, chunk, context, hmr_hash)?
             } else {
                 ast_impl::render_entry_js_chunk(self, js_map, &css_map, chunk, context, hmr_hash)?
             });
@@ -112,7 +111,7 @@ impl<'cp> ChunkPot<'cp> {
             mako_core::mako_profile_scope!("EntryDevJsChunk", &self.chunk_id);
 
             files.push(if self.use_eval(context) {
-                str_impl_2::render_entry_js_chunk(self, js_map, css_map, chunk, context, hmr_hash)?
+                str_impl::render_entry_js_chunk(self, js_map, css_map, chunk, context, hmr_hash)?
             } else {
                 ast_impl::render_entry_js_chunk(self, js_map, css_map, chunk, context, hmr_hash)?
             });
@@ -122,9 +121,8 @@ impl<'cp> ChunkPot<'cp> {
     }
 
     fn use_eval(&self, context: &Arc<Context>) -> bool {
-        context.config.dev_eval
-            && context.args.watch
-            && matches!(context.config.mode, Mode::Development)
+        // use eval when in dev mode and watch enabled
+        context.args.watch && matches!(context.config.mode, Mode::Development)
     }
 
     fn split_modules<'a>(
