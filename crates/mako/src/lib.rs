@@ -4,7 +4,6 @@
 #![feature(result_option_inspect)]
 
 mod analyze_deps;
-mod ast;
 pub mod ast_2;
 mod build;
 mod chunk;

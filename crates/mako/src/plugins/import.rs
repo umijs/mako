@@ -192,7 +192,8 @@ mod tests {
 
     use mako_core::swc_ecma_visit::VisitMutWith;
 
-    use crate::ast::{build_js_ast, js_ast_to_code};
+    use crate::ast_2::js_ast::JsAst;
+    use crate::compiler::Context;
     use crate::config::{TransformImportConfig, TransformImportStyle};
     use crate::plugins::import::ImportVisitor;
 
@@ -353,11 +354,9 @@ import DatePicker from "antd/lib/date-picker";
 
     fn generate(code: &str, config: &Vec<TransformImportConfig>) -> String {
         let path = "/test/path";
-        let context = &Arc::new(Default::default());
-        let mut ast = build_js_ast(path, code, context).unwrap().ast;
-
-        ast.visit_mut_with(&mut ImportVisitor { config });
-
-        js_ast_to_code(&ast, context, path).unwrap().0
+        let context: Arc<Context> = Arc::new(Default::default());
+        let mut ast = JsAst::build(path, code, context.clone()).unwrap();
+        ast.ast.visit_mut_with(&mut ImportVisitor { config });
+        ast.generate(context.clone()).unwrap().code
     }
 }

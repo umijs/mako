@@ -11,7 +11,7 @@ use mako_core::rayon::prelude::*;
 use mako_core::serde::Serialize;
 use mako_core::tracing::debug;
 
-use crate::ast::base64_encode;
+use crate::ast_2::utils::base64_encode;
 use crate::compiler::{Compiler, Context};
 use crate::config::{DevtoolConfig, OutputMode, TreeShakingStrategy};
 use crate::generate_chunks::{ChunkFile, ChunkFileType};

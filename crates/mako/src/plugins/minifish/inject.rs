@@ -218,7 +218,6 @@ mod tests {
 
     use super::*;
     use crate::analyze_deps::AnalyzeDeps;
-    use crate::ast::{build_js_ast, js_ast_to_code};
     use crate::ast_2::file::File;
     use crate::ast_2::js_ast::JsAst;
     use crate::compiler::{Args, Context};
@@ -228,11 +227,8 @@ mod tests {
         let mut context = Context::default();
         context.config.devtool = None;
         let context = Arc::new(context);
-
-        let mut ast = build_js_ast("cut.js", code, &context).unwrap();
-
+        let mut ast = JsAst::build("cut.js", code, context.clone()).unwrap();
         let mut injector = MyInjector::new(ast.unresolved_mark, injects);
-
         GLOBALS.set(&context.meta.script.globals, || {
             ast.ast.visit_mut_with(&mut resolver(
                 ast.unresolved_mark,
@@ -241,10 +237,7 @@ mod tests {
             ));
             ast.ast.visit_mut_with(&mut injector);
         });
-
-        let (code, _) = js_ast_to_code(&ast.ast, &context, "x.js").unwrap();
-
-        code
+        ast.generate(context.clone()).unwrap().code
     }
 
     #[test]

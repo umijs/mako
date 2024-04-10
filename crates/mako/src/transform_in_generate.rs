@@ -288,7 +288,8 @@ mod tests {
     use std::sync::Arc;
 
     use super::transform_css_generate;
-    use crate::ast::{build_css_ast, css_ast_to_code};
+    use crate::ast_2::css_ast::CssAst;
+    use crate::compiler::Context;
 
     #[test]
     fn test_transform_css_import() {
@@ -297,8 +298,7 @@ mod tests {
 .foo { color: red; }
         "#
         .trim();
-        let (code, _cm) = transform_css_code(code, None);
-        println!(">> CODE\n{}", code);
+        let code = transform_css_code(code, None);
         assert_eq!(
             code,
             r#".foo {
@@ -322,8 +322,7 @@ mod tests {
 @import "https://example.com/other.css";
         "#
         .trim();
-        let (code, _cm) = transform_css_code(code, None);
-        println!(">> CODE\n{}", code);
+        let code = transform_css_code(code, None);
         assert_eq!(
             code,
             r#"@import "https://example.com/first.css";
@@ -345,13 +344,13 @@ mod tests {
         );
     }
 
-    fn transform_css_code(content: &str, path: Option<&str>) -> (String, String) {
-        let path = if let Some(p) = path { p } else { "test.tsx" };
-        let context = Arc::new(Default::default());
-        let mut ast = build_css_ast(path, content, &context, false).unwrap();
-        transform_css_generate(&mut ast, &context);
-        let (code, _sourcemap) = css_ast_to_code(&ast, &context, "test.css");
-        let code = code.trim().to_string();
-        (code, _sourcemap)
+    fn transform_css_code(content: &str, path: Option<&str>) -> String {
+        let path = if let Some(p) = path { p } else { "test.css" };
+        let context: Arc<Context> = Arc::new(Default::default());
+        let mut ast = CssAst::build(path, content, context.clone(), false).unwrap();
+        transform_css_generate(&mut ast.ast, &context);
+        let code = ast.generate(context.clone()).unwrap().code;
+        println!("{}", code);
+        code
     }
 }

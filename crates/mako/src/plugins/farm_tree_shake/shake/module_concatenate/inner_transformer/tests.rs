@@ -7,7 +7,7 @@ use swc_core::ecma::transforms::base::resolver;
 use swc_core::ecma::visit::VisitMutWith;
 
 use super::InnerTransform;
-use crate::ast::{build_js_ast, js_ast_to_code};
+use crate::ast_2::js_ast::JsAst;
 use crate::compiler::Context;
 use crate::config::{Config, Mode, OptimizationConfig};
 use crate::module::ModuleId;
@@ -636,7 +636,7 @@ fn inner_trans_code(code: &str, concatenate_context: &mut ConcatenateContext) ->
         ..Default::default()
     });
 
-    let mut ast = build_js_ast("mut.js", code, &context).unwrap();
+    let mut ast = JsAst::build("mut.js", code, context.clone()).unwrap();
     let module_id = ModuleId::from("mut.js");
 
     let src_to_module = hashmap! {
@@ -665,8 +665,11 @@ fn inner_trans_code(code: &str, concatenate_context: &mut ConcatenateContext) ->
             *comment = Default::default();
         }
 
-        let (code, _) = js_ast_to_code(&ast.ast, &context, "mut.js").unwrap();
-        code.trim().to_string()
+        ast.generate(context.clone())
+            .unwrap()
+            .code
+            .trim()
+            .to_string()
     })
 }
 

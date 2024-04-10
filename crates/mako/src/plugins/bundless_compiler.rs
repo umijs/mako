@@ -19,7 +19,6 @@ use mako_core::swc_ecma_visit::VisitMutWith;
 use mako_core::swc_error_reporters::handler::try_with_handler;
 use mako_core::tracing::warn;
 
-use crate::ast::js_ast_to_code;
 use crate::ast_2::js_ast::JsAst;
 use crate::compiler::{Args, Context};
 use crate::config::Config;
@@ -100,11 +99,8 @@ impl Plugin for BundlessCompiler {
                         // nothing
                         // todo: generate resolved AJSON
                     } else {
-                        let (code, _) = js_ast_to_code(&js_ast.ast, context, "a.js")
-                            .unwrap_or(("".to_string(), "".to_string()));
-
+                        let code = js_ast.generate(context.clone()).unwrap().code;
                         let target = to_dist_path(&id.id, context);
-
                         self.write_to_dist(target, code, context);
                     }
                 }

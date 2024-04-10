@@ -5,7 +5,7 @@ use mako_core::swc_ecma_ast::{
     PropOrSpread, Stmt,
 };
 
-use crate::ast::{build_js_ast, js_ast_to_code};
+use crate::ast_2::js_ast::{JSAstGenerated, JsAst};
 use crate::chunk::Chunk;
 use crate::compiler::Compiler;
 use crate::generate_chunks::modules_to_js_stmts;
@@ -27,11 +27,9 @@ impl Compiler {
             &format!("runtime._h='{}';", current_hash),
         );
         // TODO: handle error
-        let mut js_ast = build_js_ast(filename, content.as_str(), &self.context)
-            .unwrap()
-            .ast;
+        let mut js_ast = JsAst::build(filename, content.as_str(), self.context.clone()).unwrap();
 
-        for stmt in &mut js_ast.body {
+        for stmt in &mut js_ast.ast.body {
             if let ModuleItem::Stmt(Stmt::Expr(ExprStmt {
                 expr: box Expr::Call(CallExpr { args, .. }),
                 ..
@@ -57,7 +55,7 @@ impl Compiler {
             }
         }
 
-        let (js_code, js_sourcemap) = js_ast_to_code(&js_ast, &self.context, filename).unwrap();
-        Ok((js_code, js_sourcemap))
+        let JSAstGenerated { code, sourcemap } = js_ast.generate(self.context.clone()).unwrap();
+        Ok((code, sourcemap))
     }
 }

@@ -13,10 +13,10 @@ use mako_core::swc_ecma_transforms::resolver;
 use mako_core::swc_ecma_visit::VisitMutWith;
 use mako_core::swc_error_reporters::handler::try_with_handler;
 
-use crate::ast::Ast;
+use crate::ast_2::js_ast::JsAst;
 use crate::compiler::Context;
 
-pub fn minify_js(ast: &mut Ast, context: &Arc<Context>) -> Result<()> {
+pub fn minify_js(ast: &mut JsAst, context: &Arc<Context>) -> Result<()> {
     mako_core::mako_profile_function!();
     GLOBALS.set(&context.meta.script.globals, || {
         try_with_handler(

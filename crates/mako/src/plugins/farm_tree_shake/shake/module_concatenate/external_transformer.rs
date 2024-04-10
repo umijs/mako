@@ -328,7 +328,7 @@ mod tests {
     use swc_core::ecma::utils::collect_decls;
 
     use super::*;
-    use crate::ast::{build_js_ast, js_ast_to_code};
+    use crate::ast_2::js_ast::JsAst;
     use crate::compiler::Context;
 
     fn transform_with_external_replace(code: &str) -> String {
@@ -336,7 +336,7 @@ mod tests {
         context.config.devtool = None;
         let context: Arc<Context> = Arc::new(context);
 
-        let mut ast = build_js_ast("mut.js", code, &context).unwrap();
+        let mut ast = JsAst::build("mut.js", code, context.clone()).unwrap();
 
         let src_2_module: HashMap<String, ModuleId> = hashmap! {
             "external".to_string() => ModuleId::from("external"),
@@ -377,9 +377,9 @@ mod tests {
             };
 
             ast.ast.visit_mut_with(&mut t);
-            js_ast_to_code(&ast.ast, &context, "sut.js")
+            ast.generate(context.clone())
                 .unwrap()
-                .0
+                .code
                 .trim()
                 .to_string()
         })

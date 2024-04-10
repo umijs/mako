@@ -33,7 +33,7 @@ pub struct JsAst {
     pub ast: Module,
     pub unresolved_mark: Mark,
     pub top_level_mark: Mark,
-    path: String,
+    pub path: String,
     pub contains_top_level_await: bool,
 }
 
@@ -210,7 +210,6 @@ impl JsAst {
         })
     }
 
-    #[allow(dead_code)]
     pub fn generate(&self, context: Arc<Context>) -> Result<JSAstGenerated> {
         let mut buf = vec![];
         let mut source_map_buf = vec![];
@@ -275,4 +274,30 @@ impl JsAst {
 pub struct JSAstGenerated {
     pub code: String,
     pub sourcemap: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::ast_2::tests::TestUtils;
+
+    #[test]
+    fn test_chinese_ascii() {
+        assert_eq!(run(r#"log("中文")"#), r#"log("\u4E2D\u6587");"#);
+    }
+
+    #[test]
+    fn test_decorator() {
+        // no panic
+        run(r#"
+@foo()
+class Bar {}
+        "#);
+    }
+
+    fn run(js_code: &str) -> String {
+        let mut test_utils = TestUtils::gen_js_ast(js_code.to_string());
+        let code = test_utils.js_ast_to_code();
+        println!("{}", code);
+        code
+    }
 }
