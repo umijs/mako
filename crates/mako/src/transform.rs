@@ -191,11 +191,9 @@ impl Transform {
                 }
                 if context.config.px2rem.is_some() {
                     let context = context.clone();
-                    visitors.push(Box::new(Px2Rem {
-                        config: context.config.px2rem.as_ref().unwrap().clone(),
-                        current_decl: None,
-                        current_selector: None,
-                    }));
+                    visitors.push(Box::new(Px2Rem::new(
+                        context.config.px2rem.as_ref().unwrap().clone(),
+                    )));
                 }
                 // prefixer
                 visitors.push(Box::new(swc_css_prefixer::prefixer(

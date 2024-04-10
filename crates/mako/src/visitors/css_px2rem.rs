@@ -16,6 +16,14 @@ pub struct Px2Rem {
 }
 
 impl Px2Rem {
+    pub fn new(config: Px2RemConfig) -> Self {
+        Self {
+            config,
+            current_decl: None,
+            current_selector: None,
+        }
+    }
+
     fn should_transform(&self) -> bool {
         let is_whitelist_is_in_blacklist = if let Some(decl) = &self.current_decl {
             let is_whitelist_empty = self.config.prop_white_list.is_empty();
@@ -112,6 +120,7 @@ impl VisitMut for Px2Rem {
 mod tests {
     use mako_core::swc_css_visit::VisitMutWith;
 
+    use super::Px2Rem;
     use crate::ast_2::tests::TestUtils;
     use crate::config::Px2RemConfig;
 
@@ -233,11 +242,7 @@ mod tests {
     fn run(css_code: &str, config: Px2RemConfig) -> String {
         let mut test_utils = TestUtils::gen_css_ast(css_code.to_string(), true);
         let ast = test_utils.ast.css_mut();
-        let mut visitor = super::Px2Rem {
-            config,
-            current_decl: None,
-            current_selector: None,
-        };
+        let mut visitor = Px2Rem::new(config);
         ast.ast.visit_mut_with(&mut visitor);
         let code = test_utils.css_ast_to_code();
         println!("{}", code);
