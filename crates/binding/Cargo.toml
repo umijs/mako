@@ -1,0 +1,27 @@
+[package]
+edition = "2021"
+name    = "mako_binding"
+version = "0.0.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+cached      = { workspace = true }
+mako        = { path = '../mako' }
+mako_core   = { path = "../core" }
+napi        = { version = "2.14.0", default-features = false, features = ["napi4", "napi5", "serde-json", "tokio_rt"] }
+napi-derive = "2.14.0"
+serde_json  = { workspace = true }
+
+[target.'cfg(not(target_os = "linux"))'.dependencies]
+mimalloc-rust = { workspace = true }
+
+[target.'cfg(all(target_os = "linux", target_env = "gnu", any(target_arch = "x86_64", target_arch = "aarch64")))'.dependencies]
+tikv-jemallocator = { workspace = true }
+
+[build-dependencies]
+napi-build = "2.0.1"
+
+[profile.release]
+lto = true

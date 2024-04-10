@@ -233,13 +233,13 @@ impl Compiler {
             // file types
             Arc::new(plugins::context_module::ContextModulePlugin {}),
             Arc::new(plugins::runtime::MakoRuntime {}),
-            Arc::new(plugins::farm_tree_shake::FarmTreeShake {}),
             Arc::new(plugins::invalid_syntax::InvalidSyntaxPlugin {}),
             Arc::new(plugins::hmr_runtime::HMRRuntimePlugin {}),
             Arc::new(plugins::wasm_runtime::WasmRuntimePlugin {}),
             Arc::new(plugins::async_runtime::AsyncRuntimePlugin {}),
             Arc::new(plugins::emotion::EmotionPlugin {}),
             Arc::new(plugins::node_stuff::NodeStuffPlugin {}),
+            Arc::new(plugins::farm_tree_shake::FarmTreeShake {}),
         ];
         plugins.extend(builtin_plugins);
 
@@ -287,15 +287,12 @@ impl Compiler {
         }
 
         if !config.ignores.is_empty() {
-            let ignore_regex = config
+            let ignores = config
                 .ignores
                 .iter()
                 .map(|ignore| Regex::new(ignore).map_err(Error::new))
                 .collect::<Result<Vec<Regex>>>()?;
-
-            plugins.push(Arc::new(plugins::ignore::IgnorePlugin {
-                ignores: ignore_regex,
-            }))
+            plugins.push(Arc::new(plugins::ignore::IgnorePlugin { ignores }))
         }
 
         let plugin_driver = PluginDriver::new(plugins);
@@ -360,7 +357,7 @@ impl Compiler {
                     if is_browser && watch && hmr {
                         entry = format!("{}?hmr", entry);
                     }
-                    crate::ast_2::file::File::new_entry(entry, self.context.clone())
+                    crate::ast::file::File::new_entry(entry, self.context.clone())
                 })
                 .collect();
             self.build(files)?;

@@ -1,0 +1,5 @@
+/npm/*/*.node
+/*.node
+/dist
+/node_modules
+/tmp

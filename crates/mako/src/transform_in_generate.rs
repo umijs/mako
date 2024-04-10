@@ -3,7 +3,8 @@ use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::time::Instant;
 
-use mako_core::anyhow::Result;
+use mako_core::anyhow::{Error, Result};
+use mako_core::regex::Regex;
 use mako_core::swc_common::errors::HANDLER;
 use mako_core::swc_common::GLOBALS;
 use mako_core::swc_css_ast;
@@ -20,18 +21,17 @@ use mako_core::swc_ecma_visit::VisitMutWith;
 use mako_core::swc_error_reporters::handler::try_with_handler;
 use mako_core::tracing::debug;
 
-use crate::ast_2::js_ast::JsAst;
+use crate::ast::js_ast::JsAst;
 use crate::compiler::{Compiler, Context};
-use crate::config::OutputMode;
 use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
 use crate::thread_pool;
-use crate::transformers::transform_async_module::{mark_async, AsyncModule};
-use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
-use crate::transformers::transform_dynamic_import::DynamicImport;
-use crate::transformers::transform_mako_require::MakoRequire;
-use crate::transformers::transform_meta_url_replacer::MetaUrlReplacer;
-use crate::transformers::transform_optimize_define_utils::OptimizeDefineUtils;
+use crate::visitors::async_module::{mark_async, AsyncModule};
 use crate::visitors::css_imports::CSSImports;
+use crate::visitors::dep_replacer::{DepReplacer, DependenciesToReplace};
+use crate::visitors::dynamic_import::DynamicImport;
+use crate::visitors::mako_require::MakoRequire;
+use crate::visitors::meta_url_replacer::MetaUrlReplacer;
+use crate::visitors::optimize_define_utils::OptimizeDefineUtils;
 
 impl Compiler {
     pub fn transform_all(&self, async_deps_map: HashMap<ModuleId, Vec<Dependency>>) -> Result<()> {
@@ -240,14 +240,23 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()>
                         let mut meta_url_replacer = MetaUrlReplacer {};
                         ast.ast.visit_mut_with(&mut meta_url_replacer);
 
-                        let mut dynamic_import = DynamicImport { context };
+                        let mut dynamic_import = DynamicImport {
+                            context: context.clone(),
+                        };
                         ast.ast.visit_mut_with(&mut dynamic_import);
 
-                        // replace require to __mako_require__ for bundle mode
-                        if matches!(context.config.output.mode, OutputMode::Bundle) {
-                            let mut mako_require = MakoRequire::new(context, unresolved_mark);
-                            ast.ast.visit_mut_with(&mut mako_require);
-                        }
+                        // replace require to __mako_require__
+                        let ignores = context
+                            .config
+                            .ignores
+                            .iter()
+                            .map(|ignore| Regex::new(ignore).map_err(Error::new))
+                            .collect::<Result<Vec<Regex>>>()?;
+                        let mut mako_require = MakoRequire {
+                            ignores,
+                            unresolved_mark,
+                        };
+                        ast.ast.visit_mut_with(&mut mako_require);
 
                         ast.ast
                             .visit_mut_with(&mut hygiene_with_config(hygiene::Config {
@@ -279,7 +288,8 @@ mod tests {
     use std::sync::Arc;
 
     use super::transform_css_generate;
-    use crate::ast::{build_css_ast, css_ast_to_code};
+    use crate::ast::css_ast::CssAst;
+    use crate::compiler::Context;
 
     #[test]
     fn test_transform_css_import() {
@@ -288,8 +298,7 @@ mod tests {
 .foo { color: red; }
         "#
         .trim();
-        let (code, _cm) = transform_css_code(code, None);
-        println!(">> CODE\n{}", code);
+        let code = transform_css_code(code, None);
         assert_eq!(
             code,
             r#".foo {
@@ -313,8 +322,7 @@ mod tests {
 @import "https://example.com/other.css";
         "#
         .trim();
-        let (code, _cm) = transform_css_code(code, None);
-        println!(">> CODE\n{}", code);
+        let code = transform_css_code(code, None);
         assert_eq!(
             code,
             r#"@import "https://example.com/first.css";
@@ -336,13 +344,13 @@ mod tests {
         );
     }
 
-    fn transform_css_code(content: &str, path: Option<&str>) -> (String, String) {
-        let path = if let Some(p) = path { p } else { "test.tsx" };
-        let context = Arc::new(Default::default());
-        let mut ast = build_css_ast(path, content, &context, false).unwrap();
-        transform_css_generate(&mut ast, &context);
-        let (code, _sourcemap) = css_ast_to_code(&ast, &context, "test.css");
-        let code = code.trim().to_string();
-        (code, _sourcemap)
+    fn transform_css_code(content: &str, path: Option<&str>) -> String {
+        let path = if let Some(p) = path { p } else { "test.css" };
+        let context: Arc<Context> = Arc::new(Default::default());
+        let mut ast = CssAst::build(path, content, context.clone(), false).unwrap();
+        transform_css_generate(&mut ast.ast, &context);
+        let code = ast.generate(context.clone()).unwrap().code;
+        println!("{}", code);
+        code
     }
 }

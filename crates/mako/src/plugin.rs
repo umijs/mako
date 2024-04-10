@@ -7,7 +7,7 @@ use mako_core::swc_common::errors::Handler;
 use mako_core::swc_common::Mark;
 use mako_core::swc_ecma_ast::Module;
 
-use crate::ast_2::file::{Content, File};
+use crate::ast::file::{Content, File};
 use crate::chunk_graph::ChunkGraph;
 use crate::compiler::{Args, Context};
 use crate::config::Config;

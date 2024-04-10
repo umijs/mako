@@ -31,8 +31,7 @@ ready:
   just test
   just lint
   cargo build --release
-  pnpm --filter @okamjs/okam build
-  pnpm --filter @okamjs/okam format:dts
+  pnpm build
   pnpm test
   pnpm biome:format
   git status

@@ -4,8 +4,7 @@
 #![feature(result_option_inspect)]
 
 mod analyze_deps;
-mod ast;
-pub mod ast_2;
+pub mod ast;
 mod build;
 mod chunk;
 mod chunk_graph;
@@ -41,7 +40,6 @@ mod thread_pool;
 pub mod tokio_runtime;
 mod transform;
 mod transform_in_generate;
-mod transformers;
 mod update;
 mod util;
 mod visitors;

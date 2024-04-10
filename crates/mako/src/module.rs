@@ -17,9 +17,9 @@ use swc_core::ecma::ast::{
 };
 
 use crate::analyze_deps::AnalyzeDepsResult;
-use crate::ast_2::css_ast::CssAst;
-use crate::ast_2::file::File;
-use crate::ast_2::js_ast::JsAst;
+use crate::ast::css_ast::CssAst;
+use crate::ast::file::File;
+use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
 use crate::config::ModuleIdStrategy;
 use crate::resolve::ResolverResource;
@@ -135,7 +135,7 @@ impl ResolveType {
 
 impl ResolveType {
     pub fn is_esm(&self) -> bool {
-        self.is_sync_esm() || matches!(self, ResolveType::DynamicImport)
+        self.is_sync_esm() || self.is_dynamic_esm()
     }
 
     pub fn is_sync_esm(&self) -> bool {
@@ -143,6 +143,10 @@ impl ResolveType {
             self,
             ResolveType::Import(_) | ResolveType::ExportNamed(_) | ResolveType::ExportAll
         )
+    }
+
+    pub fn is_dynamic_esm(&self) -> bool {
+        matches!(self, ResolveType::DynamicImport)
     }
 }
 

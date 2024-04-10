@@ -3,7 +3,7 @@ use mako_core::swc_ecma_ast::{CallExpr, Expr, Lit, ModuleDecl, NewExpr, Str};
 use mako_core::swc_ecma_visit::{Visit, VisitWith};
 use swc_core::common::Mark;
 
-use crate::ast_2::utils;
+use crate::ast::utils;
 use crate::module::{Dependency, ResolveType};
 
 pub struct DepAnalyzer {
@@ -154,7 +154,7 @@ mod tests {
     use mako_core::swc_ecma_visit::VisitWith;
     use swc_core::common::GLOBALS;
 
-    use crate::ast_2::tests::TestUtils;
+    use crate::ast::tests::TestUtils;
 
     #[test]
     fn test_normal() {

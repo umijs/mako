@@ -12,7 +12,7 @@ use crate::compiler::Compiler;
 use crate::module::{Dependency, Module, ModuleId};
 use crate::resolve::{self, clear_resolver_cache};
 use crate::transform_in_generate::transform_modules;
-use crate::transformers::transform_virtual_css_modules::is_css_path;
+use crate::visitors::virtual_css_modules::is_css_path;
 
 #[derive(Debug, Clone)]
 pub enum UpdateType {
@@ -264,9 +264,9 @@ impl Compiler {
 
                 let path = entry.to_string_lossy().to_string();
                 let file = if is_entry {
-                    crate::ast_2::file::File::new_entry(path, self.context.clone())
+                    crate::ast::file::File::new_entry(path, self.context.clone())
                 } else {
-                    crate::ast_2::file::File::new(path, self.context.clone())
+                    crate::ast::file::File::new(path, self.context.clone())
                 };
                 let module = Self::build_module(&file, None, self.context.clone())
                     .map_err(|err| BuildError::BuildTasksError { errors: vec![err] })?;
@@ -365,7 +365,7 @@ impl Compiler {
         let files = added
             .iter()
             .map(|path| {
-                crate::ast_2::file::File::new(
+                crate::ast::file::File::new(
                     path.to_string_lossy().to_string(),
                     self.context.clone(),
                 )

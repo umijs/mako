@@ -4,15 +4,15 @@ use mako_core::anyhow::Result;
 use mako_core::glob::glob;
 use mako_core::swc_common::{Mark, DUMMY_SP};
 use mako_core::swc_ecma_ast::{
-    BinExpr, BinaryOp, CallExpr, Expr, ExprOrSpread, Lit, Module, ParenExpr, TplElement,
+    BinExpr, BinaryOp, CallExpr, Expr, ExprOrSpread, Lit, ParenExpr, TplElement,
 };
 use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprExt, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
-use crate::ast_2::file::Content;
-use crate::ast_2::utils::{is_commonjs_require, is_dynamic_import};
+use crate::ast::file::Content;
+use crate::ast::utils::{is_commonjs_require, is_dynamic_import};
 use crate::compiler::Context;
-use crate::plugin::{Plugin, PluginLoadParam, PluginTransformJsParam};
+use crate::plugin::{Plugin, PluginLoadParam};
 use crate::resolve::get_module_extensions;
 
 pub struct ContextModulePlugin {}
@@ -110,22 +110,10 @@ module.exports = (id) => {{
             Ok(None)
         }
     }
-
-    fn transform_js(
-        &self,
-        param: &PluginTransformJsParam,
-        ast: &mut Module,
-        _context: &Arc<Context>,
-    ) -> Result<()> {
-        ast.visit_mut_children_with(&mut ContextModuleVisitor {
-            unresolved_mark: param.unresolved_mark,
-        });
-        Ok(())
-    }
 }
 
-struct ContextModuleVisitor {
-    unresolved_mark: Mark,
+pub struct ContextModuleVisitor {
+    pub unresolved_mark: Mark,
 }
 
 impl VisitMut for ContextModuleVisitor {

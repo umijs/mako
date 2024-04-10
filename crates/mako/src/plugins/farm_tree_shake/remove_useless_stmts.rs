@@ -10,7 +10,7 @@ use crate::plugins::farm_tree_shake::statement_graph::analyze_imports_and_export
 };
 use crate::plugins::farm_tree_shake::statement_graph::defined_idents_collector::DefinedIdentsCollector;
 use crate::plugins::farm_tree_shake::statement_graph::{
-    ExportInfo, ExportSpecifierInfo as UsedExportSpecInfo, ImportInfo,
+    ExportInfo, ExportSpecifierInfo as UsedExportSpecInfo, ImportInfo, ImportSpecifierInfo,
 };
 
 pub fn remove_useless_stmts(
@@ -123,16 +123,19 @@ impl VisitMut for UselessImportStmtsRemover {
 
         for (index, specifier) in import_decl.specifiers.iter().enumerate() {
             if let ImportSpecifier::Named(named_specifier) = specifier {
-                if !self.
-                    import_info.specifiers
-          .iter()
-          .any(|specifier| match specifier {
-            crate::plugins::farm_tree_shake::statement_graph::ImportSpecifierInfo::Named { local, .. } => named_specifier.local.to_string() == *local,
-            _ => false,
-          })
-        {
-          specifiers_to_remove.push(index);
-        }
+                if !self
+                    .import_info
+                    .specifiers
+                    .iter()
+                    .any(|specifier| match specifier {
+                        ImportSpecifierInfo::Named { local, .. } => {
+                            named_specifier.local.to_string() == *local
+                        }
+                        _ => false,
+                    })
+                {
+                    specifiers_to_remove.push(index);
+                }
             }
         }
 

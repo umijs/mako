@@ -205,6 +205,18 @@ import("./a.js")
 
 需要忽略的文件。忽略的文件会输出空模块。
 
+比如。
+
+```ts
+{
+  "ignores": [
+    "^assert$",
+    "xxxx.provider.js$",
+    "^(node:)?({})(/|$)"
+  ]
+}
+```
+
 ## inlineCSS
 
 - 类型：`{} | false`

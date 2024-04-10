@@ -21,9 +21,8 @@ use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use self::concatenate_context::EsmDependantFlags;
 use self::utils::uniq_module_prefix;
-use crate::ast::js_ast_to_code;
 use crate::compiler::Context;
-use crate::module::{generate_module_id, Dependency, ImportType, ModuleId, ResolveType};
+use crate::module::{Dependency, ImportType, ModuleId, ResolveType};
 use crate::module_graph::ModuleGraph;
 use crate::plugins::farm_tree_shake::module::{AllExports, ModuleSystem, TreeShakeModule};
 use crate::plugins::farm_tree_shake::shake::module_concatenate::concatenate_context::{
@@ -76,15 +75,25 @@ pub fn optimize_module_graph(
                 can_be_inner = false;
             }
 
-            let export_all_or_has_async =
-                module_graph
-                    .get_dependencies_info(module_id)
-                    .iter()
-                    .any(|(_, dep, is_async)| {
-                        dep.resolve_type == ResolveType::ExportAll
-                            || (*is_async && dep.resolve_type.is_sync_esm())
-                    });
-            if export_all_or_has_async {
+            let deps = module_graph.get_dependencies_info(module_id);
+
+            let has_not_supported_syntax = deps.iter().any(|(_, dep, is_async)| {
+                dep.resolve_type.is_dynamic_esm()
+                    || matches!(dep.resolve_type, ResolveType::Worker)
+                    || (*is_async && dep.resolve_type.is_sync_esm())
+            });
+            if has_not_supported_syntax {
+                can_be_inner = false;
+                can_be_root = false;
+            }
+
+            let has_export_star = deps
+                .iter()
+                .any(|(_, dep, _)| matches!(dep.resolve_type, ResolveType::ExportAll));
+            // 必须要有清晰的导出
+            // ? 是不是不能有 export * from 'foo' 的语法
+            // ： 可以有，但是不能有模糊的 export *
+            if matches!(tsm.all_exports, AllExports::Ambiguous(_)) || has_export_star {
                 can_be_inner = false;
             }
 
@@ -95,13 +104,6 @@ pub fn optimize_module_graph(
             if is_async {
                 can_be_inner = false;
                 can_be_root = false;
-            }
-
-            // 必须要有清晰的导出
-            // ? 是不是不能有 export * from 'foo' 的语法
-            // ： 可以有，但是不能有模糊的 export *
-            if matches!(tsm.all_exports, AllExports::Ambiguous(_)) {
-                can_be_inner = false;
             }
 
             if can_be_root {
@@ -274,7 +276,7 @@ pub fn optimize_module_graph(
                         (cjs_name.clone(), cjs_name)
                     };
 
-                    let require_src = generate_module_id(id.id.clone(), context);
+                    let require_src = id.id.clone();
                     module_items
                         .extend(interop.inject_external_export_decl(&require_src, &exposed_names));
 
@@ -284,7 +286,7 @@ pub fn optimize_module_graph(
                         &config.root,
                         id,
                         Dependency {
-                            source: id.id.clone(),
+                            source: require_src,
                             resolve_as: None,
                             resolve_type: ResolveType::Require,
                             order: 0,
@@ -313,8 +315,8 @@ pub fn optimize_module_graph(
 
                 let p = false;
                 if cfg!(debug_assertions) && p {
-                    let code_map = js_ast_to_code(&script_ast.ast, context, &id.id).unwrap();
-                    println!("code:\n\n{}\n", code_map.0);
+                    let code = script_ast.generate(context.clone()).unwrap().code;
+                    println!("code:\n\n{}\n", code);
                 }
 
                 let mut current_module_top_level_vars: HashSet<String> = collect_decls_with_ctxt(
@@ -335,8 +337,8 @@ pub fn optimize_module_graph(
                 script_ast.ast.visit_mut_with(&mut ext_trans);
 
                 if cfg!(debug_assertions) && p {
-                    let code_map = js_ast_to_code(&script_ast.ast, context, &id.id).unwrap();
-                    println!("after external:\n{}\n", code_map.0);
+                    let code = script_ast.generate(context.clone()).unwrap().code;
+                    println!("after external:\n{}\n", code);
                 }
                 let mut inner_transformer = InnerTransform::new(
                     &mut concatenate_context,
@@ -351,8 +353,8 @@ pub fn optimize_module_graph(
                 script_ast.ast.visit_mut_with(&mut CleanSyntaxContext {});
 
                 if cfg!(debug_assertions) && p {
-                    let code_map = js_ast_to_code(&script_ast.ast, context, &id.id).unwrap();
-                    println!("after inner:\n{}\n", code_map.0);
+                    let code = script_ast.generate(context.clone()).unwrap().code;
+                    println!("after inner:\n{}\n", code);
                 }
                 module_items.append(&mut script_ast.ast.body.clone());
             }
@@ -362,17 +364,16 @@ pub fn optimize_module_graph(
             let ast = &mut root_module.info.as_mut().unwrap().ast;
 
             let ast_script = ast.script_mut().unwrap();
+            let p = false;
+            if cfg!(debug_assertions) && p {
+                let code = ast_script.generate(context.clone()).unwrap().code;
+                println!("root:\n{}\n", code);
+            }
 
             let mut root_module_ast = ast_script.ast.take();
             let unresolved_mark = ast_script.unresolved_mark;
             let top_level_mark = ast_script.top_level_mark;
             let src_2_module_id = source_to_module_id(&config.root, module_graph);
-
-            let p = false;
-            if cfg!(debug_assertions) && p {
-                let code_map = js_ast_to_code(&root_module_ast, context, &config.root.id).unwrap();
-                println!("root:\n{}\n", code_map.0);
-            }
 
             let mut current_module_top_level_vars: HashSet<String> = collect_decls_with_ctxt(
                 &root_module_ast,
@@ -404,10 +405,10 @@ pub fn optimize_module_graph(
             root_module_ast.body.splice(0..0, module_items);
             root_module_ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
 
-            if cfg!(debug_assertions) && p {
-                let code_map = js_ast_to_code(&root_module_ast, context, &config.root.id).unwrap();
-                println!("root after all:\n{}\n", code_map.0);
-            }
+            // if cfg!(debug_assertions) && p {
+            //     let code = ast_script.generate(context.clone()).unwrap().code;
+            //     println!("root after all:\n{}\n", code);
+            // }
 
             let root_module = module_graph.get_module_mut(&config.root).unwrap();
             let ast = &mut root_module.info.as_mut().unwrap().ast;

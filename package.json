@@ -3,6 +3,7 @@
     "benchmark": "esno scripts/benchmark.ts",
     "changelog:format": "esno scripts/format-changelog.ts",
     "prepare": "husky install",
+    "build": "pnpm --filter @okamjs/okam build && pnpm --filter @okamjs/okam src:build && pnpm biome:format",
     "biome:format": "biome check --apply .",
     "test": "npm run test:e2e && npm run test:hmr && npm run test:umi",
     "test:e2e": "node scripts/test-e2e.mjs",
@@ -32,6 +33,7 @@
     "es-check": "^7.1.1",
     "esno": "^4",
     "express": "^4.18.2",
+    "father": "^4.4.0",
     "get-port": "^7.1.0",
     "husky": "^8.0.3",
     "less": "^4.2.0",
@@ -43,6 +45,7 @@
     "react-error-overlay": "6.0.9",
     "react-refresh": "^0.14.0",
     "semver": "^7.5.4",
+    "typescript": "^5.4.3",
     "wait-port": "^1.1.0",
     "webpack": "^5.0.0",
     "zx": "^7.2.3"

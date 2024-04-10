@@ -15,7 +15,7 @@ use mako_core::swc_ecma_ast::{
 use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
 use mako_core::{mako_profile_scope, ternary};
 
-use crate::ast::{build_js_ast, Ast};
+use crate::ast::js_ast::JsAst;
 use crate::chunk::{Chunk, ChunkType};
 use crate::chunk_pot::util::{
     file_content_hash, pot_to_chunk_module, pot_to_module_object, runtime_code,
@@ -136,10 +136,12 @@ pub(crate) fn render_normal_js_chunk(
         context,
     )?;
 
-    let mut ast = GLOBALS.set(&context.meta.script.globals, || Ast {
+    let mut ast = GLOBALS.set(&context.meta.script.globals, || JsAst {
         ast: module,
         unresolved_mark: Mark::new(),
         top_level_mark: Mark::new(),
+        contains_top_level_await: false,
+        path: "".to_string(),
     });
 
     if context.config.minify && matches!(context.config.mode, Mode::Production) {
@@ -269,10 +271,10 @@ fn render_entry_chunk_js_without_full_hash(
 
         let runtime_content = runtime_code(context)?;
 
-        build_js_ast(
+        JsAst::build(
             "_mako_internal/runtime_entry.js",
             runtime_content.as_str(),
-            context,
+            context.clone(),
         )
         .unwrap()
     };
