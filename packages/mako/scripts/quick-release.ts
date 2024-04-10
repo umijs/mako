@@ -115,4 +115,5 @@ async function build() {
 
   await $`pnpm run build`;
   await $`pnpm run src:build`;
+  await $`pnpm run format`;
 }

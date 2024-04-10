@@ -128,6 +128,7 @@ async function build() {
 
   // build src
   await $`pnpm run src:build`;
+  await $`pnpm run format`;
 
   // move artifacts to npm
   await $`pnpm run artifacts:local`;
