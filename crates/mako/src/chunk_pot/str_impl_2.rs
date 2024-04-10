@@ -185,7 +185,8 @@ fn emit_module_with_sourcemap(
                 format!(
                     r#""{}" : function (module, exports, __mako_require__){{
 {}
-}},"#,
+}},
+"#,
                     module_id_str, content
                 ),
                 Some(source_mappings),
@@ -216,9 +217,7 @@ fn pot_to_chunk_module_object_string(
             .map(|(k, v)| (k, v))
             .collect::<Vec<_>>();
 
-        if context.config.hash {
-            sorted_kv.sort_by_key(|(k, _)| *k);
-        }
+        sorted_kv.sort_by_key(|(k, _)| *k);
 
         sorted_kv
     };
@@ -239,7 +238,6 @@ fn pot_to_chunk_module_object_string(
         (String::new(), RawSourceMap::default()),
         |(mut chunk_content, mut chunk_raw_sourcemap), (module_content, source_mapping)| {
             chunk_content.push_str(module_content);
-            chunk_content.push('\n');
 
             if let Some(mappings) = source_mapping {
                 let cur_source_map = build_source_map(mappings, &cm);
@@ -248,8 +246,8 @@ fn pot_to_chunk_module_object_string(
                     .extend(cur_source_map.tokens().map(|t| sourcemap::RawToken {
                         // in emit_module_with_sourcemap, we have added a prefix line
                         dst_line: t.get_dst_line() + 1 + chunk_prefix_offset + dst_line_offset,
-                        src_id: src_id_offset,
-                        name_id: name_id_offset,
+                        src_id: t.get_src_id() + src_id_offset,
+                        name_id: t.get_name_id() + name_id_offset,
                         ..t.get_raw_token()
                     }));
 
@@ -269,7 +267,7 @@ fn pot_to_chunk_module_object_string(
 
                 name_id_offset = chunk_raw_sourcemap.names.len() as u32;
                 src_id_offset = chunk_raw_sourcemap.sources.len() as u32;
-                dst_line_offset += chunk_content.lines().fold(0u32, |mut l, _| {
+                dst_line_offset += module_content.lines().fold(0u32, |mut l, _| {
                     l += 1;
                     l
                 });

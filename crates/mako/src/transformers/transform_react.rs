@@ -5,6 +5,7 @@ use mako_core::swc_common::{chain, Mark, SourceMap};
 use mako_core::swc_ecma_ast::Module;
 use mako_core::swc_ecma_transforms_react::{react, Options, RefreshOptions, Runtime};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+use swc_core::common::{Span, DUMMY_SP};
 
 use crate::ast::build_js_ast;
 use crate::ast_2::file::File;
@@ -87,11 +88,24 @@ pub fn mako_react(
 
 impl VisitMut for PrefixCode {
     fn visit_mut_module(&mut self, module: &mut Module) {
-        let post_code_snippet_module =
+        let mut pre_code_snippet_module =
             build_js_ast("_pre_code.js", &self.code, &self.context).unwrap();
-        module.body.splice(0..0, post_code_snippet_module.ast.body);
+
+        pre_code_snippet_module
+            .ast
+            .visit_mut_with(&mut CleanSpan {});
+
+        module.body.splice(0..0, pre_code_snippet_module.ast.body);
 
         module.visit_mut_children_with(self);
+    }
+}
+
+pub struct CleanSpan;
+
+impl VisitMut for CleanSpan {
+    fn visit_mut_span(&mut self, n: &mut Span) {
+        *n = DUMMY_SP;
     }
 }
 
@@ -102,8 +116,12 @@ pub struct PostfixCode {
 
 impl VisitMut for PostfixCode {
     fn visit_mut_module(&mut self, module: &mut Module) {
-        let post_code_snippet_module =
+        let mut post_code_snippet_module =
             build_js_ast("_post_code.js", &self.code, &self.context).unwrap();
+
+        post_code_snippet_module
+            .ast
+            .visit_mut_with(&mut CleanSpan {});
         module.body.extend(post_code_snippet_module.ast.body);
 
         module.visit_mut_children_with(self);
