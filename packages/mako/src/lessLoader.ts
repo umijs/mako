@@ -26,21 +26,26 @@ export function lessLoader(fn: Function | null, opts: LessLoaderOpts) {
     }
     if (pathname?.endsWith('.less')) {
       const { alias, modifyVars, math, sourceMap } = opts;
-      const less = opts.implementation || require('less');
-      const input = fs.readFileSync(pathname, 'utf-8');
-      const resolvePlugin = new (require('less-plugin-resolve'))({
-        aliases: alias,
-      });
-      const result = await less.render(input, {
-        filename: pathname,
-        javascriptEnabled: true,
-        math,
-        plugins: [resolvePlugin],
-        modifyVars,
-        sourceMap,
-        rewriteUrls: 'all',
-      });
-      return { content: result.css, type: 'css' };
+      if (opts.implementation) {
+        const less = opts.implementation;
+        const input = fs.readFileSync(pathname, 'utf-8');
+        const resolvePlugin = new (require('less-plugin-resolve'))({
+          aliases: alias,
+        });
+        const result = await less.render(input, {
+          filename: pathname,
+          javascriptEnabled: true,
+          math,
+          plugins: [resolvePlugin],
+          modifyVars,
+          sourceMap,
+          rewriteUrls: 'all',
+        });
+        return { content: result.css, type: 'css' };
+      } else {
+        const less = require('./parallelLessLoader').less;
+        return less(pathname, opts);
+      }
     } else {
       // TODO: remove this
       fn && fn(filePath);
