@@ -84,9 +84,12 @@ export async function build(params: binding.BuildParams & ExtraBuildParams) {
     }
   };
 
-  params.hooks.generateEnd = () => {
-    terminatePool();
-  };
+  // in watch mode, we can reuse the worker pool, no need to terminate
+  if (!params.watch) {
+    params.hooks.generateEnd = () => {
+      terminatePool();
+    };
+  }
 
   // support dump mako config
   if (process.env.DUMP_MAKO_CONFIG) {
