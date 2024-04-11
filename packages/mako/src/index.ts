@@ -3,6 +3,8 @@ import path from 'path';
 import * as binding from '../binding';
 import { LessLoaderOpts, lessLoader, terminatePool } from './lessLoader';
 
+process.title = 'okamjs';
+
 // ref:
 // https://github.com/vercel/next.js/pull/51883
 function blockStdout() {
@@ -90,6 +92,11 @@ export async function build(params: binding.BuildParams & ExtraBuildParams) {
   if (process.env.DUMP_MAKO_CONFIG) {
     const configFile = path.join(params.root, 'mako.config.json');
     fs.writeFileSync(configFile, JSON.stringify(params.config, null, 2));
+  }
+
+  if (process.env.XCODE_PROFILE) {
+    await new Promise((r) => setTimeout(r, 10000));
+    console.log(`Xcode profile enabled. Current pid: ${process.pid}`);
   }
 
   await binding.build(params);
