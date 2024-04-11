@@ -1,12 +1,9 @@
 import fs from 'fs';
 import workerpool from 'workerpool';
-import { LessLoaderOpts } from './lessLoader';
+import { LessLoaderOpts } from '.';
 
 const lessLoader = {
-  compileLess: async function (
-    filePath: string,
-    opts: Omit<LessLoaderOpts, 'implementation'>,
-  ) {
+  render: async function (filePath: string, opts: LessLoaderOpts) {
     const { alias, modifyVars, math, sourceMap } = opts;
     const less = require('less');
     const input = fs.readFileSync(filePath, 'utf-8');

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import * as binding from '../binding';
-import { LessLoaderOpts, lessLoader } from './lessLoader';
+import { LessLoaderOpts, lessLoader, terminatePool } from './lessLoader';
 
 // ref:
 // https://github.com/vercel/next.js/pull/51883
@@ -80,6 +80,10 @@ export async function build(params: binding.BuildParams & ExtraBuildParams) {
         return originResult;
       }
     }
+  };
+
+  params.hooks.generateEnd = () => {
+    terminatePool();
   };
 
   // support dump mako config
