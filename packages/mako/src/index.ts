@@ -95,8 +95,8 @@ export async function build(params: binding.BuildParams & ExtraBuildParams) {
   }
 
   if (process.env.XCODE_PROFILE) {
-    await new Promise((r) => setTimeout(r, 10000));
     console.log(`Xcode profile enabled. Current pid: ${process.pid}`);
+    await new Promise((r) => setTimeout(r, 10000));
   }
 
   await binding.build(params);
