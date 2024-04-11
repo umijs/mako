@@ -1,5 +1,5 @@
 import url from 'url';
-import { compile, terminate } from './parallelLessLoader';
+import { compile, terminatePool } from './parallelLessLoader';
 
 export interface LessLoaderOpts {
   alias: Record<string, string>;
@@ -32,6 +32,6 @@ export function lessLoader(fn: Function | null, opts: LessLoaderOpts) {
   };
 }
 
-export function terminatePool() {
-  terminate();
-}
+lessLoader.terminate = () => {
+  terminatePool();
+};

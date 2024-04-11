@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import * as binding from '../binding';
-import { LessLoaderOpts, lessLoader, terminatePool } from './lessLoader';
+import { LessLoaderOpts, lessLoader } from './lessLoader';
 
 process.title = 'okamjs';
 
@@ -87,7 +87,7 @@ export async function build(params: binding.BuildParams & ExtraBuildParams) {
   // in watch mode, we can reuse the worker pool, no need to terminate
   if (!params.watch) {
     params.hooks.generateEnd = () => {
-      terminatePool();
+      lessLoader.terminate();
     };
   }
 

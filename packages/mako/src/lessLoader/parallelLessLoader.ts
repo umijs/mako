@@ -10,7 +10,7 @@ function createPool() {
   }
 }
 
-export function terminate() {
+export function terminatePool() {
   pool?.terminate();
   pool = undefined;
 }
