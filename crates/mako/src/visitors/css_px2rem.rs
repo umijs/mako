@@ -33,10 +33,6 @@ impl Px2Rem {
     }
 
     fn should_transform(&self) -> bool {
-        // println!("current_decl: {:?}", self.current_decl);
-        // println!("current_selectors: {:?}", self.current_selectors);
-        // println!("selector_blacklist: {:?}", self.selector_blacklist);
-        // println!("selector_whitelist: {:?}", self.selector_whitelist);
         let is_prop_valid = if let Some(decl) = &self.current_decl {
             let is_whitelist_empty = self.config.prop_white_list.is_empty();
             let is_in_whitelist = self.config.prop_white_list.contains(decl);
