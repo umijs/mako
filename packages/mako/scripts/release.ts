@@ -1,11 +1,11 @@
 import 'zx/globals';
 import {
-  ensureGitStatusClean,
+  ensureGitStatus,
   loadPkg,
   pushToGit,
   queryNewVersion,
   rootPkgPath,
-  setNewVersionToBundler,
+  setNewVersionToBundlerOkam,
 } from './utils';
 
 (async () => {
@@ -20,7 +20,7 @@ import {
 });
 
 async function run() {
-  await ensureGitStatusClean();
+  await ensureGitStatus();
 
   // check docker status
   console.log('Check docker status');
@@ -36,7 +36,7 @@ async function run() {
 
   await $`npm publish --tag ${tag} --access public`;
 
-  setNewVersionToBundler(nodePkg.version);
+  setNewVersionToBundlerOkam(nodePkg.version);
 
   await pushToGit(nodePkg, branch);
 }

@@ -1,14 +1,13 @@
 import assert from 'assert';
 import 'zx/globals';
 
-export async function ensureGitStatusClean() {
+export async function ensureGitStatus() {
   console.log('Check git status');
   const status = (await $`git status --porcelain`).stdout.trim();
   if (status) {
     throw new Error('Please commit all changes before release');
   }
 
-  // check git remote update
   console.log('check git remote update');
   await $`git fetch`;
   const gitStatus = (await $`git status --short --branch`).stdout.trim();
@@ -58,12 +57,10 @@ export async function queryNewVersion(nodePkg: any) {
     process.exit(1);
   }
 
-  // update version to package.json
-
   return { newVersion, tag, branch } as const;
 }
 
-export function setNewVersionToBundler(newVersion: string) {
+export function setNewVersionToBundlerOkam(newVersion: string) {
   console.log('Set new version to bundler-okam');
   const bundlerOkamPkgPath = path.join(
     __dirname,
@@ -84,11 +81,10 @@ export async function pushToGit(
   branch: string,
 ) {
   await $`git commit -an -m "release: ${nodePkg.name}@${nodePkg.version}"`;
-  // tag
+
   console.log('Tag');
   await $`git tag v${nodePkg.version}`;
 
-  // push
   console.log('Push');
   await $`git push origin ${branch} --tags`;
 }

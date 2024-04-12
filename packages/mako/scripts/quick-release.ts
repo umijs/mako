@@ -1,12 +1,12 @@
 import assert from 'assert';
 import 'zx/globals';
 import {
-  ensureGitStatusClean,
+  ensureGitStatus,
   loadPkg,
   pushToGit,
   queryNewVersion,
   rootPkgPath,
-  setNewVersionToBundler,
+  setNewVersionToBundlerOkam,
 } from './utils';
 
 (async () => {
@@ -17,7 +17,7 @@ import {
 });
 
 async function run() {
-  await ensureGitStatusClean();
+  await ensureGitStatus();
 
   const commitId = (await $`git rev-parse HEAD`).stdout.trim();
   const artifactsFile = `artifacts-${commitId}.tar`;
@@ -36,7 +36,7 @@ async function run() {
 
   await $`npm publish --tag ${tag} --access public`;
 
-  setNewVersionToBundler(nodePkg.version);
+  setNewVersionToBundlerOkam(nodePkg.version);
 
   await pushToGit(nodePkg, branch);
 }
