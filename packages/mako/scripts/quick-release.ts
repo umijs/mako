@@ -36,7 +36,7 @@ async function run() {
 
   await $`npm publish --tag ${tag} --access public`;
 
-  setNewVersionToBundler(nodePkg);
+  setNewVersionToBundler(nodePkg.version);
 
   await pushToGit(nodePkg, branch);
 }
