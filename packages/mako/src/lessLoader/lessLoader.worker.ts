@@ -5,7 +5,10 @@ import { LessLoaderOpts } from '.';
 const ResolvePlugin = require('less-plugin-resolve');
 
 const lessLoader = {
-  render: async function (filePath: string, opts: LessLoaderOpts) {
+  render: async function (
+    filePath: string,
+    opts: LessLoaderOpts,
+  ): Promise<string> {
     const { alias, modifyVars, math, sourceMap } = opts;
     const less = require('less');
     const input = fs.readFileSync(filePath, 'utf-8');
@@ -22,7 +25,7 @@ const lessLoader = {
       sourceMap,
       rewriteUrls: 'all',
     });
-    return { content: result.css, type: 'css' };
+    return result.css;
   },
 };
 

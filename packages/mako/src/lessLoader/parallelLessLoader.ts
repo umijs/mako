@@ -21,5 +21,6 @@ export async function compile(
 ): Promise<{ content: string; type: string }> {
   createPool();
 
-  return pool!.exec('render', [filePath, opts]);
+  const css = await pool!.exec('render', [filePath, opts]);
+  return { content: css, type: 'css' };
 }
