@@ -1,3 +1,4 @@
+use cached::proc_macro::cached;
 use mako_core::regex::Regex;
 use mako_core::swc_css_ast::{
     self, Combinator, CombinatorValue, ComplexSelectorChildren, Length, Token, TypeSelector,
@@ -108,6 +109,7 @@ impl VisitMut for Px2Rem {
     }
 }
 
+#[cached(key = "String", convert = r#"{ patterns.join(",") }"#)]
 fn parse_patterns(patterns: &[String]) -> Vec<Regex> {
     patterns
         .iter()
