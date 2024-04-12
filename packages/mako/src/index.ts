@@ -3,8 +3,6 @@ import path from 'path';
 import * as binding from '../binding';
 import { LessLoaderOpts, lessLoader } from './lessLoader';
 
-process.title = 'okamjs';
-
 // ref:
 // https://github.com/vercel/next.js/pull/51883
 function blockStdout() {
@@ -98,8 +96,22 @@ export async function build(params: binding.BuildParams & ExtraBuildParams) {
   }
 
   if (process.env.XCODE_PROFILE) {
-    console.log(`Xcode profile enabled. Current pid: ${process.pid}`);
-    await new Promise((r) => setTimeout(r, 10000));
+    await new Promise<void>((resolve) => {
+      const readline = require('readline');
+
+      const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+      });
+
+      rl.question(
+        `Xcode profile enabled. Current process ${process.title} (${process.pid}) . Press Enter to continue...\n`,
+        () => {
+          rl.close();
+          resolve();
+        },
+      );
+    });
   }
 
   await binding.build(params);
