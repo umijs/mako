@@ -357,7 +357,7 @@ impl Compiler {
                     if is_browser && watch && hmr {
                         entry = format!("{}?hmr", entry);
                     }
-                    crate::ast_2::file::File::new_entry(entry, self.context.clone())
+                    crate::ast::file::File::new_entry(entry, self.context.clone())
                 })
                 .collect();
             self.build(files)?;

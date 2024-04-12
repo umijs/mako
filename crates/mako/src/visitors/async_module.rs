@@ -12,7 +12,7 @@ use swc_core::ecma::ast::ParenExpr;
 use swc_core::ecma::utils::{member_expr, quote_expr, quote_ident, ExprFactory};
 use swc_core::ecma::visit::VisitMutWith;
 
-use crate::ast_2::utils::is_commonjs_require;
+use crate::ast::utils::is_commonjs_require;
 use crate::compiler::Context;
 use crate::module::{Dependency, ModuleId};
 
@@ -239,7 +239,7 @@ mod tests {
     use swc_core::ecma::transforms::module::util::ImportInterop;
 
     use super::AsyncModule;
-    use crate::ast_2::tests::TestUtils;
+    use crate::ast::tests::TestUtils;
     use crate::chunk::{Chunk, ChunkType};
     use crate::visitors::dep_analyzer::DepAnalyzer;
 

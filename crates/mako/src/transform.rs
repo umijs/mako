@@ -15,8 +15,8 @@ use mako_core::swc_ecma_visit::{Fold, VisitMut};
 use mako_core::{swc_css_compat, swc_css_prefixer, swc_css_visit};
 use swc_core::common::GLOBALS;
 
-use crate::ast_2::css_ast::CssAst;
-use crate::ast_2::file::File;
+use crate::ast::css_ast::CssAst;
+use crate::ast::file::File;
 use crate::compiler::Context;
 use crate::config::Mode;
 use crate::module::ModuleAst;

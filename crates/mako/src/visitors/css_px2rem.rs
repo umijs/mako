@@ -65,7 +65,7 @@ impl VisitMut for Px2Rem {
 mod tests {
     use mako_core::swc_css_visit::VisitMutWith;
 
-    use crate::ast_2::tests::TestUtils;
+    use crate::ast::tests::TestUtils;
     use crate::config::Px2RemConfig;
 
     #[test]

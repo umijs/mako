@@ -41,7 +41,7 @@ mod tests {
     use swc_core::common::GLOBALS;
 
     use super::VirtualCSSModules;
-    use crate::ast_2::tests::TestUtils;
+    use crate::ast::tests::TestUtils;
 
     #[test]
     fn test_css_modules_virtual() {

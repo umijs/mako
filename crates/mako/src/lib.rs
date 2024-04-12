@@ -4,8 +4,7 @@
 #![feature(result_option_inspect)]
 
 mod analyze_deps;
-mod ast;
-pub mod ast_2;
+pub mod ast;
 mod build;
 mod chunk;
 mod chunk_graph;
