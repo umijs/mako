@@ -22,5 +22,6 @@ export async function compile(
   createPool();
 
   const css = await pool!.exec('render', [filePath, opts]);
+
   return { content: css, type: 'css' };
 }

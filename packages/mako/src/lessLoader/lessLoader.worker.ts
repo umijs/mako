@@ -1,4 +1,5 @@
 import fs from 'fs';
+import less from 'less';
 import workerpool from 'workerpool';
 import { LessLoaderOpts } from '.';
 
@@ -10,21 +11,25 @@ const lessLoader = {
     opts: LessLoaderOpts,
   ): Promise<string> {
     const { alias, modifyVars, math, sourceMap } = opts;
-    const less = require('less');
     const input = fs.readFileSync(filePath, 'utf-8');
     const resolvePlugin = new ResolvePlugin({
       aliases: alias,
     });
 
-    const result = await less.render(input, {
-      filename: filePath,
-      javascriptEnabled: true,
-      math,
-      plugins: [resolvePlugin],
-      modifyVars,
-      sourceMap,
-      rewriteUrls: 'all',
-    });
+    const result = await less
+      .render(input, {
+        filename: filePath,
+        javascriptEnabled: true,
+        math,
+        plugins: [resolvePlugin],
+        modifyVars,
+        sourceMap,
+        rewriteUrls: 'all',
+      } as unknown as Less.Options)
+      .catch((err) => {
+        throw new Error(err.toString());
+      });
+
     return result.css;
   },
 };
