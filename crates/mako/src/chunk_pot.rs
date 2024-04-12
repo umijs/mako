@@ -121,7 +121,7 @@ impl<'cp> ChunkPot<'cp> {
     }
 
     fn use_eval(&self, context: &Arc<Context>) -> bool {
-        // use eval when in dev mode and watch enabled
+        // use eval when in watch mode
         context.args.watch && matches!(context.config.mode, Mode::Development)
     }
 

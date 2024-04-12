@@ -140,10 +140,12 @@ pub(super) fn render_normal_js_chunk(
     })
 }
 
+type ModuleDist = (String, Option<Vec<(BytePos, LineCol)>>);
+
 #[cached(
     result = true,
     key = "String",
-    type = "SizedCache<String , (String, Option<Vec<(BytePos, LineCol)>>)>",
+    type = "SizedCache<String , ModuleDist>",
     create = "{ SizedCache::with_size(20000) }",
     convert = r#"{format!("{}-{}", _raw_hash, module_id_str)}"#
 )]
@@ -152,7 +154,7 @@ fn emit_module_with_sourcemap(
     context: &Arc<Context>,
     _raw_hash: u64, // used for cache key
     module_id_str: &str,
-) -> Result<(String, Option<Vec<(BytePos, LineCol)>>)> {
+) -> Result<ModuleDist> {
     mako_core::mako_profile_function!(module_id_str);
 
     match &module.info.as_ref().unwrap().ast {

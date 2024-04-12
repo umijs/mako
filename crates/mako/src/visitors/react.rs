@@ -74,6 +74,8 @@ impl VisitMut for PrefixCode {
     fn visit_mut_module(&mut self, module: &mut Module) {
         let mut ast = JsAst::build("_pre_code.js", &self.code, self.context.clone()).unwrap();
 
+        // Insert the prefix code will broken sourcemap when using chunk_pot::str_impl,
+        // need to clean spans
         ast.ast.visit_mut_with(&mut CleanSpan {});
 
         module.body.splice(0..0, ast.ast.body);
@@ -91,6 +93,8 @@ impl VisitMut for PostfixCode {
     fn visit_mut_module(&mut self, module: &mut Module) {
         let mut ast = JsAst::build("_post_code.js", &self.code, self.context.clone()).unwrap();
 
+        // Insert the postfix code will broken sourcemap when using chunk_pot::str_impl,
+        // need to clean spans
         ast.ast.visit_mut_with(&mut CleanSpan {});
 
         module.body.extend(ast.ast.body);

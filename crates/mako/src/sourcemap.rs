@@ -39,6 +39,8 @@ pub fn build_source_map(
     cm.build_source_map_with_config(mappings, None, config)
 }
 
+// Add this type because the sourcemap::SourceMap type can't be cached,
+// there is a RefCell type field in it
 #[derive(Clone, Default, Debug)]
 pub struct RawSourceMap {
     pub file: Option<String>,
