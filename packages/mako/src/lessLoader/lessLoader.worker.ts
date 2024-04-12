@@ -2,12 +2,14 @@ import fs from 'fs';
 import workerpool from 'workerpool';
 import { LessLoaderOpts } from '.';
 
+const ResolvePlugin = require('less-plugin-resolve');
+
 const lessLoader = {
   render: async function (filePath: string, opts: LessLoaderOpts) {
     const { alias, modifyVars, math, sourceMap } = opts;
     const less = require('less');
     const input = fs.readFileSync(filePath, 'utf-8');
-    const resolvePlugin = new (require('less-plugin-resolve'))({
+    const resolvePlugin = new ResolvePlugin({
       aliases: alias,
     });
 

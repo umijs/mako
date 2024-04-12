@@ -15,7 +15,7 @@ export interface LessLoaderOpts {
   sourceMap: any;
 }
 
-export function lessLoader(fn: Function | null, opts: LessLoaderOpts) {
+function lessLoader(fn: Function | null, opts: LessLoaderOpts) {
   return async function (filePath: string) {
     let pathname = '';
     try {
@@ -35,3 +35,5 @@ export function lessLoader(fn: Function | null, opts: LessLoaderOpts) {
 lessLoader.terminate = () => {
   terminatePool();
 };
+
+export { lessLoader };
