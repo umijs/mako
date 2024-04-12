@@ -206,23 +206,23 @@ pub struct Px2RemConfig {
     #[serde(default = "visitors::css_px2rem::default_root")]
     pub root: f64,
     #[serde(rename = "propBlackList", default)]
-    pub prop_black_list: Vec<String>,
+    pub prop_blacklist: Vec<String>,
     #[serde(rename = "propWhiteList", default)]
-    pub prop_white_list: Vec<String>,
+    pub prop_whitelist: Vec<String>,
     #[serde(rename = "selectorBlackList", default)]
-    pub selector_black_list: Vec<String>,
+    pub selector_blacklist: Vec<String>,
     #[serde(rename = "selectorWhiteList", default)]
-    pub selector_white_list: Vec<String>,
+    pub selector_whitelist: Vec<String>,
 }
 
 impl Default for Px2RemConfig {
     fn default() -> Self {
         Px2RemConfig {
             root: visitors::css_px2rem::default_root(),
-            prop_black_list: vec![],
-            prop_white_list: vec![],
-            selector_black_list: vec![],
-            selector_white_list: vec![],
+            prop_blacklist: vec![],
+            prop_whitelist: vec![],
+            selector_blacklist: vec![],
+            selector_whitelist: vec![],
         }
     }
 }
