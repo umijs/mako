@@ -20,12 +20,13 @@
     "less": "^4.2.0",
     "less-plugin-resolve": "^1.0.2",
     "react-error-overlay": "6.0.9",
-    "react-refresh": "^0.14.0"
+    "react-refresh": "^0.14.0",
+    "workerpool": "^9.1.1"
   },
   "devDependencies": {
+    "@napi-rs/cli": "^2.18.0",
     "@types/less": "^3.0.6",
-    "@types/node": "^20.12.5",
-    "@napi-rs/cli": "^2.18.0"
+    "@types/node": "^20.12.5"
   },
   "engines": {
     "node": ">= 16"

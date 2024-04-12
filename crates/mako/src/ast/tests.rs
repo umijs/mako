@@ -93,7 +93,7 @@ impl TestUtils {
             content: Some(content),
         };
         if is_prod {
-            return Self::with_mode_production(opts);
+            Self::with_mode_production(opts)
         } else {
             Self::new(opts)
         }

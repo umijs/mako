@@ -82,10 +82,36 @@ export async function build(params: binding.BuildParams & ExtraBuildParams) {
     }
   };
 
+  // in watch mode, we can reuse the worker pool, no need to terminate
+  if (!params.watch) {
+    params.hooks.generateEnd = () => {
+      lessLoader.terminate();
+    };
+  }
+
   // support dump mako config
   if (process.env.DUMP_MAKO_CONFIG) {
     const configFile = path.join(params.root, 'mako.config.json');
     fs.writeFileSync(configFile, JSON.stringify(params.config, null, 2));
+  }
+
+  if (process.env.XCODE_PROFILE) {
+    await new Promise<void>((resolve) => {
+      const readline = require('readline');
+
+      const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+      });
+
+      rl.question(
+        `Xcode profile enabled. Current process ${process.title} (${process.pid}) . Press Enter to continue...\n`,
+        () => {
+          rl.close();
+          resolve();
+        },
+      );
+    });
   }
 
   await binding.build(params);
