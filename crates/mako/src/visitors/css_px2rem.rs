@@ -21,8 +21,8 @@ pub struct Px2Rem {
 
 impl Px2Rem {
     pub fn new(config: Px2RemConfig) -> Self {
-        let selector_blacklist = parse_patterns(&config.selector_black_list);
-        let selector_whitelist = parse_patterns(&config.selector_white_list);
+        let selector_blacklist = parse_patterns(&config.selector_blacklist);
+        let selector_whitelist = parse_patterns(&config.selector_whitelist);
         Self {
             config,
             current_decl: None,
@@ -34,9 +34,9 @@ impl Px2Rem {
 
     fn should_transform(&self) -> bool {
         let is_prop_valid = if let Some(decl) = &self.current_decl {
-            let is_whitelist_empty = self.config.prop_white_list.is_empty();
-            let is_in_whitelist = self.config.prop_white_list.contains(decl);
-            let is_in_blacklist = self.config.prop_black_list.contains(decl);
+            let is_whitelist_empty = self.config.prop_whitelist.is_empty();
+            let is_in_whitelist = self.config.prop_whitelist.contains(decl);
+            let is_in_blacklist = self.config.prop_blacklist.contains(decl);
             (is_whitelist_empty || is_in_whitelist) && !is_in_blacklist
         } else {
             true
@@ -45,7 +45,7 @@ impl Px2Rem {
             if self.current_selectors.is_empty() {
                 return true;
             }
-            let is_whitelist_empty = self.config.selector_white_list.is_empty();
+            let is_whitelist_empty = self.config.selector_whitelist.is_empty();
             let is_all_in_whitelist = self.current_selectors.iter().all(|selector| {
                 self.selector_whitelist
                     .iter()
@@ -232,7 +232,7 @@ mod tests {
             run(
                 r#".a{width:100px;height:100px;}"#,
                 Px2RemConfig {
-                    prop_black_list: vec!["width".to_string()],
+                    prop_blacklist: vec!["width".to_string()],
                     ..Default::default()
                 }
             ),
@@ -246,8 +246,8 @@ mod tests {
             run(
                 r#".a{width:100px;height:100px;}"#,
                 Px2RemConfig {
-                    prop_white_list: vec!["width".to_string()],
-                    prop_black_list: vec![],
+                    prop_whitelist: vec!["width".to_string()],
+                    prop_blacklist: vec![],
                     ..Default::default()
                 }
             ),
@@ -261,8 +261,8 @@ mod tests {
             run(
                 r#".a{width:100px;}.b{width:100px;}"#,
                 Px2RemConfig {
-                    selector_white_list: vec![".a".to_string()],
-                    selector_black_list: vec![],
+                    selector_whitelist: vec![".a".to_string()],
+                    selector_blacklist: vec![],
                     ..Default::default()
                 }
             ),
@@ -276,7 +276,7 @@ mod tests {
             run(
                 r#".a{width:100px;}.b{width:100px;}"#,
                 Px2RemConfig {
-                    selector_black_list: vec![".a".to_string()],
+                    selector_blacklist: vec![".a".to_string()],
                     ..Default::default()
                 }
             ),
@@ -290,7 +290,7 @@ mod tests {
             run(
                 r#".a{width:100px;}.ac{width:100px;}.b{width:100px;}"#,
                 Px2RemConfig {
-                    selector_black_list: vec![".a".to_string()],
+                    selector_blacklist: vec![".a".to_string()],
                     ..Default::default()
                 }
             ),
@@ -301,7 +301,7 @@ mod tests {
             run(
                 r#".a{width:100px;}.ac{width:100px;}.b{width:100px;}"#,
                 Px2RemConfig {
-                    selector_black_list: vec!["^.a$".to_string()],
+                    selector_blacklist: vec!["^.a$".to_string()],
                     ..Default::default()
                 }
             ),
@@ -315,7 +315,7 @@ mod tests {
             run(
                 r#"#a{width:100px;}"#,
                 Px2RemConfig {
-                    selector_black_list: vec!["#a".to_string()],
+                    selector_blacklist: vec!["#a".to_string()],
                     ..Default::default()
                 }
             ),
@@ -329,7 +329,7 @@ mod tests {
             run(
                 r#"div{width:100px;}"#,
                 Px2RemConfig {
-                    selector_black_list: vec!["div".to_string()],
+                    selector_blacklist: vec!["div".to_string()],
                     ..Default::default()
                 }
             ),
@@ -343,7 +343,7 @@ mod tests {
             run(
                 r#"div *{width:100px;}"#,
                 Px2RemConfig {
-                    selector_black_list: vec!["div *".to_string()],
+                    selector_blacklist: vec!["div *".to_string()],
                     ..Default::default()
                 }
             ),
@@ -357,7 +357,7 @@ mod tests {
             run(
                 r#".a.b{width:100px;}"#,
                 Px2RemConfig {
-                    selector_black_list: vec![".a.b".to_string()],
+                    selector_blacklist: vec![".a.b".to_string()],
                     ..Default::default()
                 }
             ),
@@ -372,7 +372,7 @@ mod tests {
                 r#".a > .b{width:100px;}"#,
                 Px2RemConfig {
                     // TODO: handle .a > .b (with space in between)
-                    selector_black_list: vec![".a>.b".to_string()],
+                    selector_blacklist: vec![".a>.b".to_string()],
                     ..Default::default()
                 }
             ),
@@ -386,8 +386,8 @@ mod tests {
             run(
                 r#".a,.b{width:100px;}"#,
                 Px2RemConfig {
-                    selector_white_list: vec![],
-                    selector_black_list: vec![],
+                    selector_whitelist: vec![],
+                    selector_blacklist: vec![],
                     ..Default::default()
                 }
             ),
@@ -397,8 +397,8 @@ mod tests {
             run(
                 r#".a,.b{width:100px;}"#,
                 Px2RemConfig {
-                    selector_white_list: vec![".a".to_string()],
-                    selector_black_list: vec![],
+                    selector_whitelist: vec![".a".to_string()],
+                    selector_blacklist: vec![],
                     ..Default::default()
                 }
             ),
@@ -408,8 +408,8 @@ mod tests {
             run(
                 r#".a,.b{width:100px;}"#,
                 Px2RemConfig {
-                    selector_white_list: vec![".a".to_string(), ".b".to_string()],
-                    selector_black_list: vec![],
+                    selector_whitelist: vec![".a".to_string(), ".b".to_string()],
+                    selector_blacklist: vec![],
                     ..Default::default()
                 }
             ),
@@ -419,8 +419,8 @@ mod tests {
             run(
                 r#".a,.b{width:100px;}"#,
                 Px2RemConfig {
-                    selector_white_list: vec![],
-                    selector_black_list: vec![".a".to_string()],
+                    selector_whitelist: vec![],
+                    selector_blacklist: vec![".a".to_string()],
                     ..Default::default()
                 }
             ),
