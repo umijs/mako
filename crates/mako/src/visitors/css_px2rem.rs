@@ -1,7 +1,9 @@
 use mako_core::regex::Regex;
-use mako_core::swc_css_ast::{self, Length, Token};
+use mako_core::swc_css_ast::{
+    self, Combinator, CombinatorValue, ComplexSelectorChildren, Length, Token, TypeSelector,
+};
 use mako_core::swc_css_visit::{VisitMut, VisitMutWith};
-use swc_core::css::ast::{Combinator, ComplexSelector, CompoundSelector, SubclassSelector};
+use swc_core::css::ast::{ComplexSelector, CompoundSelector, SubclassSelector};
 
 use crate::config::Px2RemConfig;
 
@@ -12,56 +14,29 @@ pub(crate) fn default_root() -> f64 {
 pub struct Px2Rem {
     pub config: Px2RemConfig,
     current_decl: Option<String>,
-    current_selector: Option<String>,
-    select_black_regx: Vec<Regex>,
-    select_white_regx: Vec<Regex>,
-}
-
-fn match_str_or_regex_based_on_chars(pattern: &str, input: &str, regx_arr: &[Regex]) -> bool {
-    if pattern == input {
-        // 第一个参数和第二个参数全等
-        true
-    } else if pattern.contains('*')
-        || pattern.contains('\\')
-        || pattern.contains('(')
-        || pattern.contains(')')
-        || pattern.contains('^')
-        || pattern.contains('$')
-    {
-        // 参数包含特定的正则表达式字符，尝试将第一个参数作为正则表达式
-        regx_arr.iter().any(|regx| regx.is_match(input))
-    } else {
-        // 如果不包含特定字符且不全等，返回 false
-        false
-    }
+    current_selectors: Vec<String>,
+    selector_blacklist: Vec<Regex>,
+    selector_whitelist: Vec<Regex>,
 }
 
 impl Px2Rem {
     pub fn new(config: Px2RemConfig) -> Self {
-        let mut select_black_regx = vec![];
-        let mut select_white_regx = vec![];
-        if !config.selector_black_list.is_empty() {
-            select_black_regx = config
-                .selector_black_list
-                .iter()
-                .filter_map(|pattern| Regex::new(pattern).ok()) // 这里 `ok()` 会将 `Result` 转换为 `Option`
-                .collect();
-            select_white_regx = config
-                .selector_white_list
-                .iter()
-                .filter_map(|pattern| Regex::new(pattern).ok()) // 这里 `ok()` 会将 `Result` 转换为 `Option`
-                .collect();
-        }
+        let selector_blacklist = parse_patterns(&config.selector_black_list);
+        let selector_whitelist = parse_patterns(&config.selector_white_list);
         Self {
             config,
             current_decl: None,
-            current_selector: None,
-            select_black_regx,
-            select_white_regx,
+            current_selectors: vec![],
+            selector_blacklist,
+            selector_whitelist,
         }
     }
 
     fn should_transform(&self) -> bool {
+        // println!("current_decl: {:?}", self.current_decl);
+        // println!("current_selectors: {:?}", self.current_selectors);
+        // println!("selector_blacklist: {:?}", self.selector_blacklist);
+        // println!("selector_whitelist: {:?}", self.selector_whitelist);
         let is_prop_valid = if let Some(decl) = &self.current_decl {
             let is_whitelist_empty = self.config.prop_white_list.is_empty();
             let is_in_whitelist = self.config.prop_white_list.contains(decl);
@@ -70,22 +45,22 @@ impl Px2Rem {
         } else {
             true
         };
-        let is_selector_valid = if let Some(selector) = &self.current_selector {
+        let is_selector_valid = {
+            if self.current_selectors.is_empty() {
+                return true;
+            }
             let is_whitelist_empty = self.config.selector_white_list.is_empty();
-            // 判断是否是字符串还是正则匹配
-
-            let is_in_whitelist = self.config.selector_white_list.iter().any(|pattern| {
-                match_str_or_regex_based_on_chars(pattern, selector, &self.select_white_regx)
+            let is_all_in_whitelist = self.current_selectors.iter().all(|selector| {
+                self.selector_whitelist
+                    .iter()
+                    .any(|regx| regx.is_match(selector))
             });
-
-            let is_in_blacklist = self.config.selector_black_list.iter().any(|pattern| {
-                // TODO: should have performance issues, need benchmark
-                match_str_or_regex_based_on_chars(pattern, selector, &self.select_black_regx)
+            let is_any_in_blacklist = self.current_selectors.iter().any(|selector| {
+                self.selector_blacklist
+                    .iter()
+                    .any(|regx| regx.is_match(selector))
             });
-
-            (is_whitelist_empty || is_in_whitelist) && !is_in_blacklist
-        } else {
-            true
+            (is_whitelist_empty || is_all_in_whitelist) && !is_any_in_blacklist
         };
         is_prop_valid && is_selector_valid
     }
@@ -103,55 +78,14 @@ impl VisitMut for Px2Rem {
         self.current_decl = None;
     }
 
+    fn visit_mut_qualified_rule(&mut self, n: &mut swc_css_ast::QualifiedRule) {
+        self.current_selectors = vec![];
+        n.visit_mut_children_with(self);
+    }
+
     fn visit_mut_complex_selector(&mut self, n: &mut ComplexSelector) {
-        // 判断是否有值
-        if let Some(ref mut currselect) = self.current_selector {
-            currselect.push(",".parse().unwrap())
-        } else {
-            self.current_selector = None
-        }
-
-        n.visit_mut_children_with(self);
-    }
-    fn visit_mut_combinator(&mut self, n: &mut Combinator) {
-        let value = n.value;
-
-        if let Some(ref mut current_sele) = self.current_selector {
-            current_sele.push(value.to_string().parse().unwrap());
-        }
-
-        n.visit_mut_children_with(self);
-    }
-    fn visit_mut_compound_selector(&mut self, n: &mut CompoundSelector) {
-        let mut cur_select = None;
-        if !n.subclass_selectors.is_empty() {
-            // 假设我们只关心第一个 subclass_selector，因此获取第一个元素
-            // 使用匹配来处理不同类型的 SubclassSelector
-
-            //累加
-
-            match n.subclass_selectors.first().unwrap() {
-                SubclassSelector::Class(class_selector) => {
-                    cur_select = Some(format!("{}{}", ".", class_selector.text.value.clone()));
-
-                    Some(class_selector.text.value.clone().to_string())
-                }
-                // ... 处理 SubclassSelector 的其他变体 ...
-                _ => None,
-            };
-        } else if let Some(type_selector) = &n.type_selector {
-            if let Some(name) = type_selector.clone().tag_name() {
-                cur_select = Some(name.name.value.value.to_string());
-            }
-        } else {
-            self.current_selector = None;
-        }
-        if let Some(ref mut cur_value) = self.current_selector {
-            cur_value.push_str(&cur_select.unwrap_or("".to_string()));
-        } else {
-            self.current_selector = cur_select;
-        }
-
+        let selector = parse_complex_selector(n);
+        self.current_selectors.push(selector);
         n.visit_mut_children_with(self);
     }
 
@@ -161,7 +95,6 @@ impl VisitMut for Px2Rem {
             n.value.raw = None;
             n.unit.value = "rem".into();
         }
-        self.current_selector = None;
         n.visit_mut_children_with(self);
     }
 
@@ -177,6 +110,84 @@ impl VisitMut for Px2Rem {
         }
         t.visit_mut_children_with(self);
     }
+}
+
+fn parse_patterns(patterns: &[String]) -> Vec<Regex> {
+    patterns
+        .iter()
+        .map(|pattern| {
+            let pattern = if contains_magic_chars(pattern) {
+                pattern.to_string()
+            } else {
+                format!("^{}$", pattern)
+            };
+            Regex::new(pattern.as_str()).unwrap()
+        })
+        .collect()
+}
+
+fn contains_magic_chars(pattern: &str) -> bool {
+    pattern.contains('*')
+        || pattern.contains('\\')
+        || pattern.contains('(')
+        || pattern.contains(')')
+        || pattern.contains('^')
+        || pattern.contains('$')
+}
+
+fn parse_combinator(combinator: &Combinator) -> String {
+    match combinator.value {
+        CombinatorValue::Descendant => " ".to_string(),
+        CombinatorValue::Child => ">".to_string(),
+        CombinatorValue::NextSibling => "+".to_string(),
+        CombinatorValue::LaterSibling => "~".to_string(),
+        CombinatorValue::Column => "||".to_string(),
+    }
+}
+
+fn parse_compound_selector(selector: &CompoundSelector) -> String {
+    let mut result = String::new();
+    // TODO: support selector.nesting_selector
+    if let Some(type_selector) = &selector.type_selector {
+        let type_selector = type_selector.as_ref();
+        match type_selector {
+            TypeSelector::TagName(tag_name_selector) => {
+                result.push_str(tag_name_selector.name.value.value.as_ref());
+            }
+            TypeSelector::Universal(_) => {
+                result.push('*');
+            }
+        }
+    }
+    for subclass_selector in &selector.subclass_selectors {
+        match subclass_selector {
+            SubclassSelector::Id(id) => {
+                result.push_str(&format!("#{}", id.text.value));
+            }
+            SubclassSelector::Class(class) => {
+                result.push_str(&format!(".{}", class.text.value));
+            }
+            _ => {
+                // TODO: support more subclass selectors
+            }
+        }
+    }
+    result
+}
+
+fn parse_complex_selector(selector: &ComplexSelector) -> String {
+    let mut result = String::new();
+    for child in &selector.children {
+        match child {
+            ComplexSelectorChildren::CompoundSelector(compound_selector) => {
+                result.push_str(parse_compound_selector(compound_selector).as_str());
+            }
+            ComplexSelectorChildren::Combinator(combinator, ..) => {
+                result.push_str(parse_combinator(combinator).as_str());
+            }
+        }
+    }
+    result
 }
 
 #[cfg(test)]
@@ -275,6 +286,10 @@ mod tests {
             ),
             r#".a{width:100px}.b{width:1rem}"#
         );
+    }
+
+    #[test]
+    fn test_selector_blacklist_exact_match() {
         assert_eq!(
             run(
                 r#".a{width:100px;}.ac{width:100px;}.b{width:100px;}"#,
@@ -283,7 +298,7 @@ mod tests {
                     ..Default::default()
                 }
             ),
-            // .ac is matched by "a"
+            // .ac should not be matched by .a
             r#".a{width:100px}.ac{width:1rem}.b{width:1rem}"#
         );
         assert_eq!(
@@ -298,21 +313,122 @@ mod tests {
         );
     }
 
-    // TODO: FIXME
-    // 如果有多个 selector，应该「全满足 whitelist」且「全不满足 blacklist」时才做 transform
     #[test]
-    #[ignore]
-    fn test_multi_selectors_whitelist() {
+    fn test_selector_blacklist_id() {
         assert_eq!(
             run(
-                r#".a .h,.b,.c>.g .kk,h1 div{width:100px;}"#,
+                r#"#a{width:100px;}"#,
                 Px2RemConfig {
-                    selector_white_list: vec![".a .h,.b,.c>.g .kk,h1 div".to_string()],
-                    selector_black_list: vec![".a .h,.b,.c>.g .kk,h1 ".to_string()],
+                    selector_black_list: vec!["#a".to_string()],
                     ..Default::default()
                 }
             ),
-            r#".a .h,.b,.c>.g .kk,h1 div{width:1rem}"#
+            r#"#a{width:100px}"#
+        );
+    }
+
+    #[test]
+    fn test_selector_blacklist_tagname() {
+        assert_eq!(
+            run(
+                r#"div{width:100px;}"#,
+                Px2RemConfig {
+                    selector_black_list: vec!["div".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#"div{width:100px}"#
+        );
+    }
+
+    #[test]
+    fn test_selector_blacklist_unique() {
+        assert_eq!(
+            run(
+                r#"div *{width:100px;}"#,
+                Px2RemConfig {
+                    selector_black_list: vec!["div *".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#"div *{width:100px}"#
+        );
+    }
+
+    #[test]
+    fn test_selector_blacklist_multiple_classes() {
+        assert_eq!(
+            run(
+                r#".a.b{width:100px;}"#,
+                Px2RemConfig {
+                    selector_black_list: vec![".a.b".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#".a.b{width:100px}"#
+        );
+    }
+
+    #[test]
+    fn test_selector_blacklist_child() {
+        assert_eq!(
+            run(
+                r#".a > .b{width:100px;}"#,
+                Px2RemConfig {
+                    // TODO: handle .a > .b (with space in between)
+                    selector_black_list: vec![".a>.b".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#".a>.b{width:100px}"#
+        );
+    }
+
+    #[test]
+    fn test_multi_selectors_whitelist() {
+        assert_eq!(
+            run(
+                r#".a,.b{width:100px;}"#,
+                Px2RemConfig {
+                    selector_white_list: vec![],
+                    selector_black_list: vec![],
+                    ..Default::default()
+                }
+            ),
+            r#".a,.b{width:1rem}"#
+        );
+        assert_eq!(
+            run(
+                r#".a,.b{width:100px;}"#,
+                Px2RemConfig {
+                    selector_white_list: vec![".a".to_string()],
+                    selector_black_list: vec![],
+                    ..Default::default()
+                }
+            ),
+            r#".a,.b{width:100px}"#
+        );
+        assert_eq!(
+            run(
+                r#".a,.b{width:100px;}"#,
+                Px2RemConfig {
+                    selector_white_list: vec![".a".to_string(), ".b".to_string()],
+                    selector_black_list: vec![],
+                    ..Default::default()
+                }
+            ),
+            r#".a,.b{width:1rem}"#
+        );
+        assert_eq!(
+            run(
+                r#".a,.b{width:100px;}"#,
+                Px2RemConfig {
+                    selector_white_list: vec![],
+                    selector_black_list: vec![".a".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#".a,.b{width:100px}"#
         );
     }
 
