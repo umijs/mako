@@ -137,22 +137,16 @@ impl RuntimeFlags {
         }
     }
 
-    pub fn dcl_with(&self, ident: &String) -> ModuleItem {
+    pub fn dcl_with(&self, ident: &str) -> ModuleItem {
         match *self {
             RuntimeFlags::DefaultInterOp => {
-                dcl!(
-                    ident.clone(),
-                    require!("@swc/helpers/_/_interop_require_default")
-                )
+                dcl!(ident, require!("@swc/helpers/_/_interop_require_default"))
             }
             RuntimeFlags::WildcardInterOp => {
-                dcl!(
-                    ident.clone(),
-                    require!("@swc/helpers/_/_interop_require_wildcard")
-                )
+                dcl!(ident, require!("@swc/helpers/_/_interop_require_wildcard"))
             }
             RuntimeFlags::ExportStartInterOp => {
-                dcl!(ident.clone(), require!("@swc/helpers/_/_export_star"))
+                dcl!(ident, require!("@swc/helpers/_/_export_star"))
             }
             _ => {
                 unreachable!();
