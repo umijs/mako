@@ -133,7 +133,8 @@ pub(super) fn render_normal_js_chunk(
     let (content_buf, source_map_buf) = {
         let pot = chunk_pot;
         let chunk_prefix_code = PrefixCode::new(format!(
-            r#"(globalThis['{}'] = globalThis['{}'] || []).push([['{}'],\n"#,
+            r#"(globalThis['{}'] = globalThis['{}'] || []).push([
+['{}'],"#,
             context.config.output.chunk_loading_global,
             context.config.output.chunk_loading_global,
             pot.chunk_id,
@@ -146,7 +147,7 @@ pub(super) fn render_normal_js_chunk(
         sourcemap::SourceMap::from(chunk_raw_sourcemap).to_writer(&mut source_map_buf)?;
 
         (
-            format!(r#"{}{}]);"#, chunk_prefix_code.value, chunk_content),
+            format!("{}\n{}]);", chunk_prefix_code.value, chunk_content),
             source_map_buf,
         )
     };
