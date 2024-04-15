@@ -375,7 +375,7 @@ mod tests {
             .unwrap();
             let cm = context.meta.script.cm.clone();
 
-            let add_js_dist_conent = module_dist_add.0.clone();
+            let add_js_dist_content = module_dist_add.0.clone();
             let add_js_sourcemap = build_source_map(module_dist_add.1.as_ref().unwrap(), &cm);
             let sub_js_sourcemap = build_source_map(module_dist_sub.1.as_ref().unwrap(), &cm);
 
@@ -399,7 +399,7 @@ mod tests {
             assert_eq!(
                 sub_js_sourcemap
                     .tokens()
-                    .map(|t| t.get_dst_line() + 1 + 1 + count_string_lines(&add_js_dist_conent))
+                    .map(|t| t.get_dst_line() + 1 + 1 + count_string_lines(&add_js_dist_content))
                     .collect::<Vec<u32>>(),
                 merged_sourcemap
                     .tokens()
