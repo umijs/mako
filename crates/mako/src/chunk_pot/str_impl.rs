@@ -164,21 +164,21 @@ pub(super) fn render_normal_js_chunk(
     })
 }
 
-type ModuleDist = (String, Option<Vec<(BytePos, LineCol)>>);
+type EmittedWithMapping = (String, Option<Vec<(BytePos, LineCol)>>);
 
 #[cached(
     result = true,
     key = "String",
-    type = "SizedCache<String , ModuleDist>",
+    type = "SizedCache<String , EmittedWithMapping>",
     create = "{ SizedCache::with_size(20000) }",
     convert = r#"{format!("{}-{}", _raw_hash, module_id)}"#
 )]
-fn emit_module_with_sourcemap(
+fn emit_module_with_mapping(
     module_id: &str,
     module: &Module,
     _raw_hash: u64, // used for cache key
     context: &Arc<Context>,
-) -> Result<ModuleDist> {
+) -> Result<EmittedWithMapping> {
     match &module.info.as_ref().unwrap().ast {
         ModuleAst::Script(ast) => {
             let cm = context.meta.script.cm.clone();
@@ -246,23 +246,23 @@ fn pot_to_chunk_module_object_string(
         sorted_kv
     };
 
-    let modules_dist = sorted_kv
+    let emitted_modules_with_mapping = sorted_kv
         .par_iter()
         .map(|(module_id, module_and_hash)| {
-            emit_module_with_sourcemap(module_id, module_and_hash.0, module_and_hash.1, context)
+            emit_module_with_mapping(module_id, module_and_hash.0, module_and_hash.1, context)
         })
         .collect::<Result<Vec<(String, Option<Vec<(BytePos, LineCol)>>)>>>()?;
 
     let cm = context.meta.script.cm.clone();
 
     let (chunk_content, chunk_raw_sourcemap) =
-        merge_code_and_sourcemap(modules_dist, cm, chunk_prefix_offset);
+        merge_code_and_sourcemap(emitted_modules_with_mapping, cm, chunk_prefix_offset);
 
     Ok((format!(r#"{{ {} }}"#, chunk_content), chunk_raw_sourcemap))
 }
 
 fn merge_code_and_sourcemap(
-    modules_with_sourcemap: Vec<ModuleDist>,
+    modules_with_sourcemap: Vec<EmittedWithMapping>,
     cm: Arc<SourceMap>,
     chunk_prefix_offset: u32,
 ) -> (String, RawSourceMap) {
@@ -331,7 +331,7 @@ mod tests {
     use swc_core::ecma::visit::VisitMutWith;
     use testing::assert_eq;
 
-    use super::{merge_code_and_sourcemap, ModuleDist};
+    use super::{merge_code_and_sourcemap, EmittedWithMapping};
     use crate::ast::js_ast::JsAst;
     use crate::chunk_pot::str_impl::count_string_lines;
     use crate::compiler::{Args, Context};
@@ -352,7 +352,7 @@ mod tests {
         });
 
         GLOBALS.set(&context.meta.script.globals, || {
-            let module_dist_add = build_file(
+            let emitted_add = build_file(
                 "add.js",
                 r#"function add(a,b) {
   const a_1 = parseInt(a);
@@ -363,7 +363,7 @@ mod tests {
             )
             .unwrap();
 
-            let module_dist_sub = build_file(
+            let emitted_sub = build_file(
                 "sub.js",
                 r#"function sub(a,b) {
   const a_1 = parseInt(a);
@@ -375,17 +375,17 @@ mod tests {
             .unwrap();
             let cm = context.meta.script.cm.clone();
 
-            let add_js_dist_content = module_dist_add.0.clone();
-            let add_js_sourcemap = build_source_map(module_dist_add.1.as_ref().unwrap(), &cm);
-            let sub_js_sourcemap = build_source_map(module_dist_sub.1.as_ref().unwrap(), &cm);
+            let emitted_add_code = emitted_add.0.clone();
+            let emitted_add_sourcemap = build_source_map(emitted_add.1.as_ref().unwrap(), &cm);
+            let emitted_sub_sourcemap = build_source_map(emitted_sub.1.as_ref().unwrap(), &cm);
 
             let merged_code_and_sourcemap =
-                merge_code_and_sourcemap(vec![module_dist_add, module_dist_sub], cm, 1);
+                merge_code_and_sourcemap(vec![emitted_add, emitted_sub], cm, 1);
 
             let merged_sourcemap: sourcemap::SourceMap = merged_code_and_sourcemap.1.into();
 
             assert_eq!(
-                add_js_sourcemap
+                emitted_add_sourcemap
                     .tokens()
                     .map(|t| t.get_dst_line() + 1 + 1)
                     .collect::<Vec<u32>>(),
@@ -397,9 +397,9 @@ mod tests {
             );
 
             assert_eq!(
-                sub_js_sourcemap
+                emitted_sub_sourcemap
                     .tokens()
-                    .map(|t| t.get_dst_line() + 1 + 1 + count_string_lines(&add_js_dist_content))
+                    .map(|t| t.get_dst_line() + 1 + 1 + count_string_lines(&emitted_add_code))
                     .collect::<Vec<u32>>(),
                 merged_sourcemap
                     .tokens()
@@ -410,7 +410,7 @@ mod tests {
         });
     }
 
-    fn build_file(file: &str, code: &str, context: &Arc<Context>) -> Result<ModuleDist> {
+    fn build_file(file: &str, code: &str, context: &Arc<Context>) -> Result<EmittedWithMapping> {
         let mut ast = JsAst::build(file, code, context.clone()).unwrap();
 
         let top = ast.top_level_mark;
