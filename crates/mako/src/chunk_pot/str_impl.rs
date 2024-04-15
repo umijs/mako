@@ -20,6 +20,25 @@ use crate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::module::{Module, ModuleAst};
 use crate::sourcemap::{build_source_map, RawSourceMap};
 
+struct PrefixCode {
+    value: String,
+    lines: u32,
+}
+
+impl PrefixCode {
+    fn new(value: String) -> PrefixCode {
+        let lines = count_string_lines(&value);
+        Self { value, lines }
+    }
+}
+
+fn count_string_lines(s: &str) -> u32 {
+    s.lines().fold(0u32, |mut l, _| {
+        l += 1;
+        l
+    })
+}
+
 pub(super) fn render_entry_js_chunk(
     pot: &ChunkPot,
     js_map: &HashMap<String, String>,
@@ -72,12 +91,15 @@ pub(super) fn render_entry_js_chunk(
 
     let runtime_content = runtime_code(context)?.replace("_%full_hash%_", &hmr_hash.to_string());
 
-    let (chunk_content, chunk_raw_sourcemap) = pot_to_chunk_module_object_string(pot, context, 1)?;
+    let entry_prefix_code = PrefixCode::new("!(function(){\n".to_string());
 
-    let mut content: Vec<u8> = format!("var m = {};\n", chunk_content).into();
+    let (chunk_content, chunk_raw_sourcemap) =
+        pot_to_chunk_module_object_string(pot, context, entry_prefix_code.lines)?;
+
+    let mut content: Vec<u8> = format!("var m = {};", chunk_content).into();
 
     {
-        content.splice(0..0, "!(function(){\n".bytes());
+        content.splice(0..0, entry_prefix_code.value.bytes());
         content.extend(lines.join("\n").into_bytes());
         content.extend(runtime_content.into_bytes());
         content.extend("\n})();".as_bytes());
@@ -110,21 +132,21 @@ pub(super) fn render_normal_js_chunk(
 ) -> Result<ChunkFile> {
     let (content_buf, source_map_buf) = {
         let pot = chunk_pot;
+        let chunk_prefix_code = PrefixCode::new(format!(
+            r#"(globalThis['{}'] = globalThis['{}'] || []).push([['{}'],\n"#,
+            context.config.output.chunk_loading_global,
+            context.config.output.chunk_loading_global,
+            pot.chunk_id,
+        ));
+
         let (chunk_content, chunk_raw_sourcemap) =
-            pot_to_chunk_module_object_string(pot, context, 1)?;
+            pot_to_chunk_module_object_string(pot, context, chunk_prefix_code.lines)?;
 
         let mut source_map_buf: Vec<u8> = vec![];
         sourcemap::SourceMap::from(chunk_raw_sourcemap).to_writer(&mut source_map_buf)?;
 
         (
-            format!(
-                r#"(globalThis['{}'] = globalThis['{}'] || []).push([['{}'],
-{}]);"#,
-                context.config.output.chunk_loading_global,
-                context.config.output.chunk_loading_global,
-                pot.chunk_id,
-                chunk_content
-            ),
+            format!(r#"{}{}]);"#, chunk_prefix_code.value, chunk_content),
             source_map_buf,
         )
     };
@@ -246,7 +268,11 @@ fn pot_to_chunk_module_object_string(
                 chunk_raw_sourcemap
                     .tokens
                     .extend(cur_source_map.tokens().map(|t| sourcemap::RawToken {
-                        // in emit_module_with_sourcemap, we have added a prefix line
+                        // 1. in emit_module_with_sourcemap, we have added 1 line code, need to add 1
+                        // 2. we also have added some prefix code lines in entry chunks or normal
+                        //    chunks, which it's lines count been stored in PrefixCode struct, need
+                        //    to add it
+                        // 3. we need to add total module dist code lines count before current
                         dst_line: t.get_dst_line() + 1 + chunk_prefix_offset + dst_line_offset,
                         src_id: t.get_src_id() + src_id_offset,
                         name_id: t.get_name_id() + name_id_offset,
@@ -269,10 +295,7 @@ fn pot_to_chunk_module_object_string(
 
                 name_id_offset = chunk_raw_sourcemap.names.len() as u32;
                 src_id_offset = chunk_raw_sourcemap.sources.len() as u32;
-                dst_line_offset += module_content.lines().fold(0u32, |mut l, _| {
-                    l += 1;
-                    l
-                });
+                dst_line_offset += count_string_lines(module_content);
             }
 
             (chunk_content, chunk_raw_sourcemap)
