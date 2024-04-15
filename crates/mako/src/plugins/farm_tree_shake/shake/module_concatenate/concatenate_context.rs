@@ -1,12 +1,15 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use bitflags::bitflags;
 use serde::Serialize;
-use swc_core::common::DUMMY_SP;
-use swc_core::ecma::ast::{MemberExpr, ModuleItem, Stmt, VarDeclKind};
-use swc_core::ecma::utils::{quote_ident, quote_str, ExprFactory};
+use swc_core::common::{SyntaxContext, DUMMY_SP};
+use swc_core::ecma::ast::{Id, MemberExpr, ModuleItem, VarDeclKind};
+use swc_core::ecma::utils::{collect_decls_with_ctxt, quote_ident, quote_str, ExprFactory};
 
+use crate::ast::js_ast::JsAst;
 use crate::module::{ImportType, ModuleId, NamedExportType, ResolveType};
+use crate::module_graph::ModuleGraph;
+use crate::plugins::farm_tree_shake::shake::module_concatenate::ConcatenateConfig;
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Default)]
     pub struct EsmDependantFlags: u16 {
@@ -15,10 +18,9 @@ bitflags! {
         const ExportAll = 1<<3;
         const Namespace = 1<<4; // import * as foo, export * as foo
     }
-
 }
 bitflags! {
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Default)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Default, Ord, PartialOrd)]
     pub struct RuntimeFlags: u16 {
         const DefaultInterOp  =1;
         const WildcardInterOp = 1<<2;
@@ -37,14 +39,20 @@ impl EsmDependantFlags {
         &self,
         src: &str,
         names: &(String, String),
+        interop_ident_map: &BTreeMap<RuntimeFlags, String>,
     ) -> Vec<ModuleItem> {
         let mut interopee = require!(src);
         let runtime_helpers: RuntimeFlags = self.into();
 
         if self.contains(EsmDependantFlags::ExportAll) {
+            let ident = interop_ident_map
+                .get(&RuntimeFlags::ExportStartInterOp)
+                .unwrap()
+                .clone();
+
             interopee = MemberExpr {
                 span: DUMMY_SP,
-                obj: quote_ident!("_export_star").into(),
+                obj: quote_ident!(ident).into(),
                 prop: quote_ident!("_").into(),
             }
             .as_call(
@@ -58,9 +66,14 @@ impl EsmDependantFlags {
             .into();
 
         if runtime_helpers.contains(RuntimeFlags::WildcardInterOp) {
+            let ident = interop_ident_map
+                .get(&RuntimeFlags::WildcardInterOp)
+                .unwrap()
+                .clone();
+
             let ems_expose_dcl: ModuleItem = MemberExpr {
                 span: DUMMY_SP,
-                obj: quote_ident!("_interop_require_wildcard").into(),
+                obj: quote_ident!(ident).into(),
                 prop: quote_ident!("_").into(),
             }
             .as_call(DUMMY_SP, vec![quote_ident!(names.0.clone()).as_arg()])
@@ -71,9 +84,14 @@ impl EsmDependantFlags {
         }
 
         if runtime_helpers.contains(RuntimeFlags::DefaultInterOp) {
+            let interop_ident = interop_ident_map
+                .get(&RuntimeFlags::DefaultInterOp)
+                .unwrap()
+                .clone();
+
             let esm_expose_stmt: ModuleItem = MemberExpr {
                 span: DUMMY_SP,
-                obj: quote_ident!("_interop_require_default").into(),
+                obj: quote_ident!(interop_ident).into(),
                 prop: quote_ident!("_").into(),
             }
             .as_call(DUMMY_SP, vec![quote_ident!(names.0.clone()).as_arg()])
@@ -98,7 +116,7 @@ impl EsmDependantFlags {
 macro_rules! dcl {
     ($name: expr, $init:expr ) => {
         $init
-            .into_var_decl(VarDeclKind::Var, quote_ident!(stringify!($name)).into())
+            .into_var_decl(VarDeclKind::Var, quote_ident!($name).into())
             .into()
     };
 }
@@ -108,36 +126,32 @@ impl RuntimeFlags {
         self.contains(RuntimeFlags::DefaultInterOp) || self.contains(RuntimeFlags::WildcardInterOp)
     }
 
-    pub fn interop_runtime_helpers(&self) -> (Vec<ModuleItem>, Vec<String>) {
-        let mut items = vec![];
-        let mut vars = vec![];
-
-        self.iter().for_each(|flag| match flag {
-            RuntimeFlags::WildcardInterOp => {
-                let stmt: Stmt = dcl!(
-                    _interop_require_wildcard,
-                    require!("@swc/helpers/_/_interop_require_wildcard")
-                );
-                items.push(stmt.into());
-                vars.push("_interop_require_wildcard".to_string());
+    pub fn op_ident(&self) -> String {
+        match *self {
+            RuntimeFlags::DefaultInterOp => "_interop_require_default".to_string(),
+            RuntimeFlags::WildcardInterOp => "_interop_require_wildcard".to_string(),
+            RuntimeFlags::ExportStartInterOp => "_export_star".to_string(),
+            _ => {
+                unreachable!();
             }
+        }
+    }
+
+    pub fn dcl_with(&self, ident: &str) -> ModuleItem {
+        match *self {
             RuntimeFlags::DefaultInterOp => {
-                let stmt: Stmt = dcl!(
-                    _interop_require_default,
-                    require!("@swc/helpers/_/_interop_require_default")
-                );
-                items.push(stmt.into());
-                vars.push("_interop_require_default".to_string());
+                dcl!(ident, require!("@swc/helpers/_/_interop_require_default"))
+            }
+            RuntimeFlags::WildcardInterOp => {
+                dcl!(ident, require!("@swc/helpers/_/_interop_require_wildcard"))
             }
             RuntimeFlags::ExportStartInterOp => {
-                let stmt: Stmt = dcl!(_export_star, require!("@swc/helpers/_/_export_star"));
-                items.push(stmt.into());
-                vars.push("_export_star".to_string());
+                dcl!(ident, require!("@swc/helpers/_/_export_star"))
             }
-            _ => {}
-        });
-
-        (items, vars)
+            _ => {
+                unreachable!();
+            }
+        }
     }
 }
 
@@ -227,9 +241,38 @@ pub struct ConcatenateContext {
     pub modules_in_scope: HashMap<ModuleId, HashMap<String, String>>,
     pub top_level_vars: HashSet<String>,
     pub external_module_namespace: HashMap<ModuleId, (String, String)>,
+    pub interop_idents: BTreeMap<RuntimeFlags, String>,
+    pub interop_module_items: Vec<ModuleItem>,
 }
 
 impl ConcatenateContext {
+    pub fn new(config: &ConcatenateConfig, module_graph: &ModuleGraph) -> Self {
+        let root_module = module_graph.get_module(&config.root).unwrap();
+        let ast = &mut root_module.as_script().unwrap();
+        let top_level_vars = ConcatenateContext::top_level_vars(ast);
+
+        let mut context = Self {
+            top_level_vars,
+            ..Default::default()
+        };
+        context.setup_runtime_interops(config.merged_runtime_flags());
+
+        context
+    }
+
+    fn top_level_vars(ast: &JsAst) -> HashSet<String> {
+        let mut top_level_vars = HashSet::new();
+        top_level_vars.extend(
+            collect_decls_with_ctxt(
+                &ast.ast,
+                SyntaxContext::empty().apply_mark(ast.top_level_mark),
+            )
+            .iter()
+            .map(|id: &Id| id.0.to_string()),
+        );
+        top_level_vars
+    }
+
     pub fn add_external_names(&mut self, external_id: &ModuleId, names: (String, String)) {
         self.external_module_namespace
             .insert(external_id.clone(), names);
@@ -273,5 +316,40 @@ impl ConcatenateContext {
 
     fn add_top_level_var(&mut self, var_name: &str) -> bool {
         self.top_level_vars.insert(var_name.to_string())
+    }
+
+    fn setup_runtime_interops(&mut self, runtime_flags: RuntimeFlags) {
+        for op in runtime_flags.iter() {
+            let ident = self.request_safe_var_name(&op.op_ident());
+            self.interop_module_items.push(op.dcl_with(&ident));
+            self.interop_idents.insert(op, ident);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use maplit::hashmap;
+
+    use super::*;
+
+    #[test]
+    fn test_root_top_var_conflict_with_interop() {
+        let mut context: ConcatenateContext = Default::default();
+        context
+            .top_level_vars
+            .insert("_interop_require_default".to_string());
+
+        context.setup_runtime_interops(RuntimeFlags::DefaultInterOp);
+
+        assert_eq!(
+            context
+                .interop_idents
+                .into_iter()
+                .collect::<HashMap<RuntimeFlags, String>>(),
+            hashmap! {
+                RuntimeFlags::DefaultInterOp => "_interop_require_default_1".to_string()
+            }
+        )
     }
 }

@@ -352,6 +352,14 @@ impl Module {
         }
     }
 
+    pub fn as_script(&self) -> Option<&JsAst> {
+        self.info.as_ref().and_then(|i| i.ast.as_script())
+    }
+
+    pub fn as_mut_script(&mut self) -> Option<&mut JsAst> {
+        self.info.as_mut().and_then(|i| i.ast.script_mut())
+    }
+
     pub fn add_info(&mut self, info: Option<ModuleInfo>) {
         self.info = info;
     }

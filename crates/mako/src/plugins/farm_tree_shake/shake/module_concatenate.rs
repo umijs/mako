@@ -14,13 +14,14 @@ use inner_transformer::InnerTransform;
 use mako_core::swc_common::util::take::Take;
 use root_transformer::RootTransformer;
 use swc_core::common::{Span, SyntaxContext, GLOBALS};
-use swc_core::ecma::ast::{Id, ModuleItem};
+use swc_core::ecma::ast::Id;
 use swc_core::ecma::transforms::base::resolver;
 use swc_core::ecma::utils::collect_decls_with_ctxt;
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use self::concatenate_context::EsmDependantFlags;
 use self::utils::uniq_module_prefix;
+use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
 use crate::module::{Dependency, ImportType, ModuleId, ResolveType};
 use crate::module_graph::ModuleGraph;
@@ -247,14 +248,9 @@ pub fn optimize_module_graph(
 
     GLOBALS.set(&context.meta.script.globals, || {
         for config in &concat_configurations {
-            let mut module_items: Vec<ModuleItem> = Vec::new();
+            let mut concatenate_context = ConcatenateContext::new(config, module_graph);
 
-            let mut concatenate_context = ConcatenateContext::default();
-
-            let runtime_flags = config.merged_runtime_flags();
-            let (items, vars) = runtime_flags.interop_runtime_helpers();
-            module_items.extend(items);
-            concatenate_context.top_level_vars.extend(vars);
+            let mut module_items = concatenate_context.interop_module_items.clone();
 
             for id in &config.sorted_modules(module_graph) {
                 if id.eq(&config.root) {
@@ -277,8 +273,11 @@ pub fn optimize_module_graph(
                     };
 
                     let require_src = id.id.clone();
-                    module_items
-                        .extend(interop.inject_external_export_decl(&require_src, &exposed_names));
+                    module_items.extend(interop.inject_external_export_decl(
+                        &require_src,
+                        &exposed_names,
+                        &concatenate_context.interop_idents,
+                    ));
 
                     concatenate_context.add_external_names(id, exposed_names);
 
@@ -313,8 +312,8 @@ pub fn optimize_module_graph(
                 let module_info = module.info.as_mut().unwrap();
                 let script_ast = module_info.ast.script_mut().unwrap();
 
-                let p = false;
-                if cfg!(debug_assertions) && p {
+                let inner_print = false;
+                if cfg!(debug_assertions) && inner_print {
                     let code = script_ast.generate(context.clone()).unwrap().code;
                     println!("code:\n\n{}\n", code);
                 }
@@ -336,7 +335,7 @@ pub fn optimize_module_graph(
                 };
                 script_ast.ast.visit_mut_with(&mut ext_trans);
 
-                if cfg!(debug_assertions) && p {
+                if cfg!(debug_assertions) && inner_print {
                     let code = script_ast.generate(context.clone()).unwrap().code;
                     println!("after external:\n{}\n", code);
                 }
@@ -352,7 +351,7 @@ pub fn optimize_module_graph(
                 script_ast.ast.visit_mut_with(&mut inner_transformer);
                 script_ast.ast.visit_mut_with(&mut CleanSyntaxContext {});
 
-                if cfg!(debug_assertions) && p {
+                if cfg!(debug_assertions) && inner_print {
                     let code = script_ast.generate(context.clone()).unwrap().code;
                     println!("after inner:\n{}\n", code);
                 }
@@ -364,8 +363,8 @@ pub fn optimize_module_graph(
             let ast = &mut root_module.info.as_mut().unwrap().ast;
 
             let ast_script = ast.script_mut().unwrap();
-            let p = false;
-            if cfg!(debug_assertions) && p {
+            let root_print = false;
+            if cfg!(debug_assertions) && root_print {
                 let code = ast_script.generate(context.clone()).unwrap().code;
                 println!("root:\n{}\n", code);
             }
@@ -375,20 +374,12 @@ pub fn optimize_module_graph(
             let top_level_mark = ast_script.top_level_mark;
             let src_2_module_id = source_to_module_id(&config.root, module_graph);
 
-            let mut current_module_top_level_vars: HashSet<String> = collect_decls_with_ctxt(
-                &root_module_ast,
-                SyntaxContext::empty().apply_mark(top_level_mark),
-            )
-            .iter()
-            .map(|id: &Id| id.0.to_string())
-            .collect();
-
             let mut ext_trans = ExternalTransformer {
                 src_to_module: &src_2_module_id,
                 concatenate_context: &mut concatenate_context,
                 module_id: &config.root,
                 unresolved_mark,
-                my_top_level_vars: &mut current_module_top_level_vars,
+                my_top_level_vars: &mut HashSet::default(),
             };
             root_module_ast.visit_mut_with(&mut ext_trans);
 
@@ -396,19 +387,26 @@ pub fn optimize_module_graph(
                 &mut concatenate_context,
                 &config.root,
                 context,
-                top_level_mark,
                 &src_2_module_id,
             ));
+
+            if cfg!(debug_assertions) && root_print {
+                let a = JsAst {
+                    ast: root_module_ast.clone(),
+                    unresolved_mark,
+                    top_level_mark,
+                    path: config.root.id.clone(),
+                    contains_top_level_await: false,
+                };
+
+                let code = a.generate(context.clone()).unwrap().code;
+                println!("root after all:\n{}\n", code);
+            }
 
             root_module_ast.visit_mut_with(&mut CleanSyntaxContext {});
 
             root_module_ast.body.splice(0..0, module_items);
             root_module_ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
-
-            // if cfg!(debug_assertions) && p {
-            //     let code = ast_script.generate(context.clone()).unwrap().code;
-            //     println!("root after all:\n{}\n", code);
-            // }
 
             let root_module = module_graph.get_module_mut(&config.root).unwrap();
             let ast = &mut root_module.info.as_mut().unwrap().ast;
