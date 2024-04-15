@@ -8,7 +8,7 @@ use mako_core::colored::Colorize;
 use mako_core::thiserror::Error;
 
 use crate::analyze_deps::AnalyzeDeps;
-use crate::ast_2::file::{Content, File};
+use crate::ast::file::{Content, File};
 use crate::chunk_pot::util::hash_hashmap;
 use crate::compiler::{Compiler, Context};
 use crate::load::Load;

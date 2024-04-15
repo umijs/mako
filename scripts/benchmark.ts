@@ -1,68 +1,68 @@
+import assert from 'assert';
 import 'zx/globals';
 
 (async () => {
+  const shouldBuild = argv.build !== false;
   const baseline = argv.baseline || 'master';
-  const multiChunks = argv.multiChunks;
   const casePath =
-    argv.case || multiChunks ? './tmp/three10x/multiChunks' : './tmp/three10x';
+    argv.case ||
+    (argv.multiChunks ? './tmp/three10x/multiChunks' : './tmp/three10x');
 
-  const currentBranch = (
-    await $`git rev-parse --abbrev-ref HEAD`
-  ).stdout.trim();
+  const originBranch = (await $`git rev-parse --abbrev-ref HEAD`).stdout.trim();
   const isGitClean = (await $`git status --porcelain`).stdout.trim() === '';
-  const isBaselineMaster = baseline === 'master';
-  const makoBaselineName = isBaselineMaster
-    ? 'mako-master'
-    : `mako-${baseline}`;
-  const makoBaselineRelativePath = path.join(
-    __dirname,
-    `../tmp/${makoBaselineName}`,
-  );
-  const isBaselineMakoExists = fs.existsSync(makoBaselineRelativePath);
-  console.log('currentBranch', currentBranch);
-  console.log('isGitClean', isGitClean);
-  console.log('isBaselineMaster', isBaselineMaster);
-  console.log('makoBaselineName', makoBaselineName);
-  console.log('makoBaselineRelativePath', makoBaselineRelativePath);
-  console.log('isBaselineMakoExists', isBaselineMakoExists);
-  console.log('argv', argv);
+  if (!isGitClean) {
+    await $`git stash --include-untracked`;
+  }
+  await $`git checkout ${baseline}`;
 
-  async function buildBaselineMako() {
-    if (!isGitClean) {
-      await $`git stash --include-untracked`;
-    }
-    await $`git checkout ${baseline}`;
-    await $`cargo build --release`;
-    await $`cp target/release/mako ./tmp/${makoBaselineName}`;
-    await $`git checkout ${currentBranch}`;
-    if (!isGitClean) {
-      await $`git stash pop`;
+  const baselineHash = (await $`git rev-parse --short HEAD`).stdout.trim();
+  const baselineMakoPath = `./tmp/mako-${baselineHash}`;
+  if (!fs.existsSync(path.join(__dirname, `../tmp/mako-${baselineHash}`))) {
+    if (shouldBuild) {
+      await $`cargo build --release`;
+      await $`cp target/release/mako ${baselineMakoPath}`;
+    } else {
+      console.log(`Since --no-build is set, build for baseline is skipped.`);
     }
   }
 
-  // build baseline mako
-  if (isBaselineMaster) {
-    // TODO: based on the hash of master, do automatic judgment, no need to skipBaselineBuild
-    // master may change, so always build except --skip-baseline-build is supplied
-    if (!argv.skipBaselineBuild) {
-      await buildBaselineMako();
-    }
-  } else {
-    if (!isBaselineMakoExists || argv.force) {
-      await buildBaselineMako();
-    }
-  }
-
-  const isBaselineMakoExistsAfterBuild = fs.existsSync(
-    makoBaselineRelativePath,
-  );
-  if (!isBaselineMakoExistsAfterBuild) {
-    throw new Error('Baseline mako not found');
+  await $`git checkout ${originBranch}`;
+  if (!isGitClean) {
+    await $`git stash pop`;
   }
 
   // build latest mako
-  await $`cargo build --release`;
+  if (shouldBuild) {
+    await $`cargo build --release`;
+  } else {
+    console.log(`Since --no-build is set, build for current mako is skipped.`);
+  }
+
+  let currentMakoPath = './target/release/mako';
+  if (isGitClean) {
+    const currentHash = (await $`git rev-parse --short HEAD`).stdout.trim();
+    const makoCurrentName = `mako-${currentHash}`;
+    await $`cp target/release/mako ./tmp/${makoCurrentName}`;
+    currentMakoPath = `./tmp/${makoCurrentName}`;
+  }
+
+  assert(
+    currentMakoPath !== baselineMakoPath,
+    'currentMakoPath should not be equal to baselineMakoPath',
+  );
+  console.log(path.join(__dirname, '..', currentMakoPath));
+  assert(
+    fs.existsSync(path.join(__dirname, '..', currentMakoPath)),
+    `current mako binary should exist: ${currentMakoPath}`,
+  );
+  console.log(path.join(__dirname, '..', baselineMakoPath), baselineMakoPath);
+  assert(
+    fs.existsSync(path.join(__dirname, '..', baselineMakoPath)),
+    `baseline mako binary should exist: ${baselineMakoPath}`,
+  );
 
   // run benchmark
-  await $`hyperfine --warmup 3 --runs 10 "./target/release/mako ${casePath} --mode production" "./tmp/${makoBaselineName} ${casePath} --mode production"`;
+  const warmup = argv.warmup || 3;
+  const runs = argv.runs || 10;
+  await $`hyperfine --warmup ${warmup} --runs ${runs} "${currentMakoPath} ${casePath} --mode production" "${baselineMakoPath} ${casePath} --mode production"`;
 })();

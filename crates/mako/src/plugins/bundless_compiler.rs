@@ -19,18 +19,15 @@ use mako_core::swc_ecma_visit::VisitMutWith;
 use mako_core::swc_error_reporters::handler::try_with_handler;
 use mako_core::tracing::warn;
 
-use crate::ast::js_ast_to_code;
-use crate::ast_2::js_ast::JsAst;
+use crate::ast::js_ast::JsAst;
 use crate::compiler::{Args, Context};
 use crate::config::Config;
 use crate::module::{ModuleAst, ModuleId};
 use crate::plugin::{Plugin, PluginTransformJsParam};
-use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
-use crate::transformers::transform_dynamic_import::DynamicImport;
+use crate::visitors::dep_replacer::{DepReplacer, DependenciesToReplace};
+use crate::visitors::dynamic_import::DynamicImport;
 
-pub struct BundlessCompiler {
-    // pub fs_write: Option<>
-}
+pub struct BundlessCompiler {}
 
 impl BundlessCompiler {
     pub fn transform_all(&self, context: &Arc<Context>) -> Result<()> {
@@ -102,11 +99,8 @@ impl Plugin for BundlessCompiler {
                         // nothing
                         // todo: generate resolved AJSON
                     } else {
-                        let (code, _) = js_ast_to_code(&js_ast.ast, context, "a.js")
-                            .unwrap_or(("".to_string(), "".to_string()));
-
+                        let code = js_ast.generate(context.clone()).unwrap().code;
                         let target = to_dist_path(&id.id, context);
-
                         self.write_to_dist(target, code, context);
                     }
                 }
@@ -122,7 +116,7 @@ impl Plugin for BundlessCompiler {
     }
 }
 
-pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> Result<()> {
+fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> Result<()> {
     mako_core::mako_profile_function!();
 
     module_ids
@@ -195,7 +189,7 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
     Ok(())
 }
 
-pub fn transform_js_generate(
+fn transform_js_generate(
     module_id: &ModuleId,
     context: &Arc<Context>,
     ast: &mut JsAst,
@@ -242,7 +236,9 @@ pub fn transform_js_generate(
                             };
                             ast.ast.visit_mut_with(&mut dep_replacer);
 
-                            let mut dynamic_import = DynamicImport { context };
+                            let mut dynamic_import = DynamicImport {
+                                context: context.clone(),
+                            };
                             ast.ast.visit_mut_with(&mut dynamic_import);
 
                             ast.ast

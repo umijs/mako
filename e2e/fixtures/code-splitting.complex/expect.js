@@ -8,6 +8,10 @@ assert(
 );
 
 assert(
+  files["index.js"].includes("src_isolated_ts-async.js"),
+  "isolated dependences should connect to chunksIdToUrlMap"
+)
+assert(
   Object.keys(files).every((f) => !f.includes("_isNumeric_js")),
   "empty chunk should be removed"
 );

@@ -13,7 +13,7 @@ use mako_core::swc_ecma_visit::VisitMutWith;
 use serde::Serialize;
 use unsimplify::UnSimplify;
 
-use crate::ast_2::file::{Asset, Content};
+use crate::ast::file::{Asset, Content};
 use crate::compiler::Context;
 use crate::load::FileSystem;
 use crate::module::{Dependency as ModuleDependency, ModuleAst, ResolveType};

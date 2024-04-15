@@ -9,7 +9,7 @@ use mako_core::swc_ecma_codegen::text_writer::JsWriter;
 use mako_core::swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
 use mako_core::ternary;
 
-use crate::ast::base64_encode;
+use crate::ast::utils::base64_encode;
 use crate::chunk::Chunk;
 use crate::chunk_pot::ast_impl::{render_css_chunk, render_css_chunk_no_cache};
 use crate::chunk_pot::util::runtime_code;
@@ -25,7 +25,6 @@ pub(super) fn render_entry_js_chunk(
     css_map: &HashMap<String, String>,
     chunk: &Chunk,
     context: &Arc<Context>,
-    _cache_hash: u64,
     hmr_hash: u64,
 ) -> Result<ChunkFile> {
     mako_core::mako_profile_function!();

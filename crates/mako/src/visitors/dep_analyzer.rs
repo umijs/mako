@@ -3,7 +3,7 @@ use mako_core::swc_ecma_ast::{CallExpr, Expr, Lit, ModuleDecl, NewExpr, Str};
 use mako_core::swc_ecma_visit::{Visit, VisitWith};
 use swc_core::common::Mark;
 
-use crate::ast_2::utils;
+use crate::ast::utils;
 use crate::module::{Dependency, ResolveType};
 
 pub struct DepAnalyzer {
@@ -42,7 +42,11 @@ impl Visit for DepAnalyzer {
                     return;
                 }
                 let src = import.src.value.to_string();
-                self.add_dependency(src, ResolveType::Import, Some(import.src.span));
+                self.add_dependency(
+                    src,
+                    ResolveType::Import(import.into()),
+                    Some(import.src.span),
+                );
             }
             // e.g.
             // export { a, b, c } from './module';
@@ -50,7 +54,7 @@ impl Visit for DepAnalyzer {
                 if let Some(src) = &export.src {
                     self.add_dependency(
                         src.value.to_string(),
-                        ResolveType::ExportNamed,
+                        ResolveType::ExportNamed(export.into()),
                         Some(src.span),
                     );
                 }
@@ -150,7 +154,7 @@ mod tests {
     use mako_core::swc_ecma_visit::VisitWith;
     use swc_core::common::GLOBALS;
 
-    use crate::ast_2::tests::TestUtils;
+    use crate::ast::tests::TestUtils;
 
     #[test]
     fn test_normal() {

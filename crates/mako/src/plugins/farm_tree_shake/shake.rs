@@ -1,5 +1,6 @@
 mod find_export_source;
-pub mod skip_module;
+mod module_concatenate;
+mod skip_module;
 
 use std::cell::RefCell;
 use std::ops::DerefMut;
@@ -13,12 +14,12 @@ use self::skip_module::skip_module_optimize;
 use crate::compiler::Context;
 use crate::module::{ModuleAst, ModuleId, ModuleType, ResolveType};
 use crate::module_graph::ModuleGraph;
-use crate::plugins::farm_tree_shake::module::TreeShakeModule;
+use crate::plugins::farm_tree_shake::module::{ModuleSystem, TreeShakeModule};
+use crate::plugins::farm_tree_shake::shake::module_concatenate::optimize_module_graph;
 use crate::plugins::farm_tree_shake::statement_graph::{
     ExportInfo, ExportSpecifierInfo, ImportInfo,
 };
 use crate::plugins::farm_tree_shake::{module, remove_useless_stmts, statement_graph};
-use crate::tree_shaking::tree_shaking_module::ModuleSystem;
 
 /// tree shake useless modules and code, steps:
 /// 1. topo sort the module_graph, the cyclic modules treat as no side_effects
@@ -353,9 +354,18 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
                 .as_mut()
                 .unwrap()
                 .ast
-                .as_script_mut()
+                .as_script_ast_mut()
                 .body = swc_module.body.clone();
         }
+    }
+
+    if context
+        .config
+        .optimization
+        .as_ref()
+        .map_or(false, |o| o.concatenate_modules.unwrap_or(false))
+    {
+        optimize_module_graph(module_graph, &tree_shake_modules_map, context)?;
     }
 
     Ok(())

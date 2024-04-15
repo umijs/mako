@@ -3,6 +3,7 @@ use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use bitflags::bitflags;
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::base64::engine::{general_purpose, Engine};
 use mako_core::md5;
@@ -11,11 +12,14 @@ use mako_core::swc_common::{Span, DUMMY_SP};
 use mako_core::swc_ecma_ast::{BlockStmt, FnExpr, Function, Module as SwcModule};
 use mako_core::swc_ecma_utils::quote_ident;
 use serde::Serialize;
+use swc_core::ecma::ast::{
+    ExportSpecifier, ImportDecl, ImportSpecifier, ModuleExportName, NamedExport,
+};
 
 use crate::analyze_deps::AnalyzeDepsResult;
-use crate::ast_2::css_ast::CssAst;
-use crate::ast_2::file::File;
-use crate::ast_2::js_ast::JsAst;
+use crate::ast::css_ast::CssAst;
+use crate::ast::file::File;
+use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
 use crate::config::ModuleIdStrategy;
 use crate::resolve::ResolverResource;
@@ -31,10 +35,88 @@ pub struct Dependency {
     pub span: Option<Span>,
 }
 
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Default)]
+    pub struct ImportType: u16 {
+        const Default = 1;
+        const Named = 1<<2;
+        const Namespace = 1<<3;
+        const SideEffect = 1<<4 ;
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Default)]
+    pub struct NamedExportType: u16 {
+        const Named = 1;
+        const Default = 1<<2;
+        const Namespace = 1<<3;
+    }
+}
+
+impl From<&ImportDecl> for ImportType {
+    fn from(decl: &ImportDecl) -> Self {
+        if decl.specifiers.is_empty() {
+            ImportType::SideEffect
+        } else {
+            let mut import_type = ImportType::empty();
+            for specifier in &decl.specifiers {
+                match specifier {
+                    ImportSpecifier::Named(_) => {
+                        import_type |= ImportType::Named;
+                    }
+                    ImportSpecifier::Default(_) => {
+                        import_type |= ImportType::Default;
+                    }
+                    ImportSpecifier::Namespace(_) => {
+                        import_type |= ImportType::Namespace;
+                    }
+                }
+            }
+            import_type
+        }
+    }
+}
+
+impl From<&NamedExportType> for ImportType {
+    fn from(value: &NamedExportType) -> Self {
+        let mut res = Self::empty();
+        value.iter().for_each(|b| match b {
+            NamedExportType::Default => res.insert(Self::Default),
+            NamedExportType::Named => res.insert(Self::Named),
+            NamedExportType::Namespace => res.insert(Self::Namespace),
+            _ => {}
+        });
+        res
+    }
+}
+
+impl From<&NamedExport> for NamedExportType {
+    fn from(decl: &NamedExport) -> Self {
+        let mut res = Self::empty();
+
+        decl.specifiers
+            .iter()
+            .for_each(|specifier| match specifier {
+                ExportSpecifier::Namespace(_) => res.insert(Self::Namespace),
+                ExportSpecifier::Default(_) => res.insert(Self::Default),
+                ExportSpecifier::Named(named) => {
+                    if let ModuleExportName::Ident(orig) = &named.orig
+                        && orig.sym.eq("default")
+                    {
+                        res.insert(Self::Default);
+                    } else {
+                        res.insert(Self::Named);
+                    }
+                }
+            });
+
+        res
+    }
+}
+
 #[derive(Eq, Hash, PartialEq, Serialize, Debug, Clone, Copy)]
 pub enum ResolveType {
-    Import,
-    ExportNamed,
+    Import(ImportType),
+    ExportNamed(NamedExportType),
     ExportAll,
     Require,
     DynamicImport,
@@ -43,16 +125,28 @@ pub enum ResolveType {
 }
 
 impl ResolveType {
-    pub fn is_esm(&self) -> bool {
-        match self {
-            ResolveType::Import => true,
-            ResolveType::ExportNamed => true,
-            ResolveType::ExportAll => true,
-            ResolveType::Require => false,
-            ResolveType::DynamicImport => true,
-            ResolveType::Css => false,
-            ResolveType::Worker => false,
+    pub fn same_enum(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Import(_), Self::Import(_)) => true,
+            (_, _) => self == other,
         }
+    }
+}
+
+impl ResolveType {
+    pub fn is_esm(&self) -> bool {
+        self.is_sync_esm() || self.is_dynamic_esm()
+    }
+
+    pub fn is_sync_esm(&self) -> bool {
+        matches!(
+            self,
+            ResolveType::Import(_) | ResolveType::ExportNamed(_) | ResolveType::ExportAll
+        )
+    }
+
+    pub fn is_dynamic_esm(&self) -> bool {
+        matches!(self, ResolveType::DynamicImport)
     }
 }
 
@@ -193,7 +287,22 @@ pub enum ModuleAst {
 }
 
 impl ModuleAst {
-    pub fn as_script(&self) -> &SwcModule {
+    #[allow(dead_code)]
+    pub fn as_script(&self) -> Option<&JsAst> {
+        match self {
+            ModuleAst::Script(ast) => Some(ast),
+            _ => None,
+        }
+    }
+
+    pub fn script_mut(&mut self) -> Option<&mut JsAst> {
+        match self {
+            ModuleAst::Script(ast) => Some(ast),
+            _ => None,
+        }
+    }
+
+    pub fn as_script_ast(&self) -> &SwcModule {
         if let Self::Script(script) = self {
             &script.ast
         } else {
@@ -201,7 +310,7 @@ impl ModuleAst {
         }
     }
 
-    pub fn as_script_mut(&mut self) -> &mut SwcModule {
+    pub fn as_script_ast_mut(&mut self) -> &mut SwcModule {
         if let Self::Script(script) = self {
             &mut script.ast
         } else {
@@ -225,11 +334,6 @@ pub enum ModuleType {
     Raw,
 }
 
-impl ModuleType {
-    pub fn is_script(&self) -> bool {
-        matches!(self, ModuleType::Script)
-    }
-}
 #[derive(Clone)]
 pub struct Module {
     pub id: ModuleId,
@@ -246,6 +350,14 @@ impl Module {
             info,
             side_effects: is_entry,
         }
+    }
+
+    pub fn as_script(&self) -> Option<&JsAst> {
+        self.info.as_ref().and_then(|i| i.ast.as_script())
+    }
+
+    pub fn as_mut_script(&mut self) -> Option<&mut JsAst> {
+        self.info.as_mut().and_then(|i| i.ast.script_mut())
     }
 
     pub fn add_info(&mut self, info: Option<ModuleInfo>) {

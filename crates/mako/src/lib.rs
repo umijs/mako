@@ -4,13 +4,12 @@
 #![feature(result_option_inspect)]
 
 mod analyze_deps;
-mod ast;
-pub mod ast_2;
+pub mod ast;
 mod build;
 mod chunk;
 mod chunk_graph;
 mod chunk_pot;
-mod cli;
+pub mod cli;
 mod comments;
 pub mod compiler;
 pub mod config;
@@ -28,7 +27,7 @@ mod optimize_chunk;
 mod parse;
 pub mod plugin;
 mod plugins;
-mod profile_gui;
+pub mod profile_gui;
 mod resolve;
 mod runtime;
 mod sourcemap;
@@ -38,11 +37,9 @@ mod targets;
 #[cfg(test)]
 mod test_helper;
 mod thread_pool;
-mod tokio_runtime;
+pub mod tokio_runtime;
 mod transform;
 mod transform_in_generate;
-mod transformers;
-mod tree_shaking;
 mod update;
 mod util;
 mod visitors;

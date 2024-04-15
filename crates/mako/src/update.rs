@@ -12,7 +12,7 @@ use crate::compiler::Compiler;
 use crate::module::{Dependency, Module, ModuleId};
 use crate::resolve::{self, clear_resolver_cache};
 use crate::transform_in_generate::transform_modules;
-use crate::transformers::transform_virtual_css_modules::is_css_path;
+use crate::visitors::virtual_css_modules::is_css_path;
 
 #[derive(Debug, Clone)]
 pub enum UpdateType {
@@ -258,16 +258,15 @@ impl Compiler {
                 debug!("build by modify: {:?} start", entry);
                 // first build
                 let is_entry = {
-                    // there must be a entry, so unwrap is safe
                     let mut entries = self.context.config.entry.values();
                     entries.any(|e| e.eq(entry))
                 };
 
                 let path = entry.to_string_lossy().to_string();
                 let file = if is_entry {
-                    crate::ast_2::file::File::new_entry(path, self.context.clone())
+                    crate::ast::file::File::new_entry(path, self.context.clone())
                 } else {
-                    crate::ast_2::file::File::new(path, self.context.clone())
+                    crate::ast::file::File::new(path, self.context.clone())
                 };
                 let module = Self::build_module(&file, None, self.context.clone())
                     .map_err(|err| BuildError::BuildTasksError { errors: vec![err] })?;
@@ -336,7 +335,13 @@ impl Compiler {
 
             // add bind dependency
             for (add_module_id, dep) in &add {
-                let add_module = add_modules.remove(add_module_id).unwrap();
+                // 理论上 add_modules 里肯定存在 add 的 add_module_id，但实际场景中还是出现 unwrap() 报错，所以这里先加个 guard 判断
+                // TODO: 需要找到本质原因
+                let add_module = add_modules.remove(add_module_id);
+                if add_module.is_none() {
+                    continue;
+                }
+                let add_module = add_module.unwrap();
 
                 // 只针对非 external 的模块设置 add Task
                 if add_module.info.is_none() {
@@ -360,7 +365,7 @@ impl Compiler {
         let files = added
             .iter()
             .map(|path| {
-                crate::ast_2::file::File::new(
+                crate::ast::file::File::new(
                     path.to_string_lossy().to_string(),
                     self.context.clone(),
                 )

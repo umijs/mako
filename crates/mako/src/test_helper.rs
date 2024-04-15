@@ -2,16 +2,10 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use mako_core::swc_common::sync::Lrc;
-use mako_core::swc_common::SourceMap;
-use mako_core::swc_ecma_ast::Module as SwcModule;
-use mako_core::swc_ecma_codegen::text_writer::JsWriter;
-use mako_core::swc_ecma_codegen::Emitter;
-use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 use mako_core::tracing_subscriber::{fmt, EnvFilter};
 
-use crate::ast_2::file::File;
-use crate::ast_2::js_ast::JsAst;
+use crate::ast::file::File;
+use crate::ast::js_ast::JsAst;
 use crate::compiler::{self, Compiler, Context};
 use crate::config::{Config, Mode};
 use crate::module::{Module, ModuleId, ModuleInfo};
@@ -54,7 +48,7 @@ pub fn create_mock_module(path: PathBuf, code: &str) -> Module {
 
     let context = Arc::new(Context::default());
     let mut file = File::new(path.to_string_lossy().to_string(), context.clone());
-    file.set_content(crate::ast_2::file::Content::Js(code.to_string()));
+    file.set_content(crate::ast::file::Content::Js(code.to_string()));
     let ast = JsAst::new(&file, context.clone()).unwrap();
     let module_id = ModuleId::from_path(path.clone());
     let info = ModuleInfo {
@@ -105,31 +99,4 @@ pub fn setup_logger() {
         // .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE)
         // .without_time()
         .try_init();
-}
-
-pub fn transform_ast_with(
-    module: &mut SwcModule,
-    visitor: &mut dyn VisitMut,
-    cm: &Lrc<SourceMap>,
-) -> String {
-    module.visit_mut_with(visitor);
-    emit_js(module, cm)
-}
-
-fn emit_js(module: &SwcModule, cm: &Arc<SourceMap>) -> String {
-    let mut buf = Vec::new();
-
-    {
-        let writer = Box::new(JsWriter::new(cm.clone(), "\n", &mut buf, None));
-        let mut emitter = Emitter {
-            cfg: Default::default(),
-            comments: None,
-            cm: cm.clone(),
-            wr: writer,
-        };
-        // This may return an error if it fails to write
-        emitter.emit_module(module).unwrap();
-    }
-
-    String::from_utf8(buf).unwrap().trim().to_string()
 }

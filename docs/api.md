@@ -12,6 +12,7 @@ await build({
   root: process.cwd(),
   config: {},
   hooks: {},
+  less: {},
   watch: false,
 }: BuildOptions);
 ```
@@ -31,6 +32,29 @@ await build({
 - 默认值：`{}`
 
 详见[配置](./config.md)。
+
+### less
+
+- 类型：`Object`
+- 默认值：`{}`
+
+less 配置。
+
+比如。
+
+```ts
+{
+  modifyVars: {
+    'primary-color': '#1DA57A',
+    'link-color': '#1DA57A',
+  },
+  sourceMap: {
+    sourceMapFileInline: true,
+    outputSourceFiles: true,
+  },
+  math: 'always',
+}
+```
 
 ### hooks
 

@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
 use mako_core::petgraph;
 use mako_core::petgraph::stable_graph::NodeIndex;
@@ -243,12 +243,6 @@ impl Statement {
             has_side_effects,
         } = analyze_imports_and_exports(&id, stmt, None, unresolved_ctxt);
 
-        // transform defined_idents_map from HashMap<Ident, Vec<Ident>> to HashMap<String, Ident> using ToString
-        let defined_idents_map = defined_idents_map
-            .into_iter()
-            .map(|(key, value)| (key, value))
-            .collect();
-
         Self {
             id,
             import_info,
@@ -375,13 +369,9 @@ impl StatementGraph {
 
     pub fn analyze_used_statements_and_idents(
         &self,
-        used_exports: HashMap<StatementId, HashSet<UsedIdent>>,
-    ) -> HashMap<StatementId, HashSet<String>> {
-        let mut used_statements: HashMap<usize, HashSet<String>> = HashMap::new();
-
-        // sort used_exports by statement id
-        let mut used_exports: Vec<_> = used_exports.into_iter().collect();
-        used_exports.sort_by(|a, b| a.0.cmp(&b.0));
+        used_exports: BTreeMap<StatementId, HashSet<UsedIdent>>,
+    ) -> BTreeMap<StatementId, HashSet<String>> {
+        let mut used_statements: BTreeMap<usize, HashSet<String>> = BTreeMap::new();
 
         for (stmt_id, used_export_idents) in used_exports {
             let mut used_dep_idents = HashSet::new();
@@ -391,16 +381,16 @@ impl StatementGraph {
             for ident in used_export_idents {
                 match ident {
                     UsedIdent::SwcIdent(i) => {
-                        used_defined_idents.insert(i.to_string());
-                        let dep_idents = self.stmt(&stmt_id).defined_idents_map.get(&i.to_string());
+                        used_defined_idents.insert(i.clone());
+                        let dep_idents = self.stmt(&stmt_id).defined_idents_map.get(&i);
 
                         if let Some(dep_idents) = dep_idents {
-                            used_dep_idents.extend(dep_idents.iter().map(|i| i.to_string()));
+                            used_dep_idents.extend(dep_idents.iter().cloned());
                         }
                     }
                     UsedIdent::Default => {
                         let stmt = self.stmt(&stmt_id);
-                        used_dep_idents.extend(stmt.used_idents.iter().map(|i| i.to_string()));
+                        used_dep_idents.extend(stmt.used_idents.iter().cloned());
                     }
                     UsedIdent::InExportAll(specifier) => {
                         // if used_statements already contains this statement, add specifier to it
@@ -457,9 +447,7 @@ impl StatementGraph {
                         let mut dep_used_defined_idents = HashSet::new();
 
                         for ident in &used_dep_idents {
-                            if let Some(dep_idents) =
-                                dep_stmt.defined_idents_map.get(&ident.to_string())
-                            {
+                            if let Some(dep_idents) = dep_stmt.defined_idents_map.get(ident) {
                                 dep_used_defined_idents.insert(ident.to_string());
                                 dep_stmt_idents.extend(dep_idents.clone());
                             } else {

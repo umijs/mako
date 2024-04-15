@@ -15,7 +15,7 @@ use miette::{miette, ByteOffset, Diagnostic, NamedSource, SourceOffset, SourceSp
 use serde::Serialize;
 
 use crate::plugins::node_polyfill::get_all_modules;
-use crate::{optimize_chunk, plugins, transformers};
+use crate::{optimize_chunk, plugins, visitors};
 
 #[derive(Debug, Diagnostic)]
 #[diagnostic(code("mako.config.json parsed failed"))]
@@ -203,16 +203,28 @@ pub enum TreeShakingStrategy {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Px2RemConfig {
-    #[serde(default = "transformers::transform_px2rem::default_root")]
+    #[serde(default = "visitors::css_px2rem::default_root")]
     pub root: f64,
     #[serde(rename = "propBlackList", default)]
-    pub prop_black_list: Vec<String>,
+    pub prop_blacklist: Vec<String>,
     #[serde(rename = "propWhiteList", default)]
-    pub prop_white_list: Vec<String>,
+    pub prop_whitelist: Vec<String>,
     #[serde(rename = "selectorBlackList", default)]
-    pub selector_black_list: Vec<String>,
+    pub selector_blacklist: Vec<String>,
     #[serde(rename = "selectorWhiteList", default)]
-    pub selector_white_list: Vec<String>,
+    pub selector_whitelist: Vec<String>,
+}
+
+impl Default for Px2RemConfig {
+    fn default() -> Self {
+        Px2RemConfig {
+            root: visitors::css_px2rem::default_root(),
+            prop_blacklist: vec![],
+            prop_whitelist: vec![],
+            selector_blacklist: vec![],
+            selector_whitelist: vec![],
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -343,6 +355,7 @@ pub struct MinifishConfig {
 #[serde(rename_all = "camelCase")]
 pub struct OptimizationConfig {
     pub skip_modules: Option<bool>,
+    pub concatenate_modules: Option<bool>,
 }
 #[derive(Deserialize, Serialize, Debug)]
 pub struct InlineCssConfig {}
@@ -559,7 +572,7 @@ const DEFAULT_CONFIG: &str = r#"
     "emotion": false,
     "flexBugs": false,
     "cjs": false,
-    "optimization": { "skipModules": true },
+    "optimization": { "skipModules": true, "concatenateModules": false },
     "react": {
       "pragma": "React.createElement",
       "importSource": "react",
