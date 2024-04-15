@@ -230,3 +230,65 @@ impl VisitMut for UselessExportStmtRemover {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ast::tests::{TestUtils, TestUtilsOpts};
+
+    #[test]
+    fn remove_unused_default_import() {
+        assert_eq!(
+            remove_unused_specifier(
+                r#"import unused, {used} from "m""#,
+                ImportSpecifierInfo::Named {
+                    local: "used#0".to_string(),
+                    imported: None
+                }
+            ),
+            r#"import { used } from "m";"#
+        );
+    }
+
+    #[test]
+    fn remove_unused_named_import() {
+        assert_eq!(
+            remove_unused_specifier(
+                r#"import used, {unused} from "m""#,
+                ImportSpecifierInfo::Default("used#0".to_string())
+            ),
+            r#"import used from "m";"#
+        );
+    }
+
+    #[test]
+    fn remove_unused_namespaced_import() {
+        assert_eq!(
+            remove_unused_specifier(
+                r#"import used, * as unused from "m""#,
+                ImportSpecifierInfo::Default("used#0".to_string()),
+            ),
+            r#"import used from "m";"#
+        );
+    }
+
+    fn remove_unused_specifier(code: &str, used_import_specifier: ImportSpecifierInfo) -> String {
+        let mut tu = TestUtils::new(TestUtilsOpts {
+            file: Some("test.js".to_string()),
+            content: Some(code.to_string()),
+        });
+
+        tu.ast
+            .js_mut()
+            .ast
+            .visit_mut_with(&mut UselessImportStmtsRemover {
+                import_info: ImportInfo {
+                    source: "m".to_string(),
+                    specifiers: vec![used_import_specifier],
+                    stmt_id: 0,
+                },
+            });
+
+        tu.js_ast_to_code()
+    }
+}
