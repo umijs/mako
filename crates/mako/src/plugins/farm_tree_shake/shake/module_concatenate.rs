@@ -363,7 +363,7 @@ pub fn optimize_module_graph(
             let ast = &mut root_module.info.as_mut().unwrap().ast;
 
             let ast_script = ast.script_mut().unwrap();
-            let root_print = true;
+            let root_print = false;
             if cfg!(debug_assertions) && root_print {
                 let code = ast_script.generate(context.clone()).unwrap().code;
                 println!("root:\n{}\n", code);
