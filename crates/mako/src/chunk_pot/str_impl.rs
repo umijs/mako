@@ -178,8 +178,6 @@ fn emit_module_with_sourcemap(
     _raw_hash: u64, // used for cache key
     module_id_str: &str,
 ) -> Result<ModuleDist> {
-    mako_core::mako_profile_function!(module_id_str);
-
     match &module.info.as_ref().unwrap().ast {
         ModuleAst::Script(ast) => {
             let cm = context.meta.script.cm.clone();
@@ -269,11 +267,12 @@ fn pot_to_chunk_module_object_string(
                 chunk_raw_sourcemap
                     .tokens
                     .extend(cur_source_map.tokens().map(|t| sourcemap::RawToken {
-                        // 1. in emit_module_with_sourcemap, we have added 1 line code, need to add 1
+                        // 1. in emit_module_with_sourcemap, we have added 1 line code before module output,
+                        //    need to add 1
                         // 2. we also have added some prefix code lines in entry chunks or normal
-                        //    chunks, which it's lines count been stored in PrefixCode struct, need
-                        //    to add it
-                        // 3. we need to add total module dist code lines count before current
+                        //    chunks before chunk output, which it's lines count been stored in PrefixCode,
+                        //    need to add it's line count
+                        // 3. we need to add all code lines count of modules before current
                         dst_line: t.get_dst_line() + 1 + chunk_prefix_offset + dst_line_offset,
                         src_id: t.get_src_id() + src_id_offset,
                         name_id: t.get_name_id() + name_id_offset,
