@@ -261,12 +261,7 @@ impl ConcatenateContext {
             top_level_vars,
             ..Default::default()
         };
-
-        for op in config.merged_runtime_flags() {
-            let ident = context.request_safe_var_name(&op.op_ident());
-            context.interop_module_items.push(op.dcl_with(&ident));
-            context.interop_idents.insert(op, ident);
-        }
+        context.setup_runtime_interops(config.merged_runtime_flags());
 
         context
     }
@@ -327,5 +322,40 @@ impl ConcatenateContext {
 
     fn add_top_level_var(&mut self, var_name: &str) -> bool {
         self.top_level_vars.insert(var_name.to_string())
+    }
+
+    fn setup_runtime_interops(&mut self, runtime_flags: RuntimeFlags) {
+        for op in runtime_flags.iter() {
+            let ident = self.request_safe_var_name(&op.op_ident());
+            self.interop_module_items.push(op.dcl_with(&ident));
+            self.interop_idents.insert(op, ident);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use maplit::hashmap;
+
+    use super::*;
+
+    #[test]
+    fn test_root_top_var_conflict_with_interop() {
+        let mut context: ConcatenateContext = Default::default();
+        context
+            .top_level_vars
+            .insert("_interop_require_default".to_string());
+
+        context.setup_runtime_interops(RuntimeFlags::DefaultInterOp);
+
+        assert_eq!(
+            context
+                .interop_idents
+                .into_iter()
+                .collect::<HashMap<RuntimeFlags, String>>(),
+            hashmap! {
+                RuntimeFlags::DefaultInterOp => "_interop_require_default_1".to_string()
+            }
+        )
     }
 }
