@@ -1,5 +1,0 @@
----
-source: crates/mako/src/transformers/transform_dynamic_import_to_require.rs
-expression: "transform(r#\"\nconst testModule = import('test-module');\n            \"#)"
----
-const testModule = Promise.resolve().then(()=>require("test-module"));

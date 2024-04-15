@@ -11,14 +11,14 @@ use mako_core::rayon::prelude::*;
 use mako_core::serde::Serialize;
 use mako_core::tracing::debug;
 
-use crate::ast::base64_encode;
+use crate::ast::utils::base64_encode;
 use crate::compiler::{Compiler, Context};
 use crate::config::{DevtoolConfig, OutputMode, TreeShakingStrategy};
 use crate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::module::{Dependency, ModuleId};
 use crate::stats::{create_stats_info, print_stats, write_stats};
-use crate::transformers::transform_async_module::mark_async;
 use crate::update::UpdateResult;
+use crate::visitors::async_module::mark_async;
 
 #[derive(Clone)]
 pub struct EmitFile {
@@ -83,6 +83,7 @@ impl Compiler {
         }
         let t_tree_shaking = t_tree_shaking.elapsed();
 
+        // TODO: improve this hardcode
         if self.context.config.output.mode == OutputMode::Bundless {
             return self.generate_with_plugin_driver();
         }

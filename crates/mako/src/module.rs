@@ -17,9 +17,9 @@ use swc_core::ecma::ast::{
 };
 
 use crate::analyze_deps::AnalyzeDepsResult;
-use crate::ast_2::css_ast::CssAst;
-use crate::ast_2::file::File;
-use crate::ast_2::js_ast::JsAst;
+use crate::ast::css_ast::CssAst;
+use crate::ast::file::File;
+use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
 use crate::config::ModuleIdStrategy;
 use crate::resolve::ResolverResource;
@@ -350,6 +350,14 @@ impl Module {
             info,
             side_effects: is_entry,
         }
+    }
+
+    pub fn as_script(&self) -> Option<&JsAst> {
+        self.info.as_ref().and_then(|i| i.ast.as_script())
+    }
+
+    pub fn as_mut_script(&mut self) -> Option<&mut JsAst> {
+        self.info.as_mut().and_then(|i| i.ast.script_mut())
     }
 
     pub fn add_info(&mut self, info: Option<ModuleInfo>) {

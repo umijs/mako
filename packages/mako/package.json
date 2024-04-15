@@ -15,8 +15,18 @@
     }
   },
   "license": "MIT",
+  "dependencies": {
+    "@swc/helpers": "0.5.1",
+    "less": "^4.2.0",
+    "less-plugin-resolve": "^1.0.2",
+    "react-error-overlay": "6.0.9",
+    "react-refresh": "^0.14.0",
+    "workerpool": "^9.1.1"
+  },
   "devDependencies": {
-    "@napi-rs/cli": "^2.18.0"
+    "@napi-rs/cli": "^2.18.0",
+    "@types/less": "^3.0.6",
+    "@types/node": "^20.12.5"
   },
   "engines": {
     "node": ">= 16"
@@ -27,13 +37,13 @@
   ],
   "scripts": {
     "artifacts": "napi artifacts",
-    "artifacts:local": "napi artifacts --dir . --dist npm",
-    "build": "napi build --release --cargo-cwd ../../crates/node --platform --js ./binding.js --dts ./binding.d.ts",
+    "artifacts:local": "rm -rf tmp && mkdir tmp && cp *.node tmp/ && napi artifacts --dir ./tmp --dist npm",
+    "build": "napi build --release --cargo-cwd ../../crates/binding --platform --js ./binding.js --dts ./binding.d.ts",
     "postbuild": "npm run format",
     "build:mac:x86": "npm run build -- --target x86_64-apple-darwin",
     "build:mac:aarch": "npm run build -- --target aarch64-apple-darwin",
     "build:linux:x86": "npm run --ignore-scripts build -- --target x86_64-unknown-linux-gnu",
-    "build:debug": "napi build --cargo-cwd ../../crates/node --platform --js src/binding.js --dts src/binding.d.ts",
+    "build:debug": "napi build --cargo-cwd ../../crates/binding --platform --js src/binding.js --dts src/binding.d.ts",
     "prepublishOnly": "napi prepublish -t npm",
     "format": "biome check --apply .",
     "universal": "napi universal",

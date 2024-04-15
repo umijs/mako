@@ -10,7 +10,7 @@ use crate::plugins::farm_tree_shake::statement_graph::analyze_imports_and_export
 };
 use crate::plugins::farm_tree_shake::statement_graph::defined_idents_collector::DefinedIdentsCollector;
 use crate::plugins::farm_tree_shake::statement_graph::{
-    ExportInfo, ExportSpecifierInfo as UsedExportSpecInfo, ImportInfo,
+    ExportInfo, ExportSpecifierInfo as UsedExportSpecInfo, ImportInfo, ImportSpecifierInfo,
 };
 
 pub fn remove_useless_stmts(
@@ -118,21 +118,33 @@ pub struct UselessImportStmtsRemover {
 }
 
 impl VisitMut for UselessImportStmtsRemover {
+    // 1. import { a } from 'x';
+    // 2. import a from 'x';
+    // 3. import * as a from 'x';
+    // if specifier is not used and x has sideEffect, convert to import 'x';
+
     fn visit_mut_import_decl(&mut self, import_decl: &mut ImportDecl) {
         let mut specifiers_to_remove = vec![];
 
         for (index, specifier) in import_decl.specifiers.iter().enumerate() {
-            if let ImportSpecifier::Named(named_specifier) = specifier {
-                if !self.
-                    import_info.specifiers
-          .iter()
-          .any(|specifier| match specifier {
-            crate::plugins::farm_tree_shake::statement_graph::ImportSpecifierInfo::Named { local, .. } => named_specifier.local.to_string() == *local,
-            _ => false,
-          })
-        {
-          specifiers_to_remove.push(index);
-        }
+            if !self.import_info.specifiers.iter().any(|specifier_info| {
+                match (specifier_info, specifier) {
+                    (
+                        ImportSpecifierInfo::Named { local, .. },
+                        ImportSpecifier::Named(named_specifier),
+                    ) => named_specifier.local.to_string() == *local,
+                    (
+                        ImportSpecifierInfo::Default(str),
+                        ImportSpecifier::Default(default_specifier),
+                    ) => default_specifier.local.to_string() == *str,
+                    (
+                        ImportSpecifierInfo::Namespace(str),
+                        ImportSpecifier::Namespace(namespace_specifier),
+                    ) => namespace_specifier.local.to_string() == *str,
+                    _ => false,
+                }
+            }) {
+                specifiers_to_remove.push(index);
             }
         }
 
@@ -216,5 +228,67 @@ impl VisitMut for UselessExportStmtRemover {
         for index in specifiers_to_remove {
             specifiers.remove(index);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ast::tests::{TestUtils, TestUtilsOpts};
+
+    #[test]
+    fn remove_unused_default_import() {
+        assert_eq!(
+            remove_unused_specifier(
+                r#"import unused, {used} from "m""#,
+                ImportSpecifierInfo::Named {
+                    local: "used#0".to_string(),
+                    imported: None
+                }
+            ),
+            r#"import { used } from "m";"#
+        );
+    }
+
+    #[test]
+    fn remove_unused_named_import() {
+        assert_eq!(
+            remove_unused_specifier(
+                r#"import used, {unused} from "m""#,
+                ImportSpecifierInfo::Default("used#0".to_string())
+            ),
+            r#"import used from "m";"#
+        );
+    }
+
+    #[test]
+    fn remove_unused_namespaced_import() {
+        assert_eq!(
+            remove_unused_specifier(
+                r#"import used, * as unused from "m""#,
+                ImportSpecifierInfo::Default("used#0".to_string()),
+            ),
+            r#"import used from "m";"#
+        );
+    }
+
+    fn remove_unused_specifier(code: &str, used_import_specifier: ImportSpecifierInfo) -> String {
+        let mut tu = TestUtils::new(TestUtilsOpts {
+            file: Some("test.js".to_string()),
+            content: Some(code.to_string()),
+        });
+
+        tu.ast
+            .js_mut()
+            .ast
+            .visit_mut_with(&mut UselessImportStmtsRemover {
+                import_info: ImportInfo {
+                    source: "m".to_string(),
+                    specifiers: vec![used_import_specifier],
+                    stmt_id: 0,
+                },
+            });
+
+        tu.js_ast_to_code()
     }
 }
