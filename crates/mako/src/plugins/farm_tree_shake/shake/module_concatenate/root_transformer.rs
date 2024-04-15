@@ -2,15 +2,13 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use swc_core::common::comments::{Comment, CommentKind};
-use swc_core::common::{Mark, Spanned, SyntaxContext, DUMMY_SP};
+use swc_core::common::{Spanned, DUMMY_SP};
 use swc_core::ecma::ast::{
-    ExportNamedSpecifier, ExportSpecifier, Id, Ident, KeyValueProp, Module, ModuleDecl,
+    ExportNamedSpecifier, ExportSpecifier, Ident, KeyValueProp, Module, ModuleDecl,
     ModuleExportName, ModuleItem, NamedExport, ObjectLit, Prop, PropOrSpread, Stmt,
 };
-use swc_core::ecma::utils::{
-    collect_decls_with_ctxt, member_expr, quote_ident, ExprFactory, IdentRenamer,
-};
-use swc_core::ecma::visit::{VisitMut, VisitMutWith};
+use swc_core::ecma::utils::{member_expr, quote_ident, ExprFactory};
+use swc_core::ecma::visit::VisitMut;
 
 use crate::compiler::Context;
 use crate::module::{relative_to_root, ModuleId};
@@ -23,7 +21,6 @@ pub(super) struct RootTransformer<'a> {
     pub concatenate_context: &'a mut ConcatenateContext,
     pub current_module_id: &'a ModuleId,
     pub context: &'a Arc<Context>,
-    pub top_level_mark: Mark,
     pub import_source_to_module_id: &'a HashMap<String, ModuleId>,
     my_top_decls: HashSet<String>,
 }
@@ -33,14 +30,12 @@ impl RootTransformer<'_> {
         concatenate_context: &'a mut ConcatenateContext,
         current_module_id: &'a ModuleId,
         context: &'a Arc<Context>,
-        top_level_mark: Mark,
         import_source_to_module_id: &'a HashMap<String, ModuleId>,
     ) -> RootTransformer<'a> {
         RootTransformer {
             concatenate_context,
             current_module_id,
             context,
-            top_level_mark,
             import_source_to_module_id,
             my_top_decls: HashSet::new(),
         }
@@ -67,38 +62,6 @@ impl RootTransformer<'_> {
                 },
             );
         }
-    }
-
-    fn resolve_conflicts(&mut self, n: &mut Module) {
-        let mut my_top_decls =
-            collect_decls_with_ctxt(n, SyntaxContext::empty().apply_mark(self.top_level_mark))
-                .iter()
-                .map(|id: &Id| id.0.to_string())
-                .collect();
-
-        let conflicts_idents: HashSet<_> = self
-            .concatenate_context
-            .top_level_vars
-            .intersection(&my_top_decls)
-            .cloned()
-            .collect();
-
-        let mut map: Vec<(Id, Id)> = Default::default();
-        let syntax = SyntaxContext::empty().apply_mark(self.top_level_mark);
-        for conflict in conflicts_idents {
-            let new_name_base = format!("__{}", conflict);
-            let new_name = self
-                .concatenate_context
-                .negotiate_safe_var_name(&self.my_top_decls, &new_name_base);
-
-            my_top_decls.insert(new_name.clone());
-            map.push(((conflict.clone().into(), syntax), (new_name.into(), syntax)));
-        }
-
-        let map2 = map.iter().cloned().collect();
-
-        let mut rename = IdentRenamer::new(&map2);
-        n.visit_mut_with(&mut rename);
     }
 
     fn src_exports(&self, src: &str) -> Option<&HashMap<String, String>> {
@@ -286,8 +249,6 @@ impl<'a> VisitMut for RootTransformer<'a> {
         for (i, items) in replaces {
             n.body.splice(i..i + 1, items);
         }
-
-        self.resolve_conflicts(n);
     }
 }
 
