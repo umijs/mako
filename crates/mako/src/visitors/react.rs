@@ -5,6 +5,7 @@ use mako_core::swc_common::{chain, Mark, SourceMap};
 use mako_core::swc_ecma_ast::Module;
 use mako_core::swc_ecma_transforms_react::{react as swc_react, Options, RefreshOptions, Runtime};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+use swc_core::common::{Span, DUMMY_SP};
 
 use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
@@ -56,6 +57,14 @@ pub fn react(
     }
 }
 
+pub struct CleanSpan;
+
+impl VisitMut for CleanSpan {
+    fn visit_mut_span(&mut self, n: &mut Span) {
+        *n = DUMMY_SP;
+    }
+}
+
 struct PrefixCode {
     code: String,
     context: Arc<Context>,
@@ -63,13 +72,19 @@ struct PrefixCode {
 
 impl VisitMut for PrefixCode {
     fn visit_mut_module(&mut self, module: &mut Module) {
-        let ast = JsAst::build(
+        let mut ast = JsAst::build(
             "_mako_internal/hmr_pre_code.js",
             &self.code,
             self.context.clone(),
         )
         .unwrap();
+
+        // the sourcemap of prefix code will be duplicated when using chunk_pot::str_impl,
+        // need to clean spans
+        ast.ast.visit_mut_with(&mut CleanSpan {});
+
         module.body.splice(0..0, ast.ast.body);
+
         module.visit_mut_children_with(self);
     }
 }
@@ -81,12 +96,17 @@ struct PostfixCode {
 
 impl VisitMut for PostfixCode {
     fn visit_mut_module(&mut self, module: &mut Module) {
-        let ast = JsAst::build(
+        let mut ast = JsAst::build(
             "_mako_internal/hmr_post_code.js",
             &self.code,
             self.context.clone(),
         )
         .unwrap();
+
+        // the sourcemap of postfix code will be duplicated when using chunk_pot::str_impl,
+        // need to clean spans
+        ast.ast.visit_mut_with(&mut CleanSpan {});
+
         module.body.extend(ast.ast.body);
 
         module.visit_mut_children_with(self);

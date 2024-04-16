@@ -26,7 +26,7 @@ use crate::compiler::Context;
 use crate::config::{get_pkg_name, Mode};
 use crate::module::{relative_to_root, Module, ModuleAst};
 use crate::runtime::AppRuntimeTemplate;
-use crate::sourcemap::build_source_map;
+use crate::sourcemap::build_source_map_to_buf;
 
 pub(crate) fn render_module_js(
     ast: &SwcModule,
@@ -62,7 +62,7 @@ pub(crate) fn render_module_js(
         mako_core::mako_profile_scope!("build_source_map");
         match context.config.devtool {
             None => None,
-            _ => Some(build_source_map(&source_map_buf, cm)),
+            _ => Some(build_source_map_to_buf(&source_map_buf, cm)),
         }
     };
 

@@ -56,7 +56,7 @@ impl<'cp> ChunkPot<'cp> {
         let mut files = vec![];
 
         let js_chunk_file = ternary!(
-            self.use_eval(context),
+            self.use_chunk_parallel(context),
             ternary!(
                 context.args.watch,
                 str_impl::render_normal_js_chunk,
@@ -102,7 +102,7 @@ impl<'cp> ChunkPot<'cp> {
             css_map.insert(css_chunk_file.chunk_id.clone(), css_chunk_file.disk_name());
 
             files.push(css_chunk_file);
-            files.push(if self.use_eval(context) {
+            files.push(if self.use_chunk_parallel(context) {
                 str_impl::render_entry_js_chunk(self, js_map, &css_map, chunk, context, hmr_hash)?
             } else {
                 ast_impl::render_entry_js_chunk(self, js_map, &css_map, chunk, context, hmr_hash)?
@@ -110,7 +110,7 @@ impl<'cp> ChunkPot<'cp> {
         } else {
             mako_core::mako_profile_scope!("EntryDevJsChunk", &self.chunk_id);
 
-            files.push(if self.use_eval(context) {
+            files.push(if self.use_chunk_parallel(context) {
                 str_impl::render_entry_js_chunk(self, js_map, css_map, chunk, context, hmr_hash)?
             } else {
                 ast_impl::render_entry_js_chunk(self, js_map, css_map, chunk, context, hmr_hash)?
@@ -120,8 +120,9 @@ impl<'cp> ChunkPot<'cp> {
         Ok(files)
     }
 
-    fn use_eval(&self, context: &Arc<Context>) -> bool {
-        context.config.dev_eval
+    fn use_chunk_parallel(&self, context: &Arc<Context>) -> bool {
+        // parallel emit chunk when in watch mode
+        context.config.chunk_parallel
             && context.args.watch
             && matches!(context.config.mode, Mode::Development)
     }

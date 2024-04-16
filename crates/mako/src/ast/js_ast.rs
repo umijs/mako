@@ -25,7 +25,8 @@ use crate::compiler::Context;
 use crate::config::{DevtoolConfig, Mode};
 use crate::module::Dependency;
 use crate::plugin::PluginTransformJsParam;
-use crate::sourcemap::build_source_map;
+use crate::sourcemap::build_source_map_to_buf;
+use crate::util::base64_encode;
 use crate::visitors::dep_analyzer::DepAnalyzer;
 
 #[derive(Clone)]
@@ -243,7 +244,7 @@ impl JsAst {
 
         let sourcemap = match context.config.devtool {
             Some(DevtoolConfig::SourceMap | DevtoolConfig::InlineSourceMap) => {
-                let src_buf = build_source_map(&source_map_buf, &cm);
+                let src_buf = build_source_map_to_buf(&source_map_buf, &cm);
                 String::from_utf8(src_buf).unwrap()
             }
             None => "".to_string(),
@@ -259,7 +260,7 @@ impl JsAst {
             buf.append(
                 &mut format!(
                     "\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,{}",
-                    utils::base64_encode(&sourcemap)
+                    base64_encode(&sourcemap)
                 )
                 .as_bytes()
                 .to_vec(),

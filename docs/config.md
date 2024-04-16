@@ -93,10 +93,6 @@
 
 注：目前的 define 会自动处理 `process.env` 前缀。
 
-## devEval
-
-> 注：已废弃，待移除。
-
 ## devtool
 
 - 类型：`false | "source-map" | "inline-source-map"`

@@ -19,7 +19,7 @@ use crate::ast::{error, utils};
 use crate::compiler::Context;
 use crate::config::{DevtoolConfig, Mode};
 use crate::module::Dependency;
-use crate::sourcemap::build_source_map;
+use crate::sourcemap::build_source_map_to_buf;
 use crate::visitors::css_dep_analyzer::CSSDepAnalyzer;
 
 #[derive(Clone)]
@@ -129,7 +129,7 @@ impl CssAst {
             })
         })?;
 
-        let buf = build_source_map(&source_map, &context.meta.css.cm);
+        let buf = build_source_map_to_buf(&source_map, &context.meta.css.cm);
         let sourcemap = String::from_utf8(buf).unwrap();
         if matches!(context.config.devtool, Some(DevtoolConfig::SourceMap)) {
             let filename = &self.path;
