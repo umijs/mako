@@ -26,7 +26,8 @@
   "devDependencies": {
     "@napi-rs/cli": "^2.18.0",
     "@types/less": "^3.0.6",
-    "@types/node": "^20.12.5"
+    "@types/node": "^20.12.5",
+    "typescript": "^5.4.3"
   },
   "engines": {
     "node": ">= 16"

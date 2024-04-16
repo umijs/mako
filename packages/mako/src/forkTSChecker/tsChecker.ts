@@ -1,23 +1,24 @@
-const ts = require('typescript');
-const path = require('path');
-const fs = require('fs').promises;
+import ts from 'typescript';
+import path from 'path';
+import { promises as fs } from 'fs';
 
 class TypeChecker {
-  constructor(projectRoot) {
-    this.projectRoot = projectRoot;
+  #projectRoot: string;
+  constructor(projectRoot: string) {
+    this.#projectRoot = projectRoot;
   }
 
   async check() {
     try {
       const configPath = ts.findConfigFile(
-        this.projectRoot,
+        this.#projectRoot,
         ts.sys.fileExists,
         'tsconfig.json',
       );
       if (!configPath) {
         console.error(
           'Could not find a valid "tsconfig.json" file in the project root:',
-          this.projectRoot,
+          this.#projectRoot,
         );
         return;
       }
@@ -65,7 +66,7 @@ class TypeChecker {
       }
       const diagnostics = ts.getPreEmitDiagnostics(program);
       if (diagnostics.length > 0) {
-        diagnostics.forEach((diagnostic) => {
+        diagnostics.forEach((diagnostic: any) => {
           const message = ts.flattenDiagnosticMessageText(
             diagnostic.messageText,
             '\n',
@@ -74,8 +75,7 @@ class TypeChecker {
             const { line, character } =
               diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
             console.error(
-              `${diagnostic.file.fileName} (${line + 1}, ${
-                character + 1
+              `${diagnostic.file.fileName} (${line + 1}, ${character + 1
               }): ${message}`,
             );
           } else {

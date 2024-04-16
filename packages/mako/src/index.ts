@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import * as binding from '../binding';
 import { LessLoaderOpts, lessLoader } from './lessLoader';
+import { ForkTsChecker } from './forkTSChecker';
 
 // ref:
 // https://github.com/vercel/next.js/pull/51883
@@ -21,6 +22,7 @@ function blockStdout() {
 
 interface ExtraBuildParams {
   less?: LessLoaderOpts;
+  forkTsChecker?: boolean;
 }
 
 export async function build(params: binding.BuildParams & ExtraBuildParams) {
@@ -115,4 +117,9 @@ export async function build(params: binding.BuildParams & ExtraBuildParams) {
   }
 
   await binding.build(params);
+
+  if (params.forkTsChecker) {
+    const forkTypeChecker = new ForkTsChecker(params.root);
+    forkTypeChecker.runTypeCheckInChildProcess();
+  }
 }

@@ -178,7 +178,7 @@ import("./a.js")
 - 类型：`boolean`
 - 默认值：`false`
 
-是否开启构建时 ts 校验。
+是否开启构建时 TypeScript 类型校验。
 
 ## hash
 
@@ -473,4 +473,3 @@ function App() {
 - 默认值：`true`
 
 是否在 mode 为 development 时将构建结果写入磁盘。
-

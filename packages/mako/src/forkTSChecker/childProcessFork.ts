@@ -1,4 +1,4 @@
-const { TypeChecker } = require('./ts-checker');
+import { TypeChecker } from './tsChecker';
 
 const projectRoot = process.argv[2];
 

@@ -51,12 +51,6 @@ exports.build = async function (opts) {
     throw err;
   }
 
-  // 后置 ts 校验，不影响打包速度
-  if (okamConfig.forkTsChecker) {
-    const forkTypeChecker = new ForkTsChecker(cwd);
-    forkTypeChecker.runTypeCheckInChildProcess();
-  }
-
   const statsJsonPath = path.join(cwd, 'dist', 'stats.json');
   const statsJson = JSON.parse(fs.readFileSync(statsJsonPath, 'utf-8'));
 

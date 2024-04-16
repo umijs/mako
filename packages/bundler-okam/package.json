@@ -21,8 +21,5 @@
   "publishConfig": {
     "registry": "https://registry.antgroup-inc.cn"
   },
-  "repository": "git@github.com:umijs/mako.git",
-  "devDependencies": {
-    "typescript": "^5.4.3"
-  }
+  "repository": "git@github.com:umijs/mako.git"
 }
