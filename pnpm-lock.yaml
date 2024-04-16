@@ -370,6 +370,10 @@ importers:
       webpack-5-chain:
         specifier: 8.0.1
         version: 8.0.1
+    devDependencies:
+      typescript:
+        specifier: ^5.4.3
+        version: 5.4.3
 
   packages/mako:
     dependencies:
