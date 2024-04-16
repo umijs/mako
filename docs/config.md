@@ -212,6 +212,27 @@ import("./a.js")
 
 需要忽略的文件。忽略的文件会输出空模块。
 
+比如。
+
+```ts
+{
+  "ignores": [
+    "^assert$",
+    "xxxx.provider.js$",
+    "^(node:)?({})(/|$)"
+  ]
+}
+```
+
+## inlineCSS
+
+- 类型：`{} | false`
+- 默认值：`false`
+
+是否以内联到 JS 的方式输出 CSS。
+
+注：此配置只能在 umd 开始时使用，因为注入 CSS 并不是推荐的方式，可能有潜在的性能问题。
+
 ## inlineLimit
 
 - 类型：`number`
@@ -282,11 +303,12 @@ moduleId 的生成策略。
 ## optimization
 
 - 类型：`object`
-- 默认值：`{ skipModules: false }`
+- 默认值：`{ skipModules: true, concatenateModules: false }`
 
 优化构建产物的配置。目前支持子配置项如下。
 
-- `skipModules`，通过跳过无副作用的模块，优化尺寸（注：目前默认为 `false`，后续稳定后会改为默认 `true`）
+- `skipModules`，通过跳过无副作用的模块，优化尺寸
+- `concatenateModules`，通过查找的模块树上可以安全合并的一组模块，将它们合并成为一个模块的方式来优化产物尺寸
 
 ## optimizePackageImports
 

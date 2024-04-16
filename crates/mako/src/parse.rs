@@ -1,20 +1,26 @@
 use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
+use mako_core::swc_css_visit::VisitMutWith as CSSVisitMutWith;
 use mako_core::thiserror::Error;
 use mako_core::tracing::debug;
 
-use crate::ast_2::css_ast::CssAst;
-use crate::ast_2::file::{Content, File};
-use crate::ast_2::js_ast::JsAst;
+use crate::analyze_deps::AnalyzeDeps;
+use crate::ast::css_ast::CssAst;
+use crate::ast::file::{Content, File};
+use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
 use crate::module::ModuleAst;
 use crate::plugin::PluginParseParam;
+use crate::transform::Transform;
+use crate::visitors::css_imports::CSSImports;
 
 #[derive(Debug, Error)]
 pub enum ParseError {
     #[error("Unsupported content: {path:?}")]
     UnsupportedContent { path: String },
+    #[error("Inline CSS missing deps: {path:?}")]
+    InlineCSSMissingDeps { path: String },
 }
 
 pub struct Parse {}
@@ -45,6 +51,7 @@ impl Parse {
             let is_asmodule = file.has_param("asmodule");
             let css_modules = is_modules || is_asmodule;
             let mut ast = CssAst::new(file, context.clone(), css_modules)?;
+            // ?asmodule
             if is_asmodule {
                 let mut file = file.clone();
                 file.set_content(Content::Js(CssAst::generate_css_modules_exports(
@@ -55,7 +62,52 @@ impl Parse {
                 let ast = JsAst::new(&file, context)?;
                 return Ok(ModuleAst::Script(ast));
             } else {
-                return Ok(ModuleAst::Css(ast));
+                // when inline_css is enabled
+                // we need to go through the css-related process first
+                // and then hand it over to js for processing
+                if context.config.inline_css.is_some() {
+                    let mut ast = ModuleAst::Css(ast);
+                    // transform
+                    Transform::transform(&mut ast, file, context.clone())?;
+                    // analyze_deps
+                    // TODO: do not need to resolve here
+                    let deps = AnalyzeDeps::analyze_deps(&ast, file, context.clone())?;
+                    if !deps.missing_deps.is_empty() {
+                        return Err(anyhow!(ParseError::InlineCSSMissingDeps {
+                            path: file.path.to_string_lossy().to_string(),
+                        }));
+                    }
+                    let deps = deps
+                        .resolved_deps
+                        .iter()
+                        .map(|dep| {
+                            format!("import '{}';", dep.resolver_resource.get_resolved_path())
+                        })
+                        .collect::<Vec<String>>()
+                        .join("\n");
+                    let ast = ast.as_css_mut();
+                    // transform (remove @imports)
+                    // TODO: Render::transform(&mut ast, &file, context.clone())?;
+                    let mut css_handler = CSSImports {};
+                    ast.ast.visit_mut_with(&mut css_handler);
+                    // ast to code
+                    let code = ast.generate(context.clone())?.code;
+                    let mut file = file.clone();
+                    file.set_content(Content::Js(format!(
+                        r#"
+import {{ moduleToDom }} from 'virtual:inline_css:runtime';
+{}
+moduleToDom(`
+{}
+`);
+                    "#,
+                        deps, code
+                    )));
+                    let ast = JsAst::new(&file, context.clone())?;
+                    return Ok(ModuleAst::Script(ast));
+                } else {
+                    return Ok(ModuleAst::Css(ast));
+                }
             }
         }
 

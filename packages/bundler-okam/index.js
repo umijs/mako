@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const url = require('url');
 const http = require('http');
 const assert = require('assert');
 const { createProxy, createHttpsServer } = require('@umijs/bundler-utils');
@@ -9,50 +10,6 @@ const { ForkTsChecker } = require('./fork-ts-checker/index');
 const {
   createProxyMiddleware,
 } = require('@umijs/bundler-utils/compiled/http-proxy-middleware');
-
-function lessLoader(fn, opts) {
-  return async function (filePath) {
-    if (filePath.endsWith('.less')) {
-      const { alias, modifyVars, config, sourceMap } = opts;
-      const less = require('@umijs/bundler-utils/compiled/less');
-      const input = fs.readFileSync(filePath, 'utf-8');
-      const resolvePlugin = new (require('less-plugin-resolve'))({
-        aliases: alias,
-      });
-      const result = await less.render(input, {
-        filename: filePath,
-        javascriptEnabled: true,
-        math: config.lessLoader?.math,
-        plugins: [resolvePlugin],
-        modifyVars,
-        sourceMap,
-        rewriteUrls: 'all',
-      });
-      return { content: result.css, type: 'css' };
-    } else {
-      fn && fn(filePath);
-    }
-  };
-}
-
-// export for test only
-exports._lessLoader = lessLoader;
-
-// ref:
-// https://github.com/vercel/next.js/pull/51883
-function blockStdout() {
-  if (process.platform === 'darwin') {
-    // rust needs stdout to be blocking, otherwise it will throw an error (on macOS at least) when writing a lot of data (logs) to it
-    // see https://github.com/napi-rs/napi-rs/issues/1630
-    // and https://github.com/nodejs/node/blob/main/doc/api/process.md#a-note-on-process-io
-    if (process.stdout._handle != null) {
-      process.stdout._handle.setBlocking(true);
-    }
-    if (process.stderr._handle != null) {
-      process.stderr._handle.setBlocking(true);
-    }
-  }
-}
 
 exports.build = async function (opts) {
   assert(opts, 'opts should be supplied');
@@ -74,21 +31,15 @@ exports.build = async function (opts) {
     okamConfig.moduleIdStrategy = 'hashed';
   }
 
-  blockStdout();
   const { build } = require('@okamjs/okam');
   try {
     await build({
       root: cwd,
       config: okamConfig,
-      hooks: {
-        load: lessLoader(null, {
-          cwd,
-          config: opts.config,
-          // NOTICE: 有个缺点是 如果 alias 配置是 mako 插件修改的 less 这边就感知到不了
-          alias: okamConfig.resolve.alias,
-          modifyVars: opts.config.lessLoader?.modifyVars || opts.config.theme,
-          sourceMap: getLessSourceMapConfig(okamConfig.devtool),
-        }),
+      less: {
+        modifyVars: opts.config.lessLoader?.modifyVars || opts.config.theme,
+        sourceMap: getLessSourceMapConfig(okamConfig.devtool),
+        math: opts.config.lessLoader?.math,
       },
       watch: false,
     });
@@ -211,7 +162,6 @@ exports.dev = async function (opts) {
   server.on('upgrade', wsProxy.upgrade);
 
   // okam dev
-  blockStdout();
   const { build } = require('@okamjs/okam');
   const okamConfig = await getOkamConfig(opts);
   okamConfig.hmr = { port: hmrPort, host: opts.host };
@@ -220,14 +170,12 @@ exports.dev = async function (opts) {
     await build({
       root: cwd,
       config: okamConfig,
+      less: {
+        modifyVars: opts.config.lessLoader?.modifyVars || opts.config.theme,
+        sourceMap: getLessSourceMapConfig(okamConfig.devtool),
+        math: opts.config.lessLoader?.math,
+      },
       hooks: {
-        load: lessLoader(null, {
-          cwd,
-          config: opts.config,
-          alias: okamConfig.resolve.alias,
-          modifyVars: opts.config.lessLoader?.modifyVars || opts.config.theme,
-          sourceMap: getLessSourceMapConfig(okamConfig.devtool),
-        }),
         generateEnd: (args) => {
           opts.onDevCompileDone(args);
         },
@@ -451,16 +399,6 @@ async function getOkamConfig(opts) {
     umd = webpackConfig.output.library;
   }
 
-  let makoConfig = {};
-  const makoConfigPath = path.join(opts.cwd, 'mako.config.json');
-  if (fs.existsSync(makoConfigPath)) {
-    try {
-      makoConfig = JSON.parse(fs.readFileSync(makoConfigPath, 'utf-8'));
-    } catch (e) {
-      throw new Error(`Parse mako.config.json failed: ${e.message}`);
-    }
-  }
-
   const {
     alias,
     targets,
@@ -542,7 +480,6 @@ async function getOkamConfig(opts) {
     // handle [string] with script type
     if (Array.isArray(v)) {
       const [url, ...members] = v;
-
       ret[k] = {
         // ['antd', 'Button'] => `antd.Button`
         root: members.join('.'),
@@ -556,7 +493,6 @@ async function getOkamConfig(opts) {
       // other types except boolean has been checked before
       // so here only ignore invalid boolean type
     }
-
     return ret;
   }, {});
 
@@ -564,25 +500,7 @@ async function getOkamConfig(opts) {
     entry: opts.entry,
     output: { path: outputPath },
     resolve: {
-      alias: {
-        ...alias,
-        ...makoConfig.resolve?.alias,
-        // we still need @swc/helpers
-        // since features like decorator or legacy browser support will
-        // inject helper functions in the build transform step
-        '@swc/helpers': path.dirname(
-          require.resolve('@swc/helpers/package.json'),
-        ),
-        'node-libs-browser-okam': path.dirname(
-          require.resolve('node-libs-browser-okam/package.json'),
-        ),
-        'react-refresh': path.dirname(
-          require.resolve('react-refresh/package.json'),
-        ),
-        'react-error-overlay': path.dirname(
-          require.resolve('react-error-overlay/package.json'),
-        ),
-      },
+      alias,
     },
     mode: 'development',
     publicPath: runtimePublicPath ? 'runtime' : publicPath || '/',
@@ -606,11 +524,6 @@ async function getOkamConfig(opts) {
     forkTsChecker,
     ...(opts.disableCopy ? { copy: [] } : { copy: ['public'].concat(copy) }),
   };
-
-  if (process.env.DUMP_MAKO_CONFIG) {
-    const configFile = path.join(process.cwd(), 'mako.config.json');
-    fs.writeFileSync(configFile, JSON.stringify(okamConfig, null, 2));
-  }
 
   return okamConfig;
 }

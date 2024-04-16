@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::fmt;
-use std::hash::Hasher;
 use std::path::{Path, PathBuf};
 
 use mako_core::anyhow::{anyhow, Result};
@@ -11,13 +10,12 @@ use mako_core::serde::{Deserialize, Deserializer};
 use mako_core::serde_json::Value;
 use mako_core::swc_ecma_ast::EsVersion;
 use mako_core::thiserror::Error;
-use mako_core::twox_hash::XxHash64;
 use mako_core::{clap, config, thiserror};
 use miette::{miette, ByteOffset, Diagnostic, NamedSource, SourceOffset, SourceSpan};
 use serde::Serialize;
 
 use crate::plugins::node_polyfill::get_all_modules;
-use crate::{optimize_chunk, plugins, transformers};
+use crate::{optimize_chunk, plugins, visitors};
 
 #[derive(Debug, Diagnostic)]
 #[diagnostic(code("mako.config.json parsed failed"))]
@@ -205,16 +203,28 @@ pub enum TreeShakingStrategy {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Px2RemConfig {
-    #[serde(default = "transformers::transform_px2rem::default_root")]
+    #[serde(default = "visitors::css_px2rem::default_root")]
     pub root: f64,
     #[serde(rename = "propBlackList", default)]
-    pub prop_black_list: Vec<String>,
+    pub prop_blacklist: Vec<String>,
     #[serde(rename = "propWhiteList", default)]
-    pub prop_white_list: Vec<String>,
+    pub prop_whitelist: Vec<String>,
     #[serde(rename = "selectorBlackList", default)]
-    pub selector_black_list: Vec<String>,
+    pub selector_blacklist: Vec<String>,
     #[serde(rename = "selectorWhiteList", default)]
-    pub selector_white_list: Vec<String>,
+    pub selector_whitelist: Vec<String>,
+}
+
+impl Default for Px2RemConfig {
+    fn default() -> Self {
+        Px2RemConfig {
+            root: visitors::css_px2rem::default_root(),
+            prop_blacklist: vec![],
+            prop_whitelist: vec![],
+            selector_blacklist: vec![],
+            selector_whitelist: vec![],
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -345,7 +355,10 @@ pub struct MinifishConfig {
 #[serde(rename_all = "camelCase")]
 pub struct OptimizationConfig {
     pub skip_modules: Option<bool>,
+    pub concatenate_modules: Option<bool>,
 }
+#[derive(Deserialize, Serialize, Debug)]
+pub struct InlineCssConfig {}
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct HmrConfig {
@@ -415,12 +428,8 @@ pub struct Config {
     pub emit_assets: bool,
     #[serde(rename = "cssModulesExportOnlyLocales")]
     pub css_modules_export_only_locales: bool,
-}
-
-pub(crate) fn hash_config(c: &Config) -> u64 {
-    let mut hasher = XxHash64::default();
-    hasher.write(serde_json::to_string(c).unwrap().as_bytes());
-    hasher.finish()
+    #[serde(rename = "inlineCSS")]
+    pub inline_css: Option<InlineCssConfig>,
 }
 
 #[allow(dead_code)]
@@ -563,7 +572,7 @@ const DEFAULT_CONFIG: &str = r#"
     "emotion": false,
     "flexBugs": false,
     "cjs": false,
-    "optimization": { "skipModules": true },
+    "optimization": { "skipModules": true, "concatenateModules": false },
     "react": {
       "pragma": "React.createElement",
       "importSource": "react",
@@ -641,9 +650,12 @@ impl Config {
                 }
             }
 
-            // cjs and umd cannot be used at the same time
             if config.cjs && config.umd.is_some() {
                 return Err(anyhow!("cjs and umd cannot be used at the same time",));
+            }
+
+            if config.inline_css.is_some() && config.umd.is_none() {
+                return Err(anyhow!("inlineCSS can only be used with umd",));
             }
 
             let mode = format!("\"{}\"", config.mode);

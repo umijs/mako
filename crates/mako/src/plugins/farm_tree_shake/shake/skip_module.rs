@@ -12,7 +12,7 @@ use swc_core::ecma::utils::{quote_ident, quote_str};
 use swc_core::quote;
 
 use crate::compiler::Context;
-use crate::module::{Dependency, ModuleId, ResolveType};
+use crate::module::{Dependency, ImportType, ModuleId, NamedExportType, ResolveType};
 use crate::module_graph::ModuleGraph;
 use crate::plugins::farm_tree_shake::module::{is_ident_sym_equal, TreeShakeModule};
 use crate::plugins::farm_tree_shake::shake::strip_context;
@@ -60,20 +60,28 @@ impl ReExportReplace {
     }
 
     pub(crate) fn to_import_dep(&self, span: Span) -> Dependency {
+        let import_type: ImportType = (&self.re_export_source.re_export_type).into();
+
         Dependency {
             source: self.from_module_id.id.clone(),
             span: Some(span),
             order: 0,
             resolve_as: None,
-            resolve_type: ResolveType::Import,
+            resolve_type: ResolveType::Import(import_type),
         }
     }
 
     pub(crate) fn to_export_dep(&self, span: Span) -> Dependency {
+        let resolve_type = match &self.re_export_source.re_export_type {
+            ReExportType::Namespace => ResolveType::ExportNamed(NamedExportType::Namespace),
+            ReExportType::Default => ResolveType::ExportNamed(NamedExportType::Default),
+            ReExportType::Named(_) => ResolveType::ExportNamed(NamedExportType::Named),
+        };
+
         Dependency {
             source: self.from_module_id.id.clone(),
             resolve_as: None,
-            resolve_type: ResolveType::ExportNamed,
+            resolve_type,
             order: 0,
             span: Some(span),
         }
@@ -142,12 +150,20 @@ pub enum ReExportType {
     Named(String),
 }
 
+impl From<&ReExportType> for ImportType {
+    fn from(re_export_type: &ReExportType) -> Self {
+        match re_export_type {
+            ReExportType::Namespace => ImportType::Namespace,
+            ReExportType::Default => ImportType::Default,
+            ReExportType::Named(_) => ImportType::Named,
+        }
+    }
+}
+
 pub(super) fn skip_module_optimize(
     module_graph: &mut ModuleGraph,
-
     tree_shake_modules_ids: &Vec<ModuleId>,
     tree_shake_modules_map: &HashMap<ModuleId, RefCell<TreeShakeModule>>,
-
     _context: &Arc<Context>,
 ) -> Result<()> {
     let mut re_export_replace_map: HashMap<
@@ -169,18 +185,18 @@ pub(super) fn skip_module_optimize(
 
         let module = module_graph.get_module_mut(module_id).unwrap();
 
-        let swc_module = module.info.as_mut().unwrap().ast.as_script_mut();
+        let swc_module = module.info.as_mut().unwrap().ast.as_script_ast_mut();
 
         let mut stmt = swc_module.body.get(stmt_id).unwrap().clone();
         let mut to_insert = vec![];
         let mut to_insert_deps = vec![];
         let mut to_delete = false;
-        let mut resolve_type = None;
+        let mut resolve_type: Option<ResolveType> = None;
 
         match &mut stmt {
             ModuleItem::ModuleDecl(module_decl) => match module_decl {
                 ModuleDecl::Import(import_decl) => {
-                    resolve_type = Some(ResolveType::Import);
+                    resolve_type = Some(ResolveType::Import(ImportType::empty()));
 
                     for replace in replaces {
                         let mut matched_index = None;
@@ -214,17 +230,16 @@ pub(super) fn skip_module_optimize(
                                 }
                             }
                         }
-                        let remove_specifier =
+                        let removed_specifier =
                             matched_index.map(|i| import_decl.specifiers.remove(i));
 
                         to_delete = import_decl.specifiers.is_empty();
 
                         if let Some(ident) = matched_ident
-                            && let Some(specifier) = remove_specifier
+                            && removed_specifier.is_some()
                         {
-                            let span = specifier.span();
                             let module_item = replace.to_import_module_item(ident);
-                            let dep = replace.to_import_dep(span);
+                            let dep = replace.to_import_dep(import_decl.span());
 
                             to_insert.push(module_item);
                             to_insert_deps.push(dep);
@@ -234,7 +249,7 @@ pub(super) fn skip_module_optimize(
                 ModuleDecl::ExportDecl(_) => {}
                 ModuleDecl::ExportNamed(export_named) => {
                     if export_named.src.is_some() {
-                        resolve_type = Some(ResolveType::ExportNamed);
+                        resolve_type = Some(ResolveType::ExportNamed(NamedExportType::empty()));
 
                         for replace in replaces {
                             let mut matched_index = None;
@@ -276,17 +291,17 @@ pub(super) fn skip_module_optimize(
                                 }
                             }
 
-                            let specifier =
+                            let removed_specifier =
                                 matched_index.map(|index| export_named.specifiers.remove(index));
 
                             to_delete = export_named.specifiers.is_empty();
 
                             if let Some(ident) = matched_ident
-                                && let Some(specifier) = specifier
+                                && removed_specifier.is_some()
                             {
                                 let module_item = replace.to_export_module_item(ident);
                                 to_insert.push(module_item);
-                                to_insert_deps.push(replace.to_export_dep(specifier.span()));
+                                to_insert_deps.push(replace.to_export_dep(export_named.span()));
                             }
                         }
                     }
@@ -488,7 +503,7 @@ pub(super) fn skip_module_optimize(
                 .as_ref()
                 .unwrap()
                 .ast
-                .as_script();
+                .as_script_ast();
 
             tsm.update_stmt_graph(swc_module);
         }

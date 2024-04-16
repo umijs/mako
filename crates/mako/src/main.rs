@@ -4,62 +4,16 @@
 
 use std::sync::Arc;
 
+use mako::compiler::{self, Args};
+use mako::logger::init_logger;
+#[cfg(feature = "profile")]
+use mako::profile_gui::ProfileApp;
+use mako::{cli, config, dev, tokio_runtime};
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::clap::Parser;
-use mako_core::tokio;
 #[cfg(feature = "profile")]
 use mako_core::tokio::sync::Notify;
 use mako_core::tracing::debug;
-
-use crate::compiler::Args;
-use crate::logger::init_logger;
-#[cfg(feature = "profile")]
-use crate::profile_gui::ProfileApp;
-
-mod analyze_deps;
-mod ast;
-mod ast_2;
-mod build;
-mod chunk;
-mod chunk_graph;
-mod chunk_pot;
-mod cli;
-mod comments;
-mod compiler;
-mod config;
-mod dev;
-mod generate;
-mod generate_chunks;
-mod group_chunk;
-mod hmr;
-mod load;
-mod logger;
-mod minify;
-mod module;
-mod module_graph;
-mod optimize_chunk;
-mod parse;
-mod plugin;
-mod plugins;
-#[cfg(feature = "profile")]
-mod profile_gui;
-mod resolve;
-mod runtime;
-mod sourcemap;
-mod stats;
-mod swc_helpers;
-mod targets;
-#[cfg(test)]
-mod test_helper;
-mod thread_pool;
-mod transform;
-mod transform_in_generate;
-mod transformers;
-mod tree_shaking;
-mod update;
-mod util;
-mod visitors;
-mod watch;
 
 #[cfg(not(target_os = "linux"))]
 #[global_allocator]
@@ -76,10 +30,7 @@ static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 fn main() -> Result<()> {
     let fut = async { run().await };
 
-    tokio::runtime::Builder::new_current_thread()
-        .build()
-        .expect("Failed to create tokio runtime.")
-        .block_on(fut)
+    tokio_runtime::block_on(fut)
 }
 
 async fn run() -> Result<()> {
@@ -128,7 +79,7 @@ async fn run() -> Result<()> {
         let notify = Arc::new(Notify::new());
         let to_be_notify = notify.clone();
 
-        tokio::spawn(async move {
+        tokio_runtime::spawn(async move {
             let compiler = compiler.clone();
 
             to_be_notify.notified().await;
@@ -157,7 +108,7 @@ async fn run() -> Result<()> {
             std::process::exit(1);
         }
         if cli.watch {
-            let d = crate::dev::DevServer::new(root.clone(), compiler);
+            let d = dev::DevServer::new(root.clone(), compiler);
             // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
             d.serve(move |_params| {}).await;
         }

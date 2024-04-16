@@ -8,7 +8,7 @@ use mako_core::colored::Colorize;
 use mako_core::thiserror::Error;
 
 use crate::analyze_deps::AnalyzeDeps;
-use crate::ast_2::file::{Content, File};
+use crate::ast::file::{Content, File};
 use crate::chunk_pot::util::hash_hashmap;
 use crate::compiler::{Compiler, Context};
 use crate::load::Load;
@@ -102,7 +102,7 @@ impl Compiler {
                 let dep_module_id = ModuleId::new(path.clone());
                 if !module_graph.has_module(&dep_module_id) {
                     let module = match dep.resolver_resource {
-                        ResolverResource::Resolved(_) => {
+                        ResolverResource::Virtual(_) | ResolverResource::Resolved(_) => {
                             count += 1;
 
                             let file = File::new(path.clone(), self.context.clone());
@@ -284,7 +284,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         // raw_hash is only used in watch mode
         // so we don't need to calculate when watch is off
         let raw_hash = if context.args.watch {
-            file.get_raw_hash(context.config_hash)
+            file.get_raw_hash()
                 .wrapping_add(hash_hashmap(&deps.missing_deps))
         } else {
             0

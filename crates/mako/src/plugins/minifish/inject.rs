@@ -218,21 +218,17 @@ mod tests {
 
     use super::*;
     use crate::analyze_deps::AnalyzeDeps;
-    use crate::ast::{build_js_ast, js_ast_to_code};
-    use crate::ast_2::file::File;
-    use crate::ast_2::js_ast::JsAst;
-    use crate::compiler::Context;
+    use crate::ast::file::File;
+    use crate::ast::js_ast::JsAst;
+    use crate::compiler::{Args, Context};
     use crate::module::ModuleAst;
 
     fn apply_inject_to_code(injects: HashMap<String, &Inject>, code: &str) -> String {
         let mut context = Context::default();
         context.config.devtool = None;
         let context = Arc::new(context);
-
-        let mut ast = build_js_ast("cut.js", code, &context).unwrap();
-
+        let mut ast = JsAst::build("cut.js", code, context.clone()).unwrap();
         let mut injector = MyInjector::new(ast.unresolved_mark, injects);
-
         GLOBALS.set(&context.meta.script.globals, || {
             ast.ast.visit_mut_with(&mut resolver(
                 ast.unresolved_mark,
@@ -241,10 +237,7 @@ mod tests {
             ));
             ast.ast.visit_mut_with(&mut injector);
         });
-
-        let (code, _) = js_ast_to_code(&ast.ast, &context, "x.js").unwrap();
-
-        code
+        ast.generate(context.clone()).unwrap().code
     }
 
     #[test]
@@ -493,12 +486,14 @@ my.call("toast");
     #[test]
     fn injected_require_treat_as_dep() {
         let code = r#"my.call("toast");"#;
-        let mut context = Context::default();
-        context.args = crate::compiler::Args { watch: true };
+        let context = Context {
+            args: Args { watch: true },
+            ..Context::default()
+        };
         let context = Arc::new(context);
         let file = File::with_content(
             "cut.js".to_string(),
-            crate::ast_2::file::Content::Js(code.to_string()),
+            crate::ast::file::Content::Js(code.to_string()),
             context.clone(),
         );
         let mut ast = JsAst::new(&file, context.clone()).unwrap();

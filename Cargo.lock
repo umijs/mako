@@ -147,21 +147,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "alipay_okam"
-version = "0.0.0"
-dependencies = [
- "cached",
- "mako",
- "mako_core",
- "mimalloc-rust",
- "napi",
- "napi-build",
- "napi-derive",
- "serde_json",
- "tikv-jemallocator",
-]
-
-[[package]]
 name = "allocator-api2"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -576,9 +561,12 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "bitflags"
-version = "2.3.3"
+version = "2.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "630be753d4e58660abd17930c71b647fe46c27ea6b63cc59e1e3851406972e42"
+checksum = "ed570934406eb16438a4e976b1b4500774099c13b8cb96eec99f620f05090ddf"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "bitvec"
@@ -1574,9 +1562,9 @@ checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
 
 [[package]]
 name = "form_urlencoded"
-version = "1.2.0"
+version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a62bc1cf6f830c2ec14a513a9fb124d0a213a629668a4186f329db21fe045652"
+checksum = "e13624c2627564efccf4934284bdd98cbaa14e79b0b5a141218e507b3a823456"
 dependencies = [
  "percent-encoding",
 ]
@@ -2107,9 +2095,9 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 
 [[package]]
 name = "idna"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d20d6b07bfbc108882d88ed8e37d39636dcc260e15e30c45e6ba089610b917c"
+checksum = "634d9b1461af396cad843f47fdba5597a4f9e6ddd4bfb6ff5d85028c25cb12f6"
 dependencies = [
  "unicode-bidi",
  "unicode-normalization",
@@ -2542,19 +2530,40 @@ checksum = "8b8c72594ac26bfd34f2d99dfced2edfaddfe8a476e3ff2ca0eb293d925c4f83"
 name = "mako"
 version = "0.1.0"
 dependencies = [
+ "bitflags 2.4.2",
  "cached",
+ "fixedbitset",
  "glob-match",
+ "heck",
  "insta",
  "mako_core",
  "maplit",
  "miette 5.10.0",
  "mimalloc-rust",
+ "nanoid",
  "oxc_resolver",
+ "percent-encoding",
  "serde",
  "serde_json",
  "swc_core 0.83.19",
  "swc_ecma_transforms_testing",
  "testing 0.35.10",
+ "tikv-jemallocator",
+ "url",
+]
+
+[[package]]
+name = "mako_binding"
+version = "0.0.0"
+dependencies = [
+ "cached",
+ "mako",
+ "mako_core",
+ "mimalloc-rust",
+ "napi",
+ "napi-build",
+ "napi-derive",
+ "serde_json",
  "tikv-jemallocator",
 ]
 
@@ -2848,12 +2857,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "nanoid"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3ffa00dec017b5b1a8b7cf5e2c008bfda1aa7e0697ac1508b491fdf2622fb4d8"
+dependencies = [
+ "rand",
+]
+
+[[package]]
 name = "napi"
 version = "2.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9d90182620f32fe34b6ac9b52cba898af26e94c7f5abc01eb4094c417ae2e6c"
 dependencies = [
- "bitflags 2.3.3",
+ "bitflags 2.4.2",
  "ctor",
  "napi-derive",
  "napi-sys",
@@ -3016,7 +3034,7 @@ version = "6.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6205bd8bb1e454ad2e27422015fb5e4f2bcc7e08fa8f27058670d208324a4d2d"
 dependencies = [
- "bitflags 2.3.3",
+ "bitflags 2.4.2",
  "crossbeam-channel",
  "filetime",
  "fsevent-sys",
@@ -3339,9 +3357,9 @@ checksum = "8835116a5c179084a830efb3adc117ab007512b535bc1a21c991d3b32a6b44dd"
 
 [[package]]
 name = "percent-encoding"
-version = "2.3.0"
+version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b2a4787296e9989611394c33f193f676704af1686e70b8f8033ab5ba9a35a94"
+checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
 
 [[package]]
 name = "pest"
@@ -3957,7 +3975,7 @@ version = "0.38.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac5ffa1efe7548069688cd7028f32591853cd7b5b756d41bcffd2353e4fc75b4"
 dependencies = [
- "bitflags 2.3.3",
+ "bitflags 2.4.2",
  "errno",
  "libc",
  "linux-raw-sys 0.4.10",
@@ -4905,7 +4923,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aef989abd4b9ccf3caf6a4ab0ceb9f9e7d6a27c08585a20a7fc7b9db6c73a341"
 dependencies = [
  "auto_impl 1.1.0",
- "bitflags 2.3.3",
+ "bitflags 2.4.2",
  "rustc-hash",
  "serde",
  "swc_atoms 0.5.9",
@@ -4934,7 +4952,7 @@ version = "0.25.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1ee1b2b77e7daaf389237ca2656df01cf8c1a6f2d9b158459921b202a661f8a"
 dependencies = [
- "bitflags 2.3.3",
+ "bitflags 2.4.2",
  "once_cell",
  "serde",
  "serde_json",
@@ -5056,7 +5074,7 @@ version = "0.107.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6528f3dd33e11eae9d7fe9fee4a79d5bbd211c74426ab2eec64dc82bd2eb74d"
 dependencies = [
- "bitflags 2.3.3",
+ "bitflags 2.4.2",
  "is-macro 0.3.0",
  "num-bigint",
  "scoped-tls",
@@ -5072,7 +5090,7 @@ version = "0.109.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e063a1614daed3ea8be56e5dd8edb17003409088d2fc9ce4aca3378879812607"
 dependencies = [
- "bitflags 2.3.3",
+ "bitflags 2.4.2",
  "bytecheck",
  "is-macro 0.3.0",
  "num-bigint",
@@ -5425,7 +5443,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42198e3909a6d852ebd88897267ee89323a8ebdbdb436ec60f48079f7c188018"
 dependencies = [
  "better_scoped_tls",
- "bitflags 2.3.3",
+ "bitflags 2.4.2",
  "indexmap 1.9.3",
  "once_cell",
  "phf 0.10.1",
@@ -5448,7 +5466,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bd570349c3be938eff1214bba74f2d4d8dafc2e433eedb69e8ae220d425569d7"
 dependencies = [
  "better_scoped_tls",
- "bitflags 2.3.3",
+ "bitflags 2.4.2",
  "indexmap 1.9.3",
  "once_cell",
  "phf 0.10.1",
@@ -5525,7 +5543,7 @@ checksum = "8bfe6e9037a123466b60933104ba1496b5fdd82f6a5f1fe8df9d9a376b676c61"
 dependencies = [
  "Inflector",
  "anyhow",
- "bitflags 2.3.3",
+ "bitflags 2.4.2",
  "indexmap 1.9.3",
  "is-macro 0.3.0",
  "path-clean 0.1.0",
@@ -6654,9 +6672,9 @@ checksum = "1865806a559042e51ab5414598446a5871b561d21b6764f2eabb0dd481d880a6"
 
 [[package]]
 name = "url"
-version = "2.4.0"
+version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50bff7831e19200a85b17131d085c25d7811bc4e186efdaf54bbd132994a88cb"
+checksum = "31e6302e3bb753d46e83516cae55ae196fc0c309407cf11ab35cc51a4c2a4633"
 dependencies = [
  "form_urlencoded",
  "idna",

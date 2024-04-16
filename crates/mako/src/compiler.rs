@@ -13,16 +13,15 @@ use mako_core::swc_ecma_ast::Ident;
 
 use crate::chunk_graph::ChunkGraph;
 use crate::comments::Comments;
-use crate::config::{hash_config, Config, OutputMode};
+use crate::config::{Config, OutputMode};
 use crate::module_graph::ModuleGraph;
 use crate::optimize_chunk::OptimizeChunksInfo;
 use crate::plugin::{Plugin, PluginDriver, PluginGenerateEndParams, PluginGenerateStats};
-use crate::plugins;
 use crate::plugins::minifish::Inject;
 use crate::resolve::{get_resolvers, Resolvers};
 use crate::stats::StatsInfo;
-use crate::swc_helpers::SwcHelpers;
 use crate::util::ParseRegex;
+use crate::{plugins, thread_pool};
 
 pub struct Context {
     pub module_graph: RwLock<ModuleGraph>,
@@ -30,7 +29,6 @@ pub struct Context {
     pub assets_info: Mutex<HashMap<String, String>>,
     pub modules_with_missing_deps: RwLock<Vec<String>>,
     pub config: Config,
-    pub config_hash: u64,
     pub args: Args,
     pub root: PathBuf,
     pub meta: Meta,
@@ -39,7 +37,6 @@ pub struct Context {
     pub resolvers: Resolvers,
     pub static_cache: RwLock<MemoryChunkFileCache>,
     pub optimize_infos: Mutex<Option<Vec<OptimizeChunksInfo>>>,
-    pub swc_helpers: Mutex<SwcHelpers>,
 }
 
 #[derive(Default)]
@@ -112,10 +109,8 @@ impl Default for Context {
     fn default() -> Self {
         let config: Config = Default::default();
         let resolvers = get_resolvers(&config);
-        let config_hash = hash_config(&config);
         Self {
             config,
-            config_hash,
             args: Args { watch: false },
             root: PathBuf::from(""),
             module_graph: RwLock::new(ModuleGraph::new()),
@@ -129,7 +124,6 @@ impl Default for Context {
             resolvers,
             optimize_infos: Mutex::new(None),
             static_cache: Default::default(),
-            swc_helpers: Mutex::new(Default::default()),
         }
     }
 }
@@ -239,13 +233,13 @@ impl Compiler {
             // file types
             Arc::new(plugins::context_module::ContextModulePlugin {}),
             Arc::new(plugins::runtime::MakoRuntime {}),
-            Arc::new(plugins::farm_tree_shake::FarmTreeShake {}),
             Arc::new(plugins::invalid_syntax::InvalidSyntaxPlugin {}),
             Arc::new(plugins::hmr_runtime::HMRRuntimePlugin {}),
             Arc::new(plugins::wasm_runtime::WasmRuntimePlugin {}),
             Arc::new(plugins::async_runtime::AsyncRuntimePlugin {}),
             Arc::new(plugins::emotion::EmotionPlugin {}),
             Arc::new(plugins::node_stuff::NodeStuffPlugin {}),
+            Arc::new(plugins::farm_tree_shake::FarmTreeShake {}),
         ];
         plugins.extend(builtin_plugins);
 
@@ -293,15 +287,12 @@ impl Compiler {
         }
 
         if !config.ignores.is_empty() {
-            let ignore_regex = config
+            let ignores = config
                 .ignores
                 .iter()
                 .map(|ignore| Regex::new(ignore).map_err(Error::new))
                 .collect::<Result<Vec<Regex>>>()?;
-
-            plugins.push(Arc::new(plugins::ignore::IgnorePlugin {
-                ignores: ignore_regex,
-            }))
+            plugins.push(Arc::new(plugins::ignore::IgnorePlugin { ignores }))
         }
 
         let plugin_driver = PluginDriver::new(plugins);
@@ -309,7 +300,6 @@ impl Compiler {
         plugin_driver.modify_config(&mut config, &root, &args)?;
 
         let resolvers = get_resolvers(&config);
-        let is_watch = args.watch;
         Ok(Self {
             context: Arc::new(Context {
                 static_cache: if config.write_to_disk {
@@ -317,7 +307,6 @@ impl Compiler {
                 } else {
                     Default::default()
                 },
-                config_hash: hash_config(&config),
                 config,
                 args,
                 root,
@@ -330,11 +319,6 @@ impl Compiler {
                 stats_info: Mutex::new(StatsInfo::new()),
                 resolvers,
                 optimize_infos: Mutex::new(None),
-                swc_helpers: Mutex::new(SwcHelpers::new(if is_watch {
-                    Some(SwcHelpers::full_helpers())
-                } else {
-                    None
-                })),
             }),
         })
     }
@@ -373,14 +357,16 @@ impl Compiler {
                     if is_browser && watch && hmr {
                         entry = format!("{}?hmr", entry);
                     }
-                    crate::ast_2::file::File::new_entry(entry, self.context.clone())
+                    crate::ast::file::File::new_entry(entry, self.context.clone())
                 })
                 .collect();
             self.build(files)?;
         }
         let result = {
             mako_core::mako_profile_scope!("Generate Stage");
-            self.generate()
+            // need to put all rayon parallel iterators run in the existed scope, or else rayon
+            // will create a new thread pool for those parallel iterators
+            thread_pool::scope(|_| self.generate())
         };
         let t_compiler_duration = t_compiler.elapsed();
         if result.is_ok() {

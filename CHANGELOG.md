@@ -1,3 +1,62 @@
+## 0.4.9
+
+`2024-04-01`
+
+> @alipay/bigfish@4.1.23
+
+* 修复 chunk 优化中出现孤立 chunk 的问题 by [@Jinbao1001](https://github.com/Jinbao1001) in [#988](https://github.com/umijs/mako/pull/988)
+* 修复 entry chunk hash 不稳定的问题 by [@xusd320](https://github.com/xusd320) in [#1003](https://github.com/umijs/mako/pull/1003)
+* 修复 concatenateModules 无法合并多个外部模块的问题 [@stormslowly](https://github.com/stormslowly) in [#1005](https://github.com/umijs/mako/pull/1005)
+
+## 0.4.8
+
+`2024-03-23`
+
+> @alipay/bigfish@4.1.17
+
+* 新增 scope hoist 功能，配置开启 by [@stormslowly](https://github.com/stormslowly) in [#922](https://github.com/umijs/mako/pull/922)
+* 修复 js hook 应该使用完整 path 的问题 by [@Jinbao1001](https://github.com/Jinbao1001) in [#987](https://github.com/umijs/mako/pull/987)
+* 减少 tree shaking 阶段的性能开销 by [@xusd320](https://github.com/xusd320) in [#980](https://github.com/umijs/mako/pull/980)
+* 删除 node_polyfill 里的正则以提升性能 by [@sorrycc](https://github.com/sorrycc) in [#998](https://github.com/umijs/mako/pull/998)
+* 重构 generate cache hash 的处理 by [@xusd320](https://github.com/xusd320) in [#992](https://github.com/umijs/mako/pull/992)
+
+## 0.4.7
+
+`2024-03-22`
+
+> @alipay/bigfish@4.1.17
+
+* 修复 fast refresh 在函数内生成组件时的边界场景 by [@sorrycc](https://github.com/sorrycc) in [#972](https://github.com/umijs/mako/pull/972)
+* 修复引用 assets 带 query 时的场景 by [@sorrycc](https://github.com/sorrycc) in [#975](https://github.com/umijs/mako/pull/975)
+
+## 0.4.6
+
+`2024-03-20`
+
+> @alipay/bigfish@4.1.17
+
+* 修复 resolve fragment 问题，支持 a#b.ts 的场景 by [@sorrycc](https://github.com/sorrycc) in [#966](https://github.com/umijs/mako/pull/966)
+
+## 0.4.5
+
+`2024-03-20`
+
+> @alipay/bigfish@4.1.17
+
+* 重构 build 部分的代码 by [@sorrycc](https://github.com/sorrycc) in [#923](https://github.com/umijs/mako/pull/923)
+* 新增 HMR Fast Refresh 支持匿名函数的场景 by [@JackGuiYang12](https://github.com/JackGuiYang12) in [#947](https://github.com/umijs/mako/pull/947)
+* 新增 inline_css 配置，实现类 style-loader 的能力 by [@sorrycc](https://github.com/sorrycc) in [#957](https://github.com/umijs/mako/pull/957)
+* 优化 rayon 使用，generate 复用 build 阶段的 rayon 线程 by [@xusd320](https://github.com/xusd320) in [#959](https://github.com/umijs/mako/pull/959)
+* 优化 minifish inject 功能，支持 include 配置项 by [@stormslowly](https://github.com/stormslowly) in [#930](https://github.com/umijs/mako/pull/930)
+* 修复 async chunk 不应该拆分 root module by [@PeachScript](https://github.com/PeachScript) in [#929](https://github.com/umijs/mako/pull/929)
+* 修复 css url() 应该支持 # 前缀 by [@sorrycc](https://github.com/sorrycc) in [#949](https://github.com/umijs/mako/pull/949)
+* 修复 async module 的实现 by [@stormslowly](https://github.com/stormslowly) in [#943](https://github.com/umijs/mako/pull/943)
+* 修复 js 和 css resolve 依赖时对 # fragment 的支持 by [@sorrycc](https://github.com/sorrycc) in [#952](https://github.com/umijs/mako/pull/952)
+* 修复非 ascii 路径的支持，比如空格和中文 by [@sorrycc](https://github.com/sorrycc) in [#958](https://github.com/umijs/mako/pull/958)
+* 修复 ignored 模块应该被编译成空的 es 模块 by [@xusd320](https://github.com/xusd320) in [#946](https://github.com/umijs/mako/pull/946)
+* 修复 context module 场景下 async import 应该被拆分的问题 by [@xusd320](https://github.com/xusd320) in [#940](https://github.com/umijs/mako/pull/940)
+* 修复 sync chunk 的 stats 信息 by [@PeachScript](https://github.com/PeachScript) in [#928](https://github.com/umijs/mako/pull/928)
+
 ## 0.4.4
 
 `2024-02-29`
@@ -10,6 +69,7 @@
 - 优化 external 特性中正则表达式实例化的开销，m1 pro yuyanAssets build 稳定提升 3900ms 左右 by [@PeachScript](https://github.com/PeachScript) in [#916](https://github.com/umijs/mako/pull/916)
 - 调用 onBuildComplete hook 时传入全量的 stats compilation 数据 by [@PeachScript](https://github.com/PeachScript) in [#917](https://github.com/umijs/mako/pull/917)
 - 从 nodejs-resolver 切换至 oxc_resolver by [@xusd320](https://github.com/xusd320) in [#919](https://github.com/umijs/mako/pull/919)
+
 ## 0.4.3
 
 `2024-02-01`

@@ -1,0 +1,10 @@
+{
+  "entry": {
+    "index": "./index.js"
+  },
+  "optimization": {
+    "skipModules": false,
+    "concatenateModules": false
+  },
+  "_treeShaking": "basic"
+}

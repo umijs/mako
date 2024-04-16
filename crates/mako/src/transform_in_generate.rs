@@ -1,11 +1,13 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::time::Instant;
 
-use mako_core::anyhow::Result;
+use mako_core::anyhow::{Error, Result};
+use mako_core::regex::Regex;
 use mako_core::swc_common::errors::HANDLER;
 use mako_core::swc_common::GLOBALS;
+use mako_core::swc_css_ast;
 use mako_core::swc_css_visit::VisitMutWith as CSSVisitMutWith;
 use mako_core::swc_ecma_transforms::feature::FeatureFlag;
 use mako_core::swc_ecma_transforms::fixer::fixer;
@@ -18,33 +20,34 @@ use mako_core::swc_ecma_transforms_modules::util::{Config, ImportInterop};
 use mako_core::swc_ecma_visit::VisitMutWith;
 use mako_core::swc_error_reporters::handler::try_with_handler;
 use mako_core::tracing::debug;
-use mako_core::{swc_css_ast, swc_css_prefixer};
 
-use crate::ast_2::js_ast::JsAst;
+use crate::ast::js_ast::JsAst;
 use crate::compiler::{Compiler, Context};
-use crate::config::OutputMode;
 use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
-use crate::swc_helpers::SwcHelpers;
-use crate::transformers::transform_async_module::AsyncModule;
-use crate::transformers::transform_css_handler::CssHandler;
-use crate::transformers::transform_dep_replacer::{DepReplacer, DependenciesToReplace};
-use crate::transformers::transform_dynamic_import::DynamicImport;
-use crate::transformers::transform_mako_require::MakoRequire;
-use crate::transformers::transform_meta_url_replacer::MetaUrlReplacer;
-use crate::transformers::transform_optimize_define_utils::OptimizeDefineUtils;
-use crate::{targets, thread_pool};
+use crate::thread_pool;
+use crate::visitors::async_module::{mark_async, AsyncModule};
+use crate::visitors::css_imports::CSSImports;
+use crate::visitors::dep_replacer::{DepReplacer, DependenciesToReplace};
+use crate::visitors::dynamic_import::DynamicImport;
+use crate::visitors::mako_require::MakoRequire;
+use crate::visitors::meta_url_replacer::MetaUrlReplacer;
+use crate::visitors::optimize_define_utils::OptimizeDefineUtils;
 
 impl Compiler {
-    pub fn transform_all(&self) -> Result<()> {
-        let context = &self.context;
+    pub fn transform_all(&self, async_deps_map: HashMap<ModuleId, Vec<Dependency>>) -> Result<()> {
         let t = Instant::now();
-        let module_graph = context.module_graph.read().unwrap();
-        // Reversed after topo sorting, in order to better handle async module
-        let (mut module_ids, _) = module_graph.toposort();
-        module_ids.reverse();
-        drop(module_graph);
-        debug!(">> toposort & reverse in {}ms", t.elapsed().as_millis());
-        transform_modules(module_ids, context)?;
+        let context = &self.context;
+        let module_ids = {
+            let module_graph = context.module_graph.read().unwrap();
+            module_graph
+                .modules()
+                .into_iter()
+                .map(|m| m.id.clone())
+                .collect::<Vec<_>>()
+        };
+
+        transform_modules_in_thread(&module_ids, context, async_deps_map)?;
+        debug!(">> transform modules in {}ms", t.elapsed().as_millis());
         Ok(())
     }
 }
@@ -59,34 +62,6 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
     Ok(())
 }
 
-fn mark_async(
-    module_ids: &[ModuleId],
-    context: &Arc<Context>,
-) -> HashMap<ModuleId, Vec<Dependency>> {
-    mako_core::mako_profile_function!();
-    let mut async_deps_by_module_id = HashMap::new();
-    let mut module_graph = context.module_graph.write().unwrap();
-    // TODO: 考虑成环的场景
-    module_ids.iter().for_each(|module_id| {
-        let deps = module_graph.get_dependencies_info(module_id);
-        let async_deps: Vec<Dependency> = deps
-            .into_iter()
-            .filter(|(_, dep, is_async)| {
-                matches!(dep.resolve_type, ResolveType::Import | ResolveType::Require) && *is_async
-            })
-            .map(|(_, dep, _)| dep.clone())
-            .collect();
-        let module = module_graph.get_module_mut(module_id).unwrap();
-        let info = module.info.as_mut().unwrap();
-        // a module with async deps need to be polluted into async module
-        if !info.is_async && !async_deps.is_empty() {
-            info.is_async = true;
-        }
-        async_deps_by_module_id.insert(module_id.clone(), async_deps);
-    });
-    async_deps_by_module_id
-}
-
 pub fn transform_modules_in_thread(
     module_ids: &Vec<ModuleId>,
     context: &Arc<Context>,
@@ -94,7 +69,7 @@ pub fn transform_modules_in_thread(
 ) -> Result<()> {
     mako_core::mako_profile_function!();
 
-    let (rs, rr) = channel::<Result<(ModuleId, ModuleAst, Option<HashSet<String>>)>>();
+    let (rs, rr) = channel::<Result<(ModuleId, ModuleAst)>>();
 
     for module_id in module_ids {
         let context = context.clone();
@@ -131,24 +106,19 @@ pub fn transform_modules_in_thread(
                 missing: info.deps.missing_deps.clone(),
             };
             if let ModuleAst::Script(mut ast) = ast {
+                let wrap_async = info.is_async && info.external.is_none();
+
                 let ret = transform_js_generate(TransformJsParam {
                     module_id: &module.id,
                     context: &context,
                     ast: &mut ast,
                     dep_map: &deps_to_replace,
                     async_deps: &async_deps,
-                    wrap_async: info.is_async && info.external.is_none(),
+                    wrap_async,
                     top_level_await: info.top_level_await,
                 });
                 let message = match ret {
-                    Ok(_) => {
-                        let swc_helpers = if context.args.watch {
-                            None
-                        } else {
-                            Some(SwcHelpers::get_swc_helpers(&ast.ast, &context))
-                        };
-                        Ok((module_id, ModuleAst::Script(ast), swc_helpers))
-                    }
+                    Ok(_) => Ok((module_id, ModuleAst::Script(ast))),
                     Err(e) => Err(e),
                 };
                 rs.send(message).unwrap();
@@ -157,20 +127,17 @@ pub fn transform_modules_in_thread(
     }
     drop(rs);
 
-    let mut transform_map: HashMap<ModuleId, (ModuleAst, Option<HashSet<String>>)> = HashMap::new();
+    let mut transform_map: HashMap<ModuleId, ModuleAst> = HashMap::new();
     for r in rr {
-        let (module_id, ast, swc_helpers) = r?;
-        transform_map.insert(module_id, (ast, swc_helpers));
+        let (module_id, ast) = r?;
+        transform_map.insert(module_id, ast);
     }
 
     let mut module_graph = context.module_graph.write().unwrap();
-    for (module_id, (ast, swc_helpers)) in transform_map {
+    for (module_id, ast) in transform_map {
         let module = module_graph.get_module_mut(&module_id).unwrap();
         let info = module.info.as_mut().unwrap();
         info.ast = ast;
-        if let Some(swc_helpers) = swc_helpers {
-            context.swc_helpers.lock().unwrap().extends(swc_helpers);
-        }
     }
 
     Ok(())
@@ -256,14 +223,8 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()>
 
                         // transform async module
                         if wrap_async {
-                            let mut async_module = AsyncModule {
-                                async_deps,
-                                async_deps_idents: Vec::new(),
-                                last_dep_pos: 0,
-                                top_level_await,
-                                context,
-                                unresolved_mark,
-                            };
+                            let mut async_module =
+                                AsyncModule::new(async_deps, unresolved_mark, top_level_await);
                             ast.ast.visit_mut_with(&mut async_module);
                         }
 
@@ -279,14 +240,23 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()>
                         let mut meta_url_replacer = MetaUrlReplacer {};
                         ast.ast.visit_mut_with(&mut meta_url_replacer);
 
-                        let mut dynamic_import = DynamicImport { context };
+                        let mut dynamic_import = DynamicImport {
+                            context: context.clone(),
+                        };
                         ast.ast.visit_mut_with(&mut dynamic_import);
 
-                        // replace require to __mako_require__ for bundle mode
-                        if matches!(context.config.output.mode, OutputMode::Bundle) {
-                            let mut mako_require = MakoRequire::new(context, unresolved_mark);
-                            ast.ast.visit_mut_with(&mut mako_require);
-                        }
+                        // replace require to __mako_require__
+                        let ignores = context
+                            .config
+                            .ignores
+                            .iter()
+                            .map(|ignore| Regex::new(ignore).map_err(Error::new))
+                            .collect::<Result<Vec<Regex>>>()?;
+                        let mut mako_require = MakoRequire {
+                            ignores,
+                            unresolved_mark,
+                        };
+                        ast.ast.visit_mut_with(&mut mako_require);
 
                         ast.ast
                             .visit_mut_with(&mut hygiene_with_config(hygiene::Config {
@@ -306,19 +276,11 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()>
     })
 }
 
-pub fn transform_css_generate(ast: &mut swc_css_ast::Stylesheet, context: &Arc<Context>) {
+pub fn transform_css_generate(ast: &mut swc_css_ast::Stylesheet, _context: &Arc<Context>) {
     mako_core::mako_profile_function!();
     // replace deps
-    let mut css_handler = CssHandler {};
+    let mut css_handler = CSSImports {};
     ast.visit_mut_with(&mut css_handler);
-
-    // prefixer
-    let mut prefixer = swc_css_prefixer::prefixer(swc_css_prefixer::options::Options {
-        env: Some(targets::swc_preset_env_targets_from_map(
-            context.config.targets.clone(),
-        )),
-    });
-    ast.visit_mut_with(&mut prefixer);
 }
 
 #[cfg(test)]
@@ -326,7 +288,8 @@ mod tests {
     use std::sync::Arc;
 
     use super::transform_css_generate;
-    use crate::ast::{build_css_ast, css_ast_to_code};
+    use crate::ast::css_ast::CssAst;
+    use crate::compiler::Context;
 
     #[test]
     fn test_transform_css_import() {
@@ -335,8 +298,7 @@ mod tests {
 .foo { color: red; }
         "#
         .trim();
-        let (code, _cm) = transform_css_code(code, None);
-        println!(">> CODE\n{}", code);
+        let code = transform_css_code(code, None);
         assert_eq!(
             code,
             r#".foo {
@@ -360,8 +322,7 @@ mod tests {
 @import "https://example.com/other.css";
         "#
         .trim();
-        let (code, _cm) = transform_css_code(code, None);
-        println!(">> CODE\n{}", code);
+        let code = transform_css_code(code, None);
         assert_eq!(
             code,
             r#"@import "https://example.com/first.css";
@@ -383,13 +344,13 @@ mod tests {
         );
     }
 
-    fn transform_css_code(content: &str, path: Option<&str>) -> (String, String) {
-        let path = if let Some(p) = path { p } else { "test.tsx" };
-        let context = Arc::new(Default::default());
-        let mut ast = build_css_ast(path, content, &context, false).unwrap();
-        transform_css_generate(&mut ast, &context);
-        let (code, _sourcemap) = css_ast_to_code(&ast, &context, "test.css");
-        let code = code.trim().to_string();
-        (code, _sourcemap)
+    fn transform_css_code(content: &str, path: Option<&str>) -> String {
+        let path = if let Some(p) = path { p } else { "test.css" };
+        let context: Arc<Context> = Arc::new(Default::default());
+        let mut ast = CssAst::build(path, content, context.clone(), false).unwrap();
+        transform_css_generate(&mut ast.ast, &context);
+        let code = ast.generate(context.clone()).unwrap().code;
+        println!("{}", code);
+        code
     }
 }

@@ -12,7 +12,7 @@ use mako_core::thiserror::Error;
 use mako_core::toml::{from_str as from_toml_str, Value as TomlValue};
 use mako_core::tracing::debug;
 
-use crate::ast_2::file::{Content, File};
+use crate::ast::file::{Content, File};
 use crate::compiler::Context;
 use crate::config::Mode;
 use crate::plugin::PluginLoadParam;
@@ -59,6 +59,30 @@ impl Load {
 
         if let Some(content) = content {
             return Ok(content);
+        }
+
+        // virtual:inline_css:runtime
+        if file.path.to_str().unwrap() == "virtual:inline_css:runtime" {
+            return Ok(Content::Js(
+                r#"
+var memo = {};
+export function moduleToDom(css) {
+    var styleElement = document.createElement("style");
+    // TODO: support nonce
+    // styleElement.setAttribute("nonce", nonce);
+    var target = 'head';
+    function getTarget(target) {
+        if (!memo[target]) {
+            var styleTarget = document.querySelector(target);
+            memo[target] = styleTarget;
+        }
+        return memo[target];
+    }
+    target.appendChild(styleElement);
+}
+            "#
+                .to_string(),
+            ));
         }
 
         // file exists check must after virtual modules handling
@@ -172,7 +196,7 @@ impl Load {
                 file.extname
             );
             context.emit_assets(
-                file.path.to_string_lossy().to_string(),
+                file.pathname.to_string_lossy().to_string(),
                 final_file_name.clone(),
             );
             return Ok(Content::Js(format!(
@@ -214,10 +238,11 @@ impl Load {
         inject_public_path: bool,
         context: Arc<Context>,
     ) -> Result<String> {
-        let path = file.path.to_string_lossy().to_string();
         let file_size = file
             .get_file_size()
-            .map_err(|_| LoadError::ReadFileSizeError { path })?;
+            .map_err(|_| LoadError::ReadFileSizeError {
+                path: file.path.to_string_lossy().to_string(),
+            })?;
         let emit_assets = || -> Result<String> {
             let final_file_name = Self::emit_asset(file, context.clone());
             if inject_public_path {
@@ -246,7 +271,7 @@ impl Load {
     }
 
     pub fn emit_asset(file: &File, context: Arc<Context>) -> String {
-        let path = file.path.to_string_lossy().to_string();
+        let path = file.pathname.to_string_lossy().to_string();
         let final_file_name = format!(
             "{}.{}.{}",
             file.get_file_stem(),

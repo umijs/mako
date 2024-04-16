@@ -93,13 +93,6 @@ pub(crate) fn empty_module_fn_expr() -> FnExpr {
     }
 }
 
-#[cached(
-    result = true,
-    key = "u64",
-    type = "SizedCache<u64, String>",
-    convert = r#"{context.config_hash}"#,
-    create = "{ SizedCache::with_size(5) }"
-)]
 pub(crate) fn runtime_code(context: &Arc<Context>) -> Result<String> {
     let umd = context.config.umd.clone();
     let chunk_graph = context.chunk_graph.read().unwrap();
@@ -311,8 +304,11 @@ fn to_module_fn_expr(module: &Module) -> Result<FnExpr> {
     }
 }
 
+pub const CHUNK_FILE_NAME_HASH_LENGTH: usize = 8;
+
 pub fn file_content_hash<T: AsRef<[u8]>>(content: T) -> String {
     let digest = md5::compute(content);
-    let hash = format!("{:x}", digest);
-    hash[0..8].to_string()
+    let mut hash = format!("{:x}", digest);
+    hash.truncate(CHUNK_FILE_NAME_HASH_LENGTH);
+    hash
 }

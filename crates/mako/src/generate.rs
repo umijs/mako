@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::ops::DerefMut;
 use std::path::PathBuf;
@@ -11,13 +11,14 @@ use mako_core::rayon::prelude::*;
 use mako_core::serde::Serialize;
 use mako_core::tracing::debug;
 
-use crate::ast::base64_encode;
+use crate::ast::utils::base64_encode;
 use crate::compiler::{Compiler, Context};
 use crate::config::{DevtoolConfig, OutputMode, TreeShakingStrategy};
 use crate::generate_chunks::{ChunkFile, ChunkFileType};
-use crate::module::ModuleId;
+use crate::module::{Dependency, ModuleId};
 use crate::stats::{create_stats_info, print_stats, write_stats};
 use crate::update::UpdateResult;
+use crate::visitors::async_module::mark_async;
 
 #[derive(Clone)]
 pub struct EmitFile {
@@ -28,7 +29,7 @@ pub struct EmitFile {
 }
 
 impl Compiler {
-    pub fn generate_with_plugin_driver(&self) -> Result<()> {
+    fn generate_with_plugin_driver(&self) -> Result<()> {
         self.context.plugin_driver.generate(&self.context)?;
 
         let stats = create_stats_info(0, self);
@@ -39,12 +40,27 @@ impl Compiler {
         Ok(())
     }
 
+    fn mark_async(&self) -> HashMap<ModuleId, Vec<Dependency>> {
+        let module_ids = {
+            let module_graph = self.context.module_graph.read().unwrap();
+            let (mut module_ids, _) = module_graph.toposort();
+            // start from the leaf nodes, so reverser the sort
+            module_ids.reverse();
+            drop(module_graph);
+            module_ids
+        };
+        mark_async(&module_ids, &self.context)
+    }
+
     pub fn generate(&self) -> Result<()> {
         debug!("generate");
         let t_generate = Instant::now();
 
         debug!("tree_shaking");
         let t_tree_shaking = Instant::now();
+
+        let async_dep_map = self.mark_async();
+
         // Disable tree shaking in watch mode temporarily
         // ref: https://github.com/umijs/mako/issues/396
         if !self.context.args.watch {
@@ -60,20 +76,14 @@ impl Compiler {
                     println!("basic optimize in {}ms.", t_tree_shaking.as_millis());
                 }
                 Some(TreeShakingStrategy::Advanced) => {
-                    mako_core::mako_profile_scope!("advanced tree shake");
-                    let shaking_module_ids = self.tree_shaking();
-                    let t_tree_shaking = t_tree_shaking.elapsed();
-                    println!(
-                        "{} modules removed in {}ms.",
-                        shaking_module_ids.len(),
-                        t_tree_shaking.as_millis()
-                    );
+                    // waiting @heden8 to come back
                 }
                 None => {}
             }
         }
         let t_tree_shaking = t_tree_shaking.elapsed();
 
+        // TODO: improve this hardcode
         if self.context.config.output.mode == OutputMode::Bundless {
             return self.generate_with_plugin_driver();
         }
@@ -86,11 +96,22 @@ impl Compiler {
         self.optimize_chunk();
         let t_optimize_chunks = t_optimize_chunks.elapsed();
 
+        {
+            let mut module_graph = self.context.module_graph.write().unwrap();
+            let mut chunk_graph = self.context.chunk_graph.write().unwrap();
+
+            self.context.plugin_driver.optimize_chunk(
+                &mut chunk_graph,
+                &mut module_graph,
+                &self.context,
+            )?;
+        }
+
         // 为啥单独提前 transform modules？
         // 因为放 chunks 的循环里，一个 module 可能存在于多个 chunk 里，可能会被编译多遍
         let t_transform_modules = Instant::now();
         debug!("transform all modules");
-        self.transform_all()?;
+        self.transform_all(async_dep_map)?;
         let t_transform_modules = t_transform_modules.elapsed();
 
         // ensure output dir exists
@@ -159,7 +180,7 @@ impl Compiler {
         // generate chunks
         let t_generate_chunks = Instant::now();
         debug!("generate chunks");
-        let chunk_files = self.generate_chunk_files(full_hash, full_hash)?;
+        let chunk_files = self.generate_chunk_files(full_hash)?;
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         let t_ast_to_code_and_write = if self.context.args.watch {
@@ -201,7 +222,7 @@ impl Compiler {
         emit_chunk_file(&self.context, chunk_file);
     }
 
-    pub fn emit_dev_chunks(&self, cache_hash: u64, hmr_hash: u64) -> Result<()> {
+    pub fn emit_dev_chunks(&self, hmr_hash: u64) -> Result<()> {
         mako_core::mako_profile_function!("emit_dev_chunks");
 
         debug!("generate(hmr-fullbuild)");
@@ -216,7 +237,7 @@ impl Compiler {
 
         // generate chunks
         let t_generate_chunks = Instant::now();
-        let chunk_files = self.generate_chunk_files(cache_hash, hmr_hash)?;
+        let chunk_files = self.generate_chunk_files(hmr_hash)?;
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         // ast to code and sourcemap, then write
@@ -258,7 +279,7 @@ impl Compiler {
     pub fn generate_hot_update_chunks(
         &self,
         updated_modules: UpdateResult,
-        last_cache_hash: u64,
+        last_snapshot_hash: u64,
         last_hmr_hash: u64,
     ) -> Result<(u64, u64)> {
         debug!("generate_hot_update_chunks start");
@@ -284,23 +305,23 @@ impl Compiler {
         let t_transform_modules = t_transform_modules.elapsed();
 
         let t_calculate_hash = Instant::now();
-        let current_cache_hash = self.full_hash();
-        let current_hmr_hash = last_hmr_hash.wrapping_add(current_cache_hash);
+        let current_snapshot_hash = self.full_hash();
+        let current_hmr_hash = last_hmr_hash.wrapping_add(current_snapshot_hash);
         let t_calculate_hash = t_calculate_hash.elapsed();
 
         debug!(
             "{} {} {}",
-            current_cache_hash,
-            if current_cache_hash == last_cache_hash {
+            current_snapshot_hash,
+            if current_snapshot_hash == last_snapshot_hash {
                 "equals"
             } else {
                 "not equals"
             },
-            last_cache_hash
+            last_snapshot_hash
         );
 
-        if current_cache_hash == last_cache_hash {
-            return Ok((current_cache_hash, current_hmr_hash));
+        if current_snapshot_hash == last_snapshot_hash {
+            return Ok((current_snapshot_hash, current_hmr_hash));
         }
 
         // ensure output dir exists
@@ -381,9 +402,9 @@ impl Compiler {
             "  - generate hmr chunk: {}ms",
             t_generate_hmr_chunk.as_millis()
         );
-        debug!("  - next full hash: {}", current_cache_hash);
+        debug!("  - next full hash: {}", current_snapshot_hash);
 
-        Ok((current_cache_hash, current_hmr_hash))
+        Ok((current_snapshot_hash, current_hmr_hash))
     }
 
     pub fn write_to_dist<P: AsRef<std::path::Path>, C: AsRef<[u8]>>(
