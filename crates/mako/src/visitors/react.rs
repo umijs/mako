@@ -72,7 +72,12 @@ struct PrefixCode {
 
 impl VisitMut for PrefixCode {
     fn visit_mut_module(&mut self, module: &mut Module) {
-        let mut ast = JsAst::build("_pre_code.js", &self.code, self.context.clone()).unwrap();
+        let mut ast = JsAst::build(
+            "_mako_internal/hmr_pre_code.js",
+            &self.code,
+            self.context.clone(),
+        )
+        .unwrap();
 
         // the sourcemap of prefix code will be duplicated when using chunk_pot::str_impl,
         // need to clean spans
@@ -91,7 +96,12 @@ struct PostfixCode {
 
 impl VisitMut for PostfixCode {
     fn visit_mut_module(&mut self, module: &mut Module) {
-        let mut ast = JsAst::build("_post_code.js", &self.code, self.context.clone()).unwrap();
+        let mut ast = JsAst::build(
+            "_mako_internal/hmr_post_code.js",
+            &self.code,
+            self.context.clone(),
+        )
+        .unwrap();
 
         // the sourcemap of postfix code will be duplicated when using chunk_pot::str_impl,
         // need to clean spans
