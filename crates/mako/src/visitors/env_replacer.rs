@@ -192,7 +192,7 @@ fn get_env_expr(v: Value, context: &Arc<Context>) -> Result<Expr> {
     match v {
         Value::String(v) => {
             // the string content is treat as expression, so it has to be parsed
-            let ast = JsAst::build("_define_.js", &v, context.clone()).unwrap();
+            let ast = JsAst::build("_mako_internal/_define_.js", &v, context.clone()).unwrap();
             let module = ast.ast.body.first().unwrap();
 
             match module {

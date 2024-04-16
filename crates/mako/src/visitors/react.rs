@@ -63,7 +63,12 @@ struct PrefixCode {
 
 impl VisitMut for PrefixCode {
     fn visit_mut_module(&mut self, module: &mut Module) {
-        let ast = JsAst::build("_pre_code.js", &self.code, self.context.clone()).unwrap();
+        let ast = JsAst::build(
+            "_mako_internal/hmr_pre_code.js",
+            &self.code,
+            self.context.clone(),
+        )
+        .unwrap();
         module.body.splice(0..0, ast.ast.body);
         module.visit_mut_children_with(self);
     }
@@ -76,7 +81,12 @@ struct PostfixCode {
 
 impl VisitMut for PostfixCode {
     fn visit_mut_module(&mut self, module: &mut Module) {
-        let ast = JsAst::build("_post_code.js", &self.code, self.context.clone()).unwrap();
+        let ast = JsAst::build(
+            "_mako_internal/hmr_post_code.js",
+            &self.code,
+            self.context.clone(),
+        )
+        .unwrap();
         module.body.extend(ast.ast.body);
 
         module.visit_mut_children_with(self);
