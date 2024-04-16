@@ -14,6 +14,7 @@ export class ForkTSChecker {
 
   runTypeCheckInChildProcess() {
     const workerScript = path.join(__dirname, 'childProcessFork.js');
+    // TODO: support watch mode
     const child = fork(workerScript, [this.#opts.root], {
       stdio: 'inherit',
     });
