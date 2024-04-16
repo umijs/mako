@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import * as binding from '../binding';
-import { ForkTsChecker } from './forkTSChecker';
+import { ForkTSChecker as ForkTSChecker } from './forkTSChecker';
 import { LessLoaderOpts, lessLoader } from './lessLoader';
 
 // ref:
@@ -22,7 +22,7 @@ function blockStdout() {
 
 interface ExtraBuildParams {
   less?: LessLoaderOpts;
-  forkTsChecker?: boolean;
+  forkTSChecker?: boolean;
 }
 
 export async function build(params: binding.BuildParams & ExtraBuildParams) {
@@ -100,12 +100,10 @@ export async function build(params: binding.BuildParams & ExtraBuildParams) {
   if (process.env.XCODE_PROFILE) {
     await new Promise<void>((resolve) => {
       const readline = require('readline');
-
       const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout,
       });
-
       rl.question(
         `Xcode profile enabled. Current process ${process.title} (${process.pid}) . Press Enter to continue...\n`,
         () => {
@@ -118,8 +116,11 @@ export async function build(params: binding.BuildParams & ExtraBuildParams) {
 
   await binding.build(params);
 
-  if (params.forkTsChecker) {
-    const forkTypeChecker = new ForkTsChecker(params.root);
+  if (params.forkTSChecker) {
+    const forkTypeChecker = new ForkTSChecker({
+      root: params.root,
+      watch: params.watch,
+    });
     forkTypeChecker.runTypeCheckInChildProcess();
   }
 }

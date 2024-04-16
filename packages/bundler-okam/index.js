@@ -1,12 +1,10 @@
 const path = require('path');
 const fs = require('fs');
-const url = require('url');
 const http = require('http');
 const assert = require('assert');
 const { createProxy, createHttpsServer } = require('@umijs/bundler-utils');
 const lodash = require('lodash');
 const chalk = require('chalk');
-const { ForkTsChecker } = require('./fork-ts-checker/index');
 const {
   createProxyMiddleware,
 } = require('@umijs/bundler-utils/compiled/http-proxy-middleware');
@@ -41,6 +39,7 @@ exports.build = async function (opts) {
         sourceMap: getLessSourceMapConfig(okamConfig.devtool),
         math: opts.config.lessLoader?.math,
       },
+      forkTSChecker: okamConfig.forkTSChecker,
       watch: false,
     });
   } catch (e) {
@@ -169,6 +168,7 @@ exports.dev = async function (opts) {
         sourceMap: getLessSourceMapConfig(okamConfig.devtool),
         math: opts.config.lessLoader?.math,
       },
+      forkTSChecker: okamConfig.forkTSChecker,
       hooks: {
         generateEnd: (args) => {
           opts.onDevCompileDone(args);
@@ -261,8 +261,7 @@ function checkConfig(opts) {
       // throw error for other type prefixes
       // ex. `commonjs`、`var 1 + 1`、`global`
       throw new Error(
-        `externals string value prefix \`${
-          v.split(' ')[0]
+        `externals string value prefix \`${v.split(' ')[0]
         } \` is not supported in Mako bundler`,
       );
     }
@@ -363,8 +362,8 @@ function checkConfig(opts) {
     - ${warningKeys.join('\n    - ')}
 
   So this project may fail in compile-time or error in runtime, ${chalk.bold(
-    'please test and release carefully',
-  )}.
+          'please test and release carefully',
+        )}.
 =====================================================================================================
       `,
       ),
@@ -405,7 +404,7 @@ async function getOkamConfig(opts) {
     externals,
     copy = [],
     clean,
-    forkTsChecker,
+    forkTSChecker,
   } = opts.config;
   const outputPath = path.join(opts.cwd, 'dist');
   // TODO:
@@ -514,7 +513,7 @@ async function getOkamConfig(opts) {
     flexBugs: true,
     react: opts.react || {},
     emotion,
-    forkTsChecker,
+    forkTSChecker: !!forkTSChecker,
     ...(opts.disableCopy ? { copy: [] } : { copy: ['public'].concat(copy) }),
   };
 

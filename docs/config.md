@@ -173,13 +173,6 @@ import("./a.js")
 
 是否修复 flexbugs。
 
-## forkTsChecker
-
-- 类型：`boolean`
-- 默认值：`false`
-
-是否开启构建时 TypeScript 类型校验。
-
 ## hash
 
 - 类型：`boolean`
