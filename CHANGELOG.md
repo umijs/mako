@@ -1,3 +1,26 @@
+
+## 0.4.10
+
+`2024-04-16`
+
+> @alipay/bigfish@4.1.26
+
+* 新增 forkTSChecker 支持 by [@ctts](https://github.com/ctts) and @sorrycc in [#956](https://github.com/umijs/mako/pull/956)
+* 优化 generate，让 entry 也并行执行，提速 10% by [@xusd320](https://github.com/xusd320) in [#1001](https://github.com/umijs/mako/pull/1001)
+* 优化 px2rem 支持 selector_black_list 和 selector_white_list by [@LovePlayCode](https://github.com/LovePlayCode) and @sorrycc in [#1043](https://github.com/umijs/mako/pull/1043)
+* 优化 less loader 实现，基于 worker，提升 20% by [@xusd320](https://github.com/xusd320) in [#1048](https://github.com/umijs/mako/pull/1048)
+* 优化 importInfo，删除未使用的 specifier by [@goo-yyh](https://github.com/goo-yyh) in [#963](https://github.com/umijs/mako/pull/963)
+* 优化 sourcemap 文件路径，把内部 runtime 代码移到 mako_internal 目录 by [@stormslowly](https://github.com/stormslowly) in [#1055](https://github.com/umijs/mako/pull/1055)
+* 优化 ast to code 性能，dev 时并发执行 by [@xusd320](https://github.com/xusd320) in [#1053](https://github.com/umijs/mako/pull/1053)
+* 重构 packages/mako 为入口 package by [@sorrycc](https://github.com/sorrycc) in [#1010](https://github.com/umijs/mako/pull/1010)
+* 重构 @okamjs/okam 的实现，封装 less 等功能 by [@sorrycc](https://github.com/sorrycc) in [#1024](https://github.com/umijs/mako/pull/1024)
+* 修复 concatenateModules 实现，var ident conflict with root's top vars by [@stormslowly](https://github.com/stormslowly) in [#1052](https://github.com/umijs/mako/pull/1052)
+* 修复 dynamic_import_to_require 必须在 context_require 之后执行的问题 by [@sorrycc](https://github.com/sorrycc) in [#1038](https://github.com/umijs/mako/pull/1038)
+* 修复 tree shaking 支持多个 declarator declare  by [@stormslowly](https://github.com/stormslowly) in [#1032](https://github.com/umijs/mako/pull/1032)
+* 修复 provider，change unresolved indent syntax context to top level after it's been declared by [@stormslowly](https://github.com/stormslowly) in [#1027](https://github.com/umijs/mako/pull/1027)
+* 修复 update 阶段的一个 unwrap() panic by [@sorrycc](https://github.com/sorrycc) in [#1004](https://github.com/umijs/mako/pull/1004)
+* 修复 concatenateModule，treat module as external when it contains unsupported syntax by [@stormslowly](https://github.com/stormslowly) in [#1009](https://github.com/umijs/mako/pull/1009)
+
 ## 0.4.9
 
 `2024-04-01`
