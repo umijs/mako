@@ -75,7 +75,8 @@ export class TypeChecker {
             const { line, character } =
               diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
             console.error(
-              `${diagnostic.file.fileName} (${line + 1}, ${character + 1
+              `${diagnostic.file.fileName} (${line + 1}, ${
+                character + 1
               }): ${message}`,
             );
           } else {
