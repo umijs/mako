@@ -21,25 +21,6 @@ use crate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::module::{Module, ModuleAst};
 use crate::sourcemap::{build_source_map, RawSourceMap};
 
-struct PrefixCode {
-    value: String,
-    lines: u32,
-}
-
-impl PrefixCode {
-    fn new(value: String) -> PrefixCode {
-        let lines = count_string_lines(&value);
-        Self { value, lines }
-    }
-}
-
-fn count_string_lines(s: &str) -> u32 {
-    s.lines().fold(0u32, |mut l, _| {
-        l += 1;
-        l
-    })
-}
-
 pub(super) fn render_entry_js_chunk(
     pot: &ChunkPot,
     js_map: &HashMap<String, String>,
@@ -92,15 +73,15 @@ pub(super) fn render_entry_js_chunk(
 
     let runtime_content = runtime_code(context)?.replace("_%full_hash%_", &hmr_hash.to_string());
 
-    let entry_prefix_code = PrefixCode::new("!(function(){\n".to_string());
+    let entry_prefix_code = "!(function(){\n";
 
     let (chunk_content, chunk_raw_sourcemap) =
-        pot_to_chunk_module_object_string(pot, context, entry_prefix_code.lines)?;
+        pot_to_chunk_module_object_string(pot, context, entry_prefix_code.lines().count() as u32)?;
 
     let mut content: Vec<u8> = format!("var m = {};", chunk_content).into();
 
     {
-        content.splice(0..0, entry_prefix_code.value.bytes());
+        content.splice(0..0, entry_prefix_code.bytes());
         content.extend(lines.join("\n").into_bytes());
         content.extend(runtime_content.into_bytes());
         content.extend("\n})();".as_bytes());
@@ -133,22 +114,25 @@ pub(super) fn render_normal_js_chunk(
 ) -> Result<ChunkFile> {
     let (content_buf, source_map_buf) = {
         let pot = chunk_pot;
-        let chunk_prefix_code = PrefixCode::new(format!(
+        let chunk_prefix_code = format!(
             r#"(globalThis['{}'] = globalThis['{}'] || []).push([
 ['{}'],"#,
             context.config.output.chunk_loading_global,
             context.config.output.chunk_loading_global,
             pot.chunk_id,
-        ));
+        );
 
-        let (chunk_content, chunk_raw_sourcemap) =
-            pot_to_chunk_module_object_string(pot, context, chunk_prefix_code.lines)?;
+        let (chunk_content, chunk_raw_sourcemap) = pot_to_chunk_module_object_string(
+            pot,
+            context,
+            chunk_prefix_code.lines().count() as u32,
+        )?;
 
         let mut source_map_buf: Vec<u8> = vec![];
         sourcemap::SourceMap::from(chunk_raw_sourcemap).to_writer(&mut source_map_buf)?;
 
         (
-            format!("{}\n{}]);", chunk_prefix_code.value, chunk_content),
+            format!("{}\n{}]);", chunk_prefix_code, chunk_content),
             source_map_buf,
         )
     };
@@ -207,7 +191,7 @@ fn emit_module_with_mapping(
             let content = { String::from_utf8_lossy(&buf) };
             Ok((
                 format!(
-                    r#""{}" : function (module, exports, __mako_require__){{
+                    r#""{}": function (module, exports, __mako_require__){{
 {}
 }},
 "#,
@@ -307,7 +291,7 @@ fn merge_code_and_sourcemap(
 
                 name_id_offset = chunk_raw_sourcemap.names.len() as u32;
                 src_id_offset = chunk_raw_sourcemap.sources.len() as u32;
-                dst_line_offset += count_string_lines(module_content);
+                dst_line_offset += module_content.lines().count() as u32;
             }
 
             (chunk_content, chunk_raw_sourcemap)
@@ -333,7 +317,6 @@ mod tests {
 
     use super::{merge_code_and_sourcemap, EmittedWithMapping};
     use crate::ast::js_ast::JsAst;
-    use crate::chunk_pot::str_impl::count_string_lines;
     use crate::compiler::{Args, Context};
     use crate::config::{Config, Mode};
     use crate::minify::minify_js;
@@ -379,15 +362,22 @@ mod tests {
             let emitted_add_sourcemap = build_source_map(emitted_add.1.as_ref().unwrap(), &cm);
             let emitted_sub_sourcemap = build_source_map(emitted_sub.1.as_ref().unwrap(), &cm);
 
+            let chunk_prefix_offset = 1u32;
+
             let merged_code_and_sourcemap =
-                merge_code_and_sourcemap(vec![emitted_add, emitted_sub], cm, 1);
+                merge_code_and_sourcemap(vec![emitted_add, emitted_sub], cm, chunk_prefix_offset);
 
             let merged_sourcemap: sourcemap::SourceMap = merged_code_and_sourcemap.1.into();
+
+            // in fn emit_module_with_sourcemap, we add 1 line prefix code before module output
+            let emit_module_with_sourcemap_gap = 1u32;
 
             assert_eq!(
                 emitted_add_sourcemap
                     .tokens()
-                    .map(|t| t.get_dst_line() + 1 + 1)
+                    .map(|t| t.get_dst_line()
+                        + chunk_prefix_offset
+                        + emit_module_with_sourcemap_gap)
                     .collect::<Vec<u32>>(),
                 merged_sourcemap
                     .tokens()
@@ -399,7 +389,10 @@ mod tests {
             assert_eq!(
                 emitted_sub_sourcemap
                     .tokens()
-                    .map(|t| t.get_dst_line() + 1 + 1 + count_string_lines(&emitted_add_code))
+                    .map(|t| t.get_dst_line()
+                        + chunk_prefix_offset
+                        + emit_module_with_sourcemap_gap
+                        + emitted_add_code.lines().count() as u32)
                     .collect::<Vec<u32>>(),
                 merged_sourcemap
                     .tokens()
