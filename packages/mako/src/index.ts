@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import * as binding from '../binding';
-import { LessLoaderOpts, lessLoader } from './lessLoader';
 import { ForkTsChecker } from './forkTSChecker';
+import { LessLoaderOpts, lessLoader } from './lessLoader';
 
 // ref:
 // https://github.com/vercel/next.js/pull/51883

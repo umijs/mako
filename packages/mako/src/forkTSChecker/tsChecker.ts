@@ -1,8 +1,8 @@
-import ts from 'typescript';
-import path from 'path';
 import { promises as fs } from 'fs';
+import path from 'path';
+import ts from 'typescript';
 
-class TypeChecker {
+export class TypeChecker {
   #projectRoot: string;
   constructor(projectRoot: string) {
     this.#projectRoot = projectRoot;
@@ -75,7 +75,8 @@ class TypeChecker {
             const { line, character } =
               diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
             console.error(
-              `${diagnostic.file.fileName} (${line + 1}, ${character + 1
+              `${diagnostic.file.fileName} (${line + 1}, ${
+                character + 1
               }): ${message}`,
             );
           } else {
@@ -93,5 +94,3 @@ class TypeChecker {
     }
   }
 }
-
-module.exports = { TypeChecker };

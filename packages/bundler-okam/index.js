@@ -277,7 +277,6 @@ function checkConfig(opts) {
     'config.cssLoaderModules',
     'config.classPropertiesLoose',
     'config.extraPostCSSPlugins',
-    'config.forkTSChecker',
     'config.postcssLoader',
     'config.sassLoader',
     'config.styleLoader',
