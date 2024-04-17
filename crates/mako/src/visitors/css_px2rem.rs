@@ -4,7 +4,9 @@ use mako_core::swc_css_ast::{
     self, Combinator, CombinatorValue, ComplexSelectorChildren, Length, Token, TypeSelector,
 };
 use mako_core::swc_css_visit::{VisitMut, VisitMutWith};
-use swc_core::css::ast::{AttributeSelector, ComplexSelector, CompoundSelector, SubclassSelector};
+use swc_core::css::ast::{
+    AttributeSelector, ComplexSelector, CompoundSelector, PseudoClassSelector, SubclassSelector,
+};
 
 use crate::config::Px2RemConfig;
 
@@ -171,6 +173,9 @@ fn parse_compound_selector(selector: &CompoundSelector) -> String {
 
                 result.push_str(parse_attribute(attr).as_str())
             }
+            SubclassSelector::PseudoClass(pseudo) => {
+                result.push_str(parse_pseudo_selector(pseudo).as_str())
+            }
             _ => {
                 // TODO: support more subclass selectors
             }
@@ -216,6 +221,10 @@ fn parse_complex_selector(selector: &ComplexSelector) -> String {
     result
 }
 
+fn parse_pseudo_selector(pseu: &PseudoClassSelector) -> String {
+    let PseudoClassSelector { name, .. } = pseu;
+    format!(":{}", name.value)
+}
 #[cfg(test)]
 mod tests {
     use mako_core::swc_css_visit::VisitMutWith;
@@ -447,6 +456,46 @@ mod tests {
                 }
             ),
             r#"[class*="button"]{width:1rem}"#
+        );
+    }
+
+    #[test]
+    fn test_class_pseudo() {
+        assert_eq!(
+            run(
+                r#".jj:before,.jj:after{width:100px;}"#,
+                Px2RemConfig {
+                    ..Default::default()
+                }
+            ),
+            r#".jj:before,.jj:after{width:1rem}"#
+        );
+    }
+    #[test]
+    fn test_class_pseudo_select_black() {
+        assert_eq!(
+            run(
+                r#".jj:before,.jj:after{width:100px;}"#,
+                Px2RemConfig {
+                    selector_blacklist: vec![".jj:after".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#".jj:before,.jj:after{width:100px}"#
+        );
+    }
+
+    #[test]
+    fn test_class_pseudo_select_white() {
+        assert_eq!(
+            run(
+                r#".jj:before,.jj:after{width:100px;}"#,
+                Px2RemConfig {
+                    selector_whitelist: vec![".jj:after".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#".jj:before,.jj:after{width:100px}"#
         );
     }
 
