@@ -126,8 +126,8 @@ pub struct BuildParams {
         importSource?: string;
         pragmaFrag?: string;
     };
-    emitAssets: boolean;
-    cssModulesExportOnlyLocales: boolean;
+    emitAssets?: boolean;
+    cssModulesExportOnlyLocales?: boolean;
     inlineCSS?: false | {};
 }"#)]
     pub config: serde_json::Value,
