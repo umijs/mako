@@ -361,9 +361,6 @@ importers:
       lodash:
         specifier: ^4.17.21
         version: 4.17.21
-      node-libs-browser-okam:
-        specifier: 2.2.4
-        version: 2.2.4
       rimraf:
         specifier: 5.0.1
         version: 5.0.1
@@ -382,6 +379,9 @@ importers:
       less-plugin-resolve:
         specifier: ^1.0.2
         version: 1.0.2
+      node-libs-browser-okam:
+        specifier: 2.2.4
+        version: 2.2.4
       react-error-overlay:
         specifier: 6.0.9
         version: 6.0.9
