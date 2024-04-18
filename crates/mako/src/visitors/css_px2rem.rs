@@ -36,7 +36,6 @@ impl Px2Rem {
     }
 
     fn should_transform(&self) -> bool {
-        println!("选择器::{:?}", self.current_selectors);
         let is_prop_valid = if let Some(decl) = &self.current_decl {
             let is_whitelist_empty = self.config.prop_whitelist.is_empty();
             let is_in_whitelist = self.config.prop_whitelist.contains(decl);
@@ -227,7 +226,6 @@ fn parse_complex_selector(selector: &ComplexSelector) -> String {
             }
             ComplexSelectorChildren::Combinator(combinator, ..) => {
                 result.push_str(parse_combinator(combinator).as_str());
-                println!("附加元素::{:?}", result);
             }
         }
     }
