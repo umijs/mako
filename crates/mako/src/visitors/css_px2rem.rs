@@ -78,7 +78,6 @@ impl VisitMut for Px2Rem {
     }
 
     fn visit_mut_qualified_rule(&mut self, n: &mut swc_css_ast::QualifiedRule) {
-        println!("初始化？？{:?}", self.current_selectors);
         self.current_selectors = vec![];
         n.visit_mut_children_with(self);
     }
@@ -87,12 +86,11 @@ impl VisitMut for Px2Rem {
         let selector = parse_complex_selector(n);
 
         self.current_selectors.push(selector);
-        println!("visit_mut_complex_selector::{:?}", n);
+
         n.visit_mut_children_with(self);
     }
 
     fn visit_mut_length(&mut self, n: &mut Length) {
-        println!("长度未::{}", n.value.value);
         if n.unit.value.to_string() == "px" && self.should_transform() {
             n.value.value /= self.config.root;
             n.value.raw = None;
@@ -140,7 +138,6 @@ fn contains_magic_chars(pattern: &str) -> bool {
 }
 
 fn parse_combinator(combinator: &Combinator) -> String {
-    println!("添加附加元素...");
     match combinator.value {
         CombinatorValue::Descendant => " ".to_string(),
         CombinatorValue::Child => ">".to_string(),
@@ -153,7 +150,7 @@ fn parse_combinator(combinator: &Combinator) -> String {
 fn parse_compound_selector(selector: &CompoundSelector) -> String {
     let mut result = String::new();
     // TODO: support selector.nesting_selector
-    println!("selector={:?}", selector);
+
     if let Some(_nesting_selector) = &selector.nesting_selector {
         result.push('&');
     }
@@ -175,15 +172,9 @@ fn parse_compound_selector(selector: &CompoundSelector) -> String {
                 result.push_str(&format!("#{}", id.text.value));
             }
             SubclassSelector::Class(class) => {
-                println!("SubClassSelector=={:?}", class);
                 result.push_str(&format!(".{}", class.text.value));
             }
-            SubclassSelector::Attribute(attr) => {
-                // attr.as_ref().value.value
-                // println!("属性选择器::{:?}",attr);
-
-                result.push_str(parse_attribute(attr).as_str())
-            }
+            SubclassSelector::Attribute(attr) => result.push_str(parse_attribute(attr).as_str()),
             SubclassSelector::PseudoClass(pseudo) => {
                 result.push_str(parse_pseudo_selector(pseudo).as_str())
             }
