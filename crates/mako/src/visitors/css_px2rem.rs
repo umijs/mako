@@ -36,6 +36,7 @@ impl Px2Rem {
     }
 
     fn should_transform(&self) -> bool {
+        println!("选择器::{:?}", self.current_selectors);
         let is_prop_valid = if let Some(decl) = &self.current_decl {
             let is_whitelist_empty = self.config.prop_whitelist.is_empty();
             let is_in_whitelist = self.config.prop_whitelist.contains(decl);
@@ -78,17 +79,21 @@ impl VisitMut for Px2Rem {
     }
 
     fn visit_mut_qualified_rule(&mut self, n: &mut swc_css_ast::QualifiedRule) {
+        println!("初始化？？{:?}", self.current_selectors);
         self.current_selectors = vec![];
         n.visit_mut_children_with(self);
     }
 
     fn visit_mut_complex_selector(&mut self, n: &mut ComplexSelector) {
         let selector = parse_complex_selector(n);
+
         self.current_selectors.push(selector);
+        println!("visit_mut_complex_selector::{:?}", n);
         n.visit_mut_children_with(self);
     }
 
     fn visit_mut_length(&mut self, n: &mut Length) {
+        println!("长度未::{}", n.value.value);
         if n.unit.value.to_string() == "px" && self.should_transform() {
             n.value.value /= self.config.root;
             n.value.raw = None;
@@ -136,6 +141,7 @@ fn contains_magic_chars(pattern: &str) -> bool {
 }
 
 fn parse_combinator(combinator: &Combinator) -> String {
+    println!("添加附加元素...");
     match combinator.value {
         CombinatorValue::Descendant => " ".to_string(),
         CombinatorValue::Child => ">".to_string(),
@@ -148,6 +154,11 @@ fn parse_combinator(combinator: &Combinator) -> String {
 fn parse_compound_selector(selector: &CompoundSelector) -> String {
     let mut result = String::new();
     // TODO: support selector.nesting_selector
+    println!("selector={:?}", selector);
+    if let Some(_nesting_selector) = &selector.nesting_selector {
+        result.push('&');
+    }
+
     if let Some(type_selector) = &selector.type_selector {
         let type_selector = type_selector.as_ref();
         match type_selector {
@@ -165,6 +176,7 @@ fn parse_compound_selector(selector: &CompoundSelector) -> String {
                 result.push_str(&format!("#{}", id.text.value));
             }
             SubclassSelector::Class(class) => {
+                println!("SubClassSelector=={:?}", class);
                 result.push_str(&format!(".{}", class.text.value));
             }
             SubclassSelector::Attribute(attr) => {
@@ -215,6 +227,7 @@ fn parse_complex_selector(selector: &ComplexSelector) -> String {
             }
             ComplexSelectorChildren::Combinator(combinator, ..) => {
                 result.push_str(parse_combinator(combinator).as_str());
+                println!("附加元素::{:?}", result);
             }
         }
     }
@@ -445,7 +458,18 @@ mod tests {
             r#"[class*="button"]{width:1rem}"#
         );
     }
-
+    #[test]
+    fn test_child_select() {
+        assert_eq!(
+            run(
+                r#".a .b{width:100px;}"#,
+                Px2RemConfig {
+                    ..Default::default()
+                }
+            ),
+            r#".a .b{width:1rem}"#
+        );
+    }
     #[test]
     fn test_attribute() {
         assert_eq!(
@@ -496,6 +520,46 @@ mod tests {
                 }
             ),
             r#".jj:before,.jj:after{width:100px}"#
+        );
+    }
+
+    #[test]
+    fn test_nesting_selector() {
+        assert_eq!(
+            run(
+                r#".test{width:300px;.son & {width:100px;}}"#,
+                Px2RemConfig {
+                    ..Default::default()
+                }
+            ),
+            r#".test{width:3rem;.son &{width:1rem}}"#
+        );
+    }
+
+    #[test]
+    fn test_nesting_selector_black() {
+        assert_eq!(
+            run(
+                r#".test{width:300px;.son & {width:100px;}}"#,
+                Px2RemConfig {
+                    selector_blacklist: vec![".son &".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#".test{width:3rem;.son &{width:100px}}"#
+        );
+    }
+    #[test]
+    fn test_nesting_selector_white() {
+        assert_eq!(
+            run(
+                r#".test{width:300px;.son & {width:100px;}}"#,
+                Px2RemConfig {
+                    selector_whitelist: vec![".son &".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#".test{width:300px;.son &{width:1rem}}"#
         );
     }
 
