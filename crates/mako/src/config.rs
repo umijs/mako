@@ -97,6 +97,9 @@ create_deserialize_fn!(deserialize_devtool, DevtoolConfig);
 create_deserialize_fn!(deserialize_tree_shaking, TreeShakingStrategy);
 create_deserialize_fn!(deserialize_optimization, OptimizationConfig);
 create_deserialize_fn!(deserialize_minifish, MinifishConfig);
+create_deserialize_fn!(deserialize_inline_css, InlineCssConfig);
+create_deserialize_fn!(deserialize_rsc_client, RscClientConfig);
+create_deserialize_fn!(deserialize_rsc_server, RscServerConfig);
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -151,8 +154,6 @@ pub enum OutputMode {
     Bundless,
 }
 
-// TODO:
-// 1. node specific runtime
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 pub enum Platform {
     #[serde(rename = "browser")]
@@ -351,14 +352,26 @@ pub struct MinifishConfig {
     pub meta_path: Option<PathBuf>,
     pub inject: Option<HashMap<String, InjectItem>>,
 }
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct OptimizationConfig {
     pub skip_modules: Option<bool>,
     pub concatenate_modules: Option<bool>,
 }
+
 #[derive(Deserialize, Serialize, Debug)]
 pub struct InlineCssConfig {}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct RscServerConfig {
+    pub client_component_tpl: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct RscClientConfig {}
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct HmrConfig {
@@ -428,8 +441,24 @@ pub struct Config {
     pub emit_assets: bool,
     #[serde(rename = "cssModulesExportOnlyLocales")]
     pub css_modules_export_only_locales: bool,
-    #[serde(rename = "inlineCSS")]
+    #[serde(
+        rename = "inlineCSS",
+        deserialize_with = "deserialize_inline_css",
+        default
+    )]
     pub inline_css: Option<InlineCssConfig>,
+    #[serde(
+        rename = "rscServer",
+        deserialize_with = "deserialize_rsc_server",
+        default
+    )]
+    pub rsc_server: Option<RscServerConfig>,
+    #[serde(
+        rename = "rscClient",
+        deserialize_with = "deserialize_rsc_client",
+        default
+    )]
+    pub rsc_client: Option<RscClientConfig>,
 }
 
 #[allow(dead_code)]
@@ -581,6 +610,9 @@ const DEFAULT_CONFIG: &str = r#"
     },
     "emitAssets": true,
     "cssModulesExportOnlyLocales": false,
+    "inlineCSS": false,
+    "rscServer": false,
+    "rscClient": false,
 }
 "#;
 

@@ -20,6 +20,7 @@ use crate::config::{
     Platform,
 };
 use crate::module::{Dependency, ResolveType};
+use crate::rsc::rsc::Rsc;
 
 #[derive(Debug, Error)]
 #[error("Resolve {path:?} failed from {from:?}")]
@@ -280,17 +281,19 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
     let alias = parse_alias(config.resolve.alias.clone());
     let is_browser = config.platform == Platform::Browser;
     let extensions = get_module_extensions();
-
     let options = match (resolver_type, is_browser) {
         (ResolverType::Cjs, true) => ResolveOptions {
             alias,
             extensions,
-            condition_names: vec![
-                "require".to_string(),
-                "module".to_string(),
-                "webpack".to_string(),
-                "browser".to_string(),
-            ],
+            condition_names: Rsc::generate_resolve_conditions(
+                config,
+                vec![
+                    "require".to_string(),
+                    "module".to_string(),
+                    "webpack".to_string(),
+                    "browser".to_string(),
+                ],
+            ),
             main_fields: vec![
                 "browser".to_string(),
                 "module".to_string(),
@@ -302,12 +305,15 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
         (ResolverType::Esm, true) => ResolveOptions {
             alias,
             extensions,
-            condition_names: vec![
-                "import".to_string(),
-                "module".to_string(),
-                "webpack".to_string(),
-                "browser".to_string(),
-            ],
+            condition_names: Rsc::generate_resolve_conditions(
+                config,
+                vec![
+                    "import".to_string(),
+                    "module".to_string(),
+                    "webpack".to_string(),
+                    "browser".to_string(),
+                ],
+            ),
             main_fields: vec![
                 "browser".to_string(),
                 "module".to_string(),
@@ -319,22 +325,28 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
         (ResolverType::Esm, false) => ResolveOptions {
             alias,
             extensions,
-            condition_names: vec![
-                "import".to_string(),
-                "module".to_string(),
-                "webpack".to_string(),
-            ],
+            condition_names: Rsc::generate_resolve_conditions(
+                config,
+                vec![
+                    "import".to_string(),
+                    "module".to_string(),
+                    "webpack".to_string(),
+                ],
+            ),
             main_fields: vec!["module".to_string(), "main".to_string()],
             ..Default::default()
         },
         (ResolverType::Cjs, false) => ResolveOptions {
             alias,
             extensions,
-            condition_names: vec![
-                "require".to_string(),
-                "module".to_string(),
-                "webpack".to_string(),
-            ],
+            condition_names: Rsc::generate_resolve_conditions(
+                config,
+                vec![
+                    "require".to_string(),
+                    "module".to_string(),
+                    "webpack".to_string(),
+                ],
+            ),
             main_fields: vec!["module".to_string(), "main".to_string()],
             ..Default::default()
         },
