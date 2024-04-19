@@ -24,3 +24,8 @@ assert(
   "should transform client component to reference"
 );
 
+assert(
+  content.includes(`"node_modules/moo/react-server.js":`),
+  "should use react-server condition"
+);
+
