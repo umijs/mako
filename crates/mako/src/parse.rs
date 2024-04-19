@@ -131,7 +131,12 @@ moduleToDom(`
                     let ast = JsAst::new(&file, context.clone())?;
                     return Ok(ModuleAst::Script(ast));
                 } else {
-                    if context.config.rsc_server.is_some() {
+                    if context
+                        .config
+                        .rsc_server
+                        .as_ref()
+                        .is_some_and(|rsc_server| rsc_server.emit_css)
+                    {
                         Rsc::emit_css(file, context.clone());
                         return Rsc::generate_empty_css(file, context.clone());
                     }

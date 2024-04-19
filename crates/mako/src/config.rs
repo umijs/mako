@@ -367,6 +367,8 @@ pub struct InlineCssConfig {}
 #[serde(rename_all = "camelCase")]
 pub struct RscServerConfig {
     pub client_component_tpl: String,
+    #[serde(rename = "emitCSS")]
+    pub emit_css: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
