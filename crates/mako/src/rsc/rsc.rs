@@ -16,11 +16,11 @@ pub struct Rsc {}
 
 impl Rsc {
     pub fn is_client(ast: &JsAst) -> Result<bool> {
-        is_directive(&ast.ast, "use client")
+        contains_directive(&ast.ast, "use client")
     }
 
     pub fn is_server(ast: &JsAst) -> Result<bool> {
-        is_directive(&ast.ast, "use server")
+        contains_directive(&ast.ast, "use server")
     }
 
     pub fn generate_client(file: &File, tpl: &str, context: Arc<Context>) -> Result<ModuleAst> {
@@ -59,7 +59,7 @@ impl Rsc {
     }
 }
 
-fn is_directive(ast: &Module, directive: &str) -> Result<bool> {
+fn contains_directive(ast: &Module, directive: &str) -> Result<bool> {
     let mut is_directive = true;
     let mut is_target_directive = false;
     let mut error: Option<ParseError> = None;
