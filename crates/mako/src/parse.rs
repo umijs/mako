@@ -26,6 +26,8 @@ pub enum ParseError {
         "Import module with `use server` from client components as server action is not supported yet: {path:?}"
     )]
     UnsupportedServerAction { path: String },
+    #[error("The `\"{directive:?}\"` directive must be put at the top of the file.")]
+    DirectiveNotOnTop { directive: String },
 }
 
 pub struct Parse {}
@@ -47,7 +49,7 @@ impl Parse {
             debug!("parse js: {:?}", file.path);
             let ast = JsAst::new(file, context.clone())?;
             if let Some(rsc_server) = context.config.rsc_server.as_ref() {
-                if Rsc::is_client(&ast) {
+                if Rsc::is_client(&ast)? {
                     Rsc::emit_client(file, context.clone());
                     return Rsc::generate_client(
                         file,
@@ -57,7 +59,7 @@ impl Parse {
                 }
             }
             if context.config.rsc_client.is_some() {
-                let is_server = Rsc::is_server(&ast);
+                let is_server = Rsc::is_server(&ast)?;
                 if is_server {
                     return Err(anyhow!(ParseError::UnsupportedServerAction {
                         path: file.path.to_string_lossy().to_string(),

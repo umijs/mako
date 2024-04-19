@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use mako_core::anyhow::Result;
+use mako_core::anyhow::{anyhow, Result};
 use mako_core::swc_ecma_ast::{Expr, ExprStmt, Lit, Module, ModuleItem, Stmt, Str};
 
 use super::client_info::{RscClientInfo, RscCssModules};
@@ -10,16 +10,17 @@ use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
 use crate::config::Config;
 use crate::module::ModuleAst;
+use crate::parse::ParseError;
 
 pub struct Rsc {}
 
 impl Rsc {
-    pub fn is_client(ast: &JsAst) -> bool {
-        contains_str_stmt(&ast.ast, "use client")
+    pub fn is_client(ast: &JsAst) -> Result<bool> {
+        is_directive(&ast.ast, "use client")
     }
 
-    pub fn is_server(ast: &JsAst) -> bool {
-        contains_str_stmt(&ast.ast, "use server")
+    pub fn is_server(ast: &JsAst) -> Result<bool> {
+        is_directive(&ast.ast, "use server")
     }
 
     pub fn generate_client(file: &File, tpl: &str, context: Arc<Context>) -> Result<ModuleAst> {
@@ -58,17 +59,33 @@ impl Rsc {
     }
 }
 
-fn contains_str_stmt(ast: &Module, target: &str) -> bool {
-    ast.body.iter().any(|stmt| {
+fn is_directive(ast: &Module, directive: &str) -> Result<bool> {
+    let mut is_directive = true;
+    let mut is_target_directive = false;
+    let mut error: Option<ParseError> = None;
+    ast.body.iter().for_each(|stmt| {
         if let ModuleItem::Stmt(Stmt::Expr(ExprStmt {
             expr: box Expr::Lit(Lit::Str(Str { value, .. })),
             ..
         })) = stmt
         {
-            return value == target;
+            if value == directive {
+                if is_directive {
+                    is_target_directive = true;
+                } else {
+                    error = Some(ParseError::DirectiveNotOnTop {
+                        directive: directive.to_string(),
+                    });
+                }
+            }
+        } else {
+            is_directive = false;
         }
-        false
-    })
+    });
+    if let Some(error) = error {
+        return Err(anyhow!(error));
+    }
+    Ok(is_target_directive)
 }
 
 #[cfg(test)]
@@ -77,20 +94,21 @@ mod tests {
 
     #[test]
     fn test_is_client() {
-        assert!(!Rsc::is_client(&build_ast(r#""#)));
-        assert!(Rsc::is_client(&build_ast(r#""use client""#)));
-        assert!(Rsc::is_client(&build_ast(r#"'use client'"#)));
-        assert!(Rsc::is_client(&build_ast(r#"1;"use client";"#)));
-        assert!(Rsc::is_client(&build_ast(r#"/*1*/"use client";"#)));
+        assert!(!Rsc::is_client(&build_ast(r#""#)).unwrap());
+        assert!(Rsc::is_client(&build_ast(r#""use client""#)).unwrap());
+        assert!(Rsc::is_client(&build_ast(r#"'use client'"#)).unwrap());
+        assert!(Rsc::is_client(&build_ast(r#"/*1*/"use client";"#)).unwrap());
+        assert!(Rsc::is_client(&build_ast(r#""use strict";"use client";"#)).unwrap());
+    }
+
+    #[test]
+    fn test_is_client_not_on_top() {
+        assert!(Rsc::is_client(&build_ast(r#"1;"use client";"#)).is_err());
     }
 
     #[test]
     fn test_is_server() {
-        assert!(!Rsc::is_server(&build_ast(r#""#)));
-        assert!(Rsc::is_server(&build_ast(r#""use server""#)));
-        assert!(Rsc::is_server(&build_ast(r#"'use server'"#)));
-        assert!(Rsc::is_server(&build_ast(r#"1;"use server";"#)));
-        assert!(Rsc::is_server(&build_ast(r#"/*1*/"use server";"#)));
+        assert!(Rsc::is_server(&build_ast(r#""use server""#)).unwrap());
     }
 
     fn build_ast(content: &str) -> JsAst {
