@@ -1,8 +1,7 @@
 {
-  "minify": false,
-  "inlineCSS": {
+  "rscClient": {
     "// ref: https://github.com/umijs/mako/issues/1062": [],
     "TODO: REMOVE ME": 1
   },
-  "umd": "fooo"
+  "minify": false
 }

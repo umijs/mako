@@ -199,7 +199,6 @@ impl Context {
     pub fn emit_assets(&self, origin_path: String, output_path: String) {
         let mut assets_info = self.assets_info.lock().unwrap();
         assets_info.insert(origin_path, output_path);
-        drop(assets_info);
     }
 }
 

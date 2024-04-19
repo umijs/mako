@@ -29,6 +29,7 @@ pub mod plugin;
 mod plugins;
 pub mod profile_gui;
 mod resolve;
+mod rsc;
 mod runtime;
 mod sourcemap;
 mod stats;
