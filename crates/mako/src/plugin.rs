@@ -11,7 +11,7 @@ use crate::ast::file::{Content, File};
 use crate::chunk_graph::ChunkGraph;
 use crate::compiler::{Args, Context};
 use crate::config::Config;
-use crate::module::{Dependency, ModuleAst};
+use crate::module::{Dependency, ModuleAst, ModuleId};
 use crate::module_graph::ModuleGraph;
 use crate::stats::StatsJsonMap;
 
@@ -53,6 +53,10 @@ pub trait Plugin: Any + Send + Sync {
 
     fn load(&self, _param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
         Ok(None)
+    }
+
+    fn next_build(&self, _next_build_param: &NextBuildParam) -> bool {
+        true
     }
 
     fn parse(
@@ -136,6 +140,18 @@ pub trait Plugin: Any + Send + Sync {
 pub struct PluginDriver {
     plugins: Vec<Arc<dyn Plugin>>,
 }
+
+pub struct NextBuildParam<'a> {
+    pub current_module: &'a ModuleId,
+    pub next_file: &'a File,
+}
+
+impl PluginDriver {
+    pub fn next_build(&self, param: &NextBuildParam) -> bool {
+        self.plugins.iter().all(|p| p.next_build(param))
+    }
+}
+
 impl PluginDriver {
     pub fn new(plugins: Vec<Arc<dyn Plugin>>) -> Self {
         Self { plugins }

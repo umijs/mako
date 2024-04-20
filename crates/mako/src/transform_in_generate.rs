@@ -23,7 +23,7 @@ use mako_core::tracing::debug;
 
 use crate::ast::js_ast::JsAst;
 use crate::compiler::{Compiler, Context};
-use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
+use crate::module::{Dependency, ModuleAst, ModuleId, ModuleType, ResolveType};
 use crate::thread_pool;
 use crate::visitors::async_module::{mark_async, AsyncModule};
 use crate::visitors::css_imports::CSSImports;
@@ -42,6 +42,7 @@ impl Compiler {
             module_graph
                 .modules()
                 .into_iter()
+                .filter(|m| m.get_module_type() != ModuleType::PlaceHolder)
                 .map(|m| m.id.clone())
                 .collect::<Vec<_>>()
         };

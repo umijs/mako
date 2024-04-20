@@ -143,6 +143,11 @@ impl<'cp> ChunkPot<'cp> {
 
         for module_id in module_ids {
             let module = module_graph.get_module(module_id).unwrap();
+
+            if module.info.is_none() {
+                continue;
+            }
+
             let module_info = module.info.as_ref().unwrap();
             let ast = &module_info.ast;
 

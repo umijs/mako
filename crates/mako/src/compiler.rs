@@ -239,6 +239,7 @@ impl Compiler {
             Arc::new(plugins::emotion::EmotionPlugin {}),
             Arc::new(plugins::node_stuff::NodeStuffPlugin {}),
             Arc::new(plugins::farm_tree_shake::FarmTreeShake {}),
+            Arc::new(plugins::suplus::SUPlus::new()),
         ];
         plugins.extend(builtin_plugins);
 

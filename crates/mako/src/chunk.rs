@@ -128,7 +128,12 @@ impl Chunk {
 
         for id in sorted_module_ids {
             let m = mg.get_module(&id).unwrap();
-            hash.write_u64(m.info.as_ref().unwrap().raw_hash);
+
+            if let Some(info) = &m.info {
+                hash.write_u64(info.raw_hash);
+            } else {
+                hash.write(m.id.id.as_bytes());
+            }
         }
 
         hash.finish()

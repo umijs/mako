@@ -14,6 +14,7 @@ use crate::compiler::{Compiler, Context};
 use crate::load::Load;
 use crate::module::{Module, ModuleAst, ModuleId, ModuleInfo};
 use crate::parse::Parse;
+use crate::plugin::NextBuildParam;
 use crate::resolve::ResolverResource;
 use crate::thread_pool;
 use crate::transform::Transform;
@@ -103,10 +104,15 @@ impl Compiler {
                 if !module_graph.has_module(&dep_module_id) {
                     let module = match dep.resolver_resource {
                         ResolverResource::Virtual(_) | ResolverResource::Resolved(_) => {
-                            count += 1;
-
                             let file = File::new(path.clone(), self.context.clone());
-                            build_with_pool(file, Some(dep.resolver_resource.clone()));
+
+                            if self.context.plugin_driver.next_build(&NextBuildParam {
+                                current_module: &module_id,
+                                next_file: &file,
+                            }) {
+                                count += 1;
+                                build_with_pool(file, Some(dep.resolver_resource.clone()));
+                            }
 
                             Self::create_empty_module(&dep_module_id)
                         }
