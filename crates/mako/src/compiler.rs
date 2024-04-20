@@ -330,11 +330,10 @@ impl Compiler {
 
         let t_compiler = Instant::now();
         let start_time = std::time::SystemTime::now();
-        let is_prod = self.context.config.mode == crate::config::Mode::Production;
         let building_with_message = format!(
             "Building with {} for {}...",
             "mako".to_string().cyan(),
-            if is_prod { "production" } else { "development" }
+            self.context.config.mode
         )
         .green();
         println!("{}", building_with_message);
