@@ -12,7 +12,7 @@ use crate::module::ModuleId;
 use crate::module_graph::ModuleGraph;
 
 pub struct ChunkGraph {
-    graph: StableDiGraph<Chunk, ()>,
+    pub(crate) graph: StableDiGraph<Chunk, ()>,
     id_index_map: HashMap<ChunkId, NodeIndex<DefaultIx>>,
 }
 
