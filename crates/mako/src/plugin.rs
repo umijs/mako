@@ -98,6 +98,10 @@ pub trait Plugin: Any + Send + Sync {
         Ok(None)
     }
 
+    fn generate_beg(&self, _context: &Arc<Context>) -> Result<()> {
+        Ok(())
+    }
+
     fn generate_end(
         &self,
         _params: &PluginGenerateEndParams,
@@ -115,6 +119,10 @@ pub trait Plugin: Any + Send + Sync {
         _module_graph: &mut ModuleGraph,
         _context: &Arc<Context>,
     ) -> Result<()> {
+        Ok(())
+    }
+
+    fn before_optimize_chunk(&self, _context: &Arc<Context>) -> Result<()> {
         Ok(())
     }
 
@@ -136,6 +144,7 @@ pub trait Plugin: Any + Send + Sync {
 pub struct PluginDriver {
     plugins: Vec<Arc<dyn Plugin>>,
 }
+
 impl PluginDriver {
     pub fn new(plugins: Vec<Arc<dyn Plugin>>) -> Self {
         Self { plugins }
@@ -209,6 +218,13 @@ impl PluginDriver {
         Ok(())
     }
 
+    pub fn before_generate(&self, context: &Arc<Context>) -> Result<()> {
+        for plugin in &self.plugins {
+            plugin.generate_beg(context)?;
+        }
+        Ok(())
+    }
+
     pub fn generate(&self, context: &Arc<Context>) -> Result<Option<()>> {
         for plugin in &self.plugins {
             let ret = plugin.generate(context)?;
@@ -234,6 +250,13 @@ impl PluginDriver {
     ) -> Result<Option<()>> {
         for plugin in &self.plugins {
             plugin.generate_end(param, context)?;
+        }
+        Ok(None)
+    }
+
+    pub fn generate_beg(&self, context: &Arc<Context>) -> Result<Option<()>> {
+        for plugin in &self.plugins {
+            plugin.generate_beg(context)?;
         }
         Ok(None)
     }
@@ -264,6 +287,14 @@ impl PluginDriver {
     ) -> Result<()> {
         for p in &self.plugins {
             p.optimize_module_graph(module_graph, context)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn before_optimize_chunk(&self, context: &Arc<Context>) -> Result<()> {
+        for p in &self.plugins {
+            p.before_optimize_chunk(context)?;
         }
 
         Ok(())

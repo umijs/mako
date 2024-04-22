@@ -53,6 +53,8 @@ impl Compiler {
     }
 
     pub fn generate(&self) -> Result<()> {
+        self.context.plugin_driver.before_generate(&self.context)?;
+
         debug!("generate");
         let t_generate = Instant::now();
 
@@ -93,6 +95,11 @@ impl Compiler {
         let t_group_chunks = t_group_chunks.elapsed();
 
         let t_optimize_chunks = Instant::now();
+
+        self.context
+            .plugin_driver
+            .before_optimize_chunk(&self.context)?;
+
         self.optimize_chunk();
         let t_optimize_chunks = t_optimize_chunks.elapsed();
 
