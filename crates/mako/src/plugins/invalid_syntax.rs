@@ -16,21 +16,24 @@ impl Plugin for InvalidSyntaxPlugin {
     fn transform_js(
         &self,
         param: &crate::plugin::PluginTransformJsParam,
-        _ast: &mut swc_ecma_ast::Module,
+        ast: &mut swc_ecma_ast::Module,
         _context: &std::sync::Arc<crate::compiler::Context>,
     ) -> anyhow::Result<()> {
         // 先用白名单的形式，等收集的场景多了之后再考虑通用方案
         // 1、react-loadable/lib/index.js 里有用 __webpack_modules__ 来判断 isWebpackReady
-        // 2、...
-        if param.path.contains("node_modules") && param.path.contains("react-loadable") {
+        // 2、react-server-dom-webpack contains __webpack_require__
+        // 3、...
+        if param.path.contains("node_modules")
+            && (param.path.contains("react-loadable")
+                || param.path.contains("react-server-dom-webpack"))
+        {
             return Ok(());
         }
-        // TODO: remove invalid_syntax plugin
-        // ast.visit_with(&mut InvalidSyntaxVisitor {
-        //     unresolved_mark: param.unresolved_mark,
-        //     handler: param.handler,
-        //     path: param.path,
-        // });
+        ast.visit_with(&mut InvalidSyntaxVisitor {
+            unresolved_mark: param.unresolved_mark,
+            handler: param.handler,
+            path: param.path,
+        });
         Ok(())
     }
 }
