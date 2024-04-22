@@ -9,7 +9,7 @@ use mako_core::swc_ecma_ast::Module;
 
 use crate::ast::file::{Content, File};
 use crate::chunk_graph::ChunkGraph;
-use crate::compiler::{Args, Context};
+use crate::compiler::{Args, Compiler, Context};
 use crate::config::Config;
 use crate::module::{Dependency, ModuleAst, ModuleId};
 use crate::module_graph::ModuleGraph;
@@ -90,6 +90,10 @@ pub trait Plugin: Any + Send + Sync {
         Ok(())
     }
 
+    fn after_build(&self, _context: &Arc<Context>, _compiler: &Compiler) -> Result<()> {
+        Ok(())
+    }
+
     fn generate(&self, _context: &Arc<Context>) -> Result<Option<()>> {
         Ok(None)
     }
@@ -147,14 +151,20 @@ pub struct NextBuildParam<'a> {
 }
 
 impl PluginDriver {
+    pub fn new(plugins: Vec<Arc<dyn Plugin>>) -> Self {
+        Self { plugins }
+    }
+
     pub fn next_build(&self, param: &NextBuildParam) -> bool {
         self.plugins.iter().all(|p| p.next_build(param))
     }
-}
 
-impl PluginDriver {
-    pub fn new(plugins: Vec<Arc<dyn Plugin>>) -> Self {
-        Self { plugins }
+    pub fn after_build(&self, context: &Arc<Context>, c: &Compiler) -> Result<()> {
+        for p in &self.plugins {
+            p.after_build(context, c)?
+        }
+
+        Ok(())
     }
 
     pub fn modify_config(&self, config: &mut Config, root: &Path, args: &Args) -> Result<()> {
