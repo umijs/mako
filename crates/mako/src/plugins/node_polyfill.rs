@@ -90,6 +90,7 @@ fn get_empty_modules() -> Vec<String> {
         "readline",
         "repl",
         "tls",
+        "async_hooks",
     ]
     .iter()
     .map(|s| s.to_string())
@@ -98,7 +99,6 @@ fn get_empty_modules() -> Vec<String> {
 
 pub fn get_all_modules() -> Vec<String> {
     let mut modules = get_polyfill_modules();
-
     modules.extend(get_empty_modules());
     modules
 }

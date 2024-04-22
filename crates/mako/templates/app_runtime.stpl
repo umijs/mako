@@ -368,6 +368,8 @@ root.modulesRegistry = runtime._modulesRegistry;
 root.makoModuleHotUpdate = runtime._makoModuleHotUpdate;
 <% } %>
 
+root.__mako_require_module__ = runtime.requireModule;
+
 <% if umd.is_some() { %>
 (function makoUniversalModuleDefinition(root, factory) {
   if (typeof exports === 'object' && typeof module === 'object')

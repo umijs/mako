@@ -2,9 +2,7 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
-use cached::proc_macro::cached;
 use mako_core::anyhow::{anyhow, Result};
-use mako_core::cached::SizedCache;
 use mako_core::md5;
 use mako_core::sailfish::TemplateOnce;
 use mako_core::swc_common::DUMMY_SP;
@@ -247,13 +245,13 @@ pub(crate) fn pot_to_chunk_module(
     })
 }
 
-#[cached(
-    result = true,
-    key = "String",
-    type = "SizedCache<String, FnExpr>",
-    create = "{ SizedCache::with_size(20000) }",
-    convert = r#"{format!("{}.{:x}",file_content_hash(&module.id.id),module.info.as_ref().unwrap().raw_hash)}"#
-)]
+// #[cached(
+//     result = true,
+//     key = "String",
+//     type = "SizedCache<String, FnExpr>",
+//     create = "{ SizedCache::with_size(20000) }",
+//     convert = r#"{format!("{}.{:x}",file_content_hash(&module.id.id),module.info.as_ref().unwrap().raw_hash)}"#
+// )]
 fn to_module_fn_expr(module: &Module) -> Result<FnExpr> {
     mako_core::mako_profile_function!(&module.id.id);
 
@@ -298,7 +296,7 @@ fn to_module_fn_expr(module: &Module) -> Result<FnExpr> {
                 function: func.into(),
             })
         }
-        //TODO:  css module will be removed in the future
+        // TODO: css module will be removed in the future
         ModuleAst::Css(_) => Ok(empty_module_fn_expr()),
         ModuleAst::None => Err(anyhow!("ModuleAst::None({}) cannot concert", module.id.id)),
     }

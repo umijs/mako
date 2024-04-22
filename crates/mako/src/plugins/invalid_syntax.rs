@@ -16,7 +16,7 @@ impl Plugin for InvalidSyntaxPlugin {
     fn transform_js(
         &self,
         param: &crate::plugin::PluginTransformJsParam,
-        ast: &mut swc_ecma_ast::Module,
+        _ast: &mut swc_ecma_ast::Module,
         _context: &std::sync::Arc<crate::compiler::Context>,
     ) -> anyhow::Result<()> {
         // 先用白名单的形式，等收集的场景多了之后再考虑通用方案
@@ -25,11 +25,12 @@ impl Plugin for InvalidSyntaxPlugin {
         if param.path.contains("node_modules") && param.path.contains("react-loadable") {
             return Ok(());
         }
-        ast.visit_with(&mut InvalidSyntaxVisitor {
-            unresolved_mark: param.unresolved_mark,
-            handler: param.handler,
-            path: param.path,
-        });
+        // TODO: remove invalid_syntax plugin
+        // ast.visit_with(&mut InvalidSyntaxVisitor {
+        //     unresolved_mark: param.unresolved_mark,
+        //     handler: param.handler,
+        //     path: param.path,
+        // });
         Ok(())
     }
 }
