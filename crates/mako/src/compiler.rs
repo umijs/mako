@@ -10,6 +10,7 @@ use mako_core::regex::Regex;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{Globals, SourceMap, DUMMY_SP};
 use mako_core::swc_ecma_ast::Ident;
+use mako_core::tracing::debug;
 
 use crate::chunk_graph::ChunkGraph;
 use crate::comments::Comments;
@@ -359,7 +360,14 @@ impl Compiler {
                     crate::ast::file::File::new_entry(entry, self.context.clone())
                 })
                 .collect();
+
             self.build(files)?;
+
+            debug!("start after build");
+
+            self.context
+                .plugin_driver
+                .after_build(&self.context, self)?;
         }
         let result = {
             mako_core::mako_profile_scope!("Generate Stage");
