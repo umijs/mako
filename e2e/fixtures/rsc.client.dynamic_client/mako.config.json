@@ -1,0 +1,10 @@
+{
+  "rscClient": {
+    "// ref: https://github.com/umijs/mako/issues/1062": [],
+    "TODO: REMOVE ME": 1
+  },
+  "moduleIdStrategy": "named",
+  "hash": true,
+  "minify": false,
+  "stats": true
+}

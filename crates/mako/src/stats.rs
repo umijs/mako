@@ -111,6 +111,7 @@ pub struct StatsJsonMap {
     chunks: Vec<StatsJsonChunkItem>,
     entrypoints: HashMap<String, StatsJsonEntryItem>,
     rsc_client_components: Vec<RscClientInfo>,
+    #[serde(rename = "rscCSSModules")]
     rsc_css_modules: Vec<RscCssModules>,
 }
 
