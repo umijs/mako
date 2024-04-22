@@ -1,4 +1,4 @@
-use std::hash::Hasher;
+use std::hash::{Hash, Hasher};
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -18,13 +18,13 @@ use url::Url;
 use crate::compiler::Context;
 use crate::util::base64_decode;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Asset {
     pub path: String,
     pub content: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum Content {
     Js(String),
     Css(String),
@@ -40,7 +40,7 @@ enum FileError {
     ToBase64Error { path: String },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct File {
     pub path: PathBuf,
     pub relative_path: PathBuf,
@@ -72,6 +72,17 @@ impl Default for File {
             params: vec![],
             fragment: None,
         }
+    }
+}
+
+impl Hash for File {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write(self.pathname.to_string_lossy().as_bytes());
+    }
+}
+impl PartialEq for File {
+    fn eq(&self, other: &Self) -> bool {
+        self.pathname.eq(&other.pathname)
     }
 }
 

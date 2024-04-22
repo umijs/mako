@@ -1,3 +1,4 @@
+use std::fmt::{Debug, Formatter};
 use std::hash::Hasher;
 use std::path::{Component, Path};
 
@@ -13,7 +14,7 @@ use crate::module_graph::ModuleGraph;
 
 pub type ChunkId = ModuleId;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum ChunkType {
     #[allow(dead_code)]
     Runtime,
@@ -34,6 +35,19 @@ pub struct Chunk {
     pub modules: IndexSet<ModuleId>,
     pub content: Option<String>,
     pub source_map: Option<String>,
+}
+
+impl Debug for Chunk {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}#{}({:?})",
+            self.id.id,
+            self.modules.len(),
+            self.chunk_type
+        )?;
+        Ok(())
+    }
 }
 
 impl Chunk {

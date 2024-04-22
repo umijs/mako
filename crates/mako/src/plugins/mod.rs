@@ -4,6 +4,7 @@ pub mod context_module;
 pub mod copy;
 pub mod emotion;
 pub mod farm_tree_shake;
+pub mod graphviz;
 pub mod hmr_runtime;
 pub mod ignore;
 pub mod import;

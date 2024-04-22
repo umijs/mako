@@ -88,8 +88,9 @@ pub(crate) fn render_css_chunk(
             let module_graph = context.module_graph.read().unwrap();
             chunk.get_modules().iter().for_each(|module_id| {
                 let module = module_graph.get_module(module_id).unwrap();
-                let info = module.info.as_ref().unwrap();
-                if matches!(info.ast, crate::module::ModuleAst::Css(_)) {
+                if let Some(info) = module.info.as_ref()
+                    && info.ast.as_script().is_some()
+                {
                     source_map_chain.append(&mut info.source_map_chain.clone());
                 }
             });

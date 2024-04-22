@@ -254,6 +254,10 @@ impl Compiler {
             plugins.insert(0, Arc::new(plugins::bundless_compiler::BundlessCompiler {}));
         }
 
+        if std::env::var("DEBUG_GRAPH").is_ok_and(|v| v == "true") {
+            plugins.push(Arc::new(plugins::graphviz::Graphviz {}));
+        }
+
         if let Some(minifish_config) = &config._minifish {
             let inject = if let Some(inject) = &minifish_config.inject {
                 let mut map = HashMap::new();
