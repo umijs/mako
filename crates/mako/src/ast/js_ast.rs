@@ -18,7 +18,7 @@ use mako_core::swc_ecma_visit::{VisitMutWith, VisitWith};
 use swc_core::base::try_with_handler;
 use swc_core::common::Spanned;
 
-use super::file::Content;
+use super::file::{Content, JsContent};
 use crate::ast::file::File;
 use crate::ast::{error, utils};
 use crate::compiler::Context;
@@ -59,9 +59,8 @@ impl JsAst {
                 ..Default::default()
             })
         } else {
-            let jsx = extname == "jsx"
-                // when use svg as svgr, it should come here and be treated as jsx
-                || extname == "svg"
+            let jsx = file.is_content_jsx()
+                || extname == "jsx"
                 || (extname == "js" && !file.is_under_node_modules);
             Syntax::Es(EsConfig {
                 jsx,
@@ -119,10 +118,14 @@ impl JsAst {
     }
 
     pub fn build(path: &str, content: &str, context: Arc<Context>) -> Result<Self> {
+        let is_jsx = path.ends_with(".jsx") || path.ends_with(".tsx");
         JsAst::new(
             &File::with_content(
                 path.to_string(),
-                Content::Js(content.to_string()),
+                Content::Js(JsContent {
+                    content: content.to_string(),
+                    is_jsx,
+                }),
                 context.clone(),
             ),
             context.clone(),

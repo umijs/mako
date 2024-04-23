@@ -13,6 +13,12 @@ module.exports = {
     console.log('>> generate end after delay 1s');
   },
   async load(path) {
+    if (path.endsWith('foo.bar')) {
+      return {
+        content: `export default () => <Foooo>foo.bar</Foooo>;`,
+        type: 'jsx',
+      };
+    }
     console.log('>> load:', path);
   }
 };
