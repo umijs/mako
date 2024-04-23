@@ -376,6 +376,12 @@ pub struct RscClientConfig {}
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct ExperimentalConfig {
+    pub webpack_syntax_validate: Vec<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct HmrConfig {
     pub host: String,
     pub port: u16,
@@ -461,6 +467,7 @@ pub struct Config {
         default
     )]
     pub rsc_client: Option<RscClientConfig>,
+    pub experimental: ExperimentalConfig,
 }
 
 #[allow(dead_code)]
@@ -615,6 +622,7 @@ const DEFAULT_CONFIG: &str = r#"
     "inlineCSS": false,
     "rscServer": false,
     "rscClient": false,
+    "experimental": { "webpackSyntaxValidate": [] }
 }
 "#;
 
