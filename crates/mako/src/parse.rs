@@ -10,9 +10,9 @@ use crate::ast::css_ast::CssAst;
 use crate::ast::file::{Content, File};
 use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
+use crate::features::rsc::Rsc;
 use crate::module::ModuleAst;
 use crate::plugin::PluginParseParam;
-use crate::rsc::rsc::Rsc;
 use crate::transform::Transform;
 use crate::visitors::css_imports::CSSImports;
 

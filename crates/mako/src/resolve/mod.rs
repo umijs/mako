@@ -19,8 +19,8 @@ use crate::config::{
     Config, ExternalAdvancedSubpathConverter, ExternalAdvancedSubpathTarget, ExternalConfig,
     Platform,
 };
+use crate::features::rsc::Rsc;
 use crate::module::{Dependency, ResolveType};
-use crate::rsc::rsc::Rsc;
 
 #[derive(Debug, Error)]
 #[error("Resolve {path:?} failed from {from:?}")]

@@ -21,7 +21,6 @@ use crate::compiler::Context;
 use crate::config::Mode;
 use crate::module::ModuleAst;
 use crate::plugins::context_module::ContextModuleVisitor;
-use crate::targets;
 use crate::visitors::css_assets::CSSAssets;
 use crate::visitors::css_flexbugs::CSSFlexbugs;
 use crate::visitors::css_px2rem::Px2Rem;
@@ -32,6 +31,7 @@ use crate::visitors::provide::Provide;
 use crate::visitors::react::react;
 use crate::visitors::try_resolve::TryResolve;
 use crate::visitors::virtual_css_modules::VirtualCSSModules;
+use crate::{features, targets};
 
 pub struct Transform {}
 
@@ -122,6 +122,13 @@ impl Transform {
                     // since ContextModuleVisitor will add extra dynamic imports
                     if context.config.dynamic_import_to_require {
                         visitors.push(Box::new(DynamicImportToRequire { unresolved_mark }));
+                    }
+                    if matches!(context.config.platform, crate::config::Platform::Node) {
+                        visitors.push(Box::new(features::node::MockFilenameAndDirname {
+                            unresolved_mark,
+                            current_path: file.path.clone(),
+                            context: context.clone(),
+                        }));
                     }
 
                     // folders

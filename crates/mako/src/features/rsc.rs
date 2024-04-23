@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
+use mako_core::serde::Serialize;
 use mako_core::swc_ecma_ast::{Expr, ExprStmt, Lit, Module, ModuleItem, Stmt, Str};
 
-use super::client_info::{RscClientInfo, RscCssModules};
 use crate::ast::css_ast::CssAst;
 use crate::ast::file::File;
 use crate::ast::js_ast::JsAst;
@@ -11,6 +11,16 @@ use crate::compiler::Context;
 use crate::config::Config;
 use crate::module::ModuleAst;
 use crate::parse::ParseError;
+
+#[derive(Serialize, Debug, Clone)]
+pub struct RscClientInfo {
+    pub path: String,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct RscCssModules {
+    pub path: String,
+}
 
 pub struct Rsc {}
 

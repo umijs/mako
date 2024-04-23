@@ -11,7 +11,5 @@ pub mod import;
 pub mod invalid_syntax;
 pub mod manifest;
 pub mod minifish;
-pub mod node_polyfill;
-pub mod node_stuff;
 pub mod runtime;
 pub mod wasm_runtime;
