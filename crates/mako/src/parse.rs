@@ -48,23 +48,8 @@ impl Parse {
         if let Some(Content::Js(_)) = &file.content {
             debug!("parse js: {:?}", file.path);
             let ast = JsAst::new(file, context.clone())?;
-            if let Some(rsc_server) = context.config.rsc_server.as_ref() {
-                if Rsc::is_client(&ast)? {
-                    Rsc::emit_client(file, context.clone());
-                    return Rsc::generate_client(
-                        file,
-                        &rsc_server.client_component_tpl,
-                        context.clone(),
-                    );
-                }
-            }
-            if context.config.rsc_client.is_some() {
-                let is_server = Rsc::is_server(&ast)?;
-                if is_server {
-                    return Err(anyhow!(ParseError::UnsupportedServerAction {
-                        path: file.path.to_string_lossy().to_string(),
-                    }));
-                }
+            if let Some(ast) = Rsc::parse_js(file, &ast, context.clone())? {
+                return Ok(ast);
             }
             return Ok(ModuleAst::Script(ast));
         }
@@ -131,14 +116,8 @@ moduleToDom(`
                     let ast = JsAst::new(&file, context.clone())?;
                     return Ok(ModuleAst::Script(ast));
                 } else {
-                    if context
-                        .config
-                        .rsc_server
-                        .as_ref()
-                        .is_some_and(|rsc_server| rsc_server.emit_css)
-                    {
-                        Rsc::emit_css(file, context.clone());
-                        return Rsc::generate_empty_css(file, context.clone());
+                    if let Some(ast) = Rsc::parse_css(file, context.clone())? {
+                        return Ok(ast);
                     }
                     return Ok(ModuleAst::Css(ast));
                 }

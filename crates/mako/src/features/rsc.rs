@@ -25,39 +25,74 @@ pub struct RscCssModules {
 pub struct Rsc {}
 
 impl Rsc {
-    pub fn is_client(ast: &JsAst) -> Result<bool> {
+    pub fn parse_js(file: &File, ast: &JsAst, context: Arc<Context>) -> Result<Option<ModuleAst>> {
+        if let Some(rsc_server) = context.config.rsc_server.as_ref() {
+            if Rsc::is_client(ast)? {
+                Rsc::emit_client(file, context.clone());
+                return Ok(Some(Self::generate_client(
+                    file,
+                    &rsc_server.client_component_tpl,
+                    context.clone(),
+                )));
+            }
+        }
+        if context.config.rsc_client.is_some() {
+            let is_server = Rsc::is_server(ast)?;
+            if is_server {
+                return Err(anyhow!(ParseError::UnsupportedServerAction {
+                    path: file.path.to_string_lossy().to_string(),
+                }));
+            }
+        }
+        Ok(None)
+    }
+
+    fn is_client(ast: &JsAst) -> Result<bool> {
         contains_directive(&ast.ast, "use client")
     }
 
-    pub fn is_server(ast: &JsAst) -> Result<bool> {
+    fn is_server(ast: &JsAst) -> Result<bool> {
         contains_directive(&ast.ast, "use server")
     }
 
-    pub fn generate_client(file: &File, tpl: &str, context: Arc<Context>) -> Result<ModuleAst> {
+    fn generate_client(file: &File, tpl: &str, context: Arc<Context>) -> ModuleAst {
         let content = tpl.replace("{{path}}", file.relative_path.to_str().unwrap());
-        Ok(ModuleAst::Script(
+        ModuleAst::Script(
             JsAst::build(file.path.to_str().unwrap(), &content, context.clone()).unwrap(),
-        ))
+        )
     }
 
-    pub fn emit_client(file: &File, context: Arc<Context>) {
+    fn emit_client(file: &File, context: Arc<Context>) {
         let mut info = context.stats_info.lock().unwrap();
         info.rsc_client_components.push(RscClientInfo {
             path: file.relative_path.to_string_lossy().to_string(),
         });
     }
 
-    pub fn emit_css(file: &File, context: Arc<Context>) {
+    pub fn parse_css(file: &File, context: Arc<Context>) -> Result<Option<ModuleAst>> {
+        if context
+            .config
+            .rsc_server
+            .as_ref()
+            .is_some_and(|rsc_server| rsc_server.emit_css)
+        {
+            Rsc::emit_css(file, context.clone());
+            return Ok(Some(Rsc::generate_empty_css(file, context.clone())));
+        }
+        Ok(None)
+    }
+
+    fn emit_css(file: &File, context: Arc<Context>) {
         let mut info = context.stats_info.lock().unwrap();
         info.rsc_css_modules.push(RscCssModules {
             path: file.relative_path.to_string_lossy().to_string(),
         });
     }
 
-    pub fn generate_empty_css(file: &File, context: Arc<Context>) -> Result<ModuleAst> {
-        Ok(ModuleAst::Css(
+    fn generate_empty_css(file: &File, context: Arc<Context>) -> ModuleAst {
+        ModuleAst::Css(
             CssAst::build(file.path.to_str().unwrap(), "", context.clone(), false).unwrap(),
-        ))
+        )
     }
 
     pub fn generate_resolve_conditions(config: &Config, conditions: Vec<String>) -> Vec<String> {
