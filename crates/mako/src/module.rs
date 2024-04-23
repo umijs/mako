@@ -445,7 +445,7 @@ impl Module {
 
 impl Debug for Module {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Module id={}", self.id.id)
+        write!(f, "id={}({:?})", self.id.id, self.get_module_type())
     }
 }
 
