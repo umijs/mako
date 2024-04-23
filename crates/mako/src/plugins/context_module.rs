@@ -9,7 +9,7 @@ use mako_core::swc_ecma_ast::{
 use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprExt, ExprFactory};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 
-use crate::ast::file::Content;
+use crate::ast::file::{Content, JsContent};
 use crate::ast::utils::{is_commonjs_require, is_dynamic_import};
 use crate::compiler::Context;
 use crate::plugin::{Plugin, PluginLoadParam};
@@ -88,7 +88,7 @@ impl Plugin for ContextModulePlugin {
                 }
             }
 
-            let code = format!(
+            let content = format!(
                 r#"
 const map = {{
     {}
@@ -105,7 +105,10 @@ module.exports = (id) => {{
 "#,
                 key_values.join(",\n")
             );
-            Ok(Some(Content::Js(code)))
+            Ok(Some(Content::Js(JsContent {
+                content,
+                ..Default::default()
+            })))
         } else {
             Ok(None)
         }

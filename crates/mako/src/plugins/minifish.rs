@@ -13,7 +13,7 @@ use mako_core::swc_ecma_visit::VisitMutWith;
 use serde::Serialize;
 use unsimplify::UnSimplify;
 
-use crate::ast::file::{Asset, Content};
+use crate::ast::file::{Asset, Content, JsContent};
 use crate::compiler::Context;
 use crate::load::FileSystem;
 use crate::module::{Dependency as ModuleDependency, ModuleAst, ResolveType};
@@ -58,7 +58,10 @@ impl Plugin for MinifishPlugin {
                 .unwrap();
 
             return match self.mapping.get(relative) {
-                Some(js_content) => Ok(Some(Content::Js(js_content.to_string()))),
+                Some(js_content) => Ok(Some(Content::Js(JsContent {
+                    content: js_content.to_string(),
+                    ..Default::default()
+                }))),
 
                 None => {
                     let content = FileSystem::read_file(&param.file.pathname)?;

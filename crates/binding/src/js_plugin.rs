@@ -6,7 +6,7 @@ use crate::tsfn::{LoadResult, ReadMessage, TsFnHooks, WriteRequest};
 pub struct JsPlugin {
     pub hooks: TsFnHooks,
 }
-use mako::ast::file::Content;
+use mako::ast::file::{Content, JsContent};
 use mako::compiler::Context;
 use mako::plugin::{Plugin, PluginGenerateEndParams, PluginLoadParam};
 use mako_core::anyhow::{anyhow, Result};
@@ -44,7 +44,18 @@ impl Plugin for JsPlugin {
                 .unwrap_or_else(|e| panic!("recv error: {:?}", e.to_string()))?;
             if let Some(x) = x {
                 match x.content_type.as_str() {
-                    "js" => return Ok(Some(Content::Js(x.content))),
+                    "js" | "ts" => {
+                        return Ok(Some(Content::Js(JsContent {
+                            content: x.content,
+                            is_jsx: false,
+                        })))
+                    }
+                    "jsx" | "tsx" => {
+                        return Ok(Some(Content::Js(JsContent {
+                            content: x.content,
+                            is_jsx: true,
+                        })))
+                    }
                     "css" => return Ok(Some(Content::Css(x.content))),
                     _ => return Err(anyhow!("Unsupported content type: {}", x.content_type)),
                 }
