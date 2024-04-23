@@ -232,7 +232,7 @@ impl Compiler {
             // file types
             Arc::new(plugins::context_module::ContextModulePlugin {}),
             Arc::new(plugins::runtime::MakoRuntime {}),
-            Arc::new(plugins::invalid_syntax::InvalidSyntaxPlugin {}),
+            Arc::new(plugins::invalid_webpack_syntax::InvalidWebpackSyntaxPlugin {}),
             Arc::new(plugins::hmr_runtime::HMRRuntimePlugin {}),
             Arc::new(plugins::wasm_runtime::WasmRuntimePlugin {}),
             Arc::new(plugins::async_runtime::AsyncRuntimePlugin {}),

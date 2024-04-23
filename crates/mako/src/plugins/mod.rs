@@ -8,7 +8,7 @@ pub mod graphviz;
 pub mod hmr_runtime;
 pub mod ignore;
 pub mod import;
-pub mod invalid_syntax;
+pub mod invalid_webpack_syntax;
 pub mod manifest;
 pub mod minifish;
 pub mod runtime;

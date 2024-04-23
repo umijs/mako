@@ -131,6 +131,9 @@ pub struct BuildParams {
     inlineCSS?: false | {};
     rscServer?: false | {};
     rscClient?: false | {};
+    experimental?: {
+        webpackSyntaxValidate?: string[];
+    };
 }"#)]
     pub config: serde_json::Value,
     pub hooks: JsHooks,

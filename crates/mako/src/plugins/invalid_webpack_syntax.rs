@@ -6,27 +6,29 @@ use swc_core::common::Mark;
 
 use crate::plugin::Plugin;
 
-pub struct InvalidSyntaxPlugin {}
+pub struct InvalidWebpackSyntaxPlugin {}
 
-impl Plugin for InvalidSyntaxPlugin {
+impl Plugin for InvalidWebpackSyntaxPlugin {
     fn name(&self) -> &str {
-        "invalid_syntax"
+        "invalid_webpack_syntax"
     }
 
     fn transform_js(
         &self,
         param: &crate::plugin::PluginTransformJsParam,
         ast: &mut swc_ecma_ast::Module,
-        _context: &std::sync::Arc<crate::compiler::Context>,
+        context: &std::sync::Arc<crate::compiler::Context>,
     ) -> anyhow::Result<()> {
         // 先用白名单的形式，等收集的场景多了之后再考虑通用方案
         // 1、react-loadable/lib/index.js 里有用 __webpack_modules__ 来判断 isWebpackReady
         // 2、react-server-dom-webpack contains __webpack_require__
         // 3、...
-        if param.path.contains("node_modules")
-            && (param.path.contains("react-loadable")
-                || param.path.contains("react-server-dom-webpack"))
-        {
+        let mut pkgs = vec![
+            "react-loadable".to_string(),
+            "react-server-dom-webpack".to_string(),
+        ];
+        pkgs.extend(context.config.experimental.webpack_syntax_validate.clone());
+        if param.path.contains("node_modules") && pkgs.iter().any(|pkg| param.path.contains(pkg)) {
             return Ok(());
         }
         ast.visit_with(&mut InvalidSyntaxVisitor {

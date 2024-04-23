@@ -139,6 +139,9 @@ export interface BuildParams {
     inlineCSS?: false | {};
     rscServer?: false | {};
     rscClient?: false | {};
+    experimental?: {
+      webpackSyntaxValidate?: string[];
+    };
   };
   hooks: JsHooks;
   watch: boolean;
