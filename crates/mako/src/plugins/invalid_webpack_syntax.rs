@@ -28,7 +28,9 @@ impl Plugin for InvalidWebpackSyntaxPlugin {
             "react-server-dom-webpack".to_string(),
         ];
         pkgs.extend(context.config.experimental.webpack_syntax_validate.clone());
-        if param.path.contains("node_modules") && pkgs.iter().any(|pkg| param.path.contains(pkg)) {
+        // TODO: 这里的判断并不严谨，只是简单判断了路径是否包含 pkg
+        // 由于要考虑 monorepo 的场景，不能直接通过 contains('node_modules') 来判断是否为三方包
+        if pkgs.iter().any(|pkg| param.path.contains(pkg)) {
             return Ok(());
         }
         ast.visit_with(&mut InvalidSyntaxVisitor {
