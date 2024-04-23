@@ -15,7 +15,7 @@ use swc_core::common::source_map::Pos;
 
 use crate::chunk::ChunkType;
 use crate::compiler::Compiler;
-use crate::rsc::client_info::{RscClientInfo, RscCssModules};
+use crate::features::rsc::{RscClientInfo, RscCssModules};
 
 #[derive(Debug, PartialEq, Eq)]
 // name 记录实际 filename , 用在 stats.json 中, hashname 用在产物描述和 manifest 中

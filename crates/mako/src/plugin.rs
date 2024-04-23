@@ -63,7 +63,6 @@ pub trait Plugin: Any + Send + Sync {
         Ok(None)
     }
 
-    #[allow(dead_code)]
     fn transform_js(
         &self,
         _param: &PluginTransformJsParam,

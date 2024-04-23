@@ -14,7 +14,7 @@ use mako_core::{clap, config, thiserror};
 use miette::{miette, ByteOffset, Diagnostic, NamedSource, SourceOffset, SourceSpan};
 use serde::Serialize;
 
-use crate::plugins::node_polyfill::get_all_modules;
+use crate::features::node::Node;
 use crate::{optimize_chunk, plugins, visitors};
 
 #[derive(Debug, Diagnostic)]
@@ -772,18 +772,7 @@ impl Config {
             }
 
             // configure node platform
-            if config.platform == Platform::Node {
-                let target = config.targets.get("node").unwrap_or(&14.0);
-
-                // set target to node version
-                config.targets = HashMap::from([("node".into(), *target)]);
-
-                // ignore standard library
-                config
-                    .ignores
-                    .push(format!("^(node:)?({})(/|$)", get_all_modules().join("|")));
-                config.node_polyfill = false;
-            }
+            Node::modify_config(config);
         }
         ret.map_err(|e| anyhow!("{}: {}", "config error".red(), e.to_string().red()))
     }

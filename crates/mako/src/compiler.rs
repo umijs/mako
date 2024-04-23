@@ -237,16 +237,11 @@ impl Compiler {
             Arc::new(plugins::wasm_runtime::WasmRuntimePlugin {}),
             Arc::new(plugins::async_runtime::AsyncRuntimePlugin {}),
             Arc::new(plugins::emotion::EmotionPlugin {}),
-            Arc::new(plugins::node_stuff::NodeStuffPlugin {}),
             Arc::new(plugins::farm_tree_shake::FarmTreeShake {}),
         ];
         plugins.extend(builtin_plugins);
 
         let mut config = config;
-
-        if config.node_polyfill {
-            plugins.push(Arc::new(plugins::node_polyfill::NodePolyfillPlugin {}));
-        }
 
         if config.output.mode == OutputMode::Bundless {
             plugins.insert(0, Arc::new(plugins::bundless_compiler::BundlessCompiler {}));
@@ -408,7 +403,7 @@ impl Compiler {
         cg.full_hash(&mg)
     }
 
-    pub fn clean_dist(&self) -> Result<()> {
+    fn clean_dist(&self) -> Result<()> {
         // compiler 前清除 dist，如果后续 dev 环境不在 output_path 里，需要再补上 dev 的逻辑
         let output_path = &self.context.config.output.path;
         if fs::metadata(output_path).is_ok() {
