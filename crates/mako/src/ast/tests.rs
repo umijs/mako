@@ -16,12 +16,20 @@ pub struct TestUtilsOpts {
     pub content: Option<String>,
 }
 
+#[derive(Debug)]
 pub enum TestAst {
     Js(JsAst),
     Css(CssAst),
 }
 
 impl TestAst {
+    pub fn js(&self) -> &JsAst {
+        match self {
+            TestAst::Js(ast) => ast,
+            _ => panic!("Not a js ast"),
+        }
+    }
+
     pub fn css_mut(&mut self) -> &mut CssAst {
         match self {
             TestAst::Css(ast) => ast,

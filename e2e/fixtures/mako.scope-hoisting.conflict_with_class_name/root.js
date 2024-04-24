@@ -1,6 +1,6 @@
 import C from "./inner.js"
 
-class Conflict{
+export default class Conflict{
 	
 }
 
