@@ -1,14 +1,10 @@
 use std::fs;
-use std::path::PathBuf;
-use std::sync::Arc;
 
 use mako_core::tracing_subscriber::{fmt, EnvFilter};
 
-use crate::ast::file::File;
-use crate::ast::js_ast::JsAst;
-use crate::compiler::{self, Compiler, Context};
+use crate::compiler::{self, Compiler};
 use crate::config::{Config, Mode};
-use crate::module::{Module, ModuleId, ModuleInfo};
+use crate::module::{Module, ModuleId};
 
 #[macro_export]
 macro_rules! assert_display_snapshot {
@@ -40,26 +36,6 @@ macro_rules! assert_debug_snapshot {
         let value = format!("{:#?}", $value).replace(&cwd, "<CWD>");
         insta::assert_snapshot!(insta::_macro_support::AutoName, value, stringify!($value));
     }};
-}
-
-#[allow(dead_code)]
-pub fn create_mock_module(path: PathBuf, code: &str) -> Module {
-    setup_logger();
-
-    let context = Arc::new(Context::default());
-    let mut file = File::new(path.to_string_lossy().to_string(), context.clone());
-    file.set_content(crate::ast::file::Content::Js(code.to_string()));
-    let ast = JsAst::new(&file, context.clone()).unwrap();
-    let module_id = ModuleId::from_path(path.clone());
-    let info = ModuleInfo {
-        ast: crate::module::ModuleAst::Script(ast),
-        path: path.to_string_lossy().to_string(),
-        file,
-        deps: Default::default(),
-        raw: code.to_string(),
-        ..Default::default()
-    };
-    Module::new(module_id, false, Some(info))
 }
 
 pub fn get_module(compiler: &Compiler, path: &str) -> Module {

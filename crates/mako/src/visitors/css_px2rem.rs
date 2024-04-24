@@ -168,9 +168,6 @@ fn parse_compound_selector(selector: &CompoundSelector) -> String {
                 result.push_str(&format!(".{}", class.text.value));
             }
             SubclassSelector::Attribute(attr) => {
-                // attr.as_ref().value.value
-                // println!("属性选择器::{:?}",attr);
-
                 result.push_str(parse_attribute(attr).as_str())
             }
             SubclassSelector::PseudoClass(pseudo) => {
@@ -225,6 +222,7 @@ fn parse_pseudo_selector(pseu: &PseudoClassSelector) -> String {
     let PseudoClassSelector { name, .. } = pseu;
     format!(":{}", name.value)
 }
+
 #[cfg(test)]
 mod tests {
     use mako_core::swc_css_visit::VisitMutWith;

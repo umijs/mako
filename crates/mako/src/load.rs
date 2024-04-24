@@ -12,7 +12,7 @@ use mako_core::thiserror::Error;
 use mako_core::toml::{from_str as from_toml_str, Value as TomlValue};
 use mako_core::tracing::debug;
 
-use crate::ast::file::{Content, File};
+use crate::ast::file::{Content, File, JsContent};
 use crate::compiler::Context;
 use crate::config::Mode;
 use crate::plugin::PluginLoadParam;
@@ -63,8 +63,8 @@ impl Load {
 
         // virtual:inline_css:runtime
         if file.path.to_str().unwrap() == "virtual:inline_css:runtime" {
-            return Ok(Content::Js(
-                r#"
+            return Ok(Content::Js(JsContent {
+                content: r#"
 var memo = {};
 export function moduleToDom(css) {
     var styleElement = document.createElement("style");
@@ -80,9 +80,10 @@ export function moduleToDom(css) {
     }
     target.appendChild(styleElement);
 }
-            "#
+                                "#
                 .to_string(),
-            ));
+                ..Default::default()
+            }));
         }
 
         // file exists check must after virtual modules handling
@@ -104,13 +105,17 @@ export function moduleToDom(css) {
         if file.has_param("raw") {
             let content = FileSystem::read_file(&file.pathname)?;
             let content = serde_json::to_string(&content)?;
-            return Ok(Content::Js(format!("module.exports = {}", content)));
+            return Ok(Content::Js(JsContent {
+                content: format!("module.exports = {}", content),
+                ..Default::default()
+            }));
         }
 
         // js
         if JS_EXTENSIONS.contains(&file.extname.as_str()) {
             // entry with ?hmr
             // TODO: should be more general
+            let is_jsx = file.extname.as_str() == "jsx" || file.extname.as_str() == "tsx";
             if file.is_entry && file.has_param("hmr") {
                 let port = &context.config.hmr.as_ref().unwrap().port.to_string();
                 let host = &context.config.hmr.as_ref().unwrap().host.to_string();
@@ -122,10 +127,10 @@ export function moduleToDom(css) {
                 )
                 .replace("__PORT__", port)
                 .replace("__HOST__", host);
-                return Ok(Content::Js(content));
+                return Ok(Content::Js(JsContent { content, is_jsx }));
             }
             let content = FileSystem::read_file(&file.pathname)?;
-            return Ok(Content::Js(content));
+            return Ok(Content::Js(JsContent { content, is_jsx }));
         }
 
         // css
@@ -150,7 +155,8 @@ export function moduleToDom(css) {
                     }));
                 }
             };
-            return Ok(Content::Js(content));
+            let is_jsx = file.extname.as_str() == "mdx";
+            return Ok(Content::Js(JsContent { content, is_jsx }));
         }
 
         // svg
@@ -173,10 +179,10 @@ export function moduleToDom(css) {
                 reason: err.to_string(),
             })?;
             let asset_path = Self::handle_asset(file, true, context.clone())?;
-            return Ok(Content::Js(format!(
-                "{}\nexport default {};",
-                svgr_transformed, asset_path
-            )));
+            return Ok(Content::Js(JsContent {
+                content: format!("{}\nexport default {};", svgr_transformed, asset_path),
+                is_jsx: true,
+            }));
         }
 
         // toml
@@ -184,7 +190,10 @@ export function moduleToDom(css) {
             let content = FileSystem::read_file(&file.pathname)?;
             let content = from_toml_str::<TomlValue>(&content)?;
             let content = serde_json::to_string(&content)?;
-            return Ok(Content::Js(format!("module.exports = {}", content)));
+            return Ok(Content::Js(JsContent {
+                content: format!("module.exports = {}", content),
+                ..Default::default()
+            }));
         }
 
         // wasm
@@ -199,10 +208,13 @@ export function moduleToDom(css) {
                 file.pathname.to_string_lossy().to_string(),
                 final_file_name.clone(),
             );
-            return Ok(Content::Js(format!(
-                "module.exports = require._interopreRequireWasm(exports, \"{}\")",
-                final_file_name
-            )));
+            return Ok(Content::Js(JsContent {
+                content: format!(
+                    "module.exports = require._interopreRequireWasm(exports, \"{}\")",
+                    final_file_name
+                ),
+                ..Default::default()
+            }));
         }
 
         // xml
@@ -210,7 +222,10 @@ export function moduleToDom(css) {
             let content = FileSystem::read_file(&file.pathname)?;
             let content = from_xml_str::<serde_json::Value>(&content)?;
             let content = serde_json::to_string(&content)?;
-            return Ok(Content::Js(format!("module.exports = {}", content)));
+            return Ok(Content::Js(JsContent {
+                content: format!("module.exports = {}", content),
+                ..Default::default()
+            }));
         }
 
         // yaml
@@ -218,19 +233,28 @@ export function moduleToDom(css) {
             let content = FileSystem::read_file(&file.pathname)?;
             let content = from_yaml_str::<YamlValue>(&content)?;
             let content = serde_json::to_string(&content)?;
-            return Ok(Content::Js(format!("module.exports = {}", content)));
+            return Ok(Content::Js(JsContent {
+                content: format!("module.exports = {}", content),
+                ..Default::default()
+            }));
         }
 
         // json
         // TODO: json5 should be more complex
         if JSON_EXTENSIONS.contains(&file.extname.as_str()) {
             let content = FileSystem::read_file(&file.pathname)?;
-            return Ok(Content::Js(format!("module.exports = {}", content)));
+            return Ok(Content::Js(JsContent {
+                content: format!("module.exports = {}", content),
+                ..Default::default()
+            }));
         }
 
         // assets
         let asset_path = Self::handle_asset(file, true, context.clone())?;
-        Ok(Content::Js(format!("module.exports = {};", asset_path)))
+        Ok(Content::Js(JsContent {
+            content: format!("module.exports = {};", asset_path),
+            ..Default::default()
+        }))
     }
 
     pub fn handle_asset(

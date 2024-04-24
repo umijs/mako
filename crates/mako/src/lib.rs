@@ -14,6 +14,7 @@ mod comments;
 pub mod compiler;
 pub mod config;
 pub mod dev;
+mod features;
 mod generate;
 mod generate_chunks;
 mod group_chunk;
