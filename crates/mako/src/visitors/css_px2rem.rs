@@ -4,9 +4,7 @@ use mako_core::swc_css_ast::{
     self, Combinator, CombinatorValue, ComplexSelectorChildren, Length, Token, TypeSelector,
 };
 use mako_core::swc_css_visit::{VisitMut, VisitMutWith};
-use swc_core::css::ast::{
-    AttributeSelector, ComplexSelector, CompoundSelector, PseudoClassSelector, SubclassSelector,
-};
+use swc_core::css::ast::{AttributeSelector, ComplexSelector, CompoundSelector, SubclassSelector};
 
 use crate::config::Px2RemConfig;
 
