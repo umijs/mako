@@ -4,9 +4,7 @@ use mako_core::swc_css_ast::{
     self, Combinator, CombinatorValue, ComplexSelectorChildren, Length, Token, TypeSelector,
 };
 use mako_core::swc_css_visit::{VisitMut, VisitMutWith};
-use swc_core::css::ast::{
-    AttributeSelector, ComplexSelector, CompoundSelector, PseudoClassSelector, SubclassSelector,
-};
+use swc_core::css::ast::{AttributeSelector, ComplexSelector, CompoundSelector, SubclassSelector};
 
 use crate::config::Px2RemConfig;
 
@@ -84,9 +82,7 @@ impl VisitMut for Px2Rem {
 
     fn visit_mut_complex_selector(&mut self, n: &mut ComplexSelector) {
         let selector = parse_complex_selector(n);
-
         self.current_selectors.push(selector);
-
         n.visit_mut_children_with(self);
     }
 
@@ -149,12 +145,9 @@ fn parse_combinator(combinator: &Combinator) -> String {
 
 fn parse_compound_selector(selector: &CompoundSelector) -> String {
     let mut result = String::new();
-    // TODO: support selector.nesting_selector
-
-    if let Some(_nesting_selector) = &selector.nesting_selector {
+    if selector.nesting_selector.is_some() {
         result.push('&');
     }
-
     if let Some(type_selector) = &selector.type_selector {
         let type_selector = type_selector.as_ref();
         match type_selector {
@@ -225,10 +218,6 @@ fn parse_complex_selector(selector: &ComplexSelector) -> String {
     result
 }
 
-fn parse_pseudo_selector(pseu: &PseudoClassSelector) -> String {
-    let PseudoClassSelector { name, .. } = pseu;
-    format!(":{}", name.value)
-}
 #[cfg(test)]
 mod tests {
     use mako_core::swc_css_visit::VisitMutWith;
