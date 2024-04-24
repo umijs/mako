@@ -14,7 +14,7 @@ use mako_core::{clap, config, thiserror};
 use miette::{miette, ByteOffset, Diagnostic, NamedSource, SourceOffset, SourceSpan};
 use serde::Serialize;
 
-use crate::plugins::node_polyfill::get_all_modules;
+use crate::features::node::Node;
 use crate::{optimize_chunk, plugins, visitors};
 
 #[derive(Debug, Diagnostic)]
@@ -97,6 +97,9 @@ create_deserialize_fn!(deserialize_devtool, DevtoolConfig);
 create_deserialize_fn!(deserialize_tree_shaking, TreeShakingStrategy);
 create_deserialize_fn!(deserialize_optimization, OptimizationConfig);
 create_deserialize_fn!(deserialize_minifish, MinifishConfig);
+create_deserialize_fn!(deserialize_inline_css, InlineCssConfig);
+create_deserialize_fn!(deserialize_rsc_client, RscClientConfig);
+create_deserialize_fn!(deserialize_rsc_server, RscServerConfig);
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -151,8 +154,6 @@ pub enum OutputMode {
     Bundless,
 }
 
-// TODO:
-// 1. node specific runtime
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 pub enum Platform {
     #[serde(rename = "browser")]
@@ -351,14 +352,34 @@ pub struct MinifishConfig {
     pub meta_path: Option<PathBuf>,
     pub inject: Option<HashMap<String, InjectItem>>,
 }
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct OptimizationConfig {
     pub skip_modules: Option<bool>,
     pub concatenate_modules: Option<bool>,
 }
+
 #[derive(Deserialize, Serialize, Debug)]
 pub struct InlineCssConfig {}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct RscServerConfig {
+    pub client_component_tpl: String,
+    #[serde(rename = "emitCSS")]
+    pub emit_css: bool,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct RscClientConfig {}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ExperimentalConfig {
+    pub webpack_syntax_validate: Vec<String>,
+}
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct HmrConfig {
@@ -428,8 +449,25 @@ pub struct Config {
     pub emit_assets: bool,
     #[serde(rename = "cssModulesExportOnlyLocales")]
     pub css_modules_export_only_locales: bool,
-    #[serde(rename = "inlineCSS")]
+    #[serde(
+        rename = "inlineCSS",
+        deserialize_with = "deserialize_inline_css",
+        default
+    )]
     pub inline_css: Option<InlineCssConfig>,
+    #[serde(
+        rename = "rscServer",
+        deserialize_with = "deserialize_rsc_server",
+        default
+    )]
+    pub rsc_server: Option<RscServerConfig>,
+    #[serde(
+        rename = "rscClient",
+        deserialize_with = "deserialize_rsc_client",
+        default
+    )]
+    pub rsc_client: Option<RscClientConfig>,
+    pub experimental: ExperimentalConfig,
 }
 
 #[allow(dead_code)]
@@ -581,6 +619,10 @@ const DEFAULT_CONFIG: &str = r#"
     },
     "emitAssets": true,
     "cssModulesExportOnlyLocales": false,
+    "inlineCSS": false,
+    "rscServer": false,
+    "rscClient": false,
+    "experimental": { "webpackSyntaxValidate": [] }
 }
 "#;
 
@@ -738,18 +780,7 @@ impl Config {
             }
 
             // configure node platform
-            if config.platform == Platform::Node {
-                let target = config.targets.get("node").unwrap_or(&14.0);
-
-                // set target to node version
-                config.targets = HashMap::from([("node".into(), *target)]);
-
-                // ignore standard library
-                config
-                    .ignores
-                    .push(format!("^(node:)?({})(/|$)", get_all_modules().join("|")));
-                config.node_polyfill = false;
-            }
+            Node::modify_config(config);
         }
         ret.map_err(|e| anyhow!("{}: {}", "config error".red(), e.to_string().red()))
     }

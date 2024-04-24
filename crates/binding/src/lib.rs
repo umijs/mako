@@ -129,6 +129,11 @@ pub struct BuildParams {
     emitAssets?: boolean;
     cssModulesExportOnlyLocales?: boolean;
     inlineCSS?: false | {};
+    rscServer?: false | {};
+    rscClient?: false | {};
+    experimental?: {
+        webpackSyntaxValidate?: string[];
+    };
 }"#)]
     pub config: serde_json::Value,
     pub hooks: JsHooks,

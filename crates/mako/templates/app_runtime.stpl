@@ -352,14 +352,9 @@ function createRuntime(makoModules, entryModuleId) {
   };
 }
 
-<% if has_dynamic_chunks || has_hmr || umd.is_some() || cjs { %>
-var runtime = createRuntime(m, e);
-<% } else { %>
-createRuntime(m, e);
-<% } %>
-<% if has_dynamic_chunks || has_hmr { %>
 var root = typeof globalThis !== 'undefined' ? globalThis : self;
-<% } %>
+var runtime = createRuntime(m, e);
+root.__mako_require_module__ = runtime.requireModule;
 <% if has_dynamic_chunks { %>
 root.jsonpCallback = runtime._jsonpCallback;
 <% } %>

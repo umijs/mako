@@ -1,0 +1,8 @@
+{
+  "rscServer": {
+    "clientComponentTpl": "module.exports = {$$typeof: Symbol.for(\"react.module.reference\"),filepath:\"{{path}}\",name:\"*\"};",
+    "emitCSS": true
+  },
+  "minify": false,
+  "stats": true
+}

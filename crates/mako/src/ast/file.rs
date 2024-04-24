@@ -25,8 +25,23 @@ pub struct Asset {
 }
 
 #[derive(Debug, Clone)]
+pub struct JsContent {
+    pub is_jsx: bool,
+    pub content: String,
+}
+
+impl Default for JsContent {
+    fn default() -> Self {
+        JsContent {
+            is_jsx: false,
+            content: "".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum Content {
-    Js(String),
+    Js(JsContent),
     Css(String),
     // TODO: unify the assets handler
     // it's used in minifish plugin(bundless mode) only
@@ -159,7 +174,9 @@ impl File {
 
     pub fn get_content_raw(&self) -> String {
         match &self.content {
-            Some(Content::Js(content)) | Some(Content::Css(content)) => content.clone(),
+            Some(Content::Js(JsContent { content, .. })) | Some(Content::Css(content)) => {
+                content.clone()
+            }
             Some(Content::Assets(asset)) => asset.content.clone(),
             None => "".to_string(),
         }
@@ -169,7 +186,7 @@ impl File {
         let mut hasher: XxHash64 = Default::default();
         if let Some(content) = &self.content {
             match content {
-                Content::Js(content)
+                Content::Js(JsContent { content, .. })
                 | Content::Css(content)
                 | Content::Assets(Asset { content, .. }) => {
                     // hasher.write_u64(init);
@@ -234,6 +251,13 @@ impl File {
         let digest = context.compute();
         let hash = format!("{:x}", digest);
         Ok(hash[0..8].to_string())
+    }
+
+    pub fn is_content_jsx(&self) -> bool {
+        match &self.content {
+            Some(Content::Js(JsContent { is_jsx, .. })) => *is_jsx,
+            _ => false,
+        }
     }
 
     pub fn has_param(&self, key: &str) -> bool {

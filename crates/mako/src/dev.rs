@@ -1,3 +1,4 @@
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::{mpsc, Arc};
 use std::time::{Duration, Instant, UNIX_EPOCH};
@@ -50,7 +51,7 @@ impl DevServer {
         // TODO: host
         // let host = self.compiler.context.config.hmr_host.clone();
         // TODO: find free port
-        let addr = ([127, 0, 0, 1], port);
+        let addr: SocketAddr = ([127, 0, 0, 1], port).into();
         let context = self.compiler.context.clone();
         let txws = txws.clone();
         let make_svc = make_service_fn(move |_conn| {
@@ -66,9 +67,9 @@ impl DevServer {
                 }))
             }
         });
-        let server = Server::bind(&addr.into()).serve(make_svc);
+        let server = Server::bind(&addr).serve(make_svc);
         // TODO: print when mako is run standalone
-        // println!("Listening on http://{:?}", addr);
+        debug!("Listening on http://{:?}", addr);
         if let Err(e) = server.await {
             eprintln!("Error starting server: {:?}", e);
         }

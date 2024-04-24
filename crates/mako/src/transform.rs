@@ -21,7 +21,6 @@ use crate::compiler::Context;
 use crate::config::Mode;
 use crate::module::ModuleAst;
 use crate::plugins::context_module::ContextModuleVisitor;
-use crate::targets;
 use crate::visitors::css_assets::CSSAssets;
 use crate::visitors::css_flexbugs::CSSFlexbugs;
 use crate::visitors::css_px2rem::Px2Rem;
@@ -32,6 +31,7 @@ use crate::visitors::provide::Provide;
 use crate::visitors::react::react;
 use crate::visitors::try_resolve::TryResolve;
 use crate::visitors::virtual_css_modules::VirtualCSSModules;
+use crate::{features, targets};
 
 pub struct Transform {}
 
@@ -46,11 +46,11 @@ impl Transform {
                     let cm = context.meta.script.cm.clone();
                     let origin_comments = context.meta.script.origin_comments.read().unwrap();
                     let is_ts = file.extname == "ts" || file.extname == "tsx";
-                    let is_jsx = file.extname == "jsx"
+                    let is_jsx = file.is_content_jsx()
+                        || file.extname == "jsx"
                         || file.extname == "js"
                         || file.extname == "ts"
-                        || file.extname == "tsx"
-                        || file.extname == "svg";
+                        || file.extname == "tsx";
 
                     // visitors
                     let mut visitors: Vec<Box<dyn VisitMut>> = vec![];
@@ -122,6 +122,13 @@ impl Transform {
                     // since ContextModuleVisitor will add extra dynamic imports
                     if context.config.dynamic_import_to_require {
                         visitors.push(Box::new(DynamicImportToRequire { unresolved_mark }));
+                    }
+                    if matches!(context.config.platform, crate::config::Platform::Node) {
+                        visitors.push(Box::new(features::node::MockFilenameAndDirname {
+                            unresolved_mark,
+                            current_path: file.path.clone(),
+                            context: context.clone(),
+                        }));
                     }
 
                     // folders

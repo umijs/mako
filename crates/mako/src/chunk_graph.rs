@@ -12,7 +12,7 @@ use crate::module::ModuleId;
 use crate::module_graph::ModuleGraph;
 
 pub struct ChunkGraph {
-    graph: StableDiGraph<Chunk, ()>,
+    pub(crate) graph: StableDiGraph<Chunk, ()>,
     id_index_map: HashMap<ChunkId, NodeIndex<DefaultIx>>,
 }
 
@@ -177,11 +177,12 @@ impl ChunkGraph {
             }
             visited.push(idx.index());
 
-            if matches!(
-                self.graph[idx].chunk_type,
-                ChunkType::Async | ChunkType::Sync
-            ) {
-                ret.push(self.graph[idx].id.clone());
+            let chunk = &self.graph[idx];
+
+            if !chunk.modules.is_empty()
+                && matches!(chunk.chunk_type, ChunkType::Async | ChunkType::Sync)
+            {
+                ret.push(chunk.id.clone());
             }
         }
         ret

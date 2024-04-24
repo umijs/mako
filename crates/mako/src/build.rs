@@ -8,7 +8,7 @@ use mako_core::colored::Colorize;
 use mako_core::thiserror::Error;
 
 use crate::analyze_deps::AnalyzeDeps;
-use crate::ast::file::{Content, File};
+use crate::ast::file::{Content, File, JsContent};
 use crate::chunk_pot::util::hash_hashmap;
 use crate::compiler::{Compiler, Context};
 use crate::load::Load;
@@ -164,7 +164,10 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         } else {
             format!("module.exports = {};", external_name)
         };
-        file.set_content(Content::Js(code));
+        file.set_content(Content::Js(JsContent {
+            content: code,
+            ..Default::default()
+        }));
         let ast = Parse::parse(&file, context)
             // safe
             .unwrap();
@@ -188,7 +191,10 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
     fn create_error_module(file: &File, err: String, context: Arc<Context>) -> Result<Module> {
         let mut file = file.clone();
         let code = format!("throw new Error(`Module build failed:\n{:}`)", err);
-        file.set_content(Content::Js(code));
+        file.set_content(Content::Js(JsContent {
+            content: code,
+            ..Default::default()
+        }));
         let ast = Parse::parse(&file, context.clone())?;
         let path = file.path.to_string_lossy().to_string();
         let module_id = ModuleId::new(path.clone());
@@ -211,7 +217,10 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         let info = {
             let file = File::with_content(
                 path.to_owned(),
-                Content::Js("export {};".to_string()),
+                Content::Js(JsContent {
+                    content: "export {};".to_string(),
+                    ..Default::default()
+                }),
                 context.clone(),
             );
             let ast = Parse::parse(&file, context.clone()).unwrap();

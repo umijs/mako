@@ -134,9 +134,14 @@ export interface BuildParams {
       importSource?: string;
       pragmaFrag?: string;
     };
-    emitAssets: boolean;
-    cssModulesExportOnlyLocales: boolean;
+    emitAssets?: boolean;
+    cssModulesExportOnlyLocales?: boolean;
     inlineCSS?: false | {};
+    rscServer?: false | {};
+    rscClient?: false | {};
+    experimental?: {
+      webpackSyntaxValidate?: string[];
+    };
   };
   hooks: JsHooks;
   watch: boolean;

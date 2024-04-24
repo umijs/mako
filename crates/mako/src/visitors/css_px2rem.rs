@@ -174,9 +174,11 @@ fn parse_compound_selector(selector: &CompoundSelector) -> String {
             SubclassSelector::Class(class) => {
                 result.push_str(&format!(".{}", class.text.value));
             }
-            SubclassSelector::Attribute(attr) => result.push_str(parse_attribute(attr).as_str()),
+            SubclassSelector::Attribute(attr) => {
+                result.push_str(parse_attribute(attr).as_str());
+            }
             SubclassSelector::PseudoClass(pseudo) => {
-                result.push_str(parse_pseudo_selector(pseudo).as_str())
+                result.push_str(format!(":{}", pseudo.name.value).as_str());
             }
             _ => {
                 // TODO: support more subclass selectors
@@ -447,6 +449,7 @@ mod tests {
             r#"[class*="button"]{width:1rem}"#
         );
     }
+
     #[test]
     fn test_child_select() {
         assert_eq!(
@@ -459,6 +462,7 @@ mod tests {
             r#".a .b{width:1rem}"#
         );
     }
+
     #[test]
     fn test_attribute() {
         assert_eq!(
@@ -484,6 +488,7 @@ mod tests {
             r#".jj:before,.jj:after{width:1rem}"#
         );
     }
+
     #[test]
     fn test_class_pseudo_select_black() {
         assert_eq!(
@@ -538,6 +543,7 @@ mod tests {
             r#".test{width:3rem;.son &{width:100px}}"#
         );
     }
+
     #[test]
     fn test_nesting_selector_white() {
         assert_eq!(
