@@ -241,7 +241,7 @@ impl Compiler {
 
                 // check test regex
                 if let Some(test) = &optimize_info.group_options.test {
-                    if !test.is_match(&module_id.id.to_string()) {
+                    if !test.is_match(&module_id.id) {
                         continue;
                     }
                 }
@@ -312,7 +312,7 @@ impl Compiler {
                 let chunk_modules = &info.module_to_chunks;
                 // group size by package name
                 let mut package_size_map = chunk_modules.iter().fold(
-                    IndexMap::<String, (usize, HashMap<ModuleId, Vec<ChunkId>>)>::new(),
+                    IndexMap::<String, (usize, IndexMap<ModuleId, Vec<ChunkId>>)>::new(),
                     |mut size_map, mtc| {
                         let pkg_name = match module_graph.get_module(mtc.0) {
                             Some(Module {
@@ -342,7 +342,10 @@ impl Compiler {
                         } else {
                             size_map.insert(
                                 pkg_name.to_string(),
-                                (module_size, HashMap::from([(mtc.0.clone(), mtc.1.clone())])),
+                                (
+                                    module_size,
+                                    IndexMap::from([(mtc.0.clone(), mtc.1.clone())]),
+                                ),
                             );
                         }
                         size_map
