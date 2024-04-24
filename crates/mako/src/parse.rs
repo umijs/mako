@@ -7,7 +7,7 @@ use mako_core::tracing::debug;
 
 use crate::analyze_deps::AnalyzeDeps;
 use crate::ast::css_ast::CssAst;
-use crate::ast::file::{Content, File};
+use crate::ast::file::{Content, File, JsContent};
 use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
 use crate::features::rsc::Rsc;
@@ -64,11 +64,15 @@ impl Parse {
             // ?asmodule
             if is_asmodule {
                 let mut file = file.clone();
-                file.set_content(Content::Js(CssAst::generate_css_modules_exports(
+                let content = CssAst::generate_css_modules_exports(
                     &file.pathname.to_string_lossy(),
                     &mut ast.ast,
                     context.config.css_modules_export_only_locales,
-                )));
+                );
+                file.set_content(Content::Js(JsContent {
+                    content,
+                    ..Default::default()
+                }));
                 let ast = JsAst::new(&file, context)?;
                 return Ok(ModuleAst::Script(ast));
             } else {
@@ -103,16 +107,19 @@ impl Parse {
                     // ast to code
                     let code = ast.generate(context.clone())?.code;
                     let mut file = file.clone();
-                    file.set_content(Content::Js(format!(
-                        r#"
+                    file.set_content(Content::Js(JsContent {
+                        content: format!(
+                            r#"
 import {{ moduleToDom }} from 'virtual:inline_css:runtime';
 {}
 moduleToDom(`
 {}
 `);
-                    "#,
-                        deps, code
-                    )));
+                        "#,
+                            deps, code
+                        ),
+                        ..Default::default()
+                    }));
                     let ast = JsAst::new(&file, context.clone())?;
                     return Ok(ModuleAst::Script(ast));
                 } else {

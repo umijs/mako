@@ -144,6 +144,21 @@ import("./a.js")
 }
 ```
 
+## experimental.webpackSyntaxValidate
+
+- 类型：`string[]`
+- 默认值: `[]`
+
+实验性配置，指定允许使用 webpack 语法的包。比如。
+
+```ts
+{
+  experimental: {
+    webpackSyntaxValidate: ["foo", "bar"],
+  },
+}
+```
+
 ## externals
 
 - 类型：`Record<string, string>`

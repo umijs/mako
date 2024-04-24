@@ -46,11 +46,11 @@ impl Transform {
                     let cm = context.meta.script.cm.clone();
                     let origin_comments = context.meta.script.origin_comments.read().unwrap();
                     let is_ts = file.extname == "ts" || file.extname == "tsx";
-                    let is_jsx = file.extname == "jsx"
+                    let is_jsx = file.is_content_jsx()
+                        || file.extname == "jsx"
                         || file.extname == "js"
                         || file.extname == "ts"
-                        || file.extname == "tsx"
-                        || file.extname == "svg";
+                        || file.extname == "tsx";
 
                     // visitors
                     let mut visitors: Vec<Box<dyn VisitMut>> = vec![];
