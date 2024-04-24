@@ -168,10 +168,10 @@ fn parse_compound_selector(selector: &CompoundSelector) -> String {
                 result.push_str(&format!(".{}", class.text.value));
             }
             SubclassSelector::Attribute(attr) => {
-                result.push_str(parse_attribute(attr).as_str())
+                result.push_str(parse_attribute(attr).as_str());
             }
             SubclassSelector::PseudoClass(pseudo) => {
-                result.push_str(parse_pseudo_selector(pseudo).as_str())
+                result.push_str(format!(":{}", pseudo.name.value).as_str());
             }
             _ => {
                 // TODO: support more subclass selectors
@@ -216,11 +216,6 @@ fn parse_complex_selector(selector: &ComplexSelector) -> String {
         }
     }
     result
-}
-
-fn parse_pseudo_selector(pseu: &PseudoClassSelector) -> String {
-    let PseudoClassSelector { name, .. } = pseu;
-    format!(":{}", name.value)
 }
 
 #[cfg(test)]
@@ -469,6 +464,7 @@ mod tests {
             r#".jj:before,.jj:after{width:1rem}"#
         );
     }
+
     #[test]
     fn test_class_pseudo_select_black() {
         assert_eq!(
