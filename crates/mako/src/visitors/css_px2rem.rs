@@ -4,7 +4,7 @@ use mako_core::swc_css_ast::{
     self, Combinator, CombinatorValue, ComplexSelectorChildren, Length, Token, TypeSelector,
 };
 use mako_core::swc_css_visit::{VisitMut, VisitMutWith};
-use swc_core::css::ast::{ComplexSelector, CompoundSelector, SubclassSelector};
+use swc_core::css::ast::{AttributeSelector, ComplexSelector, CompoundSelector, SubclassSelector};
 
 use crate::config::Px2RemConfig;
 
@@ -165,12 +165,37 @@ fn parse_compound_selector(selector: &CompoundSelector) -> String {
             SubclassSelector::Class(class) => {
                 result.push_str(&format!(".{}", class.text.value));
             }
+            SubclassSelector::Attribute(attr) => {
+                result.push_str(parse_attribute(attr).as_str())
+            }
             _ => {
                 // TODO: support more subclass selectors
             }
         }
     }
     result
+}
+
+fn parse_attribute(attr: &AttributeSelector) -> String {
+    let mut res_str = String::new();
+    let AttributeSelector {
+        name,
+        matcher,
+        value,
+        ..
+    } = attr;
+    let val_str = if let Some(val_str) = value.as_ref() {
+        val_str.as_str().unwrap().value.to_string()
+    } else {
+        "".to_string()
+    };
+    res_str.push_str(&format!(
+        "[{}{}{}]",
+        name.value.value,
+        matcher.as_ref().unwrap().value,
+        val_str
+    ));
+    res_str
 }
 
 fn parse_complex_selector(selector: &ComplexSelector) -> String {
@@ -379,6 +404,46 @@ mod tests {
                 }
             ),
             r#".a>.b{width:100px}"#
+        );
+    }
+    #[test]
+    fn test_selector_attribute_selector_black() {
+        assert_eq!(
+            run(
+                r#"[class*="button"]{width:100px;}"#,
+                Px2RemConfig {
+                    selector_blacklist: vec!["[class*=\"button\"]".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#"[class*="button"]{width:100px}"#
+        );
+    }
+
+    #[test]
+    fn test_selector_attribute_selector_white() {
+        assert_eq!(
+            run(
+                r#"[class*="button"]{width:100px;}"#,
+                Px2RemConfig {
+                    selector_whitelist: vec!["[class*=\"button\"]".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#"[class*="button"]{width:1rem}"#
+        );
+    }
+
+    #[test]
+    fn test_attribute() {
+        assert_eq!(
+            run(
+                r#"[class*="button"]{width:100px;}"#,
+                Px2RemConfig {
+                    ..Default::default()
+                }
+            ),
+            r#"[class*="button"]{width:1rem}"#
         );
     }
 
