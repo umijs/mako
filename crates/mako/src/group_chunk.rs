@@ -2,6 +2,7 @@ use std::collections::{HashSet, VecDeque};
 use std::vec;
 
 use mako_core::anyhow::Result;
+use mako_core::indexmap::IndexSet;
 use mako_core::tracing::debug;
 
 use crate::chunk::{Chunk, ChunkId, ChunkType};
@@ -49,25 +50,28 @@ impl Compiler {
             );
             let chunk_name = chunk.filename();
             visited.insert(chunk.id.clone());
+
+            let mut all_dependencies = dynamic_dependencies.clone();
+            all_dependencies.extend(worker_dependencies.clone());
             edges.extend(
-                [dynamic_dependencies.clone(), worker_dependencies.clone()]
-                    .concat()
+                all_dependencies
                     .into_iter()
                     .map(|dep| (chunk.id.clone(), dep.generate(&self.context).into())),
             );
+
             chunk_graph.add_chunk(chunk);
 
             // 抽离成两个函数处理动态依赖中可能有 worker 依赖、worker 依赖中可能有动态依赖的复杂情况
             self.handle_dynamic_dependencies(
                 &chunk_name,
-                dynamic_dependencies,
+                &dynamic_dependencies,
                 &visited,
                 &mut edges,
                 &mut chunk_graph,
             );
             self.handle_worker_dependencies(
                 &chunk_name,
-                worker_dependencies,
+                &worker_dependencies,
                 &visited,
                 &mut edges,
                 &mut chunk_graph,
@@ -82,7 +86,7 @@ impl Compiler {
     fn handle_dynamic_dependencies(
         &self,
         chunk_name: &str,
-        dynamic_dependencies: Vec<ModuleId>,
+        dynamic_dependencies: &IndexSet<ModuleId>,
         visited: &HashSet<ModuleId>,
         edges: &mut Vec<(ModuleId, ModuleId)>,
         chunk_graph: &mut ChunkGraph,
@@ -94,16 +98,19 @@ impl Compiler {
                 chunk_graph,
                 vec![chunk_name.to_string()],
             );
+
+            let mut all_dependencies = dynamic_dependencies.clone();
+            all_dependencies.extend(worker_dependencies.clone());
             edges.extend(
-                [dynamic_dependencies.clone(), worker_dependencies.clone()]
-                    .concat()
+                all_dependencies
                     .into_iter()
                     .map(|dep| (chunk.id.clone(), dep.generate(&self.context).into())),
             );
+
             chunk_graph.add_chunk(chunk);
             self.handle_worker_dependencies(
                 chunk_name,
-                worker_dependencies,
+                &worker_dependencies,
                 visited,
                 edges,
                 chunk_graph,
@@ -116,7 +123,7 @@ impl Compiler {
     fn handle_worker_dependencies(
         &self,
         chunk_name: &str,
-        worker_dependencies: Vec<ModuleId>,
+        worker_dependencies: &IndexSet<ModuleId>,
         visited: &HashSet<ModuleId>,
         edges: &mut Vec<(ModuleId, ModuleId)>,
         chunk_graph: &mut ChunkGraph,
@@ -128,16 +135,19 @@ impl Compiler {
                 chunk_graph,
                 vec![chunk_name.to_string()],
             );
+
+            let mut all_dependencies = dynamic_dependencies.clone();
+            all_dependencies.extend(worker_dependencies.clone());
             edges.extend(
-                [dynamic_dependencies.clone(), worker_dependencies.clone()]
-                    .concat()
+                all_dependencies
                     .into_iter()
                     .map(|dep| (chunk.id.clone(), dep.generate(&self.context).into())),
             );
+
             chunk_graph.add_chunk(chunk);
             self.handle_dynamic_dependencies(
                 chunk_name,
-                dynamic_dependencies,
+                &dynamic_dependencies,
                 visited,
                 edges,
                 chunk_graph,
@@ -229,7 +239,7 @@ impl Compiler {
             let entry_module_chunk_names =
                 self.get_module_entry_chunk_names(first_modified_module, &chunk_graph);
             let new_async_chunks = self.create_update_async_chunks(
-                async_chunk_modules,
+                &async_chunk_modules,
                 &mut chunk_graph,
                 entry_module_chunk_names,
             );
@@ -287,55 +297,59 @@ impl Compiler {
         let shared_chunk_names = self.get_module_entry_chunk_names(modified_module_id, chunk_graph);
         let mut modules_in_chunk = vec![];
 
-        visit_modules(vec![modified_module_id.clone()], None, |head| {
-            // visit all static deps for modified module
-            let static_deps = module_graph
-                .get_dependencies(head)
-                .into_iter()
-                .filter(|(_, dep)| {
-                    dep.resolve_type != ResolveType::DynamicImport
-                        && dep.resolve_type != ResolveType::Worker
-                })
-                .collect::<Vec<_>>();
-            let mut next_module_ids = vec![];
+        visit_modules(
+            &IndexSet::from([modified_module_id.clone()]),
+            None,
+            |head| {
+                // visit all static deps for modified module
+                let static_deps = module_graph
+                    .get_dependencies(head)
+                    .into_iter()
+                    .filter(|(_, dep)| {
+                        dep.resolve_type != ResolveType::DynamicImport
+                            && dep.resolve_type != ResolveType::Worker
+                    })
+                    .collect::<Vec<_>>();
+                let mut next_module_ids = IndexSet::new();
 
-            for (dep_module_id, _dep) in static_deps {
-                let module_already_in_entry = shared_chunk_names.iter().any(|name| {
-                    chunk_graph
-                        .get_chunk_by_name(name)
-                        .unwrap()
-                        .has_module(dep_module_id)
-                });
+                for (dep_module_id, _dep) in static_deps {
+                    let module_already_in_entry = shared_chunk_names.iter().any(|name| {
+                        chunk_graph
+                            .get_chunk_by_name(name)
+                            .unwrap()
+                            .has_module(dep_module_id)
+                    });
 
-                // skip shared module with entry
-                if !module_already_in_entry {
-                    let mut is_new_module = false;
+                    // skip shared module with entry
+                    if !module_already_in_entry {
+                        let mut is_new_module = false;
 
-                    // add new module to all parent chunks
-                    for (chunk_id, _) in &module_chunks {
-                        let module_chunk = chunk_graph.mut_chunk(chunk_id).unwrap();
+                        // add new module to all parent chunks
+                        for (chunk_id, _) in &module_chunks {
+                            let module_chunk = chunk_graph.mut_chunk(chunk_id).unwrap();
 
-                        if !module_chunk.has_module(dep_module_id) {
-                            // TODO: css module order
-                            module_chunk.add_module(dep_module_id.clone());
-                            modules_in_chunk.push((
-                                dep_module_id.clone(),
-                                module_chunk.id.clone(),
-                                module_chunk.chunk_type.clone(),
-                            ));
-                            is_new_module = true;
+                            if !module_chunk.has_module(dep_module_id) {
+                                // TODO: css module order
+                                module_chunk.add_module(dep_module_id.clone());
+                                modules_in_chunk.push((
+                                    dep_module_id.clone(),
+                                    module_chunk.id.clone(),
+                                    module_chunk.chunk_type.clone(),
+                                ));
+                                is_new_module = true;
+                            }
+                        }
+
+                        // continue to visit child deps, if current dep module is an new module for parent chunks
+                        if is_new_module {
+                            next_module_ids.insert(dep_module_id.clone());
                         }
                     }
-
-                    // continue to visit child deps, if current dep module is an new module for parent chunks
-                    if is_new_module {
-                        next_module_ids.push(dep_module_id.clone());
-                    }
                 }
-            }
 
-            next_module_ids
-        });
+                next_module_ids
+            },
+        );
 
         modules_in_chunk
     }
@@ -360,10 +374,10 @@ impl Compiler {
         chunk_type: ChunkType,
         chunk_graph: &mut ChunkGraph,
         shared_chunk_names: Vec<String>,
-    ) -> (Chunk, Vec<ModuleId>, Vec<ModuleId>) {
+    ) -> (Chunk, IndexSet<ModuleId>, IndexSet<ModuleId>) {
         mako_core::mako_profile_function!(&entry_module_id.id);
-        let mut dynamic_entries = vec![];
-        let mut worker_entries = vec![];
+        let mut dynamic_entries = IndexSet::new();
+        let mut worker_entries = IndexSet::new();
 
         let chunk_id = entry_module_id.generate(&self.context);
         let mut chunk = Chunk::new(chunk_id.into(), chunk_type.clone());
@@ -371,21 +385,21 @@ impl Compiler {
 
         let module_graph = self.context.module_graph.read().unwrap();
 
-        visit_modules(vec![entry_module_id.clone()], None, |head| {
+        visit_modules(&IndexSet::from([entry_module_id.clone()]), None, |head| {
             let parent_index = visited_modules
                 .iter()
                 .position(|m| m.id == head.id)
                 .unwrap_or(0);
             let mut normal_deps = vec![];
-            let mut next_module_ids = vec![];
+            let mut next_module_ids = IndexSet::new();
 
             for (dep_module_id, dep) in module_graph.get_dependencies(head) {
                 match dep.resolve_type {
                     ResolveType::DynamicImport => {
-                        dynamic_entries.push(dep_module_id.clone());
+                        dynamic_entries.insert(dep_module_id.clone());
                     }
                     ResolveType::Worker => {
-                        worker_entries.push(dep_module_id.clone());
+                        worker_entries.insert(dep_module_id.clone());
                     }
                     // skip shared modules from entry chunks, but except worker chunk modules
                     _ if matches!(chunk_type, ChunkType::Worker(_))
@@ -395,7 +409,7 @@ impl Compiler {
                             chunk_graph,
                         ) =>
                     {
-                        next_module_ids.push(dep_module_id.clone());
+                        next_module_ids.insert(dep_module_id.clone());
                         // collect normal deps for current head
                         normal_deps.push(dep_module_id.clone());
                     }
@@ -419,7 +433,7 @@ impl Compiler {
 
     fn create_update_async_chunks(
         &self,
-        async_module_ids: Vec<ModuleId>,
+        async_module_ids: &IndexSet<ModuleId>,
         chunk_graph: &mut ChunkGraph,
         shared_chunk_names: Vec<String>,
     ) -> Vec<ChunkId> {
@@ -436,22 +450,20 @@ impl Compiler {
             let chunk_id = new_chunk.id.clone();
 
             // record edges and add chunk to graph
-            edges.extend(
-                [dynamic_dependencies.clone(), worker_dependencies.clone()]
-                    .concat()
-                    .into_iter()
-                    .map(|dep| {
-                        (
-                            chunk_id.clone(),
-                            match chunk_graph.get_chunk_for_module(&dep) {
-                                // ref existing chunk
-                                Some(chunk) => chunk.id.clone(),
-                                // ref new chunk
-                                None => dep.generate(&self.context).into(),
-                            },
-                        )
-                    }),
-            );
+            let mut all_dependencies = dynamic_dependencies.clone();
+            all_dependencies.extend(worker_dependencies.clone());
+            edges.extend(all_dependencies.into_iter().map(|dep| {
+                (
+                    chunk_id.clone(),
+                    match chunk_graph.get_chunk_for_module(&dep) {
+                        // ref existing chunk
+                        Some(chunk) => chunk.id.clone(),
+                        // ref new chunk
+                        None => dep.generate(&self.context).into(),
+                    },
+                )
+            }));
+
             chunk_graph.add_chunk(new_chunk);
             new_chunks.push(chunk_id.clone());
 
@@ -459,7 +471,7 @@ impl Compiler {
             dynamic_dependencies
                 .into_iter()
                 .filter(|dep| chunk_graph.get_chunk_for_module(dep).is_none())
-                .collect::<Vec<ModuleId>>()
+                .collect::<IndexSet<ModuleId>>()
         });
 
         // add edges
@@ -471,11 +483,11 @@ impl Compiler {
     }
 }
 
-fn visit_modules<F>(ids: Vec<ModuleId>, visited: Option<HashSet<ModuleId>>, mut callback: F)
+fn visit_modules<F>(ids: &IndexSet<ModuleId>, visited: Option<HashSet<ModuleId>>, mut callback: F)
 where
-    F: FnMut(&ModuleId) -> Vec<ModuleId>,
+    F: FnMut(&ModuleId) -> IndexSet<ModuleId>,
 {
-    let mut queue = VecDeque::from(ids);
+    let mut queue = VecDeque::from(ids.iter().cloned().collect::<Vec<ModuleId>>());
     let mut visited = visited.unwrap_or_default();
 
     while let Some(id) = queue.pop_front() {
