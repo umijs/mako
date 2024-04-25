@@ -160,8 +160,12 @@ impl<'cp> ChunkPot<'cp> {
                 {
                     merged_css_modules.remove(index);
                 }
-                merged_css_modules.push((module.id.id.clone(), &ast.ast));
-                css_raw_hashes.push(module_info.raw_hash);
+
+                // not add empty css to chunk
+                if !ast.ast.rules.is_empty() {
+                    merged_css_modules.push((module.id.id.clone(), &ast.ast));
+                    css_raw_hashes.push(module_info.raw_hash);
+                }
             }
         }
 
