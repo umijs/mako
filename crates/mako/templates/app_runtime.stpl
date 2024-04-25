@@ -211,6 +211,7 @@ function createRuntime(makoModules, entryModuleId, global) {
       return link;
     };
 
+    <% if is_browser { %>
     requireModule.chunkEnsures.css = function (chunkId, promises) {
       if (cssInstalledChunks[chunkId]) {
         // still pending, avoid duplicate promises
@@ -242,6 +243,7 @@ function createRuntime(makoModules, entryModuleId, global) {
         return promises;
       }
     };
+    <% } %>
   })();
 
   /* mako/runtime/load script */
