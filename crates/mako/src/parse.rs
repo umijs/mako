@@ -10,6 +10,7 @@ use crate::ast::css_ast::CssAst;
 use crate::ast::file::{Content, File, JsContent};
 use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
+use crate::config;
 use crate::features::rsc::Rsc;
 use crate::module::ModuleAst;
 use crate::plugin::PluginParseParam;
@@ -60,9 +61,9 @@ impl Parse {
             let is_modules = file.has_param("modules");
             let is_asmodule = file.has_param("asmodule");
             let css_modules = is_modules || is_asmodule;
-            let mut ast = CssAst::new(file, context.clone(), css_modules)?;
             // ?asmodule
             if is_asmodule {
+                let mut ast = CssAst::new(file, context.clone(), css_modules)?;
                 let mut file = file.clone();
                 let content = CssAst::generate_css_modules_exports(
                     &file.pathname.to_string_lossy(),
@@ -76,16 +77,26 @@ impl Parse {
                 let ast = JsAst::new(&file, context)?;
                 return Ok(ModuleAst::Script(ast));
             } else {
+                let mut file = file.clone();
+                let is_browser = matches!(context.config.platform, config::Platform::Browser);
+                // use empty css for node
+                // since we don't need css for ssr or other node scenarios
+                let ast = if is_browser {
+                    CssAst::new(&file, context.clone(), css_modules)?
+                } else {
+                    file.set_content(Content::Css("".to_string()));
+                    CssAst::new(&file, context.clone(), css_modules)?
+                };
                 // when inline_css is enabled
                 // we need to go through the css-related process first
                 // and then hand it over to js for processing
                 if context.config.inline_css.is_some() {
                     let mut ast = ModuleAst::Css(ast);
                     // transform
-                    Transform::transform(&mut ast, file, context.clone())?;
+                    Transform::transform(&mut ast, &file, context.clone())?;
                     // analyze_deps
                     // TODO: do not need to resolve here
-                    let deps = AnalyzeDeps::analyze_deps(&ast, file, context.clone())?;
+                    let deps = AnalyzeDeps::analyze_deps(&ast, &file, context.clone())?;
                     if !deps.missing_deps.is_empty() {
                         return Err(anyhow!(ParseError::InlineCSSMissingDeps {
                             path: file.path.to_string_lossy().to_string(),
@@ -123,7 +134,7 @@ moduleToDom(`
                     let ast = JsAst::new(&file, context.clone())?;
                     return Ok(ModuleAst::Script(ast));
                 } else {
-                    if let Some(ast) = Rsc::parse_css(file, context.clone())? {
+                    if let Some(ast) = Rsc::parse_css(&file, context.clone())? {
                         return Ok(ast);
                     }
                     return Ok(ModuleAst::Css(ast));
