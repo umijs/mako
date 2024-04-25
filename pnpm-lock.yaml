@@ -356,7 +356,7 @@ importers:
   packages/bundler-okam:
     dependencies:
       '@okamjs/okam':
-        specifier: 0.4.10
+        specifier: 0.4.11
         version: link:../mako
       '@umijs/bundler-utils':
         specifier: ^4.0.81
@@ -414,14 +414,14 @@ importers:
         version: 21.1.1
     optionalDependencies:
       '@okamjs/okam-darwin-arm64':
-        specifier: 0.4.10
-        version: 0.4.10
+        specifier: 0.4.11
+        version: 0.4.11
       '@okamjs/okam-darwin-x64':
-        specifier: 0.4.10
-        version: 0.4.10
+        specifier: 0.4.11
+        version: 0.4.11
       '@okamjs/okam-linux-x64-gnu':
-        specifier: 0.4.10
-        version: 0.4.10
+        specifier: 0.4.11
+        version: 0.4.11
     devDependencies:
       '@napi-rs/cli':
         specifier: ^2.18.0
@@ -3647,8 +3647,8 @@ packages:
       fastq: 1.15.0
     dev: true
 
-  /@okamjs/okam-darwin-arm64@0.4.10:
-    resolution: {integrity: sha512-2UoypgbVpdZo2dyWnMEE5XjPEr0iIZRnyGlhjtLgrFn7kTbDBwwnDrwTT6KsYmioQyiujEAs41hENCo150F6dg==}
+  /@okamjs/okam-darwin-arm64@0.4.11:
+    resolution: {integrity: sha512-8kvn0iya6/qnLxdNGFs1FPU8Joy9VHclYbsNEk6XrgaC9YBhf7JGw5FKV4F5jb+QCfcnz+ZTBiKrangMf9WMfw==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
@@ -3656,8 +3656,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-darwin-x64@0.4.10:
-    resolution: {integrity: sha512-ajkpqBwKXHvaGPpPh5KNHgF0OC4DEDG8CfgRpRsOoD43jWYXm/1ddH3XsniIQKzE1VrrivX8OZ6KtCJizjgMZg==}
+  /@okamjs/okam-darwin-x64@0.4.11:
+    resolution: {integrity: sha512-ngV3JUqURYIVn70VjcGl22dKRLTCuUqbtmJ79Gytfkpk98mjDUQjHSoopc9o0sOVLNoR40rxGhEXv5B6Jh99Ww==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
@@ -3665,8 +3665,8 @@ packages:
     dev: false
     optional: true
 
-  /@okamjs/okam-linux-x64-gnu@0.4.10:
-    resolution: {integrity: sha512-RJvRrqE6zONPPkKTYKAR6xHTVpcH1Sl+ghgpe4GBGYSmGtPzSK7dkrvmPvJyc7NfCTIX/MUveKU9vqMTAkZrAw==}
+  /@okamjs/okam-linux-x64-gnu@0.4.11:
+    resolution: {integrity: sha512-HDVRhdEMlk8MCNQ2JNFqFOwFmzOmVL0G2LCFcpW2+O3zbHm9Ze07gPnOpD0qHsrPwzyu64VQJcuJD8hrzauSQA==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
