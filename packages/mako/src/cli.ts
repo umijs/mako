@@ -1,4 +1,4 @@
-import yParser from "yargs-parser";
+import yParser from 'yargs-parser';
 
 (async () => {
   let argv = yParser(process.argv.slice(2));
