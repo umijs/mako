@@ -5,6 +5,10 @@ import yParser from "yargs-parser";
   let command = argv._[0];
   switch (command) {
     case 'build':
+      if (argv.help || argv.h) {
+        showBuildHelp();
+        break;
+      }
       let watch = argv.watch || argv.w || false;
       let root = argv.root || process.cwd();
       await require('./').build({
@@ -38,10 +42,24 @@ function showHelp() {
   console.log(`  build`);
   console.log(``);
   console.log(`Options:`);
-  console.log(`  --help`);
+  console.log(`  --help,-h`);
   console.log(`  --version,-v`);
   console.log(``);
   console.log(`Examples:`);
   console.log(`  mako build`);
   console.log(`  mako -v`);
+}
+
+function showBuildHelp() {
+  console.log(`Usage: mako build [options]`);
+  console.log(``);
+  console.log(`Options:`);
+  console.log(`  --help,-h`);
+  console.log(`  --root`);
+  console.log(`  --watch,-w`);
+  console.log(``);
+  console.log(`Examples:`);
+  console.log(`  mako build`);
+  console.log(`  mako build --watch`);
+  console.log(`  mako build --root ./src`);
 }
