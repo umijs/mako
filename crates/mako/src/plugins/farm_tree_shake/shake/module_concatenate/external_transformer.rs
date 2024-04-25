@@ -244,6 +244,8 @@ impl VisitMut for ExternalTransformer<'_> {
             {
                 *n = quote_ident!(namespace.clone()).into();
             }
+        } else {
+            n.visit_mut_children_with(self);
         }
     }
 
