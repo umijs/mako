@@ -3,6 +3,9 @@
   "version": "0.4.11",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "mako": "./bin/mako.js"
+  },
   "napi": {
     "name": "okam",
     "triples": {

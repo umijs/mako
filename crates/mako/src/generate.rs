@@ -75,7 +75,7 @@ impl Compiler {
                         .plugin_driver
                         .optimize_module_graph(module_graph.deref_mut(), &self.context)?;
                     let t_tree_shaking = t_tree_shaking.elapsed();
-                    println!("basic optimize in {}ms.", t_tree_shaking.as_millis());
+                    debug!("basic optimize in {}ms.", t_tree_shaking.as_millis());
                 }
                 Some(TreeShakingStrategy::Advanced) => {
                     // waiting @heden8 to come back
