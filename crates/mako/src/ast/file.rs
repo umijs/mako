@@ -290,7 +290,7 @@ impl File {
         chain
     }
 
-    fn path(&self) -> Option<String> {
+    pub fn path(&self) -> Option<String> {
         let path_string = self.path.to_string_lossy().to_string();
         if path_string.starts_with(VIRTUAL.as_str()) {
             self.param("virtualPath")

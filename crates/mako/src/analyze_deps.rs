@@ -49,11 +49,12 @@ impl AnalyzeDeps {
 
         let mut resolved_deps = vec![];
         let mut missing_deps = HashMap::new();
-        let path = file.path.to_str().unwrap();
+        let path = Self::resolve_from(file, context.clone());
+
         for dep in deps {
             let result = resolve(
                 // .
-                path,
+                &path,
                 &dep,
                 &context.resolvers,
                 &context,
@@ -118,5 +119,18 @@ impl AnalyzeDeps {
         } else {
             message
         }
+    }
+
+    fn resolve_from(file: &File, context: Arc<Context>) -> String {
+        file.path().map_or_else(
+            || {
+                context
+                    .root
+                    .join(".virtual.root")
+                    .to_string_lossy()
+                    .to_string()
+            },
+            |p| p,
+        )
     }
 }
