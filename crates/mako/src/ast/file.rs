@@ -90,10 +90,7 @@ impl Default for File {
     }
 }
 
-// e.g.
-lazy_static! {
-    static ref VIRTUAL: String = "virtual:".to_string();
-}
+pub const VIRTUAL: &str = "virtual:";
 
 lazy_static! {
     static ref CSS_SOURCE_MAP_REGEXP: Regex =
@@ -117,7 +114,7 @@ impl File {
             parse_path(&path.to_string_lossy()).unwrap()
         };
         let pathname = PathBuf::from(pathname);
-        let is_virtual = path.starts_with(&*VIRTUAL) ||
+        let is_virtual = path.starts_with(VIRTUAL) ||
             // TODO: remove this specific logic
             params.iter().any(|(k, _)| k == "asmodule");
         let is_under_node_modules = path.to_string_lossy().contains("node_modules");
@@ -292,7 +289,7 @@ impl File {
 
     pub fn path(&self) -> Option<String> {
         let path_string = self.path.to_string_lossy().to_string();
-        if path_string.starts_with(VIRTUAL.as_str()) {
+        if path_string.starts_with(VIRTUAL) {
             self.param("virtualPath")
         } else {
             Some(path_string)

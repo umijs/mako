@@ -5,9 +5,10 @@ use mako_core::anyhow::{anyhow, Result};
 use mako_core::thiserror::Error;
 
 use crate::ast::error;
-use crate::ast::file::File;
+use crate::ast::file::{File, VIRTUAL};
 use crate::compiler::Context;
 use crate::module::{Dependency, ModuleAst};
+use crate::resolve::ResolverResource::Virtual;
 use crate::resolve::{resolve, ResolverResource};
 
 #[derive(Debug, Error)]
@@ -52,6 +53,15 @@ impl AnalyzeDeps {
         let path = Self::resolve_from(file, context.clone());
 
         for dep in deps {
+            if dep.source.starts_with(VIRTUAL) {
+                resolved_deps.push(ResolvedDep {
+                    resolver_resource: Virtual(dep.source.clone().into()),
+                    dependency: dep,
+                });
+
+                continue;
+            }
+
             let result = resolve(
                 // .
                 &path,
