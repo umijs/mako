@@ -157,6 +157,23 @@ function foo() {
             .trim()
         );
     }
+    
+    #[test]
+    fn test_provide_in_shorthand_notation() {
+        assert_eq!(
+            run(r#"
+console.log({process});            
+            "#),
+            r#"
+const process = __mako_require__("process");
+console.log({
+    process
+});
+            "#
+                .trim()
+        );
+    }
+
 
     fn run(js_code: &str) -> String {
         let mut test_utils = TestUtils::gen_js_ast(js_code.to_string());
