@@ -17,6 +17,9 @@
       ]
     }
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "license": "MIT",
   "dependencies": {
     "@swc/helpers": "0.5.1",

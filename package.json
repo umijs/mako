@@ -11,7 +11,8 @@
     "test:hmr": "node scripts/test-hmr.mjs",
     "release": "esno scripts/release.ts",
     "release:okam": "pnpm --filter @okamjs/okam release",
-    "release:bundler-okam": "esno scripts/release-bundler-okam.ts"
+    "release:bundler-okam": "esno scripts/release-bundler-okam.ts",
+    "release:rsc": "esno scripts/release-rsc.ts"
   },
   "license": "MIT",
   "devDependencies": {
