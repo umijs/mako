@@ -1,6 +1,6 @@
 {
   "name": "@okamjs/rsc",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "license": "MIT",
@@ -8,6 +8,9 @@
   "devDependencies": {
     "@types/node": "^20.12.5",
     "typescript": "^5.4.3"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "dist"
