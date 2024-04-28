@@ -1,4 +1,16 @@
 
+## 0.4.12
+
+`2024-04-28`
+
+> @alipay/bigfish@4.1.28
+
+* 修复 okam 包 package.json 中 bin 字段丢失的问题 by [@sorrycc](https://github.com/sorrycc) in [#1092](https://github.com/umijs/mako/pull/1092)
+* 修复 runtime 在 node 场景下报错，让 css ensure 只在 browser 阶段才状态 by [@sorrycc](https://github.com/sorrycc) in [#1095](https://github.com/umijs/mako/pull/1095)
+* 修复空 css chunk 不应该输出的问题 by [@xusd320](https://github.com/xusd320) in [#1097](https://github.com/umijs/mako/pull/1097)
+* 修复 node 场景下不应该 load css 的问题（潜在的性能提升） by [@sorrycc](https://github.com/sorrycc) in [#1098](https://github.com/umijs/mako/pull/1098)
+* 修复 concatenate 中 polyfill 没有在 inner 中被替换的问题 by [@stormslowly](https://github.com/stormslowly) in [#1099](https://github.com/umijs/mako/pull/1099)
+
 ## 0.4.11
 
 `2024-04-25`
