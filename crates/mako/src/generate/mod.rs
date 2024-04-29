@@ -164,7 +164,7 @@ impl Compiler {
 
         // generate stats
         let stats = create_stats_info(0, self);
-        if self.context.config.stats && !self.context.args.watch {
+        if self.context.config.stats {
             write_stats(&stats, self);
         }
 
@@ -266,17 +266,27 @@ impl Compiler {
         // write assets
         let t_write_assets = Instant::now();
         debug!("write assets");
-        let assets_info = &(*self.context.assets_info.lock().unwrap());
-        for (k, v) in assets_info {
-            let asset_path = &self.context.root.join(k);
-            let asset_output_path = &config.output.path.join(v);
-            if asset_path.exists() {
-                fs::copy(asset_path, asset_output_path)?;
-            } else {
-                panic!("asset not found: {}", asset_path.display());
+        {
+            let assets_info = &(*self.context.assets_info.lock().unwrap());
+            for (k, v) in assets_info {
+                let asset_path = &self.context.root.join(k);
+                let asset_output_path = &config.output.path.join(v);
+                if asset_path.exists() {
+                    fs::copy(asset_path, asset_output_path)?;
+                } else {
+                    panic!("asset not found: {}", asset_path.display());
+                }
             }
         }
         let t_write_assets = t_write_assets.elapsed();
+
+        // TODO: do not write to fs, using jsapi hooks to pass stats
+        // why generate stats?
+        // ref: https://github.com/umijs/mako/issues/1107
+        if self.context.config.stats {
+            let stats = create_stats_info(0, self);
+            write_stats(&stats, self);
+        }
 
         let t_generate = t_generate.elapsed();
 
