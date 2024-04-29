@@ -2,20 +2,19 @@ import 'zx/globals';
 
 (async () => {
   // pnpm install to update lockfile
-  console.log('pnpm install');
+  console.log('Pnpm install');
   await $`pnpm install`;
+
+  // build
+  console.log('Build');
+  await $`pnpm --filter @okamjs/rsc build`;
 
   // bump version to sync with @okamjs/okam
   console.log('Bump version');
-  const pkgDir = path.join(
-    __dirname,
-    '../packages/rsc/',
-  );
+  const pkgDir = path.join(__dirname, '../packages/rsc/');
   const pkgPath = path.join(pkgDir, 'package.json');
   await $`cd packages/rsc && npm version patch`;
-  const pkg = JSON.parse(
-    fs.readFileSync(pkgPath, 'utf-8'),
-  );
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
 
   // git commit
   console.log('Commit');
