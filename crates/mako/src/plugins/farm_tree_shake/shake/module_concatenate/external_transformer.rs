@@ -607,6 +607,14 @@ export { __$m_mut_js_0 as default };
         assert_eq!(code, r#"let e = external_namespace_cjs;"#.trim());
     }
 
+    #[test]
+    // the case comes from Provider generated code: let Buffer = require("buffer").Buffer;
+    fn test_require_from_external_in_member_expr() {
+        let code = transform_with_external_replace(r#"let e = require("external").external;"#);
+
+        assert_eq!(code, r#"let e = external_namespace_cjs.external;"#.trim());
+    }
+
     #[ignore]
     #[test]
     fn test_export_default_with_name_from_external() {
