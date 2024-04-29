@@ -388,6 +388,7 @@ async function getOkamConfig(opts) {
   }
   const webpackConfig = webpackChainConfig.toConfig();
   let umd = false;
+  let platform = 'browser';
   if (
     webpackConfig.output &&
     webpackConfig.output.libraryTarget === 'umd' &&
@@ -395,6 +396,8 @@ async function getOkamConfig(opts) {
   ) {
     umd = webpackConfig.output.library;
   }
+
+  if (webpackConfig.target === 'node') platform = 'node';
 
   const {
     alias,
@@ -407,7 +410,6 @@ async function getOkamConfig(opts) {
     devtool,
     cjs,
     dynamicImportToRequire,
-    platform,
     jsMinifier,
     externals,
     copy = [],
@@ -476,25 +478,28 @@ async function getOkamConfig(opts) {
     return p === '@emotion' || p === '@emotion/babel-plugin';
   });
   // transform externals
-  const externalsConfig = Object.entries(externals).reduce((ret, [k, v]) => {
-    // handle [string] with script type
-    if (Array.isArray(v)) {
-      const [url, ...members] = v;
-      ret[k] = {
-        // ['antd', 'Button'] => `antd.Button`
-        root: members.join('.'),
-        // `script https://example.com/lib/script.js` => `https://example.com/lib/script.js`
-        script: url.replace('script ', ''),
-      };
-    } else if (typeof v === 'string') {
-      // 'window.antd' or 'window antd' => 'antd'
-      ret[k] = v.replace(/^window(\s+|\.)/, '');
-    } else {
-      // other types except boolean has been checked before
-      // so here only ignore invalid boolean type
-    }
-    return ret;
-  }, {});
+  const externalsConfig = Object.entries(externals || {}).reduce(
+    (ret, [k, v]) => {
+      // handle [string] with script type
+      if (Array.isArray(v)) {
+        const [url, ...members] = v;
+        ret[k] = {
+          // ['antd', 'Button'] => `antd.Button`
+          root: members.join('.'),
+          // `script https://example.com/lib/script.js` => `https://example.com/lib/script.js`
+          script: url.replace('script ', ''),
+        };
+      } else if (typeof v === 'string') {
+        // 'window.antd' or 'window antd' => 'antd'
+        ret[k] = v.replace(/^window(\s+|\.)/, '');
+      } else {
+        // other types except boolean has been checked before
+        // so here only ignore invalid boolean type
+      }
+      return ret;
+    },
+    {},
+  );
 
   const okamConfig = {
     entry: opts.entry,
