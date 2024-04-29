@@ -3,7 +3,6 @@ use std::path::Path;
 use std::sync::Arc;
 
 use mako_core::anyhow::{anyhow, Result};
-use mako_core::lazy_static::lazy_static;
 use mako_core::mdxjs::{compile, Options as MdxOptions};
 use mako_core::serde_xml_rs::from_str as from_xml_str;
 use mako_core::serde_yaml::{from_str as from_yaml_str, Value as YamlValue};
@@ -31,19 +30,18 @@ enum LoadError {
     CompileMdError { path: String, reason: String },
 }
 
-lazy_static! {
-    static ref JS_EXTENSIONS: Vec<&'static str> = vec!["js", "jsx", "ts", "tsx", "cjs", "mjs"];
-    static ref CSS_EXTENSIONS: Vec<&'static str> = vec!["css"];
-    static ref JSON_EXTENSIONS: Vec<&'static str> = vec!["json", "json5"];
-    static ref YAML_EXTENSIONS: Vec<&'static str> = vec!["yaml", "yml"];
-    static ref XML_EXTENSIONS: Vec<&'static str> = vec!["xml"];
-    static ref WASM_EXTENSIONS: Vec<&'static str> = vec!["wasm"];
-    static ref TOML_EXTENSIONS: Vec<&'static str> = vec!["toml"];
-    static ref SVG_EXTENSIONS: Vec<&'static str> = vec!["svg"];
-    static ref MD_EXTENSIONS: Vec<&'static str> = vec!["md", "mdx"];
-    static ref UNSUPPORTED_EXTENSIONS: Vec<&'static str> = vec!["sass", "scss", "stylus"];
-    static ref SVGR_NAMED_EXPORT: String = r#"ReactComponent"#.to_string();
-}
+const JS_EXTENSIONS: [&str; 6] = ["js", "jsx", "ts", "tsx", "cjs", "mjs"];
+const CSS_EXTENSIONS: [&str; 1] = ["css"];
+const JSON_EXTENSIONS: [&str; 2] = ["json", "json5"];
+const YAML_EXTENSIONS: [&str; 2] = ["yaml", "yml"];
+const XML_EXTENSIONS: [&str; 1] = ["xml"];
+const WASM_EXTENSIONS: [&str; 1] = ["wasm"];
+const TOML_EXTENSIONS: [&str; 1] = ["toml"];
+const SVG_EXTENSIONS: [&str; 1] = ["svg"];
+const MD_EXTENSIONS: [&str; 2] = ["md", "mdx"];
+const UNSUPPORTED_EXTENSIONS: [&str; 3] = ["sass", "scss", "stylus"];
+
+const SVGR_NAMED_EXPORT: &str = r#"ReactComponent"#;
 
 pub struct Load {}
 

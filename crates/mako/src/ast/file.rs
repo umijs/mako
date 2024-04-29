@@ -1,12 +1,11 @@
 use std::hash::Hasher;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::base64::alphabet::STANDARD;
 use mako_core::base64::{engine, Engine};
-use mako_core::lazy_static::lazy_static;
 use mako_core::pathdiff::diff_paths;
 use mako_core::regex::Regex;
 use mako_core::thiserror::Error;
@@ -90,14 +89,14 @@ impl Default for File {
     }
 }
 
-// e.g.
-lazy_static! {
-    static ref VIRTUAL: String = "virtual:".to_string();
-}
+const VIRTUAL: &str = "virtual:";
 
-lazy_static! {
-    static ref CSS_SOURCE_MAP_REGEXP: Regex =
-        Regex::new(r"/\*# sourceMappingURL=data:application/json;base64,(.*?) \*/").unwrap();
+fn css_source_map_regex() -> &'static Regex {
+    static CSS_SOURCE_MAP_REGEXP: OnceLock<Regex> = OnceLock::new();
+
+    CSS_SOURCE_MAP_REGEXP.get_or_init(|| {
+        Regex::new(r"/\*# sourceMappingURL=data:application/json;base64,(.*?) \*/").unwrap()
+    })
 }
 
 impl File {
@@ -117,7 +116,7 @@ impl File {
             parse_path(&path.to_string_lossy()).unwrap()
         };
         let pathname = PathBuf::from(pathname);
-        let is_virtual = path.starts_with(&*VIRTUAL) ||
+        let is_virtual = path.starts_with(VIRTUAL) ||
             // TODO: remove this specific logic
             params.iter().any(|(k, _)| k == "asmodule");
         let is_under_node_modules = path.to_string_lossy().contains("node_modules");
@@ -271,7 +270,7 @@ impl File {
         let mut chain = vec![];
         match &self.content {
             Some(Content::Css(content)) => {
-                if let Some(captures) = CSS_SOURCE_MAP_REGEXP.captures(content) {
+                if let Some(captures) = css_source_map_regex().captures(content) {
                     let source_map_base64 = captures.get(1).unwrap().as_str().to_string();
                     chain.push(base64_decode(source_map_base64.as_bytes()));
                 }
