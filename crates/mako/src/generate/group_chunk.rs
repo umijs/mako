@@ -4,11 +4,11 @@ use std::vec;
 use mako_core::anyhow::Result;
 use mako_core::tracing::debug;
 
-use crate::chunk::{Chunk, ChunkId, ChunkType};
-use crate::chunk_graph::ChunkGraph;
 use crate::compiler::Compiler;
+use crate::dev::update::UpdateResult;
+use crate::generate::chunk::{Chunk, ChunkId, ChunkType};
+use crate::generate::chunk_graph::ChunkGraph;
 use crate::module::{ModuleId, ResolveType};
-use crate::update::UpdateResult;
 
 pub type GroupUpdateResult = Option<(Vec<ChunkId>, Vec<(ModuleId, ChunkId, ChunkType)>)>;
 

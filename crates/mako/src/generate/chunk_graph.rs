@@ -7,7 +7,7 @@ use mako_core::petgraph::visit::Dfs;
 use mako_core::petgraph::Direction;
 use mako_core::twox_hash::XxHash64;
 
-use crate::chunk::{Chunk, ChunkId, ChunkType};
+use crate::generate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::module::ModuleId;
 use crate::module_graph::ModuleGraph;
 

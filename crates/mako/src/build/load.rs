@@ -120,7 +120,7 @@ export function moduleToDom(css) {
                 let host = if host == "0.0.0.0" { "127.0.0.1" } else { host };
                 let content = format!(
                     "{}\nmodule.exports = require(\"{}\");\n",
-                    include_str!("./runtime/runtime_hmr_entry.js"),
+                    include_str!("../runtime/runtime_hmr_entry.js"),
                     file.pathname.to_string_lossy(),
                 )
                 .replace("__PORT__", port)

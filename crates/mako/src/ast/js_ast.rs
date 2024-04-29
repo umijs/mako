@@ -18,15 +18,14 @@ use mako_core::swc_ecma_visit::{VisitMutWith, VisitWith};
 use swc_core::base::try_with_handler;
 use swc_core::common::Spanned;
 
-use super::file::{Content, JsContent};
-use crate::ast::file::File;
+use crate::ast::file::{Content, File, JsContent};
+use crate::ast::sourcemap::build_source_map_to_buf;
 use crate::ast::{error, utils};
 use crate::compiler::Context;
 use crate::config::{DevtoolConfig, Mode};
 use crate::module::Dependency;
 use crate::plugin::PluginTransformJsParam;
-use crate::sourcemap::build_source_map_to_buf;
-use crate::util::base64_encode;
+use crate::utils::base64_encode;
 use crate::visitors::dep_analyzer::DepAnalyzer;
 
 #[derive(Clone)]

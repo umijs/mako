@@ -15,7 +15,7 @@ use percent_encoding::percent_decode_str;
 use url::Url;
 
 use crate::compiler::Context;
-use crate::util::base64_decode;
+use crate::utils::base64_decode;
 
 #[derive(Debug, Clone)]
 pub struct Asset {

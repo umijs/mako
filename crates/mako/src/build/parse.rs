@@ -5,16 +5,16 @@ use mako_core::swc_css_visit::VisitMutWith as CSSVisitMutWith;
 use mako_core::thiserror::Error;
 use mako_core::tracing::debug;
 
-use crate::analyze_deps::AnalyzeDeps;
 use crate::ast::css_ast::CssAst;
 use crate::ast::file::{Content, File, JsContent};
 use crate::ast::js_ast::JsAst;
+use crate::build::analyze_deps::AnalyzeDeps;
+use crate::build::transform::Transform;
 use crate::compiler::Context;
 use crate::config;
 use crate::features::rsc::Rsc;
 use crate::module::ModuleAst;
 use crate::plugin::PluginParseParam;
-use crate::transform::Transform;
 use crate::visitors::css_imports::CSSImports;
 
 #[derive(Debug, Error)]

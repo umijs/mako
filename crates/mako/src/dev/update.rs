@@ -9,9 +9,9 @@ use mako_core::tracing::debug;
 
 use crate::build::BuildError;
 use crate::compiler::Compiler;
+use crate::generate::transform::transform_modules;
 use crate::module::{Dependency, Module, ModuleId};
 use crate::resolve::{self, clear_resolver_cache};
-use crate::transform_in_generate::transform_modules;
 use crate::visitors::virtual_css_modules::is_css_path;
 
 #[derive(Debug, Clone)]

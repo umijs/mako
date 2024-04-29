@@ -7,10 +7,10 @@ use mako_core::swc_ecma_ast::{Expr, ExprStmt, Lit, Module, ModuleItem, Stmt, Str
 use crate::ast::css_ast::CssAst;
 use crate::ast::file::File;
 use crate::ast::js_ast::JsAst;
+use crate::build::parse::ParseError;
 use crate::compiler::Context;
 use crate::config::Config;
 use crate::module::ModuleAst;
-use crate::parse::ParseError;
 
 #[derive(Serialize, Debug, Clone)]
 pub struct RscClientInfo {

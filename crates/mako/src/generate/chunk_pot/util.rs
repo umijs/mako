@@ -19,12 +19,12 @@ use swc_core::common::comments::{Comment, CommentKind, Comments};
 use swc_core::common::errors::HANDLER;
 use swc_core::common::{Span, GLOBALS};
 
-use crate::chunk_pot::ChunkPot;
+use crate::ast::sourcemap::build_source_map_to_buf;
 use crate::compiler::Context;
 use crate::config::{get_pkg_name, Mode};
+use crate::generate::chunk_pot::ChunkPot;
+use crate::generate::runtime::AppRuntimeTemplate;
 use crate::module::{relative_to_root, Module, ModuleAst};
-use crate::runtime::AppRuntimeTemplate;
-use crate::sourcemap::build_source_map_to_buf;
 
 pub(crate) fn render_module_js(
     ast: &SwcModule,

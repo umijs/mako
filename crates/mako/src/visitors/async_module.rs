@@ -240,7 +240,7 @@ mod tests {
 
     use super::AsyncModule;
     use crate::ast::tests::TestUtils;
-    use crate::chunk::{Chunk, ChunkType};
+    use crate::generate::chunk::{Chunk, ChunkType};
     use crate::visitors::dep_analyzer::DepAnalyzer;
 
     #[test]
