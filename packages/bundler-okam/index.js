@@ -49,8 +49,9 @@ exports.build = async function (opts) {
     err.stack = null;
     throw err;
   }
+  const outputPath = opts.config.outputPath ?? path.join(opts.cwd, 'dist');
 
-  const statsJsonPath = path.join(cwd, 'dist', 'stats.json');
+  const statsJsonPath = path.join(outputPath, 'stats.json');
   const statsJson = JSON.parse(fs.readFileSync(statsJsonPath, 'utf-8'));
 
   // remove stats.json file if user did not enable it
@@ -84,6 +85,9 @@ exports.dev = async function (opts) {
   const app = express();
   const port = opts.port || 8000;
   const hmrPort = opts.port + 1;
+
+  const outputPath = opts.config.outputPath ?? path.join(opts.cwd, 'dist');
+
   // cors
   app.use(
     require('cors')({
@@ -111,7 +115,7 @@ exports.dev = async function (opts) {
   app.use('/__/hmr-ws', wsProxy);
 
   // serve dist files
-  app.use(express.static(path.join(opts.cwd, 'dist')));
+  app.use(express.static(outputPath));
   // proxy
   if (opts.config.proxy) {
     createProxy(opts.config.proxy, app);
@@ -401,13 +405,16 @@ async function getOkamConfig(opts) {
     mdx,
     codeSplitting,
     devtool,
+    cjs,
+    dynamicImportToRequire,
+    platform,
     jsMinifier,
     externals,
     copy = [],
     clean,
     forkTSChecker,
   } = opts.config;
-  const outputPath = path.join(opts.cwd, 'dist');
+  const outputPath = opts.config.outputPath ?? path.join(opts.cwd, 'dist');
   // TODO:
   // 暂不支持 $ 结尾，等 resolve 支持后可以把这段去掉
   Object.keys(alias).forEach((key) => {
@@ -504,6 +511,9 @@ async function getOkamConfig(opts) {
     mdx: !!mdx,
     codeSplitting: codeSplitting === false ? false : 'auto',
     devtool: devtool === false ? false : 'source-map',
+    cjs,
+    dynamicImportToRequire,
+    platform,
     minify,
     define,
     autoCSSModules: true,
