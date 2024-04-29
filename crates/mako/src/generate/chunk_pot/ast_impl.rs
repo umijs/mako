@@ -16,17 +16,17 @@ use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
 use mako_core::{mako_profile_scope, ternary};
 
 use crate::ast::js_ast::JsAst;
-use crate::chunk::{Chunk, ChunkType};
-use crate::chunk_pot::util::{
-    file_content_hash, pot_to_chunk_module, pot_to_module_object, runtime_code,
-};
-use crate::chunk_pot::{get_css_chunk_filename, util, ChunkPot};
+use crate::ast::sourcemap::{build_source_map_to_buf, merge_source_map};
 use crate::compiler::Context;
 use crate::config::Mode;
-use crate::generate_chunks::{ChunkFile, ChunkFileType};
-use crate::minify::{minify_css, minify_js};
-use crate::sourcemap::{build_source_map_to_buf, merge_source_map};
-use crate::transform_in_generate::transform_css_generate;
+use crate::generate::chunk::{Chunk, ChunkType};
+use crate::generate::chunk_pot::util::{
+    file_content_hash, pot_to_chunk_module, pot_to_module_object, runtime_code,
+};
+use crate::generate::chunk_pot::{get_css_chunk_filename, util, ChunkPot};
+use crate::generate::generate_chunks::{ChunkFile, ChunkFileType};
+use crate::generate::minify::{minify_css, minify_js};
+use crate::generate::transform::transform_css_generate;
 
 #[cached(
     result = true,

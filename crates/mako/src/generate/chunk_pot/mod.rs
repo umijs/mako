@@ -10,12 +10,12 @@ use mako_core::indexmap::IndexSet;
 use mako_core::swc_css_ast::Stylesheet;
 use mako_core::ternary;
 
-use crate::chunk::{Chunk, ChunkType};
-pub use crate::chunk_pot::util::CHUNK_FILE_NAME_HASH_LENGTH;
-use crate::chunk_pot::util::{hash_hashmap, hash_vec};
 use crate::compiler::Context;
 use crate::config::Mode;
-use crate::generate_chunks::ChunkFile;
+use crate::generate::chunk::{Chunk, ChunkType};
+pub use crate::generate::chunk_pot::util::CHUNK_FILE_NAME_HASH_LENGTH;
+use crate::generate::chunk_pot::util::{hash_hashmap, hash_vec};
+use crate::generate::generate_chunks::ChunkFile;
 use crate::module::{Module, ModuleAst, ModuleId};
 use crate::module_graph::ModuleGraph;
 

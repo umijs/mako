@@ -1,3 +1,6 @@
+pub(crate) mod update;
+mod watch;
+
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::{mpsc, Arc};
@@ -17,8 +20,7 @@ use mako_core::{hyper, hyper_staticfile, hyper_tungstenite};
 
 use crate::compiler::{Compiler, Context};
 use crate::plugin::{PluginGenerateEndParams, PluginGenerateStats};
-use crate::tokio_runtime;
-use crate::watch::Watcher;
+use crate::utils::tokio_runtime;
 
 pub struct DevServer {
     root: PathBuf,
@@ -172,7 +174,7 @@ impl DevServer {
         let (tx, rx) = mpsc::channel();
         // let mut watcher = RecommendedWatcher::new(tx, notify::Config::default())?;
         let mut debouncer = new_debouncer(Duration::from_millis(10), None, tx).unwrap();
-        let mut watcher = Watcher::new(&root, debouncer.watcher(), &compiler);
+        let mut watcher = watch::Watcher::new(&root, debouncer.watcher(), &compiler);
         watcher.watch()?;
 
         let initial_hash = compiler.full_hash();
@@ -180,7 +182,7 @@ impl DevServer {
         let mut hmr_hash = Box::new(initial_hash);
 
         for result in rx {
-            let paths = Watcher::normalize_events(result.unwrap());
+            let paths = watch::Watcher::normalize_events(result.unwrap());
             if !paths.is_empty() {
                 let compiler = compiler.clone();
                 let txws = txws.clone();

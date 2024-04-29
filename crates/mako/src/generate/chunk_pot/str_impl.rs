@@ -12,14 +12,14 @@ use mako_core::ternary;
 use swc_core::base::sourcemap;
 use swc_core::common::SourceMap;
 
-use crate::chunk::Chunk;
-use crate::chunk_pot::ast_impl::{render_css_chunk, render_css_chunk_no_cache};
-use crate::chunk_pot::util::runtime_code;
-use crate::chunk_pot::ChunkPot;
+use crate::ast::sourcemap::{build_source_map, RawSourceMap};
 use crate::compiler::Context;
-use crate::generate_chunks::{ChunkFile, ChunkFileType};
+use crate::generate::chunk::Chunk;
+use crate::generate::chunk_pot::ast_impl::{render_css_chunk, render_css_chunk_no_cache};
+use crate::generate::chunk_pot::util::runtime_code;
+use crate::generate::chunk_pot::ChunkPot;
+use crate::generate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::module::{Module, ModuleAst};
-use crate::sourcemap::{build_source_map, RawSourceMap};
 
 pub(super) fn render_entry_js_chunk(
     pot: &ChunkPot,
@@ -317,10 +317,10 @@ mod tests {
 
     use super::{merge_code_and_sourcemap, EmittedWithMapping};
     use crate::ast::js_ast::JsAst;
+    use crate::ast::sourcemap::build_source_map;
     use crate::compiler::{Args, Context};
     use crate::config::{Config, Mode};
-    use crate::minify::minify_js;
-    use crate::sourcemap::build_source_map;
+    use crate::generate::minify::minify_js;
 
     #[test]
     fn test_pot_to_chunk_module_object_string() {

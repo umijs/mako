@@ -11,17 +11,16 @@ use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{Globals, SourceMap, DUMMY_SP};
 use mako_core::swc_ecma_ast::Ident;
 
-use crate::chunk_graph::ChunkGraph;
-use crate::comments::Comments;
+use crate::ast::comments::Comments;
 use crate::config::{Config, OutputMode};
+use crate::generate::chunk_graph::ChunkGraph;
+use crate::generate::optimize_chunk::OptimizeChunksInfo;
 use crate::module_graph::ModuleGraph;
-use crate::optimize_chunk::OptimizeChunksInfo;
 use crate::plugin::{Plugin, PluginDriver, PluginGenerateEndParams, PluginGenerateStats};
-use crate::plugins::minifish::Inject;
+use crate::plugins;
 use crate::resolve::{get_resolvers, Resolvers};
 use crate::stats::StatsInfo;
-use crate::util::ParseRegex;
-use crate::{plugins, thread_pool};
+use crate::utils::{thread_pool, ParseRegex};
 
 pub struct Context {
     pub module_graph: RwLock<ModuleGraph>,
@@ -119,7 +118,6 @@ impl Default for Context {
             modules_with_missing_deps: RwLock::new(Vec::new()),
             meta: Meta::new(),
             plugin_driver: Default::default(),
-            // 产物信息放在上下文里是否合适
             stats_info: Mutex::new(StatsInfo::new()),
             resolvers,
             optimize_infos: Mutex::new(None),
@@ -258,7 +256,7 @@ impl Compiler {
                 for (k, ii) in inject.iter() {
                     map.insert(
                         k.clone(),
-                        Inject {
+                        plugins::minifish::Inject {
                             from: ii.from.clone(),
                             name: k.clone(),
                             named: ii.named.clone(),

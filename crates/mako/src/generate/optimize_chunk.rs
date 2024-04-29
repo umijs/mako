@@ -5,10 +5,10 @@ use mako_core::indexmap::{IndexMap, IndexSet};
 use mako_core::regex::Regex;
 use mako_core::tracing::debug;
 
-use crate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::compiler::Compiler;
 use crate::config::{OptimizeAllowChunks, OptimizeChunkGroup, OptimizeChunkOptions};
-use crate::group_chunk::GroupUpdateResult;
+use crate::generate::chunk::{Chunk, ChunkId, ChunkType};
+use crate::generate::group_chunk::GroupUpdateResult;
 use crate::module::{Module, ModuleId, ModuleInfo};
 use crate::resolve::{ResolvedResource, ResolverResource};
 

@@ -17,8 +17,11 @@ use swc_core::common::GLOBALS;
 
 use crate::ast::css_ast::CssAst;
 use crate::ast::file::File;
+use crate::build::targets;
+use crate::build::targets::swc_preset_env_targets_from_map;
 use crate::compiler::Context;
 use crate::config::Mode;
+use crate::features;
 use crate::module::ModuleAst;
 use crate::plugins::context_module::ContextModuleVisitor;
 use crate::visitors::css_assets::CSSAssets;
@@ -31,7 +34,6 @@ use crate::visitors::provide::Provide;
 use crate::visitors::react::react;
 use crate::visitors::try_resolve::TryResolve;
 use crate::visitors::virtual_css_modules::VirtualCSSModules;
-use crate::{features, targets};
 
 pub struct Transform {}
 
@@ -140,7 +142,7 @@ impl Transform {
                         Some(comments),
                         swc_preset_env::Config {
                             mode: Some(swc_preset_env::Mode::Entry),
-                            targets: Some(targets::swc_preset_env_targets_from_map(
+                            targets: Some(swc_preset_env_targets_from_map(
                                 context.config.targets.clone(),
                             )),
                             ..Default::default()

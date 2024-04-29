@@ -24,7 +24,7 @@ use mako_core::tracing::debug;
 use crate::ast::js_ast::JsAst;
 use crate::compiler::{Compiler, Context};
 use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
-use crate::thread_pool;
+use crate::utils::thread_pool;
 use crate::visitors::async_module::{mark_async, AsyncModule};
 use crate::visitors::css_imports::CSSImports;
 use crate::visitors::dep_replacer::{DepReplacer, DependenciesToReplace};

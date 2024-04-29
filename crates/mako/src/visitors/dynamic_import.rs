@@ -7,8 +7,8 @@ use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 use crate::ast::utils::{
     id, is_dynamic_import, member_call, member_prop, promise_all, require_ensure,
 };
-use crate::chunk::ChunkId;
 use crate::compiler::Context;
+use crate::generate::chunk::ChunkId;
 
 pub struct DynamicImport {
     pub context: Arc<Context>,
@@ -117,7 +117,7 @@ mod tests {
 
     use super::DynamicImport;
     use crate::ast::tests::TestUtils;
-    use crate::chunk::{Chunk, ChunkType};
+    use crate::generate::chunk::{Chunk, ChunkType};
 
     // TODO: add nested chunk test
     #[test]

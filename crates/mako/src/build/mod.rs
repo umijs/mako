@@ -1,3 +1,9 @@
+pub(crate) mod analyze_deps;
+pub(crate) mod load;
+pub(crate) mod parse;
+pub(crate) mod targets;
+pub(crate) mod transform;
+
 use std::collections::HashSet;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
@@ -7,16 +13,12 @@ use mako_core::anyhow::Result;
 use mako_core::colored::Colorize;
 use mako_core::thiserror::Error;
 
-use crate::analyze_deps::AnalyzeDeps;
 use crate::ast::file::{Content, File, JsContent};
-use crate::chunk_pot::util::hash_hashmap;
 use crate::compiler::{Compiler, Context};
-use crate::load::Load;
+use crate::generate::chunk_pot::util::hash_hashmap;
 use crate::module::{Module, ModuleAst, ModuleId, ModuleInfo};
-use crate::parse::Parse;
 use crate::resolve::ResolverResource;
-use crate::thread_pool;
-use crate::transform::Transform;
+use crate::utils::thread_pool;
 
 #[derive(Debug, Error)]
 pub enum BuildError {
@@ -168,7 +170,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
             content: code,
             ..Default::default()
         }));
-        let ast = Parse::parse(&file, context)
+        let ast = parse::Parse::parse(&file, context)
             // safe
             .unwrap();
         let raw = file.get_content_raw();
@@ -195,7 +197,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
             content: code,
             ..Default::default()
         }));
-        let ast = Parse::parse(&file, context.clone())?;
+        let ast = parse::Parse::parse(&file, context.clone())?;
         let path = file.path.to_string_lossy().to_string();
         let module_id = ModuleId::new(path.clone());
         let raw = file.get_content_raw();
@@ -223,7 +225,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
                 }),
                 context.clone(),
             );
-            let ast = Parse::parse(&file, context.clone()).unwrap();
+            let ast = parse::Parse::parse(&file, context.clone()).unwrap();
 
             ModuleInfo {
                 file,
@@ -265,17 +267,17 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
     ) -> Result<Module> {
         // 1. load
         let mut file = file.clone();
-        let content = Load::load(&file, context.clone())?;
+        let content = load::Load::load(&file, context.clone())?;
         file.set_content(content);
 
         // 2. parse
-        let mut ast = Parse::parse(&file, context.clone())?;
+        let mut ast = parse::Parse::parse(&file, context.clone())?;
 
         // 3. transform
-        Transform::transform(&mut ast, &file, context.clone())?;
+        transform::Transform::transform(&mut ast, &file, context.clone())?;
 
         // 4. analyze deps + resolve
-        let deps = AnalyzeDeps::analyze_deps(&ast, &file, context.clone())?;
+        let deps = analyze_deps::AnalyzeDeps::analyze_deps(&ast, &file, context.clone())?;
 
         // 5. create module
         let path = file.path.to_string_lossy().to_string();

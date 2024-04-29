@@ -15,7 +15,8 @@ use miette::{miette, ByteOffset, Diagnostic, NamedSource, SourceOffset, SourceSp
 use serde::Serialize;
 
 use crate::features::node::Node;
-use crate::{optimize_chunk, plugins, visitors};
+use crate::generate::optimize_chunk;
+use crate::{plugins, visitors};
 
 #[derive(Debug, Diagnostic)]
 #[diagnostic(code("mako.config.json parsed failed"))]

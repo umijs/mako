@@ -181,7 +181,7 @@ struct FileRequest {
 
 #[cfg(test)]
 mod tests {
-    use crate::chunk::{Chunk, ChunkType};
+    use crate::generate::chunk::{Chunk, ChunkType};
     use crate::module::ModuleId;
 
     #[test]

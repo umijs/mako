@@ -10,12 +10,12 @@ use mako_core::swc_css_ast::Stylesheet;
 use mako_core::swc_ecma_ast::{Expr, KeyValueProp, Prop, PropName, PropOrSpread, Str};
 use nanoid::nanoid;
 
-use crate::chunk::{Chunk, ChunkType};
-use crate::chunk_pot::{get_css_chunk_filename, ChunkPot, CHUNK_FILE_NAME_HASH_LENGTH};
 use crate::compiler::{Compiler, Context};
+use crate::generate::chunk::{Chunk, ChunkType};
+use crate::generate::chunk_pot::{get_css_chunk_filename, ChunkPot, CHUNK_FILE_NAME_HASH_LENGTH};
+use crate::generate::transform::transform_css_generate;
 use crate::module::{ModuleAst, ModuleId};
-use crate::thread_pool;
-use crate::transform_in_generate::transform_css_generate;
+use crate::utils::thread_pool;
 
 #[derive(Clone)]
 pub enum ChunkFileType {
