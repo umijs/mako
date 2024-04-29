@@ -19,7 +19,7 @@ import 'zx/globals';
   // git commit
   console.log('Commit');
   await $`git add ./`;
-  await $`git commit -n -m "chore: rsc@${pkg.version}"`;
+  await $`git commit -n -m "release: rsc@${pkg.version}"`;
 
   // npm publish
   console.log('Publish');
