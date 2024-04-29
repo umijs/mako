@@ -461,6 +461,18 @@ fn write_dev_chunk_file(context: &Arc<Context>, chunk: &ChunkFile) -> Result<()>
         code.extend_from_slice(&chunk.content);
         code.extend_from_slice(source_map_url_line.as_bytes());
 
+        // TODO: refact chunk emit, unify the way to emit chunk in dev and generate
+        // why add chunk info in dev mode?
+        // ref: https://github.com/umijs/mako/issues/1094
+        let size = code.len() as u64;
+        context.stats_info.lock().unwrap().add_assets(
+            size,
+            chunk.file_name.clone(),
+            chunk.chunk_id.clone(),
+            PathBuf::from(chunk.disk_name()),
+            chunk.disk_name(),
+        );
+
         context.write_static_content(chunk.disk_name(), code, chunk.raw_hash)?;
     } else {
         context.write_static_content(chunk.disk_name(), chunk.content.clone(), chunk.raw_hash)?;
