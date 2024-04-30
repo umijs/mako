@@ -49,7 +49,7 @@ exports.build = async function (opts) {
     err.stack = null;
     throw err;
   }
-  const outputPath = opts.config.outputPath ?? path.join(opts.cwd, 'dist');
+  const outputPath = path.resolve(opts.cwd, opts.config.outputPath || 'dist');
 
   const statsJsonPath = path.join(outputPath, 'stats.json');
   const statsJson = JSON.parse(fs.readFileSync(statsJsonPath, 'utf-8'));
@@ -86,8 +86,6 @@ exports.dev = async function (opts) {
   const port = opts.port || 8000;
   const hmrPort = opts.port + 1;
 
-  const outputPath = opts.config.outputPath ?? path.join(opts.cwd, 'dist');
-
   // cors
   app.use(
     require('cors')({
@@ -113,6 +111,8 @@ exports.dev = async function (opts) {
     logLevel: 'silent',
   });
   app.use('/__/hmr-ws', wsProxy);
+
+  const outputPath = path.resolve(opts.cwd, opts.config.outputPath || 'dist');
 
   // serve dist files
   app.use(express.static(outputPath));
@@ -388,7 +388,6 @@ async function getOkamConfig(opts) {
   }
   const webpackConfig = webpackChainConfig.toConfig();
   let umd = false;
-  let platform = 'browser';
   if (
     webpackConfig.output &&
     webpackConfig.output.libraryTarget === 'umd' &&
@@ -397,6 +396,7 @@ async function getOkamConfig(opts) {
     umd = webpackConfig.output.library;
   }
 
+  let platform = 'browser';
   if (webpackConfig.target === 'node') platform = 'node';
 
   const {
@@ -416,7 +416,6 @@ async function getOkamConfig(opts) {
     clean,
     forkTSChecker,
   } = opts.config;
-  const outputPath = opts.config.outputPath ?? path.join(opts.cwd, 'dist');
   // TODO:
   // 暂不支持 $ 结尾，等 resolve 支持后可以把这段去掉
   Object.keys(alias).forEach((key) => {
@@ -500,6 +499,7 @@ async function getOkamConfig(opts) {
     },
     {},
   );
+  const outputPath = path.resolve(opts.cwd, opts.config.outputPath || 'dist');
 
   const okamConfig = {
     entry: opts.entry,
