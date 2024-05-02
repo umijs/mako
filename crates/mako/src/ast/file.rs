@@ -317,6 +317,7 @@ fn parse_path(path: &str) -> Result<(PathName, Search, Params, Fragment)> {
     let path = percent_decode_str(&path).decode_utf8()?;
     Ok((path.to_string(), search, query_vec, fragment))
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -326,6 +327,7 @@ mod tests {
         let f = File::new("/a/b/c".to_string(), Arc::new(Context::default()));
         assert_eq!(f.path(), Some("/a/b/c".to_string()));
     }
+
     #[test]
     fn test_virtual_file_without_virtual_path() {
         let f = File::new("virtual:/a/b/c".to_string(), Arc::new(Context::default()));
