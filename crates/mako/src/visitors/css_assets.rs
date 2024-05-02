@@ -5,8 +5,8 @@ use mako_core::swc_css_visit::VisitMut;
 
 use crate::ast::file::File;
 use crate::ast::utils::{is_remote_or_data_or_hash, remove_first_tilde};
+use crate::build::load::Load;
 use crate::compiler::Context;
-use crate::load::Load;
 use crate::module::{Dependency, ResolveType};
 use crate::resolve;
 

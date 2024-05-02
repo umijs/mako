@@ -217,9 +217,9 @@ mod tests {
     use maplit::hashmap;
 
     use super::*;
-    use crate::analyze_deps::AnalyzeDeps;
     use crate::ast::file::{File, JsContent};
     use crate::ast::js_ast::JsAst;
+    use crate::build::analyze_deps::AnalyzeDeps;
     use crate::compiler::{Args, Context};
     use crate::module::ModuleAst;
 

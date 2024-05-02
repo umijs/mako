@@ -62,7 +62,6 @@ hyper                 = { version = "0.14.27", features = ["full"] }
 hyper-staticfile      = "0.9.5"
 hyper-tungstenite     = "0.10.0"
 indexmap              = "2.0.0"
-lazy_static           = "1.4.0"
 md5                   = "0.7.0"
 mdxjs                 = "0.1.14"
 merge-source-map      = "1.2.0"

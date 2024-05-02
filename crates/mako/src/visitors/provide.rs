@@ -38,47 +38,39 @@ impl VisitMut for Provide {
             &self.var_decls,
         ))
     }
-    fn visit_mut_expr(&mut self, expr: &mut Expr) {
-        if let Expr::Ident(Ident { ref sym, span, .. }) = expr {
-            let has_binding = span.ctxt.outer() != self.unresolved_mark;
-            let name = &sym.to_string();
-            let provider = self.providers.get(name);
-            if !has_binding && provider.is_some() {
-                if let Some((from, key)) = provider {
-                    let require_decl: ModuleItem = {
-                        if key.is_empty() {
-                            // eg: const process = require('process');
-                            quote_ident!("__mako_require__")
-                                .as_call(DUMMY_SP, vec![quote_str!(from.as_str()).as_arg()])
-                                .into_var_decl(
-                                    VarDeclKind::Const,
-                                    quote_ident!(*span, sym.clone()).into(),
-                                )
-                                .into()
-                        } else {
-                            // require("buffer")
-                            let require_expr = quote_ident!("__mako_require__")
-                                .as_call(DUMMY_SP, vec![quote_str!(from.as_str()).as_arg()]);
+    fn visit_mut_ident(&mut self, n: &mut Ident) {
+        let has_binding = n.span.ctxt.outer() != self.unresolved_mark;
+        let name = &n.sym.to_string();
+        let provider = self.providers.get(name);
 
-                            // eg const Buffer = require("buffer").Buffer;
-                            Expr::Member(MemberExpr {
-                                obj: require_expr.into(),
-                                span: DUMMY_SP,
-                                prop: quote_ident!(key.as_str()).into(),
-                            })
-                            .into_var_decl(
-                                VarDeclKind::Const,
-                                quote_ident!(*span, sym.clone()).into(),
-                            )
+        if !has_binding && provider.is_some() {
+            if let Some((from, key)) = provider {
+                let require_decl: ModuleItem = {
+                    if key.is_empty() {
+                        // eg: const process = require('process');
+                        quote_ident!("__mako_require__")
+                            .as_call(DUMMY_SP, vec![quote_str!(from.as_str()).as_arg()])
+                            .into_var_decl(VarDeclKind::Const, n.clone().into())
                             .into()
-                        }
-                    };
+                    } else {
+                        // require("buffer")
+                        let require_expr = quote_ident!("__mako_require__")
+                            .as_call(DUMMY_SP, vec![quote_str!(from.as_str()).as_arg()]);
 
-                    self.var_decls.insert(name.to_string(), require_decl);
-                }
+                        // eg const Buffer = require("buffer").Buffer;
+                        Expr::Member(MemberExpr {
+                            obj: require_expr.into(),
+                            span: DUMMY_SP,
+                            prop: quote_ident!(key.as_str()).into(),
+                        })
+                        .into_var_decl(VarDeclKind::Const, n.clone().into())
+                        .into()
+                    }
+                };
+
+                self.var_decls.insert(name.to_string(), require_decl);
             }
         }
-        expr.visit_mut_children_with(self);
     }
 }
 
@@ -153,6 +145,22 @@ function foo() {
     let Buffer = 'b';
     Buffer.from('foo');
 }
+            "#
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_provide_in_shorthand_notation() {
+        assert_eq!(
+            run(r#"
+console.log({process});            
+            "#),
+            r#"
+const process = __mako_require__("process");
+console.log({
+    process
+});
             "#
             .trim()
         );

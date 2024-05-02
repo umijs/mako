@@ -43,19 +43,12 @@ pub fn optimize_module_graph(
     let mut inner_candidates = HashSet::new();
 
     for (order, module_id) in sorted_module_ids.iter().enumerate() {
-        // TODO async module should not be candidate
-
-        // 环上的节点先不碰
         if all_in_circles.contains(module_id) {
             continue;
         }
 
         let mut can_be_root = true;
         let mut can_be_inner = true;
-        /*
-           - [ ] chunk 模式下的不能为 root
-           - [ ] 被 import * all from 的不能为 inner
-        */
 
         if let Some(tsm) = tree_shake_modules_map.get(module_id) {
             let mut tsm = tsm.borrow_mut();
@@ -248,173 +241,180 @@ pub fn optimize_module_graph(
 
     GLOBALS.set(&context.meta.script.globals, || {
         for config in &concat_configurations {
-            let mut concatenate_context = ConcatenateContext::new(config, module_graph);
+            if let Ok(mut concatenate_context) = ConcatenateContext::init(config, module_graph) {
+                let mut module_items = concatenate_context.interop_module_items.clone();
 
-            let mut module_items = concatenate_context.interop_module_items.clone();
-
-            for id in &config.sorted_modules(module_graph) {
-                if id.eq(&config.root) {
-                    continue;
-                }
-
-                let import_source_to_module_id = source_to_module_id(id, module_graph);
-
-                if let Some(interop) = config.external_interops(id) {
-                    let base_name = uniq_module_prefix(id);
-                    let runtime_flags: RuntimeFlags = interop.into();
-
-                    let cjs_name = concatenate_context.request_safe_var_name(&base_name);
-                    let exposed_names = if runtime_flags.need_op() {
-                        let esm_name = concatenate_context
-                            .request_safe_var_name(&format!("{}_esm", base_name));
-                        (cjs_name, esm_name)
-                    } else {
-                        (cjs_name.clone(), cjs_name)
-                    };
-
-                    let require_src = id.id.clone();
-                    module_items.extend(interop.inject_external_export_decl(
-                        &require_src,
-                        &exposed_names,
-                        &concatenate_context.interop_idents,
-                    ));
-
-                    concatenate_context.add_external_names(id, exposed_names);
-
-                    module_graph.add_dependency(
-                        &config.root,
-                        id,
-                        Dependency {
-                            source: require_src,
-                            resolve_as: None,
-                            resolve_type: ResolveType::Require,
-                            order: 0,
-                            span: None,
-                        },
-                    );
-                    continue;
-                }
-
-                let mut all_import_type = ImportType::empty();
-
-                module_graph.get_dependents(id).iter().for_each(|(_, dep)| {
-                    match &dep.resolve_type {
-                        ResolveType::Import(import_type) => all_import_type |= *import_type,
-                        ResolveType::ExportNamed(named_export_type) => {
-                            all_import_type |= named_export_type.into();
-                        }
-                        _ => {}
+                for id in &config.sorted_modules(module_graph) {
+                    if id.eq(&config.root) {
+                        continue;
                     }
-                });
 
-                let module = module_graph.get_module_mut(id).unwrap();
+                    let import_source_to_module_id = source_to_module_id(id, module_graph);
 
-                let module_info = module.info.as_mut().unwrap();
-                let script_ast = module_info.ast.script_mut().unwrap();
+                    if let Some(interop) = config.external_interops(id) {
+                        let base_name = uniq_module_prefix(id);
+                        let runtime_flags: RuntimeFlags = interop.into();
 
-                let inner_print = false;
-                if cfg!(debug_assertions) && inner_print {
-                    let code = script_ast.generate(context.clone()).unwrap().code;
-                    println!("code:\n\n{}\n", code);
+                        let cjs_name = concatenate_context.request_safe_var_name(&base_name);
+                        let exposed_names = if runtime_flags.need_op() {
+                            let esm_name = concatenate_context
+                                .request_safe_var_name(&format!("{}_esm", base_name));
+                            (cjs_name, esm_name)
+                        } else {
+                            (cjs_name.clone(), cjs_name)
+                        };
+
+                        let require_src = id.id.clone();
+                        module_items.extend(interop.inject_external_export_decl(
+                            &require_src,
+                            &exposed_names,
+                            &concatenate_context.interop_idents,
+                        ));
+
+                        concatenate_context.add_external_names(id, exposed_names);
+
+                        module_graph.add_dependency(
+                            &config.root,
+                            id,
+                            Dependency {
+                                source: require_src,
+                                resolve_as: None,
+                                resolve_type: ResolveType::Require,
+                                order: 0,
+                                span: None,
+                            },
+                        );
+                        continue;
+                    }
+
+                    let mut all_import_type = ImportType::empty();
+
+                    module_graph.get_dependents(id).iter().for_each(|(_, dep)| {
+                        match &dep.resolve_type {
+                            ResolveType::Import(import_type) => all_import_type |= *import_type,
+                            ResolveType::ExportNamed(named_export_type) => {
+                                all_import_type |= named_export_type.into();
+                            }
+                            _ => {}
+                        }
+                    });
+
+                    let module = module_graph.get_module_mut(id).unwrap();
+
+                    let module_info = module.info.as_mut().unwrap();
+                    let script_ast = module_info.ast.script_mut().unwrap();
+
+                    let inner_print = false;
+                    if cfg!(debug_assertions) && inner_print {
+                        let code = script_ast.generate(context.clone()).unwrap().code;
+                        println!("code:\n\n{}\n", code);
+                    }
+
+                    let mut current_module_top_level_vars: HashSet<String> =
+                        collect_decls_with_ctxt(
+                            &script_ast.ast,
+                            SyntaxContext::empty().apply_mark(script_ast.top_level_mark),
+                        )
+                        .iter()
+                        .map(|id: &Id| id.0.to_string())
+                        .collect();
+
+                    let mut ext_trans = ExternalTransformer {
+                        src_to_module: &import_source_to_module_id,
+                        concatenate_context: &mut concatenate_context,
+                        module_id: id,
+                        unresolved_mark: script_ast.unresolved_mark,
+                        my_top_level_vars: &mut current_module_top_level_vars,
+                    };
+                    script_ast.ast.visit_mut_with(&mut ext_trans);
+
+                    if cfg!(debug_assertions) && inner_print {
+                        let code = script_ast.generate(context.clone()).unwrap().code;
+                        println!("after external:\n{}\n", code);
+                    }
+                    let mut inner_transformer = InnerTransform::new(
+                        &mut concatenate_context,
+                        id,
+                        &import_source_to_module_id,
+                        context,
+                        script_ast.top_level_mark,
+                    );
+                    inner_transformer.imported(all_import_type);
+
+                    script_ast.ast.visit_mut_with(&mut inner_transformer);
+                    script_ast.ast.visit_mut_with(&mut CleanSyntaxContext {});
+
+                    if cfg!(debug_assertions) && inner_print {
+                        let code = script_ast.generate(context.clone()).unwrap().code;
+                        println!("after inner:\n{}\n", code);
+                    }
+                    module_items.append(&mut script_ast.ast.body.clone());
                 }
 
-                let mut current_module_top_level_vars: HashSet<String> = collect_decls_with_ctxt(
-                    &script_ast.ast,
-                    SyntaxContext::empty().apply_mark(script_ast.top_level_mark),
-                )
-                .iter()
-                .map(|id: &Id| id.0.to_string())
-                .collect();
+                let root_module = module_graph.get_module_mut(&config.root).unwrap();
+
+                let ast = &mut root_module.info.as_mut().unwrap().ast;
+
+                let ast_script = ast.script_mut().unwrap();
+                let root_print = false;
+                if cfg!(debug_assertions) && root_print {
+                    let code = ast_script.generate(context.clone()).unwrap().code;
+                    println!("root:\n{}\n", code);
+                }
+
+                let mut root_module_ast = ast_script.ast.take();
+                let unresolved_mark = ast_script.unresolved_mark;
+                let top_level_mark = ast_script.top_level_mark;
+                let src_2_module_id = source_to_module_id(&config.root, module_graph);
 
                 let mut ext_trans = ExternalTransformer {
-                    src_to_module: &import_source_to_module_id,
+                    src_to_module: &src_2_module_id,
                     concatenate_context: &mut concatenate_context,
-                    module_id: id,
-                    unresolved_mark: script_ast.unresolved_mark,
-                    my_top_level_vars: &mut current_module_top_level_vars,
+                    module_id: &config.root,
+                    unresolved_mark,
+                    my_top_level_vars: &mut HashSet::default(),
                 };
-                script_ast.ast.visit_mut_with(&mut ext_trans);
+                root_module_ast.visit_mut_with(&mut ext_trans);
 
-                if cfg!(debug_assertions) && inner_print {
-                    let code = script_ast.generate(context.clone()).unwrap().code;
-                    println!("after external:\n{}\n", code);
-                }
-                let mut inner_transformer = InnerTransform::new(
+                root_module_ast.visit_mut_with(&mut RootTransformer::new(
                     &mut concatenate_context,
-                    id,
-                    &import_source_to_module_id,
+                    &config.root,
                     context,
-                    script_ast.top_level_mark,
-                );
-                inner_transformer.imported(all_import_type);
+                    &src_2_module_id,
+                ));
 
-                script_ast.ast.visit_mut_with(&mut inner_transformer);
-                script_ast.ast.visit_mut_with(&mut CleanSyntaxContext {});
+                if cfg!(debug_assertions) && root_print {
+                    let a = JsAst {
+                        ast: root_module_ast.clone(),
+                        unresolved_mark,
+                        top_level_mark,
+                        path: config.root.id.clone(),
+                        contains_top_level_await: false,
+                    };
 
-                if cfg!(debug_assertions) && inner_print {
-                    let code = script_ast.generate(context.clone()).unwrap().code;
-                    println!("after inner:\n{}\n", code);
+                    let code = a.generate(context.clone()).unwrap().code;
+                    println!("root after all:\n{}\n", code);
                 }
-                module_items.append(&mut script_ast.ast.body.clone());
-            }
 
-            let root_module = module_graph.get_module_mut(&config.root).unwrap();
+                root_module_ast.visit_mut_with(&mut CleanSyntaxContext {});
 
-            let ast = &mut root_module.info.as_mut().unwrap().ast;
-
-            let ast_script = ast.script_mut().unwrap();
-            let root_print = false;
-            if cfg!(debug_assertions) && root_print {
-                let code = ast_script.generate(context.clone()).unwrap().code;
-                println!("root:\n{}\n", code);
-            }
-
-            let mut root_module_ast = ast_script.ast.take();
-            let unresolved_mark = ast_script.unresolved_mark;
-            let top_level_mark = ast_script.top_level_mark;
-            let src_2_module_id = source_to_module_id(&config.root, module_graph);
-
-            let mut ext_trans = ExternalTransformer {
-                src_to_module: &src_2_module_id,
-                concatenate_context: &mut concatenate_context,
-                module_id: &config.root,
-                unresolved_mark,
-                my_top_level_vars: &mut HashSet::default(),
-            };
-            root_module_ast.visit_mut_with(&mut ext_trans);
-
-            root_module_ast.visit_mut_with(&mut RootTransformer::new(
-                &mut concatenate_context,
-                &config.root,
-                context,
-                &src_2_module_id,
-            ));
-
-            if cfg!(debug_assertions) && root_print {
-                let a = JsAst {
-                    ast: root_module_ast.clone(),
+                root_module_ast.body.splice(0..0, module_items);
+                root_module_ast.visit_mut_with(&mut resolver(
                     unresolved_mark,
                     top_level_mark,
-                    path: config.root.id.clone(),
-                    contains_top_level_await: false,
-                };
+                    false,
+                ));
 
-                let code = a.generate(context.clone()).unwrap().code;
-                println!("root after all:\n{}\n", code);
-            }
+                let root_module = module_graph.get_module_mut(&config.root).unwrap();
+                let ast = &mut root_module.info.as_mut().unwrap().ast;
+                let ast_script = ast.script_mut().unwrap();
+                ast_script.ast = root_module_ast;
 
-            root_module_ast.visit_mut_with(&mut CleanSyntaxContext {});
-
-            root_module_ast.body.splice(0..0, module_items);
-            root_module_ast.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
-
-            let root_module = module_graph.get_module_mut(&config.root).unwrap();
-            let ast = &mut root_module.info.as_mut().unwrap().ast;
-            let ast_script = ast.script_mut().unwrap();
-            ast_script.ast = root_module_ast;
-
-            for inner in config.inners.iter() {
-                module_graph.remove_module(inner);
+                for inner in config.inners.iter() {
+                    module_graph.remove_module(inner);
+                }
+            } else {
+                continue;
             }
         }
         Ok(())

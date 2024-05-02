@@ -1,13 +1,16 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use bitflags::bitflags;
+use mako_core::anyhow::{anyhow, Result};
 use serde::Serialize;
+use swc_core::common::collections::AHashSet;
 use swc_core::common::{Mark, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
-    ClassExpr, DefaultDecl, ExportDefaultDecl, FnExpr, Id, MemberExpr, Module, ModuleDecl,
+    ClassExpr, DefaultDecl, ExportDefaultDecl, FnExpr, Id, Ident, MemberExpr, Module, ModuleDecl,
     ModuleItem, VarDeclKind,
 };
 use swc_core::ecma::utils::{collect_decls_with_ctxt, quote_ident, quote_str, ExprFactory};
+use swc_core::ecma::visit::{Visit, VisitWith};
 
 use crate::module::{ImportType, ModuleId, NamedExportType, ResolveType};
 use crate::module_graph::ModuleGraph;
@@ -249,18 +252,36 @@ pub struct ConcatenateContext {
 }
 
 impl ConcatenateContext {
-    pub fn new(config: &ConcatenateConfig, module_graph: &ModuleGraph) -> Self {
+    pub fn init(config: &ConcatenateConfig, module_graph: &ModuleGraph) -> Result<Self> {
         let root_module = module_graph.get_module(&config.root).unwrap();
         let ast = &mut root_module.as_script().unwrap();
-        let top_level_vars = ConcatenateContext::top_level_vars(&ast.ast, ast.top_level_mark);
+        let mut top_level_vars = ConcatenateContext::top_level_vars(&ast.ast, ast.top_level_mark);
 
+        let mut used_globals = HashSet::new();
+        config.inners.iter().for_each(|inner| {
+            let module = module_graph.get_module(inner).unwrap();
+            let ast = &module.as_script().unwrap();
+            used_globals.extend(ConcatenateContext::global_vars(
+                &ast.ast,
+                ast.unresolved_mark,
+            ));
+        });
+
+        let conflicted_with_root_global = top_level_vars.intersection(&used_globals);
+        if conflicted_with_root_global.count() > 0 {
+            return Err(anyhow!(
+                "BadConcatenateConfig: root {} top level vars conflicted with inner modules' global vars", root_module.id.id
+            ));
+        }
+
+        top_level_vars.extend(used_globals);
         let mut context = Self {
             top_level_vars,
             ..Default::default()
         };
         context.setup_runtime_interops(config.merged_runtime_flags());
 
-        context
+        Ok(context)
     }
 
     pub fn top_level_vars(ast: &Module, top_level_mark: Mark) -> HashSet<String> {
@@ -278,6 +299,21 @@ impl ConcatenateContext {
         );
 
         top_level_vars
+    }
+
+    pub fn global_vars(ast: &Module, unresolved_mark: Mark) -> HashSet<String> {
+        let mut globals = HashSet::new();
+
+        let mut collector = GlobalCollect::new(SyntaxContext::empty().apply_mark(unresolved_mark));
+        ast.visit_with(&mut collector);
+        globals.extend(
+            collector
+                .refed_globals
+                .iter()
+                .map(|id: &Id| id.0.to_string()),
+        );
+
+        globals
     }
 
     pub fn add_external_names(&mut self, external_id: &ModuleId, names: (String, String)) {
@@ -362,8 +398,31 @@ fn collect_export_default_decl_ident(module: &Module) -> HashSet<Id> {
     idents
 }
 
+struct GlobalCollect {
+    pub refed_globals: AHashSet<Id>,
+    pub unresolved_ctxt: SyntaxContext,
+}
+
+impl GlobalCollect {
+    pub fn new(unresolved_ctxt: SyntaxContext) -> Self {
+        Self {
+            unresolved_ctxt,
+            refed_globals: AHashSet::default(),
+        }
+    }
+}
+
+impl Visit for GlobalCollect {
+    fn visit_ident(&mut self, n: &Ident) {
+        if n.span.ctxt == self.unresolved_ctxt {
+            self.refed_globals.insert(n.to_id());
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
+
     use maplit::hashmap;
     use swc_core::common::GLOBALS;
 

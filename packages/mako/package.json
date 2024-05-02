@@ -1,8 +1,11 @@
 {
   "name": "@okamjs/okam",
-  "version": "0.4.10",
+  "version": "0.4.12",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "mako": "./bin/mako.js"
+  },
   "napi": {
     "name": "okam",
     "triples": {
@@ -17,6 +20,7 @@
   "license": "MIT",
   "dependencies": {
     "@swc/helpers": "0.5.1",
+    "yargs-parser": "^21.1.1",
     "less": "^4.2.0",
     "less-plugin-resolve": "^1.0.2",
     "node-libs-browser-okam": "2.2.4",
@@ -25,6 +29,7 @@
     "workerpool": "^9.1.1"
   },
   "devDependencies": {
+    "@types/yargs-parser": "^21.0.3",
     "@napi-rs/cli": "^2.18.0",
     "@types/less": "^3.0.6",
     "@types/node": "^20.12.5",
@@ -58,9 +63,9 @@
     "src:build": "father build"
   },
   "optionalDependencies": {
-    "@okamjs/okam-darwin-arm64": "0.4.10",
-    "@okamjs/okam-darwin-x64": "0.4.10",
-    "@okamjs/okam-linux-x64-gnu": "0.4.10"
+    "@okamjs/okam-darwin-arm64": "0.4.12",
+    "@okamjs/okam-darwin-x64": "0.4.12",
+    "@okamjs/okam-linux-x64-gnu": "0.4.12"
   },
   "repository": "git@github.com:umijs/mako.git"
 }

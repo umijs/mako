@@ -16,10 +16,10 @@ use swc_core::ecma::ast::{
     ExportSpecifier, ImportDecl, ImportSpecifier, ModuleExportName, NamedExport,
 };
 
-use crate::analyze_deps::AnalyzeDepsResult;
 use crate::ast::css_ast::CssAst;
 use crate::ast::file::File;
 use crate::ast::js_ast::JsAst;
+use crate::build::analyze_deps::AnalyzeDepsResult;
 use crate::compiler::Context;
 use crate::config::ModuleIdStrategy;
 use crate::resolve::ResolverResource;
