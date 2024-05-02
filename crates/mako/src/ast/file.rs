@@ -295,6 +295,19 @@ impl File {
             Some(path_string)
         }
     }
+
+    pub fn resolve_from(&self, context: &Arc<Context>) -> String {
+        self.path().map_or_else(
+            || {
+                context
+                    .root
+                    .join(".virtual.root")
+                    .to_string_lossy()
+                    .to_string()
+            },
+            |p| p,
+        )
+    }
 }
 
 type PathName = String;
