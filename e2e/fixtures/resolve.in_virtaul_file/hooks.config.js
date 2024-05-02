@@ -5,7 +5,7 @@ module.exports = {
     async load(path) {
         if (path.startsWith('virtual:entry')) {
             return {
-                content: `import "virtual:file?virtualPath=${p.join(__dirname, 'src/virtual.ts')}"`,
+                content: `import "virtual:file?path=${p.join(__dirname, 'src/virtual.ts')}"`,
                 type: 'js',
             };
         }

@@ -290,7 +290,7 @@ impl File {
     pub fn path(&self) -> Option<String> {
         let path_string = self.path.to_string_lossy().to_string();
         if path_string.starts_with(VIRTUAL) {
-            self.param("virtualPath")
+            self.param("path")
         } else {
             Some(path_string)
         }
@@ -335,7 +335,7 @@ mod tests {
     #[test]
     fn test_virtual_file_with_virtual_path() {
         let f = File::new(
-            "virtual:/a/b/c?virtualPath=/root/d.js".to_string(),
+            "virtual:/a/b/c?path=/root/d.js".to_string(),
             Arc::new(Context::default()),
         );
         assert_eq!(f.path(), Some("/root/d.js".to_string()));
