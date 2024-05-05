@@ -1,5 +1,4 @@
-function createRuntime(makoModules, entryModuleId) {
-  var global = typeof globalThis !== 'undefined' ? globalThis : self;
+function createRuntime(makoModules, entryModuleId, global) {
   var modulesRegistry = {};
 
   function requireModule(moduleId) {
@@ -212,6 +211,7 @@ function createRuntime(makoModules, entryModuleId) {
       return link;
     };
 
+    <% if is_browser { %>
     requireModule.chunkEnsures.css = function (chunkId, promises) {
       if (cssInstalledChunks[chunkId]) {
         // still pending, avoid duplicate promises
@@ -243,6 +243,7 @@ function createRuntime(makoModules, entryModuleId) {
         return promises;
       }
     };
+    <% } %>
   })();
 
   /* mako/runtime/load script */
@@ -332,6 +333,7 @@ function createRuntime(makoModules, entryModuleId) {
 
   // __inject_runtime_code__
 
+  global.__mako_require_module__ = requireModule;
 <% if umd.is_some() || cjs { %>
   var exports = requireModule(entryModuleId);
 <% } else { %>
@@ -352,13 +354,11 @@ function createRuntime(makoModules, entryModuleId) {
   };
 }
 
-<% if has_dynamic_chunks || has_hmr || umd.is_some() || cjs { %>
-var runtime = createRuntime(m, e);
-<% } else { %>
-createRuntime(m, e);
-<% } %>
-<% if has_dynamic_chunks || has_hmr { %>
 var root = typeof globalThis !== 'undefined' ? globalThis : self;
+<% if has_dynamic_chunks || has_hmr || umd.is_some() || cjs { %>
+var runtime = createRuntime(m, e, root);
+<% } else { %>
+createRuntime(m, e, root);
 <% } %>
 <% if has_dynamic_chunks { %>
 root.jsonpCallback = runtime._jsonpCallback;

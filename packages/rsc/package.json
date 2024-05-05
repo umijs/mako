@@ -1,0 +1,24 @@
+{
+  "name": "@okamjs/rsc",
+  "version": "0.0.3",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.12.5",
+    "typescript": "^5.4.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "format": "biome check --apply .",
+    "dev": "father dev",
+    "build": "father build"
+  },
+  "repository": "git@github.com:umijs/mako.git"
+}

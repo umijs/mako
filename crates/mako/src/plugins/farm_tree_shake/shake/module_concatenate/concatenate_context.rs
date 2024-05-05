@@ -1,15 +1,21 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use bitflags::bitflags;
+use mako_core::anyhow::{anyhow, Result};
 use serde::Serialize;
-use swc_core::common::{SyntaxContext, DUMMY_SP};
-use swc_core::ecma::ast::{Id, MemberExpr, ModuleItem, VarDeclKind};
+use swc_core::common::collections::AHashSet;
+use swc_core::common::{Mark, SyntaxContext, DUMMY_SP};
+use swc_core::ecma::ast::{
+    ClassExpr, DefaultDecl, ExportDefaultDecl, FnExpr, Id, Ident, MemberExpr, Module, ModuleDecl,
+    ModuleItem, VarDeclKind,
+};
 use swc_core::ecma::utils::{collect_decls_with_ctxt, quote_ident, quote_str, ExprFactory};
+use swc_core::ecma::visit::{Visit, VisitWith};
 
-use crate::ast::js_ast::JsAst;
 use crate::module::{ImportType, ModuleId, NamedExportType, ResolveType};
 use crate::module_graph::ModuleGraph;
 use crate::plugins::farm_tree_shake::shake::module_concatenate::ConcatenateConfig;
+
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Default)]
     pub struct EsmDependantFlags: u16 {
@@ -246,31 +252,68 @@ pub struct ConcatenateContext {
 }
 
 impl ConcatenateContext {
-    pub fn new(config: &ConcatenateConfig, module_graph: &ModuleGraph) -> Self {
+    pub fn init(config: &ConcatenateConfig, module_graph: &ModuleGraph) -> Result<Self> {
         let root_module = module_graph.get_module(&config.root).unwrap();
         let ast = &mut root_module.as_script().unwrap();
-        let top_level_vars = ConcatenateContext::top_level_vars(ast);
+        let mut top_level_vars = ConcatenateContext::top_level_vars(&ast.ast, ast.top_level_mark);
 
+        let mut used_globals = HashSet::new();
+        config.inners.iter().for_each(|inner| {
+            let module = module_graph.get_module(inner).unwrap();
+            let ast = &module.as_script().unwrap();
+            used_globals.extend(ConcatenateContext::global_vars(
+                &ast.ast,
+                ast.unresolved_mark,
+            ));
+        });
+
+        let conflicted_with_root_global = top_level_vars.intersection(&used_globals);
+        if conflicted_with_root_global.count() > 0 {
+            return Err(anyhow!(
+                "BadConcatenateConfig: root {} top level vars conflicted with inner modules' global vars", root_module.id.id
+            ));
+        }
+
+        top_level_vars.extend(used_globals);
         let mut context = Self {
             top_level_vars,
             ..Default::default()
         };
         context.setup_runtime_interops(config.merged_runtime_flags());
 
-        context
+        Ok(context)
     }
 
-    fn top_level_vars(ast: &JsAst) -> HashSet<String> {
+    pub fn top_level_vars(ast: &Module, top_level_mark: Mark) -> HashSet<String> {
         let mut top_level_vars = HashSet::new();
         top_level_vars.extend(
-            collect_decls_with_ctxt(
-                &ast.ast,
-                SyntaxContext::empty().apply_mark(ast.top_level_mark),
-            )
-            .iter()
-            .map(|id: &Id| id.0.to_string()),
+            collect_decls_with_ctxt(ast, SyntaxContext::empty().apply_mark(top_level_mark))
+                .iter()
+                .map(|id: &Id| id.0.to_string()),
         );
+
+        top_level_vars.extend(
+            collect_export_default_decl_ident(ast)
+                .iter()
+                .map(|id| id.0.to_string()),
+        );
+
         top_level_vars
+    }
+
+    pub fn global_vars(ast: &Module, unresolved_mark: Mark) -> HashSet<String> {
+        let mut globals = HashSet::new();
+
+        let mut collector = GlobalCollect::new(SyntaxContext::empty().apply_mark(unresolved_mark));
+        ast.visit_with(&mut collector);
+        globals.extend(
+            collector
+                .refed_globals
+                .iter()
+                .map(|id: &Id| id.0.to_string()),
+        );
+
+        globals
     }
 
     pub fn add_external_names(&mut self, external_id: &ModuleId, names: (String, String)) {
@@ -326,12 +369,65 @@ impl ConcatenateContext {
         }
     }
 }
+// why: it's a bug in swc before:
+// https://github.com/swc-project/swc/blob/main/CHANGELOG.md#149---2024-03-26
+fn collect_export_default_decl_ident(module: &Module) -> HashSet<Id> {
+    let mut idents = HashSet::new();
+    module.body.iter().for_each(|module_item| {
+        if let ModuleItem::ModuleDecl(ModuleDecl::ExportDefaultDecl(ExportDefaultDecl {
+            decl,
+            ..
+        })) = module_item
+        {
+            match decl {
+                DefaultDecl::Class(ClassExpr {
+                    ident: Some(ident), ..
+                }) => {
+                    idents.insert(ident.to_id());
+                }
+                DefaultDecl::Fn(FnExpr {
+                    ident: Some(ident),
+                    function: f,
+                }) if f.body.is_some() => {
+                    idents.insert(ident.to_id());
+                }
+                &_ => {}
+            }
+        }
+    });
+    idents
+}
+
+struct GlobalCollect {
+    pub refed_globals: AHashSet<Id>,
+    pub unresolved_ctxt: SyntaxContext,
+}
+
+impl GlobalCollect {
+    pub fn new(unresolved_ctxt: SyntaxContext) -> Self {
+        Self {
+            unresolved_ctxt,
+            refed_globals: AHashSet::default(),
+        }
+    }
+}
+
+impl Visit for GlobalCollect {
+    fn visit_ident(&mut self, n: &Ident) {
+        if n.span.ctxt == self.unresolved_ctxt {
+            self.refed_globals.insert(n.to_id());
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
+
     use maplit::hashmap;
+    use swc_core::common::GLOBALS;
 
     use super::*;
+    use crate::ast::tests::TestUtils;
 
     #[test]
     fn test_root_top_var_conflict_with_interop() {
@@ -351,5 +447,45 @@ mod tests {
                 RuntimeFlags::DefaultInterOp => "_interop_require_default_1".to_string()
             }
         )
+    }
+
+    #[test]
+    fn test_export_default_class_expr_with_ident() {
+        let tu = TestUtils::gen_js_ast("export default class C{};".to_string());
+        let js = tu.ast.js();
+
+        GLOBALS.set(&tu.context.meta.script.globals, || {
+            assert!(ConcatenateContext::top_level_vars(&js.ast, js.top_level_mark).contains("C"));
+        });
+    }
+
+    #[test]
+    fn test_export_default_fn_expr_with_ident() {
+        let tu = TestUtils::gen_js_ast("export default function fn(){};".to_string());
+        let js = tu.ast.js();
+
+        GLOBALS.set(&tu.context.meta.script.globals, || {
+            assert!(ConcatenateContext::top_level_vars(&js.ast, js.top_level_mark).contains("fn"));
+        });
+    }
+
+    #[test]
+    fn test_export_default_anonymous_fn_expr_with_ident() {
+        let tu = TestUtils::gen_js_ast("export default function (){};".to_string());
+        let js = tu.ast.js();
+
+        GLOBALS.set(&tu.context.meta.script.globals, || {
+            assert!(ConcatenateContext::top_level_vars(&js.ast, js.top_level_mark).is_empty());
+        });
+    }
+
+    #[test]
+    fn test_export_default_anonymous_class_expr_with_ident() {
+        let tu = TestUtils::gen_js_ast("export default class {};".to_string());
+        let js = tu.ast.js();
+
+        GLOBALS.set(&tu.context.meta.script.globals, || {
+            assert!(ConcatenateContext::top_level_vars(&js.ast, js.top_level_mark).is_empty());
+        });
     }
 }

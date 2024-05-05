@@ -88,7 +88,7 @@ fn match_glob_pattern(pattern: &str, path: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::match_glob_pattern;
-    use crate::test_helper::{get_module, setup_compiler};
+    use crate::utils::test_helper::{get_module, setup_compiler};
 
     #[test]
     fn test_path_side_effects_flag() {

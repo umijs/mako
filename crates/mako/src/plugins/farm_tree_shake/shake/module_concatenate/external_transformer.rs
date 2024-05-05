@@ -244,6 +244,8 @@ impl VisitMut for ExternalTransformer<'_> {
             {
                 *n = quote_ident!(namespace.clone()).into();
             }
+        } else {
+            n.visit_mut_children_with(self);
         }
     }
 
@@ -603,6 +605,14 @@ export { __$m_mut_js_0 as default };
         let code = transform_with_external_replace(r#"let e = require("external");"#);
 
         assert_eq!(code, r#"let e = external_namespace_cjs;"#.trim());
+    }
+
+    #[test]
+    // the case comes from Provider generated code: let Buffer = require("buffer").Buffer;
+    fn test_require_from_external_in_member_expr() {
+        let code = transform_with_external_replace(r#"let e = require("external").external;"#);
+
+        assert_eq!(code, r#"let e = external_namespace_cjs.external;"#.trim());
     }
 
     #[ignore]

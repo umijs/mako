@@ -12,7 +12,7 @@ use mako_core::tracing::debug;
 use crate::compiler::Context;
 use crate::plugin::Plugin;
 use crate::stats::StatsJsonMap;
-use crate::tokio_runtime;
+use crate::utils::tokio_runtime;
 
 pub struct CopyPlugin {}
 

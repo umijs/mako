@@ -1,6 +1,5 @@
 const path = require('path');
 const fs = require('fs');
-const url = require('url');
 const http = require('http');
 const assert = require('assert');
 const { createProxy, createHttpsServer } = require('@umijs/bundler-utils');
@@ -40,6 +39,7 @@ exports.build = async function (opts) {
         sourceMap: getLessSourceMapConfig(okamConfig.devtool),
         math: opts.config.lessLoader?.math,
       },
+      forkTSChecker: okamConfig.forkTSChecker,
       watch: false,
     });
   } catch (e) {
@@ -168,6 +168,7 @@ exports.dev = async function (opts) {
         sourceMap: getLessSourceMapConfig(okamConfig.devtool),
         math: opts.config.lessLoader?.math,
       },
+      forkTSChecker: okamConfig.forkTSChecker,
       hooks: {
         generateEnd: (args) => {
           opts.onDevCompileDone(args);
@@ -276,7 +277,6 @@ function checkConfig(opts) {
     'config.cssLoaderModules',
     'config.classPropertiesLoose',
     'config.extraPostCSSPlugins',
-    'config.forkTSChecker',
     'config.postcssLoader',
     'config.sassLoader',
     'config.styleLoader',
@@ -405,6 +405,7 @@ async function getOkamConfig(opts) {
     externals,
     copy = [],
     clean,
+    forkTSChecker,
   } = opts.config;
   const outputPath = path.join(opts.cwd, 'dist');
   // TODO:
@@ -513,6 +514,7 @@ async function getOkamConfig(opts) {
     flexBugs: true,
     react: opts.react || {},
     emotion,
+    forkTSChecker: !!forkTSChecker,
     ...(opts.disableCopy ? { copy: [] } : { copy: ['public'].concat(copy) }),
   };
 

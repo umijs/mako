@@ -93,10 +93,6 @@
 
 注：目前的 define 会自动处理 `process.env` 前缀。
 
-## devEval
-
-> 注：已废弃，待移除。
-
 ## devtool
 
 - 类型：`false | "source-map" | "inline-source-map"`
@@ -144,6 +140,21 @@ import("./a.js")
   entry: {
     index: "./src/index.js",
     login: "./src/login.js",
+  },
+}
+```
+
+## experimental.webpackSyntaxValidate
+
+- 类型：`string[]`
+- 默认值: `[]`
+
+实验性配置，指定允许使用 webpack 语法的包。比如。
+
+```ts
+{
+  experimental: {
+    webpackSyntaxValidate: ["foo", "bar"],
   },
 }
 ```

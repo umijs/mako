@@ -1,8 +1,11 @@
 {
   "name": "@okamjs/okam",
-  "version": "0.4.9",
+  "version": "0.4.12",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "mako": "./bin/mako.js"
+  },
   "napi": {
     "name": "okam",
     "triples": {
@@ -17,23 +20,28 @@
   "license": "MIT",
   "dependencies": {
     "@swc/helpers": "0.5.1",
+    "yargs-parser": "^21.1.1",
     "less": "^4.2.0",
     "less-plugin-resolve": "^1.0.2",
+    "node-libs-browser-okam": "2.2.4",
     "react-error-overlay": "6.0.9",
     "react-refresh": "^0.14.0",
     "workerpool": "^9.1.1"
   },
   "devDependencies": {
+    "@types/yargs-parser": "^21.0.3",
     "@napi-rs/cli": "^2.18.0",
     "@types/less": "^3.0.6",
-    "@types/node": "^20.12.5"
+    "@types/node": "^20.12.5",
+    "typescript": "^5.4.3"
   },
   "engines": {
     "node": ">= 16"
   },
   "files": [
     "bin",
-    "dist"
+    "dist",
+    "binding.*"
   ],
   "scripts": {
     "artifacts": "napi artifacts",
@@ -49,14 +57,15 @@
     "universal": "napi universal",
     "version": "napi version",
     "release": "esno scripts/release.ts",
+    "release:quick": "esno scripts/quick-release.ts",
     "release:build": "esno scripts/release.ts --build",
     "src:dev": "father dev",
     "src:build": "father build"
   },
   "optionalDependencies": {
-    "@okamjs/okam-darwin-arm64": "0.4.9",
-    "@okamjs/okam-darwin-x64": "0.4.9",
-    "@okamjs/okam-linux-x64-gnu": "0.4.9"
+    "@okamjs/okam-darwin-arm64": "0.4.12",
+    "@okamjs/okam-darwin-x64": "0.4.12",
+    "@okamjs/okam-linux-x64-gnu": "0.4.12"
   },
   "repository": "git@github.com:umijs/mako.git"
 }

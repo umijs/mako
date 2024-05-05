@@ -11,17 +11,16 @@ use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{Globals, SourceMap, DUMMY_SP};
 use mako_core::swc_ecma_ast::Ident;
 
-use crate::chunk_graph::ChunkGraph;
-use crate::comments::Comments;
+use crate::ast::comments::Comments;
 use crate::config::{Config, OutputMode};
+use crate::generate::chunk_graph::ChunkGraph;
+use crate::generate::optimize_chunk::OptimizeChunksInfo;
 use crate::module_graph::ModuleGraph;
-use crate::optimize_chunk::OptimizeChunksInfo;
 use crate::plugin::{Plugin, PluginDriver, PluginGenerateEndParams, PluginGenerateStats};
-use crate::plugins::minifish::Inject;
+use crate::plugins;
 use crate::resolve::{get_resolvers, Resolvers};
 use crate::stats::StatsInfo;
-use crate::util::ParseRegex;
-use crate::{plugins, thread_pool};
+use crate::utils::{thread_pool, ParseRegex};
 
 pub struct Context {
     pub module_graph: RwLock<ModuleGraph>,
@@ -119,7 +118,6 @@ impl Default for Context {
             modules_with_missing_deps: RwLock::new(Vec::new()),
             meta: Meta::new(),
             plugin_driver: Default::default(),
-            // 产物信息放在上下文里是否合适
             stats_info: Mutex::new(StatsInfo::new()),
             resolvers,
             optimize_infos: Mutex::new(None),
@@ -199,7 +197,6 @@ impl Context {
     pub fn emit_assets(&self, origin_path: String, output_path: String) {
         let mut assets_info = self.assets_info.lock().unwrap();
         assets_info.insert(origin_path, output_path);
-        drop(assets_info);
     }
 }
 
@@ -233,24 +230,23 @@ impl Compiler {
             // file types
             Arc::new(plugins::context_module::ContextModulePlugin {}),
             Arc::new(plugins::runtime::MakoRuntime {}),
-            Arc::new(plugins::invalid_syntax::InvalidSyntaxPlugin {}),
+            Arc::new(plugins::invalid_webpack_syntax::InvalidWebpackSyntaxPlugin {}),
             Arc::new(plugins::hmr_runtime::HMRRuntimePlugin {}),
             Arc::new(plugins::wasm_runtime::WasmRuntimePlugin {}),
             Arc::new(plugins::async_runtime::AsyncRuntimePlugin {}),
             Arc::new(plugins::emotion::EmotionPlugin {}),
-            Arc::new(plugins::node_stuff::NodeStuffPlugin {}),
             Arc::new(plugins::farm_tree_shake::FarmTreeShake {}),
         ];
         plugins.extend(builtin_plugins);
 
         let mut config = config;
 
-        if config.node_polyfill {
-            plugins.push(Arc::new(plugins::node_polyfill::NodePolyfillPlugin {}));
-        }
-
         if config.output.mode == OutputMode::Bundless {
             plugins.insert(0, Arc::new(plugins::bundless_compiler::BundlessCompiler {}));
+        }
+
+        if std::env::var("DEBUG_GRAPH").is_ok_and(|v| v == "true") {
+            plugins.push(Arc::new(plugins::graphviz::Graphviz {}));
         }
 
         if let Some(minifish_config) = &config._minifish {
@@ -260,7 +256,7 @@ impl Compiler {
                 for (k, ii) in inject.iter() {
                     map.insert(
                         k.clone(),
-                        Inject {
+                        plugins::minifish::Inject {
                             from: ii.from.clone(),
                             name: k.clone(),
                             named: ii.named.clone(),
@@ -331,11 +327,10 @@ impl Compiler {
 
         let t_compiler = Instant::now();
         let start_time = std::time::SystemTime::now();
-        let is_prod = self.context.config.mode == crate::config::Mode::Production;
         let building_with_message = format!(
             "Building with {} for {}...",
             "mako".to_string().cyan(),
-            if is_prod { "production" } else { "development" }
+            self.context.config.mode
         )
         .green();
         println!("{}", building_with_message);
@@ -406,7 +401,7 @@ impl Compiler {
         cg.full_hash(&mg)
     }
 
-    pub fn clean_dist(&self) -> Result<()> {
+    fn clean_dist(&self) -> Result<()> {
         // compiler 前清除 dist，如果后续 dev 环境不在 output_path 里，需要再补上 dev 的逻辑
         let output_path = &self.context.config.output.path;
         if fs::metadata(output_path).is_ok() {

@@ -1,7 +1,16 @@
 import fs from 'fs';
 import path from 'path';
 import * as binding from '../binding';
+import { ForkTSChecker as ForkTSChecker } from './forkTSChecker';
 import { LessLoaderOpts, lessLoader } from './lessLoader';
+
+interface ExtraBuildParams {
+  less?: LessLoaderOpts;
+  forkTSChecker?: boolean;
+}
+
+type BuildParams = binding.BuildParams & ExtraBuildParams;
+export { BuildParams };
 
 // ref:
 // https://github.com/vercel/next.js/pull/51883
@@ -19,11 +28,7 @@ function blockStdout() {
   }
 }
 
-interface ExtraBuildParams {
-  less?: LessLoaderOpts;
-}
-
-export async function build(params: binding.BuildParams & ExtraBuildParams) {
+export async function build(params: BuildParams) {
   blockStdout();
 
   params.hooks = params.hooks || {};
@@ -98,12 +103,10 @@ export async function build(params: binding.BuildParams & ExtraBuildParams) {
   if (process.env.XCODE_PROFILE) {
     await new Promise<void>((resolve) => {
       const readline = require('readline');
-
       const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout,
       });
-
       rl.question(
         `Xcode profile enabled. Current process ${process.title} (${process.pid}) . Press Enter to continue...\n`,
         () => {
@@ -115,4 +118,12 @@ export async function build(params: binding.BuildParams & ExtraBuildParams) {
   }
 
   await binding.build(params);
+
+  if (params.forkTSChecker) {
+    const forkTypeChecker = new ForkTSChecker({
+      root: params.root,
+      watch: params.watch,
+    });
+    forkTypeChecker.runTypeCheckInChildProcess();
+  }
 }

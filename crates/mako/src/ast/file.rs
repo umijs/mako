@@ -1,12 +1,11 @@
 use std::hash::Hasher;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::base64::alphabet::STANDARD;
 use mako_core::base64::{engine, Engine};
-use mako_core::lazy_static::lazy_static;
 use mako_core::pathdiff::diff_paths;
 use mako_core::regex::Regex;
 use mako_core::thiserror::Error;
@@ -16,7 +15,7 @@ use percent_encoding::percent_decode_str;
 use url::Url;
 
 use crate::compiler::Context;
-use crate::util::base64_decode;
+use crate::utils::base64_decode;
 
 #[derive(Debug, Clone)]
 pub struct Asset {
@@ -25,8 +24,23 @@ pub struct Asset {
 }
 
 #[derive(Debug, Clone)]
+pub struct JsContent {
+    pub is_jsx: bool,
+    pub content: String,
+}
+
+impl Default for JsContent {
+    fn default() -> Self {
+        JsContent {
+            is_jsx: false,
+            content: "".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum Content {
-    Js(String),
+    Js(JsContent),
     Css(String),
     // TODO: unify the assets handler
     // it's used in minifish plugin(bundless mode) only
@@ -75,14 +89,14 @@ impl Default for File {
     }
 }
 
-// e.g.
-lazy_static! {
-    static ref VIRTUAL: String = "virtual:".to_string();
-}
+const VIRTUAL: &str = "virtual:";
 
-lazy_static! {
-    static ref CSS_SOURCE_MAP_REGEXP: Regex =
-        Regex::new(r"/\*# sourceMappingURL=data:application/json;base64,(.*?) \*/").unwrap();
+fn css_source_map_regex() -> &'static Regex {
+    static CSS_SOURCE_MAP_REGEXP: OnceLock<Regex> = OnceLock::new();
+
+    CSS_SOURCE_MAP_REGEXP.get_or_init(|| {
+        Regex::new(r"/\*# sourceMappingURL=data:application/json;base64,(.*?) \*/").unwrap()
+    })
 }
 
 impl File {
@@ -102,7 +116,7 @@ impl File {
             parse_path(&path.to_string_lossy()).unwrap()
         };
         let pathname = PathBuf::from(pathname);
-        let is_virtual = path.starts_with(&*VIRTUAL) ||
+        let is_virtual = path.starts_with(VIRTUAL) ||
             // TODO: remove this specific logic
             params.iter().any(|(k, _)| k == "asmodule");
         let is_under_node_modules = path.to_string_lossy().contains("node_modules");
@@ -159,7 +173,9 @@ impl File {
 
     pub fn get_content_raw(&self) -> String {
         match &self.content {
-            Some(Content::Js(content)) | Some(Content::Css(content)) => content.clone(),
+            Some(Content::Js(JsContent { content, .. })) | Some(Content::Css(content)) => {
+                content.clone()
+            }
             Some(Content::Assets(asset)) => asset.content.clone(),
             None => "".to_string(),
         }
@@ -169,7 +185,7 @@ impl File {
         let mut hasher: XxHash64 = Default::default();
         if let Some(content) = &self.content {
             match content {
-                Content::Js(content)
+                Content::Js(JsContent { content, .. })
                 | Content::Css(content)
                 | Content::Assets(Asset { content, .. }) => {
                     // hasher.write_u64(init);
@@ -236,6 +252,13 @@ impl File {
         Ok(hash[0..8].to_string())
     }
 
+    pub fn is_content_jsx(&self) -> bool {
+        match &self.content {
+            Some(Content::Js(JsContent { is_jsx, .. })) => *is_jsx,
+            _ => false,
+        }
+    }
+
     pub fn has_param(&self, key: &str) -> bool {
         self.params.iter().any(|(k, _)| k == key)
     }
@@ -247,7 +270,7 @@ impl File {
         let mut chain = vec![];
         match &self.content {
             Some(Content::Css(content)) => {
-                if let Some(captures) = CSS_SOURCE_MAP_REGEXP.captures(content) {
+                if let Some(captures) = css_source_map_regex().captures(content) {
                     let source_map_base64 = captures.get(1).unwrap().as_str().to_string();
                     chain.push(base64_decode(source_map_base64.as_bytes()));
                 }

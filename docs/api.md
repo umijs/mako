@@ -13,6 +13,7 @@ await build({
   config: {},
   hooks: {},
   less: {},
+  forkTsChecker: true,
   watch: false,
 }: BuildOptions);
 ```
@@ -71,7 +72,7 @@ less 配置。
       endTime: number;
     };
   }) => void;
-  load?: (filePath: string) => Promise<{ content: string, type: 'css'|'javascript' }>;
+  load?: (filePath: string) => Promise<{ content: string, type: 'css'|'js'|'jsx'|'ts'|'tsx' }>;
 }
 ```
 
@@ -81,7 +82,14 @@ hooks 是一些钩子函数，用于扩展 Mako 的编译过程。
 
 - `buildStart`，在 Build 开始前会调用
 - `generateEnd`，在 Generate 完成后会调用，通过 `isFirstCompile` 可以判断是否是第一次编译，`time` 为编译时间，`stats` 为编译统计信息
-- `load`，用于加载文件，返回文件内容和类型，类型支持 `css`、`javascript`
+- `load`，用于加载文件，返回文件内容和类型，类型支持 `css`、`js`、`jsx`、`ts`、`tsx`
+
+### forkTsChecker
+
+- 类型：`boolean`
+- 默认值：`false`
+
+是否开启构建时 TypeScript 类型校验。
 
 ### watch
 

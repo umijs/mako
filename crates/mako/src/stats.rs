@@ -13,8 +13,9 @@ use mako_core::pathdiff::diff_paths;
 use mako_core::serde::Serialize;
 use swc_core::common::source_map::Pos;
 
-use crate::chunk::ChunkType;
 use crate::compiler::Compiler;
+use crate::features::rsc::{RscClientInfo, RscCssModules};
+use crate::generate::chunk::ChunkType;
 
 #[derive(Debug, PartialEq, Eq)]
 // name 记录实际 filename , 用在 stats.json 中, hashname 用在产物描述和 manifest 中
@@ -40,9 +41,11 @@ impl PartialOrd for AssetsInfo {
 }
 #[derive(Debug)]
 pub struct StatsInfo {
-    // 产物信息
     pub assets: Vec<AssetsInfo>,
+    pub rsc_client_components: Vec<RscClientInfo>,
+    pub rsc_css_modules: Vec<RscCssModules>,
 }
+
 #[derive(Clone, Serialize, Debug)]
 pub enum StatsJsonType {
     #[serde(rename = "type")]
@@ -52,6 +55,7 @@ pub enum StatsJsonType {
     #[serde(rename = "type")]
     Chunk(String),
 }
+
 #[derive(Serialize, Debug)]
 pub struct StatsJsonAssetsItem {
     #[serde(flatten)]
@@ -106,6 +110,9 @@ pub struct StatsJsonMap {
     modules: Vec<StatsJsonModuleItem>,
     chunks: Vec<StatsJsonChunkItem>,
     entrypoints: HashMap<String, StatsJsonEntryItem>,
+    rsc_client_components: Vec<RscClientInfo>,
+    #[serde(rename = "rscCSSModules")]
+    rsc_css_modules: Vec<RscCssModules>,
 }
 
 impl StatsJsonMap {
@@ -120,13 +127,19 @@ impl StatsJsonMap {
             modules: vec![],
             chunks: vec![],
             entrypoints: HashMap::new(),
+            rsc_client_components: vec![],
+            rsc_css_modules: vec![],
         }
     }
 }
 
 impl StatsInfo {
     pub fn new() -> Self {
-        Self { assets: vec![] }
+        Self {
+            assets: vec![],
+            rsc_client_components: vec![],
+            rsc_css_modules: vec![],
+        }
     }
 
     pub fn add_assets(
@@ -243,9 +256,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
                         // TODO: 现在是从每个 chunk 中找到包含的 module, 所以 chunk_id 是单个, 但是一个 module 有可能存在于多个 chunk 中
                         chunks: vec![chunk.id.id.clone()],
                     };
-
                     modules_vec.borrow_mut().push(module.clone());
-
                     module
                 })
                 .collect();
@@ -343,6 +354,9 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
     // 获取 modules
     let modules: Vec<StatsJsonModuleItem> = modules_vec.borrow().iter().cloned().collect();
     stats_map.modules = modules;
+
+    stats_map.rsc_client_components = stats_info.rsc_client_components.clone();
+    stats_map.rsc_css_modules = stats_info.rsc_css_modules.clone();
 
     stats_map
 }

@@ -1,3 +1,55 @@
+
+## 0.4.12
+
+`2024-04-28`
+
+> @alipay/bigfish@4.1.28
+
+* 修复 okam 包 package.json 中 bin 字段丢失的问题 by [@sorrycc](https://github.com/sorrycc) in [#1092](https://github.com/umijs/mako/pull/1092)
+* 修复 runtime 在 node 场景下报错，让 css ensure 只在 browser 阶段才状态 by [@sorrycc](https://github.com/sorrycc) in [#1095](https://github.com/umijs/mako/pull/1095)
+* 修复空 css chunk 不应该输出的问题 by [@xusd320](https://github.com/xusd320) in [#1097](https://github.com/umijs/mako/pull/1097)
+* 修复 node 场景下不应该 load css 的问题（潜在的性能提升） by [@sorrycc](https://github.com/sorrycc) in [#1098](https://github.com/umijs/mako/pull/1098)
+* 修复 concatenate 中 polyfill 没有在 inner 中被替换的问题 by [@stormslowly](https://github.com/stormslowly) in [#1099](https://github.com/umijs/mako/pull/1099)
+
+## 0.4.11
+
+`2024-04-25`
+
+> @alipay/bigfish@4.1.27
+
+* 新增 RSC 功能 by [@sorrycc](https://github.com/sorrycc) in [#1063](https://github.com/umijs/mako/pull/1063)
+* 新增 RSC sdk  by [@sorrycc](https://github.com/sorrycc) in [#1072](https://github.com/umijs/mako/pull/1072)
+* 新增 loader 返回参数增加 jsx 属性 by [@sorrycc](https://github.com/sorrycc) in [#1079](https://github.com/umijs/mako/pull/1079)
+* 新增 experimental.webpackSyntaxValidate 配置 by [@sorrycc](https://github.com/sorrycc) in [#1080](https://github.com/umijs/mako/pull/1080)
+* 新增 okam cli  by [@sorrycc](https://github.com/sorrycc) in [#1087](https://github.com/umijs/mako/pull/1087)
+* 新增支持 css_rem 属性选择器 by [@LovePlayCode](https://github.com/LovePlayCode) in [#1059](https://github.com/umijs/mako/pull/1059)
+* 新增支持伪类选择器 by [@LovePlayCode](https://github.com/LovePlayCode) in [#1061](https://github.com/umijs/mako/pull/1061)
+* 修复 okam TS 类型问题 BuildParams by [@sorrycc](https://github.com/sorrycc) in [#1073](https://github.com/umijs/mako/pull/1073)
+* 修复 mako 运行时全局变量无法获取 by [@PeachScript](https://github.com/PeachScript) in [#1082](https://github.com/umijs/mako/pull/1082)
+* 修复 css 顺序不稳定 by [@xusd320](https://github.com/xusd320) in [#1085](https://github.com/umijs/mako/pull/1085)
+
+## 0.4.10
+
+`2024-04-16`
+
+> @alipay/bigfish@4.1.26
+
+* 新增 forkTSChecker 支持 by [@ctts](https://github.com/ctts) and @sorrycc in [#956](https://github.com/umijs/mako/pull/956)
+* 优化 generate，让 entry 也并行执行，提速 10% by [@xusd320](https://github.com/xusd320) in [#1001](https://github.com/umijs/mako/pull/1001)
+* 优化 px2rem 支持 selector_black_list 和 selector_white_list by [@LovePlayCode](https://github.com/LovePlayCode) and @sorrycc in [#1043](https://github.com/umijs/mako/pull/1043)
+* 优化 less loader 实现，基于 worker，提升 20% by [@xusd320](https://github.com/xusd320) in [#1048](https://github.com/umijs/mako/pull/1048)
+* 优化 importInfo，删除未使用的 specifier by [@goo-yyh](https://github.com/goo-yyh) in [#963](https://github.com/umijs/mako/pull/963)
+* 优化 sourcemap 文件路径，把内部 runtime 代码移到 mako_internal 目录 by [@stormslowly](https://github.com/stormslowly) in [#1055](https://github.com/umijs/mako/pull/1055)
+* 优化 ast to code 性能，dev 时并发执行 by [@xusd320](https://github.com/xusd320) in [#1053](https://github.com/umijs/mako/pull/1053)
+* 重构 packages/mako 为入口 package by [@sorrycc](https://github.com/sorrycc) in [#1010](https://github.com/umijs/mako/pull/1010)
+* 重构 @okamjs/okam 的实现，封装 less 等功能 by [@sorrycc](https://github.com/sorrycc) in [#1024](https://github.com/umijs/mako/pull/1024)
+* 修复 concatenateModules 实现，var ident conflict with root's top vars by [@stormslowly](https://github.com/stormslowly) in [#1052](https://github.com/umijs/mako/pull/1052)
+* 修复 dynamic_import_to_require 必须在 context_require 之后执行的问题 by [@sorrycc](https://github.com/sorrycc) in [#1038](https://github.com/umijs/mako/pull/1038)
+* 修复 tree shaking 支持多个 declarator declare  by [@stormslowly](https://github.com/stormslowly) in [#1032](https://github.com/umijs/mako/pull/1032)
+* 修复 provider，change unresolved indent syntax context to top level after it's been declared by [@stormslowly](https://github.com/stormslowly) in [#1027](https://github.com/umijs/mako/pull/1027)
+* 修复 update 阶段的一个 unwrap() panic by [@sorrycc](https://github.com/sorrycc) in [#1004](https://github.com/umijs/mako/pull/1004)
+* 修复 concatenateModule，treat module as external when it contains unsupported syntax by [@stormslowly](https://github.com/stormslowly) in [#1009](https://github.com/umijs/mako/pull/1009)
+
 ## 0.4.9
 
 `2024-04-01`

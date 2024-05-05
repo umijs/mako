@@ -2586,7 +2586,6 @@ dependencies = [
  "hyper-staticfile",
  "hyper-tungstenite",
  "indexmap 2.2.3",
- "lazy_static",
  "md5",
  "mdxjs",
  "merge-source-map",

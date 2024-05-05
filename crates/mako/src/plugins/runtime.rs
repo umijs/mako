@@ -3,9 +3,9 @@ use std::sync::Arc;
 use mako_core::anyhow::{anyhow, Result};
 
 use crate::compiler::Context;
+use crate::generate::swc_helpers::SwcHelpers;
 use crate::module::ModuleId;
 use crate::plugin::Plugin;
-use crate::swc_helpers::SwcHelpers;
 
 pub struct MakoRuntime {}
 
