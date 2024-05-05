@@ -39,9 +39,7 @@ impl<'a> Watcher<'a> {
     pub fn watch(&mut self) -> anyhow::Result<()> {
         let t_watch = Instant::now();
 
-        let ignore_list = self.get_ignore_list();
-
-        self.watch_dir_recursive(self.root.into(), &ignore_list)?;
+        self.watch_dir_recursive(self.root.into(), &self.get_ignore_list(true))?;
 
         let module_graph = self.compiler.context.module_graph.read().unwrap();
         let mut dirs = HashSet::new();
@@ -62,7 +60,7 @@ impl<'a> Watcher<'a> {
             }
         });
         dirs.iter().try_for_each(|dir| {
-            self.watch_dir_recursive(dir.into(), &ignore_list)?;
+            self.watch_dir_recursive(dir.into(), &self.get_ignore_list(false))?;
             Ok(())
         })?;
 
@@ -97,15 +95,14 @@ impl<'a> Watcher<'a> {
         Ok(())
     }
 
-    fn get_ignore_list(&mut self) -> Vec<PathBuf> {
-        let ignore_list = [
-            ".git",
-            "node_modules",
-            ".DS_Store",
-            ".node",
-            self.compiler.context.config.output.path.to_str().unwrap(),
-        ];
+    fn get_ignore_list(&self, with_output_dir: bool) -> Vec<PathBuf> {
+        let mut ignore_list = vec![".git", "node_modules", ".DS_Store", ".node"];
+        if with_output_dir {
+            ignore_list.push(self.compiler.context.config.output.path.to_str().unwrap());
+        }
 
+        // node_modules of root dictionary and root dictionary's parent dictionaries should be ignored
+        // for resolving the issue of "too many files open" in monorepo
         let mut dirs = vec![];
         self.root.ancestors().for_each(|path| {
             ignore_list.iter().for_each(|ignore| {
