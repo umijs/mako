@@ -355,7 +355,7 @@ importers:
         specifier: ^4.0.81
         version: 4.1.6
       '@umijs/mako':
-        specifier: 0.4.12
+        specifier: 0.4.13
         version: link:../mako
       chalk:
         specifier: ^4.1.2

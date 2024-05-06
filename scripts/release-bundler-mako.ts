@@ -37,7 +37,7 @@ import 'zx/globals';
     tag = 'next';
   if (newVersion.includes('-canary.')) tag = 'canary';
   if (newVersion.includes('-dev.')) tag = 'dev';
-  await $`cd packages/bundler-mako && npm publish --tag ${tag}`;
+  await $`cd packages/bundler-mako && npm publish --access public --tag ${tag}`;
 
   // git push
   console.log('Push');
