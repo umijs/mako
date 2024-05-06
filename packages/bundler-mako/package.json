@@ -17,8 +17,5 @@
     "prepublishOnly": "esno ./scripts/ensure_synced.ts",
     "sync": "esno ./scripts/ensure_synced.ts"
   },
-  "publishConfig": {
-    "registry": "https://registry.antgroup-inc.cn"
-  },
   "repository": "git@github.com:umijs/mako.git"
 }
