@@ -49,8 +49,9 @@ exports.build = async function (opts) {
     err.stack = null;
     throw err;
   }
+  const outputPath = path.resolve(opts.cwd, opts.config.outputPath || 'dist');
 
-  const statsJsonPath = path.join(cwd, 'dist', 'stats.json');
+  const statsJsonPath = path.join(outputPath, 'stats.json');
   const statsJson = JSON.parse(fs.readFileSync(statsJsonPath, 'utf-8'));
 
   // remove stats.json file if user did not enable it
@@ -84,6 +85,7 @@ exports.dev = async function (opts) {
   const app = express();
   const port = opts.port || 8000;
   const hmrPort = opts.port + 1;
+
   // cors
   app.use(
     require('cors')({
@@ -110,8 +112,10 @@ exports.dev = async function (opts) {
   });
   app.use('/__/hmr-ws', wsProxy);
 
+  const outputPath = path.resolve(opts.cwd, opts.config.outputPath || 'dist');
+
   // serve dist files
-  app.use(express.static(path.join(opts.cwd, 'dist')));
+  app.use(express.static(outputPath));
   // proxy
   if (opts.config.proxy) {
     createProxy(opts.config.proxy, app);
@@ -392,6 +396,9 @@ async function getOkamConfig(opts) {
     umd = webpackConfig.output.library;
   }
 
+  let platform = 'browser';
+  if (webpackConfig.target === 'node') platform = 'node';
+
   const {
     alias,
     targets,
@@ -401,13 +408,14 @@ async function getOkamConfig(opts) {
     mdx,
     codeSplitting,
     devtool,
+    cjs,
+    dynamicImportToRequire,
     jsMinifier,
     externals,
     copy = [],
     clean,
     forkTSChecker,
   } = opts.config;
-  const outputPath = path.join(opts.cwd, 'dist');
   // TODO:
   // 暂不支持 $ 结尾，等 resolve 支持后可以把这段去掉
   Object.keys(alias).forEach((key) => {
@@ -469,25 +477,29 @@ async function getOkamConfig(opts) {
     return p === '@emotion' || p === '@emotion/babel-plugin';
   });
   // transform externals
-  const externalsConfig = Object.entries(externals).reduce((ret, [k, v]) => {
-    // handle [string] with script type
-    if (Array.isArray(v)) {
-      const [url, ...members] = v;
-      ret[k] = {
-        // ['antd', 'Button'] => `antd.Button`
-        root: members.join('.'),
-        // `script https://example.com/lib/script.js` => `https://example.com/lib/script.js`
-        script: url.replace('script ', ''),
-      };
-    } else if (typeof v === 'string') {
-      // 'window.antd' or 'window antd' => 'antd'
-      ret[k] = v.replace(/^window(\s+|\.)/, '');
-    } else {
-      // other types except boolean has been checked before
-      // so here only ignore invalid boolean type
-    }
-    return ret;
-  }, {});
+  const externalsConfig = Object.entries(externals || {}).reduce(
+    (ret, [k, v]) => {
+      // handle [string] with script type
+      if (Array.isArray(v)) {
+        const [url, ...members] = v;
+        ret[k] = {
+          // ['antd', 'Button'] => `antd.Button`
+          root: members.join('.'),
+          // `script https://example.com/lib/script.js` => `https://example.com/lib/script.js`
+          script: url.replace('script ', ''),
+        };
+      } else if (typeof v === 'string') {
+        // 'window.antd' or 'window antd' => 'antd'
+        ret[k] = v.replace(/^window(\s+|\.)/, '');
+      } else {
+        // other types except boolean has been checked before
+        // so here only ignore invalid boolean type
+      }
+      return ret;
+    },
+    {},
+  );
+  const outputPath = path.resolve(opts.cwd, opts.config.outputPath || 'dist');
 
   const okamConfig = {
     entry: opts.entry,
@@ -504,6 +516,9 @@ async function getOkamConfig(opts) {
     mdx: !!mdx,
     codeSplitting: codeSplitting === false ? false : 'auto',
     devtool: devtool === false ? false : 'source-map',
+    cjs,
+    dynamicImportToRequire,
+    platform,
     minify,
     define,
     autoCSSModules: true,

@@ -75,15 +75,16 @@ export async function build(params: BuildParams) {
   // TODO: improve load binding, should support return null if not matched
   // @ts-ignore
   params.hooks.load = async function (filePath: string) {
-    let lessResult = await less(filePath);
-    if (lessResult) {
-      return lessResult;
-    }
+    // user load first
     if (originLoad) {
       let originResult = await originLoad(filePath);
       if (originResult) {
         return originResult;
       }
+    }
+    let lessResult = await less(filePath);
+    if (lessResult) {
+      return lessResult;
     }
   };
 
