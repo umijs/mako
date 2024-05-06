@@ -36,8 +36,11 @@ module.exports = {$$typeof: Symbol.for(\"react.module.reference\"),filepath:\"{{
   });
 
   // build client
-  fs.rmdirSync(path.join(root, 'tmp'), { recursive: true });
-  fs.mkdirSync(path.join(root, 'tmp'));
+  let tmpDir = path.join(root, 'tmp');
+  if (fs.existsSync(tmpDir)) {
+    fs.rmdirSync(tmpDir, { recursive: true });
+  }
+  fs.mkdirSync(tmpDir);
   let stats = fs.readFileSync(
     path.join(serverOutputPath, 'stats.json'),
     'utf-8',
