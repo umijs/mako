@@ -1,4 +1,22 @@
 
+## 0.4.13
+
+`2024-05-06`
+
+> @alipay/bigfish@TODO
+
+* 新增支持通过 ?path 指定虚拟文件的路径 by [@stormslowly](https://github.com/stormslowly) in [#1102](https://github.com/umijs/mako/pull/1102)
+* 新增全局 `__mako_chunk_load__` 方法 by [@sorrycc](https://github.com/sorrycc) in [#1111](https://github.com/umijs/mako/pull/1111)
+* 优化 mako 命令行支持指定 mode by [@sorrycc](https://github.com/sorrycc) in [#1114](https://github.com/umijs/mako/pull/1114)
+* 修复 concatenate inner global var conflict with other modules top level vars by [@stormslowly](https://github.com/stormslowly) in [#1100](https://github.com/umijs/mako/pull/1100)
+* 修复 node polyfill 在 ident 简写场景不生效的问题 by [@stormslowly](https://github.com/stormslowly) in [#1104](https://github.com/umijs/mako/pull/1104)
+* 修复 dev 阶段不输出 manifest 的问题 by [@sorrycc](https://github.com/sorrycc) in [#1106](https://github.com/umijs/mako/pull/1106)
+* 修复 dev 阶段不输出 stats.json 的问题 by [@sorrycc](https://github.com/sorrycc) in [#1108](https://github.com/umijs/mako/pull/1108)
+* 修复 cjs 构建的场景（for ssr） by [@Jinbao1001](https://github.com/Jinbao1001) in [#1109](https://github.com/umijs/mako/pull/1109)
+* 重构移除 lazy_static by [@xusd320](https://github.com/xusd320) in [#1103](https://github.com/umijs/mako/pull/1103)
+* 重构整体目录结构 by [@sorrycc](https://github.com/sorrycc) in [#1105](https://github.com/umijs/mako/pull/1105)
+* 重构 okam 为 mako，同时公开 @alipay scope 的包到 @umijs 下 by [@sorrycc](https://github.com/sorrycc) in [#1113](https://github.com/umijs/mako/pull/1113)
+
 ## 0.4.12
 
 `2024-04-28`
