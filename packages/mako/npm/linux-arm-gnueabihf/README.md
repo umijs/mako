@@ -1,3 +1,3 @@
-# `@okamjs/okam-linux-arm-gnueabihf`
+# `@umijs/mako-linux-arm-gnueabihf`
 
-This is the **armv7-unknown-linux-gnueabihf** binary for `@okamjs/okam`
+This is the **armv7-unknown-linux-gnueabihf** binary for `@umijs/mako`

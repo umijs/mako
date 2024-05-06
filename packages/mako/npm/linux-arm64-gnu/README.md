@@ -1,3 +1,3 @@
-# `@okamjs/okam-linux-arm64-gnu`
+# `@umijs/mako-linux-arm64-gnu`
 
-This is the **aarch64-unknown-linux-gnu** binary for `@okamjs/okam`
+This is the **aarch64-unknown-linux-gnu** binary for `@umijs/mako`

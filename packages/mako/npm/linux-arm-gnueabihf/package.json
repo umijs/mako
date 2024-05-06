@@ -1,5 +1,5 @@
 {
-  "name": "@okamjs/okam-linux-arm-gnueabihf",
+  "name": "@umijs/mako-linux-arm-gnueabihf",
   "version": "0.0.0",
   "os": [
     "linux"
@@ -7,9 +7,9 @@
   "cpu": [
     "arm"
   ],
-  "main": "okam.linux-arm-gnueabihf.node",
+  "main": "mako.linux-arm-gnueabihf.node",
   "files": [
-    "okam.linux-arm-gnueabihf.node"
+    "mako.linux-arm-gnueabihf.node"
   ],
   "license": "MIT",
   "engines": {

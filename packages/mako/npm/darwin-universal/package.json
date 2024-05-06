@@ -1,12 +1,12 @@
 {
-  "name": "@okamjs/okam-darwin-universal",
+  "name": "@umijs/mako-darwin-universal",
   "version": "0.0.0",
   "os": [
     "darwin"
   ],
-  "main": "okam.darwin-universal.node",
+  "main": "mako.darwin-universal.node",
   "files": [
-    "okam.darwin-universal.node"
+    "mako.darwin-universal.node"
   ],
   "license": "MIT",
   "engines": {
