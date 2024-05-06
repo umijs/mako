@@ -263,6 +263,13 @@ impl File {
         self.params.iter().any(|(k, _)| k == key)
     }
 
+    pub fn param(&self, key: &str) -> Option<String> {
+        self.params
+            .iter()
+            .find(|(k, _)| k == key)
+            .map(|(_, v)| v.clone())
+    }
+
     pub fn get_source_map_chain(&self, context: Arc<Context>) -> Vec<Vec<u8>> {
         if context.config.devtool.is_none() {
             return vec![];
@@ -280,6 +287,28 @@ impl File {
             _ => {}
         }
         chain
+    }
+
+    pub fn path(&self) -> Option<String> {
+        let path_string = self.path.to_string_lossy().to_string();
+        if path_string.starts_with(VIRTUAL) {
+            self.param("path")
+        } else {
+            Some(path_string)
+        }
+    }
+
+    pub fn resolve_from(&self, context: &Arc<Context>) -> String {
+        self.path().map_or_else(
+            || {
+                context
+                    .root
+                    .join(".virtual.root")
+                    .to_string_lossy()
+                    .to_string()
+            },
+            |p| p,
+        )
     }
 }
 
@@ -302,4 +331,30 @@ fn parse_path(path: &str) -> Result<(PathName, Search, Params, Fragment)> {
     // so we need to decode it, e.g. "a%20b" -> "a b"
     let path = percent_decode_str(&path).decode_utf8()?;
     Ok((path.to_string(), search, query_vec, fragment))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_abs_path() {
+        let f = File::new("/a/b/c".to_string(), Arc::new(Context::default()));
+        assert_eq!(f.path(), Some("/a/b/c".to_string()));
+    }
+
+    #[test]
+    fn test_virtual_file_without_virtual_path() {
+        let f = File::new("virtual:/a/b/c".to_string(), Arc::new(Context::default()));
+        assert_eq!(f.path(), None);
+    }
+
+    #[test]
+    fn test_virtual_file_with_virtual_path() {
+        let f = File::new(
+            "virtual:/a/b/c?path=/root/d.js".to_string(),
+            Arc::new(Context::default()),
+        );
+        assert_eq!(f.path(), Some("/root/d.js".to_string()));
+    }
 }

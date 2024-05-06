@@ -49,11 +49,11 @@ impl AnalyzeDeps {
 
         let mut resolved_deps = vec![];
         let mut missing_deps = HashMap::new();
-        let path = file.path.to_str().unwrap();
+
         for dep in deps {
             let result = resolve(
                 // .
-                path,
+                &file.resolve_from(&context),
                 &dep,
                 &context.resolvers,
                 &context,
