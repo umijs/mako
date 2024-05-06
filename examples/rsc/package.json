@@ -4,8 +4,8 @@
     "start": "node start"
   },
   "devDependencies": {
-    "@okamjs/okam": "workspace:*",
-    "@okamjs/rsc": "workspace:*",
+    "@umijs/mako": "workspace:*",
+    "@umijs/rsc": "workspace:*",
     "react": "^18.3.0-canary-8039e6d0b-20231026",
     "react-dom": "^18.3.0-canary-8039e6d0b-20231026",
     "react-server-dom-webpack": "^18.3.0-canary-8039e6d0b-20231026"

@@ -1,8 +1,7 @@
-const { build } = require('@okamjs/okam');
-const { parseServerStats } = require('@okamjs/rsc');
+const { build } = require('@umijs/mako');
+const { parseServerStats } = require('@umijs/rsc');
 const path = require('path');
 const fs = require('fs');
-const { platform } = require('os');
 
 (async () => {
   const root = process.cwd();

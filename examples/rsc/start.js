@@ -9,7 +9,7 @@ const { renderToPipeableStream } = rsdws;
 const { createFromFetch } = rsdwc;
 
 const clientStats = require('./dist/stats.json');
-const { parseClientStats } = require('@okamjs/rsc');
+const { parseClientStats } = require('@makojs/rsc');
 const { clientComponents } = parseClientStats(clientStats);
 
 // console.log(clientComponents);

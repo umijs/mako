@@ -19,27 +19,27 @@ exports.build = async function (opts) {
   } = opts;
   checkConfig(opts);
 
-  const okamConfig = await getOkamConfig(opts);
-  const originStats = okamConfig.stats;
+  const makoConfig = await getMakoConfig(opts);
+  const originStats = makoConfig.stats;
   // always enable stats to provide json for onBuildComplete hook
-  okamConfig.stats = true;
-  okamConfig.mode = 'production';
-  okamConfig.hash = !!opts.config.hash;
-  if (okamConfig.hash) {
-    okamConfig.moduleIdStrategy = 'hashed';
+  makoConfig.stats = true;
+  makoConfig.mode = 'production';
+  makoConfig.hash = !!opts.config.hash;
+  if (makoConfig.hash) {
+    makoConfig.moduleIdStrategy = 'hashed';
   }
 
-  const { build } = require('@okamjs/okam');
+  const { build } = require('@umijs/mako');
   try {
     await build({
       root: cwd,
-      config: okamConfig,
+      config: makoConfig,
       less: {
         modifyVars: opts.config.lessLoader?.modifyVars || opts.config.theme,
-        sourceMap: getLessSourceMapConfig(okamConfig.devtool),
+        sourceMap: getLessSourceMapConfig(makoConfig.devtool),
         math: opts.config.lessLoader?.math,
       },
-      forkTSChecker: okamConfig.forkTSChecker,
+      forkTSChecker: makoConfig.forkTSChecker,
       watch: false,
     });
   } catch (e) {
@@ -158,21 +158,21 @@ exports.dev = async function (opts) {
   // ref https://github.com/chimurai/http-proxy-middleware#external-websocket-upgrade
   server.on('upgrade', wsProxy.upgrade);
 
-  // okam dev
-  const { build } = require('@okamjs/okam');
-  const okamConfig = await getOkamConfig(opts);
-  okamConfig.hmr = { port: hmrPort, host: opts.host };
+  // mako dev
+  const { build } = require('@umijs/mako');
+  const makoConfig = await getMakoConfig(opts);
+  makoConfig.hmr = { port: hmrPort, host: opts.host };
   const cwd = opts.cwd;
   try {
     await build({
       root: cwd,
-      config: okamConfig,
+      config: makoConfig,
       less: {
         modifyVars: opts.config.lessLoader?.modifyVars || opts.config.theme,
-        sourceMap: getLessSourceMapConfig(okamConfig.devtool),
+        sourceMap: getLessSourceMapConfig(makoConfig.devtool),
         math: opts.config.lessLoader?.math,
       },
-      forkTSChecker: okamConfig.forkTSChecker,
+      forkTSChecker: makoConfig.forkTSChecker,
       hooks: {
         generateEnd: (args) => {
           opts.onDevCompileDone(args);
@@ -376,7 +376,7 @@ function checkConfig(opts) {
   }
 }
 
-async function getOkamConfig(opts) {
+async function getMakoConfig(opts) {
   const WebpackConfig = require('webpack-5-chain');
   // webpack require is handled by require hooks in bundler-webpack/src/requireHook
   const webpack = require('webpack');
@@ -461,13 +461,13 @@ async function getOkamConfig(opts) {
         throw new Error(
           `babel-plugin-import options ${Object.keys(
             others,
-          )} is not supported in okam bundler`,
+          )} is not supported in mako bundler`,
         );
       }
 
       if (typeof style === 'function') {
         throw new Error(
-          'babel-plugin-import function type style is not supported in okam bundler',
+          'babel-plugin-import function type style is not supported in mako bundler',
         );
       }
 
@@ -501,7 +501,7 @@ async function getOkamConfig(opts) {
   );
   const outputPath = path.resolve(opts.cwd, opts.config.outputPath || 'dist');
 
-  const okamConfig = {
+  const makoConfig = {
     entry: opts.entry,
     output: { path: outputPath },
     resolve: {
@@ -533,7 +533,7 @@ async function getOkamConfig(opts) {
     ...(opts.disableCopy ? { copy: [] } : { copy: ['public'].concat(copy) }),
   };
 
-  return okamConfig;
+  return makoConfig;
 }
 
 function getLessSourceMapConfig(devtool) {

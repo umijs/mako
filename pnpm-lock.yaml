@@ -8,9 +8,6 @@ importers:
 
   .:
     devDependencies:
-      '@alipay/umi-bundler-okam':
-        specifier: workspace:*
-        version: link:packages/bundler-okam
       '@ant-design/icons':
         specifier: ^5.0.1
         version: 5.2.5(react-dom@18.2.0)(react@18.2.0)
@@ -26,9 +23,6 @@ importers:
       '@jest/expect':
         specifier: ^29.7.0
         version: 29.7.0
-      '@okamjs/okam':
-        specifier: workspace:*
-        version: link:packages/mako
       '@swc/helpers':
         specifier: 0.5.1
         version: 0.5.1
@@ -47,6 +41,12 @@ importers:
       '@types/semver':
         specifier: ^7.5.0
         version: 7.5.0
+      '@umijs/bundler-mako':
+        specifier: workspace:*
+        version: link:packages/bundler-mako
+      '@umijs/mako':
+        specifier: workspace:*
+        version: link:packages/mako
       antd:
         specifier: ^5.12.2
         version: 5.12.2(react-dom@18.2.0)(react@18.2.0)
@@ -117,11 +117,7 @@ importers:
         specifier: '16'
         version: 16.14.0
 
-  examples/config-externals:
-    devDependencies:
-      '@alipay/umi-bundler-okam':
-        specifier: workspace:*
-        version: link:../../packages/bundler-okam
+  examples/config-externals: {}
 
   examples/import-resources:
     dependencies:
@@ -185,10 +181,10 @@ importers:
 
   examples/rsc:
     devDependencies:
-      '@okamjs/okam':
+      '@umijs/mako':
         specifier: workspace:*
         version: link:../../packages/mako
-      '@okamjs/rsc':
+      '@umijs/rsc':
         specifier: workspace:*
         version: link:../../packages/rsc
       react:
@@ -353,14 +349,14 @@ importers:
         specifier: ^4.0.70
         version: 4.0.70(@babel/core@7.22.1)(@types/node@20.4.2)(@types/react@18.2.7)(eslint@8.41.0)(postcss@8.4.24)(prettier@2.8.8)(react-dom@18.2.0)(react@18.2.0)(styled-components@5.3.10)(stylelint@14.16.1)(typescript@5.4.3)(webpack@5.84.1)
 
-  packages/bundler-okam:
+  packages/bundler-mako:
     dependencies:
-      '@okamjs/okam':
-        specifier: 0.4.12
-        version: link:../mako
       '@umijs/bundler-utils':
         specifier: ^4.0.81
-        version: 4.0.81
+        version: 4.1.6
+      '@umijs/mako':
+        specifier: 0.4.12
+        version: link:../mako
       chalk:
         specifier: ^4.1.2
         version: 4.1.2
@@ -412,16 +408,6 @@ importers:
       yargs-parser:
         specifier: ^21.1.1
         version: 21.1.1
-    optionalDependencies:
-      '@okamjs/okam-darwin-arm64':
-        specifier: 0.4.12
-        version: 0.4.12
-      '@okamjs/okam-darwin-x64':
-        specifier: 0.4.12
-        version: 0.4.12
-      '@okamjs/okam-linux-x64-gnu':
-        specifier: 0.4.12
-        version: 0.4.12
     devDependencies:
       '@napi-rs/cli':
         specifier: ^2.18.0
@@ -3647,33 +3633,6 @@ packages:
       fastq: 1.15.0
     dev: true
 
-  /@okamjs/okam-darwin-arm64@0.4.12:
-    resolution: {integrity: sha512-1zmPIQj93QYBBecBYFiwFTY26cJHxcuwZexYUJLa2M2mzxVFby8RPGE7XFSIWh+e/0pm34b5a2B4r3+1R8WiaA==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [darwin]
-    requiresBuild: true
-    dev: false
-    optional: true
-
-  /@okamjs/okam-darwin-x64@0.4.12:
-    resolution: {integrity: sha512-+61bb4h04XhyyaZX1AuQFzEYKewYnHq2E3k01EMSs4wpyFuu6yEKdntAvPbNIOwrZ7XsMRLf7nJQI/W+d4VJGA==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [darwin]
-    requiresBuild: true
-    dev: false
-    optional: true
-
-  /@okamjs/okam-linux-x64-gnu@0.4.12:
-    resolution: {integrity: sha512-HAOTnnGRkUZ4KTn1iFKPYW7/dqior+nwMZnZcTqpTL4OWI244oG9VEQlM8bgbon0CMV9u7S51VCC7R4G+HZNVw==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [linux]
-    requiresBuild: true
-    dev: false
-    optional: true
-
   /@pkgjs/parseargs@0.11.0:
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
     engines: {node: '>=14'}
@@ -4798,18 +4757,6 @@ packages:
       - supports-color
     dev: true
 
-  /@umijs/bundler-utils@4.0.81:
-    resolution: {integrity: sha512-eLTEiM4xrqOPBw1QGzBuR5qtfNQ7yN77N/JsQGMeimFuTBkPXzswmjcDkqrcGl7QLYn0N8u90Rr45VuRRAik4A==}
-    dependencies:
-      '@umijs/utils': 4.0.81
-      esbuild: 0.17.19
-      regenerate: 1.4.2
-      regenerate-unicode-properties: 10.1.0
-      spdy: 4.0.2
-    transitivePeerDependencies:
-      - supports-color
-    dev: false
-
   /@umijs/bundler-utils@4.1.6:
     resolution: {integrity: sha512-8vpoB7hQSE0QodAIx0nh4L3W7UaKyQ8c5caKy3L4nyAC3YQ7S0GGWSnB1dTizHUlOta3+ZmPMMESMoHv80bnew==}
     dependencies:
@@ -4820,7 +4767,6 @@ packages:
       spdy: 4.0.2
     transitivePeerDependencies:
       - supports-color
-    dev: true
 
   /@umijs/bundler-vite@4.0.70(@types/node@20.4.2)(postcss@8.4.24):
     resolution: {integrity: sha512-19aDfNxPbOVfFttNSHEp9DnZFB/fFMEpsH6nBPkOIkXhr0UnmaWeOk7HJPbbT9T7vBA0mPxHA/vEIZPSWy84PQ==}
@@ -5393,19 +5339,11 @@ packages:
       pino: 7.11.0
     dev: true
 
-  /@umijs/utils@4.0.81:
-    resolution: {integrity: sha512-+OTEmNo3S+VRBiFCCuGqg/bO3gQxiRT7gZVeBdhgpbZ5oPZEdMI/G2KVgqPnBuIhN0xSGwsJn91yoSdIcjzO0w==}
-    dependencies:
-      chokidar: 3.5.3
-      pino: 7.11.0
-    dev: false
-
   /@umijs/utils@4.1.6:
     resolution: {integrity: sha512-lYlnxdKFq+9baOMML2CP7LApIfYNyueDODM/v2Li4GQI2zcm2h2Mf7Yif/t+xG63GR/RnpLs8U2W3BXa3PLGRA==}
     dependencies:
       chokidar: 3.5.3
       pino: 7.11.0
-    dev: true
 
   /@umijs/valtio@1.0.3(react@18.2.0):
     resolution: {integrity: sha512-fjr1UMZLFOO+uy5YtLVcmvr+m2ZlU9rp04yXlCaPrKkdBg/UNPBVo6YS9TBx2v0a62gYaztLL3Put3dcNGH5tQ==}
@@ -6434,6 +6372,7 @@ packages:
     dependencies:
       function-bind: 1.1.1
       get-intrinsic: 1.2.1
+    dev: true
 
   /call-bind@1.0.5:
     resolution: {integrity: sha512-C3nQxfFZxFRVoJoGKKI8y3MOEo129NQ+FgQ08iye+Mk4zNZZGdjfs06bVTr+DBSlA66Q2VEcMki/cUCP4SercQ==}
@@ -6441,7 +6380,6 @@ packages:
       function-bind: 1.1.2
       get-intrinsic: 1.2.1
       set-function-length: 1.1.1
-    dev: true
 
   /callsites@3.1.0:
     resolution: {integrity: sha512-P8BjAsXvZS+VIDUI11hHCQEv74YT67YUi5JJFNWIqL235sBmjX4+qx9Muvls5ivyNENctx46xQLQ3aTuE7ssaQ==}
@@ -7104,7 +7042,6 @@ packages:
       get-intrinsic: 1.2.1
       gopd: 1.0.1
       has-property-descriptors: 1.0.0
-    dev: true
 
   /define-lazy-prop@2.0.0:
     resolution: {integrity: sha512-Ds09qNh8yw3khSjiJjiUInaGX9xlqZDY7JVryGxdxV7NPeuqQfplOpQ66yJFZut3jLa5zOwkXw1g9EI2uKh4Og==}
@@ -8349,7 +8286,6 @@ packages:
 
   /function-bind@1.1.2:
     resolution: {integrity: sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA==}
-    dev: true
 
   /function.prototype.name@1.1.5:
     resolution: {integrity: sha512-uN7m/BzVKQnCUF/iW8jYea67v++2u7m5UgENbHRtdDVclOUP+FMPlCNdmk0h/ysGyo2tavMJEDqJAkJdRa1vMA==}
@@ -8555,7 +8491,6 @@ packages:
     resolution: {integrity: sha512-d65bNlIadxvpb/A2abVdlqKqV563juRnZ1Wtk6s1sIR8uNsXR70xqIzVqxVf1eTqDunwT2MkczEeaezCKTZhwA==}
     dependencies:
       get-intrinsic: 1.2.1
-    dev: true
 
   /graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
@@ -8600,7 +8535,6 @@ packages:
     resolution: {integrity: sha512-62DVLZGoiEBDHQyqG4w9xCuZ7eJEwNmJRWw2VY84Oedb7WFcA27fiEVe8oUQx9hAUJ4ekurquucTGwsyO1XGdQ==}
     dependencies:
       get-intrinsic: 1.2.1
-    dev: true
 
   /has-proto@1.0.1:
     resolution: {integrity: sha512-7qE+iP+O+bgF9clE5+UoBFzE65mlBiVj3tKCrlNQ0Ogwm0BjpT/gK4SlLYDMybDh5I3TCTKnPPa0oMG7JDYrhg==}
@@ -13100,13 +13034,13 @@ packages:
     engines: {node: '>=4'}
     dependencies:
       regenerate: 1.4.2
+    dev: true
 
   /regenerate-unicode-properties@10.1.1:
     resolution: {integrity: sha512-X007RyZLsCJVVrjgEFVpLUTZwyOZk3oiL75ZcuYjlIWd6rNJtOjkBwQc5AsRrpbKVkxN6sklw/k/9m2jJYOf8Q==}
     engines: {node: '>=4'}
     dependencies:
       regenerate: 1.4.2
-    dev: true
 
   /regenerate@1.4.2:
     resolution: {integrity: sha512-zrceR/XhGYU/d/opr2EKO7aRHUeiBI8qjtfHqADTwZd6Szfy16la6kqD0MIUs5z5hx6AaKa+PixpPrR289+I0A==}
@@ -13143,7 +13077,7 @@ packages:
     dependencies:
       '@babel/regjsgen': 0.8.0
       regenerate: 1.4.2
-      regenerate-unicode-properties: 10.1.0
+      regenerate-unicode-properties: 10.1.1
       regjsparser: 0.9.1
       unicode-match-property-ecmascript: 2.0.0
       unicode-match-property-value-ecmascript: 2.1.0
@@ -13442,7 +13376,6 @@ packages:
       get-intrinsic: 1.2.1
       gopd: 1.0.1
       has-property-descriptors: 1.0.0
-    dev: true
 
   /setimmediate@1.0.5:
     resolution: {integrity: sha512-MATJdZp8sLqDl/68LfQmbP8zKPLQNV6BIZoIgrscFDQ+RsvK/BxeDQOgyxKKoh0y/8h3BqVFnCqQ/gd+reiIXA==}
@@ -13484,7 +13417,7 @@ packages:
   /side-channel@1.0.4:
     resolution: {integrity: sha512-q5XPytqFEIKHkGdiMIrY10mvLRvnQh42/+GoBlFW3b2LXLE2xxJpZFdm94we0BaoV3RwJyGqg5wS7epxTv0Zvw==}
     dependencies:
-      call-bind: 1.0.2
+      call-bind: 1.0.5
       get-intrinsic: 1.2.1
       object-inspect: 1.12.3
 

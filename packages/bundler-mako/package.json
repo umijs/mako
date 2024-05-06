@@ -1,8 +1,8 @@
 {
-  "name": "@alipay/umi-bundler-okam",
+  "name": "@umijs/bundler-mako",
   "version": "0.4.12",
   "dependencies": {
-    "@okamjs/okam": "0.4.13-canary.20240506.1",
+    "@umijs/mako": "0.4.13-canary.20240506.1",
     "@umijs/bundler-utils": "^4.0.81",
     "chalk": "^4.1.2",
     "compression": "^1.7.4",
@@ -16,9 +16,6 @@
   "scripts": {
     "prepublishOnly": "esno ./scripts/ensure_synced.ts",
     "sync": "esno ./scripts/ensure_synced.ts"
-  },
-  "publishConfig": {
-    "registry": "https://registry.antgroup-inc.cn"
   },
   "repository": "git@github.com:umijs/mako.git"
 }
