@@ -1,3 +1,3 @@
-# `@okamjs/okam-darwin-universal`
+# `@umijs/mako-darwin-universal`
 
-This is the **universal-apple-darwin** binary for `@okamjs/okam`
+This is the **universal-apple-darwin** binary for `@umijs/mako`

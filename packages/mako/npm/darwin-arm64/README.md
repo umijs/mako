@@ -1,3 +1,3 @@
-# `@okamjs/okam-darwin-arm64`
+# `@umijs/mako-darwin-arm64`
 
-This is the **aarch64-apple-darwin** binary for `@okamjs/okam`
+This is the **aarch64-apple-darwin** binary for `@umijs/mako`

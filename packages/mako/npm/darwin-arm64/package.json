@@ -1,5 +1,5 @@
 {
-  "name": "@okamjs/okam-darwin-arm64",
+  "name": "@umijs/mako-darwin-arm64",
   "version": "0.4.13",
   "os": [
     "darwin"
@@ -7,9 +7,9 @@
   "cpu": [
     "arm64"
   ],
-  "main": "okam.darwin-arm64.node",
+  "main": "mako.darwin-arm64.node",
   "files": [
-    "okam.darwin-arm64.node"
+    "mako.darwin-arm64.node"
   ],
   "license": "MIT",
   "engines": {

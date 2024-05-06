@@ -1,5 +1,5 @@
 {
-  "name": "@okamjs/okam-linux-x64-musl",
+  "name": "@umijs/mako-linux-x64-musl",
   "version": "0.0.0",
   "os": [
     "linux"
@@ -7,9 +7,9 @@
   "cpu": [
     "x64"
   ],
-  "main": "okam.linux-x64-musl.node",
+  "main": "mako.linux-x64-musl.node",
   "files": [
-    "okam.linux-x64-musl.node"
+    "mako.linux-x64-musl.node"
   ],
   "license": "MIT",
   "engines": {

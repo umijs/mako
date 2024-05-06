@@ -1,3 +1,3 @@
-# `@okamjs/okam-win32-x64-msvc`
+# `@umijs/mako-win32-x64-msvc`
 
-This is the **x86_64-pc-windows-msvc** binary for `@okamjs/okam`
+This is the **x86_64-pc-windows-msvc** binary for `@umijs/mako`

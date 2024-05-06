@@ -1,5 +1,5 @@
 {
-  "name": "@okamjs/okam-win32-ia32-msvc",
+  "name": "@umijs/mako-win32-ia32-msvc",
   "version": "0.0.0",
   "os": [
     "win32"
@@ -7,9 +7,9 @@
   "cpu": [
     "ia32"
   ],
-  "main": "okam.win32-ia32-msvc.node",
+  "main": "mako.win32-ia32-msvc.node",
   "files": [
-    "okam.win32-ia32-msvc.node"
+    "mako.win32-ia32-msvc.node"
   ],
   "license": "MIT",
   "engines": {
