@@ -7,9 +7,9 @@ import 'zx/globals';
 
   // build
   console.log('Build');
-  await $`pnpm --filter @okamjs/rsc build`;
+  await $`pnpm --filter @umijs/rsc build`;
 
-  // bump version to sync with @okamjs/okam
+  // bump version to sync with @umijs/mako
   console.log('Bump version');
   const pkgDir = path.join(__dirname, '../packages/rsc/');
   const pkgPath = path.join(pkgDir, 'package.json');
@@ -28,7 +28,9 @@ import 'zx/globals';
 
   // git push
   console.log('Push');
-  await $`git push origin master --tags`;
+  await $`git push origin master`;
+
+  console.log('Done');
 })().catch((e) => {
   console.error(e);
   process.exit(1);

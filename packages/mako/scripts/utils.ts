@@ -60,16 +60,16 @@ export async function queryNewVersion(nodePkg: any) {
   return { newVersion, tag, branch } as const;
 }
 
-export function setNewVersionToBundlerOkam(newVersion: string) {
-  console.log('Set new version to bundler-okam');
+export function setNewVersionToBundlerMako(newVersion: string) {
+  console.log('Set new version to bundler-mako');
   const bundlerOkamPkgPath = path.join(
     __dirname,
-    '../../../packages/bundler-okam/package.json',
+    '../../../packages/bundler-mako/package.json',
   );
   const bundlerOkamPkg = JSON.parse(
     fs.readFileSync(bundlerOkamPkgPath, 'utf-8'),
   );
-  bundlerOkamPkg.dependencies['@okamjs/okam'] = `${newVersion}`;
+  bundlerOkamPkg.dependencies['@umijs/mako'] = `${newVersion}`;
   fs.writeFileSync(
     bundlerOkamPkgPath,
     JSON.stringify(bundlerOkamPkg, null, 2) + '\n',

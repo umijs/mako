@@ -36,13 +36,13 @@ switch (platform) {
     switch (arch) {
       case 'arm64':
         localFileExisted = existsSync(
-          join(__dirname, 'okam.android-arm64.node'),
+          join(__dirname, 'mako.android-arm64.node'),
         );
         try {
           if (localFileExisted) {
-            nativeBinding = require('./okam.android-arm64.node');
+            nativeBinding = require('./mako.android-arm64.node');
           } else {
-            nativeBinding = require('@okamjs/okam-android-arm64');
+            nativeBinding = require('@umijs/mako-android-arm64');
           }
         } catch (e) {
           loadError = e;
@@ -50,13 +50,13 @@ switch (platform) {
         break;
       case 'arm':
         localFileExisted = existsSync(
-          join(__dirname, 'okam.android-arm-eabi.node'),
+          join(__dirname, 'mako.android-arm-eabi.node'),
         );
         try {
           if (localFileExisted) {
-            nativeBinding = require('./okam.android-arm-eabi.node');
+            nativeBinding = require('./mako.android-arm-eabi.node');
           } else {
-            nativeBinding = require('@okamjs/okam-android-arm-eabi');
+            nativeBinding = require('@umijs/mako-android-arm-eabi');
           }
         } catch (e) {
           loadError = e;
@@ -70,13 +70,13 @@ switch (platform) {
     switch (arch) {
       case 'x64':
         localFileExisted = existsSync(
-          join(__dirname, 'okam.win32-x64-msvc.node'),
+          join(__dirname, 'mako.win32-x64-msvc.node'),
         );
         try {
           if (localFileExisted) {
-            nativeBinding = require('./okam.win32-x64-msvc.node');
+            nativeBinding = require('./mako.win32-x64-msvc.node');
           } else {
-            nativeBinding = require('@okamjs/okam-win32-x64-msvc');
+            nativeBinding = require('@umijs/mako-win32-x64-msvc');
           }
         } catch (e) {
           loadError = e;
@@ -84,13 +84,13 @@ switch (platform) {
         break;
       case 'ia32':
         localFileExisted = existsSync(
-          join(__dirname, 'okam.win32-ia32-msvc.node'),
+          join(__dirname, 'mako.win32-ia32-msvc.node'),
         );
         try {
           if (localFileExisted) {
-            nativeBinding = require('./okam.win32-ia32-msvc.node');
+            nativeBinding = require('./mako.win32-ia32-msvc.node');
           } else {
-            nativeBinding = require('@okamjs/okam-win32-ia32-msvc');
+            nativeBinding = require('@umijs/mako-win32-ia32-msvc');
           }
         } catch (e) {
           loadError = e;
@@ -98,13 +98,13 @@ switch (platform) {
         break;
       case 'arm64':
         localFileExisted = existsSync(
-          join(__dirname, 'okam.win32-arm64-msvc.node'),
+          join(__dirname, 'mako.win32-arm64-msvc.node'),
         );
         try {
           if (localFileExisted) {
-            nativeBinding = require('./okam.win32-arm64-msvc.node');
+            nativeBinding = require('./mako.win32-arm64-msvc.node');
           } else {
-            nativeBinding = require('@okamjs/okam-win32-arm64-msvc');
+            nativeBinding = require('@umijs/mako-win32-arm64-msvc');
           }
         } catch (e) {
           loadError = e;
@@ -116,24 +116,24 @@ switch (platform) {
     break;
   case 'darwin':
     localFileExisted = existsSync(
-      join(__dirname, 'okam.darwin-universal.node'),
+      join(__dirname, 'mako.darwin-universal.node'),
     );
     try {
       if (localFileExisted) {
-        nativeBinding = require('./okam.darwin-universal.node');
+        nativeBinding = require('./mako.darwin-universal.node');
       } else {
-        nativeBinding = require('@okamjs/okam-darwin-universal');
+        nativeBinding = require('@umijs/mako-darwin-universal');
       }
       break;
     } catch {}
     switch (arch) {
       case 'x64':
-        localFileExisted = existsSync(join(__dirname, 'okam.darwin-x64.node'));
+        localFileExisted = existsSync(join(__dirname, 'mako.darwin-x64.node'));
         try {
           if (localFileExisted) {
-            nativeBinding = require('./okam.darwin-x64.node');
+            nativeBinding = require('./mako.darwin-x64.node');
           } else {
-            nativeBinding = require('@okamjs/okam-darwin-x64');
+            nativeBinding = require('@umijs/mako-darwin-x64');
           }
         } catch (e) {
           loadError = e;
@@ -141,13 +141,13 @@ switch (platform) {
         break;
       case 'arm64':
         localFileExisted = existsSync(
-          join(__dirname, 'okam.darwin-arm64.node'),
+          join(__dirname, 'mako.darwin-arm64.node'),
         );
         try {
           if (localFileExisted) {
-            nativeBinding = require('./okam.darwin-arm64.node');
+            nativeBinding = require('./mako.darwin-arm64.node');
           } else {
-            nativeBinding = require('@okamjs/okam-darwin-arm64');
+            nativeBinding = require('@umijs/mako-darwin-arm64');
           }
         } catch (e) {
           loadError = e;
@@ -161,12 +161,12 @@ switch (platform) {
     if (arch !== 'x64') {
       throw new Error(`Unsupported architecture on FreeBSD: ${arch}`);
     }
-    localFileExisted = existsSync(join(__dirname, 'okam.freebsd-x64.node'));
+    localFileExisted = existsSync(join(__dirname, 'mako.freebsd-x64.node'));
     try {
       if (localFileExisted) {
-        nativeBinding = require('./okam.freebsd-x64.node');
+        nativeBinding = require('./mako.freebsd-x64.node');
       } else {
-        nativeBinding = require('@okamjs/okam-freebsd-x64');
+        nativeBinding = require('@umijs/mako-freebsd-x64');
       }
     } catch (e) {
       loadError = e;
@@ -177,26 +177,26 @@ switch (platform) {
       case 'x64':
         if (isMusl()) {
           localFileExisted = existsSync(
-            join(__dirname, 'okam.linux-x64-musl.node'),
+            join(__dirname, 'mako.linux-x64-musl.node'),
           );
           try {
             if (localFileExisted) {
-              nativeBinding = require('./okam.linux-x64-musl.node');
+              nativeBinding = require('./mako.linux-x64-musl.node');
             } else {
-              nativeBinding = require('@okamjs/okam-linux-x64-musl');
+              nativeBinding = require('@umijs/mako-linux-x64-musl');
             }
           } catch (e) {
             loadError = e;
           }
         } else {
           localFileExisted = existsSync(
-            join(__dirname, 'okam.linux-x64-gnu.node'),
+            join(__dirname, 'mako.linux-x64-gnu.node'),
           );
           try {
             if (localFileExisted) {
-              nativeBinding = require('./okam.linux-x64-gnu.node');
+              nativeBinding = require('./mako.linux-x64-gnu.node');
             } else {
-              nativeBinding = require('@okamjs/okam-linux-x64-gnu');
+              nativeBinding = require('@umijs/mako-linux-x64-gnu');
             }
           } catch (e) {
             loadError = e;
@@ -206,26 +206,26 @@ switch (platform) {
       case 'arm64':
         if (isMusl()) {
           localFileExisted = existsSync(
-            join(__dirname, 'okam.linux-arm64-musl.node'),
+            join(__dirname, 'mako.linux-arm64-musl.node'),
           );
           try {
             if (localFileExisted) {
-              nativeBinding = require('./okam.linux-arm64-musl.node');
+              nativeBinding = require('./mako.linux-arm64-musl.node');
             } else {
-              nativeBinding = require('@okamjs/okam-linux-arm64-musl');
+              nativeBinding = require('@umijs/mako-linux-arm64-musl');
             }
           } catch (e) {
             loadError = e;
           }
         } else {
           localFileExisted = existsSync(
-            join(__dirname, 'okam.linux-arm64-gnu.node'),
+            join(__dirname, 'mako.linux-arm64-gnu.node'),
           );
           try {
             if (localFileExisted) {
-              nativeBinding = require('./okam.linux-arm64-gnu.node');
+              nativeBinding = require('./mako.linux-arm64-gnu.node');
             } else {
-              nativeBinding = require('@okamjs/okam-linux-arm64-gnu');
+              nativeBinding = require('@umijs/mako-linux-arm64-gnu');
             }
           } catch (e) {
             loadError = e;
@@ -234,13 +234,13 @@ switch (platform) {
         break;
       case 'arm':
         localFileExisted = existsSync(
-          join(__dirname, 'okam.linux-arm-gnueabihf.node'),
+          join(__dirname, 'mako.linux-arm-gnueabihf.node'),
         );
         try {
           if (localFileExisted) {
-            nativeBinding = require('./okam.linux-arm-gnueabihf.node');
+            nativeBinding = require('./mako.linux-arm-gnueabihf.node');
           } else {
-            nativeBinding = require('@okamjs/okam-linux-arm-gnueabihf');
+            nativeBinding = require('@umijs/mako-linux-arm-gnueabihf');
           }
         } catch (e) {
           loadError = e;
@@ -249,26 +249,26 @@ switch (platform) {
       case 'riscv64':
         if (isMusl()) {
           localFileExisted = existsSync(
-            join(__dirname, 'okam.linux-riscv64-musl.node'),
+            join(__dirname, 'mako.linux-riscv64-musl.node'),
           );
           try {
             if (localFileExisted) {
-              nativeBinding = require('./okam.linux-riscv64-musl.node');
+              nativeBinding = require('./mako.linux-riscv64-musl.node');
             } else {
-              nativeBinding = require('@okamjs/okam-linux-riscv64-musl');
+              nativeBinding = require('@umijs/mako-linux-riscv64-musl');
             }
           } catch (e) {
             loadError = e;
           }
         } else {
           localFileExisted = existsSync(
-            join(__dirname, 'okam.linux-riscv64-gnu.node'),
+            join(__dirname, 'mako.linux-riscv64-gnu.node'),
           );
           try {
             if (localFileExisted) {
-              nativeBinding = require('./okam.linux-riscv64-gnu.node');
+              nativeBinding = require('./mako.linux-riscv64-gnu.node');
             } else {
-              nativeBinding = require('@okamjs/okam-linux-riscv64-gnu');
+              nativeBinding = require('@umijs/mako-linux-riscv64-gnu');
             }
           } catch (e) {
             loadError = e;
@@ -277,13 +277,13 @@ switch (platform) {
         break;
       case 's390x':
         localFileExisted = existsSync(
-          join(__dirname, 'okam.linux-s390x-gnu.node'),
+          join(__dirname, 'mako.linux-s390x-gnu.node'),
         );
         try {
           if (localFileExisted) {
-            nativeBinding = require('./okam.linux-s390x-gnu.node');
+            nativeBinding = require('./mako.linux-s390x-gnu.node');
           } else {
-            nativeBinding = require('@okamjs/okam-linux-s390x-gnu');
+            nativeBinding = require('@umijs/mako-linux-s390x-gnu');
           }
         } catch (e) {
           loadError = e;

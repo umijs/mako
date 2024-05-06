@@ -150,18 +150,18 @@ $ open target/instruments/mako_System-Trace_xxx.trace
 Use mako in umi or bigfish.
 
 ```bash
-$ OKAM=/PATH/TO/umijs/marko/packages/bundler-okam/index.js umi build
-$ OKAM=/PATH/TO/umijs/marko/packages/bundler-okam/index.js umi dev
-$ OKAM=/PATH/TO/umijs/marko/packages/bundler-okam/index.js max build
-$ OKAM=/PATH/TO/umijs/marko/packages/bundler-okam/index.js bigfish build
+$ OKAM=/PATH/TO/umijs/marko/packages/bundler-mako/index.js umi build
+$ OKAM=/PATH/TO/umijs/marko/packages/bundler-mako/index.js umi dev
+$ OKAM=/PATH/TO/umijs/marko/packages/bundler-mako/index.js max build
+$ OKAM=/PATH/TO/umijs/marko/packages/bundler-mako/index.js bigfish build
 ```
 
 Performance analysis with [Xcode instruments](https://help.apple.com/instruments/mac) in umi or bigfish.
 ```bash
-$ XCODE_PROFILE=1 OKAM=/PATH/TO/umijs/marko/packages/bundler-okam/index.js umi build
-$ XCODE_PROFILE=1 OKAM=/PATH/TO/umijs/marko/packages/bundler-okam/index.js umi dev
-$ XCODE_PROFILE=1 OKAM=/PATH/TO/umijs/marko/packages/bundler-okam/index.js max build
-$ XCODE_PROFILE=1 OKAM=/PATH/TO/umijs/marko/packages/bundler-okam/index.js bigfish build
+$ XCODE_PROFILE=1 OKAM=/PATH/TO/umijs/marko/packages/bundler-mako/index.js umi build
+$ XCODE_PROFILE=1 OKAM=/PATH/TO/umijs/marko/packages/bundler-mako/index.js umi dev
+$ XCODE_PROFILE=1 OKAM=/PATH/TO/umijs/marko/packages/bundler-mako/index.js max build
+$ XCODE_PROFILE=1 OKAM=/PATH/TO/umijs/marko/packages/bundler-mako/index.js bigfish build
 ```
 
 ## Release
@@ -177,8 +177,8 @@ You can release mako with ci or locally.
 $ just ready
 # Release with CI
 $ npm run release
-# After released successful, you need to release bundler-okam manually.
-$ npm run release:bundler-okam
+# After released successful, you need to release bundler-mako manually.
+$ npm run release:bundler-mako
 ```
 
 ### Release Locally

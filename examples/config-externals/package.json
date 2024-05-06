@@ -3,6 +3,5 @@
     "build": "node build.js"
   },
   "devDependencies": {
-    "@alipay/umi-bundler-okam": "workspace:*"
   }
 }

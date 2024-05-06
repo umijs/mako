@@ -5,7 +5,7 @@ import {
   pushToGit,
   queryNewVersion,
   rootPkgPath,
-  setNewVersionToBundlerOkam,
+  setNewVersionToBundlerMako,
 } from './utils';
 
 (async () => {
@@ -36,7 +36,7 @@ async function run() {
 
   await $`npm publish --tag ${tag} --access public`;
 
-  setNewVersionToBundlerOkam(nodePkg.version);
+  setNewVersionToBundlerMako(nodePkg.version);
 
   await pushToGit(nodePkg, branch);
 }
@@ -64,7 +64,7 @@ async function build() {
   await $`pnpm run build:mac:x86`;
   await $`cargo build --lib -r  --target aarch64-apple-darwin`;
   await $`pnpm run build:mac:aarch`;
-  await $`strip -x ./okam.darwin-*.node`;
+  await $`strip -x ./mako.darwin-*.node`;
 
   // build src
   await $`pnpm run src:build`;
@@ -80,7 +80,7 @@ async function build_linux_binding() {
     process.env['CARGO_HOME'] || process.env['HOME']!,
     '.cargo',
   );
-  const cargoMapOption = (p) => [
+  const cargoMapOption = (p: string) => [
     '-v',
     `${path.join(cargoBase, p)}:${path.join('/usr/local/cargo', p)}`,
   ];
@@ -99,7 +99,7 @@ async function build_linux_binding() {
     'cargo build -r --lib --target x86_64-unknown-linux-gnu',
     'cd packages/mako',
     'npm run build:linux:x86',
-    'strip okam.linux*.node',
+    'strip mako.linux*.node',
   ].join('&&');
   const envOptions: string[] = [];
   if (process.env['RUSTUP_DIST_SERVER']) {

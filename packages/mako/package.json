@@ -1,5 +1,5 @@
 {
-  "name": "@okamjs/okam",
+  "name": "@umijs/mako",
   "version": "0.4.12",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -7,7 +7,7 @@
     "mako": "./bin/mako.js"
   },
   "napi": {
-    "name": "okam",
+    "name": "mako",
     "triples": {
       "defaults": false,
       "additional": [
@@ -63,9 +63,9 @@
     "src:build": "father build"
   },
   "optionalDependencies": {
-    "@okamjs/okam-darwin-arm64": "0.4.12",
-    "@okamjs/okam-darwin-x64": "0.4.12",
-    "@okamjs/okam-linux-x64-gnu": "0.4.12"
+    "@makojs/mako-darwin-arm64": "0.4.12",
+    "@makojs/mako-darwin-x64": "0.4.12",
+    "@makojs/mako-linux-x64-gnu": "0.4.12"
   },
   "repository": "git@github.com:umijs/mako.git"
 }

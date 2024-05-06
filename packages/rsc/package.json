@@ -1,5 +1,5 @@
 {
-  "name": "@okamjs/rsc",
+  "name": "@umijs/rsc",
   "version": "0.0.3",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
