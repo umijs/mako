@@ -13,9 +13,5 @@
     "rimraf": "5.0.1",
     "webpack-5-chain": "8.0.1"
   },
-  "scripts": {
-    "prepublishOnly": "esno ./scripts/ensure_synced.ts",
-    "sync": "esno ./scripts/ensure_synced.ts"
-  },
   "repository": "git@github.com:umijs/mako.git"
 }

@@ -23,7 +23,7 @@ import 'zx/globals';
   // git commit
   console.log('Commit');
   await $`git add ./`;
-  await $`git commit -m "chore: bundler-mako@${bundlerMakoPkg.version}"`;
+  await $`git commit -n -m "chore: bundler-mako@${bundlerMakoPkg.version}"`;
 
   // npm publish
   console.log('Publish');
