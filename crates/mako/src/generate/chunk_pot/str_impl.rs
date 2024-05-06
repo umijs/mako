@@ -155,12 +155,13 @@ type EmittedWithMapping = (String, Option<Vec<(BytePos, LineCol)>>);
     key = "String",
     type = "SizedCache<String , EmittedWithMapping>",
     create = "{ SizedCache::with_size(20000) }",
-    convert = r#"{format!("{}-{}", _raw_hash, module_id)}"#
+    convert = r#"{format!("{}-{}-{}", _chunk_id, _raw_hash, module_id)}"#
 )]
 fn emit_module_with_mapping(
     module_id: &str,
     module: &Module,
-    _raw_hash: u64, // used for cache key
+    _raw_hash: u64,  // used for cache key
+    _chunk_id: &str, // used for cache key
     context: &Arc<Context>,
 ) -> Result<EmittedWithMapping> {
     match &module.info.as_ref().unwrap().ast {
@@ -233,7 +234,13 @@ fn pot_to_chunk_module_object_string(
     let emitted_modules_with_mapping = sorted_kv
         .par_iter()
         .map(|(module_id, module_and_hash)| {
-            emit_module_with_mapping(module_id, module_and_hash.0, module_and_hash.1, context)
+            emit_module_with_mapping(
+                module_id,
+                module_and_hash.0,
+                module_and_hash.1,
+                &pot.chunk_id,
+                context,
+            )
         })
         .collect::<Result<Vec<(String, Option<Vec<(BytePos, LineCol)>>)>>>()?;
 
