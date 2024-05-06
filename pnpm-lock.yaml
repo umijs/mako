@@ -408,6 +408,16 @@ importers:
       yargs-parser:
         specifier: ^21.1.1
         version: 21.1.1
+    optionalDependencies:
+      '@umijs/mako-darwin-arm64':
+        specifier: 0.4.13
+        version: 0.4.13
+      '@umijs/mako-darwin-x64':
+        specifier: 0.4.13
+        version: 0.4.13
+      '@umijs/mako-linux-x64-gnu':
+        specifier: 0.4.13
+        version: 0.4.13
     devDependencies:
       '@napi-rs/cli':
         specifier: ^2.18.0
@@ -5065,6 +5075,33 @@ packages:
       - supports-color
       - typescript
     dev: true
+
+  /@umijs/mako-darwin-arm64@0.4.13:
+    resolution: {integrity: sha512-KozYiNUfJj0a5PAKbA0w9fVCabH3CnPOQIlKs4jYfqVE/pVOYjjazsxguxnndYrnCTREI2FD9RdrxeGSgBahRg==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [darwin]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@umijs/mako-darwin-x64@0.4.13:
+    resolution: {integrity: sha512-UnZUalk9WP9Q9as51vuQ7NcKHlC+r+XorpQkUdov6Czlw9CYiCFuIZ+fREZCePnrz0OQerqR78f4OgOcQLTJdg==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [darwin]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@umijs/mako-linux-x64-gnu@0.4.13:
+    resolution: {integrity: sha512-WY4N7lDr4AFPTQNH9BvQixz7AoWZZ5c+1rXUR4Az0NLTnOr2kMukWwPTg6YpNMvr3OfGpVuc/lZstkkbu1Ykow==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
 
   /@umijs/mfsu@4.0.70:
     resolution: {integrity: sha512-Kg4SfEvU90DW9Nxfr/WozWduQmGvKAWEyUUrn6ND8i3AapUA8MOYDWRVZ/61HKHBcPt9Y6ZPg2cLWSFeNk529g==}
