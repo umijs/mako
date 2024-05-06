@@ -334,6 +334,7 @@ function createRuntime(makoModules, entryModuleId, global) {
   // __inject_runtime_code__
 
   global.__mako_require_module__ = requireModule;
+  global.__mako_chunk_load__ = requireModule.ensure;
 <% if umd.is_some() || cjs { %>
   var exports = requireModule(entryModuleId);
 <% } else { %>
