@@ -13,7 +13,9 @@ import yParser from 'yargs-parser';
       let root = argv.root || process.cwd();
       await require('./').build({
         root,
-        config: {},
+        config: {
+          mode: argv.mode || 'development',
+        },
         hooks: {},
         watch,
       });
