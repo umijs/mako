@@ -2,7 +2,7 @@
   "name": "@umijs/bundler-mako",
   "version": "0.4.12",
   "dependencies": {
-    "@umijs/mako": "0.4.13-canary.20240506.1",
+    "@umijs/mako": "0.4.13",
     "@umijs/bundler-utils": "^4.0.81",
     "chalk": "^4.1.2",
     "compression": "^1.7.4",
