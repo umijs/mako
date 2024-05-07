@@ -1380,6 +1380,48 @@ ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
   );
 });
 
+runTest('change async import to import', async () => {
+  write(
+    normalizeFiles({
+      '/src/App.tsx': `
+      export default () => {
+        return <div>App</div>;
+      };`,
+      '/src/index.tsx': `
+      import React from 'react';
+      import ReactDOM from "react-dom/client";
+      const App = React.lazy(() => import('./App'))
+      ReactDOM.createRoot(document.getElementById("root")!).render(<><App /><section>{Math.random()}</section></>);
+          `,
+    }),
+  );
+  const { process } = await startMakoDevServer();
+  await delay(DELAY_TIME);
+  const { browser, page } = await startBrowser();
+  let lastResult;
+  let thisResult;
+  let isReload;
+  lastResult = normalizeHtml(await getRootHtml(page));
+  console.log('last html', lastResult.html);
+  assert.equal(lastResult.html, '<div>App</div>', 'Initial render');
+  write({
+    '/src/index.tsx': `
+      import React from 'react';
+      import ReactDOM from "react-dom/client";
+      import App from './App';
+      ReactDOM.createRoot(document.getElementById("root")!).render(<><App /><section>{Math.random()}</section></>);
+    `,
+  });
+  await delay(DELAY_TIME);
+  thisResult = normalizeHtml(await getRootHtml(page));
+  console.log(`new html`, thisResult.html);
+  assert.equal(thisResult.html, '<div>App</div>', 'Initial render 2');
+  isReload = lastResult.random !== thisResult.random;
+  assert.equal(isReload, true, 'isReload');
+  lastResult = thisResult;
+  await cleanup({ process, browser });
+});
+
 function normalizeFiles(files, makoConfig = {}) {
   return {
     '/public/index.html': `

@@ -161,7 +161,7 @@ impl Compiler {
 
         // for logic simplicity, full re-group if modified files are more than 1
         // ex. git checkout another branch
-        if modified_files.len() > 1 {
+        if modified_files.len() > 1 || !update_result.dep_changed.is_empty() {
             self.group_chunk();
             // empty vec means full re-group
             return Some((vec![], vec![]));
