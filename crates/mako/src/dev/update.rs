@@ -214,10 +214,9 @@ impl Compiler {
         );
 
         added.extend(add_paths);
-        debug!("added:{:?}", &added);
+
         update_result.modified.extend(modified_module_ids);
 
-        debug!("dep_changed:{:?}", &dep_changed_module_ids);
         update_result.dep_changed.extend(dep_changed_module_ids);
 
         // 最后做添加
