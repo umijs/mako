@@ -1,1 +1,6 @@
-{"minify": false}
+{
+  "minify": false,
+  "optimization": {
+    "concatenateModules": false
+  }
+}

@@ -1,3 +1,4 @@
 {
-  "minify": false
+  "minify": false,
+  "optimization": false
 }

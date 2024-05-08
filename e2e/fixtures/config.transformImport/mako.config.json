@@ -1,5 +1,12 @@
 {
   "transformImport": [
-    { "libraryName": "foo", "libraryDirectory": "es", "style": true }
-  ]
+    {
+      "libraryName": "foo",
+      "libraryDirectory": "es",
+      "style": true
+    }
+  ],
+  "optimization": {
+    "concatenateModules": false
+  }
 }
