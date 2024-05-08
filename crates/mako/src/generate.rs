@@ -188,6 +188,10 @@ impl Compiler {
         let t_generate_chunks = Instant::now();
         debug!("generate chunks");
         let chunk_files = self.generate_chunk_files(full_hash)?;
+        self.context
+            .plugin_driver
+            .after_generate_chunk_files(&chunk_files, &self.context)?;
+
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         let t_ast_to_code_and_write = if self.context.args.watch {
@@ -245,6 +249,11 @@ impl Compiler {
         // generate chunks
         let t_generate_chunks = Instant::now();
         let chunk_files = self.generate_chunk_files(hmr_hash)?;
+
+        self.context
+            .plugin_driver
+            .after_generate_chunk_files(&chunk_files, &self.context)?;
+
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         // ast to code and sourcemap, then write

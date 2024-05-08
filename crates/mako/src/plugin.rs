@@ -11,6 +11,7 @@ use crate::ast::file::{Content, File};
 use crate::chunk_graph::ChunkGraph;
 use crate::compiler::{Args, Compiler, Context};
 use crate::config::Config;
+use crate::generate_chunks::ChunkFile;
 use crate::module::{Dependency, ModuleAst, ModuleId};
 use crate::module_graph::ModuleGraph;
 use crate::stats::StatsJsonMap;
@@ -96,6 +97,14 @@ pub trait Plugin: Any + Send + Sync {
 
     fn generate(&self, _context: &Arc<Context>) -> Result<Option<()>> {
         Ok(None)
+    }
+
+    fn after_generate_chunk_files(
+        &self,
+        _chunk_file: &Vec<ChunkFile>,
+        _context: &Arc<Context>,
+    ) -> Result<()> {
+        Ok(())
     }
 
     fn build_success(&self, _stats: &StatsJsonMap, _context: &Arc<Context>) -> Result<Option<()>> {
@@ -260,7 +269,18 @@ impl PluginDriver {
         Err(anyhow!("None of the plugins generate content"))
     }
 
-    #[allow(dead_code)]
+    pub(crate) fn after_generate_chunk_files(
+        &self,
+        chunk_files: &Vec<ChunkFile>,
+        context: &Arc<Context>,
+    ) -> Result<()> {
+        for plugin in &self.plugins {
+            plugin.after_generate_chunk_files(chunk_files, context)?;
+        }
+
+        Ok(())
+    }
+
     pub fn build_start(&self, context: &Arc<Context>) -> Result<Option<()>> {
         for plugin in &self.plugins {
             plugin.build_start(context)?;
