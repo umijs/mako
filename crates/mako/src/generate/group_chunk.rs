@@ -159,8 +159,9 @@ impl Compiler {
             .map(|m| m.id.split('?').next().unwrap())
             .collect::<HashSet<_>>();
 
-        // for logic simplicity, full re-group if modified files are more than 1
-        // ex. git checkout another branch
+        // 1. for logic simplicity, full re-group if modified files are more than 1
+        //    ex. git checkout another branch;
+        // 2. if dependencies have been changed, should full re-group too.
         if modified_files.len() > 1 || !update_result.dep_changed.is_empty() {
             self.group_chunk();
             // empty vec means full re-group
