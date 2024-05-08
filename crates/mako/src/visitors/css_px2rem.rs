@@ -171,8 +171,8 @@ fn parse_compound_selector(selector: &CompoundSelector) -> String {
             SubclassSelector::PseudoClass(pseudo) => {
                 result.push_str(format!(":{}", pseudo.name.value).as_str());
             }
-            _ => {
-                // TODO: support more subclass selectors
+            SubclassSelector::PseudoElement(pse_element) => {
+                result.push_str(format!("::{}", pse_element.name.value).as_str());
             }
         }
     }
@@ -454,26 +454,63 @@ mod tests {
     fn test_class_pseudo() {
         assert_eq!(
             run(
-                r#".jj:before,.jj:after{width:100px;}"#,
+                r#".jj:hover,.jj:focus{width:100px;}"#,
                 Px2RemConfig {
                     ..Default::default()
                 }
             ),
-            r#".jj:before,.jj:after{width:1rem}"#
+            r#".jj:hover,.jj:focus{width:1rem}"#
         );
     }
-
+    #[test]
+    fn test_element_pseudo() {
+        assert_eq!(
+            run(
+                r#".jj::before,.jj::after{width:100px;}"#,
+                Px2RemConfig {
+                    ..Default::default()
+                }
+            ),
+            r#".jj::before,.jj::after{width:1rem}"#
+        );
+    }
+    #[test]
+    fn test_element_pseudo_select_black() {
+        assert_eq!(
+            run(
+                r#".jj::before,.jj::after{width:100px;}"#,
+                Px2RemConfig {
+                    selector_blacklist: vec![".jj::after".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#".jj::before,.jj::after{width:100px}"#
+        );
+    }
+    #[test]
+    fn test_element_pseudo_select_white() {
+        assert_eq!(
+            run(
+                r#".jj::before,.jj::after{width:100px;}"#,
+                Px2RemConfig {
+                    selector_whitelist: vec![".jj::after".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#".jj::before,.jj::after{width:100px}"#
+        );
+    }
     #[test]
     fn test_class_pseudo_select_black() {
         assert_eq!(
             run(
-                r#".jj:before,.jj:after{width:100px;}"#,
+                r#".jj:hover,.jj:focus{width:100px;}"#,
                 Px2RemConfig {
-                    selector_blacklist: vec![".jj:after".to_string()],
+                    selector_blacklist: vec![".jj:focus".to_string()],
                     ..Default::default()
                 }
             ),
-            r#".jj:before,.jj:after{width:100px}"#
+            r#".jj:hover,.jj:focus{width:100px}"#
         );
     }
 
@@ -481,13 +518,23 @@ mod tests {
     fn test_class_pseudo_select_white() {
         assert_eq!(
             run(
-                r#".jj:before,.jj:after{width:100px;}"#,
+                r#".jj:hover,.jj:focus{width:100px;}"#,
                 Px2RemConfig {
-                    selector_whitelist: vec![".jj:after".to_string()],
+                    selector_whitelist: vec![".jj:focus".to_string(), ".jj:hover".to_string()],
                     ..Default::default()
                 }
             ),
-            r#".jj:before,.jj:after{width:100px}"#
+            r#".jj:hover,.jj:focus{width:1rem}"#
+        );
+        assert_eq!(
+            run(
+                r#".jj:hover,.jj:focus{width:100px;}"#,
+                Px2RemConfig {
+                    selector_whitelist: vec![".jj:hover".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#".jj:hover,.jj:focus{width:100px}"#
         );
     }
 
