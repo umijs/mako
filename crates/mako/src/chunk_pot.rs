@@ -55,6 +55,10 @@ impl<'cp> ChunkPot<'cp> {
 
         let mut files = vec![];
 
+        if self.module_map.is_empty() {
+            return Ok(files);
+        }
+
         let js_chunk_file = ternary!(
             self.use_chunk_parallel(context),
             ternary!(
