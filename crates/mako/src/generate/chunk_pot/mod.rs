@@ -69,6 +69,10 @@ impl<'cp> ChunkPot<'cp> {
             )
         )(self, context)?;
 
+        if js_chunk_file.content.is_empty() {
+            panic!("Normal chunk {} output is empty.", chunk.id.id);
+        }
+
         files.push(js_chunk_file);
 
         if self.stylesheet.is_some() {
@@ -95,27 +99,33 @@ impl<'cp> ChunkPot<'cp> {
 
         let mut files = vec![];
 
-        if self.stylesheet.is_some() {
+        let js_chunk_file = if self.stylesheet.is_some() {
             let css_chunk_file = ast_impl::render_css_chunk(self, chunk, context)?;
 
             let mut css_map = css_map.clone();
             css_map.insert(css_chunk_file.chunk_id.clone(), css_chunk_file.disk_name());
-
             files.push(css_chunk_file);
-            files.push(if self.use_chunk_parallel(context) {
+
+            if self.use_chunk_parallel(context) {
                 str_impl::render_entry_js_chunk(self, js_map, &css_map, chunk, context, hmr_hash)?
             } else {
                 ast_impl::render_entry_js_chunk(self, js_map, &css_map, chunk, context, hmr_hash)?
-            });
+            }
         } else {
             mako_core::mako_profile_scope!("EntryDevJsChunk", &self.chunk_id);
 
-            files.push(if self.use_chunk_parallel(context) {
+            if self.use_chunk_parallel(context) {
                 str_impl::render_entry_js_chunk(self, js_map, css_map, chunk, context, hmr_hash)?
             } else {
                 ast_impl::render_entry_js_chunk(self, js_map, css_map, chunk, context, hmr_hash)?
-            });
+            }
+        };
+
+        if js_chunk_file.content.is_empty() {
+            panic!("Entry chunk {} output is empty.", chunk.id.id);
         }
+
+        files.push(js_chunk_file);
 
         Ok(files)
     }
