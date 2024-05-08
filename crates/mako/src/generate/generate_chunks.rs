@@ -8,6 +8,7 @@ use mako_core::rayon::prelude::*;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_css_ast::Stylesheet;
 use mako_core::swc_ecma_ast::{Expr, KeyValueProp, Prop, PropName, PropOrSpread, Str};
+use mako_core::tracing::warn;
 use nanoid::nanoid;
 
 use crate::compiler::{Compiler, Context};
@@ -274,6 +275,10 @@ fn replace_chunks_placeholder(
                     .iter_mut()
                     .filter(|cf| matches!(cf.file_type, ChunkFileType::JS))
                     .try_for_each(|cf| {
+                        if cf.content.is_empty() {
+                            warn!("Chunk content of \"{}\" is empty.", cf.chunk_id);
+                        }
+
                         let position = cf
                             .content
                             .windows(placeholder.len())
@@ -282,9 +287,10 @@ fn replace_chunks_placeholder(
                         position.map_or(
                             {
                                 Err(anyhow!(
-                                    "Generate \"{}\" failed, placeholder \"{}\" not existed in chunk file.",
-                                    chunk_id,
+                                    "Generate \"{}\" failed, placeholder \"{}\" for \"{}\" not existed in chunk file.",
+                                    cf.chunk_id,
                                     placeholder,
+                                    chunk_id
                                 ))
                             },
                             |pos| {
