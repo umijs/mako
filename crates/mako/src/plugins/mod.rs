@@ -14,5 +14,5 @@ pub mod minifish;
 pub mod node_polyfill;
 pub mod node_stuff;
 pub mod runtime;
-pub(crate) mod suplus;
+pub mod suplus;
 pub mod wasm_runtime;
