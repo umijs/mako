@@ -1405,6 +1405,10 @@ runTest('change async import to import', async () => {
   console.log('last html', lastResult.html);
   assert.equal(lastResult.html, '<div>App</div>', 'Initial render');
   write({
+    '/src/App.tsx': `
+      export default () => {
+        return <div>App Modified</div>;
+      };`,
     '/src/index.tsx': `
       import React from 'react';
       import ReactDOM from "react-dom/client";
@@ -1415,7 +1419,7 @@ runTest('change async import to import', async () => {
   await delay(DELAY_TIME);
   thisResult = normalizeHtml(await getRootHtml(page));
   console.log(`new html`, thisResult.html);
-  assert.equal(thisResult.html, '<div>App</div>', 'Initial render 2');
+  assert.equal(thisResult.html, '<div>App Modified</div>', 'Initial render 2');
   isReload = lastResult.random !== thisResult.random;
   assert.equal(isReload, true, 'isReload');
   lastResult = thisResult;
