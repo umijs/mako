@@ -19,5 +19,8 @@
         "preferRequire": true
       }
     }
+  },
+  "optimization": {
+    "concatenateModules": false
   }
 }

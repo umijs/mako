@@ -64,6 +64,7 @@ pub fn setup_compiler(base: &str, cleanup: bool) -> Compiler {
     config.hmr = None;
     config.minify = false;
     config.mode = Mode::Production;
+    config.optimization = None;
 
     compiler::Compiler::new(config, root, Default::default(), None).unwrap()
 }

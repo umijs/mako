@@ -1,0 +1,3 @@
+{
+	"optimization": { "skipModules": true, "concatenateModules": false }
+}

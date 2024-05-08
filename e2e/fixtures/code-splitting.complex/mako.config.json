@@ -1,3 +1,4 @@
 {
-  "codeSplitting": "auto"
+  "codeSplitting": "auto",
+  "optimization": { "skipModules": true, "concatenateModules": false }
 }
