@@ -188,16 +188,20 @@ fn parse_attribute(attr: &AttributeSelector) -> String {
         ..
     } = attr;
     let val_str = if let Some(val_str) = value.as_ref() {
-        val_str.as_str().unwrap().value.to_string()
+        if let Some(val_str) = val_str.as_str() {
+            val_str.value.to_string()
+        } else {
+            "".to_string()
+        }
     } else {
         "".to_string()
     };
-    res_str.push_str(&format!(
-        "[{}{}{}]",
-        name.value.value,
-        matcher.as_ref().unwrap().value,
-        val_str
-    ));
+    let matcher = if let Some(x) = matcher.as_ref() {
+        x.value.to_string()
+    } else {
+        "".to_string()
+    };
+    res_str.push_str(&format!("[{}{}{}]", name.value.value, matcher, val_str));
     res_str
 }
 
@@ -229,6 +233,18 @@ mod tests {
         assert_eq!(
             run_with_default(r#".a{width:100px;height:200px;}"#),
             r#".a{width:1rem;height:2rem}"#
+        );
+    }
+
+    #[test]
+    fn test_attribute_selector() {
+        assert_eq!(
+            run_with_default(r#".a[b]{width:100px;}"#),
+            r#".a[b]{width:1rem}"#
+        );
+        assert_eq!(
+            run_with_default(r#".a[b=c]{width:100px;}"#),
+            r#".a[b=c]{width:1rem}"#
         );
     }
 
