@@ -23,7 +23,7 @@
     "yargs-parser": "^21.1.1",
     "less": "^4.2.0",
     "less-plugin-resolve": "^1.0.2",
-    "node-libs-browser-okam": "2.2.4",
+    "node-libs-browser-okam": "^2.2.5",
     "react-error-overlay": "6.0.9",
     "react-refresh": "^0.14.0",
     "workerpool": "^9.1.1"
