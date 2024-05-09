@@ -6,3 +6,6 @@ console.log(fs_promise);
 
 import path from "path";
 console.log(path);
+
+import { setTimeout } from 'timers';
+console.log(setTimeout);
