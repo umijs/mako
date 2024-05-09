@@ -1,4 +1,15 @@
 
+## 0.4.14
+
+`2024-05-09`
+
+> @alipay/bigfish@TODO
+
+* 默认开启 concatenate modules by [@stormslowly](https://github.com/stormslowly) in [#1126](https://github.com/umijs/mako/pull/1126)
+* 修复 chunk id 依赖顺序可能不稳定的问题 by [@stormslowly](https://github.com/stormslowly) in [#1117](https://github.com/umijs/mako/pull/1117)
+* chore: add log for parallel generate by [@xusd320](https://github.com/xusd320) in [#1127](https://github.com/umijs/mako/pull/1127)
+* 修复热更场景下，依赖类型变更时没有 re-group chunk 的问题 by [@xusd320](https://github.com/xusd320) in [#1124](https://github.com/umijs/mako/pull/1124)
+
 ## 0.4.13
 
 `2024-05-06`
