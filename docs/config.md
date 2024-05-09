@@ -307,7 +307,7 @@ moduleId 的生成策略。
 ## optimization
 
 - 类型：`object`
-- 默认值：`{ skipModules: true, concatenateModules: false }`
+- 默认值：`{ skipModules: true, concatenateModules: true }`
 
 优化构建产物的配置。目前支持子配置项如下。
 
