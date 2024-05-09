@@ -1,6 +1,6 @@
 {
   "name": "@umijs/mako",
-  "version": "0.4.13",
+  "version": "0.4.14",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -63,9 +63,9 @@
     "src:build": "father build"
   },
   "optionalDependencies": {
-    "@umijs/mako-darwin-arm64": "0.4.13",
-    "@umijs/mako-darwin-x64": "0.4.13",
-    "@umijs/mako-linux-x64-gnu": "0.4.13"
+    "@umijs/mako-darwin-arm64": "0.4.14",
+    "@umijs/mako-darwin-x64": "0.4.14",
+    "@umijs/mako-linux-x64-gnu": "0.4.14"
   },
   "repository": "git@github.com:umijs/mako.git"
 }
