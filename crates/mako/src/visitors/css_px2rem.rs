@@ -33,7 +33,10 @@ impl Px2Rem {
         }
     }
 
-    fn should_transform(&self) -> bool {
+    fn should_transform(&self, val: f64) -> bool {
+        if val < self.config.min_pixel_value {
+            return false;
+        }
         let is_prop_valid = if let Some(decl) = &self.current_decl {
             let is_whitelist_empty = self.config.prop_whitelist.is_empty();
             let is_in_whitelist = self.config.prop_whitelist.contains(decl);
@@ -87,7 +90,7 @@ impl VisitMut for Px2Rem {
     }
 
     fn visit_mut_length(&mut self, n: &mut Length) {
-        if n.unit.value.to_string() == "px" && self.should_transform() {
+        if n.unit.value.to_string() == "px" && self.should_transform(n.value.value) {
             n.value.value /= self.config.root;
             n.value.raw = None;
             n.unit.value = "rem".into();
@@ -95,9 +98,12 @@ impl VisitMut for Px2Rem {
         n.visit_mut_children_with(self);
     }
 
+    // css variables use as token
+    // e.g.
+    // .a { --a-b: var(--c-d, 88px); }
     fn visit_mut_token(&mut self, t: &mut Token) {
         if let Token::Dimension(dimension) = t {
-            if dimension.unit.to_string() == "px" && self.should_transform() {
+            if dimension.unit.to_string() == "px" && self.should_transform(dimension.value) {
                 let rem_val = dimension.value / self.config.root;
                 dimension.raw_value = rem_val.to_string().into();
                 dimension.value = rem_val;
@@ -234,6 +240,10 @@ mod tests {
             run_with_default(r#".a{width:100px;height:200px;}"#),
             r#".a{width:1rem;height:2rem}"#
         );
+        assert_eq!(
+            run_with_min_pixel_value(r#".a{width:100px;height:200px;}"#, 101.0),
+            r#".a{width:100px;height:2rem}"#
+        );
     }
 
     #[test]
@@ -268,6 +278,14 @@ mod tests {
     fn test_css_variables() {
         assert_eq!(
             run_with_default(r#".a { --a-b: var(--c-d, 88px); }"#),
+            r#".a{--a-b:var(--c-d, 0.88rem)}"#
+        );
+        assert_eq!(
+            run_with_min_pixel_value(r#".a { --a-b: var(--c-d, 88px); }"#, 100.0),
+            r#".a{--a-b:var(--c-d, 88px)}"#
+        );
+        assert_eq!(
+            run_with_min_pixel_value(r#".a { --a-b: var(--c-d, 88px); }"#, 88.0),
             r#".a{--a-b:var(--c-d, 0.88rem)}"#
         );
     }
@@ -557,6 +575,16 @@ mod tests {
 
     fn run_with_default(css_code: &str) -> String {
         run(css_code, Px2RemConfig::default())
+    }
+
+    fn run_with_min_pixel_value(css_code: &str, min_pixel_value: f64) -> String {
+        run(
+            css_code,
+            Px2RemConfig {
+                min_pixel_value,
+                ..Default::default()
+            },
+        )
     }
 
     fn run(css_code: &str, config: Px2RemConfig) -> String {
