@@ -29,11 +29,16 @@ pub struct UpdateResult {
     pub removed: HashSet<ModuleId>,
     // 修改的模块Id
     pub modified: HashSet<ModuleId>,
+    // 依赖变更，典型的如 async import 变成 import
+    pub dep_changed: HashSet<ModuleId>,
 }
 
 impl UpdateResult {
     pub fn is_updated(&self) -> bool {
-        !self.modified.is_empty() || !self.added.is_empty() || !self.removed.is_empty()
+        !self.modified.is_empty()
+            || !self.added.is_empty()
+            || !self.removed.is_empty()
+            || !self.dep_changed.is_empty()
     }
 }
 
@@ -53,14 +58,21 @@ impl fmt::Display for UpdateResult {
             .map(|f| f.id.clone())
             .collect::<Vec<_>>();
         removed.sort_by_key(|id| id.to_string());
+        let mut dep_changed = self
+            .dep_changed
+            .iter()
+            .map(|f| f.id.clone())
+            .collect::<Vec<_>>();
+        dep_changed.sort_by_key(|id| id.to_string());
         write!(
             f,
             r#"
 added:{:?}
 modified:{:?}
 removed:{:?}
+dep_changed:{:?}
 "#,
-            &added, &modified, &removed
+            &added, &modified, &removed, &dep_changed
         )
     }
 }
@@ -192,7 +204,7 @@ impl Compiler {
 
         // 分析修改的模块，结果中会包含新增的模块
         debug!("modify: {:?}", &modified);
-        let (modified_module_ids, add_paths) =
+        let (modified_module_ids, dep_changed_module_ids, add_paths) =
             self.build_by_modify(modified).map_err(|err| anyhow!(err))?;
         debug!("after build_by_modify");
         debug!("  > modified_module_ids: {:?}", &modified_module_ids);
@@ -202,8 +214,10 @@ impl Compiler {
         );
 
         added.extend(add_paths);
-        debug!("added:{:?}", &added);
+
         update_result.modified.extend(modified_module_ids);
+
+        update_result.dep_changed.extend(dep_changed_module_ids);
 
         // 最后做添加
         debug!("add: {:?}", &added);
@@ -235,7 +249,7 @@ impl Compiler {
     fn build_by_modify(
         &self,
         mut modified: Vec<PathBuf>,
-    ) -> Result<(HashSet<ModuleId>, Vec<PathBuf>)> {
+    ) -> Result<(HashSet<ModuleId>, HashSet<ModuleId>, Vec<PathBuf>)> {
         let module_graph = self.context.module_graph.read().unwrap();
         let modules = module_graph.modules();
 
@@ -318,16 +332,17 @@ impl Compiler {
 
                 let d = diff(current_dependencies, target_dependencies);
                 debug!("build by modify: {:?} end", entry);
-                Result::Ok((module, d.added, d.removed, add_modules))
+                Result::Ok((module, d.added, d.removed, d.dep_changed, add_modules))
             })
             .collect::<Result<Vec<_>>>();
         let result = result?;
 
         let mut added = vec![];
         let mut modified_module_ids = HashSet::new();
+        let mut dep_changed_module_ids = HashSet::new();
 
         let mut module_graph = self.context.module_graph.write().unwrap();
-        for (module, add, remove, mut add_modules) in result {
+        for (module, add, remove, dep_change, mut add_modules) in result {
             // remove bind dependency
             for (remove_module_id, dep) in remove {
                 module_graph.remove_dependency(&module.id, &remove_module_id, &dep);
@@ -352,13 +367,21 @@ impl Compiler {
                 module_graph.add_dependency(&module.id, add_module_id, dep.clone());
             }
 
+            if !&dep_change.is_empty() {
+                dep_changed_module_ids.insert(module.id.clone());
+
+                for (dep_change_module_id, dep) in &dep_change {
+                    module_graph.add_dependency(&module.id, dep_change_module_id, dep.clone());
+                }
+            }
+
             modified_module_ids.insert(module.id.clone());
 
             // replace module
             module_graph.replace_module(module);
         }
 
-        Result::Ok((modified_module_ids, added))
+        Result::Ok((modified_module_ids, dep_changed_module_ids, added))
     }
 
     fn build_by_add(&self, added: &[PathBuf]) -> Result<HashSet<ModuleId>> {
@@ -392,6 +415,7 @@ impl Compiler {
 pub struct Diff {
     added: HashSet<(ModuleId, Dependency)>,
     removed: HashSet<(ModuleId, Dependency)>,
+    dep_changed: HashSet<(ModuleId, Dependency)>,
 }
 
 // 对比两颗 Dependency 的差异
@@ -404,19 +428,35 @@ fn diff(origin: Vec<(ModuleId, Dependency)>, target: Vec<(ModuleId, Dependency)>
         .iter()
         .map(|(module_id, _dep)| module_id)
         .collect::<HashSet<_>>();
+
     let mut added: HashSet<(ModuleId, Dependency)> = HashSet::new();
     let mut removed: HashSet<(ModuleId, Dependency)> = HashSet::new();
+    let mut dep_changed: HashSet<(ModuleId, Dependency)> = HashSet::new();
+
     target
         .iter()
         .filter(|(module_id, _dep)| !origin_module_ids.contains(module_id))
         .for_each(|(module_id, dep)| {
             added.insert((module_id.clone(), dep.clone()));
         });
-    origin
-        .iter()
-        .filter(|(module_id, _dep)| !target_module_ids.contains(module_id))
-        .for_each(|(module_id, dep)| {
+
+    origin.iter().for_each(|(module_id, dep)| {
+        if target_module_ids.contains(module_id) {
+            let (_, t_dep) = target
+                .iter()
+                .find(|(t_module_id, _)| t_module_id == module_id)
+                .unwrap();
+            if dep.resolve_type != t_dep.resolve_type {
+                dep_changed.insert((module_id.clone(), t_dep.clone()));
+            }
+        } else {
             removed.insert((module_id.clone(), dep.clone()));
-        });
-    Diff { added, removed }
+        }
+    });
+
+    Diff {
+        added,
+        removed,
+        dep_changed,
+    }
 }
