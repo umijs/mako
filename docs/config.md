@@ -368,16 +368,17 @@ publicPath 配置。注：有个特殊值 `"runtime"`，表示会切换到 runti
 
 ## px2rem
 
-- 类型：`false | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[], selectorWhiteList?: string[] }`
+- 类型：`false | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[], selectorWhiteList?: string[], minPixelValue?: number }`
 - 默认值：`false`
 
-是否开启 px2rem 转换，启用时 `root` 的默认值为 `100`。
+是否开启 px2rem 转换。
 
-- `root`，根节点的字体大小
+- `root`，根节点的字体大小，默认值为 `100`
 - `propBlackList`，属性黑名单
 - `propWhiteList`，属性白名单
 - `selectorBlackList`，选择器黑名单
 - `selectorWhiteList`，选择器白名单
+- `minPixelValue`，最小像素值，默认值为 `0`
 
 ## react
 
