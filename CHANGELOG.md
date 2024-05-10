@@ -1,9 +1,19 @@
 
+## 0.4.15
+
+`2024-05-10`
+
+> @alipay/bigfish@4.1.29
+
+* 优化 px2rem 支持 min_pixel_value 配置 by @sorrycc in #1141
+* 修复 px2rem 在使用属性选择器但没值时会 panic 的问题 by @sorrycc in #1140
+* 修复 node 补丁方案不支持 timers 的问题 by @sorrycc in #1142
+
 ## 0.4.14
 
 `2024-05-09`
 
-> @alipay/bigfish@TODO
+> @alipay/bigfish@4.1.29
 
 * 默认开启 concatenate modules by [@stormslowly](https://github.com/stormslowly) in [#1126](https://github.com/umijs/mako/pull/1126)
 * 修复 chunk id 依赖顺序可能不稳定的问题 by [@stormslowly](https://github.com/stormslowly) in [#1117](https://github.com/umijs/mako/pull/1117)
@@ -14,7 +24,7 @@
 
 `2024-05-06`
 
-> @alipay/bigfish@TODO
+> @alipay/bigfish@4.1.29
 
 * 新增支持通过 ?path 指定虚拟文件的路径 by [@stormslowly](https://github.com/stormslowly) in [#1102](https://github.com/umijs/mako/pull/1102)
 * 新增全局 `__mako_chunk_load__` 方法 by [@sorrycc](https://github.com/sorrycc) in [#1111](https://github.com/umijs/mako/pull/1111)
