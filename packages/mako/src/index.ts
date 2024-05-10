@@ -72,6 +72,7 @@ export async function build(params: BuildParams) {
     sourceMap: params.less?.sourceMap || false,
     plugins: [
       ['less-plugin-resolve', { aliases: params.config.resolve.alias! }],
+      ...(params.less?.plugins || []),
     ],
   });
   let originLoad = params.hooks.load;
