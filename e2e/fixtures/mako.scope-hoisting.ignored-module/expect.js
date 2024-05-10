@@ -7,6 +7,6 @@ const { files } = parseBuildResult(__dirname);
 injectSimpleJest();
 
 // ignored module should not be concatenated, so keep the definition
-// expect(files["index.js"]).toContain(moduleDefinitionOf("node_modules/pkg/index.js"));
+expect(files["index.js"]).toContain(moduleDefinitionOf("node_modules/pkg/index.js"));
 
 require("./dist/index.js");
