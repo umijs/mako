@@ -43,7 +43,7 @@ pub(crate) fn render_module_js(
         cfg: JsCodegenConfig::default()
             .with_minify(with_minify)
             .with_target(context.config.output.es_version)
-            .with_ascii_only(false)
+            .with_ascii_only(with_minify)
             .with_omit_last_semi(true),
         cm: cm.clone(),
         comments: if with_minify {
