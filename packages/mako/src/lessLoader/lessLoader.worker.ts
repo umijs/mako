@@ -8,10 +8,10 @@ const lessLoader = {
     filePath: string,
     opts: LessLoaderOpts,
   ): Promise<string> {
-    const { modifyVars, math, sourceMap, plugins } = opts;
+    const { modifyVars, math, sourceMap, pluginsForMako } = opts;
     const input = fs.readFileSync(filePath, 'utf-8');
 
-    const pluginInstances: Less.Plugin[] = (plugins || [])?.map((p) => {
+    const plugins: Less.Plugin[] | undefined = pluginsForMako?.map((p) => {
       if (Array.isArray(p)) {
         const pluginClass = require(p[0]);
         return new pluginClass(p[1]);
@@ -25,7 +25,7 @@ const lessLoader = {
         filename: filePath,
         javascriptEnabled: true,
         math,
-        plugins: pluginInstances,
+        plugins,
         modifyVars,
         sourceMap,
         rewriteUrls: 'all',

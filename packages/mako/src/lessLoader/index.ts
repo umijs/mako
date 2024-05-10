@@ -23,7 +23,7 @@ export interface LessLoaderOpts {
    * we will create a plugin instance with the params object, or else, the required content will be treated as a plugin instance.
    * We do this because the less loader runs in a worker pool for speed, and a less plugin instance can't be passed to worker directly.
    */
-  plugins?: (string | [string, Record<string, any>])[];
+  pluginsForMako?: (string | [string, Record<string, any>])[];
 }
 
 function lessLoader(fn: Function | null, opts: LessLoaderOpts) {
