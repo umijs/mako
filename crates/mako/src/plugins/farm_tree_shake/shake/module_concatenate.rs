@@ -91,14 +91,15 @@ pub fn optimize_module_graph(
                 can_be_inner = false;
             }
 
-            let is_async = module_graph
+            module_graph
                 .get_module(module_id)
                 .and_then(|module| module.info.as_ref())
-                .map_or(false, |info| info.is_async);
-            if is_async {
-                can_be_inner = false;
-                can_be_root = false;
-            }
+                .inspect(|info| {
+                    if info.is_async || info.is_ignored {
+                        can_be_inner = false;
+                        can_be_root = false;
+                    }
+                });
 
             if can_be_root {
                 root_candidates.push(module_id.clone());
