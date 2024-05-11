@@ -2,7 +2,7 @@
   "name": "@umijs/bundler-mako",
   "version": "0.4.15",
   "dependencies": {
-    "@umijs/mako": "0.4.15",
+    "@umijs/mako": "0.4.16",
     "@umijs/bundler-utils": "^4.0.81",
     "chalk": "^4.1.2",
     "compression": "^1.7.4",
