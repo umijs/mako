@@ -20,7 +20,6 @@
   "license": "MIT",
   "dependencies": {
     "@swc/helpers": "0.5.1",
-    "@types/lodash": "^4.17.1",
     "less": "^4.2.0",
     "less-plugin-resolve": "^1.0.2",
     "lodash": "^4.17.21",
@@ -33,6 +32,7 @@
   "devDependencies": {
     "@napi-rs/cli": "^2.18.0",
     "@types/less": "^3.0.6",
+    "@types/lodash": "^4.17.1",
     "@types/node": "^20.12.5",
     "@types/yargs-parser": "^21.0.3",
     "typescript": "^5.4.3"
