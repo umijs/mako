@@ -52,5 +52,6 @@
     "webpack": "^5.0.0",
     "zx": "^7.2.3"
   },
+  "packageManager": "pnpm@8.15.8",
   "repository": "git@github.com:umijs/mako.git"
 }
