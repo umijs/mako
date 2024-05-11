@@ -290,8 +290,8 @@ moduleId 的生成策略。
 
 ## output
 
-- 类型：`{ path: string, mode: "bundle" | "bundless", esVersion: "es3" | "es5" | "es2015" | "es2016" | "es2017" | "es2018" | "es2019" | "es2020" | "es2021" | "es2022" | "esnext", meta: boolean, asciiOnly: boolean, chunkLoadingGlobal: string, preserveModules: boolean, preserveModulesRoot: string }`
-- 默认值：`{ path: "dist", mode: "bundle", esVersion: "es2022", meta: false, asciiOnly: true, chunkLoadingGlobal: "", preserveModules: false, preserveModulesRoot: "" }`
+- 类型：`{ path: string, mode: "bundle" | "bundless", esVersion: "es3" | "es5" | "es2015" | "es2016" | "es2017" | "es2018" | "es2019" | "es2020" | "es2021" | "es2022" | "esnext", meta: boolean, chunkLoadingGlobal: string, preserveModules: boolean, preserveModulesRoot: string }`
+- 默认值：`{ path: "dist", mode: "bundle", esVersion: "es2022", meta: false, chunkLoadingGlobal: "", preserveModules: false, preserveModulesRoot: "" }`
 
 和输出相关的配置。
 
@@ -299,7 +299,6 @@ moduleId 的生成策略。
 - `mode`，输出模式，`"bundle"` 或 `"bundless"`，默认为 `"bundle"`
 - `esVersion`，输出的 `js` 版本（注：Bundless Only）
 - `meta`，是否生成 `meta.json` 文件（注：Bundless Only）
-- `asciiOnly`，是否只输出 `ascii` 字符（注：好像没生效，待排查）
 - `chunkLoadingGlobal`，`chunk loading` 的全局变量名
 - `preserveModules`，是否保留模块目录结构（注：Bundless Only）
 - `preserveModulesRoot`，保留模块目录结构的根目录（注：Bundless Only）
