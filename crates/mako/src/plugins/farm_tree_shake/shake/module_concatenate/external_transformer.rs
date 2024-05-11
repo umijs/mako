@@ -237,6 +237,36 @@ impl<'a> ExternalTransformer<'_> {
 
 impl VisitMut for ExternalTransformer<'_> {
     fn visit_mut_expr(&mut self, n: &mut Expr) {
+        match n {
+            // require("ext")
+            Expr::Call(call_expr) if is_commonjs_require(call_expr, &self.unresolved_mark) => {
+                if let Some(((namespace, _), _)) =
+                    self.require_arg_to_module_namespace(&call_expr.args)
+                {
+                    *n = quote_ident!(namespace.clone()).into();
+                }
+            }
+            // require("ext").foo
+            Expr::Member(MemberExpr { obj, prop, .. }) => {
+                if let box Expr::Call(call_expr) = obj
+                    && is_commonjs_require(call_expr, &self.unresolved_mark)
+                {
+                    if let Some(((namespace, _), _)) =
+                        self.require_arg_to_module_namespace(&call_expr.args)
+                    {
+                        *obj = quote_ident!(namespace.clone()).into();
+                    }
+
+                    prop.visit_mut_with(self);
+                } else {
+                    n.visit_mut_children_with(self);
+                }
+            }
+            _ => {
+                n.visit_mut_children_with(self);
+            }
+        }
+
         if let Expr::Call(call_expr) = n
             && is_commonjs_require(call_expr, &self.unresolved_mark)
         {
@@ -300,10 +330,13 @@ impl VisitMut for ExternalTransformer<'_> {
                             replaces.push((index, items));
                         }
                     }
-                    ModuleDecl::ExportDecl(_) => {}
+                    // all these may introduce expression ,so keep visiting
+                    ModuleDecl::ExportDecl(_)
+                    | ModuleDecl::ExportDefaultDecl(_)
+                    | ModuleDecl::ExportDefaultExpr(_) => {
+                        module_decl.visit_mut_with(self);
+                    }
                     ModuleDecl::ExportAll(_) => {}
-                    ModuleDecl::ExportDefaultDecl(_) => {}
-                    ModuleDecl::ExportDefaultExpr(_) => {}
                     ModuleDecl::TsImportEquals(_) => {}
                     ModuleDecl::TsExportAssignment(_) => {}
                     ModuleDecl::TsNamespaceExport(_) => {}

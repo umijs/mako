@@ -73,7 +73,7 @@ pub fn optimize_module_graph(
 
             let has_not_supported_syntax = deps.iter().any(|(_, dep, is_async)| {
                 dep.resolve_type.is_dynamic_esm()
-                    || matches!(dep.resolve_type, ResolveType::Worker | ResolveType::Require)
+                    || matches!(dep.resolve_type, ResolveType::Worker)
                     || (*is_async && dep.resolve_type.is_sync_esm())
             });
             if has_not_supported_syntax {
