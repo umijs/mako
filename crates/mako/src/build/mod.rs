@@ -230,6 +230,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
             ModuleInfo {
                 file,
                 ast,
+                is_ignored: true,
                 ..Default::default()
             }
         };

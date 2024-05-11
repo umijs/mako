@@ -164,6 +164,7 @@ pub struct ModuleInfo {
     /// The top-level-await module must be an async module, in addition, for example, wasm is also an async module
     /// The purpose of distinguishing top_level_await and is_async is to adapt to runtime_async
     pub is_async: bool,
+    pub is_ignored: bool,
     pub resolved_resource: Option<ResolverResource>,
     /// The transformed source map chain of this module
     pub source_map_chain: Vec<Vec<u8>>,
@@ -183,6 +184,7 @@ impl Default for ModuleInfo {
             is_async: false,
             resolved_resource: None,
             source_map_chain: vec![],
+            is_ignored: false,
         }
     }
 }

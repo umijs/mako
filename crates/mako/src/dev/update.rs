@@ -12,7 +12,6 @@ use crate::compiler::Compiler;
 use crate::generate::transform::transform_modules;
 use crate::module::{Dependency, Module, ModuleId};
 use crate::resolve::{self, clear_resolver_cache};
-use crate::visitors::virtual_css_modules::is_css_path;
 
 #[derive(Debug, Clone)]
 pub enum UpdateType {
@@ -84,10 +83,10 @@ impl Compiler {
             .into_iter()
             .map(|path| {
                 let update_type = if path.exists() {
-                    let p_str = path.to_string_lossy().to_string();
-                    let with_as_module = format!("{}?asmodule", p_str);
+                    let path = path.to_string_lossy().to_string();
                     if module_graph.has_module(&path.clone().into())
-                        || module_graph.has_module(&with_as_module.into())
+                        || module_graph.has_module(&format!("{}?modules", path).into())
+                        || module_graph.has_module(&format!("{}?watch=parent", path).into())
                     {
                         UpdateType::Modify
                     } else {
@@ -162,12 +161,19 @@ impl Compiler {
                     debug!("  > {} is filtered", p.to_string_lossy());
                     new_paths.push((p.clone(), update_type.clone()));
                 }
-                let p_str = p.to_string_lossy().to_string();
-                if is_css_path(&p_str) {
-                    let with_as_module = format!("{}?asmodule", p_str);
-                    if module_graph.has_module(&with_as_module.clone().into()) {
-                        debug!("  > {} is filtered", with_as_module);
-                        new_paths.push((PathBuf::from(with_as_module), update_type));
+                let path = p.to_string_lossy().to_string();
+                let watch_parent_searches = vec!["?modules", "?watch=parent"];
+                for search in watch_parent_searches {
+                    let id: ModuleId = format!("{}{}", path, search).into();
+                    if module_graph.has_module(&id) {
+                        debug!("  > {} is filtered", &id.id);
+                        new_paths.push((PathBuf::from(&id.id), update_type.clone()));
+                        let dependents = module_graph.get_dependents(&id);
+                        for dependent in dependents {
+                            debug!("  > {} is filtered", dependent.0.id);
+                            new_paths
+                                .push((PathBuf::from(dependent.0.id.clone()), update_type.clone()));
+                        }
                     }
                 }
             });
@@ -248,24 +254,8 @@ impl Compiler {
 
     fn build_by_modify(
         &self,
-        mut modified: Vec<PathBuf>,
+        modified: Vec<PathBuf>,
     ) -> Result<(HashSet<ModuleId>, HashSet<ModuleId>, Vec<PathBuf>)> {
-        let module_graph = self.context.module_graph.read().unwrap();
-        let modules = module_graph.modules();
-
-        // if ?modules is modified, add ?asmodule to modified
-        for module in modules
-            .iter()
-            .filter(|module| module.id.id.contains("?modules"))
-        {
-            let origin_id: &str = module.id.id.split('?').next().unwrap();
-            let css_modules_virtual_id = format!("{}?asmodule", origin_id);
-            if modified.contains(&PathBuf::from(css_modules_virtual_id)) {
-                modified.push(PathBuf::from(module.id.id.clone()));
-            }
-        }
-        drop(module_graph);
-
         let result = modified
             .par_iter()
             .map(|entry| {
