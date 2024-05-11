@@ -429,7 +429,7 @@ mod tests {
                 cfg: JsCodegenConfig::default()
                     .with_minify(with_minify)
                     .with_target(context.config.output.es_version)
-                    .with_ascii_only(context.config.output.ascii_only)
+                    .with_ascii_only(with_minify)
                     .with_omit_last_semi(true),
                 cm: cm.clone(),
                 comments: (!with_minify).then_some(swc_comments as &dyn Comments),

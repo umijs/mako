@@ -226,7 +226,7 @@ impl JsAst {
                 cfg: JsCodegenConfig::default()
                     .with_minify(minify)
                     .with_target(context.config.output.es_version)
-                    .with_ascii_only(context.config.output.ascii_only)
+                    .with_ascii_only(true)
                     .with_omit_last_semi(true),
                 cm: cm.clone(),
                 comments: if minify { None } else { Some(swc_comments) },

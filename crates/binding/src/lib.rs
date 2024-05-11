@@ -48,7 +48,6 @@ pub struct BuildParams {
         meta?: boolean;
         preserveModules?: boolean;
         preserveModulesRoot?: string;
-        asciiOnly?: boolean;
         skipWrite?: boolean;
     };
     resolve?: {
