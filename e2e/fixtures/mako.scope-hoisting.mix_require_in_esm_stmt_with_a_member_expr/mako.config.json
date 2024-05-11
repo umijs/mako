@@ -3,7 +3,7 @@
     "index": "./index.js"
   },
   "optimization": {
-    "skipModules": true,
+    "skipModules": false,
     "concatenateModules": true
   }
 }
