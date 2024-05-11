@@ -1,6 +1,6 @@
 packages:
   - 'examples/*'
-  - 'crates/node'
+  - 'crates/binding'
   - 'packages/*'
   - 'crates/mako/test/compile/auto-code-splitting'
   - 'e2e/fixtures.umi/react-16'
