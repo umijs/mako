@@ -1,20 +1,20 @@
+use delegate::delegate;
 use mako_core::swc_common;
-use mako_core::swc_common::comments::Comment;
+use mako_core::swc_common::comments::{Comment, Comments as CommentsTrait};
 use mako_core::swc_common::{BytePos, Span};
 use mako_core::swc_node_comments::SwcComments;
+use mako_core::tracing::warn;
 
 #[derive(Default)]
-pub struct Comments(SwcComments);
+pub struct Comments(MakoComments);
 
 impl Comments {
-    pub fn get_swc_comments(&self) -> &SwcComments {
+    pub fn get_swc_comments(&self) -> &MakoComments {
         &self.0
     }
 
     pub fn add_leading_comment_at(&mut self, pos: BytePos, comment: Comment) {
-        let mut leading = self.0.leading.entry(pos).or_default();
-
-        leading.push(comment);
+        self.0.add_leading(pos, comment);
     }
 
     /**
@@ -84,5 +84,39 @@ impl Comments {
         }
 
         found
+    }
+}
+
+#[derive(Clone, Default)]
+pub struct MakoComments(SwcComments);
+
+impl CommentsTrait for MakoComments {
+    fn add_pure_comment(&self, pos: BytePos) {
+        //ref: https://github.com/swc-project/swc/pull/8172
+        if pos.is_dummy() {
+            #[cfg(debug_assertions)]
+            {
+                warn!("still got pure comments at dummy pos! UPGRADE SWC!!!");
+            }
+            return;
+        }
+        self.0.add_pure_comment(pos);
+    }
+
+    delegate! {
+        to self.0 {
+            fn add_leading(&self, pos: BytePos, cmt: Comment);
+            fn add_leading_comments(&self, pos: BytePos, comments: Vec<Comment>);
+            fn has_leading(&self, pos: BytePos) -> bool;
+            fn move_leading(&self, from: BytePos, to: BytePos);
+            fn take_leading(&self, pos: BytePos) -> Option<Vec<Comment>>;
+            fn get_leading(&self, pos: BytePos) -> Option<Vec<Comment>>;
+            fn add_trailing(&self, pos: BytePos, cmt: Comment);
+            fn add_trailing_comments(&self, pos: BytePos, comments: Vec<Comment>);
+            fn has_trailing(&self, pos: BytePos) -> bool;
+            fn move_trailing(&self, from: BytePos, to: BytePos);
+            fn take_trailing(&self, pos: BytePos) -> Option<Vec<Comment>>;
+            fn get_trailing(&self, pos: BytePos) -> Option<Vec<Comment>>;
+        }
     }
 }
