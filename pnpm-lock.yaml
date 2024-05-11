@@ -355,7 +355,7 @@ importers:
         specifier: ^4.0.81
         version: 4.1.6
       '@umijs/mako':
-        specifier: 0.4.15
+        specifier: 0.4.16
         version: link:../mako
       chalk:
         specifier: ^4.1.2
@@ -410,14 +410,14 @@ importers:
         version: 21.1.1
     optionalDependencies:
       '@umijs/mako-darwin-arm64':
-        specifier: 0.4.15
-        version: 0.4.15
+        specifier: 0.4.16
+        version: 0.4.16
       '@umijs/mako-darwin-x64':
-        specifier: 0.4.15
-        version: 0.4.15
+        specifier: 0.4.16
+        version: 0.4.16
       '@umijs/mako-linux-x64-gnu':
-        specifier: 0.4.15
-        version: 0.4.15
+        specifier: 0.4.16
+        version: 0.4.16
     devDependencies:
       '@napi-rs/cli':
         specifier: ^2.18.0
@@ -5076,8 +5076,8 @@ packages:
       - typescript
     dev: true
 
-  /@umijs/mako-darwin-arm64@0.4.15:
-    resolution: {integrity: sha512-ve/bW0RxzuyjhEg7GFyFHhLREalOSnvtO21A0XYHg+vVLEljOxmZzIQi9XiM1aHqhV8s0c5WGpd3B5Ab2P/YNA==}
+  /@umijs/mako-darwin-arm64@0.4.16:
+    resolution: {integrity: sha512-UbVonLm1cYoeUCTskqlrovhloRDCW9tt3FgX8eWbomRiy53YaMPUw2BOl+iOQ9/U/wGhg8gIXrH7jMHnzpfydw==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
@@ -5085,8 +5085,8 @@ packages:
     dev: false
     optional: true
 
-  /@umijs/mako-darwin-x64@0.4.15:
-    resolution: {integrity: sha512-aGZJUk2jQ+7a265c2vS2UI+CRtfCIwDpgZ295ysGMhn7h3SPFk8ZIOkrFUrSjwxoKhGyaBHJT2MHfp1qmenaQQ==}
+  /@umijs/mako-darwin-x64@0.4.16:
+    resolution: {integrity: sha512-3yrqKN3jnajUIvND0Nks5yak34SHHeKzhcPuVzQk5mMhcCUMlRFM1XCcn9bIvzKKbX/RRPf/gcwl3u56qNnRwg==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
@@ -5094,8 +5094,8 @@ packages:
     dev: false
     optional: true
 
-  /@umijs/mako-linux-x64-gnu@0.4.15:
-    resolution: {integrity: sha512-zyQ3YAuVSZFFG9Em5wFQN/gGutSIBr2PNaR1fn5xjw0JMYOIs6YAQ6hKngtor0xYiMArdmJfGzNzccSofC441A==}
+  /@umijs/mako-linux-x64-gnu@0.4.16:
+    resolution: {integrity: sha512-V0RnrvVAjW/D1AALKHhAoorBwP8C2r65tDU9KCfrdSW08qCayMnsAO5MI1OCzZUwbqs5zX9thwTpA/rkOKV7qg==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
