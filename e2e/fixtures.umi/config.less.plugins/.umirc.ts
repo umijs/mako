@@ -1,7 +1,7 @@
 export default {
   mfsu: false,
   lessLoader: {
-    pluginsForMako: [
+    plugins: [
       [require.resolve("less-plugin-clean-css"), { roundingPrecision: 1 }]
     ],
   },
