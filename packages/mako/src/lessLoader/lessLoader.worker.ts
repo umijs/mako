@@ -3,17 +3,21 @@ import less from 'less';
 import workerpool from 'workerpool';
 import { LessLoaderOpts } from '.';
 
-const ResolvePlugin = require('less-plugin-resolve');
-
 const lessLoader = {
   render: async function (
     filePath: string,
     opts: LessLoaderOpts,
   ): Promise<string> {
-    const { alias, modifyVars, math, sourceMap } = opts;
+    const { modifyVars, math, sourceMap, plugins } = opts;
     const input = fs.readFileSync(filePath, 'utf-8');
-    const resolvePlugin = new ResolvePlugin({
-      aliases: alias,
+
+    const pluginInstances: Less.Plugin[] | undefined = plugins?.map((p) => {
+      if (Array.isArray(p)) {
+        const pluginClass = require(p[0]);
+        return new pluginClass(p[1]);
+      } else {
+        return require(p);
+      }
     });
 
     const result = await less
@@ -21,7 +25,7 @@ const lessLoader = {
         filename: filePath,
         javascriptEnabled: true,
         math,
-        plugins: [resolvePlugin],
+        plugins: pluginInstances,
         modifyVars,
         sourceMap,
         rewriteUrls: 'all',

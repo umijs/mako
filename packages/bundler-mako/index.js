@@ -38,6 +38,7 @@ exports.build = async function (opts) {
         modifyVars: opts.config.lessLoader?.modifyVars || opts.config.theme,
         sourceMap: getLessSourceMapConfig(makoConfig.devtool),
         math: opts.config.lessLoader?.math,
+        plugins: opts.config.lessLoader?.plugins,
       },
       forkTSChecker: makoConfig.forkTSChecker,
       watch: false,
@@ -171,6 +172,7 @@ exports.dev = async function (opts) {
         modifyVars: opts.config.lessLoader?.modifyVars || opts.config.theme,
         sourceMap: getLessSourceMapConfig(makoConfig.devtool),
         math: opts.config.lessLoader?.math,
+        plugins: opts.config.lessLoader?.plugins,
       },
       forkTSChecker: makoConfig.forkTSChecker,
       hooks: {
@@ -308,6 +310,7 @@ function checkConfig(opts) {
         'javascriptEnabled',
         'modifyVars',
         'math',
+        'plugins',
       ])
       .forEach((k) => {
         warningKeys.push(`lessLoader.${k}`);

@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { omit } from 'lodash';
 import * as binding from '../binding';
 import { ForkTSChecker as ForkTSChecker } from './forkTSChecker';
 import { LessLoaderOpts, lessLoader } from './lessLoader';
@@ -66,10 +67,13 @@ export async function build(params: BuildParams) {
 
   // built-in less-loader
   let less = lessLoader(null, {
-    alias: params.config.resolve.alias!,
     modifyVars: params.less?.modifyVars || {},
     math: params.less?.math,
     sourceMap: params.less?.sourceMap || false,
+    plugins: [
+      ['less-plugin-resolve', { aliases: params.config.resolve.alias! }],
+      ...(params.less?.plugins || []),
+    ],
   });
   let originLoad = params.hooks.load;
   // TODO: improve load binding, should support return null if not matched
@@ -118,7 +122,9 @@ export async function build(params: BuildParams) {
     });
   }
 
-  await binding.build(params);
+  const buildParams = omit(params, ['less', 'forkTSChecker']);
+
+  await binding.build(buildParams);
 
   if (params.forkTSChecker) {
     const forkTypeChecker = new ForkTSChecker({

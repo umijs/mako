@@ -20,19 +20,21 @@
   "license": "MIT",
   "dependencies": {
     "@swc/helpers": "0.5.1",
-    "yargs-parser": "^21.1.1",
     "less": "^4.2.0",
     "less-plugin-resolve": "^1.0.2",
+    "lodash": "^4.17.21",
     "node-libs-browser-okam": "^2.2.5",
     "react-error-overlay": "6.0.9",
     "react-refresh": "^0.14.0",
-    "workerpool": "^9.1.1"
+    "workerpool": "^9.1.1",
+    "yargs-parser": "^21.1.1"
   },
   "devDependencies": {
-    "@types/yargs-parser": "^21.0.3",
     "@napi-rs/cli": "^2.18.0",
     "@types/less": "^3.0.6",
+    "@types/lodash": "^4.17.1",
     "@types/node": "^20.12.5",
+    "@types/yargs-parser": "^21.0.3",
     "typescript": "^5.4.3"
   },
   "engines": {
