@@ -70,9 +70,9 @@ export async function build(params: BuildParams) {
     modifyVars: params.less?.modifyVars || {},
     math: params.less?.math,
     sourceMap: params.less?.sourceMap || false,
-    pluginsForMako: [
+    plugins: [
       ['less-plugin-resolve', { aliases: params.config.resolve.alias! }],
-      ...(params.less?.pluginsForMako || []),
+      ...(params.less?.plugins || []),
     ],
   });
   let originLoad = params.hooks.load;

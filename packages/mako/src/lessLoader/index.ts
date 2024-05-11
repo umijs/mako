@@ -2,10 +2,6 @@ import url from 'url';
 import { compile, terminatePool } from './parallelLessLoader';
 
 export interface LessLoaderOpts {
-  /**
-   * @deprecated
-   */
-  alias?: Record<string, string>;
   modifyVars: Record<string, string>;
   math:
     | 'always'
@@ -24,7 +20,7 @@ export interface LessLoaderOpts {
    * we will create a plugin instance with the params object, or else, the required content will be treated as a plugin instance.
    * We do this because the less loader runs in a worker pool for speed, and a less plugin instance can't be passed to worker directly.
    */
-  pluginsForMako?: (string | [string, Record<string, any>])[];
+  plugins?: (string | [string, Record<string, any>])[];
 }
 
 function lessLoader(fn: Function | null, opts: LessLoaderOpts) {

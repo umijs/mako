@@ -1,13 +1,13 @@
 # API
 
-Mako 目前通过 @okamjs/okam 暴露 API 供 node 工具使用，以下为 @okamjs/okam 的 API 说明。
+Mako 目前通过 @umijs/mako 暴露 API 供 node 工具使用，以下为 @umijs/mako 的 API 说明。
 
 ## Usage
 
 比如。
 
 ```ts
-const { build } = require('@okamjs/okam');
+const { build } = require('@umijs/mako');
 await build({
   root: process.cwd(),
   config: {},
@@ -54,6 +54,9 @@ less 配置。
     outputSourceFiles: true,
   },
   math: 'always',
+  plugins: [
+    [require.resolve("less-plugin-clean-css"), { roundingPrecision: 1 }]
+  ]
 }
 ```
 
