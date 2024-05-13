@@ -1,58 +1,74 @@
 # Config
 
-> 按字母排序。
+## How to config
 
-## autoCSSModules
+Create a `mako.config.json` file in the root directory of your project, and write the configuration in it.
 
-- 类型：`boolean`
-- 默认值：`false`
+e.g.
 
-是否自动开启 CSS Modules。
+```json
+{
+  "entry": {
+    "index": "./src/index.js"
+  }
+}
+```
 
-如果不开启，只有以 `.module.css` 或 `.module.less` 的文件会被当成 CSS Modules 处理；如果开启，`import styles from './a.css'` 这类具名的 import 也会被当成 CSS Modules 处理。
+Notice: When you're using mako with Umi, prefer to config the bundler in `.umirc.ts` or `config/config.ts` file.
 
-## clean
+## Configuration items
 
-- 类型：`boolean`
-- 默认值：`true`
+### autoCSSModules
 
-是否在 build 前清理输出目录。
+- Type: `boolean`
+- Default: `false`
 
-## cjs
+Whether to automatically enable CSS Modules.
 
-- 类型：`boolean`
-- 默认值：`false`
+english: If not enabled, only files with `.module.css` or `.module.less` will be treated as CSS Modules; if enabled, named imports like `import styles from './a.css'` will also be treated as CSS Modules.
 
-是否输出 cjs 格式的代码。
+### clean
 
-## codeSplitting
+- Type: `boolean`
+- Default: `true`
 
-- 类型：`false | "auto" | object`
-- 默认值：`false`
+Whether to clean the output directory before building.
 
-拆包策略，SPA 通常配置为 `auto` 即可，该内置策略会根据项目情况提取 `vendors` chunk 和 `common` chunk；MPA 场景如果需要产出 shared chunk，可以配置为 `object`，配置项说明：
+### cjs
+
+- Type: `boolean`
+- Default: `false`
+
+Whether to output cjs format code.
+
+### codeSplitting
+
+- Type: `false | "auto" | object`
+- Default: `false`
+
+Specify the code splitting strategy. Use `auto` for SPA, and `object` for MPA.
 
 ```ts
 {
   codeSplitting: {
-    //（可选）拆分 chunk 的最小尺寸，单 entry 场景小于该尺寸的 async chunk 会被合并到 entry chunk 中
+    //（optional）The minimum size of the split chunk, async chunks smaller than this size will be merged into the entry chunk
     minSize: 20000,
-    // 拆分 chunk 的分组配置
+    // Split chunk grouping configuration
     groups: [
       {
-        // chunk 分组的名称，目前仅支持字符串值
+        // The name of the chunk group, currently only string values are supported
         name: "common",
-        //（可选）chunk 分组包含模块所属的 chunk 类型，枚举值为 "async"（默认）| "entry" | "all"
+        //（optional）The chunk type that the chunk group contains modules belong to, enum values are "async" (default) | "entry" | "all"
         allowChunks: "entry",
-        //（可选）chunk 分组包含模块的最小引用次数
+        //（optional）The minimum number of references to modules contained in the chunk group
         minChunks: 1,
-        //（可选）chunk 分组生效的最小尺寸
+        //（optional）The minimum size of the chunk group to take effect
         minSize: 20000,
-        //（可选）chunk 分组的最大尺寸，超过该尺寸会自动二次拆分
+        //（optional）The maximum size of the chunk group, exceeding this size will be automatically split again
         maxSize: 5000000,
-        //（可选）chunk 分组的匹配优先级，值越大优先级越高
+        //（optional）The matching priority of the chunk group, the larger the value, the higher the priority
         priority: 0,
-        //（可选）chunk 分组的匹配正则
+        //（optional）The matching regular expression of the chunk group
         test: "(?:)",
       }
     ],
@@ -60,28 +76,28 @@
 }
 ```
 
-## copy
+### copy
 
-- 类型：`string[]`
-- 默认值：`["public"]`
+- Type: `string[]`
+- Default: `["public"]`
 
-需要拷贝的文件或目录，默认会拷贝 `public` 目录下的文件到输出目录。
+Specify the files or directories to be copied. By default, the files under the `public` directory will be copied to the output directory.
 
-## cssModulesExportOnlyLocales
+### cssModulesExportOnlyLocales
 
-- 类型：`boolean`
-- 默认值：`false`
+- Type: `boolean`
+- Default: `false`
 
-是否只导出 CSS Modules 的类名，而不导出 CSS Modules 的值。通常用于服务端渲染场景，因为服务端渲染时不需要 CSS Modules 的值，只需要类名即可。
+Whether to export only the class names of CSS Modules, not the values of CSS Modules. Usually used in server-side rendering scenarios, because when server-side rendering, you don't need the values of CSS Modules, only the class names are needed.
 
-## define
+### define
 
-- 类型：`Record<string, string>`
-- 默认值：`{ NODE_ENV: "development" | "production }`
+- Type: `Record<string, string>`
+- Default: `{ NODE_ENV: "development" | "production }`
 
-定义的全局变量。
+Specify the variables that need to be replaced in the code.
 
-比如。
+e.g.
 
 ```ts
 {
@@ -91,49 +107,51 @@
 }
 ```
 
-注：目前的 define 会自动处理 `process.env` 前缀。
+Notice: Currently, define will automatically handle the `process.env` prefix.
 
-## devtool
+### devtool
 
-- 类型：`false | "source-map" | "inline-source-map"`
-- 默认值：`"source-map"`
+- Type: `false | "source-map" | "inline-source-map"`
+- Default: `"source-map"`
 
-Source Map 类型。
+Specify the source map type.
 
-## dynamicImportToRequire
+### dynamicImportToRequire
 
-- 类型：`boolean`
-- 默认值：`false`
+- Type: `boolean`
+- Default: `false`
 
-是否将动态 import 转换成 require。
+Whether to convert dynamic import to require. Useful when using node platform, or when you want just a single js output file.
 
-配置后，比如。
+e.g.
 
 ```ts
 import("./a.js")
 // => require("./a.js")
 ```
 
-## emitAssets
+### emitAssets
 
-- 类型：`boolean`
-- 默认值：`true`
+- Type: `boolean`
+- Default: `true`
 
-是否输出 assets 文件。通常用于构建纯服务端渲染的项目时设置为 `false`，因为此时不需要输出 assets 文件。
+Whether to output assets files. Usually set to `false` when building a pure server-side rendering project, because assets files are not needed at this time.
 
-## emotion
+### emotion
 
-- 类型：`boolean`
-- 默认值：`false`
+- Type: `boolean`
+- Default: `false`
 
-是否开启 emotion 支持。
+Whether to enable emotion support.
 
-## entry
+### entry
 
-- 类型：`Record<string, string>`
-- 默认值：`{}`
+- Type: `Record<string, string>`
+- Default: `{}`
 
-入口文件的配置。比如。
+Specify the entry file.
+
+e.g.
 
 ```ts
 {
@@ -144,12 +162,14 @@ import("./a.js")
 }
 ```
 
-## experimental.webpackSyntaxValidate
+### experimental.webpackSyntaxValidate
 
-- 类型：`string[]`
+- Type: `string[]`
 - 默认值: `[]`
 
-实验性配置，指定允许使用 webpack 语法的包。比如。
+Experimental configuration, specify the packages that are allowed to use webpack syntax.
+
+e.g.
 
 ```ts
 {
@@ -159,12 +179,14 @@ import("./a.js")
 }
 ```
 
-## externals
+### externals
 
-- 类型：`Record<string, string>`
-- 默认值：`{}`
+- Type: `Record<string, string>`
+- Default: `{}`
 
-外部依赖的配置。比如。
+Specify the configuration of external dependencies.
+
+e.g.
 
 ```ts
 {
@@ -175,48 +197,42 @@ import("./a.js")
 }
 ```
 
-注：external 配置的值还有高级的配置模式，通常用不到，所以这里不展开，有需要可查看源码。
+### flexBugs
 
-## flexBugs
+- Type: `boolean`
+- Default: `false`
 
-- 类型：`boolean`
-- 默认值：`false`
+Whether to fix flexbugs.
 
-是否修复 flexbugs。
+### hash
 
-## hash
+- Type: `boolean`
+- Default: `false`
 
-- 类型：`boolean`
-- 默认值：`false`
+Whether to generate hash file names.
 
-是否生成 hash 文件名。
+### hmr
 
-注：后续会改成 `object` 格式，以方便用户做更多控制。
+- Type: `false | { host?: string, port?: number }`
+- Default: `{ host: '127.0.0.1', port: 3000 }`
 
-## hmr
+Whether to enable hot update.
 
-- 类型：`false | { host?: string, port?: number }`
-- 默认值：`{ host: '127.0.0.1', port: 3000 }`
+### ignoreCSSParserErrors
 
-是否开启热更新。
+- Type: `boolean`
+- Default: `false`
 
-## ignoreCSSParserErrors
+Whether to ignore CSS parsing errors.
 
-- 类型：`boolean`
-- 默认值：`false`
+### ignores
 
-是否忽略 CSS 解析错误。
+- Type: `string[]`
+- Default: `[]`
 
-默认配置是，项目 CSS 有错误就报错，node_modules 下的 CSS 不报错，因为 node_modules 下的 CSS 有很多是不符合规范的，但却不是自己可控的。`ignoreCSSParserErrors` 配置的作用是忽略项目下的 CSS 报错，比如用 Less 编译 less 文件时，会把 node_modules 下的 less 文件也编译进去，此时不能区分是否来自 node_modules 下，而用户对来自 node_modules 下的代码又没有控制权，所以加此配置项。
+Specifies the files to be ignored. Ignored files will output empty modules.
 
-## ignores
-
-- 类型：`string[]`
-- 默认值：`[]`
-
-需要忽略的文件。忽略的文件会输出空模块。
-
-比如。
+e.g.
 
 ```ts
 {
@@ -228,117 +244,106 @@ import("./a.js")
 }
 ```
 
-## inlineCSS
+### inlineCSS
 
-- 类型：`{} | false`
-- 默认值：`false`
+- Type: `{} | false`
+- Default: `false`
 
-是否以内联到 JS 的方式输出 CSS。
+Whether to output CSS inlined into JS.
 
-注：此配置只能在 umd 开始时使用，因为注入 CSS 并不是推荐的方式，可能有潜在的性能问题。
+Notice: This configuration can only be used with umd, because injecting CSS is not a recommended way and may have potential performance issues.
 
-## inlineLimit
+### inlineLimit
 
-- 类型：`number`
-- 默认值：`10000`
+- Type: `number`
+- Default: `10000`
 
-小于 `inlineLimit` 大小的 assets 文件会被转换成 `base64` 格式。
+Specify the size limit of the assets file that needs to be converted to `base64` format.
 
-## manifest
+### manifest
 
-- 类型：`false | { fileName?: string, basePath?: string }`
-- 默认值：`false`
+- Type: `false | { fileName?: string, basePath?: string }`
+- Default: `false`
 
-是否生成 `manifest.json` 文件，启用时 `fileName` 的默认值为 `asset-manifest.json`。
+Whether to generate the `manifest.json` file. When enabled, the default value of `fileName` is `asset-manifest.json`.
 
-## mdx
+### mdx
 
-- 类型：`boolean`
-- 默认值：`false`
+- Type: `boolean`
+- Default: `false`
 
-是否开启 `mdx` 支持。
+Whether to enable `mdx` support.
 
-## minify
+### minify
 
-- 类型：`boolean`
-- 默认值：mode 为 development 时为 `false`，production 时为 `true`
+- Type: `boolean`
+- Default: mode 为 development 时为 `false`，production 时为 `true`
 
-是否压缩代码。
+Whether to minify the code.
 
-注：后续会改成 `Object` 类型，支持更多子配置用于控制压缩参数。
+### mode
 
-## mode
+- Type: `"development" | "production"`
+- Default: `"development"`
 
-- 类型：`"development" | "production"`
-- 默认值：`"development"`
+Specify the build mode, `"development"` or `"production"`.
 
-构建模式，`"development"` 或 `"production"`。
+### moduleIdStrategy
 
-## moduleIdStrategy
+- Type: `"named" | "hashed"`
+- Default: `"named"` when mode is development, `"hashed"` when mode is production
 
-- 类型：`"named" | "hashed"`
-- 默认值：mode 为 development 时是 `"named"`，production 时是 `"hashed"`
+Specify the strategy for generating moduleId.
 
-moduleId 的生成策略。
+### nodePolyfill
 
-## nodePolyfill
+- Type: `boolean`
+- Default: `true`, and `false` when platform is `node`
 
-- 类型：`boolean`
-- 默认值：`true`，但 platform 为 `"node"` 时为 `false`
+Whether to enable node polyfill.
 
-是否开启 node polyfill。
+### output
 
-## output
+- Type: `{ path: string, mode: "bundle" | "bundless", esVersion: "es3" | "es5" | "es2015" | "es2016" | "es2017" | "es2018" | "es2019" | "es2020" | "es2021" | "es2022" | "esnext", meta: boolean, chunkLoadingGlobal: string, preserveModules: boolean, preserveModulesRoot: string }`
+- Default: `{ path: "dist", mode: "bundle", esVersion: "es2022", meta: false, chunkLoadingGlobal: "", preserveModules: false, preserveModulesRoot: "" }`
 
-- 类型：`{ path: string, mode: "bundle" | "bundless", esVersion: "es3" | "es5" | "es2015" | "es2016" | "es2017" | "es2018" | "es2019" | "es2020" | "es2021" | "es2022" | "esnext", meta: boolean, chunkLoadingGlobal: string, preserveModules: boolean, preserveModulesRoot: string }`
-- 默认值：`{ path: "dist", mode: "bundle", esVersion: "es2022", meta: false, chunkLoadingGlobal: "", preserveModules: false, preserveModulesRoot: "" }`
+Output related configuration.
 
-和输出相关的配置。
+- `path`, output directory
+- `mode`, output mode, `"bundle"` or `"bundless"`, default is `"bundle"`
+- `esVersion`，output `js` version (Bundless Only)
+- `meta`, whether to generate `meta.json` file (Bundless Only)
+- `chunkLoadingGlobal`, global variable name for `chunk loading`
+- `preserveModules`, whether to preserve the module directory structure (Bundless Only)
+- `preserveModulesRoot`, preserve the root directory of the module directory structure (Bundless Only)
 
-- `path`，输出目录
-- `mode`，输出模式，`"bundle"` 或 `"bundless"`，默认为 `"bundle"`
-- `esVersion`，输出的 `js` 版本（注：Bundless Only）
-- `meta`，是否生成 `meta.json` 文件（注：Bundless Only）
-- `chunkLoadingGlobal`，`chunk loading` 的全局变量名
-- `preserveModules`，是否保留模块目录结构（注：Bundless Only）
-- `preserveModulesRoot`，保留模块目录结构的根目录（注：Bundless Only）
+### optimization
 
-## optimization
+- Type: `object`
+- Default: `{ skipModules: true, concatenateModules: true }`
 
-- 类型：`object`
-- 默认值：`{ skipModules: true, concatenateModules: true }`
+Specify the configuration to optimize the build artifacts. Currently, the following sub-configuration items are supported.
 
-优化构建产物的配置。目前支持子配置项如下。
+- `skipModules`, optimize the size by skipping modules without side effects
+- `concatenateModules`, optimize the size by concatenating a group of modules that can be safely merged on the found module tree into one module
 
-- `skipModules`，通过跳过无副作用的模块，优化尺寸
-- `concatenateModules`，通过查找的模块树上可以安全合并的一组模块，将它们合并成为一个模块的方式来优化产物尺寸
+### platform
 
-## optimizePackageImports
+- Type: `"browser" | "node"`
+- Default: `"browser"`
 
-- 类型：`boolean`
-- 默认值：`false`
+Specify the platform to build, `"browser"` or `"node"`.
 
-是否优化 package imports。
+Notice: When using `"node"`, you also need to set `dynamicImportToRequire` to `true`, because the runtime does not yet support node-style chunk loading.
 
-注：实验属性，暂时勿用。
+### providers
 
-## platform
+- Type: `Record<string, [string, string]>`
+- Default: `{}`
 
-- 类型：`"browser" | "node"`
-- 默认值：`"browser"`
+Specify the provider configuration, used to replace identifiers in the code with require module identifiers.
 
-构建平台，`"browser"` 或 `"node"`。
-
-注：使用 `"node"` 时，目前还需设置 `dynamicImportToRequire` 为 `true`，因为 runtime 还不支持 node 方式的 chunk 加载。
-
-## providers
-
-- 类型：`Record<string, [string, string]>`
-- 默认值：`{}`
-
-提供者配置，用于替换代码中的标识符为 require 模块的方式。
-
-比如。
+e.g.
 
 ```ts
 {
@@ -349,7 +354,7 @@ moduleId 的生成策略。
 }
 ```
 
-以上配置会在遇到 `process` 和 `Buffer` 标识符时将其替换为 require 对应模块的代码。
+These configurations will replace the identifiers `process` and `Buffer` with the code that require the corresponding module when encountered.
 
 ```ts
 process
@@ -358,35 +363,35 @@ Buffer
 // => require("buffer").Buffer
 ```
 
-## publicPath
+### publicPath
 
-- 类型：`string`
-- 默认值：`"/"`
+- Type: `string`
+- Default: `"/"`
 
-publicPath 配置。注：有个特殊值 `"runtime"`，表示会切换到 runtime 模式，使用运行时的 `window.publicPath` 作为 publicPath。
+publicPath configuration. Note: There is a special value `"runtime"`, which means that it will switch to runtime mode and use the runtime `window.publicPath` as publicPath.
 
-## px2rem
+### px2rem
 
-- 类型：`false | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[], selectorWhiteList?: string[], minPixelValue?: number }`
-- 默认值：`false`
+- Type: `false | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[], selectorWhiteList?: string[], minPixelValue?: number }`
+- Default: `false`
 
-是否开启 px2rem 转换。
+Whether to enable px2rem conversion.
 
-- `root`，根节点的字体大小，默认值为 `100`
-- `propBlackList`，属性黑名单
-- `propWhiteList`，属性白名单
-- `selectorBlackList`，选择器黑名单
-- `selectorWhiteList`，选择器白名单
-- `minPixelValue`，最小像素值，默认值为 `0`
+- `root`, root font size, default is `100`
+- `propBlackList`, property black list
+- `propWhiteList`, property white list
+- `selectorBlackList`, selector black list
+- `selectorWhiteList`, selector white list
+- `minPixelValue`，minimum pixel value, default is `0`
 
-## react
+### react
 
-- 类型：`{ runtime: "automatic" | "classic", pragma: string, import_source: string, pragma_frag: string }`
-- 默认值：`{ runtime: "automatic", pragma: "React.createElement", import_source: "react", pragma_frag: "React.Fragment" }`
+- Type: `{ runtime: "automatic" | "classic", pragma: string, import_source: string, pragma_frag: string }`
+- Default: `{ runtime: "automatic", pragma: "React.createElement", import_source: "react", pragma_frag: "React.Fragment" }`
 
-react 编译相关配置。
+react related configuration.
 
-比如。
+e.g.
 
 ```tsx
 function App() {
@@ -394,7 +399,7 @@ function App() {
 }
 ```
 
-runtime 为 automatic 时的产物如下，
+When runtime is `automatic`, the output is as follows,
 
 ```ts
 import { jsx as _jsx } from "react/jsx-runtime";
@@ -405,7 +410,7 @@ function App() {
 }
 ```
 
-runtime 为 classic 时的产物如下，
+When runtime is `classic`, the output is as follows,
 
 ```ts
 function App() {
@@ -413,17 +418,17 @@ function App() {
 }
 ```
 
-## resolve
+### resolve
 
-- 类型：`{ alias: Record<string, string>, extensions: string[] }`
-- 默认值：`{ alias: {}, extensions: ["js", "jsx", "ts", "tsx"] }`
+- Type: `{ alias: Record<string, string>, extensions: string[] }`
+- Default: `{ alias: {}, extensions: ["js", "jsx", "ts", "tsx"] }`
 
-`resolve` 相关配置。
+`resolve` configuration.
 
-- `alias`，别名配置
-- `extensions`，文件扩展名配置
+- `alias`, alias configuration
+- `extensions`, file extensions configuration
 
-比如：
+e.g.
 
 ```ts
 {
@@ -436,21 +441,21 @@ function App() {
 }
 ```
 
-## stats
+### stats
 
-- 类型：`boolean`
-- 默认值：`false`
+- Type: `boolean`
+- Default: `false`
 
-是否生成 stats.json 文件。
+Whether to generate stats.json file.
 
-## transformImport
+### transformImport
 
-- 类型：`false | { libraryName: string, libraryDirectory: string, style: boolean }`
-- 默认值：`false`
+- Type: `false | { libraryName: string, libraryDirectory: string, style: boolean }`
+- Default: `false`
 
-简化版 babel-plugin-import，仅支持 libraryName、libraryDirectory 及 style 三个配置项，用于满足存量项目 antd v4 样式按需加载的需求。
+Simplified version of babel-plugin-import, only supports three configuration items: libraryName, libraryDirectory, and style, used to meet the needs of on-demand loading of antd v4 styles in stock projects.
 
-比如：
+e.g.
 
 ```ts
 {
@@ -462,18 +467,16 @@ function App() {
 }
 ```
 
-## umd
+### umd
 
-- 类型：`false | string`
-- 默认值：`false`
+- Type: `false | string`
+- Default: `false`
 
-是否输出 umd 格式的代码。
+Whether to output umd format
 
-注：后续会改成 `Object` 类型，支持更多子配置用于控制 umd 参数。
+### writeToDisk
 
-## writeToDisk
+- Type: `boolean`
+- Default: `true`
 
-- 类型：`boolean`
-- 默认值：`true`
-
-是否在 mode 为 development 时将构建结果写入磁盘。
+Whether to write the build result to disk when mode is development.
