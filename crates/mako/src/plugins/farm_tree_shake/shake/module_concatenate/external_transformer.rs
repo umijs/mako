@@ -266,17 +266,6 @@ impl VisitMut for ExternalTransformer<'_> {
                 n.visit_mut_children_with(self);
             }
         }
-
-        if let Expr::Call(call_expr) = n
-            && is_commonjs_require(call_expr, &self.unresolved_mark)
-        {
-            if let Some(((namespace, _), _)) = self.require_arg_to_module_namespace(&call_expr.args)
-            {
-                *n = quote_ident!(namespace.clone()).into();
-            }
-        } else {
-            n.visit_mut_children_with(self);
-        }
     }
 
     fn visit_mut_module(&mut self, n: &mut Module) {
