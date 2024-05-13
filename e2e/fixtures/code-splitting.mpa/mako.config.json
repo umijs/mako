@@ -1,0 +1,16 @@
+{
+  "entry": {
+    "a": "./pages/a.js",
+    "b": "./pages/b.js",
+    "c": "./pages/c.js",
+    "d": "./pages/d.js",
+    "e": "./pages/e.js",
+    "f": "./pages/f.js",
+    "g": "./pages/g.js"
+  },
+  "minify": false,
+  "optimization": {
+    "skipModules": true,
+    "concatenateModules": false
+  }
+}
