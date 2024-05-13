@@ -1,4 +1,13 @@
 
+## 0.4.16
+`2024-05-11`
+
+> @alipay/bigfish@4.1.31
+
+* 修复产物中文字符未转换成 unicode 问题 by [@sorrycc](https://github.com/sorrycc) in [#1146](https://github.com/umijs/mako/pull/1146)
+* 修复模块合并优化时将忽略的模块合并导致未定义变量的问题 by [@stormslowly](https://github.com/stormslowly) in [#1149](https://github.com/umijs/mako/pull/1149)
+
+
 ## 0.4.15
 
 `2024-05-10`
