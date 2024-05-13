@@ -21,6 +21,7 @@ use crate::config::{
 };
 use crate::features::rsc::Rsc;
 use crate::module::{Dependency, ResolveType};
+use crate::ast::file;
 
 #[derive(Debug, Error)]
 #[error("Resolve {path:?} failed from {from:?}")]
@@ -219,7 +220,12 @@ fn do_resolve(
                 // TODO: 只在 watch 时且二次编译时才做这个检查
                 // TODO: 临时方案，需要改成删除文件时删 resolve cache 里的内容
                 // 比如把 util.ts 改名为 util.tsx，目前应该是还有问题的
-                if resolution.path().exists() {
+                #[cfg(not(target_arch = "wasm32"))]
+                let exists = resolution.path().exists();
+                #[cfg(target_arch = "wasm32")]
+                let exists = file::file_exists(resolution.path().to_str().unwrap());
+
+                if exists {
                     Ok(ResolverResource::Resolved(ResolvedResource(resolution)))
                 } else {
                     Err(anyhow!(ResolveError {

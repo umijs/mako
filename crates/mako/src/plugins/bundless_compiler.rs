@@ -26,6 +26,7 @@ use crate::module::{ModuleAst, ModuleId};
 use crate::plugin::{Plugin, PluginTransformJsParam};
 use crate::visitors::dep_replacer::{DepReplacer, DependenciesToReplace};
 use crate::visitors::dynamic_import::DynamicImport;
+use crate::ast::file;
 
 pub struct BundlessCompiler {}
 
@@ -85,7 +86,12 @@ impl Plugin for BundlessCompiler {
         // TODO try tokio fs later
         ids.iter().for_each(|id| {
             let target = to_dist_path(&id.id, context);
+
+            #[cfg(not(target_arch = "wasm32"))]
             create_dir_all(target.parent().unwrap()).unwrap();
+
+            #[cfg(target_arch = "wasm32")]
+            file::file_create_dir_all(target.parent().unwrap().to_str().unwrap());
         });
 
         ids.par_iter().for_each(|id| {

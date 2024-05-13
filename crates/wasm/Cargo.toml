@@ -1,0 +1,21 @@
+[package]
+edition = "2021"
+name    = "wasm_binding"
+version = "0.0.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+cached      = { workspace = true }
+mako        = { path = '../mako' }
+mako_core   = { path = "../core", features = [] }
+serde_json  = { workspace = true }
+wasm-bindgen = "0.2.92"
+# enable js feature for getrandom in wasm binding
+getrandom = { version = "0.2", features = ["js"] }
+tokio                 = { version = "1", features = ["rt"] }
+
+[profile.release]
+lto = true
+debug = true

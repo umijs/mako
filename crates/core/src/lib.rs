@@ -21,12 +21,19 @@ pub use swc_core::ecma::{
     utils as swc_ecma_utils, visit as swc_ecma_visit,
 };
 pub use {
-    anyhow, base64, cached, clap, colored, config, convert_case, fs_extra, futures, glob, hyper,
-    hyper_staticfile, hyper_tungstenite, indexmap, md5, mdxjs, merge_source_map, mime_guess,
-    notify, notify_debouncer_full, path_clean, pathdiff, petgraph, rayon, regex, sailfish, serde,
+    anyhow, base64, cached, clap, colored, config, convert_case, fs_extra, futures, glob,
+    indexmap, md5, mdxjs, merge_source_map, mime_guess,
+    path_clean, pathdiff, petgraph, rayon, regex, sailfish, serde,
     serde_json, serde_xml_rs, serde_yaml, svgr_rs, swc_emotion, swc_error_reporters,
-    swc_node_comments, thiserror, tokio, tokio_tungstenite, toml, tracing, tracing_subscriber,
-    tungstenite, twox_hash,
+    swc_node_comments, thiserror, tokio, toml, tracing, tracing_subscriber,
+    twox_hash,
+};
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use {
+    notify, notify_debouncer_full,
+    hyper, hyper_staticfile,
+    tungstenite, hyper_tungstenite, tokio_tungstenite
 };
 
 #[macro_export]

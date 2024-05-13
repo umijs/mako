@@ -35,7 +35,7 @@ use crate::visitors::optimize_define_utils::OptimizeDefineUtils;
 
 impl Compiler {
     pub fn transform_all(&self, async_deps_map: HashMap<ModuleId, Vec<Dependency>>) -> Result<()> {
-        let t = Instant::now();
+        // let t = Instant::now();
         let context = &self.context;
         let module_ids = {
             let module_graph = context.module_graph.read().unwrap();
@@ -47,18 +47,18 @@ impl Compiler {
         };
 
         transform_modules_in_thread(&module_ids, context, async_deps_map)?;
-        debug!(">> transform modules in {}ms", t.elapsed().as_millis());
+        // debug!(">> transform modules in {}ms", t.elapsed().as_millis());
         Ok(())
     }
 }
 
 pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> Result<()> {
-    let t = Instant::now();
+    // let t = Instant::now();
     let async_deps_by_module_id = mark_async(&module_ids, context);
-    debug!(">> mark async in {}ms", t.elapsed().as_millis());
-    let t = Instant::now();
+    // debug!(">> mark async in {}ms", t.elapsed().as_millis());
+    // let t = Instant::now();
     transform_modules_in_thread(&module_ids, context, async_deps_by_module_id)?;
-    debug!(">> transform modules in {}ms", t.elapsed().as_millis());
+    // debug!(">> transform modules in {}ms", t.elapsed().as_millis());
     Ok(())
 }
 
@@ -76,7 +76,7 @@ pub fn transform_modules_in_thread(
         let rs = rs.clone();
         let module_id = module_id.clone();
         let async_deps = async_deps_by_module_id.get(&module_id).unwrap().clone();
-        thread_pool::spawn(move || {
+        // thread_pool::spawn(move || {
             let module_graph = context.module_graph.read().unwrap();
             let deps = module_graph.get_dependencies(&module_id);
             let mut resolved_deps: HashMap<String, (String, String)> = deps
@@ -123,7 +123,7 @@ pub fn transform_modules_in_thread(
                 };
                 rs.send(message).unwrap();
             }
-        });
+        // });
     }
     drop(rs);
 

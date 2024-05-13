@@ -21,6 +21,7 @@ use crate::plugins;
 use crate::resolve::{get_resolvers, Resolvers};
 use crate::stats::StatsInfo;
 use crate::utils::{thread_pool, ParseRegex};
+use crate::ast::file;
 
 pub struct Context {
     pub module_graph: RwLock<ModuleGraph>,
@@ -73,10 +74,20 @@ impl MemoryChunkFileCache {
             .map(|(content, _)| content.clone())
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     fn write_to_disk<T: AsRef<str>>(&self, path: T, content: &[u8]) -> Result<()> {
         if let Some(root) = &self.root {
             let path = root.join(path.as_ref());
             fs::write(path, content)?;
+        }
+        Ok(())
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn write_to_disk<T: AsRef<str>>(&self, path: T, content: &[u8]) -> Result<()> {
+        if let Some(root) = &self.root {
+            let path = root.join(path.as_ref());
+            file::file_write(&path.as_os_str().to_str().unwrap(), content);
         }
         Ok(())
     }
@@ -211,9 +222,10 @@ impl Compiler {
         args: Args,
         extra_plugins: Option<Vec<Arc<dyn Plugin>>>,
     ) -> Result<Self> {
-        if !root.is_absolute() {
-            return Err(anyhow!("root path must be absolute"));
-        }
+        // TODO fixme wasm
+        // if !root.is_absolute() {
+        //     return Err(anyhow!("root path must be absolute"));
+        // }
 
         // why add plugins before builtin plugins?
         // because plugins like less-loader need to be added before assets plugin
@@ -225,6 +237,7 @@ impl Compiler {
         let builtin_plugins: Vec<Arc<dyn Plugin>> = vec![
             // features
             Arc::new(plugins::manifest::ManifestPlugin {}),
+            #[cfg(not(target_arch = "wasm32"))]
             Arc::new(plugins::copy::CopyPlugin {}),
             Arc::new(plugins::import::ImportPlugin {}),
             // file types
@@ -325,15 +338,15 @@ impl Compiler {
             self.clean_dist()?;
         }
 
-        let t_compiler = Instant::now();
-        let start_time = std::time::SystemTime::now();
-        let building_with_message = format!(
-            "Building with {} for {}...",
-            "mako".to_string().cyan(),
-            self.context.config.mode
-        )
-        .green();
-        println!("{}", building_with_message);
+        // let t_compiler = Instant::now();
+        // let start_time = std::time::SystemTime::now();
+        // let building_with_message = format!(
+        //     "Building with {} for {}...",
+        //     "mako".to_string().cyan(),
+        //     self.context.config.mode
+        // )
+        // .green();
+        // println!("{}", building_with_message);
         {
             mako_core::mako_profile_scope!("Build Stage");
             let files = self
@@ -363,26 +376,26 @@ impl Compiler {
             // will create a new thread pool for those parallel iterators
             thread_pool::scope(|_| self.generate())
         };
-        let t_compiler_duration = t_compiler.elapsed();
+        // let t_compiler_duration = t_compiler.elapsed();
         if result.is_ok() {
-            println!(
-                "{}",
-                format!(
-                    "✓ Built in {}",
-                    format!("{}ms", t_compiler_duration.as_millis()).bold()
-                )
-                .green()
-            );
+            // println!(
+            //     "{}",
+            //     format!(
+            //         "✓ Built in {}",
+            //         format!("{}ms", t_compiler_duration.as_millis()).bold()
+            //     )
+            //     .green()
+            // );
             if !self.context.args.watch {
                 println!("{}", "Complete!".bold());
             }
             let end_time = std::time::SystemTime::now();
             let params = PluginGenerateEndParams {
                 is_first_compile: true,
-                time: t_compiler.elapsed().as_millis() as u64,
+                time: 0,
                 stats: PluginGenerateStats {
-                    start_time: start_time.duration_since(UNIX_EPOCH)?.as_millis() as u64,
-                    end_time: end_time.duration_since(UNIX_EPOCH)?.as_millis() as u64,
+                    start_time: 0,
+                    end_time: 0,
                 },
             };
             self.context

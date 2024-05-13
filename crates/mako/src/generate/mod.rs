@@ -25,12 +25,15 @@ use mako_core::tracing::debug;
 
 use crate::compiler::{Compiler, Context};
 use crate::config::{DevtoolConfig, OutputMode, TreeShakingStrategy};
+#[cfg(not(target_arch = "wasm32"))]
 use crate::dev::update::UpdateResult;
 use crate::generate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::module::{Dependency, ModuleId};
 use crate::stats::{create_stats_info, print_stats, write_stats};
 use crate::utils::base64_encode;
 use crate::visitors::async_module::mark_async;
+
+use crate::ast::file;
 
 #[derive(Clone)]
 pub struct EmitFile {
@@ -68,10 +71,10 @@ impl Compiler {
         self.context.plugin_driver.before_generate(&self.context)?;
 
         debug!("generate");
-        let t_generate = Instant::now();
+        // let t_generate = Instant::now();
 
         debug!("tree_shaking");
-        let t_tree_shaking = Instant::now();
+        // let t_tree_shaking = Instant::now();
 
         let async_dep_map = self.mark_async();
 
@@ -86,8 +89,8 @@ impl Compiler {
                     self.context
                         .plugin_driver
                         .optimize_module_graph(module_graph.deref_mut(), &self.context)?;
-                    let t_tree_shaking = t_tree_shaking.elapsed();
-                    debug!("basic optimize in {}ms.", t_tree_shaking.as_millis());
+                    // let t_tree_shaking = t_tree_shaking.elapsed();
+                    // debug!("basic optimize in {}ms.", t_tree_shaking.as_millis());
                 }
                 Some(TreeShakingStrategy::Advanced) => {
                     // waiting @heden8 to come back
@@ -95,25 +98,25 @@ impl Compiler {
                 None => {}
             }
         }
-        let t_tree_shaking = t_tree_shaking.elapsed();
+        // let t_tree_shaking = t_tree_shaking.elapsed();
 
         // TODO: improve this hardcode
         if self.context.config.output.mode == OutputMode::Bundless {
             return self.generate_with_plugin_driver();
         }
 
-        let t_group_chunks = Instant::now();
+        // let t_group_chunks = Instant::now();
         self.group_chunk();
-        let t_group_chunks = t_group_chunks.elapsed();
+        // let t_group_chunks = t_group_chunks.elapsed();
 
-        let t_optimize_chunks = Instant::now();
+        // let t_optimize_chunks = Instant::now();
 
         self.context
             .plugin_driver
             .before_optimize_chunk(&self.context)?;
 
         self.optimize_chunk();
-        let t_optimize_chunks = t_optimize_chunks.elapsed();
+        // let t_optimize_chunks = t_optimize_chunks.elapsed();
 
         {
             let mut module_graph = self.context.module_graph.write().unwrap();
@@ -128,29 +131,45 @@ impl Compiler {
 
         // 为啥单独提前 transform modules？
         // 因为放 chunks 的循环里，一个 module 可能存在于多个 chunk 里，可能会被编译多遍
-        let t_transform_modules = Instant::now();
+        // let t_transform_modules = Instant::now();
         debug!("transform all modules");
         self.transform_all(async_dep_map)?;
-        let t_transform_modules = t_transform_modules.elapsed();
+        // let t_transform_modules = t_transform_modules.elapsed();
 
         // ensure output dir exists
         let config = &self.context.config;
+
+        #[cfg(not(target_arch = "wasm32"))]
         if !config.output.path.exists() {
             fs::create_dir_all(&config.output.path)?;
         }
 
+        #[cfg(target_arch = "wasm32")]
+        if !file::file_exists(config.output.path.to_str().unwrap()) {
+            file::file_create_dir_all(config.output.path.to_str().unwrap());
+        }
+
         let full_hash = self.full_hash();
-        let (t_generate_chunks, t_ast_to_code_and_write) = self.write_chunk_files(full_hash)?;
+        self.write_chunk_files(full_hash)?;
 
         // write assets
         if config.emit_assets {
-            let t_write_assets = Instant::now();
+            // let t_write_assets = Instant::now();
             debug!("write assets");
             {
                 let assets_info = &(*self.context.assets_info.lock().unwrap());
                 for (k, v) in assets_info {
                     let asset_path = &self.context.root.join(k);
                     let asset_output_path = &config.output.path.join(v);
+
+                    #[cfg(target_arch = "wasm32")]
+                    if file::file_exists(asset_path.to_str().unwrap()) {
+                        file::file_copy(asset_path.to_str().unwrap(), asset_output_path.to_str().unwrap());
+                    } else {
+                        return Err(anyhow!("asset not found: {}", asset_path.display()));
+                    }
+
+                    #[cfg(not(target_arch = "wasm32"))]
                     if asset_path.exists() {
                         fs::copy(asset_path, asset_output_path)?;
                     } else {
@@ -158,8 +177,8 @@ impl Compiler {
                     }
                 }
             }
-            let t_write_assets = t_write_assets.elapsed();
-            debug!("  - write assets: {}ms", t_write_assets.as_millis());
+            // let t_write_assets = t_write_assets.elapsed();
+            // debug!("  - write assets: {}ms", t_write_assets.as_millis());
         }
 
         // generate stats
@@ -178,29 +197,29 @@ impl Compiler {
             print_stats(self);
         }
 
-        debug!("generate done in {}ms", t_generate.elapsed().as_millis());
-        debug!("  - tree shaking: {}ms", t_tree_shaking.as_millis());
-        debug!("  - group chunks: {}ms", t_group_chunks.as_millis());
-        debug!("  - optimize chunks: {}ms", t_optimize_chunks.as_millis());
-        debug!(
-            "  - transform modules: {}ms",
-            t_transform_modules.as_millis()
-        );
-        debug!("  - generate chunks: {}ms", t_generate_chunks.as_millis());
-        debug!(
-            "  - ast to code and write: {}ms",
-            t_ast_to_code_and_write.as_millis()
-        );
+        // debug!("generate done in {}ms", t_generate.elapsed().as_millis());
+        // debug!("  - tree shaking: {}ms", t_tree_shaking.as_millis());
+        // debug!("  - group chunks: {}ms", t_group_chunks.as_millis());
+        // debug!("  - optimize chunks: {}ms", t_optimize_chunks.as_millis());
+        // debug!(
+        //     "  - transform modules: {}ms",
+        //     t_transform_modules.as_millis()
+        // );
+        // debug!("  - generate chunks: {}ms", t_generate_chunks.as_millis());
+        // debug!(
+        //     "  - ast to code and write: {}ms",
+        //     t_ast_to_code_and_write.as_millis()
+        // );
 
         Ok(())
     }
 
-    fn write_chunk_files(&self, full_hash: u64) -> Result<(Duration, Duration)> {
+    fn write_chunk_files(&self, full_hash: u64) -> Result<()> {
         // generate chunks
-        let t_generate_chunks = Instant::now();
+        // let t_generate_chunks = Instant::now();
         debug!("generate chunks");
         let chunk_files = self.generate_chunk_files(full_hash)?;
-        let t_generate_chunks = t_generate_chunks.elapsed();
+        // let t_generate_chunks = t_generate_chunks.elapsed();
 
         let t_ast_to_code_and_write = if self.context.args.watch {
             self.generate_chunk_mem_file(&chunk_files)?
@@ -208,33 +227,36 @@ impl Compiler {
             self.generate_chunk_disk_file(&chunk_files)?
         };
 
-        Ok((t_generate_chunks, t_ast_to_code_and_write))
+        // Ok((t_generate_chunks, t_ast_to_code_and_write))
+        Ok(())
     }
 
-    fn generate_chunk_disk_file(&self, chunk_files: &Vec<ChunkFile>) -> Result<Duration> {
-        let t_ast_to_code_and_write = Instant::now();
+    fn generate_chunk_disk_file(&self, chunk_files: &Vec<ChunkFile>) -> Result<()> {
+        // let t_ast_to_code_and_write = Instant::now();
         debug!("ast to code and write");
         chunk_files.par_iter().try_for_each(|file| -> Result<()> {
             self.emit_chunk_file(file);
             Ok(())
         })?;
-        let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
+        // let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
 
-        Ok(t_ast_to_code_and_write)
+        // Ok(t_ast_to_code_and_write)
+        Ok(())
     }
 
-    fn generate_chunk_mem_file(&self, chunk_files: &Vec<ChunkFile>) -> Result<Duration> {
+    fn generate_chunk_mem_file(&self, chunk_files: &Vec<ChunkFile>) -> Result<()> {
         mako_core::mako_profile_function!();
         // ast to code and sourcemap, then write
-        let t_ast_to_code_and_write = Instant::now();
+        // let t_ast_to_code_and_write = Instant::now();
         debug!("ast to code and write");
         chunk_files.par_iter().try_for_each(|file| -> Result<()> {
             write_dev_chunk_file(&self.context, file)?;
             Ok(())
         })?;
-        let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
+        // let t_ast_to_code_and_write = t_ast_to_code_and_write.elapsed();
 
-        Ok(t_ast_to_code_and_write)
+        // Ok(t_ast_to_code_and_write)
+        Ok(())
     }
 
     pub fn emit_chunk_file(&self, chunk_file: &ChunkFile) {
@@ -246,31 +268,46 @@ impl Compiler {
 
         debug!("generate(hmr-fullbuild)");
 
-        let t_generate = Instant::now();
+        // let t_generate = Instant::now();
 
         // ensure output dir exists
         let config = &self.context.config;
+
+        #[cfg(target_arch = "wasm32")]
+        if file::file_exists(config.output.path.to_str().unwrap()) {
+            file::file_create_dir_all(config.output.path.to_str().unwrap());
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
         if !config.output.path.exists() {
             fs::create_dir_all(&config.output.path)?;
         }
 
         // generate chunks
-        let t_generate_chunks = Instant::now();
+        // let t_generate_chunks = Instant::now();
         let chunk_files = self.generate_chunk_files(hmr_hash)?;
-        let t_generate_chunks = t_generate_chunks.elapsed();
+        // let t_generate_chunks = t_generate_chunks.elapsed();
 
         // ast to code and sourcemap, then write
         debug!("ast to code and write");
         let t_ast_to_code_and_write = self.generate_chunk_mem_file(&chunk_files)?;
 
         // write assets
-        let t_write_assets = Instant::now();
+        // let t_write_assets = Instant::now();
         debug!("write assets");
         {
             let assets_info = &(*self.context.assets_info.lock().unwrap());
             for (k, v) in assets_info {
                 let asset_path = &self.context.root.join(k);
                 let asset_output_path = &config.output.path.join(v);
+                #[cfg(target_arch = "wasm32")]
+                if !file::file_exists(asset_path.to_str().unwrap()) {
+                    file::file_copy(asset_path.to_str().unwrap(), asset_output_path.to_str().unwrap());
+                } else {
+                    panic!("asset not found: {}", asset_path.display());
+                }
+
+                #[cfg(not(target_arch = "wasm32"))]
                 if asset_path.exists() {
                     fs::copy(asset_path, asset_output_path)?;
                 } else {
@@ -278,7 +315,7 @@ impl Compiler {
                 }
             }
         }
-        let t_write_assets = t_write_assets.elapsed();
+        // let t_write_assets = t_write_assets.elapsed();
 
         // TODO: do not write to fs, using jsapi hooks to pass stats
         // why generate stats?
@@ -288,23 +325,24 @@ impl Compiler {
             write_stats(&stats, self);
         }
 
-        let t_generate = t_generate.elapsed();
+        // let t_generate = t_generate.elapsed();
 
-        debug!(
-            "generate(hmr-fullbuild) done in {}ms",
-            t_generate.as_millis()
-        );
-        debug!("  - generate chunks: {}ms", t_generate_chunks.as_millis());
-        debug!(
-            "  - ast to code and write: {}ms",
-            t_ast_to_code_and_write.as_millis()
-        );
-        debug!("  - write assets: {}ms", t_write_assets.as_millis());
+        // debug!(
+        //     "generate(hmr-fullbuild) done in {}ms",
+        //     t_generate.as_millis()
+        // );
+        // debug!("  - generate chunks: {}ms", t_generate_chunks.as_millis());
+        // debug!(
+        //     "  - ast to code and write: {}ms",
+        //     t_ast_to_code_and_write.as_millis()
+        // );
+        // debug!("  - write assets: {}ms", t_write_assets.as_millis());
 
         Ok(())
     }
 
     // TODO: 集成到 fn generate 里
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn generate_hot_update_chunks(
         &self,
         updated_modules: UpdateResult,
@@ -320,23 +358,23 @@ impl Compiler {
 
         debug!("hot-update:generate");
 
-        let t_generate = Instant::now();
-        let t_group_chunks = Instant::now();
+        // let t_generate = Instant::now();
+        // let t_group_chunks = Instant::now();
         let group_result = self.group_hot_update_chunk(&updated_modules);
-        let t_group_chunks = t_group_chunks.elapsed();
+        // let t_group_chunks = t_group_chunks.elapsed();
 
-        let t_optimize_chunks = Instant::now();
+        // let t_optimize_chunks = Instant::now();
         self.optimize_hot_update_chunk(&group_result);
-        let t_optimize_chunks = t_optimize_chunks.elapsed();
+        // let t_optimize_chunks = t_optimize_chunks.elapsed();
 
-        let t_transform_modules = Instant::now();
+        // let t_transform_modules = Instant::now();
         self.transform_for_change(&updated_modules)?;
-        let t_transform_modules = t_transform_modules.elapsed();
+        // let t_transform_modules = t_transform_modules.elapsed();
 
-        let t_calculate_hash = Instant::now();
+        // let t_calculate_hash = Instant::now();
         let current_snapshot_hash = self.full_hash();
         let current_hmr_hash = last_hmr_hash.wrapping_add(current_snapshot_hash);
-        let t_calculate_hash = t_calculate_hash.elapsed();
+        // let t_calculate_hash = t_calculate_hash.elapsed();
 
         debug!(
             "{} {} {}",
@@ -355,8 +393,14 @@ impl Compiler {
 
         // ensure output dir exists
         let config = &self.context.config;
+        #[cfg(not(target_arch = "wasm32"))]
         if !config.output.path.exists() {
             fs::create_dir_all(&config.output.path).unwrap();
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        if !file::file_exists(config.output.path.to_str().unwrap()) {
+            file::file_create_dir_all(config.output.path.to_str().unwrap());
         }
 
         let (current_chunks, modified_chunks) = {
@@ -386,7 +430,7 @@ impl Compiler {
             .cloned()
             .collect();
 
-        let t_generate_hmr_chunk = Instant::now();
+        // let t_generate_hmr_chunk = Instant::now();
         let cg = self.context.chunk_graph.read().unwrap();
         for chunk_name in &modified_chunks {
             let filename = to_hot_update_chunk_name(chunk_name, last_hmr_hash);
@@ -405,7 +449,7 @@ impl Compiler {
                 self.write_to_dist(format!("{}.map", &filename), sourcemap);
             }
         }
-        let t_generate_hmr_chunk = t_generate_hmr_chunk.elapsed();
+        // let t_generate_hmr_chunk = t_generate_hmr_chunk.elapsed();
 
         self.write_to_dist(
             format!("{}.hot-update.json", last_hmr_hash),
@@ -416,22 +460,22 @@ impl Compiler {
             .unwrap(),
         );
 
-        debug!(
-            "generate(hmr) done in {}ms",
-            t_generate.elapsed().as_millis()
-        );
-        debug!("  - group chunks: {}ms", t_group_chunks.as_millis());
-        debug!("  - optimize chunks: {}ms", t_optimize_chunks.as_millis());
-        debug!(
-            "  - transform modules: {}ms",
-            t_transform_modules.as_millis()
-        );
-        debug!("  - calculate hash: {}ms", t_calculate_hash.as_millis());
-        debug!(
-            "  - generate hmr chunk: {}ms",
-            t_generate_hmr_chunk.as_millis()
-        );
-        debug!("  - next full hash: {}", current_snapshot_hash);
+        // debug!(
+        //     "generate(hmr) done in {}ms",
+        //     t_generate.elapsed().as_millis()
+        // );
+        // debug!("  - group chunks: {}ms", t_group_chunks.as_millis());
+        // debug!("  - optimize chunks: {}ms", t_optimize_chunks.as_millis());
+        // debug!(
+        //     "  - transform modules: {}ms",
+        //     t_transform_modules.as_millis()
+        // );
+        // debug!("  - calculate hash: {}ms", t_calculate_hash.as_millis());
+        // debug!(
+        //     "  - generate hmr chunk: {}ms",
+        //     t_generate_hmr_chunk.as_millis()
+        // );
+        // debug!("  - next full hash: {}", current_snapshot_hash);
 
         Ok((current_snapshot_hash, current_hmr_hash))
     }
@@ -443,7 +487,11 @@ impl Compiler {
     ) {
         let to = self.context.config.output.path.join(filename);
 
+        #[cfg(not(target_arch = "wasm32"))]
         std::fs::write(to, content).unwrap();
+
+        #[cfg(target_arch = "wasm32")]
+        file::file_write(to.to_str().unwrap(), content.as_ref());
     }
 }
 
@@ -510,6 +558,8 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
                     to.clone(),
                     chunk_file.source_map_disk_name(),
                 );
+
+                #[cfg(not(target_arch = "wasm32"))]
                 fs::write(
                     context
                         .config
@@ -518,7 +568,17 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
                         .join(chunk_file.source_map_disk_name()),
                     source_map,
                 )
-                .unwrap();
+                    .unwrap();
+
+                #[cfg(target_arch = "wasm32")]
+                file::file_write(context
+                               .config
+                               .output
+                               .path
+                               .join(chunk_file.source_map_disk_name())
+                               .to_str().unwrap(), source_map.as_slice());
+
+
 
                 let source_map_url_line = match chunk_file.file_type {
                     ChunkFileType::JS => {
@@ -545,7 +605,11 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
                 to.clone(),
                 chunk_file.disk_name(),
             );
-            fs::write(to, &code).unwrap();
+            #[cfg(not(target_arch = "wasm32"))]
+            fs::write(to, code).unwrap();
+
+            #[cfg(target_arch = "wasm32")]
+            file::file_write(to.to_str().unwrap(), &code[..]);
         }
         Some(DevtoolConfig::InlineSourceMap) => {
             let mut code = Vec::new();
@@ -569,7 +633,11 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
                 to.clone(),
                 chunk_file.disk_name(),
             );
+            #[cfg(not(target_arch = "wasm32"))]
             fs::write(to, code).unwrap();
+
+            #[cfg(target_arch = "wasm32")]
+            file::file_write(to.to_str().unwrap(), &code[..]);
         }
         None => {
             context.stats_info.lock().unwrap().add_assets(
@@ -580,7 +648,11 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
                 chunk_file.disk_name(),
             );
 
+            #[cfg(not(target_arch = "wasm32"))]
             fs::write(to, &chunk_file.content).unwrap();
+
+            #[cfg(target_arch = "wasm32")]
+            file::file_write(to.to_str().unwrap(), &chunk_file.content[..]);
         }
     }
 }

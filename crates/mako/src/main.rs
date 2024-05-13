@@ -87,6 +87,7 @@ async fn run() -> Result<()> {
 
             compiler.compile().unwrap();
 
+            #[cfg(not(target_arch = "wasm32"))]
             if cli.watch {
                 let d = crate::dev::DevServer::new(root.clone(), compiler.clone());
                 d.serve(move |_params| {}).await;

@@ -1,1 +1,6 @@
-{ "inlineLimit": 0 }
+{
+  "inlineLimit": 0,
+  "entry": {
+    "foo": "src/index.tsx"
+  }
+}

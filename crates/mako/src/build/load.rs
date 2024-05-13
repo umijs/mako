@@ -15,6 +15,7 @@ use crate::ast::file::{Content, File, JsContent};
 use crate::compiler::Context;
 use crate::config::Mode;
 use crate::plugin::PluginLoadParam;
+use crate::ast::{file as wasm};
 
 #[derive(Debug, Error)]
 enum LoadError {
@@ -85,7 +86,15 @@ export function moduleToDom(css) {
         }
 
         // file exists check must after virtual modules handling
+        #[cfg(not(target_arch = "wasm32"))]
         if !file.pathname.exists() || !file.pathname.is_file() {
+            return Err(anyhow!(LoadError::FileNotFound {
+                path: file.path.to_string_lossy().to_string(),
+            }));
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        if !wasm::file_exists(file.pathname.to_str().unwrap()) || !wasm::is_file(file.pathname.to_str().unwrap()) {
             return Err(anyhow!(LoadError::FileNotFound {
                 path: file.path.to_string_lossy().to_string(),
             }));
@@ -309,10 +318,17 @@ export function moduleToDom(css) {
 pub struct FileSystem {}
 
 impl FileSystem {
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn read_file<P: AsRef<Path>>(path: P) -> Result<String> {
         let mut file = std::fs::File::open(path.as_ref())?;
         let mut buf = vec![];
         file.read_to_end(&mut buf)?;
+        Ok(String::from_utf8_lossy(&buf).to_string())
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn read_file<P: AsRef<Path>>(path: P) -> Result<String> {
+        let buf = wasm::file_read(path.as_ref().to_str().unwrap());
         Ok(String::from_utf8_lossy(&buf).to_string())
     }
 }

@@ -8,6 +8,7 @@ mod build;
 pub mod cli;
 pub mod compiler;
 pub mod config;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod dev;
 mod features;
 mod generate;

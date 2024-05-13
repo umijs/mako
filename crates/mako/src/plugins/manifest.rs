@@ -9,6 +9,7 @@ use serde_json;
 use crate::compiler::Context;
 use crate::plugin::Plugin;
 use crate::stats::StatsJsonMap;
+use crate::ast::file;
 
 pub struct ManifestPlugin {}
 
@@ -38,8 +39,11 @@ impl Plugin for ManifestPlugin {
             let manifest_json = serde_json::to_string_pretty(&manifest)?;
 
             let output_path = context.config.output.path.join(file_name);
-
+            #[cfg(not(target_arch = "wasm32"))]
             fs::write(output_path, manifest_json).unwrap();
+
+            #[cfg(target_arch = "wasm32")]
+            file::file_write(output_path.to_str().unwrap(), manifest_json.as_bytes());
         }
         Ok(None)
     }

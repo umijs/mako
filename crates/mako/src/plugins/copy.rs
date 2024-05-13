@@ -4,7 +4,9 @@ use std::sync::Arc;
 use mako_core::anyhow::Result;
 use mako_core::fs_extra;
 use mako_core::glob::glob;
+#[cfg(not(target_arch = "wasm32"))]
 use mako_core::notify::event::{CreateKind, DataChange, ModifyKind, RenameMode};
+#[cfg(not(target_arch = "wasm32"))]
 use mako_core::notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use mako_core::tokio::sync::mpsc::channel;
 use mako_core::tracing::debug;
@@ -14,8 +16,10 @@ use crate::plugin::Plugin;
 use crate::stats::StatsJsonMap;
 use crate::utils::tokio_runtime;
 
+#[cfg(not(target_arch = "wasm32"))]
 pub struct CopyPlugin {}
 
+#[cfg(not(target_arch = "wasm32"))]
 impl CopyPlugin {
     fn watch(context: &Arc<Context>) {
         let context = context.clone();
@@ -30,7 +34,12 @@ impl CopyPlugin {
             .unwrap();
             for src in context.config.copy.iter() {
                 let src = context.root.join(src);
-                if src.exists() {
+                #[cfg(not(target_arch = "wasm32"))]
+                let exists = src.exists();
+                #[cfg(target_arch = "wasm32")]
+                let exists = file::file_exists(src.to_str().unwrap());
+
+                if exists {
                     debug!("watch {:?}", src);
                     let mode = if src.is_dir() {
                         RecursiveMode::Recursive
@@ -70,6 +79,7 @@ impl CopyPlugin {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Plugin for CopyPlugin {
     fn name(&self) -> &str {
         "copy"
@@ -83,6 +93,7 @@ impl Plugin for CopyPlugin {
         Ok(None)
     }
 }
+
 
 fn copy(src: &Path, dest: &Path) -> Result<()> {
     let paths = glob(src.to_str().unwrap())?;

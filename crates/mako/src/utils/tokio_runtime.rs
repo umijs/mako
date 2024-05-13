@@ -6,10 +6,10 @@ use mako_core::tokio;
 static TOKIO_RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
 
 fn build_tokio_runtime() -> tokio::runtime::Runtime {
-    tokio::runtime::Builder::new_multi_thread()
-        .enable_io()
-        .worker_threads(2)
-        .thread_name("tokio-worker")
+    tokio::runtime::Builder::new_current_thread()
+        // .enable_io()
+        // .worker_threads(2)
+        // .thread_name("tokio-worker")
         .build()
         .expect("failed to create tokio runtime.")
 }

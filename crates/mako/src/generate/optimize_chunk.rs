@@ -72,6 +72,7 @@ impl Compiler {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn optimize_hot_update_chunk(&self, group_result: &GroupUpdateResult) {
         mako_core::mako_profile_function!();
         debug!("optimize hot update chunk");

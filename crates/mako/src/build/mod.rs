@@ -37,11 +37,11 @@ impl Compiler {
         let build_with_pool = |file: File, parent_resource: Option<ResolverResource>| {
             let rs = rs.clone();
             let context = self.context.clone();
-            thread_pool::spawn(move || {
+            // thread_pool::spawn(move || {
                 let result = Self::build_module(&file, parent_resource, context.clone());
                 let result = Self::handle_build_result(result, &file, context);
                 rs.send(result).unwrap();
-            });
+            // });
         };
         let mut count = 0;
         for file in files {

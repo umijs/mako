@@ -17,6 +17,15 @@ use serde::Serialize;
 use crate::features::node::Node;
 use crate::generate::optimize_chunk;
 use crate::{plugins, visitors};
+use crate::ast::file;
+
+use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
+extern {
+    #[wasm_bindgen(js_namespace = console)]
+    pub fn log(s: &str);
+}
 
 #[derive(Debug, Diagnostic)]
 #[diagnostic(code("mako.config.json parsed failed"))]
@@ -36,6 +45,7 @@ impl fmt::Display for ConfigParseError {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn validate_mako_config(abs_config_file: String) -> miette::Result<()> {
     if Path::new(&abs_config_file).exists() {
         let content = std::fs::read_to_string(abs_config_file.clone())
@@ -52,6 +62,30 @@ fn validate_mako_config(abs_config_file: String) -> miette::Result<()> {
                 message: e.to_string(),
             }
             .into());
+        }
+    }
+    Ok(())
+}
+
+#[cfg(target_arch = "wasm32")]
+fn validate_mako_config(abs_config_file: String) -> miette::Result<()> {
+    if file::file_exists(&abs_config_file) {
+        let buf = file::file_read(&abs_config_file);
+        let content = String::from_utf8_lossy(&buf).to_string();
+        log("content: ");
+        log(&content);
+        let result: Result<Value, serde_json::Error> = serde_json::from_str(&content);
+        if let Err(e) = result {
+            let line = e.line();
+            let column = e.column();
+            let start = SourceOffset::from_location(&content, line, column);
+            let span = SourceSpan::new(start, (1 as ByteOffset).into());
+            return Err(ConfigParseError {
+                src: NamedSource::new("mako.config.json", content),
+                span,
+                message: e.to_string(),
+            }
+                .into());
         }
     }
     Ok(())
@@ -670,6 +704,8 @@ impl Config {
         let mut ret = c.try_deserialize::<Config>();
         // normalize & check
         if let Ok(config) = &mut ret {
+            let configmsg = format!("config: {:?}", config);
+            log(&configmsg);
             // normalize output
             if config.output.path.is_relative() {
                 config.output.path = root.join(config.output.path.to_string_lossy().to_string());
@@ -735,6 +771,18 @@ impl Config {
                 let file_paths = vec!["src/index.tsx", "src/index.ts", "index.tsx", "index.ts"];
                 for file_path in file_paths {
                     let file_path = root.join(file_path);
+                    #[cfg(target_arch = "wasm32")]
+                    {
+                        let exists = file::file_exists(file_path.to_str().unwrap());
+                        let msg = format!("file: {:?} exits: {:?}", file_path, exists);
+                        log(&msg);
+                        if exists {
+                            config.entry.insert("index".to_string(), file_path);
+                            break;
+                        }
+                    }
+
+                    #[cfg(not(target_arch = "wasm32"))]
                     if file_path.exists() {
                         config.entry.insert("index".to_string(), file_path);
                         break;
@@ -751,11 +799,23 @@ impl Config {
                 .clone()
                 .into_iter()
                 .map(|(k, v)| {
+                    #[cfg(not(target_arch = "wasm32"))]
                     if let Ok(entry_path) = root.join(v).canonicalize() {
                         Ok((k, entry_path))
                     } else {
                         Err(anyhow!("entry:{} not found", k,))
                     }
+
+                    #[cfg(target_arch = "wasm32")]
+                    {
+                        let new_path = root.join(v);
+                        if file::file_exists(new_path.to_str().unwrap()) {
+                            Ok((k, new_path))
+                        } else {
+                            Err(anyhow!("entry:{} not found", k,))
+                        }
+                    }
+
                 })
                 .collect::<Result<Vec<_>>>()?;
             config.entry = entry_tuples.into_iter().collect();

@@ -14,6 +14,39 @@ use mako_core::{md5, mime_guess};
 use percent_encoding::percent_decode_str;
 use url::Url;
 
+use wasm_bindgen::prelude::*;
+// https://rustwasm.github.io/wasm-bindgen/examples/import-js.html
+#[wasm_bindgen]
+extern "C" {
+    // https://rustwasm.github.io/wasm-bindgen/reference/attributes/index.html
+    #[wasm_bindgen(js_namespace = myfs)]
+    pub fn file_size(file_path: &str) -> u64;
+
+    #[wasm_bindgen(js_namespace = myfs)]
+    pub fn file_exists(file_path: &str) -> bool;
+
+    #[wasm_bindgen(js_namespace = myfs)]
+    pub fn file_write(file_path: &str, content: &[u8]);
+
+    #[wasm_bindgen(js_namespace = myfs)]
+    pub fn file_read(file_path: &str) -> Vec<u8>;
+
+    #[wasm_bindgen(js_namespace = myfs)]
+    pub fn file_create_dir_all(dir_path: &str);
+
+    #[wasm_bindgen(js_namespace = myfs)]
+    pub fn file_remove_dir_all(dir_path: &str);
+
+    pub fn get_current_dir();
+
+    #[wasm_bindgen(js_namespace = myfs)]
+    pub fn is_file(file_path: &str) -> bool;
+
+    #[wasm_bindgen(js_namespace = myfs)]
+    pub fn file_copy(src: &str, dst: &str);
+}
+
+
 use crate::compiler::Context;
 use crate::utils::base64_decode;
 
@@ -100,12 +133,69 @@ fn css_source_map_regex() -> &'static Regex {
 }
 
 impl File {
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn new(path: String, context: Arc<Context>) -> Self {
         let path = PathBuf::from(path);
         // if path exists, it has no search and fragment
         // support ./a#b.ts when a#b.ts is a real file
         // e.g. https://unpkg.com/browse/es5-ext@0.10.64/string/
         let (pathname, search, params, fragment) = if path.exists() {
+            (
+                path.to_string_lossy().to_string(),
+                "".to_string(),
+                vec![],
+                None,
+            )
+        } else {
+            parse_path(&path.to_string_lossy()).unwrap()
+        };
+        let pathname = PathBuf::from(pathname);
+        let is_virtual = path.starts_with(VIRTUAL) ||
+            // TODO: remove this specific logic
+            params.iter().any(|(k, _)| k == "asmodule");
+        let is_under_node_modules = path.to_string_lossy().contains("node_modules");
+        let extname = pathname
+            .clone()
+            .extension()
+            .map(|ext| ext.to_string_lossy().to_string())
+            .unwrap_or_default();
+        if is_virtual {
+            File {
+                path: path.clone(),
+                relative_path: path,
+                is_virtual,
+                pathname,
+                search,
+                params,
+                fragment,
+                is_under_node_modules,
+                extname,
+                ..Default::default()
+            }
+        } else {
+            let relative_path = diff_paths(&path, &context.root).unwrap_or(path.clone());
+            File {
+                is_virtual,
+                path,
+                relative_path,
+                extname,
+                is_under_node_modules,
+                pathname,
+                search,
+                params,
+                ..Default::default()
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn new(path: String, context: Arc<Context>) -> Self {
+        let path = PathBuf::from(path);
+        // if path exists, it has no search and fragment
+        // support ./a#b.ts when a#b.ts is a real file
+        // e.g. https://unpkg.com/browse/es5-ext@0.10.64/string/
+
+        let (pathname, search, params, fragment) = if file_exists(&path.as_os_str().to_str().unwrap()) {
             (
                 path.to_string_lossy().to_string(),
                 "".to_string(),
@@ -205,13 +295,23 @@ impl File {
             .unwrap_or_default()
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn get_file_size(&self) -> Result<u64> {
         let metadata = std::fs::metadata(&self.pathname)?;
+
         Ok(metadata.len())
     }
 
+    #[cfg(target_arch = "wasm32")]
+    pub fn get_file_size(&self) -> Result<u64> {
+        Ok(file_size(&self.pathname.as_os_str().to_str().unwrap()))
+    }
+
     pub fn get_base64(&self) -> Result<String> {
+        #[cfg(not(target_arch = "wasm32"))]
         let content = std::fs::read(&self.pathname)?;
+        #[cfg(target_arch = "wasm32")]
+        let content = file_read(&self.pathname.to_str().unwrap());
         let engine = engine::GeneralPurpose::new(&STANDARD, engine::general_purpose::PAD);
         let content = engine.encode(content);
         let guess = mime_guess::from_path(&self.pathname);

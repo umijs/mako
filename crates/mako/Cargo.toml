@@ -26,8 +26,9 @@ serde            = { workspace = true }
 serde_json       = { workspace = true }
 swc_core         = { workspace = true, features = ["swc_ecma_quote_macros"] }
 url              = { version = "2.5.0" }
+wasm-bindgen = "0.2.92"
 
-[target.'cfg(not(target_os = "linux"))'.dependencies]
+[target.'cfg(all(not(target_os = "linux"), not(target_arch = "wasm32")))'.dependencies]
 mimalloc-rust = { workspace = true }
 
 [target.'cfg(all(target_os = "linux", target_env = "gnu", any(target_arch = "x86_64", target_arch = "aarch64")))'.dependencies]

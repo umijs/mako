@@ -11,7 +11,7 @@ swc_core          = { version = "=0.83.19", default-features = false }
 tikv-jemallocator = { version = "=0.5.4", features = ["disable_initial_exec_tls"] }
 
 [profile.release]
-debug = false
+debug = true
 
 # Use the `--profile release-debug` flag to show symbols in release mode.
 # e.g. `cargo build --profile release-debug`

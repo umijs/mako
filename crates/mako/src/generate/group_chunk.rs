@@ -5,6 +5,7 @@ use mako_core::anyhow::Result;
 use mako_core::tracing::debug;
 
 use crate::compiler::Compiler;
+#[cfg(not(target_arch = "wasm32"))]
 use crate::dev::update::UpdateResult;
 use crate::generate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::generate::chunk_graph::ChunkGraph;
@@ -147,6 +148,7 @@ impl Compiler {
         });
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn group_hot_update_chunk(&self, update_result: &UpdateResult) -> GroupUpdateResult {
         mako_core::mako_profile_function!();
         debug!("group_hot_update_chunk");

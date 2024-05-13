@@ -12,6 +12,7 @@ use mako_core::petgraph::visit::{
 
 use crate::compiler::Context;
 use crate::plugin::{Plugin, PluginGenerateEndParams};
+use crate::ast::file;
 
 pub struct Graphviz {}
 
@@ -24,10 +25,18 @@ impl Graphviz {
         G::NodeWeight: Debug,
     {
         let dot = Dot::with_config(graph, &[Config::EdgeNoLabel]);
-        let mut file = File::create(dot_filename.as_ref())
-            .unwrap_or_else(|_| panic!("{} cant create", dot_filename.as_ref().display()));
 
-        write!(file, "{:?}", dot)?;
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let mut file = File::create(dot_filename.as_ref())
+                .unwrap_or_else(|_| panic!("{} cant create", dot_filename.as_ref().display()));
+
+            write!(file, "{:?}", dot)?;
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        file::file_write(dot_filename.as_ref().to_str().unwrap(), format!("{:?}", dot).as_bytes());
+
         Ok(())
     }
 }
