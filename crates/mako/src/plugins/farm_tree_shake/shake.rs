@@ -412,7 +412,7 @@ fn add_used_exports_by_import_info(
         for sp in &import_info.specifiers {
             match sp {
                 statement_graph::ImportSpecifierInfo::Namespace(_) => {
-                    imported_tree_shake_module.use_all_exports();
+                    added |= imported_tree_shake_module.use_all_exports();
                 }
                 statement_graph::ImportSpecifierInfo::Named { local, imported } => {
                     if let Some(ident) = imported {
