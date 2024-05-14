@@ -1479,6 +1479,8 @@ function remove(file) {
 }
 
 async function startMakoDevServer() {
+  let port = await getPort({ port: MAKO_DEV_PORT });
+  assert(port === MAKO_DEV_PORT, `port ${MAKO_DEV_PORT} is not available`);
   const p = $`${path.join(
     root,
     'scripts',
