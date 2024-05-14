@@ -9,8 +9,8 @@ use js_plugin::JsPlugin;
 use mako::compiler::{Args, Compiler};
 use mako::config::Config;
 use mako::dev::DevServer;
-use mako::logger::init_logger;
 use mako::plugin::Plugin;
+use mako::utils::logger::init_logger;
 use napi::bindgen_prelude::*;
 use napi::{JsObject, Status};
 use tsfn::{JsHooks, TsFnHooks};
@@ -48,7 +48,6 @@ pub struct BuildParams {
         meta?: boolean;
         preserveModules?: boolean;
         preserveModulesRoot?: string;
-        asciiOnly?: boolean;
         skipWrite?: boolean;
     };
     resolve?: {
@@ -131,6 +130,9 @@ pub struct BuildParams {
     inlineCSS?: false | {};
     rscServer?: false | {};
     rscClient?: false | {};
+    experimental?: {
+        webpackSyntaxValidate?: string[];
+    };
 }"#)]
     pub config: serde_json::Value,
     pub hooks: JsHooks,

@@ -217,9 +217,9 @@ mod tests {
     use maplit::hashmap;
 
     use super::*;
-    use crate::analyze_deps::AnalyzeDeps;
-    use crate::ast::file::File;
+    use crate::ast::file::{File, JsContent};
     use crate::ast::js_ast::JsAst;
+    use crate::build::analyze_deps::AnalyzeDeps;
     use crate::compiler::{Args, Context};
     use crate::module::ModuleAst;
 
@@ -493,7 +493,10 @@ my.call("toast");
         let context = Arc::new(context);
         let file = File::with_content(
             "cut.js".to_string(),
-            crate::ast::file::Content::Js(code.to_string()),
+            crate::ast::file::Content::Js(JsContent {
+                content: code.to_string(),
+                ..Default::default()
+            }),
             context.clone(),
         );
         let mut ast = JsAst::new(&file, context.clone()).unwrap();

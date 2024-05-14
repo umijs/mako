@@ -1,15 +1,15 @@
 {
-  "name": "@okamjs/okam-linux-x64-gnu",
-  "version": "0.4.10",
+  "name": "@umijs/mako-linux-x64-gnu",
+  "version": "0.4.17-canary.20240514.1",
   "os": [
     "linux"
   ],
   "cpu": [
     "x64"
   ],
-  "main": "okam.linux-x64-gnu.node",
+  "main": "mako.linux-x64-gnu.node",
   "files": [
-    "okam.linux-x64-gnu.node"
+    "mako.linux-x64-gnu.node"
   ],
   "license": "MIT",
   "engines": {

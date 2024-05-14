@@ -4,6 +4,7 @@
   "hmr": false,
   "_treeShaking": "basic",
   "optimization": {
-    "skipModules": true
+    "skipModules": true,
+    "concatenateModules": false
   }
 }

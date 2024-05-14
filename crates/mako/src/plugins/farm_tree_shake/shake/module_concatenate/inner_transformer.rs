@@ -9,9 +9,7 @@ use swc_core::ecma::ast::{
     FnDecl, Id, ImportDecl, ImportSpecifier, KeyValueProp, Module, ModuleExportName, ModuleItem,
     NamedExport, ObjectLit, Prop, PropOrSpread, Stmt, VarDeclKind,
 };
-use swc_core::ecma::utils::{
-    collect_decls_with_ctxt, member_expr, quote_ident, ExprFactory, IdentRenamer,
-};
+use swc_core::ecma::utils::{member_expr, quote_ident, ExprFactory, IdentRenamer};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use super::exports_transform::collect_exports_map;
@@ -333,11 +331,7 @@ impl<'a> VisitMut for InnerTransform<'a> {
     }
 
     fn visit_mut_module(&mut self, n: &mut Module) {
-        self.my_top_decls =
-            collect_decls_with_ctxt(n, SyntaxContext::empty().apply_mark(self.top_level_mark))
-                .iter()
-                .map(|id: &Id| id.0.to_string())
-                .collect();
+        self.my_top_decls = ConcatenateContext::top_level_vars(n, self.top_level_mark);
 
         self.collect_exports(n);
 

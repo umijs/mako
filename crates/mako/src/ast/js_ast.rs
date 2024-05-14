@@ -18,15 +18,14 @@ use mako_core::swc_ecma_visit::{VisitMutWith, VisitWith};
 use swc_core::base::try_with_handler;
 use swc_core::common::Spanned;
 
-use super::file::Content;
-use crate::ast::file::File;
+use crate::ast::file::{Content, File, JsContent};
+use crate::ast::sourcemap::build_source_map_to_buf;
 use crate::ast::{error, utils};
 use crate::compiler::Context;
 use crate::config::{DevtoolConfig, Mode};
 use crate::module::Dependency;
 use crate::plugin::PluginTransformJsParam;
-use crate::sourcemap::build_source_map_to_buf;
-use crate::util::base64_encode;
+use crate::utils::base64_encode;
 use crate::visitors::dep_analyzer::DepAnalyzer;
 
 #[derive(Clone)]
@@ -59,9 +58,8 @@ impl JsAst {
                 ..Default::default()
             })
         } else {
-            let jsx = extname == "jsx"
-                // when use svg as svgr, it should come here and be treated as jsx
-                || extname == "svg"
+            let jsx = file.is_content_jsx()
+                || extname == "jsx"
                 || (extname == "js" && !file.is_under_node_modules);
             Syntax::Es(EsConfig {
                 jsx,
@@ -119,10 +117,14 @@ impl JsAst {
     }
 
     pub fn build(path: &str, content: &str, context: Arc<Context>) -> Result<Self> {
+        let is_jsx = path.ends_with(".jsx") || path.ends_with(".tsx");
         JsAst::new(
             &File::with_content(
                 path.to_string(),
-                Content::Js(content.to_string()),
+                Content::Js(JsContent {
+                    content: content.to_string(),
+                    is_jsx,
+                }),
                 context.clone(),
             ),
             context.clone(),
@@ -224,7 +226,7 @@ impl JsAst {
                 cfg: JsCodegenConfig::default()
                     .with_minify(minify)
                     .with_target(context.config.output.es_version)
-                    .with_ascii_only(context.config.output.ascii_only)
+                    .with_ascii_only(true)
                     .with_omit_last_semi(true),
                 cm: cm.clone(),
                 comments: if minify { None } else { Some(swc_comments) },

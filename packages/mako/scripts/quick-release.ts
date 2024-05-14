@@ -6,7 +6,7 @@ import {
   pushToGit,
   queryNewVersion,
   rootPkgPath,
-  setNewVersionToBundlerOkam,
+  setNewVersionToBundlerMako,
 } from './utils';
 
 (async () => {
@@ -36,7 +36,7 @@ async function run() {
 
   await $`npm publish --tag ${tag} --access public`;
 
-  setNewVersionToBundlerOkam(nodePkg.version);
+  setNewVersionToBundlerMako(nodePkg.version);
 
   await pushToGit(nodePkg, branch);
 }

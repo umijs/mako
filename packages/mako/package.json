@@ -1,10 +1,13 @@
 {
-  "name": "@okamjs/okam",
-  "version": "0.4.10",
+  "name": "@umijs/mako",
+  "version": "0.4.17-canary.20240514.1",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "mako": "./bin/mako.js"
+  },
   "napi": {
-    "name": "okam",
+    "name": "mako",
     "triples": {
       "defaults": false,
       "additional": [
@@ -19,15 +22,19 @@
     "@swc/helpers": "0.5.1",
     "less": "^4.2.0",
     "less-plugin-resolve": "^1.0.2",
-    "node-libs-browser-okam": "2.2.4",
+    "lodash": "^4.17.21",
+    "node-libs-browser-okam": "^2.2.5",
     "react-error-overlay": "6.0.9",
     "react-refresh": "^0.14.0",
-    "workerpool": "^9.1.1"
+    "workerpool": "^9.1.1",
+    "yargs-parser": "^21.1.1"
   },
   "devDependencies": {
     "@napi-rs/cli": "^2.18.0",
     "@types/less": "^3.0.6",
+    "@types/lodash": "^4.17.1",
     "@types/node": "^20.12.5",
+    "@types/yargs-parser": "^21.0.3",
     "typescript": "^5.4.3"
   },
   "engines": {
@@ -58,9 +65,9 @@
     "src:build": "father build"
   },
   "optionalDependencies": {
-    "@okamjs/okam-darwin-arm64": "0.4.10",
-    "@okamjs/okam-darwin-x64": "0.4.10",
-    "@okamjs/okam-linux-x64-gnu": "0.4.10"
+    "@umijs/mako-darwin-arm64": "0.4.17-canary.20240514.1",
+    "@umijs/mako-darwin-x64": "0.4.17-canary.20240514.1",
+    "@umijs/mako-linux-x64-gnu": "0.4.17-canary.20240514.1"
   },
   "repository": "git@github.com:umijs/mako.git"
 }

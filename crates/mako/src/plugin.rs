@@ -8,10 +8,10 @@ use mako_core::swc_common::Mark;
 use mako_core::swc_ecma_ast::Module;
 
 use crate::ast::file::{Content, File};
-use crate::chunk_graph::ChunkGraph;
 use crate::compiler::{Args, Compiler, Context};
 use crate::config::Config;
-use crate::generate_chunks::ChunkFile;
+use crate::generate::chunk_graph::ChunkGraph;
+use crate::generate::generate_chunks::ChunkFile;
 use crate::module::{Dependency, ModuleAst, ModuleId};
 use crate::module_graph::ModuleGraph;
 use crate::stats::StatsJsonMap;
@@ -68,7 +68,6 @@ pub trait Plugin: Any + Send + Sync {
         Ok(None)
     }
 
-    #[allow(dead_code)]
     fn transform_js(
         &self,
         _param: &PluginTransformJsParam,

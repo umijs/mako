@@ -1,1 +1,2 @@
-require('../src/cli');
+#!/usr/bin/env node
+require('../dist/cli');

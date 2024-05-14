@@ -11,12 +11,12 @@ use mako_core::regex::Regex;
 use mako_core::tracing::debug;
 use serde::{Deserialize, Serialize};
 
-use crate::ast::file::{Content, File};
+use crate::ast::file::{Content, File, JsContent};
 use crate::compiler::{Args, Compiler, Context};
 use crate::config::{
     CodeSplittingStrategy, Config, OptimizeAllowChunks, OptimizeChunkGroup, OptimizeChunkOptions,
 };
-use crate::generate_chunks::{ChunkFile, ChunkFileType};
+use crate::generate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::plugin::{NextBuildParam, Plugin, PluginLoadParam};
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -126,8 +126,9 @@ impl Plugin for SUPlus {
 
             let path = PathBuf::from(path_string.as_str()[10..].to_string());
 
-            return Ok(Some(Content::Js(format!(
-                r#"
+            return Ok(Some(Content::Js(JsContent {
+                content: format!(
+                    r#"
 let patch = require._su_patch();
 console.log(patch);
 require('@svgdotjs/svg.js')
@@ -138,8 +139,10 @@ Promise.all(
     __mako_require__("{}");
 }}, console.log);
 "#,
-                path.to_string_lossy()
-            ))));
+                    path.to_string_lossy()
+                ),
+                is_jsx: false,
+            })));
         }
         Ok(None)
     }

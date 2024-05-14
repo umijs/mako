@@ -5,10 +5,11 @@
 use std::sync::Arc;
 
 use mako::compiler::{self, Args};
-use mako::logger::init_logger;
+use mako::utils::logger::init_logger;
 #[cfg(feature = "profile")]
-use mako::profile_gui::ProfileApp;
-use mako::{cli, config, dev, tokio_runtime};
+use mako::utils::profile_gui::ProfileApp;
+use mako::utils::tokio_runtime;
+use mako::{cli, config, dev};
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::clap::Parser;
 #[cfg(feature = "profile")]

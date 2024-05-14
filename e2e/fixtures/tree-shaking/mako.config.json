@@ -2,5 +2,8 @@
   "mode": "production",
   "minify": false,
   "hmr": false,
-  "_treeShaking": "basic"
+  "_treeShaking": "basic",
+  "optimization": {
+    "concatenateModules": false
+  }
 }

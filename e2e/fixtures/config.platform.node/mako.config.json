@@ -1,4 +1,7 @@
 {
   "platform": "node",
-  "umd": "test"
+  "umd": "test",
+  "optimization": {
+    "concatenateModules": false
+  }
 }

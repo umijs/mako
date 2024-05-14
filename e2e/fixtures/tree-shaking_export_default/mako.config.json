@@ -4,6 +4,7 @@
   "hmr": false,
   "optimizePackageImports": false,
   "optimization": {
-    "skipModules": false
+    "skipModules": false,
+    "concatenateModules": false
   }
 }

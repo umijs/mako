@@ -13,9 +13,9 @@ use mako_core::pathdiff::diff_paths;
 use mako_core::serde::Serialize;
 use swc_core::common::source_map::Pos;
 
-use crate::chunk::ChunkType;
 use crate::compiler::Compiler;
-use crate::rsc::client_info::{RscClientInfo, RscCssModules};
+use crate::features::rsc::{RscClientInfo, RscCssModules};
+use crate::generate::chunk::ChunkType;
 
 #[derive(Debug, PartialEq, Eq)]
 // name 记录实际 filename , 用在 stats.json 中, hashname 用在产物描述和 manifest 中
@@ -111,6 +111,7 @@ pub struct StatsJsonMap {
     chunks: Vec<StatsJsonChunkItem>,
     entrypoints: HashMap<String, StatsJsonEntryItem>,
     rsc_client_components: Vec<RscClientInfo>,
+    #[serde(rename = "rscCSSModules")]
     rsc_css_modules: Vec<RscCssModules>,
 }
 

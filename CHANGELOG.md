@@ -1,4 +1,81 @@
 
+## 0.4.16
+`2024-05-11`
+
+> @alipay/bigfish@4.1.31
+
+* 修复产物中文字符未转换成 unicode 问题 by [@sorrycc](https://github.com/sorrycc) in [#1146](https://github.com/umijs/mako/pull/1146)
+* 修复模块合并优化时将忽略的模块合并导致未定义变量的问题 by [@stormslowly](https://github.com/stormslowly) in [#1149](https://github.com/umijs/mako/pull/1149)
+
+
+## 0.4.15
+
+`2024-05-10`
+
+> @alipay/bigfish@4.1.29
+
+* 优化 px2rem 支持 min_pixel_value 配置 by @sorrycc in #1141
+* 修复 px2rem 在使用属性选择器但没值时会 panic 的问题 by @sorrycc in #1140
+* 修复 node 补丁方案不支持 timers 的问题 by @sorrycc in #1142
+
+## 0.4.14
+
+`2024-05-09`
+
+> @alipay/bigfish@4.1.29
+
+* 默认开启 concatenate modules by [@stormslowly](https://github.com/stormslowly) in [#1126](https://github.com/umijs/mako/pull/1126)
+* 修复 chunk id 依赖顺序可能不稳定的问题 by [@stormslowly](https://github.com/stormslowly) in [#1117](https://github.com/umijs/mako/pull/1117)
+* chore: add log for parallel generate by [@xusd320](https://github.com/xusd320) in [#1127](https://github.com/umijs/mako/pull/1127)
+* 修复热更场景下，依赖类型变更时没有 re-group chunk 的问题 by [@xusd320](https://github.com/xusd320) in [#1124](https://github.com/umijs/mako/pull/1124)
+
+## 0.4.13
+
+`2024-05-06`
+
+> @alipay/bigfish@4.1.29
+
+* 新增支持通过 ?path 指定虚拟文件的路径 by [@stormslowly](https://github.com/stormslowly) in [#1102](https://github.com/umijs/mako/pull/1102)
+* 新增全局 `__mako_chunk_load__` 方法 by [@sorrycc](https://github.com/sorrycc) in [#1111](https://github.com/umijs/mako/pull/1111)
+* 优化 mako 命令行支持指定 mode by [@sorrycc](https://github.com/sorrycc) in [#1114](https://github.com/umijs/mako/pull/1114)
+* 修复 concatenate inner global var conflict with other modules top level vars by [@stormslowly](https://github.com/stormslowly) in [#1100](https://github.com/umijs/mako/pull/1100)
+* 修复 node polyfill 在 ident 简写场景不生效的问题 by [@stormslowly](https://github.com/stormslowly) in [#1104](https://github.com/umijs/mako/pull/1104)
+* 修复 dev 阶段不输出 manifest 的问题 by [@sorrycc](https://github.com/sorrycc) in [#1106](https://github.com/umijs/mako/pull/1106)
+* 修复 dev 阶段不输出 stats.json 的问题 by [@sorrycc](https://github.com/sorrycc) in [#1108](https://github.com/umijs/mako/pull/1108)
+* 修复 cjs 构建的场景（for ssr） by [@Jinbao1001](https://github.com/Jinbao1001) in [#1109](https://github.com/umijs/mako/pull/1109)
+* 重构移除 lazy_static by [@xusd320](https://github.com/xusd320) in [#1103](https://github.com/umijs/mako/pull/1103)
+* 重构整体目录结构 by [@sorrycc](https://github.com/sorrycc) in [#1105](https://github.com/umijs/mako/pull/1105)
+* 重构 okam 为 mako，同时公开 @alipay scope 的包到 @umijs 下 by [@sorrycc](https://github.com/sorrycc) in [#1113](https://github.com/umijs/mako/pull/1113)
+
+## 0.4.12
+
+`2024-04-28`
+
+> @alipay/bigfish@4.1.28
+
+* 修复 okam 包 package.json 中 bin 字段丢失的问题 by [@sorrycc](https://github.com/sorrycc) in [#1092](https://github.com/umijs/mako/pull/1092)
+* 修复 runtime 在 node 场景下报错，让 css ensure 只在 browser 阶段才状态 by [@sorrycc](https://github.com/sorrycc) in [#1095](https://github.com/umijs/mako/pull/1095)
+* 修复空 css chunk 不应该输出的问题 by [@xusd320](https://github.com/xusd320) in [#1097](https://github.com/umijs/mako/pull/1097)
+* 修复 node 场景下不应该 load css 的问题（潜在的性能提升） by [@sorrycc](https://github.com/sorrycc) in [#1098](https://github.com/umijs/mako/pull/1098)
+* 修复 concatenate 中 polyfill 没有在 inner 中被替换的问题 by [@stormslowly](https://github.com/stormslowly) in [#1099](https://github.com/umijs/mako/pull/1099)
+
+## 0.4.11
+
+`2024-04-25`
+
+> @alipay/bigfish@4.1.27
+
+* 新增 RSC 功能 by [@sorrycc](https://github.com/sorrycc) in [#1063](https://github.com/umijs/mako/pull/1063)
+* 新增 RSC sdk  by [@sorrycc](https://github.com/sorrycc) in [#1072](https://github.com/umijs/mako/pull/1072)
+* 新增 loader 返回参数增加 jsx 属性 by [@sorrycc](https://github.com/sorrycc) in [#1079](https://github.com/umijs/mako/pull/1079)
+* 新增 experimental.webpackSyntaxValidate 配置 by [@sorrycc](https://github.com/sorrycc) in [#1080](https://github.com/umijs/mako/pull/1080)
+* 新增 okam cli  by [@sorrycc](https://github.com/sorrycc) in [#1087](https://github.com/umijs/mako/pull/1087)
+* 新增支持 css_rem 属性选择器 by [@LovePlayCode](https://github.com/LovePlayCode) in [#1059](https://github.com/umijs/mako/pull/1059)
+* 新增支持伪类选择器 by [@LovePlayCode](https://github.com/LovePlayCode) in [#1061](https://github.com/umijs/mako/pull/1061)
+* 修复 okam TS 类型问题 BuildParams by [@sorrycc](https://github.com/sorrycc) in [#1073](https://github.com/umijs/mako/pull/1073)
+* 修复 mako 运行时全局变量无法获取 by [@PeachScript](https://github.com/PeachScript) in [#1082](https://github.com/umijs/mako/pull/1082)
+* 修复 css 顺序不稳定 by [@xusd320](https://github.com/xusd320) in [#1085](https://github.com/umijs/mako/pull/1085)
+
 ## 0.4.10
 
 `2024-04-16`

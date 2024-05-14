@@ -1,8 +1,17 @@
 import fs from 'fs';
 import path from 'path';
+import { omit } from 'lodash';
 import * as binding from '../binding';
 import { ForkTSChecker as ForkTSChecker } from './forkTSChecker';
 import { LessLoaderOpts, lessLoader } from './lessLoader';
+
+interface ExtraBuildParams {
+  less?: LessLoaderOpts;
+  forkTSChecker?: boolean;
+}
+
+type BuildParams = binding.BuildParams & ExtraBuildParams;
+export { BuildParams };
 
 // ref:
 // https://github.com/vercel/next.js/pull/51883
@@ -20,12 +29,7 @@ function blockStdout() {
   }
 }
 
-interface ExtraBuildParams {
-  less?: LessLoaderOpts;
-  forkTSChecker?: boolean;
-}
-
-export async function build(params: binding.BuildParams & ExtraBuildParams) {
+export async function build(params: BuildParams) {
   blockStdout();
 
   params.hooks = params.hooks || {};
@@ -63,24 +67,28 @@ export async function build(params: binding.BuildParams & ExtraBuildParams) {
 
   // built-in less-loader
   let less = lessLoader(null, {
-    alias: params.config.resolve.alias!,
     modifyVars: params.less?.modifyVars || {},
     math: params.less?.math,
     sourceMap: params.less?.sourceMap || false,
+    plugins: [
+      ['less-plugin-resolve', { aliases: params.config.resolve.alias! }],
+      ...(params.less?.plugins || []),
+    ],
   });
   let originLoad = params.hooks.load;
   // TODO: improve load binding, should support return null if not matched
   // @ts-ignore
   params.hooks.load = async function (filePath: string) {
-    let lessResult = await less(filePath);
-    if (lessResult) {
-      return lessResult;
-    }
+    // user load first
     if (originLoad) {
       let originResult = await originLoad(filePath);
       if (originResult) {
         return originResult;
       }
+    }
+    let lessResult = await less(filePath);
+    if (lessResult) {
+      return lessResult;
     }
   };
 
@@ -114,7 +122,9 @@ export async function build(params: binding.BuildParams & ExtraBuildParams) {
     });
   }
 
-  await binding.build(params);
+  const buildParams = omit(params, ['less', 'forkTSChecker']);
+
+  await binding.build(buildParams);
 
   if (params.forkTSChecker) {
     const forkTypeChecker = new ForkTSChecker({

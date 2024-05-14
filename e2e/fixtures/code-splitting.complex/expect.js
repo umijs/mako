@@ -32,10 +32,10 @@ assert.match(
   files["index.js"].replace(/\s/g, ""),
   new RegExp(`Promise.all\\(\\[${
     [
-      "vendors_0",
       "common",
+      "vendors_0",
       "vendors_1",
-      "src/should-be-split.ts"
+      "src/should-be-split.ts",
     ].map((f) => `__mako_require__.ensure\\("${f}"\\)`).join(",")
   }\\]\\)`),
   "should ensure splitting dependent chunks on demand (full)"
@@ -47,7 +47,7 @@ assert.match(
     [
       "common",
       "vendors_1",
-      "src/other-dynamic.ts"
+      "src/other-dynamic.ts",
     ].map((f) => `__mako_require__.ensure\\("${f}"\\)`).join(",")
   }\\]\\)`),
   "should ensure splitting dependent chunks on demand (not-full)"

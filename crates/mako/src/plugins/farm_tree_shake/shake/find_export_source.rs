@@ -186,7 +186,7 @@ mod tests {
     use swc_core::common::GLOBALS;
 
     use super::TreeShakeModule;
-    use crate::ast::file::{Content, File};
+    use crate::ast::file::{Content, File, JsContent};
     use crate::ast::js_ast::JsAst;
     use crate::compiler::Context;
     use crate::module::{Module, ModuleAst, ModuleInfo};
@@ -453,7 +453,10 @@ mod tests {
 
         let file = File::with_content(
             "test.js".to_string(),
-            Content::Js(code.to_string()),
+            Content::Js(JsContent {
+                content: code.to_string(),
+                ..Default::default()
+            }),
             context.clone(),
         );
         let ast = JsAst::new(&file, context.clone()).unwrap();

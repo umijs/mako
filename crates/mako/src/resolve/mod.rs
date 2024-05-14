@@ -19,8 +19,8 @@ use crate::config::{
     Config, ExternalAdvancedSubpathConverter, ExternalAdvancedSubpathTarget, ExternalConfig,
     Platform,
 };
+use crate::features::rsc::Rsc;
 use crate::module::{Dependency, ResolveType};
-use crate::rsc::rsc::Rsc;
 
 #[derive(Debug, Error)]
 #[error("Resolve {path:?} failed from {from:?}")]
@@ -235,7 +235,7 @@ fn do_resolve(
                 }
                 _ => {
                     eprintln!(
-                        "failed to resolve {} from {} with oxc-resolver err: {:?}",
+                        "failed to resolve {} from {} with resolver err: {:?}",
                         source,
                         path.to_string_lossy(),
                         oxc_resolve_err

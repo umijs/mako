@@ -4,7 +4,7 @@ use mako_core::swc_css_ast::{
     self, Combinator, CombinatorValue, ComplexSelectorChildren, Length, Token, TypeSelector,
 };
 use mako_core::swc_css_visit::{VisitMut, VisitMutWith};
-use swc_core::css::ast::{ComplexSelector, CompoundSelector, SubclassSelector};
+use swc_core::css::ast::{AttributeSelector, ComplexSelector, CompoundSelector, SubclassSelector};
 
 use crate::config::Px2RemConfig;
 
@@ -33,7 +33,10 @@ impl Px2Rem {
         }
     }
 
-    fn should_transform(&self) -> bool {
+    fn should_transform(&self, val: f64) -> bool {
+        if val < self.config.min_pixel_value {
+            return false;
+        }
         let is_prop_valid = if let Some(decl) = &self.current_decl {
             let is_whitelist_empty = self.config.prop_whitelist.is_empty();
             let is_in_whitelist = self.config.prop_whitelist.contains(decl);
@@ -87,7 +90,7 @@ impl VisitMut for Px2Rem {
     }
 
     fn visit_mut_length(&mut self, n: &mut Length) {
-        if n.unit.value.to_string() == "px" && self.should_transform() {
+        if n.unit.value.to_string() == "px" && self.should_transform(n.value.value) {
             n.value.value /= self.config.root;
             n.value.raw = None;
             n.unit.value = "rem".into();
@@ -95,9 +98,12 @@ impl VisitMut for Px2Rem {
         n.visit_mut_children_with(self);
     }
 
+    // css variables use as token
+    // e.g.
+    // .a { --a-b: var(--c-d, 88px); }
     fn visit_mut_token(&mut self, t: &mut Token) {
         if let Token::Dimension(dimension) = t {
-            if dimension.unit.to_string() == "px" && self.should_transform() {
+            if dimension.unit.to_string() == "px" && self.should_transform(dimension.value) {
                 let rem_val = dimension.value / self.config.root;
                 dimension.raw_value = rem_val.to_string().into();
                 dimension.value = rem_val;
@@ -165,12 +171,44 @@ fn parse_compound_selector(selector: &CompoundSelector) -> String {
             SubclassSelector::Class(class) => {
                 result.push_str(&format!(".{}", class.text.value));
             }
+            SubclassSelector::Attribute(attr) => {
+                result.push_str(parse_attribute(attr).as_str());
+            }
+            SubclassSelector::PseudoClass(pseudo) => {
+                result.push_str(format!(":{}", pseudo.name.value).as_str());
+            }
             _ => {
                 // TODO: support more subclass selectors
             }
         }
     }
     result
+}
+
+fn parse_attribute(attr: &AttributeSelector) -> String {
+    let mut res_str = String::new();
+    let AttributeSelector {
+        name,
+        matcher,
+        value,
+        ..
+    } = attr;
+    let val_str = if let Some(val_str) = value.as_ref() {
+        if let Some(val_str) = val_str.as_str() {
+            val_str.value.to_string()
+        } else {
+            "".to_string()
+        }
+    } else {
+        "".to_string()
+    };
+    let matcher = if let Some(x) = matcher.as_ref() {
+        x.value.to_string()
+    } else {
+        "".to_string()
+    };
+    res_str.push_str(&format!("[{}{}{}]", name.value.value, matcher, val_str));
+    res_str
 }
 
 fn parse_complex_selector(selector: &ComplexSelector) -> String {
@@ -202,6 +240,22 @@ mod tests {
             run_with_default(r#".a{width:100px;height:200px;}"#),
             r#".a{width:1rem;height:2rem}"#
         );
+        assert_eq!(
+            run_with_min_pixel_value(r#".a{width:100px;height:200px;}"#, 101.0),
+            r#".a{width:100px;height:2rem}"#
+        );
+    }
+
+    #[test]
+    fn test_attribute_selector() {
+        assert_eq!(
+            run_with_default(r#".a[b]{width:100px;}"#),
+            r#".a[b]{width:1rem}"#
+        );
+        assert_eq!(
+            run_with_default(r#".a[b=c]{width:100px;}"#),
+            r#".a[b=c]{width:1rem}"#
+        );
     }
 
     #[test]
@@ -224,6 +278,14 @@ mod tests {
     fn test_css_variables() {
         assert_eq!(
             run_with_default(r#".a { --a-b: var(--c-d, 88px); }"#),
+            r#".a{--a-b:var(--c-d, 0.88rem)}"#
+        );
+        assert_eq!(
+            run_with_min_pixel_value(r#".a { --a-b: var(--c-d, 88px); }"#, 100.0),
+            r#".a{--a-b:var(--c-d, 88px)}"#
+        );
+        assert_eq!(
+            run_with_min_pixel_value(r#".a { --a-b: var(--c-d, 88px); }"#, 88.0),
             r#".a{--a-b:var(--c-d, 0.88rem)}"#
         );
     }
@@ -381,6 +443,87 @@ mod tests {
             r#".a>.b{width:100px}"#
         );
     }
+    #[test]
+    fn test_selector_attribute_selector_black() {
+        assert_eq!(
+            run(
+                r#"[class*="button"]{width:100px;}"#,
+                Px2RemConfig {
+                    selector_blacklist: vec!["[class*=\"button\"]".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#"[class*="button"]{width:100px}"#
+        );
+    }
+
+    #[test]
+    fn test_selector_attribute_selector_white() {
+        assert_eq!(
+            run(
+                r#"[class*="button"]{width:100px;}"#,
+                Px2RemConfig {
+                    selector_whitelist: vec!["[class*=\"button\"]".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#"[class*="button"]{width:1rem}"#
+        );
+    }
+
+    #[test]
+    fn test_attribute() {
+        assert_eq!(
+            run(
+                r#"[class*="button"]{width:100px;}"#,
+                Px2RemConfig {
+                    ..Default::default()
+                }
+            ),
+            r#"[class*="button"]{width:1rem}"#
+        );
+    }
+
+    #[test]
+    fn test_class_pseudo() {
+        assert_eq!(
+            run(
+                r#".jj:before,.jj:after{width:100px;}"#,
+                Px2RemConfig {
+                    ..Default::default()
+                }
+            ),
+            r#".jj:before,.jj:after{width:1rem}"#
+        );
+    }
+
+    #[test]
+    fn test_class_pseudo_select_black() {
+        assert_eq!(
+            run(
+                r#".jj:before,.jj:after{width:100px;}"#,
+                Px2RemConfig {
+                    selector_blacklist: vec![".jj:after".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#".jj:before,.jj:after{width:100px}"#
+        );
+    }
+
+    #[test]
+    fn test_class_pseudo_select_white() {
+        assert_eq!(
+            run(
+                r#".jj:before,.jj:after{width:100px;}"#,
+                Px2RemConfig {
+                    selector_whitelist: vec![".jj:after".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#".jj:before,.jj:after{width:100px}"#
+        );
+    }
 
     #[test]
     fn test_multi_selectors_whitelist() {
@@ -432,6 +575,16 @@ mod tests {
 
     fn run_with_default(css_code: &str) -> String {
         run(css_code, Px2RemConfig::default())
+    }
+
+    fn run_with_min_pixel_value(css_code: &str, min_pixel_value: f64) -> String {
+        run(
+            css_code,
+            Px2RemConfig {
+                min_pixel_value,
+                ..Default::default()
+            },
+        )
     }
 
     fn run(css_code: &str, config: Px2RemConfig) -> String {

@@ -2,7 +2,7 @@
 
 const path = require('path');
 const fs = require('fs');
-const { build } = require('@okamjs/okam');
+const { build } = require('@umijs/mako');
 const cwd = process.argv[2];
 
 console.log('> run mako build for', cwd);

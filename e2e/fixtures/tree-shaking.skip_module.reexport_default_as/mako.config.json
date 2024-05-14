@@ -1,5 +1,5 @@
 {
-  "optimization": { "skipModules": true },
+  "optimization": { "skipModules": true, "concatenateModules": false },
   "optimizePackageImports": false,
   "entry":{
     "index": "src/index.js"

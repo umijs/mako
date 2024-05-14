@@ -3,25 +3,27 @@
     "benchmark": "esno scripts/benchmark.ts",
     "changelog:format": "esno scripts/format-changelog.ts",
     "prepare": "husky install",
-    "build": "pnpm --filter @okamjs/okam build && pnpm --filter @okamjs/okam src:build && pnpm biome:format",
+    "build": "pnpm --filter @umijs/mako build && pnpm --filter @umijs/mako src:build && pnpm biome:format",
+    "build:debug": "pnpm --filter @umijs/mako build:debug && pnpm --filter @umijs/mako src:build && pnpm biome:format",
     "biome:format": "biome check --apply .",
     "test": "npm run test:e2e && npm run test:hmr && npm run test:umi",
     "test:e2e": "node scripts/test-e2e.mjs",
     "test:umi": "node scripts/test-e2e.mjs --fixtures e2e/fixtures.umi --umi",
     "test:hmr": "node scripts/test-hmr.mjs",
     "release": "esno scripts/release.ts",
-    "release:okam": "pnpm --filter @okamjs/okam release",
-    "release:bundler-okam": "esno scripts/release-bundler-okam.ts"
+    "release:mako": "pnpm --filter @umijs/mako release",
+    "release:bundler-mako": "esno scripts/release-bundler-mako.ts",
+    "release:rsc": "esno scripts/release-rsc.ts"
   },
   "license": "MIT",
   "devDependencies": {
-    "@alipay/umi-bundler-okam": "workspace:*",
+    "@umijs/bundler-mako": "workspace:*",
     "@ant-design/icons": "^5.0.1",
     "@biomejs/biome": "^1.4.1",
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
     "@jest/expect": "^29.7.0",
-    "@okamjs/okam": "workspace:*",
+    "@umijs/mako": "workspace:*",
     "@swc/helpers": "0.5.1",
     "@taplo/cli": "^0.7.0",
     "@types/express": "^4.17.21",
@@ -37,7 +39,7 @@
     "get-port": "^7.1.0",
     "husky": "^8.0.3",
     "less": "^4.2.0",
-    "node-libs-browser-okam": "2.2.4",
+    "node-libs-browser-okam": "^2.2.5",
     "playwright": "^1.39.0",
     "portfinder": "^1.0.32",
     "react": "18.2.0",
@@ -50,5 +52,6 @@
     "webpack": "^5.0.0",
     "zx": "^7.2.3"
   },
+  "packageManager": "pnpm@8.15.8",
   "repository": "git@github.com:umijs/mako.git"
 }

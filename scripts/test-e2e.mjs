@@ -31,7 +31,7 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
         await $`cd ${cwd} && mkdir node_modules`;
       }
       // run umi build
-      const x = (await import.meta.resolve('@alipay/umi-bundler-okam')).replace(
+      const x = (await import.meta.resolve('@umijs/bundler-mako')).replace(
         /^file:\/\//,
         '',
       );

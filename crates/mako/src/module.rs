@@ -16,10 +16,10 @@ use swc_core::ecma::ast::{
     ExportSpecifier, ImportDecl, ImportSpecifier, ModuleExportName, NamedExport,
 };
 
-use crate::analyze_deps::AnalyzeDepsResult;
 use crate::ast::css_ast::CssAst;
 use crate::ast::file::File;
 use crate::ast::js_ast::JsAst;
+use crate::build::analyze_deps::AnalyzeDepsResult;
 use crate::compiler::Context;
 use crate::config::ModuleIdStrategy;
 use crate::resolve::ResolverResource;
@@ -164,6 +164,7 @@ pub struct ModuleInfo {
     /// The top-level-await module must be an async module, in addition, for example, wasm is also an async module
     /// The purpose of distinguishing top_level_await and is_async is to adapt to runtime_async
     pub is_async: bool,
+    pub is_ignored: bool,
     pub resolved_resource: Option<ResolverResource>,
     /// The transformed source map chain of this module
     pub source_map_chain: Vec<Vec<u8>>,
@@ -183,6 +184,7 @@ impl Default for ModuleInfo {
             is_async: false,
             resolved_resource: None,
             source_map_chain: vec![],
+            is_ignored: false,
         }
     }
 }
@@ -452,7 +454,7 @@ impl Module {
 
 impl Debug for Module {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Module id={}", self.id.id)
+        write!(f, "id={}({:?})", self.id.id, self.get_module_type())
     }
 }
 

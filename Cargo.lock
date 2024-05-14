@@ -1219,6 +1219,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "delegate"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4e018fccbeeb50ff26562ece792ed06659b9c2dae79ece77c4456bb10d9bf79b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.50",
+]
+
+[[package]]
 name = "derivative"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2543,6 +2554,7 @@ dependencies = [
  "bitflags 2.4.2",
  "cached",
  "dashmap 4.0.2",
+ "delegate",
  "fixedbitset",
  "glob-match",
  "heck",
@@ -2597,7 +2609,6 @@ dependencies = [
  "hyper-staticfile",
  "hyper-tungstenite",
  "indexmap 2.2.3",
- "lazy_static",
  "md5",
  "mdxjs",
  "merge-source-map",

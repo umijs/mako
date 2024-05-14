@@ -13,7 +13,8 @@
       "./test/**/dist/*",
       "./test/build/tmp/**/*",
       "./e2e/**",
-      "./tmp/**"
+      "./tmp/**",
+      "./.pnpm-store/**"
     ]
   },
   "formatter": {

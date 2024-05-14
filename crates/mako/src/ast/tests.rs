@@ -6,7 +6,7 @@ use mako_core::swc_ecma_visit::VisitMutWith;
 use swc_core::common::GLOBALS;
 
 use super::css_ast::{CSSAstGenerated, CssAst};
-use super::file::{Content, File};
+use super::file::{Content, File, JsContent};
 use super::js_ast::{JSAstGenerated, JsAst};
 use crate::compiler::Context;
 use crate::config::Mode;
@@ -16,12 +16,20 @@ pub struct TestUtilsOpts {
     pub content: Option<String>,
 }
 
+#[derive(Debug)]
 pub enum TestAst {
     Js(JsAst),
     Css(CssAst),
 }
 
 impl TestAst {
+    pub fn js(&self) -> &JsAst {
+        match self {
+            TestAst::Js(ast) => ast,
+            _ => panic!("Not a js ast"),
+        }
+    }
+
     pub fn css_mut(&mut self) -> &mut CssAst {
         match self {
             TestAst::Css(ast) => ast,
@@ -67,6 +75,7 @@ impl TestUtils {
         } else {
             "test.js".to_string()
         };
+        let is_jsx = file.ends_with(".jsx") || file.ends_with(".tsx");
         let mut file = File::new(file, context.clone());
         let is_css = file.extname == "css";
         let content = if let Some(content) = opts.content {
@@ -77,7 +86,7 @@ impl TestUtils {
         if is_css {
             file.set_content(Content::Css(content));
         } else {
-            file.set_content(Content::Js(content));
+            file.set_content(Content::Js(JsContent { content, is_jsx }));
         }
         let ast = if is_css {
             TestAst::Css(CssAst::new(&file, context.clone(), false).unwrap())
