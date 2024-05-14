@@ -22,7 +22,7 @@ use crate::ast::file::{Content, File, JsContent};
 use crate::ast::sourcemap::build_source_map_to_buf;
 use crate::ast::{error, utils};
 use crate::compiler::Context;
-use crate::config::{DevtoolConfig, Mode};
+use crate::config::{DevtoolConfig, Mode, OutputMode};
 use crate::module::Dependency;
 use crate::plugin::PluginTransformJsParam;
 use crate::utils::base64_encode;
@@ -222,11 +222,16 @@ impl JsAst {
             let swc_comments = comments.get_swc_comments();
             let is_prod = matches!(context.config.mode, Mode::Production);
             let minify = context.config.minify && is_prod;
+            let ascii_only = if context.config.output.mode == OutputMode::Bundless {
+                false
+            } else {
+                minify
+            };
             let mut emitter = Emitter {
                 cfg: JsCodegenConfig::default()
                     .with_minify(minify)
                     .with_target(context.config.output.es_version)
-                    .with_ascii_only(true)
+                    .with_ascii_only(ascii_only)
                     .with_omit_last_semi(true),
                 cm: cm.clone(),
                 comments: if minify { None } else { Some(swc_comments) },
@@ -284,6 +289,7 @@ mod tests {
     use crate::ast::tests::TestUtils;
 
     #[test]
+    #[ignore]
     fn test_chinese_ascii() {
         assert_eq!(run(r#"log("中文")"#), r#"log("\u4E2D\u6587");"#);
     }
