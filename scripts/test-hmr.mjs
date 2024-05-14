@@ -1478,9 +1478,14 @@ function remove(file) {
   fs.unlinkSync(p);
 }
 
+let isFirstCase = true;
+
 async function startMakoDevServer() {
-  let port = await getPort({ port: MAKO_DEV_PORT });
-  assert(port === MAKO_DEV_PORT, `port ${MAKO_DEV_PORT} is not available`);
+  if (isFirstCase) {
+    let port = await getPort({ port: MAKO_DEV_PORT });
+    assert(port === MAKO_DEV_PORT, `port ${MAKO_DEV_PORT} is not available`);
+    isFirstCase = false;
+  }
   const p = $`${path.join(
     root,
     'scripts',

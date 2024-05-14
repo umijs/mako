@@ -3,7 +3,6 @@ use mako_core::swc_common;
 use mako_core::swc_common::comments::{Comment, Comments as CommentsTrait};
 use mako_core::swc_common::{BytePos, Span};
 use mako_core::swc_node_comments::SwcComments;
-use mako_core::tracing::warn;
 
 #[derive(Default)]
 pub struct Comments(MakoComments);
@@ -96,6 +95,7 @@ impl CommentsTrait for MakoComments {
         if pos.is_dummy() {
             #[cfg(debug_assertions)]
             {
+                use mako_core::tracing::warn;
                 warn!("still got pure comments at dummy pos! UPGRADE SWC!!!");
             }
             return;
