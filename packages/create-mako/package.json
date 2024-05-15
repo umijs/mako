@@ -1,6 +1,6 @@
 {
   "name": "create-mako",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "bin": {
     "create-mako": "./bin/create-mako.js"
   },
