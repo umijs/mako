@@ -1,4 +1,5 @@
 pub mod logger;
+#[cfg(feature = "profile")]
 pub mod profile_gui;
 #[cfg(test)]
 pub(crate) mod test_helper;

@@ -5,15 +5,15 @@
 use std::sync::Arc;
 
 use mako::compiler::{self, Args};
+#[cfg(not(feature = "profile"))]
+use mako::dev;
 use mako::utils::logger::init_logger;
 #[cfg(feature = "profile")]
 use mako::utils::profile_gui::ProfileApp;
 use mako::utils::tokio_runtime;
-use mako::{cli, config, dev};
+use mako::{cli, config};
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::clap::Parser;
-#[cfg(feature = "profile")]
-use mako_core::tokio::sync::Notify;
 use mako_core::tracing::debug;
 
 #[cfg(not(target_os = "linux"))]
@@ -77,26 +77,13 @@ async fn run() -> Result<()> {
 
     #[cfg(feature = "profile")]
     {
-        let notify = Arc::new(Notify::new());
-        let to_be_notify = notify.clone();
-
-        let for_spawn = compiler.clone();
-        tokio_runtime::spawn(async move {
-            if cli.watch {
-                to_be_notify.notified().await;
-                for_spawn.compile().unwrap();
-                let d = crate::dev::DevServer::new(root.clone(), for_spawn.clone());
-                d.serve(move |_params| {}).await;
-            }
-        });
-
         mako_core::puffin::set_scopes_on(true);
         let native_options = Default::default();
         let for_profile = compiler.clone();
         let _ = mako_core::eframe::run_native(
             "puffin egui eframe",
             native_options,
-            Box::new(move |_cc| Box::new(ProfileApp::new(notify, for_profile))),
+            Box::new(move |_cc| Box::new(ProfileApp::new(for_profile))),
         );
     }
 
