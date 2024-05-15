@@ -80,25 +80,23 @@ async fn run() -> Result<()> {
         let notify = Arc::new(Notify::new());
         let to_be_notify = notify.clone();
 
+        let for_spawn = compiler.clone();
         tokio_runtime::spawn(async move {
-            let compiler = compiler.clone();
-
-            to_be_notify.notified().await;
-
-            compiler.compile().unwrap();
-
             if cli.watch {
-                let d = crate::dev::DevServer::new(root.clone(), compiler.clone());
+                to_be_notify.notified().await;
+                for_spawn.compile().unwrap();
+                let d = crate::dev::DevServer::new(root.clone(), for_spawn.clone());
                 d.serve(move |_params| {}).await;
             }
         });
 
         mako_core::puffin::set_scopes_on(true);
         let native_options = Default::default();
+        let for_profile = compiler.clone();
         let _ = mako_core::eframe::run_native(
             "puffin egui eframe",
             native_options,
-            Box::new(move |_cc| Box::new(ProfileApp::new(notify))),
+            Box::new(move |_cc| Box::new(ProfileApp::new(notify, for_profile))),
         );
     }
 
