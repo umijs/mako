@@ -5,7 +5,7 @@ interface MakoStats {
     files: string[];
     entry: boolean;
     modules: { type: 'module'; size: number; id: string; chunks: string[] }[];
-    siblings: unknown[];
+    siblings: string[];
     origins: unknown[];
   }[];
   rscClientComponents: { path: string }[];
@@ -42,8 +42,7 @@ export function parseClientStats(stats: MakoStats): ClientManifest {
   for (let chunk of stats.chunks) {
     if (chunk.entry) continue;
     let id = chunk.id;
-    let chunks = chunk.files.filter((file) => file.endsWith('.js'));
-    // TODO: add child chunks
+    const chunks = chunk.siblings.concat(chunk.id);
     // TODO: support module_id_strategy: hashed
     ret.clientComponents[id] = {
       '*': {
