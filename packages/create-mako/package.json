@@ -1,0 +1,31 @@
+{
+  "name": "create-mako",
+  "version": "0.1.0",
+  "bin": {
+    "create-mako": "./bin/create-mako.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "glob": "^10.3.15",
+    "yargs-parser": "^21.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.5",
+    "@types/yargs-parser": "^21.0.3",
+    "typescript": "^5.4.3"
+  },
+  "engines": {
+    "node": ">= 16"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "templates"
+  ],
+  "scripts": {
+    "format": "biome check --apply .",
+    "dev": "father dev",
+    "build": "father build"
+  },
+  "repository": "git@github.com:umijs/mako.git"
+}

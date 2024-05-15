@@ -13,7 +13,8 @@
     "release": "esno scripts/release.ts",
     "release:mako": "pnpm --filter @umijs/mako release",
     "release:bundler-mako": "esno scripts/release-bundler-mako.ts",
-    "release:rsc": "esno scripts/release-rsc.ts"
+    "release:rsc": "esno scripts/release-rsc.ts",
+    "release:create-mako": "esno scripts/release-create-mako.ts"
   },
   "license": "MIT",
   "devDependencies": {
