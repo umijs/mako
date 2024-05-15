@@ -33,6 +33,7 @@ async function main() {
   console.log(`  cd ${path.basename(cwd)}`);
   console.log(`  ${npmClient} install`);
   console.log(`  ${npmClient} run dev`);
+  console.log(`  # Open http://localhost:3000`);
   console.log();
   console.log('Happy coding!');
 }
