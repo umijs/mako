@@ -161,6 +161,10 @@ impl File {
         file
     }
 
+    pub fn is_css(&self) -> bool {
+        self.content.is_some() && matches!(self.content.as_ref().unwrap(), Content::Css(_))
+    }
+
     pub fn new_entry(path: String, context: Arc<Context>) -> Self {
         let mut file = File::new(path, context);
         file.is_entry = true;
