@@ -1,6 +1,6 @@
-import { globSync } from 'glob';
-import path from 'path';
 import fs from 'fs';
+import path from 'path';
+import { globSync } from 'glob';
 
 async function main() {
   let templatePath = path.join(__dirname, '../templates/react');

@@ -20,6 +20,7 @@ pub struct RscClientInfo {
 #[derive(Serialize, Debug, Clone)]
 pub struct RscCssModules {
     pub path: String,
+    pub modules: bool,
 }
 
 pub struct Rsc {}
@@ -86,6 +87,7 @@ impl Rsc {
         let mut info = context.stats_info.lock().unwrap();
         info.rsc_css_modules.push(RscCssModules {
             path: file.relative_path.to_string_lossy().to_string(),
+            modules: file.is_css() && file.has_param("modules"),
         });
     }
 
