@@ -40,6 +40,9 @@ exports.build = async function (opts) {
         math: opts.config.lessLoader?.math,
         plugins: opts.config.lessLoader?.plugins,
       },
+      hooks: {
+        ...opts.config.hooks,
+      },
       forkTSChecker: makoConfig.forkTSChecker,
       watch: false,
     });
@@ -179,6 +182,7 @@ exports.dev = async function (opts) {
         generateEnd: (args) => {
           opts.onDevCompileDone(args);
         },
+        ...opts.config.hooks,
       },
       watch: true,
     });
