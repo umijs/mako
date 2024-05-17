@@ -6,18 +6,21 @@ use mako_core::regex::Regex;
 use mako_core::tracing::debug;
 
 use crate::compiler::Compiler;
-use crate::config::{OptimizeAllowChunks, OptimizeChunkGroup, OptimizeChunkOptions};
+use crate::config::{
+    CodeSplittingGranularStrategy, OptimizeAllowChunks, OptimizeChunkGroup,
+    OptimizeChunkNamePostFixStrategy, OptimizeChunkOptions,
+};
 use crate::generate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::generate::group_chunk::GroupUpdateResult;
 use crate::module::{Module, ModuleId, ModuleInfo};
 use crate::resolve::{ResolvedResource, ResolverResource};
 
 pub(crate) fn default_min_size() -> usize {
-    20000
+    1
 }
 
 pub(crate) fn default_max_size() -> usize {
-    5000000
+    40
 }
 
 pub(crate) fn default_min_chunks() -> usize {
@@ -236,6 +239,7 @@ impl Compiler {
                 // check test regex
                 if let Some(test) = &optimize_info.group_options.test {
                     if !test.is_match(&module_id.id) {
+                        println!("regex {} {}", test.as_str(), &module_id.id);
                         continue;
                     }
                 }
@@ -513,28 +517,76 @@ impl Compiler {
     }
 
     fn get_optimize_chunk_options(&self) -> Option<OptimizeChunkOptions> {
-        match &self.context.config.code_splitting {
-            Some(crate::config::CodeSplittingStrategy::Auto) => Some(OptimizeChunkOptions {
-                groups: vec![
-                    OptimizeChunkGroup {
-                        name: "vendors".to_string(),
-                        test: Regex::new(r"[/\\]node_modules[/\\]").ok(),
-                        priority: -10,
-                        ..Default::default()
-                    },
-                    OptimizeChunkGroup {
-                        name: "common".to_string(),
-                        min_chunks: 2,
-                        // always split, to avoid multi-instance risk
-                        min_size: 1,
-                        priority: -20,
-                        ..Default::default()
-                    },
-                ],
-                ..Default::default()
-            }),
+        let s = match &self.context.config.code_splitting {
+            Some(crate::config::CodeSplittingStrategy::Auto) => {
+                Some(code_splitting_strategy_auto())
+            }
+            Some(crate::config::CodeSplittingStrategy::Granular(
+                CodeSplittingGranularStrategy { framework_packages },
+            )) => Some(code_splitting_strategy_granular(framework_packages.clone())),
             Some(crate::config::CodeSplittingStrategy::Advanced(options)) => Some(options.clone()),
             _ => None,
-        }
+        };
+        println!("optimize_chunk_options {:?}", s);
+        s
+    }
+}
+
+fn code_splitting_strategy_auto() -> OptimizeChunkOptions {
+    OptimizeChunkOptions {
+        groups: vec![
+            OptimizeChunkGroup {
+                name: "vendors".to_string(),
+                test: Regex::new(r"[/\\]node_modules[/\\]").ok(),
+                priority: -10,
+                ..Default::default()
+            },
+            OptimizeChunkGroup {
+                name: "common".to_string(),
+                min_chunks: 2,
+                // always split, to avoid multi-instance risk
+                min_size: 1,
+                priority: -20,
+                ..Default::default()
+            },
+        ],
+        ..Default::default()
+    }
+}
+
+fn code_splitting_strategy_granular(framework_packages: Vec<String>) -> OptimizeChunkOptions {
+    OptimizeChunkOptions {
+        groups: vec![
+            OptimizeChunkGroup {
+                name: "framework".to_string(),
+                name_postfix_strategy: Some(OptimizeChunkNamePostFixStrategy::Named),
+                allow_chunks: OptimizeAllowChunks::All,
+                test: Regex::new(&format!(
+                    r#"[/\\]node_modules[/\\]({})[/\\]"#,
+                    framework_packages.join("|")
+                ))
+                .ok(),
+                priority: -10,
+                ..Default::default()
+            },
+            OptimizeChunkGroup {
+                name: "lib".to_string(),
+                name_postfix_strategy: Some(OptimizeChunkNamePostFixStrategy::Named),
+                allow_chunks: OptimizeAllowChunks::Async,
+                test: Regex::new(r"[/\\]node_modules[/\\]").ok(),
+                max_module_size: Some(160000),
+                priority: -20,
+                ..Default::default()
+            },
+            OptimizeChunkGroup {
+                name: "shared".to_string(),
+                name_postfix_strategy: Some(OptimizeChunkNamePostFixStrategy::Hashed),
+                allow_chunks: OptimizeAllowChunks::Async,
+                priority: -30,
+                min_chunks: 2,
+                ..Default::default()
+            },
+        ],
+        ..Default::default()
     }
 }

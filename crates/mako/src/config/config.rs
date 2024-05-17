@@ -187,9 +187,18 @@ pub enum ModuleIdStrategy {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CodeSplittingGranularStrategy {
+    #[serde(default)]
+    pub framework_packages: Vec<String>,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub enum CodeSplittingStrategy {
     #[serde(rename = "auto")]
     Auto,
+    #[serde(untagged)]
+    Granular(CodeSplittingGranularStrategy),
     #[serde(untagged)]
     Advanced(OptimizeChunkOptions),
 }
@@ -473,7 +482,6 @@ pub struct Config {
     pub experimental: ExperimentalConfig,
 }
 
-#[allow(dead_code)]
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub enum OptimizeAllowChunks {
     #[serde(rename = "all")]
@@ -503,9 +511,21 @@ impl Default for OptimizeChunkOptions {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
+pub enum OptimizeChunkNamePostFixStrategy {
+    #[serde(rename = "named")]
+    Named,
+    #[serde(rename = "numeric")]
+    Numeric,
+    #[serde(rename = "hashed")]
+    Hashed,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct OptimizeChunkGroup {
     pub name: String,
+    #[serde(default)]
+    pub name_postfix_strategy: Option<OptimizeChunkNamePostFixStrategy>,
     #[serde(default)]
     pub allow_chunks: OptimizeAllowChunks,
     #[serde(default = "optimize_chunk::default_min_chunks")]
@@ -515,6 +535,8 @@ pub struct OptimizeChunkGroup {
     #[serde(default = "optimize_chunk::default_max_size")]
     pub max_size: usize,
     #[serde(default)]
+    pub max_module_size: Option<usize>,
+    #[serde(default)]
     pub priority: i8,
     #[serde(default, with = "optimize_test_format")]
     pub test: Option<Regex>,
@@ -522,12 +544,14 @@ pub struct OptimizeChunkGroup {
 
 impl Default for OptimizeChunkGroup {
     fn default() -> Self {
-        OptimizeChunkGroup {
-            name: String::default(),
+        Self {
             allow_chunks: OptimizeAllowChunks::default(),
             min_chunks: optimize_chunk::default_min_chunks(),
             min_size: optimize_chunk::default_min_size(),
             max_size: optimize_chunk::default_max_size(),
+            name: String::default(),
+            name_postfix_strategy: None,
+            max_module_size: None,
             test: None,
             priority: i8::default(),
         }

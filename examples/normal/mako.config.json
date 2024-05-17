@@ -1,5 +1,8 @@
 {
   "devtool": "source-map",
   "stats": true,
-  "hash": true
+  "hash": true,
+  "codeSplitting": {
+    "frameworkPackages": ["react", "react-dom"]
+  }
 }
