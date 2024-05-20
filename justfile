@@ -21,7 +21,7 @@ ready-lite:
   just check
   just test
   just lint
-  pnpm biome:format
+  pnpm biome:check
   git status
 
 ready:
@@ -33,7 +33,7 @@ ready:
   cargo build --release
   pnpm build
   pnpm test
-  pnpm biome:format
+  pnpm biome:check
   git status
 
 # Update our local branch with the remote branch (this is for you to sync the submodules)
