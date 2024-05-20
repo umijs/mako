@@ -145,6 +145,9 @@ export interface BuildParams {
     experimental?: {
       webpackSyntaxValidate?: string[];
     };
+    watch?: {
+      ignoredPaths?: string[];
+    };
   };
   hooks: JsHooks;
   watch: boolean;

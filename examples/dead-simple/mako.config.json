@@ -5,5 +5,10 @@
     "alias": {
       "@": "./foo"
     }
+  },
+  "watch": {
+    "ignorePaths": [
+      "bar"
+    ]
   }
 }
