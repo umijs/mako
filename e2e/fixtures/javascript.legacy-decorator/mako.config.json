@@ -2,5 +2,8 @@
   "minify": false,
   "optimization": {
     "skipModules": false
+  },
+  "targets": {
+    "chrome": 40
   }
 }
