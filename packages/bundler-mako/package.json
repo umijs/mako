@@ -1,6 +1,7 @@
+
 {
   "name": "@umijs/bundler-mako",
-  "version": "0.4.18-canary.20240517.1",
+  "version": "0.4.18-canary.20240520.1",
   "dependencies": {
     "@umijs/mako": "0.4.18-canary.20240520.1",
     "@umijs/bundler-utils": "^4.0.81",
