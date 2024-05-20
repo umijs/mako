@@ -472,7 +472,24 @@ e.g.
 - Type: `false | string`
 - Default: `false`
 
-Whether to output umd format
+Whether to output umd format.
+
+### watch
+
+- Type: `{ ignorePaths: string[] }`
+- Default: `{ ignorePaths: [] }`
+
+Watch related configuration.
+
+e.g. If you want to ignore the `foo` directory under root directory, you can set it as follows.
+
+```ts
+{
+  watch: {
+    ignorePaths: ["foo"],
+  },
+}
+```
 
 ### writeToDisk
 

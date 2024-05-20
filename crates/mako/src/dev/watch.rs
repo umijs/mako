@@ -79,9 +79,7 @@ impl<'a> Watcher<'a> {
 
     pub fn refresh_watch(&mut self) -> anyhow::Result<()> {
         let t_refresh_watch = Instant::now();
-
         self.watch()?;
-
         let t_refresh_watch_duration = t_refresh_watch.elapsed();
         debug!(
             "{}",
@@ -91,7 +89,6 @@ impl<'a> Watcher<'a> {
             )
             .green()
         );
-
         Ok(())
     }
 
@@ -100,6 +97,15 @@ impl<'a> Watcher<'a> {
         if with_output_dir {
             ignore_list.push(self.compiler.context.config.output.path.to_str().unwrap());
         }
+        ignore_list.extend(
+            self.compiler
+                .context
+                .config
+                .watch
+                .ignore_paths
+                .iter()
+                .map(|p| p.as_str()),
+        );
 
         // node_modules of root dictionary and root dictionary's parent dictionaries should be ignored
         // for resolving the issue of "too many files open" in monorepo
@@ -111,7 +117,6 @@ impl<'a> Watcher<'a> {
                 dirs.push(path);
             })
         });
-
         dirs
     }
 
