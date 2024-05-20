@@ -143,6 +143,11 @@ impl Transform {
                     })));
                     // TODO: is it a problem to clone comments?
                     let comments = origin_comments.get_swc_comments().clone();
+                    let assumptions: Assumptions = context
+                        .config
+                        .js
+                        .as_ref()
+                        .map_or_else(Assumptions::default, |js| js.into());
                     folders.push(Box::new(swc_preset_env::preset_env(
                         unresolved_mark,
                         Some(comments),
@@ -153,7 +158,7 @@ impl Transform {
                             )),
                             ..Default::default()
                         },
-                        Assumptions::default(),
+                        assumptions,
                         &mut FeatureFlag::default(),
                     )));
                     // simplify, but keep top level dead code

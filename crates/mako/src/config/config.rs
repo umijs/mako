@@ -13,6 +13,7 @@ use mako_core::thiserror::Error;
 use mako_core::{clap, config, thiserror};
 use miette::{miette, ByteOffset, Diagnostic, NamedSource, SourceOffset, SourceSpan};
 use serde::Serialize;
+use swc_core::ecma::transforms::base::Assumptions;
 
 use crate::features::node::Node;
 use crate::generate::optimize_chunk;
@@ -471,6 +472,7 @@ pub struct Config {
     )]
     pub rsc_client: Option<RscClientConfig>,
     pub experimental: ExperimentalConfig,
+    pub js: Option<JsConfig>,
 }
 
 #[allow(dead_code)]
@@ -518,6 +520,49 @@ pub struct OptimizeChunkGroup {
     pub priority: i8,
     #[serde(default, with = "optimize_test_format")]
     pub test: Option<Regex>,
+}
+#[derive(Deserialize, Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct JsConfig {
+    transform: Option<TransformConfig>,
+}
+
+impl Default for JsConfig {
+    fn default() -> Self {
+        JsConfig {
+            transform: Some(TransformConfig::default()),
+        }
+    }
+}
+
+impl From<&JsConfig> for Assumptions {
+    fn from(value: &JsConfig) -> Self {
+        let mut assumptions = Assumptions::default();
+
+        if let Some(transform) = &value.transform {
+            if !transform.use_define_for_class_fields {
+                assumptions.set_class_methods = true;
+                assumptions.set_public_class_fields = true;
+            }
+        }
+
+        assumptions
+    }
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct TransformConfig {
+    #[serde(default)]
+    pub use_define_for_class_fields: bool,
+}
+
+impl Default for TransformConfig {
+    fn default() -> Self {
+        TransformConfig {
+            use_define_for_class_fields: true,
+        }
+    }
 }
 
 impl Default for OptimizeChunkGroup {
@@ -624,7 +669,12 @@ const DEFAULT_CONFIG: &str = r#"
     "inlineCSS": false,
     "rscServer": false,
     "rscClient": false,
-    "experimental": { "webpackSyntaxValidate": [] }
+    "experimental": { "webpackSyntaxValidate": [] },
+    "js": {
+        "transform": {
+            "useDefineForClassFields": true
+        }
+    }
 }
 "#;
 
