@@ -135,6 +135,12 @@ impl Transform {
 
                     // folders
                     let mut folders: Vec<Box<dyn Fold>> = vec![];
+                    // decorators should go before preset_env, when compile down to es5, classes become functions, then the decorators on the functions will be removed silently.
+                    folders.push(Box::new(decorators(decorators::Config {
+                        legacy: true,
+                        emit_metadata: false,
+                        ..Default::default()
+                    })));
                     // TODO: is it a problem to clone comments?
                     let comments = origin_comments.get_swc_comments().clone();
                     folders.push(Box::new(swc_preset_env::preset_env(
@@ -150,11 +156,6 @@ impl Transform {
                         Assumptions::default(),
                         &mut FeatureFlag::default(),
                     )));
-                    folders.push(Box::new(decorators(decorators::Config {
-                        legacy: true,
-                        emit_metadata: false,
-                        ..Default::default()
-                    })));
                     // simplify, but keep top level dead code
                     // e.g. import x from 'foo'; but x is not used
                     // this must be kept for tree shaking to work
