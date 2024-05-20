@@ -143,11 +143,8 @@ impl Transform {
                     })));
                     // TODO: is it a problem to clone comments?
                     let comments = origin_comments.get_swc_comments().clone();
-                    let assumptions: Assumptions = context
-                        .config
-                        .js
-                        .as_ref()
-                        .map_or_else(Assumptions::default, |js| js.into());
+                    let assumptions = context.assumptions_for(file);
+
                     folders.push(Box::new(swc_preset_env::preset_env(
                         unresolved_mark,
                         Some(comments),
@@ -230,6 +227,25 @@ impl Transform {
             }
             ModuleAst::None => Ok(()),
         }
+    }
+}
+
+impl Context {
+    pub fn assumptions_for(&self, file: &File) -> Assumptions {
+        let is_ts = file.extname == "ts" || file.extname == "tsx";
+
+        let mut assumptions = Assumptions::default();
+        self.config.js.as_ref().map(|js_config| {
+            js_config.transform.as_ref().map(|transform_config| {
+                assumptions.set_public_class_fields |=
+                    !transform_config.use_define_for_class_fields;
+                if is_ts {
+                    assumptions.set_class_methods |= !transform_config.use_define_for_class_fields;
+                }
+            })
+        });
+
+        assumptions
     }
 }
 

@@ -13,7 +13,6 @@ use mako_core::thiserror::Error;
 use mako_core::{clap, config, thiserror};
 use miette::{miette, ByteOffset, Diagnostic, NamedSource, SourceOffset, SourceSpan};
 use serde::Serialize;
-use swc_core::ecma::transforms::base::Assumptions;
 
 use crate::features::node::Node;
 use crate::generate::optimize_chunk;
@@ -524,7 +523,7 @@ pub struct OptimizeChunkGroup {
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct JsConfig {
-    transform: Option<TransformConfig>,
+    pub transform: Option<TransformConfig>,
 }
 
 impl Default for JsConfig {
@@ -532,21 +531,6 @@ impl Default for JsConfig {
         JsConfig {
             transform: Some(TransformConfig::default()),
         }
-    }
-}
-
-impl From<&JsConfig> for Assumptions {
-    fn from(value: &JsConfig) -> Self {
-        let mut assumptions = Assumptions::default();
-
-        if let Some(transform) = &value.transform {
-            if !transform.use_define_for_class_fields {
-                assumptions.set_class_methods = true;
-                assumptions.set_public_class_fields = true;
-            }
-        }
-
-        assumptions
     }
 }
 
