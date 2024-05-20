@@ -1,36 +1,40 @@
-#[cfg(feature = "profile")]
 use std::sync::Arc;
 
-#[cfg(feature = "profile")]
 use mako_core::eframe::egui;
-#[cfg(feature = "profile")]
-use mako_core::tokio::sync::Notify;
 
-#[cfg(feature = "profile")]
+use crate::compiler::Compiler;
+use crate::utils::tokio_runtime;
+
 pub struct ProfileApp {
-    notified: bool,
-    notify: Arc<Notify>,
+    inited: bool,
+    compiler: Arc<Compiler>,
 }
 
-#[cfg(feature = "profile")]
 impl ProfileApp {
-    #[allow(dead_code)]
-    pub fn new(notify: Arc<Notify>) -> Self {
+    pub fn new(compiler: Arc<Compiler>) -> Self {
         Self {
-            notified: false,
-            notify,
+            inited: false,
+            compiler,
         }
     }
 }
 
-#[cfg(feature = "profile")]
 impl mako_core::eframe::App for ProfileApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut mako_core::eframe::Frame) {
         mako_core::puffin::GlobalProfiler::lock().new_frame(); // call once per frame!
 
-        if !self.notified {
-            self.notified = true;
-            self.notify.notify_one();
+        if !self.inited {
+            self.compiler.compile().unwrap();
+
+            if self.compiler.context.args.watch {
+                let for_spawn = self.compiler.clone();
+                tokio_runtime::spawn(async move {
+                    let root = for_spawn.context.root.clone();
+                    let d = crate::dev::DevServer::new(root, for_spawn);
+                    d.serve(move |_params| {}).await;
+                });
+            }
+            self.inited = true;
         }
         mako_core::puffin_egui::profiler_window(ctx);
     }
