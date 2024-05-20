@@ -535,7 +535,7 @@ pub struct OptimizeChunkGroup {
     #[serde(default = "optimize_chunk::default_max_size")]
     pub max_size: usize,
     #[serde(default)]
-    pub max_module_size: Option<usize>,
+    pub min_module_size: Option<usize>,
     #[serde(default)]
     pub priority: i8,
     #[serde(default, with = "optimize_test_format")]
@@ -551,7 +551,7 @@ impl Default for OptimizeChunkGroup {
             max_size: optimize_chunk::default_max_size(),
             name: String::default(),
             name_postfix_strategy: None,
-            max_module_size: None,
+            min_module_size: None,
             test: None,
             priority: i8::default(),
         }

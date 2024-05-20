@@ -360,10 +360,12 @@ impl Compiler {
 
                     // collect modules by package name until chunk size is very to max_size
                     // `new_chunk_size == 0` 用于解决单个 pkg 大小超过 max_size 会死循环的问题
+                    let module_size = package_size_map.get_index(0).unwrap().1 .0;
                     while !package_size_map.is_empty()
                         && (new_chunk_size == 0
-                            || new_chunk_size + package_size_map.get_index(0).unwrap().1 .0
-                                < info.group_options.max_size)
+                            || new_chunk_size + module_size < info.group_options.max_size
+                            || (info.group_options.min_module_size.is_some()
+                                && module_size > info.group_options.min_module_size.unwrap()))
                     {
                         let (_, (size, modules)) = package_size_map.swap_remove_index(0).unwrap();
 
@@ -574,7 +576,7 @@ fn code_splitting_strategy_granular(framework_packages: Vec<String>) -> Optimize
                 name_postfix_strategy: Some(OptimizeChunkNamePostFixStrategy::Named),
                 allow_chunks: OptimizeAllowChunks::Async,
                 test: Regex::new(r"[/\\]node_modules[/\\]").ok(),
-                max_module_size: Some(160000),
+                min_module_size: Some(160000),
                 priority: -20,
                 ..Default::default()
             },
