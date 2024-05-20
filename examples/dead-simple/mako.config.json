@@ -7,8 +7,6 @@
     }
   },
   "watch": {
-    "ignorePaths": [
-      "bar"
-    ]
+    "ignorePaths": ["bar"]
   }
 }
