@@ -365,7 +365,7 @@ importers:
         specifier: ^4.0.81
         version: 4.1.6
       '@umijs/mako':
-        specifier: 0.4.18-canary.20240517.1
+        specifier: 0.4.18-canary.20240520.1
         version: link:../mako
       chalk:
         specifier: ^4.1.2
@@ -442,14 +442,14 @@ importers:
         version: 21.1.1
     optionalDependencies:
       '@umijs/mako-darwin-arm64':
-        specifier: 0.4.18-canary.20240517.1
-        version: 0.4.18-canary.20240517.1
+        specifier: 0.4.18-canary.20240520.1
+        version: 0.4.18-canary.20240520.1
       '@umijs/mako-darwin-x64':
-        specifier: 0.4.18-canary.20240517.1
-        version: 0.4.18-canary.20240517.1
+        specifier: 0.4.18-canary.20240520.1
+        version: 0.4.18-canary.20240520.1
       '@umijs/mako-linux-x64-gnu':
-        specifier: 0.4.18-canary.20240517.1
-        version: 0.4.18-canary.20240517.1
+        specifier: 0.4.18-canary.20240520.1
+        version: 0.4.18-canary.20240520.1
     devDependencies:
       '@napi-rs/cli':
         specifier: ^2.18.0
@@ -5115,8 +5115,8 @@ packages:
       - typescript
     dev: true
 
-  /@umijs/mako-darwin-arm64@0.4.18-canary.20240517.1:
-    resolution: {integrity: sha512-YvurLAiMdZVgIIDgBkWjyTjolyeWX9xjBKucsiffdGFBUbmzBzDIxSg8pZ1WnPoh0KVoKBoK1CU4Vv66xEQtpw==}
+  /@umijs/mako-darwin-arm64@0.4.18-canary.20240520.1:
+    resolution: {integrity: sha512-lOFvduupcwUWgCKIXzbC4CrMADSeB9DlKSFk6Q4sVoD7bMoktgoVIgr8vS1kJLHS6H+n765xOixEdT9NbXZG4Q==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
@@ -5124,8 +5124,8 @@ packages:
     dev: false
     optional: true
 
-  /@umijs/mako-darwin-x64@0.4.18-canary.20240517.1:
-    resolution: {integrity: sha512-qQ4zJIOHq+qraaBHLi3o7B3IO270nVA6twZAaFdUKgc61jwPVYEYk73hYROoIlW992MjMy6RWgEg6ktH7YI/nw==}
+  /@umijs/mako-darwin-x64@0.4.18-canary.20240520.1:
+    resolution: {integrity: sha512-cSOlZdDLkR8VjsBCXZDoT3EO/JrUXM3FkSEGFdDNvska8UZ6t0CZr/ySquNvTnMZetW9axYHDiXqwBCYmq/XSw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
@@ -5133,8 +5133,8 @@ packages:
     dev: false
     optional: true
 
-  /@umijs/mako-linux-x64-gnu@0.4.18-canary.20240517.1:
-    resolution: {integrity: sha512-MKkqJlL3SbtM0e5jmpCNyS925b+HB7NTwUJEwdaFNXtIlKAjHaLpUXS48LzEgXz5XfD3Sw0qaDF0iPwtS867xA==}
+  /@umijs/mako-linux-x64-gnu@0.4.18-canary.20240520.1:
+    resolution: {integrity: sha512-cVd8SN1loV7cFCKT8ayneZf3AkdxwQSyj9TSOcKJrdCKp6Xx/HQgINqbfmKZKOQ8DhN57VU+ZrZtqfgz6C8dOw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
