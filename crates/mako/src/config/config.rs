@@ -662,10 +662,9 @@ const DEFAULT_CONFIG: &str = r#"
     "rscClient": false,
     "experimental": { "webpackSyntaxValidate": [] },
     "js": {
-            "useDefineForClassFields": true
+      "useDefineForClassFields": true
     },
     "watch": { "ignorePaths": [] }
-    }
 }
 "#;
 
