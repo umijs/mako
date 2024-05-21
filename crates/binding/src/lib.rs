@@ -133,6 +133,9 @@ pub struct BuildParams {
     experimental?: {
         webpackSyntaxValidate?: string[];
     };
+    watch?: {
+        ignoredPaths?: string[];
+    };
 }"#)]
     pub config: serde_json::Value,
     pub hooks: JsHooks,

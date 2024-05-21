@@ -13,8 +13,9 @@ const lessLoader = {
 
     const pluginInstances: Less.Plugin[] | undefined = plugins?.map((p) => {
       if (Array.isArray(p)) {
-        const pluginClass = require(p[0]);
-        return new pluginClass(p[1]);
+        const pluginModule = require(p[0]);
+        const PluginClass = pluginModule.default || pluginModule;
+        return new PluginClass(p[1]);
       } else {
         return require(p);
       }

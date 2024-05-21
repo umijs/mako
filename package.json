@@ -5,6 +5,7 @@
     "prepare": "husky install",
     "build": "pnpm --filter @umijs/mako build && pnpm --filter @umijs/mako src:build && pnpm biome:format",
     "build:debug": "pnpm --filter @umijs/mako build:debug && pnpm --filter @umijs/mako src:build && pnpm biome:format",
+    "biome:check": "biome check .",
     "biome:format": "biome check --apply .",
     "test": "npm run test:e2e && npm run test:hmr && npm run test:umi",
     "test:e2e": "node scripts/test-e2e.mjs",
@@ -13,7 +14,8 @@
     "release": "esno scripts/release.ts",
     "release:mako": "pnpm --filter @umijs/mako release",
     "release:bundler-mako": "esno scripts/release-bundler-mako.ts",
-    "release:rsc": "esno scripts/release-rsc.ts"
+    "release:rsc": "esno scripts/release-rsc.ts",
+    "release:create-mako": "esno scripts/release-create-mako.ts"
   },
   "license": "MIT",
   "devDependencies": {

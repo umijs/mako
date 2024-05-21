@@ -386,6 +386,12 @@ pub struct ExperimentalConfig {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct WatchConfig {
+    pub ignore_paths: Vec<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct HmrConfig {
     pub host: String,
     pub port: u16,
@@ -472,6 +478,7 @@ pub struct Config {
     )]
     pub rsc_client: Option<RscClientConfig>,
     pub experimental: ExperimentalConfig,
+    pub watch: WatchConfig,
 }
 
 #[allow(dead_code)]
@@ -626,7 +633,8 @@ const DEFAULT_CONFIG: &str = r#"
     "inlineCSS": false,
     "rscServer": false,
     "rscClient": false,
-    "experimental": { "webpackSyntaxValidate": [] }
+    "experimental": { "webpackSyntaxValidate": [] },
+    "watch": { "ignorePaths": [] }
 }
 "#;
 

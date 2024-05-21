@@ -29,12 +29,6 @@ pub struct OptimizeChunksInfo {
     pub module_to_chunks: IndexMap<ModuleId, Vec<ChunkId>>,
 }
 
-#[derive(PartialEq, Eq, Clone)]
-pub struct OptimizeChunkModule {
-    pub module_id: ModuleId,
-    pub chunk_ids: Vec<ChunkId>,
-}
-
 impl Compiler {
     pub fn optimize_chunk(&self) {
         mako_core::mako_profile_function!();
@@ -325,12 +319,15 @@ impl Compiler {
                                         ..
                                     }),
                                 ..
-                            }) => resolution.package_json().map_or("unknown", |json| {
-                                json.raw_json()
-                                    .get("name")
-                                    .map_or("unknown", |n| n.as_str().unwrap())
-                            }),
-                            _ => "unknown",
+                            }) => resolution.package_json().map_or_else(
+                                || mtc.0.id.as_str(),
+                                |json| {
+                                    json.raw_json()
+                                        .get("name")
+                                        .map_or_else(|| mtc.0.id.as_str(), |n| n.as_str().unwrap())
+                                },
+                            ),
+                            _ => mtc.0.id.as_str(),
                         };
 
                         let module_size = module_graph.get_module(mtc.0).unwrap().get_module_size();
