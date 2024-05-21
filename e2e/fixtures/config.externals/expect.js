@@ -13,6 +13,16 @@ assert.match(
   "should have external module: hoo"
 );
 
+assert(
+  content.includes(`module.exports = require("hoo");`),
+  `should have external module: hoo_require`,
+);
+
+assert(
+  content.includes(`module.exports = require("foo");`),
+  `should have external module: foo_require`,
+);
+
 assert.match(
   content,
   moduleReg(

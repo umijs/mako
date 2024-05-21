@@ -86,6 +86,8 @@ fn get_external_target(
             ExternalConfig::Basic(external) => Some((
                 if external.is_empty() {
                     "''".to_string()
+                } else if external.starts_with("commonjs ") {
+                    format!("require(\"{}\")", external.replace("commonjs ", ""))
                 } else {
                     format!("{}.{}", global_obj, external)
                 },
@@ -94,6 +96,8 @@ fn get_external_target(
             ExternalConfig::Advanced(config) => Some((
                 if config.root.is_empty() {
                     "''".to_string()
+                } else if config.module_type.as_ref().is_some_and(|t| t == "commonjs") {
+                    format!("require(\"{}\")", config.root)
                 } else {
                     format!("{}.{}", global_obj, config.root)
                 },
@@ -529,6 +533,7 @@ mod tests {
                 ExternalConfig::Advanced(ExternalAdvanced {
                     root: "antd".to_string(),
                     script: None,
+                    module_type: None,
                     subpath: Some(ExternalAdvancedSubpath {
                         exclude: Some(vec!["style".to_string()]),
                         rules: vec![
@@ -566,6 +571,7 @@ mod tests {
                     root: "ScriptType".to_string(),
                     script: Some("https://example.com/lib/script.js".to_string()),
                     subpath: None,
+                    module_type: None,
                 }),
             ),
         ]);
