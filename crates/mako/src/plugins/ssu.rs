@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::fs;
 use std::fs::File as SysFile;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -16,8 +17,10 @@ use crate::compiler::{Args, Compiler, Context};
 use crate::config::{
     CodeSplittingStrategy, Config, OptimizeAllowChunks, OptimizeChunkGroup, OptimizeChunkOptions,
 };
+use crate::generate::chunk::ChunkType;
 use crate::generate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::plugin::{NextBuildParam, Plugin, PluginLoadParam};
+use crate::resolve::ResolverResource;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 struct CacheState {
@@ -36,6 +39,7 @@ pub struct SUPlus {
     current_state: Arc<Mutex<CacheState>>,
 }
 
+#[derive(Debug)]
 enum CodeType {
     SourceCode,
     Dependency,
@@ -90,7 +94,7 @@ impl Plugin for SUPlus {
 
     fn modify_config(&self, config: &mut Config, _root: &Path, _args: &Args) -> Result<()> {
         for p in config.entry.values_mut() {
-            *p = PathBuf::from(format!("virtual:E:{}", p.to_string_lossy()));
+            *p = PathBuf::from(format!("virtual:E:node_modules:{}", p.to_string_lossy()));
         }
 
         config.code_splitting = Some(CodeSplittingStrategy::Advanced(OptimizeChunkOptions {
@@ -121,28 +125,62 @@ impl Plugin for SUPlus {
     }
 
     fn load(&self, param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
-        if param.file.path.starts_with("virtual:E:") {
+        if param.file.path.starts_with("virtual:E:node_modules:") {
             let path_string = param.file.path.to_string_lossy().to_string();
 
-            let path = PathBuf::from(path_string.as_str()[10..].to_string());
+            let path = PathBuf::from(path_string.as_str()[23..].to_string());
 
-            return Ok(Some(Content::Js(JsContent {
-                content: format!(
-                    r#"
+            let mut require_externals = _context
+                .config
+                .externals
+                .iter()
+                .map(|ext| format!("require('{}');", ext.0))
+                .collect::<Vec<_>>();
+
+            require_externals.sort();
+
+            let mut reverse_require = self
+                .cached_state
+                .lock()
+                .unwrap()
+                .reversed_required_files
+                .iter()
+                .map(|f| format!("require('{}')", f))
+                .collect::<Vec<_>>();
+            reverse_require.sort();
+
+            let content = format!(
+                r#"
+require("virtual:C:/node_modules/css/css.css");                    
 let patch = require._su_patch();
 console.log(patch);
-require('@svgdotjs/svg.js')
-require('@alipay/editable-svg')
+{}
 Promise.all(
     patch.map((d)=>__mako_require__.ensure(d))
 ).then(()=>{{
-    __mako_require__("{}");
+    {}
+    require("{}");
 }}, console.log);
 "#,
-                    path.to_string_lossy()
-                ),
+                require_externals.join("\n"),
+                reverse_require.join("\n"),
+                path.to_string_lossy()
+            );
+
+            debug!("entry contrent:\n{}", content);
+
+            return Ok(Some(Content::Js(JsContent {
+                content,
                 is_jsx: false,
             })));
+        }
+
+        if param
+            .file
+            .path
+            .starts_with("virtual:C:/node_modules/css/css.css")
+        {
+            return Ok(Some(Content::Css("._mako_mock_css { }".to_string())));
         }
         Ok(None)
     }
@@ -151,31 +189,59 @@ Promise.all(
         let from: CodeType = next_build_param
             .current_module
             .id
-            .contains("node_modules")
+            .contains("/node_modules/")
             .into();
         let to = next_build_param.next_file.is_under_node_modules.into();
 
+        debug!(
+            "{} -> {}",
+            next_build_param.current_module.id,
+            next_build_param
+                .next_file
+                .pathname
+                .to_string_lossy()
+                .to_string()
+        );
+
         match (from, to) {
             (CodeType::SourceCode, CodeType::Dependency) => {
-                self.dependence_node_module_files
-                    .insert(next_build_param.next_file.clone());
+                if let ResolverResource::Resolved(resolved) = &next_build_param.resource {
+                    self.dependence_node_module_files
+                        .insert(next_build_param.next_file.clone());
 
-                let path_name = next_build_param
-                    .next_file
-                    .path
-                    .to_string_lossy()
-                    .to_string();
+                    let path_name = next_build_param
+                        .next_file
+                        .path
+                        .to_string_lossy()
+                        .to_string();
 
-                self.current_state
-                    .lock()
-                    .unwrap()
-                    .cached_boundaries
-                    .insert(path_name, "0.0.0.0".to_string());
+                    let version = resolved
+                        .0
+                        .package_json()
+                        .and_then(|p| p.raw_json().get("version"))
+                        .map_or("0.0.0".to_string(), |v| {
+                            v.as_str().unwrap_or("0.0.0").to_string()
+                        });
 
-                let scanning = *self.scanning.lock().unwrap();
-                !scanning
+                    self.current_state
+                        .lock()
+                        .unwrap()
+                        .cached_boundaries
+                        .insert(path_name, version);
+
+                    let scanning = *self.scanning.lock().unwrap();
+                    !scanning
+                } else {
+                    true
+                }
             }
             (CodeType::Dependency, CodeType::SourceCode) => {
+                debug!(
+                    "{} -> {}",
+                    next_build_param.current_module.id,
+                    next_build_param.next_file.pathname.to_string_lossy()
+                );
+
                 self.current_state
                     .lock()
                     .unwrap()
@@ -194,11 +260,16 @@ Promise.all(
     }
 
     fn after_build(&self, _context: &Arc<Context>, compiler: &Compiler) -> Result<()> {
+        debug!("start after build");
+
         let cached = self.cached_state.lock().unwrap();
         let current_state = self.current_state.lock().unwrap();
 
-        println!("collected {:?}", current_state.cached_boundaries);
-        println!("cached {:?}", cached.cached_boundaries);
+        #[cfg(debug_assertions)]
+        {
+            debug!("collected {:?}", current_state.cached_boundaries);
+            debug!("cached {:?}", cached.cached_boundaries);
+        }
 
         let cache_valid = current_state.cached_boundaries.len() == cached.cached_boundaries.len()
             && cached
@@ -206,7 +277,9 @@ Promise.all(
                 .iter()
                 .any(|(k, _)| cached.cached_boundaries.contains_key(k));
 
-        debug!("after build {}", cache_valid);
+        drop(current_state);
+
+        debug!("cache valid? {}", cache_valid);
 
         if cache_valid {
             *self.enabled.lock().unwrap() = true;
@@ -225,7 +298,7 @@ Promise.all(
         *s = false;
         drop(s);
 
-        println!("build dep");
+        debug!("start to build dep");
         compiler.build(files)?;
 
         let mut s = self.scanning.lock().unwrap();
@@ -248,6 +321,9 @@ Promise.all(
         }
 
         let cache_root = context.root.join(".cache");
+        if !cache_root.exists() {
+            fs::create_dir_all(&cache_root)?;
+        }
 
         let mut js_patch_map = HashMap::new();
         let mut css_patch_map = HashMap::new();
@@ -279,7 +355,7 @@ Promise.all(
             .for_each(|cf| {
                 let p = cache_root.join(cf.disk_name());
                 if let Some(source_map) = &cf.source_map {
-                    std::fs::write(cache_root.join(cf.source_map_disk_name()), source_map).unwrap();
+                    fs::write(cache_root.join(cf.source_map_disk_name()), source_map).unwrap();
 
                     let mut f = SysFile::create(&p).unwrap();
 
@@ -327,7 +403,7 @@ requireModule._su_patch = function(){{
     for(var key in js_patch) {{
         cssChunksIdToUrlMap[key] = css_patch[key];
     }}
-    return Object.keys(js_patch);
+    return Object.keys(js_patch).sort();
 }}
 "#,
                 serde_json::to_string(&cache.js_patch_map).unwrap(),
@@ -336,22 +412,31 @@ requireModule._su_patch = function(){{
 
             Ok(vec![code])
         } else {
+            let cg = _context.chunk_graph.read().unwrap();
+
+            cg.get_chunks()
+                .into_iter()
+                .filter(|c| c.chunk_type == ChunkType::Sync)
+                .for_each(|c| {
+                    println!("chunk: {}", c.filename());
+                });
+
             Ok(vec![r#"
-requireModule._su_patch = function(){{
+requireModule._su_patch = function(){
      var js_patch = {
         "node_modules": "node_modules.js"
      };
     var css_patch = {
         "node_modules": "node_modules.css"
     };
-    for(var key in js_patch) {{
+    for(var key in js_patch) {
         chunksIdToUrlMap[key] = js_patch[key];
-    }}
-    for(var key in js_patch) {{
+    }
+    for(var key in js_patch) {
         cssChunksIdToUrlMap[key] = css_patch[key];
-    }} 
+    } 
   return ["node_modules"];
-}}"#
+}"#
             .to_string()])
         }
     }

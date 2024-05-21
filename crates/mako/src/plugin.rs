@@ -14,6 +14,7 @@ use crate::generate::chunk_graph::ChunkGraph;
 use crate::generate::generate_chunks::ChunkFile;
 use crate::module::{Dependency, ModuleAst, ModuleId};
 use crate::module_graph::ModuleGraph;
+use crate::resolve::ResolverResource;
 use crate::stats::StatsJsonMap;
 
 #[derive(Debug)]
@@ -164,6 +165,7 @@ pub struct PluginDriver {
 pub struct NextBuildParam<'a> {
     pub current_module: &'a ModuleId,
     pub next_file: &'a File,
+    pub resource: &'a ResolverResource,
 }
 
 impl PluginDriver {

@@ -18,13 +18,14 @@ use crate::compiler::{Compiler, Context};
 use crate::generate::chunk_pot::util::hash_hashmap;
 use crate::module::{Module, ModuleAst, ModuleId, ModuleInfo};
 use crate::plugin::NextBuildParam;
-
 use crate::resolve::ResolverResource;
 use crate::utils::thread_pool;
 
 #[derive(Debug, Error)]
 pub enum BuildError {
-    #[error("{:}\n{:}", "Build failed.".to_string().red().to_string(), errors.iter().map(|e| e.to_string()).collect::<Vec<_>>().join("\n"))]
+    #[error(
+        "{:}\n{:}", "Build failed.".to_string().red().to_string(), errors.iter().map(| e | e.to_string()).collect::< Vec < _ >> ().join("\n")
+    )]
     BuildTasksError { errors: Vec<anyhow::Error> },
 }
 
@@ -112,6 +113,7 @@ impl Compiler {
                             if self.context.plugin_driver.next_build(&NextBuildParam {
                                 current_module: &module_id,
                                 next_file: &file,
+                                resource: &dep.resolver_resource,
                             }) {
                                 count += 1;
                                 build_with_pool(file, Some(dep.resolver_resource.clone()));
@@ -312,7 +314,8 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
             file,
             deps,
             ast,
-            resolved_resource: parent_resource, /* TODO: rename */
+            // TODO: rename
+            resolved_resource: parent_resource,
             source_map_chain,
             top_level_await,
             is_async,

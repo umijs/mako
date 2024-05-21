@@ -237,7 +237,7 @@ impl Compiler {
             Arc::new(plugins::async_runtime::AsyncRuntimePlugin {}),
             Arc::new(plugins::emotion::EmotionPlugin {}),
             Arc::new(plugins::farm_tree_shake::FarmTreeShake {}),
-            Arc::new(plugins::suplus::SUPlus::new()),
+            Arc::new(plugins::ssu::SUPlus::new()),
         ];
         plugins.extend(builtin_plugins);
 
