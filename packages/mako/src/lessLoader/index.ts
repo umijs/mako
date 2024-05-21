@@ -2,7 +2,7 @@ import url from 'url';
 /**
  * When on platform linux ant node version is lower then 20,
  * the worker pool may exit unexpectedly, we need to disable it.
- * This may be is problem of nodejs, related issue: https://github.com/nodejs/node/issues/51129.
+ * This may be is problem of nodejs, may related issue: https://github.com/nodejs/node/issues/51129.
  */
 const DisableParallelLess =
   process.platform === 'linux' &&
