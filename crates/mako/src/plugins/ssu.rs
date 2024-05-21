@@ -361,7 +361,7 @@ module.export = Promise.all(
 
     fn after_generate_chunk_files(
         &self,
-        chunk_files: &Vec<ChunkFile>,
+        chunk_files: &[ChunkFile],
         context: &Arc<Context>,
     ) -> Result<()> {
         if *self.enabled.lock().unwrap() {

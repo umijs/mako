@@ -101,7 +101,7 @@ pub trait Plugin: Any + Send + Sync {
 
     fn after_generate_chunk_files(
         &self,
-        _chunk_file: &Vec<ChunkFile>,
+        _chunk_files: &[ChunkFile],
         _context: &Arc<Context>,
     ) -> Result<()> {
         Ok(())
@@ -272,7 +272,7 @@ impl PluginDriver {
 
     pub(crate) fn after_generate_chunk_files(
         &self,
-        chunk_files: &Vec<ChunkFile>,
+        chunk_files: &[ChunkFile],
         context: &Arc<Context>,
     ) -> Result<()> {
         for plugin in &self.plugins {
