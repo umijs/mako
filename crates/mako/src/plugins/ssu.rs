@@ -18,16 +18,49 @@ use crate::config::{
     CodeSplittingStrategy, Config, OptimizeAllowChunks, OptimizeChunkGroup, OptimizeChunkOptions,
 };
 use crate::generate::chunk::ChunkType;
+use crate::generate::chunk_pot::util::hash_hashmap;
 use crate::generate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::plugin::{NextBuildParam, Plugin, PluginLoadParam};
 use crate::resolve::ResolverResource;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 struct CacheState {
+    config_hash: u64,
     reversed_required_files: HashSet<String>,
     cached_boundaries: HashMap<String, String>,
     js_patch_map: HashMap<String, String>,
     css_patch_map: HashMap<String, String>,
+}
+
+impl CacheState {
+    pub fn valid_with(&self, other: &Self) -> bool {
+        if self.config_hash != other.config_hash {
+            debug!(
+                "config_hash changed: {} -> {}",
+                self.config_hash, other.config_hash
+            );
+            return false;
+        }
+
+        if self.cached_boundaries.len() != other.cached_boundaries.len() {
+            debug!(
+                "different boundaries: {} -> {}",
+                self.cached_boundaries.len(),
+                other.cached_boundaries.len()
+            );
+            return false;
+        }
+
+        self.cached_boundaries.iter().all(|(k, v)| {
+            if other.cached_boundaries.contains_key(k) && other.cached_boundaries.get(k) == Some(v)
+            {
+                true
+            } else {
+                debug!("cached boundary: {}=>({}) mismatch ", k, v);
+                false
+            }
+        })
+    }
 }
 
 pub struct SUPlus {
@@ -59,7 +92,7 @@ impl SUPlus {
     pub fn new() -> Self {
         SUPlus {
             scanning: Arc::new(Mutex::new(true)),
-            enabled: Arc::new(Mutex::new(false)),
+            enabled: Arc::new(Mutex::new(true)),
             dependence_node_module_files: Default::default(),
             reversed_required_files: Default::default(),
             cached_state: Default::default(),
@@ -70,20 +103,27 @@ impl SUPlus {
 
 impl SUPlus {
     fn write_current_cache_state(&self, context: &Arc<Context>) {
-        let cache_file = context.root.join(".mako_cache");
+        let cache_file = context.root.join("node_modules/.cache_mako/meta.json");
         let cache = self.current_state.lock().unwrap();
-        std::fs::write(cache_file, serde_json::to_string(&*cache).unwrap()).unwrap();
+        fs::write(cache_file, serde_json::to_string(&*cache).unwrap()).unwrap();
     }
 
     fn load_cached_state(&self, context: &Arc<Context>) -> Option<CacheState> {
-        let cache_file = context.root.join(".mako_cache");
-        if let Ok(content) = std::fs::read_to_string(cache_file)
+        let cache_file = context.root.join("node_modules/.cache_mako/meta.json");
+        if let Ok(content) = fs::read_to_string(cache_file)
             && let Ok(disk_cache) = serde_json::from_str(&content)
         {
             return Some(disk_cache);
         }
 
         None
+    }
+
+    fn config_hash(config: &Config) -> u64 {
+        let alias_hash = hash_hashmap(&config.resolve.alias);
+        let external_hash = hash_hashmap(&config.externals);
+
+        alias_hash.wrapping_add(external_hash)
     }
 }
 
@@ -271,11 +311,7 @@ Promise.all(
             debug!("cached {:?}", cached.cached_boundaries);
         }
 
-        let cache_valid = current_state.cached_boundaries.len() == cached.cached_boundaries.len()
-            && cached
-                .cached_boundaries
-                .iter()
-                .any(|(k, _)| cached.cached_boundaries.contains_key(k));
+        let cache_valid = cached.valid_with(&current_state);
 
         drop(current_state);
 
@@ -320,7 +356,7 @@ Promise.all(
             return Ok(());
         }
 
-        let cache_root = context.root.join(".cache");
+        let cache_root = context.root.join("node_modules/.cache_mako/chunks");
         if !cache_root.exists() {
             fs::create_dir_all(&cache_root)?;
         }
@@ -328,7 +364,6 @@ Promise.all(
         let mut js_patch_map = HashMap::new();
         let mut css_patch_map = HashMap::new();
 
-        // 改改根据 chunk graph 来修正
         chunk_files
             .iter()
             .filter(|&cf| cf.file_name.starts_with("node_modules"))
@@ -367,11 +402,11 @@ Promise.all(
                             format!("\n/*# sourceMappingURL={}*/", cf.source_map_disk_name())
                         }
                     };
-                    // where should store a integrity file to verify the cache validate or not
+                    // where should store an integrity file to verify the cache validate or not
                     f.write_all(&cf.content).unwrap();
                     f.write_all(last_line.as_bytes()).unwrap();
                 } else {
-                    std::fs::write(p, &cf.content).unwrap();
+                    fs::write(p, &cf.content).unwrap();
                 }
             });
 
@@ -383,7 +418,8 @@ Promise.all(
             let mut state = self.cached_state.lock().unwrap();
             *state = content;
         }
-        // verify cached files
+
+        self.current_state.lock().unwrap().config_hash = Self::config_hash(&context.config);
 
         Ok(None)
     }

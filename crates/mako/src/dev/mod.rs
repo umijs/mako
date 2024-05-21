@@ -137,7 +137,10 @@ impl DevServer {
                         .unwrap());
                 }
                 // for cached dep
-                let abs_path = context.root.join(".cache").join(path_without_slash_start);
+                let abs_path = context
+                    .root
+                    .join("node_modules/.cache_mako/chunks")
+                    .join(path_without_slash_start);
                 if !path_without_slash_start.is_empty() && abs_path.exists() {
                     return std::fs::read(abs_path).map_or(Ok(not_found_response()), |bytes| {
                         Ok(hyper::Response::builder()

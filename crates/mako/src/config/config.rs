@@ -246,19 +246,19 @@ pub struct TransformImportConfig {
     pub style: Option<TransformImportStyle>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Hash)]
 pub enum ExternalAdvancedSubpathConverter {
     PascalCase,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Hash)]
 #[serde(untagged)]
 pub enum ExternalAdvancedSubpathTarget {
     Empty,
     Tpl(String),
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Hash)]
 pub struct ExternalAdvancedSubpathRule {
     pub regex: String,
     #[serde(with = "external_target_format")]
@@ -299,20 +299,21 @@ mod external_target_format {
         }
     }
 }
-#[derive(Deserialize, Serialize, Debug)]
+
+#[derive(Deserialize, Serialize, Debug, Hash)]
 pub struct ExternalAdvancedSubpath {
     pub exclude: Option<Vec<String>>,
     pub rules: Vec<ExternalAdvancedSubpathRule>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Hash)]
 pub struct ExternalAdvanced {
     pub root: String,
     pub script: Option<String>,
     pub subpath: Option<ExternalAdvancedSubpath>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Hash)]
 #[serde(untagged)]
 pub enum ExternalConfig {
     Basic(String),
@@ -533,6 +534,7 @@ impl Default for OptimizeChunkGroup {
         }
     }
 }
+
 /**
  * custom formatter for convert string to regex
  * @see https://serde.rs/custom-date-format.html
