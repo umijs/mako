@@ -1,16 +1,15 @@
 import url from 'url';
 /**
- * When on platform linux ant node version is lower then 20,
+ * When on platform linux ant node version is lower then 20.3.0,
  * the worker pool may exit unexpectedly, we need to disable it.
- * This may be is problem of nodejs, may related issue: https://github.com/nodejs/node/issues/51129.
+ * This may be is problem of nodejs.
  */
 const [NodeMajorVersion, NodeMirrorVersion] = process.versions.node
   .split('.')
   .map((v) => parseInt(v));
 const DisableParallelLess =
   process.platform === 'linux' &&
-  (NodeMajorVersion < 20 ||
-    (NodeMajorVersion === 20 && NodeMirrorVersion < 12));
+  (NodeMajorVersion < 20 || (NodeMajorVersion === 20 && NodeMirrorVersion < 3));
 
 export interface LessLoaderOpts {
   modifyVars: Record<string, string>;
