@@ -9,7 +9,8 @@ const [NodeMajorVersion, NodeMirrorVersion] = process.versions.node
   .map((v) => parseInt(v));
 const DisableParallelLess =
   process.platform === 'linux' &&
-  (NodeMajorVersion < 20 || (NodeMajorVersion > 20 && NodeMirrorVersion < 12));
+  (NodeMajorVersion < 20 ||
+    (NodeMajorVersion === 20 && NodeMirrorVersion < 12));
 
 export interface LessLoaderOpts {
   modifyVars: Record<string, string>;
