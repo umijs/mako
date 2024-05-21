@@ -309,6 +309,8 @@ pub struct ExternalAdvancedSubpath {
 #[derive(Deserialize, Serialize, Debug, Hash)]
 pub struct ExternalAdvanced {
     pub root: String,
+    #[serde(rename = "type")]
+    pub module_type: Option<String>,
     pub script: Option<String>,
     pub subpath: Option<ExternalAdvancedSubpath>,
 }
