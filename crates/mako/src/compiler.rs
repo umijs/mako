@@ -237,7 +237,6 @@ impl Compiler {
             Arc::new(plugins::async_runtime::AsyncRuntimePlugin {}),
             Arc::new(plugins::emotion::EmotionPlugin {}),
             Arc::new(plugins::farm_tree_shake::FarmTreeShake {}),
-            Arc::new(plugins::ssu::SUPlus::new()),
         ];
         plugins.extend(builtin_plugins);
 
@@ -249,6 +248,10 @@ impl Compiler {
 
         if std::env::var("DEBUG_GRAPH").is_ok_and(|v| v == "true") {
             plugins.push(Arc::new(plugins::graphviz::Graphviz {}));
+        }
+
+        if args.watch && std::env::var("SSU").is_ok_and(|v| v == "true") {
+            plugins.push(Arc::new(plugins::ssu::SUPlus::new()));
         }
 
         if let Some(minifish_config) = &config._minifish {

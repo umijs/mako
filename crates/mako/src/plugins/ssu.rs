@@ -88,6 +88,8 @@ impl From<bool> for CodeType {
     }
 }
 
+const SSU_ENTRY_PREFIX: &str = "virtual:ssu:entry:node_modules:";
+
 impl SUPlus {
     pub fn new() -> Self {
         SUPlus {
@@ -134,7 +136,7 @@ impl Plugin for SUPlus {
 
     fn modify_config(&self, config: &mut Config, _root: &Path, _args: &Args) -> Result<()> {
         for p in config.entry.values_mut() {
-            *p = PathBuf::from(format!("virtual:E:node_modules:{}", p.to_string_lossy()));
+            *p = PathBuf::from(format!("{SSU_ENTRY_PREFIX}{}", p.to_string_lossy()));
         }
 
         config.code_splitting = Some(CodeSplittingStrategy::Advanced(OptimizeChunkOptions {
@@ -164,13 +166,13 @@ impl Plugin for SUPlus {
         Ok(())
     }
 
-    fn load(&self, param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
-        if param.file.path.starts_with("virtual:E:node_modules:") {
+    fn load(&self, param: &PluginLoadParam, context: &Arc<Context>) -> Result<Option<Content>> {
+        if param.file.path.starts_with(SSU_ENTRY_PREFIX) {
             let path_string = param.file.path.to_string_lossy().to_string();
+            let start = SSU_ENTRY_PREFIX.len();
+            let path = PathBuf::from(path_string.as_str()[start..].to_string());
 
-            let path = PathBuf::from(path_string.as_str()[23..].to_string());
-
-            let mut require_externals = _context
+            let mut require_externals = context
                 .config
                 .externals
                 .iter()
@@ -189,20 +191,30 @@ impl Plugin for SUPlus {
                 .collect::<Vec<_>>();
             reverse_require.sort();
 
+            let port = &context.config.hmr.as_ref().unwrap().port.to_string();
+            let host = &context.config.hmr.as_ref().unwrap().host.to_string();
+            let host = if host == "0.0.0.0" { "127.0.0.1" } else { host };
+            let hmr_runtime = include_str!("../runtime/runtime_hmr_entry.js")
+                .to_string()
+                .replace("__PORT__", port)
+                .replace("__HOST__", host);
+
             let content = format!(
                 r#"
 require("virtual:C:/node_modules/css/css.css");                    
 let patch = require._su_patch();
 console.log(patch);
 {}
-Promise.all(
+module.export = Promise.all(
     patch.map((d)=>__mako_require__.ensure(d))
 ).then(()=>{{
     {}
-    require("{}");
+    {}
+    return require("{}");
 }}, console.log);
 "#,
                 require_externals.join("\n"),
+                hmr_runtime,
                 reverse_require.join("\n"),
                 path.to_string_lossy()
             );
