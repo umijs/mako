@@ -4,9 +4,12 @@ import url from 'url';
  * the worker pool may exit unexpectedly, we need to disable it.
  * This may be is problem of nodejs, may related issue: https://github.com/nodejs/node/issues/51129.
  */
+const [NodeMajorVersion, NodeMirrorVersion] = process.versions.node
+  .split('.')
+  .map((v) => parseInt(v));
 const DisableParallelLess =
   process.platform === 'linux' &&
-  parseInt(process.versions.node.split('.')[0]) < 20;
+  (NodeMajorVersion < 20 || (NodeMajorVersion > 20 && NodeMirrorVersion < 12));
 
 export interface LessLoaderOpts {
   modifyVars: Record<string, string>;
