@@ -1,5 +1,8 @@
 import url from 'url';
-import { omit } from 'lodash';
+
+const DisableParallelLess =
+  process.platform === 'linux' &&
+  parseInt(process.versions.node.split('.')[0]) < 20;
 
 export interface LessLoaderOpts {
   modifyVars: Record<string, string>;
@@ -21,8 +24,6 @@ export interface LessLoaderOpts {
    * We do this because the less loader runs in a worker pool for speed, and a less plugin instance can't be passed to worker directly.
    */
   plugins?: (string | [string, Record<string, any>])[];
-  // enable parallel less loader, true by default
-  parallel?: boolean;
 }
 
 function lessLoader(fn: Function | null, opts: LessLoaderOpts) {
@@ -34,12 +35,9 @@ function lessLoader(fn: Function | null, opts: LessLoaderOpts) {
       return;
     }
     if (pathname?.endsWith('.less')) {
-      return opts.parallel === false
-        ? require('./render').render(pathname, omit(opts, ['parallel']))
-        : require('./parallelLessLoader').render(
-            pathname,
-            omit(opts, ['parallel']),
-          );
+      return DisableParallelLess
+        ? require('./render').render(pathname, opts)
+        : require('./parallelLessLoader').render(pathname, opts);
     } else {
       // TODO: remove this
       fn && fn(filePath);
@@ -48,7 +46,7 @@ function lessLoader(fn: Function | null, opts: LessLoaderOpts) {
 }
 
 lessLoader.terminate = () => {
-  require('./parallelLessLoader').terminatePool();
+  !DisableParallelLess && require('./parallelLessLoader').terminatePool();
 };
 
 export { lessLoader };

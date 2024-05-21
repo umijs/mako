@@ -74,7 +74,6 @@ export async function build(params: BuildParams) {
       ['less-plugin-resolve', { aliases: params.config.resolve.alias! }],
       ...(params.less?.plugins || []),
     ],
-    parallel: params.less?.parallel ?? true,
   });
   let originLoad = params.hooks.load;
   // TODO: improve load binding, should support return null if not matched
