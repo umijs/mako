@@ -1,5 +1,16 @@
 import url from 'url';
-import { compile, terminatePool } from './parallelLessLoader';
+/**
+ * When on platform linux ant node version is lower then 20,
+ * the worker pool may exit unexpectedly, we need to disable it.
+ * This may be is problem of nodejs, may related issue: https://github.com/nodejs/node/issues/51129.
+ */
+const [NodeMajorVersion, NodeMirrorVersion] = process.versions.node
+  .split('.')
+  .map((v) => parseInt(v));
+const DisableParallelLess =
+  process.platform === 'linux' &&
+  (NodeMajorVersion < 20 ||
+    (NodeMajorVersion === 20 && NodeMirrorVersion < 12));
 
 export interface LessLoaderOpts {
   modifyVars: Record<string, string>;
@@ -32,7 +43,9 @@ function lessLoader(fn: Function | null, opts: LessLoaderOpts) {
       return;
     }
     if (pathname?.endsWith('.less')) {
-      return compile(pathname, opts);
+      return DisableParallelLess
+        ? require('./render').render(pathname, opts)
+        : require('./parallelLessLoader').render(pathname, opts);
     } else {
       // TODO: remove this
       fn && fn(filePath);
@@ -41,7 +54,7 @@ function lessLoader(fn: Function | null, opts: LessLoaderOpts) {
 }
 
 lessLoader.terminate = () => {
-  terminatePool();
+  !DisableParallelLess && require('./parallelLessLoader').terminatePool();
 };
 
 export { lessLoader };
