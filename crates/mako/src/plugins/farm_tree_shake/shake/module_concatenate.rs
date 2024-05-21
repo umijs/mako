@@ -247,7 +247,14 @@ pub fn optimize_module_graph(
                 .get_module_mut(&config.root)
                 .and_then(|module| module.info.as_mut())
             {
-                info.ast.as_script_ast_mut().visit_mut_with(&mut hygiene());
+                let js_ast = info.ast.as_script_mut();
+
+                js_ast.ast.visit_mut_with(&mut hygiene());
+                js_ast.ast.visit_mut_with(&mut resolver(
+                    js_ast.unresolved_mark,
+                    js_ast.top_level_mark,
+                    false,
+                ));
             }
 
             if let Ok(mut concatenate_context) = ConcatenateContext::init(config, module_graph) {
@@ -313,6 +320,11 @@ pub fn optimize_module_graph(
                     let module_info = module.info.as_mut().unwrap();
                     let script_ast = module_info.ast.script_mut().unwrap();
                     script_ast.ast.visit_mut_with(&mut hygiene());
+                    script_ast.ast.visit_mut_with(&mut resolver(
+                        script_ast.unresolved_mark,
+                        script_ast.top_level_mark,
+                        false,
+                    ));
 
                     let inner_print = false;
                     if cfg!(debug_assertions) && inner_print {
