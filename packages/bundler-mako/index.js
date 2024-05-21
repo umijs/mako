@@ -39,7 +39,6 @@ exports.build = async function (opts) {
         sourceMap: getLessSourceMapConfig(makoConfig.devtool),
         math: opts.config.lessLoader?.math,
         plugins: opts.config.lessLoader?.plugins,
-        parallel: opts.config.lessLoader?.parallel,
       },
       hooks: {
         ...opts.config.hooks,
@@ -177,7 +176,6 @@ exports.dev = async function (opts) {
         sourceMap: getLessSourceMapConfig(makoConfig.devtool),
         math: opts.config.lessLoader?.math,
         plugins: opts.config.lessLoader?.plugins,
-        parallel: opts.config.lessLoader?.parallel,
       },
       forkTSChecker: makoConfig.forkTSChecker,
       hooks: {
@@ -317,7 +315,6 @@ function checkConfig(opts) {
         'modifyVars',
         'math',
         'plugins',
-        'parallel',
       ])
       .forEach((k) => {
         warningKeys.push(`lessLoader.${k}`);

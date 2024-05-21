@@ -1,4 +1,5 @@
 import url from 'url';
+import { omit } from 'lodash';
 
 export interface LessLoaderOpts {
   modifyVars: Record<string, string>;
@@ -34,8 +35,11 @@ function lessLoader(fn: Function | null, opts: LessLoaderOpts) {
     }
     if (pathname?.endsWith('.less')) {
       return opts.parallel === false
-        ? require('./render').render(pathname, opts)
-        : require('./parallelLessLoader').render(pathname, opts);
+        ? require('./render').render(pathname, omit(opts, ['parallel']))
+        : require('./parallelLessLoader').render(
+            pathname,
+            omit(opts, ['parallel']),
+          );
     } else {
       // TODO: remove this
       fn && fn(filePath);
