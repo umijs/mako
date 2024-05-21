@@ -15,6 +15,7 @@ use mako_core::swc_common::util::take::Take;
 use root_transformer::RootTransformer;
 use swc_core::common::{Span, SyntaxContext, GLOBALS};
 use swc_core::ecma::ast::Id;
+use swc_core::ecma::transforms::base::hygiene::hygiene;
 use swc_core::ecma::transforms::base::resolver;
 use swc_core::ecma::utils::collect_decls_with_ctxt;
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
@@ -242,6 +243,13 @@ pub fn optimize_module_graph(
 
     GLOBALS.set(&context.meta.script.globals, || {
         for config in &concat_configurations {
+            if let Some(info) = module_graph
+                .get_module_mut(&config.root)
+                .and_then(|module| module.info.as_mut())
+            {
+                info.ast.as_script_ast_mut().visit_mut_with(&mut hygiene());
+            }
+
             if let Ok(mut concatenate_context) = ConcatenateContext::init(config, module_graph) {
                 let mut module_items = concatenate_context.interop_module_items.clone();
 
@@ -304,6 +312,7 @@ pub fn optimize_module_graph(
 
                     let module_info = module.info.as_mut().unwrap();
                     let script_ast = module_info.ast.script_mut().unwrap();
+                    script_ast.ast.visit_mut_with(&mut hygiene());
 
                     let inner_print = false;
                     if cfg!(debug_assertions) && inner_print {
