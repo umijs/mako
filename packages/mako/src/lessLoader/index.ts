@@ -1,5 +1,4 @@
 import url from 'url';
-import { compile, terminatePool } from './parallelLessLoader';
 
 export interface LessLoaderOpts {
   modifyVars: Record<string, string>;
@@ -21,6 +20,8 @@ export interface LessLoaderOpts {
    * We do this because the less loader runs in a worker pool for speed, and a less plugin instance can't be passed to worker directly.
    */
   plugins?: (string | [string, Record<string, any>])[];
+  // enable parallel less loader, true by default
+  parallel?: boolean;
 }
 
 function lessLoader(fn: Function | null, opts: LessLoaderOpts) {
@@ -32,7 +33,9 @@ function lessLoader(fn: Function | null, opts: LessLoaderOpts) {
       return;
     }
     if (pathname?.endsWith('.less')) {
-      return compile(pathname, opts);
+      return opts.parallel === false
+        ? require('./render').render(pathname, opts)
+        : require('./parallelLessLoader').render(pathname, opts);
     } else {
       // TODO: remove this
       fn && fn(filePath);
@@ -41,7 +44,7 @@ function lessLoader(fn: Function | null, opts: LessLoaderOpts) {
 }
 
 lessLoader.terminate = () => {
-  terminatePool();
+  require('./parallelLessLoader').terminatePool();
 };
 
 export { lessLoader };
