@@ -275,7 +275,9 @@ impl DevServer {
         }
 
         debug!("full rebuild...");
+
         compiler.context.stats_info.clear_assets();
+
         if let Err(e) = compiler.emit_dev_chunks(next_hmr_hash) {
             debug!("  > build failed: {:?}", e);
             return Err(e);
