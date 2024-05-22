@@ -56,7 +56,7 @@ impl Transform {
 
                     // visitors
                     let mut visitors: Vec<Box<dyn VisitMut>> = vec![];
-                    visitors.push(Box::new(resolver(unresolved_mark, top_level_mark, false)));
+                    visitors.push(Box::new(resolver(unresolved_mark, top_level_mark, is_ts)));
                     // strip should be ts only
                     // since when use this in js, it will remove all unused imports
                     // which is not expected as what webpack does
