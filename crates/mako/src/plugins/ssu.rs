@@ -101,9 +101,7 @@ impl SUPlus {
             current_state: Default::default(),
         }
     }
-}
 
-impl SUPlus {
     fn write_current_cache_state(&self, context: &Arc<Context>) {
         let cache_file = context.root.join("node_modules/.cache_mako/meta.json");
         let cache = self.current_state.lock().unwrap();
@@ -219,7 +217,7 @@ module.export = Promise.all(
                 path.to_string_lossy()
             );
 
-            debug!("entry contrent:\n{}", content);
+            debug!("entry content:\n{}", content);
 
             return Ok(Some(Content::Js(JsContent {
                 content,
