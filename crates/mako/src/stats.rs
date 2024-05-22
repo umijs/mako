@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use mako_core::anyhow::Result;
@@ -17,7 +18,7 @@ use crate::compiler::Compiler;
 use crate::features::rsc::{RscClientInfo, RscCssModules};
 use crate::generate::chunk::ChunkType;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 // name 记录实际 filename , 用在 stats.json 中, hashname 用在产物描述和 manifest 中
 pub struct AssetsInfo {
     pub assets_type: String,
@@ -41,9 +42,70 @@ impl PartialOrd for AssetsInfo {
 }
 #[derive(Debug)]
 pub struct StatsInfo {
-    pub assets: Vec<AssetsInfo>,
-    pub rsc_client_components: Vec<RscClientInfo>,
-    pub rsc_css_modules: Vec<RscCssModules>,
+    pub assets: Mutex<Vec<AssetsInfo>>,
+    pub rsc_client_components: Mutex<Vec<RscClientInfo>>,
+    pub rsc_css_modules: Mutex<Vec<RscCssModules>>,
+}
+
+impl StatsInfo {
+    pub fn new() -> Self {
+        Self {
+            assets: Mutex::new(vec![]),
+            rsc_client_components: Mutex::new(vec![]),
+            rsc_css_modules: Mutex::new(vec![]),
+        }
+    }
+
+    pub fn add_assets(
+        &self,
+        size: u64,
+        name: String,
+        chunk_id: String,
+        path: PathBuf,
+        hashname: String,
+    ) {
+        self.assets.lock().unwrap().push(AssetsInfo {
+            assets_type: "asset".to_string(),
+            size,
+            name,
+            chunk_id,
+            path,
+            hashname,
+        });
+    }
+
+    pub fn clear_assets(&self) {
+        self.assets.lock().unwrap().clear()
+    }
+
+    pub fn get_assets(&self) -> Vec<AssetsInfo> {
+        self.assets.lock().unwrap().iter().cloned().collect()
+    }
+
+    pub fn get_rsc_client_components(&self) -> Vec<RscClientInfo> {
+        self.rsc_client_components.lock().unwrap().clone()
+    }
+
+    pub fn add_rsc_client_component(&self, rsc_client_component: RscClientInfo) {
+        self.rsc_client_components
+            .lock()
+            .unwrap()
+            .push(rsc_client_component)
+    }
+
+    pub fn get_rsc_css_modules(&self) -> Vec<RscCssModules> {
+        self.rsc_css_modules.lock().unwrap().clone()
+    }
+
+    pub fn add_rsc_css_module(&self, rsc_css_module: RscCssModules) {
+        self.rsc_css_modules.lock().unwrap().push(rsc_css_module)
+    }
+}
+
+impl Default for StatsInfo {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[derive(Clone, Serialize, Debug)]
@@ -133,40 +195,6 @@ impl StatsJsonMap {
     }
 }
 
-impl StatsInfo {
-    pub fn new() -> Self {
-        Self {
-            assets: vec![],
-            rsc_client_components: vec![],
-            rsc_css_modules: vec![],
-        }
-    }
-
-    pub fn add_assets(
-        &mut self,
-        size: u64,
-        name: String,
-        chunk_id: String,
-        path: PathBuf,
-        hashname: String,
-    ) {
-        self.assets.push(AssetsInfo {
-            assets_type: "asset".to_string(),
-            size,
-            name,
-            chunk_id,
-            path,
-            hashname,
-        });
-    }
-}
-
-impl Default for StatsInfo {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMap {
     let mut stats_map = StatsJsonMap::new();
     let context = compiler.context.clone();
@@ -188,7 +216,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
     stats_map.root_path = root_path;
     stats_map.output_path = output_path;
 
-    let mut stats_info = context.stats_info.lock().unwrap();
+    let stats_info = &context.stats_info;
 
     // 把 context 中的静态资源信息加入到 stats_info 中
     compiler
@@ -210,7 +238,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
 
     // 获取 assets
     stats_map.assets = stats_info
-        .assets
+        .get_assets()
         .iter()
         .map(|asset| StatsJsonAssetsItem {
             assets_type: StatsJsonType::Asset(asset.assets_type.clone()),
@@ -261,7 +289,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
                 })
                 .collect();
             let files: Vec<String> = stats_info
-                .assets
+                .get_assets()
                 .iter()
                 .filter(|asset| asset.chunk_id == id)
                 .map(|asset| asset.hashname.clone())
@@ -355,8 +383,8 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
     let modules: Vec<StatsJsonModuleItem> = modules_vec.borrow().iter().cloned().collect();
     stats_map.modules = modules;
 
-    stats_map.rsc_client_components = stats_info.rsc_client_components.clone();
-    stats_map.rsc_css_modules = stats_info.rsc_css_modules.clone();
+    stats_map.rsc_client_components = stats_info.get_rsc_client_components();
+    stats_map.rsc_css_modules = stats_info.get_rsc_css_modules();
 
     stats_map
 }
@@ -397,7 +425,7 @@ fn pad_string(text: &str, max_length: usize, front: bool) -> String {
 }
 
 pub fn print_stats(compiler: &Compiler) {
-    let assets = &mut compiler.context.stats_info.lock().unwrap().assets;
+    let mut assets = compiler.context.stats_info.get_assets();
     // 按照产物名称排序
     assets.sort();
     // 产物路径需要按照 output.path 来

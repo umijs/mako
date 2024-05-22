@@ -475,7 +475,7 @@ fn write_dev_chunk_file(context: &Arc<Context>, chunk: &ChunkFile) -> Result<()>
         // why add chunk info in dev mode?
         // ref: https://github.com/umijs/mako/issues/1094
         let size = code.len() as u64;
-        context.stats_info.lock().unwrap().add_assets(
+        context.stats_info.add_assets(
             size,
             chunk.file_name.clone(),
             chunk.chunk_id.clone(),
@@ -495,6 +495,7 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
     mako_core::mako_profile_function!(&chunk_file.file_name);
 
     let to: PathBuf = context.config.output.path.join(chunk_file.disk_name());
+    let stats_info = &context.stats_info;
 
     match context.config.devtool {
         Some(DevtoolConfig::SourceMap) => {
@@ -503,7 +504,7 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
 
             if let Some(source_map) = &chunk_file.source_map {
                 let size = source_map.len() as u64;
-                context.stats_info.lock().unwrap().add_assets(
+                stats_info.add_assets(
                     size,
                     chunk_file.source_map_name(),
                     chunk_file.chunk_id.clone(),
@@ -538,7 +539,7 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
             }
 
             let size = code.len() as u64;
-            context.stats_info.lock().unwrap().add_assets(
+            stats_info.add_assets(
                 size,
                 chunk_file.file_name.clone(),
                 chunk_file.chunk_id.clone(),
@@ -562,7 +563,7 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
             }
 
             let size = code.len() as u64;
-            context.stats_info.lock().unwrap().add_assets(
+            stats_info.add_assets(
                 size,
                 chunk_file.file_name.clone(),
                 chunk_file.chunk_id.clone(),
@@ -572,7 +573,7 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
             fs::write(to, code).unwrap();
         }
         None => {
-            context.stats_info.lock().unwrap().add_assets(
+            stats_info.add_assets(
                 chunk_file.content.len() as u64,
                 chunk_file.file_name.clone(),
                 chunk_file.chunk_id.clone(),
