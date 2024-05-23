@@ -29,6 +29,7 @@ use crate::visitors::css_px2rem::Px2Rem;
 use crate::visitors::default_export_namer::DefaultExportNamer;
 use crate::visitors::dynamic_import_to_require::DynamicImportToRequire;
 use crate::visitors::env_replacer::{build_env_map, EnvReplacer};
+use crate::visitors::fix_helper_inject_position::FixHelperInjectPosition;
 use crate::visitors::provide::Provide;
 use crate::visitors::react::react;
 use crate::visitors::try_resolve::TryResolve;
@@ -57,6 +58,10 @@ impl Transform {
                     // visitors
                     let mut visitors: Vec<Box<dyn VisitMut>> = vec![];
                     visitors.push(Box::new(resolver(unresolved_mark, top_level_mark, is_ts)));
+                    // fix helper inject position
+                    // should be removed after upgrade to latest swc
+                    // ref: https://github.com/umijs/mako/issues/1193
+                    visitors.push(Box::new(FixHelperInjectPosition::new()));
                     // strip should be ts only
                     // since when use this in js, it will remove all unused imports
                     // which is not expected as what webpack does
