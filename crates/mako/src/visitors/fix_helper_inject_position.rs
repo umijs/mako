@@ -140,7 +140,6 @@ export { foo };
                 Assumptions::default(),
                 &mut FeatureFlag::default(),
             )));
-            // ast.ast.visit_mut_with(&mut test_utils.visitor);
             let mut visitors: Vec<Box<dyn VisitMut>> = vec![];
             let context = test_utils.context.clone();
             let file = File::new("test.ts".to_string(), context.clone());
