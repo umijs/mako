@@ -64,8 +64,8 @@ impl Rsc {
     }
 
     fn emit_client(file: &File, context: Arc<Context>) {
-        let mut info = context.stats_info.lock().unwrap();
-        info.rsc_client_components.push(RscClientInfo {
+        let stats_info = &context.stats_info;
+        stats_info.add_rsc_client_component(RscClientInfo {
             path: file.relative_path.to_string_lossy().to_string(),
         });
     }
@@ -84,8 +84,8 @@ impl Rsc {
     }
 
     fn emit_css(file: &File, context: Arc<Context>) {
-        let mut info = context.stats_info.lock().unwrap();
-        info.rsc_css_modules.push(RscCssModules {
+        let stats_info = &context.stats_info;
+        stats_info.add_rsc_css_module(RscCssModules {
             path: file.relative_path.to_string_lossy().to_string(),
             modules: file.is_css() && file.has_param("modules"),
         });
