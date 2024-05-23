@@ -4,7 +4,9 @@
     "emitCSS": true
   },
   "minify": false,
-  "stats": true,
+  "stats": {
+    "modules": true
+  },
   "optimization": {
     "concatenateModules": false
   }
