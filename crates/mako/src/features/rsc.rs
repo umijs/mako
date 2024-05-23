@@ -9,7 +9,7 @@ use crate::ast::file::File;
 use crate::ast::js_ast::JsAst;
 use crate::build::parse::ParseError;
 use crate::compiler::Context;
-use crate::config::Config;
+use crate::config::{Config, LogServerComponent};
 use crate::module::ModuleAst;
 
 #[derive(Serialize, Debug, Clone)]
@@ -37,9 +37,9 @@ impl Rsc {
                 )));
             }
         }
-        if context.config.rsc_client.is_some() {
+        if let Some(rsc_client) = &context.config.rsc_client {
             let is_server = Rsc::is_server(ast)?;
-            if is_server {
+            if is_server && matches!(rsc_client.log_server_component, LogServerComponent::Error) {
                 return Err(anyhow!(ParseError::UnsupportedServerAction {
                     path: file.path.to_string_lossy().to_string(),
                 }));
