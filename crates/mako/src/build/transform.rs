@@ -57,7 +57,7 @@ impl Transform {
 
                     // visitors
                     let mut visitors: Vec<Box<dyn VisitMut>> = vec![];
-                    visitors.push(Box::new(resolver(unresolved_mark, top_level_mark, false)));
+                    visitors.push(Box::new(resolver(unresolved_mark, top_level_mark, is_ts)));
                     // fix helper inject position
                     // should be removed after upgrade to latest swc
                     // ref: https://github.com/umijs/mako/issues/1193
