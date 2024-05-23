@@ -7,5 +7,7 @@
   "moduleIdStrategy": "named",
   "hash": true,
   "minify": false,
-  "stats": true
+  "stats": {
+    "modules": false
+  }
 }

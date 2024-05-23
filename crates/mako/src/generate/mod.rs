@@ -70,6 +70,16 @@ impl Compiler {
         debug!("generate");
         let t_generate = Instant::now();
 
+        if self
+            .context
+            .config
+            .stats
+            .as_ref()
+            .is_some_and(|s| s.modules)
+        {
+            self.context.stats_info.parse_modules(self.context.clone());
+        }
+
         debug!("tree_shaking");
         let t_tree_shaking = Instant::now();
 
@@ -164,7 +174,7 @@ impl Compiler {
 
         // generate stats
         let stats = create_stats_info(0, self);
-        if self.context.config.stats {
+        if self.context.config.stats.is_some() {
             write_stats(&stats, self);
         }
 
@@ -248,6 +258,16 @@ impl Compiler {
 
         let t_generate = Instant::now();
 
+        if self
+            .context
+            .config
+            .stats
+            .as_ref()
+            .is_some_and(|s| s.modules)
+        {
+            self.context.stats_info.parse_modules(self.context.clone());
+        }
+
         // ensure output dir exists
         let config = &self.context.config;
         if !config.output.path.exists() {
@@ -283,7 +303,7 @@ impl Compiler {
         // TODO: do not write to fs, using jsapi hooks to pass stats
         // why generate stats?
         // ref: https://github.com/umijs/mako/issues/1107
-        if self.context.config.stats {
+        if self.context.config.stats.is_some() {
             let stats = create_stats_info(0, self);
             write_stats(&stats, self);
         }

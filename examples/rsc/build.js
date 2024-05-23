@@ -17,19 +17,21 @@ const fs = require('fs');
         index: path.join(root, 'src/index.tsx'),
         runtime: path.join(root, 'src/server-runtime.tsx'),
       },
-      moduleIdStrategy: 'hashed',
+      // moduleIdStrategy: 'hashed',
       output: {
         path: serverOutputPath,
       },
       rscServer: {
         clientComponentTpl: `
-module.exports = {$$typeof: Symbol.for(\"react.module.reference\"),filepath:\"{{path}}\",name:\"*\"};
+module.exports = {$$typeof: Symbol.for(\"react.module.reference\"),filepath:\"{{id}}\",_path:\"{{path}}\",name:\"*\"};
         `,
         emitCSS: true,
       },
       umd: '__rsc_server__',
       platform: 'node',
-      stats: true,
+      stats: {
+        modules: true,
+      },
     },
     hooks: {},
     watch: false,
@@ -68,14 +70,16 @@ export default () => {
         index: path.join(root, 'tmp/index.tsx'),
       },
       platform: 'node',
-      stats: true,
+      stats: {
+        modules: false,
+      },
       umd: '__rsc_client__',
       rscServer: false,
       rscClient: {
         logServerComponent: 'error',
       },
       mode: 'production',
-      moduleIdStrategy: 'hashed',
+      // moduleIdStrategy: 'hashed',
     },
     hooks: {},
     watch: false,
