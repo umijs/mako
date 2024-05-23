@@ -9,8 +9,8 @@ use crate::ast::file::File;
 use crate::ast::js_ast::JsAst;
 use crate::build::parse::ParseError;
 use crate::compiler::Context;
-use crate::config::{Config, LogServerComponent};
-use crate::module::ModuleAst;
+use crate::config::{Config, LogServerComponent, ModuleIdStrategy};
+use crate::module::{ModuleAst, ModuleId};
 
 #[derive(Serialize, Debug, Clone)]
 pub struct RscClientInfo {
@@ -57,7 +57,13 @@ impl Rsc {
     }
 
     fn generate_client(file: &File, tpl: &str, context: Arc<Context>) -> ModuleAst {
-        let content = tpl.replace("{{path}}", file.relative_path.to_str().unwrap());
+        let path = if matches!(context.config.module_id_strategy, ModuleIdStrategy::Hashed) {
+            let id = ModuleId::new(file.path.to_string_lossy().to_string());
+            id.generate(&context)
+        } else {
+            file.relative_path.to_string_lossy().to_string()
+        };
+        let content = tpl.replace("{{path}}", path.as_str());
         ModuleAst::Script(
             JsAst::build(file.path.to_str().unwrap(), &content, context.clone()).unwrap(),
         )
