@@ -455,6 +455,20 @@ e.g.
 }
 ```
 
+### rscClient
+
+- Type: `{ logServerComponent: 'error' | 'ignore' } | false`
+- Default: `false`
+
+Configuration related to RSC client.
+
+### rscServer
+
+- Type: `{ clientComponentTpl: string, emitCSS: boolean } | false`
+- Default: `false`
+
+Configuration related to RSC server.
+
 ### stats
 
 - Type: `boolean`

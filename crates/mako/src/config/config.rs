@@ -376,8 +376,19 @@ pub struct RscServerConfig {
     pub emit_css: bool,
 }
 
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, ValueEnum, Clone)]
+pub enum LogServerComponent {
+    #[serde(rename = "error")]
+    Error,
+    #[serde(rename = "ignore")]
+    Ignore,
+}
+
 #[derive(Deserialize, Serialize, Debug)]
-pub struct RscClientConfig {}
+#[serde(rename_all = "camelCase")]
+pub struct RscClientConfig {
+    pub log_server_component: LogServerComponent,
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
