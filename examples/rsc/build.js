@@ -17,6 +17,7 @@ const fs = require('fs');
         index: path.join(root, 'src/index.tsx'),
         runtime: path.join(root, 'src/server-runtime.tsx'),
       },
+      moduleIdStrategy: 'hashed',
       output: {
         path: serverOutputPath,
       },
@@ -71,10 +72,10 @@ export default () => {
       umd: '__rsc_client__',
       rscServer: false,
       rscClient: {
-        // TODO: remove this
-        x: 1,
+        logServerComponent: 'error',
       },
       mode: 'production',
+      moduleIdStrategy: 'hashed',
     },
     hooks: {},
     watch: false,
