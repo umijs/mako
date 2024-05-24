@@ -13,8 +13,10 @@ use crate::config::{Config, LogServerComponent};
 use crate::module::{ModuleAst, ModuleId};
 
 #[derive(Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct RscClientInfo {
     pub path: String,
+    pub module_id: String,
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -71,8 +73,10 @@ impl Rsc {
 
     fn emit_client(file: &File, context: Arc<Context>) {
         let stats_info = &context.stats_info;
+        let module_id = ModuleId::from_path(file.path.clone()).generate(&context);
         stats_info.add_rsc_client_component(RscClientInfo {
             path: file.relative_path.to_string_lossy().to_string(),
+            module_id,
         });
     }
 
