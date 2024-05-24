@@ -197,6 +197,20 @@ e.g.
 }
 ```
 
+Then, when the code encounters `import React from "react"`, it will be replaced with `const React = (typeof globalThis !== 'undefined' ? globalThis : self).React`.
+
+If you want to output the external dependencies with `require`, you can set it as follows.
+
+```ts
+{
+  externals: {
+    foo: "commonjs foo",
+  },
+}
+```
+
+Then, when the code encounters `import foo from "foo"`, it will be replaced with `const foo = require("foo")`.
+
 ### flexBugs
 
 - Type: `boolean`
@@ -441,12 +455,35 @@ e.g.
 }
 ```
 
+### rscClient
+
+- Type: `{ logServerComponent: 'error' | 'ignore' } | false`
+- Default: `false`
+
+Configuration related to RSC client.
+
+### rscServer
+
+- Type: `{ clientComponentTpl: string, emitCSS: boolean } | false`
+- Default: `false`
+
+Configuration related to RSC server.
+
+Child configuration items:
+
+- `clientComponentTpl`, client component template, use `{{path}}` to represent the path of the component, and use `{{id}}` to represent the id of the module.
+- `emitCSS`, whether to output CSS components.
+
 ### stats
 
-- Type: `boolean`
+- Type: `{ modules: bool } | false`
 - Default: `false`
 
 Whether to generate stats.json file.
+
+Child configuration items:
+
+- `modules`, whether to generate module information, it may be useful when you want to analyze the size of the module but may slow down the build speed.
 
 ### transformImport
 

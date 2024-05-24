@@ -2,7 +2,12 @@
   "minify": false,
   "externals": {
     "hoo": "hoo",
+    "hoo_require": "commonjs hoo",
     "empty": "",
+    "foo_require": {
+      "root": "foo",
+      "type": "commonjs"
+    },
     "antd": {
       "root": "antd",
       "subpath": {

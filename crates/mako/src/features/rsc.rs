@@ -9,17 +9,21 @@ use crate::ast::file::File;
 use crate::ast::js_ast::JsAst;
 use crate::build::parse::ParseError;
 use crate::compiler::Context;
-use crate::config::Config;
-use crate::module::ModuleAst;
+use crate::config::{Config, LogServerComponent};
+use crate::module::{ModuleAst, ModuleId};
 
 #[derive(Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct RscClientInfo {
     pub path: String,
+    pub module_id: String,
 }
 
 #[derive(Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct RscCssModules {
     pub path: String,
+    pub module_id: String,
     pub modules: bool,
 }
 
@@ -37,9 +41,9 @@ impl Rsc {
                 )));
             }
         }
-        if context.config.rsc_client.is_some() {
+        if let Some(rsc_client) = &context.config.rsc_client {
             let is_server = Rsc::is_server(ast)?;
-            if is_server {
+            if is_server && matches!(rsc_client.log_server_component, LogServerComponent::Error) {
                 return Err(anyhow!(ParseError::UnsupportedServerAction {
                     path: file.path.to_string_lossy().to_string(),
                 }));
@@ -57,16 +61,22 @@ impl Rsc {
     }
 
     fn generate_client(file: &File, tpl: &str, context: Arc<Context>) -> ModuleAst {
-        let content = tpl.replace("{{path}}", file.relative_path.to_str().unwrap());
+        let id = ModuleId::new(file.path.to_string_lossy().to_string()).generate(&context);
+        let path = file.relative_path.to_string_lossy().to_string();
+        let content = tpl
+            .replace("{{path}}", path.as_str())
+            .replace("{{id}}", id.as_str());
         ModuleAst::Script(
             JsAst::build(file.path.to_str().unwrap(), &content, context.clone()).unwrap(),
         )
     }
 
     fn emit_client(file: &File, context: Arc<Context>) {
-        let mut info = context.stats_info.lock().unwrap();
-        info.rsc_client_components.push(RscClientInfo {
+        let stats_info = &context.stats_info;
+        let module_id = ModuleId::from_path(file.path.clone()).generate(&context);
+        stats_info.add_rsc_client_component(RscClientInfo {
             path: file.relative_path.to_string_lossy().to_string(),
+            module_id,
         });
     }
 
@@ -84,9 +94,11 @@ impl Rsc {
     }
 
     fn emit_css(file: &File, context: Arc<Context>) {
-        let mut info = context.stats_info.lock().unwrap();
-        info.rsc_css_modules.push(RscCssModules {
+        let stats_info = &context.stats_info;
+        let module_id = ModuleId::from_path(file.path.clone()).generate(&context);
+        stats_info.add_rsc_css_module(RscCssModules {
             path: file.relative_path.to_string_lossy().to_string(),
+            module_id,
             modules: file.is_css() && file.has_param("modules"),
         });
     }
