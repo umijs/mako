@@ -8,16 +8,14 @@ import { parseServerStats } from './';
       b: { id: 'b', dependents: ['a'] },
       c: { id: 'c', dependents: ['a'] },
     },
-    rscClientComponents: [
-      { path: 'path1', moduleId: 'b' },
-    ],
-    rscCSSModules: [
-      { path: 'path2', moduleId: 'c', modules: true },
-    ],
+    rscClientComponents: [{ path: 'path1', moduleId: 'b' }],
+    rscCSSModules: [{ path: 'path2', moduleId: 'c', modules: true }],
   };
   let x = parseServerStats(stats);
   // console.log(JSON.stringify(x, null, 2));
-  assert(JSON.stringify(x, null, 2) === `
+  assert(
+    JSON.stringify(x, null, 2) ===
+      `
 {
   "rscCSSModules": [
     {
@@ -38,5 +36,6 @@ import { parseServerStats } from './';
     }
   ]
 }
-  `.trim())
+  `.trim(),
+  );
 })();
