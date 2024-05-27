@@ -42,38 +42,52 @@ impl DevServer {
         let root = self.root.clone();
         let compiler = self.compiler.clone();
         let txws_watch = txws.clone();
-        std::thread::spawn(move || {
-            if let Err(e) = Self::watch_for_changes(root, compiler, txws_watch, callback) {
-                eprintln!("Error watching files: {:?}", e);
-            }
-        });
+
+        if self.compiler.context.config.dev_server.is_some() {
+            std::thread::spawn(move || {
+                if let Err(e) = Self::watch_for_changes(root, compiler, txws_watch, callback) {
+                    eprintln!("Error watching files: {:?}", e);
+                }
+            });
+        } else if let Err(e) = Self::watch_for_changes(root, compiler, txws_watch, callback) {
+            eprintln!("Error watching files: {:?}", e);
+        }
 
         // server
-        let port = self.compiler.context.config.hmr.as_ref().unwrap().port;
-        // TODO: host
-        // let host = self.compiler.context.config.hmr_host.clone();
-        // TODO: find free port
-        let addr: SocketAddr = ([127, 0, 0, 1], port).into();
-        let context = self.compiler.context.clone();
-        let txws = txws.clone();
-        let make_svc = make_service_fn(move |_conn| {
-            let context = context.clone();
+        if self.compiler.context.config.dev_server.is_some() {
+            let port = self
+                .compiler
+                .context
+                .config
+                .dev_server
+                .as_ref()
+                .unwrap()
+                .port;
+            // TODO: host
+            // let host = self.compiler.context.config.hmr_host.clone();
+            // TODO: find free port
+            let addr: SocketAddr = ([127, 0, 0, 1], port).into();
+            let context = self.compiler.context.clone();
             let txws = txws.clone();
-            async move {
-                Ok::<_, hyper::Error>(service_fn(move |req| {
-                    let context = context.clone();
-                    let txws = txws.clone();
-                    let staticfile =
-                        hyper_staticfile::Static::new(context.config.output.path.clone());
-                    async move { Self::handle_requests(req, context, staticfile, txws).await }
-                }))
+            let make_svc = make_service_fn(move |_conn| {
+                let context = context.clone();
+                let txws = txws.clone();
+                async move {
+                    Ok::<_, hyper::Error>(service_fn(move |req| {
+                        let context = context.clone();
+                        let txws = txws.clone();
+                        let staticfile =
+                            hyper_staticfile::Static::new(context.config.output.path.clone());
+                        async move { Self::handle_requests(req, context, staticfile, txws).await }
+                    }))
+                }
+            });
+            let server = Server::bind(&addr).serve(make_svc);
+            // TODO: print when mako is run standalone
+            debug!("Listening on http://{:?}", addr);
+            if let Err(e) = server.await {
+                eprintln!("Error starting server: {:?}", e);
             }
-        });
-        let server = Server::bind(&addr).serve(make_svc);
-        // TODO: print when mako is run standalone
-        debug!("Listening on http://{:?}", addr);
-        if let Err(e) = server.await {
-            eprintln!("Error starting server: {:?}", e);
         }
     }
 
