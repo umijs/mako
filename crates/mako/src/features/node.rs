@@ -98,17 +98,25 @@ impl Node {
 
     fn get_empty_modules() -> Vec<String> {
         [
+            "async_hooks",
             "child_process",
             "cluster",
             "dgram",
+            "diagnostics_channel",
             "dns",
             "fs",
+            "http2",
+            "inspector",
             "module",
             "net",
+            "perf_hooks",
             "readline",
             "repl",
             "tls",
-            "async_hooks",
+            "trace_events",
+            "v8",
+            "wasi",
+            "worker_threads",
         ]
         .iter()
         .map(|s| s.to_string())

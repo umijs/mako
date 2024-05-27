@@ -1,0 +1,12 @@
+{
+  "entry": {
+    "index": "./index.js"
+  },
+  "optimization": {
+    "skipModules": true,
+    "concatenateModules": true
+  },
+  "targets":{
+    "chrome": 50
+  }
+}

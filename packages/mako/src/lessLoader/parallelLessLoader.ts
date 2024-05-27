@@ -15,13 +15,13 @@ export function terminatePool() {
   pool = undefined;
 }
 
-export async function compile(
+export async function render(
   filePath: string,
   opts: LessLoaderOpts,
 ): Promise<{ content: string; type: string }> {
   createPool();
 
-  const css = await pool!.exec('render', [filePath, opts]);
+  const res = await pool!.exec('render', [filePath, opts]);
 
-  return { content: css, type: 'css' };
+  return res;
 }

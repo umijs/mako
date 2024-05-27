@@ -15,7 +15,8 @@
   "scripts": {
     "format": "biome check --apply .",
     "dev": "father dev",
-    "build": "father build"
+    "build": "father build",
+    "test": "esno ./src/index.test.ts"
   },
   "repository": "git@github.com:umijs/mako.git"
 }

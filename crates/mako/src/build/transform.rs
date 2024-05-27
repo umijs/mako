@@ -10,7 +10,6 @@ use mako_core::swc_ecma_transforms::{resolver, Assumptions};
 use mako_core::swc_ecma_transforms_optimization::simplifier;
 use mako_core::swc_ecma_transforms_optimization::simplify::{dce, Config as SimpilifyConfig};
 use mako_core::swc_ecma_transforms_proposals::decorators;
-use mako_core::swc_ecma_transforms_typescript::strip_with_jsx;
 use mako_core::swc_ecma_visit::{Fold, VisitMut};
 use mako_core::{swc_css_compat, swc_css_prefixer, swc_css_visit};
 use swc_core::common::GLOBALS;
@@ -30,9 +29,11 @@ use crate::visitors::css_px2rem::Px2Rem;
 use crate::visitors::default_export_namer::DefaultExportNamer;
 use crate::visitors::dynamic_import_to_require::DynamicImportToRequire;
 use crate::visitors::env_replacer::{build_env_map, EnvReplacer};
+use crate::visitors::fix_helper_inject_position::FixHelperInjectPosition;
 use crate::visitors::provide::Provide;
 use crate::visitors::react::react;
 use crate::visitors::try_resolve::TryResolve;
+use crate::visitors::ts_strip::ts_strip;
 use crate::visitors::virtual_css_modules::VirtualCSSModules;
 
 pub struct Transform {}
@@ -56,18 +57,16 @@ impl Transform {
 
                     // visitors
                     let mut visitors: Vec<Box<dyn VisitMut>> = vec![];
-                    visitors.push(Box::new(resolver(unresolved_mark, top_level_mark, false)));
+                    visitors.push(Box::new(resolver(unresolved_mark, top_level_mark, is_ts)));
+                    // fix helper inject position
+                    // should be removed after upgrade to latest swc
+                    // ref: https://github.com/umijs/mako/issues/1193
+                    visitors.push(Box::new(FixHelperInjectPosition::new()));
                     // strip should be ts only
                     // since when use this in js, it will remove all unused imports
                     // which is not expected as what webpack does
                     if is_ts {
-                        let comments = origin_comments.get_swc_comments().clone();
-                        visitors.push(Box::new(strip_with_jsx(
-                            cm.clone(),
-                            Default::default(),
-                            comments,
-                            top_level_mark,
-                        )))
+                        visitors.push(Box::new(ts_strip(top_level_mark)))
                     }
                     // named default export
                     if context.args.watch && !file.is_under_node_modules && is_jsx {

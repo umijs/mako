@@ -23,7 +23,9 @@ exports.build = async function (opts) {
   const makoConfig = await getMakoConfig(opts);
   const originStats = makoConfig.stats;
   // always enable stats to provide json for onBuildComplete hook
-  makoConfig.stats = true;
+  makoConfig.stats = {
+    modules: false,
+  };
   makoConfig.mode = 'production';
   makoConfig.hash = !!opts.config.hash;
   if (makoConfig.hash) {
@@ -166,7 +168,8 @@ exports.dev = async function (opts) {
   // mako dev
   const { build } = require('@umijs/mako');
   const makoConfig = await getMakoConfig(opts);
-  makoConfig.hmr = { port: hmrPort, host: opts.host };
+  makoConfig.hmr = {};
+  makoConfig.devServer = { port: hmrPort, host: opts.host };
   const cwd = opts.cwd;
   try {
     await build({

@@ -128,8 +128,13 @@ pub struct BuildParams {
     emitAssets?: boolean;
     cssModulesExportOnlyLocales?: boolean;
     inlineCSS?: false | {};
-    rscServer?: false | {};
-    rscClient?: false | {};
+    rscServer?: false | {
+        "emitCSS": boolean;
+        "clientComponentTpl": string;
+    };
+    rscClient?: false | {
+        "logServerComponent": "error" | "ignore";
+    };
     experimental?: {
         webpackSyntaxValidate?: string[];
     };
