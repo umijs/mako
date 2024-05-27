@@ -90,6 +90,7 @@ macro_rules! create_deserialize_fn {
     };
 }
 create_deserialize_fn!(deserialize_hmr, HmrConfig);
+create_deserialize_fn!(deserialize_dev_server, DevServerConfig);
 create_deserialize_fn!(deserialize_manifest, ManifestConfig);
 create_deserialize_fn!(deserialize_code_splitting, CodeSplittingStrategy);
 create_deserialize_fn!(deserialize_px2rem, Px2RemConfig);
@@ -410,7 +411,11 @@ pub struct WatchConfig {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct HmrConfig {
+pub struct HmrConfig {}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DevServerConfig {
     pub host: String,
     pub port: u16,
 }
@@ -440,6 +445,8 @@ pub struct Config {
     pub mdx: bool,
     #[serde(deserialize_with = "deserialize_hmr")]
     pub hmr: Option<HmrConfig>,
+    #[serde(deserialize_with = "deserialize_dev_server")]
+    pub dev_server: Option<DevServerConfig>,
     #[serde(deserialize_with = "deserialize_code_splitting", default)]
     pub code_splitting: Option<CodeSplittingStrategy>,
     #[serde(deserialize_with = "deserialize_px2rem", default)]
@@ -620,7 +627,7 @@ const DEFAULT_CONFIG: &str = r#"
     "define": {},
     "mdx": false,
     "platform": "browser",
-    "hmr": { "host": "127.0.0.1", "port": 3000 },
+    "hmr": {},
     "moduleIdStrategy": "named",
     "hash": false,
     "_treeShaking": "basic",
@@ -650,7 +657,8 @@ const DEFAULT_CONFIG: &str = r#"
     "rscServer": false,
     "rscClient": false,
     "experimental": { "webpackSyntaxValidate": [] },
-    "watch": { "ignorePaths": [] }
+    "watch": { "ignorePaths": [] },
+    "devServer": { "host": "127.0.0.1", "port": 3000 }
 }
 "#;
 
@@ -722,6 +730,10 @@ impl Config {
 
             if config.cjs && config.umd.is_some() {
                 return Err(anyhow!("cjs and umd cannot be used at the same time",));
+            }
+
+            if config.hmr.is_some() && config.dev_server.is_none() {
+                return Err(anyhow!("hmr can only be used with devServer",));
             }
 
             if config.inline_css.is_some() && config.umd.is_none() {

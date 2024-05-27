@@ -167,7 +167,8 @@ exports.dev = async function (opts) {
   // mako dev
   const { build } = require('@umijs/mako');
   const makoConfig = await getMakoConfig(opts);
-  makoConfig.hmr = { port: hmrPort, host: opts.host };
+  makoConfig.hmr = {};
+  makoConfig.devServer = { port: hmrPort, host: opts.host };
   const cwd = opts.cwd;
   try {
     await build({
