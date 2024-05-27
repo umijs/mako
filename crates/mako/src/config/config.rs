@@ -627,7 +627,7 @@ const DEFAULT_CONFIG: &str = r#"
     "define": {},
     "mdx": false,
     "platform": "browser",
-    "hmr": { "host": "127.0.0.1", "port": 3000 },
+    "hmr": {},
     "moduleIdStrategy": "named",
     "hash": false,
     "_treeShaking": "basic",
@@ -658,7 +658,7 @@ const DEFAULT_CONFIG: &str = r#"
     "rscClient": false,
     "experimental": { "webpackSyntaxValidate": [] },
     "watch": { "ignorePaths": [] },
-    "devServer": { "host": "0.0.0.0", "port": 3000 }
+    "devServer": { "host": "127.0.0.1", "port": 3000 }
 }
 "#;
 
