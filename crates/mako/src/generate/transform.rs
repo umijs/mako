@@ -240,9 +240,7 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()>
                         let mut meta_url_replacer = MetaUrlReplacer {};
                         ast.ast.visit_mut_with(&mut meta_url_replacer);
 
-                        let mut dynamic_import = DynamicImport {
-                            context: context.clone(),
-                        };
+                        let mut dynamic_import = DynamicImport::new(context.clone(), dep_map);
                         ast.ast.visit_mut_with(&mut dynamic_import);
 
                         // replace require to __mako_require__
