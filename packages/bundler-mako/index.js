@@ -5,6 +5,7 @@ const assert = require('assert');
 const { createProxy, createHttpsServer } = require('@umijs/bundler-utils');
 const lodash = require('lodash');
 const chalk = require('chalk');
+const { parseTsconfig } = require('get-tsconfig');
 const {
   createProxyMiddleware,
 } = require('@umijs/bundler-utils/compiled/http-proxy-middleware');
@@ -507,6 +508,7 @@ async function getMakoConfig(opts) {
     {},
   );
   const outputPath = path.resolve(opts.cwd, opts.config.outputPath || 'dist');
+  const tsConfig = getTsConfig(opts);
 
   const makoConfig = {
     entry: opts.entry,
@@ -538,6 +540,8 @@ async function getMakoConfig(opts) {
     emotion,
     forkTSChecker: !!forkTSChecker,
     ...(opts.disableCopy ? { copy: [] } : { copy: ['public'].concat(copy) }),
+    useDefineForClassFields:
+      tsConfig.compilerOptions.useDefineForClassFields ?? true,
   };
 
   return makoConfig;
@@ -560,5 +564,30 @@ function normalizeDefineValue(val) {
       obj[key] = normalizeDefineValue(val[key]);
       return obj;
     }, {});
+  }
+}
+
+const DEFAULT_TS_CONFIG = {
+  compilerOptions: {
+    useDefineForClassFields: true,
+  },
+};
+
+function getTsConfig(opts) {
+  let root = opts.cwd;
+  const tsConfigPath = path.resolve(root, 'tsconfig.json');
+
+  if (fs.existsSync(tsConfigPath)) {
+    try {
+      return parseTsconfig(tsConfigPath);
+    } catch (e) {
+      console.error(
+        'parsing tsconfig.json failed, fallback to default tsconfig\n',
+        e,
+      );
+      return DEFAULT_TS_CONFIG;
+    }
+  } else {
+    return DEFAULT_TS_CONFIG;
   }
 }
