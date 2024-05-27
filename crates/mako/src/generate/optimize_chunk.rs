@@ -16,17 +16,18 @@ use crate::module::{Module, ModuleId, ModuleInfo};
 use crate::resolve::{ResolvedResource, ResolverResource};
 
 pub(crate) fn default_min_size() -> usize {
-    1
+    20000
 }
 
 pub(crate) fn default_max_size() -> usize {
-    40
+    5000000
 }
 
 pub(crate) fn default_min_chunks() -> usize {
     1
 }
 
+#[derive(Debug)]
 pub struct OptimizeChunksInfo {
     pub group_options: OptimizeChunkGroup,
     pub module_to_chunks: IndexMap<ModuleId, Vec<ChunkId>>,
@@ -239,7 +240,6 @@ impl Compiler {
                 // check test regex
                 if let Some(test) = &optimize_info.group_options.test {
                     if !test.is_match(&module_id.id) {
-                        println!("regex {} {}", test.as_str(), &module_id.id);
                         continue;
                     }
                 }
@@ -306,10 +306,14 @@ impl Compiler {
             let mut split_chunk_count = 0;
             let mut chunk_size = *chunk_size_map.get(&info.group_options.name).unwrap();
 
-            if chunk_size > info.group_options.max_size {
-                let chunk_modules = &info.module_to_chunks;
-                // group size by package name
-                let mut package_size_map = chunk_modules.iter().fold(
+            println!(
+                "chunks:{} size: {} max_size: {}",
+                info.group_options.name, chunk_size, info.group_options.max_size
+            );
+            let chunk_modules = &info.module_to_chunks;
+            // group size by package name
+            let mut package_size_map =
+                chunk_modules.iter().fold(
                     IndexMap::<String, (usize, IndexMap<ModuleId, Vec<ChunkId>>)>::new(),
                     |mut size_map, mtc| {
                         let pkg_name = match module_graph.get_module(mtc.0) {
@@ -352,7 +356,12 @@ impl Compiler {
                         size_map
                     },
                 );
-
+            if chunk_size > info.group_options.max_size
+                || (info.group_options.min_module_size.is_some()
+                    && package_size_map
+                        .iter()
+                        .any(|p| p.1 .0 > info.group_options.min_module_size.unwrap()))
+            {
                 // split new chunks until chunk size is less than max_size and there has more than 1 package can be split
                 while chunk_size > info.group_options.max_size && package_size_map.len() > 1 {
                     let mut new_chunk_size = 0;
@@ -360,13 +369,22 @@ impl Compiler {
 
                     // collect modules by package name until chunk size is very to max_size
                     // `new_chunk_size == 0` 用于解决单个 pkg 大小超过 max_size 会死循环的问题
-                    let module_size = package_size_map.get_index(0).unwrap().1 .0;
-                    while !package_size_map.is_empty()
-                        && (new_chunk_size == 0
-                            || new_chunk_size + module_size < info.group_options.max_size
-                            || (info.group_options.min_module_size.is_some()
-                                && module_size > info.group_options.min_module_size.unwrap()))
-                    {
+                    while {
+                        if !package_size_map.is_empty() {
+                            let package = package_size_map.get_index(0).unwrap();
+
+                            println!("package {} size {}", package.0, package.1 .0);
+
+                            let package_size = package.1 .0;
+                            new_chunk_size == 0
+                                || new_chunk_size + package_size < info.group_options.max_size
+                                    && (info.group_options.min_module_size.is_none()
+                                        || package_size
+                                            < info.group_options.min_module_size.unwrap())
+                        } else {
+                            false
+                        }
+                    } {
                         let (_, (size, modules)) = package_size_map.swap_remove_index(0).unwrap();
 
                         new_chunk_size += size;
@@ -519,7 +537,7 @@ impl Compiler {
     }
 
     fn get_optimize_chunk_options(&self) -> Option<OptimizeChunkOptions> {
-        let s = match &self.context.config.code_splitting {
+        match &self.context.config.code_splitting {
             Some(crate::config::CodeSplittingStrategy::Auto) => {
                 Some(code_splitting_strategy_auto())
             }
@@ -528,9 +546,7 @@ impl Compiler {
             )) => Some(code_splitting_strategy_granular(framework_packages.clone())),
             Some(crate::config::CodeSplittingStrategy::Advanced(options)) => Some(options.clone()),
             _ => None,
-        };
-        println!("optimize_chunk_options {:?}", s);
-        s
+        }
     }
 }
 
