@@ -17,4 +17,5 @@ pub(crate) mod optimize_define_utils;
 pub(crate) mod provide;
 pub(crate) mod react;
 pub(crate) mod try_resolve;
+pub(crate) mod ts_strip;
 pub(crate) mod virtual_css_modules;
