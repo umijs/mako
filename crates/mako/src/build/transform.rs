@@ -235,16 +235,10 @@ impl Context {
         let is_ts = file.extname == "ts" || file.extname == "tsx";
 
         let mut assumptions = Assumptions::default();
-        self.config.js.as_ref().map(|js_config| {
-            js_config.transform.as_ref().map(|transform_config| {
-                assumptions.set_public_class_fields |=
-                    !transform_config.use_define_for_class_fields;
-                if is_ts {
-                    assumptions.set_class_methods |= !transform_config.use_define_for_class_fields;
-                }
-            })
-        });
-
+        assumptions.set_public_class_fields |= !self.config.use_define_for_class_fields;
+        if is_ts {
+            assumptions.set_class_methods |= !self.config.use_define_for_class_fields;
+        }
         assumptions
     }
 }

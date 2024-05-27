@@ -478,7 +478,7 @@ pub struct Config {
     pub rsc_client: Option<RscClientConfig>,
     pub experimental: ExperimentalConfig,
     pub watch: WatchConfig,
-    pub js: Option<JsConfig>,
+    pub use_define_for_class_fields: bool,
 }
 
 #[allow(dead_code)]
@@ -526,34 +526,6 @@ pub struct OptimizeChunkGroup {
     pub priority: i8,
     #[serde(default, with = "optimize_test_format")]
     pub test: Option<Regex>,
-}
-#[derive(Deserialize, Serialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct JsConfig {
-    pub transform: Option<TransformConfig>,
-}
-
-impl Default for JsConfig {
-    fn default() -> Self {
-        JsConfig {
-            transform: Some(TransformConfig::default()),
-        }
-    }
-}
-
-#[derive(Deserialize, Serialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct TransformConfig {
-    #[serde(default)]
-    pub use_define_for_class_fields: bool,
-}
-
-impl Default for TransformConfig {
-    fn default() -> Self {
-        TransformConfig {
-            use_define_for_class_fields: true,
-        }
-    }
 }
 
 impl Default for OptimizeChunkGroup {
@@ -661,9 +633,7 @@ const DEFAULT_CONFIG: &str = r#"
     "rscServer": false,
     "rscClient": false,
     "experimental": { "webpackSyntaxValidate": [] },
-    "js": {
-      "useDefineForClassFields": true
-    },
+    "useDefineForClassFields": true,
     "watch": { "ignorePaths": [] }
 }
 "#;
