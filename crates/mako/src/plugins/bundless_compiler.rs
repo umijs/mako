@@ -236,9 +236,7 @@ fn transform_js_generate(
                             };
                             ast.ast.visit_mut_with(&mut dep_replacer);
 
-                            let mut dynamic_import = DynamicImport {
-                                context: context.clone(),
-                            };
+                            let mut dynamic_import = DynamicImport::new(context.clone(), dep_map);
                             ast.ast.visit_mut_with(&mut dynamic_import);
 
                             ast.ast
