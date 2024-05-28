@@ -63,20 +63,13 @@ impl Load {
         if file.path.to_str().unwrap() == "virtual:inline_css:runtime" {
             return Ok(Content::Js(JsContent {
                 content: r#"
-var memo = {};
 export function moduleToDom(css) {
     var styleElement = document.createElement("style");
+    styleElement.type = "text/css";
+    styleElement.innerHTML = css;
     // TODO: support nonce
     // styleElement.setAttribute("nonce", nonce);
-    var target = 'head';
-    function getTarget(target) {
-        if (!memo[target]) {
-            var styleTarget = document.querySelector(target);
-            memo[target] = styleTarget;
-        }
-        return memo[target];
-    }
-    target.appendChild(styleElement);
+    document.head.appendChild(styleElement);
 }
                                 "#
                 .to_string(),
