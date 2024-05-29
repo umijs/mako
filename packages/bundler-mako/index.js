@@ -426,6 +426,7 @@ async function getMakoConfig(opts) {
     copy = [],
     clean,
     forkTSChecker,
+    inlineCSS,
   } = opts.config;
   // TODO:
   // 暂不支持 $ 结尾，等 resolve 支持后可以把这段去掉
@@ -541,6 +542,7 @@ async function getMakoConfig(opts) {
     flexBugs: true,
     react: opts.react || {},
     emotion,
+    inlineCSS,
     forkTSChecker: !!forkTSChecker,
     ...(opts.disableCopy ? { copy: [] } : { copy: ['public'].concat(copy) }),
     useDefineForClassFields:
