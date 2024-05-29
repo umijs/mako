@@ -10,7 +10,7 @@ use mako_core::tracing::debug;
 use crate::build::BuildError;
 use crate::compiler::Compiler;
 use crate::generate::transform::transform_modules;
-use crate::module::{Dependency, Module, ModuleId};
+use crate::module::{Dependency, Module, ModuleId, ResolveType};
 use crate::resolve::{self, clear_resolver_cache};
 
 #[derive(Debug, Clone)]
@@ -320,7 +320,14 @@ impl Compiler {
                     add_modules.insert(module_id, module);
                 });
 
-                let d = diff(current_dependencies, target_dependencies);
+                let mut d = diff(current_dependencies, target_dependencies);
+                // if added dep is a dynamic dependency, need to full re-group
+                d.added.iter().for_each(|added| {
+                    if added.1.resolve_type == ResolveType::DynamicImport {
+                        d.dep_changed.insert((module.id.clone(), added.1.clone()));
+                    }
+                });
+
                 debug!("build by modify: {:?} end", entry);
                 Result::Ok((module, d.added, d.removed, d.dep_changed, add_modules))
             })
