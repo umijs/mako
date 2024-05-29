@@ -66,7 +66,7 @@ impl Load {
 export function moduleToDom(css) {
     var styleElement = document.createElement("style");
     styleElement.type = "text/css";
-    styleElement.innerHTML = css;
+    styleElement.appendChild(document.createTextNode(css))
     // TODO: support nonce
     // styleElement.setAttribute("nonce", nonce);
     document.head.appendChild(styleElement);
