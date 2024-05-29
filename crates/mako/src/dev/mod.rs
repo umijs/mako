@@ -196,6 +196,10 @@ impl DevServer {
         let mut hmr_hash = Box::new(initial_hash);
 
         for result in rx {
+            if result.is_err() {
+                eprintln!("Error watching files: {:?}", result.err().unwrap());
+                continue;
+            }
             let paths = watch::Watcher::normalize_events(result.unwrap());
             if !paths.is_empty() {
                 let compiler = compiler.clone();
