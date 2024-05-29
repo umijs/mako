@@ -504,6 +504,7 @@ pub struct Config {
     pub rsc_client: Option<RscClientConfig>,
     pub experimental: ExperimentalConfig,
     pub watch: WatchConfig,
+    pub use_define_for_class_fields: bool,
 }
 
 #[allow(dead_code)]
@@ -657,6 +658,7 @@ const DEFAULT_CONFIG: &str = r#"
     "rscServer": false,
     "rscClient": false,
     "experimental": { "webpackSyntaxValidate": [] },
+    "useDefineForClassFields": true,
     "watch": { "ignorePaths": [] },
     "devServer": { "host": "127.0.0.1", "port": 3000 }
 }

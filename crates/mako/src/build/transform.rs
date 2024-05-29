@@ -142,6 +142,8 @@ impl Transform {
                     })));
                     // TODO: is it a problem to clone comments?
                     let comments = origin_comments.get_swc_comments().clone();
+                    let assumptions = context.assumptions_for(file);
+
                     folders.push(Box::new(swc_preset_env::preset_env(
                         unresolved_mark,
                         Some(comments),
@@ -152,7 +154,7 @@ impl Transform {
                             )),
                             ..Default::default()
                         },
-                        Assumptions::default(),
+                        assumptions,
                         &mut FeatureFlag::default(),
                     )));
                     // simplify, but keep top level dead code
@@ -224,6 +226,19 @@ impl Transform {
             }
             ModuleAst::None => Ok(()),
         }
+    }
+}
+
+impl Context {
+    pub fn assumptions_for(&self, file: &File) -> Assumptions {
+        let is_ts = file.extname == "ts" || file.extname == "tsx";
+
+        let mut assumptions = Assumptions::default();
+        assumptions.set_public_class_fields |= !self.config.use_define_for_class_fields;
+        if is_ts {
+            assumptions.set_class_methods |= !self.config.use_define_for_class_fields;
+        }
+        assumptions
     }
 }
 

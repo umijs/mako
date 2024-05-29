@@ -1,0 +1,7 @@
+{
+  "extends": "./base-tsconfig.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "outDir": "dist2"
+  }
+}
