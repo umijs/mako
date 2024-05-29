@@ -612,7 +612,7 @@ const DEFAULT_CONFIG: &str = r#"
     "emotion": false,
     "flexBugs": false,
     "cjs": false,
-    "optimization": { "skipModules": true, "concatenateModules": true },
+    "optimization": { "skipModules": true, "concatenateModules": false },
     "react": {
       "pragma": "React.createElement",
       "importSource": "react",
