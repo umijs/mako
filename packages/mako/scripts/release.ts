@@ -54,7 +54,8 @@ async function build() {
   // clean sailfish
   // since its lock files may cause build error
   await $`rm -rf ${cargoRoot}/target/release/build/sailfish*`;
-  await build_linux_binding();
+  await build_linux_binding('gnu');
+  await build_linux_binding('musl');
   await $`pnpm run format`;
   const duration = (Date.now() - start) / 1000;
   console.log(`linux building done ${duration}s`);
@@ -74,7 +75,7 @@ async function build() {
   await $`pnpm run artifacts:local`;
 }
 
-async function build_linux_binding() {
+async function build_linux_binding(cLib: 'musl' | 'gnu') {
   const isArm = process.arch === 'arm64';
   const cargoBase = path.join(
     process.env['CARGO_HOME'] || process.env['HOME']!,
@@ -96,9 +97,9 @@ async function build_linux_binding() {
     ...[`-w`, `/build`],
   ];
   const containerCMD = [
-    'cargo build -r --lib --target x86_64-unknown-linux-gnu',
+    `cargo build -r --lib --target x86_64-unknown-linux-${cLib}`,
     'cd packages/mako',
-    'npm run build:linux:x86',
+    `npm run build:linux:${cLib}`,
     'strip mako.linux*.node',
   ].join('&&');
   const envOptions: string[] = [];
@@ -116,6 +117,9 @@ async function build_linux_binding() {
   if (isArm) {
     options.push(...['--platform', 'linux/amd64']);
   }
-  const image = 'ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian';
+  const image =
+    cLib === 'gnu'
+      ? 'ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian'
+      : 'ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine';
   await $`docker run ${options} ${image} bash -c ${containerCMD}`;
 }
