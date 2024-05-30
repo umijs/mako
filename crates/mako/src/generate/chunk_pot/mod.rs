@@ -1,6 +1,7 @@
 mod ast_impl;
 mod str_impl;
 pub mod util;
+
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::vec;
@@ -55,7 +56,8 @@ impl<'cp> ChunkPot<'cp> {
 
         let mut files = vec![];
 
-        if self.module_map.is_empty() {
+        // for ssu node_module chunk will not emit when cached validate
+        if self.module_map.is_empty() && self.chunk_id == "node_modules" {
             return Ok(files);
         }
 

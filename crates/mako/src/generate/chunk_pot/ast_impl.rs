@@ -89,7 +89,7 @@ pub(crate) fn render_css_chunk(
             chunk.get_modules().iter().for_each(|module_id| {
                 let module = module_graph.get_module(module_id).unwrap();
                 if let Some(info) = module.info.as_ref()
-                    && info.ast.as_script().is_some()
+                    && matches!(info.ast, crate::module::ModuleAst::Css(_))
                 {
                     source_map_chain.append(&mut info.source_map_chain.clone());
                 }
