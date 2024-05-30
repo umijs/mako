@@ -2,10 +2,15 @@ function loadLang(lang) {
   return import(`./i18n/${lang}.json`);
 }
 
+function loadLang2(lang) {
+  return import(`./i18n/zh-${lang}.json`);
+}
+
 function loadLangExt(lang, ext) {
   // nested dynamic require + with then callback
   return import(`./i18n/${lang}.${(require(`./ext/${ext}`)).default}`).then(m => m);
 }
+
 
 function loadFile(file) {
   return require('@/i18n' + file);
@@ -16,6 +21,8 @@ function loadFile2(file) {
 }
 
 console.log(loadLang('zh-CN'));
+console.log(loadLang2('CN'));
+
 console.log(loadLangExt('zh-CN', 'json'));
 console.log(loadFile('/zh-CN.json'));
 console.log(loadFile2('a.js'));

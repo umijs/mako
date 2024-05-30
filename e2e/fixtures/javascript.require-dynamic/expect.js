@@ -79,6 +79,13 @@ assert.match(
 
 assert.match(
   content,
+  moduleReg("src/index.ts", "`./zh-\\${lang}.json`", true),
+  "prefix should match the last one '/' ",
+);
+
+
+assert.match(
+  content,
   moduleReg("src/index.ts", '__mako_require__("src/i18n\\?context&glob=\\*\\*/\\*")', true),
   "should generate sync require for require dynamic module",
 );

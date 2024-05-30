@@ -231,11 +231,19 @@ fn try_replace_context_arg(
         // handle `./foo/${bar}.ext`
         Expr::Tpl(tpl) => {
             if !tpl.exprs.is_empty() {
-                let prefix = tpl.quasis.first().unwrap().raw.to_string();
+                let pre_quasis = tpl.quasis.first().unwrap().raw.to_string();
+                let (prefix, remainder) = if let Some(pos) = pre_quasis.rfind('/') {
+                    (
+                        pre_quasis[..=pos].to_string(),
+                        pre_quasis[pos + 1..].to_string(),
+                    )
+                } else {
+                    (pre_quasis.clone(), String::new())
+                };
                 let mut suffix = None;
 
                 // replace first quasi with relative prefix
-                tpl.quasis[0].raw = get_relative_prefix(tpl.quasis[0].raw.to_string()).into();
+                tpl.quasis[0].raw = format!("./{}", remainder).into();
                 tpl.quasis[0].cooked = None;
 
                 // extract suffix
@@ -244,7 +252,6 @@ fn try_replace_context_arg(
                         suffix = Some(raw.to_string());
                     }
                 }
-
                 Some((prefix, suffix))
             } else {
                 None
