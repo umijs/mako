@@ -89,6 +89,7 @@ impl From<bool> for CodeType {
 }
 
 const SSU_ENTRY_PREFIX: &str = "virtual:ssu:entry:node_modules:";
+const SSU_MOCK_CSS_FILE: &str = "virtual:C:/node_modules/css/css.css";
 
 impl SUPlus {
     pub fn new() -> Self {
@@ -102,10 +103,11 @@ impl SUPlus {
         }
     }
 
-    fn write_current_cache_state(&self, context: &Arc<Context>) {
+    fn write_current_cache_state(&self, context: &Arc<Context>) -> Result<()> {
         let cache_file = context.root.join("node_modules/.cache_mako/meta.json");
         let cache = self.current_state.lock().unwrap();
-        fs::write(cache_file, serde_json::to_string(&*cache).unwrap()).unwrap();
+        fs::write(cache_file, serde_json::to_string(&*cache).unwrap())?;
+        Ok(())
     }
 
     fn load_cached_state(&self, context: &Arc<Context>) -> Option<CacheState> {
@@ -124,6 +126,26 @@ impl SUPlus {
         let external_hash = hash_hashmap(&config.externals);
 
         alias_hash.wrapping_add(external_hash)
+    }
+
+    fn start_scan(&self) {
+        let mut s = self.scanning.lock().unwrap();
+        *s = true;
+    }
+
+    fn stop_scan(&self) {
+        let mut s = self.scanning.lock().unwrap();
+        *s = false;
+    }
+
+    fn enable_cache(&self) {
+        let mut e = self.enabled.lock().unwrap();
+        *e = true;
+    }
+
+    fn disable_cache(&self) {
+        let mut e = self.enabled.lock().unwrap();
+        *e = false;
     }
 }
 
@@ -199,7 +221,7 @@ impl Plugin for SUPlus {
 
             let content = format!(
                 r#"
-require("virtual:C:/node_modules/css/css.css");                    
+require("{SSU_MOCK_CSS_FILE}");                    
 let patch = require._su_patch();
 console.log(patch);
 {}
@@ -225,11 +247,7 @@ module.export = Promise.all(
             })));
         }
 
-        if param
-            .file
-            .path
-            .starts_with("virtual:C:/node_modules/css/css.css")
-        {
+        if param.file.path.starts_with(SSU_MOCK_CSS_FILE) {
             return Ok(Some(Content::Css("._mako_mock_css { }".to_string())));
         }
         Ok(None)
@@ -328,11 +346,11 @@ module.export = Promise.all(
         debug!("cache valid? {}", cache_valid);
 
         if cache_valid {
-            *self.enabled.lock().unwrap() = true;
+            self.enable_cache();
             return Ok(());
         }
 
-        *self.enabled.lock().unwrap() = false;
+        self.disable_cache();
 
         let files = self
             .dependence_node_module_files
@@ -340,19 +358,21 @@ module.export = Promise.all(
             .map(|f| f.clone())
             .collect::<Vec<File>>();
 
-        let mut s = self.scanning.lock().unwrap();
-        *s = false;
-        drop(s);
+        self.stop_scan();
 
         debug!("start to build dep");
         compiler.build(files)?;
 
-        let mut s = self.scanning.lock().unwrap();
-        *s = true;
+        self.start_scan();
 
-        self.reversed_required_files
-            .iter()
-            .for_each(|f| println!("r: {:?}", f.path));
+        #[cfg(debug_assertions)]
+        {
+            if !self.reversed_required_files.is_empty() {
+                self.reversed_required_files
+                    .iter()
+                    .for_each(|f| debug!("reversed require: {:?}", f.path));
+            }
+        }
 
         Ok(())
     }
@@ -392,7 +412,7 @@ module.export = Promise.all(
             state.css_patch_map = css_patch_map;
         }
 
-        self.write_current_cache_state(context);
+        self.write_current_cache_state(context)?;
 
         chunk_files
             .par_iter()
