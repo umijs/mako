@@ -1,3 +1,12 @@
+## 0.5.1
+
+`2024-05-30`
+
+- 新增插件形式扩展 mako 功能 by [@sorrycc](https://github.com/sorrycc) in [#1219](https://github.com/umijs/mako/pull/1219)
+- 新增 x86\_64 linux musl 支持 by [@stormslowly](https://github.com/stormslowly) in [#1218](https://github.com/umijs/mako/pull/1218)
+- 修复模块合并获取模块导出符号解析的错误 by [@stormslowly](https://github.com/stormslowly) in [#1216](https://github.com/umijs/mako/pull/1216)
+- 修复循环依赖下导致 HRM 报错的问题 by [@stormslowly](https://github.com/stormslowly) in [#1191](https://github.com/umijs/mako/pull/1191)
+
 
 ## 0.5.0
 
