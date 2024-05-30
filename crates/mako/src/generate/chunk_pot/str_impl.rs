@@ -115,7 +115,7 @@ pub(super) fn render_normal_js_chunk(
     let (content_buf, source_map_buf) = {
         let pot = chunk_pot;
         let chunk_prefix_code = format!(
-            r#"(globalThis['{}'] = globalThis['{}'] || []).push([
+            r#"((typeof globalThis !== 'undefined' ? globalThis : self)['{}'] = (typeof globalThis !== 'undefined' ? globalThis : self)['{}'] || []).push([
 ['{}'],"#,
             context.config.output.chunk_loading_global,
             context.config.output.chunk_loading_global,
