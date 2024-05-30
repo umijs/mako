@@ -58,8 +58,7 @@ self.$RefreshSig$ = () => (type) => type;
 
     if (latestHash !== require.currentHash()) {
       updating = true;
-      return module.hot
-        .check()
+      return Promise.all([module.hot.check(), module.hot.updateChunksUrlMap()])
         .then(() => {
           updating = false;
           return runHotUpdate();
