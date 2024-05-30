@@ -8,6 +8,7 @@ export interface TransformOutput {
   map?: string;
 }
 export interface JsHooks {
+  name?: string;
   load?: (filePath: string) => Promise<{ content: string; type: 'css' | 'js' }>;
   generateEnd?: (data: {
     isFirstCompile: boolean;
@@ -158,7 +159,7 @@ export interface BuildParams {
       ignoredPaths?: string[];
     };
   };
-  hooks: JsHooks;
+  plugins: Array<JsHooks>;
   watch: boolean;
 }
 export function build(buildParams: BuildParams): Promise<void>;
