@@ -67,7 +67,6 @@ pub struct SUPlus {
     scanning: Arc<Mutex<bool>>,
     enabled: Arc<Mutex<bool>>,
     dependence_node_module_files: DashSet<File>,
-    reversed_required_files: DashSet<File>,
     cached_state: Arc<Mutex<CacheState>>,
     current_state: Arc<Mutex<CacheState>>,
 }
@@ -97,7 +96,6 @@ impl SUPlus {
             scanning: Arc::new(Mutex::new(true)),
             enabled: Arc::new(Mutex::new(true)),
             dependence_node_module_files: Default::default(),
-            reversed_required_files: Default::default(),
             cached_state: Default::default(),
             current_state: Default::default(),
         }
@@ -367,10 +365,12 @@ module.export = Promise.all(
 
         #[cfg(debug_assertions)]
         {
-            if !self.reversed_required_files.is_empty() {
-                self.reversed_required_files
+            let current_state = self.current_state.lock().unwrap();
+            if !current_state.reversed_required_files.is_empty() {
+                current_state
+                    .reversed_required_files
                     .iter()
-                    .for_each(|f| debug!("reversed require: {:?}", f.path));
+                    .for_each(|f| debug!("reversed require: {:?}", f));
             }
         }
 
