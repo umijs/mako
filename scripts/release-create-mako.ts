@@ -9,7 +9,16 @@ import 'zx/globals';
   console.log('Build');
   await $`pnpm --filter create-mako build`;
 
-  // bump version to sync with @umijs/mako
+  // update package.json to use the latest version of @umijs/mako
+  console.log('Update package.json');
+  const templatePkgPath = path.join(__dirname, '../packages/create-mako/templates/react/package.json');
+  const makoPkgPath = path.join(__dirname, '../packages/mako/package.json');
+  const makoVersion = JSON.parse(fs.readFileSync(makoPkgPath, 'utf-8')).version;
+  const templatePkg = JSON.parse(fs.readFileSync(templatePkgPath, 'utf-8'));
+  templatePkg.devDependencies['@umijs/mako'] = `^${makoVersion}`;
+  fs.writeFileSync(templatePkgPath, JSON.stringify(templatePkg, null, 2) + '\n', 'utf-8');
+
+  // bump version
   console.log('Bump version');
   const pkgDir = path.join(__dirname, '../packages/create-mako/');
   const pkgPath = path.join(pkgDir, 'package.json');
