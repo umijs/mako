@@ -212,7 +212,7 @@ pub(crate) fn pot_to_chunk_module(
     let module_object = pot_to_module_object(pot, context)?;
 
     // ((typeof globalThis !== 'undefined' ? globalThis : self)['makoChunk_global'] = (typeof globalThis !== 'undefined' ? globalThis : self)['makoChunk_global'] || []).push([["module_id"], { module object }])
-    let chunk_global_expr = Expr::Cond(CondExpr {
+    let chunk_global_expr = CondExpr {
         span: DUMMY_SP,
         test: UnaryExpr {
             span: DUMMY_SP,
@@ -223,7 +223,8 @@ pub(crate) fn pot_to_chunk_module(
         .into(),
         cons: quote_ident!("globalThis").into(),
         alt: quote_ident!("self").into(),
-    })
+    }
+    .wrap_with_paren()
     .computed_member::<Expr>(global.clone().into());
     let chunk_global_obj = chunk_global_expr
         .clone()
