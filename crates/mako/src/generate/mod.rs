@@ -284,28 +284,30 @@ impl Compiler {
         let t_generate_chunks = Instant::now();
         let chunk_files = self.generate_chunk_files(current_hmr_hash)?;
 
-        let mut chunk_id_url_map = ChunksUrlMap {
-            js: HashMap::new(),
-            css: HashMap::new(),
-        };
+        if config.hmr.is_some() {
+            let mut chunk_id_url_map = ChunksUrlMap {
+                js: HashMap::new(),
+                css: HashMap::new(),
+            };
 
-        chunk_files.iter().for_each(|c| match c.file_type {
-            ChunkFileType::JS => {
-                chunk_id_url_map
-                    .js
-                    .insert(c.chunk_id.clone(), c.disk_name());
-            }
-            ChunkFileType::Css => {
-                chunk_id_url_map
-                    .css
-                    .insert(c.chunk_id.clone(), c.disk_name());
-            }
-        });
+            chunk_files.iter().for_each(|c| match c.file_type {
+                ChunkFileType::JS => {
+                    chunk_id_url_map
+                        .js
+                        .insert(c.chunk_id.clone(), c.disk_name());
+                }
+                ChunkFileType::Css => {
+                    chunk_id_url_map
+                        .css
+                        .insert(c.chunk_id.clone(), c.disk_name());
+                }
+            });
 
-        self.write_to_dist(
-            format!("{}.hot-update-url-map.json", last_hmr_hash),
-            serde_json::to_string(&chunk_id_url_map).unwrap(),
-        );
+            self.write_to_dist(
+                format!("{}.hot-update-url-map.json", last_hmr_hash),
+                serde_json::to_string(&chunk_id_url_map).unwrap(),
+            );
+        }
 
         let t_generate_chunks = t_generate_chunks.elapsed();
 
