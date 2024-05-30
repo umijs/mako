@@ -5,6 +5,7 @@ const assert = require('assert');
 const { createProxy, createHttpsServer } = require('@umijs/bundler-utils');
 const lodash = require('lodash');
 const chalk = require('chalk');
+const { parseTsconfig } = require('get-tsconfig');
 const {
   createProxyMiddleware,
 } = require('@umijs/bundler-utils/compiled/http-proxy-middleware');
@@ -167,7 +168,8 @@ exports.dev = async function (opts) {
   // mako dev
   const { build } = require('@umijs/mako');
   const makoConfig = await getMakoConfig(opts);
-  makoConfig.hmr = { port: hmrPort, host: opts.host };
+  makoConfig.hmr = {};
+  makoConfig.devServer = { port: hmrPort, host: opts.host };
   const cwd = opts.cwd;
   try {
     await build({
@@ -424,6 +426,7 @@ async function getMakoConfig(opts) {
     copy = [],
     clean,
     forkTSChecker,
+    inlineCSS,
   } = opts.config;
   // TODO:
   // 暂不支持 $ 结尾，等 resolve 支持后可以把这段去掉
@@ -509,6 +512,7 @@ async function getMakoConfig(opts) {
     {},
   );
   const outputPath = path.resolve(opts.cwd, opts.config.outputPath || 'dist');
+  const tsConfig = getTsConfig(opts);
 
   const makoConfig = {
     entry: opts.entry,
@@ -538,8 +542,11 @@ async function getMakoConfig(opts) {
     flexBugs: true,
     react: opts.react || {},
     emotion,
+    inlineCSS,
     forkTSChecker: !!forkTSChecker,
     ...(opts.disableCopy ? { copy: [] } : { copy: ['public'].concat(copy) }),
+    useDefineForClassFields:
+      tsConfig.compilerOptions.useDefineForClassFields ?? true,
   };
 
   return makoConfig;
@@ -562,5 +569,30 @@ function normalizeDefineValue(val) {
       obj[key] = normalizeDefineValue(val[key]);
       return obj;
     }, {});
+  }
+}
+
+const DEFAULT_TS_CONFIG = {
+  compilerOptions: {
+    useDefineForClassFields: true,
+  },
+};
+
+function getTsConfig(opts) {
+  let root = opts.cwd;
+  const tsConfigPath = path.resolve(root, 'tsconfig.json');
+
+  if (fs.existsSync(tsConfigPath)) {
+    try {
+      return parseTsconfig(tsConfigPath);
+    } catch (e) {
+      console.error(
+        'parsing tsconfig.json failed, fallback to default tsconfig\n',
+        e,
+      );
+      return DEFAULT_TS_CONFIG;
+    }
+  } else {
+    return DEFAULT_TS_CONFIG;
   }
 }

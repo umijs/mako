@@ -32,7 +32,7 @@ function blockStdout() {
 export async function build(params: BuildParams) {
   blockStdout();
 
-  params.hooks = params.hooks || {};
+  params.plugins = params.plugins || [];
   params.config.resolve = params.config.resolve || {};
   params.config.resolve.alias = params.config.resolve.alias || {};
 
@@ -75,29 +75,20 @@ export async function build(params: BuildParams) {
       ...(params.less?.plugins || []),
     ],
   });
-  let originLoad = params.hooks.load;
-  // TODO: improve load binding, should support return null if not matched
-  // @ts-ignore
-  params.hooks.load = async function (filePath: string) {
-    // user load first
-    if (originLoad) {
-      let originResult = await originLoad(filePath);
-      if (originResult) {
-        return originResult;
+  params.plugins.push({
+    name: 'less',
+    async load(filePath: string) {
+      let lessResult = await less(filePath);
+      if (lessResult) {
+        return lessResult;
       }
-    }
-    let lessResult = await less(filePath);
-    if (lessResult) {
-      return lessResult;
-    }
-  };
-
-  // in watch mode, we can reuse the worker pool, no need to terminate
-  if (!params.watch) {
-    params.hooks.generateEnd = () => {
-      lessLoader.terminate();
-    };
-  }
+    },
+    generateEnd() {
+      if (!params.watch) {
+        lessLoader.terminate();
+      }
+    },
+  });
 
   // support dump mako config
   if (process.env.DUMP_MAKO_CONFIG) {

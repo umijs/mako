@@ -1,7 +1,7 @@
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{
-    Decl, ExportDecl, ExportNamedSpecifier, ExportSpecifier, FnDecl, Function, ModuleDecl,
-    ModuleExportName, ModuleItem, NamedExport, Pat, Stmt,
+    ArrowExpr, Decl, ExportDecl, ExportNamedSpecifier, ExportSpecifier, Expr, FnDecl, Function,
+    ModuleDecl, ModuleExportName, ModuleItem, NamedExport, Pat, Stmt, VarDecl,
 };
 use mako_core::swc_ecma_utils::quote_ident;
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
@@ -20,7 +20,7 @@ impl VisitMut for FixHelperInjectPosition {
     fn visit_mut_module_item(&mut self, n: &mut ModuleItem) {
         if let ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(ExportDecl { decl, .. })) = n {
             let mut has_array_param = false;
-            let mut export_name = "".to_string();
+            let mut export_names = vec![];
             if let Decl::Fn(FnDecl {
                 ident,
                 function: box Function { params, .. },
@@ -31,12 +31,29 @@ impl VisitMut for FixHelperInjectPosition {
                     .iter()
                     .any(|param| matches!(param.pat, Pat::Array(_)));
                 if has_array_param {
-                    export_name = ident.sym.to_string();
+                    export_names.push(ident.sym.to_string());
                 }
+            }
+            if let Decl::Var(box VarDecl { decls, .. }) = &decl {
+                decls.iter().for_each(|decl| {
+                    let name = match &decl.name {
+                        Pat::Ident(ident) => ident.sym.to_string(),
+                        _ => "".to_string(),
+                    };
+                    // why don't handle Expr::Fn(FnExpr {}) ?
+                    // export const x = function ([ a, b ]) { return a + b; }; works correctly
+                    // we don't need to fix it
+                    if let Some(box Expr::Arrow(ArrowExpr { params, .. })) = &decl.init {
+                        has_array_param = params.iter().any(|param| matches!(param, Pat::Array(_)));
+                        if has_array_param && !name.is_empty() {
+                            export_names.push(name);
+                        }
+                    }
+                });
             }
             if has_array_param {
                 *n = ModuleItem::Stmt(Stmt::Decl(decl.clone()));
-                self.exports.push(export_name);
+                self.exports.extend(export_names);
             }
         }
         n.visit_mut_children_with(self);
@@ -86,13 +103,12 @@ mod tests {
 
     #[test]
     fn test_normal() {
-        let code = run(r#"
+        assert_eq!(
+            run(r#"
 export function foo([ a, b ]) {
     return a + b;
 }
-                "#);
-        assert_eq!(
-            code,
+                "#),
             r#"
 function foo(ref) {
     let _ref = _sliced_to_array(ref, 2), a = _ref[0], b = _ref[1];
@@ -100,6 +116,38 @@ function foo(ref) {
 }
 export { foo };
         "#
+            .trim()
+        );
+        assert_eq!(
+            run(r#"
+export function foo(c, [ a, b ]) {
+    return a + b + c;
+}
+                "#),
+            r#"
+function foo(c, ref) {
+    let _ref = _sliced_to_array(ref, 2), a = _ref[0], b = _ref[1];
+    return a + b + c;
+}
+export { foo };
+        "#
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_export_const_arrow() {
+        assert_eq!(
+            run(r#"
+export const foo = (x, [ a, b ]) => a + b + x;
+                "#),
+            r#"
+const foo = (x, ref)=>{
+    let _ref = _sliced_to_array(ref, 2), a = _ref[0], b = _ref[1];
+    return a + b + x;
+};
+export { foo };
+            "#
             .trim()
         );
     }

@@ -109,6 +109,13 @@ e.g.
 
 Notice: Currently, define will automatically handle the `process.env` prefix.
 
+### devServer
+
+- Type: `false | { host?: string, port?: number }`
+- Default: `{ host: '127.0.0.1', port: 3000 }`
+
+Specify the devServer configuration.
+
 ### devtool
 
 - Type: `false | "source-map" | "inline-source-map"`
@@ -227,8 +234,8 @@ Whether to generate hash file names.
 
 ### hmr
 
-- Type: `false | { host?: string, port?: number }`
-- Default: `{ host: '127.0.0.1', port: 3000 }`
+- Type: `false | {}`
+- Default: `{}`
 
 Whether to enable hot update.
 

@@ -211,12 +211,12 @@ impl Plugin for SUPlus {
                 .collect::<Vec<_>>();
             reverse_require.sort();
 
-            let port = &context.config.hmr.as_ref().unwrap().port.to_string();
-            let host = &context.config.hmr.as_ref().unwrap().host.to_string();
+            let port = context.config.dev_server.as_ref().unwrap().port.to_string();
+            let host = &context.config.dev_server.as_ref().unwrap().host;
             let host = if host == "0.0.0.0" { "127.0.0.1" } else { host };
             let hmr_runtime = include_str!("../runtime/runtime_hmr_entry.js")
                 .to_string()
-                .replace("__PORT__", port)
+                .replace("__PORT__", &port)
                 .replace("__HOST__", host);
 
             let content = format!(
