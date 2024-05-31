@@ -40,6 +40,12 @@ pub struct EmitFile {
     pub hashname: String,
 }
 
+#[derive(Serialize)]
+struct ChunksUrlMap {
+    js: HashMap<String, String>,
+    css: HashMap<String, String>,
+}
+
 impl Compiler {
     fn generate_with_plugin_driver(&self) -> Result<()> {
         self.context.plugin_driver.generate(&self.context)?;
@@ -255,7 +261,7 @@ impl Compiler {
         emit_chunk_file(&self.context, chunk_file);
     }
 
-    pub fn emit_dev_chunks(&self, hmr_hash: u64) -> Result<()> {
+    pub fn emit_dev_chunks(&self, current_hmr_hash: u64, last_hmr_hash: u64) -> Result<()> {
         mako_core::mako_profile_function!("emit_dev_chunks");
 
         debug!("generate(hmr-fullbuild)");
@@ -280,7 +286,32 @@ impl Compiler {
 
         // generate chunks
         let t_generate_chunks = Instant::now();
-        let chunk_files = self.generate_chunk_files(hmr_hash)?;
+        let chunk_files = self.generate_chunk_files(current_hmr_hash)?;
+
+        if config.hmr.is_some() {
+            let mut chunk_id_url_map = ChunksUrlMap {
+                js: HashMap::new(),
+                css: HashMap::new(),
+            };
+
+            chunk_files.iter().for_each(|c| match c.file_type {
+                ChunkFileType::JS => {
+                    chunk_id_url_map
+                        .js
+                        .insert(c.chunk_id.clone(), c.disk_name());
+                }
+                ChunkFileType::Css => {
+                    chunk_id_url_map
+                        .css
+                        .insert(c.chunk_id.clone(), c.disk_name());
+                }
+            });
+
+            self.write_to_dist(
+                format!("{}.hot-update-url-map.json", last_hmr_hash),
+                serde_json::to_string(&chunk_id_url_map).unwrap(),
+            );
+        }
 
         self.context
             .plugin_driver
@@ -339,7 +370,7 @@ impl Compiler {
         updated_modules: UpdateResult,
         last_snapshot_hash: u64,
         last_hmr_hash: u64,
-    ) -> Result<(u64, u64)> {
+    ) -> Result<(u64, u64, u64)> {
         debug!("generate_hot_update_chunks start");
 
         let last_chunk_names: HashSet<String> = {
@@ -379,7 +410,7 @@ impl Compiler {
         );
 
         if current_snapshot_hash == last_snapshot_hash {
-            return Ok((current_snapshot_hash, current_hmr_hash));
+            return Ok((current_snapshot_hash, current_hmr_hash, last_hmr_hash));
         }
 
         if self.context.config.hmr.is_some() {
@@ -464,7 +495,7 @@ impl Compiler {
         debug!("  - calculate hash: {}ms", t_calculate_hash.as_millis());
         debug!("  - next full hash: {}", current_snapshot_hash);
 
-        Ok((current_snapshot_hash, current_hmr_hash))
+        Ok((current_snapshot_hash, current_hmr_hash, last_hmr_hash))
     }
 
     pub fn write_to_dist<P: AsRef<std::path::Path>, C: AsRef<[u8]>>(

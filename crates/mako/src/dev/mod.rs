@@ -295,7 +295,7 @@ impl DevServer {
             eprintln!("Error in watch: {:?}", e);
             return Err(e);
         }
-        let (next_snapshot_hash, next_hmr_hash) = next_hash.unwrap();
+        let (next_snapshot_hash, next_hmr_hash, current_hmr_hash) = next_hash.unwrap();
         debug!(
             "hash info, next: {:?}, last: {:?}, is_equal: {}",
             next_snapshot_hash,
@@ -314,7 +314,7 @@ impl DevServer {
 
         compiler.context.stats_info.clear_assets();
 
-        if let Err(e) = compiler.emit_dev_chunks(next_hmr_hash) {
+        if let Err(e) = compiler.emit_dev_chunks(next_hmr_hash, current_hmr_hash) {
             debug!("  > build failed: {:?}", e);
             return Err(e);
         }

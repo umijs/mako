@@ -109,6 +109,17 @@
         this._disposeHandlers.push(callback);
       },
       invalidate() {},
+      updateChunksUrlMap() {
+        const current_hash = requireModule.currentHash();
+        return fetch(
+          `${requireModule.publicPath}${current_hash}.hot-update-url-map.json`,
+        )
+          .then((res) => res.json())
+          .then((chunksUrlMap) => {
+            Object.assign(chunksIdToUrlMap, chunksUrlMap.js);
+            Object.assign(cssChunksIdToUrlMap, chunksUrlMap.css);
+          });
+      },
       check() {
         const current_hash = requireModule.currentHash();
         return fetch(
