@@ -1181,6 +1181,16 @@ dependencies = [
 
 [[package]]
 name = "dashmap"
+version = "4.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e77a43b28d0668df09411cb0bc9a8c2adc40f9a048afe863e05fd43251e8e39c"
+dependencies = [
+ "cfg-if",
+ "num_cpus",
+]
+
+[[package]]
+name = "dashmap"
 version = "5.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "978747c1d849a7d2ee5e8adc0159961c48fb7e5db2f06af6723b80123bb53856"
@@ -2543,6 +2553,7 @@ version = "0.1.0"
 dependencies = [
  "bitflags 2.4.2",
  "cached",
+ "dashmap 4.0.2",
  "delegate",
  "fixedbitset",
  "glob-match",
@@ -3301,7 +3312,7 @@ version = "1.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2033cc3b0e72446d3321866db0954804b9ca559ad692480205053f6aea4bfc15"
 dependencies = [
- "dashmap",
+ "dashmap 5.5.3",
  "dunce",
  "indexmap 2.2.3",
  "json-strip-comments",
@@ -3610,7 +3621,7 @@ dependencies = [
  "ahash 0.8.6",
  "anyhow",
  "browserslist-rs",
- "dashmap",
+ "dashmap 5.5.3",
  "from_variant",
  "once_cell",
  "semver 1.0.17",
@@ -4569,7 +4580,7 @@ checksum = "49be68a31f62828304f0325a324bbf47cf128c954a49f4e3730eba29b01b6376"
 dependencies = [
  "anyhow",
  "base64 0.13.1",
- "dashmap",
+ "dashmap 5.5.3",
  "either",
  "indexmap 1.9.3",
  "jsonc-parser",
@@ -4691,7 +4702,7 @@ checksum = "97b8051bbf1c23817f9f2912fce18d9a6efcaaf8f8e1a4c69dbaf72bcaf71136"
 dependencies = [
  "ahash 0.8.6",
  "anyhow",
- "dashmap",
+ "dashmap 5.5.3",
  "once_cell",
  "regex",
  "serde",
@@ -5205,7 +5216,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "300ae29c0fc98ed0364aa2fd4aa7702d6dc67d411dd4894e7e60d40e99c4ef19"
 dependencies = [
  "auto_impl 1.1.0",
- "dashmap",
+ "dashmap 5.5.3",
  "parking_lot",
  "rayon",
  "regex",
@@ -5239,7 +5250,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b2b3a3ec38fc9c691b787d32ac2aa5eb6871d1fe74ac4a10638fbd9b9bc407b"
 dependencies = [
  "anyhow",
- "dashmap",
+ "dashmap 5.5.3",
  "lru",
  "normpath",
  "once_cell",
@@ -5355,7 +5366,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "641be911f548518ab41f22dd377420a9b5d9de857a2f77ffdf51cf2aff0069bd"
 dependencies = [
  "anyhow",
- "dashmap",
+ "dashmap 5.5.3",
  "indexmap 1.9.3",
  "once_cell",
  "preset_env_base",
@@ -5580,7 +5591,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "544681f98bd62c45e8fc091cfbf8425fb02fd458a4ad81b9557be8bb41e5db37"
 dependencies = [
  "ahash 0.7.6",
- "dashmap",
+ "dashmap 5.5.3",
  "indexmap 1.9.3",
  "once_cell",
  "petgraph",
@@ -5604,7 +5615,7 @@ version = "0.193.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "321b41c92ea012e9514f694a6073ea7d5a5a081d4a78e381b0ee3c2a96a07b57"
 dependencies = [
- "dashmap",
+ "dashmap 5.5.3",
  "indexmap 1.9.3",
  "once_cell",
  "petgraph",
@@ -5650,7 +5661,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3066e5671862ec921d39a210bb94e2fd82c1d4a8b2ccf44feb9017ab8afadd61"
 dependencies = [
  "base64 0.13.1",
- "dashmap",
+ "dashmap 5.5.3",
  "indexmap 1.9.3",
  "once_cell",
  "serde",
@@ -5941,7 +5952,7 @@ version = "0.19.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2b9597573f1ab8bae72329eef550d214ced0955c7a4f1b6b4ae5e216219e710"
 dependencies = [
- "dashmap",
+ "dashmap 5.5.3",
  "swc_atoms 0.5.9",
  "swc_common 0.32.1",
 ]

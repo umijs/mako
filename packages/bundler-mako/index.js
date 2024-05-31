@@ -123,10 +123,41 @@ exports.dev = async function (opts) {
 
   // serve dist files
   app.use(express.static(outputPath));
+
+  if (process.env.SSU === 'true') {
+    // for ssu cache chunks
+
+    app.use(function (req, res, next) {
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        return next();
+      }
+
+      let proxy = createProxyMiddleware({
+        target: `http://127.0.0.1:${hmrPort}`,
+        selfHandleResponse: true,
+        onProxyRes: (proxyRes, req, res) => {
+          if (proxyRes.statusCode !== 200) {
+            next();
+          } else {
+            proxyRes.pipe(res);
+          }
+        },
+        onError: (err, req, res) => {
+          next();
+        },
+      });
+
+      proxy(req, res, () => {
+        next();
+      });
+    });
+  }
+
   // proxy
   if (opts.config.proxy) {
     createProxy(opts.config.proxy, app);
   }
+
   // after middlewares
   (opts.afterMiddlewares || []).forEach((m) => {
     // TODO: FIXME
