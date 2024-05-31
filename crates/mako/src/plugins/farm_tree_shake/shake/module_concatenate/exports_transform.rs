@@ -31,7 +31,7 @@ impl Visit for PatDefineIdCollector {
                             self.visit_pat(&kv_prop.value);
                         }
                         ObjectPatProp::Assign(assign_prop) => {
-                            self.defined_idents.insert(assign_prop.key.to_string());
+                            self.defined_idents.insert(assign_prop.key.sym.to_string());
                         }
                         ObjectPatProp::Rest(rest_prop) => {
                             self.visit_pat(&rest_prop.arg);
@@ -133,5 +133,78 @@ fn module_export_name_as_ident(module_export_name: &ModuleExportName) -> Option<
     match module_export_name {
         ModuleExportName::Ident(ident) => Some(ident),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use maplit::hashset;
+    use swc_core::ecma::visit::VisitWith;
+
+    use super::*;
+    use crate::ast::tests::TestUtils;
+
+    #[test]
+    fn collect_default_export() {
+        assert_eq!(
+            extract_export("export default 1"),
+            hashset! {"default".to_string()}
+        );
+    }
+
+    #[test]
+    fn export_named_fn() {
+        assert_eq!(
+            extract_export("export function fn(){}"),
+            hashset! {"fn".to_string()}
+        );
+    }
+
+    #[test]
+    fn export_named_class() {
+        assert_eq!(
+            extract_export("export class C{}"),
+            hashset! {"C".to_string()}
+        );
+    }
+
+    #[test]
+    fn export_names() {
+        assert_eq!(
+            extract_export("let a=1,b=2; export {a,b}"),
+            hashset! {"a".to_string(), "b".to_string()}
+        );
+    }
+
+    #[test]
+    fn export_object_deconstruct() {
+        assert_eq!(
+            extract_export("let A= {a:1,b:2, c:3}; export const {a,b:x, ...z} = A"),
+            hashset! {"a".to_string(), "x".to_string(), "z".to_string()}
+        );
+    }
+
+    #[test]
+    fn export_array_deconstruct() {
+        assert_eq!(
+            extract_export("let a= [1,2,3]; export const [x,y,...z] = a"),
+            hashset! {"x".to_string(), "y".to_string(), "z".to_string()}
+        );
+    }
+
+    #[test]
+    fn export_var_decl_export() {
+        assert_eq!(
+            extract_export("export const a =1"),
+            hashset! {"a".to_string()}
+        );
+    }
+
+    fn extract_export(code: &str) -> HashSet<String> {
+        let mut ast = TestUtils::gen_js_ast(code.to_string());
+        let mut collectort = ExportsCollector::default();
+
+        ast.ast.js_mut().ast.visit_with(&mut collectort);
+        collectort.exports
     }
 }

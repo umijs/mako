@@ -5,10 +5,11 @@ use std::sync::Arc;
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::md5;
 use mako_core::sailfish::TemplateOnce;
+use mako_core::swc_atoms::js_word;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{
-    ArrayLit, AssignOp, BinaryOp, BlockStmt, Expr, ExprOrSpread, FnExpr, Function, Ident,
-    KeyValueProp, Module as SwcModule, ObjectLit, Prop, PropOrSpread,
+    ArrayLit, AssignOp, BinaryOp, BlockStmt, CondExpr, Expr, ExprOrSpread, FnExpr, Function, Ident,
+    KeyValueProp, Module as SwcModule, ObjectLit, Prop, PropOrSpread, UnaryExpr, UnaryOp,
 };
 use mako_core::swc_ecma_codegen::text_writer::JsWriter;
 use mako_core::swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
@@ -210,9 +211,21 @@ pub(crate) fn pot_to_chunk_module(
 
     let module_object = pot_to_module_object(pot, context)?;
 
-    // (globalThis['makoChunk_global'] = globalThis['makoChunk_global'] || []).push([["module_id"], { module object }])
-    let chunk_global_expr =
-        quote_ident!("globalThis").computed_member::<Expr>(global.clone().into());
+    // ((typeof globalThis !== 'undefined' ? globalThis : self)['makoChunk_global'] = (typeof globalThis !== 'undefined' ? globalThis : self)['makoChunk_global'] || []).push([["module_id"], { module object }])
+    let chunk_global_expr = CondExpr {
+        span: DUMMY_SP,
+        test: UnaryExpr {
+            span: DUMMY_SP,
+            op: UnaryOp::TypeOf,
+            arg: quote_ident!("globalThis").into(),
+        }
+        .make_bin::<Expr>(BinaryOp::NotEqEq, js_word!("undefined").into())
+        .into(),
+        cons: quote_ident!("globalThis").into(),
+        alt: quote_ident!("self").into(),
+    }
+    .wrap_with_paren()
+    .computed_member::<Expr>(global.clone().into());
     let chunk_global_obj = chunk_global_expr
         .clone()
         .make_bin::<Expr>(

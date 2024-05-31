@@ -1,3 +1,5 @@
+import assert from 'assert';
+
 interface MakoStats {
   chunks: {
     type: 'chunk';
@@ -8,24 +10,67 @@ interface MakoStats {
     siblings: string[];
     origins: unknown[];
   }[];
-  rscClientComponents: { path: string }[];
-  rscCSSModules: { path: string }[];
+  modules: Record<
+    string,
+    {
+      id: string;
+      dependencies: string[];
+      dependents: string[];
+    }
+  >;
+  rscClientComponents: { path: string; moduleId: string }[];
+  rscCSSModules: { path: string; moduleId: string; modules: boolean }[];
 }
 
 interface ServerManifest {
-  rscClientComponents: string[];
-  rscCSSModules: string[];
+  rscClientComponents: { path: string; entries: string[] }[];
+  rscCSSModules: { path: string; entries: string[] }[];
 }
 
 export function parseServerStats(stats: MakoStats): ServerManifest {
-  let rscClientComponents = stats.rscClientComponents.map(
-    (module) => module.path,
+  assert(
+    stats.modules,
+    'modules must be provided in stats, please configured stats.modules to true in your config.',
   );
-  let rscCSSModules = stats.rscCSSModules.map((module) => module.path);
+  let rscClientComponents = stats.rscClientComponents.map((module) => {
+    return {
+      path: module.path,
+      moduleId: module.moduleId,
+      entries: findEntries(module.moduleId, stats),
+    };
+  });
+  let rscCSSModules = stats.rscCSSModules.map((module) => {
+    return {
+      path: module.path,
+      moduleId: module.moduleId,
+      entries: findEntries(module.moduleId, stats),
+    };
+  });
   return {
     rscCSSModules,
     rscClientComponents,
   };
+}
+
+function findEntries(moduleId: string, stats: MakoStats): string[] {
+  let entries: string[] = [];
+  let modules = stats.modules;
+  let module = modules[moduleId];
+  assert(module, `module ${moduleId} not found in stats.modules`);
+  let queue = [module];
+  while (queue.length) {
+    let module = queue.shift();
+    if (!module) continue;
+    let dependents = module.dependents;
+    if (!dependents.length) {
+      entries.push(module.id);
+      continue;
+    }
+    for (let dependent of dependents) {
+      queue.push(modules[dependent]);
+    }
+  }
+  return entries;
 }
 
 interface ClientManifest {

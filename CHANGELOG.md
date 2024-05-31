@@ -1,5 +1,62 @@
+## 0.5.1
+
+`2024-05-30`
+
+- 新增插件形式扩展 mako 功能 by [@sorrycc](https://github.com/sorrycc) in [#1219](https://github.com/umijs/mako/pull/1219)
+- 新增 x86\_64 linux musl 支持 by [@stormslowly](https://github.com/stormslowly) in [#1218](https://github.com/umijs/mako/pull/1218)
+- 修复模块合并获取模块导出符号解析的错误 by [@stormslowly](https://github.com/stormslowly) in [#1216](https://github.com/umijs/mako/pull/1216)
+- 修复循环依赖下导致 HRM 报错的问题 by [@stormslowly](https://github.com/stormslowly) in [#1191](https://github.com/umijs/mako/pull/1191)
+
+
+## 0.5.0
+
+`2024-05-29`
+
+* 新增 watch.ignorePaths 配置 by [@sorrycc](https://github.com/sorrycc) in [#1179](https://github.com/umijs/mako/pull/1179)
+* 新增支持 externals 和 commonjs require by [@sorrycc](https://github.com/sorrycc) in [#1185](https://github.com/umijs/mako/pull/1185)
+* 新增 rscClient.logServerComponent 配置 by [@sorrycc](https://github.com/sorrycc) in [#1200](https://github.com/umijs/mako/pull/1200)
+* 新增 stats.modules 配置以生成具有依赖项和依赖项的模块 by [@sorrycc](https://github.com/sorrycc) in [#1202](https://github.com/umijs/mako/pull/1202)
+* 新增 useDefineForClassFields 配置 by [@stormslowly](https://github.com/stormslowly) in [#1181](https://github.com/umijs/mako/pull/1181)
+* 优化 watch、dev_server 和 hmr 配置（含 Break Change） by [@sorrycc](https://github.com/sorrycc) in [#1206](https://github.com/umijs/mako/pull/1206)
+* 优化改进 parseServerStats by [@sorrycc](https://github.com/sorrycc) in [#1203](https://github.com/umijs/mako/pull/1203)
+* 修复 hooks 丢失传输问题 by [@Jinbao1001](https://github.com/Jinbao1001) in [#1170](https://github.com/umijs/mako/pull/1170)
+* 修复 with-antd 示例在 watch 时 “too many files open” 错误 by [@zhangpanweb](https://github.com/zhangpanweb) in [#1022](https://github.com/umijs/mako/pull/1022)
+* 修复 decorator visitor 应该在 preset env 之前运行 by [@stormslowly](https://github.com/stormslowly) in [#1176](https://github.com/umijs/mako/pull/1176)
+* 修复 node 场景，添加需要 ignore 的报名 by [@sorrycc](https://github.com/sorrycc) in [#1182](https://github.com/umijs/mako/pull/1182)
+* 修复 less ，在 Linux 上的 node 版本 < 20.12.0 时禁用并行 less loader by [@xusd320](https://github.com/xusd320) in [#1184](https://github.com/umijs/mako/pull/1184)
+* 修复 less loader 中的 node 版本检查 by [@xusd320](https://github.com/xusd320) in [#1188](https://github.com/umijs/mako/pull/1188)
+* 修复重新解析器以添加 ctxt by [@stormslowly](https://github.com/stormslowly) in [#1189](https://github.com/umijs/mako/pull/1189)
+* 修复 px2rem min_pixel_value 应接受绝对值 by [@sorrycc](https://github.com/sorrycc) in [#1192](https://github.com/umijs/mako/pull/1192)
+* 修复导出带数组参数的函数在 chrome 50 中的 swc bug by [@sorrycc](https://github.com/sorrycc) in [#1199](https://github.com/umijs/mako/pull/1199)
+* 修复 watch 模式下的重复 assets 信息 by [@xusd320](https://github.com/xusd320) in [#1194](https://github.com/umijs/mako/pull/1194)
+* 修复错误类型的 ctx by [@stormslowly](https://github.com/stormslowly) in [#1196](https://github.com/umijs/mako/pull/1196)
+* 修复 rsc 支持 moduleIdStrategy hashed by [@sorrycc](https://github.com/sorrycc) in [#1201](https://github.com/umijs/mako/pull/1201)
+* 修复 fix_helper_inject_position 支持导出 const 箭头函数 by [@sorrycc](https://github.com/sorrycc) in [#1207](https://github.com/umijs/mako/pull/1207)
+* 修复 ts 中导出的命名空间类型未被剥离 by [@stormslowly](https://github.com/stormslowly) in [#1198](https://github.com/umijs/mako/pull/1198)
+* 修复 watch 结果事件错误 panic by [@sorrycc](https://github.com/sorrycc) in [#1212](https://github.com/umijs/mako/pull/1212)
+* 修复 watch 模式下添加动态依赖时应重新分组 by [@xusd320](https://github.com/xusd320) in [#1213](https://github.com/umijs/mako/pull/1213)
+* 修复 inlineCSS 不工作 by [@stormslowly](https://github.com/stormslowly) in [#1211](https://github.com/umijs/mako/pull/1211)
+
+## 0.4.17
+
+`2024-05-16`
+
+* 新增 watch=parent 支持 by [@sorrycc](https://github.com/sorrycc) in [#1151](https://github.com/umijs/mako/pull/1151)
+* 新增 create-mako 包 by [@sorrycc](https://github.com/sorrycc) in [#1164](https://github.com/umijs/mako/pull/1164)
+* 新增: 删除 output.ascii_only 配置项 by [@sorrycc](https://github.com/sorrycc) in [#1152](https://github.com/umijs/mako/pull/1152)
+* 优化 less，支持 less 插件 by [@xusd320](https://github.com/xusd320) in [#1148](https://github.com/umijs/mako/pull/1148)
+* 优化 less，兼容 ESM less 插件 by [@PeachScript](https://github.com/PeachScript) in [#1162](https://github.com/umijs/mako/pull/1162)
+* 优化 stats.json，新增 modules 属性 中 by [@sorrycc](https://github.com/sorrycc) in [#1167](https://github.com/umijs/mako/pull/1167)
+* 修复空 chunk 问题 by [@stormslowly](https://github.com/stormslowly) in [#1147](https://github.com/umijs/mako/pull/1147)
+* 修复 ESM 和 require 混用问题 by [@stormslowly](https://github.com/stormslowly) in [#1154](https://github.com/umijs/mako/pull/1154)
+* 修复生成空 chunk 时的 panic 问题 by [@xusd320](https://github.com/xusd320) in [#1135](https://github.com/umijs/mako/pull/1135)
+* 修复 tree-shaking 导入的模块不返回 namespace 问题 by [@stormslowly](https://github.com/stormslowly) in [#1158](https://github.com/umijs/mako/pull/1158)
+* 修复 在 bundless 模式下保留中文字符 by [@sorrycc](https://github.com/sorrycc) in [#1160](https://github.com/umijs/mako/pull/1160)
+* 修复不正确的 chunk size map 问题 by [@xusd320](https://github.com/xusd320) in [#1161](https://github.com/umijs/mako/pull/1161)
+* 修复 rsc sdk 中客户端 chunk 缺少兄弟模块的问题 by [@PeachScript](https://github.com/PeachScript) in [#1166](https://github.com/umijs/mako/pull/1166)
 
 ## 0.4.16
+
 `2024-05-11`
 
 > @alipay/bigfish@4.1.31
@@ -14,9 +71,9 @@
 
 > @alipay/bigfish@4.1.29
 
-* 优化 px2rem 支持 min_pixel_value 配置 by @sorrycc in #1141
-* 修复 px2rem 在使用属性选择器但没值时会 panic 的问题 by @sorrycc in #1140
-* 修复 node 补丁方案不支持 timers 的问题 by @sorrycc in #1142
+* 优化 px2rem 支持 min_pixel_value 配置 by [@sorrycc](https://github.com/sorrycc) in [#1141](https://github.com/umijs/mako/pull/1141)
+* 修复 px2rem 在使用属性选择器但没值时会 panic 的问题 by [@sorrycc](https://github.com/sorrycc) in [#1140](https://github.com/umijs/mako/pull/1140)
+* 修复 node 补丁方案不支持 timers 的问题 by [@sorrycc](https://github.com/sorrycc) in [#1142](https://github.com/umijs/mako/pull/1142)
 
 ## 0.4.14
 

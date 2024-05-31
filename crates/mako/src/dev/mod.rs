@@ -42,38 +42,52 @@ impl DevServer {
         let root = self.root.clone();
         let compiler = self.compiler.clone();
         let txws_watch = txws.clone();
-        std::thread::spawn(move || {
-            if let Err(e) = Self::watch_for_changes(root, compiler, txws_watch, callback) {
-                eprintln!("Error watching files: {:?}", e);
-            }
-        });
+
+        if self.compiler.context.config.dev_server.is_some() {
+            std::thread::spawn(move || {
+                if let Err(e) = Self::watch_for_changes(root, compiler, txws_watch, callback) {
+                    eprintln!("Error watching files: {:?}", e);
+                }
+            });
+        } else if let Err(e) = Self::watch_for_changes(root, compiler, txws_watch, callback) {
+            eprintln!("Error watching files: {:?}", e);
+        }
 
         // server
-        let port = self.compiler.context.config.hmr.as_ref().unwrap().port;
-        // TODO: host
-        // let host = self.compiler.context.config.hmr_host.clone();
-        // TODO: find free port
-        let addr: SocketAddr = ([127, 0, 0, 1], port).into();
-        let context = self.compiler.context.clone();
-        let txws = txws.clone();
-        let make_svc = make_service_fn(move |_conn| {
-            let context = context.clone();
+        if self.compiler.context.config.dev_server.is_some() {
+            let port = self
+                .compiler
+                .context
+                .config
+                .dev_server
+                .as_ref()
+                .unwrap()
+                .port;
+            // TODO: host
+            // let host = self.compiler.context.config.hmr_host.clone();
+            // TODO: find free port
+            let addr: SocketAddr = ([127, 0, 0, 1], port).into();
+            let context = self.compiler.context.clone();
             let txws = txws.clone();
-            async move {
-                Ok::<_, hyper::Error>(service_fn(move |req| {
-                    let context = context.clone();
-                    let txws = txws.clone();
-                    let staticfile =
-                        hyper_staticfile::Static::new(context.config.output.path.clone());
-                    async move { Self::handle_requests(req, context, staticfile, txws).await }
-                }))
+            let make_svc = make_service_fn(move |_conn| {
+                let context = context.clone();
+                let txws = txws.clone();
+                async move {
+                    Ok::<_, hyper::Error>(service_fn(move |req| {
+                        let context = context.clone();
+                        let txws = txws.clone();
+                        let staticfile =
+                            hyper_staticfile::Static::new(context.config.output.path.clone());
+                        async move { Self::handle_requests(req, context, staticfile, txws).await }
+                    }))
+                }
+            });
+            let server = Server::bind(&addr).serve(make_svc);
+            // TODO: print when mako is run standalone
+            debug!("Listening on http://{:?}", addr);
+            if let Err(e) = server.await {
+                eprintln!("Error starting server: {:?}", e);
             }
-        });
-        let server = Server::bind(&addr).serve(make_svc);
-        // TODO: print when mako is run standalone
-        debug!("Listening on http://{:?}", addr);
-        if let Err(e) = server.await {
-            eprintln!("Error starting server: {:?}", e);
         }
     }
 
@@ -108,25 +122,43 @@ impl DevServer {
             }
             _ => {
                 // for bundle outputs
+
+                let ext = path.rsplit('.').next();
+                let content_type = match ext {
+                    None => "text/plain; charset=utf-8",
+                    Some("js") => "application/javascript; charset=utf-8",
+                    Some("css") => "text/css; charset=utf-8",
+                    Some("map") | Some("json") => "application/json; charset=utf-8",
+                    Some(_) => "text/plain; charset=utf-8",
+                };
+
                 // staticfile has 302 problems when modify tooooo fast in 1 second
                 // it will response 302 and we will get the old file
                 // TODO: fix the 302 problem?
                 if let Some(res) = context.get_static_content(path_without_slash_start) {
                     debug!("serve with context.get_static_content: {}", path);
-                    let ext = path.rsplit('.').next();
-                    let content_type = match ext {
-                        None => "text/plain; charset=utf-8",
-                        Some("js") => "application/javascript; charset=utf-8",
-                        Some("css") => "text/css; charset=utf-8",
-                        Some("map") | Some("json") => "application/json; charset=utf-8",
-                        Some(_) => "text/plain; charset=utf-8",
-                    };
+
                     return Ok(hyper::Response::builder()
                         .status(hyper::StatusCode::OK)
                         .header(CONTENT_TYPE, content_type)
                         .body(hyper::Body::from(res))
                         .unwrap());
                 }
+                // for cached dep
+                let abs_path = context
+                    .root
+                    .join("node_modules/.cache_mako/chunks")
+                    .join(path_without_slash_start);
+                if !path_without_slash_start.is_empty() && abs_path.exists() {
+                    return std::fs::read(abs_path).map_or(Ok(not_found_response()), |bytes| {
+                        Ok(hyper::Response::builder()
+                            .status(hyper::StatusCode::OK)
+                            .header(CONTENT_TYPE, content_type)
+                            .body(hyper::Body::from(bytes))
+                            .unwrap())
+                    });
+                }
+
                 // for hmr files
                 debug!("serve with staticfile server: {}", path);
                 let res = staticfile.serve(req).await;
@@ -182,6 +214,10 @@ impl DevServer {
         let mut hmr_hash = Box::new(initial_hash);
 
         for result in rx {
+            if result.is_err() {
+                eprintln!("Error watching files: {:?}", result.err().unwrap());
+                continue;
+            }
             let paths = watch::Watcher::normalize_events(result.unwrap());
             if !paths.is_empty() {
                 let compiler = compiler.clone();
@@ -275,6 +311,9 @@ impl DevServer {
         }
 
         debug!("full rebuild...");
+
+        compiler.context.stats_info.clear_assets();
+
         if let Err(e) = compiler.emit_dev_chunks(next_hmr_hash) {
             debug!("  > build failed: {:?}", e);
             return Err(e);

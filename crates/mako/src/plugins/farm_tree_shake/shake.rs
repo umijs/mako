@@ -402,6 +402,10 @@ fn add_used_exports_by_import_info(
     {
         let imported_module = module_graph.get_module(imported_module_id).unwrap();
 
+        if imported_module.get_module_type() == ModuleType::PlaceHolder {
+            return None;
+        }
+
         let info = imported_module.info.as_ref().unwrap();
 
         let is_js = matches!(info.ast, ModuleAst::Script(_));
@@ -479,7 +483,7 @@ fn add_used_exports_by_export_info(
         {
             let exported_module = module_graph.get_module(exported_module_id).unwrap();
 
-            if exported_module.is_external() {
+            if exported_module.is_external() || exported_module.is_placeholder() {
                 return None;
             };
 

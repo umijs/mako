@@ -109,6 +109,13 @@ e.g.
 
 Notice: Currently, define will automatically handle the `process.env` prefix.
 
+### devServer
+
+- Type: `false | { host?: string, port?: number }`
+- Default: `{ host: '127.0.0.1', port: 3000 }`
+
+Specify the devServer configuration.
+
 ### devtool
 
 - Type: `false | "source-map" | "inline-source-map"`
@@ -227,8 +234,8 @@ Whether to generate hash file names.
 
 ### hmr
 
-- Type: `false | { host?: string, port?: number }`
-- Default: `{ host: '127.0.0.1', port: 3000 }`
+- Type: `false | {}`
+- Default: `{}`
 
 Whether to enable hot update.
 
@@ -455,12 +462,35 @@ e.g.
 }
 ```
 
+### rscClient
+
+- Type: `{ logServerComponent: 'error' | 'ignore' } | false`
+- Default: `false`
+
+Configuration related to RSC client.
+
+### rscServer
+
+- Type: `{ clientComponentTpl: string, emitCSS: boolean } | false`
+- Default: `false`
+
+Configuration related to RSC server.
+
+Child configuration items:
+
+- `clientComponentTpl`, client component template, use `{{path}}` to represent the path of the component, and use `{{id}}` to represent the id of the module.
+- `emitCSS`, whether to output CSS components.
+
 ### stats
 
-- Type: `boolean`
+- Type: `{ modules: bool } | false`
 - Default: `false`
 
 Whether to generate stats.json file.
+
+Child configuration items:
+
+- `modules`, whether to generate module information, it may be useful when you want to analyze the size of the module but may slow down the build speed.
 
 ### transformImport
 

@@ -90,6 +90,7 @@ macro_rules! create_deserialize_fn {
     };
 }
 create_deserialize_fn!(deserialize_hmr, HmrConfig);
+create_deserialize_fn!(deserialize_dev_server, DevServerConfig);
 create_deserialize_fn!(deserialize_manifest, ManifestConfig);
 create_deserialize_fn!(deserialize_code_splitting, CodeSplittingStrategy);
 create_deserialize_fn!(deserialize_px2rem, Px2RemConfig);
@@ -101,6 +102,7 @@ create_deserialize_fn!(deserialize_minifish, MinifishConfig);
 create_deserialize_fn!(deserialize_inline_css, InlineCssConfig);
 create_deserialize_fn!(deserialize_rsc_client, RscClientConfig);
 create_deserialize_fn!(deserialize_rsc_server, RscServerConfig);
+create_deserialize_fn!(deserialize_stats, StatsConfig);
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -187,6 +189,11 @@ pub enum ModuleIdStrategy {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct StatsConfig {
+    pub modules: bool,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub enum CodeSplittingStrategy {
     #[serde(rename = "auto")]
     Auto,
@@ -246,19 +253,19 @@ pub struct TransformImportConfig {
     pub style: Option<TransformImportStyle>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Hash)]
 pub enum ExternalAdvancedSubpathConverter {
     PascalCase,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Hash)]
 #[serde(untagged)]
 pub enum ExternalAdvancedSubpathTarget {
     Empty,
     Tpl(String),
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Hash)]
 pub struct ExternalAdvancedSubpathRule {
     pub regex: String,
     #[serde(with = "external_target_format")]
@@ -299,13 +306,14 @@ mod external_target_format {
         }
     }
 }
-#[derive(Deserialize, Serialize, Debug)]
+
+#[derive(Deserialize, Serialize, Debug, Hash)]
 pub struct ExternalAdvancedSubpath {
     pub exclude: Option<Vec<String>>,
     pub rules: Vec<ExternalAdvancedSubpathRule>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Hash)]
 pub struct ExternalAdvanced {
     pub root: String,
     #[serde(rename = "type")]
@@ -314,7 +322,7 @@ pub struct ExternalAdvanced {
     pub subpath: Option<ExternalAdvancedSubpath>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Hash)]
 #[serde(untagged)]
 pub enum ExternalConfig {
     Basic(String),
@@ -376,8 +384,19 @@ pub struct RscServerConfig {
     pub emit_css: bool,
 }
 
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, ValueEnum, Clone)]
+pub enum LogServerComponent {
+    #[serde(rename = "error")]
+    Error,
+    #[serde(rename = "ignore")]
+    Ignore,
+}
+
 #[derive(Deserialize, Serialize, Debug)]
-pub struct RscClientConfig {}
+#[serde(rename_all = "camelCase")]
+pub struct RscClientConfig {
+    pub log_server_component: LogServerComponent,
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -393,7 +412,11 @@ pub struct WatchConfig {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct HmrConfig {
+pub struct HmrConfig {}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DevServerConfig {
     pub host: String,
     pub port: u16,
 }
@@ -419,11 +442,16 @@ pub struct Config {
     pub platform: Platform,
     pub module_id_strategy: ModuleIdStrategy,
     pub define: HashMap<String, Value>,
-    pub stats: bool,
+
     pub analyze: bool,
+
+    pub stats: Option<StatsConfig>,
+
     pub mdx: bool,
     #[serde(deserialize_with = "deserialize_hmr")]
     pub hmr: Option<HmrConfig>,
+    #[serde(deserialize_with = "deserialize_dev_server")]
+    pub dev_server: Option<DevServerConfig>,
     #[serde(deserialize_with = "deserialize_code_splitting", default)]
     pub code_splitting: Option<CodeSplittingStrategy>,
     #[serde(deserialize_with = "deserialize_px2rem", default)]
@@ -481,6 +509,7 @@ pub struct Config {
     pub rsc_client: Option<RscClientConfig>,
     pub experimental: ExperimentalConfig,
     pub watch: WatchConfig,
+    pub use_define_for_class_fields: bool,
 }
 
 #[allow(dead_code)]
@@ -543,6 +572,7 @@ impl Default for OptimizeChunkGroup {
         }
     }
 }
+
 /**
  * custom formatter for convert string to regex
  * @see https://serde.rs/custom-date-format.html
@@ -602,11 +632,13 @@ const DEFAULT_CONFIG: &str = r#"
     "targets": { "chrome": 80 },
     "less": { "theme": {}, "lesscPath": "", javascriptEnabled: true },
     "define": {},
-    "stats": false,
+
+
     "analyze": false,
+
     "mdx": false,
     "platform": "browser",
-    "hmr": { "host": "127.0.0.1", "port": 3000 },
+    "hmr": {},
     "moduleIdStrategy": "named",
     "hash": false,
     "_treeShaking": "basic",
@@ -636,7 +668,9 @@ const DEFAULT_CONFIG: &str = r#"
     "rscServer": false,
     "rscClient": false,
     "experimental": { "webpackSyntaxValidate": [] },
-    "watch": { "ignorePaths": [] }
+    "useDefineForClassFields": true,
+    "watch": { "ignorePaths": [] },
+    "devServer": { "host": "127.0.0.1", "port": 3000 }
 }
 "#;
 
@@ -708,6 +742,10 @@ impl Config {
 
             if config.cjs && config.umd.is_some() {
                 return Err(anyhow!("cjs and umd cannot be used at the same time",));
+            }
+
+            if config.hmr.is_some() && config.dev_server.is_none() {
+                return Err(anyhow!("hmr can only be used with devServer",));
             }
 
             if config.inline_css.is_some() && config.umd.is_none() {

@@ -71,6 +71,16 @@ impl Compiler {
         debug!("generate");
         let t_generate = Instant::now();
 
+        if self
+            .context
+            .config
+            .stats
+            .as_ref()
+            .is_some_and(|s| s.modules)
+        {
+            self.context.stats_info.parse_modules(self.context.clone());
+        }
+
         debug!("tree_shaking");
         let t_tree_shaking = Instant::now();
 
@@ -165,6 +175,7 @@ impl Compiler {
 
         // generate stats
         let stats = create_stats_info(0, self);
+
         if self.context.config.analyze {
             let stats_json = serde_json::to_string_pretty(&stats).unwrap();
             let html_str = format!(
@@ -210,7 +221,7 @@ impl Compiler {
             fs::write(report_path, contents).unwrap();
         }
 
-        if self.context.config.stats {
+        if self.context.config.stats.is_some() {
             write_stats(&stats, self);
         }
 
@@ -246,6 +257,10 @@ impl Compiler {
         let t_generate_chunks = Instant::now();
         debug!("generate chunks");
         let chunk_files = self.generate_chunk_files(full_hash)?;
+        self.context
+            .plugin_driver
+            .after_generate_chunk_files(&chunk_files, &self.context)?;
+
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         let t_ast_to_code_and_write = if self.context.args.watch {
@@ -294,6 +309,16 @@ impl Compiler {
 
         let t_generate = Instant::now();
 
+        if self
+            .context
+            .config
+            .stats
+            .as_ref()
+            .is_some_and(|s| s.modules)
+        {
+            self.context.stats_info.parse_modules(self.context.clone());
+        }
+
         // ensure output dir exists
         let config = &self.context.config;
         if !config.output.path.exists() {
@@ -303,6 +328,11 @@ impl Compiler {
         // generate chunks
         let t_generate_chunks = Instant::now();
         let chunk_files = self.generate_chunk_files(hmr_hash)?;
+
+        self.context
+            .plugin_driver
+            .after_generate_chunk_files(&chunk_files, &self.context)?;
+
         let t_generate_chunks = t_generate_chunks.elapsed();
 
         // ast to code and sourcemap, then write
@@ -329,7 +359,7 @@ impl Compiler {
         // TODO: do not write to fs, using jsapi hooks to pass stats
         // why generate stats?
         // ref: https://github.com/umijs/mako/issues/1107
-        if self.context.config.stats {
+        if self.context.config.stats.is_some() {
             let stats = create_stats_info(0, self);
             write_stats(&stats, self);
         }
@@ -399,69 +429,75 @@ impl Compiler {
             return Ok((current_snapshot_hash, current_hmr_hash));
         }
 
-        // ensure output dir exists
-        let config = &self.context.config;
-        if !config.output.path.exists() {
-            fs::create_dir_all(&config.output.path).unwrap();
-        }
+        if self.context.config.hmr.is_some() {
+            // ensure output dir exists
+            let config = &self.context.config;
+            if !config.output.path.exists() {
+                fs::create_dir_all(&config.output.path).unwrap();
+            }
 
-        let (current_chunks, modified_chunks) = {
-            let cg = self.context.chunk_graph.read().unwrap();
+            let (current_chunks, modified_chunks) = {
+                let cg = self.context.chunk_graph.read().unwrap();
 
-            let chunk_names = cg.chunk_names();
+                let chunk_names = cg.chunk_names();
 
-            let modified_chunks: Vec<String> = cg
-                .get_chunks()
-                .iter()
-                .filter(|c| {
-                    let is_modified = updated_modules
-                        .modified
-                        .iter()
-                        .any(|m_id| c.has_module(m_id));
-                    let is_added = updated_modules.added.iter().any(|m_id| c.has_module(m_id));
-                    is_modified || is_added
-                })
-                .map(|c| c.filename())
+                let modified_chunks: Vec<String> = cg
+                    .get_chunks()
+                    .iter()
+                    .filter(|c| {
+                        let is_modified = updated_modules
+                            .modified
+                            .iter()
+                            .any(|m_id| c.has_module(m_id));
+                        let is_added = updated_modules.added.iter().any(|m_id| c.has_module(m_id));
+                        is_modified || is_added
+                    })
+                    .map(|c| c.filename())
+                    .collect();
+
+                (chunk_names, modified_chunks)
+            };
+
+            let removed_chunks: Vec<String> = last_chunk_names
+                .difference(&current_chunks)
+                .cloned()
                 .collect();
 
-            (chunk_names, modified_chunks)
-        };
+            let t_generate_hmr_chunk = Instant::now();
+            let cg = self.context.chunk_graph.read().unwrap();
+            for chunk_name in &modified_chunks {
+                let filename = to_hot_update_chunk_name(chunk_name, last_hmr_hash);
 
-        let removed_chunks: Vec<String> = last_chunk_names
-            .difference(&current_chunks)
-            .cloned()
-            .collect();
-
-        let t_generate_hmr_chunk = Instant::now();
-        let cg = self.context.chunk_graph.read().unwrap();
-        for chunk_name in &modified_chunks {
-            let filename = to_hot_update_chunk_name(chunk_name, last_hmr_hash);
-
-            if let Some(chunk) = cg.get_chunk_by_name(chunk_name) {
-                let modified_ids: IndexSet<ModuleId> =
-                    IndexSet::from_iter(updated_modules.modified.iter().cloned());
-                let added_ids: IndexSet<ModuleId> =
-                    IndexSet::from_iter(updated_modules.added.iter().cloned());
-                let merged_ids: IndexSet<ModuleId> =
-                    modified_ids.union(&added_ids).cloned().collect();
-                let (code, sourcemap) =
-                    self.generate_hmr_chunk(chunk, &filename, &merged_ids, current_hmr_hash)?;
-                // TODO the final format should be {name}.{full_hash}.hot-update.{ext}
-                self.write_to_dist(&filename, code);
-                self.write_to_dist(format!("{}.map", &filename), sourcemap);
+                if let Some(chunk) = cg.get_chunk_by_name(chunk_name) {
+                    let modified_ids: IndexSet<ModuleId> =
+                        IndexSet::from_iter(updated_modules.modified.iter().cloned());
+                    let added_ids: IndexSet<ModuleId> =
+                        IndexSet::from_iter(updated_modules.added.iter().cloned());
+                    let merged_ids: IndexSet<ModuleId> =
+                        modified_ids.union(&added_ids).cloned().collect();
+                    let (code, sourcemap) =
+                        self.generate_hmr_chunk(chunk, &filename, &merged_ids, current_hmr_hash)?;
+                    // TODO the final format should be {name}.{full_hash}.hot-update.{ext}
+                    self.write_to_dist(&filename, code);
+                    self.write_to_dist(format!("{}.map", &filename), sourcemap);
+                }
             }
+            let t_generate_hmr_chunk = t_generate_hmr_chunk.elapsed();
+
+            self.write_to_dist(
+                format!("{}.hot-update.json", last_hmr_hash),
+                serde_json::to_string(&HotUpdateManifest {
+                    removed_chunks,
+                    modified_chunks,
+                })
+                .unwrap(),
+            );
+
+            debug!(
+                "  - generate hmr chunk: {}ms",
+                t_generate_hmr_chunk.as_millis()
+            );
         }
-        let t_generate_hmr_chunk = t_generate_hmr_chunk.elapsed();
-
-        self.write_to_dist(
-            format!("{}.hot-update.json", last_hmr_hash),
-            serde_json::to_string(&HotUpdateManifest {
-                removed_chunks,
-                modified_chunks,
-            })
-            .unwrap(),
-        );
-
         debug!(
             "generate(hmr) done in {}ms",
             t_generate.elapsed().as_millis()
@@ -473,10 +509,6 @@ impl Compiler {
             t_transform_modules.as_millis()
         );
         debug!("  - calculate hash: {}ms", t_calculate_hash.as_millis());
-        debug!(
-            "  - generate hmr chunk: {}ms",
-            t_generate_hmr_chunk.as_millis()
-        );
         debug!("  - next full hash: {}", current_snapshot_hash);
 
         Ok((current_snapshot_hash, current_hmr_hash))
@@ -488,7 +520,6 @@ impl Compiler {
         content: C,
     ) {
         let to = self.context.config.output.path.join(filename);
-
         std::fs::write(to, content).unwrap();
     }
 }
@@ -521,7 +552,7 @@ fn write_dev_chunk_file(context: &Arc<Context>, chunk: &ChunkFile) -> Result<()>
         // why add chunk info in dev mode?
         // ref: https://github.com/umijs/mako/issues/1094
         let size = code.len() as u64;
-        context.stats_info.lock().unwrap().add_assets(
+        context.stats_info.add_assets(
             size,
             chunk.file_name.clone(),
             chunk.chunk_id.clone(),
@@ -541,6 +572,7 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
     mako_core::mako_profile_function!(&chunk_file.file_name);
 
     let to: PathBuf = context.config.output.path.join(chunk_file.disk_name());
+    let stats_info = &context.stats_info;
 
     match context.config.devtool {
         Some(DevtoolConfig::SourceMap) => {
@@ -549,7 +581,7 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
 
             if let Some(source_map) = &chunk_file.source_map {
                 let size = source_map.len() as u64;
-                context.stats_info.lock().unwrap().add_assets(
+                stats_info.add_assets(
                     size,
                     chunk_file.source_map_name(),
                     chunk_file.chunk_id.clone(),
@@ -584,7 +616,7 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
             }
 
             let size = code.len() as u64;
-            context.stats_info.lock().unwrap().add_assets(
+            stats_info.add_assets(
                 size,
                 chunk_file.file_name.clone(),
                 chunk_file.chunk_id.clone(),
@@ -608,7 +640,7 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
             }
 
             let size = code.len() as u64;
-            context.stats_info.lock().unwrap().add_assets(
+            stats_info.add_assets(
                 size,
                 chunk_file.file_name.clone(),
                 chunk_file.chunk_id.clone(),
@@ -618,7 +650,7 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
             fs::write(to, code).unwrap();
         }
         None => {
-            context.stats_info.lock().unwrap().add_assets(
+            stats_info.add_assets(
                 chunk_file.content.len() as u64,
                 chunk_file.file_name.clone(),
                 chunk_file.chunk_id.clone(),

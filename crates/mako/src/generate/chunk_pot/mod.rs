@@ -1,6 +1,7 @@
 mod ast_impl;
 mod str_impl;
 pub mod util;
+
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::vec;
@@ -54,6 +55,11 @@ impl<'cp> ChunkPot<'cp> {
         mako_core::mako_profile_function!(&self.chunk_id);
 
         let mut files = vec![];
+
+        // for ssu node_module chunk will not emit when cached validate
+        if self.module_map.is_empty() && self.chunk_id == "node_modules" {
+            return Ok(files);
+        }
 
         let js_chunk_file = ternary!(
             self.use_chunk_parallel(context),
@@ -153,6 +159,11 @@ impl<'cp> ChunkPot<'cp> {
 
         for module_id in module_ids {
             let module = module_graph.get_module(module_id).unwrap();
+
+            if module.info.is_none() {
+                continue;
+            }
+
             let module_info = module.info.as_ref().unwrap();
             let ast = &module_info.ast;
 

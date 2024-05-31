@@ -63,20 +63,13 @@ impl Load {
         if file.path.to_str().unwrap() == "virtual:inline_css:runtime" {
             return Ok(Content::Js(JsContent {
                 content: r#"
-var memo = {};
 export function moduleToDom(css) {
     var styleElement = document.createElement("style");
+    styleElement.type = "text/css";
+    styleElement.appendChild(document.createTextNode(css))
     // TODO: support nonce
     // styleElement.setAttribute("nonce", nonce);
-    var target = 'head';
-    function getTarget(target) {
-        if (!memo[target]) {
-            var styleTarget = document.querySelector(target);
-            memo[target] = styleTarget;
-        }
-        return memo[target];
-    }
-    target.appendChild(styleElement);
+    document.head.appendChild(styleElement);
 }
                                 "#
                 .to_string(),
@@ -112,19 +105,13 @@ export function moduleToDom(css) {
         // js
         if JS_EXTENSIONS.contains(&file.extname.as_str()) {
             // entry with ?hmr
-            // TODO: should be more general
             let is_jsx = file.extname.as_str() == "jsx" || file.extname.as_str() == "tsx";
             if file.is_entry && file.has_param("hmr") {
-                let port = &context.config.hmr.as_ref().unwrap().port.to_string();
-                let host = &context.config.hmr.as_ref().unwrap().host.to_string();
-                let host = if host == "0.0.0.0" { "127.0.0.1" } else { host };
                 let content = format!(
                     "{}\nmodule.exports = require(\"{}\");\n",
                     include_str!("../runtime/runtime_hmr_entry.js"),
                     file.pathname.to_string_lossy(),
-                )
-                .replace("__PORT__", port)
-                .replace("__HOST__", host);
+                );
                 return Ok(Content::Js(JsContent { content, is_jsx }));
             }
             let content = FileSystem::read_file(&file.pathname)?;
