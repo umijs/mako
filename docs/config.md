@@ -520,7 +520,7 @@ Whether to output umd format.
 
 ### watch
 
-- Type: `{ ignorePaths: string[] }`
+- Type: `{ ignorePaths: string[] } | false`
 - Default: `{ ignorePaths: [] }`
 
 Watch related configuration.
