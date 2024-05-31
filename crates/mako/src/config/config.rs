@@ -420,6 +420,7 @@ pub struct Config {
     pub module_id_strategy: ModuleIdStrategy,
     pub define: HashMap<String, Value>,
     pub stats: bool,
+    pub analyze: bool,
     pub mdx: bool,
     #[serde(deserialize_with = "deserialize_hmr")]
     pub hmr: Option<HmrConfig>,
@@ -602,6 +603,7 @@ const DEFAULT_CONFIG: &str = r#"
     "less": { "theme": {}, "lesscPath": "", javascriptEnabled: true },
     "define": {},
     "stats": false,
+    "analyze": false,
     "mdx": false,
     "platform": "browser",
     "hmr": { "host": "127.0.0.1", "port": 3000 },

@@ -1,16 +1,10 @@
 {
   "name": "@umijs/mako-darwin-x64",
   "version": "0.4.18-canary.20240521.4",
-  "os": [
-    "darwin"
-  ],
-  "cpu": [
-    "x64"
-  ],
+  "os": ["darwin"],
+  "cpu": ["x64"],
   "main": "mako.darwin-x64.node",
-  "files": [
-    "mako.darwin-x64.node"
-  ],
+  "files": ["mako.darwin-x64.node"],
   "license": "MIT",
   "engines": {
     "node": ">= 10"

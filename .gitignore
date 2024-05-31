@@ -3,6 +3,10 @@
 /examples/*/node_modules
 /examples/*/.umi
 /examples/*/.umi-production
+/client/dist
+/client/node_modules
+/client/.umi
+/client/.umi-production
 /e2e/*/*/dist
 /e2e/fixtures.umi/*/node_modules/.cache
 /e2e/fixtures.umi/*/.umi
