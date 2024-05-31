@@ -43,11 +43,11 @@ exports.build = async function (opts) {
         math: opts.config.lessLoader?.math,
         plugins: opts.config.lessLoader?.plugins,
       },
-      hooks: {
-        ...opts.config.hooks,
-      },
+      plugins: opts.config.plugins || [],
       forkTSChecker: makoConfig.forkTSChecker,
-      watch: false,
+      watch: opts.config.watch,
+      hmr: opts.config.hmr || false,
+      devServer: opts.config.devServer || false,
     });
   } catch (e) {
     console.error(e.message);
@@ -213,12 +213,13 @@ exports.dev = async function (opts) {
         plugins: opts.config.lessLoader?.plugins,
       },
       forkTSChecker: makoConfig.forkTSChecker,
-      hooks: {
+      plugins: (opts.config.plugins || []).concat({
+        name: 'default',
         generateEnd: (args) => {
           opts.onDevCompileDone(args);
         },
-        ...opts.config.hooks,
-      },
+      }),
+
       watch: true,
     });
   } catch (e) {
