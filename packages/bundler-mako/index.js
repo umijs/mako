@@ -45,7 +45,7 @@ exports.build = async function (opts) {
       },
       plugins: opts.config.plugins || [],
       forkTSChecker: makoConfig.forkTSChecker,
-      watch: opts.config.watch,
+      watch: opts.config.watch || false,
       hmr: opts.config.hmr || false,
       devServer: opts.config.devServer || false,
     });
