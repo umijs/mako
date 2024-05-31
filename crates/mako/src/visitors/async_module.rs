@@ -217,12 +217,13 @@ pub fn mark_async(
             .map(|(_, dep, _)| dep.clone())
             .collect();
         let module = module_graph.get_module_mut(module_id).unwrap();
-        let info = module.info.as_mut().unwrap();
-        // a module with async deps need to be polluted into async module
-        if !info.is_async && !async_deps.is_empty() {
-            info.is_async = true;
+        if let Some(info) = module.info.as_mut() {
+            // a module with async deps need to be polluted into async module
+            if !info.is_async && !async_deps.is_empty() {
+                info.is_async = true;
+            }
+            async_deps_by_module_id.insert(module_id.clone(), async_deps);
         }
-        async_deps_by_module_id.insert(module_id.clone(), async_deps);
     });
     async_deps_by_module_id
 }

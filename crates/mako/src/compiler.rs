@@ -10,6 +10,7 @@ use mako_core::regex::Regex;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{Globals, SourceMap, DUMMY_SP};
 use mako_core::swc_ecma_ast::Ident;
+use mako_core::tracing::debug;
 
 use crate::ast::comments::Comments;
 use crate::config::{Config, OutputMode};
@@ -249,6 +250,10 @@ impl Compiler {
             plugins.push(Arc::new(plugins::graphviz::Graphviz {}));
         }
 
+        if args.watch && std::env::var("SSU").is_ok_and(|v| v == "true") {
+            plugins.push(Arc::new(plugins::ssu::SUPlus::new()));
+        }
+
         if let Some(minifish_config) = &config._minifish {
             let inject = if let Some(inject) = &minifish_config.inject {
                 let mut map = HashMap::new();
@@ -355,7 +360,15 @@ impl Compiler {
                     crate::ast::file::File::new_entry(entry, self.context.clone())
                 })
                 .collect();
+            self.context.plugin_driver.build_start(&self.context)?;
+
             self.build(files)?;
+
+            debug!("start after build");
+
+            self.context
+                .plugin_driver
+                .after_build(&self.context, self)?;
         }
         let result = {
             mako_core::mako_profile_scope!("Generate Stage");
