@@ -19,6 +19,13 @@ impl ModuleInfo {
                     let root: PathBuf = root.into();
 
                     side_effects.map(|side_effect| {
+                        if self.path.ends_with("@alipay/promo-mobile/esm/index.js") {
+                            println!(
+                                "sideEffect {:?} with {}",
+                                side_effect,
+                                relative_to_root(&self.path, &root)
+                            );
+                        }
                         Self::match_flag(side_effect, relative_to_root(&self.path, &root).as_str())
                     })
                 }
@@ -75,20 +82,27 @@ impl ModuleInfo {
 
 #[allow(dead_code)]
 fn match_glob_pattern(pattern: &str, path: &str) -> bool {
+    let trimed = path.trim_start_matches("./");
+
     // TODO: cache
     if !pattern.contains('/') {
         return Pattern::new(format!("**/{}", pattern).as_str())
             .unwrap()
-            .matches(path);
+            .matches(trimed);
     }
 
-    glob_match(pattern, path)
+    glob_match(pattern.trim_start_matches("./"), trimed)
 }
 
 #[cfg(test)]
 mod tests {
     use super::match_glob_pattern;
     use crate::utils::test_helper::{get_module, setup_compiler};
+
+    #[test]
+    fn test_path_side_effects_no_dot_start_pattern() {
+        assert!(match_glob_pattern("esm/index.js", "./esm/index.js",));
+    }
 
     #[test]
     fn test_path_side_effects_flag() {
