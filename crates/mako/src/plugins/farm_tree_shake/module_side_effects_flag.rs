@@ -19,13 +19,6 @@ impl ModuleInfo {
                     let root: PathBuf = root.into();
 
                     side_effects.map(|side_effect| {
-                        if self.path.ends_with("@alipay/promo-mobile/esm/index.js") {
-                            println!(
-                                "sideEffect {:?} with {}",
-                                side_effect,
-                                relative_to_root(&self.path, &root)
-                            );
-                        }
                         Self::match_flag(side_effect, relative_to_root(&self.path, &root).as_str())
                     })
                 }
@@ -80,18 +73,17 @@ impl ModuleInfo {
     }
 }
 
-#[allow(dead_code)]
 fn match_glob_pattern(pattern: &str, path: &str) -> bool {
-    let trimed = path.trim_start_matches("./");
+    let trimmed = path.trim_start_matches("./");
 
     // TODO: cache
     if !pattern.contains('/') {
         return Pattern::new(format!("**/{}", pattern).as_str())
             .unwrap()
-            .matches(trimed);
+            .matches(trimmed);
     }
 
-    glob_match(pattern.trim_start_matches("./"), trimed)
+    glob_match(pattern.trim_start_matches("./"), trimmed)
 }
 
 #[cfg(test)]
@@ -105,8 +97,13 @@ mod tests {
     }
 
     #[test]
-    fn test_path_side_effects_flag() {
+    fn test_exact_path_side_effects_flag() {
         assert!(match_glob_pattern("./src/index.js", "./src/index.js",));
+    }
+
+    #[test]
+    fn test_exact_path_side_effects_flag_negative() {
+        assert!(!match_glob_pattern("./src/index.js", "./dist/index.js",));
     }
 
     #[test]
@@ -114,6 +111,14 @@ mod tests {
         assert!(match_glob_pattern(
             "./src/lib/**/*.s.js",
             "./src/lib/apple/pie/index.s.js",
+        ));
+    }
+
+    #[test]
+    fn test_double_wild_starts_effects_flag() {
+        assert!(match_glob_pattern(
+            "**/index.js",
+            "./deep/lib/file/index.js",
         ));
     }
 
