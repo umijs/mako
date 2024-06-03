@@ -1,10 +1,10 @@
-use swc_core::ecma::ast::Ident;
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{
     ArrowExpr, Decl, ExportDecl, ExportNamedSpecifier, ExportSpecifier, Expr, FnDecl, Function,
     ModuleDecl, ModuleItem, NamedExport, Pat, Stmt, VarDecl,
 };
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+use swc_core::ecma::ast::Ident;
 
 pub struct FixHelperInjectPosition {
     pub exports: Vec<Ident>,
@@ -46,7 +46,7 @@ impl VisitMut for FixHelperInjectPosition {
                     // we don't need to fix it
                     if let Some(box Expr::Arrow(ArrowExpr { params, .. })) = &decl.init {
                         has_array_param = params.iter().any(|param| matches!(param, Pat::Array(_)));
-                        if has_array_param && !name.is_some() {
+                        if has_array_param && name.is_some() {
                             export_names.push(name.unwrap());
                         }
                     }
