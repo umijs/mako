@@ -46,8 +46,10 @@ impl VisitMut for FixHelperInjectPosition {
                     // we don't need to fix it
                     if let Some(box Expr::Arrow(ArrowExpr { params, .. })) = &decl.init {
                         has_array_param = params.iter().any(|param| matches!(param, Pat::Array(_)));
-                        if has_array_param && name.is_some() {
-                            export_names.push(name.unwrap());
+                        if has_array_param {
+                            if let Some(name) = name {
+                                export_names.push(name);
+                            }
                         }
                     }
                 });
