@@ -64,8 +64,8 @@ impl Compiler {
             self.apply_optimize_infos(&optimize_chunks_infos);
 
             // save optimize infos for hot update
-            if let Ok(optimize_info) = &mut self.context.optimize_infos.lock() {
-                **optimize_info = Some(optimize_chunks_infos);
+            if let Ok(mut optimize_info) = self.context.optimize_infos.lock() {
+                *optimize_info = Some(optimize_chunks_infos);
             }
         }
     }

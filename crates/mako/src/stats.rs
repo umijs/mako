@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use mako_core::anyhow::Result;
@@ -13,11 +14,11 @@ use mako_core::pathdiff::diff_paths;
 use mako_core::serde::Serialize;
 use swc_core::common::source_map::Pos;
 
-use crate::compiler::Compiler;
+use crate::compiler::{Compiler, Context};
 use crate::features::rsc::{RscClientInfo, RscCssModules};
 use crate::generate::chunk::ChunkType;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 // name 记录实际 filename , 用在 stats.json 中, hashname 用在产物描述和 manifest 中
 pub struct AssetsInfo {
     pub assets_type: String,
@@ -39,11 +40,113 @@ impl PartialOrd for AssetsInfo {
         Some(self.cmp(other))
     }
 }
+
+#[derive(Serialize, Debug, Clone)]
+pub struct ModuleInfo {
+    pub id: String,
+    pub dependencies: Vec<String>,
+    pub dependents: Vec<String>,
+}
+
 #[derive(Debug)]
 pub struct StatsInfo {
-    pub assets: Vec<AssetsInfo>,
-    pub rsc_client_components: Vec<RscClientInfo>,
-    pub rsc_css_modules: Vec<RscCssModules>,
+    pub assets: Mutex<Vec<AssetsInfo>>,
+    pub rsc_client_components: Mutex<Vec<RscClientInfo>>,
+    pub rsc_css_modules: Mutex<Vec<RscCssModules>>,
+    pub modules: Mutex<HashMap<String, ModuleInfo>>,
+}
+
+impl StatsInfo {
+    pub fn new() -> Self {
+        Self {
+            assets: Mutex::new(vec![]),
+            rsc_client_components: Mutex::new(vec![]),
+            rsc_css_modules: Mutex::new(vec![]),
+            modules: Mutex::new(HashMap::new()),
+        }
+    }
+
+    pub fn add_assets(
+        &self,
+        size: u64,
+        name: String,
+        chunk_id: String,
+        path: PathBuf,
+        hashname: String,
+    ) {
+        let mut assets = self.assets.lock().unwrap();
+        assets.push(AssetsInfo {
+            assets_type: "asset".to_string(),
+            size,
+            name,
+            chunk_id,
+            path,
+            hashname,
+        });
+    }
+
+    pub fn clear_assets(&self) {
+        self.assets.lock().unwrap().clear()
+    }
+
+    pub fn get_assets(&self) -> Vec<AssetsInfo> {
+        self.assets.lock().unwrap().iter().cloned().collect()
+    }
+
+    pub fn parse_modules(&self, context: Arc<Context>) {
+        let module_graph = context.module_graph.read().unwrap();
+        let mut modules = self.modules.lock().unwrap();
+        module_graph.modules().iter().for_each(|module| {
+            let dependencies = module_graph
+                .get_dependencies(&module.id)
+                .iter()
+                .map(|(id, _dep)| id.generate(&context))
+                .collect::<Vec<_>>();
+            let dependents = module_graph
+                .get_dependents(&module.id)
+                .iter()
+                .map(|(id, _dep)| id.generate(&context))
+                .collect::<Vec<_>>();
+            let id = module.id.generate(&context);
+            modules.insert(
+                id.clone(),
+                ModuleInfo {
+                    id,
+                    dependencies,
+                    dependents,
+                },
+            );
+        });
+    }
+
+    pub fn get_modules(&self) -> HashMap<String, ModuleInfo> {
+        self.modules.lock().unwrap().clone()
+    }
+
+    pub fn get_rsc_client_components(&self) -> Vec<RscClientInfo> {
+        self.rsc_client_components.lock().unwrap().clone()
+    }
+
+    pub fn add_rsc_client_component(&self, rsc_client_component: RscClientInfo) {
+        self.rsc_client_components
+            .lock()
+            .unwrap()
+            .push(rsc_client_component)
+    }
+
+    pub fn get_rsc_css_modules(&self) -> Vec<RscCssModules> {
+        self.rsc_css_modules.lock().unwrap().clone()
+    }
+
+    pub fn add_rsc_css_module(&self, rsc_css_module: RscCssModules) {
+        self.rsc_css_modules.lock().unwrap().push(rsc_css_module)
+    }
+}
+
+impl Default for StatsInfo {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[derive(Clone, Serialize, Debug)]
@@ -67,12 +170,19 @@ pub struct StatsJsonAssetsItem {
 
 #[derive(Serialize, Clone, Debug)]
 pub struct StatsJsonModuleItem {
+    pub id: String,
+    pub deps: Vec<String>,
+}
+
+#[derive(Serialize, Clone, Debug)]
+pub struct StatsJsonChunkModuleItem {
     #[serde(flatten)]
     pub module_type: StatsJsonType,
     pub size: u64,
     pub id: String,
     pub chunks: Vec<String>,
 }
+
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct StatsJsonChunkOriginItem {
@@ -89,7 +199,7 @@ pub struct StatsJsonChunkItem {
     pub id: String,
     pub files: Vec<String>,
     pub entry: bool,
-    pub modules: Vec<StatsJsonModuleItem>,
+    pub modules: Vec<StatsJsonChunkModuleItem>,
     pub siblings: Vec<String>,
     pub origins: Vec<StatsJsonChunkOriginItem>,
 }
@@ -107,7 +217,8 @@ pub struct StatsJsonMap {
     root_path: PathBuf,
     output_path: PathBuf,
     assets: Vec<StatsJsonAssetsItem>,
-    modules: Vec<StatsJsonModuleItem>,
+    chunk_modules: Vec<StatsJsonChunkModuleItem>,
+    modules: HashMap<String, ModuleInfo>,
     chunks: Vec<StatsJsonChunkItem>,
     entrypoints: HashMap<String, StatsJsonEntryItem>,
     rsc_client_components: Vec<RscClientInfo>,
@@ -124,46 +235,13 @@ impl StatsJsonMap {
             root_path: PathBuf::new(),
             output_path: PathBuf::new(),
             assets: vec![],
-            modules: vec![],
+            modules: HashMap::new(),
+            chunk_modules: vec![],
             chunks: vec![],
             entrypoints: HashMap::new(),
             rsc_client_components: vec![],
             rsc_css_modules: vec![],
         }
-    }
-}
-
-impl StatsInfo {
-    pub fn new() -> Self {
-        Self {
-            assets: vec![],
-            rsc_client_components: vec![],
-            rsc_css_modules: vec![],
-        }
-    }
-
-    pub fn add_assets(
-        &mut self,
-        size: u64,
-        name: String,
-        chunk_id: String,
-        path: PathBuf,
-        hashname: String,
-    ) {
-        self.assets.push(AssetsInfo {
-            assets_type: "asset".to_string(),
-            size,
-            name,
-            chunk_id,
-            path,
-            hashname,
-        });
-    }
-}
-
-impl Default for StatsInfo {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -188,7 +266,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
     stats_map.root_path = root_path;
     stats_map.output_path = output_path;
 
-    let mut stats_info = context.stats_info.lock().unwrap();
+    let stats_info = &context.stats_info;
 
     // 把 context 中的静态资源信息加入到 stats_info 中
     compiler
@@ -210,7 +288,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
 
     // 获取 assets
     stats_map.assets = stats_info
-        .assets
+        .get_assets()
         .iter()
         .map(|asset| StatsJsonAssetsItem {
             assets_type: StatsJsonType::Asset(asset.assets_type.clone()),
@@ -225,7 +303,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
     let chunks = chunk_graph.get_chunks();
 
     // 在 chunks 中获取 modules
-    let modules_vec: Rc<RefCell<Vec<StatsJsonModuleItem>>> = Rc::new(RefCell::new(Vec::new()));
+    let modules_vec: Rc<RefCell<Vec<StatsJsonChunkModuleItem>>> = Rc::new(RefCell::new(Vec::new()));
 
     // 获取 chunks
     stats_map.chunks = chunks
@@ -234,7 +312,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
             let modules = chunk.get_modules();
             let entry = matches!(chunk.chunk_type, ChunkType::Entry(_, _, _));
             let id = chunk.id.id.clone();
-            let chunk_modules: Vec<StatsJsonModuleItem> = modules
+            let chunk_modules: Vec<StatsJsonChunkModuleItem> = modules
                 .iter()
                 .filter(|module| {
                     // ?modules 是虚拟模块，暂不记录
@@ -249,7 +327,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
                         Ok(size) => size,
                         Err(..) => 0,
                     };
-                    let module = StatsJsonModuleItem {
+                    let module = StatsJsonChunkModuleItem {
                         module_type: StatsJsonType::Module("module".to_string()),
                         size,
                         id,
@@ -261,7 +339,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
                 })
                 .collect();
             let files: Vec<String> = stats_info
-                .assets
+                .get_assets()
                 .iter()
                 .filter(|asset| asset.chunk_id == id)
                 .map(|asset| asset.hashname.clone())
@@ -350,13 +428,13 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
             _ => None,
         })
         .collect::<HashMap<_, _>>();
+    let chunk_modules: Vec<StatsJsonChunkModuleItem> =
+        modules_vec.borrow().iter().cloned().collect();
+    stats_map.chunk_modules = chunk_modules;
 
-    // 获取 modules
-    let modules: Vec<StatsJsonModuleItem> = modules_vec.borrow().iter().cloned().collect();
-    stats_map.modules = modules;
-
-    stats_map.rsc_client_components = stats_info.rsc_client_components.clone();
-    stats_map.rsc_css_modules = stats_info.rsc_css_modules.clone();
+    stats_map.modules = stats_info.get_modules();
+    stats_map.rsc_client_components = stats_info.get_rsc_client_components();
+    stats_map.rsc_css_modules = stats_info.get_rsc_css_modules();
 
     stats_map
 }
@@ -397,7 +475,7 @@ fn pad_string(text: &str, max_length: usize, front: bool) -> String {
 }
 
 pub fn print_stats(compiler: &Compiler) {
-    let assets = &mut compiler.context.stats_info.lock().unwrap().assets;
+    let mut assets = compiler.context.stats_info.get_assets();
     // 按照产物名称排序
     assets.sort();
     // 产物路径需要按照 output.path 来

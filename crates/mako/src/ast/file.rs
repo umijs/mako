@@ -1,4 +1,4 @@
-use std::hash::Hasher;
+use std::hash::{Hash, Hasher};
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
@@ -17,13 +17,13 @@ use url::Url;
 use crate::compiler::Context;
 use crate::utils::base64_decode;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Asset {
     pub path: String,
     pub content: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct JsContent {
     pub is_jsx: bool,
     pub content: String,
@@ -38,7 +38,7 @@ impl Default for JsContent {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Content {
     Js(JsContent),
     Css(String),
@@ -54,7 +54,7 @@ enum FileError {
     ToBase64Error { path: String },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct File {
     pub path: PathBuf,
     pub relative_path: PathBuf,
@@ -86,6 +86,18 @@ impl Default for File {
             params: vec![],
             fragment: None,
         }
+    }
+}
+
+impl Hash for File {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write(self.pathname.to_string_lossy().as_bytes());
+    }
+}
+
+impl PartialEq for File {
+    fn eq(&self, other: &Self) -> bool {
+        self.pathname.eq(&other.pathname)
     }
 }
 
@@ -320,6 +332,7 @@ type PathName = String;
 type Search = String;
 type Params = Vec<(String, String)>;
 type Fragment = Option<String>;
+
 fn parse_path(path: &str) -> Result<(PathName, Search, Params, Fragment)> {
     let base = "http://a.com/";
     let base_url = Url::parse(base)?;

@@ -5,6 +5,7 @@ const assert = require('assert');
 const { createProxy, createHttpsServer } = require('@umijs/bundler-utils');
 const lodash = require('lodash');
 const chalk = require('chalk');
+const { parseTsconfig } = require('get-tsconfig');
 const {
   createProxyMiddleware,
 } = require('@umijs/bundler-utils/compiled/http-proxy-middleware');
@@ -22,7 +23,9 @@ exports.build = async function (opts) {
   const makoConfig = await getMakoConfig(opts);
   const originStats = makoConfig.stats;
   // always enable stats to provide json for onBuildComplete hook
-  makoConfig.stats = true;
+  makoConfig.stats = {
+    modules: false,
+  };
   makoConfig.mode = 'production';
   makoConfig.hash = !!opts.config.hash;
   if (makoConfig.hash) {
@@ -40,8 +43,11 @@ exports.build = async function (opts) {
         math: opts.config.lessLoader?.math,
         plugins: opts.config.lessLoader?.plugins,
       },
+      plugins: opts.plugins || [],
       forkTSChecker: makoConfig.forkTSChecker,
-      watch: false,
+      watch: opts.watch || false,
+      hmr: opts.hmr || false,
+      devServer: opts.devServer || false,
     });
   } catch (e) {
     console.error(e.message);
@@ -117,10 +123,41 @@ exports.dev = async function (opts) {
 
   // serve dist files
   app.use(express.static(outputPath));
+
+  if (process.env.SSU === 'true') {
+    // for ssu cache chunks
+
+    app.use(function (req, res, next) {
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        return next();
+      }
+
+      let proxy = createProxyMiddleware({
+        target: `http://127.0.0.1:${hmrPort}`,
+        selfHandleResponse: true,
+        onProxyRes: (proxyRes, req, res) => {
+          if (proxyRes.statusCode !== 200) {
+            next();
+          } else {
+            proxyRes.pipe(res);
+          }
+        },
+        onError: (err, req, res) => {
+          next();
+        },
+      });
+
+      proxy(req, res, () => {
+        next();
+      });
+    });
+  }
+
   // proxy
   if (opts.config.proxy) {
     createProxy(opts.config.proxy, app);
   }
+
   // after middlewares
   (opts.afterMiddlewares || []).forEach((m) => {
     // TODO: FIXME
@@ -162,7 +199,8 @@ exports.dev = async function (opts) {
   // mako dev
   const { build } = require('@umijs/mako');
   const makoConfig = await getMakoConfig(opts);
-  makoConfig.hmr = { port: hmrPort, host: opts.host };
+  makoConfig.hmr = {};
+  makoConfig.devServer = { port: hmrPort, host: opts.host };
   const cwd = opts.cwd;
   try {
     await build({
@@ -175,11 +213,13 @@ exports.dev = async function (opts) {
         plugins: opts.config.lessLoader?.plugins,
       },
       forkTSChecker: makoConfig.forkTSChecker,
-      hooks: {
+      plugins: (opts.plugins || []).concat({
+        name: 'default',
         generateEnd: (args) => {
           opts.onDevCompileDone(args);
         },
-      },
+      }),
+
       watch: true,
     });
   } catch (e) {
@@ -418,6 +458,7 @@ async function getMakoConfig(opts) {
     copy = [],
     clean,
     forkTSChecker,
+    inlineCSS,
   } = opts.config;
   // TODO:
   // 暂不支持 $ 结尾，等 resolve 支持后可以把这段去掉
@@ -503,6 +544,7 @@ async function getMakoConfig(opts) {
     {},
   );
   const outputPath = path.resolve(opts.cwd, opts.config.outputPath || 'dist');
+  const tsConfig = getTsConfig(opts);
 
   const makoConfig = {
     entry: opts.entry,
@@ -532,8 +574,11 @@ async function getMakoConfig(opts) {
     flexBugs: true,
     react: opts.react || {},
     emotion,
+    inlineCSS,
     forkTSChecker: !!forkTSChecker,
     ...(opts.disableCopy ? { copy: [] } : { copy: ['public'].concat(copy) }),
+    useDefineForClassFields:
+      tsConfig.compilerOptions.useDefineForClassFields ?? true,
   };
 
   return makoConfig;
@@ -556,5 +601,30 @@ function normalizeDefineValue(val) {
       obj[key] = normalizeDefineValue(val[key]);
       return obj;
     }, {});
+  }
+}
+
+const DEFAULT_TS_CONFIG = {
+  compilerOptions: {
+    useDefineForClassFields: true,
+  },
+};
+
+function getTsConfig(opts) {
+  let root = opts.cwd;
+  const tsConfigPath = path.resolve(root, 'tsconfig.json');
+
+  if (fs.existsSync(tsConfigPath)) {
+    try {
+      return parseTsconfig(tsConfigPath);
+    } catch (e) {
+      console.error(
+        'parsing tsconfig.json failed, fallback to default tsconfig\n',
+        e,
+      );
+      return DEFAULT_TS_CONFIG;
+    }
+  } else {
+    return DEFAULT_TS_CONFIG;
   }
 }

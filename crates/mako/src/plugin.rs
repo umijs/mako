@@ -8,11 +8,13 @@ use mako_core::swc_common::Mark;
 use mako_core::swc_ecma_ast::Module;
 
 use crate::ast::file::{Content, File};
-use crate::compiler::{Args, Context};
+use crate::compiler::{Args, Compiler, Context};
 use crate::config::Config;
 use crate::generate::chunk_graph::ChunkGraph;
-use crate::module::{Dependency, ModuleAst};
+use crate::generate::generate_chunks::ChunkFile;
+use crate::module::{Dependency, ModuleAst, ModuleId};
 use crate::module_graph::ModuleGraph;
+use crate::resolve::ResolverResource;
 use crate::stats::StatsJsonMap;
 
 #[derive(Debug)]
@@ -55,6 +57,10 @@ pub trait Plugin: Any + Send + Sync {
         Ok(None)
     }
 
+    fn next_build(&self, _next_build_param: &NextBuildParam) -> bool {
+        true
+    }
+
     fn parse(
         &self,
         _param: &PluginParseParam,
@@ -85,8 +91,20 @@ pub trait Plugin: Any + Send + Sync {
         Ok(())
     }
 
+    fn after_build(&self, _context: &Arc<Context>, _compiler: &Compiler) -> Result<()> {
+        Ok(())
+    }
+
     fn generate(&self, _context: &Arc<Context>) -> Result<Option<()>> {
         Ok(None)
+    }
+
+    fn after_generate_chunk_files(
+        &self,
+        _chunk_files: &[ChunkFile],
+        _context: &Arc<Context>,
+    ) -> Result<()> {
+        Ok(())
     }
 
     fn build_success(&self, _stats: &StatsJsonMap, _context: &Arc<Context>) -> Result<Option<()>> {
@@ -144,9 +162,27 @@ pub struct PluginDriver {
     plugins: Vec<Arc<dyn Plugin>>,
 }
 
+pub struct NextBuildParam<'a> {
+    pub current_module: &'a ModuleId,
+    pub next_file: &'a File,
+    pub resource: &'a ResolverResource,
+}
+
 impl PluginDriver {
     pub fn new(plugins: Vec<Arc<dyn Plugin>>) -> Self {
         Self { plugins }
+    }
+
+    pub fn next_build(&self, param: &NextBuildParam) -> bool {
+        self.plugins.iter().all(|p| p.next_build(param))
+    }
+
+    pub fn after_build(&self, context: &Arc<Context>, c: &Compiler) -> Result<()> {
+        for p in &self.plugins {
+            p.after_build(context, c)?
+        }
+
+        Ok(())
     }
 
     pub fn modify_config(&self, config: &mut Config, root: &Path, args: &Args) -> Result<()> {
@@ -234,7 +270,18 @@ impl PluginDriver {
         Err(anyhow!("None of the plugins generate content"))
     }
 
-    #[allow(dead_code)]
+    pub(crate) fn after_generate_chunk_files(
+        &self,
+        chunk_files: &[ChunkFile],
+        context: &Arc<Context>,
+    ) -> Result<()> {
+        for plugin in &self.plugins {
+            plugin.after_generate_chunk_files(chunk_files, context)?;
+        }
+
+        Ok(())
+    }
+
     pub fn build_start(&self, context: &Arc<Context>) -> Result<Option<()>> {
         for plugin in &self.plugins {
             plugin.build_start(context)?;

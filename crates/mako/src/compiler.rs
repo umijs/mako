@@ -10,6 +10,7 @@ use mako_core::regex::Regex;
 use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{Globals, SourceMap, DUMMY_SP};
 use mako_core::swc_ecma_ast::Ident;
+use mako_core::tracing::debug;
 
 use crate::ast::comments::Comments;
 use crate::config::{Config, OutputMode};
@@ -32,7 +33,7 @@ pub struct Context {
     pub root: PathBuf,
     pub meta: Meta,
     pub plugin_driver: PluginDriver,
-    pub stats_info: Mutex<StatsInfo>,
+    pub stats_info: StatsInfo,
     pub resolvers: Resolvers,
     pub static_cache: RwLock<MemoryChunkFileCache>,
     pub optimize_infos: Mutex<Option<Vec<OptimizeChunksInfo>>>,
@@ -118,7 +119,7 @@ impl Default for Context {
             modules_with_missing_deps: RwLock::new(Vec::new()),
             meta: Meta::new(),
             plugin_driver: Default::default(),
-            stats_info: Mutex::new(StatsInfo::new()),
+            stats_info: StatsInfo::new(),
             resolvers,
             optimize_infos: Mutex::new(None),
             static_cache: Default::default(),
@@ -249,6 +250,10 @@ impl Compiler {
             plugins.push(Arc::new(plugins::graphviz::Graphviz {}));
         }
 
+        if args.watch && std::env::var("SSU").is_ok_and(|v| v == "true") {
+            plugins.push(Arc::new(plugins::ssu::SUPlus::new()));
+        }
+
         if let Some(minifish_config) = &config._minifish {
             let inject = if let Some(inject) = &minifish_config.inject {
                 let mut map = HashMap::new();
@@ -312,7 +317,7 @@ impl Compiler {
                 modules_with_missing_deps: RwLock::new(Vec::new()),
                 meta: Meta::new(),
                 plugin_driver,
-                stats_info: Mutex::new(StatsInfo::new()),
+                stats_info: StatsInfo::new(),
                 resolvers,
                 optimize_infos: Mutex::new(None),
             }),
@@ -355,7 +360,15 @@ impl Compiler {
                     crate::ast::file::File::new_entry(entry, self.context.clone())
                 })
                 .collect();
+            self.context.plugin_driver.build_start(&self.context)?;
+
             self.build(files)?;
+
+            debug!("start after build");
+
+            self.context
+                .plugin_driver
+                .after_build(&self.context, self)?;
         }
         let result = {
             mako_core::mako_profile_scope!("Generate Stage");

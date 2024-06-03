@@ -13,20 +13,25 @@ build({
   less: {
     modifyVars: config.less?.theme || {},
   },
-  hooks: getHooks(),
+  plugins: getPlugins(),
   watch: process.argv.includes('--watch'),
 }).catch((e) => {
   console.error(e);
   process.exit(1);
 });
 
-function getHooks() {
-  let hooks = {};
+function getPlugins() {
+  let plugins = [];
   const hooksPath = path.join(cwd, 'hooks.config.js');
   if (fs.existsSync(hooksPath)) {
-    hooks = require(hooksPath);
+    let hooks = require(hooksPath);
+    plugins.push(hooks);
   }
-  return hooks;
+  const pluginsPath = path.join(cwd, 'plugins.config.js');
+  if (fs.existsSync(pluginsPath)) {
+    plugins.push(...require(pluginsPath));
+  }
+  return plugins;
 }
 
 function getMakoConfig() {

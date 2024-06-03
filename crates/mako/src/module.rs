@@ -327,6 +327,14 @@ impl ModuleAst {
             panic!("ModuleAst is not Css")
         }
     }
+
+    pub fn as_script_mut(&mut self) -> &mut JsAst {
+        if let Self::Script(script) = self {
+            script
+        } else {
+            panic!("ModuleAst is not Css")
+        }
+    }
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -334,6 +342,7 @@ pub enum ModuleType {
     Script,
     Css,
     Raw,
+    PlaceHolder,
 }
 
 #[derive(Clone)]
@@ -367,8 +376,13 @@ impl Module {
     }
 
     pub fn is_external(&self) -> bool {
-        let info = self.info.as_ref().unwrap();
-        info.external.is_some()
+        self.info
+            .as_ref()
+            .map_or(false, |info| info.external.is_some())
+    }
+
+    pub fn is_placeholder(&self) -> bool {
+        self.get_module_type() == ModuleType::PlaceHolder
     }
 
     #[allow(dead_code)]
@@ -377,18 +391,19 @@ impl Module {
     }
 
     pub fn get_module_type(&self) -> ModuleType {
-        let info = self.info.as_ref().unwrap();
-        match info.ast {
-            ModuleAst::Script(_) => ModuleType::Script,
-            ModuleAst::Css(_) => ModuleType::Css,
-            ModuleAst::None => ModuleType::Raw,
-        }
+        self.info
+            .as_ref()
+            .map_or(ModuleType::PlaceHolder, |info| match info.ast {
+                ModuleAst::Script(_) => ModuleType::Script,
+                ModuleAst::Css(_) => ModuleType::Css,
+                ModuleAst::None => ModuleType::Raw,
+            })
     }
 
     pub fn get_module_size(&self) -> usize {
-        let info = self.info.as_ref().unwrap();
-
-        info.raw.as_bytes().len()
+        self.info
+            .as_ref()
+            .map_or(0, |info| info.raw.as_bytes().len())
     }
 
     // wrap module stmt into a function

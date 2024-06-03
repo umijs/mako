@@ -1,42 +1,4 @@
-import fs from 'fs';
-import less from 'less';
 import workerpool from 'workerpool';
-import { LessLoaderOpts } from '.';
+import { render } from './render';
 
-const lessLoader = {
-  render: async function (
-    filePath: string,
-    opts: LessLoaderOpts,
-  ): Promise<string> {
-    const { modifyVars, math, sourceMap, plugins } = opts;
-    const input = fs.readFileSync(filePath, 'utf-8');
-
-    const pluginInstances: Less.Plugin[] | undefined = plugins?.map((p) => {
-      if (Array.isArray(p)) {
-        const pluginModule = require(p[0]);
-        const PluginClass = pluginModule.default || pluginModule;
-        return new PluginClass(p[1]);
-      } else {
-        return require(p);
-      }
-    });
-
-    const result = await less
-      .render(input, {
-        filename: filePath,
-        javascriptEnabled: true,
-        math,
-        plugins: pluginInstances,
-        modifyVars,
-        sourceMap,
-        rewriteUrls: 'all',
-      } as unknown as Less.Options)
-      .catch((err) => {
-        throw new Error(err.toString());
-      });
-
-    return result.css;
-  },
-};
-
-workerpool.worker(lessLoader);
+workerpool.worker({ render });

@@ -34,7 +34,7 @@ impl Px2Rem {
     }
 
     fn should_transform(&self, val: f64) -> bool {
-        if val < self.config.min_pixel_value {
+        if val.abs() < self.config.min_pixel_value {
             return false;
         }
         let is_prop_valid = if let Some(decl) = &self.current_decl {
@@ -243,6 +243,10 @@ mod tests {
         assert_eq!(
             run_with_min_pixel_value(r#".a{width:100px;height:200px;}"#, 101.0),
             r#".a{width:100px;height:2rem}"#
+        );
+        assert_eq!(
+            run_with_min_pixel_value(r#".a{width:100px;height:-200px;}"#, 101.0),
+            r#".a{width:100px;height:-2rem}"#
         );
     }
 

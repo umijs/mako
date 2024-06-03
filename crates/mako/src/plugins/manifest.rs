@@ -23,7 +23,7 @@ impl Plugin for ManifestPlugin {
 
     fn build_success(&self, _stats: &StatsJsonMap, context: &Arc<Context>) -> Result<Option<()>> {
         if let Some(manifest_config) = &context.config.manifest {
-            let assets = &context.stats_info.lock().unwrap().assets;
+            let assets = &context.stats_info.get_assets();
             let mut manifest: BTreeMap<String, String> = BTreeMap::new();
             let file_name = manifest_config.file_name.clone();
             let base_path = manifest_config.base_path.clone();
