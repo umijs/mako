@@ -145,8 +145,12 @@ function $RefreshIsReactComponentLike$(moduleExports) {
     return true;
   }
   for (var key in moduleExports) {
-    if (RefreshRuntime.isLikelyComponentType(moduleExports[key])) {
-      return true;
+    try{
+      if (RefreshRuntime.isLikelyComponentType(moduleExports[key])) {
+        return true;
+      }
+    }catch(e){
+       // in case the moduleExports[key] is not accessible due depedence loop
     }
   }
   return false;

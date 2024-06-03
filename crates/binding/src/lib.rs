@@ -143,7 +143,7 @@ pub struct BuildParams {
     };
 }"#)]
     pub config: serde_json::Value,
-    pub hooks: JsHooks,
+    pub plugins: Vec<JsHooks>,
     pub watch: bool,
 }
 
@@ -154,9 +154,11 @@ pub fn build(env: Env, build_params: BuildParams) -> napi::Result<JsObject> {
     });
 
     let mut plugins: Vec<Arc<dyn Plugin>> = vec![];
-    let tsfn_hooks = TsFnHooks::new(env, &build_params.hooks);
-    let plugin = JsPlugin { hooks: tsfn_hooks };
-    plugins.push(Arc::new(plugin));
+    for hooks in build_params.plugins.iter() {
+        let tsfn_hooks = TsFnHooks::new(env, hooks);
+        let plugin = JsPlugin { hooks: tsfn_hooks };
+        plugins.push(Arc::new(plugin));
+    }
 
     let root = std::path::PathBuf::from(&build_params.root);
     let default_config = serde_json::to_string(&build_params.config).unwrap();

@@ -1,7 +1,7 @@
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-module.exports = {
+module.exports = [{
   async buildStart() {
     console.log('>> build start');
     await delay(1000);
@@ -21,4 +21,4 @@ module.exports = {
     }
     console.log('>> load:', path);
   }
-};
+}];

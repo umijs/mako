@@ -122,25 +122,43 @@ impl DevServer {
             }
             _ => {
                 // for bundle outputs
+
+                let ext = path.rsplit('.').next();
+                let content_type = match ext {
+                    None => "text/plain; charset=utf-8",
+                    Some("js") => "application/javascript; charset=utf-8",
+                    Some("css") => "text/css; charset=utf-8",
+                    Some("map") | Some("json") => "application/json; charset=utf-8",
+                    Some(_) => "text/plain; charset=utf-8",
+                };
+
                 // staticfile has 302 problems when modify tooooo fast in 1 second
                 // it will response 302 and we will get the old file
                 // TODO: fix the 302 problem?
                 if let Some(res) = context.get_static_content(path_without_slash_start) {
                     debug!("serve with context.get_static_content: {}", path);
-                    let ext = path.rsplit('.').next();
-                    let content_type = match ext {
-                        None => "text/plain; charset=utf-8",
-                        Some("js") => "application/javascript; charset=utf-8",
-                        Some("css") => "text/css; charset=utf-8",
-                        Some("map") | Some("json") => "application/json; charset=utf-8",
-                        Some(_) => "text/plain; charset=utf-8",
-                    };
+
                     return Ok(hyper::Response::builder()
                         .status(hyper::StatusCode::OK)
                         .header(CONTENT_TYPE, content_type)
                         .body(hyper::Body::from(res))
                         .unwrap());
                 }
+                // for cached dep
+                let abs_path = context
+                    .root
+                    .join("node_modules/.cache_mako/chunks")
+                    .join(path_without_slash_start);
+                if !path_without_slash_start.is_empty() && abs_path.exists() {
+                    return std::fs::read(abs_path).map_or(Ok(not_found_response()), |bytes| {
+                        Ok(hyper::Response::builder()
+                            .status(hyper::StatusCode::OK)
+                            .header(CONTENT_TYPE, content_type)
+                            .body(hyper::Body::from(bytes))
+                            .unwrap())
+                    });
+                }
+
                 // for hmr files
                 debug!("serve with staticfile server: {}", path);
                 let res = staticfile.serve(req).await;
@@ -277,7 +295,7 @@ impl DevServer {
             eprintln!("Error in watch: {:?}", e);
             return Err(e);
         }
-        let (next_snapshot_hash, next_hmr_hash) = next_hash.unwrap();
+        let (next_snapshot_hash, next_hmr_hash, current_hmr_hash) = next_hash.unwrap();
         debug!(
             "hash info, next: {:?}, last: {:?}, is_equal: {}",
             next_snapshot_hash,
@@ -296,7 +314,7 @@ impl DevServer {
 
         compiler.context.stats_info.clear_assets();
 
-        if let Err(e) = compiler.emit_dev_chunks(next_hmr_hash) {
+        if let Err(e) = compiler.emit_dev_chunks(next_hmr_hash, current_hmr_hash) {
             debug!("  > build failed: {:?}", e);
             return Err(e);
         }

@@ -43,11 +43,11 @@ exports.build = async function (opts) {
         math: opts.config.lessLoader?.math,
         plugins: opts.config.lessLoader?.plugins,
       },
-      hooks: {
-        ...opts.config.hooks,
-      },
+      plugins: opts.plugins || [],
       forkTSChecker: makoConfig.forkTSChecker,
-      watch: false,
+      watch: opts.watch || false,
+      hmr: opts.hmr || false,
+      devServer: opts.devServer || false,
     });
   } catch (e) {
     console.error(e.message);
@@ -123,10 +123,41 @@ exports.dev = async function (opts) {
 
   // serve dist files
   app.use(express.static(outputPath));
+
+  if (process.env.SSU === 'true') {
+    // for ssu cache chunks
+
+    app.use(function (req, res, next) {
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        return next();
+      }
+
+      let proxy = createProxyMiddleware({
+        target: `http://127.0.0.1:${hmrPort}`,
+        selfHandleResponse: true,
+        onProxyRes: (proxyRes, req, res) => {
+          if (proxyRes.statusCode !== 200) {
+            next();
+          } else {
+            proxyRes.pipe(res);
+          }
+        },
+        onError: (err, req, res) => {
+          next();
+        },
+      });
+
+      proxy(req, res, () => {
+        next();
+      });
+    });
+  }
+
   // proxy
   if (opts.config.proxy) {
     createProxy(opts.config.proxy, app);
   }
+
   // after middlewares
   (opts.afterMiddlewares || []).forEach((m) => {
     // TODO: FIXME
@@ -182,12 +213,13 @@ exports.dev = async function (opts) {
         plugins: opts.config.lessLoader?.plugins,
       },
       forkTSChecker: makoConfig.forkTSChecker,
-      hooks: {
+      plugins: (opts.plugins || []).concat({
+        name: 'default',
         generateEnd: (args) => {
           opts.onDevCompileDone(args);
         },
-        ...opts.config.hooks,
-      },
+      }),
+
       watch: true,
     });
   } catch (e) {

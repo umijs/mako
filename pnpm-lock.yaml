@@ -365,7 +365,7 @@ importers:
         specifier: ^4.0.81
         version: 4.1.6
       '@umijs/mako':
-        specifier: 0.5.0
+        specifier: 0.5.3
         version: link:../mako
       chalk:
         specifier: ^4.1.2
@@ -445,14 +445,17 @@ importers:
         version: 21.1.1
     optionalDependencies:
       '@umijs/mako-darwin-arm64':
-        specifier: 0.5.0
-        version: 0.5.0
+        specifier: 0.5.3
+        version: 0.5.3
       '@umijs/mako-darwin-x64':
-        specifier: 0.5.0
-        version: 0.5.0
+        specifier: 0.5.3
+        version: 0.5.3
       '@umijs/mako-linux-x64-gnu':
-        specifier: 0.5.0
-        version: 0.5.0
+        specifier: 0.5.3
+        version: 0.5.3
+      '@umijs/mako-linux-x64-musl':
+        specifier: 0.5.3
+        version: 0.5.3
     devDependencies:
       '@napi-rs/cli':
         specifier: ^2.18.0
@@ -5118,8 +5121,8 @@ packages:
       - typescript
     dev: true
 
-  /@umijs/mako-darwin-arm64@0.5.0:
-    resolution: {integrity: sha512-Gi99yWrtRX3h/yBxcoahjSID0f6nKUFepcYRGi+48B8WcrrDqg6xliS6EhzOYYxip7/i9tYrIgmWq/BnnN9VTQ==}
+  /@umijs/mako-darwin-arm64@0.5.3:
+    resolution: {integrity: sha512-PVd1zqDbBHCpAulGlVSnmvHTuql9R//7Ih3v5ZqTWSamu+kdld2UdAtP7dXFAvCaR/InNnM2gL/ol2SSRc3WAg==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
@@ -5127,8 +5130,8 @@ packages:
     dev: false
     optional: true
 
-  /@umijs/mako-darwin-x64@0.5.0:
-    resolution: {integrity: sha512-w/lY2WkNaZS6TmLaDcEn7GS9PQ9XsSGDI7rDMwcyD6RGp5T/hsbscra9HKV9rYT7uamHxTaqKJbhof3MKv0y2g==}
+  /@umijs/mako-darwin-x64@0.5.3:
+    resolution: {integrity: sha512-Ft8Is+vM3Ot0i5oIEmpl18HHUJogeTXMkYU1rcYaW4kdh/4Ho7CZqROA3N7pdkwRyhe1HkLAyEKLDCZtrVaaXg==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
@@ -5136,8 +5139,17 @@ packages:
     dev: false
     optional: true
 
-  /@umijs/mako-linux-x64-gnu@0.5.0:
-    resolution: {integrity: sha512-qQE+B+kadEQ04e7rsrNLh9ebZkzkhneDqPEUWrstucT0DslH0isXyb2gYQAbHv2upZsAmItE4cfUm5QbOYTbWA==}
+  /@umijs/mako-linux-x64-gnu@0.5.3:
+    resolution: {integrity: sha512-eBjE2PWN2Ejn0GoKKfQx+zISAKn5zH22vrENzvMVZn/Iory+I3AzH+wvjwNjZVCYvfEIW0zq0yYyppgzBaEItg==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@umijs/mako-linux-x64-musl@0.5.3:
+    resolution: {integrity: sha512-CQ15n97/qwy4OyObBjA4JVS9qy7WGbMdUNO23xMhLrlXXskNs/rs3rtgPxeeiKlzrLIcF3Hqnzdk2Dn30px45A==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]

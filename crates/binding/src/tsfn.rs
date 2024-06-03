@@ -10,6 +10,7 @@ use crate::threadsafe_function;
 
 #[napi(object)]
 pub struct JsHooks {
+    pub name: Option<String>,
     #[napi(ts_type = "(filePath: string) => Promise<{ content: string, type: 'css'|'js' }> ;")]
     pub load: Option<JsFunction>,
     #[napi(ts_type = "(data: {isFirstCompile: boolean; time: number; stats: {
@@ -24,6 +25,7 @@ pub struct JsHooks {
 }
 
 pub struct TsFnHooks {
+    pub name: String,
     pub build_start: Option<threadsafe_function::ThreadsafeFunction<ReadMessage<(), ()>>>,
     pub generate_end:
         Option<threadsafe_function::ThreadsafeFunction<ReadMessage<PluginGenerateEndParams, ()>>>,
@@ -34,7 +36,13 @@ pub struct TsFnHooks {
 
 impl TsFnHooks {
     pub fn new(env: Env, hooks: &JsHooks) -> Self {
+        let name = if let Some(name) = &hooks.name {
+            name.clone()
+        } else {
+            "unnamed_js_plugin".to_string()
+        };
         Self {
+            name,
             build_start: hooks.build_start.as_ref().map(|hook| {
                 threadsafe_function::ThreadsafeFunction::create(
                     env.raw(),

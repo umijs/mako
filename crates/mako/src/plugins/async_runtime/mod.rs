@@ -19,7 +19,7 @@ impl Plugin for AsyncRuntimePlugin {
             .unwrap()
             .modules()
             .iter()
-            .any(|module| module.info.as_ref().unwrap().is_async)
+            .any(|module| module.info.as_ref().is_some_and(|info| info.is_async))
         {
             Ok(vec![include_str!("async_runtime.js").to_string()])
         } else {
