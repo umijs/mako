@@ -10,6 +10,11 @@ import Folder from './classUtils/Folder';
 function App() {
   const chartRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
+
+  // ref 用于保存Treemap实例
+  const treeMapRef = useRef(null);
+  const [chartData, setChartData] = useState('');
+
   // toolTip展示使用
   const [tooltipContent, setToolTipContent] = useState('');
   const createModulesTree = (modules) => {
@@ -41,29 +46,6 @@ function App() {
       };
     });
     return data;
-    // if(){}
-    if (data) {
-      new FoamTree({
-        element: chartRef.current,
-        layout: 'squarified',
-        stacking: 'flattened',
-        pixelRatio: window.devicePixelRatio || 1,
-        maxGroups: Infinity,
-        maxGroupLevelsDrawn: Infinity,
-        maxGroupLabelLevelsDrawn: Infinity,
-        maxGroupLevelsAttached: Infinity,
-        wireframeLabelDrawing: 'always',
-        groupMinDiameter: 0,
-        groupLabelVerticalPadding: 0.2,
-        rolloutDuration: 0,
-        pullbackDuration: 0,
-        fadeDuration: 0,
-        groupExposureZoomMargin: 0.2,
-        zoomMouseWheelDuration: 300,
-        openCloseDuration: 200,
-        dataObject: data,
-      });
-    }
   };
   const filterModulesForSize = (modules, sizeProp) => {
     return modules.reduce((filteredModules, module) => {
@@ -124,48 +106,74 @@ function App() {
       </div>
     );
   };
+  const createFoamTree = (chartData: any) => {
+    const formatData = format(chartData?.chunkModules || []);
+    const resData = filterModulesForSize(formatData, 'statSize');
+    return new FoamTree({
+      element: chartRef.current,
+      layout: 'squarified',
+      stacking: 'flattened',
+      pixelRatio: window.devicePixelRatio || 1,
+      maxGroups: Infinity,
+      maxGroupLevelsDrawn: Infinity,
+      maxGroupLabelLevelsDrawn: Infinity,
+      maxGroupLevelsAttached: Infinity,
+      wireframeLabelDrawing: 'always',
+      groupMinDiameter: 0,
+      groupLabelVerticalPadding: 0.2,
+      rolloutDuration: 0,
+      pullbackDuration: 0,
+      fadeDuration: 0,
+      groupExposureZoomMargin: 0.2,
+      zoomMouseWheelDuration: 300,
+      openCloseDuration: 200,
+      dataObject: { groups: resData },
+      titleBarDecorator(opts, props, vars) {
+        vars.titleBarShown = false;
+      },
+      onMouseLeave() {
+        setVisible(false);
+      },
+      onGroupHover(event: { group: any }) {
+        // 判断是否移动到组中
+        const { group } = event;
+        // 表示已经移出，需要隐藏 toolTip
+        if (group?.attribution) {
+          setVisible(false);
+          return;
+        }
+        console.log('group==', group);
+        // 显示 tooltip
+        if (group) {
+          setVisible(true);
+          setToolTipContent(getTooltipContent(group));
+        } else {
+          setVisible(false);
+        }
+      },
+    });
+  };
+  const resize = () => {
+    if (treeMapRef.current) {
+      treeMapRef.current.resize();
+    }
+  };
   useEffect(() => {
     window.addEventListener('load', () => {
-      const chartData = window.chartData;
-      const formatData = format(chartData?.modules || []);
-      const resData = filterModulesForSize(formatData, 'statSize');
-      new FoamTree({
-        element: chartRef.current,
-        layout: 'squarified',
-        stacking: 'flattened',
-        pixelRatio: window.devicePixelRatio || 1,
-        maxGroups: Infinity,
-        maxGroupLevelsDrawn: Infinity,
-        maxGroupLabelLevelsDrawn: Infinity,
-        maxGroupLevelsAttached: Infinity,
-        wireframeLabelDrawing: 'always',
-        groupMinDiameter: 0,
-        groupLabelVerticalPadding: 0.2,
-        rolloutDuration: 0,
-        pullbackDuration: 0,
-        fadeDuration: 0,
-        groupExposureZoomMargin: 0.2,
-        zoomMouseWheelDuration: 300,
-        openCloseDuration: 200,
-        dataObject: { groups: resData },
-        titleBarDecorator(opts, props, vars) {
-          vars.titleBarShown = false;
-        },
-        onGroupHover(event: { group: any }) {
-          // 判断是否移动到组中
-          const { group } = event;
-          // 显示 tooltip
-          if (group) {
-            setVisible(true);
-            setToolTipContent(getTooltipContent(group));
-          } else {
-            setVisible(false);
-          }
-        },
-      });
+      setChartData(window?.chartData);
     });
+    window.addEventListener('resize', resize);
+    return () => {
+      window.removeEventListener('resize', resize);
+    };
   }, []);
-
+  useEffect(() => {
+    if (!chartData) {
+      console.warn('数据未初始化!!');
+      return;
+    }
+    treeMapRef.current = createFoamTree(chartData);
+  }, [chartData]);
   return (
     <>
       <div style={{ width: '100vw', height: '100vh' }} ref={chartRef}></div>

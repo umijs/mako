@@ -8,7 +8,7 @@ interface TooltipProps {
 }
 const Tooltip: FC<TooltipProps> = ({ visible, content }) => {
   const [position, setPosition] = useState({ left: 0, top: 0 });
-
+  console.log('visible==', visible);
   const mouseCoords = useRef({ x: 0, y: 0 });
   const nodeRef = useRef(null);
 

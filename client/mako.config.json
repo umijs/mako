@@ -1,6 +1,6 @@
 {
   "devtool": "source-map",
-  "stats": true,
+  "stats": { "modules": true },
   "hash": true,
   "analyze": true
 }

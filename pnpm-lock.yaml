@@ -1038,16 +1038,16 @@ packages:
       react: '>=17.0.0'
       react-dom: '>=17.0.0'
     dependencies:
-      '@ant-design/icons': 5.3.7(react-dom@18.2.0)(react@18.2.0)
+      '@ant-design/icons': 5.0.1(react-dom@18.2.0)(react@18.2.0)
       '@ant-design/pro-card': 2.4.9(antd@5.17.3)(react-dom@18.2.0)(react@18.2.0)
       '@ant-design/pro-field': 2.8.0(antd@5.17.3)(react-dom@18.2.0)(react@18.2.0)
       '@ant-design/pro-table': 3.6.11(antd@5.17.3)(prop-types@15.8.1)(rc-field-form@1.44.0)(react-dom@18.2.0)(react@18.2.0)
       '@ant-design/pro-utils': 2.10.0(antd@5.17.3)(react-dom@18.2.0)(react@18.2.0)
-      '@babel/runtime': 7.24.5
+      '@babel/runtime': 7.22.11
       antd: 5.17.3(react-dom@18.2.0)(react@18.2.0)
       classnames: 2.5.1
       dayjs: 1.11.7
-      rc-resize-observer: 1.4.0(react-dom@18.2.0)(react@18.2.0)
+      rc-resize-observer: 1.3.1(react-dom@18.2.0)(react@18.2.0)
       rc-util: 4.21.1
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
@@ -10021,6 +10021,15 @@ packages:
       get-intrinsic: 1.2.1
     dev: true
 
+  /get-symbol-description@1.0.2:
+    resolution: {integrity: sha512-g0QYk1dZBxGwk+Ngc+ltRH2IBp2f7zBkBMBJZCDerh6EhlhSR6+9irMCuT/09zD6qkarHUSn529sK/yL4S27mg==}
+    engines: {node: '>= 0.4'}
+    dependencies:
+      call-bind: 1.0.7
+      es-errors: 1.3.0
+      get-intrinsic: 1.2.4
+    dev: true
+
   /get-tsconfig@4.7.5:
     resolution: {integrity: sha512-ZCuZCnlqNzjb4QprAzXKdpp/gh6KTxSJuw3IBsPnV/7fV4NxC9ckB+vPTt8w7fJA0TaSD7c55BR47JD6MEDyDw==}
     dependencies:
@@ -17111,7 +17120,7 @@ packages:
     engines: {node: '>=18.0.0'}
     hasBin: true
     dependencies:
-      esbuild: 0.18.20
+      esbuild: 0.20.2
       get-tsconfig: 4.7.5
     optionalDependencies:
       fsevents: 2.3.3
