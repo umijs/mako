@@ -1,0 +1,9 @@
+{
+  "optimization": {
+    "skipModules": true,
+    "concatenateModules": true
+  },
+  "entry": {
+    "index": "index.js"
+  }
+}

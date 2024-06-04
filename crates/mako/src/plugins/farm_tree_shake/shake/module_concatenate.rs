@@ -347,6 +347,7 @@ pub fn optimize_module_graph(
                         module_id: id,
                         unresolved_mark: script_ast.unresolved_mark,
                         my_top_level_vars: &mut current_module_top_level_vars,
+                        skip_named_export: false,
                     };
                     script_ast.ast.visit_mut_with(&mut ext_trans);
 
@@ -395,6 +396,7 @@ pub fn optimize_module_graph(
                     module_id: &config.root,
                     unresolved_mark,
                     my_top_level_vars: &mut HashSet::default(),
+                    skip_named_export: true,
                 };
                 root_module_ast.visit_mut_with(&mut ext_trans);
 
