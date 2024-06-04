@@ -83,7 +83,8 @@ pub struct BuildParams {
     inlineLimit?: number;
     targets?: Record<string, number>;
     platform?: "node" | "browser";
-    hmr?: false | { host?: string; port?: number };
+    hmr?: false | {};
+    devServer?: false | { host?: string; port?: number };
     px2rem?: false | {
         root?: number;
         propBlackList?: string[];
