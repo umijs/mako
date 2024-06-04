@@ -9,7 +9,9 @@ export interface TransformOutput {
 }
 export interface JsHooks {
   name?: string;
-  load?: (filePath: string) => Promise<{ content: string; type: 'css' | 'js' }>;
+  load?: (
+    filePath: string,
+  ) => Promise<{ content: string; type: 'css' | 'js' } | void> | void;
   generateEnd?: (data: {
     isFirstCompile: boolean;
     time: number;
@@ -70,7 +72,8 @@ export interface BuildParams {
     inlineLimit?: number;
     targets?: Record<string, number>;
     platform?: 'node' | 'browser';
-    hmr?: false | { host?: string; port?: number };
+    hmr?: false | {};
+    devServer?: false | { host?: string; port?: number };
     px2rem?:
       | false
       | {
