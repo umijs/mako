@@ -58,7 +58,7 @@ impl Compiler {
             chunk_graph.add_chunk(chunk);
 
             /* A worker can self-spawn from it's source file, that will leads to a circular dependencies,
-             * an obvious case is https://unpkg.com/browse/@antv/layout-wasm@1.4.0/pkg-parallel/.
+             * a real case is https://unpkg.com/browse/@antv/layout-wasm@1.4.0/pkg-parallel/.
              * Memorize handled workers to avoid infinite resolving
              */
             let mut visited_workers = HashSet::<ModuleId>::new();
