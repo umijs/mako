@@ -20,8 +20,6 @@ export async function startWorkers() {
         type: "module",
       });
       worker.postMessage("spawn");
-      await waitForMsgType(worker, "spawn");
-      return worker;
     })
   );
 }
