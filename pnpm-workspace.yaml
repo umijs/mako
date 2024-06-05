@@ -1,7 +1,8 @@
 packages:
-  - 'examples/*'
-  - 'crates/binding'
-  - 'packages/*'
-  - 'crates/mako/test/compile/auto-code-splitting'
-  - 'e2e/fixtures.umi/react-16'
-  - 'e2e/fixtures.umi/config.less.plugins'
+  - "examples/*"
+  - "crates/binding"
+  - "packages/*"
+  - "crates/mako/test/compile/auto-code-splitting"
+  - "e2e/fixtures/worker.self-spawn"
+  - "e2e/fixtures.umi/react-16"
+  - "e2e/fixtures.umi/config.less.plugins"

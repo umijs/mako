@@ -1,0 +1,7 @@
+{
+  "name": "worker.self-spawn",
+  "dependencies": {
+    "@antv/g6": "5.0.0-beta.39",
+    "@antv/layout-wasm": "^1.4.0"
+  }
+}

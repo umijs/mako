@@ -57,6 +57,12 @@ impl Compiler {
             );
             chunk_graph.add_chunk(chunk);
 
+            /* A worker can self-spawn from it's source file, that will leads to a circular dependencies.
+             * An obvious case is https://unpkg.com/browse/@antv/layout-wasm@1.4.0/pkg-parallel/
+             * memorize it to resvole the circulation
+             */
+            let mut visited_workers = HashSet::<ModuleId>::new();
+
             // 抽离成两个函数处理动态依赖中可能有 worker 依赖、worker 依赖中可能有动态依赖的复杂情况
             self.handle_dynamic_dependencies(
                 &chunk_name,
@@ -64,6 +70,7 @@ impl Compiler {
                 &visited,
                 &mut edges,
                 &mut chunk_graph,
+                &mut visited_workers,
             );
             self.handle_worker_dependencies(
                 &chunk_name,
@@ -71,6 +78,7 @@ impl Compiler {
                 &visited,
                 &mut edges,
                 &mut chunk_graph,
+                &mut visited_workers,
             );
         }
 
@@ -86,6 +94,7 @@ impl Compiler {
         visited: &HashSet<ModuleId>,
         edges: &mut Vec<(ModuleId, ModuleId)>,
         chunk_graph: &mut ChunkGraph,
+        visited_workers: &mut HashSet<ModuleId>,
     ) {
         visit_modules(dynamic_dependencies, Some(visited.clone()), |head| {
             let (chunk, dynamic_dependencies, worker_dependencies) = self.create_chunk(
@@ -103,10 +112,15 @@ impl Compiler {
             chunk_graph.add_chunk(chunk);
             self.handle_worker_dependencies(
                 chunk_name,
-                worker_dependencies,
+                worker_dependencies
+                    .iter()
+                    .filter(|w| !visited_workers.contains(w))
+                    .cloned()
+                    .collect(),
                 visited,
                 edges,
                 chunk_graph,
+                visited_workers,
             );
 
             dynamic_dependencies
@@ -120,6 +134,7 @@ impl Compiler {
         visited: &HashSet<ModuleId>,
         edges: &mut Vec<(ModuleId, ModuleId)>,
         chunk_graph: &mut ChunkGraph,
+        visited_workers: &mut HashSet<ModuleId>,
     ) {
         visit_modules(worker_dependencies, Some(visited.clone()), |head| {
             let (chunk, dynamic_dependencies, worker_dependencies) = self.create_chunk(
@@ -135,12 +150,16 @@ impl Compiler {
                     .map(|dep| (chunk.id.clone(), dep.generate(&self.context).into())),
             );
             chunk_graph.add_chunk(chunk);
+
+            visited_workers.insert(head.clone());
+
             self.handle_dynamic_dependencies(
                 chunk_name,
                 dynamic_dependencies,
                 visited,
                 edges,
                 chunk_graph,
+                visited_workers,
             );
 
             worker_dependencies
