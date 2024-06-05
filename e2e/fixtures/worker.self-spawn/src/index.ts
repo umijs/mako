@@ -1,20 +1,3 @@
-import {
-  ForceAtlas2Layout,
-  initThreads,
-  supportsThreads,
-} from "@antv/layout-wasm";
-import { Graph, register, ExtensionCategory } from "@antv/g6";
+export default (v: any) => console.log(v);
 
-register(ExtensionCategory.LAYOUT, "forceatlas2-wasm", ForceAtlas2Layout);
-
-const supported = await supportsThreads();
-const threads = await initThreads(supported);
-
-const graph = new Graph({
-  layout: {
-    type: "forceatlas2-wasm",
-    threads,
-  },
-});
-
-graph.render();
+import("./workerHelper").then((w) => w.startWorkers());
