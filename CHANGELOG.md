@@ -1,4 +1,13 @@
 
+## 0.5.4
+
+`2024-06-06`
+
+- 优化: 运行时错误的 HMR 优化 by [@sorrycc](https://github.com/sorrycc) in [#1244](https://github.com/umijs/mako/pull/1244)
+- 修复: dts 不匹配 by [@sorrycc](https://github.com/sorrycc) in [#1237](https://github.com/umijs/mako/pull/1237)
+- 修复: 根目录中的重新导出 by [@stormslowly](https://github.com/stormslowly) in [#1232](https://github.com/umijs/mako/pull/1232)
+- 修复: worker 循环依赖问题 by [@xusd320](https://github.com/xusd320) in [#1247](https://github.com/umijs/mako/pull/1247)
+
 ## 0.5.3
 
 `2024-06-04`
