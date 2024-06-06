@@ -194,6 +194,9 @@ pub struct StatsConfig {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct AnalyzeConfig {}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub enum CodeSplittingStrategy {
     #[serde(rename = "auto")]
     Auto,
@@ -442,11 +445,8 @@ pub struct Config {
     pub platform: Platform,
     pub module_id_strategy: ModuleIdStrategy,
     pub define: HashMap<String, Value>,
-
-    pub analyze: bool,
-
+    pub analyze: Option<AnalyzeConfig>,
     pub stats: Option<StatsConfig>,
-
     pub mdx: bool,
     #[serde(deserialize_with = "deserialize_hmr")]
     pub hmr: Option<HmrConfig>,
@@ -632,10 +632,6 @@ const DEFAULT_CONFIG: &str = r#"
     "targets": { "chrome": 80 },
     "less": { "theme": {}, "lesscPath": "", javascriptEnabled: true },
     "define": {},
-
-
-    "analyze": false,
-
     "mdx": false,
     "platform": "browser",
     "hmr": {},

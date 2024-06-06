@@ -78,7 +78,7 @@ function App() {
       </div>
     ) : null;
   };
-  // 格式化module数据到 toolTip 中
+  // 格式化 module 数据到 toolTip 中
   const getTooltipContent = (module) => {
     if (!module) return null;
 
