@@ -12,7 +12,7 @@ export default connect(mapStateToProps)(function Page(props) {
   return (
     <div>
       <h1 className={styles.title}>Page index</h1>
-      {/* biome-ignore lint/a11y/useButtonType: <explanation> */}
+      {/* rome-ignore lint/a11y/useButtonType: <explanation> */}
       <button
         onClick={() => {
           props.dispatch({ type: 'count/add' });

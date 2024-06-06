@@ -18,7 +18,7 @@ export default function LazyComponent() {
     <div>
       <h3>{text}</h3>
       <h3 data-test-id="dynamic-counter">count: {count}</h3>
-      {/* biome-ignore lint/a11y/useButtonType: <explanation> */}
+      {/* rome-ignore lint/a11y/useButtonType: <explanation> */}
       <button
         onClick={() => {
           setCount(count + 1);
