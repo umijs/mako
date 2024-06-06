@@ -2,5 +2,6 @@
   "scripts": {
     "build": "node build.js"
   },
-  "devDependencies": {}
+  "devDependencies": {
+  }
 }
