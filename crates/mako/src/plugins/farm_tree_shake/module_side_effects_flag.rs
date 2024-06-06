@@ -8,7 +8,6 @@ use crate::resolve::{ResolvedResource, ResolverResource};
 
 impl ModuleInfo {
     pub fn described_side_effect(&self) -> Option<bool> {
-
         if let Some(ResolverResource::Resolved(ResolvedResource(source))) = &self.resolved_resource
         {
             match &source.package_json() {
@@ -19,10 +18,9 @@ impl ModuleInfo {
                     let root: &Path = desc.directory();
                     let root: PathBuf = root.into();
 
-                    let s = side_effects.map(|side_effect| {
+                    side_effects.map(|side_effect| {
                         Self::match_flag(side_effect, relative_to_root(&self.path, &root).as_str())
-                    });
-                    s
+                    })
                 }
                 None => None,
             }

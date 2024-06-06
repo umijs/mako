@@ -101,7 +101,8 @@ impl TreeShakeModule {
                             }
                             ExportSpecifierInfo::Default(export_default_ident) => {
                                 if ident == "default" {
-                                    if let Some(_default_ident) = export_default_ident {
+                                    if export_default_ident.is_some() {
+                                        // TODO figure out how webpack handle this
                                         // re_export_type = Some(ReExportType::Default);
                                         // local_ident = Some(default_ident.clone());
                                         break;
