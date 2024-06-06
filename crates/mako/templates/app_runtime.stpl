@@ -58,6 +58,17 @@ function createRuntime(makoModules, entryModuleId, global) {
         get: all[name],
       });
   };
+  // Export Star util for concatenated modules
+  requireModule.es = function(to, from) {
+    Object.keys(from).forEach(function(k) {
+        if (k !== "default" && !Object.prototype.hasOwnProperty.call(to, k)) {
+            Object.defineProperty(to, k, {
+                enumerable: true,
+                get: from[k]
+            });
+        }
+    });
+  };
   requireModule.d = Object.defineProperty.bind(Object);
 
 <% if has_dynamic_chunks || has_hmr { %>
