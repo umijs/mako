@@ -83,6 +83,50 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App />);
   await cleanup({ process, browser });
 });
 
+runTest('js: hmr with runtime promise reject error', async () => {
+  write(
+    normalizeFiles({
+      '/src/index.tsx': `
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { App } from './App';
+ReactDOM.createRoot(document.getElementById('root')!).render(<><App /><section>{Math.random()}</section></>);
+Promise.reject('This is an error');
+    `,
+      '/src/App.tsx': `
+import React from 'react';
+export function App() {
+  return <div>App</div>;
+}
+      `,
+    }),
+  );
+  const { process } = await startMakoDevServer();
+  await delay(DELAY_TIME);
+  const { browser, page } = await startBrowser();
+  let lastResult;
+  let thisResult;
+  let isReload;
+  lastResult = normalizeHtml(await getRootHtml(page));
+  assert.equal(lastResult.html, '<div>App</div>', 'Initial render');
+  write({
+    '/src/App.tsx': `
+import React from 'react';
+export function App() {
+  return <div>App Modified</div>;
+}
+    `,
+  });
+  await delay(DELAY_TIME);
+  thisResult = normalizeHtml(await getRootHtml(page));
+  console.log(`new html`, thisResult.html);
+  assert.equal(thisResult.html, '<div>App Modified</div>', 'Initial render 2');
+  isReload = lastResult.random !== thisResult.random;
+  assert.equal(isReload, false, 'Should not not reload');
+  lastResult = thisResult;
+  await cleanup({ process, browser });
+});
+
 runTest('js: anonymous default export hmr', async () => {
   write(
     normalizeFiles({

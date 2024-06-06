@@ -1,13 +1,13 @@
 use mako_core::swc_common::DUMMY_SP;
 use mako_core::swc_ecma_ast::{
     ArrowExpr, Decl, ExportDecl, ExportNamedSpecifier, ExportSpecifier, Expr, FnDecl, Function,
-    ModuleDecl, ModuleExportName, ModuleItem, NamedExport, Pat, Stmt, VarDecl,
+    ModuleDecl, ModuleItem, NamedExport, Pat, Stmt, VarDecl,
 };
-use mako_core::swc_ecma_utils::quote_ident;
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+use swc_core::ecma::ast::Ident;
 
 pub struct FixHelperInjectPosition {
-    pub exports: Vec<String>,
+    pub exports: Vec<Ident>,
 }
 
 impl FixHelperInjectPosition {
@@ -21,6 +21,7 @@ impl VisitMut for FixHelperInjectPosition {
         if let ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(ExportDecl { decl, .. })) = n {
             let mut has_array_param = false;
             let mut export_names = vec![];
+            // export function ident ([a]){}
             if let Decl::Fn(FnDecl {
                 ident,
                 function: box Function { params, .. },
@@ -31,21 +32,21 @@ impl VisitMut for FixHelperInjectPosition {
                     .iter()
                     .any(|param| matches!(param.pat, Pat::Array(_)));
                 if has_array_param {
-                    export_names.push(ident.sym.to_string());
+                    export_names.push(ident.clone());
                 }
             }
             if let Decl::Var(box VarDecl { decls, .. }) = &decl {
                 decls.iter().for_each(|decl| {
                     let name = match &decl.name {
-                        Pat::Ident(ident) => ident.sym.to_string(),
-                        _ => "".to_string(),
+                        Pat::Ident(ident) => Some(ident.id.clone()),
+                        _ => None,
                     };
                     // why don't handle Expr::Fn(FnExpr {}) ?
                     // export const x = function ([ a, b ]) { return a + b; }; works correctly
                     // we don't need to fix it
                     if let Some(box Expr::Arrow(ArrowExpr { params, .. })) = &decl.init {
                         has_array_param = params.iter().any(|param| matches!(param, Pat::Array(_)));
-                        if has_array_param && !name.is_empty() {
+                        if has_array_param && let Some(name) = name {
                             export_names.push(name);
                         }
                     }
@@ -70,7 +71,7 @@ impl VisitMut for FixHelperInjectPosition {
                         span: DUMMY_SP,
                         specifiers: vec![ExportSpecifier::Named(ExportNamedSpecifier {
                             span: DUMMY_SP,
-                            orig: ModuleExportName::Ident(quote_ident!(export.clone())),
+                            orig: export.clone().into(),
                             exported: None,
                             is_type_only: false,
                         })],
