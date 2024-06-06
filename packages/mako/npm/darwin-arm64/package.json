@@ -1,6 +1,6 @@
 {
   "name": "@umijs/mako-darwin-arm64",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "os": [
     "darwin"
   ],
