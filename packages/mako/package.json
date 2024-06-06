@@ -41,7 +41,11 @@
   "engines": {
     "node": ">= 16"
   },
-  "files": ["bin", "dist", "binding.*"],
+  "files": [
+    "bin",
+    "dist",
+    "binding.*"
+  ],
   "scripts": {
     "artifacts": "napi artifacts",
     "artifacts:local": "rm -rf tmp && mkdir tmp && cp *.node tmp/ && napi artifacts --dir ./tmp --dist npm",

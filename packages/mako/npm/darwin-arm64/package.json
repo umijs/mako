@@ -1,10 +1,16 @@
 {
   "name": "@umijs/mako-darwin-arm64",
   "version": "0.5.4",
-  "os": ["darwin"],
-  "cpu": ["arm64"],
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
   "main": "mako.darwin-arm64.node",
-  "files": ["mako.darwin-arm64.node"],
+  "files": [
+    "mako.darwin-arm64.node"
+  ],
   "license": "MIT",
   "engines": {
     "node": ">= 10"

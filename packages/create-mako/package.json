@@ -17,7 +17,11 @@
   "engines": {
     "node": ">= 16"
   },
-  "files": ["bin", "dist", "templates"],
+  "files": [
+    "bin",
+    "dist",
+    "templates"
+  ],
   "scripts": {
     "format": "biome check --apply .",
     "dev": "father dev",

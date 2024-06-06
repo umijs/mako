@@ -9,7 +9,9 @@
     "@types/node": "^20.12.5",
     "typescript": "^5.4.3"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "format": "biome check --apply .",
     "dev": "father dev",
