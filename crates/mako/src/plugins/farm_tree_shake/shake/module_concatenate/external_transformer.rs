@@ -47,6 +47,7 @@ pub(super) struct ExternalTransformer<'a> {
     pub module_id: &'a ModuleId,
     pub unresolved_mark: Mark,
     pub my_top_level_vars: &'a mut HashSet<String>,
+    pub skip_named_export: bool,
 }
 
 impl<'a> ExternalTransformer<'_> {
@@ -306,6 +307,10 @@ impl VisitMut for ExternalTransformer<'_> {
                         }
                     }
                     ModuleDecl::ExportNamed(named_export) => {
+                        if self.skip_named_export {
+                            return;
+                        }
+
                         if let Some(src) = &named_export.src
                             && let Some(((_, external_module_namespace), src_module_id)) =
                                 self.src_to_export_name(src.value.as_ref())
@@ -398,6 +403,7 @@ mod tests {
                 module_id: &ModuleId::from("mut.js"),
                 unresolved_mark: ast.unresolved_mark,
                 my_top_level_vars: &mut my_top_vars,
+                skip_named_export: false,
             };
 
             ast.ast.visit_mut_with(&mut t);
