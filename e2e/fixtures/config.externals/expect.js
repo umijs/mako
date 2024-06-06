@@ -8,7 +8,7 @@ assert.match(
   content,
   moduleReg(
     "hoo",
-    "module.exports = \\(typeof globalThis !== 'undefined' \\? globalThis : self\\).hoo;"
+    "module.exports = \\(typeof globalThis !== 'undefined' \\? globalThis : self\\)\\['hoo'\\];"
   ),
   "should have external module: hoo"
 );
@@ -52,7 +52,7 @@ assert.match(
   content,
   moduleReg(
     "antd/es/version",
-    "module.exports = \\(typeof globalThis !== 'undefined' \\? globalThis : self\\).antd.version;"
+    "module.exports = \\(typeof globalThis !== 'undefined' \\? globalThis : self\\)\\['antd'\\].version;"
   ),
   "should external 1-level subpath"
 );
@@ -61,7 +61,7 @@ assert.match(
   content,
   moduleReg(
     "antd/es/date-picker",
-    "module.exports = \\(typeof globalThis !== 'undefined' \\? globalThis : self\\).antd.DatePicker;"
+    "module.exports = \\(typeof globalThis !== 'undefined' \\? globalThis : self\\)\\['antd'\\].DatePicker;"
   ),
   "should external 1-level subpath with PascalCase"
 );
@@ -70,7 +70,7 @@ assert.match(
   content,
   moduleReg(
     "antd/es/input/Group",
-    "module.exports = \\(typeof globalThis !== 'undefined' \\? globalThis : self\\).antd.Input.Group;"
+    "module.exports = \\(typeof globalThis !== 'undefined' \\? globalThis : self\\)\\['antd'\\].Input.Group;"
   ),
   "should external 2-level subpath with PascalCase"
 );
@@ -79,7 +79,7 @@ assert.match(
   content,
   moduleReg(
     "script",
-    "__mako_require__.loadScript\\('https://example.com/lib/script.js'[^]+\\(typeof globalThis !== 'undefined' \\? globalThis : self\\).ScriptType"
+    "__mako_require__.loadScript\\('https://example.com/lib/script.js'[^]+\\(typeof globalThis !== 'undefined' \\? globalThis : self\\)\\['ScriptType'\\]"
   ),
   "should external in script mode"
 );
