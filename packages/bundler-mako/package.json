@@ -3,7 +3,7 @@
   "version": "0.5.4",
   "dependencies": {
     "@umijs/bundler-utils": "^4.0.81",
-    "@umijs/mako": "0.5.4",
+    "@umijs/mako": "0.5.5-canary.20240606.1",
     "chalk": "^4.1.2",
     "compression": "^1.7.4",
     "connect-history-api-fallback": "^2.0.0",
