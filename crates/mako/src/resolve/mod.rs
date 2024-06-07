@@ -89,10 +89,6 @@ fn get_external_target(
                 } else if external.starts_with("commonjs ") {
                     format!("require(\"{}\")", external.replace("commonjs ", ""))
                 } else {
-                    /*
-                     * Can't use "globalThis.{xxx}" because "globalThis.@ant-design/icons"
-                     * is syntax invalid
-                     */
                     get_external_target_from_global_obj(global_obj, external)
                 },
                 None,
@@ -103,10 +99,6 @@ fn get_external_target(
                 } else if config.module_type.as_ref().is_some_and(|t| t == "commonjs") {
                     format!("require(\"{}\")", config.root)
                 } else {
-                    /*
-                     * Can't use "globalThis.{xxx}" because "globalThis.@ant-design/icons"
-                     * is syntax invalid
-                     */
                     get_external_target_from_global_obj(global_obj, &config.root)
                 },
                 config.script.clone(),
