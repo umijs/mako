@@ -89,7 +89,11 @@ fn get_external_target(
                 } else if external.starts_with("commonjs ") {
                     format!("require(\"{}\")", external.replace("commonjs ", ""))
                 } else {
-                    format!("{}['{}']", global_obj, external)
+                    /*
+                     * Can't use "globalThis.{xxx}" because "globalThis.@ant-design/icons"
+                     * is syntax invalid
+                     */
+                    get_external_target_from_global_obj(global_obj, external)
                 },
                 None,
             )),
@@ -103,7 +107,7 @@ fn get_external_target(
                      * Can't use "globalThis.{xxx}" because "globalThis.@ant-design/icons"
                      * is syntax invalid
                      */
-                    format!("{}['{}']", global_obj, config.root)
+                    get_external_target_from_global_obj(global_obj, &config.root)
                 },
                 config.script.clone(),
             )),
@@ -184,7 +188,11 @@ fn get_external_target(
                         };
                     }
                     Some((
-                        format!("{}['{}'].{}", global_obj, advanced_config.root, replaced),
+                        format!(
+                            "{}.{}",
+                            get_external_target_from_global_obj(global_obj, &advanced_config.root),
+                            replaced
+                        ),
                         advanced_config.script.clone(),
                     ))
                 }
@@ -195,6 +203,14 @@ fn get_external_target(
     } else {
         None
     }
+}
+
+/*
+ * Can't use "globalThis.{xxx}" because "globalThis.@ant-design/icons"
+ * is syntax invalid
+ */
+fn get_external_target_from_global_obj(global_obj_name: &str, external: &str) -> String {
+    format!("{}['{}']", global_obj_name, external)
 }
 
 // TODO:
