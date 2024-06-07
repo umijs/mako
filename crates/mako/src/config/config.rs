@@ -15,7 +15,6 @@ use miette::{miette, ByteOffset, Diagnostic, NamedSource, SourceOffset, SourceSp
 use serde::Serialize;
 
 use crate::features::node::Node;
-use crate::generate::optimize_chunk;
 use crate::{plugins, visitors};
 
 #[derive(Debug, Diagnostic)]
@@ -193,6 +192,8 @@ pub enum ModuleIdStrategy {
 pub struct CodeSplittingGranularStrategy {
     #[serde(default)]
     pub framework_packages: Vec<String>,
+    #[serde(default = "GenericUsizeDefault::<160000>::value")]
+    pub lib_min_module_size: usize,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -531,7 +532,7 @@ pub enum OptimizeAllowChunks {
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct OptimizeChunkOptions {
-    #[serde(default = "optimize_chunk::default_min_size")]
+    #[serde(default = "GenericUsizeDefault::<20000>::value")]
     pub min_size: usize,
     pub groups: Vec<OptimizeChunkGroup>,
 }
@@ -539,7 +540,7 @@ pub struct OptimizeChunkOptions {
 impl Default for OptimizeChunkOptions {
     fn default() -> Self {
         OptimizeChunkOptions {
-            min_size: optimize_chunk::default_min_size(),
+            min_size: GenericUsizeDefault::<20000>::value(),
             groups: vec![],
         }
     }
@@ -561,11 +562,11 @@ pub struct OptimizeChunkGroup {
     pub name_suffix: Option<OptimizeChunkNameSuffixStrategy>,
     #[serde(default)]
     pub allow_chunks: OptimizeAllowChunks,
-    #[serde(default = "optimize_chunk::default_min_chunks")]
+    #[serde(default = "GenericUsizeDefault::<1>::value")]
     pub min_chunks: usize,
-    #[serde(default = "optimize_chunk::default_min_size")]
+    #[serde(default = "GenericUsizeDefault::<20000>::value")]
     pub min_size: usize,
-    #[serde(default = "optimize_chunk::default_max_size")]
+    #[serde(default = "GenericUsizeDefault::<5000000>::value")]
     pub max_size: usize,
     #[serde(default)]
     pub min_module_size: Option<usize>,
@@ -579,9 +580,9 @@ impl Default for OptimizeChunkGroup {
     fn default() -> Self {
         Self {
             allow_chunks: OptimizeAllowChunks::default(),
-            min_chunks: optimize_chunk::default_min_chunks(),
-            min_size: optimize_chunk::default_min_size(),
-            max_size: optimize_chunk::default_max_size(),
+            min_chunks: GenericUsizeDefault::<1>::value(),
+            min_size: GenericUsizeDefault::<20000>::value(),
+            max_size: GenericUsizeDefault::<5000000>::value(),
             name: String::default(),
             name_suffix: None,
             min_module_size: None,
@@ -891,8 +892,17 @@ pub enum ConfigError {
     InvalidateDefineConfig(String),
 }
 
+struct GenericUsizeDefault<const U: usize>;
+
+impl<const U: usize> GenericUsizeDefault<U> {
+    fn value() -> usize {
+        U
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::config::config::GenericUsizeDefault;
     use crate::config::{Config, Mode, Platform};
 
     #[test]
@@ -970,5 +980,10 @@ mod tests {
             config.ignores.iter().any(|i| i.contains("|fs|")),
             "ignore Node.js standard library by default if platform is node",
         );
+    }
+
+    #[test]
+    fn test_generic_usize_default() {
+        assert!(GenericUsizeDefault::<100>::value() == 100usize)
     }
 }

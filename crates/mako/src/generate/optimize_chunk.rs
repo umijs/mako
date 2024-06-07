@@ -18,18 +18,6 @@ use crate::generate::group_chunk::GroupUpdateResult;
 use crate::module::{Module, ModuleId, ModuleInfo};
 use crate::resolve::{ResolvedResource, ResolverResource};
 
-pub(crate) fn default_min_size() -> usize {
-    20000
-}
-
-pub(crate) fn default_max_size() -> usize {
-    5000000
-}
-
-pub(crate) fn default_min_chunks() -> usize {
-    1
-}
-
 #[derive(Debug)]
 pub struct OptimizeChunksInfo {
     pub group_options: OptimizeChunkGroup,
@@ -648,8 +636,14 @@ impl Compiler {
                 Some(code_splitting_strategy_auto())
             }
             Some(crate::config::CodeSplittingStrategy::Granular(
-                CodeSplittingGranularStrategy { framework_packages },
-            )) => Some(code_splitting_strategy_granular(framework_packages.clone())),
+                CodeSplittingGranularStrategy {
+                    framework_packages,
+                    lib_min_module_size,
+                },
+            )) => Some(code_splitting_strategy_granular(
+                framework_packages.clone(),
+                *lib_min_module_size,
+            )),
             Some(crate::config::CodeSplittingStrategy::Advanced(options)) => Some(options.clone()),
             _ => None,
         }
@@ -678,7 +672,10 @@ fn code_splitting_strategy_auto() -> OptimizeChunkOptions {
     }
 }
 
-fn code_splitting_strategy_granular(framework_packages: Vec<String>) -> OptimizeChunkOptions {
+fn code_splitting_strategy_granular(
+    framework_packages: Vec<String>,
+    lib_min_module_size: usize,
+) -> OptimizeChunkOptions {
     OptimizeChunkOptions {
         groups: vec![
             OptimizeChunkGroup {
@@ -697,7 +694,7 @@ fn code_splitting_strategy_granular(framework_packages: Vec<String>) -> Optimize
                 name_suffix: Some(OptimizeChunkNameSuffixStrategy::PackageName),
                 allow_chunks: OptimizeAllowChunks::Async,
                 test: Regex::new(r"[/\\]node_modules[/\\]").ok(),
-                min_module_size: Some(160000),
+                min_module_size: Some(lib_min_module_size),
                 priority: -20,
                 ..Default::default()
             },
