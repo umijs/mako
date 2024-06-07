@@ -9,6 +9,11 @@
     "concatenateModules": false
   },
   "codeSplitting": {
-    "frameworkPackages": ["react", "react-dom"]
+    "frameworkPackages": [
+      "react",
+      "react-dom",
+      "@ant-design/icons",
+      "@ant-design/icons-svg"
+    ]
   }
 }

@@ -162,7 +162,7 @@ impl Plugin for SUPlus {
             groups: vec![
                 OptimizeChunkGroup {
                     name: "node_modules".to_string(),
-                    name_postfix_strategy: None,
+                    name_suffix: None,
                     allow_chunks: OptimizeAllowChunks::All,
                     min_chunks: 0,
                     min_size: 0,
@@ -177,7 +177,7 @@ impl Plugin for SUPlus {
                     // always split, to avoid multi-instance risk
                     min_size: 1,
                     max_size: usize::MAX,
-                    name_postfix_strategy: None,
+                    name_suffix: None,
                     min_module_size: None,
                     priority: 0,
                     ..Default::default()

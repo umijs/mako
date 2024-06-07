@@ -546,13 +546,11 @@ impl Default for OptimizeChunkOptions {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
-pub enum OptimizeChunkNamePostFixStrategy {
-    #[serde(rename = "named")]
-    Named,
-    #[serde(rename = "numeric")]
-    Numeric,
+pub enum OptimizeChunkNameSuffixStrategy {
+    #[serde(rename = "packageName")]
+    PackageName,
     #[serde(rename = "hashed")]
-    Hashed,
+    SharedHash,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -560,7 +558,7 @@ pub enum OptimizeChunkNamePostFixStrategy {
 pub struct OptimizeChunkGroup {
     pub name: String,
     #[serde(default)]
-    pub name_postfix_strategy: Option<OptimizeChunkNamePostFixStrategy>,
+    pub name_suffix: Option<OptimizeChunkNameSuffixStrategy>,
     #[serde(default)]
     pub allow_chunks: OptimizeAllowChunks,
     #[serde(default = "optimize_chunk::default_min_chunks")]
@@ -585,7 +583,7 @@ impl Default for OptimizeChunkGroup {
             min_size: optimize_chunk::default_min_size(),
             max_size: optimize_chunk::default_max_size(),
             name: String::default(),
-            name_postfix_strategy: None,
+            name_suffix: None,
             min_module_size: None,
             test: None,
             priority: i8::default(),

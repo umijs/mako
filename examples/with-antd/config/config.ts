@@ -5,4 +5,12 @@ export default defineConfig({
   codeSplitting: {
     jsStrategy: 'granularChunks',
   },
+  // chainWebpack(memo) {
+  //   memo.merge({
+  //     optimization: {
+  //       chunkIds: "named",
+  //       moduleIds: "named",
+  //     },
+  //   });
+  // },
 });
