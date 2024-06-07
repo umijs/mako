@@ -15,7 +15,8 @@ use crate::config::{
 };
 use crate::generate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::generate::group_chunk::GroupUpdateResult;
-use crate::module::ModuleId;
+use crate::module::{Module, ModuleId, ModuleInfo};
+use crate::resolve::{ResolvedResource, ResolverResource};
 
 pub(crate) fn default_min_size() -> usize {
     20000
@@ -323,9 +324,7 @@ impl Compiler {
             let mut package_size_map = chunk_modules.iter().fold(
                 IndexMap::<String, (usize, IndexMap<ModuleId, Vec<ChunkId>>)>::new(),
                 |mut size_map, mtc| {
-                    let pkg_name = module_graph
-                        .get_package_name(mtc.0)
-                        .unwrap_or(mtc.0.id.clone());
+                    let pkg_name = self.get_package_name(mtc.0).unwrap_or(mtc.0.id.clone());
 
                     let module_size = module_graph.get_module(mtc.0).unwrap().get_module_size();
 
@@ -416,7 +415,6 @@ impl Compiler {
     }
 
     fn optimize_name_suffix(&self, optimize_chunks_infos: &mut Vec<OptimizeChunksInfo>) {
-        let module_graph = self.context.module_graph.read().unwrap();
         let mut extra_optimize_infos: Vec<OptimizeChunksInfo> = Vec::new();
         for info in &mut *optimize_chunks_infos {
             if let Some(name_suffix) = &info.group_options.name_suffix {
@@ -425,7 +423,7 @@ impl Compiler {
                         let mut module_to_package_map: HashMap<String, Vec<ModuleId>> =
                             HashMap::new();
                         info.module_to_chunks.keys().for_each(|module_id| {
-                            if let Some(package_name) = module_graph.get_package_name(module_id) {
+                            if let Some(package_name) = self.get_package_name(module_id) {
                                 let package_entry =
                                     module_to_package_map.entry(package_name).or_default();
 
@@ -626,6 +624,22 @@ impl Compiler {
         module_graph
             .get_module(module_id)
             .map(|m| m.get_module_size())
+    }
+
+    fn get_package_name(&self, module_id: &ModuleId) -> Option<String> {
+        let module_graph = self.context.module_graph.read().unwrap();
+        match module_graph.get_module(module_id) {
+            Some(Module {
+                info:
+                    Some(ModuleInfo {
+                        resolved_resource:
+                            Some(ResolverResource::Resolved(ResolvedResource(resolution))),
+                        ..
+                    }),
+                ..
+            }) => resolution.package_json().and_then(|r| r.name.clone()),
+            _ => None,
+        }
     }
 
     fn get_optimize_chunk_options(&self) -> Option<OptimizeChunkOptions> {

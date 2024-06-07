@@ -9,8 +9,7 @@ use mako_core::petgraph::visit::IntoEdgeReferences;
 use mako_core::petgraph::Direction;
 use mako_core::tracing::debug;
 
-use crate::module::{Dependencies, Dependency, Module, ModuleId, ModuleInfo, ResolveType};
-use crate::resolve::{ResolvedResource, ResolverResource};
+use crate::module::{Dependencies, Dependency, Module, ModuleId, ResolveType};
 
 #[derive(Debug)]
 pub struct ModuleGraph {
@@ -362,21 +361,6 @@ impl ModuleGraph {
 
     pub fn dfs(&self, start: &ModuleId) -> Dfs<NodeIndex, FixedBitSet> {
         Dfs::new(&self.graph, *self.id_index_map.get(start).unwrap())
-    }
-
-    pub fn get_package_name(&self, module_id: &ModuleId) -> Option<String> {
-        match self.get_module(module_id) {
-            Some(Module {
-                info:
-                    Some(ModuleInfo {
-                        resolved_resource:
-                            Some(ResolverResource::Resolved(ResolvedResource(resolution))),
-                        ..
-                    }),
-                ..
-            }) => resolution.package_json().and_then(|r| r.name.clone()),
-            _ => None,
-        }
     }
 }
 
