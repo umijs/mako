@@ -1,6 +1,14 @@
 import yParser from 'yargs-parser';
 
 (async () => {
+  let isWin = process.platform === 'win32';
+  if (isWin) {
+    console.error(
+      'mako is not supported on Windows yet, please visit https://makojs.dev/ to subscribe for updates',
+    );
+    process.exit(1);
+  }
+
   let argv = yParser(process.argv.slice(2));
   let command = argv._[0];
   switch (command) {
