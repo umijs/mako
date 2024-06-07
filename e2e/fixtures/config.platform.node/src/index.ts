@@ -8,3 +8,13 @@ fs2.readFileSync(__filename, ENCODING);
 readFile(__filename, { encoding: ENCODING });
 
 console.log('dirname', __dirname);
+
+require('crypto');
+require('http2');
+
+try {
+  require('crypto')
+  hasCrypto = true
+} catch {
+  hasCrypto = false
+}

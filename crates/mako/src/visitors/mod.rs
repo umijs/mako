@@ -13,6 +13,7 @@ pub(crate) mod env_replacer;
 pub(crate) mod fix_helper_inject_position;
 pub(crate) mod mako_require;
 pub(crate) mod meta_url_replacer;
+pub(crate) mod new_url_assets;
 pub(crate) mod optimize_define_utils;
 pub(crate) mod provide;
 pub(crate) mod react;
