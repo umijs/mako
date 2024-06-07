@@ -2,27 +2,12 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { RouterProvider, createHashRouter } from 'react-router-dom';
 import { Layout } from './layout';
-
-const Todos = React.lazy(() =>
-  import('./pages/todos').then((m) => ({ default: m.Todos })),
-);
-const ReactQuery = React.lazy(() =>
-  import('./pages/react-query').then((m) => ({ default: m.ReactQuery })),
-);
-const MonacoEditor = React.lazy(() =>
-  import('./pages/monaco-editor').then((m) => ({ default: m.MonacoEditor })),
-);
-const Home = React.lazy(() =>
-  import('./pages/home').then((m) => ({ default: m.Home })),
-);
-const AntDesignPro = React.lazy(() =>
-  import('./pages/ant-design-pro').then((m) => ({ default: m.AntDesignPro })),
-);
-const AntDesignIcons = React.lazy(() =>
-  import('./pages/ant-design-icons').then((m) => ({
-    default: m.AntDesignIcons,
-  })),
-);
+import { AntDesignIcons } from './pages/ant-design-icons';
+import { AntDesignPro } from './pages/ant-design-pro';
+import { Home } from './pages/home';
+import { MonacoEditor } from './pages/monaco-editor';
+import { ReactQuery } from './pages/react-query';
+import { Todos } from './pages/todos';
 
 const router = createHashRouter([
   {

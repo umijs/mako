@@ -4,16 +4,6 @@
   "minify": true,
   "moduleIdStrategy": "named",
   "optimizePackageImports": false,
-  "optimization": {
-    "skipModules": true,
-    "concatenateModules": false
-  },
-  "codeSplitting": {
-    "frameworkPackages": [
-      "react",
-      "react-dom",
-      "@ant-design/icons",
-      "@ant-design/icons-svg"
-    ]
-  }
+  "optimization": { "skipModules": true, "concatenateModules": true },
+  "clean": false
 }
