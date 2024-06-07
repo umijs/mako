@@ -99,6 +99,10 @@ fn get_external_target(
                 } else if config.module_type.as_ref().is_some_and(|t| t == "commonjs") {
                     format!("require(\"{}\")", config.root)
                 } else {
+                    /*
+                     * Can't use "globalThis.{xxx}" because "globalThis.@ant-design/icons"
+                     * is syntax invalid
+                     */
                     format!("{}['{}']", global_obj, config.root)
                 },
                 config.script.clone(),
@@ -498,6 +502,10 @@ mod tests {
                 "react".to_string(),
                 ExternalConfig::Basic("react".to_string()),
             ),
+            (
+                "@ant-design/icons".to_string(),
+                ExternalConfig::Basic("@ant-design/icons".to_string()),
+            ),
             ("empty".to_string(), ExternalConfig::Basic("".to_string())),
         ]);
         let x = external_resolve(
@@ -513,6 +521,24 @@ mod tests {
                 "react".to_string(),
                 Some(
                     "(typeof globalThis !== 'undefined' ? globalThis : self)['react']".to_string()
+                ),
+                None,
+            )
+        );
+        let x = external_resolve(
+            "test/resolve/normal",
+            None,
+            Some(&externals),
+            "index.ts",
+            "@ant-design/icons",
+        );
+        assert_eq!(
+            x,
+            (
+                "@ant-design/icons".to_string(),
+                Some(
+                    "(typeof globalThis !== 'undefined' ? globalThis : self)['@ant-design/icons']"
+                        .to_string()
                 ),
                 None,
             )
