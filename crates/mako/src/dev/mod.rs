@@ -1,7 +1,7 @@
 pub(crate) mod update;
 mod watch;
 
-use std::net::SocketAddr;
+use std::net::{SocketAddr, TcpListener};
 use std::path::PathBuf;
 use std::sync::{mpsc, Arc};
 use std::time::{Duration, Instant, UNIX_EPOCH};
@@ -56,7 +56,7 @@ impl DevServer {
 
         // server
         if self.compiler.context.config.dev_server.is_some() {
-            let port = self
+            let config_port = self
                 .compiler
                 .context
                 .config
@@ -66,7 +66,7 @@ impl DevServer {
                 .port;
             // TODO: host
             // let host = self.compiler.context.config.hmr_host.clone();
-            // TODO: find free port
+            let port = Self::find_available_port("127.0.0.1".to_string(), config_port);
             let addr: SocketAddr = ([127, 0, 0, 1], port).into();
             let context = self.compiler.context.clone();
             let txws = txws.clone();
@@ -87,6 +87,14 @@ impl DevServer {
             // TODO: print when mako is run standalone
             if std::env::var("MAKO_CLI").is_ok() {
                 println!();
+                if config_port != port {
+                    println!(
+                        "{}",
+                        format!("Port {} is in use, using {} instead.", config_port, port)
+                            .to_string()
+                            .yellow(),
+                    );
+                }
                 println!(
                     "Local:   {}",
                     format!("http://localhost:{}/", port).to_string().cyan()
@@ -201,6 +209,16 @@ impl DevServer {
             Err(_e) => {}
         }
         ips
+    }
+
+    fn find_available_port(host: String, port: u16) -> u16 {
+        let mut port = port;
+        if TcpListener::bind((host.clone(), port)).is_ok() {
+            port
+        } else {
+            port += 1;
+            Self::find_available_port(host, port)
+        }
     }
 
     // TODO: refact socket message data structure
