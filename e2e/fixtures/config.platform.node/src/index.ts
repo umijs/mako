@@ -9,7 +9,6 @@ readFile(__filename, { encoding: ENCODING });
 
 console.log('dirname', __dirname);
 
-require('crypto');
 require('http2');
 
 try {

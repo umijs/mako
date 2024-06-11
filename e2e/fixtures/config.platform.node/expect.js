@@ -28,9 +28,10 @@ assert.match(
   content,
   /readFileSync\("src\/index.ts"/,
   "should transform __filename"
-)
+);
 assert.match(
   content,
   /console\.log\('dirname', "src"\);/,
   "should transform __dirname"
-)
+);
+assert(content.includes(`require('crypto');`), `should keep require for crypto`);
