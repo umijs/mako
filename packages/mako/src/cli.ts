@@ -32,7 +32,7 @@ import yParser from 'yargs-parser';
         config: {
           mode: argv.mode || 'development',
         },
-        hooks: {},
+        plugins: [],
         watch,
       });
       break;

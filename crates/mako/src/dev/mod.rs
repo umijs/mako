@@ -18,6 +18,7 @@ use mako_core::tokio::sync::broadcast;
 use mako_core::tracing::debug;
 use mako_core::tungstenite::Message;
 use mako_core::{hyper, hyper_staticfile, hyper_tungstenite};
+use open;
 
 use crate::compiler::{Compiler, Context};
 use crate::plugin::{PluginGenerateEndParams, PluginGenerateStats};
@@ -111,6 +112,7 @@ impl DevServer {
                     );
                 }
                 println!();
+                open::that(format!("http://localhost:{}/", port)).unwrap();
             }
             debug!("Listening on http://{:?}", addr);
             if let Err(e) = server.await {
