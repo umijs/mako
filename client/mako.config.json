@@ -2,5 +2,5 @@
   "devtool": "source-map",
   "stats": { "modules": true },
   "hash": true,
-  "analyze": true
+  "analyze": {}
 }
