@@ -83,7 +83,6 @@ jobs:
           cache: "pnpm"
           token: ${{ secrets.GH_DOTCOM_TOKEN }}
       - run: pnpm i
-      - run: pnpm build
       - run: pnpm biome:check
       - run: cargo fmt --all -- --check
       - name: Install Taplo CLI
