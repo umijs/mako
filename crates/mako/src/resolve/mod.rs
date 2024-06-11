@@ -89,7 +89,7 @@ fn get_external_target(
                 } else if external.starts_with("commonjs ") {
                     format!("require(\"{}\")", external.replace("commonjs ", ""))
                 } else {
-                    format!("{}.{}", global_obj, external)
+                    get_external_target_from_global_obj(global_obj, external)
                 },
                 None,
             )),
@@ -99,7 +99,7 @@ fn get_external_target(
                 } else if config.module_type.as_ref().is_some_and(|t| t == "commonjs") {
                     format!("require(\"{}\")", config.root)
                 } else {
-                    format!("{}.{}", global_obj, config.root)
+                    get_external_target_from_global_obj(global_obj, &config.root)
                 },
                 config.script.clone(),
             )),
@@ -180,7 +180,11 @@ fn get_external_target(
                         };
                     }
                     Some((
-                        format!("{}.{}.{}", global_obj, advanced_config.root, replaced),
+                        format!(
+                            "{}.{}",
+                            get_external_target_from_global_obj(global_obj, &advanced_config.root),
+                            replaced
+                        ),
                         advanced_config.script.clone(),
                     ))
                 }
@@ -191,6 +195,14 @@ fn get_external_target(
     } else {
         None
     }
+}
+
+/*
+ * Can't use "globalThis.{xxx}" because "globalThis.@ant-design/icons"
+ * is syntax invalid
+ */
+fn get_external_target_from_global_obj(global_obj_name: &str, external: &str) -> String {
+    format!("{}['{}']", global_obj_name, external)
 }
 
 // TODO:
@@ -498,6 +510,10 @@ mod tests {
                 "react".to_string(),
                 ExternalConfig::Basic("react".to_string()),
             ),
+            (
+                "@ant-design/icons".to_string(),
+                ExternalConfig::Basic("@ant-design/icons".to_string()),
+            ),
             ("empty".to_string(), ExternalConfig::Basic("".to_string())),
         ]);
         let x = external_resolve(
@@ -511,7 +527,27 @@ mod tests {
             x,
             (
                 "react".to_string(),
-                Some("(typeof globalThis !== 'undefined' ? globalThis : self).react".to_string()),
+                Some(
+                    "(typeof globalThis !== 'undefined' ? globalThis : self)['react']".to_string()
+                ),
+                None,
+            )
+        );
+        let x = external_resolve(
+            "test/resolve/normal",
+            None,
+            Some(&externals),
+            "index.ts",
+            "@ant-design/icons",
+        );
+        assert_eq!(
+            x,
+            (
+                "@ant-design/icons".to_string(),
+                Some(
+                    "(typeof globalThis !== 'undefined' ? globalThis : self)['@ant-design/icons']"
+                        .to_string()
+                ),
                 None,
             )
         );
@@ -602,7 +638,7 @@ mod tests {
             (
                 "antd/es/version".to_string(),
                 Some(
-                    "(typeof globalThis !== 'undefined' ? globalThis : self).antd.version"
+                    "(typeof globalThis !== 'undefined' ? globalThis : self)['antd'].version"
                         .to_string()
                 ),
                 None,
@@ -623,7 +659,7 @@ mod tests {
             (
                 "antd/es/date-picker".to_string(),
                 Some(
-                    "(typeof globalThis !== 'undefined' ? globalThis : self).antd.DatePicker"
+                    "(typeof globalThis !== 'undefined' ? globalThis : self)['antd'].DatePicker"
                         .to_string()
                 ),
                 None,
@@ -634,7 +670,7 @@ mod tests {
             (
                 "antd/es/input/Group".to_string(),
                 Some(
-                    "(typeof globalThis !== 'undefined' ? globalThis : self).antd.Input.Group"
+                    "(typeof globalThis !== 'undefined' ? globalThis : self)['antd'].Input.Group"
                         .to_string()
                 ),
                 None,
@@ -647,7 +683,7 @@ mod tests {
             (
                 "/path/to/node_modules/antd/es/button".to_string(),
                 Some(
-                    "(typeof globalThis !== 'undefined' ? globalThis : self).antd.Button"
+                    "(typeof globalThis !== 'undefined' ? globalThis : self)['antd'].Button"
                         .to_string()
                 ),
                 None,
@@ -662,7 +698,7 @@ mod tests {
             (
                 "/path/to/node_modules/_antd@5.0.0@antd/es/button".to_string(),
                 Some(
-                    "(typeof globalThis !== 'undefined' ? globalThis : self).antd.Button"
+                    "(typeof globalThis !== 'undefined' ? globalThis : self)['antd'].Button"
                         .to_string()
                 ),
                 None,
@@ -674,7 +710,7 @@ mod tests {
             (
                 "script".to_string(),
                 Some(
-                    "(typeof globalThis !== 'undefined' ? globalThis : self).ScriptType"
+                    "(typeof globalThis !== 'undefined' ? globalThis : self)['ScriptType']"
                         .to_string()
                 ),
                 Some("https://example.com/lib/script.js".to_string()),

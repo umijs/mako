@@ -45,6 +45,7 @@ impl VisitMut for CSSAssets {
             let asset_content = Load::handle_asset(
                 &File::new(resolved_path.clone(), self.context.clone()),
                 false,
+                true,
                 self.context.clone(),
             );
             let asset_content = asset_content.unwrap_or(resolved_path);

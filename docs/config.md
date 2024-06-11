@@ -133,7 +133,7 @@ Whether to convert dynamic import to require. Useful when using node platform, o
 e.g.
 
 ```ts
-import("./a.js")
+import("./a.js");
 // => require("./a.js")
 ```
 
@@ -378,9 +378,9 @@ e.g.
 These configurations will replace the identifiers `process` and `Buffer` with the code that require the corresponding module when encountered.
 
 ```ts
-process
+process;
 // => require("process")
-Buffer
+Buffer;
 // => require("buffer").Buffer
 ```
 
@@ -425,8 +425,8 @@ When runtime is `automatic`, the output is as follows,
 ```ts
 import { jsx as _jsx } from "react/jsx-runtime";
 function App() {
-  return /*#__PURE__*/_jsx("div", {
-    children: "1"
+  return /*#__PURE__*/ _jsx("div", {
+    children: "1",
   });
 }
 ```
@@ -435,7 +435,7 @@ When runtime is `classic`, the output is as follows,
 
 ```ts
 function App() {
-  return /*#__PURE__*/React.createElement("div", null, "1");
+  return /*#__PURE__*/ React.createElement("div", null, "1");
 }
 ```
 
@@ -458,6 +458,34 @@ e.g.
       "@": "./src",
     },
     extensions: ["js", "jsx", "ts", "tsx"],
+  },
+}
+```
+
+Notice 1: If you want to alias a directory, please don't add the `/*` affix, we don't support it yet.
+
+e.g.
+
+```diff
+{
+  resolve: {
+    alias: {
+-       "@/src/*": "./src/*",
++       "@/src": "./src",
+    },
+  },
+}
+```
+
+Notice 2: If you want to alias to a local path, make sure to add the `./` prefix. Otherwise, it will be treated as a dependency module.
+
+```diff
+{
+  resolve: {
+    alias: {
+-       "@/src": "src",
++       "@/src": "./src",
+    },
   },
 }
 ```
