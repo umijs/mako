@@ -1,3 +1,4 @@
+import chalk from 'chalk';
 import yParser from 'yargs-parser';
 
 (async () => {
@@ -8,6 +9,13 @@ import yParser from 'yargs-parser';
     );
     process.exit(1);
   }
+
+  // use MAKO_CLI to identify if it's running in mako cli standalone
+  // so that we can print extra information
+  process.env.MAKO_CLI = '1';
+  console.log();
+  console.log(chalk.bold(`Mako v${require('../package.json').version}`));
+  console.log();
 
   let argv = yParser(process.argv.slice(2));
   let command = argv._[0];

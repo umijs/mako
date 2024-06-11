@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use std::sync::{mpsc, Arc};
 use std::time::{Duration, Instant, UNIX_EPOCH};
 
+use get_if_addrs::get_if_addrs;
 use mako_core::anyhow::{self, Result};
 use mako_core::colored::Colorize;
 use mako_core::futures::{SinkExt, StreamExt};
@@ -84,6 +85,25 @@ impl DevServer {
             });
             let server = Server::bind(&addr).serve(make_svc);
             // TODO: print when mako is run standalone
+            if std::env::var("MAKO_CLI").is_ok() {
+                println!();
+                println!(
+                    "Local:   {}",
+                    format!("http://localhost:{}/", port).to_string().cyan()
+                );
+                let ips = Self::get_ips();
+                let ips = ips
+                    .iter()
+                    .filter(|ip| !ip.starts_with("127."))
+                    .collect::<Vec<_>>();
+                for ip in ips {
+                    println!(
+                        "Network: {}",
+                        format!("http://{}:{}/", ip, port).to_string().cyan()
+                    );
+                }
+                println!();
+            }
             debug!("Listening on http://{:?}", addr);
             if let Err(e) = server.await {
                 eprintln!("Error starting server: {:?}", e);
@@ -165,6 +185,22 @@ impl DevServer {
                 res.map_err(anyhow::Error::from)
             }
         }
+    }
+
+    fn get_ips() -> Vec<String> {
+        let mut ips = vec![];
+        match get_if_addrs() {
+            Ok(if_addrs) => {
+                for if_addr in if_addrs {
+                    if let get_if_addrs::IfAddr::V4(addr) = if_addr.addr {
+                        let ip = addr.ip.to_string();
+                        ips.push(ip);
+                    }
+                }
+            }
+            Err(_e) => {}
+        }
+        ips
     }
 
     // TODO: refact socket message data structure
@@ -285,12 +321,12 @@ impl DevServer {
             "hot update chunks generated, next_full_hash: {:?}",
             next_hash
         );
-        if !has_missing_deps {
-            println!(
-                "Hot rebuilt in {}",
-                format!("{}ms", t_compiler.elapsed().as_millis()).bold()
-            );
-        }
+        // if !has_missing_deps {
+        //     println!(
+        //         "Hot rebuilt in {}",
+        //         format!("{}ms", t_compiler.elapsed().as_millis()).bold()
+        //     );
+        // }
         if let Err(e) = next_hash {
             eprintln!("Error in watch: {:?}", e);
             return Err(e);
