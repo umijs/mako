@@ -41,7 +41,7 @@ jobs:
           node-version: 18
           cache: "pnpm"
           token: ${{ secrets.GH_DOTCOM_TOKEN }}
-      - run: pnpm i --no-lockfile && pnpm build
+      - run: pnpm i --no-lockfile
       - name: Install cargo-nextest
         uses: taiki-e/install-action@cargo-nextest
       - name: Test
@@ -82,7 +82,7 @@ jobs:
           node-version: 18
           cache: "pnpm"
           token: ${{ secrets.GH_DOTCOM_TOKEN }}
-      - run: pnpm i
+      - run: pnpm i 
       - run: pnpm biome:check
       - run: cargo fmt --all -- --check
       - name: Install Taplo CLI
