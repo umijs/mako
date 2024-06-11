@@ -13,7 +13,7 @@
     "dist"
   ],
   "scripts": {
-    "format": "biome check --apply .",
+    "format": "biome check --write .",
     "dev": "father dev",
     "build": "father build",
     "test": "esno ./src/index.test.ts"
