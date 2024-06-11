@@ -402,6 +402,7 @@ pub struct RscClientConfig {
 #[serde(rename_all = "camelCase")]
 pub struct ExperimentalConfig {
     pub webpack_syntax_validate: Vec<String>,
+    pub tree_shaking_in_dev: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -659,7 +660,7 @@ const DEFAULT_CONFIG: &str = r#"
     "inlineCSS": false,
     "rscServer": false,
     "rscClient": false,
-    "experimental": { "webpackSyntaxValidate": [] },
+    "experimental": { "webpackSyntaxValidate": [], "treeShakingInDev": false },
     "useDefineForClassFields": true,
     "watch": { "ignorePaths": [] },
     "devServer": { "host": "127.0.0.1", "port": 3000 }
@@ -821,6 +822,14 @@ impl Config {
             // dev 环境下不产生 hash, prod 环境下根据用户配置
             if config.mode == Mode::Development {
                 config.hash = false;
+            }
+
+            // 开启 tree_shaking_in_dev 时，强制关闭 concatenate_modules 和 skip_modules，目前还不支持
+            if config.experimental.tree_shaking_in_dev {
+                config.optimization = Some(OptimizationConfig {
+                    skip_modules: Some(false),
+                    concatenate_modules: Some(false),
+                });
             }
 
             // configure node platform

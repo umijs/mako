@@ -93,7 +93,7 @@ impl Compiler {
 
         // Disable tree shaking in watch mode temporarily
         // ref: https://github.com/umijs/mako/issues/396
-        if !self.context.args.watch {
+        if !self.context.args.watch || self.context.config.experimental.tree_shaking_in_dev {
             match self.context.config._tree_shaking {
                 Some(TreeShakingStrategy::Basic) => {
                     let mut module_graph = self.context.module_graph.write().unwrap();
