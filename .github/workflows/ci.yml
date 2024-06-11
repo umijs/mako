@@ -27,6 +27,11 @@ jobs:
     if: ${{ !startsWith(github.event.head_commit.message, 'release:') && !startsWith(github.event.head_commit.message, 'ci:') && !startsWith(github.event.head_commit.message, 'docs:') }}
     steps:
       - uses: actions/checkout@v4
+      - name: Install Rust Toolchain
+        uses: ./.github/actions/rustup
+        with:
+          clippy: true
+          save-cache: ${{ github.ref_name == 'master' }}
       - name: Install pnpm
         uses: pnpm/action-setup@v2
         with:
@@ -37,11 +42,6 @@ jobs:
           cache: "pnpm"
           token: ${{ secrets.GH_DOTCOM_TOKEN }}
       - run: pnpm i --no-lockfile && pnpm build
-      - name: Install Rust Toolchain
-        uses: ./.github/actions/rustup
-        with:
-          clippy: true
-          save-cache: ${{ github.ref_name == 'master' }}
       - name: Install cargo-nextest
         uses: taiki-e/install-action@cargo-nextest
       - name: Test
@@ -54,6 +54,11 @@ jobs:
     if: ${{ !startsWith(github.event.head_commit.message, 'release:') && !startsWith(github.event.head_commit.message, 'ci:') && !startsWith(github.event.head_commit.message, 'docs:') }}
     steps:
       - uses: actions/checkout@v4
+      - name: Install Rust Toolchain
+        uses: ./.github/actions/rustup
+        with:
+          clippy: true
+          restore-cache: false
       - name: Install pnpm
         uses: pnpm/action-setup@v2
         with:
@@ -64,11 +69,6 @@ jobs:
           cache: "pnpm"
           token: ${{ secrets.GH_DOTCOM_TOKEN }}
       - run: pnpm i --no-lockfile && pnpm build
-      - name: Install Rust Toolchain
-        uses: ./.github/actions/rustup
-        with:
-          clippy: true
-          restore-cache: false
       - name: Clippy
         run: cargo clippy --locked -- -D warnings
 
