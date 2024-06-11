@@ -59,16 +59,6 @@ jobs:
         with:
           clippy: true
           restore-cache: false
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 18
-          cache: "pnpm"
-          token: ${{ secrets.GH_DOTCOM_TOKEN }}
-      - run: pnpm i --no-lockfile && pnpm build
       - name: Clippy
         run: cargo clippy --locked -- -D warnings
 
