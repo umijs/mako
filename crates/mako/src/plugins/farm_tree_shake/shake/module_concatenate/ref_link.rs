@@ -4,16 +4,34 @@ mod tests;
 use swc_core::ecma::ast::{Id, Ident, ImportDecl, ImportSpecifier};
 
 #[derive(Debug, Clone)]
-enum VarLink {
-    Direct(Symbol),
+pub(super) enum VarLink {
+    Direct(Id),
     InDirect(Symbol, String),
 }
 
 #[derive(Debug, Clone)]
-enum Symbol {
+pub(super) enum Symbol {
     Default,
     Namespace,
     Var(Ident),
+}
+
+impl Symbol {
+    pub fn as_id(&self) -> Option<Id> {
+        match self {
+            Symbol::Default => None,
+            Symbol::Namespace => None,
+            Symbol::Var(ident) => Some(ident.to_id()),
+        }
+    }
+
+    pub fn to_field(&self) -> Option<JsWord> {
+        match self {
+            Symbol::Default => js_word!("default").into(),
+            Symbol::Namespace => None,
+            Symbol::Var(ident) => Some(ident.sym.clone()),
+        }
+    }
 }
 
 struct RefLink {}
@@ -21,6 +39,8 @@ struct RefLink {}
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
+use swc_core::base::atoms::{js_word, JsWord};
+use swc_core::common::SyntaxContext;
 use swc_core::ecma::ast::{
     Decl, ExportSpecifier, ModuleDecl, ModuleExportName, ObjectPatProp, Pat,
 };
@@ -73,15 +93,15 @@ impl Visit for PatDefineIdCollector {
 #[derive(Default, Debug)]
 pub(super) struct ModuleDeclMapCollector {
     current_source: Option<String>,
-    import_map: HashMap<Id, VarLink>,
-    export_map: HashMap<Id, VarLink>,
+    pub import_map: HashMap<Id, VarLink>,
+    pub export_map: HashMap<Id, VarLink>,
 }
 
 impl ModuleDeclMapCollector {
     pub fn simplify_exports(&mut self) {
         self.export_map.iter_mut().for_each(|(_ident, link)| {
-            if let VarLink::Direct(Symbol::Var(exported)) = link {
-                if let Some(import_link) = self.import_map.get(&exported.to_id()) {
+            if let VarLink::Direct(exported) = link {
+                if let Some(import_link) = self.import_map.get(exported) {
                     *link = import_link.clone();
                 }
             }
@@ -97,9 +117,13 @@ impl ModuleDeclMapCollector {
         if let Some(source) = &self.current_source {
             self.export_map
                 .insert(ident.to_id(), VarLink::InDirect(symbol, source.clone()));
+        } else if let Some(id) = symbol.as_id() {
+            self.export_map.insert(ident.to_id(), VarLink::Direct(id));
         } else {
-            self.export_map
-                .insert(ident.to_id(), VarLink::Direct(symbol));
+            panic!(
+                "export without source can only export ident but got {:?}",
+                symbol
+            );
         }
     }
 }
@@ -151,15 +175,13 @@ impl Visit for ModuleDeclMapCollector {
             ModuleDecl::ExportDecl(export_decl) => match &export_decl.decl {
                 Decl::Class(class_decl) => {
                     let class_ident = class_decl.ident.clone();
-                    self.export_map.insert(
-                        class_ident.to_id(),
-                        VarLink::Direct(Symbol::Var(class_ident)),
-                    );
+                    self.export_map
+                        .insert(class_ident.to_id(), VarLink::Direct(class_ident.to_id()));
                 }
                 Decl::Fn(fn_decl) => {
                     let fn_ident = fn_decl.ident.clone();
                     self.export_map
-                        .insert(fn_ident.to_id(), VarLink::Direct(Symbol::Var(fn_ident)));
+                        .insert(fn_ident.to_id(), VarLink::Direct(fn_ident.to_id()));
                 }
                 Decl::Var(var_decl) => {
                     for x in var_decl.decls.iter() {
@@ -167,7 +189,7 @@ impl Visit for ModuleDeclMapCollector {
 
                         for ident in idents {
                             self.export_map
-                                .insert(ident.to_id(), VarLink::Direct(Symbol::Var(ident)));
+                                .insert(ident.to_id(), VarLink::Direct(ident.to_id()));
                         }
                     }
                 }
@@ -226,7 +248,7 @@ impl Visit for ModuleDeclMapCollector {
             ModuleDecl::ExportDefaultDecl(_) | ModuleDecl::ExportDefaultExpr(_) => {
                 self.export_map.insert(
                     quote_ident!("default").to_id(),
-                    VarLink::Direct(Symbol::Default),
+                    VarLink::Direct((js_word!("default"), SyntaxContext::empty())),
                 );
             }
             ModuleDecl::ExportAll(_) => {

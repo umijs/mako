@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+
 use swc_core::ecma::visit::VisitWith;
 
 use super::*;
@@ -34,7 +36,7 @@ y => b from ./src"#
 
 #[test]
 fn export_default_expr() {
-    assert_eq!(extract_export_map("export default 1"), "default => Default");
+    assert_eq!(extract_export_map("export default 1"), "default => default");
 }
 
 #[test]
@@ -165,7 +167,7 @@ fn map_to_string(import_map: &HashMap<Id, VarLink>) -> String {
 impl Display for VarLink {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            VarLink::Direct(symbol) => write!(f, "{}", symbol),
+            VarLink::Direct(id) => write!(f, "{}", id.0),
             VarLink::InDirect(symbol, source) => write!(f, "{} from {}", symbol, source),
         }
     }
