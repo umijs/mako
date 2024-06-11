@@ -59,7 +59,7 @@
     "build:linux:musl": "npm run --ignore-scripts build -- --target x86_64-unknown-linux-musl",
     "build:debug": "napi build --cargo-cwd ../../crates/binding --platform --js src/binding.js --dts src/binding.d.ts",
     "prepublishOnly": "napi prepublish -t npm",
-    "format": "biome check --apply .",
+    "format": "biome check --write .",
     "universal": "napi universal",
     "version": "napi version",
     "release": "esno scripts/release.ts",

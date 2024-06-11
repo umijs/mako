@@ -23,7 +23,7 @@
     "templates"
   ],
   "scripts": {
-    "format": "biome check --apply .",
+    "format": "biome check --write .",
     "dev": "father dev",
     "build": "father build"
   },
