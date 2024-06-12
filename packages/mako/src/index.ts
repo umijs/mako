@@ -45,7 +45,7 @@ export async function build(params: BuildParams) {
   // alias for: helpers, node-libs, react-refresh, react-error-overlay
   const alias = {
     ...makoConfig.resolve?.alias,
-    ...params.config.resolve?.alias,
+    ...params.config.resolve.alias,
     // we still need @swc/helpers
     // since features like decorator or legacy browser support will
     // inject helper functions in the build transform step

@@ -32669,6 +32669,11 @@
             });
         };
         requireModule.d = Object.defineProperty.bind(Object);
+        requireModule.dr = function(interop, request) {
+            return function() {
+                return interop(requireModule(request));
+            };
+        };
         var registerModules = function(modules) {
             for(var id in modules){
                 makoModules[id] = modules[id];
