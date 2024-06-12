@@ -21,7 +21,7 @@ assert(
 );
 
 assert(
-  libChunks.length === 1 && libChunks[0][1].includes("node_modules/framework1/index.js") && libChunks[0][1].includes("node_modules/framework1/index.js"),
+  libChunks.length === 1 && libChunks[0][1].includes("node_modules/framework1/index.js") && libChunks[0][1].includes("node_modules/framework2/index.js"),
   "should split framework chunks"
 );
 
