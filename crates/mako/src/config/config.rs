@@ -549,7 +549,7 @@ impl Default for OptimizeChunkOptions {
 pub enum OptimizeChunkNameSuffixStrategy {
     #[serde(rename = "packageName")]
     PackageName,
-    #[serde(rename = "hashed")]
+    #[serde(rename = "dependentsHash")]
     DependentsHash,
 }
 
