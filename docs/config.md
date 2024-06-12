@@ -55,9 +55,20 @@ Whether to output cjs format code.
 - Type: `false | "auto" | object`
 - Default: `false`
 
-Specify the code splitting strategy. Use `auto` for SPA, and `object` for MPA.
+Specify the code splitting strategy. Use `auto` for SPA, and `object` for granular strategy or advance strategy.
 
 ```ts
+{
+  codeSplitting: {
+    frameworkPackages: [ "react", "antd" ],
+    lib_min_size: 160000
+  }
+}
+
+```
+
+```ts
+// advance strategy
 {
   codeSplitting: {
     //（optional）The minimum size of the split chunk, async chunks smaller than this size will be merged into the entry chunk
