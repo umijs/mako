@@ -6,7 +6,7 @@
     "build": "pnpm --filter @umijs/mako build && pnpm --filter @umijs/mako src:build && pnpm biome:format && pnpm --filter client build",
     "build:debug": "pnpm --filter @umijs/mako build:debug && pnpm --filter @umijs/mako src:build && pnpm biome:format && pnpm --filter client build",
     "biome:check": "biome check .",
-    "biome:format": "biome check --write .",
+    "biome:format": "biome check --apply .",
     "test": "npm run test:e2e && npm run test:hmr && npm run test:umi",
     "test:e2e": "node scripts/test-e2e.mjs",
     "test:umi": "node scripts/test-e2e.mjs --fixtures e2e/fixtures.umi --umi",
