@@ -629,11 +629,11 @@ impl Compiler {
             Some(crate::config::CodeSplittingStrategy::Granular(
                 CodeSplittingGranularStrategy {
                     framework_packages,
-                    lib_min_module_size,
+                    lib_min_size,
                 },
             )) => Some(code_splitting_strategy_granular(
                 framework_packages.clone(),
-                *lib_min_module_size,
+                *lib_min_size,
             )),
             Some(crate::config::CodeSplittingStrategy::Advanced(options)) => Some(options.clone()),
             _ => None,
@@ -665,7 +665,7 @@ fn code_splitting_strategy_auto() -> OptimizeChunkOptions {
 
 fn code_splitting_strategy_granular(
     framework_packages: Vec<String>,
-    lib_min_module_size: usize,
+    lib_min_size: usize,
 ) -> OptimizeChunkOptions {
     OptimizeChunkOptions {
         groups: vec![
@@ -685,7 +685,7 @@ fn code_splitting_strategy_granular(
                 name_suffix: Some(OptimizeChunkNameSuffixStrategy::PackageName),
                 allow_chunks: OptimizeAllowChunks::Async,
                 test: Regex::new(r"[/\\]node_modules[/\\]").ok(),
-                min_module_size: Some(lib_min_module_size),
+                min_module_size: Some(lib_min_size),
                 priority: -20,
                 ..Default::default()
             },

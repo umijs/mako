@@ -192,7 +192,7 @@ pub enum ModuleIdStrategy {
 pub struct CodeSplittingGranularStrategy {
     pub framework_packages: Vec<String>,
     #[serde(default = "GenericUsizeDefault::<160000>::value")]
-    pub lib_min_module_size: usize,
+    pub lib_min_size: usize,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
