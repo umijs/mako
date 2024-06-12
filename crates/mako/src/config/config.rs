@@ -550,7 +550,7 @@ pub enum OptimizeChunkNameSuffixStrategy {
     #[serde(rename = "packageName")]
     PackageName,
     #[serde(rename = "hashed")]
-    SharedHash,
+    DependentsHash,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]

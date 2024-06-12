@@ -435,7 +435,7 @@ impl Compiler {
                                 })
                             });
                     }
-                    OptimizeChunkNameSuffixStrategy::SharedHash => {
+                    OptimizeChunkNameSuffixStrategy::DependentsHash => {
                         let mut module_to_dependents_md5_map: HashMap<String, Vec<ModuleId>> =
                             HashMap::new();
                         info.module_to_chunks
@@ -691,7 +691,7 @@ fn code_splitting_strategy_granular(
             },
             OptimizeChunkGroup {
                 name: "shared".to_string(),
-                name_suffix: Some(OptimizeChunkNameSuffixStrategy::SharedHash),
+                name_suffix: Some(OptimizeChunkNameSuffixStrategy::DependentsHash),
                 allow_chunks: OptimizeAllowChunks::Async,
                 priority: -30,
                 min_chunks: 2,
