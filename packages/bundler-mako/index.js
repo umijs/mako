@@ -550,7 +550,7 @@ async function getMakoConfig(opts) {
     entry: opts.entry,
     output: { path: outputPath },
     resolve: {
-      alias,
+      alias: toAliasArray(alias),
     },
     mode: 'development',
     publicPath: runtimePublicPath ? 'runtime' : publicPath || '/',
@@ -627,4 +627,10 @@ function getTsConfig(opts) {
   } else {
     return DEFAULT_TS_CONFIG;
   }
+}
+
+function toAliasArray(alias) {
+  return Object.keys(alias).map((key) => {
+      return [key, alias[key]]
+  });
 }
