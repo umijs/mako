@@ -5,6 +5,10 @@
       "./examples/**/dist*/*",
       "./examples/**/.umi/*",
       "./examples/**/.umi-production/*",
+      "./examples/with-max/pages/index.tsx",
+      "./examples/with-umi/pages/index.tsx",
+      "./examples/with-dynamic-import/lazy.tsx",
+      "./client/dist",
       "./.vscode/**",
       "node_modules/**",
       "target/**",
@@ -15,7 +19,8 @@
       "./e2e/**",
       "./tmp/**",
       "./.pnpm-store/**",
-      "./packages/*/dist/**"
+      "./packages/*/dist/**",
+      "**/package.json"
     ]
   },
   "formatter": {

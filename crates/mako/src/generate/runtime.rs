@@ -11,4 +11,5 @@ pub struct AppRuntimeTemplate {
     pub pkg_name: Option<String>,
     pub chunk_loading_global: String,
     pub is_browser: bool,
+    pub concatenate_enabled: bool,
 }

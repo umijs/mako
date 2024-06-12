@@ -18,6 +18,15 @@ Notice: When you're using mako with Umi, prefer to config the bundler in `.umirc
 
 ## Configuration items
 
+### analyze
+
+- Type: `{} | false`
+- Default: `false`
+
+Whether to analyze the build artifacts.
+
+Notice: this configuration item is still WIP, the result may not be accurate.
+
 ### autoCSSModules
 
 - Type: `boolean`

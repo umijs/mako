@@ -5,6 +5,7 @@
 [files]
 extend-exclude = [
   "**/*.snap",
+  "**/dist/*",
   "pnpm-lock.yaml",
 ]
 

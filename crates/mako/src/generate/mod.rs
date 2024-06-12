@@ -1,3 +1,4 @@
+pub(crate) mod analyze;
 pub(crate) mod chunk;
 pub(crate) mod chunk_graph;
 pub(crate) mod chunk_pot;
@@ -9,7 +10,6 @@ pub(crate) mod optimize_chunk;
 pub(crate) mod runtime;
 pub(crate) mod swc_helpers;
 pub(crate) mod transform;
-
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::ops::DerefMut;
@@ -17,6 +17,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use analyze::Analyze;
 use mako_core::anyhow::{anyhow, Result};
 use mako_core::indexmap::IndexSet;
 use mako_core::rayon::prelude::*;
@@ -180,6 +181,11 @@ impl Compiler {
 
         // generate stats
         let stats = create_stats_info(0, self);
+
+        if self.context.config.analyze.is_some() {
+            Analyze::write_analyze(&stats, self.context.clone())?;
+        }
+
         if self.context.config.stats.is_some() {
             write_stats(&stats, self);
         }

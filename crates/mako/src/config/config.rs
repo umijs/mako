@@ -201,6 +201,9 @@ pub struct StatsConfig {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct AnalyzeConfig {}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub enum CodeSplittingStrategy {
     #[serde(rename = "auto")]
     Auto,
@@ -451,6 +454,7 @@ pub struct Config {
     pub platform: Platform,
     pub module_id_strategy: ModuleIdStrategy,
     pub define: HashMap<String, Value>,
+    pub analyze: Option<AnalyzeConfig>,
     pub stats: Option<StatsConfig>,
     pub mdx: bool,
     #[serde(deserialize_with = "deserialize_hmr")]
