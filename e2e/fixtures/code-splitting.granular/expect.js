@@ -2,26 +2,30 @@ const assert = require("assert");
 const { parseBuildResult } = require("../../../scripts/test-utils");
 const { files } = parseBuildResult(__dirname);
 
-const sharedChunks = Object.entries(files).filter(([fileName]) => /shared_\d+\.js$/.test(fileName));
-
-const libChunks = Object.entries(files).filter(([fileName]) => /lib\d+\.js$/.test(fileName));
-
 assert(
-  libChunks.length === 2
-  && libChunks.some(([fileName, content]) => fileName.includes("lib_lib1") && content.includes("node_modules/lib1/index.js"))
-  && libChunks.some(([fileName, content]) => fileName.includes("lib_lib2") && content.includes("node_modules/lib2/index.js")),
-  "should split all lib chunks"
-);
-
-assert(
-  sharedChunks.length === 2
-  && sharedChunks.some(([_, content]) => content.includes("node_modules/shared1/index.js"))
-  && sharedChunks.some(([_, content]) => content.includes("node_modules/shared2/index.js")),
-  "should split all shared chunks"
-);
-
-assert(
-  libChunks.length === 1 && libChunks[0][1].includes("node_modules/framework1/index.js") && libChunks[0][1].includes("node_modules/framework2/index.js"),
+  files["framework.js"].includes('console.log("framework1")')
+  && files["framework.js"].includes('console.log("framework2")')
+  && !files["framework.js"].includes("normal"),
   "should split framework chunks"
 );
+
+assert(
+  files["lib_lib1-async.js"].includes('console.log("lib1")')
+  && !files["lib_lib1-async.js"].includes("normal")
+  && files["lib_lib2-async.js"].includes('console.log("lib2")')
+  && !files["lib_lib2-async.js"].includes("normal"),
+  "should split lib chunks"
+);
+
+assert(
+  files["shared_yDNCfB0E-async.js"].includes('console.log("shared1")')
+  && files["shared_yDNCfB0E-async.js"].includes('console.log("s1_shared")')
+  && !files["shared_yDNCfB0E-async.js"].includes("normal")
+  && files["shared_QBWMs6xD-async.js"].includes('console.log("shared2")')
+  && files["shared_QBWMs6xD-async.js"].includes('console.log("s2_shared")')
+  && !files["shared_QBWMs6xD-async.js"].includes("normal"),
+  "should split shared chunks"
+);
+
+
 

@@ -6,3 +6,5 @@ import "shared2";
 
 import "../stuff/s2_shared";
 
+import "../stuff/s3";
+
