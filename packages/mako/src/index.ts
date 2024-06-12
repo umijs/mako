@@ -32,8 +32,6 @@ export async function build(params: BuildParams) {
 
   params.plugins = params.plugins || [];
   params.config.resolve = params.config.resolve || {};
-  params.config.resolve.alias = params.config.resolve.alias || {};
-
   let makoConfig: any = {};
   const makoConfigPath = path.join(params.root, 'mako.config.json');
   if (fs.existsSync(makoConfigPath)) {
@@ -45,9 +43,9 @@ export async function build(params: BuildParams) {
   }
 
   // alias for: helpers, node-libs, react-refresh, react-error-overlay
-  params.config.resolve.alias = {
+  const alias = {
     ...makoConfig.resolve?.alias,
-    ...params.config.resolve.alias,
+    ...params.config.resolve?.alias,
     // we still need @swc/helpers
     // since features like decorator or legacy browser support will
     // inject helper functions in the build transform step
@@ -62,6 +60,9 @@ export async function build(params: BuildParams) {
       require.resolve('react-error-overlay/package.json'),
     ),
   };
+  params.config.resolve.alias = Object.keys(alias).map((key) => {
+    return [key, alias[key]];
+  });
 
   // built-in less-loader
   let less = lessLoader(null, {
