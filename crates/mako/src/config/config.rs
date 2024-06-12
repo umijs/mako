@@ -130,7 +130,7 @@ pub struct ManifestConfig {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ResolveConfig {
-    pub alias: HashMap<String, String>,
+    pub alias: Vec<(String, String)>,
     pub extensions: Vec<String>,
 }
 
