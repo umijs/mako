@@ -37,17 +37,7 @@ exports.build = async function (opts) {
     await build({
       root: cwd,
       config: makoConfig,
-      less: {
-        modifyVars: opts.config.lessLoader?.modifyVars || opts.config.theme,
-        sourceMap: getLessSourceMapConfig(makoConfig.devtool),
-        math: opts.config.lessLoader?.math,
-        plugins: opts.config.lessLoader?.plugins,
-      },
-      plugins: opts.plugins || [],
-      forkTSChecker: makoConfig.forkTSChecker,
       watch: opts.watch || false,
-      hmr: opts.hmr || false,
-      devServer: opts.devServer || false,
     });
   } catch (e) {
     console.error(e.message);
@@ -201,25 +191,17 @@ exports.dev = async function (opts) {
   const makoConfig = await getMakoConfig(opts);
   makoConfig.hmr = {};
   makoConfig.devServer = { port: hmrPort, host: opts.host };
+  makoConfig.plugins.push({
+    name: 'mako-dev',
+    generateEnd: (args) => {
+      opts.onDevCompileDone(args);
+    },
+  });
   const cwd = opts.cwd;
   try {
     await build({
       root: cwd,
       config: makoConfig,
-      less: {
-        modifyVars: opts.config.lessLoader?.modifyVars || opts.config.theme,
-        sourceMap: getLessSourceMapConfig(makoConfig.devtool),
-        math: opts.config.lessLoader?.math,
-        plugins: opts.config.lessLoader?.plugins,
-      },
-      forkTSChecker: makoConfig.forkTSChecker,
-      plugins: (opts.plugins || []).concat({
-        name: 'default',
-        generateEnd: (args) => {
-          opts.onDevCompileDone(args);
-        },
-      }),
-
       watch: true,
     });
   } catch (e) {
@@ -546,6 +528,7 @@ async function getMakoConfig(opts) {
   const outputPath = path.resolve(opts.cwd, opts.config.outputPath || 'dist');
   const tsConfig = getTsConfig(opts);
 
+  const normalizedDevtool = devtool === false ? false : 'source-map';
   const makoConfig = {
     entry: opts.entry,
     output: { path: outputPath },
@@ -566,7 +549,7 @@ async function getMakoConfig(opts) {
             codeSplitting.frameworkPackages.length > 0
           ? codeSplitting
           : 'auto',
-    devtool: devtool === false ? false : 'source-map',
+    devtool: normalizedDevtool,
     cjs,
     dynamicImportToRequire,
     platform,
@@ -581,10 +564,19 @@ async function getMakoConfig(opts) {
     react: opts.react || {},
     emotion,
     inlineCSS,
-    forkTSChecker: !!forkTSChecker,
     ...(opts.disableCopy ? { copy: [] } : { copy: ['public'].concat(copy) }),
     useDefineForClassFields:
       tsConfig.compilerOptions.useDefineForClassFields ?? true,
+    hmr: opts.hmr || false,
+    devServer: opts.devServer || false,
+    forkTSChecker: !!forkTSChecker,
+    less: {
+      modifyVars: opts.config.lessLoader?.modifyVars || opts.config.theme,
+      sourceMap: getLessSourceMapConfig(normalizedDevtool),
+      math: opts.config.lessLoader?.math,
+      plugins: opts.config.lessLoader?.plugins,
+    },
+    plugins: opts.plugins || [],
   };
 
   return makoConfig;
