@@ -190,7 +190,6 @@ pub enum ModuleIdStrategy {
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CodeSplittingGranularStrategy {
-    #[serde(default)]
     pub framework_packages: Vec<String>,
     #[serde(default = "GenericUsizeDefault::<160000>::value")]
     pub lib_min_module_size: usize,

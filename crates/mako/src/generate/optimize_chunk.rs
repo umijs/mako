@@ -18,7 +18,6 @@ use crate::generate::group_chunk::GroupUpdateResult;
 use crate::module::{Module, ModuleId, ModuleInfo};
 use crate::resolve::{ResolvedResource, ResolverResource};
 
-#[derive(Debug)]
 pub struct OptimizeChunksInfo {
     pub group_options: OptimizeChunkGroup,
     pub module_to_chunks: IndexMap<ModuleId, Vec<ChunkId>>,
@@ -333,68 +332,60 @@ impl Compiler {
                 },
             );
 
-            if chunk_size > info.group_options.max_size
-                || (info.group_options.min_module_size.is_some()
-                    && package_size_map
-                        .iter()
-                        .any(|p| p.1 .0 < info.group_options.min_module_size.unwrap()))
+            // split new chunks until chunk size is less than max_size and there has more than 1 package can be split
+            while package_size_map.len() > 1
+                && (chunk_size > info.group_options.max_size
+                    || (info.group_options.min_module_size.is_some()
+                        && package_size_map
+                            .iter()
+                            .any(|p| p.1 .0 < info.group_options.min_module_size.unwrap())))
             {
-                // split new chunks until chunk size is less than max_size and there has more than 1 package can be split
-                while package_size_map.len() > 1
-                    && (chunk_size > info.group_options.max_size
-                        || (info.group_options.min_module_size.is_some()
-                            && package_size_map
-                                .iter()
-                                .any(|p| p.1 .0 < info.group_options.min_module_size.unwrap())))
-                {
-                    let mut new_chunk_size = 0;
-                    let mut new_module_to_chunks = IndexMap::new();
+                let mut new_chunk_size = 0;
+                let mut new_module_to_chunks = IndexMap::new();
 
-                    // collect modules by package name until chunk size is very to max_size
-                    // `new_chunk_size == 0` 用于解决单个 pkg 大小超过 max_size 会死循环的问题
-                    while {
-                        if !package_size_map.is_empty() {
-                            let package = package_size_map.get_index(0).unwrap();
+                // collect modules by package name until chunk size is very to max_size
+                // `new_chunk_size == 0` 用于解决单个 pkg 大小超过 max_size 会死循环的问题
+                while {
+                    if !package_size_map.is_empty() {
+                        let package = package_size_map.get_index(0).unwrap();
 
-                            let package_size = package.1 .0;
-                            new_chunk_size == 0
-                                || new_chunk_size + package_size < info.group_options.max_size
-                                    && (info.group_options.min_module_size.is_none()
-                                        || package_size
-                                            < info.group_options.min_module_size.unwrap())
-                        } else {
-                            false
-                        }
-                    } {
-                        let (_, (size, modules)) = package_size_map.swap_remove_index(0).unwrap();
-
-                        new_chunk_size += size;
-                        new_module_to_chunks.extend(modules);
+                        let package_size = package.1 .0;
+                        new_chunk_size == 0
+                            || new_chunk_size + package_size < info.group_options.max_size
+                                && (info.group_options.min_module_size.is_none()
+                                    || package_size < info.group_options.min_module_size.unwrap())
+                    } else {
+                        false
                     }
+                } {
+                    let (_, (size, modules)) = package_size_map.swap_remove_index(0).unwrap();
 
-                    // clone group options for new chunk
-                    let mut new_chunk_group_options = info.group_options.clone();
-                    new_chunk_group_options.name =
-                        format!("{}_{}", info.group_options.name, split_chunk_count);
-
-                    // update original chunk size and split chunk count
-                    chunk_size -= new_chunk_size;
-                    split_chunk_count += 1;
-
-                    // move modules to new chunk
-                    info.module_to_chunks
-                        .retain(|module_id, _| !new_module_to_chunks.contains_key(module_id));
-                    extra_optimize_infos.push(OptimizeChunksInfo {
-                        group_options: new_chunk_group_options,
-                        module_to_chunks: new_module_to_chunks,
-                    });
+                    new_chunk_size += size;
+                    new_module_to_chunks.extend(modules);
                 }
 
-                // rename original chunk if it has been split
-                if split_chunk_count > 0 {
-                    info.group_options.name =
-                        format!("{}_{}", info.group_options.name, split_chunk_count);
-                }
+                // clone group options for new chunk
+                let mut new_chunk_group_options = info.group_options.clone();
+                new_chunk_group_options.name =
+                    format!("{}_{}", info.group_options.name, split_chunk_count);
+
+                // update original chunk size and split chunk count
+                chunk_size -= new_chunk_size;
+                split_chunk_count += 1;
+
+                // move modules to new chunk
+                info.module_to_chunks
+                    .retain(|module_id, _| !new_module_to_chunks.contains_key(module_id));
+                extra_optimize_infos.push(OptimizeChunksInfo {
+                    group_options: new_chunk_group_options,
+                    module_to_chunks: new_module_to_chunks,
+                });
+            }
+
+            // rename original chunk if it has been split
+            if split_chunk_count > 0 {
+                info.group_options.name =
+                    format!("{}_{}", info.group_options.name, split_chunk_count);
             }
         }
 
