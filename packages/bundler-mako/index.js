@@ -559,7 +559,13 @@ async function getMakoConfig(opts) {
     },
     manifest,
     mdx: !!mdx,
-    codeSplitting: codeSplitting === false ? false : 'auto',
+    codeSplitting:
+      codeSplitting === false
+        ? false
+        : Array.isArray(codeSplitting.frameworkPackages) &&
+            codeSplitting.frameworkPackages.length > 0
+          ? codeSplitting
+          : 'auto',
     devtool: devtool === false ? false : 'source-map',
     cjs,
     dynamicImportToRequire,

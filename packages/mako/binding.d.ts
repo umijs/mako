@@ -66,7 +66,25 @@ export interface BuildParams {
         }
     >;
     copy?: string[];
-    codeSplitting?: false | 'auto';
+    codeSplitting?:
+      | false
+      | 'auto'
+      | {
+          minSize?: number;
+          groups: {
+            name: string;
+            allowChunks: 'all' | 'entry' | 'async';
+            test: string;
+            minChunks: number;
+            minSize: number;
+            maxSize: number;
+            priority: number;
+          }[];
+        }
+      | {
+          frameworkPackages: string[];
+          libMinSize: number;
+        };
     providers?: Record<string, string[]>;
     publicPath?: string;
     inlineLimit?: number;

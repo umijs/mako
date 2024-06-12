@@ -55,9 +55,17 @@ Whether to output cjs format code.
 - Type: `false | "auto" | object`
 - Default: `false`
 
-Specify the code splitting strategy. Use `auto` for SPA, and `object` for granular strategy or advance strategy.
+Specify the code splitting strategy. Use `auto` or `object` granular strategy for SPA, and `object` advance strategy for MPA.
 
 ```ts
+// auto strategy
+{
+  codeSplitting: "auto";
+}
+```
+
+```ts
+// granular strategy
 {
   codeSplitting: {
     frameworkPackages: [ "react", "antd" ],
