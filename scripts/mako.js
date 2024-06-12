@@ -10,10 +10,6 @@ const config = getMakoConfig();
 build({
   root: cwd,
   config,
-  less: {
-    modifyVars: config.less?.theme || {},
-  },
-  plugins: getPlugins(),
   watch: process.argv.includes('--watch'),
 }).catch((e) => {
   console.error(e);
@@ -42,6 +38,10 @@ function getMakoConfig() {
   }
   makoConfig.resolve = makoConfig.resolve || {};
   makoConfig.resolve.alias = makoConfig.resolve.alias || {};
+  makoConfig.less = {
+    modifyVars: makoConfig.less?.theme || {},
+  };
+  makoConfig.plugins = getPlugins();
   Object.keys(makoConfig.resolve.alias).forEach((key) => {
     makoConfig.resolve.alias[key] = path.join(
       cwd,
