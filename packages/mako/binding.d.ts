@@ -73,12 +73,12 @@ export interface BuildParams {
           minSize?: number;
           groups: {
             name: string;
-            allowChunks: 'all' | 'entry' | 'async';
-            test: string;
-            minChunks: number;
-            minSize: number;
-            maxSize: number;
-            priority: number;
+            allowChunks?: 'all' | 'entry' | 'async';
+            test?: string;
+            minChunks?: number;
+            minSize?: number;
+            maxSize?: number;
+            priority?: number;
           }[];
         }
       | {
