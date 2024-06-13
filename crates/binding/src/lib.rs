@@ -88,22 +88,22 @@ pub struct BuildParams {
             frameworkPackages: string[];
             libMinSize?: number;
           };
+        }
+      | {
+          strategy: "advanced",
+          options: {
+            minSize?: number;
+            groups: {
+              name: string;
+              allowChunks?: 'all' | 'entry' | 'async';
+              test?: string;
+              minChunks?: number;
+              minSize?: number;
+              maxSize?: number;
+              priority?: number;
+            }[];
+          }
         };
-    // | {
-    //     strategy: "advanced",
-    //     options: {
-    //       minSize?: number;
-    //       groups: {
-    //         name: string;
-    //         allowChunks?: 'all' | 'entry' | 'async';
-    //         test?: string;
-    //         minChunks?: number;
-    //         minSize?: number;
-    //         maxSize?: number;
-    //         priority?: number;
-    //       }[];
-    //     }
-    //   }
     providers?: Record<string, string[]>;
     publicPath?: string;
     inlineLimit?: number;
