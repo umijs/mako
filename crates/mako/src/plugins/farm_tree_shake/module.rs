@@ -351,10 +351,10 @@ impl TreeShakeModule {
         self.stmt_graph.stmts().into_iter().any(|stmt| {
             if let Some(export_info) = &stmt.export_info {
                 if let Some(sp) = export_info.specifiers.first() {
-                    return match sp {
-                        ExportSpecifierInfo::All(_) | ExportSpecifierInfo::Ambiguous(_) => true,
-                        _ => false,
-                    };
+                    return matches!(
+                        sp,
+                        ExportSpecifierInfo::All(_) | ExportSpecifierInfo::Ambiguous(_)
+                    );
                 }
             }
             false

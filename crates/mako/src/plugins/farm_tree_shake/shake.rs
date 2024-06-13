@@ -487,7 +487,7 @@ fn add_used_exports_by_export_info(
 }
 
 fn fill_all_export_start_export_info(
-    tree_shake_modules_ids: &Vec<ModuleId>,
+    tree_shake_modules_ids: &[ModuleId],
     tree_shake_modules_map: &HashMap<ModuleId, RefCell<TreeShakeModule>>,
     module_graph: &ModuleGraph,
 ) {
