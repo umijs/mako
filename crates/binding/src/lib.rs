@@ -83,7 +83,7 @@ pub struct BuildParams {
           strategy: 'auto';
         }
       | {
-          strategy: 'granuler';
+          strategy: 'granular';
           options: {
             frameworkPackages: string[];
             libMinSize?: number;
