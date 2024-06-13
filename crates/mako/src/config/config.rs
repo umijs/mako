@@ -620,7 +620,7 @@ const DEFAULT_CONFIG: &str = r#"
       "preserveModulesRoot": "",
       "skipWrite": false
     },
-    "resolve": { "alias": {}, "extensions": ["js", "jsx", "ts", "tsx"] },
+    "resolve": { "alias": [], "extensions": ["js", "jsx", "ts", "tsx"] },
     "mode": "development",
     "minify": true,
     "devtool": "source-map",
