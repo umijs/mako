@@ -3,6 +3,7 @@ mod module_concatenate;
 mod skip_module;
 
 use std::cell::RefCell;
+use std::collections::{HashMap, HashSet};
 use std::ops::DerefMut;
 use std::sync::Arc;
 
@@ -14,7 +15,7 @@ use self::skip_module::skip_module_optimize;
 use crate::compiler::Context;
 use crate::module::{ModuleAst, ModuleId, ModuleType, ResolveType};
 use crate::module_graph::ModuleGraph;
-use crate::plugins::farm_tree_shake::module::{ModuleSystem, TreeShakeModule};
+use crate::plugins::farm_tree_shake::module::{AllExports, ModuleSystem, TreeShakeModule};
 use crate::plugins::farm_tree_shake::shake::module_concatenate::optimize_module_graph;
 use crate::plugins::farm_tree_shake::statement_graph::{
     ExportInfo, ExportSpecifierInfo, ImportInfo,
@@ -146,48 +147,11 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
         current_index = next_index;
     }
 
-    // fill tree shake module all exported ident in reversed topo-sort order
-    for module_id in tree_shake_modules_ids.iter().rev() {
-        let mut tsm = tree_shake_modules_map.get(module_id).unwrap().borrow_mut();
-
-        for exp_info in tsm.exports() {
-            if let Some(source) = exp_info.source {
-                for sp_info in exp_info.specifiers {
-                    match sp_info {
-                        // export * from "xx"
-                        ExportSpecifierInfo::All(_) | ExportSpecifierInfo::Ambiguous(_) => {
-                            if let Some(dependent_id) =
-                                module_graph.get_dependency_module_by_source(module_id, &source)
-                            {
-                                if let Some(rc) = tree_shake_modules_map.get(dependent_id) {
-                                    let dependence_module = rc.borrow();
-
-                                    let to_extend = dependence_module.all_exports.clone();
-
-                                    tsm.stmt_graph.stmt_mut(&exp_info.stmt_id).export_info =
-                                        Some(ExportInfo {
-                                            source: Some(source.clone()),
-                                            specifiers: vec![to_extend.to_all_specifier()],
-                                            stmt_id: exp_info.stmt_id,
-                                        });
-
-                                    tsm.extends_exports(&to_extend);
-                                }
-                            }
-                        }
-                        _ => {
-                            tsm.all_exports.add_idents(sp_info.to_idents());
-                        }
-                    }
-                }
-            } else {
-                for exp_sp in exp_info.specifiers {
-                    let idents = exp_sp.to_idents();
-                    tsm.all_exports.add_idents(idents);
-                }
-            }
-        }
-    }
+    fill_all_export_start_export_info(
+        &tree_shake_modules_ids,
+        &tree_shake_modules_map,
+        module_graph,
+    );
 
     if let Some(optimization) = &context.config.optimization
         && optimization.skip_modules.unwrap_or(false)
@@ -198,48 +162,11 @@ pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> 
             &tree_shake_modules_map,
             context,
         )?;
-
-        for module_id in tree_shake_modules_ids.iter().rev() {
-            let mut tsm = tree_shake_modules_map.get(module_id).unwrap().borrow_mut();
-
-            for exp_info in tsm.exports() {
-                if let Some(source) = exp_info.source {
-                    for sp_info in exp_info.specifiers {
-                        match sp_info {
-                            // export * from "xx"
-                            ExportSpecifierInfo::All(_) | ExportSpecifierInfo::Ambiguous(_) => {
-                                if let Some(dependent_id) =
-                                    module_graph.get_dependency_module_by_source(module_id, &source)
-                                {
-                                    if let Some(rc) = tree_shake_modules_map.get(dependent_id) {
-                                        let dependence_module = rc.borrow();
-
-                                        let to_extend = dependence_module.all_exports.clone();
-
-                                        tsm.stmt_graph.stmt_mut(&exp_info.stmt_id).export_info =
-                                            Some(ExportInfo {
-                                                source: Some(source.clone()),
-                                                specifiers: vec![to_extend.to_all_specifier()],
-                                                stmt_id: exp_info.stmt_id,
-                                            });
-
-                                        tsm.extends_exports(&to_extend);
-                                    }
-                                }
-                            }
-                            _ => {
-                                tsm.all_exports.add_idents(sp_info.to_idents());
-                            }
-                        }
-                    }
-                } else {
-                    for exp_sp in exp_info.specifiers {
-                        let idents = exp_sp.to_idents();
-                        tsm.all_exports.add_idents(idents);
-                    }
-                }
-            }
-        }
+        fill_all_export_start_export_info(
+            &tree_shake_modules_ids,
+            &tree_shake_modules_map,
+            module_graph,
+        );
     }
 
     // traverse the tree_shake_modules
@@ -469,7 +396,7 @@ fn add_used_exports_by_import_info(
     }
 }
 
-/// All all exported to used_exports
+/// add all exported to used_exports
 fn add_used_exports_by_export_info(
     tree_shake_modules_map: &std::collections::HashMap<ModuleId, RefCell<TreeShakeModule>>,
     module_graph: &ModuleGraph,
@@ -557,6 +484,138 @@ fn add_used_exports_by_export_info(
         }
     }
     None
+}
+
+fn fill_all_export_start_export_info(
+    tree_shake_modules_ids: &Vec<ModuleId>,
+    tree_shake_modules_map: &HashMap<ModuleId, RefCell<TreeShakeModule>>,
+    module_graph: &ModuleGraph,
+) {
+    for module_id in tree_shake_modules_ids.iter() {
+        let tsm = tree_shake_modules_map.get(module_id).unwrap().borrow();
+
+        if !tsm.contains_exports_star() {
+            continue;
+        }
+
+        let mut all_exports = AllExports::default();
+
+        let mut exports_stmts_export_info = vec![];
+
+        for exp_info in tsm.exports() {
+            if let Some(source) = exp_info.source {
+                for sp_info in exp_info.specifiers {
+                    match sp_info {
+                        // export * from "xx"
+                        ExportSpecifierInfo::All(_) | ExportSpecifierInfo::Ambiguous(_) => {
+                            if let Some(dependent_id) =
+                                module_graph.get_dependency_module_by_source(module_id, &source)
+                            {
+                                if tree_shake_modules_map.contains_key(dependent_id) {
+                                    let mut dep_all_exports = AllExports::default();
+                                    let mut visited = HashSet::new();
+
+                                    collect_all_exports_of(
+                                        dependent_id,
+                                        tree_shake_modules_map,
+                                        module_graph,
+                                        &mut dep_all_exports,
+                                        &mut visited,
+                                    );
+
+                                    exports_stmts_export_info.push(ExportInfo {
+                                        source: Some(source.clone()),
+                                        specifiers: vec![dep_all_exports.to_all_specifier()],
+                                        stmt_id: exp_info.stmt_id,
+                                    });
+
+                                    all_exports.extends(dep_all_exports);
+                                }
+                            }
+                        }
+                        _ => {
+                            all_exports.add_idents(sp_info.to_idents());
+                        }
+                    }
+                }
+            } else {
+                for exp_sp in exp_info.specifiers {
+                    let idents = exp_sp.to_idents();
+                    all_exports.add_idents(idents);
+                }
+            }
+        }
+
+        drop(tsm);
+
+        let mut tsm = tree_shake_modules_map.get(module_id).unwrap().borrow_mut();
+
+        tsm.all_exports = all_exports;
+
+        for exp_info in exports_stmts_export_info {
+            let stmt_id = exp_info.stmt_id;
+            tsm.stmt_graph.stmt_mut(&stmt_id).export_info = Some(exp_info);
+        }
+
+        println!("{} all exports {:?}", tsm.module_id.id, tsm.all_exports);
+    }
+}
+
+fn collect_all_exports_of(
+    module_id: &ModuleId,
+    tree_shake_modules_map: &HashMap<ModuleId, RefCell<TreeShakeModule>>,
+    module_graph: &ModuleGraph,
+    all_exports: &mut AllExports,
+    visited: &mut HashSet<ModuleId>,
+) {
+    let tsm = tree_shake_modules_map.get(module_id).unwrap().borrow();
+
+    if visited.contains(module_id) {
+        return;
+    }
+
+    visited.insert(module_id.clone());
+
+    if tsm.module_system != ModuleSystem::ESModule {
+        all_exports.as_ambiguous();
+    }
+
+    for exp_info in tsm.exports() {
+        if let Some(source) = exp_info.source {
+            for sp_info in exp_info.specifiers {
+                match sp_info {
+                    // export * from "xx"
+                    ExportSpecifierInfo::All(_) | ExportSpecifierInfo::Ambiguous(_) => {
+                        if let Some(dependent_id) =
+                            module_graph.get_dependency_module_by_source(module_id, &source)
+                        {
+                            if tree_shake_modules_map.contains_key(dependent_id) {
+                                let mut dep_all_exports = AllExports::default();
+
+                                collect_all_exports_of(
+                                    dependent_id,
+                                    tree_shake_modules_map,
+                                    module_graph,
+                                    &mut dep_all_exports,
+                                    visited,
+                                );
+
+                                all_exports.extends(dep_all_exports);
+                            }
+                        }
+                    }
+                    _ => {
+                        all_exports.add_idents(sp_info.to_idents());
+                    }
+                }
+            }
+        } else {
+            for exp_sp in exp_info.specifiers {
+                let idents = exp_sp.to_idents();
+                all_exports.add_idents(idents);
+            }
+        }
+    }
 }
 
 pub fn strip_context(ident: &str) -> String {
