@@ -124,6 +124,7 @@ export async function build(params: BuildParams) {
     'forkTSChecker',
     'plugins',
   ]) as BuildParams['config'];
+  console.log('test', params.config.resolve.alias);
   await binding.build({
     ...params,
     plugins,
