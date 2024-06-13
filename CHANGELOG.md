@@ -1,4 +1,21 @@
 
+## 0.6.0
+
+`2024-06-13`
+
+- 新增: 改进构建 API（含 Break Change）by [@sorrycc](https://github.com/sorrycc) in [#1271](https://github.com/umijs/mako/pull/1271)
+- 新增: 支持 new URL() 的资源输出 by [@sorrycc](https://github.com/sorrycc) in [#1261](https://github.com/umijs/mako/pull/1261)
+- 新增: 在 win32 平台上通知用户当前平台尚不支持 by [@sorrycc](https://github.com/sorrycc) in [#1262](https://github.com/umijs/mako/pull/1262)
+- 新增: 当端口被占用时自动找到可用端口 by [@sorrycc](https://github.com/sorrycc) in [#1266](https://github.com/umijs/mako/pull/1266)
+- 新增: 当开发服务器准备就绪时自动打开浏览器 by [@sorrycc](https://github.com/sorrycc) in [#1267](https://github.com/umijs/mako/pull/1267)
+- 新增: 基础的产物 analyze 能力 by [@LovePlayCode](https://github.com/LovePlayCode) in [#1228](https://github.com/umijs/mako/pull/1228)
+- 修复: 由于 Rust 不支持，使用非阻塞 IO by [@xusd320](https://github.com/xusd320) in [#1252](https://github.com/umijs/mako/pull/1252)
+- 修复: globalThis 属性访问 by [@xusd320](https://github.com/xusd320) in [#1254](https://github.com/umijs/mako/pull/1254)
+- 修复: 默认导出被跳过的问题 by [@stormslowly](https://github.com/stormslowly) in [#1257](https://github.com/umijs/mako/pull/1257)
+- 修复(concatenate): 根与内部之间的导出冲突 by [@stormslowly](https://github.com/stormslowly) in [#1256](https://github.com/umijs/mako/pull/1256)
+- 修复(concatenate): 运行时执行顺序 by [@stormslowly](https://github.com/stormslowly) in [#1263](https://github.com/umijs/mako/pull/1263)
+- 修复: try resolve 应支持 config.ignores by [@sorrycc](https://github.com/sorrycc) in [#1264](https://github.com/umijs/mako/pull/1264)
+
 ## 0.5.4
 
 `2024-06-06`
