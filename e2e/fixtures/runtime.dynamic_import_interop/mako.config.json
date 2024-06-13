@@ -1,0 +1,10 @@
+{
+  "optimization": {
+    "skipModules": false,
+    "concatenateModules": false
+  },
+  "entry": {
+    "index": "./index.js"
+  },
+  "moduleIdStrategy": "named"
+}
