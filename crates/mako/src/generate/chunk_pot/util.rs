@@ -105,6 +105,11 @@ pub(crate) fn runtime_code(context: &Arc<Context>) -> Result<String> {
         cjs: context.config.cjs,
         chunk_loading_global: context.config.output.chunk_loading_global.clone(),
         pkg_name: get_pkg_name(&context.root),
+        concatenate_enabled: context
+            .config
+            .optimization
+            .as_ref()
+            .map_or(false, |o| o.concatenate_modules.unwrap_or(false)),
     };
     let app_runtime = app_runtime.render_once()?;
     let app_runtime = app_runtime.replace(

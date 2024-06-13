@@ -101,9 +101,10 @@ impl TreeShakeModule {
                             }
                             ExportSpecifierInfo::Default(export_default_ident) => {
                                 if ident == "default" {
-                                    if let Some(default_ident) = export_default_ident {
-                                        re_export_type = Some(ReExportType::Default);
-                                        local_ident = Some(default_ident.clone());
+                                    if export_default_ident.is_some() {
+                                        // TODO figure out how webpack handle this
+                                        // re_export_type = Some(ReExportType::Default);
+                                        // local_ident = Some(default_ident.clone());
                                         break;
                                     } else {
                                         return Some(ReExportSource {
@@ -225,10 +226,11 @@ mod tests {
 
         let re_export_source = tsm.find_skipable_export_source(&"default".to_string());
 
-        assert_eq!(
-            re_export_source.unwrap().describe(),
-            r#"ReExport from ./a.js by Named("a")"#
-        );
+        assert!(re_export_source.is_none());
+        // assert_eq!(
+        //     re_export_source.unwrap().describe(),
+        //     r#"ReExport from ./a.js by Named("a")"#
+        // );
     }
 
     #[test]
@@ -237,10 +239,12 @@ mod tests {
 
         let re_export_source = tsm.find_skipable_export_source(&"default".to_string());
 
-        assert_eq!(
-            re_export_source.unwrap().describe(),
-            r#"ReExport from ./a.js by Named("z")"#
-        );
+        assert!(re_export_source.is_none());
+
+        // assert_eq!(
+        //     re_export_source.unwrap().describe(),
+        //     r#"ReExport from ./a.js by Named("z")"#
+        // );
     }
 
     #[test]
@@ -380,10 +384,12 @@ mod tests {
 
         let re_export_source = tsm.find_skipable_export_source(&"default".to_string());
 
-        assert_eq!(
-            re_export_source.unwrap().describe(),
-            r#"Direct Export Default"#
-        );
+        assert!(re_export_source.is_none());
+
+        // assert_eq!(
+        //     re_export_source.unwrap().describe(),
+        //     r#"Direct Export Default"#
+        // );
     }
 
     #[test]
