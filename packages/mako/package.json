@@ -1,6 +1,6 @@
 {
   "name": "@umijs/mako",
-  "version": "0.6.0",
+  "version": "0.6.1-canary.20240613.1",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
