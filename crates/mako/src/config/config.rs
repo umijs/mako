@@ -91,7 +91,7 @@ macro_rules! create_deserialize_fn {
 create_deserialize_fn!(deserialize_hmr, HmrConfig);
 create_deserialize_fn!(deserialize_dev_server, DevServerConfig);
 create_deserialize_fn!(deserialize_manifest, ManifestConfig);
-create_deserialize_fn!(deserialize_code_splitting, CodeSplittingStrategy);
+create_deserialize_fn!(deserialize_code_splitting, CodeSplitting);
 create_deserialize_fn!(deserialize_px2rem, Px2RemConfig);
 create_deserialize_fn!(deserialize_umd, String);
 create_deserialize_fn!(deserialize_devtool, DevtoolConfig);
@@ -189,7 +189,7 @@ pub enum ModuleIdStrategy {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct CodeSplittingGranularStrategy {
+pub struct CodeSplittingGranularOptions {
     pub framework_packages: Vec<String>,
     #[serde(default = "GenericUsizeDefault::<160000>::value")]
     pub lib_min_size: usize,
@@ -207,10 +207,23 @@ pub struct AnalyzeConfig {}
 pub enum CodeSplittingStrategy {
     #[serde(rename = "auto")]
     Auto,
-    #[serde(untagged)]
-    Granular(CodeSplittingGranularStrategy),
-    #[serde(untagged)]
-    Advanced(OptimizeChunkOptions),
+    #[serde(rename = "granular")]
+    Granular,
+    #[serde(rename = "advanced")]
+    Advanced,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+#[serde(untagged)]
+pub enum CodeSplittingStrategyOptions {
+    Granular(CodeSplittingGranularOptions),
+    Advanced(CodeSplittingAdvancedOptions),
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct CodeSplitting {
+    pub strategy: CodeSplittingStrategy,
+    pub options: Option<CodeSplittingStrategyOptions>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Copy, Debug)]
@@ -462,7 +475,7 @@ pub struct Config {
     #[serde(deserialize_with = "deserialize_dev_server")]
     pub dev_server: Option<DevServerConfig>,
     #[serde(deserialize_with = "deserialize_code_splitting", default)]
-    pub code_splitting: Option<CodeSplittingStrategy>,
+    pub code_splitting: Option<CodeSplitting>,
     #[serde(deserialize_with = "deserialize_px2rem", default)]
     pub px2rem: Option<Px2RemConfig>,
     pub hash: bool,
@@ -534,15 +547,15 @@ pub enum OptimizeAllowChunks {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct OptimizeChunkOptions {
+pub struct CodeSplittingAdvancedOptions {
     #[serde(default = "GenericUsizeDefault::<20000>::value")]
     pub min_size: usize,
     pub groups: Vec<OptimizeChunkGroup>,
 }
 
-impl Default for OptimizeChunkOptions {
+impl Default for CodeSplittingAdvancedOptions {
     fn default() -> Self {
-        OptimizeChunkOptions {
+        CodeSplittingAdvancedOptions {
             min_size: GenericUsizeDefault::<20000>::value(),
             groups: vec![],
         }

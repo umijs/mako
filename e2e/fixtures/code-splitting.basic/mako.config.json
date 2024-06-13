@@ -1,3 +1,5 @@
 {
-  "codeSplitting": "auto"
+  "codeSplitting": {
+    "strategy": "auto"
+  }
 }

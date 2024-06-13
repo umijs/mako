@@ -15,7 +15,8 @@ use serde::{Deserialize, Serialize};
 use crate::ast::file::{Content, File, JsContent};
 use crate::compiler::{Args, Compiler, Context};
 use crate::config::{
-    CodeSplittingStrategy, Config, OptimizeAllowChunks, OptimizeChunkGroup, OptimizeChunkOptions,
+    CodeSplitting, CodeSplittingAdvancedOptions, CodeSplittingStrategy,
+    CodeSplittingStrategyOptions, Config, OptimizeAllowChunks, OptimizeChunkGroup,
 };
 use crate::generate::chunk::ChunkType;
 use crate::generate::chunk_pot::util::hash_hashmap;
@@ -157,33 +158,38 @@ impl Plugin for SUPlus {
             *p = PathBuf::from(format!("{SSU_ENTRY_PREFIX}{}", p.to_string_lossy()));
         }
 
-        config.code_splitting = Some(CodeSplittingStrategy::Advanced(OptimizeChunkOptions {
-            min_size: 0,
-            groups: vec![
-                OptimizeChunkGroup {
-                    name: "node_modules".to_string(),
-                    name_suffix: None,
-                    allow_chunks: OptimizeAllowChunks::All,
-                    min_chunks: 0,
+        config.code_splitting = Some(CodeSplitting {
+            strategy: CodeSplittingStrategy::Advanced,
+            options: Some(CodeSplittingStrategyOptions::Advanced(
+                CodeSplittingAdvancedOptions {
                     min_size: 0,
-                    max_size: usize::MAX,
-                    min_module_size: None,
-                    priority: 10,
-                    test: Regex::new(r"[/\\]node_modules[/\\]").ok(),
+                    groups: vec![
+                        OptimizeChunkGroup {
+                            name: "node_modules".to_string(),
+                            name_suffix: None,
+                            allow_chunks: OptimizeAllowChunks::All,
+                            min_chunks: 0,
+                            min_size: 0,
+                            max_size: usize::MAX,
+                            min_module_size: None,
+                            priority: 10,
+                            test: Regex::new(r"[/\\]node_modules[/\\]").ok(),
+                        },
+                        OptimizeChunkGroup {
+                            name: "common".to_string(),
+                            min_chunks: 0,
+                            // always split, to avoid multi-instance risk
+                            min_size: 1,
+                            max_size: usize::MAX,
+                            name_suffix: None,
+                            min_module_size: None,
+                            priority: 0,
+                            ..Default::default()
+                        },
+                    ],
                 },
-                OptimizeChunkGroup {
-                    name: "common".to_string(),
-                    min_chunks: 0,
-                    // always split, to avoid multi-instance risk
-                    min_size: 1,
-                    max_size: usize::MAX,
-                    name_suffix: None,
-                    min_module_size: None,
-                    priority: 0,
-                    ..Default::default()
-                },
-            ],
-        }));
+            )),
+        });
 
         Ok(())
     }

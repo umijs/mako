@@ -10,8 +10,9 @@ use mako_core::tracing::debug;
 
 use crate::compiler::Compiler;
 use crate::config::{
-    CodeSplittingGranularStrategy, OptimizeAllowChunks, OptimizeChunkGroup,
-    OptimizeChunkNameSuffixStrategy, OptimizeChunkOptions,
+    CodeSplitting, CodeSplittingAdvancedOptions, CodeSplittingGranularOptions,
+    CodeSplittingStrategy, CodeSplittingStrategyOptions, OptimizeAllowChunks, OptimizeChunkGroup,
+    OptimizeChunkNameSuffixStrategy,
 };
 use crate::generate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::generate::group_chunk::GroupUpdateResult;
@@ -117,7 +118,7 @@ impl Compiler {
         }
     }
 
-    fn merge_minimal_async_chunks(&self, options: &OptimizeChunkOptions) {
+    fn merge_minimal_async_chunks(&self, options: &CodeSplittingAdvancedOptions) {
         let mut async_to_entry = vec![];
         let chunk_graph = self.context.chunk_graph.read().unwrap();
         let chunks = chunk_graph.get_all_chunks();
@@ -621,28 +622,34 @@ impl Compiler {
         }
     }
 
-    fn get_optimize_chunk_options(&self) -> Option<OptimizeChunkOptions> {
+    fn get_optimize_chunk_options(&self) -> Option<CodeSplittingAdvancedOptions> {
         match &self.context.config.code_splitting {
-            Some(crate::config::CodeSplittingStrategy::Auto) => {
-                Some(code_splitting_strategy_auto())
-            }
-            Some(crate::config::CodeSplittingStrategy::Granular(
-                CodeSplittingGranularStrategy {
-                    framework_packages,
-                    lib_min_size,
-                },
-            )) => Some(code_splitting_strategy_granular(
+            Some(CodeSplitting {
+                strategy: CodeSplittingStrategy::Auto,
+                options: None,
+            }) => Some(code_splitting_strategy_auto()),
+            Some(CodeSplitting {
+                strategy: CodeSplittingStrategy::Granular,
+                options:
+                    Some(CodeSplittingStrategyOptions::Granular(CodeSplittingGranularOptions {
+                        framework_packages,
+                        lib_min_size,
+                    })),
+            }) => Some(code_splitting_strategy_granular(
                 framework_packages.clone(),
                 *lib_min_size,
             )),
-            Some(crate::config::CodeSplittingStrategy::Advanced(options)) => Some(options.clone()),
+            Some(CodeSplitting {
+                strategy: CodeSplittingStrategy::Advanced,
+                options: Some(CodeSplittingStrategyOptions::Advanced(advanced_options)),
+            }) => Some(advanced_options.clone()),
             _ => None,
         }
     }
 }
 
-fn code_splitting_strategy_auto() -> OptimizeChunkOptions {
-    OptimizeChunkOptions {
+fn code_splitting_strategy_auto() -> CodeSplittingAdvancedOptions {
+    CodeSplittingAdvancedOptions {
         groups: vec![
             OptimizeChunkGroup {
                 name: "vendors".to_string(),
@@ -666,17 +673,21 @@ fn code_splitting_strategy_auto() -> OptimizeChunkOptions {
 fn code_splitting_strategy_granular(
     framework_packages: Vec<String>,
     lib_min_size: usize,
-) -> OptimizeChunkOptions {
-    OptimizeChunkOptions {
+) -> CodeSplittingAdvancedOptions {
+    CodeSplittingAdvancedOptions {
         groups: vec![
             OptimizeChunkGroup {
                 name: "framework".to_string(),
                 allow_chunks: OptimizeAllowChunks::All,
-                test: Regex::new(&format!(
-                    r#"[/\\]node_modules[/\\]({})[/\\]"#,
-                    framework_packages.join("|")
-                ))
-                .ok(),
+                test: if framework_packages.is_empty() {
+                    None
+                } else {
+                    Regex::new(&format!(
+                        r#"[/\\]node_modules[/\\]({})[/\\]"#,
+                        framework_packages.join("|")
+                    ))
+                    .ok()
+                },
                 priority: -10,
                 ..Default::default()
             },

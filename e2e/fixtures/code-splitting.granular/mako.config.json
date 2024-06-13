@@ -3,10 +3,13 @@
     "index": "./index.js"
   },
   "codeSplitting": {
-    "frameworkPackages": [
-      "framework1",
-      "framework2"
-    ]
+    "strategy": "granular",
+    "options": {
+      "frameworkPackages": [
+        "framework1",
+        "framework2"
+      ]
+    }
   },
   "optimization": {
     "skipModules": true,

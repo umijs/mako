@@ -545,10 +545,10 @@ async function getMakoConfig(opts) {
     codeSplitting:
       codeSplitting === false
         ? false
-        : Array.isArray(codeSplitting.frameworkPackages) &&
-            codeSplitting.frameworkPackages.length > 0
+        : typeof codeSplitting === 'object' &&
+            codeSplitting.strategy === 'granular'
           ? codeSplitting
-          : 'auto',
+          : { strategy: 'auto' },
     devtool: normalizedDevtool,
     cjs,
     dynamicImportToRequire,
