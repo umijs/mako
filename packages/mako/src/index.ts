@@ -5,12 +5,18 @@ import * as binding from '../binding';
 import { ForkTSChecker as ForkTSChecker } from './forkTSChecker';
 import { LessLoaderOpts, lessLoader } from './lessLoader';
 
-interface ExtraBuildParams {
+type Config = binding.BuildParams['config'] & {
+  plugins?: binding.BuildParams['plugins'];
   less?: LessLoaderOpts;
   forkTSChecker?: boolean;
-}
+};
 
-type BuildParams = binding.BuildParams & ExtraBuildParams;
+type BuildParams = {
+  config: Config;
+  root: binding.BuildParams['root'];
+  watch: binding.BuildParams['watch'];
+};
+
 export { BuildParams };
 
 // ref:
@@ -30,10 +36,10 @@ function blockStdout() {
 export async function build(params: BuildParams) {
   blockStdout();
 
-  params.plugins = params.plugins || [];
+  params.config.plugins = params.config.plugins || [];
   params.config.resolve = params.config.resolve || {};
   let makoConfig: any = {};
-  const makoConfigPath = path.join(params.root, 'mako.config.json');
+  let makoConfigPath = path.join(params.root, 'mako.config.json');
   if (fs.existsSync(makoConfigPath)) {
     try {
       makoConfig = JSON.parse(fs.readFileSync(makoConfigPath, 'utf-8'));
@@ -66,15 +72,15 @@ export async function build(params: BuildParams) {
 
   // built-in less-loader
   let less = lessLoader(null, {
-    modifyVars: params.less?.modifyVars || {},
-    math: params.less?.math,
-    sourceMap: params.less?.sourceMap || false,
+    modifyVars: params.config.less?.modifyVars || {},
+    math: params.config.less?.math,
+    sourceMap: params.config.less?.sourceMap || false,
     plugins: [
       ['less-plugin-resolve', { aliases: params.config.resolve.alias! }],
-      ...(params.less?.plugins || []),
+      ...(params.config.less?.plugins || []),
     ],
   });
-  params.plugins.push({
+  params.config.plugins.push({
     name: 'less',
     async load(filePath: string) {
       let lessResult = await less(filePath);
@@ -112,12 +118,19 @@ export async function build(params: BuildParams) {
     });
   }
 
-  const buildParams = omit(params, ['less', 'forkTSChecker']);
+  let plugins = params.config.plugins;
+  params.config = omit(params.config, [
+    'less',
+    'forkTSChecker',
+    'plugins',
+  ]) as BuildParams['config'];
+  await binding.build({
+    ...params,
+    plugins,
+  });
 
-  await binding.build(buildParams);
-
-  if (params.forkTSChecker) {
-    const forkTypeChecker = new ForkTSChecker({
+  if (params.config.forkTSChecker) {
+    let forkTypeChecker = new ForkTSChecker({
       root: params.root,
       watch: params.watch,
     });

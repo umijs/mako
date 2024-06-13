@@ -234,6 +234,13 @@ Then, when the code encounters `import foo from "foo"`, it will be replaced with
 
 Whether to fix flexbugs.
 
+### forkTsChecker
+
+- Type: `boolean`
+- Default: `false`
+
+Whether to run TypeScript type checker on a separate process.
+
 ### hash
 
 - Type: `boolean`
@@ -289,6 +296,32 @@ Notice: This configuration can only be used with umd, because injecting CSS is n
 - Default: `10000`
 
 Specify the size limit of the assets file that needs to be converted to `base64` format.
+
+### less
+
+- Type: `Object`
+- Default: `{}`
+
+Specify the less configuration.
+
+e.g.
+
+```ts
+{
+  modifyVars: {
+    'primary-color': '#1DA57A',
+    'link-color': '#1DA57A',
+  },
+  sourceMap: {
+    sourceMapFileInline: true,
+    outputSourceFiles: true,
+  },
+  math: 'always',
+  plugins: [
+    [require.resolve("less-plugin-clean-css"), { roundingPrecision: 1 }]
+  ],
+}
+```
 
 ### manifest
 
@@ -365,6 +398,37 @@ Specify the configuration to optimize the build artifacts. Currently, the follow
 Specify the platform to build, `"browser"` or `"node"`.
 
 Notice: When using `"node"`, you also need to set `dynamicImportToRequire` to `true`, because the runtime does not yet support node-style chunk loading.
+
+### plugins
+
+- Type: `(string | JSHooks)[]`
+- Default: `[]`
+
+Specify the plugins to use.
+
+```ts
+// JSHooks
+{
+  name?: string;
+  buildStart?: () => void;
+  generateEnd?: (data: {
+    isFirstCompile: boolean;
+    time: number;
+    stats: {
+      startTime: number;
+      endTime: number;
+    };
+  }) => void;
+  load?: (filePath: string) => Promise<{ content: string, type: 'css'|'js'|'jsx'|'ts'|'tsx' }>;
+}
+```
+
+JSHooks is a set of hook functions used to extend the compilation process of Mako.
+
+- `name`, plugin name
+- `buildStart`, called before Build starts
+- `load`, used to load files, return file content and type, type supports `css`, `js`, `jsx`, `ts`, `tsx`
+- `generateEnd`, called after Generate completes, `isFirstCompile` can be used to determine if it is the first compilation, `time` is the compilation time, and `stats` is the compilation statistics information
 
 ### providers
 
