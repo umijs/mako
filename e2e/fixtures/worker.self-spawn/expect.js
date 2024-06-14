@@ -10,3 +10,10 @@ assert(
   ),
   "should have self-spawn codes"
 );
+
+assert(
+  files["src_workerHelper_ts-async.js"].includes(
+    `new Worker(new URL("${workerDists[0][0]}"`,
+  ),
+  "should instanitate worker with worker chunk"
+);
