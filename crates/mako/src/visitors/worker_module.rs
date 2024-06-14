@@ -57,7 +57,7 @@ impl VisitMut for WorkerModule {
 impl WorkerModule {
     fn replace_source(&mut self, source: &mut Str) {
         /* A source file can be a async module and a worker entry at the same time,
-         * we need to add a worker query distinguish worker from async module, or else
+         * we need to add a worker query to distinguish worker from async module, or else
          * those two chunks will use the same id, bundled dist will be broken.
          */
         let to_replace = format!("{}?asworker", &source.value.to_string());
