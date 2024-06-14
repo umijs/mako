@@ -35,11 +35,11 @@ impl VisitMut for WorkerModule {
                         return;
                     }
 
-                    if let box Expr::Ident(ident) = &new_expr.callee {
-                        if is_ident_undefined(&ident, "URL", &self.unresolved_mark) {
+                    if let Some(ident) = &new_expr.callee.as_ident() {
+                        if is_ident_undefined(ident, "URL", &self.unresolved_mark) {
                             // new URL('');
                             let args = new_expr.args.as_mut().unwrap();
-                            if let box Expr::Lit(Lit::Str(ref mut str)) = &mut args[0].expr {
+                            if let Some(Lit::Str(ref mut str)) = &mut args[0].expr.as_mut_lit() {
                                 if !is_remote_or_data(&str.value) {
                                     self.replace_source(str);
                                 }
