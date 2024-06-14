@@ -42,7 +42,6 @@ impl VisitMut for WorkerModule {
                             if let box Expr::Lit(Lit::Str(ref mut str)) = &mut args[0].expr {
                                 if !is_remote_or_data(&str.value) {
                                     self.replace_source(str);
-                                    println!("args: {:?}", str);
                                 }
                             }
                         }
