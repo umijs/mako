@@ -4,7 +4,7 @@ const { files } = parseBuildResult(__dirname);
 const content = files["index.js"];
 
 assert(
-  !("src_worker_ts-worker.js" in files),
+  !Object.entries(files).every(([fileName, _]) => fileName.startsWith("src_worker_ts")),
   "should not generate worker file for worker.ts"
 );
 assert(
@@ -12,6 +12,6 @@ assert(
   "should not generate worker file for worker.ts"
 );
 assert(
-  "src_worker2_ts-worker.js" in files,
+  Object.entries(files).some(([fileName, _]) => fileName.startsWith("src_worker2_ts")),
   "should generate worker file for worker2.ts"
 );

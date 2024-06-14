@@ -37,6 +37,7 @@ use crate::visitors::react::react;
 use crate::visitors::try_resolve::TryResolve;
 use crate::visitors::ts_strip::ts_strip;
 use crate::visitors::virtual_css_modules::VirtualCSSModules;
+use crate::visitors::worker_module::WorkerModule;
 
 pub struct Transform {}
 
@@ -70,6 +71,7 @@ impl Transform {
                             path: file.path.clone(),
                             unresolved_mark,
                         }),
+                        Box::new(WorkerModule::new(unresolved_mark)),
                     ];
                     // strip should be ts only
                     // since when use this in js, it will remove all unused imports
