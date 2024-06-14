@@ -20,3 +20,4 @@ pub(crate) mod react;
 pub(crate) mod try_resolve;
 pub(crate) mod ts_strip;
 pub(crate) mod virtual_css_modules;
+pub(crate) mod worker_module;
