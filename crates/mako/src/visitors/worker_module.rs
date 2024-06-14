@@ -2,7 +2,7 @@ use mako_core::swc_ecma_ast::{Expr, Lit, NewExpr, Str};
 use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 use swc_core::common::Mark;
 
-use crate::ast::utils::{self, is_remote_or_data};
+use crate::ast::utils::{is_ident_undefined, is_remote_or_data};
 
 pub struct WorkerModule {
     unresolved_mark: Mark,
@@ -24,7 +24,7 @@ impl VisitMut for WorkerModule {
 
         if let box Expr::Ident(ident) = &mut new_expr.callee {
             #[allow(clippy::needless_borrow)]
-            if utils::is_ident_undefined(&ident, "Worker", &self.unresolved_mark) {
+            if is_ident_undefined(&ident, "Worker", &self.unresolved_mark) {
                 let args = new_expr.args.as_mut().unwrap();
 
                 // new Worker(new URL(''), base);
@@ -36,7 +36,7 @@ impl VisitMut for WorkerModule {
                     }
 
                     if let box Expr::Ident(ident) = &new_expr.callee {
-                        if utils::is_ident_undefined(&ident, "URL", &self.unresolved_mark) {
+                        if is_ident_undefined(&ident, "URL", &self.unresolved_mark) {
                             // new URL('');
                             let args = new_expr.args.as_mut().unwrap();
                             if let box Expr::Lit(Lit::Str(ref mut str)) = &mut args[0].expr {
