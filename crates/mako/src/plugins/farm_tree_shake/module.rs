@@ -6,7 +6,8 @@ use mako_core::swc_ecma_ast::{Module as SwcModule, ModuleItem};
 use crate::module::{Module, ModuleId};
 use crate::module_graph::ModuleGraph;
 use crate::plugins::farm_tree_shake::statement_graph::{
-    ExportInfo, ExportInfoMatch, ExportSpecifierInfo, ImportInfo, StatementGraph, StatementId,
+    ExportInfo, ExportInfoMatch, ExportSource, ExportSpecifierInfo, ImportInfo, StatementGraph,
+    StatementId,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -487,18 +488,34 @@ impl TreeShakeModule {
                     let mut export_infos = vec![];
 
                     for export_info in self.exports().into_iter() {
+                        let source: ExportSource = (&export_info).into();
+                        let stmt_id = export_info.stmt_id;
                         match export_info.matches_ident(ident) {
                             ExportInfoMatch::Matched => {
-                                export_infos.push(export_info);
+                                export_infos.push((
+                                    export_info,
+                                    (ExportInfoMatch::Matched, source, stmt_id),
+                                ));
                             }
                             ExportInfoMatch::Unmatched => {}
                             ExportInfoMatch::Ambiguous => {
-                                export_infos.push(export_info);
+                                export_infos.push((
+                                    export_info,
+                                    (ExportInfoMatch::Ambiguous, source, stmt_id),
+                                ));
                             }
                         }
                     }
 
-                    for export_info in export_infos {
+                    export_infos.sort_by_key(|(_, order)| order.clone());
+
+                    if let Some((_, (matched, _, _))) = export_infos.first() {
+                        if *matched == ExportInfoMatch::Matched {
+                            export_infos.truncate(1)
+                        }
+                    }
+
+                    for (export_info, _) in export_infos {
                         for sp in export_info.specifiers {
                             match sp {
                                 ExportSpecifierInfo::Default(_) => {
