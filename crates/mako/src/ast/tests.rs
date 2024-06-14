@@ -108,10 +108,11 @@ impl TestUtils {
         }
     }
 
-    pub fn gen_js_ast(content: String) -> Self {
+    pub fn gen_js_ast<T: AsRef<str>>(content: T) -> Self {
+        let c = content.as_ref().to_string();
         let mut test_utils = Self::new(TestUtilsOpts {
             file: Some("test.js".to_string()),
-            content: Some(content),
+            content: Some(c),
         });
         let ast = test_utils.ast.js_mut();
         let unresolved_mark = ast.unresolved_mark;

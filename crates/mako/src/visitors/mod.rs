@@ -11,6 +11,7 @@ pub(crate) mod dynamic_import;
 pub(crate) mod dynamic_import_to_require;
 pub(crate) mod env_replacer;
 pub(crate) mod fix_helper_inject_position;
+pub(crate) mod fix_symbol_conflict;
 pub(crate) mod mako_require;
 pub(crate) mod meta_url_replacer;
 pub(crate) mod new_url_assets;
