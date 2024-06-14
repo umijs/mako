@@ -58,18 +58,19 @@ impl Transform {
                         || file.extname == "tsx";
 
                     // visitors
-                    let mut visitors: Vec<Box<dyn VisitMut>> = vec![];
-                    visitors.push(Box::new(resolver(unresolved_mark, top_level_mark, is_ts)));
-                    // fix helper inject position
-                    // should be removed after upgrade to latest swc
-                    // ref: https://github.com/umijs/mako/issues/1193
-                    visitors.push(Box::new(FixHelperInjectPosition::new()));
-                    visitors.push(Box::new(FixSymbolConflict::new(top_level_mark)));
-                    visitors.push(Box::new(NewUrlAssets {
-                        context: context.clone(),
-                        path: file.path.clone(),
-                        unresolved_mark,
-                    }));
+                    let mut visitors: Vec<Box<dyn VisitMut>> = vec![
+                        Box::new(resolver(unresolved_mark, top_level_mark, is_ts)),
+                        // fix helper inject position
+                        // should be removed after upgrade to latest swc
+                        // ref: https://github.com/umijs/mako/issues/1193
+                        Box::new(FixHelperInjectPosition::new()),
+                        Box::new(FixSymbolConflict::new(top_level_mark)),
+                        Box::new(NewUrlAssets {
+                            context: context.clone(),
+                            path: file.path.clone(),
+                            unresolved_mark,
+                        }),
+                    ];
                     // strip should be ts only
                     // since when use this in js, it will remove all unused imports
                     // which is not expected as what webpack does
