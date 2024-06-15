@@ -556,8 +556,6 @@ fn fill_all_export_start_export_info(
             let stmt_id = exp_info.stmt_id;
             tsm.stmt_graph.stmt_mut(&stmt_id).export_info = Some(exp_info);
         }
-
-        println!("{} all exports {:?}", tsm.module_id.id, tsm.all_exports);
     }
 }
 
