@@ -17,9 +17,9 @@ export async function startWorkers() {
   await Promise.all(
     Array.from({ length: 2 }, async () => {
       const worker = new Worker(new URL("./workerHelper", import.meta.url), {
-        type: "module",
+        type: "classic",
       });
-      worker.postMessage("spawn");
+      worker.postMessage({ type: "spawn" });
     })
   );
 }

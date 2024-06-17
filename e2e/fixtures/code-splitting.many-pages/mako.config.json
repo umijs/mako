@@ -10,25 +10,28 @@
   },
   "minify": false,
   "codeSplitting": {
-    "minSize": 1,
-    "groups": [
-      {
-        "name": "vendors",
-        "allowChunks": "all",
-        "test": "[\\\\/]node_modules[\\\\/]",
-        "minSize": 1,
-        "maxSize": 40,
-        "priority": 20
-      },
-      {
-        "name": "shared",
-        "allowChunks": "all",
-        "minChunks": 2,
-        "minSize": 1,
-        "maxSize": 40,
-        "priority": 10
-      }
-    ]
+    "strategy": "advanced",
+    "options": {
+      "minSize": 1,
+      "groups": [
+        {
+          "name": "vendors",
+          "allowChunks": "all",
+          "test": "[\\\\/]node_modules[\\\\/]",
+          "minSize": 1,
+          "maxSize": 40,
+          "priority": 20
+        },
+        {
+          "name": "shared",
+          "allowChunks": "all",
+          "minChunks": 2,
+          "minSize": 1,
+          "maxSize": 40,
+          "priority": 10
+        }
+      ]
+    }
   },
   "optimization": {
     "skipModules": true,

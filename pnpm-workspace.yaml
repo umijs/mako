@@ -1,5 +1,6 @@
 packages:
   - 'examples/*'
+  - 'client'
   - 'crates/binding'
   - 'packages/*'
   - 'crates/mako/test/compile/auto-code-splitting'

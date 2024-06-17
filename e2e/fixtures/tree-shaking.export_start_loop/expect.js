@@ -1,6 +1,6 @@
 const {
-	injectSimpleJest,
-	parseBuildResult
+  injectSimpleJest,
+  parseBuildResult,
 } = require("../../../scripts/test-utils");
 const { files } = parseBuildResult(__dirname);
 injectSimpleJest();

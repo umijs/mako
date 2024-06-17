@@ -6,7 +6,8 @@ use mako_core::swc_ecma_ast::{Module as SwcModule, ModuleItem};
 use crate::module::{Module, ModuleId};
 use crate::module_graph::ModuleGraph;
 use crate::plugins::farm_tree_shake::statement_graph::{
-    ExportInfo, ExportInfoMatch, ExportSpecifierInfo, ImportInfo, StatementGraph, StatementId,
+    ExportInfo, ExportInfoMatch, ExportSource, ExportSpecifierInfo, ImportInfo, StatementGraph,
+    StatementId,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -85,6 +86,12 @@ pub enum AllExports {
     Ambiguous(HashSet<String>),
 }
 
+impl Default for AllExports {
+    fn default() -> Self {
+        Self::Precise(Default::default())
+    }
+}
+
 impl AllExports {
     fn all_specifiers(&self) -> Vec<String> {
         match self {
@@ -115,6 +122,41 @@ impl AllExports {
         match self {
             AllExports::Precise(s) => s.extend(idents),
             AllExports::Ambiguous(s) => s.extend(idents),
+        }
+    }
+
+    pub fn extends(&mut self, other: AllExports) {
+        match self {
+            AllExports::Precise(self_set) => match other {
+                AllExports::Precise(other_set) => {
+                    self_set.extend(other_set);
+                }
+                AllExports::Ambiguous(other_set) => {
+                    let mut new_set = HashSet::new();
+                    new_set.extend(self_set.drain());
+                    new_set.extend(other_set);
+                    *self = AllExports::Ambiguous(new_set);
+                }
+            },
+            AllExports::Ambiguous(self_set) => match other {
+                AllExports::Precise(other_set) => {
+                    self_set.extend(other_set);
+                }
+                AllExports::Ambiguous(other_set) => {
+                    self_set.extend(other_set);
+                }
+            },
+        }
+    }
+
+    pub fn as_ambiguous(&mut self) {
+        match self {
+            AllExports::Precise(s) => {
+                let mut new_set = HashSet::new();
+                new_set.extend(s.drain());
+                *self = AllExports::Ambiguous(new_set);
+            }
+            AllExports::Ambiguous(_) => {}
         }
     }
 }
@@ -236,25 +278,6 @@ impl TreeShakeModule {
         self.used_exports.is_empty()
     }
 
-    pub fn extends_exports(&mut self, to_extend: &AllExports) {
-        match (&mut self.all_exports, to_extend) {
-            (AllExports::Precise(me), AllExports::Precise(to_add)) => {
-                me.extend(to_add.iter().cloned());
-            }
-            (AllExports::Ambiguous(me), AllExports::Precise(to_add)) => {
-                me.extend(to_add.iter().cloned());
-            }
-            (AllExports::Precise(me), AllExports::Ambiguous(to_add)) => {
-                me.extend(to_add.iter().cloned());
-
-                self.all_exports = AllExports::Ambiguous(me.clone())
-            }
-            (AllExports::Ambiguous(me), AllExports::Ambiguous(to_add)) => {
-                me.extend(to_add.iter().cloned());
-            }
-        }
-    }
-
     pub fn new(module: &Module, order: usize, _module_graph: &ModuleGraph) -> Self {
         let module_info = module.info.as_ref().unwrap();
 
@@ -323,6 +346,20 @@ impl TreeShakeModule {
         }
 
         imports
+    }
+
+    pub fn contains_exports_star(&self) -> bool {
+        self.stmt_graph.stmts().into_iter().any(|stmt| {
+            if let Some(export_info) = &stmt.export_info {
+                if let Some(sp) = export_info.specifiers.first() {
+                    return matches!(
+                        sp,
+                        ExportSpecifierInfo::All(_) | ExportSpecifierInfo::Ambiguous(_)
+                    );
+                }
+            }
+            false
+        })
     }
 
     pub fn exports(&self) -> Vec<ExportInfo> {
@@ -444,23 +481,41 @@ impl TreeShakeModule {
 
                 for ident in idents {
                     // find the export info*s* that contains the ident
+                    // in looped modules, there may be multiple export infos that contain the
+                    // same ident
+                    // eg: https://github.com/umijs/mako/issues/1273
 
                     let mut export_infos = vec![];
 
                     for export_info in self.exports().into_iter() {
+                        let source: ExportSource = (&export_info).into();
+                        let stmt_id = export_info.stmt_id;
                         match export_info.matches_ident(ident) {
                             ExportInfoMatch::Matched => {
-                                export_infos = vec![export_info];
-                                break;
+                                export_infos.push((
+                                    export_info,
+                                    (ExportInfoMatch::Matched, source, stmt_id),
+                                ));
                             }
                             ExportInfoMatch::Unmatched => {}
                             ExportInfoMatch::Ambiguous => {
-                                export_infos.push(export_info);
+                                export_infos.push((
+                                    export_info,
+                                    (ExportInfoMatch::Ambiguous, source, stmt_id),
+                                ));
                             }
                         }
                     }
 
-                    for export_info in export_infos {
+                    export_infos.sort_by_key(|(_, order)| order.clone());
+
+                    if let Some((_, (matched, _, _))) = export_infos.first() {
+                        if *matched == ExportInfoMatch::Matched {
+                            export_infos.truncate(1)
+                        }
+                    }
+
+                    for (export_info, _) in export_infos {
                         for sp in export_info.specifiers {
                             match sp {
                                 ExportSpecifierInfo::Default(_) => {

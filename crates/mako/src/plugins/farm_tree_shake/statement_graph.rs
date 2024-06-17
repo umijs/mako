@@ -77,6 +77,24 @@ pub enum ExportSpecifierInfo {
     Ambiguous(Vec<String>),
 }
 
+#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq)]
+pub enum ExportSource {
+    Local,
+    Remote,
+}
+
+impl From<&ExportInfo> for ExportSource {
+    fn from(export_info: &ExportInfo) -> Self {
+        if let Some(ExportSpecifierInfo::Ambiguous(_) | ExportSpecifierInfo::All(_)) =
+            export_info.specifiers.first()
+        {
+            return ExportSource::Remote;
+        }
+
+        ExportSource::Local
+    }
+}
+
 impl ExportSpecifierInfo {
     pub fn to_idents(&self) -> Vec<String> {
         match self {
@@ -110,11 +128,11 @@ pub struct ExportInfo {
     pub stmt_id: StatementId,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Copy)]
 pub enum ExportInfoMatch {
     Matched,
-    Unmatched,
     Ambiguous,
+    Unmatched,
 }
 
 impl ExportInfo {

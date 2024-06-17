@@ -166,7 +166,7 @@ impl VisitMut for ContextModuleVisitor {
                     .as_callee();
                     // TODO: allow use await in args
                     // eg: import(`./i18n${await xxx()}`)
-                    expr.args = vec![quote_ident!("m")
+                    expr.args = vec![member_expr!(DUMMY_SP, m.default)
                         .as_call(DUMMY_SP, expr.args.clone())
                         .as_expr()
                         .to_owned()
