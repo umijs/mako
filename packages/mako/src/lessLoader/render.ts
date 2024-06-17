@@ -2,12 +2,12 @@ import fs from 'fs';
 import less from 'less';
 import { LessLoaderOpts } from '.';
 
-export async function render(
-  filePath: string,
-  opts: LessLoaderOpts,
-): Promise<{ content: string; type: 'css' }> {
-  const { modifyVars, math, sourceMap, plugins } = opts;
-  const input = fs.readFileSync(filePath, 'utf-8');
+module.exports = async function render(param: {
+  filename: string;
+  opts: LessLoaderOpts;
+}): Promise<{ content: string; type: 'css' }> {
+  const { modifyVars, math, sourceMap, plugins } = param.opts;
+  const input = fs.readFileSync(param.filename, 'utf-8');
 
   const pluginInstances: Less.Plugin[] | undefined = plugins?.map((p) => {
     if (Array.isArray(p)) {
@@ -21,7 +21,7 @@ export async function render(
 
   const result = await less
     .render(input, {
-      filename: filePath,
+      filename: param.filename,
       javascriptEnabled: true,
       math,
       plugins: pluginInstances,
@@ -34,4 +34,4 @@ export async function render(
     });
 
   return { content: result.css, type: 'css' };
-}
+};

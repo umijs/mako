@@ -1,27 +1,24 @@
 import path from 'path';
-import workerpool from 'workerpool';
+import { Piscina } from 'piscina';
 import { LessLoaderOpts } from '.';
 
-let pool: workerpool.Pool | undefined = undefined;
+const threadPool = new Piscina<
+  { filename: string; opts: LessLoaderOpts },
+  { content: string; type: 'css' }
+>({
+  filename: path.resolve(__dirname + '/render.js'),
+  idleTimeout: 30000,
+  recordTiming: false,
+  useAtomics: false,
+});
 
-function createPool() {
-  if (!pool) {
-    pool = workerpool.pool(path.resolve(__dirname + '/lessLoader.worker.js'));
-  }
+export async function render(
+  filename: string,
+  opts: LessLoaderOpts,
+): Promise<{ content: string; type: 'css' }> {
+  return await threadPool.run({ filename, opts });
 }
 
 export function terminatePool() {
-  pool?.terminate();
-  pool = undefined;
-}
-
-export async function render(
-  filePath: string,
-  opts: LessLoaderOpts,
-): Promise<{ content: string; type: string }> {
-  createPool();
-
-  const res = await pool!.exec('render', [filePath, opts]);
-
-  return res;
+  threadPool.close();
 }
