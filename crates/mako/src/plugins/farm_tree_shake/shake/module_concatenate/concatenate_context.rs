@@ -451,7 +451,7 @@ mod tests {
 
     #[test]
     fn test_export_default_class_expr_with_ident() {
-        let tu = TestUtils::gen_js_ast("export default class C{};".to_string());
+        let tu = TestUtils::gen_js_ast("export default class C{};");
         let js = tu.ast.js();
 
         GLOBALS.set(&tu.context.meta.script.globals, || {
@@ -461,7 +461,7 @@ mod tests {
 
     #[test]
     fn test_export_default_fn_expr_with_ident() {
-        let tu = TestUtils::gen_js_ast("export default function fn(){};".to_string());
+        let tu = TestUtils::gen_js_ast("export default function fn(){};");
         let js = tu.ast.js();
 
         GLOBALS.set(&tu.context.meta.script.globals, || {
@@ -471,7 +471,7 @@ mod tests {
 
     #[test]
     fn test_export_default_anonymous_fn_expr_with_ident() {
-        let tu = TestUtils::gen_js_ast("export default function (){};".to_string());
+        let tu = TestUtils::gen_js_ast("export default function (){};");
         let js = tu.ast.js();
 
         GLOBALS.set(&tu.context.meta.script.globals, || {
@@ -481,7 +481,7 @@ mod tests {
 
     #[test]
     fn test_export_default_anonymous_class_expr_with_ident() {
-        let tu = TestUtils::gen_js_ast("export default class {};".to_string());
+        let tu = TestUtils::gen_js_ast("export default class {};");
         let js = tu.ast.js();
 
         GLOBALS.set(&tu.context.meta.script.globals, || {
