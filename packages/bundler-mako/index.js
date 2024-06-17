@@ -542,7 +542,13 @@ async function getMakoConfig(opts) {
     },
     manifest,
     mdx: !!mdx,
-    codeSplitting: codeSplitting === false ? false : 'auto',
+    codeSplitting:
+      codeSplitting === false
+        ? false
+        : typeof codeSplitting === 'object' &&
+            codeSplitting.strategy === 'granular'
+          ? codeSplitting
+          : { strategy: 'auto' },
     devtool: normalizedDevtool,
     cjs,
     dynamicImportToRequire,
