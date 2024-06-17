@@ -40,4 +40,8 @@ function lessLoader(fn: Function | null, opts: LessLoaderOpts) {
   };
 }
 
+lessLoader.terminate = () => {
+  parallelLessLoader.terminatePool();
+};
+
 export { lessLoader };

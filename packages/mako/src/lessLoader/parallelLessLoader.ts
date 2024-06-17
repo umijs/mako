@@ -18,3 +18,7 @@ export async function render(
 ): Promise<{ content: string; type: 'css' }> {
   return await threadPool.run({ filename, opts });
 }
+
+export function terminatePool() {
+  threadPool.close();
+}

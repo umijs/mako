@@ -87,6 +87,11 @@ export async function build(params: BuildParams) {
         return lessResult;
       }
     },
+    generateEnd() {
+      if (!params.watch) {
+        lessLoader.terminate();
+      }
+    },
   });
 
   // support dump mako config
