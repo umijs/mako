@@ -22,7 +22,6 @@ impl VisitMut for TsxStrip {
         let tsx_config = TsxConfig {
             pragma: Some(self.context.config.react.pragma.clone()),
             pragma_frag: Some(self.context.config.react.pragma_frag.clone()),
-            ..Default::default()
         };
         let mut p = Program::Module(n.take());
         p.visit_mut_with(&mut typescript::tsx(
