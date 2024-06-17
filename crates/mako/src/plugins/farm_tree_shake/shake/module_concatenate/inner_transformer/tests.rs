@@ -14,32 +14,53 @@ use crate::module::ModuleId;
 use crate::plugins::farm_tree_shake::shake::module_concatenate::concatenate_context::ConcatenateContext;
 
 #[test]
-fn test_import_default_from_inner() {
+fn test_import_default_from_inner_with_different_name() {
+    let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
+    let expected_top_vars = ccn_ctx.top_level_vars.clone();
+
+    let code = inner_trans_code(
+        r#"
+    import x from "./src";
+    console.log(x)"#,
+        &mut ccn_ctx,
+    );
+
+    assert_eq!(code, "console.log(inner_default_export);");
+    assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
+    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
+}
+
+#[test]
+fn test_import_default_from_inner_with_original_name() {
+    let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
+    let expected_top_vars = ccn_ctx.top_level_vars.clone();
+
+    let code = inner_trans_code(
+        r#"
+    import inner_default_export from "./src";
+    console.log(inner_default_export)"#,
+        &mut ccn_ctx,
+    );
+
+    assert_eq!(code, "console.log(inner_default_export);");
+    assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
+    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
+}
+
+#[test]
+fn test_import_default_from_no_default_export_inner() {
     let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
     let mut expected_top_vars = ccn_ctx.top_level_vars.clone();
     expected_top_vars.insert("x".to_string());
 
-    let code = inner_trans_code(r#"import x from "./src""#, &mut ccn_ctx);
-
-    assert_eq!(code, "var x = inner_default_export;");
-    assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
-}
-#[test]
-fn test_import_default_from_inner_and_conflict_with_other_name() {
-    let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
-    let mut expected_top_vars = ccn_ctx.top_level_vars.clone();
-    expected_top_vars.insert("will_conflict_1".to_string());
-
     let code = inner_trans_code(
-        r#"import will_conflict from "./src";will_conflict;"#,
+        r#"
+    import x from "./no_exports";
+    console.log(x)"#,
         &mut ccn_ctx,
     );
 
-    assert_eq!(
-        code,
-        "var will_conflict_1 = inner_default_export;\nwill_conflict_1;"
-    );
+    assert_eq!(code, "var x = undefined;\nconsole.log(x);");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
     assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
@@ -62,12 +83,46 @@ fn test_import_default_from_inner_and_conflict_with_orig_name() {
 #[test]
 fn test_import_named_from_inner() {
     let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
-    let mut expected_top_vars = ccn_ctx.top_level_vars.clone();
-    expected_top_vars.insert("foo".to_string());
+    let expected_top_vars = ccn_ctx.top_level_vars.clone();
 
-    let code = inner_trans_code(r#"import {foo} from "./src""#, &mut ccn_ctx);
+    let code = inner_trans_code(r#"import {foo} from "./src"; foo;"#, &mut ccn_ctx);
 
-    assert_eq!(code, "var foo = bar;");
+    assert_eq!(code, "bar;");
+    assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
+    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
+}
+
+#[test]
+fn test_import_names_from_inner() {
+    let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
+    let expected_top_vars = ccn_ctx.top_level_vars.clone();
+
+    let code = inner_trans_code(
+        r#"import {foo, named} from "./src"; foo;named;"#,
+        &mut ccn_ctx,
+    );
+
+    assert_eq!(
+        code,
+        r#"bar;
+named;"#
+    );
+    assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
+    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
+}
+
+#[test]
+fn test_import_name_and_default_from_inner() {
+    let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
+    let expected_top_vars = ccn_ctx.top_level_vars.clone();
+
+    let code = inner_trans_code(r#"import v,{foo} from "./src"; foo;v;"#, &mut ccn_ctx);
+
+    assert_eq!(
+        code,
+        r#"bar;
+inner_default_export;"#
+    );
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
     assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
@@ -88,11 +143,18 @@ fn test_import_named_from_inner_conflict_with_orig_name() {
 fn test_import_named_as_from_inner() {
     let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
     let mut expected_top_vars = ccn_ctx.top_level_vars.clone();
-    expected_top_vars.insert("myFoo".to_string());
+    expected_top_vars.insert("bar_1".to_string());
 
-    let code = inner_trans_code(r#"import {foo as myFoo} from "./src""#, &mut ccn_ctx);
+    let code = inner_trans_code(
+        r#"import {foo as myFoo} from "./src";myFoo;var bar;"#,
+        &mut ccn_ctx,
+    );
 
-    assert_eq!(code, "var myFoo = bar;");
+    assert_eq!(
+        code,
+        r#"bar;
+var bar_1;"#
+    );
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
     assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
@@ -112,15 +174,14 @@ fn test_import_named_as_from_inner_and_conflict_with_orig_name() {
 #[test]
 fn test_import_named_as_from_inner_and_conflict_with_other_name() {
     let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
-    let mut expected_top_vars = ccn_ctx.top_level_vars.clone();
-    expected_top_vars.insert("will_conflict_1".to_string());
+    let expected_top_vars = ccn_ctx.top_level_vars.clone();
 
     let code = inner_trans_code(
         r#"import {foo as will_conflict} from "./src";will_conflict;"#,
         &mut ccn_ctx,
     );
 
-    assert_eq!(code, "var will_conflict_1 = bar;\nwill_conflict_1;");
+    assert_eq!(code, "bar;");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
     assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
@@ -128,12 +189,11 @@ fn test_import_named_as_from_inner_and_conflict_with_other_name() {
 #[test]
 fn test_import_namespace_from_inner() {
     let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
-    let mut expected_top_vars = ccn_ctx.top_level_vars.clone();
-    expected_top_vars.insert("ns".to_string());
+    let expected_top_vars = ccn_ctx.top_level_vars.clone();
 
-    let code = inner_trans_code(r#"import * as ns from "./src""#, &mut ccn_ctx);
+    let code = inner_trans_code(r#"import * as ns from "./src";ns;"#, &mut ccn_ctx);
 
-    assert_eq!(code, "var ns = inner_namespace;");
+    assert_eq!(code, "inner_namespace;");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
     assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
@@ -141,12 +201,11 @@ fn test_import_namespace_from_inner() {
 #[test]
 fn test_import_namespace_from_inner_with_conflict() {
     let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
-    let mut expected_top_vars = ccn_ctx.top_level_vars.clone();
-    expected_top_vars.insert("bar_1".to_string());
+    let expected_top_vars = ccn_ctx.top_level_vars.clone();
 
     let code = inner_trans_code(r#"import * as bar from "./src";bar;"#, &mut ccn_ctx);
 
-    assert_eq!(code, "var bar_1 = inner_namespace;\nbar_1;");
+    assert_eq!(code, "inner_namespace;");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
     assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
@@ -276,7 +335,7 @@ fn test_export_as_twice_with_conflict() {
 }
 
 #[test]
-fn test_short_named_export() {
+fn test_export_short_named() {
     let mut ccn_ctx = ConcatenateContext::default();
 
     let code = inner_trans_code("var named = some.named;export { named };", &mut ccn_ctx);
@@ -292,7 +351,7 @@ fn test_short_named_export() {
 }
 
 #[test]
-fn test_short_named_export_with_conflict() {
+fn test_export_short_named_with_conflict() {
     let mut ccn_ctx = ConcatenateContext {
         top_level_vars: hashset!("named".to_string()),
         ..Default::default()
@@ -380,6 +439,28 @@ fn test_export_default_decl_named_function() {
 }
 
 #[test]
+fn test_export_default_decl_named_function_and_conflict() {
+    let mut ccn_ctx = ConcatenateContext {
+        top_level_vars: hashset!("a".to_string()),
+        ..Default::default()
+    };
+
+    let code = inner_trans_code("export default function a(){}", &mut ccn_ctx);
+
+    assert_eq!(code, "function a_1() {}");
+    assert_eq!(
+        ccn_ctx.top_level_vars,
+        hashset!("a".to_string(), "a_1".to_string())
+    );
+    assert_eq!(
+        current_export_map(&ccn_ctx),
+        &hashmap!(
+            "default".to_string() => "a_1".to_string()
+        )
+    );
+}
+
+#[test]
 fn test_export_decl_class() {
     let mut ccn_ctx = ConcatenateContext::default();
     let code = inner_trans_code("export class A{}", &mut ccn_ctx);
@@ -399,6 +480,31 @@ fn test_export_decl_class() {
 }
 
 #[test]
+fn test_export_decl_class_and_conflict() {
+    let mut ccn_ctx = ConcatenateContext {
+        top_level_vars: hashset!("A".to_string()),
+        ..Default::default()
+    };
+    let code = inner_trans_code("export class A{}", &mut ccn_ctx);
+
+    assert_eq!(
+        code,
+        "class A_1 {
+}"
+    );
+    assert_eq!(
+        ccn_ctx.top_level_vars,
+        hashset!("A".to_string(), "A_1".to_string())
+    );
+    assert_eq!(
+        current_export_map(&ccn_ctx),
+        &hashmap!(
+            "A".to_string() => "A_1".to_string()
+        )
+    );
+}
+
+#[test]
 fn test_export_decl_fn() {
     let mut ccn_ctx = ConcatenateContext::default();
     let code = inner_trans_code("export function fn(){}", &mut ccn_ctx);
@@ -409,6 +515,28 @@ fn test_export_decl_fn() {
         current_export_map(&ccn_ctx),
         &hashmap!(
             "fn".to_string() => "fn".to_string()
+        )
+    );
+}
+
+#[test]
+fn test_export_decl_fn_and_conflict_fn_name() {
+    let mut ccn_ctx = ConcatenateContext {
+        top_level_vars: hashset!("fn".to_string()),
+        ..Default::default()
+    };
+
+    let code = inner_trans_code("export function fn(){}", &mut ccn_ctx);
+
+    assert_eq!(code, "function fn_1() {}");
+    assert_eq!(
+        ccn_ctx.top_level_vars,
+        hashset!("fn".to_string(), "fn_1".to_string())
+    );
+    assert_eq!(
+        current_export_map(&ccn_ctx),
+        &hashmap!(
+            "fn".to_string() => "fn_1".to_string()
         )
     );
 }
@@ -615,7 +743,8 @@ fn concatenate_context_fixture_with_inner_module() -> ConcatenateContext {
                 "default".to_string() => "inner_default_export".to_string(),
                 "foo".to_string() => "bar".to_string(),
                 "named".to_string() => "named".to_string(),
-            }
+            },
+            ModuleId::from("src/no_exports.js") => hashmap!{},
         },
         ..Default::default()
     }
@@ -640,7 +769,8 @@ fn inner_trans_code(code: &str, concatenate_context: &mut ConcatenateContext) ->
     let module_id = ModuleId::from("mut.js");
 
     let src_to_module = hashmap! {
-        "./src".to_string() => ModuleId::from("src/index.js")
+        "./src".to_string() => ModuleId::from("src/index.js"),
+        "./no_exports".to_string() => ModuleId::from("src/no_exports.js")
     };
 
     GLOBALS.set(&context.meta.script.globals, || {

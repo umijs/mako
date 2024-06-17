@@ -484,6 +484,8 @@ pub fn inner_import_specifier_to_stmts(
 ) -> Vec<Stmt> {
     let mut stmts: Vec<Stmt> = vec![];
 
+    // let mut rename_request = vec![];
+
     match &import_specifier {
         ImportSpecifier::Named(named_import) => {
             let imported_name = match &named_import.imported {
