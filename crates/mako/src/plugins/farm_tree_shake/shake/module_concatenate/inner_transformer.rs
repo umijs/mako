@@ -40,7 +40,7 @@ pub(super) struct InnerTransform<'a> {
     default_bind_name: String,
 }
 
-enum InnerOrExternal<'a> {
+pub enum InnerOrExternal<'a> {
     Inner(&'a HashMap<String, ModuleRef>),
     External(&'a (String, String)),
 }
@@ -141,7 +141,7 @@ impl<'a> InnerTransform<'a> {
         ref_map
     }
 
-    fn remove_imported(&mut self, import_map: &ModuleRefMap) {
+    fn remove_imported_top_vars(&mut self, import_map: &ModuleRefMap) {
         import_map.iter().for_each(|(id, _)| {
             self.my_top_decls.remove(&id.0.to_string());
         });
@@ -445,7 +445,6 @@ impl<'a> VisitMut for InnerTransform<'a> {
 
         let mut var_links_collector = ModuleDeclMapCollector::new(self.default_bind_name.clone());
         n.visit_with(&mut var_links_collector);
-        var_links_collector.simplify_exports();
 
         let ModuleDeclMapCollector {
             import_map,
@@ -461,7 +460,7 @@ impl<'a> VisitMut for InnerTransform<'a> {
 
         let mut rewriter = ModuleRefRewriter::new(&_import_ref_map, Default::default(), true);
         n.visit_mut_with(&mut rewriter);
-        self.remove_imported(&_import_ref_map);
+        self.remove_imported_top_vars(&_import_ref_map);
 
         self.resolve_conflict();
         self.apply_renames(n, &mut export_ref_map);
