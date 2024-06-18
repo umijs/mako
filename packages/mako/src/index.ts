@@ -82,14 +82,14 @@ export async function build(params: BuildParams) {
   params.config.plugins.push({
     name: 'less',
     async load(filePath: string) {
-      let lessResult = await less(filePath);
+      let lessResult = await less.render(filePath);
       if (lessResult) {
         return lessResult;
       }
     },
     generateEnd() {
       if (!params.watch) {
-        lessLoader.terminate();
+        less.terminate();
       }
     },
   });
