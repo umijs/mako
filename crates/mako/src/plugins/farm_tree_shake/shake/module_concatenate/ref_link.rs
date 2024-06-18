@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests;
 
-use swc_core::ecma::ast::{Id, Ident, ImportDecl, ImportSpecifier};
+use swc_core::ecma::ast::{DefaultDecl, Id, Ident, ImportDecl, ImportSpecifier};
 
 #[derive(Debug, Clone)]
 pub(super) enum VarLink {
@@ -37,7 +37,6 @@ impl Symbol {
 struct RefLink {}
 
 use std::collections::{HashMap, HashSet};
-use std::fmt::Write;
 
 use swc_core::base::atoms::{js_word, JsWord};
 use swc_core::common::SyntaxContext;
@@ -95,9 +94,16 @@ pub(super) struct ModuleDeclMapCollector {
     current_source: Option<String>,
     pub import_map: HashMap<Id, VarLink>,
     pub export_map: HashMap<Id, VarLink>,
+    default_binding_name: String,
 }
 
 impl ModuleDeclMapCollector {
+    pub fn new(default_binding_name: String) -> Self {
+        Self {
+            default_binding_name,
+            ..Default::default()
+        }
+    }
     pub fn simplify_exports(&mut self) {
         self.export_map.iter_mut().for_each(|(_ident, link)| {
             if let VarLink::Direct(exported) = link {
@@ -245,11 +251,40 @@ impl Visit for ModuleDeclMapCollector {
                 );
                 self.current_source = None;
             }
-            ModuleDecl::ExportDefaultDecl(_) | ModuleDecl::ExportDefaultExpr(_) => {
-                self.export_map.insert(
-                    quote_ident!("default").to_id(),
-                    VarLink::Direct((js_word!("default"), SyntaxContext::empty())),
+            ModuleDecl::ExportDefaultDecl(export_default_decl) => {
+                let fallback_id = (
+                    self.default_binding_name.clone().into(),
+                    SyntaxContext::empty(),
                 );
+
+                let default_id = match &export_default_decl.decl {
+                    DefaultDecl::Class(class_expr) => class_expr
+                        .ident
+                        .as_ref()
+                        .map_or(fallback_id, |ident: &Ident| ident.to_id()),
+                    DefaultDecl::Fn(fn_expr) => fn_expr
+                        .ident
+                        .as_ref()
+                        .map_or(fallback_id, |ident: &Ident| ident.to_id()),
+                    DefaultDecl::TsInterfaceDecl(_) => {
+                        unreachable!()
+                    }
+                };
+
+                self.export_map
+                    .insert(quote_ident!("default").to_id(), VarLink::Direct(default_id));
+            }
+            ModuleDecl::ExportDefaultExpr(export_default_expr) => {
+                let id = match export_default_expr.expr.as_ident() {
+                    Some(ident) => ident.to_id(),
+                    None => (
+                        self.default_binding_name.clone().into(),
+                        SyntaxContext::empty(),
+                    ),
+                };
+
+                self.export_map
+                    .insert(quote_ident!("default").to_id(), VarLink::Direct(id));
             }
             ModuleDecl::ExportAll(_) => {
                 // not allowed in inner module

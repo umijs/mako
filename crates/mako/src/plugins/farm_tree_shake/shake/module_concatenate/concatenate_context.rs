@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use bitflags::bitflags;
 use mako_core::anyhow::{anyhow, Result};
 use serde::Serialize;
+use swc_core::base::atoms::JsWord;
 use swc_core::common::collections::AHashSet;
 use swc_core::common::{Mark, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
@@ -242,9 +243,13 @@ impl From<&ResolveType> for EsmDependantFlags {
     }
 }
 
+pub type ModuleRef = (Ident, Option<JsWord>);
+pub type ModuleRefMap = HashMap<Id, ModuleRef>;
+
 #[derive(Debug, Default)]
 pub struct ConcatenateContext {
     pub modules_in_scope: HashMap<ModuleId, HashMap<String, String>>,
+    pub modules_exports_map: HashMap<ModuleId, HashMap<String, ModuleRef>>,
     pub top_level_vars: HashSet<String>,
     pub external_module_namespace: HashMap<ModuleId, (String, String)>,
     pub interop_idents: BTreeMap<RuntimeFlags, String>,
@@ -451,7 +456,7 @@ mod tests {
 
     #[test]
     fn test_export_default_class_expr_with_ident() {
-        let tu = TestUtils::gen_js_ast("export default class C{};".to_string());
+        let tu = TestUtils::gen_js_ast("export default class C{};");
         let js = tu.ast.js();
 
         GLOBALS.set(&tu.context.meta.script.globals, || {
@@ -461,7 +466,7 @@ mod tests {
 
     #[test]
     fn test_export_default_fn_expr_with_ident() {
-        let tu = TestUtils::gen_js_ast("export default function fn(){};".to_string());
+        let tu = TestUtils::gen_js_ast("export default function fn(){};");
         let js = tu.ast.js();
 
         GLOBALS.set(&tu.context.meta.script.globals, || {
@@ -471,7 +476,7 @@ mod tests {
 
     #[test]
     fn test_export_default_anonymous_fn_expr_with_ident() {
-        let tu = TestUtils::gen_js_ast("export default function (){};".to_string());
+        let tu = TestUtils::gen_js_ast("export default function (){};");
         let js = tu.ast.js();
 
         GLOBALS.set(&tu.context.meta.script.globals, || {
@@ -481,7 +486,7 @@ mod tests {
 
     #[test]
     fn test_export_default_anonymous_class_expr_with_ident() {
-        let tu = TestUtils::gen_js_ast("export default class {};".to_string());
+        let tu = TestUtils::gen_js_ast("export default class {};");
         let js = tu.ast.js();
 
         GLOBALS.set(&tu.context.meta.script.globals, || {

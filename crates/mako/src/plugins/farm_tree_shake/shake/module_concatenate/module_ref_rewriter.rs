@@ -11,7 +11,7 @@ use swc_core::ecma::visit::{noop_visit_mut_type, VisitMut, VisitMutWith};
 
 use super::concatenate_context::ModuleRefMap;
 
-pub struct ModuleRefRewriter {
+pub struct ModuleRefRewriter<'a> {
     /// ```javascript
     /// import foo, { a as b, c } from "mod";
     /// import * as x from "x";
@@ -30,7 +30,7 @@ pub struct ModuleRefRewriter {
     ///     x => (_x, None),
     /// )
     /// ```
-    pub import_map: ModuleRefMap,
+    pub import_map: &'a ModuleRefMap,
 
     pub lazy_record: HashSet<Id>,
 
@@ -40,9 +40,9 @@ pub struct ModuleRefRewriter {
     helper_ctxt: Option<SyntaxContext>,
 }
 
-impl ModuleRefRewriter {
+impl<'a> ModuleRefRewriter<'a> {
     pub fn new(
-        import_map: ModuleRefMap,
+        import_map: &'a ModuleRefMap,
         lazy_record: HashSet<Id>,
         allow_top_level_this: bool,
     ) -> Self {
@@ -61,7 +61,7 @@ impl ModuleRefRewriter {
     }
 }
 
-impl VisitMut for ModuleRefRewriter {
+impl VisitMut for ModuleRefRewriter<'_> {
     noop_visit_mut_type!();
 
     /// replace bar in binding pattern
@@ -173,7 +173,7 @@ impl VisitMut for ModuleRefRewriter {
     }
 }
 
-impl ModuleRefRewriter {
+impl ModuleRefRewriter<'_> {
     fn visit_mut_with_non_global_this<T>(&mut self, n: &mut T)
     where
         T: VisitMutWith<Self>,

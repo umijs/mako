@@ -2,6 +2,7 @@ mod concatenate_context;
 mod exports_transform;
 mod external_transformer;
 mod inner_transformer;
+mod module_ref_rewriter;
 mod ref_link;
 mod root_transformer;
 mod utils;
