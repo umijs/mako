@@ -286,7 +286,7 @@ fn has_index_file_in_directory(dir_path: &Path) -> bool {
                     && path
                         .file_name()
                         .and_then(|n| n.to_str())
-                        .map_or(false, |fname| fname.starts_with("index"))
+                        .map_or(false, |fname| fname == "index")
                     && path
                         .extension()
                         .and_then(|e| e.to_str())
