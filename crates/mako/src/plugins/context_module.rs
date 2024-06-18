@@ -51,7 +51,6 @@ impl Plugin for ContextModulePlugin {
                         continue;
                     }
                 }
-                // let mut keys = vec![format!("./{}", rlt_path.to_string_lossy())];
                 keys.push(format!("./{}", rlt_path.to_string_lossy()));
                 // omit ext `./i18n/zh_CN`
                 if let Some(ext) = rlt_path.extension() {
