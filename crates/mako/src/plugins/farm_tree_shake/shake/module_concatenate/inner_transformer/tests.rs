@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use maplit::{hashmap, hashset};
@@ -7,12 +6,13 @@ use swc_core::ecma::transforms::base::resolver;
 use swc_core::ecma::utils::quote_ident;
 use swc_core::ecma::visit::VisitMutWith;
 
+use super::super::ConcatenateContext;
+use super::utils::{current_export_map, describe_export_map};
 use super::InnerTransform;
 use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
 use crate::config::{Config, Mode, OptimizationConfig};
 use crate::module::ModuleId;
-use crate::plugins::farm_tree_shake::shake::module_concatenate::concatenate_context::ConcatenateContext;
 
 #[test]
 fn test_import_default_from_inner() {
@@ -870,34 +870,4 @@ fn inner_trans_code(code: &str, concatenate_context: &mut ConcatenateContext) ->
             .trim()
             .to_string()
     })
-}
-
-fn current_export_map(ccn_ctx: &ConcatenateContext) -> &HashMap<String, String> {
-    ccn_ctx
-        .modules_in_scope
-        .get(&ModuleId::from("mut.js"))
-        .unwrap()
-}
-
-fn describe_export_map(ccn_ctx: &ConcatenateContext) -> String {
-    let map = ccn_ctx.modules_exports_map.get(&ModuleId::from("mut.js"));
-
-    if let Some(export_map) = map {
-        let mut keys = export_map.keys().collect::<Vec<&String>>();
-        keys.sort();
-        let mut describe = String::new();
-        keys.into_iter().for_each(|key| {
-            let (id, sub) = export_map.get(key).unwrap();
-
-            if let Some(field) = sub {
-                describe.push_str(&format!("{} => {}.{}\n", key, id.sym, field));
-            } else {
-                describe.push_str(&format!("{} => {}\n", key, id.sym));
-            }
-        });
-
-        describe.trim().to_string()
-    } else {
-        "None".to_string()
-    }
 }
