@@ -24,7 +24,7 @@ use crate::plugins::farm_tree_shake::shake::module_concatenate::ref_link::{
     ModuleDeclMapCollector, Symbol, VarLink,
 };
 use crate::plugins::farm_tree_shake::shake::module_concatenate::utils::{
-    declare_var_with_init_stmt, uniq_module_default_export_name, MODULE_CONCATENATE_ERROR,
+    declare_var_with_init_stmt, uniq_module_default_export_name,
     MODULE_CONCATENATE_ERROR_STR_MODULE_NAME,
 };
 
@@ -542,7 +542,8 @@ impl<'a> VisitMut for RootTransformer<'a> {
 
                 self.replaces.push((self.current_stmt_index, stmts));
             } else {
-                unreachable!("{}", MODULE_CONCATENATE_ERROR);
+                // TODO handle export * from "external"
+                self.remove_current_stmt();
             }
         } else {
             for export_spec in &named_export.specifiers {
