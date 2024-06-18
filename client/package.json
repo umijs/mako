@@ -2,7 +2,7 @@
   "name": "client",
   "private": true,
   "scripts": {
-    "build": "mako build"
+    "build": "mako build --mode production"
   },
   "dependencies": {
     "@carrotsearch/foamtree": "^3.5.1",
