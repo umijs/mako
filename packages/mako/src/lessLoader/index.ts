@@ -1,5 +1,5 @@
 import url from 'url';
-import * as parallelLessLoader from './parallelLessLoader';
+import { createParallelLoader } from './parallelLessLoader';
 
 export interface LessLoaderOpts {
   modifyVars: Record<string, string>;
@@ -24,24 +24,28 @@ export interface LessLoaderOpts {
 }
 
 function lessLoader(fn: Function | null, opts: LessLoaderOpts) {
-  return async function (filePath: string) {
-    let filename = '';
-    try {
-      filename = url.parse(filePath).pathname || '';
-    } catch (e) {
-      return;
-    }
-    if (filename?.endsWith('.less')) {
-      return parallelLessLoader.render(filename, opts);
-    } else {
-      // TODO: remove this
-      fn && fn(filePath);
-    }
+  let parallelLessLoader: ReturnType<typeof createParallelLoader> | undefined;
+  return {
+    render: async (filePath: string) => {
+      let filename = '';
+      try {
+        filename = url.parse(filePath).pathname || '';
+      } catch (e) {
+        return;
+      }
+      if (filename?.endsWith('.less')) {
+        parallelLessLoader ||= createParallelLoader();
+        return await parallelLessLoader.run({ filename, opts });
+      } else {
+        // TODO: remove this
+        fn && fn(filePath);
+      }
+    },
+    terminate: () => {
+      parallelLessLoader?.destroy();
+      parallelLessLoader = undefined;
+    },
   };
 }
-
-lessLoader.terminate = () => {
-  parallelLessLoader.terminatePool();
-};
 
 export { lessLoader };
