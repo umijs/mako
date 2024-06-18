@@ -18,7 +18,7 @@ use super::module_ref_rewriter::ModuleRefRewriter;
 use super::ref_link::{ModuleDeclMapCollector, Symbol, VarLink};
 use super::utils::{
     declare_var_with_init_stmt, uniq_module_default_export_name, uniq_module_namespace_name,
-    MODULE_CONCATENATE_ERROR, MODULE_CONCATENATE_ERROR_STR_MODULE_NAME,
+    MODULE_CONCATENATE_ERROR_STR_MODULE_NAME,
 };
 use crate::compiler::Context;
 use crate::module::{relative_to_root, ImportType, ModuleId};
@@ -564,7 +564,7 @@ impl<'a> VisitMut for InnerTransform<'a> {
 
                 self.replaces.push((self.current_stmt_index, stmts));
             } else {
-                unreachable!("{}", MODULE_CONCATENATE_ERROR);
+                self.remove_current_stmt();
             }
         } else {
             for export_spec in &named_export.specifiers {
@@ -669,4 +669,8 @@ pub fn inner_import_specifier_to_stmts(
 }
 
 #[cfg(test)]
+mod external_tests;
+#[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod utils;
