@@ -5,9 +5,8 @@ use mako_core::swc_common::util::take::Take;
 use swc_core::common::comments::{Comment, CommentKind};
 use swc_core::common::{Mark, Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
-    ClassDecl, DefaultDecl, ExportDecl, ExportDefaultDecl, ExportDefaultExpr, ExportNamedSpecifier,
-    ExportSpecifier, FnDecl, Id, Ident, ImportDecl, ImportSpecifier, Module, ModuleExportName,
-    ModuleItem, NamedExport, Stmt, VarDeclKind,
+    ClassDecl, DefaultDecl, ExportDecl, ExportDefaultDecl, ExportDefaultExpr, ExportSpecifier,
+    FnDecl, Id, ImportDecl, Module, ModuleExportName, ModuleItem, NamedExport, Stmt, VarDeclKind,
 };
 use swc_core::ecma::utils::{quote_ident, ExprFactory, IdentRenamer};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith, VisitWith};
@@ -30,15 +29,12 @@ use crate::plugins::farm_tree_shake::shake::module_concatenate::utils::{
 
 pub(super) struct RootTransformer<'a> {
     pub concatenate_context: &'a mut ConcatenateContext,
-    pub current_module_id: &'a ModuleId,
     pub context: &'a Arc<Context>,
-    pub import_source_to_module_id: &'a HashMap<String, ModuleId>,
     pub src_to_module: &'a HashMap<String, ModuleId>,
+    pub module_id: &'a ModuleId,
 
     my_top_decls: HashSet<String>,
     top_level_mark: Mark,
-
-    pub module_id: &'a ModuleId,
 
     exports: HashMap<String, String>,
     rename_request: Vec<(Id, Id)>,
@@ -62,14 +58,12 @@ impl RootTransformer<'_> {
 
         RootTransformer {
             concatenate_context,
-            current_module_id,
             context,
             module_id: current_module_id,
             exports: Default::default(),
             rename_request: vec![],
             current_stmt_index: 0,
             replaces: vec![],
-            import_source_to_module_id,
             src_to_module: import_source_to_module_id,
             top_level_mark,
             default_bind_name,
@@ -91,19 +85,13 @@ impl RootTransformer<'_> {
                     kind: CommentKind::Line,
                     text: format!(
                         " ROOT MODULE: {}",
-                        relative_to_root(&self.current_module_id.id, &self.context.root)
+                        relative_to_root(&self.module_id.id, &self.context.root)
                     )
                     .into(),
                     span: DUMMY_SP,
                 },
             );
         }
-    }
-
-    fn src_exports(&self, src: &str) -> Option<&HashMap<String, String>> {
-        self.import_source_to_module_id
-            .get(src)
-            .and_then(|module_id| self.concatenate_context.modules_in_scope.get(module_id))
     }
 }
 
@@ -206,25 +194,6 @@ impl<'a> RootTransformer<'a> {
         self.exports.extend(export_map);
     }
 
-    fn add_leading_comment(&self, n: &Module) {
-        if let Some(item) = n.body.first() {
-            let mut comments = self.context.meta.script.origin_comments.write().unwrap();
-
-            comments.add_leading_comment_at(
-                item.span_lo(),
-                Comment {
-                    kind: CommentKind::Line,
-                    span: DUMMY_SP,
-                    text: format!(
-                        " CONCATENATED MODULE: {}",
-                        relative_to_root(&self.module_id.id, &self.context.root)
-                    )
-                    .into(),
-                },
-            );
-        }
-    }
-
     fn apply_renames(&mut self, n: &mut Module, export_map: &mut HashMap<String, ModuleRef>) {
         let map = self.rename_request.iter().cloned().collect();
         let mut renamer = IdentRenamer::new(&map);
@@ -272,25 +241,6 @@ impl<'a> RootTransformer<'a> {
             self.my_top_decls.insert(new_name.clone());
             self.rename_request
                 .push(((conflicted_name.into(), ctxt), (new_name.into(), ctxt)));
-        }
-    }
-
-    fn import_decl_to_replace_items(&mut self, import: &ImportDecl) -> Option<Vec<ModuleItem>> {
-        let src = import.src.value.to_string();
-        if let Some(src_module_id) = self.src_to_module.get(&src)
-            && let Some(exports_map) = self.concatenate_context.modules_in_scope.get(src_module_id)
-        {
-            let stmts = import
-                .specifiers
-                .iter()
-                .flat_map(|specifier| {
-                    inner_import_specifier_to_stmts(&mut self.my_top_decls, specifier, exports_map)
-                })
-                .map(|s| s.into())
-                .collect();
-            Some(stmts)
-        } else {
-            None
         }
     }
 
@@ -445,11 +395,13 @@ impl<'a> VisitMut for RootTransformer<'a> {
 
         self.resolve_conflict();
         self.apply_renames(n, &mut export_ref_map);
-        self.add_leading_comment(n);
+        self.add_comment(n);
 
         self.concatenate_context
             .modules_in_scope
             .insert(self.module_id.clone(), self.exports.clone());
+
+        dbg!(&export_ref_map);
 
         self.concatenate_context
             .modules_exports_map
@@ -579,80 +531,6 @@ impl<'a> VisitMut for RootTransformer<'a> {
             }
 
             self.remove_current_stmt();
-        }
-    }
-}
-
-pub fn inner_import_specifier_to_stmts(
-    local_top_decls: &mut HashSet<String>,
-    import_specifier: &ImportSpecifier,
-    exports_map: &HashMap<String, String>,
-) -> Vec<Stmt> {
-    let mut stmts: Vec<Stmt> = vec![];
-
-    // let mut rename_request = vec![];
-
-    match &import_specifier {
-        ImportSpecifier::Named(named_import) => {
-            let imported_name = match &named_import.imported {
-                None => named_import.local.sym.to_string(),
-                Some(ModuleExportName::Ident(id)) => id.sym.to_string(),
-                Some(ModuleExportName::Str(_)) => {
-                    unimplemented!("")
-                }
-            };
-
-            let local = named_import.local.sym.to_string();
-
-            if let Some(mapped_export) = exports_map.get(&imported_name) {
-                if local != *mapped_export {
-                    let stmt: Stmt =
-                        declare_var_with_init_stmt(named_import.local.clone(), mapped_export);
-
-                    stmts.push(stmt);
-                } else {
-                    local_top_decls.remove(&local);
-                }
-            }
-        }
-        ImportSpecifier::Default(default_import) => {
-            if let Some(default_export_name) = exports_map.get("default") {
-                if default_export_name.ne(default_import.local.sym.as_ref()) {
-                    let stmt: Stmt = quote_ident!(default_export_name.clone())
-                        .into_var_decl(VarDeclKind::Var, default_import.local.clone().into())
-                        .into();
-
-                    stmts.push(stmt);
-                } else {
-                    local_top_decls.remove(default_export_name);
-                }
-            }
-        }
-        ImportSpecifier::Namespace(namespace) => {
-            let exported_namespace = exports_map.get("*").unwrap();
-
-            if exported_namespace.ne(namespace.local.sym.as_ref()) {
-                let stmt: Stmt = quote_ident!(exported_namespace.clone())
-                    .into_var_decl(VarDeclKind::Var, namespace.local.clone().into())
-                    .into();
-                stmts.push(stmt);
-            } else {
-                local_top_decls.remove(exported_namespace);
-            }
-        }
-    }
-
-    stmts
-}
-
-fn export_named_specifier_to_orig_and_exported(named: &ExportNamedSpecifier) -> (Ident, String) {
-    match (&named.exported, &named.orig) {
-        (None, ModuleExportName::Ident(orig)) => (orig.clone(), orig.sym.to_string()),
-        (Some(ModuleExportName::Ident(exported_ident)), ModuleExportName::Ident(orig_ident)) => {
-            (exported_ident.clone(), orig_ident.sym.to_string())
-        }
-        (_, _) => {
-            unimplemented!("{}", MODULE_CONCATENATE_ERROR_STR_MODULE_NAME)
         }
     }
 }

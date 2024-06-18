@@ -6,8 +6,8 @@ use swc_core::common::comments::{Comment, CommentKind};
 use swc_core::common::{Mark, Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
     ClassDecl, DefaultDecl, ExportDecl, ExportDefaultDecl, ExportDefaultExpr, ExportSpecifier,
-    FnDecl, Id, ImportDecl, ImportSpecifier, KeyValueProp, Module, ModuleExportName, ModuleItem,
-    NamedExport, ObjectLit, Prop, PropOrSpread, Stmt, VarDeclKind,
+    FnDecl, Id, ImportDecl, KeyValueProp, Module, ModuleExportName, ModuleItem, NamedExport,
+    ObjectLit, Prop, PropOrSpread, Stmt, VarDeclKind,
 };
 use swc_core::ecma::utils::{member_expr, quote_ident, ExprFactory, IdentRenamer};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith, VisitWith};
@@ -240,25 +240,6 @@ impl<'a> InnerTransform<'a> {
             self.my_top_decls.insert(new_name.clone());
             self.rename_request
                 .push(((conflicted_name.into(), ctxt), (new_name.into(), ctxt)));
-        }
-    }
-
-    fn import_decl_to_replace_items(&mut self, import: &ImportDecl) -> Option<Vec<ModuleItem>> {
-        let src = import.src.value.to_string();
-        if let Some(src_module_id) = self.src_to_module.get(&src)
-            && let Some(exports_map) = self.concatenate_context.modules_in_scope.get(src_module_id)
-        {
-            let stmts = import
-                .specifiers
-                .iter()
-                .flat_map(|specifier| {
-                    inner_import_specifier_to_stmts(&mut self.my_top_decls, specifier, exports_map)
-                })
-                .map(|s| s.into())
-                .collect();
-            Some(stmts)
-        } else {
-            None
         }
     }
 
@@ -605,68 +586,6 @@ impl<'a> VisitMut for InnerTransform<'a> {
 }
 
 impl<'a> InnerTransform<'a> {}
-
-pub fn inner_import_specifier_to_stmts(
-    local_top_decls: &mut HashSet<String>,
-    import_specifier: &ImportSpecifier,
-    exports_map: &HashMap<String, String>,
-) -> Vec<Stmt> {
-    let mut stmts: Vec<Stmt> = vec![];
-
-    // let mut rename_request = vec![];
-
-    match &import_specifier {
-        ImportSpecifier::Named(named_import) => {
-            let imported_name = match &named_import.imported {
-                None => named_import.local.sym.to_string(),
-                Some(ModuleExportName::Ident(id)) => id.sym.to_string(),
-                Some(ModuleExportName::Str(_)) => {
-                    unimplemented!("")
-                }
-            };
-
-            let local = named_import.local.sym.to_string();
-
-            if let Some(mapped_export) = exports_map.get(&imported_name) {
-                if local != *mapped_export {
-                    let stmt: Stmt =
-                        declare_var_with_init_stmt(named_import.local.clone(), mapped_export);
-
-                    stmts.push(stmt);
-                } else {
-                    local_top_decls.remove(&local);
-                }
-            }
-        }
-        ImportSpecifier::Default(default_import) => {
-            if let Some(default_export_name) = exports_map.get("default") {
-                if default_export_name.ne(default_import.local.sym.as_ref()) {
-                    let stmt: Stmt = quote_ident!(default_export_name.clone())
-                        .into_var_decl(VarDeclKind::Var, default_import.local.clone().into())
-                        .into();
-
-                    stmts.push(stmt);
-                } else {
-                    local_top_decls.remove(default_export_name);
-                }
-            }
-        }
-        ImportSpecifier::Namespace(namespace) => {
-            let exported_namespace = exports_map.get("*").unwrap();
-
-            if exported_namespace.ne(namespace.local.sym.as_ref()) {
-                let stmt: Stmt = quote_ident!(exported_namespace.clone())
-                    .into_var_decl(VarDeclKind::Var, namespace.local.clone().into())
-                    .into();
-                stmts.push(stmt);
-            } else {
-                local_top_decls.remove(exported_namespace);
-            }
-        }
-    }
-
-    stmts
-}
 
 #[cfg(test)]
 mod external_tests;

@@ -16,10 +16,8 @@ use inner_transformer::InnerTransform;
 use mako_core::swc_common::util::take::Take;
 use root_transformer::RootTransformer;
 use swc_core::common::{Span, SyntaxContext, GLOBALS};
-use swc_core::ecma::ast::Id;
 use swc_core::ecma::transforms::base::hygiene::hygiene;
 use swc_core::ecma::transforms::base::resolver;
-use swc_core::ecma::utils::collect_decls_with_ctxt;
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use self::concatenate_context::EsmDependantFlags;
@@ -334,21 +332,10 @@ pub fn optimize_module_graph(
                         println!("code:\n\n{}\n", code);
                     }
 
-                    let mut current_module_top_level_vars: HashSet<String> =
-                        collect_decls_with_ctxt(
-                            &script_ast.ast,
-                            SyntaxContext::empty().apply_mark(script_ast.top_level_mark),
-                        )
-                        .iter()
-                        .map(|id: &Id| id.0.to_string())
-                        .collect();
-
                     let mut ext_trans = ExternalTransformer {
                         src_to_module: &import_source_to_module_id,
                         concatenate_context: &mut concatenate_context,
-                        module_id: id,
                         unresolved_mark: script_ast.unresolved_mark,
-                        my_top_level_vars: &mut current_module_top_level_vars,
                     };
                     script_ast.ast.visit_mut_with(&mut ext_trans);
 
@@ -394,9 +381,7 @@ pub fn optimize_module_graph(
                 let mut ext_trans = ExternalTransformer {
                     src_to_module: &src_2_module_id,
                     concatenate_context: &mut concatenate_context,
-                    module_id: &config.root,
                     unresolved_mark,
-                    my_top_level_vars: &mut HashSet::default(),
                 };
                 root_module_ast.visit_mut_with(&mut ext_trans);
 

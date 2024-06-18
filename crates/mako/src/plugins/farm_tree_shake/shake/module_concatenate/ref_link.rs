@@ -34,8 +34,6 @@ impl Symbol {
     }
 }
 
-struct RefLink {}
-
 use std::collections::{HashMap, HashSet};
 
 use swc_core::base::atoms::{js_word, JsWord};
