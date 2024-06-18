@@ -201,7 +201,7 @@ mod tests {
     }
 
     fn extract_export(code: &str) -> HashSet<String> {
-        let mut ast = TestUtils::gen_js_ast(code.to_string());
+        let mut ast = TestUtils::gen_js_ast(code);
         let mut collectort = ExportsCollector::default();
 
         ast.ast.js_mut().ast.visit_with(&mut collectort);

@@ -127,7 +127,7 @@ var b = 2;
     }
 
     fn split_top_decl(code: &str) -> String {
-        let mut tu = TestUtils::gen_js_ast(code.to_string());
+        let mut tu = TestUtils::gen_js_ast(code);
 
         tu.ast
             .js_mut()
