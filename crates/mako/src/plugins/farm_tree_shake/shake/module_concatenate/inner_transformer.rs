@@ -408,8 +408,7 @@ impl<'a> VisitMut for InnerTransform<'a> {
     fn visit_mut_export_default_expr(&mut self, export_default_expr: &mut ExportDefaultExpr) {
         let span = export_default_expr.span.apply_mark(self.top_level_mark);
 
-        let default_binding_name =
-            self.get_non_conflict_name(&uniq_module_default_export_name(self.module_id));
+        let default_binding_name = self.default_bind_name.clone();
 
         if let Some(exported_ident) = export_default_expr.expr.as_ident() {
             self.exports
@@ -425,6 +424,7 @@ impl<'a> VisitMut for InnerTransform<'a> {
                 )
                 .into();
             self.my_top_decls.insert(default_binding_name.clone());
+            //TODO how to sync with export_ref_map
             self.exports
                 .insert("default".to_string(), default_binding_name);
             self.replace_current_stmt_with(vec![stmt.into()]);
