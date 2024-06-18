@@ -7,8 +7,8 @@ use swc_core::base::atoms::JsWord;
 use swc_core::common::collections::AHashSet;
 use swc_core::common::{Mark, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
-    ClassExpr, DefaultDecl, ExportDefaultDecl, FnExpr, Id, Ident, MemberExpr, Module, ModuleDecl,
-    ModuleItem, VarDeclKind,
+    ClassExpr, DefaultDecl, ExportDefaultDecl, Expr, FnExpr, Id, Ident, MemberExpr, Module,
+    ModuleDecl, ModuleItem, VarDeclKind,
 };
 use swc_core::ecma::utils::{collect_decls_with_ctxt, quote_ident, quote_str, ExprFactory};
 use swc_core::ecma::visit::{Visit, VisitWith};
@@ -245,6 +245,18 @@ impl From<&ResolveType> for EsmDependantFlags {
 
 pub type ModuleRef = (Ident, Option<JsWord>);
 pub type ModuleRefMap = HashMap<Id, ModuleRef>;
+
+pub fn module_ref_to_expr(module_ref: &ModuleRef) -> Expr {
+    match module_ref {
+        (id, None) => quote_ident!(id.sym.clone()).into(),
+        (id, Some(field)) => MemberExpr {
+            span: DUMMY_SP,
+            obj: quote_ident!(id.sym.clone()).into(),
+            prop: quote_ident!(field.clone()).into(),
+        }
+        .into(),
+    }
+}
 
 #[derive(Debug, Default)]
 pub struct ConcatenateContext {

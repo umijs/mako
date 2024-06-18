@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
 
 use mako_core::swc_common::util::take::Take;
@@ -6,15 +6,16 @@ use swc_core::common::comments::{Comment, CommentKind};
 use swc_core::common::{Mark, Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
     ClassDecl, DefaultDecl, ExportDecl, ExportDefaultDecl, ExportDefaultExpr, ExportSpecifier,
-    FnDecl, Id, ImportDecl, Module, ModuleExportName, ModuleItem, NamedExport, Stmt, VarDeclKind,
+    FnDecl, Id, ImportDecl, KeyValueProp, Module, ModuleExportName, ModuleItem, NamedExport,
+    ObjectLit, Prop, PropOrSpread, Stmt, VarDeclKind,
 };
-use swc_core::ecma::utils::{quote_ident, ExprFactory, IdentRenamer};
+use swc_core::ecma::utils::{member_expr, quote_ident, quote_str, ExprFactory, IdentRenamer};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith, VisitWith};
 
 use crate::compiler::Context;
 use crate::module::{relative_to_root, ModuleId};
 use crate::plugins::farm_tree_shake::shake::module_concatenate::concatenate_context::{
-    ConcatenateContext, ModuleRef, ModuleRefMap,
+    module_ref_to_expr, ConcatenateContext, ModuleRef, ModuleRefMap,
 };
 use crate::plugins::farm_tree_shake::shake::module_concatenate::exports_transform::collect_exports_map;
 use crate::plugins::farm_tree_shake::shake::module_concatenate::inner_transformer::InnerOrExternal;
@@ -251,6 +252,63 @@ impl<'a> RootTransformer<'a> {
     fn replace_current_stmt_with(&mut self, stmts: Vec<ModuleItem>) {
         self.replaces.push((self.current_stmt_index, stmts));
     }
+
+    fn eject_exports(&self, export_ref_map: &HashMap<String, ModuleRef>, n: &mut Module) {
+        let ordered_exports: BTreeMap<_, _> = export_ref_map
+            .iter()
+            .map(|(k, module_ref)| (k.clone(), module_ref_to_expr(module_ref)))
+            .collect();
+
+        let key_value_props: Vec<PropOrSpread> = ordered_exports
+            .into_iter()
+            .map(|(k, ref_expr)| {
+                Prop::KeyValue(KeyValueProp {
+                    key: quote_ident!(k).into(),
+                    value: ref_expr.into_lazy_fn(vec![]).into(),
+                })
+                .into()
+            })
+            .collect();
+
+        // __mako_require__.d(exports, __esModule, { value: true });
+        let esm_compat = member_expr!(DUMMY_SP, __mako_require__.d)
+            .as_call(
+                DUMMY_SP,
+                vec![
+                    quote_ident!("exports").as_arg(),
+                    quote_str!("__esModule").as_arg(),
+                    ObjectLit {
+                        props: [Prop::KeyValue(KeyValueProp {
+                            key: quote_ident!("value").into(),
+                            value: true.into(),
+                        })
+                        .into()]
+                        .into(),
+                        span: DUMMY_SP,
+                    }
+                    .as_arg(),
+                ],
+            )
+            .into_stmt()
+            .into();
+
+        // __mako_require__.e(exports, { exported: function(){ return v}, ... });
+        let export_stmt = member_expr!(DUMMY_SP, __mako_require__.e)
+            .as_call(
+                DUMMY_SP,
+                vec![
+                    quote_ident!("exports").as_arg(),
+                    ObjectLit {
+                        props: key_value_props,
+                        span: DUMMY_SP,
+                    }
+                    .as_arg(),
+                ],
+            )
+            .into_stmt()
+            .into();
+        n.body.splice(0..0, vec![esm_compat, export_stmt]);
+    }
 }
 
 impl<'a> VisitMut for RootTransformer<'a> {
@@ -397,11 +455,11 @@ impl<'a> VisitMut for RootTransformer<'a> {
         self.apply_renames(n, &mut export_ref_map);
         self.add_comment(n);
 
+        self.eject_exports(&export_ref_map, n);
+
         self.concatenate_context
             .modules_in_scope
             .insert(self.module_id.clone(), self.exports.clone());
-
-        dbg!(&export_ref_map);
 
         self.concatenate_context
             .modules_exports_map
@@ -413,6 +471,7 @@ impl<'a> VisitMut for RootTransformer<'a> {
     }
 
     fn visit_mut_module_items(&mut self, items: &mut Vec<ModuleItem>) {
+        // pay attention to the `rev()`
         for index in (0..items.len()).rev() {
             self.current_stmt_index = index;
             let item = items.get_mut(index).unwrap();
