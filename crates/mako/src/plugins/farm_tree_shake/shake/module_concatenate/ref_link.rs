@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests;
 
-use swc_core::ecma::ast::{DefaultDecl, Id, Ident, ImportDecl, ImportSpecifier};
+use swc_core::ecma::ast::{DefaultDecl, Id, Ident, ImportDecl, ImportSpecifier, Module};
 
 #[derive(Debug, Clone)]
 pub(super) enum VarLink {
@@ -104,7 +104,7 @@ impl ModuleDeclMapCollector {
             ..Default::default()
         }
     }
-    pub fn simplify_exports(&mut self) {
+    fn simplify_exports(&mut self) {
         self.export_map.iter_mut().for_each(|(_ident, link)| {
             if let VarLink::Direct(exported) = link {
                 if let Some(import_link) = self.import_map.get(exported) {
@@ -135,6 +135,11 @@ impl ModuleDeclMapCollector {
 }
 
 impl Visit for ModuleDeclMapCollector {
+    fn visit_module(&mut self, n: &Module) {
+        n.visit_children_with(self);
+        self.simplify_exports();
+    }
+
     fn visit_import_decl(&mut self, import_decl: &ImportDecl) {
         let current_source = self.current_source.as_ref().unwrap();
 
