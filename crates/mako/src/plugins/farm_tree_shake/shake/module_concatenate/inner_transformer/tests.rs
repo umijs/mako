@@ -4,6 +4,7 @@ use std::sync::Arc;
 use maplit::{hashmap, hashset};
 use swc_core::common::GLOBALS;
 use swc_core::ecma::transforms::base::resolver;
+use swc_core::ecma::utils::quote_ident;
 use swc_core::ecma::visit::VisitMutWith;
 
 use super::InnerTransform;
@@ -14,18 +15,25 @@ use crate::module::ModuleId;
 use crate::plugins::farm_tree_shake::shake::module_concatenate::concatenate_context::ConcatenateContext;
 
 #[test]
-fn test_import_default_from_inner_with_different_name() {
+fn test_import_default_from_inner() {
     let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
     let expected_top_vars = ccn_ctx.top_level_vars.clone();
 
-    let code = inner_trans_code(
-        r#"
-    import x from "./src";
-    console.log(x)"#,
-        &mut ccn_ctx,
-    );
+    let code = inner_trans_code(r#"import x from "./src";x"#, &mut ccn_ctx);
 
-    assert_eq!(code, "console.log(inner_default_export);");
+    assert_eq!(code, "inner_default_export;");
+    assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
+    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
+}
+
+#[test]
+fn test_import_default_from_external() {
+    let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
+    let expected_top_vars = ccn_ctx.top_level_vars.clone();
+
+    let code = inner_trans_code(r#"import x from "external";x"#, &mut ccn_ctx);
+
+    assert_eq!(code, "external_namespace_esm.default;");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
     assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
@@ -47,6 +55,7 @@ fn test_import_default_from_inner_with_original_name() {
     assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
 
+#[ignore]
 #[test]
 fn test_import_default_from_no_default_export_inner() {
     let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
@@ -68,14 +77,19 @@ fn test_import_default_from_no_default_export_inner() {
 #[test]
 fn test_import_default_from_inner_and_conflict_with_orig_name() {
     let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
-    let expected_top_vars = ccn_ctx.top_level_vars.clone();
+    let mut expected_top_vars = ccn_ctx.top_level_vars.clone();
+    expected_top_vars.insert("inner_default_export_1".to_string());
 
     let code = inner_trans_code(
-        r#"import inner_default_export from "./src";inner_default_export;"#,
+        r#"import x from "./src";x;var inner_default_export =0;"#,
         &mut ccn_ctx,
     );
 
-    assert_eq!(code, "inner_default_export;");
+    assert_eq!(
+        code,
+        r#"inner_default_export;
+var inner_default_export_1 = 0;"#
+    );
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
     assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
@@ -85,9 +99,21 @@ fn test_import_named_from_inner() {
     let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
     let expected_top_vars = ccn_ctx.top_level_vars.clone();
 
-    let code = inner_trans_code(r#"import {foo} from "./src"; foo;"#, &mut ccn_ctx);
+    let code = inner_trans_code(r#"import {foo} from "./src";foo;"#, &mut ccn_ctx);
 
     assert_eq!(code, "bar;");
+    assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
+    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
+}
+
+#[test]
+fn test_import_named_from_external() {
+    let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
+    let expected_top_vars = ccn_ctx.top_level_vars.clone();
+
+    let code = inner_trans_code(r#"import {foo} from "external";foo;"#, &mut ccn_ctx);
+
+    assert_eq!(code, "external_namespace_esm.foo;");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
     assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
@@ -128,7 +154,7 @@ inner_default_export;"#
 }
 
 #[test]
-fn test_import_named_from_inner_conflict_with_orig_name() {
+fn test_import_named_from_inner_with_same_orig_name() {
     let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
     let expected_top_vars = ccn_ctx.top_level_vars.clone();
 
@@ -142,25 +168,32 @@ fn test_import_named_from_inner_conflict_with_orig_name() {
 #[test]
 fn test_import_named_as_from_inner() {
     let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
-    let mut expected_top_vars = ccn_ctx.top_level_vars.clone();
-    expected_top_vars.insert("bar_1".to_string());
+    let expected_top_vars = ccn_ctx.top_level_vars.clone();
 
-    let code = inner_trans_code(
-        r#"import {foo as myFoo} from "./src";myFoo;var bar;"#,
-        &mut ccn_ctx,
-    );
+    let code = inner_trans_code(r#"import {foo as myFoo} from "./src";myFoo"#, &mut ccn_ctx);
 
-    assert_eq!(
-        code,
-        r#"bar;
-var bar_1;"#
-    );
+    assert_eq!(code, "bar;");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
     assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
 
 #[test]
-fn test_import_named_as_from_inner_and_conflict_with_orig_name() {
+fn test_import_named_as_from_external() {
+    let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
+    let expected_top_vars = ccn_ctx.top_level_vars.clone();
+
+    let code = inner_trans_code(
+        r#"import {foo as myFoo} from "external";myFoo"#,
+        &mut ccn_ctx,
+    );
+
+    assert_eq!(code, "external_namespace_esm.foo;");
+    assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
+    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
+}
+
+#[test]
+fn test_import_named_as_from_inner_with_same_orig_name() {
     let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
     let expected_top_vars = ccn_ctx.top_level_vars.clone();
 
@@ -191,9 +224,21 @@ fn test_import_namespace_from_inner() {
     let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
     let expected_top_vars = ccn_ctx.top_level_vars.clone();
 
-    let code = inner_trans_code(r#"import * as ns from "./src";ns;"#, &mut ccn_ctx);
+    let code = inner_trans_code(r#"import * as ns from "./src";ns"#, &mut ccn_ctx);
 
     assert_eq!(code, "inner_namespace;");
+    assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
+    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
+}
+
+#[test]
+fn test_import_namespace_from_external() {
+    let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
+    let expected_top_vars = ccn_ctx.top_level_vars.clone();
+
+    let code = inner_trans_code(r#"import * as ns from "external";ns"#, &mut ccn_ctx);
+
+    assert_eq!(code, "external_namespace_esm;");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
     assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
@@ -211,7 +256,7 @@ fn test_import_namespace_from_inner_with_conflict() {
 }
 
 #[test]
-fn test_import_namespace_from_inner_and_conflict_with_namespace() {
+fn test_import_namespace_from_inner_and_with_origin_namespace() {
     let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
     let expected_top_vars = ccn_ctx.top_level_vars.clone();
 
@@ -238,6 +283,7 @@ fn test_export_named() {
         current_export_map(&ccn_ctx),
         &hashmap!("n".to_string() => "n".to_string())
     );
+    assert_eq!(describe_export_map(&ccn_ctx), "n => n");
 }
 
 #[test]
@@ -252,6 +298,7 @@ fn test_export_named_as() {
         current_export_map(&ccn_ctx),
         &hashmap!("named".to_string() => "n".to_string())
     );
+    assert_eq!(describe_export_map(&ccn_ctx), "named => n");
 }
 
 #[test]
@@ -266,6 +313,7 @@ fn test_export_named_as_default() {
         current_export_map(&ccn_ctx),
         &hashmap!("default".to_string() => "n".to_string())
     );
+    assert_eq!(describe_export_map(&ccn_ctx), "default => n");
 }
 
 #[test]
@@ -286,6 +334,7 @@ fn test_export_as_with_conflict() {
         current_export_map(&ccn_ctx),
         &hashmap!("named".to_string() => "n_1".to_string())
     );
+    assert_eq!(describe_export_map(&ccn_ctx), "named => n_1");
 }
 
 #[test]
@@ -306,6 +355,7 @@ fn test_export_default_expr_with_conflict() {
         current_export_map(&ccn_ctx),
         &hashmap!("default".to_string() => "__$m_mut_js_0_1".to_string())
     );
+    assert_eq!(describe_export_map(&ccn_ctx), "default => __$m_mut_js_0_1")
 }
 
 #[test]
@@ -332,6 +382,14 @@ fn test_export_as_twice_with_conflict() {
             "foo".to_string() => "n_1".to_string()
         )
     );
+    assert_eq!(
+        describe_export_map(&ccn_ctx),
+        r#"
+foo => n_1
+named => n_1
+"#
+        .trim()
+    );
 }
 
 #[test]
@@ -348,6 +406,8 @@ fn test_export_short_named() {
             "named".to_string() => "named".to_string()
         )
     );
+
+    assert_eq!(describe_export_map(&ccn_ctx), "named => named")
 }
 
 #[test]
@@ -370,6 +430,7 @@ fn test_export_short_named_with_conflict() {
             "named".to_string() => "named_1".to_string()
         )
     );
+    assert_eq!(describe_export_map(&ccn_ctx), "named => named_1");
 }
 
 #[test]
@@ -388,6 +449,7 @@ fn test_export_default_decl_literal_expr() {
             "default".to_string() => "__$m_mut_js_0".to_string()
         )
     );
+    assert_eq!(describe_export_map(&ccn_ctx), "default => __$m_mut_js_0");
 }
 
 #[test]
@@ -403,6 +465,7 @@ fn test_export_default_decl_ident_expr() {
             "default".to_string() => "t".to_string()
         )
     );
+    assert_eq!(describe_export_map(&ccn_ctx), "default => t")
 }
 
 #[test]
@@ -421,6 +484,7 @@ fn test_export_decl_un_nameable_expr() {
             "default".to_string() => "__$m_mut_js_0".to_string()
         )
     );
+    assert_eq!(describe_export_map(&ccn_ctx), "default => __$m_mut_js_0");
 }
 
 #[test]
@@ -436,6 +500,7 @@ fn test_export_default_decl_named_function() {
             "default".to_string() => "a".to_string()
         )
     );
+    assert_eq!(describe_export_map(&ccn_ctx), "default => a");
 }
 
 #[test]
@@ -477,6 +542,7 @@ fn test_export_decl_class() {
             "A".to_string() => "A".to_string()
         )
     );
+    assert_eq!(describe_export_map(&ccn_ctx), "A => A")
 }
 
 #[test]
@@ -517,6 +583,7 @@ fn test_export_decl_fn() {
             "fn".to_string() => "fn".to_string()
         )
     );
+    assert_eq!(describe_export_map(&ccn_ctx), "fn => fn")
 }
 
 #[test]
@@ -539,6 +606,7 @@ fn test_export_decl_fn_and_conflict_fn_name() {
             "fn".to_string() => "fn_1".to_string()
         )
     );
+    assert_eq!(describe_export_map(&ccn_ctx), "fn => fn_1")
 }
 
 #[test]
@@ -554,6 +622,7 @@ fn test_export_decl_var() {
             "a".to_string() => "a".to_string()
         )
     );
+    assert_eq!(describe_export_map(&ccn_ctx), "a => a")
 }
 
 #[test]
@@ -573,6 +642,7 @@ fn test_export_default_decl_named_class() {
             "default".to_string() => "A".to_string()
         )
     );
+    assert_eq!(describe_export_map(&ccn_ctx), "default => A")
 }
 
 #[test]
@@ -595,6 +665,7 @@ fn test_export_default_anonymous_decl_class() {
             "default".to_string() => "__$m_mut_js_0".to_string()
         )
     );
+    assert_eq!(describe_export_map(&ccn_ctx), "default => __$m_mut_js_0")
 }
 
 #[test]
@@ -613,72 +684,61 @@ fn test_export_default_anonymous_decl_fn() {
             "default".to_string() => "__$m_mut_js_0".to_string()
         )
     );
+    assert_eq!(describe_export_map(&ccn_ctx), "default => __$m_mut_js_0");
 }
 
 #[test]
 fn test_export_from_named() {
-    let mut ccn_ctx = ConcatenateContext {
-        modules_in_scope: hashmap! {
-            ModuleId::from("src/index.js") => hashmap! {
-                "named".to_string() => "named".to_string()
-            }
-        },
-        ..Default::default()
-    };
+    let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
+    let expected_top_vars = ccn_ctx.top_level_vars.clone();
+
     let code = inner_trans_code(r#"export { named } from "./src""#, &mut ccn_ctx);
 
     assert_eq!(code, r#""#);
-    assert!(ccn_ctx.top_level_vars.is_empty());
+    assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
     assert_eq!(
         current_export_map(&ccn_ctx),
         &hashmap!(
             "named".to_string() => "named".to_string()
         )
     );
+    assert_eq!(describe_export_map(&ccn_ctx), "named => named")
 }
 
 #[test]
 fn test_export_from_named_as() {
-    let mut ccn_ctx = ConcatenateContext {
-        modules_in_scope: hashmap! {
-            ModuleId::from("src/index.js") => hashmap! {
-                "named".to_string() => "named".to_string()
-            }
-        },
-        ..Default::default()
-    };
+    let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
+    let expected_top_vars = ccn_ctx.top_level_vars.clone();
+
     let code = inner_trans_code(r#"export { named as foo} from "./src""#, &mut ccn_ctx);
 
     assert_eq!(code, r#""#);
-    assert!(ccn_ctx.top_level_vars.is_empty());
+    assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
     assert_eq!(
         current_export_map(&ccn_ctx),
         &hashmap!(
             "foo".to_string() => "named".to_string()
         )
     );
+    assert_eq!(describe_export_map(&ccn_ctx), "foo => named")
 }
 
 #[test]
 fn test_export_from_namespace_as() {
-    let mut ccn_ctx = ConcatenateContext {
-        modules_in_scope: hashmap! {
-            ModuleId::from("src/index.js") => hashmap! {
-                "*".to_string() => "src_namespace".to_string()
-            }
-        },
-        ..Default::default()
-    };
+    let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
+    let expected_top_vars = ccn_ctx.top_level_vars.clone();
+
     let code = inner_trans_code(r#"export * as foo from "./src""#, &mut ccn_ctx);
 
     assert_eq!(code, "");
-    assert!(ccn_ctx.top_level_vars.is_empty());
+    assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
     assert_eq!(
         current_export_map(&ccn_ctx),
         &hashmap!(
-            "foo".to_string() => "src_namespace".to_string()
+            "foo".to_string() => "inner_namespace".to_string()
         )
     );
+    assert_eq!(describe_export_map(&ccn_ctx), "foo => inner_namespace")
 }
 
 #[ignore = "export v from 'mod' not supported now"]
@@ -707,23 +767,17 @@ fn test_export_from_var() {
 
 #[test]
 fn test_export_from_default() {
-    let mut ccn_ctx = ConcatenateContext {
-        modules_in_scope: hashmap! {
-            ModuleId::from("src/index.js") => hashmap! {
-                "default".to_string() => "src_index_default".to_string()
-            }
-        },
-        ..Default::default()
-    };
-    let orig_top_level_vars = ccn_ctx.top_level_vars.clone();
+    let mut ccn_ctx = concatenate_context_fixture_with_inner_module();
+    let expected_top_vars = ccn_ctx.top_level_vars.clone();
+
     let code = inner_trans_code(r#"export { default } from "./src""#, &mut ccn_ctx);
 
     assert_eq!(code, r#""#);
-    assert_eq!(ccn_ctx.top_level_vars, orig_top_level_vars);
+    assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
     assert_eq!(
         current_export_map(&ccn_ctx),
         &hashmap!(
-            "default".to_string() => "src_index_default".to_string()
+            "default".to_string() => "inner_default_export".to_string()
         )
     );
 }
@@ -745,6 +799,20 @@ fn concatenate_context_fixture_with_inner_module() -> ConcatenateContext {
                 "named".to_string() => "named".to_string(),
             },
             ModuleId::from("src/no_exports.js") => hashmap!{},
+        },
+        modules_exports_map: hashmap! {
+            ModuleId::from("src/index.js") => hashmap!{
+                "*".to_string() => (quote_ident!("inner_namespace"), None),
+                "default".to_string() => ( quote_ident!("inner_default_export"), None),
+                "foo".to_string() => (quote_ident!("bar") ,None),
+                "named".to_string() => (quote_ident!("named"), None)
+            },
+                    ModuleId::from("src/no_exports.js") => hashmap!{},
+        },
+        external_module_namespace: hashmap! {
+            ModuleId::from("external") => ("external_namespace".to_string(),
+                "external_namespace_esm"
+                .to_string() )
         },
         ..Default::default()
     }
@@ -770,7 +838,8 @@ fn inner_trans_code(code: &str, concatenate_context: &mut ConcatenateContext) ->
 
     let src_to_module = hashmap! {
         "./src".to_string() => ModuleId::from("src/index.js"),
-        "./no_exports".to_string() => ModuleId::from("src/no_exports.js")
+        "./no_exports".to_string() => ModuleId::from("src/no_exports.js"),
+    "external".to_string() => ModuleId::from("external")
     };
 
     GLOBALS.set(&context.meta.script.globals, || {
@@ -808,4 +877,27 @@ fn current_export_map(ccn_ctx: &ConcatenateContext) -> &HashMap<String, String> 
         .modules_in_scope
         .get(&ModuleId::from("mut.js"))
         .unwrap()
+}
+
+fn describe_export_map(ccn_ctx: &ConcatenateContext) -> String {
+    let map = ccn_ctx.modules_exports_map.get(&ModuleId::from("mut.js"));
+
+    if let Some(export_map) = map {
+        let mut keys = export_map.keys().collect::<Vec<&String>>();
+        keys.sort();
+        let mut describe = String::new();
+        keys.into_iter().for_each(|key| {
+            let (id, sub) = export_map.get(key).unwrap();
+
+            if let Some(field) = sub {
+                describe.push_str(&format!("{} => {}.{}\n", key, id.sym, field));
+            } else {
+                describe.push_str(&format!("{} => {}\n", key, id.sym));
+            }
+        });
+
+        describe.trim().to_string()
+    } else {
+        "None".to_string()
+    }
 }

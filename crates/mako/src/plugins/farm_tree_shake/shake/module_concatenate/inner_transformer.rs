@@ -10,16 +10,18 @@ use swc_core::ecma::ast::{
     NamedExport, ObjectLit, Prop, PropOrSpread, Stmt, VarDeclKind,
 };
 use swc_core::ecma::utils::{member_expr, quote_ident, ExprFactory, IdentRenamer};
-use swc_core::ecma::visit::{VisitMut, VisitMutWith};
+use swc_core::ecma::visit::{VisitMut, VisitMutWith, VisitWith};
 
+use super::concatenate_context::{ConcatenateContext, ModuleRef, ModuleRefMap};
 use super::exports_transform::collect_exports_map;
+use super::module_ref_rewriter::ModuleRefRewriter;
+use super::ref_link::{ModuleDeclMapCollector, Symbol, VarLink};
 use super::utils::{
     declare_var_with_init_stmt, uniq_module_default_export_name, uniq_module_namespace_name,
     MODULE_CONCATENATE_ERROR, MODULE_CONCATENATE_ERROR_STR_MODULE_NAME,
 };
 use crate::compiler::Context;
 use crate::module::{relative_to_root, ImportType, ModuleId};
-use crate::plugins::farm_tree_shake::shake::module_concatenate::concatenate_context::ConcatenateContext;
 
 pub(super) struct InnerTransform<'a> {
     pub concatenate_context: &'a mut ConcatenateContext,
@@ -35,6 +37,12 @@ pub(super) struct InnerTransform<'a> {
     imported_type: ImportType,
     current_stmt_index: usize,
     replaces: Vec<(usize, Vec<ModuleItem>)>,
+    default_bind_name: String,
+}
+
+enum InnerOrExternal<'a> {
+    Inner(&'a HashMap<String, ModuleRef>),
+    External(&'a (String, String)),
 }
 
 impl<'a> InnerTransform<'a> {
@@ -60,7 +68,101 @@ impl<'a> InnerTransform<'a> {
             imported_type: Default::default(),
             replaces: vec![],
             current_stmt_index: 0,
+            default_bind_name: Default::default(),
         }
+    }
+
+    pub(crate) fn to_import_module_ref(&self, var_map: &HashMap<Id, VarLink>) -> ModuleRefMap {
+        let mut ref_map = HashMap::new();
+
+        var_map.iter().for_each(|(id, link)| match link {
+            VarLink::Direct(direct_id) => {
+                ref_map.insert(id.clone(), (direct_id.clone().into(), None));
+            }
+            VarLink::InDirect(symbol, source) => {
+                let src_module_id = self.src_to_module.get(source).unwrap();
+
+                match self.inner_or_external(src_module_id) {
+                    InnerOrExternal::Inner(map) => {
+                        let module_ref = match symbol {
+                            Symbol::Default => map.get("default").unwrap().clone(),
+                            Symbol::Namespace => map.get("*").unwrap().clone(),
+                            Symbol::Var(ident) => map.get(&ident.sym.to_string()).unwrap().clone(),
+                        };
+
+                        ref_map.insert(id.clone(), module_ref);
+                    }
+                    InnerOrExternal::External(external_names) => {
+                        ref_map.insert(
+                            id.clone(),
+                            (quote_ident!(external_names.1.clone()), symbol.to_field()),
+                        );
+                    }
+                }
+            }
+        });
+
+        ref_map
+    }
+
+    pub(crate) fn to_export_module_ref(
+        &self,
+        var_map: &HashMap<Id, VarLink>,
+    ) -> HashMap<String, ModuleRef> {
+        let mut ref_map = HashMap::new();
+
+        var_map.iter().for_each(|(id, link)| match link {
+            VarLink::Direct(direct_id) => {
+                ref_map.insert(id.0.to_string(), (direct_id.clone().into(), None));
+            }
+            VarLink::InDirect(symbol, source) => {
+                let src_module_id = self.src_to_module.get(source).unwrap();
+
+                match self.inner_or_external(src_module_id) {
+                    InnerOrExternal::Inner(map) => {
+                        let module_ref = match symbol {
+                            Symbol::Default => map.get("default").unwrap().clone(),
+                            Symbol::Namespace => map.get("*").unwrap().clone(),
+                            Symbol::Var(ident) => map.get(&ident.sym.to_string()).unwrap().clone(),
+                        };
+
+                        ref_map.insert(id.0.to_string(), module_ref);
+                    }
+                    InnerOrExternal::External(external_names) => {
+                        ref_map.insert(
+                            id.0.to_string(),
+                            (quote_ident!(external_names.1.clone()), symbol.to_field()),
+                        );
+                    }
+                }
+            }
+        });
+
+        ref_map
+    }
+
+    fn remove_imported(&mut self, import_map: &ModuleRefMap) {
+        import_map.iter().for_each(|(id, _)| {
+            self.my_top_decls.remove(&id.0.to_string());
+        });
+    }
+
+    fn inner_or_external(&'a self, module_id: &ModuleId) -> InnerOrExternal<'a> {
+        self.concatenate_context
+            .external_module_namespace
+            .get(module_id)
+            .map_or_else(
+                || {
+                    let map = self
+                        .concatenate_context
+                        .modules_exports_map
+                        .get(module_id)
+                        .unwrap();
+
+                    return InnerOrExternal::Inner(map);
+                },
+                |namespaces| return InnerOrExternal::External(namespaces),
+            )
     }
 
     pub fn imported(&mut self, imported_type: ImportType) {
@@ -91,7 +193,7 @@ impl<'a> InnerTransform<'a> {
         }
     }
 
-    fn apply_renames(&mut self, n: &mut Module) {
+    fn apply_renames(&mut self, n: &mut Module, export_map: &mut HashMap<String, ModuleRef>) {
         let map = self.rename_request.iter().cloned().collect();
         let mut renamer = IdentRenamer::new(&map);
         n.visit_mut_with(&mut renamer);
@@ -101,6 +203,12 @@ impl<'a> InnerTransform<'a> {
             self.exports.iter_mut().for_each(|(_k, v)| {
                 if from.0.eq(v) {
                     *v = to.0.to_string();
+                }
+            });
+
+            export_map.iter_mut().for_each(|(_k, v)| {
+                if from.eq(&v.0.to_id()) {
+                    v.0.sym = to.0.clone();
                 }
             });
         }
@@ -219,8 +327,7 @@ impl<'a> VisitMut for InnerTransform<'a> {
     }
 
     fn visit_mut_export_default_decl(&mut self, export_default_dcl: &mut ExportDefaultDecl) {
-        let default_binding_name =
-            self.get_non_conflict_name(&uniq_module_default_export_name(self.module_id));
+        let default_binding_name = self.default_bind_name.clone();
 
         match &mut export_default_dcl.decl {
             DefaultDecl::Class(class_expr) => {
@@ -324,10 +431,8 @@ impl<'a> VisitMut for InnerTransform<'a> {
         }
     }
 
-    fn visit_mut_import_decl(&mut self, import_decl: &mut ImportDecl) {
-        if let Some(stmts) = self.import_decl_to_replace_items(import_decl) {
-            self.replaces.push((self.current_stmt_index, stmts));
-        }
+    fn visit_mut_import_decl(&mut self, _import_decl: &mut ImportDecl) {
+        self.remove_current_stmt();
     }
 
     fn visit_mut_module(&mut self, n: &mut Module) {
@@ -335,10 +440,31 @@ impl<'a> VisitMut for InnerTransform<'a> {
 
         self.collect_exports(n);
 
+        self.default_bind_name =
+            self.get_non_conflict_name(&uniq_module_default_export_name(self.module_id));
+
+        let mut var_links_collector = ModuleDeclMapCollector::new(self.default_bind_name.clone());
+        n.visit_with(&mut var_links_collector);
+        var_links_collector.simplify_exports();
+
+        let ModuleDeclMapCollector {
+            import_map,
+            export_map,
+            ..
+        } = var_links_collector;
+
+        let _import_ref_map = self.to_import_module_ref(&import_map);
+        let mut export_ref_map = self.to_export_module_ref(&export_map);
+
+        // strip all the module declares
         n.visit_mut_children_with(self);
 
+        let mut rewriter = ModuleRefRewriter::new(&_import_ref_map, Default::default(), true);
+        n.visit_mut_with(&mut rewriter);
+        self.remove_imported(&_import_ref_map);
+
         self.resolve_conflict();
-        self.apply_renames(n);
+        self.apply_renames(n, &mut export_ref_map);
         self.add_leading_comment(n);
 
         if self.imported_type.contains(ImportType::Namespace) {
@@ -348,6 +474,10 @@ impl<'a> VisitMut for InnerTransform<'a> {
         self.concatenate_context
             .modules_in_scope
             .insert(self.module_id.clone(), self.exports.clone());
+        self.concatenate_context
+            .modules_exports_map
+            .insert(self.module_id.clone(), export_ref_map);
+
         self.concatenate_context
             .top_level_vars
             .extend(self.my_top_decls.iter().cloned());
