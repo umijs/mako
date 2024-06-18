@@ -386,11 +386,11 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
     Resolver::new(options)
 }
 
-fn parse_alias(alias: HashMap<String, String>) -> Alias {
+fn parse_alias(alias: Vec<(String, String)>) -> Alias {
     let mut result = vec![];
-    for (key, value) in alias {
-        let alias_vec = vec![AliasValue::Path(value)];
-        result.push((key, alias_vec));
+    for (from, to) in alias {
+        let alias_vec = vec![AliasValue::Path(to)];
+        result.push((from, alias_vec));
     }
     result
 }
@@ -484,7 +484,7 @@ mod tests {
 
     #[test]
     fn test_resolve_alias() {
-        let alias = HashMap::from([("bar".to_string(), "foo".to_string())]);
+        let alias = vec![("bar".to_string(), "foo".to_string())];
         let x = resolve(
             "test/resolve/normal",
             Some(alias.clone()),
@@ -720,7 +720,7 @@ mod tests {
 
     fn resolve(
         base: &str,
-        alias: Option<HashMap<String, String>>,
+        alias: Option<Vec<(String, String)>>,
         externals: Option<&HashMap<String, ExternalConfig>>,
         path: &str,
         source: &str,
@@ -730,7 +730,7 @@ mod tests {
 
     fn css_resolve(
         base: &str,
-        alias: Option<HashMap<String, String>>,
+        alias: Option<Vec<(String, String)>>,
         externals: Option<&HashMap<String, ExternalConfig>>,
         path: &str,
         source: &str,
@@ -740,7 +740,7 @@ mod tests {
 
     fn external_resolve(
         base: &str,
-        alias: Option<HashMap<String, String>>,
+        alias: Option<Vec<(String, String)>>,
         externals: Option<&HashMap<String, ExternalConfig>>,
         path: &str,
         source: &str,
@@ -750,7 +750,7 @@ mod tests {
 
     fn base_resolve(
         base: &str,
-        alias: Option<HashMap<String, String>>,
+        alias: Option<Vec<(String, String)>>,
         externals: Option<&HashMap<String, ExternalConfig>>,
         path: &str,
         source: &str,

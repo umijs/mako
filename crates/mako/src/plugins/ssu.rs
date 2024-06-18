@@ -19,7 +19,7 @@ use crate::config::{
     CodeSplittingStrategyOptions, Config, OptimizeAllowChunks, OptimizeChunkGroup,
 };
 use crate::generate::chunk::ChunkType;
-use crate::generate::chunk_pot::util::hash_hashmap;
+use crate::generate::chunk_pot::util::{hash_hashmap, hash_vec};
 use crate::generate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::plugin::{NextBuildParam, Plugin, PluginLoadParam};
 use crate::resolve::ResolverResource;
@@ -121,7 +121,7 @@ impl SUPlus {
     }
 
     fn config_hash(config: &Config) -> u64 {
-        let alias_hash = hash_hashmap(&config.resolve.alias);
+        let alias_hash = hash_vec(&config.resolve.alias);
         let external_hash = hash_hashmap(&config.externals);
 
         alias_hash.wrapping_add(external_hash)
