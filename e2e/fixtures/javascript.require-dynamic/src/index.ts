@@ -17,12 +17,18 @@ function loadFile(file) {
 }
 
 function loadFile2(file) {
-  return require('./fake.js/' + file);
+  return require('./fake.js' + file);
 }
 
-console.log(loadLang('zh-CN'));
-console.log(loadLang2('CN'));
+function loadFile3(file) {
+  return require('./fake.js/a' + file);
+}
+loadLang('zh-CN').then(console.log);
+loadLang2('CN').then(console.log);
 
-console.log(loadLangExt('zh-CN', 'json'));
+loadLangExt('zh-CN', 'json').then(console.log);
+
 console.log(loadFile('/zh-CN.json'));
-console.log(loadFile2('a.js'));
+console.log(loadFile2('/a.js'));
+console.log(loadFile3('a.js'));
+
