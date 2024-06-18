@@ -405,6 +405,7 @@ pub fn optimize_module_graph(
                     &config.root,
                     context,
                     &src_2_module_id,
+                    top_level_mark,
                 ));
 
                 if cfg!(debug_assertions) && root_print {
