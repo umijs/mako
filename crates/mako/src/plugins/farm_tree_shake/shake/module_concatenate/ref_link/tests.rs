@@ -36,7 +36,10 @@ y => b from ./src"#
 
 #[test]
 fn export_default_expr() {
-    assert_eq!(extract_export_map("export default 1"), "default => default");
+    assert_eq!(
+        extract_export_map("export default 1"),
+        "default => _$m_default_name_binding"
+    );
 }
 
 #[test]
@@ -136,8 +139,8 @@ fn simplify_exports_map() {
 }
 
 fn extract_export_map(code: &str) -> String {
-    let mut ast = TestUtils::gen_js_ast(code.to_string());
-    let mut c = ModuleDeclMapCollector::default();
+    let mut ast = TestUtils::gen_js_ast(code);
+    let mut c = ModuleDeclMapCollector::new("_$m_default_name_binding".to_string());
 
     ast.ast.js_mut().ast.visit_with(&mut c);
     c.simplify_exports();
@@ -145,7 +148,7 @@ fn extract_export_map(code: &str) -> String {
 }
 
 fn extract_import_map(code: &str) -> String {
-    let mut ast = TestUtils::gen_js_ast(code.to_string());
+    let mut ast = TestUtils::gen_js_ast(code);
     let mut c = ModuleDeclMapCollector::default();
 
     ast.ast.js_mut().ast.visit_with(&mut c);
