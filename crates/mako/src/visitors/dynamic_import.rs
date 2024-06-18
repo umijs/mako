@@ -191,7 +191,7 @@ Promise.all([
     }
 
     fn run(js_code: &str) -> String {
-        let mut test_utils = TestUtils::gen_js_ast(js_code.to_string());
+        let mut test_utils = TestUtils::gen_js_ast(js_code);
         {
             let mut foo = Chunk::new("foo".to_string().into(), ChunkType::Async);
             foo.add_module("foo".to_string().into());

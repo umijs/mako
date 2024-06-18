@@ -211,7 +211,7 @@ mod tests {
     }
 
     fn run(js_code: &str) -> Vec<String> {
-        let mut test_utils = TestUtils::gen_js_ast(js_code.to_string());
+        let mut test_utils = TestUtils::gen_js_ast(js_code);
         let ast = test_utils.ast.js_mut();
         let mut analyzer = super::DepAnalyzer::new(ast.unresolved_mark);
         GLOBALS.set(&test_utils.context.meta.script.globals, || {
