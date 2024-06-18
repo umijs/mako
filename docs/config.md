@@ -210,7 +210,7 @@ e.g.
 ### experimental.webpackSyntaxValidate
 
 - Type: `string[]`
-- 默认值: `[]`
+- Default: `[]`
 
 Experimental configuration, specify the packages that are allowed to use webpack syntax.
 
