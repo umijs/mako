@@ -1,16 +1,18 @@
-import path from 'path';
 import fs from 'fs';
-import semver from 'semver';
+import path from 'path';
 import chalk from 'chalk';
+import semver from 'semver';
 
 let BLACKLIST_PACKAGES: any = {
   'pdfjs-dist': {
-    version: "<3.0.0",
-    message: "`pdfjs-dist@2` is not supported, please use `pdfjs-dist@3` or above instead.",
+    version: '<3.0.0',
+    message:
+      '`pdfjs-dist@2` is not supported, please use `pdfjs-dist@3` or above instead.',
   },
   'monaco-editor': {
-    version: "*",
-    message: "`monaco-editor` is not supported, please use `@monaco-editor/react` instead.",
+    version: '*',
+    message:
+      '`monaco-editor` is not supported, please use `@monaco-editor/react` instead.',
   },
 };
 
@@ -22,7 +24,10 @@ export function check(root: string) {
     for (let name of bPkgs) {
       if (!depExists(pkg, name)) continue;
       let version = getDepVersion(root, name);
-      if (version && semver.satisfies(version, BLACKLIST_PACKAGES[name].version)) {
+      if (
+        version &&
+        semver.satisfies(version, BLACKLIST_PACKAGES[name].version)
+      ) {
         console.error(chalk.red(`Error: ${BLACKLIST_PACKAGES[name].message}`));
         process.exit(1);
       }
