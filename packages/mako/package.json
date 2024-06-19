@@ -20,6 +20,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@types/resolve": "^1.20.6",
     "@swc/helpers": "0.5.1",
     "chalk": "^4.1.2",
     "less": "^4.2.0",
@@ -29,6 +30,7 @@
     "piscina": "^4.5.1",
     "react-error-overlay": "6.0.9",
     "react-refresh": "^0.14.0",
+    "resolve": "^1.22.8",
     "semver": "^7.6.2",
     "yargs-parser": "^21.1.1"
   },
