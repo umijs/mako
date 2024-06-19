@@ -12,7 +12,7 @@ use swc_core::ecma::ast::{
 use swc_core::ecma::utils::{member_expr, quote_ident, ExprFactory, IdentRenamer};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith, VisitWith};
 
-use super::concatenate_context::{ConcatenateContext, ModuleRef, ModuleRefMap};
+use super::concatenate_context::{module_ref_to_expr, ConcatenateContext, ModuleRef, ModuleRefMap};
 use super::exports_transform::collect_exports_map;
 use super::module_ref_rewriter::ModuleRefRewriter;
 use super::ref_link::{ModuleDeclMapCollector, Symbol, VarLink};
@@ -305,11 +305,11 @@ impl<'a> InnerTransform<'a> {
 
         let mut key_value_props: Vec<PropOrSpread> = vec![];
 
-        for (exported_name, local_name) in self.exports.iter() {
+        for (k, module_ref) in &mut *export_ref_map {
             key_value_props.push(
                 Prop::KeyValue(KeyValueProp {
-                    key: quote_ident!(exported_name.clone()).into(),
-                    value: quote_ident!(local_name.clone()).into_lazy_fn(vec![]).into(),
+                    key: quote_ident!(k.clone()).into(),
+                    value: module_ref_to_expr(module_ref).into_lazy_fn(vec![]).into(),
                 })
                 .into(),
             )
