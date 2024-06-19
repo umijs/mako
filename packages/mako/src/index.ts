@@ -119,7 +119,7 @@ export async function build(params: BuildParams) {
   }
 
   let plugins = params.config.plugins;
-  plugins = plugins.map(plugin => {
+  plugins = plugins.map((plugin: any) => {
     if (typeof plugin === 'string') {
       let fn = require(
         resolve.sync(plugin, {
