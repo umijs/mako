@@ -83,6 +83,9 @@ importers:
       portfinder:
         specifier: ^1.0.32
         version: 1.0.32
+      preact:
+        specifier: 10.22.0
+        version: 10.22.0
       react:
         specifier: 18.2.0
         version: 18.2.0
@@ -12474,6 +12477,10 @@ packages:
       nanoid: 3.3.6
       picocolors: 1.0.0
       source-map-js: 1.0.2
+    dev: true
+
+  /preact@10.22.0:
+    resolution: {integrity: sha512-RRurnSjJPj4rp5K6XoP45Ui33ncb7e4H7WiOHVpjbkvqvA3U+N8Z6Qbo0AE6leGYBV66n8EhEaFixvIu3SkxFw==}
     dev: true
 
   /prelude-ls@1.2.1:

@@ -1,0 +1,6 @@
+{
+  "react": {
+    "runtime": "classic",
+    "pragma": "h"
+  }
+}
