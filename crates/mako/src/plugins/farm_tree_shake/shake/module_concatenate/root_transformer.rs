@@ -462,20 +462,8 @@ impl<'a> VisitMut for RootTransformer<'a> {
         self.remove_current_stmt();
     }
 
-    fn visit_mut_export_all(&mut self, export_all: &mut ExportAll) {
-        let src = export_all.src.value.to_string();
-
-        if let Some(imported_module_id) = self.src_to_module.get(&src) {
-            if self
-                .concatenate_context
-                .modules_in_scope
-                .contains_key(imported_module_id)
-            {
-                self.remove_current_stmt();
-            } else {
-                // self.remove_current_stmt();
-            }
-        }
+    fn visit_mut_export_all(&mut self, _export_all: &mut ExportAll) {
+        self.remove_current_stmt();
     }
 
     fn visit_mut_module(&mut self, n: &mut Module) {
