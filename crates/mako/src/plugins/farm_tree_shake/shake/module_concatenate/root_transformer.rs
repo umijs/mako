@@ -5,9 +5,9 @@ use mako_core::swc_common::util::take::Take;
 use swc_core::common::comments::{Comment, CommentKind};
 use swc_core::common::{Mark, Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
-    ClassDecl, DefaultDecl, ExportDecl, ExportDefaultDecl, ExportDefaultExpr, ExportSpecifier,
-    FnDecl, Id, ImportDecl, KeyValueProp, Module, ModuleExportName, ModuleItem, NamedExport,
-    ObjectLit, Prop, PropOrSpread, Stmt, VarDeclKind,
+    ClassDecl, DefaultDecl, ExportAll, ExportDecl, ExportDefaultDecl, ExportDefaultExpr,
+    ExportSpecifier, FnDecl, Id, ImportDecl, KeyValueProp, Module, ModuleExportName, ModuleItem,
+    NamedExport, ObjectLit, Prop, PropOrSpread, Stmt, VarDeclKind,
 };
 use swc_core::ecma::utils::{member_expr, quote_ident, quote_str, ExprFactory, IdentRenamer};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith, VisitWith};
@@ -100,6 +100,8 @@ impl<'a> RootTransformer<'a> {
     pub(crate) fn to_import_module_ref(&self, var_map: &HashMap<Id, VarLink>) -> ModuleRefMap {
         let mut ref_map = HashMap::new();
 
+        dbg!(&var_map);
+
         var_map.iter().for_each(|(id, link)| match link {
             VarLink::Direct(direct_id) => {
                 ref_map.insert(id.clone(), (direct_id.clone().into(), None));
@@ -125,17 +127,19 @@ impl<'a> RootTransformer<'a> {
                     }
                 }
             }
+            VarLink::All(_, _) => {
+                // never happens
+            }
         });
 
         ref_map
     }
 
-    pub(crate) fn to_export_module_ref(
+    fn var_link_to_module_ref(
         &self,
-        var_map: &HashMap<Id, VarLink>,
-    ) -> HashMap<String, ModuleRef> {
-        let mut ref_map = HashMap::new();
-
+        ref_map: &mut HashMap<String, ModuleRef>,
+        var_map: &HashMap<&Id, &VarLink>,
+    ) {
         var_map.iter().for_each(|(id, link)| match link {
             VarLink::Direct(direct_id) => {
                 ref_map.insert(id.0.to_string(), (direct_id.clone().into(), None));
@@ -161,7 +165,40 @@ impl<'a> RootTransformer<'a> {
                     }
                 }
             }
-        });
+            VarLink::All(source, _) => {
+                if let Some(src_module_id) = self.src_to_module.get(source) {
+                    if let Some(map) = self
+                        .concatenate_context
+                        .modules_exports_map
+                        .get(src_module_id)
+                    {
+                        map.iter().for_each(|(k, v)| {
+                            if k != "default" && k != "*" {
+                                ref_map.insert(k.clone(), v.clone());
+                            }
+                        });
+                    }
+                }
+                // else it's export * from external module, it only happens in root so will be
+                // handled in root
+            }
+        })
+    }
+
+    pub(crate) fn to_export_module_ref(
+        &self,
+        var_map: &HashMap<Id, VarLink>,
+    ) -> HashMap<String, ModuleRef> {
+        let mut ref_map = HashMap::new();
+
+        dbg!(&var_map);
+
+        let (export_all, normal): (HashMap<_, _>, HashMap<_, _>) = var_map
+            .iter()
+            .partition(|&(_, v)| matches!(v, VarLink::All(_, _)));
+
+        self.var_link_to_module_ref(&mut ref_map, &normal);
+        self.var_link_to_module_ref(&mut ref_map, &export_all);
 
         ref_map
     }
@@ -427,6 +464,22 @@ impl<'a> VisitMut for RootTransformer<'a> {
 
     fn visit_mut_import_decl(&mut self, _import_decl: &mut ImportDecl) {
         self.remove_current_stmt();
+    }
+
+    fn visit_mut_export_all(&mut self, export_all: &mut ExportAll) {
+        let src = export_all.src.value.to_string();
+
+        if let Some(imported_module_id) = self.src_to_module.get(&src) {
+            if self
+                .concatenate_context
+                .modules_in_scope
+                .contains_key(imported_module_id)
+            {
+                self.remove_current_stmt();
+            } else {
+                // self.remove_current_stmt();
+            }
+        }
     }
 
     fn visit_mut_module(&mut self, n: &mut Module) {

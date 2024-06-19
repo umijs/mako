@@ -1,12 +1,15 @@
 #[cfg(test)]
 mod tests;
 
-use swc_core::ecma::ast::{DefaultDecl, Id, Ident, ImportDecl, ImportSpecifier, Module};
+use swc_core::ecma::ast::{
+    DefaultDecl, Id, Ident, ImportDecl, ImportSpecifier, Module, ModuleItem,
+};
 
 #[derive(Debug, Clone)]
 pub(super) enum VarLink {
     Direct(Id),
     InDirect(Symbol, String),
+    All(String, usize),
 }
 
 #[derive(Debug, Clone)]
@@ -90,6 +93,7 @@ impl Visit for PatDefineIdCollector {
 #[derive(Default, Debug)]
 pub(super) struct ModuleDeclMapCollector {
     current_source: Option<String>,
+    current_stmt_id: usize,
     pub import_map: HashMap<Id, VarLink>,
     pub export_map: HashMap<Id, VarLink>,
     default_binding_name: String,
@@ -136,6 +140,12 @@ impl Visit for ModuleDeclMapCollector {
     fn visit_module(&mut self, n: &Module) {
         n.visit_children_with(self);
         self.simplify_exports();
+    }
+    fn visit_module_items(&mut self, n: &[ModuleItem]) {
+        n.iter().enumerate().for_each(|(i, item)| {
+            self.current_stmt_id = i;
+            item.visit_with(self);
+        });
     }
 
     fn visit_import_decl(&mut self, import_decl: &ImportDecl) {
@@ -289,8 +299,11 @@ impl Visit for ModuleDeclMapCollector {
                 self.export_map
                     .insert(quote_ident!("default").to_id(), VarLink::Direct(id));
             }
-            ModuleDecl::ExportAll(_) => {
-                // not allowed in inner module
+            ModuleDecl::ExportAll(export_all) => {
+                self.export_map.insert(
+                    quote_ident!(format!("*:{}", self.current_stmt_id)).to_id(),
+                    VarLink::All(export_all.src.value.to_string(), self.current_stmt_id),
+                );
             }
             ModuleDecl::TsImportEquals(_) => {}
             ModuleDecl::TsExportAssignment(_) => {}

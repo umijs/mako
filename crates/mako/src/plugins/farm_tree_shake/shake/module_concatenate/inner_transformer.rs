@@ -100,17 +100,19 @@ impl<'a> InnerTransform<'a> {
                     }
                 }
             }
+            VarLink::All(_, _) => {
+                // never happens, there is no import * from "mod"
+            }
         });
 
         ref_map
     }
 
-    pub(crate) fn to_export_module_ref(
+    fn var_link_to_module_ref(
         &self,
-        var_map: &HashMap<Id, VarLink>,
-    ) -> HashMap<String, ModuleRef> {
-        let mut ref_map = HashMap::new();
-
+        ref_map: &mut HashMap<String, ModuleRef>,
+        var_map: &HashMap<&Id, &VarLink>,
+    ) {
         var_map.iter().for_each(|(id, link)| match link {
             VarLink::Direct(direct_id) => {
                 ref_map.insert(id.0.to_string(), (direct_id.clone().into(), None));
@@ -136,7 +138,40 @@ impl<'a> InnerTransform<'a> {
                     }
                 }
             }
-        });
+            VarLink::All(source, _) => {
+                if let Some(src_module_id) = self.src_to_module.get(source) {
+                    dbg!(&self.concatenate_context.modules_exports_map);
+
+                    if let Some(map) = self
+                        .concatenate_context
+                        .modules_exports_map
+                        .get(src_module_id)
+                    {
+                        map.iter().for_each(|(k, v)| {
+                            if k != "default" && k != "*" {
+                                ref_map.insert(k.clone(), v.clone());
+                            }
+                        });
+                    }
+                }
+                // else it's export * from external module, it only happens in root so will be
+                // handled in root
+            }
+        })
+    }
+
+    pub(crate) fn to_export_module_ref(
+        &self,
+        var_map: &HashMap<Id, VarLink>,
+    ) -> HashMap<String, ModuleRef> {
+        let mut ref_map = HashMap::new();
+
+        let (export_all, normal): (HashMap<_, _>, HashMap<_, _>) = var_map
+            .iter()
+            .partition(|&(_, v)| matches!(v, VarLink::All(_, _)));
+
+        self.var_link_to_module_ref(&mut ref_map, &normal);
+        self.var_link_to_module_ref(&mut ref_map, &export_all);
 
         ref_map
     }
@@ -251,7 +286,11 @@ impl<'a> InnerTransform<'a> {
         self.replaces.push((self.current_stmt_index, stmts));
     }
 
-    fn append_namespace_declare(&mut self, n: &mut Module) {
+    fn append_namespace_declare(
+        &mut self,
+        n: &mut Module,
+        export_ref_map: &mut HashMap<String, ModuleRef>,
+    ) {
         let ns_name = self.get_non_conflict_name(&uniq_module_namespace_name(self.module_id));
         let ns_ident = quote_ident!(ns_name.clone());
 
@@ -291,6 +330,7 @@ impl<'a> InnerTransform<'a> {
             .into_stmt();
 
         self.exports.insert("*".to_string(), ns_name.clone());
+        export_ref_map.insert("*".to_string(), (quote_ident!(ns_name.clone()), None));
         self.my_top_decls.insert(ns_name);
 
         n.body.push(init_stmt.into());
@@ -448,7 +488,7 @@ impl<'a> VisitMut for InnerTransform<'a> {
         self.add_leading_comment(n);
 
         if self.imported_type.contains(ImportType::Namespace) {
-            self.append_namespace_declare(n);
+            self.append_namespace_declare(n, &mut export_ref_map);
         }
 
         self.concatenate_context

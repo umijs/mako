@@ -90,7 +90,7 @@ fn export_default_as_from_source() {
 }
 
 #[test]
-fn export_star_as_from_source() {
+fn export_namespace_as_from_source() {
     assert_eq!(
         extract_export_map("export * as foo from 'external'"),
         "foo => * from external"
@@ -102,6 +102,22 @@ fn export_name_as_from_source() {
     assert_eq!(
         extract_export_map("export {a as x} from 'external'"),
         "x => a from external"
+    );
+}
+
+#[test]
+fn export_all_from_source_at_first_stmt() {
+    assert_eq!(
+        extract_export_map("export * from 'source'"),
+        "*:0 => * from source"
+    );
+}
+#[test]
+
+fn export_all_from_source_at_second_stmt() {
+    assert_eq!(
+        extract_export_map("import x from 'mod'; export * from 'source'"),
+        "*:1 => * from source"
     );
 }
 
@@ -172,6 +188,9 @@ impl Display for VarLink {
         match self {
             VarLink::Direct(id) => write!(f, "{}", id.0),
             VarLink::InDirect(symbol, source) => write!(f, "{} from {}", symbol, source),
+            VarLink::All(source, _) => {
+                write!(f, "* from {}", source)
+            }
         }
     }
 }
