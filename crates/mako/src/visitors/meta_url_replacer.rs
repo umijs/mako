@@ -40,7 +40,7 @@ mod tests {
     }
 
     fn run(js_code: &str) -> String {
-        let mut test_utils = TestUtils::gen_js_ast(js_code.to_string());
+        let mut test_utils = TestUtils::gen_js_ast(js_code);
         let ast = test_utils.ast.js_mut();
         GLOBALS.set(&test_utils.context.meta.script.globals, || {
             let mut visitor = MetaUrlReplacer {};

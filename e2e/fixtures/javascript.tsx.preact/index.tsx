@@ -4,4 +4,7 @@ const Foo = () => (
   <div>Foo</div>
 )
 
-export default Foo;
+it('can create Foo component',()=>{
+   console.log(Foo());
+})
+
