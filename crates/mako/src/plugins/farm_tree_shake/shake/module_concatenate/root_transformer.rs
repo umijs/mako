@@ -100,8 +100,6 @@ impl<'a> RootTransformer<'a> {
     pub(crate) fn to_import_module_ref(&self, var_map: &HashMap<Id, VarLink>) -> ModuleRefMap {
         let mut ref_map = HashMap::new();
 
-        dbg!(&var_map);
-
         var_map.iter().for_each(|(id, link)| match link {
             VarLink::Direct(direct_id) => {
                 ref_map.insert(id.clone(), (direct_id.clone().into(), None));
@@ -190,8 +188,6 @@ impl<'a> RootTransformer<'a> {
         var_map: &HashMap<Id, VarLink>,
     ) -> HashMap<String, ModuleRef> {
         let mut ref_map = HashMap::new();
-
-        dbg!(&var_map);
 
         let (export_all, normal): (HashMap<_, _>, HashMap<_, _>) = var_map
             .iter()
