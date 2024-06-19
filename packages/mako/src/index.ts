@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { omit } from 'lodash';
+import resolve from 'resolve';
 import * as binding from '../binding';
 import { ForkTSChecker as ForkTSChecker } from './forkTSChecker';
 import { LessLoaderOpts, lessLoader } from './lessLoader';
@@ -118,6 +119,32 @@ export async function build(params: BuildParams) {
   }
 
   let plugins = params.config.plugins;
+  plugins = plugins.map(plugin => {
+    if (typeof plugin === 'string') {
+      let fn = require(
+        resolve.sync(plugin, {
+          basedir: params.root,
+        }),
+      );
+      return fn.default || fn;
+    } else {
+      return plugin;
+    }
+  });
+  makoConfig.plugins?.forEach((plugin: any) => {
+    if (typeof plugin === 'string') {
+      let fn = require(
+        resolve.sync(plugin, {
+          basedir: params.root,
+        }),
+      );
+      plugins.push(fn.default || fn);
+    } else {
+      throw new Error(
+        `Invalid plugin: ${plugin} in mako.config.json, only support string type plugin here.`,
+      );
+    }
+  });
   params.config = omit(params.config, [
     'less',
     'forkTSChecker',
