@@ -408,6 +408,9 @@ pub fn optimize_module_graph(
 
                 root_module_ast.visit_mut_with(&mut CleanSyntaxContext {});
 
+                let prefix_items = concatenate_context.root_exports_stmts(&config.root);
+                module_items.splice(0..0, prefix_items);
+
                 root_module_ast.body.splice(0..0, module_items);
                 root_module_ast.visit_mut_with(&mut resolver(
                     unresolved_mark,

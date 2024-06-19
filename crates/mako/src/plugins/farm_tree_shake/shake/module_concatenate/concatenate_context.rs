@@ -7,10 +7,12 @@ use swc_core::base::atoms::JsWord;
 use swc_core::common::collections::AHashSet;
 use swc_core::common::{Mark, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
-    ClassExpr, DefaultDecl, ExportDefaultDecl, Expr, FnExpr, Id, Ident, MemberExpr, Module,
-    ModuleDecl, ModuleItem, VarDeclKind,
+    ClassExpr, DefaultDecl, ExportDefaultDecl, Expr, FnExpr, Id, Ident, KeyValueProp, MemberExpr,
+    Module, ModuleDecl, ModuleItem, ObjectLit, Prop, PropOrSpread, VarDeclKind,
 };
-use swc_core::ecma::utils::{collect_decls_with_ctxt, quote_ident, quote_str, ExprFactory};
+use swc_core::ecma::utils::{
+    collect_decls_with_ctxt, member_expr, quote_ident, quote_str, ExprFactory,
+};
 use swc_core::ecma::visit::{Visit, VisitWith};
 
 use crate::module::{ImportType, ModuleId, NamedExportType, ResolveType};
@@ -378,6 +380,74 @@ impl ConcatenateContext {
 
     pub fn external_expose_names(&self, module_id: &ModuleId) -> Option<&(String, String)> {
         self.external_module_namespace.get(module_id)
+    }
+
+    pub fn root_exports_stmts(&self, root_module_id: &ModuleId) -> Vec<ModuleItem> {
+        if let Some(export_ref_map) = self.modules_exports_map.get(root_module_id) {
+            let mut module_items = vec![];
+
+            let ordered_exports: BTreeMap<_, _> = export_ref_map
+                .iter()
+                .map(|(k, module_ref)| (k.clone(), module_ref_to_expr(module_ref)))
+                .collect();
+
+            let key_value_props: Vec<PropOrSpread> = ordered_exports
+                .into_iter()
+                .map(|(k, ref_expr)| {
+                    Prop::KeyValue(KeyValueProp {
+                        key: quote_ident!(k).into(),
+                        value: ref_expr.into_lazy_fn(vec![]).into(),
+                    })
+                    .into()
+                })
+                .collect();
+
+            // __mako_require__.d(exports, __esModule, { value: true });
+            let esm_compat = member_expr!(DUMMY_SP, __mako_require__.d)
+                .as_call(
+                    DUMMY_SP,
+                    vec![
+                        quote_ident!("exports").as_arg(),
+                        quote_str!("__esModule").as_arg(),
+                        ObjectLit {
+                            props: [Prop::KeyValue(KeyValueProp {
+                                key: quote_ident!("value").into(),
+                                value: true.into(),
+                            })
+                            .into()]
+                            .into(),
+                            span: DUMMY_SP,
+                        }
+                        .as_arg(),
+                    ],
+                )
+                .into_stmt()
+                .into();
+
+            module_items.push(esm_compat);
+
+            if !key_value_props.is_empty() {
+                // __mako_require__.e(exports, { exported: function(){ return v}, ... });
+                let export_stmt = member_expr!(DUMMY_SP, __mako_require__.e)
+                    .as_call(
+                        DUMMY_SP,
+                        vec![
+                            quote_ident!("exports").as_arg(),
+                            ObjectLit {
+                                props: key_value_props,
+                                span: DUMMY_SP,
+                            }
+                            .as_arg(),
+                        ],
+                    )
+                    .into_stmt()
+                    .into();
+                module_items.push(export_stmt);
+            }
+            module_items
+        } else {
+            unreachable!("root exports must be exists")
+        }
     }
 
     fn add_top_level_var(&mut self, var_name: &str) -> bool {

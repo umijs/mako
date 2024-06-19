@@ -5,9 +5,9 @@ use mako_core::swc_common::util::take::Take;
 use swc_core::common::comments::{Comment, CommentKind};
 use swc_core::common::{Mark, Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
-    ClassDecl, DefaultDecl, ExportDecl, ExportDefaultDecl, ExportDefaultExpr, ExportSpecifier,
-    FnDecl, Id, ImportDecl, KeyValueProp, Module, ModuleExportName, ModuleItem, NamedExport,
-    ObjectLit, Prop, PropOrSpread, Stmt, VarDeclKind,
+    ClassDecl, DefaultDecl, ExportAll, ExportDecl, ExportDefaultDecl, ExportDefaultExpr,
+    ExportSpecifier, FnDecl, Id, ImportDecl, KeyValueProp, Module, ModuleExportName, ModuleItem,
+    NamedExport, ObjectLit, Prop, PropOrSpread, Stmt, VarDeclKind,
 };
 use swc_core::ecma::utils::{member_expr, quote_ident, ExprFactory, IdentRenamer};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith, VisitWith};
@@ -22,6 +22,11 @@ use super::utils::{
 };
 use crate::compiler::Context;
 use crate::module::{relative_to_root, ImportType, ModuleId};
+
+pub enum InnerOrExternal<'a> {
+    Inner(&'a HashMap<String, ModuleRef>),
+    External(&'a (String, String)),
+}
 
 pub(super) struct InnerTransform<'a> {
     pub concatenate_context: &'a mut ConcatenateContext,
@@ -40,22 +45,14 @@ pub(super) struct InnerTransform<'a> {
     default_bind_name: String,
 }
 
-pub enum InnerOrExternal<'a> {
-    Inner(&'a HashMap<String, ModuleRef>),
-    External(&'a (String, String)),
-}
-
 impl<'a> InnerTransform<'a> {
-    pub fn new<'s>(
+    pub fn new(
         concatenate_context: &'a mut ConcatenateContext,
         module_id: &'a ModuleId,
         src_to_module: &'a HashMap<String, ModuleId>,
         context: &'a Arc<Context>,
         top_level_mark: Mark,
-    ) -> InnerTransform<'a>
-    where
-        'a: 's,
-    {
+    ) -> Self {
         Self {
             concatenate_context,
             module_id,
@@ -69,6 +66,30 @@ impl<'a> InnerTransform<'a> {
             replaces: vec![],
             current_stmt_index: 0,
             default_bind_name: Default::default(),
+        }
+    }
+
+    fn add_leading_comment(&self, n: &Module) {
+        if let Some(item) = n
+            .body
+            .iter()
+            .find(|&item| matches!(item, ModuleItem::Stmt(_)))
+        {
+            let mut comments = self.context.meta.script.origin_comments.write().unwrap();
+
+            comments.add_leading_comment_at(
+                item.span_lo(),
+                Comment {
+                    kind: CommentKind::Line,
+
+                    text: format!(
+                        " CONCATENATED MODULE: {}",
+                        relative_to_root(&self.module_id.id, &self.context.root)
+                    )
+                    .into(),
+                    span: DUMMY_SP,
+                },
+            );
         }
     }
 
@@ -140,8 +161,6 @@ impl<'a> InnerTransform<'a> {
             }
             VarLink::All(source, _) => {
                 if let Some(src_module_id) = self.src_to_module.get(source) {
-                    dbg!(&self.concatenate_context.modules_exports_map);
-
                     if let Some(map) = self
                         .concatenate_context
                         .modules_exports_map
@@ -182,7 +201,7 @@ impl<'a> InnerTransform<'a> {
         });
     }
 
-    fn inner_or_external(&'a self, module_id: &ModuleId) -> InnerOrExternal<'a> {
+    fn inner_or_external(&self, module_id: &ModuleId) -> InnerOrExternal {
         self.concatenate_context
             .external_module_namespace
             .get(module_id)
@@ -207,25 +226,6 @@ impl<'a> InnerTransform<'a> {
     fn collect_exports(&mut self, n: &Module) {
         let export_map = collect_exports_map(n);
         self.exports.extend(export_map);
-    }
-
-    fn add_leading_comment(&self, n: &Module) {
-        if let Some(item) = n.body.first() {
-            let mut comments = self.context.meta.script.origin_comments.write().unwrap();
-
-            comments.add_leading_comment_at(
-                item.span_lo(),
-                Comment {
-                    kind: CommentKind::Line,
-                    span: DUMMY_SP,
-                    text: format!(
-                        " CONCATENATED MODULE: {}",
-                        relative_to_root(&self.module_id.id, &self.context.root)
-                    )
-                    .into(),
-                },
-            );
-        }
     }
 
     fn apply_renames(&mut self, n: &mut Module, export_map: &mut HashMap<String, ModuleRef>) {
@@ -456,6 +456,10 @@ impl<'a> VisitMut for InnerTransform<'a> {
         self.remove_current_stmt();
     }
 
+    fn visit_mut_export_all(&mut self, _export_all: &mut ExportAll) {
+        self.remove_current_stmt();
+    }
+
     fn visit_mut_module(&mut self, n: &mut Module) {
         self.my_top_decls = ConcatenateContext::top_level_vars(n, self.top_level_mark);
 
@@ -473,15 +477,15 @@ impl<'a> VisitMut for InnerTransform<'a> {
             ..
         } = var_links_collector;
 
-        let _import_ref_map = self.to_import_module_ref(&import_map);
+        let import_ref_map = self.to_import_module_ref(&import_map);
         let mut export_ref_map = self.to_export_module_ref(&export_map);
 
         // strip all the module declares
         n.visit_mut_children_with(self);
 
-        let mut rewriter = ModuleRefRewriter::new(&_import_ref_map, Default::default(), true);
+        let mut rewriter = ModuleRefRewriter::new(&import_ref_map, Default::default(), true);
         n.visit_mut_with(&mut rewriter);
-        self.remove_imported_top_vars(&_import_ref_map);
+        self.remove_imported_top_vars(&import_ref_map);
 
         self.resolve_conflict();
         self.apply_renames(n, &mut export_ref_map);
@@ -494,6 +498,7 @@ impl<'a> VisitMut for InnerTransform<'a> {
         self.concatenate_context
             .modules_in_scope
             .insert(self.module_id.clone(), self.exports.clone());
+
         self.concatenate_context
             .modules_exports_map
             .insert(self.module_id.clone(), export_ref_map);
@@ -504,6 +509,7 @@ impl<'a> VisitMut for InnerTransform<'a> {
     }
 
     fn visit_mut_module_items(&mut self, items: &mut Vec<ModuleItem>) {
+        // pay attention to the `rev()`
         for index in (0..items.len()).rev() {
             self.current_stmt_index = index;
             let item = items.get_mut(index).unwrap();

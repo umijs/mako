@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use mako_core::swc_common::util::take::Take;
@@ -9,70 +9,68 @@ use swc_core::ecma::ast::{
     ExportSpecifier, FnDecl, Id, ImportDecl, KeyValueProp, Module, ModuleExportName, ModuleItem,
     NamedExport, ObjectLit, Prop, PropOrSpread, Stmt, VarDeclKind,
 };
-use swc_core::ecma::utils::{member_expr, quote_ident, quote_str, ExprFactory, IdentRenamer};
+use swc_core::ecma::utils::{member_expr, quote_ident, ExprFactory, IdentRenamer};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith, VisitWith};
 
-use crate::compiler::Context;
-use crate::module::{relative_to_root, ModuleId};
-use crate::plugins::farm_tree_shake::shake::module_concatenate::concatenate_context::{
-    module_ref_to_expr, ConcatenateContext, ModuleRef, ModuleRefMap,
-};
-use crate::plugins::farm_tree_shake::shake::module_concatenate::exports_transform::collect_exports_map;
-use crate::plugins::farm_tree_shake::shake::module_concatenate::inner_transformer::InnerOrExternal;
-use crate::plugins::farm_tree_shake::shake::module_concatenate::module_ref_rewriter::ModuleRefRewriter;
-use crate::plugins::farm_tree_shake::shake::module_concatenate::ref_link::{
-    ModuleDeclMapCollector, Symbol, VarLink,
-};
-use crate::plugins::farm_tree_shake::shake::module_concatenate::utils::{
-    declare_var_with_init_stmt, uniq_module_default_export_name,
+use super::concatenate_context::{module_ref_to_expr, ConcatenateContext, ModuleRef, ModuleRefMap};
+use super::exports_transform::collect_exports_map;
+use super::inner_transformer::InnerOrExternal;
+use super::module_ref_rewriter::ModuleRefRewriter;
+use super::ref_link::{ModuleDeclMapCollector, Symbol, VarLink};
+use super::utils::{
+    declare_var_with_init_stmt, uniq_module_default_export_name, uniq_module_namespace_name,
     MODULE_CONCATENATE_ERROR_STR_MODULE_NAME,
 };
+use crate::compiler::Context;
+use crate::module::{relative_to_root, ImportType, ModuleId};
 
 pub(super) struct RootTransformer<'a> {
     pub concatenate_context: &'a mut ConcatenateContext,
     pub context: &'a Arc<Context>,
-    pub src_to_module: &'a HashMap<String, ModuleId>,
     pub module_id: &'a ModuleId,
+    pub src_to_module: &'a HashMap<String, ModuleId>,
+    pub top_level_mark: Mark,
 
     my_top_decls: HashSet<String>,
-    top_level_mark: Mark,
-
     exports: HashMap<String, String>,
     rename_request: Vec<(Id, Id)>,
+    imported_type: ImportType,
     current_stmt_index: usize,
     replaces: Vec<(usize, Vec<ModuleItem>)>,
     default_bind_name: String,
 }
 
-impl RootTransformer<'_> {
-    pub fn new<'a>(
+impl<'a> RootTransformer<'a> {
+    pub fn new(
         concatenate_context: &'a mut ConcatenateContext,
         current_module_id: &'a ModuleId,
         context: &'a Arc<Context>,
         import_source_to_module_id: &'a HashMap<String, ModuleId>,
         top_level_mark: Mark,
-    ) -> RootTransformer<'a> {
+    ) -> Self {
         let default_bind_name = concatenate_context.negotiate_safe_var_name(
             &HashSet::new(),
             &uniq_module_default_export_name(current_module_id),
         );
 
-        RootTransformer {
+        Self {
             concatenate_context,
-            context,
             module_id: current_module_id,
-            exports: Default::default(),
-            rename_request: vec![],
-            current_stmt_index: 0,
-            replaces: vec![],
             src_to_module: import_source_to_module_id,
+            context,
             top_level_mark,
+            exports: Default::default(),
+            my_top_decls: Default::default(),
+            rename_request: vec![],
+            imported_type: Default::default(),
+
+            replaces: vec![],
+            current_stmt_index: 0,
             default_bind_name,
-            my_top_decls: HashSet::new(),
         }
     }
 
-    fn add_comment(&mut self, n: &mut Module) {
+    fn add_leading_comment(&mut self, n: &mut Module) {
         if let Some(first_stmt) = n
             .body
             .iter()
@@ -94,9 +92,7 @@ impl RootTransformer<'_> {
             );
         }
     }
-}
 
-impl<'a> RootTransformer<'a> {
     pub(crate) fn to_import_module_ref(&self, var_map: &HashMap<Id, VarLink>) -> ModuleRefMap {
         let mut ref_map = HashMap::new();
 
@@ -126,7 +122,7 @@ impl<'a> RootTransformer<'a> {
                 }
             }
             VarLink::All(_, _) => {
-                // never happens
+                // never happens, there is no import * from "mod"
             }
         });
 
@@ -205,7 +201,7 @@ impl<'a> RootTransformer<'a> {
         });
     }
 
-    fn inner_or_external(&'a self, module_id: &ModuleId) -> InnerOrExternal<'a> {
+    fn inner_or_external(&self, module_id: &ModuleId) -> InnerOrExternal {
         self.concatenate_context
             .external_module_namespace
             .get(module_id)
@@ -286,61 +282,55 @@ impl<'a> RootTransformer<'a> {
         self.replaces.push((self.current_stmt_index, stmts));
     }
 
-    fn eject_exports(&self, export_ref_map: &HashMap<String, ModuleRef>, n: &mut Module) {
-        let ordered_exports: BTreeMap<_, _> = export_ref_map
-            .iter()
-            .map(|(k, module_ref)| (k.clone(), module_ref_to_expr(module_ref)))
-            .collect();
+    fn append_namespace_declare(
+        &mut self,
+        n: &mut Module,
+        export_ref_map: &mut HashMap<String, ModuleRef>,
+    ) {
+        let ns_name = self.get_non_conflict_name(&uniq_module_namespace_name(self.module_id));
+        let ns_ident = quote_ident!(ns_name.clone());
 
-        let key_value_props: Vec<PropOrSpread> = ordered_exports
-            .into_iter()
-            .map(|(k, ref_expr)| {
+        let empty_obj = ObjectLit {
+            span: DUMMY_SP,
+            props: vec![],
+        };
+
+        let init_stmt: Stmt = empty_obj
+            .into_var_decl(VarDeclKind::Var, ns_ident.clone().into())
+            .into();
+
+        let mut key_value_props: Vec<PropOrSpread> = vec![];
+
+        for (k, module_ref) in &mut *export_ref_map {
+            key_value_props.push(
                 Prop::KeyValue(KeyValueProp {
-                    key: quote_ident!(k).into(),
-                    value: ref_expr.into_lazy_fn(vec![]).into(),
+                    key: quote_ident!(k.clone()).into(),
+                    value: module_ref_to_expr(module_ref).into_lazy_fn(vec![]).into(),
                 })
-                .into()
-            })
-            .collect();
-
-        // __mako_require__.d(exports, __esModule, { value: true });
-        let esm_compat = member_expr!(DUMMY_SP, __mako_require__.d)
-            .as_call(
-                DUMMY_SP,
-                vec![
-                    quote_ident!("exports").as_arg(),
-                    quote_str!("__esModule").as_arg(),
-                    ObjectLit {
-                        props: [Prop::KeyValue(KeyValueProp {
-                            key: quote_ident!("value").into(),
-                            value: true.into(),
-                        })
-                        .into()]
-                        .into(),
-                        span: DUMMY_SP,
-                    }
-                    .as_arg(),
-                ],
+                .into(),
             )
-            .into_stmt()
-            .into();
+        }
 
-        // __mako_require__.e(exports, { exported: function(){ return v}, ... });
-        let export_stmt = member_expr!(DUMMY_SP, __mako_require__.e)
+        let define_exports: Stmt = member_expr!(DUMMY_SP, __mako_require__.e)
             .as_call(
                 DUMMY_SP,
                 vec![
-                    quote_ident!("exports").as_arg(),
+                    ns_ident.as_arg(),
                     ObjectLit {
+                        span: DUMMY_SP,
                         props: key_value_props,
-                        span: DUMMY_SP,
                     }
                     .as_arg(),
                 ],
             )
-            .into_stmt()
-            .into();
-        n.body.splice(0..0, vec![esm_compat, export_stmt]);
+            .into_stmt();
+
+        self.exports.insert("*".to_string(), ns_name.clone());
+        export_ref_map.insert("*".to_string(), (quote_ident!(ns_name.clone()), None));
+        self.my_top_decls.insert(ns_name);
+
+        n.body.push(init_stmt.into());
+        n.body.push(define_exports.into());
     }
 }
 
@@ -490,9 +480,11 @@ impl<'a> VisitMut for RootTransformer<'a> {
 
         self.resolve_conflict();
         self.apply_renames(n, &mut export_ref_map);
-        self.add_comment(n);
+        self.add_leading_comment(n);
 
-        self.eject_exports(&export_ref_map, n);
+        if self.imported_type.contains(ImportType::Namespace) {
+            self.append_namespace_declare(n, &mut export_ref_map);
+        }
 
         self.concatenate_context
             .modules_in_scope
@@ -590,7 +582,6 @@ impl<'a> VisitMut for RootTransformer<'a> {
 
                 self.replaces.push((self.current_stmt_index, stmts));
             } else {
-                // TODO handle export * from "external"
                 self.remove_current_stmt();
             }
         } else {
