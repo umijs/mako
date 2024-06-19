@@ -2,9 +2,7 @@
   "minify": false,
   "moduleIdStrategy": "hashed",
   "resolve": {
-    "alias": {
-      "@": "./foo"
-    }
+    "alias": [["@", "./foo"]]
   },
   "watch": {
     "ignorePaths": ["bar"]

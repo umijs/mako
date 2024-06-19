@@ -543,8 +543,8 @@ function App() {
 
 ### resolve
 
-- Type: `{ alias: Record<string, string>, extensions: string[] }`
-- Default: `{ alias: {}, extensions: ["js", "jsx", "ts", "tsx"] }`
+- Type: `{ alias: Array<[string, string]>, extensions: string[] }`
+- Default: `{ alias: [], extensions: ["js", "jsx", "ts", "tsx"] }`
 
 `resolve` configuration.
 
@@ -556,9 +556,9 @@ e.g.
 ```ts
 {
   resolve: {
-    alias: {
+    alias: [
       "@": "./src",
-    },
+    ],
     extensions: ["js", "jsx", "ts", "tsx"],
   },
 }
@@ -571,10 +571,10 @@ e.g.
 ```diff
 {
   resolve: {
-    alias: {
--       "@/src/*": "./src/*",
-+       "@/src": "./src",
-    },
+    alias: [
+-      ["@/src/*", "./src/*"],
++      [ "@/src", "./src"],
+    ],
   },
 }
 ```
@@ -584,10 +584,10 @@ Notice 2: If you want to alias to a local path, make sure to add the `./` prefix
 ```diff
 {
   resolve: {
-    alias: {
--       "@/src": "src",
-+       "@/src": "./src",
-    },
+    alias: [
+-       ["@/src", "src"],
++       ["@/src", "./src"],
+    ],
   },
 }
 ```

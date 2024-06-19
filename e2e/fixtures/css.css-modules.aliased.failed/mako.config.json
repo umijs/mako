@@ -1,8 +1,8 @@
 {
   "resolve": {
-    "alias": {
-      "myCss" : "./src/index.module.css"
-    }
+    "alias": [
+      ["myCss", "./src/index.module.css"]
+    ]
   },
   "minify": false
 }
