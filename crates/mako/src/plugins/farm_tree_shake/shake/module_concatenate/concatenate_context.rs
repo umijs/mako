@@ -315,6 +315,12 @@ impl ConcatenateContext {
                 .map(|id| id.0.to_string()),
         );
 
+        top_level_vars.extend(
+            collect_named_fn_expr_ident(ast)
+                .iter()
+                .map(|id| id.0.to_string()),
+        );
+
         top_level_vars
     }
 
@@ -413,6 +419,26 @@ fn collect_export_default_decl_ident(module: &Module) -> HashSet<Id> {
         }
     });
     idents
+}
+
+#[derive(Default)]
+struct FnExprIdentCollector {
+    idents: HashSet<Id>,
+}
+
+impl Visit for FnExprIdentCollector {
+    fn visit_fn_expr(&mut self, fn_expr: &FnExpr) {
+        if let Some(fn_ident) = fn_expr.ident.as_ref() {
+            self.idents.insert(fn_ident.to_id());
+        }
+    }
+}
+
+fn collect_named_fn_expr_ident(module: &Module) -> HashSet<Id> {
+    let mut c = FnExprIdentCollector::default();
+    module.visit_with(&mut c);
+
+    c.idents
 }
 
 struct GlobalCollect {
