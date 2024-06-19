@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import yParser from 'yargs-parser';
+import { check } from './checker';
 
 (async () => {
   let isWin = process.platform === 'win32';
@@ -27,6 +28,7 @@ import yParser from 'yargs-parser';
       }
       let watch = argv.watch || argv.w || false;
       let root = argv.root || process.cwd();
+      check(root);
       await require('./').build({
         root,
         config: {
