@@ -163,7 +163,7 @@ export function moduleToDom(css) {
                 path: file.path.to_string_lossy().to_string(),
                 reason: err.to_string(),
             })?;
-            let asset_path = Self::handle_asset(file, true, context.clone())?;
+            let asset_path = Self::handle_asset(file, true, true, context.clone())?;
             return Ok(Content::Js(JsContent {
                 content: format!("{}\nexport default {};", svgr_transformed, asset_path),
                 is_jsx: true,
@@ -235,7 +235,7 @@ export function moduleToDom(css) {
         }
 
         // assets
-        let asset_path = Self::handle_asset(file, true, context.clone())?;
+        let asset_path = Self::handle_asset(file, true, true, context.clone())?;
         Ok(Content::Js(JsContent {
             content: format!("module.exports = {};", asset_path),
             ..Default::default()
@@ -245,6 +245,7 @@ export function moduleToDom(css) {
     pub fn handle_asset(
         file: &File,
         inject_public_path: bool,
+        limit: bool,
         context: Arc<Context>,
     ) -> Result<String> {
         let file_size = file
@@ -260,7 +261,7 @@ export function moduleToDom(css) {
                 Ok(final_file_name)
             }
         };
-        if file_size > context.config.inline_limit.try_into().unwrap() {
+        if !limit || file_size > context.config.inline_limit.try_into().unwrap() {
             emit_assets()
         } else {
             let base64_result = file.get_base64();

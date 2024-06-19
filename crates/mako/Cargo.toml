@@ -11,16 +11,20 @@ path = "src/main.rs"
 test = false
 
 [dependencies]
-bitflags         = { version = "2.4.2", features = ["serde"] }
-cached           = { workspace = true }
-delegate         = "0.12.0"
-fixedbitset      = "0.4.2"
-glob-match       = "0.2.1"
-heck             = "0.4.1"
-mako_core        = { path = "../core" }
-miette           = { version = "5.10.0", features = ["fancy"] }
-nanoid           = "0.4.0"
-oxc_resolver     = "1.5.4"
+bitflags     = { version = "2.4.2", features = ["serde"] }
+cached       = { workspace = true }
+dashmap      = "4.0.1"
+delegate     = "0.12.0"
+fixedbitset  = "0.4.2"
+get_if_addrs = "0.5.3"
+glob-match   = "0.2.1"
+heck         = "0.4.1"
+mako_core    = { path = "../core" }
+miette       = { version = "5.10.0", features = ["fancy"] }
+nanoid       = "0.4.0"
+open         = "5.1.4"
+# On oxc_resolver 1.8.0 version, this pr https://github.com/oxc-project/oxc-resolver/pull/168 will break alias resolving
+oxc_resolver     = { version = "=1.7.0", features = ["package_json_raw_json_api"] }
 percent-encoding = { version = "2.3.1" }
 serde            = { workspace = true }
 serde_json       = { workspace = true }

@@ -1,3 +1,48 @@
+
+## 0.6.0
+
+`2024-06-13`
+
+- 新增: 改进构建 API（含 Break Change）by [@sorrycc](https://github.com/sorrycc) in [#1271](https://github.com/umijs/mako/pull/1271)
+- 新增: 支持 new URL() 的资源输出 by [@sorrycc](https://github.com/sorrycc) in [#1261](https://github.com/umijs/mako/pull/1261)
+- 新增: 在 win32 平台上通知用户当前平台尚不支持 by [@sorrycc](https://github.com/sorrycc) in [#1262](https://github.com/umijs/mako/pull/1262)
+- 新增: 当端口被占用时自动找到可用端口 by [@sorrycc](https://github.com/sorrycc) in [#1266](https://github.com/umijs/mako/pull/1266)
+- 新增: 当开发服务器准备就绪时自动打开浏览器 by [@sorrycc](https://github.com/sorrycc) in [#1267](https://github.com/umijs/mako/pull/1267)
+- 新增: 基础的产物 analyze 能力 by [@LovePlayCode](https://github.com/LovePlayCode) in [#1228](https://github.com/umijs/mako/pull/1228)
+- 修复: 由于 Rust 不支持，使用非阻塞 IO by [@xusd320](https://github.com/xusd320) in [#1252](https://github.com/umijs/mako/pull/1252)
+- 修复: globalThis 属性访问 by [@xusd320](https://github.com/xusd320) in [#1254](https://github.com/umijs/mako/pull/1254)
+- 修复: 默认导出被跳过的问题 by [@stormslowly](https://github.com/stormslowly) in [#1257](https://github.com/umijs/mako/pull/1257)
+- 修复(concatenate): 根与内部之间的导出冲突 by [@stormslowly](https://github.com/stormslowly) in [#1256](https://github.com/umijs/mako/pull/1256)
+- 修复(concatenate): 运行时执行顺序 by [@stormslowly](https://github.com/stormslowly) in [#1263](https://github.com/umijs/mako/pull/1263)
+- 修复: try resolve 应支持 config.ignores by [@sorrycc](https://github.com/sorrycc) in [#1264](https://github.com/umijs/mako/pull/1264)
+
+## 0.5.4
+
+`2024-06-06`
+
+- 优化: 运行时错误的 HMR 优化 by [@sorrycc](https://github.com/sorrycc) in [#1244](https://github.com/umijs/mako/pull/1244)
+- 修复: dts 不匹配 by [@sorrycc](https://github.com/sorrycc) in [#1237](https://github.com/umijs/mako/pull/1237)
+- 修复: 根目录中的重新导出 by [@stormslowly](https://github.com/stormslowly) in [#1232](https://github.com/umijs/mako/pull/1232)
+- 修复: worker 循环依赖问题 by [@xusd320](https://github.com/xusd320) in [#1247](https://github.com/umijs/mako/pull/1247)
+
+## 0.5.3
+
+`2024-06-04`
+
+- 修复: 更新 chunk URL 映射，当在监视模式中添加异步导入时 by [@xusd320](https://github.com/xusd320) in [#1220](https://github.com/umijs/mako/pull/1220)
+- 修复: 非点号开头的模式未匹配 by [@stormslowly](https://github.com/stormslowly) in [#1230](https://github.com/umijs/mako/pull/1230)
+- 修复(fix_helper_inject_position): 导出变量 ctxt 缺失 by [@sorrycc](https://github.com/sorrycc) in [#1236](https://github.com/umijs/mako/pull/1236)
+- 优化: 更新 mako bundler 以适应新的 mako 版本 by [@Jinbao1001](https://github.com/Jinbao1001) in [#1229](https://github.com/umijs/mako/pull/1229)
+
+## 0.5.2
+
+`2024-05-31`
+
+- 新增(experimental): SSU 提供功能 by [@stormslowly](https://github.com/stormslowly) in [#1186](https://github.com/umijs/mako/pull/1186)
+- 修复: 当 hmr 为 false 时不生成 hmr chunk 和 json by [@sorrycc](https://github.com/sorrycc) in [#1223](https://github.com/umijs/mako/pull/1223)
+- 修复: chunk 运行时模板无法兼容旧设备 by [@PeachScript](https://github.com/PeachScript) in [#1227](https://github.com/umijs/mako/pull/1227)
+- 其他：支持本地使用 musl 发布 by [@sorrycc](https://github.com/sorrycc) in [#1221](https://github.com/umijs/mako/pull/1221)
+
 ## 0.5.1
 
 `2024-05-30`
@@ -6,7 +51,6 @@
 - 新增 x86\_64 linux musl 支持 by [@stormslowly](https://github.com/stormslowly) in [#1218](https://github.com/umijs/mako/pull/1218)
 - 修复模块合并获取模块导出符号解析的错误 by [@stormslowly](https://github.com/stormslowly) in [#1216](https://github.com/umijs/mako/pull/1216)
 - 修复循环依赖下导致 HRM 报错的问题 by [@stormslowly](https://github.com/stormslowly) in [#1191](https://github.com/umijs/mako/pull/1191)
-
 
 ## 0.5.0
 

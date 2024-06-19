@@ -1,4 +1,5 @@
 {
+  "analyze": {},
   "externals": {},
   "_treeShaking": "basic",
   "minify": true,

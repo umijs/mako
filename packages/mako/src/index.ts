@@ -1,43 +1,48 @@
 import fs from 'fs';
 import path from 'path';
 import { omit } from 'lodash';
+import resolve from 'resolve';
 import * as binding from '../binding';
 import { ForkTSChecker as ForkTSChecker } from './forkTSChecker';
 import { LessLoaderOpts, lessLoader } from './lessLoader';
 
-interface ExtraBuildParams {
+type Config = binding.BuildParams['config'] & {
+  plugins?: binding.BuildParams['plugins'];
   less?: LessLoaderOpts;
   forkTSChecker?: boolean;
-}
+};
 
-type BuildParams = binding.BuildParams & ExtraBuildParams;
+type BuildParams = {
+  config: Config;
+  root: binding.BuildParams['root'];
+  watch: binding.BuildParams['watch'];
+};
+
 export { BuildParams };
 
 // ref:
 // https://github.com/vercel/next.js/pull/51883
 function blockStdout() {
-  if (process.platform === 'darwin') {
-    // rust needs stdout to be blocking, otherwise it will throw an error (on macOS at least) when writing a lot of data (logs) to it
-    // see https://github.com/napi-rs/napi-rs/issues/1630
-    // and https://github.com/nodejs/node/blob/main/doc/api/process.md#a-note-on-process-io
-    if ((process.stdout as any)._handle != null) {
-      (process.stdout as any)._handle.setBlocking(true);
-    }
-    if ((process.stderr as any)._handle != null) {
-      (process.stderr as any)._handle.setBlocking(true);
-    }
+  // rust needs stdout to be blocking, otherwise it will throw an error (on macOS at least) when writing a lot of data (logs) to it
+  // see https://github.com/napi-rs/napi-rs/issues/1630
+  // and https://github.com/nodejs/node/blob/main/doc/api/process.md#a-note-on-process-io
+  if ((process.stdout as any)._handle != null) {
+    (process.stdout as any)._handle.setBlocking(true);
+  }
+  if ((process.stderr as any)._handle != null) {
+    (process.stderr as any)._handle.setBlocking(true);
   }
 }
 
 export async function build(params: BuildParams) {
   blockStdout();
 
-  params.plugins = params.plugins || [];
+  params.config.plugins = params.config.plugins || [];
   params.config.resolve = params.config.resolve || {};
   params.config.resolve.alias = params.config.resolve.alias || {};
 
   let makoConfig: any = {};
-  const makoConfigPath = path.join(params.root, 'mako.config.json');
+  let makoConfigPath = path.join(params.root, 'mako.config.json');
   if (fs.existsSync(makoConfigPath)) {
     try {
       makoConfig = JSON.parse(fs.readFileSync(makoConfigPath, 'utf-8'));
@@ -67,25 +72,25 @@ export async function build(params: BuildParams) {
 
   // built-in less-loader
   let less = lessLoader(null, {
-    modifyVars: params.less?.modifyVars || {},
-    math: params.less?.math,
-    sourceMap: params.less?.sourceMap || false,
+    modifyVars: params.config.less?.modifyVars || {},
+    math: params.config.less?.math,
+    sourceMap: params.config.less?.sourceMap || false,
     plugins: [
       ['less-plugin-resolve', { aliases: params.config.resolve.alias! }],
-      ...(params.less?.plugins || []),
+      ...(params.config.less?.plugins || []),
     ],
   });
-  params.plugins.push({
+  params.config.plugins.push({
     name: 'less',
     async load(filePath: string) {
-      let lessResult = await less(filePath);
+      let lessResult = await less.render(filePath);
       if (lessResult) {
         return lessResult;
       }
     },
     generateEnd() {
       if (!params.watch) {
-        lessLoader.terminate();
+        less.terminate();
       }
     },
   });
@@ -113,12 +118,45 @@ export async function build(params: BuildParams) {
     });
   }
 
-  const buildParams = omit(params, ['less', 'forkTSChecker']);
+  let plugins = params.config.plugins;
+  plugins = plugins.map((plugin: any) => {
+    if (typeof plugin === 'string') {
+      let fn = require(
+        resolve.sync(plugin, {
+          basedir: params.root,
+        }),
+      );
+      return fn.default || fn;
+    } else {
+      return plugin;
+    }
+  });
+  makoConfig.plugins?.forEach((plugin: any) => {
+    if (typeof plugin === 'string') {
+      let fn = require(
+        resolve.sync(plugin, {
+          basedir: params.root,
+        }),
+      );
+      plugins.push(fn.default || fn);
+    } else {
+      throw new Error(
+        `Invalid plugin: ${plugin} in mako.config.json, only support string type plugin here.`,
+      );
+    }
+  });
+  params.config = omit(params.config, [
+    'less',
+    'forkTSChecker',
+    'plugins',
+  ]) as BuildParams['config'];
+  await binding.build({
+    ...params,
+    plugins,
+  });
 
-  await binding.build(buildParams);
-
-  if (params.forkTSChecker) {
-    const forkTypeChecker = new ForkTSChecker({
+  if (params.config.forkTSChecker) {
+    let forkTypeChecker = new ForkTSChecker({
       root: params.root,
       watch: params.watch,
     });

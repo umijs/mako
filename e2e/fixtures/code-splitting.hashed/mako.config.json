@@ -1,13 +1,16 @@
 {
   "moduleIdStrategy": "hashed",
   "codeSplitting": {
-    "minSize": 1,
-    "groups": [
-      {
-        "name": "common",
-        "test": "utils\\.ts",
-        "minSize": 1
-      }
-    ]
+    "strategy": "advanced",
+    "options": {
+      "minSize": 1,
+      "groups": [
+        {
+          "name": "common",
+          "test": "utils\\.ts",
+          "minSize": 1
+        }
+      ]
+    }
   }
 }

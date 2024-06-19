@@ -217,12 +217,13 @@ pub fn mark_async(
             .map(|(_, dep, _)| dep.clone())
             .collect();
         let module = module_graph.get_module_mut(module_id).unwrap();
-        let info = module.info.as_mut().unwrap();
-        // a module with async deps need to be polluted into async module
-        if !info.is_async && !async_deps.is_empty() {
-            info.is_async = true;
+        if let Some(info) = module.info.as_mut() {
+            // a module with async deps need to be polluted into async module
+            if !info.is_async && !async_deps.is_empty() {
+                info.is_async = true;
+            }
+            async_deps_by_module_id.insert(module_id.clone(), async_deps);
         }
-        async_deps_by_module_id.insert(module_id.clone(), async_deps);
     });
     async_deps_by_module_id
 }
@@ -402,7 +403,7 @@ __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
     }
 
     fn run(js_code: &str) -> String {
-        let mut test_utils = TestUtils::gen_js_ast(js_code.to_string());
+        let mut test_utils = TestUtils::gen_js_ast(js_code);
         let mut chunk = Chunk::new(
             "./async".to_string().into(),
             ChunkType::Entry("./async".to_string().into(), "async".to_string(), false),

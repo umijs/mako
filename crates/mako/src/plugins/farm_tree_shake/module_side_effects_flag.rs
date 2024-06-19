@@ -73,16 +73,17 @@ impl ModuleInfo {
     }
 }
 
-#[allow(dead_code)]
 fn match_glob_pattern(pattern: &str, path: &str) -> bool {
+    let trimmed = path.trim_start_matches("./");
+
     // TODO: cache
     if !pattern.contains('/') {
         return Pattern::new(format!("**/{}", pattern).as_str())
             .unwrap()
-            .matches(path);
+            .matches(trimmed);
     }
 
-    glob_match(pattern, path)
+    glob_match(pattern.trim_start_matches("./"), trimmed)
 }
 
 #[cfg(test)]
@@ -91,8 +92,18 @@ mod tests {
     use crate::utils::test_helper::{get_module, setup_compiler};
 
     #[test]
-    fn test_path_side_effects_flag() {
+    fn test_path_side_effects_no_dot_start_pattern() {
+        assert!(match_glob_pattern("esm/index.js", "./esm/index.js",));
+    }
+
+    #[test]
+    fn test_exact_path_side_effects_flag() {
         assert!(match_glob_pattern("./src/index.js", "./src/index.js",));
+    }
+
+    #[test]
+    fn test_exact_path_side_effects_flag_negative() {
+        assert!(!match_glob_pattern("./src/index.js", "./dist/index.js",));
     }
 
     #[test]
@@ -100,6 +111,14 @@ mod tests {
         assert!(match_glob_pattern(
             "./src/lib/**/*.s.js",
             "./src/lib/apple/pie/index.s.js",
+        ));
+    }
+
+    #[test]
+    fn test_double_wild_starts_effects_flag() {
+        assert!(match_glob_pattern(
+            "**/index.js",
+            "./deep/lib/file/index.js",
         ));
     }
 

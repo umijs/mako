@@ -15,7 +15,6 @@ use miette::{miette, ByteOffset, Diagnostic, NamedSource, SourceOffset, SourceSp
 use serde::Serialize;
 
 use crate::features::node::Node;
-use crate::generate::optimize_chunk;
 use crate::{plugins, visitors};
 
 #[derive(Debug, Diagnostic)]
@@ -92,7 +91,7 @@ macro_rules! create_deserialize_fn {
 create_deserialize_fn!(deserialize_hmr, HmrConfig);
 create_deserialize_fn!(deserialize_dev_server, DevServerConfig);
 create_deserialize_fn!(deserialize_manifest, ManifestConfig);
-create_deserialize_fn!(deserialize_code_splitting, CodeSplittingStrategy);
+create_deserialize_fn!(deserialize_code_splitting, CodeSplitting);
 create_deserialize_fn!(deserialize_px2rem, Px2RemConfig);
 create_deserialize_fn!(deserialize_umd, String);
 create_deserialize_fn!(deserialize_devtool, DevtoolConfig);
@@ -189,16 +188,42 @@ pub enum ModuleIdStrategy {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CodeSplittingGranularOptions {
+    pub framework_packages: Vec<String>,
+    #[serde(default = "GenericUsizeDefault::<160000>::value")]
+    pub lib_min_size: usize,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct StatsConfig {
     pub modules: bool,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct AnalyzeConfig {}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub enum CodeSplittingStrategy {
     #[serde(rename = "auto")]
     Auto,
-    #[serde(untagged)]
-    Advanced(OptimizeChunkOptions),
+    #[serde(rename = "granular")]
+    Granular,
+    #[serde(rename = "advanced")]
+    Advanced,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+#[serde(untagged)]
+pub enum CodeSplittingStrategyOptions {
+    Granular(CodeSplittingGranularOptions),
+    Advanced(CodeSplittingAdvancedOptions),
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct CodeSplitting {
+    pub strategy: CodeSplittingStrategy,
+    pub options: Option<CodeSplittingStrategyOptions>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Copy, Debug)]
@@ -253,19 +278,19 @@ pub struct TransformImportConfig {
     pub style: Option<TransformImportStyle>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Hash)]
 pub enum ExternalAdvancedSubpathConverter {
     PascalCase,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Hash)]
 #[serde(untagged)]
 pub enum ExternalAdvancedSubpathTarget {
     Empty,
     Tpl(String),
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Hash)]
 pub struct ExternalAdvancedSubpathRule {
     pub regex: String,
     #[serde(with = "external_target_format")]
@@ -306,13 +331,14 @@ mod external_target_format {
         }
     }
 }
-#[derive(Deserialize, Serialize, Debug)]
+
+#[derive(Deserialize, Serialize, Debug, Hash)]
 pub struct ExternalAdvancedSubpath {
     pub exclude: Option<Vec<String>>,
     pub rules: Vec<ExternalAdvancedSubpathRule>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Hash)]
 pub struct ExternalAdvanced {
     pub root: String,
     #[serde(rename = "type")]
@@ -321,7 +347,7 @@ pub struct ExternalAdvanced {
     pub subpath: Option<ExternalAdvancedSubpath>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Hash)]
 #[serde(untagged)]
 pub enum ExternalConfig {
     Basic(String),
@@ -441,6 +467,7 @@ pub struct Config {
     pub platform: Platform,
     pub module_id_strategy: ModuleIdStrategy,
     pub define: HashMap<String, Value>,
+    pub analyze: Option<AnalyzeConfig>,
     pub stats: Option<StatsConfig>,
     pub mdx: bool,
     #[serde(deserialize_with = "deserialize_hmr")]
@@ -448,7 +475,7 @@ pub struct Config {
     #[serde(deserialize_with = "deserialize_dev_server")]
     pub dev_server: Option<DevServerConfig>,
     #[serde(deserialize_with = "deserialize_code_splitting", default)]
-    pub code_splitting: Option<CodeSplittingStrategy>,
+    pub code_splitting: Option<CodeSplitting>,
     #[serde(deserialize_with = "deserialize_px2rem", default)]
     pub px2rem: Option<Px2RemConfig>,
     pub hash: bool,
@@ -507,7 +534,6 @@ pub struct Config {
     pub use_define_for_class_fields: bool,
 }
 
-#[allow(dead_code)]
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub enum OptimizeAllowChunks {
     #[serde(rename = "all")]
@@ -521,19 +547,27 @@ pub enum OptimizeAllowChunks {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct OptimizeChunkOptions {
-    #[serde(default = "optimize_chunk::default_min_size")]
+pub struct CodeSplittingAdvancedOptions {
+    #[serde(default = "GenericUsizeDefault::<20000>::value")]
     pub min_size: usize,
     pub groups: Vec<OptimizeChunkGroup>,
 }
 
-impl Default for OptimizeChunkOptions {
+impl Default for CodeSplittingAdvancedOptions {
     fn default() -> Self {
-        OptimizeChunkOptions {
-            min_size: optimize_chunk::default_min_size(),
+        CodeSplittingAdvancedOptions {
+            min_size: GenericUsizeDefault::<20000>::value(),
             groups: vec![],
         }
     }
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub enum OptimizeChunkNameSuffixStrategy {
+    #[serde(rename = "packageName")]
+    PackageName,
+    #[serde(rename = "dependentsHash")]
+    DependentsHash,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -541,13 +575,17 @@ impl Default for OptimizeChunkOptions {
 pub struct OptimizeChunkGroup {
     pub name: String,
     #[serde(default)]
+    pub name_suffix: Option<OptimizeChunkNameSuffixStrategy>,
+    #[serde(default)]
     pub allow_chunks: OptimizeAllowChunks,
-    #[serde(default = "optimize_chunk::default_min_chunks")]
+    #[serde(default = "GenericUsizeDefault::<1>::value")]
     pub min_chunks: usize,
-    #[serde(default = "optimize_chunk::default_min_size")]
+    #[serde(default = "GenericUsizeDefault::<20000>::value")]
     pub min_size: usize,
-    #[serde(default = "optimize_chunk::default_max_size")]
+    #[serde(default = "GenericUsizeDefault::<5000000>::value")]
     pub max_size: usize,
+    #[serde(default)]
+    pub min_module_size: Option<usize>,
     #[serde(default)]
     pub priority: i8,
     #[serde(default, with = "optimize_test_format")]
@@ -556,17 +594,20 @@ pub struct OptimizeChunkGroup {
 
 impl Default for OptimizeChunkGroup {
     fn default() -> Self {
-        OptimizeChunkGroup {
-            name: String::default(),
+        Self {
             allow_chunks: OptimizeAllowChunks::default(),
-            min_chunks: optimize_chunk::default_min_chunks(),
-            min_size: optimize_chunk::default_min_size(),
-            max_size: optimize_chunk::default_max_size(),
+            min_chunks: GenericUsizeDefault::<1>::value(),
+            min_size: GenericUsizeDefault::<20000>::value(),
+            max_size: GenericUsizeDefault::<5000000>::value(),
+            name: String::default(),
+            name_suffix: None,
+            min_module_size: None,
             test: None,
             priority: i8::default(),
         }
     }
 }
+
 /**
  * custom formatter for convert string to regex
  * @see https://serde.rs/custom-date-format.html
@@ -867,8 +908,17 @@ pub enum ConfigError {
     InvalidateDefineConfig(String),
 }
 
+struct GenericUsizeDefault<const U: usize>;
+
+impl<const U: usize> GenericUsizeDefault<U> {
+    fn value() -> usize {
+        U
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::config::config::GenericUsizeDefault;
     use crate::config::{Config, Mode, Platform};
 
     #[test]
@@ -946,5 +996,10 @@ mod tests {
             config.ignores.iter().any(|i| i.contains("|fs|")),
             "ignore Node.js standard library by default if platform is node",
         );
+    }
+
+    #[test]
+    fn test_generic_usize_default() {
+        assert!(GenericUsizeDefault::<100>::value() == 100usize)
     }
 }

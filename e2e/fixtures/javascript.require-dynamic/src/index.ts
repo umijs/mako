@@ -8,7 +8,9 @@ function loadLang2(lang) {
 
 function loadLangExt(lang, ext) {
   // nested dynamic require + with then callback
-  return import(`./i18n/${lang}.${(require(`./ext/${ext}`)).default}`).then(m => m);
+  return  import(`./i18n/${lang}.${(require(`./ext/${ext}`)).default}`)
+
+    .then(m => m);
 }
 
 

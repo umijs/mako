@@ -1,15 +1,5 @@
 import url from 'url';
-/**
- * When on platform linux ant node version is lower then 20.3.0,
- * the worker pool may exit unexpectedly, we need to disable it.
- * This may be is problem of nodejs.
- */
-const [NodeMajorVersion, NodeMirrorVersion] = process.versions.node
-  .split('.')
-  .map((v) => parseInt(v));
-const DisableParallelLess =
-  process.platform === 'linux' &&
-  (NodeMajorVersion < 20 || (NodeMajorVersion === 20 && NodeMirrorVersion < 3));
+import { createParallelLoader } from './parallelLessLoader';
 
 export interface LessLoaderOpts {
   modifyVars: Record<string, string>;
@@ -34,26 +24,28 @@ export interface LessLoaderOpts {
 }
 
 function lessLoader(fn: Function | null, opts: LessLoaderOpts) {
-  return async function (filePath: string) {
-    let pathname = '';
-    try {
-      pathname = url.parse(filePath).pathname || '';
-    } catch (e) {
-      return;
-    }
-    if (pathname?.endsWith('.less')) {
-      return DisableParallelLess
-        ? require('./render').render(pathname, opts)
-        : require('./parallelLessLoader').render(pathname, opts);
-    } else {
-      // TODO: remove this
-      fn && fn(filePath);
-    }
+  let parallelLessLoader: ReturnType<typeof createParallelLoader> | undefined;
+  return {
+    render: async (filePath: string) => {
+      let filename = '';
+      try {
+        filename = url.parse(filePath).pathname || '';
+      } catch (e) {
+        return;
+      }
+      if (filename?.endsWith('.less')) {
+        parallelLessLoader ||= createParallelLoader();
+        return await parallelLessLoader.run({ filename, opts });
+      } else {
+        // TODO: remove this
+        fn && fn(filePath);
+      }
+    },
+    terminate: () => {
+      parallelLessLoader?.destroy();
+      parallelLessLoader = undefined;
+    },
   };
 }
-
-lessLoader.terminate = () => {
-  !DisableParallelLess && require('./parallelLessLoader').terminatePool();
-};
 
 export { lessLoader };

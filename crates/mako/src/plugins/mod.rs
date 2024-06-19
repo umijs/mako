@@ -12,4 +12,5 @@ pub mod invalid_webpack_syntax;
 pub mod manifest;
 pub mod minifish;
 pub mod runtime;
+pub mod ssu;
 pub mod wasm_runtime;

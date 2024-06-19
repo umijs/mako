@@ -23,6 +23,21 @@ impl TryResolve {
         if is_commonjs_require(call_expr, &self.unresolved_mark) {
             let first_arg = get_first_str_arg(call_expr);
             if let Some(source) = first_arg {
+                // support ignores config
+                let mut deps = vec![Dependency {
+                    source: source.clone(),
+                    resolve_as: None,
+                    resolve_type: ResolveType::Require,
+                    order: 0,
+                    span: None,
+                }];
+                self.context
+                    .plugin_driver
+                    .before_resolve(&mut deps, &self.context)
+                    .unwrap(); // before_resolve won't panic
+                if deps.is_empty() {
+                    return;
+                }
                 let result = resolve::resolve(
                     self.path.as_str(),
                     &Dependency {
@@ -173,7 +188,7 @@ try {
     }
 
     fn run(js_code: &str) -> String {
-        let mut test_utils = TestUtils::gen_js_ast(js_code.to_string());
+        let mut test_utils = TestUtils::gen_js_ast(js_code);
         let ast = test_utils.ast.js_mut();
         GLOBALS.set(&test_utils.context.meta.script.globals, || {
             let mut visitor = TryResolve {

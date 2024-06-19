@@ -8,20 +8,24 @@ self.$RefreshSig$ = () => (type) => type;
   let hadRuntimeError = false;
 
   function startReportingRuntimeErrors(options) {
-    const errorHandler = () => {
-      options.onError();
+    const errorHandler = (e) => {
+      options.onError(e);
       hadRuntimeError = true;
     };
     window.addEventListener('error', errorHandler);
-    window.addEventListener('unhandledrejection', errorHandler);
+    // window.addEventListener('unhandledrejection', errorHandler);
     return () => {
       window.removeEventListener('error', errorHandler);
-      window.removeEventListener('unhandledrejection', errorHandler);
+      // window.removeEventListener('unhandledrejection', errorHandler);
     };
   }
 
   const stopReportingRuntimeError = startReportingRuntimeErrors({
-    onError: function () {
+    onError: function (e) {
+      console.error(
+        `[Mako] Runtime error found, and it will cause a full reload. If you want HMR to work, please fix the error.`,
+        e,
+      );
       hadRuntimeError = true;
     },
   });
@@ -58,8 +62,7 @@ self.$RefreshSig$ = () => (type) => type;
 
     if (latestHash !== require.currentHash()) {
       updating = true;
-      return module.hot
-        .check()
+      return Promise.all([module.hot.check(), module.hot.updateChunksUrlMap()])
         .then(() => {
           updating = false;
           return runHotUpdate();

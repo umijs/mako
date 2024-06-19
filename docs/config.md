@@ -18,6 +18,15 @@ Notice: When you're using mako with Umi, prefer to config the bundler in `.umirc
 
 ## Configuration items
 
+### analyze
+
+- Type: `{} | false`
+- Default: `false`
+
+Whether to analyze the build artifacts.
+
+Notice: this configuration item is still WIP, the result may not be accurate.
+
 ### autoCSSModules
 
 - Type: `boolean`
@@ -43,36 +52,65 @@ Whether to output cjs format code.
 
 ### codeSplitting
 
-- Type: `false | "auto" | object`
+- Type: `false |  { strategy: "auto" } | { strategy: "granular", options: object } | { strategy: "advanced", options: object }`
 - Default: `false`
 
-Specify the code splitting strategy. Use `auto` for SPA, and `object` for MPA.
+Specify the code splitting strategy. Use `auto` or `granular` strategy for SPA, and `advance` strategy for MPA.
 
 ```ts
+// auto strategy
 {
   codeSplitting: {
-    //（optional）The minimum size of the split chunk, async chunks smaller than this size will be merged into the entry chunk
-    minSize: 20000,
-    // Split chunk grouping configuration
-    groups: [
-      {
-        // The name of the chunk group, currently only string values are supported
-        name: "common",
-        //（optional）The chunk type that the chunk group contains modules belong to, enum values are "async" (default) | "entry" | "all"
-        allowChunks: "entry",
-        //（optional）The minimum number of references to modules contained in the chunk group
-        minChunks: 1,
-        //（optional）The minimum size of the chunk group to take effect
-        minSize: 20000,
-        //（optional）The maximum size of the chunk group, exceeding this size will be automatically split again
-        maxSize: 5000000,
-        //（optional）The matching priority of the chunk group, the larger the value, the higher the priority
-        priority: 0,
-        //（optional）The matching regular expression of the chunk group
-        test: "(?:)",
-      }
-    ],
-  },
+    strategy: "auto";
+  }
+}
+```
+
+```ts
+// granular strategy
+{
+  codeSplitting:  {
+    strategy: "granular",
+    options: {
+      // Node modules those will be split to framework chunk
+      frameworkPackages: [ "react", "antd" ],
+      // (optional) The minimum size of the node module to be split
+      lib_min_size: 160000
+    }
+  }
+}
+
+```
+
+```ts
+// advance strategy
+{
+  codeSplitting: {
+    strategy: "advanced",
+    options: {
+      //（optional）The minimum size of the split chunk, async chunks smaller than this size will be merged into the entry chunk
+      minSize: 20000,
+      // Split chunk grouping configuration
+      groups: [
+        {
+          // The name of the chunk group, currently only string values are supported
+          name: "common",
+          //（optional）The chunk type that the chunk group contains modules belong to, enum values are "async" (default) | "entry" | "all"
+          allowChunks: "entry",
+          //（optional）The minimum number of references to modules contained in the chunk group
+          minChunks: 1,
+          //（optional）The minimum size of the chunk group to take effect
+          minSize: 20000,
+          //（optional）The maximum size of the chunk group, exceeding this size will be automatically split again
+          maxSize: 5000000,
+          //（optional）The matching priority of the chunk group, the larger the value, the higher the priority
+          priority: 0,
+          //（optional）The matching regular expression of the chunk group
+          test: "(?:)",
+        }
+      ],
+    },
+  }
 }
 ```
 
@@ -133,7 +171,7 @@ Whether to convert dynamic import to require. Useful when using node platform, o
 e.g.
 
 ```ts
-import("./a.js")
+import("./a.js");
 // => require("./a.js")
 ```
 
@@ -172,7 +210,7 @@ e.g.
 ### experimental.webpackSyntaxValidate
 
 - Type: `string[]`
-- 默认值: `[]`
+- Default: `[]`
 
 Experimental configuration, specify the packages that are allowed to use webpack syntax.
 
@@ -224,6 +262,13 @@ Then, when the code encounters `import foo from "foo"`, it will be replaced with
 - Default: `false`
 
 Whether to fix flexbugs.
+
+### forkTsChecker
+
+- Type: `boolean`
+- Default: `false`
+
+Whether to run TypeScript type checker on a separate process.
 
 ### hash
 
@@ -280,6 +325,32 @@ Notice: This configuration can only be used with umd, because injecting CSS is n
 - Default: `10000`
 
 Specify the size limit of the assets file that needs to be converted to `base64` format.
+
+### less
+
+- Type: `Object`
+- Default: `{}`
+
+Specify the less configuration.
+
+e.g.
+
+```ts
+{
+  modifyVars: {
+    'primary-color': '#1DA57A',
+    'link-color': '#1DA57A',
+  },
+  sourceMap: {
+    sourceMapFileInline: true,
+    outputSourceFiles: true,
+  },
+  math: 'always',
+  plugins: [
+    [require.resolve("less-plugin-clean-css"), { roundingPrecision: 1 }]
+  ],
+}
+```
 
 ### manifest
 
@@ -357,6 +428,37 @@ Specify the platform to build, `"browser"` or `"node"`.
 
 Notice: When using `"node"`, you also need to set `dynamicImportToRequire` to `true`, because the runtime does not yet support node-style chunk loading.
 
+### plugins
+
+- Type: `(string | JSHooks)[]`
+- Default: `[]`
+
+Specify the plugins to use.
+
+```ts
+// JSHooks
+{
+  name?: string;
+  buildStart?: () => void;
+  generateEnd?: (data: {
+    isFirstCompile: boolean;
+    time: number;
+    stats: {
+      startTime: number;
+      endTime: number;
+    };
+  }) => void;
+  load?: (filePath: string) => Promise<{ content: string, type: 'css'|'js'|'jsx'|'ts'|'tsx' }>;
+}
+```
+
+JSHooks is a set of hook functions used to extend the compilation process of Mako.
+
+- `name`, plugin name
+- `buildStart`, called before Build starts
+- `load`, used to load files, return file content and type, type supports `css`, `js`, `jsx`, `ts`, `tsx`
+- `generateEnd`, called after Generate completes, `isFirstCompile` can be used to determine if it is the first compilation, `time` is the compilation time, and `stats` is the compilation statistics information
+
 ### providers
 
 - Type: `Record<string, [string, string]>`
@@ -378,9 +480,9 @@ e.g.
 These configurations will replace the identifiers `process` and `Buffer` with the code that require the corresponding module when encountered.
 
 ```ts
-process
+process;
 // => require("process")
-Buffer
+Buffer;
 // => require("buffer").Buffer
 ```
 
@@ -425,8 +527,8 @@ When runtime is `automatic`, the output is as follows,
 ```ts
 import { jsx as _jsx } from "react/jsx-runtime";
 function App() {
-  return /*#__PURE__*/_jsx("div", {
-    children: "1"
+  return /*#__PURE__*/ _jsx("div", {
+    children: "1",
   });
 }
 ```
@@ -435,7 +537,7 @@ When runtime is `classic`, the output is as follows,
 
 ```ts
 function App() {
-  return /*#__PURE__*/React.createElement("div", null, "1");
+  return /*#__PURE__*/ React.createElement("div", null, "1");
 }
 ```
 
@@ -458,6 +560,34 @@ e.g.
       "@": "./src",
     },
     extensions: ["js", "jsx", "ts", "tsx"],
+  },
+}
+```
+
+Notice 1: If you want to alias a directory, please don't add the `/*` affix, we don't support it yet.
+
+e.g.
+
+```diff
+{
+  resolve: {
+    alias: {
+-       "@/src/*": "./src/*",
++       "@/src": "./src",
+    },
+  },
+}
+```
+
+Notice 2: If you want to alias to a local path, make sure to add the `./` prefix. Otherwise, it will be treated as a dependency module.
+
+```diff
+{
+  resolve: {
+    alias: {
+-       "@/src": "src",
++       "@/src": "./src",
+    },
   },
 }
 ```
@@ -520,7 +650,7 @@ Whether to output umd format.
 
 ### watch
 
-- Type: `{ ignorePaths: string[] }`
+- Type: `{ ignorePaths: string[] } | false`
 - Default: `{ ignorePaths: [] }`
 
 Watch related configuration.

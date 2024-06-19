@@ -4,13 +4,16 @@
     "b": "b.ts"
   },
   "codeSplitting": {
-    "groups": [
-      {
-        "name": "common",
-        "allowChunks": "entry",
-        "minSize": 1,
-        "test": ".*"
-      }
-    ]
+    "strategy": "advanced",
+    "options": {
+      "groups": [
+        {
+          "name": "common",
+          "allowChunks": "entry",
+          "minSize": 1,
+          "test": ".*"
+        }
+      ]
+    }
   }
 }

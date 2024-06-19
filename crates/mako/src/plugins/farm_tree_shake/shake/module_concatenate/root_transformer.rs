@@ -218,7 +218,7 @@ impl<'a> VisitMut for RootTransformer<'a> {
                                 }
                             }
 
-                            let define_exports: Stmt = member_expr!(DUMMY_SP, __mako_require__.e)
+                            let define_exports: Stmt = member_expr!(DUMMY_SP, __mako_require__.es)
                                 .as_call(
                                     DUMMY_SP,
                                     vec![

@@ -1,11 +1,12 @@
 pub(crate) mod update;
 mod watch;
 
-use std::net::SocketAddr;
+use std::net::{SocketAddr, TcpListener};
 use std::path::PathBuf;
 use std::sync::{mpsc, Arc};
 use std::time::{Duration, Instant, UNIX_EPOCH};
 
+use get_if_addrs::get_if_addrs;
 use mako_core::anyhow::{self, Result};
 use mako_core::colored::Colorize;
 use mako_core::futures::{SinkExt, StreamExt};
@@ -17,6 +18,7 @@ use mako_core::tokio::sync::broadcast;
 use mako_core::tracing::debug;
 use mako_core::tungstenite::Message;
 use mako_core::{hyper, hyper_staticfile, hyper_tungstenite};
+use open;
 
 use crate::compiler::{Compiler, Context};
 use crate::plugin::{PluginGenerateEndParams, PluginGenerateStats};
@@ -55,7 +57,7 @@ impl DevServer {
 
         // server
         if self.compiler.context.config.dev_server.is_some() {
-            let port = self
+            let config_port = self
                 .compiler
                 .context
                 .config
@@ -65,7 +67,7 @@ impl DevServer {
                 .port;
             // TODO: host
             // let host = self.compiler.context.config.hmr_host.clone();
-            // TODO: find free port
+            let port = Self::find_available_port("127.0.0.1".to_string(), config_port);
             let addr: SocketAddr = ([127, 0, 0, 1], port).into();
             let context = self.compiler.context.clone();
             let txws = txws.clone();
@@ -84,6 +86,34 @@ impl DevServer {
             });
             let server = Server::bind(&addr).serve(make_svc);
             // TODO: print when mako is run standalone
+            if std::env::var("MAKO_CLI").is_ok() {
+                println!();
+                if config_port != port {
+                    println!(
+                        "{}",
+                        format!("Port {} is in use, using {} instead.", config_port, port)
+                            .to_string()
+                            .yellow(),
+                    );
+                }
+                println!(
+                    "Local:   {}",
+                    format!("http://localhost:{}/", port).to_string().cyan()
+                );
+                let ips = Self::get_ips();
+                let ips = ips
+                    .iter()
+                    .filter(|ip| !ip.starts_with("127."))
+                    .collect::<Vec<_>>();
+                for ip in ips {
+                    println!(
+                        "Network: {}",
+                        format!("http://{}:{}/", ip, port).to_string().cyan()
+                    );
+                }
+                println!();
+                open::that(format!("http://localhost:{}/", port)).unwrap();
+            }
             debug!("Listening on http://{:?}", addr);
             if let Err(e) = server.await {
                 eprintln!("Error starting server: {:?}", e);
@@ -122,30 +152,74 @@ impl DevServer {
             }
             _ => {
                 // for bundle outputs
+
+                let ext = path.rsplit('.').next();
+                let content_type = match ext {
+                    None => "text/plain; charset=utf-8",
+                    Some("js") => "application/javascript; charset=utf-8",
+                    Some("css") => "text/css; charset=utf-8",
+                    Some("map") | Some("json") => "application/json; charset=utf-8",
+                    Some(_) => "text/plain; charset=utf-8",
+                };
+
                 // staticfile has 302 problems when modify tooooo fast in 1 second
                 // it will response 302 and we will get the old file
                 // TODO: fix the 302 problem?
                 if let Some(res) = context.get_static_content(path_without_slash_start) {
                     debug!("serve with context.get_static_content: {}", path);
-                    let ext = path.rsplit('.').next();
-                    let content_type = match ext {
-                        None => "text/plain; charset=utf-8",
-                        Some("js") => "application/javascript; charset=utf-8",
-                        Some("css") => "text/css; charset=utf-8",
-                        Some("map") | Some("json") => "application/json; charset=utf-8",
-                        Some(_) => "text/plain; charset=utf-8",
-                    };
+
                     return Ok(hyper::Response::builder()
                         .status(hyper::StatusCode::OK)
                         .header(CONTENT_TYPE, content_type)
                         .body(hyper::Body::from(res))
                         .unwrap());
                 }
+                // for cached dep
+                let abs_path = context
+                    .root
+                    .join("node_modules/.cache_mako/chunks")
+                    .join(path_without_slash_start);
+                if !path_without_slash_start.is_empty() && abs_path.exists() {
+                    return std::fs::read(abs_path).map_or(Ok(not_found_response()), |bytes| {
+                        Ok(hyper::Response::builder()
+                            .status(hyper::StatusCode::OK)
+                            .header(CONTENT_TYPE, content_type)
+                            .body(hyper::Body::from(bytes))
+                            .unwrap())
+                    });
+                }
+
                 // for hmr files
                 debug!("serve with staticfile server: {}", path);
                 let res = staticfile.serve(req).await;
                 res.map_err(anyhow::Error::from)
             }
+        }
+    }
+
+    fn get_ips() -> Vec<String> {
+        let mut ips = vec![];
+        match get_if_addrs() {
+            Ok(if_addrs) => {
+                for if_addr in if_addrs {
+                    if let get_if_addrs::IfAddr::V4(addr) = if_addr.addr {
+                        let ip = addr.ip.to_string();
+                        ips.push(ip);
+                    }
+                }
+            }
+            Err(_e) => {}
+        }
+        ips
+    }
+
+    fn find_available_port(host: String, port: u16) -> u16 {
+        let mut port = port;
+        if TcpListener::bind((host.clone(), port)).is_ok() {
+            port
+        } else {
+            port += 1;
+            Self::find_available_port(host, port)
         }
     }
 
@@ -267,17 +341,17 @@ impl DevServer {
             "hot update chunks generated, next_full_hash: {:?}",
             next_hash
         );
-        if !has_missing_deps {
-            println!(
-                "Hot rebuilt in {}",
-                format!("{}ms", t_compiler.elapsed().as_millis()).bold()
-            );
-        }
+        // if !has_missing_deps {
+        //     println!(
+        //         "Hot rebuilt in {}",
+        //         format!("{}ms", t_compiler.elapsed().as_millis()).bold()
+        //     );
+        // }
         if let Err(e) = next_hash {
             eprintln!("Error in watch: {:?}", e);
             return Err(e);
         }
-        let (next_snapshot_hash, next_hmr_hash) = next_hash.unwrap();
+        let (next_snapshot_hash, next_hmr_hash, current_hmr_hash) = next_hash.unwrap();
         debug!(
             "hash info, next: {:?}, last: {:?}, is_equal: {}",
             next_snapshot_hash,
@@ -296,7 +370,7 @@ impl DevServer {
 
         compiler.context.stats_info.clear_assets();
 
-        if let Err(e) = compiler.emit_dev_chunks(next_hmr_hash) {
+        if let Err(e) = compiler.emit_dev_chunks(next_hmr_hash, current_hmr_hash) {
             debug!("  > build failed: {:?}", e);
             return Err(e);
         }

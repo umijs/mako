@@ -77,13 +77,40 @@ pub struct BuildParams {
         }
     >;
     copy?: string[];
-    codeSplitting?: false | "auto";
+    codeSplitting?:
+      | false
+      | {
+          strategy: 'auto';
+        }
+      | {
+          strategy: 'granular';
+          options: {
+            frameworkPackages: string[];
+            libMinSize?: number;
+          };
+        }
+      | {
+          strategy: "advanced",
+          options: {
+            minSize?: number;
+            groups: {
+              name: string;
+              allowChunks?: 'all' | 'entry' | 'async';
+              test?: string;
+              minChunks?: number;
+              minSize?: number;
+              maxSize?: number;
+              priority?: number;
+            }[];
+          }
+        };
     providers?: Record<string, string[]>;
     publicPath?: string;
     inlineLimit?: number;
     targets?: Record<string, number>;
     platform?: "node" | "browser";
-    hmr?: false | { host?: string; port?: number };
+    hmr?: false | {};
+    devServer?: false | { host?: string; port?: number };
     px2rem?: false | {
         root?: number;
         propBlackList?: string[];

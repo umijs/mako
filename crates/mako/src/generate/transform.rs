@@ -23,7 +23,7 @@ use mako_core::tracing::debug;
 
 use crate::ast::js_ast::JsAst;
 use crate::compiler::{Compiler, Context};
-use crate::module::{Dependency, ModuleAst, ModuleId, ResolveType};
+use crate::module::{Dependency, ModuleAst, ModuleId, ModuleType, ResolveType};
 use crate::utils::thread_pool;
 use crate::visitors::async_module::{mark_async, AsyncModule};
 use crate::visitors::css_imports::CSSImports;
@@ -42,6 +42,7 @@ impl Compiler {
             module_graph
                 .modules()
                 .into_iter()
+                .filter(|m| m.get_module_type() != ModuleType::PlaceHolder)
                 .map(|m| m.id.clone())
                 .collect::<Vec<_>>()
         };
@@ -75,7 +76,10 @@ pub fn transform_modules_in_thread(
         let context = context.clone();
         let rs = rs.clone();
         let module_id = module_id.clone();
-        let async_deps = async_deps_by_module_id.get(&module_id).unwrap().clone();
+        let async_deps = async_deps_by_module_id
+            .get(&module_id)
+            .expect(&module_id.id)
+            .clone();
         thread_pool::spawn(move || {
             let module_graph = context.module_graph.read().unwrap();
             let deps = module_graph.get_dependencies(&module_id);
@@ -240,9 +244,7 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()>
                         let mut meta_url_replacer = MetaUrlReplacer {};
                         ast.ast.visit_mut_with(&mut meta_url_replacer);
 
-                        let mut dynamic_import = DynamicImport {
-                            context: context.clone(),
-                        };
+                        let mut dynamic_import = DynamicImport::new(context.clone(), dep_map);
                         ast.ast.visit_mut_with(&mut dynamic_import);
 
                         // replace require to __mako_require__
