@@ -6,6 +6,7 @@ use mako_core::swc_css_ast::{AtRule, AtRulePrelude, ImportHref, Rule, Str, Style
 use mako_core::swc_css_compat::compiler::{self, Compiler};
 use mako_core::swc_ecma_preset_env::{self as swc_preset_env};
 use mako_core::swc_ecma_transforms::feature::FeatureFlag;
+use mako_core::swc_ecma_transforms::fixer::fixer;
 use mako_core::swc_ecma_transforms::{resolver, Assumptions};
 use mako_core::swc_ecma_transforms_optimization::simplifier;
 use mako_core::swc_ecma_transforms_optimization::simplify::{dce, Config as SimpilifyConfig};
@@ -168,6 +169,7 @@ impl Transform {
                         assumptions,
                         &mut FeatureFlag::default(),
                     )));
+                    folders.push(Box::new(fixer(Default::default())));
                     // simplify, but keep top level dead code
                     // e.g. import x from 'foo'; but x is not used
                     // this must be kept for tree shaking to work
