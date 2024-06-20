@@ -33,7 +33,7 @@ export interface BuildParams {
       skipWrite?: boolean;
     };
     resolve?: {
-      alias?: Array<[string, string]>;
+      alias?: Record<string, string>;
       extensions?: string[];
     };
     manifest?:

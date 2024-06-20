@@ -8,7 +8,7 @@ bundler
       entry: {
         index: 'index.ts',
       },
-      alias: [],
+      alias: {},
       jsMinifier: 'none',
       hash: false,
       targets: {
