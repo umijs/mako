@@ -14,6 +14,7 @@ use oxc_resolver::{Alias, AliasValue, ResolveError as OxcResolveError, ResolveOp
 mod resource;
 pub(crate) use resource::{ExternalResource, ResolvedResource, ResolverResource};
 
+use crate::ast::file::parse_path;
 use crate::compiler::Context;
 use crate::config::{
     Config, ExternalAdvancedSubpathConverter, ExternalAdvancedSubpathTarget, ExternalConfig,
@@ -52,7 +53,11 @@ pub fn resolve(
         return Ok(ResolverResource::Virtual(PathBuf::from(&dep.source)));
     }
 
-    let resolver = if parse_path(&dep.source)?.has_query("context") {
+    let has_context_query = parse_path(&dep.source)?
+        .2
+        .iter()
+        .any(|(k, _)| *k == "context");
+    let resolver = if has_context_query {
         resolvers.get(&ResolverType::Ctxt)
     } else if dep.resolve_type == ResolveType::Require {
         resolvers.get(&ResolverType::Cjs)
@@ -197,16 +202,24 @@ fn get_external_target(
     }
 }
 
-/*
- * Can't use "globalThis.{xxx}" because "globalThis.@ant-design/icons"
- * is syntax invalid
- */
 fn get_external_target_from_global_obj(global_obj_name: &str, external: &str) -> String {
-    format!("{}['{}']", global_obj_name, external)
+    let external = if external.contains('.') || (external.contains('[') && external.contains(']')) {
+        /*
+         * If the external value is like 'someNamespace.someValue' or 'someNamespace["someValue"]' eg window._ or window["_"],
+         * use it directly
+         */
+        format!(".{}", external)
+    } else {
+        /*
+         * Can't use "globalThis.{xxx}" because "globalThis.@ant-design/icons"
+         * is syntax invalid
+         */
+        format!("['{}']", external)
+    };
+
+    format!("{}{}", global_obj_name, external)
 }
 
-// TODO:
-// - 支持物理缓存，让第二次更快
 fn do_resolve(
     path: &str,
     source: &str,
@@ -401,42 +414,6 @@ pub fn clear_resolver_cache(resolvers: &Resolvers) {
         .for_each(|(_, resolver)| resolver.clear_cache());
 }
 
-// TODO: REMOVE THIS, pass file to resolve instead
-fn parse_path(path: &str) -> Result<FileRequest> {
-    let mut iter = path.split('?');
-    let path = iter.next().unwrap();
-    let query = iter.next().unwrap_or("");
-    let mut query_vec = vec![];
-    for pair in query.split('&') {
-        if pair.contains('=') {
-            let mut it = pair.split('=').take(2);
-            let kv = match (it.next(), it.next()) {
-                (Some(k), Some(v)) => (k.to_string(), v.to_string()),
-                _ => continue,
-            };
-            query_vec.push(kv);
-        } else if !pair.is_empty() {
-            query_vec.push((pair.to_string(), "".to_string()));
-        }
-    }
-    Ok(FileRequest {
-        path: path.to_string(),
-        query: query_vec,
-    })
-}
-
-#[derive(Debug, Clone)]
-pub struct FileRequest {
-    pub path: String,
-    pub query: Vec<(String, String)>,
-}
-
-impl FileRequest {
-    pub fn has_query(&self, key: &str) -> bool {
-        self.query.iter().any(|(k, _)| *k == key)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -514,6 +491,14 @@ mod tests {
                 "@ant-design/icons".to_string(),
                 ExternalConfig::Basic("@ant-design/icons".to_string()),
             ),
+            (
+                "@antv/g6".to_string(),
+                ExternalConfig::Basic("window['@antv/g6']".to_string()),
+            ),
+            (
+                "_".to_string(),
+                ExternalConfig::Basic("window._".to_string()),
+            ),
             ("empty".to_string(), ExternalConfig::Basic("".to_string())),
         ]);
         let x = external_resolve(
@@ -547,6 +532,41 @@ mod tests {
                 Some(
                     "(typeof globalThis !== 'undefined' ? globalThis : self)['@ant-design/icons']"
                         .to_string()
+                ),
+                None,
+            )
+        );
+        let x = external_resolve(
+            "test/resolve/normal",
+            None,
+            Some(&externals),
+            "index.ts",
+            "@antv/g6",
+        );
+        assert_eq!(
+            x,
+            (
+                "@antv/g6".to_string(),
+                Some(
+                    "(typeof globalThis !== 'undefined' ? globalThis : self).window['@antv/g6']"
+                        .to_string()
+                ),
+                None,
+            )
+        );
+        let x = external_resolve(
+            "test/resolve/normal",
+            None,
+            Some(&externals),
+            "index.ts",
+            "_",
+        );
+        assert_eq!(
+            x,
+            (
+                "_".to_string(),
+                Some(
+                    "(typeof globalThis !== 'undefined' ? globalThis : self).window._".to_string()
                 ),
                 None,
             )

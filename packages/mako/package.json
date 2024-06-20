@@ -1,6 +1,6 @@
 {
   "name": "@umijs/mako",
-  "version": "0.6.1-canary.20240614.1",
+  "version": "0.7.1",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -20,6 +20,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@types/resolve": "^1.20.6",
     "@swc/helpers": "0.5.1",
     "chalk": "^4.1.2",
     "less": "^4.2.0",
@@ -29,6 +30,8 @@
     "piscina": "^4.5.1",
     "react-error-overlay": "6.0.9",
     "react-refresh": "^0.14.0",
+    "resolve": "^1.22.8",
+    "semver": "^7.6.2",
     "yargs-parser": "^21.1.1"
   },
   "devDependencies": {
@@ -51,7 +54,7 @@
     "artifacts": "napi artifacts",
     "artifacts:local": "rm -rf tmp && mkdir tmp && cp *.node tmp/ && napi artifacts --dir ./tmp --dist npm",
     "build": "napi build --release --cargo-cwd ../../crates/binding --platform --js ./binding.js --dts ./binding.d.ts",
-    "clean": "rm -f *.node artifacts-*.tar",
+    "clean": "rm -rf *.node artifacts-*.tar node_modules/.cache",
     "postbuild": "npm run format",
     "build:mac:x86": "npm run build -- --target x86_64-apple-darwin",
     "build:mac:aarch": "npm run build -- --target aarch64-apple-darwin",
@@ -69,10 +72,10 @@
     "src:build": "father build"
   },
   "optionalDependencies": {
-    "@umijs/mako-darwin-arm64": "0.6.1-canary.20240614.1",
-    "@umijs/mako-darwin-x64": "0.6.1-canary.20240614.1",
-    "@umijs/mako-linux-x64-gnu": "0.6.1-canary.20240614.1",
-    "@umijs/mako-linux-x64-musl": "0.6.1-canary.20240614.1"
+    "@umijs/mako-darwin-arm64": "0.7.1",
+    "@umijs/mako-darwin-x64": "0.7.1",
+    "@umijs/mako-linux-x64-gnu": "0.7.1",
+    "@umijs/mako-linux-x64-musl": "0.7.1"
   },
   "repository": "git@github.com:umijs/mako.git"
 }

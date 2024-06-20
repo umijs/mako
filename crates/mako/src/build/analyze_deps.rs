@@ -77,10 +77,8 @@ impl AnalyzeDeps {
                 .map(|dep| Self::get_resolved_error(dep, context.clone()))
                 .collect::<Vec<String>>()
                 .join("\n");
-            // TODO:
-            // should we just throw an error here and decide whether to print or exit at the upper level?
             if context.args.watch {
-                eprint!("{}", messages);
+                eprintln!("{}", messages);
             } else {
                 return Err(anyhow!(AnalyzeDepsError::ModuleNotFound {
                     message: messages

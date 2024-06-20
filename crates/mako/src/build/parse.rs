@@ -95,7 +95,6 @@ impl Parse {
                     // transform
                     Transform::transform(&mut ast, &file, context.clone())?;
                     // analyze_deps
-                    // TODO: do not need to resolve here
                     let deps = AnalyzeDeps::analyze_deps(&ast, &file, context.clone())?;
                     if !deps.missing_deps.is_empty() {
                         return Err(anyhow!(ParseError::InlineCSSMissingDeps {
@@ -112,7 +111,6 @@ impl Parse {
                         .join("\n");
                     let ast = ast.as_css_mut();
                     // transform (remove @imports)
-                    // TODO: Render::transform(&mut ast, &file, context.clone())?;
                     let mut css_handler = CSSImports {};
                     ast.ast.visit_mut_with(&mut css_handler);
                     // ast to code

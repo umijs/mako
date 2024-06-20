@@ -21,13 +21,14 @@ impl Compiler {
     ) -> Result<(String, String)> {
         let module_graph = &self.context.module_graph.read().unwrap();
         let (js_stmts, _) = modules_to_js_stmts(module_ids, module_graph, &self.context).unwrap();
-        let mut content = include_str!("../runtime/runtime_hmr.js").to_string();
-        content = content.replace("__CHUNK_ID__", &chunk.id.id).replace(
+        let content = include_str!("../runtime/runtime_hmr.js").to_string();
+        let content = content.replace("__CHUNK_ID__", &chunk.id.id).replace(
             "__runtime_code__",
             &format!("runtime._h='{}';", current_hash),
         );
-        // TODO: handle error
-        let mut js_ast = JsAst::build(filename, content.as_str(), self.context.clone()).unwrap();
+        let mut js_ast = JsAst::build(filename, content.as_str(), self.context.clone())
+            /* safe */
+            .unwrap();
 
         for stmt in &mut js_ast.ast.body {
             if let ModuleItem::Stmt(Stmt::Expr(ExprStmt {
