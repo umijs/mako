@@ -54,7 +54,7 @@
     "artifacts": "napi artifacts",
     "artifacts:local": "rm -rf tmp && mkdir tmp && cp *.node tmp/ && napi artifacts --dir ./tmp --dist npm",
     "build": "napi build --release --cargo-cwd ../../crates/binding --platform --js ./binding.js --dts ./binding.d.ts",
-    "clean": "rm -f *.node artifacts-*.tar",
+    "clean": "rm -f *.node artifacts-*.tar node_modules/.cache",
     "postbuild": "npm run format",
     "build:mac:x86": "npm run build -- --target x86_64-apple-darwin",
     "build:mac:aarch": "npm run build -- --target aarch64-apple-darwin",
