@@ -197,12 +197,22 @@ fn get_external_target(
     }
 }
 
-/*
- * Can't use "globalThis.{xxx}" because "globalThis.@ant-design/icons"
- * is syntax invalid
- */
 fn get_external_target_from_global_obj(global_obj_name: &str, external: &str) -> String {
-    format!("{}['{}']", global_obj_name, external)
+    let external = if external.contains('.') || (external.contains('[') && external.contains(']')) {
+        /*
+         * If the external value is like 'someNamespace.someValue' or 'someNamespace["someValue"]' eg window._ or window["_"],
+         * use it directly
+         */
+        format!(".{}", external)
+    } else {
+        /*
+         * Can't use "globalThis.{xxx}" because "globalThis.@ant-design/icons"
+         * is syntax invalid
+         */
+        format!("['{}']", external)
+    };
+
+    format!("{}{}", global_obj_name, external)
 }
 
 // TODO:
@@ -514,6 +524,14 @@ mod tests {
                 "@ant-design/icons".to_string(),
                 ExternalConfig::Basic("@ant-design/icons".to_string()),
             ),
+            (
+                "@antv/g6".to_string(),
+                ExternalConfig::Basic("window['@antv/g6']".to_string()),
+            ),
+            (
+                "_".to_string(),
+                ExternalConfig::Basic("window._".to_string()),
+            ),
             ("empty".to_string(), ExternalConfig::Basic("".to_string())),
         ]);
         let x = external_resolve(
@@ -547,6 +565,41 @@ mod tests {
                 Some(
                     "(typeof globalThis !== 'undefined' ? globalThis : self)['@ant-design/icons']"
                         .to_string()
+                ),
+                None,
+            )
+        );
+        let x = external_resolve(
+            "test/resolve/normal",
+            None,
+            Some(&externals),
+            "index.ts",
+            "@antv/g6",
+        );
+        assert_eq!(
+            x,
+            (
+                "@antv/g6".to_string(),
+                Some(
+                    "(typeof globalThis !== 'undefined' ? globalThis : self).window['@antv/g6']"
+                        .to_string()
+                ),
+                None,
+            )
+        );
+        let x = external_resolve(
+            "test/resolve/normal",
+            None,
+            Some(&externals),
+            "index.ts",
+            "_",
+        );
+        assert_eq!(
+            x,
+            (
+                "_".to_string(),
+                Some(
+                    "(typeof globalThis !== 'undefined' ? globalThis : self).window._".to_string()
                 ),
                 None,
             )
