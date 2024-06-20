@@ -1,0 +1,8 @@
+{
+  "react": {
+    "runtime": "classic",
+    "pragma": "h"
+  },
+  "optimization": { "skipModules": true, "concatenateModules": false }
+}
+

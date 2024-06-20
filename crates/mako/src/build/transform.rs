@@ -36,6 +36,7 @@ use crate::visitors::provide::Provide;
 use crate::visitors::react::react;
 use crate::visitors::try_resolve::TryResolve;
 use crate::visitors::ts_strip::ts_strip;
+use crate::visitors::tsx_strip::tsx_strip;
 use crate::visitors::virtual_css_modules::VirtualCSSModules;
 use crate::visitors::worker_module::WorkerModule;
 
@@ -49,9 +50,10 @@ impl Transform {
                 GLOBALS.set(&context.meta.script.globals, || {
                     let unresolved_mark = ast.unresolved_mark;
                     let top_level_mark = ast.top_level_mark;
-                    let cm = context.meta.script.cm.clone();
+                    let cm: Arc<swc_core::common::SourceMap> = context.meta.script.cm.clone();
                     let origin_comments = context.meta.script.origin_comments.read().unwrap();
-                    let is_ts = file.extname == "ts" || file.extname == "tsx";
+                    let is_ts = file.extname == "ts";
+                    let is_tsx = file.extname == "tsx";
                     let is_jsx = file.is_content_jsx()
                         || file.extname == "jsx"
                         || file.extname == "js"
@@ -60,7 +62,7 @@ impl Transform {
 
                     // visitors
                     let mut visitors: Vec<Box<dyn VisitMut>> = vec![
-                        Box::new(resolver(unresolved_mark, top_level_mark, is_ts)),
+                        Box::new(resolver(unresolved_mark, top_level_mark, is_ts || is_tsx)),
                         // fix helper inject position
                         // should be removed after upgrade to latest swc
                         // ref: https://github.com/umijs/mako/issues/1193
@@ -73,6 +75,13 @@ impl Transform {
                         }),
                         Box::new(WorkerModule::new(unresolved_mark)),
                     ];
+                    if is_tsx {
+                        visitors.push(Box::new(tsx_strip(
+                            cm.clone(),
+                            context.clone(),
+                            top_level_mark,
+                        )))
+                    }
                     // strip should be ts only
                     // since when use this in js, it will remove all unused imports
                     // which is not expected as what webpack does
