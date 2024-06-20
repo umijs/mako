@@ -9,10 +9,24 @@
 
 Mako `['mɑːkoʊ]` is an **extremely fast**, **production-grade** web bundler based on **Rust**. ✨
 
+## Getting Started
+
+Create a new mako project with the following command.
+
+```bash
+$ npm create mako
+```
+
+Check out the https://makojs.dev/ for more information.
+
 ## CONTRIBUTING
 
 Read [CONTRIBUTING.md](./CONTRIBUTING.md).
 
+## CHANGELOG
+
+Read [CHANGELOG.md](./CHANGELOG.md).
+
 ## LICENSE
 
-[MIT](https://github.com/umijs/mako/blob/master/LICENSE)
+[MIT](./LICENSE)
