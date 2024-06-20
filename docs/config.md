@@ -557,7 +557,7 @@ e.g.
 {
   resolve: {
     alias: [
-      "@": "./src",
+      ["@", "./src"]
     ],
     extensions: ["js", "jsx", "ts", "tsx"],
   },
