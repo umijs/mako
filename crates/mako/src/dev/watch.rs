@@ -171,8 +171,8 @@ impl<'a> Watcher<'a> {
             return true;
         }
         let ignore_list = [".DS_Store", ".swx", ".swp"];
-        // 忽略目录变更，但需要注意的是，如果目录被删除，此时无法被检测到
-        // TODO: 所以，要不要统一放到外面，基于 module_graph 是否存在此模块来判断？
+        // Ignore directory changes, but it should be noted that if the directory is deleted, it cannot be detected at this time
+        // TODO: so, should it be put outside, based on whether the module_graph exists this module to judge?
         if path.is_dir() {
             return true;
         }
@@ -180,7 +180,6 @@ impl<'a> Watcher<'a> {
         ignore_list.iter().any(|ignored| path.ends_with(ignored))
     }
 
-    // TODO: support notify::Event mode
     pub fn normalize_events(events: Vec<DebouncedEvent>) -> Vec<PathBuf> {
         let mut paths = vec![];
         let mut create_paths = HashMap::new();

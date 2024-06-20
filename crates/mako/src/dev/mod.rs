@@ -65,8 +65,6 @@ impl DevServer {
                 .as_ref()
                 .unwrap()
                 .port;
-            // TODO: host
-            // let host = self.compiler.context.config.hmr_host.clone();
             let port = Self::find_available_port("127.0.0.1".to_string(), config_port);
             let addr: SocketAddr = ([127, 0, 0, 1], port).into();
             let context = self.compiler.context.clone();

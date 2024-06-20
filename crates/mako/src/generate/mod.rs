@@ -370,7 +370,7 @@ impl Compiler {
         Ok(())
     }
 
-    // TODO: 集成到 fn generate 里
+    // TODO: integrate into generate fn
     pub fn generate_hot_update_chunks(
         &self,
         updated_modules: UpdateResult,
@@ -538,7 +538,6 @@ fn write_dev_chunk_file(context: &Arc<Context>, chunk: &ChunkFile) -> Result<()>
         code.extend_from_slice(&chunk.content);
         code.extend_from_slice(source_map_url_line.as_bytes());
 
-        // TODO: refact chunk emit, unify the way to emit chunk in dev and generate
         // why add chunk info in dev mode?
         // ref: https://github.com/umijs/mako/issues/1094
         let size = code.len() as u64;

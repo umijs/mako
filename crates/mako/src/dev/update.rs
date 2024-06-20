@@ -347,8 +347,8 @@ impl Compiler {
 
             // add bind dependency
             for (add_module_id, dep) in &add {
-                // 理论上 add_modules 里肯定存在 add 的 add_module_id，但实际场景中还是出现 unwrap() 报错，所以这里先加个 guard 判断
-                // TODO: 需要找到本质原因
+                // english: In theory, the add_module_id that add_modules should exist in must exist, but in actual scenarios, an unwrap() error still occurs, so add a guard check here
+                // TODO: Need to find the root cause
                 let add_module = add_modules.remove(add_module_id);
                 if add_module.is_none() {
                     continue;

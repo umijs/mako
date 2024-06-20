@@ -333,7 +333,7 @@ type Search = String;
 type Params = Vec<(String, String)>;
 type Fragment = Option<String>;
 
-fn parse_path(path: &str) -> Result<(PathName, Search, Params, Fragment)> {
+pub fn parse_path(path: &str) -> Result<(PathName, Search, Params, Fragment)> {
     let base = "http://a.com/";
     let base_url = Url::parse(base)?;
     let full_url = base_url.join(path)?;

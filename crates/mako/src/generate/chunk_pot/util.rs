@@ -314,7 +314,7 @@ fn to_module_fn_expr(module: &Module) -> Result<FnExpr> {
                 function: func.into(),
             })
         }
-        // TODO: css module will be removed in the future
+        // TODO: css module should be removed
         ModuleAst::Css(_) => Ok(empty_module_fn_expr()),
         ModuleAst::None => Err(anyhow!("ModuleAst::None({}) cannot concert", module.id.id)),
     }

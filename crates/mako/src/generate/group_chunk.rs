@@ -1,9 +1,9 @@
 use std::collections::{HashSet, VecDeque};
 use std::vec;
 
-use mako_core::anyhow::Result;
 use mako_core::tracing::debug;
 
+use crate::ast::file::parse_path;
 use crate::compiler::Compiler;
 use crate::dev::update::UpdateResult;
 use crate::generate::chunk::{Chunk, ChunkId, ChunkType};
@@ -13,9 +13,6 @@ use crate::module::{ModuleId, ResolveType};
 pub type GroupUpdateResult = Option<(Vec<ChunkId>, Vec<(ModuleId, ChunkId, ChunkType)>)>;
 
 impl Compiler {
-    // TODO:
-    // - 多个 entry 之间的 chunk 共享
-
     pub fn group_chunk(&self) {
         mako_core::mako_profile_function!();
         debug!("group_chunk");
@@ -33,8 +30,8 @@ impl Compiler {
 
             for (key, value) in &self.context.config.entry {
                 // hmr entry id has query '?hmr'
-                if parse_path(&value.to_string_lossy()).unwrap().path
-                    == parse_path(&entry.id).unwrap().path
+                if parse_path(&value.to_string_lossy()).unwrap().0
+                    == parse_path(&entry.id).unwrap().0
                 {
                     entry_chunk_name = key;
                     break;
@@ -510,32 +507,4 @@ where
 
         queue.extend(callback(&id));
     }
-}
-
-// TODO: REMOVE THIS
-fn parse_path(path: &str) -> Result<FileRequest> {
-    let mut iter = path.split('?');
-    let path = iter.next().unwrap();
-    let query = iter.next().unwrap_or("");
-    let mut query_vec = vec![];
-    for pair in query.split('&') {
-        if pair.contains('=') {
-            let mut it = pair.split('=').take(2);
-            let kv = match (it.next(), it.next()) {
-                (Some(k), Some(v)) => (k.to_string(), v.to_string()),
-                _ => continue,
-            };
-            query_vec.push(kv);
-        } else if !pair.is_empty() {
-            query_vec.push((pair.to_string(), "".to_string()));
-        }
-    }
-    Ok(FileRequest {
-        path: path.to_string(),
-    })
-}
-
-#[derive(Debug, Clone)]
-struct FileRequest {
-    pub path: String,
 }
