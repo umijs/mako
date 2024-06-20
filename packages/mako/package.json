@@ -1,6 +1,6 @@
 {
   "name": "@umijs/mako",
-  "version": "0.6.1-canary.20240614.1",
+  "version": "0.7.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -45,7 +45,11 @@
   "engines": {
     "node": ">= 16"
   },
-  "files": ["bin", "dist", "binding.*"],
+  "files": [
+    "bin",
+    "dist",
+    "binding.*"
+  ],
   "scripts": {
     "artifacts": "napi artifacts",
     "artifacts:local": "rm -rf tmp && mkdir tmp && cp *.node tmp/ && napi artifacts --dir ./tmp --dist npm",
@@ -68,10 +72,10 @@
     "src:build": "father build"
   },
   "optionalDependencies": {
-    "@umijs/mako-darwin-arm64": "0.6.1-canary.20240614.1",
-    "@umijs/mako-darwin-x64": "0.6.1-canary.20240614.1",
-    "@umijs/mako-linux-x64-gnu": "0.6.1-canary.20240614.1",
-    "@umijs/mako-linux-x64-musl": "0.6.1-canary.20240614.1"
+    "@umijs/mako-darwin-arm64": "0.7.0",
+    "@umijs/mako-darwin-x64": "0.7.0",
+    "@umijs/mako-linux-x64-gnu": "0.7.0",
+    "@umijs/mako-linux-x64-musl": "0.7.0"
   },
   "repository": "git@github.com:umijs/mako.git"
 }
