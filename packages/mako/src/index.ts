@@ -39,6 +39,7 @@ export async function build(params: BuildParams) {
 
   params.config.plugins = params.config.plugins || [];
   params.config.resolve = params.config.resolve || {};
+  params.config.resolve.alias = params.config.resolve.alias || {};
 
   let makoConfig: any = {};
   let makoConfigPath = path.join(params.root, 'mako.config.json');
@@ -51,29 +52,23 @@ export async function build(params: BuildParams) {
   }
 
   // alias for: helpers, node-libs, react-refresh, react-error-overlay
-  params.config.resolve.alias = [
+  params.config.resolve.alias = {
     ...makoConfig.resolve?.alias,
-    ...(params.config.resolve?.alias || []),
+    ...params.config.resolve.alias,
     // we still need @swc/helpers
     // since features like decorator or legacy browser support will
     // inject helper functions in the build transform step
-    [
-      '@swc/helpers',
-      path.dirname(require.resolve('@swc/helpers/package.json')),
-    ],
-    [
-      'node-libs-browser-okam',
-      path.dirname(require.resolve('node-libs-browser-okam/package.json')),
-    ],
-    [
-      'react-refresh',
-      path.dirname(require.resolve('react-refresh/package.json')),
-    ],
-    [
-      'react-error-overlay',
-      path.dirname(require.resolve('react-error-overlay/package.json')),
-    ],
-  ];
+    '@swc/helpers': path.dirname(require.resolve('@swc/helpers/package.json')),
+    'node-libs-browser-okam': path.dirname(
+      require.resolve('node-libs-browser-okam/package.json'),
+    ),
+    'react-refresh': path.dirname(
+      require.resolve('react-refresh/package.json'),
+    ),
+    'react-error-overlay': path.dirname(
+      require.resolve('react-error-overlay/package.json'),
+    ),
+  };
 
   // built-in less-loader
   let less = lessLoader(null, {

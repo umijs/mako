@@ -449,12 +449,6 @@ async function getMakoConfig(opts) {
       alias[key.slice(0, -1)] = alias[key];
     }
   });
-
-  // mako build need alias array
-  const generatorAlias = Object.keys(alias).map((key) => {
-    return [key, alias[key]];
-  });
-
   const define = {};
   if (opts.config.define) {
     for (const key of Object.keys(opts.config.define)) {
@@ -561,7 +555,7 @@ async function getMakoConfig(opts) {
     entry: opts.entry,
     output: { path: outputPath },
     resolve: {
-      alias: generatorAlias,
+      alias,
     },
     mode: 'development',
     publicPath: runtimePublicPath ? 'runtime' : publicPath || '/',

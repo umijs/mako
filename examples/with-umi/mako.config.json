@@ -3,11 +3,11 @@
     "umi": ".umi/umi.ts"
   },
   "resolve": {
-    "alias": [
-      ["@", "./"],
-      ["@@", "./.umi/"],
-      ["umi", "./.umi/exports"],
-      ["dva", "@umijs/plugins/libs/dva"]
-    ]
+    "alias": {
+      "@": "./",
+      "@@": "./.umi/",
+      "umi": "./.umi/exports",
+      "dva": "@umijs/plugins/libs/dva"
+    }
   }
 }

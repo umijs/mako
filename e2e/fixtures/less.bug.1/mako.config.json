@@ -1,7 +1,7 @@
 {
   "resolve": {
-    "alias": [
-      ["hoo", "./node_modules/hoo"]
-    ]
+    "alias": {
+      "hoo": "./node_modules/hoo"
+    }
   }
 }
