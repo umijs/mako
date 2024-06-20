@@ -28,7 +28,7 @@ pub enum InnerOrExternal<'a> {
     External(&'a (String, String)),
 }
 
-pub(super) struct InnerTransform<'a> {
+pub(super) struct ConcatenatedTransform<'a> {
     pub concatenate_context: &'a mut ConcatenateContext,
     pub context: &'a Arc<Context>,
     pub module_id: &'a ModuleId,
@@ -43,9 +43,10 @@ pub(super) struct InnerTransform<'a> {
     current_stmt_index: usize,
     replaces: Vec<(usize, Vec<ModuleItem>)>,
     default_bind_name: String,
+    is_root: bool,
 }
 
-impl<'a> InnerTransform<'a> {
+impl<'a> ConcatenatedTransform<'a> {
     pub fn new(
         concatenate_context: &'a mut ConcatenateContext,
         module_id: &'a ModuleId,
@@ -66,11 +67,17 @@ impl<'a> InnerTransform<'a> {
             replaces: vec![],
             current_stmt_index: 0,
             default_bind_name: Default::default(),
+            is_root: false,
         }
     }
 
+    pub fn for_root(mut self) -> Self {
+        self.is_root = true;
+        self
+    }
+
     fn add_leading_comment(&self, n: &Module) {
-        if let Some(item) = n
+        if let Some(first_stmt) = n
             .body
             .iter()
             .find(|&item| matches!(item, ModuleItem::Stmt(_)))
@@ -78,7 +85,7 @@ impl<'a> InnerTransform<'a> {
             let mut comments = self.context.meta.script.origin_comments.write().unwrap();
 
             comments.add_leading_comment_at(
-                item.span_lo(),
+                first_stmt.span_lo(),
                 Comment {
                     kind: CommentKind::Line,
 
@@ -338,7 +345,7 @@ impl<'a> InnerTransform<'a> {
     }
 }
 
-impl<'a> VisitMut for InnerTransform<'a> {
+impl<'a> VisitMut for ConcatenatedTransform<'a> {
     fn visit_mut_export_decl(&mut self, export_decl: &mut ExportDecl) {
         let decl = export_decl.decl.take();
 
@@ -461,7 +468,10 @@ impl<'a> VisitMut for InnerTransform<'a> {
     }
 
     fn visit_mut_module(&mut self, n: &mut Module) {
-        self.my_top_decls = ConcatenateContext::top_level_vars(n, self.top_level_mark);
+        // all root top vars is already in ccn context top vars
+        if !self.is_root {
+            self.my_top_decls = ConcatenateContext::top_level_vars(n, self.top_level_mark);
+        }
 
         self.collect_exports(n);
 
@@ -631,7 +641,7 @@ impl<'a> VisitMut for InnerTransform<'a> {
     }
 }
 
-impl<'a> InnerTransform<'a> {}
+impl<'a> ConcatenatedTransform<'a> {}
 
 #[cfg(test)]
 mod external_tests;

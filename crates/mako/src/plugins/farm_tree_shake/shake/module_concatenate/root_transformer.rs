@@ -13,8 +13,8 @@ use swc_core::ecma::utils::{member_expr, quote_ident, ExprFactory, IdentRenamer}
 use swc_core::ecma::visit::{VisitMut, VisitMutWith, VisitWith};
 
 use super::concatenate_context::{module_ref_to_expr, ConcatenateContext, ModuleRef, ModuleRefMap};
+use super::concatenated_transformer::InnerOrExternal;
 use super::exports_transform::collect_exports_map;
-use super::inner_transformer::InnerOrExternal;
 use super::module_ref_rewriter::ModuleRefRewriter;
 use super::ref_link::{ModuleDeclMapCollector, Symbol, VarLink};
 use super::utils::{
@@ -43,20 +43,18 @@ pub(super) struct RootTransformer<'a> {
 impl<'a> RootTransformer<'a> {
     pub fn new(
         concatenate_context: &'a mut ConcatenateContext,
-        current_module_id: &'a ModuleId,
+        module_id: &'a ModuleId,
         context: &'a Arc<Context>,
-        import_source_to_module_id: &'a HashMap<String, ModuleId>,
+        src_to_module: &'a HashMap<String, ModuleId>,
         top_level_mark: Mark,
     ) -> Self {
-        let default_bind_name = concatenate_context.negotiate_safe_var_name(
-            &HashSet::new(),
-            &uniq_module_default_export_name(current_module_id),
-        );
+        let default_bind_name = concatenate_context
+            .negotiate_safe_var_name(&HashSet::new(), &uniq_module_default_export_name(module_id));
 
         Self {
             concatenate_context,
-            module_id: current_module_id,
-            src_to_module: import_source_to_module_id,
+            module_id,
+            src_to_module,
             context,
             top_level_mark,
             exports: Default::default(),
@@ -70,7 +68,7 @@ impl<'a> RootTransformer<'a> {
         }
     }
 
-    fn add_leading_comment(&mut self, n: &mut Module) {
+    fn add_leading_comment(&self, n: &Module) {
         if let Some(first_stmt) = n
             .body
             .iter()

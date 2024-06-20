@@ -8,7 +8,7 @@ use swc_core::ecma::visit::VisitMutWith;
 
 use super::super::ConcatenateContext;
 use super::utils::{current_export_map, describe_export_map};
-use super::InnerTransform;
+use super::ConcatenatedTransform;
 use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
 use crate::config::{Config, Mode, OptimizationConfig};
@@ -843,7 +843,7 @@ fn inner_trans_code(code: &str, concatenate_context: &mut ConcatenateContext) ->
     };
 
     GLOBALS.set(&context.meta.script.globals, || {
-        let mut inner = InnerTransform::new(
+        let mut inner = ConcatenatedTransform::new(
             concatenate_context,
             &module_id,
             &src_to_module,

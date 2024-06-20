@@ -4,7 +4,7 @@ use maplit::{hashmap, hashset};
 use swc_core::common::GLOBALS;
 use swc_core::ecma::visit::VisitMutWith;
 
-use super::super::{ConcatenateContext, InnerTransform};
+use super::super::{ConcatenateContext, ConcatenatedTransform};
 use super::utils::{current_export_map, describe_export_map};
 use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
@@ -370,7 +370,7 @@ fn run_test(code: &str, ccn_ctx: &mut ConcatenateContext) -> String {
     };
 
     GLOBALS.set(&context.meta.script.globals, || {
-        let mut t = InnerTransform::new(
+        let mut t = ConcatenatedTransform::new(
             ccn_ctx,
             &current_module_id,
             &module_map,
