@@ -472,7 +472,6 @@ mod tests {
             is_entry: false,
             info: Some(ModuleInfo {
                 ast: ModuleAst::Script(ast),
-                path: "test".to_string(),
                 file,
                 ..Default::default()
             }),

@@ -94,8 +94,7 @@ impl Compiler {
             let resolved_deps = info.deps.resolved_deps.clone();
             let m = module_graph.get_module_mut(&module.id);
             if let Some(m) = m {
-                // TODO: add_info > set_info
-                m.add_info(module.info);
+                m.set_info(module.info);
             } else {
                 module_ids.insert(module.id.clone());
                 module_graph.add_module(module);
@@ -186,12 +185,9 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         let info = ModuleInfo {
             file,
             ast,
-            // TODO: update
             external: Some(external_name),
             is_async,
             resolved_resource: Some(resolved_resource.clone()),
-            // TODO: remove
-            path,
             raw,
             ..Default::default()
         };
@@ -213,7 +209,6 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         let info = ModuleInfo {
             file,
             ast,
-            path,
             raw,
             ..Default::default()
         };
@@ -244,7 +239,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
             }
         };
 
-        module.add_info(Some(info));
+        module.set_info(Some(info));
 
         module
     }
@@ -314,14 +309,11 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
             file,
             deps,
             ast,
-            // TODO: rename
             resolved_resource: parent_resource,
             source_map_chain,
             top_level_await,
             is_async,
             raw_hash,
-            // TODO: remove
-            path,
             raw,
             ..Default::default()
         };

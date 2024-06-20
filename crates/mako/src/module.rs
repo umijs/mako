@@ -155,7 +155,6 @@ pub struct ModuleInfo {
     pub ast: ModuleAst,
     pub file: File,
     pub deps: AnalyzeDepsResult,
-    pub path: String,
     pub external: Option<String>,
     pub raw: String,
     pub raw_hash: u64,
@@ -176,7 +175,6 @@ impl Default for ModuleInfo {
             ast: ModuleAst::None,
             file: Default::default(),
             deps: Default::default(),
-            path: "".to_string(),
             external: None,
             raw: "".to_string(),
             raw_hash: 0,
@@ -371,7 +369,7 @@ impl Module {
         self.info.as_mut().and_then(|i| i.ast.script_mut())
     }
 
-    pub fn add_info(&mut self, info: Option<ModuleInfo>) {
+    pub fn set_info(&mut self, info: Option<ModuleInfo>) {
         self.info = info;
     }
 

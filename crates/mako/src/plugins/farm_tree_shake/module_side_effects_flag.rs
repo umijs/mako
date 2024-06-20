@@ -19,7 +19,11 @@ impl ModuleInfo {
                     let root: PathBuf = root.into();
 
                     side_effects.map(|side_effect| {
-                        Self::match_flag(side_effect, relative_to_root(&self.path, &root).as_str())
+                        Self::match_flag(
+                            side_effect,
+                            relative_to_root(&self.file.path.to_string_lossy().to_string(), &root)
+                                .as_str(),
+                        )
                     })
                 }
                 None => None,
@@ -48,7 +52,11 @@ impl ModuleInfo {
 
                             Self::match_flag(
                                 side_effect,
-                                relative_to_root(&self.path, &root).as_str(),
+                                relative_to_root(
+                                    &self.file.path.to_string_lossy().to_string(),
+                                    &root,
+                                )
+                                .as_str(),
                             )
                         }
                         None => true,
