@@ -290,7 +290,7 @@ fn has_index_file_in_directory(dir_path: &Path) -> bool {
                     && path
                         .extension()
                         .and_then(|e| e.to_str())
-                        .map_or(false, |extention: &str| JS_EXTENSIONS.contains(&extention))
+                        .map_or(false, |extension: &str| JS_EXTENSIONS.contains(&extension))
             })
         })
         .unwrap_or(false)
