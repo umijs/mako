@@ -6,7 +6,7 @@ build({
     index: './index.tsx',
   },
   config: {
-    alias: [],
+    alias: {},
   },
   onBuildComplete() {
     console.log('build finished');

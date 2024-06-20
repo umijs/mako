@@ -35,10 +35,10 @@ impl Node {
                 .insert("__filename".into(), Value::String("'/index.js'".into()));
             // polyfill with equivalent modules
             for name in Self::get_polyfill_modules().iter() {
-                config.resolve.alias.push((
+                config.resolve.alias.insert(
                     name.to_string(),
                     format!("node-libs-browser-okam/polyfill/{}", name),
-                ));
+                );
             }
             // polyfill with empty modules
             for name in Self::get_empty_modules().iter() {
