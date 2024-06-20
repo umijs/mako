@@ -51,7 +51,7 @@ pub struct BuildParams {
         skipWrite?: boolean;
     };
     resolve?: {
-       alias?: Record<string, string>;
+       alias?: Array<[string, string]>;
        extensions?: string[];
     };
     manifest?: false | {
