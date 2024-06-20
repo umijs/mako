@@ -67,8 +67,6 @@ export function moduleToDom(css) {
     var styleElement = document.createElement("style");
     styleElement.type = "text/css";
     styleElement.appendChild(document.createTextNode(css))
-    // TODO: support nonce
-    // styleElement.setAttribute("nonce", nonce);
     document.head.appendChild(styleElement);
 }
                                 "#
@@ -225,7 +223,6 @@ export function moduleToDom(css) {
         }
 
         // json
-        // TODO: json5 should be more complex
         if JSON_EXTENSIONS.contains(&file.extname.as_str()) {
             let content = FileSystem::read_file(&file.pathname)?;
             return Ok(Content::Js(JsContent {
@@ -267,8 +264,6 @@ export function moduleToDom(css) {
             let base64_result = file.get_base64();
             match base64_result {
                 Ok(base64) => {
-                    // TODO: why add "" wrapper here?
-                    // should have better way to handle this
                     if inject_public_path {
                         Ok(format!("\"{}\"", base64))
                     } else {
@@ -293,7 +288,6 @@ export function moduleToDom(css) {
     }
 }
 
-// TODO: move to separate module
 pub struct FileSystem {}
 
 impl FileSystem {

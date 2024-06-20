@@ -8,7 +8,7 @@ const index_css_content = files["index.css"];
 
 assert(index_js_content.includes('"foo": "json"'), "json loader");
 assert(index_js_content.includes("var _default = MDXContent;"), "md loader");
-assert(index_js_content.includes('"foo": "json5"'), "json5 loader");
+assert(index_js_content.includes('unquoted: \'and you can quote me on that\''), "json5 loader");
 assert(index_js_content.includes('"foo": "toml"'), "toml loader");
 assert(index_js_content.includes('"$value": "foo"'), "xml loader");
 assert(index_js_content.includes('"foo": "yaml"'), "yaml loader");

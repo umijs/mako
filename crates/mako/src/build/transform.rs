@@ -151,7 +151,6 @@ impl Transform {
                         emit_metadata: false,
                         ..Default::default()
                     })));
-                    // TODO: is it a problem to clone comments?
                     let comments = origin_comments.get_swc_comments().clone();
                     let assumptions = context.assumptions_for(file);
 
