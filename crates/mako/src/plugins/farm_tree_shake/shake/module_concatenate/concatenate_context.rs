@@ -246,7 +246,7 @@ impl From<&ResolveType> for EsmDependantFlags {
 }
 
 pub type ModuleRef = (Ident, Option<JsWord>);
-pub type ModuleRefMap = HashMap<Id, ModuleRef>;
+pub type ImportModuleRefMap = HashMap<Id, ModuleRef>;
 
 pub fn module_ref_to_expr(module_ref: &ModuleRef) -> Expr {
     match module_ref {

@@ -12,7 +12,9 @@ use swc_core::ecma::ast::{
 use swc_core::ecma::utils::{member_expr, quote_ident, ExprFactory, IdentRenamer};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith, VisitWith};
 
-use super::concatenate_context::{module_ref_to_expr, ConcatenateContext, ModuleRef, ModuleRefMap};
+use super::concatenate_context::{
+    module_ref_to_expr, ConcatenateContext, ImportModuleRefMap, ModuleRef,
+};
 use super::exports_transform::collect_exports_map;
 use super::module_ref_rewriter::ModuleRefRewriter;
 use super::ref_link::{ModuleDeclMapCollector, Symbol, VarLink};
@@ -100,7 +102,10 @@ impl<'a> ConcatenatedTransform<'a> {
         }
     }
 
-    pub(crate) fn to_import_module_ref(&self, var_map: &HashMap<Id, VarLink>) -> ModuleRefMap {
+    pub(crate) fn to_import_module_ref(
+        &self,
+        var_map: &HashMap<Id, VarLink>,
+    ) -> ImportModuleRefMap {
         let mut ref_map = HashMap::new();
 
         var_map.iter().for_each(|(id, link)| match link {
@@ -113,9 +118,21 @@ impl<'a> ConcatenatedTransform<'a> {
                 match self.inner_or_external(src_module_id) {
                     InnerOrExternal::Inner(map) => {
                         let module_ref = match symbol {
-                            Symbol::Default => map.get("default").unwrap().clone(),
+                            Symbol::Default => {
+                                if let Some(mf) = map.get("default") {
+                                    mf.clone()
+                                } else {
+                                    (quote_ident!("undefined"), None)
+                                }
+                            }
                             Symbol::Namespace => map.get("*").unwrap().clone(),
-                            Symbol::Var(ident) => map.get(&ident.sym.to_string()).unwrap().clone(),
+                            Symbol::Var(ident) => {
+                                if let Some(mf) = map.get(&ident.sym.to_string()) {
+                                    mf.clone()
+                                } else {
+                                    (quote_ident!("undefined"), None)
+                                }
+                            }
                         };
 
                         ref_map.insert(id.clone(), module_ref);
@@ -151,11 +168,22 @@ impl<'a> ConcatenatedTransform<'a> {
                 match self.inner_or_external(src_module_id) {
                     InnerOrExternal::Inner(map) => {
                         let module_ref = match symbol {
-                            Symbol::Default => map.get("default").unwrap().clone(),
+                            Symbol::Default => {
+                                if let Some(mf) = map.get("default") {
+                                    mf.clone()
+                                } else {
+                                    (quote_ident!("undefined"), None)
+                                }
+                            }
                             Symbol::Namespace => map.get("*").unwrap().clone(),
-                            Symbol::Var(ident) => map.get(&ident.sym.to_string()).unwrap().clone(),
+                            Symbol::Var(ident) => {
+                                if let Some(mf) = map.get(&ident.sym.to_string()) {
+                                    mf.clone()
+                                } else {
+                                    (quote_ident!("undefined"), None)
+                                }
+                            }
                         };
-
                         ref_map.insert(id.0.to_string(), module_ref);
                     }
                     InnerOrExternal::External(external_names) => {
@@ -202,7 +230,7 @@ impl<'a> ConcatenatedTransform<'a> {
         ref_map
     }
 
-    fn remove_imported_top_vars(&mut self, import_map: &ModuleRefMap) {
+    fn remove_imported_top_vars(&mut self, import_map: &ImportModuleRefMap) {
         import_map.iter().for_each(|(id, _)| {
             self.my_top_decls.remove(&id.0.to_string());
         });

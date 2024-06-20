@@ -9,7 +9,7 @@ use swc_core::ecma::utils::{
 };
 use swc_core::ecma::visit::{noop_visit_mut_type, VisitMut, VisitMutWith};
 
-use super::concatenate_context::ModuleRefMap;
+use super::concatenate_context::ImportModuleRefMap;
 
 pub struct ModuleRefRewriter<'a> {
     /// ```javascript
@@ -30,7 +30,7 @@ pub struct ModuleRefRewriter<'a> {
     ///     x => (_x, None),
     /// )
     /// ```
-    pub import_map: &'a ModuleRefMap,
+    pub import_map: &'a ImportModuleRefMap,
 
     pub lazy_record: HashSet<Id>,
 
@@ -42,7 +42,7 @@ pub struct ModuleRefRewriter<'a> {
 
 impl<'a> ModuleRefRewriter<'a> {
     pub fn new(
-        import_map: &'a ModuleRefMap,
+        import_map: &'a ImportModuleRefMap,
         lazy_record: HashSet<Id>,
         allow_top_level_this: bool,
     ) -> Self {
