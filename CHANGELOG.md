@@ -1,3 +1,8 @@
+## 0.7.1
+`2024-06-20`
+
+- 回滚 "alias 从 map 改成 vec" by [@stormslowly](https://github.com/stormslowly) in [#1297](https://github.com/umijs/mako/pull/1297)
+
 ## 0.7.0
 
 `2024-06-20`
