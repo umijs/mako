@@ -30,7 +30,7 @@ enum LoadError {
     CompileMdError { path: String, reason: String },
 }
 
-const JS_EXTENSIONS: [&str; 6] = ["js", "jsx", "ts", "tsx", "cjs", "mjs"];
+pub const JS_EXTENSIONS: [&str; 6] = ["js", "jsx", "ts", "tsx", "cjs", "mjs"];
 const CSS_EXTENSIONS: [&str; 1] = ["css"];
 const JSON_EXTENSIONS: [&str; 2] = ["json", "json5"];
 const YAML_EXTENSIONS: [&str; 2] = ["yaml", "yml"];
