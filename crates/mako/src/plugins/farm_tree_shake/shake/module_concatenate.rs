@@ -4,7 +4,6 @@ mod exports_transform;
 mod external_transformer;
 mod module_ref_rewriter;
 mod ref_link;
-mod root_transformer;
 mod utils;
 
 use std::cell::RefCell;
