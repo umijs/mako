@@ -1,3 +1,18 @@
+## 0.7.0
+
+`2024-06-20`
+
+- 新增 Code splitting granular 策略（破坏性升级），采用 GRANULAR\_CHUNKS 环境变量开启by [@xusd320](https://github.com/xusd320) in [#1269](https://github.com/umijs/mako/pull/1269)
+- 新增只是使用路径配置插件功能 by [@sorrycc](https://github.com/sorrycc) in [#1292](https://github.com/umijs/mako/pull/1292)
+- 新增 node.js 16 版本下使用并发处理 less 文件功能 by [@xusd320](https://github.com/xusd320) in [#1280](https://github.com/umijs/mako/pull/1280)
+- 改进 alias 配置为 vec 避免无序问题 by [@Jinbao1001](https://github.com/Jinbao1001) in [#1289](https://github.com/umijs/mako/pull/1289)
+- 修复 Symbol 被用户代码覆盖，导致低版本产物不可用问题 by [@stormslowly](https://github.com/stormslowly) in [#1279](https://github.com/umijs/mako/pull/1279)
+- 修复 dynamic import 的模块没有出过 Interop 处理的问题 by [@stormslowly](https://github.com/stormslowly) in [#1209](https://github.com/umijs/mako/pull/1209)
+- 修复一个模块同时被 import 和 worker 引用导致产物不可用的问题 by [@xusd320](https://github.com/xusd320) in [#1278](https://github.com/umijs/mako/pull/1278)
+- 修复 export \* 成环的问题 by [@stormslowly](https://github.com/stormslowly) in [#1277](https://github.com/umijs/mako/pull/1277)
+- 修复 typescript 中 使用 react classic 模式 React 变量被删除的问题 by [@Jinbao1001](https://github.com/Jinbao1001) in [#1285](https://github.com/umijs/mako/pull/1285)
+- 修复 external 配置错误使用 `window.xxx` 此类配置 by [@xusd320](https://github.com/xusd320) in [#1293](https://github.com/umijs/mako/pull/1293)
+- 修复 dynamic import 无法解析模板字符串部分路径的问题 by [@Jinbao1001](https://github.com/Jinbao1001) in [#1224](https://github.com/umijs/mako/pull/1224)
 
 ## 0.6.0
 
