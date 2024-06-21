@@ -2,8 +2,6 @@ use std::cmp::max;
 use std::path::Path;
 
 use heck::ToSnakeCase;
-use swc_core::ecma::ast::{Ident, Stmt, VarDecl, VarDeclKind};
-use swc_core::ecma::utils::{quote_ident, ExprFactory};
 
 use crate::module::ModuleId;
 
@@ -60,14 +58,6 @@ pub fn uniq_module_default_export_name(module_id: &ModuleId) -> String {
 
 pub fn uniq_module_namespace_name(module_id: &ModuleId) -> String {
     format!("{}_ns", uniq_module_prefix(module_id))
-}
-
-pub fn declare_var_with_init_stmt(name: Ident, init: &str) -> Stmt {
-    declare_var_with_init(name, init).into()
-}
-
-pub fn declare_var_with_init(name: Ident, init: &str) -> VarDecl {
-    quote_ident!(init).into_var_decl(VarDeclKind::Var, name.into())
 }
 
 pub const MODULE_CONCATENATE_ERROR_STR_MODULE_NAME: &str =
