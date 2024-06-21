@@ -36,7 +36,7 @@ export function check(root: string) {
 }
 
 function depExists(pkg: any, name: string) {
-  return pkg.dependencies[name] || pkg.devDependencies[name];
+  return pkg.dependencies?.[name] || pkg.devDependencies?.[name];
 }
 
 function getDepVersion(root: string, name: string) {
