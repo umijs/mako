@@ -123,8 +123,6 @@
 
 `2024-05-11`
 
-> @alipay/bigfish@4.1.31
-
 * 修复产物中文字符未转换成 unicode 问题 by [@sorrycc](https://github.com/sorrycc) in [#1146](https://github.com/umijs/mako/pull/1146)
 * 修复模块合并优化时将忽略的模块合并导致未定义变量的问题 by [@stormslowly](https://github.com/stormslowly) in [#1149](https://github.com/umijs/mako/pull/1149)
 
@@ -132,8 +130,6 @@
 ## 0.4.15
 
 `2024-05-10`
-
-> @alipay/bigfish@4.1.29
 
 * 优化 px2rem 支持 min_pixel_value 配置 by [@sorrycc](https://github.com/sorrycc) in [#1141](https://github.com/umijs/mako/pull/1141)
 * 修复 px2rem 在使用属性选择器但没值时会 panic 的问题 by [@sorrycc](https://github.com/sorrycc) in [#1140](https://github.com/umijs/mako/pull/1140)
@@ -143,8 +139,6 @@
 
 `2024-05-09`
 
-> @alipay/bigfish@4.1.29
-
 * 默认开启 concatenate modules by [@stormslowly](https://github.com/stormslowly) in [#1126](https://github.com/umijs/mako/pull/1126)
 * 修复 chunk id 依赖顺序可能不稳定的问题 by [@stormslowly](https://github.com/stormslowly) in [#1117](https://github.com/umijs/mako/pull/1117)
 * chore: add log for parallel generate by [@xusd320](https://github.com/xusd320) in [#1127](https://github.com/umijs/mako/pull/1127)
@@ -153,8 +147,6 @@
 ## 0.4.13
 
 `2024-05-06`
-
-> @alipay/bigfish@4.1.29
 
 * 新增支持通过 ?path 指定虚拟文件的路径 by [@stormslowly](https://github.com/stormslowly) in [#1102](https://github.com/umijs/mako/pull/1102)
 * 新增全局 `__mako_chunk_load__` 方法 by [@sorrycc](https://github.com/sorrycc) in [#1111](https://github.com/umijs/mako/pull/1111)
@@ -172,8 +164,6 @@
 
 `2024-04-28`
 
-> @alipay/bigfish@4.1.28
-
 * 修复 okam 包 package.json 中 bin 字段丢失的问题 by [@sorrycc](https://github.com/sorrycc) in [#1092](https://github.com/umijs/mako/pull/1092)
 * 修复 runtime 在 node 场景下报错，让 css ensure 只在 browser 阶段才状态 by [@sorrycc](https://github.com/sorrycc) in [#1095](https://github.com/umijs/mako/pull/1095)
 * 修复空 css chunk 不应该输出的问题 by [@xusd320](https://github.com/xusd320) in [#1097](https://github.com/umijs/mako/pull/1097)
@@ -183,8 +173,6 @@
 ## 0.4.11
 
 `2024-04-25`
-
-> @alipay/bigfish@4.1.27
 
 * 新增 RSC 功能 by [@sorrycc](https://github.com/sorrycc) in [#1063](https://github.com/umijs/mako/pull/1063)
 * 新增 RSC sdk  by [@sorrycc](https://github.com/sorrycc) in [#1072](https://github.com/umijs/mako/pull/1072)
@@ -200,8 +188,6 @@
 ## 0.4.10
 
 `2024-04-16`
-
-> @alipay/bigfish@4.1.26
 
 * 新增 forkTSChecker 支持 by [@ctts](https://github.com/ctts) and @sorrycc in [#956](https://github.com/umijs/mako/pull/956)
 * 优化 generate，让 entry 也并行执行，提速 10% by [@xusd320](https://github.com/xusd320) in [#1001](https://github.com/umijs/mako/pull/1001)
@@ -223,8 +209,6 @@
 
 `2024-04-01`
 
-> @alipay/bigfish@4.1.23
-
 * 修复 chunk 优化中出现孤立 chunk 的问题 by [@Jinbao1001](https://github.com/Jinbao1001) in [#988](https://github.com/umijs/mako/pull/988)
 * 修复 entry chunk hash 不稳定的问题 by [@xusd320](https://github.com/xusd320) in [#1003](https://github.com/umijs/mako/pull/1003)
 * 修复 concatenateModules 无法合并多个外部模块的问题 [@stormslowly](https://github.com/stormslowly) in [#1005](https://github.com/umijs/mako/pull/1005)
@@ -232,8 +216,6 @@
 ## 0.4.8
 
 `2024-03-23`
-
-> @alipay/bigfish@4.1.17
 
 * 新增 scope hoist 功能，配置开启 by [@stormslowly](https://github.com/stormslowly) in [#922](https://github.com/umijs/mako/pull/922)
 * 修复 js hook 应该使用完整 path 的问题 by [@Jinbao1001](https://github.com/Jinbao1001) in [#987](https://github.com/umijs/mako/pull/987)
@@ -245,8 +227,6 @@
 
 `2024-03-22`
 
-> @alipay/bigfish@4.1.17
-
 * 修复 fast refresh 在函数内生成组件时的边界场景 by [@sorrycc](https://github.com/sorrycc) in [#972](https://github.com/umijs/mako/pull/972)
 * 修复引用 assets 带 query 时的场景 by [@sorrycc](https://github.com/sorrycc) in [#975](https://github.com/umijs/mako/pull/975)
 
@@ -254,15 +234,11 @@
 
 `2024-03-20`
 
-> @alipay/bigfish@4.1.17
-
 * 修复 resolve fragment 问题，支持 a#b.ts 的场景 by [@sorrycc](https://github.com/sorrycc) in [#966](https://github.com/umijs/mako/pull/966)
 
 ## 0.4.5
 
 `2024-03-20`
-
-> @alipay/bigfish@4.1.17
 
 * 重构 build 部分的代码 by [@sorrycc](https://github.com/sorrycc) in [#923](https://github.com/umijs/mako/pull/923)
 * 新增 HMR Fast Refresh 支持匿名函数的场景 by [@JackGuiYang12](https://github.com/JackGuiYang12) in [#947](https://github.com/umijs/mako/pull/947)
@@ -282,8 +258,6 @@
 
 `2024-02-29`
 
-> @alipay/bigfish@4.1.17
-
 - 修复在 call_expr 中的动态 require/import 未被正常转换的问题 by [@PeachScript](https://github.com/PeachScript) in [#898](https://github.com/umijs/mako/pull/898)
 - 兼容 extraBabelPlugins: ['@emotion'] 插件配置 by [@sorrycc](https://github.com/sorrycc) in [#908](https://github.com/umijs/mako/pull/908)
 - 使用更高效的内存分配器（mimalloc-rust、tikv-jemallocator），m1 pro yuyanAssets build 稳定提升 2500ms 左右 by [@xusd320](https://github.com/xusd320) in [#912](https://github.com/umijs/mako/pull/912)
@@ -295,16 +269,12 @@
 
 `2024-02-01`
 
-> @alipay/bigfish@4.1.17
-
 - 修复 skipModules 在边界情况下找错导出来源的问题 by [@stormslowly](https://github.com/stormslowly) in [#906](https://github.com/umijs/mako/pull/906)
 - 回滚 SWC 升级的 PR [#876](https://github.com/umijs/mako/pull/876) by [@stormslowly](https://github.com/stormslowly) in [#907](https://github.com/umijs/mako/pull/907)
 
 ## 0.4.2
 
 `2024-01-31`
-
-> @alipay/bigfish@4.1.17
 
 - 修复 lessLoader.modifyVars dev 环境不生效的问题 by [@sorrycc](https://github.com/sorrycc) in [#900](https://github.com/umijs/mako/pull/900)
 - 修复 node binding 因为 stout/stderr 模式不匹配导致的 OS error 35 by [@sorrycc](https://github.com/sorrycc) in [#901](https://github.com/umijs/mako/pull/901)
@@ -313,8 +283,6 @@
 ## 0.4.1
 
 `2024-01-30`
-
-> @alipay/bigfish@4.1.17
 
 * 新增 HMR 支持 link 的 npm 包的调试 by [@zhangpanweb](https://github.com/zhangpanweb) in [#864](https://github.com/umijs/mako/pull/864)
 * 新增支持类似 raw-loader 的能力，通过加 ?raw query 开启 by [@ctts](https://github.com/ctts) in [#877](https://github.com/umijs/mako/pull/877)
@@ -332,8 +300,6 @@
 
 `2024-01-18`
 
-> @alipay/bigfish@4.1.17
-
 * 新增 react 配置项，支持不同的 react runtime 参数配置 by [@sorrycc](https://github.com/sorrycc) in [#872](https://github.com/umijs/mako/pull/872)
 * 新增 mako.config.json 中有错误时，输出友好提示 by [@sorrycc](https://github.com/sorrycc) in [#875](https://github.com/umijs/mako/pull/875)
 * 修复 HMR 无法从文件错误中恢复的问题 by [@sorrycc](https://github.com/sorrycc) in [#863](https://github.com/umijs/mako/pull/863)
@@ -345,8 +311,6 @@
 
 `2024-01-11`
 
-> @alipay/bigfish@4.1.15
-
 * 修复产物中模块 ID 的注释被 glob 表达式意外切断导致运行报错的问题 by [@PeachScript](https://github.com/PeachScript) in [#856](https://github.com/umijs/mako/pull/856)
 * 优化内置插件钩子及暴露的 js hooks by [@sorrycc](https://github.com/sorrycc) in [#855](https://github.com/umijs/mako/pull/855)
 
@@ -354,15 +318,11 @@
 
 `2024-01-10`
 
-> @alipay/bigfish@4.1.14
-
 * 暂时关闭 skipModules 优化 by [@stormslowly](https://github.com/stormslowly) in [#854](https://github.com/umijs/mako/pull/854)
 
 ## 0.2.2
 
 `2024-01-09`
-
-> @alipay/bigfish@4.1.14
 
 * 修复 import/export 语句中使用 `as` 对同一导出使用多次导致的变量 undefined 问题 by [@stormslowly](https://github.com/stormslowly) in [#850](https://github.com/umijs/mako/pull/850)
 * 修复 dev 启动时缺少的依赖在补齐后仍然构建失败的问题 by [@zhangpanweb](https://github.com/zhangpanweb) in [#845](https://github.com/umijs/mako/pull/845)
@@ -374,15 +334,11 @@
 
 `2024-01-04`
 
-> @alipay/bigfish@4.1.14
-
 * 修复模块中对相同模块同时使用 import 和 require 时，skipModules 优化时误删依赖模块的问题 by [@stormslowly](https://github.com/stormslowly) in [#842](https://github.com/umijs/mako/pull/842)
 
 ## 0.2.0
 
 `2024-01-04`
-
-> @alipay/bigfish@4.1.14
 
 * BREAK CHANGE：调整和合并配置项 by [@PeachScript](https://github.com/PeachScript) in [#837](https://github.com/umijs/mako/pull/837)
 * 优化 optimizePackageImports 功能，支持缓存、export * 和深度桶文件 by [@sorrycc](https://github.com/sorrycc) in [#810](https://github.com/umijs/mako/pull/810)
@@ -398,8 +354,6 @@
 
 `2023-12-18`
 
-> @alipay/bigfish@4.1.13
-
 * 新增 支持显示 less 代码 sourcemap by [@jiesia](https://github.com/jiesia) in [#755](https://github.com/umijs/mako/pull/775)
 * 修复 require context 不支持后缀 require 的问题 by [@PeachScript](https://github.com/PeachScript) in [#806](https://github.com/umijs/mako/pull/806)
 * 修复 entry chunk 和 vendor chunk 中模块重复的问题 by [@PeachScript](https://github.com/PeachScript) in [#809](https://github.com/umijs/mako/pull/809)
@@ -408,8 +362,6 @@
 ## 0.1.14
 
 `2023-12-18`
-
-> @alipay/bigfish@4.1.12
 
 * 优化 chunk cache 在 build 时默认不使用 cache by [@zhangpanweb](https://github.com/zhangpanweb) in [#800](https://github.com/umijs/mako/pull/800)
 * 修复由于 hashed id 策略导致的 build 后 chunk 可能加载失败的问题 by [@PeachScript](https://github.com/PeachScript) in [#805](https://github.com/umijs/mako/pull/805)
@@ -423,8 +375,6 @@
 
 `2023-12-14`
 
-> @alipay/bigfish@4.1.9
-
 * 新增多 entry 支持 shared chunk by [@PeachScript](https://github.com/PeachScript) in [#789](https://github.com/umijs/mako/pull/789)
 * 修复 SWC Helper 在 module_id_strategy 为 hashed 时注入失败的问题 by [@sorrycc](https://github.com/sorrycc) in [#797](https://github.com/umijs/mako/pull/797)
 * 修复 HMR 时优化 chunk 时可能会死锁的问题 by [@PeachScript](https://github.com/PeachScript) in [#795](https://github.com/umijs/mako/pull/795)
@@ -432,8 +382,6 @@
 ## 0.1.11
 
 `2023-12-14`
-
-> @alipay/bigfish@4.1.8
 
 * 修复 CSS 热更在开启 runtimePublicPath 且最终值包含 origin 时失效的问题 by [@PeachScript](https://github.com/PeachScript) in [#768](https://github.com/umijs/mako/pull/768)
 * 修复 require 动态目录时文件夹带假后缀名会编译失败的问题 by [@PeachScript](https://github.com/PeachScript) in [#778](https://github.com/umijs/mako/pull/778)
@@ -445,8 +393,6 @@
 
 `2023-12-08`
 
-> @alipay/bigfish@4.1.7
-
 * 调整 swc 相应依赖替换成 swc_core by [@goo-yyh](https://github.com/goo-yyh) in [#765](https://github.com/umijs/mako/pull/765)
 * 调整 tree-shaking 增加对变量声明语句副作用的判定 by [@stormslowly](https://github.com/stormslowly) in [#763](https://github.com/umijs/mako/pull/763)
 * 修复 node binding TypeScript 定义 by [@stormslowly](https://github.com/stormslowly) in [#761](https://github.com/umijs/mako/pull/761)
@@ -454,8 +400,6 @@
 ## 0.1.9
 
 `2023-12-07`
-
-> @alipay/bigfish@4.1.6
 
 - 新增 require 动态字符串的支持，比如 `require('./i18n' + lang)` by [@PeachScript](https://github.com/PeachScript) in [#747](https://github.com/umijs/mako/pull/747)
 - 调整 tree-shaking，优化对 side effects 的处理 by [@stormslowly](https://github.com/stormslowly) in [#725](https://github.com/umijs/mako/pull/725)
@@ -473,16 +417,12 @@
 
 `2023-11-28`
 
-> @alipay/bigfish@4.1.3
-
 - 添加 flexBugs 配置项，并在 umi 场景下默认开启 by [@PeachScript](https://github.com/PeachScript) in [#728](https://github.com/umijs/mako/pull/728)
 - 修复 okam node 包的 dts 问题 by [@stormslowly](https://github.com/stormslowly) in [#726](https://github.com/umijs/mako/pull/726)
 
 ## 0.1.3
 
 `2023-11-27`
-
-> @alipay/bigfish@4.1.2
 
 - 修复合并到 common 的 async chunk 在生成 ensure 语句时数据错误导致加载失败的问题 by [@PeachScript](https://github.com/PeachScript) in [#712](https://github.com/umijs/mako/pull/712)
 - 修复 require.loadScript 没有替换成 `__mako__require__` 的问题 by [@stormslowly](https://github.com/stormslowly) in [#715](https://github.com/umijs/mako/pull/715)
@@ -491,8 +431,6 @@
 ## 0.1.0
 
 `2023-11-23`
-
-> @alipay/bigfish@4.1.0
 
 - 新增 Emotion 支持 by [@zhangpanweb](https://github.com/zhangpanweb) in [#694](https://github.com/umijs/mako/pull/694)
 - 提升 generate chunks 的性能，m1 yuyanAssets build 稳定提升 200ms 左右 by [@sorrycc](https://github.com/sorrycc) in [#709](https://github.com/umijs/mako/pull/709)
