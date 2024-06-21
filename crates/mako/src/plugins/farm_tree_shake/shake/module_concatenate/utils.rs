@@ -60,9 +60,6 @@ pub fn uniq_module_namespace_name(module_id: &ModuleId) -> String {
     format!("{}_ns", uniq_module_prefix(module_id))
 }
 
-pub const MODULE_CONCATENATE_ERROR_STR_MODULE_NAME: &str =
-    "str module name not supported in module concatenation";
-
 #[cfg(test)]
 mod tests {
     use super::*;
