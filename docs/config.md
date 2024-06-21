@@ -648,6 +648,13 @@ e.g.
 
 Whether to output umd format.
 
+### useDefineForClassFields
+
+- Type: `boolean`
+- Default: `false`
+
+Whether to use `defineProperty` to define class fields.
+
 ### watch
 
 - Type: `{ ignorePaths: string[] } | false`
