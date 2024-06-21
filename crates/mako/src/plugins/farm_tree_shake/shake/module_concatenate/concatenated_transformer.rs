@@ -5,9 +5,9 @@ use mako_core::swc_common::util::take::Take;
 use swc_core::common::comments::{Comment, CommentKind};
 use swc_core::common::{Mark, Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
-    ClassDecl, DefaultDecl, ExportAll, ExportDecl, ExportDefaultDecl, ExportDefaultExpr,
-    ExportSpecifier, FnDecl, Id, ImportDecl, KeyValueProp, Module, ModuleExportName, ModuleItem,
-    NamedExport, ObjectLit, Prop, PropOrSpread, Stmt, VarDeclKind,
+    ClassDecl, DefaultDecl, ExportAll, ExportDecl, ExportDefaultDecl, ExportDefaultExpr, FnDecl,
+    Id, ImportDecl, KeyValueProp, Module, ModuleItem, NamedExport, ObjectLit, Prop, PropOrSpread,
+    Stmt, VarDeclKind,
 };
 use swc_core::ecma::utils::{member_expr, quote_ident, ExprFactory, IdentRenamer};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith, VisitWith};
@@ -17,10 +17,7 @@ use super::concatenate_context::{
 };
 use super::module_ref_rewriter::ModuleRefRewriter;
 use super::ref_link::{ModuleDeclMapCollector, Symbol, VarLink};
-use super::utils::{
-    uniq_module_default_export_name, uniq_module_namespace_name,
-    MODULE_CONCATENATE_ERROR_STR_MODULE_NAME,
-};
+use super::utils::{uniq_module_default_export_name, uniq_module_namespace_name};
 use crate::compiler::Context;
 use crate::module::{relative_to_root, ImportType, ModuleId};
 
@@ -358,6 +355,10 @@ impl<'a> ConcatenatedTransform<'a> {
 }
 
 impl<'a> VisitMut for ConcatenatedTransform<'a> {
+    fn visit_mut_export_all(&mut self, _export_all: &mut ExportAll) {
+        self.remove_current_stmt();
+    }
+
     fn visit_mut_export_decl(&mut self, export_decl: &mut ExportDecl) {
         let decl = export_decl.decl.take();
 
@@ -463,10 +464,6 @@ impl<'a> VisitMut for ConcatenatedTransform<'a> {
         self.remove_current_stmt();
     }
 
-    fn visit_mut_export_all(&mut self, _export_all: &mut ExportAll) {
-        self.remove_current_stmt();
-    }
-
     fn visit_mut_module(&mut self, n: &mut Module) {
         // all root top vars is already in ccn context top vars
         if !self.is_root {
@@ -530,65 +527,8 @@ impl<'a> VisitMut for ConcatenatedTransform<'a> {
         }
     }
 
-    fn visit_mut_named_export(&mut self, named_export: &mut NamedExport) {
-        if let Some(export_src) = &named_export.src {
-            if let Some(imported_module_id) = self.src_to_module.get(&export_src.value.to_string())
-                && let Some(_export_map) = self
-                    .concatenate_context
-                    .modules_exports_map
-                    .get(imported_module_id)
-            {
-                let stmts: Vec<ModuleItem> = vec![];
-
-                for spec in &named_export.specifiers {
-                    match spec {
-                        ExportSpecifier::Namespace(ns) => match &ns.name {
-                            ModuleExportName::Ident(_name_ident) => {}
-                            ModuleExportName::Str(_) => {
-                                unimplemented!("{}", MODULE_CONCATENATE_ERROR_STR_MODULE_NAME);
-                            }
-                        },
-                        ExportSpecifier::Default(_) => {}
-                        ExportSpecifier::Named(_named) => {}
-                    }
-                }
-
-                self.replaces.push((self.current_stmt_index, stmts));
-            } else {
-                self.remove_current_stmt();
-            }
-        } else {
-            for export_spec in &named_export.specifiers {
-                match export_spec {
-                    ExportSpecifier::Namespace(_) => {
-                        unreachable!("namespace export unreachable when no src")
-                    }
-                    ExportSpecifier::Default(_) => {
-                        unreachable!("default export unreachable when no src")
-                    }
-                    ExportSpecifier::Named(named) => {
-                        match (&named.exported, &named.orig) {
-                            (
-                                Some(ModuleExportName::Ident(_exported_ident)),
-                                ModuleExportName::Ident(_orig_ident),
-                            ) => {
-                                // var_link record the mapping relation
-                            }
-                            (None, ModuleExportName::Ident(_)) => {
-                                // nothing to do
-                                // export map already set as ident-ident
-                                // module item it will be removed
-                            }
-                            (_, ModuleExportName::Str(_)) | (Some(ModuleExportName::Str(_)), _) => {
-                                unimplemented!("export 'str' not supported now");
-                            }
-                        }
-                    }
-                }
-            }
-
-            self.remove_current_stmt();
-        }
+    fn visit_mut_named_export(&mut self, _: &mut NamedExport) {
+        self.remove_current_stmt();
     }
 }
 
