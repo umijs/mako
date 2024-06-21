@@ -42,8 +42,8 @@ function getMakoConfig() {
     modifyVars: makoConfig.less?.theme || {},
   };
   makoConfig.plugins = getPlugins();
-  makoConfig.resolve.alias.forEach((alia) => {
-    alia[1] = path.join(cwd, alia[1]);
+  makoConfig.resolve.alias.forEach((alias) => {
+    alias[1] = path.join(cwd, alias[1]);
   });
   return makoConfig;
 }
