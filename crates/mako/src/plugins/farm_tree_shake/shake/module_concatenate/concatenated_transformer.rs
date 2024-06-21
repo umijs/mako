@@ -15,11 +15,10 @@ use swc_core::ecma::visit::{VisitMut, VisitMutWith, VisitWith};
 use super::concatenate_context::{
     module_ref_to_expr, ConcatenateContext, ImportModuleRefMap, ModuleRef,
 };
-use super::exports_transform::collect_exports_map;
 use super::module_ref_rewriter::ModuleRefRewriter;
 use super::ref_link::{ModuleDeclMapCollector, Symbol, VarLink};
 use super::utils::{
-    declare_var_with_init_stmt, uniq_module_default_export_name, uniq_module_namespace_name,
+    uniq_module_default_export_name, uniq_module_namespace_name,
     MODULE_CONCATENATE_ERROR_STR_MODULE_NAME,
 };
 use crate::compiler::Context;
@@ -39,7 +38,6 @@ pub(super) struct ConcatenatedTransform<'a> {
     pub top_level_mark: Mark,
 
     my_top_decls: HashSet<String>,
-    exports: HashMap<String, String>,
     rename_request: Vec<(Id, Id)>,
     imported_type: ImportType,
     current_stmt_index: usize,
@@ -62,7 +60,6 @@ impl<'a> ConcatenatedTransform<'a> {
             src_to_module,
             context,
             top_level_mark,
-            exports: Default::default(),
             my_top_decls: Default::default(),
             rename_request: vec![],
             imported_type: Default::default(),
@@ -258,10 +255,7 @@ impl<'a> ConcatenatedTransform<'a> {
         self.imported_type = imported_type;
     }
 
-    fn collect_exports(&mut self, n: &Module) {
-        let export_map = collect_exports_map(n);
-        self.exports.extend(export_map);
-    }
+    fn collect_exports(&mut self, _n: &Module) {}
 
     fn apply_renames(&mut self, n: &mut Module, export_map: &mut HashMap<String, ModuleRef>) {
         let map = self.rename_request.iter().cloned().collect();
@@ -270,12 +264,6 @@ impl<'a> ConcatenatedTransform<'a> {
 
         // todo performance?
         for (from, to) in &map {
-            self.exports.iter_mut().for_each(|(_k, v)| {
-                if from.0.eq(v) {
-                    *v = to.0.to_string();
-                }
-            });
-
             export_map.iter_mut().for_each(|(_k, v)| {
                 if from.eq(&v.0.to_id()) {
                     v.0.sym = to.0.clone();
@@ -304,9 +292,6 @@ impl<'a> ConcatenatedTransform<'a> {
 
             let new_name = self.get_non_conflict_name(&conflicted_name);
 
-            self.exports
-                .entry(conflicted_name.clone())
-                .and_modify(|e| *e = new_name.clone());
             self.my_top_decls.insert(new_name.clone());
             self.rename_request
                 .push(((conflicted_name.into(), ctxt), (new_name.into(), ctxt)));
@@ -364,7 +349,6 @@ impl<'a> ConcatenatedTransform<'a> {
             )
             .into_stmt();
 
-        self.exports.insert("*".to_string(), ns_name.clone());
         export_ref_map.insert("*".to_string(), (quote_ident!(ns_name.clone()), None));
         self.my_top_decls.insert(ns_name);
 
@@ -389,8 +373,6 @@ impl<'a> VisitMut for ConcatenatedTransform<'a> {
             DefaultDecl::Class(class_expr) => {
                 let stmt: Stmt = match &class_expr.ident {
                     None => {
-                        self.exports
-                            .insert("default".to_string(), default_binding_name.clone());
                         self.my_top_decls.insert(default_binding_name.clone());
 
                         class_expr
@@ -403,8 +385,6 @@ impl<'a> VisitMut for ConcatenatedTransform<'a> {
                     }
                     Some(ident) => {
                         let export_default_ident = ident.clone();
-                        self.exports
-                            .insert("default".to_string(), export_default_ident.sym.to_string());
                         self.my_top_decls
                             .insert(export_default_ident.sym.to_string());
 
@@ -431,16 +411,12 @@ impl<'a> VisitMut for ConcatenatedTransform<'a> {
                             )
                             .into();
 
-                        self.exports
-                            .insert("default".to_string(), default_binding_name.clone());
                         self.my_top_decls.insert(default_binding_name);
                         stmt
                     }
                     Some(fn_ident) => {
                         let default_binding_name = fn_ident.sym.to_string();
 
-                        self.exports
-                            .insert("default".to_string(), default_binding_name.clone());
                         self.my_top_decls.insert(default_binding_name);
 
                         let fn_decl = FnDecl {
@@ -466,9 +442,7 @@ impl<'a> VisitMut for ConcatenatedTransform<'a> {
 
         let default_binding_name = self.default_bind_name.clone();
 
-        if let Some(exported_ident) = export_default_expr.expr.as_ident() {
-            self.exports
-                .insert("default".to_string(), exported_ident.sym.to_string());
+        if let Some(_exported_ident) = export_default_expr.expr.as_ident() {
             self.remove_current_stmt();
         } else {
             let stmt: Stmt = export_default_expr
@@ -480,9 +454,7 @@ impl<'a> VisitMut for ConcatenatedTransform<'a> {
                 )
                 .into();
             self.my_top_decls.insert(default_binding_name.clone());
-            //TODO how to sync with export_ref_map
-            self.exports
-                .insert("default".to_string(), default_binding_name);
+
             self.replace_current_stmt_with(vec![stmt.into()]);
         }
     }
@@ -534,10 +506,6 @@ impl<'a> VisitMut for ConcatenatedTransform<'a> {
         }
 
         self.concatenate_context
-            .modules_in_scope
-            .insert(self.module_id.clone(), self.exports.clone());
-
-        self.concatenate_context
             .modules_exports_map
             .insert(self.module_id.clone(), export_ref_map);
 
@@ -565,65 +533,23 @@ impl<'a> VisitMut for ConcatenatedTransform<'a> {
     fn visit_mut_named_export(&mut self, named_export: &mut NamedExport) {
         if let Some(export_src) = &named_export.src {
             if let Some(imported_module_id) = self.src_to_module.get(&export_src.value.to_string())
-                && let Some(export_map) = self
+                && let Some(_export_map) = self
                     .concatenate_context
-                    .modules_in_scope
+                    .modules_exports_map
                     .get(imported_module_id)
             {
-                let mut stmts: Vec<ModuleItem> = vec![];
+                let stmts: Vec<ModuleItem> = vec![];
 
                 for spec in &named_export.specifiers {
                     match spec {
-                        ExportSpecifier::Namespace(ns) => {
-                            let exported_namespace = export_map.get("*").unwrap();
-
-                            match &ns.name {
-                                ModuleExportName::Ident(name_ident) => {
-                                    self.exports.insert(
-                                        name_ident.sym.to_string(),
-                                        exported_namespace.clone(),
-                                    );
-                                }
-                                ModuleExportName::Str(_) => {
-                                    unimplemented!("{}", MODULE_CONCATENATE_ERROR_STR_MODULE_NAME);
-                                }
+                        ExportSpecifier::Namespace(ns) => match &ns.name {
+                            ModuleExportName::Ident(_name_ident) => {}
+                            ModuleExportName::Str(_) => {
+                                unimplemented!("{}", MODULE_CONCATENATE_ERROR_STR_MODULE_NAME);
                             }
-                        }
-                        ExportSpecifier::Default(_) => {
-                            let default_export_name = export_map.get("default").unwrap();
-
-                            let default_binding_name = self.get_non_conflict_name(
-                                &uniq_module_default_export_name(self.module_id),
-                            );
-
-                            let stmt: Stmt = declare_var_with_init_stmt(
-                                quote_ident!(default_binding_name.clone()),
-                                default_export_name,
-                            );
-                            self.my_top_decls.insert(default_binding_name.clone());
-                            self.exports
-                                .insert("default".to_string(), default_binding_name);
-                            stmts.push(stmt.into());
-                        }
-                        ExportSpecifier::Named(named) => {
-                            let (exported_ident, orig_name) = match (&named.exported, &named.orig) {
-                                (None, ModuleExportName::Ident(orig)) => {
-                                    (orig.clone(), orig.sym.to_string())
-                                }
-                                (
-                                    Some(ModuleExportName::Ident(exported_ident)),
-                                    ModuleExportName::Ident(orig_ident),
-                                ) => (exported_ident.clone(), orig_ident.sym.to_string()),
-                                (_, _) => {
-                                    unimplemented!("{}", MODULE_CONCATENATE_ERROR_STR_MODULE_NAME)
-                                }
-                            };
-
-                            if let Some(mapped_export) = export_map.get(&orig_name) {
-                                self.exports
-                                    .insert(exported_ident.sym.to_string(), mapped_export.clone());
-                            }
-                        }
+                        },
+                        ExportSpecifier::Default(_) => {}
+                        ExportSpecifier::Named(_named) => {}
                     }
                 }
 
@@ -643,13 +569,10 @@ impl<'a> VisitMut for ConcatenatedTransform<'a> {
                     ExportSpecifier::Named(named) => {
                         match (&named.exported, &named.orig) {
                             (
-                                Some(ModuleExportName::Ident(exported_ident)),
-                                ModuleExportName::Ident(orig_ident),
+                                Some(ModuleExportName::Ident(_exported_ident)),
+                                ModuleExportName::Ident(_orig_ident),
                             ) => {
-                                self.exports.insert(
-                                    exported_ident.sym.to_string(),
-                                    orig_ident.sym.to_string(),
-                                );
+                                // var_link record the mapping relation
                             }
                             (None, ModuleExportName::Ident(_)) => {
                                 // nothing to do

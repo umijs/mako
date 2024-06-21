@@ -7,7 +7,7 @@ use swc_core::ecma::utils::quote_ident;
 use swc_core::ecma::visit::VisitMutWith;
 
 use super::super::ConcatenateContext;
-use super::utils::{current_export_map, describe_export_map};
+use super::utils::describe_export_map;
 use super::ConcatenatedTransform;
 use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
@@ -23,7 +23,6 @@ fn test_import_default_from_inner() {
 
     assert_eq!(code, "inner_default_export;");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
 
 #[test]
@@ -35,7 +34,6 @@ fn test_import_default_from_external() {
 
     assert_eq!(code, "external_namespace_esm.default;");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
 
 #[test]
@@ -52,7 +50,6 @@ fn test_import_default_from_inner_with_original_name() {
 
     assert_eq!(code, "console.log(inner_default_export);");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
 
 #[ignore]
@@ -71,7 +68,6 @@ fn test_import_default_from_no_default_export_inner() {
 
     assert_eq!(code, "var x = undefined;\nconsole.log(x);");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
 
 #[test]
@@ -91,7 +87,6 @@ fn test_import_default_from_inner_and_conflict_with_orig_name() {
 var inner_default_export_1 = 0;"#
     );
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
 
 #[test]
@@ -103,7 +98,6 @@ fn test_import_named_from_inner() {
 
     assert_eq!(code, "bar;");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
 
 #[test]
@@ -115,7 +109,6 @@ fn test_import_named_from_external() {
 
     assert_eq!(code, "external_namespace_esm.foo;");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
 
 #[test]
@@ -134,7 +127,6 @@ fn test_import_names_from_inner() {
 named;"#
     );
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
 
 #[test]
@@ -150,7 +142,6 @@ fn test_import_name_and_default_from_inner() {
 inner_default_export;"#
     );
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
 
 #[test]
@@ -162,7 +153,6 @@ fn test_import_named_from_inner_with_same_orig_name() {
 
     assert_eq!(code, "named;");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
 
 #[test]
@@ -174,7 +164,6 @@ fn test_import_named_as_from_inner() {
 
     assert_eq!(code, "bar;");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
 
 #[test]
@@ -189,7 +178,6 @@ fn test_import_named_as_from_external() {
 
     assert_eq!(code, "external_namespace_esm.foo;");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
 
 #[test]
@@ -201,7 +189,6 @@ fn test_import_named_as_from_inner_with_same_orig_name() {
 
     assert_eq!(code, "bar;");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
 
 #[test]
@@ -216,7 +203,6 @@ fn test_import_named_as_from_inner_and_conflict_with_other_name() {
 
     assert_eq!(code, "bar;");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
 
 #[test]
@@ -228,7 +214,6 @@ fn test_import_namespace_from_inner() {
 
     assert_eq!(code, "inner_namespace;");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
 
 #[test]
@@ -240,7 +225,6 @@ fn test_import_namespace_from_external() {
 
     assert_eq!(code, "external_namespace_esm;");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
 
 #[test]
@@ -252,7 +236,6 @@ fn test_import_namespace_from_inner_with_conflict() {
 
     assert_eq!(code, "inner_namespace;");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
 
 #[test]
@@ -268,7 +251,6 @@ fn test_import_namespace_from_inner_and_with_origin_namespace() {
 
     assert_eq!(code, "inner_namespace;");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-    assert_eq!(current_export_map(&ccn_ctx), &hashmap!());
 }
 
 #[test]
@@ -279,10 +261,6 @@ fn test_export_named() {
 
     assert_eq!(code, "var n = some.named;");
     assert_eq!(ccn_ctx.top_level_vars, hashset!("n".to_string()));
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!("n".to_string() => "n".to_string())
-    );
     assert_eq!(describe_export_map(&ccn_ctx), "n => n");
 }
 
@@ -294,9 +272,27 @@ fn test_export_named_as() {
 
     assert_eq!(code, "var n = some.named;");
     assert_eq!(ccn_ctx.top_level_vars, hashset!("n".to_string()));
+    assert_eq!(describe_export_map(&ccn_ctx), "named => n");
+}
+
+#[test]
+fn test_export_named_as_to_a_conflicted_local_var() {
+    let mut ccn_ctx = ConcatenateContext {
+        top_level_vars: hashset! {
+            "named".to_string(),
+        },
+        ..ConcatenateContext::default()
+    };
+
+    let code = inner_trans_code(
+        "let named; var n = some.named;export { n as named};",
+        &mut ccn_ctx,
+    );
+
+    assert_eq!(code, "let named_1;\nvar n = some.named;");
     assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!("named".to_string() => "n".to_string())
+        ccn_ctx.top_level_vars,
+        hashset!("n".to_string(), "named".to_string(), "named_1".to_string())
     );
     assert_eq!(describe_export_map(&ccn_ctx), "named => n");
 }
@@ -309,10 +305,6 @@ fn test_export_named_as_default() {
 
     assert_eq!(code, "var n = some.named;");
     assert_eq!(ccn_ctx.top_level_vars, hashset!("n".to_string()));
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!("default".to_string() => "n".to_string())
-    );
     assert_eq!(describe_export_map(&ccn_ctx), "default => n");
 }
 
@@ -330,10 +322,6 @@ fn test_export_as_with_conflict() {
         ccn_ctx.top_level_vars,
         hashset!("n".to_string(), "n_1".to_string())
     );
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!("named".to_string() => "n_1".to_string())
-    );
     assert_eq!(describe_export_map(&ccn_ctx), "named => n_1");
 }
 
@@ -350,10 +338,6 @@ fn test_export_default_expr_with_conflict() {
     assert_eq!(
         ccn_ctx.top_level_vars,
         hashset!("__$m_mut_js_0_1".to_string(), "__$m_mut_js_0".to_string(),)
-    );
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!("default".to_string() => "__$m_mut_js_0_1".to_string())
     );
     assert_eq!(describe_export_map(&ccn_ctx), "default => __$m_mut_js_0_1")
 }
@@ -376,13 +360,6 @@ fn test_export_as_twice_with_conflict() {
         hashset!("n".to_string(), "n_1".to_string())
     );
     assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!(
-            "named".to_string() => "n_1".to_string(),
-            "foo".to_string() => "n_1".to_string()
-        )
-    );
-    assert_eq!(
         describe_export_map(&ccn_ctx),
         r#"
 foo => n_1
@@ -400,12 +377,6 @@ fn test_export_short_named() {
 
     assert_eq!(code, "var named = some.named;");
     assert_eq!(ccn_ctx.top_level_vars, hashset!("named".to_string()));
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!(
-            "named".to_string() => "named".to_string()
-        )
-    );
 
     assert_eq!(describe_export_map(&ccn_ctx), "named => named")
 }
@@ -424,12 +395,6 @@ fn test_export_short_named_with_conflict() {
         ccn_ctx.top_level_vars,
         hashset!("named".to_string(), "named_1".to_string())
     );
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!(
-            "named".to_string() => "named_1".to_string()
-        )
-    );
     assert_eq!(describe_export_map(&ccn_ctx), "named => named_1");
 }
 
@@ -443,12 +408,6 @@ fn test_export_default_decl_literal_expr() {
         ccn_ctx.top_level_vars,
         hashset!("__$m_mut_js_0".to_string())
     );
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!(
-            "default".to_string() => "__$m_mut_js_0".to_string()
-        )
-    );
     assert_eq!(describe_export_map(&ccn_ctx), "default => __$m_mut_js_0");
 }
 
@@ -459,12 +418,6 @@ fn test_export_default_decl_ident_expr() {
 
     assert_eq!(code, r#"let t = 1;"#);
     assert_eq!(ccn_ctx.top_level_vars, hashset!("t".to_string()));
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!(
-            "default".to_string() => "t".to_string()
-        )
-    );
     assert_eq!(describe_export_map(&ccn_ctx), "default => t")
 }
 
@@ -478,12 +431,6 @@ fn test_export_decl_un_nameable_expr() {
         ccn_ctx.top_level_vars,
         hashset!("__$m_mut_js_0".to_string())
     );
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!(
-            "default".to_string() => "__$m_mut_js_0".to_string()
-        )
-    );
     assert_eq!(describe_export_map(&ccn_ctx), "default => __$m_mut_js_0");
 }
 
@@ -494,12 +441,6 @@ fn test_export_default_decl_named_function() {
 
     assert_eq!(code, "function a() {}");
     assert_eq!(ccn_ctx.top_level_vars, hashset!("a".to_string()));
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!(
-            "default".to_string() => "a".to_string()
-        )
-    );
     assert_eq!(describe_export_map(&ccn_ctx), "default => a");
 }
 
@@ -517,12 +458,6 @@ fn test_export_default_decl_named_function_and_conflict() {
         ccn_ctx.top_level_vars,
         hashset!("a".to_string(), "a_1".to_string())
     );
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!(
-            "default".to_string() => "a_1".to_string()
-        )
-    );
 }
 
 #[test]
@@ -536,12 +471,6 @@ fn test_export_decl_class() {
 }"
     );
     assert_eq!(ccn_ctx.top_level_vars, hashset!("A".to_string()));
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!(
-            "A".to_string() => "A".to_string()
-        )
-    );
     assert_eq!(describe_export_map(&ccn_ctx), "A => A")
 }
 
@@ -562,12 +491,6 @@ fn test_export_decl_class_and_conflict() {
         ccn_ctx.top_level_vars,
         hashset!("A".to_string(), "A_1".to_string())
     );
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!(
-            "A".to_string() => "A_1".to_string()
-        )
-    );
 }
 
 #[test]
@@ -577,12 +500,6 @@ fn test_export_decl_fn() {
 
     assert_eq!(code, "function fn() {}");
     assert_eq!(ccn_ctx.top_level_vars, hashset!("fn".to_string()));
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!(
-            "fn".to_string() => "fn".to_string()
-        )
-    );
     assert_eq!(describe_export_map(&ccn_ctx), "fn => fn")
 }
 
@@ -600,12 +517,6 @@ fn test_export_decl_fn_and_conflict_fn_name() {
         ccn_ctx.top_level_vars,
         hashset!("fn".to_string(), "fn_1".to_string())
     );
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!(
-            "fn".to_string() => "fn_1".to_string()
-        )
-    );
     assert_eq!(describe_export_map(&ccn_ctx), "fn => fn_1")
 }
 
@@ -616,12 +527,6 @@ fn test_export_decl_var() {
 
     assert_eq!(code, "const a = 1;");
     assert_eq!(ccn_ctx.top_level_vars, hashset!("a".to_string()));
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!(
-            "a".to_string() => "a".to_string()
-        )
-    );
     assert_eq!(describe_export_map(&ccn_ctx), "a => a")
 }
 
@@ -636,12 +541,6 @@ fn test_export_default_decl_named_class() {
 }"
     );
     assert_eq!(ccn_ctx.top_level_vars, hashset!("A".to_string()));
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!(
-            "default".to_string() => "A".to_string()
-        )
-    );
     assert_eq!(describe_export_map(&ccn_ctx), "default => A")
 }
 
@@ -659,12 +558,6 @@ fn test_export_default_anonymous_decl_class() {
         ccn_ctx.top_level_vars,
         hashset!("__$m_mut_js_0".to_string())
     );
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!(
-            "default".to_string() => "__$m_mut_js_0".to_string()
-        )
-    );
     assert_eq!(describe_export_map(&ccn_ctx), "default => __$m_mut_js_0")
 }
 
@@ -678,12 +571,6 @@ fn test_export_default_anonymous_decl_fn() {
         ccn_ctx.top_level_vars,
         hashset!("__$m_mut_js_0".to_string())
     );
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!(
-            "default".to_string() => "__$m_mut_js_0".to_string()
-        )
-    );
     assert_eq!(describe_export_map(&ccn_ctx), "default => __$m_mut_js_0");
 }
 
@@ -696,12 +583,6 @@ fn test_export_from_named() {
 
     assert_eq!(code, r#""#);
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!(
-            "named".to_string() => "named".to_string()
-        )
-    );
     assert_eq!(describe_export_map(&ccn_ctx), "named => named")
 }
 
@@ -714,12 +595,6 @@ fn test_export_from_named_as() {
 
     assert_eq!(code, r#""#);
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!(
-            "foo".to_string() => "named".to_string()
-        )
-    );
     assert_eq!(describe_export_map(&ccn_ctx), "foo => named")
 }
 
@@ -732,12 +607,6 @@ fn test_export_from_namespace_as() {
 
     assert_eq!(code, "");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!(
-            "foo".to_string() => "inner_namespace".to_string()
-        )
-    );
     assert_eq!(describe_export_map(&ccn_ctx), "foo => inner_namespace")
 }
 
@@ -745,9 +614,9 @@ fn test_export_from_namespace_as() {
 #[test]
 fn test_export_from_var() {
     let mut ccn_ctx = ConcatenateContext {
-        modules_in_scope: hashmap! {
+        modules_exports_map: hashmap! {
             ModuleId::from("src/index.js") => hashmap! {
-                "default".to_string() => "src_index_default".to_string()
+                "default".to_string() => (quote_ident!("src_index_default"), None)
             }
         },
         ..Default::default()
@@ -757,12 +626,6 @@ fn test_export_from_var() {
 
     assert_eq!(code, r#""#);
     assert_eq!(ccn_ctx.top_level_vars, orig_top_level_vars);
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!(
-            "v".to_string() => "src_index_default".to_string()
-        )
-    );
 }
 
 #[test]
@@ -774,12 +637,6 @@ fn test_export_from_default() {
 
     assert_eq!(code, r#""#);
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap!(
-            "default".to_string() => "inner_default_export".to_string()
-        )
-    );
 }
 
 fn concatenate_context_fixture_with_inner_module() -> ConcatenateContext {
@@ -791,15 +648,6 @@ fn concatenate_context_fixture_with_inner_module() -> ConcatenateContext {
             "named".to_string(),
             "will_conflict".to_string(),
         },
-        modules_in_scope: hashmap! {
-            ModuleId::from("src/index.js") => hashmap!{
-                "*".to_string() => "inner_namespace".to_string(),
-                "default".to_string() => "inner_default_export".to_string(),
-                "foo".to_string() => "bar".to_string(),
-                "named".to_string() => "named".to_string(),
-            },
-            ModuleId::from("src/no_exports.js") => hashmap!{},
-        },
         modules_exports_map: hashmap! {
             ModuleId::from("src/index.js") => hashmap!{
                 "*".to_string() => (quote_ident!("inner_namespace"), None),
@@ -807,7 +655,7 @@ fn concatenate_context_fixture_with_inner_module() -> ConcatenateContext {
                 "foo".to_string() => (quote_ident!("bar") ,None),
                 "named".to_string() => (quote_ident!("named"), None)
             },
-                    ModuleId::from("src/no_exports.js") => hashmap!{},
+            ModuleId::from("src/no_exports.js") => hashmap!{},
         },
         external_module_namespace: hashmap! {
             ModuleId::from("external") => ("external_namespace".to_string(),

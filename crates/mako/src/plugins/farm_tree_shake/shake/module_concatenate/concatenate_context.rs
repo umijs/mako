@@ -262,7 +262,6 @@ pub fn module_ref_to_expr(module_ref: &ModuleRef) -> Expr {
 
 #[derive(Debug, Default)]
 pub struct ConcatenateContext {
-    pub modules_in_scope: HashMap<ModuleId, HashMap<String, String>>,
     pub modules_exports_map: HashMap<ModuleId, HashMap<String, ModuleRef>>,
     pub top_level_vars: HashSet<String>,
     pub external_module_namespace: HashMap<ModuleId, (String, String)>,

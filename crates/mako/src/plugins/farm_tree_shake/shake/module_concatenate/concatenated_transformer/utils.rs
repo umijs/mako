@@ -1,14 +1,5 @@
-use std::collections::HashMap;
-
 use super::super::ConcatenateContext;
 use crate::module::ModuleId;
-
-pub fn current_export_map(ccn_ctx: &ConcatenateContext) -> &HashMap<String, String> {
-    ccn_ctx
-        .modules_in_scope
-        .get(&ModuleId::from("mut.js"))
-        .unwrap()
-}
 
 pub fn describe_export_map(ccn_ctx: &ConcatenateContext) -> String {
     let map = ccn_ctx.modules_exports_map.get(&ModuleId::from("mut.js"));

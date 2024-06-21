@@ -5,7 +5,7 @@ use swc_core::common::GLOBALS;
 use swc_core::ecma::visit::VisitMutWith;
 
 use super::super::{ConcatenateContext, ConcatenatedTransform};
-use super::utils::{current_export_map, describe_export_map};
+use super::utils::describe_export_map;
 use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
 use crate::config::{Config, Mode, OptimizationConfig};
@@ -71,13 +71,6 @@ fn test_export_default_from_external() {
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
 
     assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap! {
-            "default".to_string() => "default".to_string()
-        }
-    );
-
-    assert_eq!(
         describe_export_map(&ccn_ctx),
         "default => external_esm.default"
     );
@@ -94,13 +87,6 @@ fn test_export_default_as_from_external() {
     );
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
 
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap! {
-            "foo".to_string() => "foo".to_string()
-        }
-    );
-
     assert_eq!(describe_export_map(&ccn_ctx), "foo => external_esm.default");
 }
 
@@ -115,13 +101,6 @@ fn test_export_named_from_external() {
     );
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
 
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap! {
-            "named".to_string() => "named".to_string()
-        }
-    );
-
     assert_eq!(describe_export_map(&ccn_ctx), "named => external_esm.named");
 }
 
@@ -135,13 +114,6 @@ fn test_export_named_as_from_external() {
         ""
     );
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap! {
-            "foo".to_string() => "foo".to_string()
-        }
-    );
 
     assert_eq!(describe_export_map(&ccn_ctx), "foo => external_esm.named");
 }
@@ -158,13 +130,6 @@ fn test_export_named_as_default_from_external() {
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
 
     assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap! {
-            "default".to_string() => "default".to_string()
-        }
-    );
-
-    assert_eq!(
         describe_export_map(&ccn_ctx),
         "default => external_esm.named"
     );
@@ -178,13 +143,6 @@ fn test_export_namespace_from_external() {
     assert_eq!(run_test("export * as ns from 'external'", &mut ccn_ctx), "");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
 
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap! {
-            "ns".to_string() => "ns".to_string()
-        }
-    );
-
     assert_eq!(describe_export_map(&ccn_ctx), "ns => external_esm");
 }
 
@@ -196,13 +154,6 @@ fn test_export_star_from_external() {
 
     assert_eq!(run_test("export * from 'external'", &mut ccn_ctx), "");
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap! {
-            "ns".to_string() => "ns".to_string()
-        }
-    );
 
     assert_eq!(describe_export_map(&ccn_ctx), "ns => external_esm");
 }
@@ -220,13 +171,6 @@ fn test_import_default_from_external_then_export_default() {
         "external_esm.default;"
     );
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap! {
-            "default".to_string() => "v".to_string()
-        }
-    );
 
     assert_eq!(
         describe_export_map(&ccn_ctx),
@@ -248,13 +192,6 @@ fn test_import_named_from_external_then_export_named() {
     );
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
 
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap! {
-            "named".to_string() => "named".to_string()
-        }
-    );
-
     assert_eq!(describe_export_map(&ccn_ctx), "named => external_esm.named");
 }
 
@@ -272,13 +209,6 @@ fn test_import_named_from_external_then_export_named_as() {
     );
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
 
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap! {
-            "foo".to_string() => "named".to_string()
-        }
-    );
-
     assert_eq!(describe_export_map(&ccn_ctx), "foo => external_esm.named");
 }
 
@@ -295,13 +225,6 @@ fn test_import_namespace_from_external_then_export_named() {
         "external_esm;"
     );
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
-
-    assert_eq!(
-        current_export_map(&ccn_ctx),
-        &hashmap! {
-            "ns".to_string() => "ns".to_string()
-        }
-    );
 
     assert_eq!(describe_export_map(&ccn_ctx), "ns => external_esm");
 }
@@ -390,7 +313,6 @@ fn run_test(code: &str, ccn_ctx: &mut ConcatenateContext) -> String {
 
 fn fixture_concatenate_context() -> ConcatenateContext {
     ConcatenateContext {
-        modules_in_scope: Default::default(),
         modules_exports_map: Default::default(),
         top_level_vars: hashset! {
             "external_cjs".to_string(),
