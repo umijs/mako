@@ -34,7 +34,7 @@ Notice: this configuration item is still WIP, the result may not be accurate.
 
 Whether to automatically enable CSS Modules.
 
-english: If not enabled, only files with `.module.css` or `.module.less` will be treated as CSS Modules; if enabled, named imports like `import styles from './a.css'` will also be treated as CSS Modules.
+If not enabled, only files with `.module.css` or `.module.less` will be treated as CSS Modules; if enabled, named imports like `import styles from './a.css'` will also be treated as CSS Modules.
 
 ### clean
 
