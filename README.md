@@ -35,6 +35,16 @@ Read [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 Read [CHANGELOG.md](./CHANGELOG.md).
 
+## CREDITS
+
+This project is inspired by:
+
+- [webpack](https://github.com/webpack/webpack), which inspired lots of ideas of Mako.
+- [swc](https://github.com/swc-project/swc) by [@kdy1](https://github.com/kdy1), which powered the parsing, transforming and codegen of Mako.
+- [farm](https://github.com/farm-fe/farm) by [@brightwu](https://github.com/wre232114), which inspired the tree shaking, plugin system and others of Mako.
+- [rspack](https://github.com/web-infra-dev/rspack), which inspired the tree shaking of Mako.
+- [oxc-resolver](https://github.com/oxc-project/oxc-resolver) by [@Boshen](https://github.com/Boshen) which powered the resolver of Mako.
+
 ## LICENSE
 
 [MIT](./LICENSE)
