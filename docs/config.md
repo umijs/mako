@@ -328,7 +328,7 @@ Specify the size limit of the assets file that needs to be converted to `base64`
 
 ### less
 
-- Type: `Object`
+- Type: `{ modifyVars?: Record<string, string>, sourceMap?: { sourceMapFileInline?: boolean, outputSourceFiles?: boolean }, math?: "always" | "strict" | "parens-division" | "parens" | "strict-legacy" | number, plugins?: ([string, Record<string, any>]|string)[] }`
 - Default: `{}`
 
 Specify the less configuration.
@@ -647,6 +647,13 @@ e.g.
 - Default: `false`
 
 Whether to output umd format.
+
+### useDefineForClassFields
+
+- Type: `boolean`
+- Default: `false`
+
+Whether to use `defineProperty` to define class fields.
 
 ### watch
 
