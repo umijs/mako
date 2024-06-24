@@ -1,23 +1,21 @@
 mod concatenate_context;
+mod concatenated_transformer;
 mod exports_transform;
 mod external_transformer;
-mod inner_transformer;
-mod root_transformer;
+mod module_ref_rewriter;
+mod ref_link;
 mod utils;
 
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use concatenated_transformer::ConcatenatedTransform;
 use external_transformer::ExternalTransformer;
-use inner_transformer::InnerTransform;
 use mako_core::swc_common::util::take::Take;
-use root_transformer::RootTransformer;
 use swc_core::common::{Span, SyntaxContext, GLOBALS};
-use swc_core::ecma::ast::Id;
 use swc_core::ecma::transforms::base::hygiene::hygiene;
 use swc_core::ecma::transforms::base::resolver;
-use swc_core::ecma::utils::collect_decls_with_ctxt;
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use self::concatenate_context::EsmDependantFlags;
@@ -332,21 +330,10 @@ pub fn optimize_module_graph(
                         println!("code:\n\n{}\n", code);
                     }
 
-                    let mut current_module_top_level_vars: HashSet<String> =
-                        collect_decls_with_ctxt(
-                            &script_ast.ast,
-                            SyntaxContext::empty().apply_mark(script_ast.top_level_mark),
-                        )
-                        .iter()
-                        .map(|id: &Id| id.0.to_string())
-                        .collect();
-
                     let mut ext_trans = ExternalTransformer {
                         src_to_module: &import_source_to_module_id,
                         concatenate_context: &mut concatenate_context,
-                        module_id: id,
                         unresolved_mark: script_ast.unresolved_mark,
-                        my_top_level_vars: &mut current_module_top_level_vars,
                     };
                     script_ast.ast.visit_mut_with(&mut ext_trans);
 
@@ -354,16 +341,16 @@ pub fn optimize_module_graph(
                         let code = script_ast.generate(context.clone()).unwrap().code;
                         println!("after external:\n{}\n", code);
                     }
-                    let mut inner_transformer = InnerTransform::new(
+                    let mut ccn_trans = ConcatenatedTransform::new(
                         &mut concatenate_context,
                         id,
                         &import_source_to_module_id,
                         context,
                         script_ast.top_level_mark,
                     );
-                    inner_transformer.imported(all_import_type);
+                    ccn_trans.imported(all_import_type);
 
-                    script_ast.ast.visit_mut_with(&mut inner_transformer);
+                    script_ast.ast.visit_mut_with(&mut ccn_trans);
                     script_ast.ast.visit_mut_with(&mut CleanSyntaxContext {});
 
                     if cfg!(debug_assertions) && inner_print {
@@ -392,18 +379,20 @@ pub fn optimize_module_graph(
                 let mut ext_trans = ExternalTransformer {
                     src_to_module: &src_2_module_id,
                     concatenate_context: &mut concatenate_context,
-                    module_id: &config.root,
                     unresolved_mark,
-                    my_top_level_vars: &mut HashSet::default(),
                 };
                 root_module_ast.visit_mut_with(&mut ext_trans);
 
-                root_module_ast.visit_mut_with(&mut RootTransformer::new(
+                let mut ccn_trans_for_root = ConcatenatedTransform::new(
                     &mut concatenate_context,
                     &config.root,
-                    context,
                     &src_2_module_id,
-                ));
+                    context,
+                    top_level_mark,
+                )
+                .for_root();
+
+                root_module_ast.visit_mut_with(&mut ccn_trans_for_root);
 
                 if cfg!(debug_assertions) && root_print {
                     let a = JsAst {
@@ -419,6 +408,9 @@ pub fn optimize_module_graph(
                 }
 
                 root_module_ast.visit_mut_with(&mut CleanSyntaxContext {});
+
+                let prefix_items = concatenate_context.root_exports_stmts(&config.root);
+                module_items.splice(0..0, prefix_items);
 
                 root_module_ast.body.splice(0..0, module_items);
                 root_module_ast.visit_mut_with(&mut resolver(

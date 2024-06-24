@@ -1,7 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use swc_core::ecma::ast::{
-    Decl, ExportSpecifier, Ident, Module, ModuleDecl, ModuleExportName, ObjectPatProp, Pat,
+    Decl, ExportSpecifier, Ident, ModuleDecl, ModuleExportName, ObjectPatProp, Pat,
 };
 use swc_core::ecma::visit::{Visit, VisitWith};
 
@@ -115,12 +115,6 @@ impl Visit for ExportsCollector {
             ModuleDecl::TsNamespaceExport(_) => {}
         }
     }
-}
-
-pub(super) fn collect_exports_map(module: &Module) -> HashMap<String, String> {
-    let mut e: ExportsCollector = Default::default();
-    module.visit_with(&mut e);
-    e.exports.iter().map(|x| (x.clone(), x.clone())).collect()
 }
 
 fn collect_defined_ident_in_pat(pat: &Pat) -> HashSet<String> {

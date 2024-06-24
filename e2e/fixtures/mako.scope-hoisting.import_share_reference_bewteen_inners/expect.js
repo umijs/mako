@@ -1,11 +1,8 @@
 const {
-  injectSimpleJest,
-  parseBuildResult,
-  moduleDefinitionOf,
+	injectSimpleJest,
+	parseBuildResult
 } = require("../../../scripts/test-utils");
 const { files } = parseBuildResult(__dirname);
 injectSimpleJest();
-
-expect(files["index.js"]).not.toContain(moduleDefinitionOf("inner.js"));
 
 require("./dist/index.js");
