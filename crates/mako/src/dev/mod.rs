@@ -17,7 +17,7 @@ use mako_core::notify_debouncer_full::new_debouncer;
 use mako_core::tokio::sync::broadcast;
 use mako_core::tracing::debug;
 use mako_core::tungstenite::Message;
-use mako_core::{hyper, hyper_staticfile, hyper_tungstenite};
+use mako_core::{hyper, hyper_staticfile_jsutf8, hyper_tungstenite};
 use open;
 
 use crate::compiler::{Compiler, Context};
@@ -76,8 +76,9 @@ impl DevServer {
                     Ok::<_, hyper::Error>(service_fn(move |req| {
                         let context = context.clone();
                         let txws = txws.clone();
-                        let staticfile =
-                            hyper_staticfile::Static::new(context.config.output.path.clone());
+                        let staticfile = hyper_staticfile_jsutf8::Static::new(
+                            context.config.output.path.clone(),
+                        );
                         async move { Self::handle_requests(req, context, staticfile, txws).await }
                     }))
                 }
@@ -122,7 +123,7 @@ impl DevServer {
     async fn handle_requests(
         req: Request<Body>,
         context: Arc<Context>,
-        staticfile: hyper_staticfile::Static,
+        staticfile: hyper_staticfile_jsutf8::Static,
         txws: broadcast::Sender<WsMessage>,
     ) -> Result<hyper::Response<Body>> {
         let path = req.uri().path();
