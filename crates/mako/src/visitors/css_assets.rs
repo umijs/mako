@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use mako_core::swc_css_ast::{Url, UrlValue};
-use mako_core::swc_css_visit::VisitMut;
+use swc_core::css::ast::{Url, UrlValue};
+use swc_core::css::visit::VisitMut;
 
 use crate::ast::file::File;
 use crate::ast::utils::{is_remote_or_data_or_hash, remove_first_tilde};
@@ -66,7 +66,7 @@ impl VisitMut for CSSAssets {
 
 #[cfg(test)]
 mod tests {
-    use mako_core::swc_css_visit::VisitMutWith;
+    use swc_core::css::visit::VisitMutWith;
 
     use crate::ast::tests::TestUtils;
 

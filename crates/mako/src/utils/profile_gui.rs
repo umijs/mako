@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use mako_core::eframe::egui;
+use eframe::egui;
 
 use crate::compiler::Compiler;
 use crate::utils::tokio_runtime;
@@ -19,9 +19,9 @@ impl ProfileApp {
     }
 }
 
-impl mako_core::eframe::App for ProfileApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut mako_core::eframe::Frame) {
-        mako_core::puffin::GlobalProfiler::lock().new_frame(); // call once per frame!
+impl eframe::App for ProfileApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        puffin::GlobalProfiler::lock().new_frame(); // call once per frame!
 
         if !self.inited {
             self.compiler.compile().unwrap();
@@ -36,6 +36,6 @@ impl mako_core::eframe::App for ProfileApp {
             }
             self.inited = true;
         }
-        mako_core::puffin_egui::profiler_window(ctx);
+        puffin_egui::profiler_window(ctx);
     }
 }

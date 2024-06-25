@@ -1,22 +1,21 @@
 use std::fmt;
 use std::sync::Arc;
 
-use mako_core::anyhow::{anyhow, Result};
-use mako_core::swc_common::errors::HANDLER;
-use mako_core::swc_common::util::take::Take;
-use mako_core::swc_common::{FileName, Mark, GLOBALS};
-use mako_core::swc_ecma_ast::{EsVersion, Module};
-use mako_core::swc_ecma_codegen::text_writer::JsWriter;
-use mako_core::swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
-use mako_core::swc_ecma_parser::error::SyntaxError;
-use mako_core::swc_ecma_parser::lexer::Lexer;
-use mako_core::swc_ecma_parser::{EsConfig, Parser, StringInput, Syntax, TsConfig};
-use mako_core::swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
-use mako_core::swc_ecma_utils::contains_top_level_await;
-use mako_core::swc_ecma_visit;
-use mako_core::swc_ecma_visit::{VisitMutWith, VisitWith};
+use anyhow::{anyhow, Result};
 use swc_core::base::try_with_handler;
-use swc_core::common::Spanned;
+use swc_core::common::errors::HANDLER;
+use swc_core::common::util::take::Take;
+use swc_core::common::{FileName, Mark, Spanned, GLOBALS};
+use swc_core::ecma::ast::{EsVersion, Module};
+use swc_core::ecma::codegen::text_writer::JsWriter;
+use swc_core::ecma::codegen::{Config as JsCodegenConfig, Emitter};
+use swc_core::ecma::parser::error::SyntaxError;
+use swc_core::ecma::parser::lexer::Lexer;
+use swc_core::ecma::parser::{EsConfig, Parser, StringInput, Syntax, TsConfig};
+use swc_core::ecma::transforms::base::helpers::{inject_helpers, Helpers, HELPERS};
+use swc_core::ecma::utils::contains_top_level_await;
+use swc_core::ecma::visit;
+use swc_core::ecma::visit::{VisitMutWith, VisitWith};
 
 use crate::ast::file::{Content, File, JsContent};
 use crate::ast::sourcemap::build_source_map_to_buf;
@@ -133,8 +132,8 @@ impl JsAst {
 
     pub fn transform(
         &mut self,
-        mut_visitors: &mut Vec<Box<dyn swc_ecma_visit::VisitMut>>,
-        folders: &mut Vec<Box<dyn swc_ecma_visit::Fold>>,
+        mut_visitors: &mut Vec<Box<dyn visit::VisitMut>>,
+        folders: &mut Vec<Box<dyn visit::Fold>>,
         file: &File,
         should_inject_helpers: bool,
         context: Arc<Context>,

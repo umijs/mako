@@ -18,11 +18,11 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use analyze::Analyze;
-use mako_core::anyhow::{anyhow, Result};
-use mako_core::indexmap::IndexSet;
-use mako_core::rayon::prelude::*;
-use mako_core::serde::Serialize;
-use mako_core::tracing::debug;
+use anyhow::{anyhow, Result};
+use indexmap::IndexSet;
+use rayon::prelude::*;
+use serde::Serialize;
+use tracing::debug;
 
 use crate::compiler::{Compiler, Context};
 use crate::config::{DevtoolConfig, OutputMode, TreeShakingStrategy};
@@ -99,7 +99,7 @@ impl Compiler {
                 Some(TreeShakingStrategy::Basic) => {
                     let mut module_graph = self.context.module_graph.write().unwrap();
 
-                    mako_core::mako_profile_scope!("tree shake");
+                    crate::mako_profile_scope!("tree shake");
                     self.context
                         .plugin_driver
                         .optimize_module_graph(module_graph.deref_mut(), &self.context)?;
@@ -250,7 +250,7 @@ impl Compiler {
     }
 
     fn generate_chunk_mem_file(&self, chunk_files: &Vec<ChunkFile>) -> Result<Duration> {
-        mako_core::mako_profile_function!();
+        crate::mako_profile_function!();
         // ast to code and sourcemap, then write
         let t_ast_to_code_and_write = Instant::now();
         debug!("ast to code and write");
@@ -268,7 +268,7 @@ impl Compiler {
     }
 
     pub fn emit_dev_chunks(&self, current_hmr_hash: u64, last_hmr_hash: u64) -> Result<()> {
-        mako_core::mako_profile_function!("emit_dev_chunks");
+        crate::mako_profile_function!("emit_dev_chunks");
 
         debug!("generate(hmr-fullbuild)");
 
@@ -515,7 +515,7 @@ impl Compiler {
 }
 
 fn write_dev_chunk_file(context: &Arc<Context>, chunk: &ChunkFile) -> Result<()> {
-    mako_core::mako_profile_function!();
+    crate::mako_profile_function!();
 
     if let Some(source_map) = &chunk.source_map {
         context.write_static_content(
@@ -558,7 +558,7 @@ fn write_dev_chunk_file(context: &Arc<Context>, chunk: &ChunkFile) -> Result<()>
 }
 
 fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
-    mako_core::mako_profile_function!(&chunk_file.file_name);
+    crate::mako_profile_function!(&chunk_file.file_name);
 
     let to: PathBuf = context.config.output.path.join(chunk_file.disk_name());
     let stats_info = &context.stats_info;

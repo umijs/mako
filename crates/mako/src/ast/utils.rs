@@ -1,11 +1,10 @@
-use mako_core::base64::engine::general_purpose;
-use mako_core::base64::Engine;
-use mako_core::swc_common::DUMMY_SP;
-use mako_core::swc_ecma_ast::{
+use base64::engine::general_purpose;
+use base64::Engine;
+use swc_core::common::{Mark, DUMMY_SP};
+use swc_core::ecma::ast::{
     CallExpr, Callee, Expr, ExprOrSpread, Ident, Import, Lit, MemberExpr, MemberProp, MetaPropExpr,
     MetaPropKind, Module, ModuleItem,
 };
-use swc_core::common::Mark;
 
 pub fn base64_encode<T: AsRef<[u8]>>(raw: T) -> String {
     general_purpose::STANDARD.encode(raw)

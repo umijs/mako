@@ -1,17 +1,19 @@
 use std::fmt;
 use std::sync::Arc;
 
-use mako_core::anyhow::{anyhow, Result};
-use mako_core::base64::engine::general_purpose;
-use mako_core::base64::Engine;
-use mako_core::swc_css_ast::Stylesheet;
-use mako_core::swc_css_codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};
-use mako_core::swc_css_codegen::{CodeGenerator, CodegenConfig, Emit};
-use mako_core::swc_css_modules::{compile, CssClassName, TransformConfig, TransformResult};
-use mako_core::swc_css_visit::{VisitMutWith, VisitWith};
-use mako_core::swc_ecma_parser::StringInput;
-use mako_core::{md5, swc_atoms, swc_css_parser, swc_css_visit};
+use anyhow::{anyhow, Result};
+use base64::engine::general_purpose;
+use base64::Engine;
+use md5;
 use swc_core::common::FileName;
+use swc_core::css::ast::Stylesheet;
+use swc_core::css::codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};
+use swc_core::css::codegen::{CodeGenerator, CodegenConfig, Emit};
+use swc_core::css::modules::{compile, CssClassName, TransformConfig, TransformResult};
+use swc_core::css::visit::{VisitMutWith, VisitWith};
+use swc_core::css::{parser, visit};
+use swc_core::ecma::atoms;
+use swc_core::ecma::parser::StringInput;
 
 use crate::ast::file::{Content, File};
 use crate::ast::sourcemap::build_source_map_to_buf;
@@ -39,13 +41,13 @@ impl CssAst {
             FileName::Real(file.relative_path.clone()),
             file.get_content_raw(),
         );
-        let config = swc_css_parser::parser::ParserConfig {
+        let config = parser::parser::ParserConfig {
             css_modules,
             legacy_ie: true,
             ..Default::default()
         };
-        let lexer = swc_css_parser::lexer::Lexer::new(StringInput::from(&*fm), config);
-        let mut parser = swc_css_parser::parser::Parser::new(lexer, config);
+        let lexer = parser::lexer::Lexer::new(StringInput::from(&*fm), config);
+        let mut parser = parser::parser::Parser::new(lexer, config);
         let parse_result = parser.parse_all();
         let mut ast_errors = parser.take_errors();
         if parse_result.is_err() {
@@ -96,10 +98,7 @@ impl CssAst {
         visitor.dependencies
     }
 
-    pub fn transform(
-        &mut self,
-        mut_visitors: &mut Vec<Box<dyn swc_css_visit::VisitMut>>,
-    ) -> Result<()> {
+    pub fn transform(&mut self, mut_visitors: &mut Vec<Box<dyn visit::VisitMut>>) -> Result<()> {
         let ast = &mut self.ast;
         for visitor in mut_visitors {
             ast.visit_mut_with(visitor);
@@ -216,7 +215,7 @@ struct CssModuleRename {
 }
 
 impl TransformConfig for CssModuleRename {
-    fn new_name_for(&self, local: &swc_atoms::JsWord) -> swc_atoms::JsWord {
+    fn new_name_for(&self, local: &atoms::JsWord) -> atoms::JsWord {
         let name = local.to_string();
         let new_name = ident_name(&self.path, &name);
         new_name.into()

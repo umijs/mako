@@ -2,14 +2,14 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
-use mako_core::anyhow::{anyhow, Result};
-use mako_core::indexmap::IndexSet;
-use mako_core::rayon::prelude::*;
-use mako_core::swc_common::DUMMY_SP;
-use mako_core::swc_css_ast::Stylesheet;
-use mako_core::swc_ecma_ast::{Expr, KeyValueProp, Prop, PropName, PropOrSpread, Str};
-use mako_core::tracing::warn;
+use anyhow::{anyhow, Result};
+use indexmap::IndexSet;
 use nanoid::nanoid;
+use rayon::prelude::*;
+use swc_core::common::DUMMY_SP;
+use swc_core::css::ast::Stylesheet;
+use swc_core::ecma::ast::{Expr, KeyValueProp, Prop, PropName, PropOrSpread, Str};
+use tracing::warn;
 
 use crate::compiler::{Compiler, Context};
 use crate::generate::chunk::{Chunk, ChunkType};
@@ -58,7 +58,7 @@ type ChunksHashReplacer = HashMap<String, String>;
 
 impl Compiler {
     pub fn generate_chunk_files(&self, hmr_hash: u64) -> Result<Vec<ChunkFile>> {
-        mako_core::mako_profile_function!();
+        crate::mako_profile_function!();
         let chunk_graph = self.context.chunk_graph.read().unwrap();
         let chunks = chunk_graph.get_chunks();
 

@@ -4,6 +4,8 @@
 
 use std::sync::Arc;
 
+use anyhow::{anyhow, Result};
+use clap::Parser;
 use mako::compiler::{self, Args};
 #[cfg(not(feature = "profile"))]
 use mako::dev;
@@ -12,9 +14,7 @@ use mako::utils::logger::init_logger;
 use mako::utils::profile_gui::ProfileApp;
 use mako::utils::tokio_runtime;
 use mako::{cli, config};
-use mako_core::anyhow::{anyhow, Result};
-use mako_core::clap::Parser;
-use mako_core::tracing::debug;
+use tracing::debug;
 
 #[cfg(not(target_os = "linux"))]
 #[global_allocator]
@@ -77,10 +77,10 @@ async fn run() -> Result<()> {
 
     #[cfg(feature = "profile")]
     {
-        mako_core::puffin::set_scopes_on(true);
+        puffin::set_scopes_on(true);
         let native_options = Default::default();
         let for_profile = compiler.clone();
-        let _ = mako_core::eframe::run_native(
+        let _ = eframe::run_native(
             "puffin egui eframe",
             native_options,
             Box::new(move |_cc| Box::new(ProfileApp::new(for_profile))),

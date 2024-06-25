@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 
-use mako_core::indexmap::IndexMap;
-use mako_core::swc_common::DUMMY_SP;
-use mako_core::swc_ecma_ast::{Expr, Ident, MemberExpr, Module, ModuleItem, VarDeclKind};
-use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
-use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
-use swc_core::common::{Mark, SyntaxContext};
+use indexmap::IndexMap;
+use swc_core::common::{Mark, SyntaxContext, DUMMY_SP};
+use swc_core::ecma::ast::{Expr, Ident, MemberExpr, Module, ModuleItem, VarDeclKind};
+use swc_core::ecma::utils::{quote_ident, quote_str, ExprFactory};
+use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::config::Providers;
 pub struct Provide {
@@ -154,7 +153,7 @@ function foo() {
     fn test_provide_in_shorthand_notation() {
         assert_eq!(
             run(r#"
-console.log({process});            
+console.log({process});
             "#),
             r#"
 const process = __mako_require__("process");

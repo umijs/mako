@@ -2,10 +2,10 @@ use core::fmt;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hasher;
 
-use mako_core::petgraph::stable_graph::{DefaultIx, NodeIndex, StableDiGraph};
-use mako_core::petgraph::visit::Dfs;
-use mako_core::petgraph::Direction;
-use mako_core::twox_hash::XxHash64;
+use petgraph::stable_graph::{DefaultIx, NodeIndex, StableDiGraph};
+use petgraph::visit::Dfs;
+use petgraph::Direction;
+use twox_hash::XxHash64;
 
 use crate::generate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::module::ModuleId;

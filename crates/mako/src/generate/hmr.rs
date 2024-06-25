@@ -1,6 +1,6 @@
-use mako_core::anyhow::Result;
-use mako_core::indexmap::IndexSet;
-use mako_core::swc_ecma_ast::{
+use anyhow::Result;
+use indexmap::IndexSet;
+use swc_core::ecma::ast::{
     CallExpr, Expr, ExprOrSpread, ExprStmt, KeyValueProp, ModuleItem, ObjectLit, Prop,
     PropOrSpread, Stmt,
 };

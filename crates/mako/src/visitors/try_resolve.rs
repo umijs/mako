@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use mako_core::swc_common::Mark;
-use mako_core::swc_ecma_ast::{
+use swc_core::common::Mark;
+use swc_core::ecma::ast::{
     AssignExpr, BlockStmt, CallExpr, Decl, Expr, ExprOrSpread, ExprStmt, Stmt, TryStmt,
 };
-use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::utils::{get_first_str_arg, is_commonjs_require};
 use crate::compiler::Context;
@@ -103,8 +103,8 @@ impl VisitMut for TryResolve {
 
 #[cfg(test)]
 mod tests {
-    use mako_core::swc_ecma_visit::VisitMutWith;
     use swc_core::common::GLOBALS;
+    use swc_core::ecma::visit::VisitMutWith;
 
     use super::TryResolve;
     use crate::ast::tests::TestUtils;

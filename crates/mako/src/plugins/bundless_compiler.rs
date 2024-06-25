@@ -4,20 +4,20 @@ use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use mako_core::anyhow::{anyhow, Result};
-use mako_core::pathdiff::diff_paths;
-use mako_core::rayon::prelude::*;
-use mako_core::swc_common::errors::HANDLER;
-use mako_core::swc_common::GLOBALS;
-use mako_core::swc_ecma_transforms::fixer::fixer;
-use mako_core::swc_ecma_transforms::helpers::{Helpers, HELPERS};
-use mako_core::swc_ecma_transforms::hygiene;
-use mako_core::swc_ecma_transforms::hygiene::hygiene_with_config;
-use mako_core::swc_ecma_transforms_modules::import_analysis::import_analyzer;
-use mako_core::swc_ecma_transforms_modules::util::ImportInterop;
-use mako_core::swc_ecma_visit::VisitMutWith;
-use mako_core::swc_error_reporters::handler::try_with_handler;
-use mako_core::tracing::warn;
+use anyhow::{anyhow, Result};
+use pathdiff::diff_paths;
+use rayon::prelude::*;
+use swc_core::common::errors::HANDLER;
+use swc_core::common::GLOBALS;
+use swc_core::ecma::transforms::base::fixer::fixer;
+use swc_core::ecma::transforms::base::helpers::{Helpers, HELPERS};
+use swc_core::ecma::transforms::base::hygiene;
+use swc_core::ecma::transforms::base::hygiene::hygiene_with_config;
+use swc_core::ecma::transforms::module::import_analysis::import_analyzer;
+use swc_core::ecma::transforms::module::util::ImportInterop;
+use swc_core::ecma::visit::VisitMutWith;
+use swc_error_reporters::handler::try_with_handler;
+use tracing::warn;
 
 use crate::ast::js_ast::JsAst;
 use crate::compiler::{Args, Context};
@@ -117,7 +117,7 @@ impl Plugin for BundlessCompiler {
 }
 
 fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> Result<()> {
-    mako_core::mako_profile_function!();
+    crate::mako_profile_function!();
 
     module_ids
         .par_iter()

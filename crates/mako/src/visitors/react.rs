@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
-use mako_core::swc_common::sync::Lrc;
-use mako_core::swc_common::{chain, Mark, SourceMap};
-use mako_core::swc_ecma_ast::Module;
-use mako_core::swc_ecma_transforms_react::{react as swc_react, Options, RefreshOptions, Runtime};
-use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
-use swc_core::common::{Span, DUMMY_SP};
+use swc_core::common::sync::Lrc;
+use swc_core::common::{chain, Mark, SourceMap, Span, DUMMY_SP};
+use swc_core::ecma::ast::Module;
+use swc_core::ecma::transforms::react::{react as swc_react, Options, RefreshOptions, Runtime};
+use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
@@ -167,8 +166,8 @@ if ($RefreshIsReactComponentLike$(module.exports)) {
 #[cfg(test)]
 mod tests {
 
-    use mako_core::swc_common::{Mark, GLOBALS};
-    use mako_core::swc_ecma_visit::VisitMutWith;
+    use swc_core::common::{Mark, GLOBALS};
+    use swc_core::ecma::visit::VisitMutWith;
 
     use super::react;
     use crate::ast::tests::TestUtils;

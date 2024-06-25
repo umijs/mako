@@ -1,8 +1,8 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use mako_core::swc_common::util::take::Take;
 use swc_core::common::comments::{Comment, CommentKind};
+use swc_core::common::util::take::Take;
 use swc_core::common::{Mark, Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
     ClassDecl, DefaultDecl, ExportAll, ExportDecl, ExportDefaultDecl, ExportDefaultExpr, FnDecl,

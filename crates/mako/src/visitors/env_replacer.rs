@@ -1,20 +1,19 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use mako_core::anyhow::{anyhow, Result};
-use mako_core::serde_json::Value;
-use mako_core::swc_atoms::{js_word, JsWord};
-use mako_core::swc_common::collections::AHashMap;
-use mako_core::swc_common::sync::Lrc;
-use mako_core::swc_common::DUMMY_SP;
-use mako_core::swc_ecma_ast::{
+use anyhow::{anyhow, Result};
+use serde_json::Value;
+use swc_core::common::collections::AHashMap;
+use swc_core::common::sync::Lrc;
+use swc_core::common::{Mark, DUMMY_SP};
+use swc_core::ecma::ast::{
     ArrayLit, Bool, ComputedPropName, Expr, ExprOrSpread, Ident, KeyValueProp, Lit, MemberExpr,
     MemberProp, MetaPropExpr, MetaPropKind, ModuleItem, Null, Number, ObjectLit, Prop, PropName,
     PropOrSpread, Stmt, Str,
 };
-use mako_core::swc_ecma_utils::{quote_ident, ExprExt};
-use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
-use swc_core::common::Mark;
+use swc_core::ecma::atoms::{js_word, JsWord};
+use swc_core::ecma::utils::{quote_ident, ExprExt};
+use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
@@ -255,11 +254,11 @@ mod tests {
     use std::collections::HashMap;
     use std::sync::Arc;
 
-    use mako_core::serde_json::{json, Value};
-    use mako_core::swc_common::sync::Lrc;
-    use mako_core::swc_common::GLOBALS;
-    use mako_core::swc_ecma_visit::VisitMutWith;
     use maplit::hashmap;
+    use serde_json::{json, Value};
+    use swc_core::common::sync::Lrc;
+    use swc_core::common::GLOBALS;
+    use swc_core::ecma::visit::VisitMutWith;
 
     use super::{build_env_map, EnvReplacer};
     use crate::ast::tests::TestUtils;

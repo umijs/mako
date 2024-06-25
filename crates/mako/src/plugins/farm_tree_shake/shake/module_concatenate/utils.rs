@@ -25,30 +25,26 @@ pub fn uniq_module_prefix(module_id: &ModuleId) -> String {
 #[macro_export]
 macro_rules! export_as {
     ( $orig:expr => $exported:expr ) => {
-        mako_core::swc_ecma_ast::ExportSpecifier::Named(
-            mako_core::swc_ecma_ast::ExportNamedSpecifier {
-                span: DUMMY_SP,
-                orig: mako_core::swc_ecma_ast::ModuleExportName::Ident($orig),
-                exported: Some(mako_core::swc_ecma_ast::ModuleExportName::Ident(
-                    $exported.clone(),
-                )),
-                is_type_only: false,
-            },
-        )
+        swc_core::ecma::ast::ExportSpecifier::Named(swc_core::ecma::ast::ExportNamedSpecifier {
+            span: DUMMY_SP,
+            orig: swc_core::ecma::ast::ModuleExportName::Ident($orig),
+            exported: Some(swc_core::ecma::ast::ModuleExportName::Ident(
+                $exported.clone(),
+            )),
+            is_type_only: false,
+        })
     };
 }
 
 #[macro_export]
 macro_rules! export {
     ( $orig:expr ) => {
-        mako_core::swc_ecma_ast::ExportSpecifier::Named(
-            mako_core::swc_ecma_ast::ExportNamedSpecifier {
-                span: DUMMY_SP,
-                orig: mako_core::swc_ecma_ast::ModuleExportName::Ident($orig),
-                exported: None,
-                is_type_only: false,
-            },
-        )
+        swc_core::ecma::ast::ExportSpecifier::Named(swc_core::ecma::ast::ExportNamedSpecifier {
+            span: DUMMY_SP,
+            orig: swc_core::ecma::ast::ModuleExportName::Ident($orig),
+            exported: None,
+            is_type_only: false,
+        })
     };
 }
 

@@ -1,18 +1,18 @@
 use std::sync::Arc;
 
-use mako_core::anyhow::Result;
-use mako_core::swc_common::sync::Lrc;
-use mako_core::swc_css_ast::{AtRule, AtRulePrelude, ImportHref, Rule, Str, Stylesheet, UrlValue};
-use mako_core::swc_css_compat::compiler::{self, Compiler};
-use mako_core::swc_ecma_preset_env::{self as swc_preset_env};
-use mako_core::swc_ecma_transforms::feature::FeatureFlag;
-use mako_core::swc_ecma_transforms::{resolver, Assumptions};
-use mako_core::swc_ecma_transforms_optimization::simplifier;
-use mako_core::swc_ecma_transforms_optimization::simplify::{dce, Config as SimpilifyConfig};
-use mako_core::swc_ecma_transforms_proposals::decorators;
-use mako_core::swc_ecma_visit::{Fold, VisitMut};
-use mako_core::{swc_css_compat, swc_css_prefixer, swc_css_visit};
+use anyhow::Result;
+use swc_core::common::sync::Lrc;
 use swc_core::common::GLOBALS;
+use swc_core::css::ast::{AtRule, AtRulePrelude, ImportHref, Rule, Str, Stylesheet, UrlValue};
+use swc_core::css::compat::compiler::{self, Compiler};
+use swc_core::css::{compat as swc_css_compat, prefixer, visit as swc_css_visit};
+use swc_core::ecma::preset_env::{self as swc_preset_env};
+use swc_core::ecma::transforms::base::feature::FeatureFlag;
+use swc_core::ecma::transforms::base::{resolver, Assumptions};
+use swc_core::ecma::transforms::optimization::simplifier;
+use swc_core::ecma::transforms::optimization::simplify::{dce, Config as SimpilifyConfig};
+use swc_core::ecma::transforms::proposal::decorators;
+use swc_core::ecma::visit::{Fold, VisitMut};
 
 use crate::ast::css_ast::CssAst;
 use crate::ast::file::File;
@@ -44,7 +44,7 @@ pub struct Transform {}
 
 impl Transform {
     pub fn transform(ast: &mut ModuleAst, file: &File, context: Arc<Context>) -> Result<()> {
-        mako_core::mako_profile_function!();
+        crate::mako_profile_function!();
         match ast {
             ModuleAst::Script(ast) => {
                 GLOBALS.set(&context.meta.script.globals, || {
@@ -226,13 +226,11 @@ impl Transform {
                     )));
                 }
                 // prefixer
-                visitors.push(Box::new(swc_css_prefixer::prefixer(
-                    swc_css_prefixer::options::Options {
-                        env: Some(targets::swc_preset_env_targets_from_map(
-                            context.config.targets.clone(),
-                        )),
-                    },
-                )));
+                visitors.push(Box::new(prefixer::prefixer(prefixer::options::Options {
+                    env: Some(targets::swc_preset_env_targets_from_map(
+                        context.config.targets.clone(),
+                    )),
+                })));
                 ast.transform(&mut visitors)?;
 
                 // css modules

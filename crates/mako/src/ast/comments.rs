@@ -1,8 +1,8 @@
 use delegate::delegate;
-use mako_core::swc_common;
-use mako_core::swc_common::comments::{Comment, Comments as CommentsTrait};
-use mako_core::swc_common::{BytePos, Span};
-use mako_core::swc_node_comments::SwcComments;
+use swc_core::common;
+use swc_core::common::comments::{Comment, Comments as CommentsTrait};
+use swc_core::common::{BytePos, Span};
+use swc_node_comments::SwcComments;
 
 #[derive(Default)]
 pub struct Comments(MakoComments);
@@ -51,7 +51,7 @@ impl Comments {
     #[allow(dead_code)]
     fn has_flag(&self, span: Span, text: &'static str) -> bool {
         self.find_comment(span, |c| {
-            if c.kind == swc_common::comments::CommentKind::Block {
+            if c.kind == common::comments::CommentKind::Block {
                 //
                 if c.text.len() == (text.len() + 5)
                     && (c.text.starts_with("#__") || c.text.starts_with("@__"))
@@ -69,10 +69,10 @@ impl Comments {
     #[allow(dead_code)]
     fn find_comment<F>(&self, span: Span, mut op: F) -> bool
     where
-        F: FnMut(&swc_common::comments::Comment) -> bool,
+        F: FnMut(&common::comments::Comment) -> bool,
     {
         let mut found = false;
-        let cs: Option<_> = swc_common::comments::Comments::get_leading(&self.0, span.lo);
+        let cs: Option<_> = common::comments::Comments::get_leading(&self.0, span.lo);
         if let Some(cs) = cs {
             for c in &cs {
                 found |= op(c);
@@ -95,7 +95,7 @@ impl CommentsTrait for MakoComments {
         if pos.is_dummy() {
             #[cfg(debug_assertions)]
             {
-                use mako_core::tracing::warn;
+                use tracing::warn;
                 warn!("still got pure comments at dummy pos! UPGRADE SWC!!!");
             }
             return;

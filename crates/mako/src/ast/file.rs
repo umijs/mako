@@ -3,16 +3,16 @@ use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
 
-use mako_core::anyhow::{anyhow, Result};
-use mako_core::base64::alphabet::STANDARD;
-use mako_core::base64::{engine, Engine};
-use mako_core::pathdiff::diff_paths;
-use mako_core::regex::Regex;
-use mako_core::thiserror::Error;
-use mako_core::twox_hash::XxHash64;
-use mako_core::{md5, mime_guess};
+use anyhow::{anyhow, Result};
+use base64::alphabet::STANDARD;
+use base64::{engine, Engine};
+use pathdiff::diff_paths;
 use percent_encoding::percent_decode_str;
+use regex::Regex;
+use thiserror::Error;
+use twox_hash::XxHash64;
 use url::Url;
+use {md5, mime_guess};
 
 use crate::compiler::Context;
 use crate::utils::base64_decode;

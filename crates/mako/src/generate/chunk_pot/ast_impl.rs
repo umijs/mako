@@ -1,19 +1,18 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use anyhow::Result;
 use cached::proc_macro::cached;
-use mako_core::anyhow::Result;
-use mako_core::cached::SizedCache;
-use mako_core::swc_common::{Mark, DUMMY_SP, GLOBALS};
-use mako_core::swc_css_ast::Stylesheet;
-use mako_core::swc_css_codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};
-use mako_core::swc_css_codegen::{CodeGenerator, CodegenConfig, Emit};
-use mako_core::swc_ecma_ast::{
+use cached::SizedCache;
+use swc_core::common::{Mark, DUMMY_SP, GLOBALS};
+use swc_core::css::ast::Stylesheet;
+use swc_core::css::codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};
+use swc_core::css::codegen::{CodeGenerator, CodegenConfig, Emit};
+use swc_core::ecma::ast::{
     BlockStmt, FnExpr, Function, KeyValueProp, Lit, Module as SwcModule, Number, ObjectLit, Prop,
     PropOrSpread, Stmt, UnaryExpr, UnaryOp, VarDeclKind,
 };
-use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
-use mako_core::{mako_profile_scope, ternary};
+use swc_core::ecma::utils::{quote_ident, quote_str, ExprFactory};
 
 use crate::ast::js_ast::JsAst;
 use crate::ast::sourcemap::{build_source_map_to_buf, merge_source_map};
@@ -27,6 +26,7 @@ use crate::generate::chunk_pot::{get_css_chunk_filename, util, ChunkPot};
 use crate::generate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::generate::minify::{minify_css, minify_js};
 use crate::generate::transform::transform_css_generate;
+use crate::{mako_profile_scope, ternary};
 
 #[cached(
     result = true,
@@ -40,7 +40,7 @@ pub(crate) fn render_css_chunk(
     chunk: &Chunk,
     context: &Arc<Context>,
 ) -> Result<ChunkFile> {
-    mako_core::mako_profile_function!(&chunk_pot.js_name);
+    crate::mako_profile_function!(&chunk_pot.js_name);
     let mut css_code = String::new();
     let mut source_map = Vec::new();
     let css_writer = BasicCssWriter::new(
@@ -61,7 +61,7 @@ pub(crate) fn render_css_chunk(
     };
 
     {
-        mako_core::mako_profile_scope!("transform_css_generate");
+        crate::mako_profile_scope!("transform_css_generate");
         transform_css_generate(&mut stylesheet, context);
     }
 
@@ -129,7 +129,7 @@ pub(crate) fn render_normal_js_chunk(
     chunk_pot: &ChunkPot,
     context: &Arc<Context>,
 ) -> Result<ChunkFile> {
-    mako_core::mako_profile_function!();
+    crate::mako_profile_function!();
 
     let module = pot_to_chunk_module(
         chunk_pot,
@@ -176,7 +176,7 @@ pub(crate) fn render_entry_js_chunk(
     context: &Arc<Context>,
     hmr_hash: u64,
 ) -> Result<ChunkFile> {
-    mako_core::mako_profile_function!();
+    crate::mako_profile_function!();
 
     let RenderedChunk {
         content,
@@ -189,7 +189,7 @@ pub(crate) fn render_entry_js_chunk(
     )(pot, js_map, css_map, chunk, context)?;
 
     let content = {
-        mako_core::mako_profile_scope!("full_hash_replace");
+        crate::mako_profile_scope!("full_hash_replace");
 
         String::from_utf8(content)?
             .replace("_%full_hash%_", &hmr_hash.to_string())
@@ -219,7 +219,7 @@ fn render_entry_chunk_js_without_full_hash(
     chunk: &Chunk,
     context: &Arc<Context>,
 ) -> Result<RenderedChunk> {
-    mako_core::mako_profile_function!(&pot.chunk_id);
+    crate::mako_profile_function!(&pot.chunk_id);
 
     let mut stmts = vec![];
 
@@ -268,7 +268,7 @@ fn render_entry_chunk_js_without_full_hash(
     stmts.push(init_install_css_chunk);
 
     let mut ast = {
-        mako_core::mako_profile_scope!("parse_runtime_entry");
+        crate::mako_profile_scope!("parse_runtime_entry");
 
         let runtime_content = runtime_code(context)?;
 
@@ -281,7 +281,7 @@ fn render_entry_chunk_js_without_full_hash(
     };
 
     let modules_lit: Stmt = {
-        mako_core::mako_profile_scope!("to_module_object");
+        crate::mako_profile_scope!("to_module_object");
 
         pot_to_module_object(pot, context)?
             .into_var_decl(VarDeclKind::Var, quote_ident!("m").into())
@@ -289,7 +289,7 @@ fn render_entry_chunk_js_without_full_hash(
     };
 
     {
-        mako_core::mako_profile_scope!("entryInsert");
+        crate::mako_profile_scope!("entryInsert");
 
         ast.ast.body.insert(0, modules_lit.into());
 
@@ -307,7 +307,7 @@ fn render_entry_chunk_js_without_full_hash(
     let (buf, source_map_buf) = util::render_module_js(&ast.ast, context)?;
 
     let hash = if context.config.hash {
-        mako_core::mako_profile_scope!("entryHash");
+        crate::mako_profile_scope!("entryHash");
         Some(file_content_hash(&buf))
     } else {
         None

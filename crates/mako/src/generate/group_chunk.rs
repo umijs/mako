@@ -1,7 +1,7 @@
 use std::collections::{HashSet, VecDeque};
 use std::vec;
 
-use mako_core::tracing::debug;
+use tracing::debug;
 
 use crate::ast::file::parse_path;
 use crate::compiler::Compiler;
@@ -14,7 +14,7 @@ pub type GroupUpdateResult = Option<(Vec<ChunkId>, Vec<(ModuleId, ChunkId, Chunk
 
 impl Compiler {
     pub fn group_chunk(&self) {
-        mako_core::mako_profile_function!();
+        crate::mako_profile_function!();
         debug!("group_chunk");
 
         let mut visited = HashSet::new();
@@ -168,7 +168,7 @@ impl Compiler {
     }
 
     pub fn group_hot_update_chunk(&self, update_result: &UpdateResult) -> GroupUpdateResult {
-        mako_core::mako_profile_function!();
+        crate::mako_profile_function!();
         debug!("group_hot_update_chunk");
 
         // unique for queried file modules
@@ -302,7 +302,7 @@ impl Compiler {
         modified_module_id: &ModuleId,
         chunk_graph: &mut ChunkGraph,
     ) -> Vec<(ModuleId, ChunkId, ChunkType)> {
-        mako_core::mako_profile_function!(&modified_module_id.id);
+        crate::mako_profile_function!(&modified_module_id.id);
         let module_graph = self.context.module_graph.read().unwrap();
         let module_chunks = self.get_module_chunks(modified_module_id, chunk_graph);
         let shared_chunk_names = self.get_module_entry_chunk_names(modified_module_id, chunk_graph);
@@ -382,7 +382,7 @@ impl Compiler {
         chunk_graph: &mut ChunkGraph,
         shared_chunk_names: Vec<String>,
     ) -> (Chunk, Vec<ModuleId>, Vec<ModuleId>) {
-        mako_core::mako_profile_function!(&entry_module_id.id);
+        crate::mako_profile_function!(&entry_module_id.id);
         let mut dynamic_entries = vec![];
         let mut worker_entries = vec![];
 

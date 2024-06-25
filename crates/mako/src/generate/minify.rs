@@ -1,23 +1,23 @@
 use std::sync::Arc;
 
-use mako_core::anyhow::Result;
-use mako_core::swc_common::errors::HANDLER;
-use mako_core::swc_common::GLOBALS;
-use mako_core::swc_css_ast::Stylesheet;
-use mako_core::swc_css_minifier;
-use mako_core::swc_ecma_minifier::optimize;
-use mako_core::swc_ecma_minifier::option::{ExtraOptions, MinifyOptions};
-use mako_core::swc_ecma_transforms::fixer::fixer;
-use mako_core::swc_ecma_transforms::helpers::{Helpers, HELPERS};
-use mako_core::swc_ecma_transforms::resolver;
-use mako_core::swc_ecma_visit::VisitMutWith;
-use mako_core::swc_error_reporters::handler::try_with_handler;
+use anyhow::Result;
+use swc_core::common::errors::HANDLER;
+use swc_core::common::GLOBALS;
+use swc_core::css::ast::Stylesheet;
+use swc_core::css::minifier;
+use swc_core::ecma::minifier::optimize;
+use swc_core::ecma::minifier::option::{ExtraOptions, MinifyOptions};
+use swc_core::ecma::transforms::base::fixer::fixer;
+use swc_core::ecma::transforms::base::helpers::{Helpers, HELPERS};
+use swc_core::ecma::transforms::base::resolver;
+use swc_core::ecma::visit::VisitMutWith;
+use swc_error_reporters::handler::try_with_handler;
 
 use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
 
 pub fn minify_js(ast: &mut JsAst, context: &Arc<Context>) -> Result<()> {
-    mako_core::mako_profile_function!();
+    crate::mako_profile_function!();
     GLOBALS.set(&context.meta.script.globals, || {
         try_with_handler(
             context.meta.script.cm.clone(),
@@ -79,12 +79,12 @@ pub fn minify_js(ast: &mut JsAst, context: &Arc<Context>) -> Result<()> {
 }
 
 pub fn minify_css(stylesheet: &mut Stylesheet, context: &Arc<Context>) -> Result<()> {
-    mako_core::mako_profile_function!();
+    crate::mako_profile_function!();
     GLOBALS.set(&context.meta.css.globals, || {
         try_with_handler(context.meta.css.cm.clone(), Default::default(), |handler| {
             HELPERS.set(&Helpers::new(true), || {
                 HANDLER.set(handler, || {
-                    swc_css_minifier::minify(stylesheet, Default::default());
+                    minifier::minify(stylesheet, Default::default());
                     Ok(())
                 })
             })

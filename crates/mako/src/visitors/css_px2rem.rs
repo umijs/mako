@@ -1,10 +1,10 @@
 use cached::proc_macro::cached;
-use mako_core::regex::Regex;
-use mako_core::swc_css_ast::{
-    self, Combinator, CombinatorValue, ComplexSelectorChildren, Length, Token, TypeSelector,
+use regex::Regex;
+use swc_core::css::ast::{
+    self as swc_css_ast, AttributeSelector, Combinator, CombinatorValue, ComplexSelector,
+    ComplexSelectorChildren, CompoundSelector, Length, SubclassSelector, Token, TypeSelector,
 };
-use mako_core::swc_css_visit::{VisitMut, VisitMutWith};
-use swc_core::css::ast::{AttributeSelector, ComplexSelector, CompoundSelector, SubclassSelector};
+use swc_core::css::visit::{VisitMut, VisitMutWith};
 
 use crate::config::Px2RemConfig;
 
@@ -228,7 +228,7 @@ fn parse_complex_selector(selector: &ComplexSelector) -> String {
 
 #[cfg(test)]
 mod tests {
-    use mako_core::swc_css_visit::VisitMutWith;
+    use swc_core::css::visit::VisitMutWith;
 
     use super::Px2Rem;
     use crate::ast::tests::TestUtils;

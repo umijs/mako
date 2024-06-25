@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, HashSet};
 
-use mako_core::swc_common::SyntaxContext;
-use mako_core::swc_ecma_ast::{Module as SwcModule, ModuleItem};
+use swc_core::common::SyntaxContext;
+use swc_core::ecma::ast::{Module as SwcModule, ModuleItem};
 
 use crate::module::{Module, ModuleId};
 use crate::module_graph::ModuleGraph;

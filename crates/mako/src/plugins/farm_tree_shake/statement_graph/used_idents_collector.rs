@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
-use mako_core::swc_ecma_ast::Ident;
-use mako_core::swc_ecma_visit::Visit;
+use swc_core::ecma::ast::Ident;
+use swc_core::ecma::visit::Visit;
 
 pub struct UsedIdentsCollector {
     pub used_idents: HashSet<String>,

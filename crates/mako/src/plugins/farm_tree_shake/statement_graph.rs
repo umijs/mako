@@ -1,15 +1,15 @@
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
-use mako_core::petgraph;
-use mako_core::petgraph::stable_graph::NodeIndex;
-use mako_core::swc_ecma_ast::{Module as SwcModule, ModuleItem};
+use petgraph;
+use petgraph::stable_graph::NodeIndex;
+use swc_core::ecma::ast::{Module as SwcModule, ModuleItem};
 
 pub(crate) mod analyze_imports_and_exports;
 pub(crate) mod defined_idents_collector;
 pub(crate) mod used_idents_collector;
 
 use analyze_imports_and_exports::analyze_imports_and_exports;
-use mako_core::swc_common::{Span, SyntaxContext};
+use swc_core::common::{Span, SyntaxContext};
 
 use crate::plugins::farm_tree_shake::module::{is_ident_equal, UsedIdent};
 use crate::plugins::farm_tree_shake::shake::strip_context;

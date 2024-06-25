@@ -6,10 +6,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::vec;
 
-use mako_core::anyhow::Result;
-use mako_core::indexmap::IndexSet;
-use mako_core::swc_css_ast::Stylesheet;
-use mako_core::ternary;
+use anyhow::Result;
+use indexmap::IndexSet;
+use swc_core::css::ast::Stylesheet;
 
 use crate::compiler::Context;
 use crate::config::Mode;
@@ -19,6 +18,7 @@ use crate::generate::chunk_pot::util::{hash_hashmap, hash_vec};
 use crate::generate::generate_chunks::ChunkFile;
 use crate::module::{Module, ModuleAst, ModuleId};
 use crate::module_graph::ModuleGraph;
+use crate::ternary;
 
 pub struct ChunkPot<'a> {
     pub chunk_id: String,
@@ -52,7 +52,7 @@ impl<'cp> ChunkPot<'cp> {
         chunk: &Chunk,
         context: &Arc<Context>,
     ) -> Result<Vec<ChunkFile>> {
-        mako_core::mako_profile_function!(&self.chunk_id);
+        crate::mako_profile_function!(&self.chunk_id);
 
         let mut files = vec![];
 
@@ -101,7 +101,7 @@ impl<'cp> ChunkPot<'cp> {
         chunk: &Chunk,
         hmr_hash: u64,
     ) -> Result<Vec<ChunkFile>> {
-        mako_core::mako_profile_function!();
+        crate::mako_profile_function!();
 
         let mut files = vec![];
 
@@ -118,7 +118,7 @@ impl<'cp> ChunkPot<'cp> {
                 ast_impl::render_entry_js_chunk(self, js_map, &css_map, chunk, context, hmr_hash)?
             }
         } else {
-            mako_core::mako_profile_scope!("EntryDevJsChunk", &self.chunk_id);
+            crate::mako_profile_scope!("EntryDevJsChunk", &self.chunk_id);
 
             if self.use_chunk_parallel(context) {
                 str_impl::render_entry_js_chunk(self, js_map, css_map, chunk, context, hmr_hash)?
@@ -148,7 +148,7 @@ impl<'cp> ChunkPot<'cp> {
         module_graph: &'a ModuleGraph,
         context: &'a Arc<Context>,
     ) -> (JsModules<'a>, Option<CssModules<'a>>) {
-        mako_core::mako_profile_function!(module_ids.len().to_string());
+        crate::mako_profile_function!(module_ids.len().to_string());
         let mut module_map: HashMap<String, (&Module, u64)> = Default::default();
         let mut merged_css_modules: Vec<(String, &Stylesheet)> = vec![];
 
@@ -193,7 +193,7 @@ impl<'cp> ChunkPot<'cp> {
         let raw_hash = hash_hashmap(&module_raw_hash_map);
 
         if !merged_css_modules.is_empty() {
-            mako_core::mako_profile_scope!("iter_chunk_css_modules");
+            crate::mako_profile_scope!("iter_chunk_css_modules");
 
             let mut stylesheets = vec![];
 

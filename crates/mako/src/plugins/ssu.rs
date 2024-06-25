@@ -5,12 +5,12 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+use anyhow::Result;
 use dashmap::DashSet;
-use mako_core::anyhow::Result;
-use mako_core::rayon::prelude::*;
-use mako_core::regex::Regex;
-use mako_core::tracing::debug;
+use rayon::prelude::*;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
+use tracing::debug;
 
 use crate::ast::file::{Content, File, JsContent};
 use crate::compiler::{Args, Compiler, Context};

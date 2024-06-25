@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use mako_core::anyhow;
+use anyhow;
 
 use crate::compiler::Context;
 use crate::plugin::Plugin;

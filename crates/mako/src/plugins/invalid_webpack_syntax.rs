@@ -1,8 +1,8 @@
-use mako_core::swc_common::errors::Handler;
-use mako_core::swc_ecma_ast::{Expr, MemberExpr, MemberProp};
-use mako_core::swc_ecma_visit::{Visit, VisitWith};
-use mako_core::{anyhow, swc_ecma_ast};
+use anyhow;
+use swc_core::common::errors::Handler;
 use swc_core::common::Mark;
+use swc_core::ecma::ast::{Expr, Ident, MemberExpr, MemberProp, Module};
+use swc_core::ecma::visit::{Visit, VisitWith};
 
 use crate::plugin::Plugin;
 
@@ -16,7 +16,7 @@ impl Plugin for InvalidWebpackSyntaxPlugin {
     fn transform_js(
         &self,
         param: &crate::plugin::PluginTransformJsParam,
-        ast: &mut swc_ecma_ast::Module,
+        ast: &mut Module,
         context: &std::sync::Arc<crate::compiler::Context>,
     ) -> anyhow::Result<()> {
         // 先用白名单的形式，等收集的场景多了之后再考虑通用方案
@@ -49,7 +49,7 @@ pub struct InvalidSyntaxVisitor<'a> {
 }
 
 impl<'a> Visit for InvalidSyntaxVisitor<'a> {
-    fn visit_member_expr(&mut self, expr: &swc_ecma_ast::MemberExpr) {
+    fn visit_member_expr(&mut self, expr: &MemberExpr) {
         let is_require_ensure =
             is_member_prop(expr, "require", "ensure", true, self.unresolved_mark);
         if is_require_ensure {
@@ -60,7 +60,7 @@ impl<'a> Visit for InvalidSyntaxVisitor<'a> {
             expr.visit_children_with(self);
         }
     }
-    fn visit_ident(&mut self, n: &swc_ecma_ast::Ident) {
+    fn visit_ident(&mut self, n: &Ident) {
         // why keep __webpack_nonce__? since styled-components is using it
         let is_webpack_prefix = n.sym.starts_with("__webpack_") && &n.sym != "__webpack_nonce__";
         let has_binding = n.span.ctxt.outer() != self.unresolved_mark;
@@ -78,7 +78,7 @@ impl<'a> Visit for InvalidSyntaxVisitor<'a> {
 }
 
 fn is_member_prop(
-    expr: &swc_ecma_ast::MemberExpr,
+    expr: &MemberExpr,
     obj: &str,
     prop: &str,
     check_obj_binding: bool,

@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use mako_core::anyhow::Result;
-use mako_core::swc_ecma_ast::{BinExpr, BinaryOp, Expr, Lit};
-use mako_core::swc_ecma_utils::{member_expr, quote_str};
+use anyhow::Result;
 use swc_core::common::{Mark, DUMMY_SP};
+use swc_core::ecma::ast::{BinExpr, BinaryOp, Expr, Lit};
+use swc_core::ecma::utils::{member_expr, quote_str};
 use swc_core::ecma::visit::VisitMut;
 
 use crate::ast::file::File;
@@ -67,7 +67,7 @@ impl NewUrlAssets {
 }
 
 impl VisitMut for NewUrlAssets {
-    fn visit_mut_new_expr(&mut self, n: &mut mako_core::swc_ecma_ast::NewExpr) {
+    fn visit_mut_new_expr(&mut self, n: &mut swc_core::ecma::ast::NewExpr) {
         // new URL('', import.meta.url)
         if let box Expr::Ident(ident) = &n.callee {
             #[allow(clippy::needless_borrow)]
@@ -109,8 +109,8 @@ impl VisitMut for NewUrlAssets {
 
 #[cfg(test)]
 mod tests {
-    use mako_core::swc_ecma_visit::VisitMutWith;
     use swc_core::common::GLOBALS;
+    use swc_core::ecma::visit::VisitMutWith;
 
     use super::NewUrlAssets;
     use crate::ast::tests::TestUtils;

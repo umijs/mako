@@ -3,9 +3,9 @@ use std::fmt;
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-use mako_core::anyhow::{anyhow, Ok, Result};
-use mako_core::rayon::prelude::*;
-use mako_core::tracing::debug;
+use anyhow::{anyhow, Ok, Result};
+use rayon::prelude::*;
+use tracing::debug;
 
 use crate::build::BuildError;
 use crate::compiler::Compiler;

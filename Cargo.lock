@@ -2610,74 +2610,44 @@ checksum = "8b8c72594ac26bfd34f2d99dfced2edfaddfe8a476e3ff2ca0eb293d925c4f83"
 name = "mako"
 version = "0.1.0"
 dependencies = [
- "bitflags 2.4.2",
- "cached",
- "dashmap 4.0.2",
- "delegate",
- "fixedbitset",
- "get_if_addrs",
- "glob-match",
- "heck",
- "insta",
- "mako_core",
- "maplit",
- "miette 5.10.0",
- "mimalloc-rust",
- "nanoid",
- "open",
- "oxc_resolver",
- "percent-encoding",
- "serde",
- "serde_json",
- "swc_core 0.83.22",
- "swc_ecma_transforms_testing",
- "testing 0.35.10",
- "tikv-jemallocator",
- "url",
-]
-
-[[package]]
-name = "mako_binding"
-version = "0.0.0"
-dependencies = [
- "cached",
- "mako",
- "mako_core",
- "mimalloc-rust",
- "napi",
- "napi-build",
- "napi-derive",
- "serde_json",
- "tikv-jemallocator",
-]
-
-[[package]]
-name = "mako_core"
-version = "0.1.0"
-dependencies = [
  "anyhow",
  "base64 0.21.2",
+ "bitflags 2.4.2",
  "cached",
  "clap",
  "colored",
  "config",
  "convert_case",
+ "dashmap 4.0.2",
+ "delegate",
  "eframe",
+ "fixedbitset",
  "fs_extra",
  "futures",
+ "get_if_addrs",
  "glob",
+ "glob-match",
+ "heck",
  "hyper",
  "hyper-staticfile",
  "hyper-tungstenite",
  "indexmap 2.2.6",
+ "insta",
+ "maplit",
  "md5",
  "mdxjs",
  "merge-source-map",
+ "miette 5.10.0",
+ "mimalloc-rust",
  "mime_guess",
+ "nanoid",
  "notify",
  "notify-debouncer-full",
+ "open",
+ "oxc_resolver",
  "path-clean 1.0.1",
  "pathdiff",
+ "percent-encoding",
  "petgraph",
  "puffin",
  "puffin_egui",
@@ -2690,10 +2660,13 @@ dependencies = [
  "serde_yaml",
  "svgr-rs",
  "swc_core 0.83.22",
+ "swc_ecma_transforms_testing",
  "swc_emotion",
  "swc_error_reporters 0.16.1",
  "swc_node_comments",
+ "testing 0.35.10",
  "thiserror",
+ "tikv-jemallocator",
  "tokio",
  "tokio-tungstenite",
  "toml 0.7.6",
@@ -2701,6 +2674,23 @@ dependencies = [
  "tracing-subscriber",
  "tungstenite",
  "twox-hash",
+ "url",
+]
+
+[[package]]
+name = "mako_binding"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "cached",
+ "mako",
+ "mimalloc-rust",
+ "napi",
+ "napi-build",
+ "napi-derive",
+ "rayon",
+ "serde_json",
+ "tikv-jemallocator",
 ]
 
 [[package]]
