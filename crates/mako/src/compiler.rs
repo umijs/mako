@@ -38,7 +38,7 @@ pub struct Context {
     pub resolvers: Resolvers,
     pub static_cache: RwLock<MemoryChunkFileCache>,
     pub optimize_infos: Mutex<Option<Vec<OptimizeChunksInfo>>>,
-    pub nanoid: String,
+    pub id: String,
 }
 
 #[derive(Default)]
@@ -125,7 +125,7 @@ impl Default for Context {
             resolvers,
             optimize_infos: Mutex::new(None),
             static_cache: Default::default(),
-            nanoid: nanoid!(6),
+            id: nanoid!(6),
         }
     }
 }
@@ -323,7 +323,7 @@ impl Compiler {
                 stats_info: StatsInfo::new(),
                 resolvers,
                 optimize_infos: Mutex::new(None),
-                nanoid: nanoid!(6),
+                id: nanoid!(6),
             }),
         })
     }

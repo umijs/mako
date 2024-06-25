@@ -33,7 +33,7 @@ use crate::generate::transform::transform_css_generate;
     type = "SizedCache<String , ChunkFile>",
     create = "{ SizedCache::with_size(500) }",
     key = "String",
-    convert = r#"{format!("{}.{}.{:x}",context.nanoid, chunk_pot.chunk_id,chunk_pot.stylesheet.as_ref().unwrap().raw_hash)}"#
+    convert = r#"{format!("{}.{}.{:x}",context.id, chunk_pot.chunk_id,chunk_pot.stylesheet.as_ref().unwrap().raw_hash)}"#
 )]
 pub(crate) fn render_css_chunk(
     chunk_pot: &ChunkPot,
@@ -123,7 +123,7 @@ pub(crate) fn render_css_chunk(
     type = "SizedCache<String , ChunkFile>",
     create = "{ SizedCache::with_size(500) }",
     key = "String",
-    convert = r#"{format!("{}.{}.{:x}", context.nanoid, chunk_pot.chunk_id, chunk_pot.js_hash)}"#
+    convert = r#"{format!("{}.{}.{:x}", context.id, chunk_pot.chunk_id, chunk_pot.js_hash)}"#
 )]
 pub(crate) fn render_normal_js_chunk(
     chunk_pot: &ChunkPot,
@@ -210,7 +210,7 @@ pub(crate) fn render_entry_js_chunk(
 #[cached(
     result = true,
     key = "String",
-    convert = r#"{format!("{}.{}", context.nanoid, pot.js_hash)}"#
+    convert = r#"{format!("{}.{}", context.id, pot.js_hash)}"#
 )]
 fn render_entry_chunk_js_without_full_hash(
     pot: &ChunkPot,

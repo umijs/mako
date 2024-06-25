@@ -106,7 +106,7 @@ pub(super) fn render_entry_js_chunk(
     type = "SizedCache<String , ChunkFile>",
     create = "{ SizedCache::with_size(500) }",
     key = "String",
-    convert = r#"{format!("{}.{}.{:x}", context.nanoid, chunk_pot.chunk_id, chunk_pot.js_hash)}"#
+    convert = r#"{format!("{}.{}.{:x}", context.id, chunk_pot.chunk_id, chunk_pot.js_hash)}"#
 )]
 pub(super) fn render_normal_js_chunk(
     chunk_pot: &ChunkPot,
@@ -155,7 +155,7 @@ type EmittedWithMapping = (String, Option<Vec<(BytePos, LineCol)>>);
     key = "String",
     type = "SizedCache<String , EmittedWithMapping>",
     create = "{ SizedCache::with_size(20000) }",
-    convert = r#"{format!("{}-{}-{}", context.nanoid, _raw_hash, module_id)}"#
+    convert = r#"{format!("{}-{}-{}", context.id, _raw_hash, module_id)}"#
 )]
 fn emit_module_with_mapping(
     module_id: &str,
