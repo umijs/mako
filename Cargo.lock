@@ -2094,10 +2094,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "hyper-staticfile"
-version = "0.9.5"
+name = "hyper-staticfile-jsutf8"
+version = "0.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "318ca89e4827e7fe4ddd2824f52337239796ae8ecc761a663324407dc3d8d7e7"
+checksum = "8898514e9a3bbf3f8dfe272e527e0742871fabf45359b897e3cfd1d7feb09e89"
 dependencies = [
  "futures-util",
  "http",
@@ -2629,7 +2629,7 @@ dependencies = [
  "glob-match",
  "heck",
  "hyper",
- "hyper-staticfile",
+ "hyper-staticfile-jsutf8",
  "hyper-tungstenite",
  "indexmap 2.2.6",
  "insta",
