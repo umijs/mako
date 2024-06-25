@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use concatenated_transformer::ConcatenatedTransform;
 use external_transformer::ExternalTransformer;
-use mako_core::swc_common::util::take::Take;
+use swc_core::common::util::take::Take;
 use swc_core::common::{Span, SyntaxContext, GLOBALS};
 use swc_core::ecma::transforms::base::hygiene::hygiene;
 use swc_core::ecma::transforms::base::resolver;
@@ -33,7 +33,7 @@ pub fn optimize_module_graph(
     module_graph: &mut ModuleGraph,
     tree_shake_modules_map: &HashMap<ModuleId, RefCell<TreeShakeModule>>,
     context: &Arc<Context>,
-) -> mako_core::anyhow::Result<()> {
+) -> anyhow::Result<()> {
     let (sorted_module_ids, circles) = module_graph.toposort();
 
     let all_in_circles: HashSet<_> = circles.into_iter().flatten().collect();

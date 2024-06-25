@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
-use mako_core::indexmap::IndexSet;
-use mako_core::regex::Regex;
-use mako_core::swc_common::{Mark, Span, SyntaxContext, DUMMY_SP};
-use mako_core::swc_ecma_ast::{
+use indexmap::IndexSet;
+use regex::Regex;
+use swc_core::common::{Mark, Span, SyntaxContext, DUMMY_SP};
+use swc_core::ecma::ast::{
     ExportSpecifier, Ident, ImportDecl, ImportDefaultSpecifier, ImportNamedSpecifier,
     ImportSpecifier, ImportStarAsSpecifier, MemberExpr, ModuleDecl, ModuleItem, NamedExport, Stmt,
     VarDeclKind,
 };
-use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
-use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+use swc_core::ecma::utils::{quote_ident, quote_str, ExprFactory};
+use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 pub(super) struct MyInjector<'a> {
     unresolved_mark: Mark,
@@ -63,7 +63,7 @@ impl VisitMut for MyInjector<'_> {
         }
     }
 
-    fn visit_mut_module(&mut self, n: &mut mako_core::swc_ecma_ast::Module) {
+    fn visit_mut_module(&mut self, n: &mut swc_core::ecma::ast::Module) {
         n.visit_mut_children_with(self);
 
         let stmts = self.will_inject.iter().map(|&(inject, ctxt)| {
@@ -212,9 +212,9 @@ impl Inject {
 mod tests {
     use std::sync::Arc;
 
-    use mako_core::swc_common::GLOBALS;
-    use mako_core::swc_ecma_transforms::resolver;
     use maplit::hashmap;
+    use swc_core::common::GLOBALS;
+    use swc_core::ecma::transforms::base::resolver;
 
     use super::*;
     use crate::ast::file::{File, JsContent};

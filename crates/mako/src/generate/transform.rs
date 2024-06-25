@@ -3,23 +3,23 @@ use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::time::Instant;
 
-use mako_core::anyhow::{Error, Result};
-use mako_core::regex::Regex;
-use mako_core::swc_common::errors::HANDLER;
-use mako_core::swc_common::GLOBALS;
-use mako_core::swc_css_ast;
-use mako_core::swc_css_visit::VisitMutWith as CSSVisitMutWith;
-use mako_core::swc_ecma_transforms::feature::FeatureFlag;
-use mako_core::swc_ecma_transforms::fixer::fixer;
-use mako_core::swc_ecma_transforms::helpers::{inject_helpers, Helpers, HELPERS};
-use mako_core::swc_ecma_transforms::hygiene;
-use mako_core::swc_ecma_transforms::hygiene::hygiene_with_config;
-use mako_core::swc_ecma_transforms_modules::common_js;
-use mako_core::swc_ecma_transforms_modules::import_analysis::import_analyzer;
-use mako_core::swc_ecma_transforms_modules::util::{Config, ImportInterop};
-use mako_core::swc_ecma_visit::VisitMutWith;
-use mako_core::swc_error_reporters::handler::try_with_handler;
-use mako_core::tracing::debug;
+use anyhow::{Error, Result};
+use regex::Regex;
+use swc_core::common::errors::HANDLER;
+use swc_core::common::GLOBALS;
+use swc_core::css::ast;
+use swc_core::css::visit::VisitMutWith as CSSVisitMutWith;
+use swc_core::ecma::transforms::base::feature::FeatureFlag;
+use swc_core::ecma::transforms::base::fixer::fixer;
+use swc_core::ecma::transforms::base::helpers::{inject_helpers, Helpers, HELPERS};
+use swc_core::ecma::transforms::base::hygiene;
+use swc_core::ecma::transforms::base::hygiene::hygiene_with_config;
+use swc_core::ecma::transforms::module::common_js;
+use swc_core::ecma::transforms::module::import_analysis::import_analyzer;
+use swc_core::ecma::transforms::module::util::{Config, ImportInterop};
+use swc_core::ecma::visit::VisitMutWith;
+use swc_error_reporters::handler::try_with_handler;
+use tracing::debug;
 
 use crate::ast::js_ast::JsAst;
 use crate::compiler::{Compiler, Context};
@@ -68,7 +68,7 @@ pub fn transform_modules_in_thread(
     context: &Arc<Context>,
     async_deps_by_module_id: HashMap<ModuleId, Vec<Dependency>>,
 ) -> Result<()> {
-    mako_core::mako_profile_function!();
+    crate::mako_profile_function!();
 
     let (rs, rr) = channel::<Result<(ModuleId, ModuleAst)>>();
 
@@ -171,7 +171,7 @@ pub struct TransformJsParam<'a> {
 }
 
 pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()> {
-    mako_core::mako_profile_function!();
+    crate::mako_profile_function!();
     let TransformJsParam {
         module_id,
         context,
@@ -278,8 +278,8 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()>
     })
 }
 
-pub fn transform_css_generate(ast: &mut swc_css_ast::Stylesheet, _context: &Arc<Context>) {
-    mako_core::mako_profile_function!();
+pub fn transform_css_generate(ast: &mut ast::Stylesheet, _context: &Arc<Context>) {
+    crate::mako_profile_function!();
     // replace deps
     let mut css_handler = CSSImports {};
     ast.visit_mut_with(&mut css_handler);

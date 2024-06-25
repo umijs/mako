@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use mako_core::anyhow::Result;
+use anyhow::Result;
 use swc_core::common::util::take::Take;
 use swc_core::ecma::ast::{Decl, Module, ModuleItem, Stmt, VarDecl};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};

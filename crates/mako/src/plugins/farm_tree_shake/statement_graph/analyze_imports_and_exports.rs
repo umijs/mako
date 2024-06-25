@@ -1,11 +1,11 @@
 use std::collections::{HashMap, HashSet};
 use std::ops::Deref;
 
-use mako_core::swc_common::{Span, SyntaxContext, DUMMY_SP};
-use mako_core::swc_ecma_ast;
-use mako_core::swc_ecma_ast::{Expr, ModuleExportName, ModuleItem, VarDecl};
-use mako_core::swc_ecma_utils::{ExprCtx, ExprExt};
-use mako_core::swc_ecma_visit::VisitWith;
+use swc_core::common::{Span, SyntaxContext, DUMMY_SP};
+use swc_core::ecma::ast as swc_ecma_ast;
+use swc_core::ecma::ast::{Expr, ModuleExportName, ModuleItem, VarDecl};
+use swc_core::ecma::utils::{ExprCtx, ExprExt};
+use swc_core::ecma::visit::VisitWith;
 
 use super::defined_idents_collector::DefinedIdentsCollector;
 use super::used_idents_collector::{self, UsedIdentsCollector};

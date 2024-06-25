@@ -2,11 +2,10 @@ use std::fmt::{Debug, Formatter};
 use std::hash::Hasher;
 use std::path::{Component, Path};
 
-use mako_core::base64::engine::general_purpose;
-use mako_core::base64::Engine;
-use mako_core::indexmap::IndexSet;
-use mako_core::md5;
-use mako_core::twox_hash::XxHash64;
+use base64::engine::general_purpose;
+use base64::Engine;
+use indexmap::IndexSet;
+use twox_hash::XxHash64;
 
 use crate::ast::file::parse_path;
 use crate::module::ModuleId;

@@ -2,8 +2,8 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use mako_core::anyhow::Result;
-use mako_core::swc_common::util::take::Take;
+use anyhow::Result;
+use swc_core::common::util::take::Take;
 use swc_core::common::{Span, Spanned};
 use swc_core::ecma::ast::{
     ExportSpecifier, Ident, ImportSpecifier, ModuleDecl, ModuleExportName, ModuleItem,

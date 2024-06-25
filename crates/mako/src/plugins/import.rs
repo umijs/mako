@@ -1,10 +1,10 @@
-use mako_core::anyhow;
-use mako_core::swc_atoms::JsWord;
-use mako_core::swc_ecma_ast::{
+use anyhow;
+use swc_core::ecma::ast::{
     ImportDefaultSpecifier, ImportNamedSpecifier, ImportSpecifier, Module, ModuleDecl,
     ModuleExportName, ModuleItem, Str,
 };
-use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+use swc_core::ecma::atoms::JsWord;
+use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::config::{TransformImportConfig, TransformImportStyle};
 use crate::plugin::Plugin;
@@ -170,7 +170,7 @@ impl Plugin for ImportPlugin {
     fn transform_js(
         &self,
         param: &crate::plugin::PluginTransformJsParam,
-        ast: &mut mako_core::swc_ecma_ast::Module,
+        ast: &mut swc_core::ecma::ast::Module,
         context: &std::sync::Arc<crate::compiler::Context>,
     ) -> anyhow::Result<()> {
         // skip node_modules to keep behavior same as umi, and skip if no config
@@ -190,7 +190,7 @@ impl Plugin for ImportPlugin {
 mod tests {
     use std::sync::Arc;
 
-    use mako_core::swc_ecma_visit::VisitMutWith;
+    use swc_core::ecma::visit::VisitMutWith;
 
     use crate::ast::js_ast::JsAst;
     use crate::compiler::Context;

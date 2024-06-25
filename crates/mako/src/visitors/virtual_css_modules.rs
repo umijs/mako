@@ -1,5 +1,5 @@
-use mako_core::swc_ecma_ast::{ImportDecl, Str};
-use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+use swc_core::ecma::ast::{ImportDecl, Str};
+use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 pub struct VirtualCSSModules {
     pub auto_css_modules: bool,
@@ -37,8 +37,8 @@ impl VirtualCSSModules {
 
 #[cfg(test)]
 mod tests {
-    use mako_core::swc_ecma_visit::VisitMutWith;
     use swc_core::common::GLOBALS;
+    use swc_core::ecma::visit::VisitMutWith;
 
     use super::VirtualCSSModules;
     use crate::ast::tests::TestUtils;

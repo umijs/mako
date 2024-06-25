@@ -1,5 +1,5 @@
-use mako_core::swc_css_ast::{ImportHref, UrlValue};
-use mako_core::swc_css_visit::Visit;
+use swc_core::css::ast::{ImportHref, UrlValue};
+use swc_core::css::visit::Visit;
 
 use crate::ast::utils;
 use crate::module::{Dependency, ResolveType};
@@ -62,7 +62,7 @@ impl Visit for CSSDepAnalyzer {
 
 #[cfg(test)]
 mod tests {
-    use mako_core::swc_css_visit::VisitWith;
+    use swc_core::css::visit::VisitWith;
 
     use crate::ast::tests::TestUtils;
 

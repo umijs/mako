@@ -1,10 +1,10 @@
 use std::fmt;
 use std::sync::{Arc, Mutex};
 
-use mako_core::swc_common::Span;
-use mako_core::swc_error_reporters::{GraphicalReportHandler, PrettyEmitter, PrettyEmitterConfig};
-use mako_core::thiserror::Error;
 use swc_core::common::errors::Handler;
+use swc_core::common::Span;
+use swc_error_reporters::{GraphicalReportHandler, PrettyEmitter, PrettyEmitterConfig};
+use thiserror::Error;
 
 use crate::compiler::Context;
 

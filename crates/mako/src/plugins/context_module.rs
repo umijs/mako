@@ -2,14 +2,14 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
-use mako_core::anyhow::Result;
-use mako_core::glob::glob;
-use mako_core::swc_common::{Mark, DUMMY_SP};
-use mako_core::swc_ecma_ast::{
+use anyhow::Result;
+use glob::glob;
+use swc_core::common::{Mark, DUMMY_SP};
+use swc_core::ecma::ast::{
     BinExpr, BinaryOp, CallExpr, Expr, ExprOrSpread, Lit, ParenExpr, TplElement,
 };
-use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprExt, ExprFactory};
-use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+use swc_core::ecma::utils::{member_expr, quote_ident, quote_str, ExprExt, ExprFactory};
+use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::file::{Content, JsContent};
 use crate::ast::utils::{is_commonjs_require, is_dynamic_import};

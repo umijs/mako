@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use mako_core::anyhow::{anyhow, Result};
-use mako_core::serde::Serialize;
-use mako_core::swc_ecma_ast::{Expr, ExprStmt, Lit, Module, ModuleItem, Stmt, Str};
+use anyhow::{anyhow, Result};
+use serde::Serialize;
+use swc_core::ecma::ast::{Expr, ExprStmt, Lit, Module, ModuleItem, Stmt, Str};
 
 use crate::ast::css_ast::CssAst;
 use crate::ast::file::File;

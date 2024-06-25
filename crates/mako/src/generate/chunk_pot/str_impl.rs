@@ -1,16 +1,14 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use anyhow::{anyhow, Result};
 use cached::proc_macro::cached;
-use mako_core::anyhow::{anyhow, Result};
-use mako_core::cached::SizedCache;
-use mako_core::rayon::prelude::*;
-use mako_core::swc_common::{BytePos, LineCol};
-use mako_core::swc_ecma_codegen::text_writer::JsWriter;
-use mako_core::swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
-use mako_core::ternary;
+use cached::SizedCache;
+use rayon::prelude::*;
 use swc_core::base::sourcemap;
-use swc_core::common::SourceMap;
+use swc_core::common::{BytePos, LineCol, SourceMap};
+use swc_core::ecma::codegen::text_writer::JsWriter;
+use swc_core::ecma::codegen::{Config as JsCodegenConfig, Emitter};
 
 use crate::ast::sourcemap::{build_source_map, RawSourceMap};
 use crate::compiler::Context;
@@ -20,6 +18,7 @@ use crate::generate::chunk_pot::util::runtime_code;
 use crate::generate::chunk_pot::ChunkPot;
 use crate::generate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::module::{Module, ModuleAst};
+use crate::ternary;
 
 pub(super) fn render_entry_js_chunk(
     pot: &ChunkPot,
@@ -29,7 +28,7 @@ pub(super) fn render_entry_js_chunk(
     context: &Arc<Context>,
     hmr_hash: u64,
 ) -> Result<ChunkFile> {
-    mako_core::mako_profile_function!();
+    crate::mako_profile_function!();
 
     let mut files = vec![];
     let mut lines = vec![];
@@ -40,7 +39,7 @@ pub(super) fn render_entry_js_chunk(
     ));
 
     if pot.stylesheet.is_some() {
-        mako_core::mako_profile_scope!("CssChunk");
+        crate::mako_profile_scope!("CssChunk");
         let css_chunk_file = ternary!(
             context.args.watch,
             render_css_chunk,
@@ -304,7 +303,7 @@ fn merge_code_and_sourcemap(
 mod tests {
     use std::sync::Arc;
 
-    use mako_core::anyhow::Result;
+    use anyhow::Result;
     use swc_core::base::sourcemap;
     use swc_core::common::comments::Comments;
     use swc_core::common::GLOBALS;

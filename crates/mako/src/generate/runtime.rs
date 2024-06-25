@@ -1,5 +1,4 @@
-use mako_core::sailfish;
-use mako_core::sailfish::TemplateOnce;
+use sailfish::TemplateOnce;
 
 #[derive(TemplateOnce)]
 #[template(path = "app_runtime.stpl")]

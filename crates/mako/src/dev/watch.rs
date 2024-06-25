@@ -3,11 +3,11 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
 
-use mako_core::anyhow::{self, Ok};
-use mako_core::colored::Colorize;
-use mako_core::notify::{self, EventKind, Watcher as NotifyWatcher};
-use mako_core::notify_debouncer_full::DebouncedEvent;
-use mako_core::tracing::debug;
+use anyhow::{self, Ok};
+use colored::Colorize;
+use notify::{self, EventKind, Watcher as NotifyWatcher};
+use notify_debouncer_full::DebouncedEvent;
+use tracing::debug;
 
 use crate::compiler::Compiler;
 use crate::resolve::ResolverResource;

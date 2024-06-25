@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
+use glob::Pattern;
 use glob_match::glob_match;
-use mako_core::glob::Pattern;
 
 use crate::module::{relative_to_root, ModuleInfo};
 use crate::resolve::{ResolvedResource, ResolverResource};

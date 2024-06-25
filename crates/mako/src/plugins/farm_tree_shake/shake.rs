@@ -7,9 +7,9 @@ use std::collections::{HashMap, HashSet};
 use std::ops::DerefMut;
 use std::sync::Arc;
 
-use mako_core::anyhow::Result;
-use mako_core::swc_common::comments::{Comment, CommentKind};
-use mako_core::swc_common::{DUMMY_SP, GLOBALS};
+use anyhow::Result;
+use swc_core::common::comments::{Comment, CommentKind};
+use swc_core::common::{DUMMY_SP, GLOBALS};
 
 use self::skip_module::skip_module_optimize;
 use crate::compiler::Context;
@@ -35,13 +35,13 @@ use crate::plugins::farm_tree_shake::{module, remove_useless_stmts, statement_gr
 /// 4. remove used module and update tree-shaken AST into module graph
 pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> Result<()> {
     let (topo_sorted_modules, _cyclic_modules) = {
-        mako_core::mako_profile_scope!("tree shake topo-sort");
+        crate::mako_profile_scope!("tree shake topo-sort");
         module_graph.toposort()
     };
 
     #[cfg(debug_assertions)]
     {
-        use mako_core::tracing::debug;
+        use tracing::debug;
         if !_cyclic_modules.is_empty() {
             debug!("{} cycles in project", _cyclic_modules.len());
 

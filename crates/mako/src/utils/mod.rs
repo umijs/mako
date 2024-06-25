@@ -6,10 +6,10 @@ pub(crate) mod test_helper;
 pub(crate) mod thread_pool;
 pub mod tokio_runtime;
 
-use mako_core::anyhow::{anyhow, Result};
-use mako_core::base64::engine::general_purpose;
-use mako_core::base64::Engine;
-use mako_core::regex::Regex;
+use anyhow::{anyhow, Result};
+use base64::engine::general_purpose;
+use base64::Engine;
+use regex::Regex;
 
 pub fn base64_encode<T: AsRef<[u8]>>(raw: T) -> String {
     general_purpose::STANDARD.encode(raw)

@@ -2,14 +2,13 @@ use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
 
-use mako_core::anyhow::{anyhow, Result};
-use mako_core::mdxjs::{compile, Options as MdxOptions};
-use mako_core::serde_xml_rs::from_str as from_xml_str;
-use mako_core::serde_yaml::{from_str as from_yaml_str, Value as YamlValue};
-use mako_core::svgr_rs;
-use mako_core::thiserror::Error;
-use mako_core::toml::{from_str as from_toml_str, Value as TomlValue};
-use mako_core::tracing::debug;
+use anyhow::{anyhow, Result};
+use mdxjs::{compile, Options as MdxOptions};
+use serde_xml_rs::from_str as from_xml_str;
+use serde_yaml::{from_str as from_yaml_str, Value as YamlValue};
+use thiserror::Error;
+use toml::{from_str as from_toml_str, Value as TomlValue};
+use tracing::debug;
 
 use crate::ast::file::{Content, File, JsContent};
 use crate::compiler::Context;
@@ -47,7 +46,7 @@ pub struct Load {}
 
 impl Load {
     pub fn load(file: &File, context: Arc<Context>) -> Result<Content> {
-        mako_core::mako_profile_function!(file.path.to_string_lossy());
+        crate::mako_profile_function!(file.path.to_string_lossy());
         debug!("load: {:?}", file);
 
         // plugin first

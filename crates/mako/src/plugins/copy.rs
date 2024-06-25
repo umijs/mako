@@ -1,13 +1,13 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use mako_core::anyhow::Result;
-use mako_core::fs_extra;
-use mako_core::glob::glob;
-use mako_core::notify::event::{CreateKind, DataChange, ModifyKind, RenameMode};
-use mako_core::notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
-use mako_core::tokio::sync::mpsc::channel;
-use mako_core::tracing::debug;
+use anyhow::Result;
+use fs_extra;
+use glob::glob;
+use notify::event::{CreateKind, DataChange, ModifyKind, RenameMode};
+use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use tokio::sync::mpsc::channel;
+use tracing::debug;
 
 use crate::compiler::Context;
 use crate::plugin::Plugin;
@@ -25,7 +25,7 @@ impl CopyPlugin {
                 move |res| {
                     tx.blocking_send(res).unwrap();
                 },
-                mako_core::notify::Config::default(),
+                notify::Config::default(),
             )
             .unwrap();
             for src in context.config.copy.iter() {

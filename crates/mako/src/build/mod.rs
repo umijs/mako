@@ -8,10 +8,9 @@ use std::collections::HashSet;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 
-use mako_core::anyhow;
-use mako_core::anyhow::Result;
-use mako_core::colored::Colorize;
-use mako_core::thiserror::Error;
+use anyhow::Result;
+use colored::Colorize;
+use thiserror::Error;
 
 use crate::ast::file::{Content, File, JsContent};
 use crate::compiler::{Compiler, Context};

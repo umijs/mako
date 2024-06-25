@@ -3,13 +3,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::vec;
 
+use anyhow::{anyhow, Result};
 use cached::proc_macro::cached;
-use mako_core::anyhow::{anyhow, Result};
-use mako_core::convert_case::{Case, Casing};
-use mako_core::regex::{Captures, Regex};
-use mako_core::thiserror::Error;
-use mako_core::tracing::debug;
+use convert_case::{Case, Casing};
 use oxc_resolver::{Alias, AliasValue, ResolveError as OxcResolveError, ResolveOptions, Resolver};
+use regex::{Captures, Regex};
+use thiserror::Error;
+use tracing::debug;
 
 mod resource;
 pub(crate) use resource::{ExternalResource, ResolvedResource, ResolverResource};
@@ -46,8 +46,8 @@ pub fn resolve(
     resolvers: &Resolvers,
     context: &Arc<Context>,
 ) -> Result<ResolverResource> {
-    mako_core::mako_profile_function!();
-    mako_core::mako_profile_scope!("resolve", &dep.source);
+    crate::mako_profile_function!();
+    crate::mako_profile_scope!("resolve", &dep.source);
 
     if dep.source.starts_with("virtual:") {
         return Ok(ResolverResource::Virtual(PathBuf::from(&dep.source)));

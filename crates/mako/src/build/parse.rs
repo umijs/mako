@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use mako_core::anyhow::{anyhow, Result};
-use mako_core::swc_css_visit::VisitMutWith as CSSVisitMutWith;
-use mako_core::thiserror::Error;
-use mako_core::tracing::debug;
+use anyhow::{anyhow, Result};
+use swc_core::css::visit::VisitMutWith as CSSVisitMutWith;
+use thiserror::Error;
+use tracing::debug;
 
 use crate::ast::css_ast::CssAst;
 use crate::ast::file::{Content, File, JsContent};
@@ -35,7 +35,7 @@ pub struct Parse {}
 
 impl Parse {
     pub fn parse(file: &File, context: Arc<Context>) -> Result<ModuleAst> {
-        mako_core::mako_profile_function!(file.path.to_string_lossy());
+        crate::mako_profile_function!(file.path.to_string_lossy());
 
         // plugin first
         let ast = context

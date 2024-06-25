@@ -1,8 +1,8 @@
-use mako_core::swc_ecma_ast::{
+use swc_core::ecma::ast::{
     Decl, ExportDecl, ExportSpecifier, ImportDecl, ImportSpecifier, Module as SwcModule,
     ModuleExportName,
 };
-use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith, VisitWith};
+use swc_core::ecma::visit::{VisitMut, VisitMutWith, VisitWith};
 
 use crate::plugins::farm_tree_shake::module::TreeShakeModule;
 use crate::plugins::farm_tree_shake::statement_graph::analyze_imports_and_exports::{

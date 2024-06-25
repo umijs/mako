@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use mako_core::swc_ecma_transforms::hygiene::{self, hygiene_with_config};
-use mako_core::swc_ecma_transforms::resolver;
-use mako_core::swc_ecma_visit::VisitMutWith;
 use swc_core::common::GLOBALS;
+use swc_core::ecma::transforms::base::hygiene::{self, hygiene_with_config};
+use swc_core::ecma::transforms::base::resolver;
+use swc_core::ecma::visit::VisitMutWith;
 
 use super::css_ast::{CSSAstGenerated, CssAst};
 use super::file::{Content, File, JsContent};

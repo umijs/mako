@@ -4,11 +4,9 @@ use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
 
-use mako_core::anyhow::Result;
-use mako_core::petgraph::dot::{Config, Dot};
-use mako_core::petgraph::visit::{
-    GraphProp, IntoEdgeReferences, IntoNodeReferences, NodeIndexable,
-};
+use anyhow::Result;
+use petgraph::dot::{Config, Dot};
+use petgraph::visit::{GraphProp, IntoEdgeReferences, IntoNodeReferences, NodeIndexable};
 
 use crate::compiler::Context;
 use crate::plugin::{Plugin, PluginGenerateEndParams};

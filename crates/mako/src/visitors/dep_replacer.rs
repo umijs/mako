@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use mako_core::swc_common::{Mark, DUMMY_SP};
-use mako_core::swc_ecma_ast::{
+use swc_core::common::{Mark, DUMMY_SP};
+use swc_core::ecma::ast::{
     AssignOp, BlockStmt, Expr, ExprOrSpread, FnExpr, Function, Ident, ImportDecl, Lit, NamedExport,
     NewExpr, Stmt, Str, ThrowStmt, VarDeclKind,
 };
-use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
-use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+use swc_core::ecma::utils::{member_expr, quote_ident, quote_str, ExprFactory};
+use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::file::parse_path;
 use crate::ast::utils::{is_commonjs_require, is_dynamic_import, is_remote_or_data};
@@ -233,9 +233,9 @@ pub fn resolve_web_worker_mut(new_expr: &mut NewExpr, unresolved_mark: Mark) -> 
 mod tests {
     use std::collections::HashMap;
 
-    use mako_core::swc_common::GLOBALS;
-    use mako_core::swc_ecma_visit::VisitMutWith;
     use maplit::hashmap;
+    use swc_core::common::GLOBALS;
+    use swc_core::ecma::visit::VisitMutWith;
 
     use super::{DepReplacer, DependenciesToReplace, ResolvedModuleId, ResolvedModulePath};
     use crate::ast::tests::TestUtils;

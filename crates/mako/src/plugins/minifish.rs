@@ -5,12 +5,12 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use anyhow::{anyhow, Result};
 pub(crate) use inject::Inject;
 use inject::MyInjector;
-use mako_core::anyhow::{anyhow, Result};
-use mako_core::rayon::prelude::*;
-use mako_core::swc_ecma_visit::VisitMutWith;
+use rayon::prelude::*;
 use serde::Serialize;
+use swc_core::ecma::visit::VisitMutWith;
 use unsimplify::UnSimplify;
 
 use crate::ast::file::{Asset, Content, JsContent};
@@ -96,7 +96,7 @@ impl Plugin for MinifishPlugin {
     fn transform_js(
         &self,
         param: &PluginTransformJsParam,
-        ast: &mut mako_core::swc_ecma_ast::Module,
+        ast: &mut swc_core::ecma::ast::Module,
         _context: &Arc<Context>,
     ) -> Result<()> {
         if let Some(inject) = &self.inject {
@@ -124,7 +124,7 @@ impl Plugin for MinifishPlugin {
     fn after_generate_transform_js(
         &self,
         _param: &PluginTransformJsParam,
-        ast: &mut mako_core::swc_ecma_ast::Module,
+        ast: &mut swc_core::ecma::ast::Module,
         _context: &Arc<Context>,
     ) -> Result<()> {
         ast.visit_mut_with(&mut UnSimplify {});
@@ -234,7 +234,7 @@ struct Dependency {
 
 #[cfg(test)]
 mod tests {
-    use mako_core::regex::Regex;
+    use regex::Regex;
 
     use super::*;
 

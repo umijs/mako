@@ -3,18 +3,17 @@ use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use anyhow::{anyhow, Result};
+use base64::engine::{general_purpose, Engine};
 use bitflags::bitflags;
-use mako_core::anyhow::{anyhow, Result};
-use mako_core::base64::engine::{general_purpose, Engine};
-use mako_core::md5;
-use mako_core::pathdiff::diff_paths;
-use mako_core::swc_common::{Span, DUMMY_SP};
-use mako_core::swc_ecma_ast::{BlockStmt, FnExpr, Function, Module as SwcModule};
-use mako_core::swc_ecma_utils::quote_ident;
+use pathdiff::diff_paths;
 use serde::Serialize;
+use swc_core::common::{Span, DUMMY_SP};
 use swc_core::ecma::ast::{
-    ExportSpecifier, ImportDecl, ImportSpecifier, ModuleExportName, NamedExport,
+    BlockStmt, ExportSpecifier, FnExpr, Function, ImportDecl, ImportSpecifier, Module as SwcModule,
+    ModuleExportName, NamedExport,
 };
+use swc_core::ecma::utils::quote_ident;
 
 use crate::ast::css_ast::CssAst;
 use crate::ast::file::File;

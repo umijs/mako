@@ -1,8 +1,8 @@
-use mako_core::swc_css_ast::{
+use swc_core::css::ast::{
     ComponentValue, Declaration, DeclarationName, Dimension, Function, FunctionName, Ident,
     Integer, Length, LengthPercentage, Number, Percentage, SimpleBlock,
 };
-use mako_core::swc_css_visit::{VisitMut, VisitMutWith};
+use swc_core::css::visit::{VisitMut, VisitMutWith};
 
 /**
  * Rust version of postcss-flexbugs-fixes
@@ -169,7 +169,7 @@ impl VisitMut for CSSFlexbugs {
 #[cfg(test)]
 mod test {
 
-    use mako_core::swc_css_visit::VisitMutWith;
+    use swc_core::css::visit::VisitMutWith;
 
     use crate::ast::tests::TestUtils;
 

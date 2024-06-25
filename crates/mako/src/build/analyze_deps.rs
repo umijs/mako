@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use mako_core::anyhow::{anyhow, Result};
-use mako_core::thiserror::Error;
+use anyhow::{anyhow, Result};
+use thiserror::Error;
 
 use crate::ast::error;
 use crate::ast::file::File;
@@ -38,7 +38,7 @@ impl AnalyzeDeps {
         file: &File,
         context: Arc<Context>,
     ) -> Result<AnalyzeDepsResult> {
-        mako_core::mako_profile_function!();
+        crate::mako_profile_function!();
         let mut deps = match ast {
             ModuleAst::Script(ast) => ast.analyze_deps(context.clone()),
             ModuleAst::Css(ast) => ast.analyze_deps(),

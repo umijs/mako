@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use mako_core::anyhow::Result;
-use mako_core::regex::Regex;
+use anyhow::Result;
+use regex::Regex;
 
 use crate::compiler::Context;
 use crate::module::Dependency;

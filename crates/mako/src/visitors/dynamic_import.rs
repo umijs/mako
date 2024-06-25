@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
-use mako_core::swc_common::DUMMY_SP;
-use mako_core::swc_ecma_ast::{ArrayLit, Expr, ExprOrSpread, Lit, MemberExpr};
-use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
-use swc_core::ecma::ast::{Ident, Module, Stmt, VarDeclKind};
+use swc_core::common::DUMMY_SP;
+use swc_core::ecma::ast::{
+    ArrayLit, Expr, ExprOrSpread, Ident, Lit, MemberExpr, Module, Stmt, VarDeclKind,
+};
 use swc_core::ecma::utils::{
     member_expr, private_ident, quote_ident, quote_str, ExprFactory, IsDirective,
 };
+use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::utils::{is_dynamic_import, member_call, member_prop, promise_all, require_ensure};
 use crate::compiler::Context;
@@ -167,8 +168,8 @@ impl<'a> VisitMut for DynamicImport<'a> {
 mod tests {
     use std::collections::HashMap;
 
-    use mako_core::swc_common::GLOBALS;
-    use mako_core::swc_ecma_visit::VisitMutWith;
+    use swc_core::common::GLOBALS;
+    use swc_core::ecma::visit::VisitMutWith;
 
     use super::DynamicImport;
     use crate::ast::tests::TestUtils;

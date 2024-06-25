@@ -1,7 +1,7 @@
 use std::future::Future;
 use std::sync::OnceLock;
 
-use mako_core::tokio;
+use tokio;
 
 static TOKIO_RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
 

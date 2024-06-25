@@ -1,7 +1,7 @@
-use mako_core::regex::Regex;
-use mako_core::swc_common::Mark;
-use mako_core::swc_ecma_ast::{CallExpr, Callee, Expr, ExprOrSpread, Ident, Lit, Str};
-use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+use regex::Regex;
+use swc_core::common::Mark;
+use swc_core::ecma::ast::{CallExpr, Callee, Expr, ExprOrSpread, Ident, Lit, Str};
+use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::utils::is_ident_undefined;
 
@@ -50,9 +50,9 @@ impl VisitMut for MakoRequire {
 
 #[cfg(test)]
 mod tests {
-    use mako_core::regex::Regex;
-    use mako_core::swc_ecma_visit::VisitMutWith;
+    use regex::Regex;
     use swc_core::common::GLOBALS;
+    use swc_core::ecma::visit::VisitMutWith;
 
     use super::MakoRequire;
     use crate::ast::tests::TestUtils;

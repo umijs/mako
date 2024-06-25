@@ -2,11 +2,11 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use mako_core::pathdiff::diff_paths;
-use mako_core::swc_ecma_ast::{Expr, Lit, Str};
-use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+use pathdiff::diff_paths;
 use serde_json::Value;
 use swc_core::common::{Mark, DUMMY_SP};
+use swc_core::ecma::ast::{Expr, Lit, Str};
+use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::compiler::Context;
 use crate::config::{Config, ExternalConfig, Platform};

@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::sync::Arc;
 
-use mako_core::anyhow::Result;
-use mako_core::regex::Regex;
+use anyhow::Result;
+use regex::Regex;
 use serde_json;
 
 use crate::compiler::Context;

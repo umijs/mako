@@ -2,12 +2,12 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 use fixedbitset::FixedBitSet;
-use mako_core::petgraph::graph::{DefaultIx, NodeIndex};
-use mako_core::petgraph::prelude::{Dfs, EdgeRef};
-use mako_core::petgraph::stable_graph::{StableDiGraph, WalkNeighbors};
-use mako_core::petgraph::visit::IntoEdgeReferences;
-use mako_core::petgraph::Direction;
-use mako_core::tracing::debug;
+use petgraph::graph::{DefaultIx, NodeIndex};
+use petgraph::prelude::{Dfs, EdgeRef};
+use petgraph::stable_graph::{StableDiGraph, WalkNeighbors};
+use petgraph::visit::IntoEdgeReferences;
+use petgraph::Direction;
+use tracing::debug;
 
 use crate::module::{Dependencies, Dependency, Module, ModuleId, ResolveType};
 

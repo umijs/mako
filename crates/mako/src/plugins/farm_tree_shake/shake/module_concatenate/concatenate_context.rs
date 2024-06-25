@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
+use anyhow::{anyhow, Result};
 use bitflags::bitflags;
-use mako_core::anyhow::{anyhow, Result};
 use serde::Serialize;
 use swc_core::base::atoms::JsWord;
 use swc_core::common::collections::AHashSet;
