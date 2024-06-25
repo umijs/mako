@@ -201,7 +201,7 @@ fn build_import_stmts(
 #[cached(
     result = true,
     key = "String",
-    convert = r#"{ format!("{:?}_{:}", resource.get_resolved_path(), exports_all) }"#
+    convert = r#"{ format!("{}_{:?}_{:}", context.nanoid, resource.get_resolved_path(), exports_all) }"#
 )]
 fn parse_barrel_file(
     resource: &ResolverResource,

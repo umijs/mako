@@ -11,6 +11,7 @@ use mako_core::swc_common::sync::Lrc;
 use mako_core::swc_common::{Globals, SourceMap, DUMMY_SP};
 use mako_core::swc_ecma_ast::Ident;
 use mako_core::tracing::debug;
+use nanoid::nanoid;
 
 use crate::ast::comments::Comments;
 use crate::config::{Config, OutputMode};
@@ -37,6 +38,7 @@ pub struct Context {
     pub resolvers: Resolvers,
     pub static_cache: RwLock<MemoryChunkFileCache>,
     pub optimize_infos: Mutex<Option<Vec<OptimizeChunksInfo>>>,
+    pub nanoid: String,
 }
 
 #[derive(Default)]
@@ -123,6 +125,7 @@ impl Default for Context {
             resolvers,
             optimize_infos: Mutex::new(None),
             static_cache: Default::default(),
+            nanoid: nanoid!(6),
         }
     }
 }
@@ -320,6 +323,7 @@ impl Compiler {
                 stats_info: StatsInfo::new(),
                 resolvers,
                 optimize_infos: Mutex::new(None),
+                nanoid: nanoid!(6),
             }),
         })
     }
