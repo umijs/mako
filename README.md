@@ -35,6 +35,10 @@ Read [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 Read [CHANGELOG.md](./CHANGELOG.md).
 
+## CONTACT US
+
+Read [Feedback on makojs.dev](https://makojs.dev/docs/feedback) on joining the discussion, contacting the maintainers, and joining the mako contributors.
+
 ## CREDITS
 
 This project is inspired by:
