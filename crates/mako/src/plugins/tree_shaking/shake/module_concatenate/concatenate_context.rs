@@ -493,13 +493,6 @@ impl Visit for FnExprIdentCollector {
     }
 }
 
-fn collect_named_fn_expr_ident(module: &Module) -> HashSet<Id> {
-    let mut c = FnExprIdentCollector::default();
-    module.visit_with(&mut c);
-
-    c.idents
-}
-
 struct GlobalCollect {
     pub refed_globals: AHashSet<Id>,
     pub unresolved_ctxt: SyntaxContext,
