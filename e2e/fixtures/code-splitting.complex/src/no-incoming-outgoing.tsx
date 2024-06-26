@@ -1,6 +1,6 @@
 import React from "react";
 export default () => (
   <div>
-    <span>no-imcoming-outgoing</span>
+    <span>no-incoming-outgoing</span>
   </div>
 );
