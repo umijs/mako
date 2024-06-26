@@ -15,10 +15,10 @@ use self::skip_module::skip_module_optimize;
 use crate::compiler::Context;
 use crate::module::{ModuleAst, ModuleId, ModuleType, ResolveType};
 use crate::module_graph::ModuleGraph;
-use crate::plugins::tree_shake::module::{AllExports, ModuleSystem, TreeShakeModule};
-use crate::plugins::tree_shake::shake::module_concatenate::optimize_module_graph;
-use crate::plugins::tree_shake::statement_graph::{ExportInfo, ExportSpecifierInfo, ImportInfo};
-use crate::plugins::tree_shake::{module, remove_useless_stmts, statement_graph};
+use crate::plugins::tree_shaking::module::{AllExports, ModuleSystem, TreeShakeModule};
+use crate::plugins::tree_shaking::shake::module_concatenate::optimize_module_graph;
+use crate::plugins::tree_shaking::statement_graph::{ExportInfo, ExportSpecifierInfo, ImportInfo};
+use crate::plugins::tree_shaking::{module, remove_useless_stmts, statement_graph};
 
 pub fn optimize_modules(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> Result<()> {
     let (topo_sorted_modules, _cyclic_modules) = {

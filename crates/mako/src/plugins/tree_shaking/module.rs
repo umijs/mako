@@ -5,7 +5,7 @@ use swc_core::ecma::ast::{Module as SwcModule, ModuleItem};
 
 use crate::module::{Module, ModuleId};
 use crate::module_graph::ModuleGraph;
-use crate::plugins::tree_shake::statement_graph::{
+use crate::plugins::tree_shaking::statement_graph::{
     ExportInfo, ExportInfoMatch, ExportSource, ExportSpecifierInfo, ImportInfo, StatementGraph,
     StatementId,
 };

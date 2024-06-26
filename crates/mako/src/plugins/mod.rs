@@ -12,5 +12,5 @@ pub mod manifest;
 pub mod minifish;
 pub mod runtime;
 pub mod ssu;
-pub mod tree_shake;
+pub mod tree_shaking;
 pub mod wasm_runtime;
