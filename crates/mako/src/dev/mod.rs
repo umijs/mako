@@ -21,6 +21,7 @@ use {hyper, hyper_staticfile_jsutf8, hyper_tungstenite, open};
 
 use crate::compiler::{Compiler, Context};
 use crate::plugin::{PluginGenerateEndParams, PluginGenerateStats};
+use crate::stats::create_stats_info;
 use crate::utils::tokio_runtime;
 
 pub struct DevServer {
@@ -43,7 +44,6 @@ impl DevServer {
         let root = self.root.clone();
         let compiler = self.compiler.clone();
         let txws_watch = txws.clone();
-
         if self.compiler.context.config.dev_server.is_some() {
             std::thread::spawn(move || {
                 if let Err(e) = Self::watch_for_changes(root, compiler, txws_watch, callback) {
@@ -53,7 +53,7 @@ impl DevServer {
         } else if let Err(e) = Self::watch_for_changes(root, compiler, txws_watch, callback) {
             eprintln!("Error watching files: {:?}", e);
         }
-
+        let compiler = self.compiler.clone();
         // server
         if self.compiler.context.config.dev_server.is_some() {
             let config_port = self
@@ -70,15 +70,20 @@ impl DevServer {
             let txws = txws.clone();
             let make_svc = make_service_fn(move |_conn| {
                 let context = context.clone();
+                let compiler = compiler.clone();
                 let txws = txws.clone();
                 async move {
                     Ok::<_, hyper::Error>(service_fn(move |req| {
                         let context = context.clone();
                         let txws = txws.clone();
+                        let compile = compiler.clone();
+
                         let staticfile = hyper_staticfile_jsutf8::Static::new(
                             context.config.output.path.clone(),
                         );
-                        async move { Self::handle_requests(req, context, staticfile, txws).await }
+                        async move {
+                            Self::handle_requests(req, context, staticfile, txws, compile).await
+                        }
                     }))
                 }
             });
@@ -124,8 +129,10 @@ impl DevServer {
         context: Arc<Context>,
         staticfile: hyper_staticfile_jsutf8::Static,
         txws: broadcast::Sender<WsMessage>,
+        compiler: Arc<Compiler>,
     ) -> Result<hyper::Response<Body>> {
         let path = req.uri().path();
+
         let path_without_slash_start = path.trim_start_matches('/');
         let not_found_response = || {
             hyper::Response::builder()
@@ -142,6 +149,31 @@ impl DevServer {
                     tokio_runtime::spawn(async move {
                         let receiver = txws.subscribe();
                         Self::handle_websocket(websocket, receiver).await.unwrap();
+                    });
+                    Ok(response)
+                } else {
+                    Ok(not_found_response())
+                }
+            }
+            "/__/sendStatsData" => {
+                if hyper_tungstenite::is_upgrade_request(&req) {
+                    debug!("new websocket connection");
+                    let (response, websocket) = hyper_tungstenite::upgrade(req, None).unwrap();
+                    let txws = txws.clone();
+                    tokio_runtime::spawn(async move {
+                        let receiver = txws.subscribe();
+                        if txws.receiver_count() > 0 {
+                            let stats = create_stats_info(0, compiler.as_ref());
+                            let json_data = serde_json::to_string_pretty(&stats).unwrap();
+                            txws.send(WsMessage {
+                                hash: 0,
+                                stats_data: json_data,
+                            })
+                            .unwrap();
+                        }
+                        Self::handle_websocket_stats_data(websocket, receiver)
+                            .await
+                            .unwrap();
                     });
                     Ok(response)
                 } else {
@@ -219,6 +251,32 @@ impl DevServer {
             port += 1;
             Self::find_available_port(host, port)
         }
+    }
+
+    // 发送热更新之后的数据
+    async fn handle_websocket_stats_data(
+        websocket: hyper_tungstenite::HyperWebsocket,
+        mut receiver: broadcast::Receiver<WsMessage>,
+    ) -> Result<()> {
+        let websocket = websocket.await?;
+        let (mut sender, mut ws_recv) = websocket.split();
+        let task = tokio_runtime::spawn(async move {
+            loop {
+                if let Ok(msg) = receiver.recv().await {
+                    if sender.send(Message::text(msg.stats_data)).await.is_err() {
+                        break;
+                    }
+                }
+            }
+        });
+        while let Some(message) = ws_recv.next().await {
+            if let Ok(Message::Close(_)) = message {
+                break;
+            }
+        }
+        debug!("websocket connection disconnected");
+        task.abort();
+        Ok(())
     }
 
     // TODO: refact socket message data structure
@@ -406,8 +464,16 @@ impl DevServer {
 
         let receiver_count = txws.receiver_count();
         debug!("receiver count: {}", receiver_count);
+        // 解析更新完之后的数据
+        let stats = create_stats_info(0, compiler.as_ref());
+        let json_data = serde_json::to_string_pretty(&stats).unwrap();
+        let ws_new_data = WsMessage {
+            hash: **hmr_hash,
+            stats_data: json_data,
+        };
+
         if receiver_count > 0 {
-            txws.send(WsMessage { hash: **hmr_hash }).unwrap();
+            txws.send(ws_new_data).unwrap();
             debug!("send message to clients");
         }
 
@@ -429,4 +495,5 @@ pub struct Stats {
 #[derive(Clone, Debug)]
 struct WsMessage {
     hash: u64,
+    stats_data: String,
 }

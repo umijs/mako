@@ -106,9 +106,15 @@ function App() {
       </div>
     );
   };
+  const getFoamTreeData = (chartData: any) => {
+    const formatData = format(chartData?.chunkModules || []);
+    const resData = filterModulesForSize(formatData, 'statSize');
+    return { groups: resData };
+  };
   const createFoamTree = (chartData: any) => {
     const formatData = format(chartData?.chunkModules || []);
     const resData = filterModulesForSize(formatData, 'statSize');
+    debugger;
     return new FoamTree({
       element: chartRef.current,
       layout: 'squarified',
@@ -161,6 +167,16 @@ function App() {
   useEffect(() => {
     window.addEventListener('load', () => {
       setChartData(window?.chartData);
+      // 如果开启了热更新,那么启动 websocket 服务。
+      if (window?.hmrWatch) {
+        const socket = new WebSocket('ws://localhost:3000/__/sendStatsData');
+
+        socket.addEventListener('message', (rawMessage) => {
+          const msg = JSON.parse(rawMessage.data);
+          console.log('msg==', msg);
+          setChartData(msg);
+        });
+      }
     });
     window.addEventListener('resize', resize);
     return () => {
@@ -172,7 +188,22 @@ function App() {
       console.warn('数据未初始化!!');
       return;
     }
+    // 如果已经实例化并且 chartData 发生改变，那么就重新设置值。
+    if (treeMapRef.current) {
+      debugger;
+      treeMapRef.current.set({
+        dataObject: getFoamTreeData(chartData),
+      });
+      treeMapRef.current.update();
+      return;
+    }
     treeMapRef.current = createFoamTree(chartData);
+    return () => {
+      if (treeMapRef.current) {
+        treeMapRef.current.dispose();
+        treeMapRef.current = null;
+      }
+    };
   }, [chartData]);
   return (
     <>
