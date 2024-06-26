@@ -4,6 +4,6 @@ export default () => {
   console.log(noIncomingOutgoing)
   return (<div>
    
-    <span>no-incomming-node</span>
+    <span>no-incoming-node</span>
   </div>)
 }
