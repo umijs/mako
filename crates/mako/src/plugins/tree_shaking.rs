@@ -19,7 +19,7 @@ pub struct FarmTreeShake {}
 
 impl Plugin for FarmTreeShake {
     fn name(&self) -> &str {
-        "farm/tree-shake"
+        "tree-shake"
     }
 
     fn transform_js(
@@ -39,7 +39,7 @@ impl Plugin for FarmTreeShake {
         module_graph: &mut ModuleGraph,
         context: &Arc<Context>,
     ) -> Result<()> {
-        shake::optimize_farm(module_graph, context)?;
+        shake::optimize_modules(module_graph, context)?;
         Ok(())
     }
 }

@@ -4,12 +4,12 @@ use swc_core::ecma::ast::{
 };
 use swc_core::ecma::visit::{VisitMut, VisitMutWith, VisitWith};
 
-use crate::plugins::farm_tree_shake::module::TreeShakeModule;
-use crate::plugins::farm_tree_shake::statement_graph::analyze_imports_and_exports::{
+use crate::plugins::tree_shaking::module::TreeShakeModule;
+use crate::plugins::tree_shaking::statement_graph::analyze_imports_and_exports::{
     analyze_imports_and_exports, StatementInfo,
 };
-use crate::plugins::farm_tree_shake::statement_graph::defined_idents_collector::DefinedIdentsCollector;
-use crate::plugins::farm_tree_shake::statement_graph::{
+use crate::plugins::tree_shaking::statement_graph::defined_idents_collector::DefinedIdentsCollector;
+use crate::plugins::tree_shaking::statement_graph::{
     ExportInfo, ExportSpecifierInfo as UsedExportSpecInfo, ImportInfo, ImportSpecifierInfo,
 };
 

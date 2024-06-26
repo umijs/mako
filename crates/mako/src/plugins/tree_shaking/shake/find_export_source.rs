@@ -1,7 +1,7 @@
-use crate::plugins::farm_tree_shake::module::{is_ident_sym_equal, TreeShakeModule};
-use crate::plugins::farm_tree_shake::shake::skip_module::{ReExportSource, ReExportType};
-use crate::plugins::farm_tree_shake::shake::strip_context;
-use crate::plugins::farm_tree_shake::statement_graph::{ExportSpecifierInfo, ImportSpecifierInfo};
+use crate::plugins::tree_shaking::module::{is_ident_sym_equal, TreeShakeModule};
+use crate::plugins::tree_shaking::shake::skip_module::{ReExportSource, ReExportType};
+use crate::plugins::tree_shaking::shake::strip_context;
+use crate::plugins::tree_shaking::statement_graph::{ExportSpecifierInfo, ImportSpecifierInfo};
 
 impl TreeShakeModule {
     pub fn find_skipable_export_source(&self, ident: &String) -> Option<ReExportSource> {
@@ -191,7 +191,7 @@ mod tests {
     use crate::ast::js_ast::JsAst;
     use crate::compiler::Context;
     use crate::module::{Module, ModuleAst, ModuleInfo};
-    use crate::plugins::farm_tree_shake::shake::skip_module::ReExportSource;
+    use crate::plugins::tree_shaking::shake::skip_module::ReExportSource;
 
     impl ReExportSource {
         pub fn describe(&self) -> String {

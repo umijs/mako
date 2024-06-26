@@ -11,9 +11,9 @@ pub(crate) mod used_idents_collector;
 use analyze_imports_and_exports::analyze_imports_and_exports;
 use swc_core::common::{Span, SyntaxContext};
 
-use crate::plugins::farm_tree_shake::module::{is_ident_equal, UsedIdent};
-use crate::plugins::farm_tree_shake::shake::strip_context;
-use crate::plugins::farm_tree_shake::statement_graph::analyze_imports_and_exports::StatementInfo;
+use crate::plugins::tree_shaking::module::{is_ident_equal, UsedIdent};
+use crate::plugins::tree_shaking::shake::strip_context;
+use crate::plugins::tree_shaking::statement_graph::analyze_imports_and_exports::StatementInfo;
 
 pub type StatementId = usize;
 
