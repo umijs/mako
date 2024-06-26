@@ -10,7 +10,7 @@ use swc_core::ecma::ast::{
     Id, ImportDecl, KeyValueProp, Module, ModuleItem, NamedExport, ObjectLit, Prop, PropOrSpread,
     Stmt, VarDeclKind,
 };
-use swc_core::ecma::utils::{collect_decls, member_expr, quote_ident, ExprFactory, IdentRenamer};
+use swc_core::ecma::utils::{member_expr, quote_ident, ExprFactory, IdentRenamer};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith, VisitWith};
 
 use super::concatenate_context::{
@@ -230,6 +230,7 @@ impl<'a> ConcatenatedTransform<'a> {
     fn remove_imported_top_vars(&mut self, import_map: &ImportModuleRefMap) {
         import_map.iter().for_each(|(id, _)| {
             self.my_top_decls.remove(&id.0.to_string());
+            self.all_decls.remove(id);
         });
     }
 
@@ -279,6 +280,10 @@ impl<'a> ConcatenatedTransform<'a> {
         let top_ctxt = SyntaxContext::empty().apply_mark(self.top_level_mark);
 
         let imported_reference = all_referenced_variables(import_module_ref);
+
+        dbg!(&self.all_decls);
+
+        dbg!(&self.my_top_decls);
 
         for id in &self.all_decls {
             if id.1 == top_ctxt {
@@ -478,7 +483,7 @@ impl<'a> VisitMut for ConcatenatedTransform<'a> {
     fn visit_mut_module(&mut self, n: &mut Module) {
         // all root top vars is already in ccn context top vars
         self.my_top_decls = ConcatenateContext::top_level_vars(n, self.top_level_mark);
-        self.all_decls = collect_decls(n);
+        self.all_decls = ConcatenateContext::all_decls(n);
 
         self.default_bind_name =
             self.get_non_conflict_name(&uniq_module_default_export_name(self.module_id));

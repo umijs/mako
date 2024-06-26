@@ -11,7 +11,7 @@ use swc_core::ecma::ast::{
     Module, ModuleDecl, ModuleItem, ObjectLit, Prop, PropOrSpread, VarDeclKind,
 };
 use swc_core::ecma::utils::{
-    collect_decls_with_ctxt, member_expr, quote_ident, quote_str, ExprFactory,
+    collect_decls, collect_decls_with_ctxt, member_expr, quote_ident, quote_str, ExprFactory,
 };
 use swc_core::ecma::visit::{Visit, VisitWith};
 
@@ -313,6 +313,14 @@ impl ConcatenateContext {
         );
 
         top_level_vars
+    }
+
+    pub fn all_decls(ast: &Module) -> AHashSet<Id> {
+        let mut decls = collect_decls(ast);
+
+        decls.extend(collect_export_default_decl_ident(ast).drain());
+
+        decls
     }
 
     pub fn global_vars(ast: &Module, unresolved_mark: Mark) -> HashSet<String> {
