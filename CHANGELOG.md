@@ -1,3 +1,8 @@
+## 0.7.2
+
+- 改进 module concatenate 实现，合并后的模块仍然支持 Shared Reference by [@stormslowly](https://github.com/stormslowly) in [#1295](https://github.com/umijs/mako/pull/1295)
+- 修复 hmr http 响应未设置 content-typ 导致乱码问题 by [@whyer11](https://github.com/whyer11) in [#1307](https://github.com/umijs/mako/pull/1307)
+
 ## 0.7.1
 `2024-06-20`
 
