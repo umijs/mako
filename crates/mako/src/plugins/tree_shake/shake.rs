@@ -15,12 +15,10 @@ use self::skip_module::skip_module_optimize;
 use crate::compiler::Context;
 use crate::module::{ModuleAst, ModuleId, ModuleType, ResolveType};
 use crate::module_graph::ModuleGraph;
-use crate::plugins::farm_tree_shake::module::{AllExports, ModuleSystem, TreeShakeModule};
-use crate::plugins::farm_tree_shake::shake::module_concatenate::optimize_module_graph;
-use crate::plugins::farm_tree_shake::statement_graph::{
-    ExportInfo, ExportSpecifierInfo, ImportInfo,
-};
-use crate::plugins::farm_tree_shake::{module, remove_useless_stmts, statement_graph};
+use crate::plugins::tree_shake::module::{AllExports, ModuleSystem, TreeShakeModule};
+use crate::plugins::tree_shake::shake::module_concatenate::optimize_module_graph;
+use crate::plugins::tree_shake::statement_graph::{ExportInfo, ExportSpecifierInfo, ImportInfo};
+use crate::plugins::tree_shake::{module, remove_useless_stmts, statement_graph};
 
 /// tree shake useless modules and code, steps:
 /// 1. topo sort the module_graph, the cyclic modules treat as no side_effects

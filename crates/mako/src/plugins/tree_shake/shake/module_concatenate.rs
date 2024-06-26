@@ -24,8 +24,8 @@ use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;
 use crate::module::{Dependency, ImportType, ModuleId, ResolveType};
 use crate::module_graph::ModuleGraph;
-use crate::plugins::farm_tree_shake::module::{AllExports, ModuleSystem, TreeShakeModule};
-use crate::plugins::farm_tree_shake::shake::module_concatenate::concatenate_context::{
+use crate::plugins::tree_shake::module::{AllExports, ModuleSystem, TreeShakeModule};
+use crate::plugins::tree_shake::shake::module_concatenate::concatenate_context::{
     ConcatenateContext, RuntimeFlags,
 };
 

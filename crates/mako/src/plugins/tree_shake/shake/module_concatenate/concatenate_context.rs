@@ -17,7 +17,7 @@ use swc_core::ecma::visit::{Visit, VisitWith};
 
 use crate::module::{ImportType, ModuleId, NamedExportType, ResolveType};
 use crate::module_graph::ModuleGraph;
-use crate::plugins::farm_tree_shake::shake::module_concatenate::ConcatenateConfig;
+use crate::plugins::tree_shake::shake::module_concatenate::ConcatenateConfig;
 
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Default)]

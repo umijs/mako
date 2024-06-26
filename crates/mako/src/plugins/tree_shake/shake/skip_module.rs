@@ -14,9 +14,9 @@ use swc_core::quote;
 use crate::compiler::Context;
 use crate::module::{Dependency, ImportType, ModuleId, NamedExportType, ResolveType};
 use crate::module_graph::ModuleGraph;
-use crate::plugins::farm_tree_shake::module::{is_ident_sym_equal, TreeShakeModule};
-use crate::plugins::farm_tree_shake::shake::strip_context;
-use crate::plugins::farm_tree_shake::statement_graph::{
+use crate::plugins::tree_shake::module::{is_ident_sym_equal, TreeShakeModule};
+use crate::plugins::tree_shake::shake::strip_context;
+use crate::plugins::tree_shake::statement_graph::{
     ExportSpecifierInfo, ImportSpecifierInfo, StatementId,
 };
 
