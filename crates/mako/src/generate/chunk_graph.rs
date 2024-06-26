@@ -197,7 +197,7 @@ impl ChunkGraph {
         self.graph.remove_node(idx);
     }
 
-    pub fn remove_and_connect_outgoing_to_chunk(&mut self, chunk_id: &ChunkId, from: &ChunkId) {
+    pub fn merge_to_chunk(&mut self, chunk_id: &ChunkId, from: &ChunkId) {
         let idx = self.id_index_map.remove(chunk_id).unwrap();
         let from_idx = *self.id_index_map.get(from).unwrap();
         let outgoing_nodes = self

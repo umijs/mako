@@ -146,7 +146,7 @@ impl Compiler {
         let mut chunk_graph = self.context.chunk_graph.write().unwrap();
         let mut merged_modules = vec![];
 
-        for (_, (chunk_id, entry_chunk_id, chunk_modules)) in async_to_entry.iter().enumerate() {
+        for (chunk_id, entry_chunk_id, chunk_modules) in async_to_entry.iter() {
             let entry_chunk: &mut Chunk = chunk_graph.mut_chunk(entry_chunk_id).unwrap();
 
             // merge modules to entry chunk
@@ -156,7 +156,7 @@ impl Compiler {
             }
 
             // remove original async chunks
-            chunk_graph.remove_and_connect_outgoing_to_chunk(chunk_id, entry_chunk_id);
+            chunk_graph.merge_to_chunk(chunk_id, entry_chunk_id);
         }
 
         // remove merged modules from other async chunks
