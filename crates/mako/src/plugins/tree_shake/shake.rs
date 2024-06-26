@@ -20,18 +20,7 @@ use crate::plugins::tree_shake::shake::module_concatenate::optimize_module_graph
 use crate::plugins::tree_shake::statement_graph::{ExportInfo, ExportSpecifierInfo, ImportInfo};
 use crate::plugins::tree_shake::{module, remove_useless_stmts, statement_graph};
 
-/// tree shake useless modules and code, steps:
-/// 1. topo sort the module_graph, the cyclic modules treat as no side_effects
-/// 2. generate tree_shake_modules based on the topo sorted order
-/// 3. reserve traverse the tree_shake_modules to fill all_exports
-/// 3. traverse the tree_shake_modules
-///   3.2 if module is commonjs, mark all imported modules as [UsedExports::All] by calling `.use_all()`
-///   3.3 else if module is esm and the module has side effects, add imported identifiers to [UsedExports::Partial] of the imported modules
-///     if add imported identifiers to previous modules, traverse smallest index tree_shake_modules again
-///   3.4 else if module is esm and the module has no side effects, analyze the used statement based on the statement graph
-///     if add imported identifiers to previous modules, traverse smallest index tree_shake_modules again
-/// 4. remove used module and update tree-shaken AST into module graph
-pub fn optimize_farm(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> Result<()> {
+pub fn optimize_modules(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> Result<()> {
     let (topo_sorted_modules, _cyclic_modules) = {
         crate::mako_profile_scope!("tree shake topo-sort");
         module_graph.toposort()
