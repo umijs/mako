@@ -198,20 +198,22 @@ impl ChunkGraph {
     }
 
     pub fn merge_to_chunk(&mut self, chunk_id: &ChunkId, from: &ChunkId) {
-        let idx = self.id_index_map.remove(chunk_id).unwrap();
-        let from_idx = *self.id_index_map.get(from).unwrap();
-        let outgoing_nodes = self
-            .graph
-            .neighbors_directed(idx, Direction::Outgoing)
-            .collect::<Vec<NodeIndex<DefaultIx>>>();
-        self.graph.remove_node(idx);
-        for node in outgoing_nodes {
-            if !self
+        let idx = self.id_index_map.remove(chunk_id);
+        let from_idx = self.id_index_map.get(from);
+        if let (Some(idx), Some(from_idx)) = (idx, from_idx) {
+            let outgoing_nodes = self
                 .graph
-                .edges_directed(from_idx, Direction::Outgoing)
-                .any(|e| e.target() == node)
-            {
-                self.graph.add_edge(from_idx, node, ());
+                .neighbors_directed(idx, Direction::Outgoing)
+                .collect::<Vec<NodeIndex<DefaultIx>>>();
+            self.graph.remove_node(idx);
+            for node in outgoing_nodes {
+                if !self
+                    .graph
+                    .edges_directed(*from_idx, Direction::Outgoing)
+                    .any(|e| e.target() == node)
+                {
+                    self.graph.add_edge(*from_idx, node, ());
+                }
             }
         }
     }
