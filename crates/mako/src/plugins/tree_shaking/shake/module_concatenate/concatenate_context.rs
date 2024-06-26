@@ -319,6 +319,7 @@ impl ConcatenateContext {
         let mut decls = collect_decls(ast);
 
         decls.extend(collect_export_default_decl_ident(ast).drain());
+        decls.extend(collect_named_fn_expr_ident(ast));
 
         decls
     }
@@ -499,6 +500,13 @@ impl Visit for FnExprIdentCollector {
             self.idents.insert(fn_ident.to_id());
         }
     }
+}
+
+fn collect_named_fn_expr_ident(module: &Module) -> HashSet<Id> {
+    let mut c = FnExprIdentCollector::default();
+    module.visit_with(&mut c);
+
+    c.idents
 }
 
 struct GlobalCollect {

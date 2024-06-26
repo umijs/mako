@@ -281,10 +281,6 @@ impl<'a> ConcatenatedTransform<'a> {
 
         let imported_reference = all_referenced_variables(import_module_ref);
 
-        dbg!(&self.all_decls);
-
-        dbg!(&self.my_top_decls);
-
         for id in &self.all_decls {
             if id.1 == top_ctxt {
                 if self
