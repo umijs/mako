@@ -77,7 +77,6 @@ impl DevServer {
                         let context = context.clone();
                         let txws = txws.clone();
                         let compile = compiler.clone();
-
                         let staticfile = hyper_staticfile_jsutf8::Static::new(
                             context.config.output.path.clone(),
                         );
