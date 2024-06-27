@@ -249,13 +249,13 @@ impl Compiler {
                     continue;
                 }
 
-                if optimize_info.group_options.min_module_size.is_some()
-                    && self.get_module_size(module_id).unwrap()
-                        < optimize_info.group_options.min_module_size.unwrap()
-                {
-                    continue;
-                }
-
+                // if optimize_info.group_options.min_module_size.is_some()
+                //     && self.get_module_size(module_id).unwrap()
+                //         < optimize_info.group_options.min_module_size.unwrap()
+                // {
+                //     continue;
+                // }
+                //
                 // add new module_to_chunk map to optimize info
                 optimize_info
                     .module_to_chunks
@@ -360,8 +360,10 @@ impl Compiler {
 
                 // clone group options for new chunk
                 let mut new_chunk_group_options = info.group_options.clone();
-                new_chunk_group_options.name =
-                    format!("{}_{}", info.group_options.name, split_chunk_count);
+                if new_chunk_group_options.name_suffix.is_none() {
+                    new_chunk_group_options.name =
+                        format!("{}_{}", info.group_options.name, split_chunk_count);
+                }
 
                 // update original chunk size and split chunk count
                 chunk_size -= new_chunk_size;
@@ -377,7 +379,7 @@ impl Compiler {
             }
 
             // rename original chunk if it has been split
-            if split_chunk_count > 0 {
+            if split_chunk_count > 0 && info.group_options.name_suffix.is_none() {
                 info.group_options.name =
                     format!("{}_{}", info.group_options.name, split_chunk_count);
             }
@@ -676,7 +678,7 @@ fn code_splitting_strategy_granular(
                     None
                 } else {
                     Regex::new(&format!(
-                        r#"[/\\]node_modules[/\\]({})[/\\]"#,
+                        r#"[/\\]node_modules[/\\].*({})[/\\]"#,
                         framework_packages.join("|")
                     ))
                     .ok()

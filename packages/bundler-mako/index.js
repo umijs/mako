@@ -431,7 +431,6 @@ async function getMakoConfig(opts) {
     runtimePublicPath,
     manifest,
     mdx,
-    codeSplitting,
     devtool,
     cjs,
     dynamicImportToRequire,
@@ -443,6 +442,7 @@ async function getMakoConfig(opts) {
     inlineCSS,
     makoPlugins,
   } = opts.config;
+  let { codeSplitting } = opts.config.codeSplitting;
   // TODO:
   // 暂不支持 $ 结尾，等 resolve 支持后可以把这段去掉
   Object.keys(alias).forEach((key) => {
