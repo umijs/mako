@@ -37,16 +37,13 @@ function getMakoConfig() {
     makoConfig = JSON.parse(fs.readFileSync(makoConfigPath, 'utf-8'));
   }
   makoConfig.resolve = makoConfig.resolve || {};
-  makoConfig.resolve.alias = makoConfig.resolve.alias || {};
+  makoConfig.resolve.alias = makoConfig.resolve.alias || [];
   makoConfig.less = {
     modifyVars: makoConfig.less?.theme || {},
   };
   makoConfig.plugins = getPlugins();
-  Object.keys(makoConfig.resolve.alias).forEach((key) => {
-    makoConfig.resolve.alias[key] = path.join(
-      cwd,
-      makoConfig.resolve.alias[key],
-    );
+  makoConfig.resolve.alias.forEach((alias) => {
+    alias[1] = path.join(cwd, alias[1]);
   });
   return makoConfig;
 }

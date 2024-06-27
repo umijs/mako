@@ -128,7 +128,7 @@ pub struct ManifestConfig {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ResolveConfig {
-    pub alias: HashMap<String, String>,
+    pub alias: Vec<(String, String)>,
     pub extensions: Vec<String>,
 }
 
@@ -654,7 +654,7 @@ const DEFAULT_CONFIG: &str = r#"
       "preserveModulesRoot": "",
       "skipWrite": false
     },
-    "resolve": { "alias": {}, "extensions": ["js", "jsx", "ts", "tsx"] },
+    "resolve": { "alias": [], "extensions": ["js", "jsx", "ts", "tsx"] },
     "mode": "development",
     "minify": true,
     "devtool": "source-map",

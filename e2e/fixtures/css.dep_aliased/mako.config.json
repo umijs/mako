@@ -1,9 +1,9 @@
 {
   "minify": false,
   "resolve": {
-    "alias": {
-      "myCss": "./src/index.css"
-    }
+    "alias": [
+      ["myCss", "./src/index.css"]
+    ]
   },
   "optimization": {
     "concatenateModules": false
