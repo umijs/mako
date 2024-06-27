@@ -271,15 +271,26 @@ impl<'a> ConcatenatedTransform<'a> {
         }
     }
 
-    fn get_non_conflict_name(&self, name: &str) -> String {
+    fn get_non_conflict_top_level_name(&self, name: &str) -> String {
         self.concatenate_context
             .negotiate_safe_var_name(&self.my_top_decls, name)
+    }
+
+    fn negotiate_var_name_with(&self, reserved: &HashSet<String>, name: &str) -> String {
+        self.concatenate_context
+            .negotiate_safe_var_name(reserved, name)
     }
 
     fn resolve_conflict(&mut self, import_module_ref: &ImportModuleRefMap) {
         let top_ctxt = SyntaxContext::empty().apply_mark(self.top_level_mark);
 
         let imported_reference = all_referenced_variables(import_module_ref);
+
+        let all_syms = self
+            .all_decls
+            .iter()
+            .map(|(sym, _)| sym.to_string())
+            .collect::<HashSet<_>>();
 
         for id in &self.all_decls {
             if id.1 == top_ctxt {
@@ -290,7 +301,7 @@ impl<'a> ConcatenatedTransform<'a> {
                 {
                     let conflicted = id.0.as_ref();
 
-                    let new_name = self.get_non_conflict_name(conflicted);
+                    let new_name = self.get_non_conflict_top_level_name(conflicted);
 
                     self.my_top_decls.remove(conflicted);
                     self.my_top_decls.insert(new_name.clone());
@@ -300,7 +311,7 @@ impl<'a> ConcatenatedTransform<'a> {
                 }
             } else if imported_reference.contains(id.0.as_ref()) {
                 let conflicted = id.0.as_ref();
-                let new_name = self.get_non_conflict_name(conflicted);
+                let new_name = self.negotiate_var_name_with(&all_syms, conflicted);
                 self.rename_request
                     .push((id.clone(), (new_name.into(), id.1)));
             }
@@ -320,7 +331,8 @@ impl<'a> ConcatenatedTransform<'a> {
         n: &mut Module,
         export_ref_map: &mut HashMap<String, ModuleRef>,
     ) {
-        let ns_name = self.get_non_conflict_name(&uniq_module_namespace_name(self.module_id));
+        let ns_name =
+            self.get_non_conflict_top_level_name(&uniq_module_namespace_name(self.module_id));
         let ns_ident = quote_ident!(ns_name.clone());
 
         let empty_obj = ObjectLit {
@@ -482,7 +494,7 @@ impl<'a> VisitMut for ConcatenatedTransform<'a> {
         self.all_decls = ConcatenateContext::all_decls(n);
 
         self.default_bind_name =
-            self.get_non_conflict_name(&uniq_module_default_export_name(self.module_id));
+            self.get_non_conflict_top_level_name(&uniq_module_default_export_name(self.module_id));
 
         let mut var_links_collector = ModuleDeclMapCollector::new(self.default_bind_name.clone());
         n.visit_with(&mut var_links_collector);
