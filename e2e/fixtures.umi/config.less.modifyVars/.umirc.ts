@@ -1,5 +1,6 @@
 export default {
   mfsu: false,
+  mako: {},
   theme: {
     '@primary-color': 'red',
   },

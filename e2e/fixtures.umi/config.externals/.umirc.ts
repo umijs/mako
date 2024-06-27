@@ -1,5 +1,6 @@
 export default {
   mfsu: false,
+  mako: {},
   externals: {
     antd1: 'window antd1',
     antd2: 'window.antd2',
