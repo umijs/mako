@@ -1,10 +1,9 @@
-use mako_core::swc_common::DUMMY_SP;
-use mako_core::swc_ecma_ast::{
+use swc_core::common::DUMMY_SP;
+use swc_core::ecma::ast::{
     ArrowExpr, Decl, ExportDecl, ExportNamedSpecifier, ExportSpecifier, Expr, FnDecl, Function,
-    ModuleDecl, ModuleItem, NamedExport, Pat, Stmt, VarDecl,
+    Ident, ModuleDecl, ModuleItem, NamedExport, Pat, Stmt, VarDecl,
 };
-use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
-use swc_core::ecma::ast::Ident;
+use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 pub struct FixHelperInjectPosition {
     pub exports: Vec<Ident>,
@@ -90,12 +89,12 @@ impl VisitMut for FixHelperInjectPosition {
 mod tests {
     use std::collections::HashMap;
 
-    use mako_core::swc_ecma_preset_env::{self as swc_preset_env};
-    use mako_core::swc_ecma_transforms::feature::FeatureFlag;
-    use mako_core::swc_ecma_transforms::Assumptions;
-    use mako_core::swc_ecma_transforms_proposals::decorators;
-    use mako_core::swc_ecma_visit::{Fold, VisitMut, VisitMutWith};
     use swc_core::common::GLOBALS;
+    use swc_core::ecma::preset_env::{self as swc_preset_env};
+    use swc_core::ecma::transforms::base::feature::FeatureFlag;
+    use swc_core::ecma::transforms::base::Assumptions;
+    use swc_core::ecma::transforms::proposal::decorators;
+    use swc_core::ecma::visit::{Fold, VisitMut, VisitMutWith};
 
     use super::FixHelperInjectPosition;
     use crate::ast::file::File;

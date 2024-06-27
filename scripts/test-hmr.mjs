@@ -1514,6 +1514,49 @@ runTest('add async import', async () => {
   await cleanup({ process, browser });
 });
 
+runTest('js: response correct content-type', async () => {
+  write(
+    normalizeFiles({
+      '/src/App.tsx': `
+      export default () => {
+        return <div>App</div>;
+      };
+            `,
+      '/src/index.tsx': `
+      import React from 'react';
+      import ReactDOM from "react-dom/client";
+      import App from './App';
+      ReactDOM.createRoot(document.getElementById("root")!).render(<><App /><section>{Math.random()}</section></>);
+          `,
+    }),
+  );
+  const { process } = await startMakoDevServer();
+  await delay(DELAY_TIME);
+  const { browser, page } = await startBrowser();
+  page.on('response', (response) => {
+    const url = response.url();
+    if (/hot\-update\.js$/.test(url)) {
+      const headers = response.headers();
+      assert.equal(
+        headers['content-type'],
+        'application/javascript; charset=utf-8',
+        'hot-update content-type',
+      );
+      cleanup({ process, browser });
+    }
+  });
+  let lastResult;
+  lastResult = normalizeHtml(await getRootHtml(page));
+  assert.equal(lastResult.html, '<div>App</div>', 'Initial render');
+  write({
+    '/src/App.tsx': `
+export default () => {
+  return <div>App Modified</div>;
+};
+    `,
+  });
+  await delay(DELAY_TIME);
+});
 function normalizeFiles(files, makoConfig = {}) {
   return {
     '/public/index.html': `

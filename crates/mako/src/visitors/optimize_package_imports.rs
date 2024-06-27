@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use anyhow::Result;
 use cached::proc_macro::cached;
-use mako_core::anyhow::Result;
-use mako_core::swc_common::DUMMY_SP;
-use mako_core::swc_ecma_ast::{
+use oxc_resolver::PackageJson;
+use swc_core::common::DUMMY_SP;
+use swc_core::ecma::ast::{
     ImportDecl, ImportNamedSpecifier, ImportSpecifier, ModuleDecl, ModuleExportName, ModuleItem,
 };
-use mako_core::swc_ecma_utils::{quote_ident, quote_str};
-use mako_core::swc_ecma_visit::Fold;
-use mako_core::tracing::debug;
-use oxc_resolver::PackageJson;
+use swc_core::ecma::utils::{quote_ident, quote_str};
+use swc_core::ecma::visit::Fold;
+use tracing::debug;
 
 use crate::build::cached_build_module;
 use crate::compiler::Context;

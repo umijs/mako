@@ -6,10 +6,10 @@ use crate::tsfn::{LoadResult, ReadMessage, TsFnHooks, WriteRequest};
 pub struct JsPlugin {
     pub hooks: TsFnHooks,
 }
+use anyhow::{anyhow, Result};
 use mako::ast::file::{Content, JsContent};
 use mako::compiler::Context;
 use mako::plugin::{Plugin, PluginGenerateEndParams, PluginLoadParam};
-use mako_core::anyhow::{anyhow, Result};
 
 impl Plugin for JsPlugin {
     fn name(&self) -> &str {

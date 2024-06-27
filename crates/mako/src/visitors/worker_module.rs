@@ -1,6 +1,6 @@
-use mako_core::swc_ecma_ast::{Expr, Lit, NewExpr, Str};
-use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
 use swc_core::common::Mark;
+use swc_core::ecma::ast::{Expr, Lit, NewExpr, Str};
+use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::utils::{is_ident_undefined, is_remote_or_data};
 

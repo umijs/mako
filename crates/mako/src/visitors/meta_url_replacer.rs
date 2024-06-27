@@ -1,7 +1,7 @@
-use mako_core::swc_common::DUMMY_SP;
-use mako_core::swc_ecma_ast::{CondExpr, Expr};
-use mako_core::swc_ecma_utils::member_expr;
-use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+use swc_core::common::DUMMY_SP;
+use swc_core::ecma::ast::{CondExpr, Expr};
+use swc_core::ecma::utils::member_expr;
+use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::utils::is_import_meta_url;
 
@@ -25,8 +25,8 @@ impl VisitMut for MetaUrlReplacer {
 
 #[cfg(test)]
 mod tests {
-    use mako_core::swc_ecma_visit::VisitMutWith;
     use swc_core::common::GLOBALS;
+    use swc_core::ecma::visit::VisitMutWith;
 
     use super::MetaUrlReplacer;
     use crate::ast::tests::TestUtils;

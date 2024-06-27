@@ -24,7 +24,7 @@ const dirs = fs.readdirSync(fixtures).filter((dir) => {
 
 for (const dir of onlyDir ? [onlyDir] : dirs) {
   const testFn = dir.includes('failed') && !argv.only ? test.skip : test;
-  testFn(dir, async () => {
+  await testFn(dir, async () => {
     const cwd = path.join(fixtures, dir);
     if (argv.umi) {
       if (!fs.existsSync(path.join(cwd, 'node_modules'))) {

@@ -1,12 +1,11 @@
 use std::collections::HashMap;
 use std::string::String;
 
-use mako_core::base64::engine::general_purpose;
-use mako_core::base64::Engine;
-use mako_core::indexmap::{IndexMap, IndexSet};
-use mako_core::md5;
-use mako_core::regex::Regex;
-use mako_core::tracing::debug;
+use base64::engine::general_purpose;
+use base64::Engine;
+use indexmap::{IndexMap, IndexSet};
+use regex::Regex;
+use tracing::debug;
 
 use crate::compiler::Compiler;
 use crate::config::{
@@ -26,7 +25,7 @@ pub struct OptimizeChunksInfo {
 
 impl Compiler {
     pub fn optimize_chunk(&self) {
-        mako_core::mako_profile_function!();
+        crate::mako_profile_function!();
         debug!("optimize chunk");
         if let Some(optimize_options) = self.get_optimize_chunk_options() {
             debug!("optimize options: {:?}", optimize_options);
@@ -65,7 +64,7 @@ impl Compiler {
     }
 
     pub fn optimize_hot_update_chunk(&self, group_result: &GroupUpdateResult) {
-        mako_core::mako_profile_function!();
+        crate::mako_profile_function!();
         debug!("optimize hot update chunk");
 
         // skip if code splitting disabled or group result is invalid

@@ -1,4 +1,4 @@
-use mako_core::tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::{fmt, EnvFilter};
 
 pub fn init_logger() {
     fmt()

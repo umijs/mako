@@ -1,9 +1,9 @@
 use std::collections::{HashSet, VecDeque};
 use std::vec;
 
-use mako_core::anyhow::Result;
-use mako_core::tracing::debug;
+use tracing::debug;
 
+use crate::ast::file::parse_path;
 use crate::compiler::Compiler;
 use crate::dev::update::UpdateResult;
 use crate::generate::chunk::{Chunk, ChunkId, ChunkType};
@@ -13,11 +13,8 @@ use crate::module::{ModuleId, ResolveType};
 pub type GroupUpdateResult = Option<(Vec<ChunkId>, Vec<(ModuleId, ChunkId, ChunkType)>)>;
 
 impl Compiler {
-    // TODO:
-    // - 多个 entry 之间的 chunk 共享
-
     pub fn group_chunk(&self) {
-        mako_core::mako_profile_function!();
+        crate::mako_profile_function!();
         debug!("group_chunk");
 
         let mut visited = HashSet::new();
@@ -33,8 +30,8 @@ impl Compiler {
 
             for (key, value) in &self.context.config.entry {
                 // hmr entry id has query '?hmr'
-                if parse_path(&value.to_string_lossy()).unwrap().path
-                    == parse_path(&entry.id).unwrap().path
+                if parse_path(&value.to_string_lossy()).unwrap().0
+                    == parse_path(&entry.id).unwrap().0
                 {
                     entry_chunk_name = key;
                     break;
@@ -171,7 +168,7 @@ impl Compiler {
     }
 
     pub fn group_hot_update_chunk(&self, update_result: &UpdateResult) -> GroupUpdateResult {
-        mako_core::mako_profile_function!();
+        crate::mako_profile_function!();
         debug!("group_hot_update_chunk");
 
         // unique for queried file modules
@@ -305,7 +302,7 @@ impl Compiler {
         modified_module_id: &ModuleId,
         chunk_graph: &mut ChunkGraph,
     ) -> Vec<(ModuleId, ChunkId, ChunkType)> {
-        mako_core::mako_profile_function!(&modified_module_id.id);
+        crate::mako_profile_function!(&modified_module_id.id);
         let module_graph = self.context.module_graph.read().unwrap();
         let module_chunks = self.get_module_chunks(modified_module_id, chunk_graph);
         let shared_chunk_names = self.get_module_entry_chunk_names(modified_module_id, chunk_graph);
@@ -385,7 +382,7 @@ impl Compiler {
         chunk_graph: &mut ChunkGraph,
         shared_chunk_names: Vec<String>,
     ) -> (Chunk, Vec<ModuleId>, Vec<ModuleId>) {
-        mako_core::mako_profile_function!(&entry_module_id.id);
+        crate::mako_profile_function!(&entry_module_id.id);
         let mut dynamic_entries = vec![];
         let mut worker_entries = vec![];
 
@@ -510,32 +507,4 @@ where
 
         queue.extend(callback(&id));
     }
-}
-
-// TODO: REMOVE THIS
-fn parse_path(path: &str) -> Result<FileRequest> {
-    let mut iter = path.split('?');
-    let path = iter.next().unwrap();
-    let query = iter.next().unwrap_or("");
-    let mut query_vec = vec![];
-    for pair in query.split('&') {
-        if pair.contains('=') {
-            let mut it = pair.split('=').take(2);
-            let kv = match (it.next(), it.next()) {
-                (Some(k), Some(v)) => (k.to_string(), v.to_string()),
-                _ => continue,
-            };
-            query_vec.push(kv);
-        } else if !pair.is_empty() {
-            query_vec.push((pair.to_string(), "".to_string()));
-        }
-    }
-    Ok(FileRequest {
-        path: path.to_string(),
-    })
-}
-
-#[derive(Debug, Clone)]
-struct FileRequest {
-    pub path: String,
 }

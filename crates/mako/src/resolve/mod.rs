@@ -3,17 +3,18 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::vec;
 
+use anyhow::{anyhow, Result};
 use cached::proc_macro::cached;
-use mako_core::anyhow::{anyhow, Result};
-use mako_core::convert_case::{Case, Casing};
-use mako_core::regex::{Captures, Regex};
-use mako_core::thiserror::Error;
-use mako_core::tracing::debug;
+use convert_case::{Case, Casing};
 use oxc_resolver::{Alias, AliasValue, ResolveError as OxcResolveError, ResolveOptions, Resolver};
+use regex::{Captures, Regex};
+use thiserror::Error;
+use tracing::debug;
 
 mod resource;
 pub(crate) use resource::{ExternalResource, ResolvedResource, ResolverResource};
 
+use crate::ast::file::parse_path;
 use crate::compiler::Context;
 use crate::config::{
     Config, ExternalAdvancedSubpathConverter, ExternalAdvancedSubpathTarget, ExternalConfig,
@@ -45,14 +46,18 @@ pub fn resolve(
     resolvers: &Resolvers,
     context: &Arc<Context>,
 ) -> Result<ResolverResource> {
-    mako_core::mako_profile_function!();
-    mako_core::mako_profile_scope!("resolve", &dep.source);
+    crate::mako_profile_function!();
+    crate::mako_profile_scope!("resolve", &dep.source);
 
     if dep.source.starts_with("virtual:") {
         return Ok(ResolverResource::Virtual(PathBuf::from(&dep.source)));
     }
 
-    let resolver = if parse_path(&dep.source)?.has_query("context") {
+    let has_context_query = parse_path(&dep.source)?
+        .2
+        .iter()
+        .any(|(k, _)| *k == "context");
+    let resolver = if has_context_query {
         resolvers.get(&ResolverType::Ctxt)
     } else if dep.resolve_type == ResolveType::Require {
         resolvers.get(&ResolverType::Cjs)
@@ -197,16 +202,24 @@ fn get_external_target(
     }
 }
 
-/*
- * Can't use "globalThis.{xxx}" because "globalThis.@ant-design/icons"
- * is syntax invalid
- */
 fn get_external_target_from_global_obj(global_obj_name: &str, external: &str) -> String {
-    format!("{}['{}']", global_obj_name, external)
+    let external = if external.contains('.') || (external.contains('[') && external.contains(']')) {
+        /*
+         * If the external value is like 'someNamespace.someValue' or 'someNamespace["someValue"]' eg window._ or window["_"],
+         * use it directly
+         */
+        format!(".{}", external)
+    } else {
+        /*
+         * Can't use "globalThis.{xxx}" because "globalThis.@ant-design/icons"
+         * is syntax invalid
+         */
+        format!("['{}']", external)
+    };
+
+    format!("{}{}", global_obj_name, external)
 }
 
-// TODO:
-// - 支持物理缓存，让第二次更快
 fn do_resolve(
     path: &str,
     source: &str,
@@ -386,11 +399,11 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
     Resolver::new(options)
 }
 
-fn parse_alias(alias: HashMap<String, String>) -> Alias {
+fn parse_alias(alias: Vec<(String, String)>) -> Alias {
     let mut result = vec![];
-    for (key, value) in alias {
-        let alias_vec = vec![AliasValue::Path(value)];
-        result.push((key, alias_vec));
+    for (from, to) in alias {
+        let alias_vec = vec![AliasValue::Path(to)];
+        result.push((from, alias_vec));
     }
     result
 }
@@ -399,42 +412,6 @@ pub fn clear_resolver_cache(resolvers: &Resolvers) {
     resolvers
         .iter()
         .for_each(|(_, resolver)| resolver.clear_cache());
-}
-
-// TODO: REMOVE THIS, pass file to resolve instead
-fn parse_path(path: &str) -> Result<FileRequest> {
-    let mut iter = path.split('?');
-    let path = iter.next().unwrap();
-    let query = iter.next().unwrap_or("");
-    let mut query_vec = vec![];
-    for pair in query.split('&') {
-        if pair.contains('=') {
-            let mut it = pair.split('=').take(2);
-            let kv = match (it.next(), it.next()) {
-                (Some(k), Some(v)) => (k.to_string(), v.to_string()),
-                _ => continue,
-            };
-            query_vec.push(kv);
-        } else if !pair.is_empty() {
-            query_vec.push((pair.to_string(), "".to_string()));
-        }
-    }
-    Ok(FileRequest {
-        path: path.to_string(),
-        query: query_vec,
-    })
-}
-
-#[derive(Debug, Clone)]
-pub struct FileRequest {
-    pub path: String,
-    pub query: Vec<(String, String)>,
-}
-
-impl FileRequest {
-    pub fn has_query(&self, key: &str) -> bool {
-        self.query.iter().any(|(k, _)| *k == key)
-    }
 }
 
 #[cfg(test)]
@@ -484,7 +461,7 @@ mod tests {
 
     #[test]
     fn test_resolve_alias() {
-        let alias = HashMap::from([("bar".to_string(), "foo".to_string())]);
+        let alias = vec![("bar".to_string(), "foo".to_string())];
         let x = resolve(
             "test/resolve/normal",
             Some(alias.clone()),
@@ -513,6 +490,14 @@ mod tests {
             (
                 "@ant-design/icons".to_string(),
                 ExternalConfig::Basic("@ant-design/icons".to_string()),
+            ),
+            (
+                "@antv/g6".to_string(),
+                ExternalConfig::Basic("window['@antv/g6']".to_string()),
+            ),
+            (
+                "_".to_string(),
+                ExternalConfig::Basic("window._".to_string()),
             ),
             ("empty".to_string(), ExternalConfig::Basic("".to_string())),
         ]);
@@ -547,6 +532,41 @@ mod tests {
                 Some(
                     "(typeof globalThis !== 'undefined' ? globalThis : self)['@ant-design/icons']"
                         .to_string()
+                ),
+                None,
+            )
+        );
+        let x = external_resolve(
+            "test/resolve/normal",
+            None,
+            Some(&externals),
+            "index.ts",
+            "@antv/g6",
+        );
+        assert_eq!(
+            x,
+            (
+                "@antv/g6".to_string(),
+                Some(
+                    "(typeof globalThis !== 'undefined' ? globalThis : self).window['@antv/g6']"
+                        .to_string()
+                ),
+                None,
+            )
+        );
+        let x = external_resolve(
+            "test/resolve/normal",
+            None,
+            Some(&externals),
+            "index.ts",
+            "_",
+        );
+        assert_eq!(
+            x,
+            (
+                "_".to_string(),
+                Some(
+                    "(typeof globalThis !== 'undefined' ? globalThis : self).window._".to_string()
                 ),
                 None,
             )
@@ -720,7 +740,7 @@ mod tests {
 
     fn resolve(
         base: &str,
-        alias: Option<HashMap<String, String>>,
+        alias: Option<Vec<(String, String)>>,
         externals: Option<&HashMap<String, ExternalConfig>>,
         path: &str,
         source: &str,
@@ -730,7 +750,7 @@ mod tests {
 
     fn css_resolve(
         base: &str,
-        alias: Option<HashMap<String, String>>,
+        alias: Option<Vec<(String, String)>>,
         externals: Option<&HashMap<String, ExternalConfig>>,
         path: &str,
         source: &str,
@@ -740,7 +760,7 @@ mod tests {
 
     fn external_resolve(
         base: &str,
-        alias: Option<HashMap<String, String>>,
+        alias: Option<Vec<(String, String)>>,
         externals: Option<&HashMap<String, ExternalConfig>>,
         path: &str,
         source: &str,
@@ -750,7 +770,7 @@ mod tests {
 
     fn base_resolve(
         base: &str,
-        alias: Option<HashMap<String, String>>,
+        alias: Option<Vec<(String, String)>>,
         externals: Option<&HashMap<String, ExternalConfig>>,
         path: &str,
         source: &str,

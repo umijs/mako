@@ -1,7 +1,7 @@
-use mako_core::swc_common::{Mark, DUMMY_SP};
-use mako_core::swc_ecma_ast::{Expr, ExprOrSpread, Lit};
-use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
-use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+use swc_core::common::{Mark, DUMMY_SP};
+use swc_core::ecma::ast::{Expr, ExprOrSpread, Lit};
+use swc_core::ecma::utils::{member_expr, quote_ident, quote_str, ExprFactory};
+use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::utils::is_dynamic_import;
 
@@ -45,8 +45,8 @@ impl VisitMut for DynamicImportToRequire {
 
 #[cfg(test)]
 mod tests {
-    use mako_core::swc_common::GLOBALS;
-    use mako_core::swc_ecma_visit::VisitMutWith;
+    use swc_core::common::GLOBALS;
+    use swc_core::ecma::visit::VisitMutWith;
 
     use super::DynamicImportToRequire;
     use crate::ast::tests::TestUtils;

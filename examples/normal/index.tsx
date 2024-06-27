@@ -6,11 +6,13 @@ import Person, { ReactComponent as PersonComponent } from './assets/person.svg';
 import UmiLogo from './assets/umi-logo.png';
 import { foo } from './foo';
 import './index.css';
+import { Test } from './app';
 import styles from './style.module.css';
 
 function App() {
   return (
     <div>
+      <Test></Test>
       <h1 className={styles.title}>Hello {foo}!</h1>
       <PersonComponent width="40px" height="40px" />
       <img src={Person} />

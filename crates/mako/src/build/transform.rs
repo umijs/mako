@@ -1,19 +1,19 @@
 use std::sync::Arc;
 
-use mako_core::anyhow::Result;
-use mako_core::swc_common::sync::Lrc;
-use mako_core::swc_css_ast::{AtRule, AtRulePrelude, ImportHref, Rule, Str, Stylesheet, UrlValue};
-use mako_core::swc_css_compat::compiler::{self, Compiler};
-use mako_core::swc_ecma_preset_env::{self as swc_preset_env};
-use mako_core::swc_ecma_transforms::feature::FeatureFlag;
-use mako_core::swc_ecma_transforms::fixer::paren_remover;
-use mako_core::swc_ecma_transforms::{resolver, Assumptions};
-use mako_core::swc_ecma_transforms_optimization::simplifier;
-use mako_core::swc_ecma_transforms_optimization::simplify::{dce, Config as SimpilifyConfig};
-use mako_core::swc_ecma_transforms_proposals::decorators;
-use mako_core::swc_ecma_visit::{Fold, VisitMut};
-use mako_core::{swc_css_compat, swc_css_prefixer, swc_css_visit};
+use anyhow::Result;
+use swc_core::common::sync::Lrc;
 use swc_core::common::GLOBALS;
+use swc_core::css::ast::{AtRule, AtRulePrelude, ImportHref, Rule, Str, Stylesheet, UrlValue};
+use swc_core::css::compat::compiler::{self, Compiler};
+use swc_core::css::{compat as swc_css_compat, prefixer, visit as swc_css_visit};
+use swc_core::ecma::preset_env::{self as swc_preset_env};
+use swc_core::ecma::transforms::base::feature::FeatureFlag;
+use swc_core::ecma::transforms::base::fixer::paren_remover;
+use swc_core::ecma::transforms::base::{resolver, Assumptions};
+use swc_core::ecma::transforms::optimization::simplifier;
+use swc_core::ecma::transforms::optimization::simplify::{dce, Config as SimpilifyConfig};
+use swc_core::ecma::transforms::proposal::decorators;
+use swc_core::ecma::visit::{Fold, VisitMut};
 
 use crate::ast::css_ast::CssAst;
 use crate::ast::file::File;
@@ -37,6 +37,7 @@ use crate::visitors::provide::Provide;
 use crate::visitors::react::react;
 use crate::visitors::try_resolve::TryResolve;
 use crate::visitors::ts_strip::ts_strip;
+use crate::visitors::tsx_strip::tsx_strip;
 use crate::visitors::virtual_css_modules::VirtualCSSModules;
 use crate::visitors::worker_module::WorkerModule;
 
@@ -44,15 +45,16 @@ pub struct Transform {}
 
 impl Transform {
     pub fn transform(ast: &mut ModuleAst, file: &File, context: Arc<Context>) -> Result<()> {
-        mako_core::mako_profile_function!();
+        crate::mako_profile_function!();
         match ast {
             ModuleAst::Script(ast) => {
                 GLOBALS.set(&context.meta.script.globals, || {
                     let unresolved_mark = ast.unresolved_mark;
                     let top_level_mark = ast.top_level_mark;
-                    let cm = context.meta.script.cm.clone();
+                    let cm: Arc<swc_core::common::SourceMap> = context.meta.script.cm.clone();
                     let origin_comments = context.meta.script.origin_comments.read().unwrap();
-                    let is_ts = file.extname == "ts" || file.extname == "tsx";
+                    let is_ts = file.extname == "ts";
+                    let is_tsx = file.extname == "tsx";
                     let is_jsx = file.is_content_jsx()
                         || file.extname == "jsx"
                         || file.extname == "js"
@@ -61,7 +63,7 @@ impl Transform {
 
                     // visitors
                     let mut visitors: Vec<Box<dyn VisitMut>> = vec![
-                        Box::new(resolver(unresolved_mark, top_level_mark, is_ts)),
+                        Box::new(resolver(unresolved_mark, top_level_mark, is_ts || is_tsx)),
                         // fix helper inject position
                         // should be removed after upgrade to latest swc
                         // ref: https://github.com/umijs/mako/issues/1193
@@ -74,6 +76,13 @@ impl Transform {
                         }),
                         Box::new(WorkerModule::new(unresolved_mark)),
                     ];
+                    if is_tsx {
+                        visitors.push(Box::new(tsx_strip(
+                            cm.clone(),
+                            context.clone(),
+                            top_level_mark,
+                        )))
+                    }
                     // strip should be ts only
                     // since when use this in js, it will remove all unused imports
                     // which is not expected as what webpack does
@@ -152,7 +161,6 @@ impl Transform {
                         emit_metadata: false,
                         ..Default::default()
                     })));
-                    // TODO: is it a problem to clone comments?
                     let comments = origin_comments.get_swc_comments().clone();
                     let assumptions = context.assumptions_for(file);
 
@@ -220,13 +228,11 @@ impl Transform {
                     )));
                 }
                 // prefixer
-                visitors.push(Box::new(swc_css_prefixer::prefixer(
-                    swc_css_prefixer::options::Options {
-                        env: Some(targets::swc_preset_env_targets_from_map(
-                            context.config.targets.clone(),
-                        )),
-                    },
-                )));
+                visitors.push(Box::new(prefixer::prefixer(prefixer::options::Options {
+                    env: Some(targets::swc_preset_env_targets_from_map(
+                        context.config.targets.clone(),
+                    )),
+                })));
                 ast.transform(&mut visitors)?;
 
                 // css modules

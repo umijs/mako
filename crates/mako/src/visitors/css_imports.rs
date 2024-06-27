@@ -1,6 +1,6 @@
-use mako_core::swc_common::util::take::Take;
-use mako_core::swc_css_ast::{AtRule, AtRulePrelude, ImportHref, Rule, Stylesheet, UrlValue};
-use mako_core::swc_css_visit::{VisitMut, VisitMutWith};
+use swc_core::common::util::take::Take;
+use swc_core::css::ast::{AtRule, AtRulePrelude, ImportHref, Rule, Stylesheet, UrlValue};
+use swc_core::css::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::utils::is_remote_or_data_or_hash;
 
@@ -67,8 +67,7 @@ impl VisitMut for CSSImports {
 
 #[cfg(test)]
 mod tests {
-
-    use mako_core::swc_css_visit::VisitMutWith;
+    use swc_core::css::visit::VisitMutWith;
 
     use crate::ast::tests::TestUtils;
 

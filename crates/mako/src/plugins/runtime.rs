@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use mako_core::anyhow::{anyhow, Result};
+use anyhow::{anyhow, Result};
 
 use crate::compiler::Context;
 use crate::generate::swc_helpers::SwcHelpers;

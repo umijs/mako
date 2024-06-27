@@ -2,10 +2,10 @@ use std::any::Any;
 use std::path::Path;
 use std::sync::Arc;
 
-use mako_core::anyhow::{anyhow, Result};
-use mako_core::swc_common::errors::Handler;
-use mako_core::swc_common::Mark;
-use mako_core::swc_ecma_ast::Module;
+use anyhow::{anyhow, Result};
+use swc_core::common::errors::Handler;
+use swc_core::common::Mark;
+use swc_core::ecma::ast::Module;
 
 use crate::ast::file::{Content, File};
 use crate::compiler::{Args, Compiler, Context};

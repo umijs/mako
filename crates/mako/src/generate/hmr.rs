@@ -1,6 +1,6 @@
-use mako_core::anyhow::Result;
-use mako_core::indexmap::IndexSet;
-use mako_core::swc_ecma_ast::{
+use anyhow::Result;
+use indexmap::IndexSet;
+use swc_core::ecma::ast::{
     CallExpr, Expr, ExprOrSpread, ExprStmt, KeyValueProp, ModuleItem, ObjectLit, Prop,
     PropOrSpread, Stmt,
 };
@@ -21,13 +21,14 @@ impl Compiler {
     ) -> Result<(String, String)> {
         let module_graph = &self.context.module_graph.read().unwrap();
         let (js_stmts, _) = modules_to_js_stmts(module_ids, module_graph, &self.context).unwrap();
-        let mut content = include_str!("../runtime/runtime_hmr.js").to_string();
-        content = content.replace("__CHUNK_ID__", &chunk.id.id).replace(
+        let content = include_str!("../runtime/runtime_hmr.js").to_string();
+        let content = content.replace("__CHUNK_ID__", &chunk.id.id).replace(
             "__runtime_code__",
             &format!("runtime._h='{}';", current_hash),
         );
-        // TODO: handle error
-        let mut js_ast = JsAst::build(filename, content.as_str(), self.context.clone()).unwrap();
+        let mut js_ast = JsAst::build(filename, content.as_str(), self.context.clone())
+            /* safe */
+            .unwrap();
 
         for stmt in &mut js_ast.ast.body {
             if let ModuleItem::Stmt(Stmt::Expr(ExprStmt {

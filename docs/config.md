@@ -34,7 +34,7 @@ Notice: this configuration item is still WIP, the result may not be accurate.
 
 Whether to automatically enable CSS Modules.
 
-english: If not enabled, only files with `.module.css` or `.module.less` will be treated as CSS Modules; if enabled, named imports like `import styles from './a.css'` will also be treated as CSS Modules.
+If not enabled, only files with `.module.css` or `.module.less` will be treated as CSS Modules; if enabled, named imports like `import styles from './a.css'` will also be treated as CSS Modules.
 
 ### clean
 
@@ -328,7 +328,7 @@ Specify the size limit of the assets file that needs to be converted to `base64`
 
 ### less
 
-- Type: `Object`
+- Type: `{ modifyVars?: Record<string, string>, sourceMap?: { sourceMapFileInline?: boolean, outputSourceFiles?: boolean }, math?: "always" | "strict" | "parens-division" | "parens" | "strict-legacy" | number, plugins?: ([string, Record<string, any>]|string)[] }`
 - Default: `{}`
 
 Specify the less configuration.
@@ -543,8 +543,8 @@ function App() {
 
 ### resolve
 
-- Type: `{ alias: Record<string, string>, extensions: string[] }`
-- Default: `{ alias: {}, extensions: ["js", "jsx", "ts", "tsx"] }`
+- Type: `{ alias: Array<[string, string]>, extensions: string[] }`
+- Default: `{ alias: [], extensions: ["js", "jsx", "ts", "tsx"] }`
 
 `resolve` configuration.
 
@@ -556,9 +556,9 @@ e.g.
 ```ts
 {
   resolve: {
-    alias: {
-      "@": "./src",
-    },
+    alias: [
+      ["@", "./src"]
+    ],
     extensions: ["js", "jsx", "ts", "tsx"],
   },
 }
@@ -571,10 +571,10 @@ e.g.
 ```diff
 {
   resolve: {
-    alias: {
--       "@/src/*": "./src/*",
-+       "@/src": "./src",
-    },
+    alias: [
+-      ["@/src/*", "./src/*"],
++      [ "@/src", "./src"],
+    ],
   },
 }
 ```
@@ -584,10 +584,10 @@ Notice 2: If you want to alias to a local path, make sure to add the `./` prefix
 ```diff
 {
   resolve: {
-    alias: {
--       "@/src": "src",
-+       "@/src": "./src",
-    },
+    alias: [
+-       ["@/src", "src"],
++       ["@/src", "./src"],
+    ],
   },
 }
 ```
@@ -647,6 +647,13 @@ e.g.
 - Default: `false`
 
 Whether to output umd format.
+
+### useDefineForClassFields
+
+- Type: `boolean`
+- Default: `false`
+
+Whether to use `defineProperty` to define class fields.
 
 ### watch
 

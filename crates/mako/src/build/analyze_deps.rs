@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use mako_core::anyhow::{anyhow, Result};
-use mako_core::thiserror::Error;
+use anyhow::{anyhow, Result};
+use thiserror::Error;
 
 use crate::ast::error;
 use crate::ast::file::File;
@@ -38,7 +38,7 @@ impl AnalyzeDeps {
         file: &File,
         context: Arc<Context>,
     ) -> Result<AnalyzeDepsResult> {
-        mako_core::mako_profile_function!();
+        crate::mako_profile_function!();
         let mut deps = match ast {
             ModuleAst::Script(ast) => ast.analyze_deps(context.clone()),
             ModuleAst::Css(ast) => ast.analyze_deps(),
@@ -77,10 +77,8 @@ impl AnalyzeDeps {
                 .map(|dep| Self::get_resolved_error(dep, context.clone()))
                 .collect::<Vec<String>>()
                 .join("\n");
-            // TODO:
-            // should we just throw an error here and decide whether to print or exit at the upper level?
             if context.args.watch {
-                eprint!("{}", messages);
+                eprintln!("{}", messages);
             } else {
                 return Err(anyhow!(AnalyzeDepsError::ModuleNotFound {
                     message: messages

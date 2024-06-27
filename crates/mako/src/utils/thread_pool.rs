@@ -1,6 +1,6 @@
 use std::sync::OnceLock;
 
-use mako_core::rayon::{Scope, ThreadPool, ThreadPoolBuilder};
+use rayon::{Scope, ThreadPool, ThreadPoolBuilder};
 
 static THREAD_POOL: OnceLock<ThreadPool> = OnceLock::new();
 

@@ -1,6 +1,6 @@
 use std::fs;
 
-use mako_core::tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::{fmt, EnvFilter};
 
 use crate::compiler::{self, Compiler};
 use crate::config::{Config, Mode};

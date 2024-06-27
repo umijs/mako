@@ -2,17 +2,16 @@ use std::collections::HashMap;
 use std::fmt;
 use std::path::{Path, PathBuf};
 
-use mako_core::anyhow::{anyhow, Result};
-use mako_core::clap::ValueEnum;
-use mako_core::colored::Colorize;
-use mako_core::regex::Regex;
-use mako_core::serde::{Deserialize, Deserializer};
-use mako_core::serde_json::Value;
-use mako_core::swc_ecma_ast::EsVersion;
-use mako_core::thiserror::Error;
-use mako_core::{clap, config, thiserror};
+use anyhow::{anyhow, Result};
+use clap::ValueEnum;
+use colored::Colorize;
 use miette::{miette, ByteOffset, Diagnostic, NamedSource, SourceOffset, SourceSpan};
-use serde::Serialize;
+use regex::Regex;
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::Value;
+use swc_core::ecma::ast::EsVersion;
+use thiserror::Error;
+use {clap, config, thiserror};
 
 use crate::features::node::Node;
 use crate::{plugins, visitors};
@@ -129,7 +128,7 @@ pub struct ManifestConfig {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ResolveConfig {
-    pub alias: HashMap<String, String>,
+    pub alias: Vec<(String, String)>,
     pub extensions: Vec<String>,
 }
 
@@ -613,7 +612,7 @@ impl Default for OptimizeChunkGroup {
  * @see https://serde.rs/custom-date-format.html
  */
 mod optimize_test_format {
-    use mako_core::regex::Regex;
+    use regex::Regex;
     use serde::{self, Deserialize, Deserializer, Serializer};
 
     pub fn serialize<S>(v: &Option<Regex>, serializer: S) -> Result<S::Ok, S::Error>
@@ -655,7 +654,7 @@ const DEFAULT_CONFIG: &str = r#"
       "preserveModulesRoot": "",
       "skipWrite": false
     },
-    "resolve": { "alias": {}, "extensions": ["js", "jsx", "ts", "tsx"] },
+    "resolve": { "alias": [], "extensions": ["js", "jsx", "ts", "tsx"] },
     "mode": "development",
     "minify": true,
     "devtool": "source-map",

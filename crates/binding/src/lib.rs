@@ -51,7 +51,7 @@ pub struct BuildParams {
         skipWrite?: boolean;
     };
     resolve?: {
-       alias?: Record<string, string>;
+       alias?: Array<[string, string]>;
        extensions?: string[];
     };
     manifest?: false | {
@@ -223,7 +223,7 @@ pub fn build(env: Env, build_params: BuildParams) -> napi::Result<JsObject> {
         Ok(promise)
     } else {
         let (deferred, promise) = env.create_deferred()?;
-        mako_core::rayon::spawn(move || {
+        rayon::spawn(move || {
             let compiler =
                 Compiler::new(config, root.clone(), Args { watch: false }, Some(plugins))
                     .map_err(|e| napi::Error::new(Status::GenericFailure, format!("{}", e)));

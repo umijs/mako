@@ -1,16 +1,19 @@
+use std::fs;
+use std::path::Path;
 use std::sync::Arc;
 
-use mako_core::anyhow::Result;
-use mako_core::glob::glob;
-use mako_core::swc_common::{Mark, DUMMY_SP};
-use mako_core::swc_ecma_ast::{
+use anyhow::Result;
+use glob::glob;
+use swc_core::common::{Mark, DUMMY_SP};
+use swc_core::ecma::ast::{
     BinExpr, BinaryOp, CallExpr, Expr, ExprOrSpread, Lit, ParenExpr, TplElement,
 };
-use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprExt, ExprFactory};
-use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+use swc_core::ecma::utils::{member_expr, quote_ident, quote_str, ExprExt, ExprFactory};
+use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::file::{Content, JsContent};
 use crate::ast::utils::{is_commonjs_require, is_dynamic_import};
+use crate::build::load::JS_EXTENSIONS;
 use crate::compiler::Context;
 use crate::plugin::{Plugin, PluginLoadParam};
 use crate::resolve::get_module_extensions;
@@ -41,8 +44,14 @@ impl Plugin for ContextModulePlugin {
                 let rlt_path = path.strip_prefix(&param.file.pathname)?;
 
                 // full path `./i18n/zh_CN.json`
-                let mut keys = vec![format!("./{}", rlt_path.to_string_lossy())];
-
+                let mut keys: Vec<String> = vec![];
+                let metadata = fs::metadata(&path);
+                if let Ok(md) = metadata {
+                    if md.is_dir() && !has_index_file_in_directory(&path) {
+                        continue;
+                    }
+                }
+                keys.push(format!("./{}", rlt_path.to_string_lossy()));
                 // omit ext `./i18n/zh_CN`
                 if let Some(ext) = rlt_path.extension() {
                     if get_module_extensions().contains(&format!(".{}", ext.to_string_lossy())) {
@@ -219,23 +228,37 @@ fn try_replace_context_arg(
 
         // handle prefix of `'./foo/' + bar + '.ext'`
         Expr::Lit(Lit::Str(str)) => {
-            let prefix = str.value.to_string();
-
+            let mut prefix = str.value.to_string();
             // replace first str with relative prefix
-            str.value = get_relative_prefix(prefix.clone()).into();
+            let (pre_quasis, remainder) = if let Some(pos) = prefix.rfind('/') {
+                (prefix[..=pos].to_string(), prefix[pos + 1..].to_string())
+            } else {
+                (prefix.clone(), String::new())
+            };
+            str.value = format!("./{}", remainder).into();
             str.raw = None;
-
+            if !prefix.ends_with('/') {
+                prefix = pre_quasis;
+            }
             Some((prefix, None))
         }
 
         // handle `./foo/${bar}.ext`
         Expr::Tpl(tpl) => {
             if !tpl.exprs.is_empty() {
-                let prefix = tpl.quasis.first().unwrap().raw.to_string();
+                let pre_quasis = tpl.quasis.first().unwrap().raw.to_string();
+                let (prefix, remainder) = if let Some(pos) = pre_quasis.rfind('/') {
+                    (
+                        pre_quasis[..=pos].to_string(),
+                        pre_quasis[pos + 1..].to_string(),
+                    )
+                } else {
+                    (pre_quasis.clone(), String::new())
+                };
                 let mut suffix = None;
 
                 // replace first quasi with relative prefix
-                tpl.quasis[0].raw = get_relative_prefix(tpl.quasis[0].raw.to_string()).into();
+                tpl.quasis[0].raw = format!("./{}", remainder).into();
                 tpl.quasis[0].cooked = None;
 
                 // extract suffix
@@ -244,7 +267,6 @@ fn try_replace_context_arg(
                         suffix = Some(raw.to_string());
                     }
                 }
-
                 Some((prefix, suffix))
             } else {
                 None
@@ -255,10 +277,21 @@ fn try_replace_context_arg(
     }
 }
 
-fn get_relative_prefix(path: String) -> String {
-    if path.ends_with('/') {
-        "./".to_string()
-    } else {
-        ".".to_string()
-    }
+fn has_index_file_in_directory(dir_path: &Path) -> bool {
+    fs::read_dir(dir_path)
+        .map(|entries| {
+            entries.filter_map(Result::ok).any(|entry| {
+                let path = entry.path();
+                path.is_file()
+                    && path
+                        .file_stem()
+                        .and_then(|n| n.to_str())
+                        .map_or(false, |fname| fname == "index")
+                    && path
+                        .extension()
+                        .and_then(|e| e.to_str())
+                        .map_or(false, |extension: &str| JS_EXTENSIONS.contains(&extension))
+            })
+        })
+        .unwrap_or(false)
 }

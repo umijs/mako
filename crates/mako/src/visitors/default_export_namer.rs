@@ -1,7 +1,7 @@
-use mako_core::swc_ecma_ast::*;
-use mako_core::swc_ecma_utils::private_ident;
-use mako_core::swc_ecma_visit::VisitMut;
 use swc_core::common::DUMMY_SP;
+use swc_core::ecma::ast::*;
+use swc_core::ecma::utils::private_ident;
+use swc_core::ecma::visit::VisitMut;
 
 const DEFAULT_COMPONENT_NAME: &str = "Component$$";
 
@@ -83,8 +83,8 @@ impl VisitMut for DefaultExportNamer {
 
 #[cfg(test)]
 mod tests {
-    use mako_core::swc_ecma_visit::VisitMutWith;
     use swc_core::common::GLOBALS;
+    use swc_core::ecma::visit::VisitMutWith;
 
     use super::DefaultExportNamer;
     use crate::ast::tests::TestUtils;

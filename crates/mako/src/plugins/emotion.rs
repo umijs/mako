@@ -1,12 +1,12 @@
 use std::path::Path;
 
-use mako_core::anyhow::Ok;
-use mako_core::swc_common::sync::Lrc;
-use mako_core::swc_common::SourceMap;
-use mako_core::swc_ecma_ast::Module;
-use mako_core::swc_ecma_visit::{Fold, VisitMut, VisitMutWith};
-use mako_core::swc_emotion::{emotion, EmotionOptions};
+use anyhow::Ok;
 use swc_core::common::comments::NoopComments;
+use swc_core::common::sync::Lrc;
+use swc_core::common::SourceMap;
+use swc_core::ecma::ast::Module;
+use swc_core::ecma::visit::{Fold, VisitMut, VisitMutWith};
+use swc_emotion::{emotion, EmotionOptions};
 
 use crate::config::{Mode, ReactConfig};
 use crate::plugin::Plugin;
@@ -23,7 +23,7 @@ impl Plugin for EmotionPlugin {
         config: &mut crate::config::Config,
         _root: &std::path::Path,
         _args: &crate::compiler::Args,
-    ) -> mako_core::anyhow::Result<()> {
+    ) -> anyhow::Result<()> {
         if config.emotion {
             config.react = ReactConfig {
                 pragma: "jsx".into(),
@@ -38,9 +38,9 @@ impl Plugin for EmotionPlugin {
     fn transform_js(
         &self,
         param: &crate::plugin::PluginTransformJsParam,
-        ast: &mut mako_core::swc_ecma_ast::Module,
+        ast: &mut swc_core::ecma::ast::Module,
         context: &std::sync::Arc<crate::compiler::Context>,
-    ) -> mako_core::anyhow::Result<()> {
+    ) -> anyhow::Result<()> {
         if context.config.emotion {
             ast.visit_mut_with(&mut Emotion {
                 mode: context.config.mode.clone(),

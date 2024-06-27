@@ -1,16 +1,14 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use mako_core::swc_common::util::take::Take;
-use mako_core::swc_common::{Mark, DUMMY_SP};
-use mako_core::swc_ecma_ast::{
+use swc_core::common::util::take::Take;
+use swc_core::common::{Mark, DUMMY_SP};
+use swc_core::ecma::ast::{
     ArrayLit, AssignExpr, AssignOp, AwaitExpr, BlockStmt, BlockStmtOrExpr, CondExpr, Expr, Ident,
-    Lit, ModuleItem, Stmt, VarDeclKind,
+    Lit, ModuleItem, ParenExpr, Stmt, VarDeclKind,
 };
-use mako_core::swc_ecma_visit::VisitMut;
-use swc_core::ecma::ast::ParenExpr;
 use swc_core::ecma::utils::{member_expr, quote_expr, quote_ident, ExprFactory};
-use swc_core::ecma::visit::VisitMutWith;
+use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::utils::is_commonjs_require;
 use crate::compiler::Context;
@@ -205,7 +203,6 @@ pub fn mark_async(
     module_ids: &[ModuleId],
     context: &Arc<Context>,
 ) -> HashMap<ModuleId, Vec<Dependency>> {
-    mako_core::mako_profile_function!();
     let mut async_deps_by_module_id = HashMap::new();
     let mut module_graph = context.module_graph.write().unwrap();
     // TODO: 考虑成环的场景
@@ -230,14 +227,14 @@ pub fn mark_async(
 
 #[cfg(test)]
 mod tests {
-    use mako_core::swc_common::GLOBALS;
-    use mako_core::swc_ecma_visit::{VisitMutWith, VisitWith};
-    use mako_core::swc_node_comments::SwcComments;
+    use swc_core::common::GLOBALS;
     use swc_core::ecma::transforms::base::feature::FeatureFlag;
     use swc_core::ecma::transforms::base::helpers::{inject_helpers, Helpers, HELPERS};
     use swc_core::ecma::transforms::module::common_js;
     use swc_core::ecma::transforms::module::import_analysis::import_analyzer;
     use swc_core::ecma::transforms::module::util::ImportInterop;
+    use swc_core::ecma::visit::{VisitMutWith, VisitWith};
+    use swc_node_comments::SwcComments;
 
     use super::AsyncModule;
     use crate::ast::tests::TestUtils;

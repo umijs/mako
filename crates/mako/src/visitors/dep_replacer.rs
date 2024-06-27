@@ -1,15 +1,15 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use mako_core::anyhow::Result;
-use mako_core::swc_common::{Mark, DUMMY_SP};
-use mako_core::swc_ecma_ast::{
+use swc_core::common::{Mark, DUMMY_SP};
+use swc_core::ecma::ast::{
     AssignOp, BlockStmt, Expr, ExprOrSpread, FnExpr, Function, Ident, ImportDecl, Lit, NamedExport,
     NewExpr, Stmt, Str, ThrowStmt, VarDeclKind,
 };
-use mako_core::swc_ecma_utils::{member_expr, quote_ident, quote_str, ExprFactory};
-use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+use swc_core::ecma::utils::{member_expr, quote_ident, quote_str, ExprFactory};
+use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
+use crate::ast::file::parse_path;
 use crate::ast::utils::{is_commonjs_require, is_dynamic_import, is_remote_or_data};
 use crate::compiler::Context;
 use crate::module::{Dependency, ModuleId};
@@ -114,18 +114,17 @@ impl VisitMut for DepReplacer<'_> {
 
                     // css
                     // TODO: add testcases for this
-                    let is_replaceable_css = if let Some((_, raw_id)) =
-                        self.to_replace.resolved.get(&source_string)
-                    {
-                        let file_request = parse_path(raw_id).unwrap();
-                        // when inline_css is enabled
-                        // css is parsed as js modules
-                        self.context.config.inline_css.is_none()
-                            && is_css_path(&file_request.path)
-                            && (file_request.query.is_empty() || file_request.has_query("modules"))
-                    } else {
-                        false
-                    };
+                    let is_replaceable_css =
+                        if let Some((_, raw_id)) = self.to_replace.resolved.get(&source_string) {
+                            let (path, _search, query, _) = parse_path(raw_id).unwrap();
+                            // when inline_css is enabled
+                            // css is parsed as js modules
+                            self.context.config.inline_css.is_none()
+                                && is_css_path(&path)
+                                && (query.is_empty() || query.iter().any(|(k, _)| *k == "modules"))
+                        } else {
+                            false
+                        };
                     if is_replaceable_css {
                         // remove `require('./xxx.css');`
                         if is_commonjs_require_flag {
@@ -230,49 +229,13 @@ pub fn resolve_web_worker_mut(new_expr: &mut NewExpr, unresolved_mark: Mark) -> 
     None
 }
 
-// TODO: REMOVE THIS, pass file to visitor instead
-fn parse_path(path: &str) -> Result<FileRequest> {
-    let mut iter = path.split('?');
-    let path = iter.next().unwrap();
-    let query = iter.next().unwrap_or("");
-    let mut query_vec = vec![];
-    for pair in query.split('&') {
-        if pair.contains('=') {
-            let mut it = pair.split('=').take(2);
-            let kv = match (it.next(), it.next()) {
-                (Some(k), Some(v)) => (k.to_string(), v.to_string()),
-                _ => continue,
-            };
-            query_vec.push(kv);
-        } else if !pair.is_empty() {
-            query_vec.push((pair.to_string(), "".to_string()));
-        }
-    }
-    Ok(FileRequest {
-        path: path.to_string(),
-        query: query_vec,
-    })
-}
-
-#[derive(Debug, Clone)]
-pub struct FileRequest {
-    pub path: String,
-    pub query: Vec<(String, String)>,
-}
-
-impl FileRequest {
-    pub fn has_query(&self, key: &str) -> bool {
-        self.query.iter().any(|(k, _)| *k == key)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
 
-    use mako_core::swc_common::GLOBALS;
-    use mako_core::swc_ecma_visit::VisitMutWith;
     use maplit::hashmap;
+    use swc_core::common::GLOBALS;
+    use swc_core::ecma::visit::VisitMutWith;
 
     use super::{DepReplacer, DependenciesToReplace, ResolvedModuleId, ResolvedModulePath};
     use crate::ast::tests::TestUtils;

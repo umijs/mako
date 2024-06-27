@@ -2,14 +2,13 @@ use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
 
-use mako_core::anyhow::{anyhow, Result};
-use mako_core::mdxjs::{compile, Options as MdxOptions};
-use mako_core::serde_xml_rs::from_str as from_xml_str;
-use mako_core::serde_yaml::{from_str as from_yaml_str, Value as YamlValue};
-use mako_core::svgr_rs;
-use mako_core::thiserror::Error;
-use mako_core::toml::{from_str as from_toml_str, Value as TomlValue};
-use mako_core::tracing::debug;
+use anyhow::{anyhow, Result};
+use mdxjs::{compile, Options as MdxOptions};
+use serde_xml_rs::from_str as from_xml_str;
+use serde_yaml::{from_str as from_yaml_str, Value as YamlValue};
+use thiserror::Error;
+use toml::{from_str as from_toml_str, Value as TomlValue};
+use tracing::debug;
 
 use crate::ast::file::{Content, File, JsContent};
 use crate::compiler::Context;
@@ -30,7 +29,7 @@ enum LoadError {
     CompileMdError { path: String, reason: String },
 }
 
-const JS_EXTENSIONS: [&str; 6] = ["js", "jsx", "ts", "tsx", "cjs", "mjs"];
+pub const JS_EXTENSIONS: [&str; 6] = ["js", "jsx", "ts", "tsx", "cjs", "mjs"];
 const CSS_EXTENSIONS: [&str; 1] = ["css"];
 const JSON_EXTENSIONS: [&str; 2] = ["json", "json5"];
 const YAML_EXTENSIONS: [&str; 2] = ["yaml", "yml"];
@@ -47,7 +46,7 @@ pub struct Load {}
 
 impl Load {
     pub fn load(file: &File, context: Arc<Context>) -> Result<Content> {
-        mako_core::mako_profile_function!(file.path.to_string_lossy());
+        crate::mako_profile_function!(file.path.to_string_lossy());
         debug!("load: {:?}", file);
 
         // plugin first
@@ -67,8 +66,6 @@ export function moduleToDom(css) {
     var styleElement = document.createElement("style");
     styleElement.type = "text/css";
     styleElement.appendChild(document.createTextNode(css))
-    // TODO: support nonce
-    // styleElement.setAttribute("nonce", nonce);
     document.head.appendChild(styleElement);
 }
                                 "#
@@ -225,7 +222,6 @@ export function moduleToDom(css) {
         }
 
         // json
-        // TODO: json5 should be more complex
         if JSON_EXTENSIONS.contains(&file.extname.as_str()) {
             let content = FileSystem::read_file(&file.pathname)?;
             return Ok(Content::Js(JsContent {
@@ -267,8 +263,6 @@ export function moduleToDom(css) {
             let base64_result = file.get_base64();
             match base64_result {
                 Ok(base64) => {
-                    // TODO: why add "" wrapper here?
-                    // should have better way to handle this
                     if inject_public_path {
                         Ok(format!("\"{}\"", base64))
                     } else {
@@ -293,7 +287,6 @@ export function moduleToDom(css) {
     }
 }
 
-// TODO: move to separate module
 pub struct FileSystem {}
 
 impl FileSystem {

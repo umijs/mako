@@ -1,7 +1,6 @@
-use mako_core::swc_common::Span;
-use mako_core::swc_ecma_ast::{CallExpr, Expr, Lit, ModuleDecl, NewExpr, Str};
-use mako_core::swc_ecma_visit::{Visit, VisitWith};
-use swc_core::common::Mark;
+use swc_core::common::{Mark, Span};
+use swc_core::ecma::ast::{CallExpr, Expr, Lit, ModuleDecl, NewExpr, Str};
+use swc_core::ecma::visit::{Visit, VisitWith};
 
 use crate::ast::utils;
 use crate::module::{Dependency, ResolveType};
@@ -151,8 +150,8 @@ fn resolve_web_worker(expr: &NewExpr, unresolved_mark: Mark) -> Option<&Str> {
 
 #[cfg(test)]
 mod tests {
-    use mako_core::swc_ecma_visit::VisitWith;
     use swc_core::common::GLOBALS;
+    use swc_core::ecma::visit::VisitWith;
 
     use crate::ast::tests::TestUtils;
 

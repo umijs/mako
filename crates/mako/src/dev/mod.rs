@@ -6,19 +6,18 @@ use std::path::PathBuf;
 use std::sync::{mpsc, Arc};
 use std::time::{Duration, Instant, UNIX_EPOCH};
 
+use anyhow::{self, Result};
+use colored::Colorize;
+use futures::{SinkExt, StreamExt};
 use get_if_addrs::get_if_addrs;
-use mako_core::anyhow::{self, Result};
-use mako_core::colored::Colorize;
-use mako_core::futures::{SinkExt, StreamExt};
-use mako_core::hyper::header::CONTENT_TYPE;
-use mako_core::hyper::service::{make_service_fn, service_fn};
-use mako_core::hyper::{Body, Request, Server};
-use mako_core::notify_debouncer_full::new_debouncer;
-use mako_core::tokio::sync::broadcast;
-use mako_core::tracing::debug;
-use mako_core::tungstenite::Message;
-use mako_core::{hyper, hyper_staticfile, hyper_tungstenite};
-use open;
+use hyper::header::CONTENT_TYPE;
+use hyper::service::{make_service_fn, service_fn};
+use hyper::{Body, Request, Server};
+use notify_debouncer_full::new_debouncer;
+use tokio::sync::broadcast;
+use tracing::debug;
+use tungstenite::Message;
+use {hyper, hyper_staticfile_jsutf8, hyper_tungstenite, open};
 
 use crate::compiler::{Compiler, Context};
 use crate::plugin::{PluginGenerateEndParams, PluginGenerateStats};
@@ -65,8 +64,6 @@ impl DevServer {
                 .as_ref()
                 .unwrap()
                 .port;
-            // TODO: host
-            // let host = self.compiler.context.config.hmr_host.clone();
             let port = Self::find_available_port("127.0.0.1".to_string(), config_port);
             let addr: SocketAddr = ([127, 0, 0, 1], port).into();
             let context = self.compiler.context.clone();
@@ -78,8 +75,9 @@ impl DevServer {
                     Ok::<_, hyper::Error>(service_fn(move |req| {
                         let context = context.clone();
                         let txws = txws.clone();
-                        let staticfile =
-                            hyper_staticfile::Static::new(context.config.output.path.clone());
+                        let staticfile = hyper_staticfile_jsutf8::Static::new(
+                            context.config.output.path.clone(),
+                        );
                         async move { Self::handle_requests(req, context, staticfile, txws).await }
                     }))
                 }
@@ -124,7 +122,7 @@ impl DevServer {
     async fn handle_requests(
         req: Request<Body>,
         context: Arc<Context>,
-        staticfile: hyper_staticfile::Static,
+        staticfile: hyper_staticfile_jsutf8::Static,
         txws: broadcast::Sender<WsMessage>,
     ) -> Result<hyper::Response<Body>> {
         let path = req.uri().path();

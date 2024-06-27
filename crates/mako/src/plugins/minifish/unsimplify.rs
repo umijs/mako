@@ -1,7 +1,7 @@
-use mako_core::swc_common::util::take::Take;
-use mako_core::swc_common::DUMMY_SP;
-use mako_core::swc_ecma_ast::{BlockStmt, IfStmt, Stmt};
-use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+use swc_core::common::util::take::Take;
+use swc_core::common::DUMMY_SP;
+use swc_core::ecma::ast::{BlockStmt, IfStmt, Stmt};
+use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 pub(super) struct UnSimplify {}
 

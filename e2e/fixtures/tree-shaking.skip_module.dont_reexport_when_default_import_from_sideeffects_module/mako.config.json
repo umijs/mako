@@ -1,4 +1,4 @@
 {
-  "optimization": { "skipModules": true },
+  "optimization": { "skipModules": true, "concatenateModules": false },
   "optimizePackageImports": false
 }

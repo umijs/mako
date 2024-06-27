@@ -2,11 +2,11 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use mako_core::pathdiff::diff_paths;
-use mako_core::swc_ecma_ast::{Expr, Lit, Str};
-use mako_core::swc_ecma_visit::{VisitMut, VisitMutWith};
+use pathdiff::diff_paths;
 use serde_json::Value;
 use swc_core::common::{Mark, DUMMY_SP};
+use swc_core::ecma::ast::{Expr, Lit, Str};
+use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::compiler::Context;
 use crate::config::{Config, ExternalConfig, Platform};
@@ -35,10 +35,10 @@ impl Node {
                 .insert("__filename".into(), Value::String("'/index.js'".into()));
             // polyfill with equivalent modules
             for name in Self::get_polyfill_modules().iter() {
-                config.resolve.alias.insert(
+                config.resolve.alias.push((
                     name.to_string(),
                     format!("node-libs-browser-okam/polyfill/{}", name),
-                );
+                ));
             }
             // polyfill with empty modules
             for name in Self::get_empty_modules().iter() {

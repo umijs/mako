@@ -5,12 +5,12 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+use anyhow::Result;
 use dashmap::DashSet;
-use mako_core::anyhow::Result;
-use mako_core::rayon::prelude::*;
-use mako_core::regex::Regex;
-use mako_core::tracing::debug;
+use rayon::prelude::*;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
+use tracing::debug;
 
 use crate::ast::file::{Content, File, JsContent};
 use crate::compiler::{Args, Compiler, Context};
@@ -19,7 +19,7 @@ use crate::config::{
     CodeSplittingStrategyOptions, Config, OptimizeAllowChunks, OptimizeChunkGroup,
 };
 use crate::generate::chunk::ChunkType;
-use crate::generate::chunk_pot::util::hash_hashmap;
+use crate::generate::chunk_pot::util::{hash_hashmap, hash_vec};
 use crate::generate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::plugin::{NextBuildParam, Plugin, PluginLoadParam};
 use crate::resolve::ResolverResource;
@@ -121,7 +121,7 @@ impl SUPlus {
     }
 
     fn config_hash(config: &Config) -> u64 {
-        let alias_hash = hash_hashmap(&config.resolve.alias);
+        let alias_hash = hash_vec(&config.resolve.alias);
         let external_hash = hash_hashmap(&config.externals);
 
         alias_hash.wrapping_add(external_hash)

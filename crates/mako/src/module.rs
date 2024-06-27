@@ -3,18 +3,17 @@ use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use anyhow::{anyhow, Result};
+use base64::engine::{general_purpose, Engine};
 use bitflags::bitflags;
-use mako_core::anyhow::{anyhow, Result};
-use mako_core::base64::engine::{general_purpose, Engine};
-use mako_core::md5;
-use mako_core::pathdiff::diff_paths;
-use mako_core::swc_common::{Span, DUMMY_SP};
-use mako_core::swc_ecma_ast::{BlockStmt, FnExpr, Function, Module as SwcModule};
-use mako_core::swc_ecma_utils::quote_ident;
+use pathdiff::diff_paths;
 use serde::Serialize;
+use swc_core::common::{Span, DUMMY_SP};
 use swc_core::ecma::ast::{
-    ExportSpecifier, ImportDecl, ImportSpecifier, ModuleExportName, NamedExport,
+    BlockStmt, ExportSpecifier, FnExpr, Function, ImportDecl, ImportSpecifier, Module as SwcModule,
+    ModuleExportName, NamedExport,
 };
+use swc_core::ecma::utils::quote_ident;
 
 use crate::ast::css_ast::CssAst;
 use crate::ast::file::File;
@@ -155,7 +154,6 @@ pub struct ModuleInfo {
     pub ast: ModuleAst,
     pub file: File,
     pub deps: AnalyzeDepsResult,
-    pub path: String,
     pub external: Option<String>,
     pub raw: String,
     pub raw_hash: u64,
@@ -176,7 +174,6 @@ impl Default for ModuleInfo {
             ast: ModuleAst::None,
             file: Default::default(),
             deps: Default::default(),
-            path: "".to_string(),
             external: None,
             raw: "".to_string(),
             raw_hash: 0,
@@ -371,7 +368,7 @@ impl Module {
         self.info.as_mut().and_then(|i| i.ast.script_mut())
     }
 
-    pub fn add_info(&mut self, info: Option<ModuleInfo>) {
+    pub fn set_info(&mut self, info: Option<ModuleInfo>) {
         self.info = info;
     }
 

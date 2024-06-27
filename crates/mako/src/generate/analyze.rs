@@ -1,7 +1,7 @@
 use std::fs;
 use std::sync::Arc;
 
-use mako_core::anyhow::Result;
+use anyhow::Result;
 
 use crate::compiler::Context;
 use crate::stats::StatsJsonMap;

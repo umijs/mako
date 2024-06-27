@@ -1,12 +1,13 @@
 use std::path::PathBuf;
 
-use mako_core::merge_source_map::sourcemap::SourceMap as MergeSourceMap;
-use mako_core::merge_source_map::{merge, MergeOptions};
-use mako_core::pathdiff::diff_paths;
-use mako_core::swc_common::source_map::SourceMapGenConfig;
-use mako_core::swc_common::sync::Lrc;
-use mako_core::swc_common::{BytePos, FileName, LineCol, SourceMap};
+use merge_source_map::sourcemap::SourceMap as MergeSourceMap;
+use merge_source_map::{merge, MergeOptions};
+use pathdiff::diff_paths;
 use swc_core::base::sourcemap;
+use swc_core::common::source_map::SourceMapGenConfig;
+use swc_core::common::sync::Lrc;
+use swc_core::common::{BytePos, FileName, LineCol, SourceMap};
+
 pub struct SwcSourceMapGenConfig;
 
 impl SourceMapGenConfig for SwcSourceMapGenConfig {

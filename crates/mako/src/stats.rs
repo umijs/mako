@@ -7,11 +7,11 @@ use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use mako_core::anyhow::Result;
-use mako_core::colored::*;
-use mako_core::indexmap::IndexMap;
-use mako_core::pathdiff::diff_paths;
-use mako_core::serde::Serialize;
+use anyhow::Result;
+use colored::*;
+use indexmap::IndexMap;
+use pathdiff::diff_paths;
+use serde::Serialize;
 use swc_core::common::source_map::Pos;
 
 use crate::compiler::{Compiler, Context};
@@ -377,7 +377,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
                                     .unwrap()
                                     .info
                                     .clone()
-                                    .map(|info| info.path)
+                                    .map(|info| info.file.path.to_string_lossy().to_string())
                                     .unwrap_or("".to_string()),
                                 // -> "lo-hi"
                                 loc: dep

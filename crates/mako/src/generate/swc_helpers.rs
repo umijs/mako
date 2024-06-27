@@ -1,4 +1,4 @@
-use mako_core::indexmap::IndexSet;
+use indexmap::IndexSet;
 
 pub struct SwcHelpers {
     pub helpers: IndexSet<String>,

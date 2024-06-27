@@ -2,23 +2,22 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
-use mako_core::anyhow::{anyhow, Result};
-use mako_core::md5;
-use mako_core::sailfish::TemplateOnce;
-use mako_core::swc_atoms::js_word;
-use mako_core::swc_common::DUMMY_SP;
-use mako_core::swc_ecma_ast::{
-    ArrayLit, AssignOp, BinaryOp, BlockStmt, CondExpr, Expr, ExprOrSpread, FnExpr, Function, Ident,
-    KeyValueProp, Module as SwcModule, ObjectLit, Prop, PropOrSpread, UnaryExpr, UnaryOp,
-};
-use mako_core::swc_ecma_codegen::text_writer::JsWriter;
-use mako_core::swc_ecma_codegen::{Config as JsCodegenConfig, Emitter};
-use mako_core::swc_ecma_utils::{quote_ident, quote_str, ExprFactory};
-use mako_core::twox_hash::XxHash64;
+use anyhow::{anyhow, Result};
+use md5;
+use sailfish::TemplateOnce;
 use swc_core::base::try_with_handler;
 use swc_core::common::comments::{Comment, CommentKind, Comments};
 use swc_core::common::errors::HANDLER;
-use swc_core::common::{Span, GLOBALS};
+use swc_core::common::{Span, DUMMY_SP, GLOBALS};
+use swc_core::ecma::ast::{
+    ArrayLit, AssignOp, BinaryOp, BlockStmt, CondExpr, Expr, ExprOrSpread, FnExpr, Function, Ident,
+    KeyValueProp, Module as SwcModule, ObjectLit, Prop, PropOrSpread, UnaryExpr, UnaryOp,
+};
+use swc_core::ecma::atoms::js_word;
+use swc_core::ecma::codegen::text_writer::JsWriter;
+use swc_core::ecma::codegen::{Config as JsCodegenConfig, Emitter};
+use swc_core::ecma::utils::{quote_ident, quote_str, ExprFactory};
+use twox_hash::XxHash64;
 
 use crate::ast::sourcemap::build_source_map_to_buf;
 use crate::compiler::Context;
@@ -31,7 +30,7 @@ pub(crate) fn render_module_js(
     ast: &SwcModule,
     context: &Arc<Context>,
 ) -> Result<(Vec<u8>, Option<Vec<u8>>)> {
-    mako_core::mako_profile_function!();
+    crate::mako_profile_function!();
 
     let mut buf = vec![];
     let mut source_map_buf = Vec::new();
@@ -58,7 +57,7 @@ pub(crate) fn render_module_js(
 
     let cm = &context.meta.script.cm;
     let source_map = {
-        mako_core::mako_profile_scope!("build_source_map");
+        crate::mako_profile_scope!("build_source_map");
         match context.config.devtool {
             None => None,
             _ => Some(build_source_map_to_buf(&source_map_buf, cm)),
@@ -155,7 +154,7 @@ pub(super) fn to_array_lit(elems: Vec<ExprOrSpread>) -> ArrayLit {
 }
 
 pub(crate) fn pot_to_module_object(pot: &ChunkPot, context: &Arc<Context>) -> Result<ObjectLit> {
-    mako_core::mako_profile_function!();
+    crate::mako_profile_function!();
 
     let mut sorted_kv = pot
         .module_map
@@ -212,7 +211,7 @@ pub(crate) fn pot_to_chunk_module(
     global: String,
     context: &Arc<Context>,
 ) -> Result<SwcModule> {
-    mako_core::mako_profile_function!();
+    crate::mako_profile_function!();
 
     let module_object = pot_to_module_object(pot, context)?;
 
@@ -271,7 +270,7 @@ pub(crate) fn pot_to_chunk_module(
 //     convert = r#"{format!("{}.{:x}",file_content_hash(&module.id.id),module.info.as_ref().unwrap().raw_hash)}"#
 // )]
 fn to_module_fn_expr(module: &Module) -> Result<FnExpr> {
-    mako_core::mako_profile_function!(&module.id.id);
+    crate::mako_profile_function!(&module.id.id);
 
     match &module.info.as_ref().unwrap().ast {
         ModuleAst::Script(script) => {
@@ -314,7 +313,7 @@ fn to_module_fn_expr(module: &Module) -> Result<FnExpr> {
                 function: func.into(),
             })
         }
-        // TODO: css module will be removed in the future
+        // TODO: css module should be removed
         ModuleAst::Css(_) => Ok(empty_module_fn_expr()),
         ModuleAst::None => Err(anyhow!("ModuleAst::None({}) cannot concert", module.id.id)),
     }

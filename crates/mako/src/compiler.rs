@@ -4,13 +4,13 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Instant, UNIX_EPOCH};
 
-use mako_core::anyhow::{anyhow, Error, Result};
-use mako_core::colored::Colorize;
-use mako_core::regex::Regex;
-use mako_core::swc_common::sync::Lrc;
-use mako_core::swc_common::{Globals, SourceMap, DUMMY_SP};
-use mako_core::swc_ecma_ast::Ident;
-use mako_core::tracing::debug;
+use anyhow::{anyhow, Error, Result};
+use colored::Colorize;
+use regex::Regex;
+use swc_core::common::sync::Lrc;
+use swc_core::common::{Globals, SourceMap, DUMMY_SP};
+use swc_core::ecma::ast::Ident;
+use tracing::debug;
 
 use crate::ast::comments::Comments;
 use crate::config::{Config, OutputMode};
@@ -236,7 +236,7 @@ impl Compiler {
             Arc::new(plugins::wasm_runtime::WasmRuntimePlugin {}),
             Arc::new(plugins::async_runtime::AsyncRuntimePlugin {}),
             Arc::new(plugins::emotion::EmotionPlugin {}),
-            Arc::new(plugins::farm_tree_shake::FarmTreeShake {}),
+            Arc::new(plugins::tree_shaking::FarmTreeShake {}),
         ];
         plugins.extend(builtin_plugins);
 
@@ -340,7 +340,7 @@ impl Compiler {
         .green();
         println!("{}", building_with_message);
         {
-            mako_core::mako_profile_scope!("Build Stage");
+            crate::mako_profile_scope!("Build Stage");
             let files = self
                 .context
                 .config
@@ -371,7 +371,7 @@ impl Compiler {
                 .after_build(&self.context, self)?;
         }
         let result = {
-            mako_core::mako_profile_scope!("Generate Stage");
+            crate::mako_profile_scope!("Generate Stage");
             // need to put all rayon parallel iterators run in the existed scope, or else rayon
             // will create a new thread pool for those parallel iterators
             thread_pool::scope(|_| self.generate())
@@ -408,7 +408,7 @@ impl Compiler {
     }
 
     pub fn full_hash(&self) -> u64 {
-        mako_core::mako_profile_function!();
+        crate::mako_profile_function!();
         let cg = self.context.chunk_graph.read().unwrap();
         let mg = self.context.module_graph.read().unwrap();
         cg.full_hash(&mg)
