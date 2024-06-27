@@ -15,7 +15,7 @@ use crate::config::{
 };
 use crate::generate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::generate::group_chunk::GroupUpdateResult;
-use crate::module::{Module, ModuleAst, ModuleId, ModuleInfo};
+use crate::module::{Module, ModuleId, ModuleInfo};
 use crate::resolve::{ResolvedResource, ResolverResource};
 
 pub struct OptimizeChunksInfo {
@@ -145,32 +145,18 @@ impl Compiler {
         // update chunk_graph
         let mut chunk_graph = self.context.chunk_graph.write().unwrap();
         let mut merged_modules = vec![];
-        let module_graph = self.context.module_graph.write().unwrap();
 
         for (chunk_id, entry_chunk_id, chunk_modules) in async_to_entry.iter() {
             let entry_chunk: &mut Chunk = chunk_graph.mut_chunk(entry_chunk_id).unwrap();
 
-            let no_css_module_chunk =
-                chunk_modules
-                    .iter()
-                    .all(|m| match module_graph.get_module(m) {
-                        Some(module) => match module.info {
-                            Some(ref info) => !matches!(info.ast, ModuleAst::Css(_)),
-                            None => true,
-                        },
-                        None => true,
-                    });
-
-            if no_css_module_chunk {
-                // merge modules to entry chunk
-                for m in chunk_modules {
-                    entry_chunk.add_module(m.clone());
-                    merged_modules.push(m);
-                }
-
-                // remove original async chunks
-                chunk_graph.merge_to_chunk(chunk_id, entry_chunk_id);
+            // merge modules to entry chunk
+            for m in chunk_modules {
+                entry_chunk.add_module(m.clone());
+                merged_modules.push(m);
             }
+
+            // remove original async chunks
+            chunk_graph.merge_to_chunk(chunk_id, entry_chunk_id);
         }
 
         // remove merged modules from other async chunks

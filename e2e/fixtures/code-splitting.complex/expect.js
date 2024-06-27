@@ -13,11 +13,6 @@ assert(
 )
 
 assert(
-  files["index.js"].includes("src_should-not-be-merged_ts-async.js"),
-  "css module chunk can not be merged"
-)
-
-assert(
   files["index.js"].includes("src_no-incoming_tsx-async.js"),
   "should auto add edge to entry chunk after optimize remove chunk for next directed"
 )
