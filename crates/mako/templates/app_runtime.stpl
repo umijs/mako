@@ -80,7 +80,7 @@ function createRuntime(makoModules, entryModuleId, global) {
   
     requireModule.dr = function(interop, request) {
       return function(){
-        let m = requireModule(request);
+        var m = requireModule(request);
         if(isPromise(m)){
           return m.then(function(rm){ return interop(rm)})
         }
