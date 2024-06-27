@@ -1,6 +1,6 @@
 const root = require("./root");
 
-// to make thess modules as external
+// to make these modules as external
 import("./at_stmt_2");
 import("./at_stmt_3");
 
