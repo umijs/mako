@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use swc_core::common::collections::AHashSet;
 use swc_core::common::comments::{Comment, CommentKind};
 use swc_core::common::util::take::Take;
 use swc_core::common::{Mark, Spanned, SyntaxContext, DUMMY_SP};
@@ -13,7 +14,7 @@ use swc_core::ecma::utils::{member_expr, quote_ident, ExprFactory, IdentRenamer}
 use swc_core::ecma::visit::{VisitMut, VisitMutWith, VisitWith};
 
 use super::concatenate_context::{
-    module_ref_to_expr, ConcatenateContext, ImportModuleRefMap, ModuleRef,
+    all_referenced_variables, module_ref_to_expr, ConcatenateContext, ImportModuleRefMap, ModuleRef,
 };
 use super::module_ref_rewriter::ModuleRefRewriter;
 use super::ref_link::{ModuleDeclMapCollector, Symbol, VarLink};
@@ -35,6 +36,7 @@ pub(super) struct ConcatenatedTransform<'a> {
     pub top_level_mark: Mark,
 
     my_top_decls: HashSet<String>,
+    all_decls: AHashSet<Id>,
     rename_request: Vec<(Id, Id)>,
     imported_type: ImportType,
     current_stmt_index: usize,
@@ -58,6 +60,7 @@ impl<'a> ConcatenatedTransform<'a> {
             context,
             top_level_mark,
             my_top_decls: Default::default(),
+            all_decls: Default::default(),
             rename_request: vec![],
             imported_type: Default::default(),
             replaces: vec![],
@@ -152,6 +155,8 @@ impl<'a> ConcatenatedTransform<'a> {
         ref_map: &mut HashMap<String, ModuleRef>,
         var_map: &HashMap<&Id, &VarLink>,
     ) {
+        let mut expanded_export_all = vec![];
+
         var_map.iter().for_each(|(id, link)| match link {
             VarLink::Direct(direct_id) => {
                 ref_map.insert(id.0.to_string(), (direct_id.clone().into(), None));
@@ -188,7 +193,7 @@ impl<'a> ConcatenatedTransform<'a> {
                     }
                 }
             }
-            VarLink::All(source, _) => {
+            VarLink::All(source, order) => {
                 if let Some(src_module_id) = self.src_to_module.get(source) {
                     if let Some(map) = self
                         .concatenate_context
@@ -197,7 +202,7 @@ impl<'a> ConcatenatedTransform<'a> {
                     {
                         map.iter().for_each(|(k, v)| {
                             if k != "default" && k != "*" {
-                                ref_map.insert(k.clone(), v.clone());
+                                expanded_export_all.push((order, (k.clone(), v.clone())))
                             }
                         });
                     }
@@ -205,7 +210,12 @@ impl<'a> ConcatenatedTransform<'a> {
                 // else it's export * from external module, it only happens in root so will be
                 // handled in root
             }
-        })
+        });
+        expanded_export_all.sort_by_key(|(order, _)| *order);
+
+        for (_, (k, v)) in expanded_export_all {
+            ref_map.entry(k.clone()).or_insert_with(|| v.clone());
+        }
     }
 
     pub(crate) fn to_export_module_ref(
@@ -227,6 +237,7 @@ impl<'a> ConcatenatedTransform<'a> {
     fn remove_imported_top_vars(&mut self, import_map: &ImportModuleRefMap) {
         import_map.iter().for_each(|(id, _)| {
             self.my_top_decls.remove(&id.0.to_string());
+            self.all_decls.remove(id);
         });
     }
 
@@ -252,8 +263,6 @@ impl<'a> ConcatenatedTransform<'a> {
         self.imported_type = imported_type;
     }
 
-    fn collect_exports(&mut self, _n: &Module) {}
-
     fn apply_renames(&mut self, n: &mut Module, export_map: &mut HashMap<String, ModuleRef>) {
         let map = self.rename_request.iter().cloned().collect();
         let mut renamer = IdentRenamer::new(&map);
@@ -269,29 +278,50 @@ impl<'a> ConcatenatedTransform<'a> {
         }
     }
 
-    fn get_non_conflict_name(&self, name: &str) -> String {
+    fn get_non_conflict_top_level_name(&self, name: &str) -> String {
         self.concatenate_context
             .negotiate_safe_var_name(&self.my_top_decls, name)
     }
 
-    fn resolve_conflict(&mut self) {
-        let conflicts: Vec<_> = self
-            .concatenate_context
-            .top_level_vars
-            .intersection(&self.my_top_decls)
-            .cloned()
-            .collect();
+    fn negotiate_var_name_with(&self, reserved: &HashSet<String>, name: &str) -> String {
+        self.concatenate_context
+            .negotiate_safe_var_name(reserved, name)
+    }
 
-        let ctxt = SyntaxContext::empty().apply_mark(self.top_level_mark);
+    fn resolve_conflict(&mut self, import_module_ref: &ImportModuleRefMap) {
+        let top_ctxt = SyntaxContext::empty().apply_mark(self.top_level_mark);
 
-        for conflicted_name in conflicts {
-            self.my_top_decls.remove(&conflicted_name);
+        let imported_reference = all_referenced_variables(import_module_ref);
 
-            let new_name = self.get_non_conflict_name(&conflicted_name);
+        let all_syms = self
+            .all_decls
+            .iter()
+            .map(|(sym, _)| sym.to_string())
+            .collect::<HashSet<_>>();
 
-            self.my_top_decls.insert(new_name.clone());
-            self.rename_request
-                .push(((conflicted_name.into(), ctxt), (new_name.into(), ctxt)));
+        for id in &self.all_decls {
+            if id.1 == top_ctxt {
+                if self
+                    .concatenate_context
+                    .top_level_vars
+                    .contains(id.0.as_ref())
+                {
+                    let conflicted = id.0.as_ref();
+
+                    let new_name = self.get_non_conflict_top_level_name(conflicted);
+
+                    self.my_top_decls.remove(conflicted);
+                    self.my_top_decls.insert(new_name.clone());
+
+                    self.rename_request
+                        .push((id.clone(), (new_name.into(), id.1)));
+                }
+            } else if imported_reference.contains(id.0.as_ref()) {
+                let conflicted = id.0.as_ref();
+                let new_name = self.negotiate_var_name_with(&all_syms, conflicted);
+                self.rename_request
+                    .push((id.clone(), (new_name.into(), id.1)));
+            }
         }
     }
 
@@ -308,7 +338,8 @@ impl<'a> ConcatenatedTransform<'a> {
         n: &mut Module,
         export_ref_map: &mut HashMap<String, ModuleRef>,
     ) {
-        let ns_name = self.get_non_conflict_name(&uniq_module_namespace_name(self.module_id));
+        let ns_name =
+            self.get_non_conflict_top_level_name(&uniq_module_namespace_name(self.module_id));
         let ns_ident = quote_ident!(ns_name.clone());
 
         let empty_obj = ObjectLit {
@@ -466,14 +497,11 @@ impl<'a> VisitMut for ConcatenatedTransform<'a> {
 
     fn visit_mut_module(&mut self, n: &mut Module) {
         // all root top vars is already in ccn context top vars
-        if !self.is_root {
-            self.my_top_decls = ConcatenateContext::top_level_vars(n, self.top_level_mark);
-        }
-
-        self.collect_exports(n);
+        self.my_top_decls = ConcatenateContext::top_level_vars(n, self.top_level_mark);
+        self.all_decls = ConcatenateContext::all_decls(n);
 
         self.default_bind_name =
-            self.get_non_conflict_name(&uniq_module_default_export_name(self.module_id));
+            self.get_non_conflict_top_level_name(&uniq_module_default_export_name(self.module_id));
 
         let mut var_links_collector = ModuleDeclMapCollector::new(self.default_bind_name.clone());
         n.visit_with(&mut var_links_collector);
@@ -494,7 +522,7 @@ impl<'a> VisitMut for ConcatenatedTransform<'a> {
         n.visit_mut_with(&mut rewriter);
         self.remove_imported_top_vars(&import_ref_map);
 
-        self.resolve_conflict();
+        self.resolve_conflict(&import_ref_map);
         self.apply_renames(n, &mut export_ref_map);
         self.add_leading_comment(n);
 

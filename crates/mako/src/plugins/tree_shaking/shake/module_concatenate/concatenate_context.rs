@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use bitflags::bitflags;
 use serde::Serialize;
 use swc_core::base::atoms::JsWord;
@@ -11,7 +11,7 @@ use swc_core::ecma::ast::{
     Module, ModuleDecl, ModuleItem, ObjectLit, Prop, PropOrSpread, VarDeclKind,
 };
 use swc_core::ecma::utils::{
-    collect_decls_with_ctxt, member_expr, quote_ident, quote_str, ExprFactory,
+    collect_decls, collect_decls_with_ctxt, member_expr, quote_ident, quote_str, ExprFactory,
 };
 use swc_core::ecma::visit::{Visit, VisitWith};
 
@@ -260,6 +260,14 @@ pub fn module_ref_to_expr(module_ref: &ModuleRef) -> Expr {
     }
 }
 
+pub fn all_referenced_variables(module_ref_map: &ImportModuleRefMap) -> HashSet<String> {
+    let mut vars = HashSet::new();
+    module_ref_map.values().for_each(|(id, _)| {
+        vars.insert(id.sym.to_string());
+    });
+    vars
+}
+
 #[derive(Debug, Default)]
 pub struct ConcatenateContext {
     pub modules_exports_map: HashMap<ModuleId, HashMap<String, ModuleRef>>,
@@ -271,30 +279,18 @@ pub struct ConcatenateContext {
 
 impl ConcatenateContext {
     pub fn init(config: &ConcatenateConfig, module_graph: &ModuleGraph) -> Result<Self> {
-        let root_module = module_graph.get_module(&config.root).unwrap();
-        let ast = &mut root_module.as_script().unwrap();
-        let mut top_level_vars = ConcatenateContext::top_level_vars(&ast.ast, ast.top_level_mark);
-
-        let mut used_globals = HashSet::new();
+        let mut all_used_globals = HashSet::new();
         config.inners.iter().for_each(|inner| {
             let module = module_graph.get_module(inner).unwrap();
             let ast = &module.as_script().unwrap();
-            used_globals.extend(ConcatenateContext::global_vars(
+            all_used_globals.extend(ConcatenateContext::global_vars(
                 &ast.ast,
                 ast.unresolved_mark,
             ));
         });
 
-        let conflicted_with_root_global = top_level_vars.intersection(&used_globals);
-        if conflicted_with_root_global.count() > 0 {
-            return Err(anyhow!(
-                "BadConcatenateConfig: root {} top level vars conflicted with inner modules' global vars", root_module.id.id
-            ));
-        }
-
-        top_level_vars.extend(used_globals);
         let mut context = Self {
-            top_level_vars,
+            top_level_vars: all_used_globals,
             ..Default::default()
         };
         context.setup_runtime_interops(config.merged_runtime_flags());
@@ -316,13 +312,16 @@ impl ConcatenateContext {
                 .map(|id| id.0.to_string()),
         );
 
-        top_level_vars.extend(
-            collect_named_fn_expr_ident(ast)
-                .iter()
-                .map(|id| id.0.to_string()),
-        );
-
         top_level_vars
+    }
+
+    pub fn all_decls(ast: &Module) -> AHashSet<Id> {
+        let mut decls = collect_decls(ast);
+
+        decls.extend(collect_export_default_decl_ident(ast).drain());
+        decls.extend(collect_named_fn_expr_ident(ast));
+
+        decls
     }
 
     pub fn global_vars(ast: &Module, unresolved_mark: Mark) -> HashSet<String> {
