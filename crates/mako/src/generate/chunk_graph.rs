@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::hash::Hasher;
 
 use petgraph::stable_graph::{DefaultIx, NodeIndex, StableDiGraph};
-use petgraph::visit::Dfs;
+use petgraph::visit::{Dfs, EdgeRef};
 use petgraph::Direction;
 use twox_hash::XxHash64;
 
@@ -195,6 +195,27 @@ impl ChunkGraph {
     pub fn remove_chunk(&mut self, chunk_id: &ChunkId) {
         let idx = self.id_index_map.remove(chunk_id).unwrap();
         self.graph.remove_node(idx);
+    }
+
+    pub fn merge_to_chunk(&mut self, chunk_id: &ChunkId, from: &ChunkId) {
+        let idx = self.id_index_map.remove(chunk_id);
+        let from_idx = self.id_index_map.get(from);
+        if let (Some(idx), Some(from_idx)) = (idx, from_idx) {
+            let outgoing_nodes = self
+                .graph
+                .neighbors_directed(idx, Direction::Outgoing)
+                .collect::<Vec<NodeIndex<DefaultIx>>>();
+            self.graph.remove_node(idx);
+            for node in outgoing_nodes {
+                if !self
+                    .graph
+                    .edges_directed(*from_idx, Direction::Outgoing)
+                    .any(|e| e.target() == node)
+                {
+                    self.graph.add_edge(*from_idx, node, ());
+                }
+            }
+        }
     }
 
     pub fn connect_isolated_nodes_to_chunk(&mut self, chunk_id: &ChunkId) {

@@ -441,6 +441,7 @@ async function getMakoConfig(opts) {
     clean,
     forkTSChecker,
     inlineCSS,
+    makoPlugins,
   } = opts.config;
   // TODO:
   // 暂不支持 $ 结尾，等 resolve 支持后可以把这段去掉
@@ -604,7 +605,7 @@ async function getMakoConfig(opts) {
       math: opts.config.lessLoader?.math,
       plugins: opts.config.lessLoader?.plugins,
     },
-    plugins: opts.plugins || [],
+    plugins: makoPlugins || [],
   };
 
   return makoConfig;

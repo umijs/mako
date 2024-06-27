@@ -146,8 +146,7 @@ impl Compiler {
         let mut chunk_graph = self.context.chunk_graph.write().unwrap();
         let mut merged_modules = vec![];
 
-        for (index, (chunk_id, entry_chunk_id, chunk_modules)) in async_to_entry.iter().enumerate()
-        {
+        for (chunk_id, entry_chunk_id, chunk_modules) in async_to_entry.iter() {
             let entry_chunk: &mut Chunk = chunk_graph.mut_chunk(entry_chunk_id).unwrap();
 
             // merge modules to entry chunk
@@ -157,12 +156,7 @@ impl Compiler {
             }
 
             // remove original async chunks
-            chunk_graph.remove_chunk(chunk_id);
-
-            // connect that has be optimized chunk dependents to the entry chunk
-            if index == async_to_entry.len() - 1 {
-                chunk_graph.connect_isolated_nodes_to_chunk(entry_chunk_id);
-            }
+            chunk_graph.merge_to_chunk(chunk_id, entry_chunk_id);
         }
 
         // remove merged modules from other async chunks
