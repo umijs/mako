@@ -1,1 +1,1 @@
-export default { mfsu: false };
+export default { mfsu: false, mako: {} };

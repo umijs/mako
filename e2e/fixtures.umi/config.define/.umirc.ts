@@ -1,5 +1,6 @@
 export default {
   mfsu: false,
+  mako: {},
   define: {
     AAA: "aaa",
     BBB: {

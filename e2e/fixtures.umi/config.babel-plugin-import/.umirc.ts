@@ -1,5 +1,6 @@
 export default {
   mfsu: false,
+  mako: {},
   extraBabelPlugins: [
     [
       require.resolve('babel-plugin-import'),
