@@ -155,6 +155,8 @@ impl<'a> ConcatenatedTransform<'a> {
         ref_map: &mut HashMap<String, ModuleRef>,
         var_map: &HashMap<&Id, &VarLink>,
     ) {
+        let mut expanded_export_all = vec![];
+
         var_map.iter().for_each(|(id, link)| match link {
             VarLink::Direct(direct_id) => {
                 ref_map.insert(id.0.to_string(), (direct_id.clone().into(), None));
@@ -191,7 +193,7 @@ impl<'a> ConcatenatedTransform<'a> {
                     }
                 }
             }
-            VarLink::All(source, _) => {
+            VarLink::All(source, order) => {
                 if let Some(src_module_id) = self.src_to_module.get(source) {
                     if let Some(map) = self
                         .concatenate_context
@@ -200,7 +202,7 @@ impl<'a> ConcatenatedTransform<'a> {
                     {
                         map.iter().for_each(|(k, v)| {
                             if k != "default" && k != "*" {
-                                ref_map.insert(k.clone(), v.clone());
+                                expanded_export_all.push((order, (k.clone(), v.clone())))
                             }
                         });
                     }
@@ -208,7 +210,12 @@ impl<'a> ConcatenatedTransform<'a> {
                 // else it's export * from external module, it only happens in root so will be
                 // handled in root
             }
-        })
+        });
+        expanded_export_all.sort_by_key(|(order, _)| *order);
+
+        for (_, (k, v)) in expanded_export_all {
+            ref_map.entry(k.clone()).or_insert_with(|| v.clone());
+        }
     }
 
     pub(crate) fn to_export_module_ref(
