@@ -10,14 +10,14 @@ assert(
 );
 
 assert(
-  files["lib_lib1-async.js"].includes('console.log("lib1")')
-  && !files["lib_lib1-async.js"].includes("normal")
-  && files["lib_lib2-async.js"].includes('console.log("lib2")')
-  && !files["lib_lib2-async.js"].includes("normal")
-  && files["lib_shared1-async.js"].includes('console.log("shared1")')
-  && !files["lib_shared1-async.js"].includes("normal")
-  && files["lib_shared2-async.js"].includes('console.log("shared2")')
-  && !files["lib_shared2-async.js"].includes("normal"),
+  files["lib_0_lib1-async.js"].includes('console.log("lib1")')
+  && !files["lib_0_lib1-async.js"].includes("normal")
+  && files["lib_1_lib2-async.js"].includes('console.log("lib2")')
+  && !files["lib_1_lib2-async.js"].includes("normal")
+  && files["lib_0_shared1-async.js"].includes('console.log("shared1")')
+  && !files["lib_0_shared1-async.js"].includes("normal")
+  && files["lib_0_shared2-async.js"].includes('console.log("shared2")')
+  && !files["lib_0_shared2-async.js"].includes("normal"),
   "should split lib chunks"
 );
 
