@@ -9,6 +9,12 @@ $ git clone git@github.com:umijs/mako.git
 $ cd mako
 ```
 
+Install `cargo`.
+
+```
+curl https://sh.rustup.rs -sSf | sh
+```
+
 Install tools.
 
 ```bash
@@ -157,6 +163,7 @@ $ OKAM=/PATH/TO/umijs/marko/packages/bundler-mako/index.js bigfish build
 ```
 
 Performance analysis with [Xcode instruments](https://help.apple.com/instruments/mac) in umi or bigfish.
+
 ```bash
 $ XCODE_PROFILE=1 OKAM=/PATH/TO/umijs/marko/packages/bundler-mako/index.js umi build
 $ XCODE_PROFILE=1 OKAM=/PATH/TO/umijs/marko/packages/bundler-mako/index.js umi dev
