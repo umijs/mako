@@ -907,10 +907,10 @@ pub enum ConfigError {
     InvalidateDefineConfig(String),
 }
 
-struct GenericUsizeDefault<const U: usize>;
+pub struct GenericUsizeDefault<const U: usize>;
 
 impl<const U: usize> GenericUsizeDefault<U> {
-    fn value() -> usize {
+    pub fn value() -> usize {
         U
     }
 }

@@ -10,18 +10,20 @@ assert(
 );
 
 assert(
-  files["lib_lib1-async.js"].includes('console.log("lib1")')
-  && !files["lib_lib1-async.js"].includes("normal")
-  && files["lib_lib2-async.js"].includes('console.log("lib2")')
-  && !files["lib_lib2-async.js"].includes("normal"),
+  files["lib_0_lib1-async.js"].includes('console.log("lib1")')
+  && !files["lib_0_lib1-async.js"].includes("normal")
+  && files["lib_1_lib2-async.js"].includes('console.log("lib2")')
+  && !files["lib_1_lib2-async.js"].includes("normal")
+  && files["lib_0_shared1-async.js"].includes('console.log("shared1")')
+  && !files["lib_0_shared1-async.js"].includes("normal")
+  && files["lib_0_shared2-async.js"].includes('console.log("shared2")')
+  && !files["lib_0_shared2-async.js"].includes("normal"),
   "should split lib chunks"
 );
 
 assert(
-  files["shared_yDNCfB0E-async.js"].includes('console.log("shared1")')
-  && files["shared_yDNCfB0E-async.js"].includes('console.log("s1_shared")')
+  files["shared_yDNCfB0E-async.js"].includes('console.log("s1_shared")')
   && !files["shared_yDNCfB0E-async.js"].includes("normal")
-  && files["shared_QBWMs6xD-async.js"].includes('console.log("shared2")')
   && files["shared_QBWMs6xD-async.js"].includes('console.log("s2_shared")')
   && !files["shared_QBWMs6xD-async.js"].includes("normal"),
   "should split shared chunks"

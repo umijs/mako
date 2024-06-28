@@ -10,8 +10,8 @@ use tracing::debug;
 use crate::compiler::Compiler;
 use crate::config::{
     CodeSplitting, CodeSplittingAdvancedOptions, CodeSplittingGranularOptions,
-    CodeSplittingStrategy, CodeSplittingStrategyOptions, OptimizeAllowChunks, OptimizeChunkGroup,
-    OptimizeChunkNameSuffixStrategy,
+    CodeSplittingStrategy, CodeSplittingStrategyOptions, GenericUsizeDefault, OptimizeAllowChunks,
+    OptimizeChunkGroup, OptimizeChunkNameSuffixStrategy,
 };
 use crate::generate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::generate::group_chunk::GroupUpdateResult;
@@ -245,13 +245,6 @@ impl Compiler {
                         .take(optimize_info.group_options.min_chunks)
                         .count()
                         != optimize_info.group_options.min_chunks
-                {
-                    continue;
-                }
-
-                if optimize_info.group_options.min_module_size.is_some()
-                    && self.get_module_size(module_id).unwrap()
-                        < optimize_info.group_options.min_module_size.unwrap()
                 {
                     continue;
                 }
@@ -505,6 +498,11 @@ impl Compiler {
                 content: None,
                 source_map: None,
             };
+
+            if chunk_graph.has_chunk(&info_chunk_id) {
+                panic!("Duplicated chunk: {}", &info_chunk_id.id);
+            }
+
             chunk_graph.add_chunk(info_chunk);
 
             // remove modules from original chunks and add edge to new chunk
@@ -633,6 +631,13 @@ impl Compiler {
                 *lib_min_size,
             )),
             Some(CodeSplitting {
+                strategy: CodeSplittingStrategy::Granular,
+                options: None,
+            }) => Some(code_splitting_strategy_granular(
+                Vec::new(),
+                GenericUsizeDefault::<160000>::value(),
+            )),
+            Some(CodeSplitting {
                 strategy: CodeSplittingStrategy::Advanced,
                 options: Some(CodeSplittingStrategyOptions::Advanced(advanced_options)),
             }) => Some(advanced_options.clone()),
@@ -673,10 +678,10 @@ fn code_splitting_strategy_granular(
                 name: "framework".to_string(),
                 allow_chunks: OptimizeAllowChunks::All,
                 test: if framework_packages.is_empty() {
-                    None
+                    Regex::new("^$").ok()
                 } else {
                     Regex::new(&format!(
-                        r#"[/\\]node_modules[/\\]({})[/\\]"#,
+                        r#"[/\\]node_modules[/\\].*({})[/\\]"#,
                         framework_packages.join("|")
                     ))
                     .ok()
