@@ -117,6 +117,7 @@ pub struct BuildParams {
         propWhiteList?: string[];
         selectorBlackList?: string[];
         selectorWhiteList?: string[];
+        selectorDoubleRemList?: string[];
     };
     stats?: boolean;
     hash?: boolean;
