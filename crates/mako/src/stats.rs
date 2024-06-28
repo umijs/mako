@@ -447,7 +447,7 @@ pub fn write_stats(stats: &StatsJsonMap, compiler: &Compiler) {
 
 // 文件大小转换
 pub fn human_readable_size(size: u64) -> String {
-    let units = ["kB", "mB", "gB"];
+    let units = ["kB", "MB", "GB"];
     // 把 B 转为 KB
     let mut size = (size as f64) / 1000.0;
     let mut i = 0;
