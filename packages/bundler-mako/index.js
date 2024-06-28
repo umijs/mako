@@ -442,7 +442,7 @@ async function getMakoConfig(opts) {
     inlineCSS,
     makoPlugins,
   } = opts.config;
-  let { codeSplitting } = opts.config.codeSplitting;
+  let { codeSplitting } = opts.config;
   // TODO:
   // 暂不支持 $ 结尾，等 resolve 支持后可以把这段去掉
   Object.keys(alias).forEach((key) => {
