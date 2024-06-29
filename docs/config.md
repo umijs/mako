@@ -75,7 +75,7 @@ Specify the code splitting strategy. Use `auto` or `granular` strategy for SPA, 
       // Node modules those will be split to framework chunk
       frameworkPackages: [ "react", "antd" ],
       // (optional) The minimum size of the node module to be split
-      lib_min_size: 160000
+      libMinSize: 160000
     }
   }
 }
