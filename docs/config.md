@@ -261,7 +261,7 @@ Then, when the code encounters `import foo from "foo"`, it will be replaced with
 - Type: `boolean`
 - Default: `false`
 
-Whether to fix flexbugs.
+Whether to fix flexBugs.
 
 ### forkTsChecker
 
@@ -369,7 +369,7 @@ Whether to enable `mdx` support.
 ### minify
 
 - Type: `boolean`
-- Default: mode 为 development 时为 `false`，production 时为 `true`
+- Default: mode will be `false` when mode is development, and `true` when mode is production
 
 Whether to minify the code.
 
