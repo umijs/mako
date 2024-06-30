@@ -5,7 +5,8 @@ import { globSync } from 'glob';
 async function main() {
   let templatePath = path.join(__dirname, '../templates/react');
   let files = globSync('**/*', { cwd: templatePath, nodir: true });
-  let cwd = path.join(process.cwd(), 'mako-project');
+  const projectName = process.argv[2] || 'mako-project';
+  let cwd = path.join(process.cwd(), projectName);
 
   let npmClient = (() => {
     let script = process.argv[1];
