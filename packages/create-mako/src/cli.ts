@@ -45,7 +45,7 @@ async function main() {
     .version(packageJson.version)
     .argument('[project-directory]', 'Project directory', 'mako-project')
     .usage(`[project-directory]`)
-    .action((name) => {
+    .action((name: string) => {
       init(name).catch((err) => {
         console.error(err);
         process.exit(1);
