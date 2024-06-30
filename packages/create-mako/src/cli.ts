@@ -1,11 +1,12 @@
 import fs from 'fs';
 import path from 'path';
+import commander from 'commander';
 import { globSync } from 'glob';
+import packageJson from '../package.json';
 
-async function main() {
+async function init(projectName: string) {
   let templatePath = path.join(__dirname, '../templates/react');
   let files = globSync('**/*', { cwd: templatePath, nodir: true });
-  const projectName = process.argv[2] || 'mako-project';
   let cwd = path.join(process.cwd(), projectName);
 
   let npmClient = (() => {
@@ -39,7 +40,18 @@ async function main() {
   console.log('Happy coding!');
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+async function main() {
+  new commander.Command(packageJson.name)
+    .version(packageJson.version)
+    .argument('[project-directory]', 'Project directory', 'mako-project')
+    .usage(`[project-directory]`)
+    .action((name) => {
+      init(name).catch((err) => {
+        console.error(err);
+        process.exit(1);
+      });
+    })
+    .parse(process.argv);
+}
+
+main();

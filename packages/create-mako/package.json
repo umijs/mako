@@ -6,6 +6,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "commander": "^12.1.0",
     "glob": "^10.3.15",
     "yargs-parser": "^21.1.1"
   },
