@@ -43,9 +43,21 @@ async function init(projectName: string) {
 async function main() {
   new commander.Command(packageJson.name)
     .version(packageJson.version)
-    .argument('[project-directory]', 'Project directory', 'mako-project')
+    .argument('[project-directory]', 'Project directory')
     .usage(`[project-directory]`)
-    .action((name: string) => {
+    .action(async (name: string) => {
+      if (!name) {
+        const inquirer = (await import('inquirer')).default;
+        let answers = await inquirer.prompt([
+          {
+            type: 'input',
+            name: 'name',
+            message: 'Project name:',
+            default: 'mako-project',
+          },
+        ]);
+        name = answers.name;
+      }
       init(name).catch((err) => {
         console.error(err);
         process.exit(1);
