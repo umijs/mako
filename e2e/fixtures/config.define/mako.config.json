@@ -2,19 +2,27 @@
   "minify": false,
   "define": {
     "AAA": "\"aaa\"",
-    "BBB": {
+    "BBB": 1,
+    "CCC": true,
+    "DDD": false,
+    "EEE": null,
+    "FFF": [
+      "\"a\"",
+      1
+    ],
+    "GGG": "1+1",
+    "HHH": {
       "value": "\"bbb\"",
       "ccc": {
         "d": 1,
         "e": "\"2\"",
-        "c": [1, "\"2\"", true]
+        "c": [
+          1,
+          "\"2\"",
+          true
+        ]
       }
     },
-    "CCC": 1,
-    "DDD": true,
-    "EEE": false,
-    "FFF": null,
-    "GGG": ["\"a\"", 1],
-    "HHH": "1+1"
+    "III": "{\"v\": 1}"
   }
 }
