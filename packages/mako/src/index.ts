@@ -1,9 +1,10 @@
 import fs from 'fs';
 import path from 'path';
+import { cosmiconfig, getDefaultSearchPlaces } from 'cosmiconfig';
 import { omit } from 'lodash';
 import resolve from 'resolve';
 import * as binding from '../binding';
-import { ForkTSChecker as ForkTSChecker } from './forkTSChecker';
+import { ForkTSChecker } from './forkTSChecker';
 import { LessLoaderOpts, lessLoader } from './lessLoader';
 
 type Config = binding.BuildParams['config'] & {
@@ -34,20 +35,34 @@ function blockStdout() {
   }
 }
 
+/**
+ * user define mako config with type checking helper
+ * @param config Mako config
+ * @returns user custom mako config
+ */
+export function defineConfig(config: Config) {
+  return config;
+}
+
 export async function build(params: BuildParams) {
   blockStdout();
 
   params.config.plugins = params.config.plugins || [];
   params.config.resolve = params.config.resolve || {};
 
-  let makoConfig: any = {};
-  let makoConfigPath = path.join(params.root, 'mako.config.json');
-  if (fs.existsSync(makoConfigPath)) {
-    try {
-      makoConfig = JSON.parse(fs.readFileSync(makoConfigPath, 'utf-8'));
-    } catch (e: any) {
-      throw new Error(`Parse mako.config.json failed: ${e.message}`);
-    }
+  let makoConfig: Config = {};
+  try {
+    const moduleName = 'mako';
+    const defaultSearchPlaces = getDefaultSearchPlaces(moduleName);
+    // add mako.config.json to search places for older projects
+    const searchPlaces = [...defaultSearchPlaces, 'mako.config.json'];
+    const configExplorer = cosmiconfig(moduleName, {
+      searchPlaces,
+    });
+    const searchResult = await configExplorer.search();
+    makoConfig = searchResult?.config || {};
+  } catch (e) {
+    console.error(e);
   }
 
   // alias for: helpers, node-libs, react-refresh, react-error-overlay
