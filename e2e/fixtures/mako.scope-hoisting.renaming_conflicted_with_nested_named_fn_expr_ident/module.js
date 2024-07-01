@@ -4,6 +4,7 @@ const createC = function () {
   const methods = [
     {
       key: "addTarget",
+      // the nested function expression
       value: function addTarget() {
         _addTarget();
         return "OK";
