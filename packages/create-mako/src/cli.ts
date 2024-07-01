@@ -1,8 +1,10 @@
 import fs from 'fs';
 import path from 'path';
-import commander from 'commander';
+import yargs from 'yargs-parser';
 import { globSync } from 'glob';
 import packageJson from '../package.json';
+
+const args = yargs(process.argv.slice(2));
 
 async function init(projectName: string) {
   let templatePath = path.join(__dirname, '../templates/react');
@@ -41,29 +43,23 @@ async function init(projectName: string) {
 }
 
 async function main() {
-  new commander.Command(packageJson.name)
-    .version(packageJson.version)
-    .argument('[project-directory]', 'Project directory')
-    .usage(`[project-directory]`)
-    .action(async (name: string) => {
-      if (!name) {
-        const inquirer = (await import('inquirer')).default;
-        let answers = await inquirer.prompt([
-          {
-            type: 'input',
-            name: 'name',
-            message: 'Project name:',
-            default: 'mako-project',
-          },
-        ]);
-        name = answers.name;
-      }
-      init(name).catch((err) => {
-        console.error(err);
-        process.exit(1);
-      });
-    })
-    .parse(process.argv);
+  let name = args._[0];
+  if (!name) {
+    const inquirer = (await import('inquirer')).default;
+    let answers = await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'name',
+        message: 'Project name:',
+        default: 'mako-project',
+      },
+    ]);
+    name = answers.name;
+  }
+  return init(String(name))
 }
 
-main();
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
