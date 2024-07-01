@@ -196,6 +196,7 @@ fn get_env_expr(v: Value, context: &Arc<Context>) -> Result<Expr> {
                 &format!("({})", v),
                 context.clone(),
             )
+            .map_err(|_| anyhow!(ConfigError::InvalidateDefineConfig(v.clone())))
             .unwrap();
             let module = ast.ast.body.first().unwrap();
 
@@ -331,7 +332,7 @@ mod tests {
                     "A".to_string() => json!("\"foo\"")
                 }
             ),
-            r#"log("foo");"#
+            r#"log(("foo"));"#
         );
     }
 
@@ -348,7 +349,7 @@ mod tests {
 log([
     1,
     true,
-    "foo"
+    ("foo")
 ]);
             "#
             .trim()
