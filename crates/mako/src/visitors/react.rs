@@ -113,9 +113,7 @@ impl VisitMut for PostfixCode {
 }
 
 fn react_refresh_module_prefix(context: &std::sync::Arc<Context>) -> Box<dyn VisitMut> {
-    Box::new(PrefixCode {
-        context: context.clone(),
-        code: r#"
+    let mut code = r#"
 import * as RefreshRuntime from 'react-refresh';
 var prevRefreshReg;
 var prevRefreshSig;
@@ -127,7 +125,30 @@ self.$RefreshReg$ = (type, id) => {
 };
 self.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
 "#
-        .to_string(),
+    .to_string();
+
+    // check react hmr ability if react was externalized in development mode
+    if context.config.mode == Mode::Development
+        && context
+            .config
+            .externals
+            .keys()
+            .any(|x| x == "react" || x == "react-dom")
+    {
+        code = format!(
+            r#"
+if (!(typeof window !== 'undefined' ? window : globalThis).__REACT_DEVTOOLS_GLOBAL_HOOK__) {{
+  console.warn('HMR is not available for React currently! Because React was externalized, please install the React Developers Tools extension to enable React Refresh feature. https://github.com/pmmmwh/react-refresh-webpack-plugin/blob/main/docs/TROUBLESHOOTING.md#externalising-react');
+}}
+{}
+        "#,
+            code
+        );
+    }
+
+    Box::new(PrefixCode {
+        context: context.clone(),
+        code,
     })
 }
 
