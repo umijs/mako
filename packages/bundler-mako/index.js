@@ -110,7 +110,13 @@ exports.dev = async function (opts) {
   app.use('/__/hmr-ws', wsProxy);
 
   const outputPath = path.resolve(opts.cwd, opts.config.outputPath || 'dist');
-
+  // replace publicPath to /
+  if (opts.config.publicPath) {
+    app.use((req, res, next) => {
+      req.url = req.url.replace(opts.config.publicPath, '/');
+      next();
+    });
+  }
   // serve dist files
   app.use(express.static(outputPath));
 
