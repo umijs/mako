@@ -34,21 +34,64 @@ function blockStdout() {
   }
 }
 
+export async function buildConfig(params: BuildParams, config: string) {
+  const target = `config_${Date.now()}`;
+  const targetPath = path.join(params.root, `/${target}.js`);
+  await binding.build({
+    root: params.root,
+    config: {
+      copy: [],
+      emitAssets: false,
+      entry: {
+        [target]: config,
+      },
+      devtool: false,
+      cjs: true,
+      platform: 'node',
+      output: {
+        path: './',
+        mode: 'bundle',
+      },
+    },
+    plugins: [],
+    watch: false,
+  });
+  const configResult = require(targetPath);
+  fs.unlink(targetPath, () => {});
+  return configResult.default || configResult;
+}
+const JSON_CONFIG = 'mako.config.json';
+export async function resolveConfig(
+  params: BuildParams,
+): Promise<BuildParams | null> {
+  const configFiles: string[] = [
+    JSON_CONFIG,
+    'mako.config.ts',
+    'mako.config.js',
+  ];
+  for (let i = 0; i < configFiles.length; i++) {
+    const target = path.join(params.root, configFiles[i]);
+    if (fs.existsSync(target)) {
+      const result = buildConfig(params, configFiles[i]);
+      if (JSON_CONFIG !== configFiles[i]) {
+        fs.writeFileSync(
+          path.join(params.root, JSON_CONFIG),
+          JSON.stringify(result),
+        );
+      }
+      return result;
+    }
+  }
+  return null;
+}
+
 export async function build(params: BuildParams) {
   blockStdout();
 
   params.config.plugins = params.config.plugins || [];
   params.config.resolve = params.config.resolve || {};
 
-  let makoConfig: any = {};
-  let makoConfigPath = path.join(params.root, 'mako.config.json');
-  if (fs.existsSync(makoConfigPath)) {
-    try {
-      makoConfig = JSON.parse(fs.readFileSync(makoConfigPath, 'utf-8'));
-    } catch (e: any) {
-      throw new Error(`Parse mako.config.json failed: ${e.message}`);
-    }
-  }
+  const makoConfig: any = (await resolveConfig(params)) || {};
 
   // alias for: helpers, node-libs, react-refresh, react-error-overlay
   params.config.resolve.alias = [
