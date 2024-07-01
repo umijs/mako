@@ -499,6 +499,8 @@ impl Visit for FnExprIdentCollector {
         if let Some(fn_ident) = fn_expr.ident.as_ref() {
             self.idents.insert(fn_ident.to_id());
         }
+
+        fn_expr.visit_children_with(self);
     }
 }
 
