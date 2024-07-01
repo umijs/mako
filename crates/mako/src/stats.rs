@@ -374,10 +374,11 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
                                 module_identifier: id.id.clone(),
                                 module_name: module_graph
                                     .get_module(id)
-                                    .unwrap()
-                                    .info
-                                    .clone()
-                                    .map(|info| info.file.path.to_string_lossy().to_string())
+                                    .and_then(|module| {
+                                        module.info.as_ref().map(|info| {
+                                            info.file.path.to_string_lossy().to_string()
+                                        })
+                                    })
                                     .unwrap_or("".to_string()),
                                 // -> "lo-hi"
                                 loc: dep
