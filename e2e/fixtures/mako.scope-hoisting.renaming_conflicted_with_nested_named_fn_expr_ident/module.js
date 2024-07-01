@@ -6,7 +6,7 @@ const createC = function () {
       key: "addTarget",
       value: function addTarget() {
         _addTarget();
-        return "in key";
+        return "OK";
       },
     },
   ];
