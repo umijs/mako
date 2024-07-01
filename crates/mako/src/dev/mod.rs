@@ -125,7 +125,11 @@ impl DevServer {
         staticfile: hyper_staticfile_jsutf8::Static,
         txws: broadcast::Sender<WsMessage>,
     ) -> Result<hyper::Response<Body>> {
-        let path = req.uri().path();
+        let mut path = req.uri().path().to_string();
+        if !&context.config.public_path.is_empty() && path.starts_with(&context.config.public_path)
+        {
+            path = path.replacen(&context.config.public_path, "/", 1);
+        }
         let path_without_slash_start = path.trim_start_matches('/');
         let not_found_response = || {
             hyper::Response::builder()
@@ -133,7 +137,8 @@ impl DevServer {
                 .body(hyper::Body::empty())
                 .unwrap()
         };
-        match path {
+        debug!("request path: {}", path.as_str());
+        match path.as_str() {
             "/__/hmr-ws" => {
                 if hyper_tungstenite::is_upgrade_request(&req) {
                     debug!("new websocket connection");
@@ -189,6 +194,10 @@ impl DevServer {
 
                 // for hmr files
                 debug!("serve with staticfile server: {}", path);
+                let req = hyper::Request::builder()
+                    .uri(path)
+                    .body(hyper::Body::empty())
+                    .unwrap();
                 let res = staticfile.serve(req).await;
                 res.map_err(anyhow::Error::from)
             }
