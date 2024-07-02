@@ -1,0 +1,4 @@
+{
+  "platform": "node",
+  "dynamicImportToRequire": true
+}

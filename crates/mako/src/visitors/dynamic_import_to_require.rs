@@ -1,19 +1,62 @@
 use swc_core::common::{Mark, DUMMY_SP};
-use swc_core::ecma::ast::{Expr, ExprOrSpread, Lit};
-use swc_core::ecma::utils::{member_expr, quote_ident, quote_str, ExprFactory};
+use swc_core::ecma::ast::{Expr, ExprOrSpread, Ident, Lit, MemberExpr, Stmt, VarDeclKind};
+use swc_core::ecma::utils::{
+    member_expr, private_ident, quote_ident, quote_str, ExprFactory, IsDirective,
+};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::utils::is_dynamic_import;
-
 pub struct DynamicImportToRequire {
     pub unresolved_mark: Mark,
+    changed: bool,
+    interop: Ident,
 }
 
+impl DynamicImportToRequire {
+    pub fn new(unresolved_mark: Mark) -> Self {
+        let interop = private_ident!("interop");
+        Self {
+            unresolved_mark,
+            changed: false,
+            interop,
+        }
+    }
+}
 // import('xxx') -> Promise.resolve().then(() => require('xxx'))
 impl VisitMut for DynamicImportToRequire {
+    fn visit_mut_module(&mut self, n: &mut swc_core::ecma::ast::Module) {
+        n.visit_mut_children_with(self);
+
+        if self.changed {
+            let insert_at = n
+                .body
+                .iter()
+                .position(|module_item| {
+                    !module_item
+                        .as_stmt()
+                        .map_or(false, |stmt| stmt.is_directive())
+                })
+                .unwrap();
+            let require_interop = quote_ident!("__mako_require__").as_call(
+                DUMMY_SP,
+                vec![quote_str!("@swc/helpers/_/_interop_require_wildcard").as_arg()],
+            );
+
+            let stmt: Stmt = Expr::Member(MemberExpr {
+                span: DUMMY_SP,
+                obj: require_interop.into(),
+                prop: quote_ident!("_").into(),
+            })
+            .into_var_decl(VarDeclKind::Var, self.interop.clone().into())
+            .into();
+            n.body.insert(insert_at, stmt.into());
+        }
+    }
+
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Call(call_expr) = expr {
             if is_dynamic_import(call_expr) {
+                self.changed = true;
                 if let ExprOrSpread {
                     expr: box Expr::Lit(Lit::Str(ref mut source)),
                     ..
@@ -25,15 +68,22 @@ impl VisitMut for DynamicImportToRequire {
                         .into();
 
                     // () => require( source.value... )
-                    let lazy_require =
+                    let lazy_require: Expr =
                         quote_ident!(DUMMY_SP.apply_mark(self.unresolved_mark), "require")
-                            .as_call(DUMMY_SP, vec![quote_str!(source.value.clone()).as_arg()])
-                            .into_lazy_arrow(vec![]);
-
-                    // Promise.resolve().then(() => require("xxx"))
+                            .as_call(DUMMY_SP, vec![quote_str!(source.value.clone()).as_arg()]);
+                    let require_call: Expr = member_expr!(DUMMY_SP, __mako_require__.dr).as_call(
+                        DUMMY_SP,
+                        vec![
+                            self.interop.clone().as_arg(),
+                            ExprOrSpread {
+                                spread: None,
+                                expr: Box::new(lazy_require),
+                            },
+                        ],
+                    );
                     let promised_lazy_require: Expr =
                         member_expr!(@EXT,DUMMY_SP, promise_resolve, then)
-                            .as_call(DUMMY_SP, vec![lazy_require.as_arg()]);
+                            .as_call(DUMMY_SP, vec![require_call.as_arg()]);
 
                     *expr = promised_lazy_require;
                 }
@@ -128,9 +178,7 @@ import(`3-${MODULE}`);
         let mut test_utils = TestUtils::gen_js_ast(js_code);
         let ast = test_utils.ast.js_mut();
         GLOBALS.set(&test_utils.context.meta.script.globals, || {
-            let mut visitor = DynamicImportToRequire {
-                unresolved_mark: ast.unresolved_mark,
-            };
+            let mut visitor = DynamicImportToRequire::new(ast.unresolved_mark);
             ast.ast.visit_mut_with(&mut visitor);
         });
         test_utils.js_ast_to_code()
