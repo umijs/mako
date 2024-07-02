@@ -11,4 +11,4 @@ npm run biome:format
 npx taplo format
 
 # only add staged files though cargo fmt all projects
-git add $(git diff --name-only --cached --diff-filter=AM)
+git diff --name-only --cached --diff-filter=AM -z | xargs -0 git add
