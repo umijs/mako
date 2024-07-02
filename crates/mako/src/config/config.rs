@@ -200,7 +200,9 @@ pub struct StatsConfig {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
-pub struct AnalyzeConfig {}
+pub struct AnalyzeConfig {
+    pub watch: Option<bool>,
+}
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub enum CodeSplittingStrategy {
