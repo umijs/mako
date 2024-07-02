@@ -1,3 +1,13 @@
+## 0.7.4
+`2024-07-02`
+
+- 修复 code splitting granular 策略 by [@xusd320](https://github.com/xusd320) in [#1318](https://github.com/umijs/mako/pull/1318)
+- 修复 create-mako 部分 IDE 报错 by [@programmer-yang](https://github.com/programmer-yang) in [#1345](https://github.com/umijs/mako/pull/1345)
+- 修复 create-mako stylesheet 未热更 by [@sorrycc](https://github.com/sorrycc) in [#1348](https://github.com/umijs/mako/pull/1348)
+- 修复 stats 中没有必要的 clone by [@xusd320](https://github.com/xusd320) in [#1351](https://github.com/umijs/mako/pull/1351)
+- 修复 concatenateModules 中未检测到嵌套的函数表达式函数名 by [@stormslowly](https://github.com/stormslowly) in [#1357](https://github.com/umijs/mako/pull/1357)
+- 调整文件大小单位符号 by [@hualigushi](https://github.com/hualigushi) in [#1320](https://github.com/umijs/mako/pull/1320)
+- 文档调整 by [@kiner-tang](https://github.com/kiner-tang) in [#1337](https://github.com/umijs/mako/pull/1337) [#1339](https://github.com/umijs/mako/pull/1339)
 
 ## 0.7.2
 
