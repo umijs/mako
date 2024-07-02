@@ -105,7 +105,9 @@ mod tests {
     fn test_basic_import() {
         assert_eq!(
             run(r#"const testModule = import('test-module');"#,),
-            r#"const testModule = Promise.resolve().then(()=>require("test-module"));"#.trim()
+            r#"var interop = __mako_require__("@swc/helpers/_/_interop_require_wildcard")._;
+const testModule = Promise.resolve().then(__mako_require__.dr(interop, require("test-module")));"#
+                .trim()
         );
     }
 
@@ -113,7 +115,8 @@ mod tests {
     fn test_chained_import() {
         assert_eq!(
             run(r#"import('test-module').then(() => (import('test-module-2')));"#,),
-            r#"Promise.resolve().then(()=>require("test-module")).then(()=>(Promise.resolve().then(()=>require("test-module-2"))));"#.trim()
+            r#"var interop = __mako_require__("@swc/helpers/_/_interop_require_wildcard")._;
+Promise.resolve().then(__mako_require__.dr(interop, require("test-module"))).then(()=>(Promise.resolve().then(__mako_require__.dr(interop, require("test-module-2")))));"#.trim()
         );
         assert_eq!(
             run(r#"
@@ -124,10 +127,11 @@ Promise.all([
 ]).then(() => {});
             "#,),
             r#"
+var interop = __mako_require__("@swc/helpers/_/_interop_require_wildcard")._;
 Promise.all([
-    Promise.resolve().then(()=>require("test-1")),
-    Promise.resolve().then(()=>require("test-2")),
-    Promise.resolve().then(()=>require("test-3"))
+    Promise.resolve().then(__mako_require__.dr(interop, require("test-1"))),
+    Promise.resolve().then(__mako_require__.dr(interop, require("test-2"))),
+    Promise.resolve().then(__mako_require__.dr(interop, require("test-3")))
 ]).then(()=>{});
             "#
             .trim()
@@ -142,8 +146,9 @@ import(/* test comment */ 'my-module');
 import('my-module' /* test comment */ );
             "#,),
             r#"
-Promise.resolve().then(()=>require("my-module"));
-Promise.resolve().then(()=>require("my-module"));
+var interop = __mako_require__("@swc/helpers/_/_interop_require_wildcard")._;
+Promise.resolve().then(__mako_require__.dr(interop, require("my-module")));
+Promise.resolve().then(__mako_require__.dr(interop, require("my-module")));
             "#
             .trim()
         );
