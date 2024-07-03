@@ -10,6 +10,7 @@ use swc_core::ecma::preset_env::{self as swc_preset_env};
 use swc_core::ecma::transforms::base::feature::FeatureFlag;
 use swc_core::ecma::transforms::base::fixer::paren_remover;
 use swc_core::ecma::transforms::base::{resolver, Assumptions};
+use swc_core::ecma::transforms::compat::reserved_words;
 use swc_core::ecma::transforms::optimization::simplifier;
 use swc_core::ecma::transforms::optimization::simplify::{dce, Config as SimpilifyConfig};
 use swc_core::ecma::transforms::proposal::decorators;
@@ -177,6 +178,7 @@ impl Transform {
                         assumptions,
                         &mut FeatureFlag::default(),
                     )));
+                    folders.push(Box::new(reserved_words::reserved_words()));
                     folders.push(Box::new(paren_remover(Default::default())));
                     // simplify, but keep top level dead code
                     // e.g. import x from 'foo'; but x is not used
