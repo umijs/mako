@@ -13,4 +13,4 @@ const index = files["index.js"];
 expect(index).toContain(
   'var interop = __mako_require__("@swc/helpers/_/_interop_require_wildcard")._;',
 );
-expect(index).toContain('then(__mako_require__.dr(interop, "src/cjs.js"))');
+expect(index).toContain('then(__mako_require__.dr(interop, __mako_require__.bind(__mako_require__, "src/cjs.js")))');
