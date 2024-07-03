@@ -1,12 +1,19 @@
 import fs from 'fs';
 import path from 'path';
 import { globSync } from 'glob';
+import { QuestionCollection } from 'inquirer';
 import yargs from 'yargs-parser';
 
 const args = yargs(process.argv.slice(2));
+const baseTemplatesPath = path.join(__dirname, '../templates');
 
-async function init(projectName: string) {
-  let templatePath = path.join(__dirname, '../templates/react');
+type InitOptions = {
+  projectName: string;
+  template: string;
+};
+
+async function init({ projectName, template }: InitOptions) {
+  let templatePath = path.join(baseTemplatesPath, template);
   let files = globSync('**/*', { cwd: templatePath, nodir: true });
   let cwd = path.join(process.cwd(), projectName);
 
@@ -41,21 +48,42 @@ async function init(projectName: string) {
   console.log('Happy coding!');
 }
 
+type InitQuestion = {
+  name: string;
+  template: string;
+};
 async function main() {
   let name = args._[0];
+  let template = args.template;
+  let questions: QuestionCollection[] = [];
   if (!name) {
-    const inquirer = (await import('inquirer')).default;
-    let answers = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'name',
-        message: 'Project name:',
-        default: 'mako-project',
-      },
-    ]);
-    name = answers.name;
+    questions.push({
+      type: 'input',
+      name: 'name',
+      message: 'Project name:',
+      default: 'mako-project',
+    });
   }
-  return init(String(name));
+  if (!template) {
+    const templates = globSync('**/', {
+      cwd: baseTemplatesPath,
+      maxDepth: 1,
+    }).filter((dir) => dir !== '.');
+    questions.push({
+      type: 'list',
+      name: 'template',
+      message: 'Select a template:',
+      choices: templates,
+      default: 'react',
+    });
+  }
+  if (questions.length > 0) {
+    const inquirer = (await import('inquirer')).default;
+    let answers = await inquirer.prompt<InitQuestion>(questions);
+    name = name || answers.name;
+    template = template || answers.template;
+  }
+  return init({ projectName: String(name), template });
 }
 
 main().catch((err) => {
