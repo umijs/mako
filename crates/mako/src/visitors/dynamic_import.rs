@@ -9,7 +9,9 @@ use swc_core::ecma::utils::{
 };
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
-use crate::ast::utils::{is_dynamic_import, member_call, member_prop, promise_all, require_ensure};
+use crate::ast::utils::{
+    id, is_dynamic_import, member_call, member_prop, promise_all, require_ensure,
+};
 use crate::compiler::Context;
 use crate::generate::chunk::ChunkId;
 use crate::visitors::dep_replacer::DependenciesToReplace;
@@ -137,13 +139,27 @@ impl<'a> VisitMut for DynamicImport<'a> {
                             })),
                         });
 
-                        let require_call = member_expr!(DUMMY_SP, __mako_require__.dr).as_call(
+                        let require_call = member_call(
+                            Expr::Ident(id("__mako_require__")),
+                            member_prop("bind"),
+                            vec![
+                                ExprOrSpread {
+                                    spread: None,
+                                    expr: Box::new(Expr::Ident(id("__mako_require__"))),
+                                },
+                                ExprOrSpread {
+                                    spread: None,
+                                    expr: Box::new(Expr::Lit(Lit::Str(resolved_source.into()))),
+                                },
+                            ],
+                        );
+                        let dr_call = member_expr!(DUMMY_SP, __mako_require__.dr).as_call(
                             DUMMY_SP,
                             vec![
                                 self.interop.clone().as_arg(),
                                 ExprOrSpread {
                                     spread: None,
-                                    expr: Box::new(Expr::Lit(Lit::Str(resolved_source.into()))),
+                                    expr: Box::new(require_call),
                                 },
                             ],
                         );
@@ -153,7 +169,7 @@ impl<'a> VisitMut for DynamicImport<'a> {
                             member_prop("then"),
                             vec![ExprOrSpread {
                                 spread: None,
-                                expr: require_call.into(),
+                                expr: dr_call.into(),
                             }],
                         )
                     };
@@ -185,7 +201,7 @@ mod tests {
 var interop = __mako_require__("hashed_helper")._;
 Promise.all([
     __mako_require__.ensure("foo")
-]).then(__mako_require__.dr(interop, "foo"));
+]).then(__mako_require__.dr(interop, __mako_require__.bind(__mako_require__, "foo")));
             "#
             .trim()
         );
