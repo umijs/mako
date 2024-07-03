@@ -9,10 +9,10 @@ async function init(projectName: string) {
   let templatePath = path.join(__dirname, '../templates/react');
   let files = globSync('**/*', { cwd: templatePath, nodir: true });
 
-  // 使用用户输入的项目名称作为目标文件夹名
+  // Use the project name entered by the user as the target folder name.
   let cwd = path.resolve(process.cwd(), projectName);
 
-  // 确保目标目录存在，如果不存在则创建
+  // Ensure the target directory exists; if it does not, create it.
   if (!fs.existsSync(cwd)) {
     fs.mkdirSync(cwd, { recursive: true });
   }
@@ -52,23 +52,22 @@ async function init(projectName: string) {
 async function main() {
   const inquirer = (await import('inquirer')).default;
 
-  // 检查当前目录是否为空
+  // Check if the current directory is empty.
   const cwd = process.cwd();
   const isDirEmpty = fs.readdirSync(cwd).length === 0;
 
-  // 如果当前目录不为空，则提示用户是否继续创建项目
+  // If the current directory is not empty, prompt the user to confirm whether they want to continue creating the project.
   if (!isDirEmpty) {
     const answersContinue = await inquirer.prompt([
       {
         type: 'confirm',
         name: 'continue',
-        message: '当前目录不为空，是否继续在此创建项目？',
+        message: 'The current directory is not empty. Do you want to continue creating the project here?',
         default: false,
       },
     ]);
 
     if (!answersContinue.continue) {
-      console.log('操作已取消。');
       return;
     }
   }
@@ -79,7 +78,7 @@ async function main() {
       {
         type: 'input',
         name: 'name',
-        message: '请输入项目名称：',
+        message: 'Project name:',
         default: 'mako-project',
       },
     ]);
