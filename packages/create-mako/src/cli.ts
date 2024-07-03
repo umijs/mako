@@ -52,18 +52,25 @@ async function init(projectName: string) {
 async function main() {
   const inquirer = (await import('inquirer')).default;
 
-  // 提示用户是否继续创建项目
-  const answersContinue = await inquirer.prompt([
-    {
-      type: 'confirm',
-      name: 'continue',
-      message: '当前目录不为空，是否继续在此创建项目？',
-      default: false,
-    },
-  ]);
+  // 检查当前目录是否为空
+  const cwd = process.cwd();
+  const isDirEmpty = fs.readdirSync(cwd).length === 0;
 
-  if (!answersContinue.continue) {
-    return;
+  // 如果当前目录不为空，则提示用户是否继续创建项目
+  if (!isDirEmpty) {
+    const answersContinue = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'continue',
+        message: '当前目录不为空，是否继续在此创建项目？',
+        default: false,
+      },
+    ]);
+
+    if (!answersContinue.continue) {
+      console.log('操作已取消。');
+      return;
+    }
   }
 
   let name = args._[0];
@@ -72,7 +79,7 @@ async function main() {
       {
         type: 'input',
         name: 'name',
-        message: 'Project name：',
+        message: '请输入项目名称：',
         default: 'mako-project',
       },
     ]);
