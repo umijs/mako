@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { globSync } from 'glob';
-import { QuestionCollection } from 'inquirer';
+import type { QuestionCollection } from 'inquirer';
 import yargs from 'yargs-parser';
 
 const args = yargs(process.argv.slice(2));
@@ -54,7 +54,7 @@ type InitQuestion = {
 };
 async function main() {
   let name = args._[0];
-  let template = args.template;
+  let { template } = args;
   let questions: QuestionCollection[] = [];
   if (!name) {
     questions.push({
