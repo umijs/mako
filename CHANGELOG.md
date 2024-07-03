@@ -1,4 +1,5 @@
 ## 0.7.4
+
 `2024-07-02`
 
 - 修复 code splitting granular 策略 by [@xusd320](https://github.com/xusd320) in [#1318](https://github.com/umijs/mako/pull/1318)
@@ -8,6 +9,18 @@
 - 修复 concatenateModules 中未检测到嵌套的函数表达式函数名 by [@stormslowly](https://github.com/stormslowly) in [#1357](https://github.com/umijs/mako/pull/1357)
 - 调整文件大小单位符号 by [@hualigushi](https://github.com/hualigushi) in [#1320](https://github.com/umijs/mako/pull/1320)
 - 文档调整 by [@kiner-tang](https://github.com/kiner-tang) in [#1337](https://github.com/umijs/mako/pull/1337) [#1339](https://github.com/umijs/mako/pull/1339)
+
+## 0.7.3
+
+`2024-07-01`
+
+- 修复：动态导入异步模块 by [@stormslowly](https://github.com/stormslowly) in [#1316](https://github.com/umijs/mako/pull/1316)
+- 修复：别名使用 vec 代替 hash_map by [@Jinbao1001](https://github.com/Jinbao1001) in [#1299](https://github.com/umijs/mako/pull/1299)
+- 修复：变量链接标识与局部变量冲突 by [@stormslowly](https://github.com/stormslowly) in [#1315](https://github.com/umijs/mako/pull/1315)
+- 修复：swc 简化导致 this 未定义 by [@Jinbao1001](https://github.com/Jinbao1001) in [#1294](https://github.com/umijs/mako/pull/1294)
+- 修复：代码分割模式自动可能会遗漏 chunk 与 urlMap 的连接 by [@Jinbao1001](https://github.com/Jinbao1001) in [#1311](https://github.com/umijs/mako/pull/1311)
+- 其他：重命名 tree shaking by [@stormslowly](https://github.com/stormslowly) in [#1308](https://github.com/umijs/mako/pull/1308)
+- 其他：添加 minifish 忽略说明 by [@stormslowly](https://github.com/stormslowly) in [#1310](https://github.com/umijs/mako/pull/1310)
 
 ## 0.7.2
 
