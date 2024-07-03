@@ -29,7 +29,7 @@ function lessLoader(fn: Function | null, opts: LessLoaderOpts) {
     render: async (filePath: string) => {
       let filename = '';
       try {
-        filename = url.parse(filePath).pathname || '';
+        filename = decodeURIComponent(url.parse(filePath).pathname || '');
       } catch (e) {
         return;
       }
