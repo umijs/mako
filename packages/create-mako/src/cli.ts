@@ -8,7 +8,14 @@ const args = yargs(process.argv.slice(2));
 async function init(projectName: string) {
   let templatePath = path.join(__dirname, '../templates/react');
   let files = globSync('**/*', { cwd: templatePath, nodir: true });
-  let cwd = path.join(process.cwd(), projectName);
+
+  // 使用用户输入的项目名称作为目标文件夹名
+  let cwd = path.resolve(process.cwd(), projectName);
+
+  // 确保目标目录存在，如果不存在则创建
+  if (!fs.existsSync(cwd)) {
+    fs.mkdirSync(cwd, { recursive: true });
+  }
 
   let npmClient = (() => {
     let script = process.argv[1];
@@ -30,6 +37,7 @@ async function init(projectName: string) {
     }
     fs.copyFileSync(source, dest);
   }
+
   console.log();
   console.log('Done, Run following commands to start the project:');
   console.log();
@@ -42,19 +50,35 @@ async function init(projectName: string) {
 }
 
 async function main() {
+  const inquirer = (await import('inquirer')).default;
+
+  // 提示用户是否继续创建项目
+  const answersContinue = await inquirer.prompt([
+    {
+      type: 'confirm',
+      name: 'continue',
+      message: '当前目录不为空，是否继续在此创建项目？',
+      default: false,
+    },
+  ]);
+
+  if (!answersContinue.continue) {
+    return;
+  }
+
   let name = args._[0];
   if (!name) {
-    const inquirer = (await import('inquirer')).default;
     let answers = await inquirer.prompt([
       {
         type: 'input',
         name: 'name',
-        message: 'Project name:',
+        message: 'Project name：',
         default: 'mako-project',
       },
     ]);
     name = answers.name;
   }
+
   return init(String(name));
 }
 
