@@ -1,3 +1,3 @@
 export default {
-  create: () => {}
+  lazy: 'lazy'
 }

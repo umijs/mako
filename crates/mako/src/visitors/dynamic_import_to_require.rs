@@ -62,28 +62,24 @@ impl VisitMut for DynamicImportToRequire {
                     ..
                 } = &mut call_expr.args[0]
                 {
-                    // Promise.resolve()
-                    let promise_resolve: Box<Expr> = member_expr!(DUMMY_SP, Promise.resolve)
-                        .as_call(DUMMY_SP, vec![])
-                        .into();
-
-                    // () => require( source.value... )
-                    let lazy_require: Expr =
+                    let source_require: Expr =
                         quote_ident!(DUMMY_SP.apply_mark(self.unresolved_mark), "require")
                             .as_call(DUMMY_SP, vec![quote_str!(source.value.clone()).as_arg()]);
-                    let require_call: Expr = member_expr!(DUMMY_SP, __mako_require__.dr).as_call(
-                        DUMMY_SP,
-                        vec![
-                            self.interop.clone().as_arg(),
-                            ExprOrSpread {
+                    // Promise.resolve()
+                    let promise_resolve: Box<Expr> = member_expr!(DUMMY_SP, Promise.resolve)
+                        .as_call(
+                            DUMMY_SP,
+                            vec![ExprOrSpread {
                                 spread: None,
-                                expr: Box::new(lazy_require),
-                            },
-                        ],
-                    );
+                                expr: Box::new(source_require),
+                            }],
+                        )
+                        .into();
+
+                    let interop_call = quote_ident!(DUMMY_SP, self.interop.as_ref());
                     let promised_lazy_require: Expr =
                         member_expr!(@EXT,DUMMY_SP, promise_resolve, then)
-                            .as_call(DUMMY_SP, vec![require_call.as_arg()]);
+                            .as_call(DUMMY_SP, vec![interop_call.as_arg()]);
 
                     *expr = promised_lazy_require;
                 }
@@ -106,7 +102,7 @@ mod tests {
         assert_eq!(
             run(r#"const testModule = import('test-module');"#,),
             r#"var interop = __mako_require__("@swc/helpers/_/_interop_require_wildcard")._;
-const testModule = Promise.resolve().then(__mako_require__.dr(interop, require("test-module")));"#
+const testModule = Promise.resolve(require("test-module")).then(interop);"#
                 .trim()
         );
     }
@@ -116,7 +112,7 @@ const testModule = Promise.resolve().then(__mako_require__.dr(interop, require("
         assert_eq!(
             run(r#"import('test-module').then(() => (import('test-module-2')));"#,),
             r#"var interop = __mako_require__("@swc/helpers/_/_interop_require_wildcard")._;
-Promise.resolve().then(__mako_require__.dr(interop, require("test-module"))).then(()=>(Promise.resolve().then(__mako_require__.dr(interop, require("test-module-2")))));"#.trim()
+Promise.resolve(require("test-module")).then(interop).then(()=>(Promise.resolve(require("test-module-2")).then(interop)));"#.trim()
         );
         assert_eq!(
             run(r#"
@@ -129,9 +125,9 @@ Promise.all([
             r#"
 var interop = __mako_require__("@swc/helpers/_/_interop_require_wildcard")._;
 Promise.all([
-    Promise.resolve().then(__mako_require__.dr(interop, require("test-1"))),
-    Promise.resolve().then(__mako_require__.dr(interop, require("test-2"))),
-    Promise.resolve().then(__mako_require__.dr(interop, require("test-3")))
+    Promise.resolve(require("test-1")).then(interop),
+    Promise.resolve(require("test-2")).then(interop),
+    Promise.resolve(require("test-3")).then(interop)
 ]).then(()=>{});
             "#
             .trim()
@@ -147,8 +143,8 @@ import('my-module' /* test comment */ );
             "#,),
             r#"
 var interop = __mako_require__("@swc/helpers/_/_interop_require_wildcard")._;
-Promise.resolve().then(__mako_require__.dr(interop, require("my-module")));
-Promise.resolve().then(__mako_require__.dr(interop, require("my-module")));
+Promise.resolve(require("my-module")).then(interop);
+Promise.resolve(require("my-module")).then(interop);
             "#
             .trim()
         );
