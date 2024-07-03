@@ -17,7 +17,7 @@ use notify_debouncer_full::new_debouncer;
 use tokio::sync::broadcast;
 use tracing::debug;
 use tungstenite::Message;
-use {hyper, hyper_staticfile_jsutf8, hyper_tungstenite, open};
+use {hyper, hyper_staticfile, hyper_tungstenite, open};
 
 use crate::compiler::{Compiler, Context};
 use crate::plugin::{PluginGenerateEndParams, PluginGenerateStats};
@@ -75,9 +75,8 @@ impl DevServer {
                     Ok::<_, hyper::Error>(service_fn(move |req| {
                         let context = context.clone();
                         let txws = txws.clone();
-                        let staticfile = hyper_staticfile_jsutf8::Static::new(
-                            context.config.output.path.clone(),
-                        );
+                        let staticfile =
+                            hyper_staticfile::Static::new(context.config.output.path.clone());
                         async move { Self::handle_requests(req, context, staticfile, txws).await }
                     }))
                 }
@@ -122,7 +121,7 @@ impl DevServer {
     async fn handle_requests(
         req: Request<Body>,
         context: Arc<Context>,
-        staticfile: hyper_staticfile_jsutf8::Static,
+        staticfile: hyper_staticfile::Static,
         txws: broadcast::Sender<WsMessage>,
     ) -> Result<hyper::Response<Body>> {
         let path = req.uri().path();
