@@ -28,7 +28,6 @@
 `2024-06-26`
 
 - Improved module concatenate implementation, merged modules still support Shared Reference by [@stormslowly](https://github.com/stormslowly) in [#1295](https://github.com/umijs/mako/pull/1295)
-
 - Fix hmr http response without setting content-type causing garbled text issue by [@whyer11](https://github.com/whyer11) in [#1307](https://github.com/umijs/mako/pull/1307)
 
 ## 0.7.1
@@ -59,7 +58,6 @@
 
 - Added: Improved build API (includes Break Change) by [@sorrycc](https://github.com/sorrycc) in [#1271](https://github.com/umijs/mako/pull/1271)
 - Added: Support for resource output with new URL() by [@sorrycc](https://github.com/sorrycc) in [#1261](https://github.com/umijs/mako/pull/1261)
-
 - Added: Notify users that the current platform is not supported on win32 platform by [@sorrycc](https://github.com/sorrycc) in [#1262](https://github.com/umijs/mako/pull/1262)
 - Added: Automatically find an available port when the port is occupied by [@sorrycc](https://github.com/sorrycc) in [#1266](https://github.com/umijs/mako/pull/1266)
 - Added: Automatically open the browser when the development server is ready by [@sorrycc](https://github.com/sorrycc) in [#1267](https://github.com/umijs/mako/pull/1267)
@@ -87,7 +85,6 @@
 - Fixed: Update chunk URL mapping when adding async imports in watch mode by [@xusd320](https://github.com/xusd320) in [#1220](https://github.com/umijs/mako/pull/1220)
 - Fixed: Pattern not starting with a dot not matched by [@stormslowly](https://github.com/stormslowly) in [#1230](https://github.com/umijs/mako/pull/1230)
 - Fixed(fix_helper_inject_position): Missing export variable ctxt by [@sorrycc](https://github.com/sorrycc) in [#1236](https://github.com/umijs/mako/pull/1236)
-
 - Optimization: Update mako bundler to accommodate new mako version by [@Jinbao1001](https://github.com/Jinbao1001) in [#1229](https://github.com/umijs/mako/pull/1229)
 
 ## 0.5.2
@@ -119,7 +116,6 @@
 * Add useDefineForClassFields configuration by [@stormslowly](https://github.com/stormslowly) in [#1181](https://github.com/umijs/mako/pull/1181)
 * Optimize watch, dev_server, and hmr configurations (includes Break Change) by [@sorrycc](https://github.com/sorrycc) in [#1206](https://github.com/umijs/mako/pull/1206)
 * Optimize improvements in parseServerStats by [@sorrycc](https://github.com/sorrycc) in [#1203](https://github.com/umijs/mako/pull/1203)
-
 * Fix hooks transmission loss issue by [@Jinbao1001](https://github.com/Jinbao1001) in [#1170](https://github.com/umijs/mako/pull/1170)
 * Fix the "too many files open" error in the with-antd example during watch by [@zhangpanweb](https://github.com/zhangpanweb) in [#1022](https://github.com/umijs/mako/pull/1022)
 * Fix decorator visitor should run before preset env by [@stormslowly](https://github.com/stormslowly) in [#1176](https://github.com/umijs/mako/pull/1176)
@@ -136,7 +132,6 @@
 * Fix stripping of exported namespace types in ts by [@stormslowly](https://github.com/stormslowly) in [#1198](https://github.com/umijs/mako/pull/1198)
 * Fix panic on wrong watch result event by [@sorrycc](https://github.com/sorrycc) in [#1212](https://github.com/umijs/mako/pull/1212)
 * Fix should regroup when adding dynamic dependencies in watch mode by [@xusd320](https://github.com/xusd320) in [#1213](https://github.com/umijs/mako/pull/1213)
-
 * Fixed inlineCSS not working by [@stormslowly](https://github.com/stormslowly) in [#1211](https://github.com/umijs/mako/pull/1211)
 
 ## 0.4.17
@@ -193,7 +188,6 @@
 * Fix the issue where manifest is not output during the dev stage by [@sorrycc](https://github.com/sorrycc) in [#1106](https://github.com/umijs/mako/pull/1106)
 * Fix the issue where stats.json is not output during the dev stage by [@sorrycc](https://github.com/sorrycc) in [#1108](https://github.com/umijs/mako/pull/1108)
 * Fix the cjs build scenario (for SSR) by [@Jinbao1001](https://github.com/Jinbao1001) in [#1109](https://github.com/umijs/mako/pull/1109)
-
 * Refactor to remove lazy_static by [@xusd320](https://github.com/xusd320) in [#1103](https://github.com/umijs/mako/pull/1103)
 * Refactor the overall directory structure by [@sorrycc](https://github.com/sorrycc) in [#1105](https://github.com/umijs/mako/pull/1105)
 * Refactor okam to mako, while also making the @alipay scope's packages public under @umijs by [@sorrycc](https://github.com/sorrycc) in [#1113](https://github.com/umijs/mako/pull/1113)
@@ -220,7 +214,6 @@
 * Add support for css_rem attribute selector by [@LovePlayCode](https://github.com/LovePlayCode) in [#1059](https://github.com/umijs/mako/pull/1059)
 * Add support for pseudo-class selectors by [@LovePlayCode](https://github.com/LovePlayCode) in [#1061](https://github.com/umijs/mako/pull/1061)
 * Fix okam TS type issue BuildParams by [@sorrycc](https://github.com/sorrycc) in [#1073](https://github.com/umijs/mako/pull/1073)
-
 * Fix global variable access at runtime with mako by [@PeachScript](https://github.com/PeachScript) in [#1082](https://github.com/umijs/mako/pull/1082)
 * Fix unstable css order by [@xusd320](https://github.com/xusd320) in [#1085](https://github.com/umijs/mako/pull/1085)
 
@@ -241,7 +234,6 @@
 * Fix the issue that dynamic_import_to_require must be executed after context_require by [@sorrycc](https://github.com/sorrycc) in [#1038](https://github.com/umijs/mako/pull/1038)
 * Fix tree shaking support for multiple declarator declares by [@stormslowly](https://github.com/stormslowly) in [#1032](https://github.com/umijs/mako/pull/1032)
 * Fix provider, change unresolved indent syntax context to top level after it's been declared by [@stormslowly](https://github.com/stormslowly) in [#1027](https://github.com/umijs/mako/pull/1027)
-
 * Fix `unwrap()` panic in update phase by [@sorrycc](https://github.com/sorrycc) in [#1004](https://github.com/umijs/mako/pull/1004)
 * Fix `concatenateModule`, treat module as external when it contains unsupported syntax by [@stormslowly](https://github.com/stormslowly) in [#1009](https://github.com/umijs/mako/pull/1009)
 
@@ -282,7 +274,6 @@
 
 * Refactor part of the build code by [@sorrycc](https://github.com/sorrycc) in [#923](https://github.com/umijs/mako/pull/923)
 * Add HMR Fast Refresh support for anonymous functions scenario by [@JackGuiYang12](https://github.com/JackGuiYang12) in [#947](https://github.com/umijs/mako/pull/947)
-
 * Add inline_css configuration, implement style-loader like functionality by [@sorrycc](https://github.com/sorrycc) in [#957](https://github.com/umijs/mako/pull/957)
 * Optimize the use of rayon, allowing generate to reuse build stage's rayon threads by [@xusd320](https://github.com/xusd320) in [#959](https://github.com/umijs/mako/pull/959)
 * Enhance minifish inject feature, support include configuration item by [@stormslowly](https://github.com/stormslowly) in [#930](https://github.com/umijs/mako/pull/930)
@@ -303,7 +294,6 @@
 - Compatibility with extraBabelPlugins: ['@emotion'] plugin configuration by [@sorrycc](https://github.com/sorrycc) in [#908](https://github.com/umijs/mako/pull/908)
 - Use more efficient memory allocators (mimalloc-rust, tikv-jemallocator), M1 Pro yuyanAssets build see a stable improvement of approximately 2500ms by [@xusd320](https://github.com/xusd320) in [#912](https://github.com/umijs/mako/pull/912)
 - Optimize the instantiation overhead of regular expressions in external features, M1 Pro yuyanAssets build see a stable improvement of approximately 3900ms by [@PeachScript](https://github.com/PeachScript) in [#916](https://github.com/umijs/mako/pull/916)
-
 - Pass the full stats compilation data when calling the onBuildComplete hook by [@PeachScript](https://github.com/PeachScript) in [#917](https://github.com/umijs/mako/pull/917)
 - Switch from nodejs-resolver to oxc_resolver by [@xusd320](https://github.com/xusd320) in [#919](https://github.com/umijs/mako/pull/919)
 
@@ -334,7 +324,6 @@
 * Upgrade swc to 86 by [@goo-yyh](https://github.com/goo-yyh) in [#876](https://github.com/umijs/mako/pull/876)
 * Improve support for __dirname and __filename in node scenarios by [@zhangpanweb](https://github.com/zhangpanweb) in [#885](https://github.com/umijs/mako/pull/885)
 * Optimize code splitting support in platform: node scenarios by [@sorrycc](https://github.com/sorrycc) in [#887](https://github.com/umijs/mako/pull/887)
-
 * Optimize the method of checking if variables are declared to improve speed by [@zhangpanweb](https://github.com/zhangpanweb) in [#897](https://github.com/umijs/mako/pull/897)
 * Optimize stats information, add siblings and origins information by [@PeachScript](https://github.com/PeachScript) in [#893](https://github.com/umijs/mako/pull/893)
 * Refactor the implementation of the emotion plugin by [@zhangpanweb](https://github.com/zhangpanweb) in [#884](https://github.com/umijs/mako/pull/884)
@@ -370,7 +359,6 @@
 * Fix the undefined variable problem caused by using `as` multiple times for the same export in import/export statements by [@stormslowly](https://github.com/stormslowly) in [#850](https://github.com/umijs/mako/pull/850)
 * Fix the issue where missing dependencies on dev start up still cause build failure after being complemented by [@zhangpanweb](https://github.com/zhangpanweb) in [#845](https://github.com/umijs/mako/pull/845)
 * Fix the potential failure of parsing imported css in less files via relative paths by [@sorrycc](https://github.com/sorrycc) in [#844](https://github.com/umijs/mako/pull/844)
-
 * Optimize artifact generation, keep comments when not compressing for easier debugging by [@sorrycc](https://github.com/sorrycc) in [#848](https://github.com/umijs/mako/pull/848)
 * Optimize artifact generation, add ID comments to module declarations for easier debugging by [@sorrycc](https://github.com/sorrycc) in [#849](https://github.com/umijs/mako/pull/849)
 
@@ -401,7 +389,6 @@
 * Add support for displaying less code sourcemap by [@jiesia](https://github.com/jiesia) in [#755](https://github.com/umijs/mako/pull/775)
 * Fix issue where require context doesn't support suffix require by [@PeachScript](https://github.com/PeachScript) in [#806](https://github.com/umijs/mako/pull/806)
 * Fix duplicate modules issue in entry chunk and vendor chunk by [@PeachScript](https://github.com/PeachScript) in [#809](https://github.com/umijs/mako/pull/809)
-
 * Fix the problem of missing dynamic reference modules after enabling dynamicImportToRequire by [@stormslowly](https://github.com/stormslowly) in [#811](https://github.com/umijs/mako/pull/811)
 
 ## 0.1.14
