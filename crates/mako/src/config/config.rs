@@ -245,8 +245,8 @@ pub struct Px2RemConfig {
     pub selector_blacklist: Vec<String>,
     #[serde(rename = "selectorWhiteList", default)]
     pub selector_whitelist: Vec<String>,
-    #[serde(rename = "selectorDoubleRemList", default)]
-    pub selector_doubleremlist: Vec<String>,
+    #[serde(rename = "selectorDoubleList", default)]
+    pub selector_doublelist: Vec<String>,
     #[serde(rename = "minPixelValue", default)]
     pub min_pixel_value: f64,
 }
@@ -259,7 +259,7 @@ impl Default for Px2RemConfig {
             prop_whitelist: vec![],
             selector_blacklist: vec![],
             selector_whitelist: vec![],
-            selector_doubleremlist: vec![],
+            selector_doublelist: vec![],
             min_pixel_value: 0.0,
         }
     }

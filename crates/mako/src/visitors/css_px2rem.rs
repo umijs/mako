@@ -18,31 +18,31 @@ pub struct Px2Rem {
     current_selectors: Vec<String>,
     selector_blacklist: Vec<Regex>,
     selector_whitelist: Vec<Regex>,
-    selector_doubleremlist: Vec<Regex>,
+    selector_doublelist: Vec<Regex>,
 }
 
 impl Px2Rem {
     pub fn new(config: Px2RemConfig) -> Self {
         let selector_blacklist = parse_patterns(&config.selector_blacklist);
         let selector_whitelist = parse_patterns(&config.selector_whitelist);
-        let selector_doubleremlist = parse_patterns(&config.selector_doubleremlist);
+        let selector_doublelist = parse_patterns(&config.selector_doublelist);
         Self {
             config,
             current_decl: None,
             current_selectors: vec![],
             selector_blacklist,
             selector_whitelist,
-            selector_doubleremlist,
+            selector_doublelist,
         }
     }
 
-    fn is_any_in_doubleremlist(&self) -> bool {
-        let is_any_in_doubleremlist = self.current_selectors.iter().any(|selector| {
-            self.selector_doubleremlist
+    fn is_any_in_doublelist(&self) -> bool {
+        let is_any_in_doublelist = self.current_selectors.iter().any(|selector| {
+            self.selector_doublelist
                 .iter()
                 .any(|regx| regx.is_match(selector))
         });
-        is_any_in_doubleremlist
+        is_any_in_doublelist
     }
     fn should_transform(&self, val: f64) -> bool {
         if val.abs() < self.config.min_pixel_value {
@@ -72,7 +72,7 @@ impl Px2Rem {
                     .iter()
                     .any(|regx| regx.is_match(selector))
             });
-            (is_whitelist_empty || is_all_in_whitelist || self.is_any_in_doubleremlist())
+            (is_whitelist_empty || is_all_in_whitelist || self.is_any_in_doublelist())
                 && !is_any_in_blacklist
         };
         is_prop_valid && is_selector_valid
@@ -105,7 +105,7 @@ impl VisitMut for Px2Rem {
     fn visit_mut_length(&mut self, n: &mut Length) {
         if n.unit.value.to_string() == "px" && self.should_transform(n.value.value) {
             n.value.value /= self.config.root;
-            if self.is_any_in_doubleremlist() {
+            if self.is_any_in_doublelist() {
                 n.value.value *= 2.0;
             }
             n.value.raw = None;
@@ -122,7 +122,7 @@ impl VisitMut for Px2Rem {
             if dimension.unit.to_string() == "px" && self.should_transform(dimension.value) {
                 let mut rem_val = dimension.value / self.config.root;
                 dimension.raw_value = rem_val.to_string().into();
-                if self.is_any_in_doubleremlist() {
+                if self.is_any_in_doublelist() {
                     rem_val *= 2.0;
                 }
                 dimension.value = rem_val;
@@ -597,12 +597,12 @@ mod tests {
     }
 
     #[test]
-    fn test_multi_selector_doubleremlist() {
+    fn test_multi_selector_doublelist() {
         assert_eq!(
             run(
                 r#".a{width:100px;}"#,
                 Px2RemConfig {
-                    selector_doubleremlist: vec![],
+                    selector_doublelist: vec![],
                     ..Default::default()
                 }
             ),
@@ -612,11 +612,21 @@ mod tests {
             run(
                 r#".a{width:100px;}"#,
                 Px2RemConfig {
-                    selector_doubleremlist: vec![".a".to_string()],
+                    selector_doublelist: vec![".a".to_string()],
                     ..Default::default()
                 }
             ),
             r#".a{width:2rem}"#
+        );
+        assert_eq!(
+            run(
+                r#".a-a{width:100px;}"#,
+                Px2RemConfig {
+                    selector_doublelist: vec![r#"/\.a-/"#.to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#".a-a{width:2rem}"#
         );
     }
 
