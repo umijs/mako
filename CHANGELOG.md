@@ -174,7 +174,7 @@
 * Turn on concatenate modules by default by [@stormslowly](https://github.com/stormslowly) in [#1126](https://github.com/umijs/mako/pull/1126)
 * Fix the potential instability of chunk id ordering by [@stormslowly](https://github.com/stormslowly) in [#1117](https://github.com/umijs/mako/pull/1117)
 * chore: add log for parallel generate by [@xusd320](https://github.com/xusd320) in [#1127](https://github.com/umijs/mako/pull/1127)
-* Fix the issue where re-grouping of chunk does not happen when dependancy types change in a hot update scenario by [@xusd320](https://github.com/xusd320) in [#1124](https://github.com/umijs/mako/pull/1124)
+* Fix the issue where re-grouping of chunk does not happen when dependency types change in a hot update scenario by [@xusd320](https://github.com/xusd320) in [#1124](https://github.com/umijs/mako/pull/1124)
 
 ## 0.4.13
 
