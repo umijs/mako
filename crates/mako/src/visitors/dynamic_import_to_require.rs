@@ -62,18 +62,13 @@ impl VisitMut for DynamicImportToRequire {
                     ..
                 } = &mut call_expr.args[0]
                 {
-                    let source_require: Expr =
+                    let source_require =
                         quote_ident!(DUMMY_SP.apply_mark(self.unresolved_mark), "require")
-                            .as_call(DUMMY_SP, vec![quote_str!(source.value.clone()).as_arg()]);
+                            .as_call(DUMMY_SP, vec![quote_str!(source.value.clone()).as_arg()])
+                            .into_lazy_arrow(vec![]);
                     // Promise.resolve()
                     let promise_resolve: Box<Expr> = member_expr!(DUMMY_SP, Promise.resolve)
-                        .as_call(
-                            DUMMY_SP,
-                            vec![ExprOrSpread {
-                                spread: None,
-                                expr: Box::new(source_require),
-                            }],
-                        )
+                        .as_call(DUMMY_SP, vec![source_require.clone().as_arg()])
                         .into();
 
                     let interop_call = quote_ident!(DUMMY_SP, self.interop.as_ref());
@@ -102,7 +97,7 @@ mod tests {
         assert_eq!(
             run(r#"const testModule = import('test-module');"#,),
             r#"var interop = __mako_require__("@swc/helpers/_/_interop_require_wildcard")._;
-const testModule = Promise.resolve(require("test-module")).then(interop);"#
+const testModule = Promise.resolve(()=>require("test-module")).then(interop);"#
                 .trim()
         );
     }
@@ -112,7 +107,7 @@ const testModule = Promise.resolve(require("test-module")).then(interop);"#
         assert_eq!(
             run(r#"import('test-module').then(() => (import('test-module-2')));"#,),
             r#"var interop = __mako_require__("@swc/helpers/_/_interop_require_wildcard")._;
-Promise.resolve(require("test-module")).then(interop).then(()=>(Promise.resolve(require("test-module-2")).then(interop)));"#.trim()
+Promise.resolve(require("test-module")).then(interop).then(()=>(Promise.resolve(()=>require("test-module-2")).then(interop)));"#.trim()
         );
         assert_eq!(
             run(r#"
@@ -125,9 +120,9 @@ Promise.all([
             r#"
 var interop = __mako_require__("@swc/helpers/_/_interop_require_wildcard")._;
 Promise.all([
-    Promise.resolve(require("test-1")).then(interop),
-    Promise.resolve(require("test-2")).then(interop),
-    Promise.resolve(require("test-3")).then(interop)
+    Promise.resolve(()=>require("test-1")).then(interop),
+    Promise.resolve(()=>require("test-2")).then(interop),
+    Promise.resolve(()=>require("test-3")).then(interop)
 ]).then(()=>{});
             "#
             .trim()
@@ -143,8 +138,8 @@ import('my-module' /* test comment */ );
             "#,),
             r#"
 var interop = __mako_require__("@swc/helpers/_/_interop_require_wildcard")._;
-Promise.resolve(require("my-module")).then(interop);
-Promise.resolve(require("my-module")).then(interop);
+Promise.resolve(()=>require("my-module")).then(interop);
+Promise.resolve(()=>require("my-module")).then(interop);
             "#
             .trim()
         );

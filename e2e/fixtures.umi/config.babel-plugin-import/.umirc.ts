@@ -1,9 +1,9 @@
 export default {
   mfsu: false,
-  mako: {},
+  // mako: {},
   extraBabelPlugins: [
     [
-      require.resolve('babel-plugin-import'),
+      require.resolve('babel-plugin-import1'),
       {
         libraryName: 'antd',
       },

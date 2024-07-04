@@ -24,7 +24,7 @@ assert(
 );
 assert(
   index.includes(
-    `Promise.resolve(__mako_require__("node_modules/foo/index.js")).then(interop)`,
+    `Promise.resolve(()=>__mako_require__("node_modules/foo/index.js")).then(interop)`,
   ),
   'require(foo) statement not found',
 );
@@ -35,7 +35,7 @@ assert(
 );
 assert(
   index.includes(
-    ` Promise.resolve(__mako_require__("src/foo.js")).then(interop)`,
+    ` Promise.resolve(()=>__mako_require__("src/foo.js")).then(interop)`,
   ),
   'require(./foo) statement not found',
 );
@@ -47,7 +47,7 @@ assert(
 );
 assert(
   index.includes(
-    `Promise.resolve(__mako_require__("src/lazy.ts")).then(interop);`,
+    `Promise.resolve(()=>__mako_require__("src/lazy.ts")).then(interop);`,
   ),
   'await import result need interop',
 );
