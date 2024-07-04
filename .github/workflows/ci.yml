@@ -33,7 +33,7 @@ jobs:
           clippy: true
           save-cache: ${{ github.ref_name == 'master' }}
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
           version: 8
       - uses: actions/setup-node@v3
@@ -74,7 +74,7 @@ jobs:
           fmt: true
           restore-cache: false
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
           version: 8
       - uses: actions/setup-node@v3
@@ -82,7 +82,7 @@ jobs:
           node-version: 18
           cache: "pnpm"
           token: ${{ secrets.GH_DOTCOM_TOKEN }}
-      - run: pnpm i 
+      - run: pnpm i
       - run: pnpm biome:check
       - run: cargo fmt --all -- --check
       - name: Install Taplo CLI
