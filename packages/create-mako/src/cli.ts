@@ -14,6 +14,10 @@ type InitOptions = {
 
 async function init({ projectName, template }: InitOptions) {
   let templatePath = path.join(baseTemplatesPath, template);
+  if (!fs.existsSync(templatePath)) {
+    console.error(`Template "${template}" does not exist.`);
+    process.exit(1);
+  }
   let files = globSync('**/*', { cwd: templatePath, nodir: true });
   let cwd = path.join(process.cwd(), projectName);
 
