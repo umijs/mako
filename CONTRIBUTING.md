@@ -4,7 +4,7 @@
 
 ### Environment
 
-First of all, you need to install the following tools:
+You need to install the following tools:
 
 - [Rust](https://www.rust-lang.org/tools/install)
 - [Node.js](https://nodejs.org/en/download/)
@@ -78,17 +78,8 @@ $ cargo codecov
 $ cargo codecov --html && open target/llvm-cov/html/index.html
 ```
 
-Run fmt to format code.
-
-```bash
-$ just fmt
-```
-
-Run lint to check code style.
-
-```bash
-$ just lint
-```
+Use `just fmt` to format the code.
+Use `just lint` to check the code style.
 
 Upgrade dependencies if you need.
 
