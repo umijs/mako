@@ -100,7 +100,7 @@ mod tests {
         assert_eq!(
             run(r#"const testModule = import('test-module');"#,),
             r#"var interop = __mako_require__("@swc/helpers/_/_interop_require_wildcard")._;
-const testModule = Promise.resolve().then(()=>__mako_require__("test-module")).then(interop);"#
+const testModule = Promise.resolve().then(()=>require("test-module")).then(interop);"#
                 .trim()
         );
     }
@@ -110,7 +110,7 @@ const testModule = Promise.resolve().then(()=>__mako_require__("test-module")).t
         assert_eq!(
             run(r#"import('test-module').then(() => (import('test-module-2')));"#,),
             r#"var interop = __mako_require__("@swc/helpers/_/_interop_require_wildcard")._;
-Promise.resolve().then(()=>__mako_require__("test-module")).then(interop).then(()=>(Promise.resolve().then(()=>__mako_require__("test-module-2")).then(interop)));"#.trim()
+Promise.resolve().then(()=>require("test-module")).then(interop).then(()=>(Promise.resolve().then(()=>require("test-module-2")).then(interop)));"#.trim()
         );
         assert_eq!(
             run(r#"
@@ -123,9 +123,9 @@ Promise.all([
             r#"
 var interop = __mako_require__("@swc/helpers/_/_interop_require_wildcard")._;
 Promise.all([
-    Promise.resolve().then(()=>__mako_require__("test-1")).then(interop),
-    Promise.resolve().then(()=>__mako_require__("test-2")).then(interop),
-    Promise.resolve().then(()=>__mako_require__("test-3")).then(interop)
+    Promise.resolve().then(()=>require("test-1")).then(interop),
+    Promise.resolve().then(()=>require("test-2")).then(interop),
+    Promise.resolve().then(()=>require("test-3")).then(interop)
 ]).then(()=>{});
             "#
             .trim()
@@ -141,8 +141,8 @@ import('my-module' /* test comment */ );
             "#,),
             r#"
 var interop = __mako_require__("@swc/helpers/_/_interop_require_wildcard")._;
-Promise.resolve().then(()=>__mako_require__("my-module")).then(interop);
-Promise.resolve().then(()=>__mako_require__("my-module")).then(interop);
+Promise.resolve().then(()=>require("my-module")).then(interop);
+Promise.resolve().then(()=>require("my-module")).then(interop);
             "#
             .trim()
         );
