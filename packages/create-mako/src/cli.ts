@@ -19,7 +19,14 @@ async function init({ projectName, template }: InitOptions) {
     process.exit(1);
   }
   let files = globSync('**/*', { cwd: templatePath, nodir: true });
-  let cwd = path.join(process.cwd(), projectName);
+
+  // Use the project name entered by the user as the target folder name.
+  let cwd = path.resolve(process.cwd(), projectName);
+
+  // Ensure the target directory exists; if it does not, create it.
+  if (!fs.existsSync(cwd)) {
+    fs.mkdirSync(cwd, { recursive: true });
+  }
 
   let npmClient = (() => {
     let script = process.argv[1];
@@ -41,6 +48,7 @@ async function init({ projectName, template }: InitOptions) {
     }
     fs.copyFileSync(source, dest);
   }
+
   console.log();
   console.log('Done, Run following commands to start the project:');
   console.log();
@@ -57,6 +65,29 @@ type InitQuestion = {
   template: string;
 };
 async function main() {
+  const inquirer = (await import('inquirer')).default;
+
+  // Check if the current directory is empty.
+  const cwd = process.cwd();
+  const isDirEmpty = fs.readdirSync(cwd).length === 0;
+
+  // If the current directory is not empty, prompt the user to confirm whether they want to continue creating the project.
+  if (!isDirEmpty) {
+    const answersContinue = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'continue',
+        message:
+          'The current directory is not empty. Do you want to continue creating the project here?',
+        default: false,
+      },
+    ]);
+
+    if (!answersContinue.continue) {
+      return;
+    }
+  }
+
   let name = args._[0];
   let { template } = args;
   let questions: QuestionCollection[] = [];

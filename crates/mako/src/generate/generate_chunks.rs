@@ -13,6 +13,7 @@ use tracing::warn;
 
 use crate::compiler::{Compiler, Context};
 use crate::generate::chunk::{Chunk, ChunkType};
+use crate::generate::chunk_pot::util::file_content_hash;
 use crate::generate::chunk_pot::{get_css_chunk_filename, ChunkPot, CHUNK_FILE_NAME_HASH_LENGTH};
 use crate::generate::transform::transform_css_generate;
 use crate::module::{ModuleAst, ModuleId};
@@ -110,6 +111,10 @@ impl Compiler {
                             css_chunks_hash_placeholder,
                             &css_chunks_hash_replacer,
                         )?;
+                        chunk_files.iter_mut().for_each(|cf| {
+                            cf.hash = Some(file_content_hash(&cf.content));
+                        });
+
                         Ok(())
                     },
                 )?;
