@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
@@ -190,8 +191,15 @@ pub fn build_env_map(
 fn get_env_expr(v: Value, context: &Arc<Context>) -> Result<Expr> {
     match v {
         Value::String(v) => {
+            let safe_value = if Value::from_str(&v).map_or(false, |t| t.is_object()) {
+                format!("({})", v)
+            } else {
+                v.clone()
+            };
+
             // the string content is treat as expression, so it has to be parsed
-            let ast = JsAst::build("_mako_internal/_define_.js", &v, context.clone()).unwrap();
+            let ast =
+                JsAst::build("_mako_internal/_define_.js", &safe_value, context.clone()).unwrap();
             let module = ast.ast.body.first().unwrap();
 
             match module {
@@ -358,6 +366,21 @@ log([
                 Default::default()
             ),
             r#"if (undefined === "true") {}"#
+        );
+    }
+
+    #[test]
+    fn test_stringified_env() {
+        assert_eq!(
+            run(
+                r#"log(A)"#,
+                hashmap! {
+                    "A".to_string() => json!("{\"v\": 1}")
+                }
+            ),
+            r#"log(({
+    "v": 1
+}));"#
         );
     }
 

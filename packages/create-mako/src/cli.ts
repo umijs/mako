@@ -1,11 +1,14 @@
 import fs from 'fs';
 import path from 'path';
 import { globSync } from 'glob';
+import yargs from 'yargs-parser';
 
-async function main() {
+const args = yargs(process.argv.slice(2));
+
+async function init(projectName: string) {
   let templatePath = path.join(__dirname, '../templates/react');
   let files = globSync('**/*', { cwd: templatePath, nodir: true });
-  let cwd = path.join(process.cwd(), 'mako-project');
+  let cwd = path.join(process.cwd(), projectName);
 
   let npmClient = (() => {
     let script = process.argv[1];
@@ -36,6 +39,23 @@ async function main() {
   console.log(`  # Open http://localhost:3000`);
   console.log();
   console.log('Happy coding!');
+}
+
+async function main() {
+  let name = args._[0];
+  if (!name) {
+    const inquirer = (await import('inquirer')).default;
+    let answers = await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'name',
+        message: 'Project name:',
+        default: 'mako-project',
+      },
+    ]);
+    name = answers.name;
+  }
+  return init(String(name));
 }
 
 main().catch((err) => {

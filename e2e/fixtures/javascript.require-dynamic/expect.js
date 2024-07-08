@@ -58,7 +58,7 @@ assert.match(
 
 assert.match(
   asyncContent,
-  moduleReg("src/i18n\\?context&glob=\\*\\*/\\*.json&async", "'./zh-CN.json': ()=>Promise.all([\n.*__mako_require__.ensure(\"src/i18n/zh-CN.json\")\n.*]).then(__mako_require__.dr(interop, \"src/i18n/zh-CN.json\"))", true),
+  moduleReg("src/i18n\\?context&glob=\\*\\*/\\*.json&async", "'./zh-CN.json': ()=>Promise.all([\n.*__mako_require__.ensure(\"src/i18n/zh-CN.json\")\n.*]).then(__mako_require__.dr(interop, __mako_require__.bind(__mako_require__, \"src/i18n/zh-CN.json\")))", true),
   "should generate context module with correct map in async chunk",
 );
 
@@ -70,7 +70,7 @@ assert.match(
 
 assert.match(
   asyncContent,
-  moduleReg("src/i18n\\?context&glob=\\*\\*/\\*.json&async", "'./en-US.json': ()=>Promise.all([\n.*__mako_require__.ensure(\"src/i18n/en-US.json\")\n.*]).then(__mako_require__.dr(interop, \"src/i18n/en-US.json\"))", true),
+  moduleReg("src/i18n\\?context&glob=\\*\\*/\\*.json&async", "'./en-US.json': ()=>Promise.all([\n.*__mako_require__.ensure(\"src/i18n/en-US.json\")\n.*]).then(__mako_require__.dr(interop, __mako_require__.bind(__mako_require__, \"src/i18n/en-US.json\")))", true),
   "should generate context module with correct map in async chunk",
 );
 

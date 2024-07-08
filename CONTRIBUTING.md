@@ -2,21 +2,29 @@
 
 ## Getting Started
 
-Clone.
+### Environment
+
+You need to install the following tools:
+
+- [Rust](https://www.rust-lang.org/tools/install)
+- [Node.js](https://nodejs.org/en/download/)
+- [pnpm](https://pnpm.io/installation)
+
+Then, you can clone the repository and install the dependencies:
 
 ```bash
 $ git clone git@github.com:umijs/mako.git
 $ cd mako
 ```
 
-Install tools.
+Install dependencies.
 
 ```bash
 $ cargo install just
 $ cargo install cargo-binstall
 ```
 
-Compile.
+### Development
 
 ```bash
 $ cargo build
@@ -29,7 +37,7 @@ Build js packages (include packages/mako).
 $ pnpm build
 ```
 
-Run.
+Run mako with examples.
 
 ```bash
 $ cargo run --bin mako examples/normal
@@ -44,7 +52,7 @@ $ RUST_LOG=mako::parse=debug,info cargo run --bin mako examples/normal
 
 ## Advanced Tasks
 
-Before you push.
+Before you push your code, you should run the following commands to make sure everything is ok.
 
 ```bash
 $ just ready
@@ -52,7 +60,7 @@ $ just ready
 $ just ready-lite
 ```
 
-Test.
+Run tests.
 
 ```bash
 $ pnpm playwright install # only need to run before the first time you run "jest test"
@@ -63,26 +71,17 @@ $ cargo nextest run transformers::transform_try_resolve::tests
 $ cargo insta review
 ```
 
-Coverage.
+Run Coverage.
 
 ```bash
 $ cargo codecov
 $ cargo codecov --html && open target/llvm-cov/html/index.html
 ```
 
-Format.
+Use `just fmt` to format the code.
+Use `just lint` to check the code style.
 
-```bash
-$ just fmt
-```
-
-Lint.
-
-```bash
-$ just lint
-```
-
-Upgrade dependencies.
+Upgrade dependencies if you need.
 
 ```bash
 $ cargo upgrade
