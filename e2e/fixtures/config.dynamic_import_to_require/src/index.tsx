@@ -9,6 +9,5 @@ import("foo").then(() => {
 async function fn() {
   const lazy = await import('./lazy.ts')
   console.log(lazy)
-
 }
 fn()
