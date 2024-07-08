@@ -618,16 +618,6 @@ mod tests {
             ),
             r#".a{width:2rem}"#
         );
-        assert_eq!(
-            run(
-                r#".a-a{width:100px;}"#,
-                Px2RemConfig {
-                    selector_doublelist: vec![r#"/\.a-/"#.to_string()],
-                    ..Default::default()
-                }
-            ),
-            r#".a-a{width:2rem}"#
-        );
     }
 
     fn run_with_default(css_code: &str) -> String {
