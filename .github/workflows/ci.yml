@@ -38,7 +38,7 @@ jobs:
           version: 8.15.8
       - uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 20
           cache: "pnpm"
           token: ${{ secrets.GH_DOTCOM_TOKEN }}
       - run: pnpm i --no-lockfile
@@ -85,7 +85,7 @@ jobs:
           version: 8.15.8
       - uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 20
           cache: "pnpm"
           token: ${{ secrets.GH_DOTCOM_TOKEN }}
       - run: pnpm i
