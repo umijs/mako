@@ -1,5 +1,5 @@
 import fs from 'fs';
-import path from 'path';
+import path, { resolve } from 'path';
 import { globSync } from 'glob';
 import type { QuestionCollection } from 'inquirer';
 import yargs from 'yargs-parser';
@@ -64,15 +64,12 @@ type InitQuestion = {
   name: string;
   template: string;
 };
-async function main() {
+
+async function checkEmptyDir(name: string) {
   const inquirer = (await import('inquirer')).default;
-
-  // Check if the current directory is empty.
   const cwd = process.cwd();
-  const isDirEmpty = fs.readdirSync(cwd).length === 0;
-
-  // If the current directory is not empty, prompt the user to confirm whether they want to continue creating the project.
-  if (!isDirEmpty) {
+  const exist = fs.existsSync(resolve(cwd, name));
+  if (exist && fs.readdirSync(resolve(cwd, name)).length > 0) {
     const answersContinue = await inquirer.prompt([
       {
         type: 'confirm',
@@ -84,21 +81,29 @@ async function main() {
     ]);
 
     if (!answersContinue.continue) {
-      return;
+      process.exit(1);
     }
   }
+}
 
-  let name = args._[0];
+async function main() {
+  const inquirer = (await import('inquirer')).default;
+
+  let name: string = args._[0] as string;
   let { template } = args;
   let questions: QuestionCollection[] = [];
   if (!name) {
-    questions.push({
-      type: 'input',
-      name: 'name',
-      message: 'Project name:',
-      default: 'mako-project',
-    });
+    let answers = await inquirer.prompt<InitQuestion>([
+      {
+        type: 'input',
+        name: 'name',
+        message: 'Project name:',
+        default: 'mako-project',
+      },
+    ]);
+    name = answers.name;
   }
+  await checkEmptyDir(name);
   if (!template) {
     const templates = globSync('**/', {
       cwd: baseTemplatesPath,
@@ -113,9 +118,7 @@ async function main() {
     });
   }
   if (questions.length > 0) {
-    const inquirer = (await import('inquirer')).default;
     let answers = await inquirer.prompt<InitQuestion>(questions);
-    name = name || answers.name;
     template = template || answers.template;
   }
   return init({ projectName: String(name), template });
