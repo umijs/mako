@@ -47,6 +47,12 @@ jobs:
       - name: Test
         shell: bash
         run: cargo nextest run
+      - name: Test E2E
+        run: pnpm test:e2e
+      - name: Test HMR
+        run: pnpm test:hmr
+      - name: Test Umi
+        run: pnpm test:umi
 
   lint:
     name: Clippy
