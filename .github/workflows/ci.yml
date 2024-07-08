@@ -47,6 +47,8 @@ jobs:
       - name: Test
         shell: bash
         run: cargo nextest run
+      - name: Build
+        run: pnpm build
       - name: Test E2E
         run: pnpm test:e2e
       - name: Test HMR
