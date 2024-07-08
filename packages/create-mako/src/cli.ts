@@ -62,7 +62,8 @@ async function main() {
       {
         type: 'confirm',
         name: 'continue',
-        message: 'The current directory is not empty. Do you want to continue creating the project here?',
+        message:
+          'The current directory is not empty. Do you want to continue creating the project here?',
         default: false,
       },
     ]);
