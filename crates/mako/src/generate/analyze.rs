@@ -31,8 +31,12 @@ impl Analyze {
             stats_json,
             include_str!("../../../../client/dist/index.js").replace("</script>", "<\\/script>")
         );
-        let report_path = context.config.output.path.join("report.html");
-        fs::write(report_path, html_str).unwrap();
+        let report_path = context.config.output.path.join("analyze-report.html");
+        fs::write(&report_path, html_str).unwrap();
+        println!(
+            "Analyze report generated at: {}",
+            report_path.to_string_lossy()
+        );
         Ok(())
     }
 }

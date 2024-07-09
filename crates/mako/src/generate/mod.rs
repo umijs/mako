@@ -182,10 +182,6 @@ impl Compiler {
         // generate stats
         let stats = create_stats_info(0, self);
 
-        if self.context.config.analyze.is_some() {
-            Analyze::write_analyze(&stats, self.context.clone())?;
-        }
-
         if self.context.config.stats.is_some() {
             write_stats(&stats, self);
         }
@@ -198,6 +194,10 @@ impl Compiler {
         // print stats
         if !self.context.args.watch {
             print_stats(self);
+        }
+
+        if self.context.config.analyze.is_some() {
+            Analyze::write_analyze(&stats, self.context.clone())?;
         }
 
         debug!("generate done in {}ms", t_generate.elapsed().as_millis());
