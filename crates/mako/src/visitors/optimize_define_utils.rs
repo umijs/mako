@@ -13,7 +13,7 @@ impl VisitMut for OptimizeDefineUtils {
         let mut no_directive_index = 0;
         for (index, item) in items.iter().enumerate() {
             if let Some(stmt) = item.as_stmt()
-                && is_directive_for_stmt_value_and_raw(stmt.clone())
+                && is_directive_judged_by_stmt_value_and_raw(stmt.clone())
             {
                 no_directive_index = index + 1
             } else {
@@ -155,7 +155,7 @@ fn is_obj_lit_arg(arg: Option<&ExprOrSpread>) -> bool {
         .unwrap_or(false)
 }
 
-fn is_directive_for_stmt_value_and_raw(stmt: Stmt) -> bool {
+fn is_directive_judged_by_stmt_value_and_raw(stmt: Stmt) -> bool {
     match stmt.as_ref() {
         Some(Stmt::Expr(expr)) => match &*expr.expr {
             Expr::Lit(Lit::Str(Str { raw: Some(raw), .. })) => {
