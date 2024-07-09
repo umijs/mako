@@ -7,3 +7,10 @@ function fn(config) {
 }
 // @ts-ignore
 fn('url', { method: 'get' }).url.indexOf('u')
+
+
+it('should run fn successfully under strict mode with scripts',()=>{
+  // @ts-ignore
+  expect(fn('url', { method: 'get' }).url.indexOf('u')).toBe(0)
+});
+
