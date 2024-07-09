@@ -495,7 +495,7 @@ publicPath configuration. Note: There is a special value `"runtime"`, which mean
 
 ### px2rem
 
-- Type: `false | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[], selectorWhiteList?: string[], minPixelValue?: number }`
+- Type: `false | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[], selectorWhiteList?: string[], selectorDoubleList?: string[], minPixelValue?: number }`
 - Default: `false`
 
 Whether to enable px2rem conversion.
@@ -505,6 +505,7 @@ Whether to enable px2rem conversion.
 - `propWhiteList`, property white list
 - `selectorBlackList`, selector black list
 - `selectorWhiteList`, selector white list
+- `selectorDoubleList`, selector double rem list
 - `minPixelValue`，minimum pixel value, default is `0`
 
 ### react
