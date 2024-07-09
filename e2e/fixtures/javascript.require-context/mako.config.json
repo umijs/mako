@@ -2,5 +2,7 @@
   "entry": {
     "index": "index.js"
   },
-  "moduleIdStrategy": "named"
+  "moduleIdStrategy": "named",
+  "chunkLoadingGlobal": "require-context",
+  "platform":"node"
 }
