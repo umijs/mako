@@ -1,14 +1,14 @@
 use std::sync::Arc;
 
-use swc_core::common::util::take::Take;
 use swc_core::common::Mark;
-use swc_core::ecma::ast::{Module, Program};
+use swc_core::ecma::ast::Module;
 use swc_core::ecma::transforms::base::feature::FeatureFlag;
 use swc_core::ecma::transforms::module::common_js as swc_common_js;
 use swc_core::ecma::transforms::module::util::{Config, ImportInterop};
 use swc_core::ecma::utils::IsDirective;
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
+use crate::ast::utils;
 use crate::compiler::Context;
 
 pub struct Commonjs {
@@ -19,14 +19,24 @@ pub struct Commonjs {
 
 impl VisitMut for Commonjs {
     fn visit_mut_module(&mut self, n: &mut Module) {
-        let use_strict = n
-            .body
-            .first()
-            .and_then(|t| t.as_stmt())
-            .map_or(false, |stmt| stmt.is_use_strict());
+        let mut use_strict = false;
+        if utils::is_esm(n) {
+            use_strict = true
+        } else {
+            for item in n.body.iter() {
+                if let Some(stmt) = item.as_stmt() {
+                    if stmt.is_directive() {
+                        if stmt.is_use_strict() {
+                            use_strict = true;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
 
-        let mut p = Program::Module(n.take());
-        p.visit_mut_with(&mut swc_common_js(
+        n.visit_mut_with(&mut swc_common_js(
             self.unresolved_mark,
             Config {
                 import_interop: Some(self.import_interop),
@@ -49,7 +59,6 @@ impl VisitMut for Commonjs {
                     .get_swc_comments(),
             ),
         ));
-        *n = p.module().unwrap();
     }
 }
 
