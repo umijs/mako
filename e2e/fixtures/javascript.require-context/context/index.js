@@ -1,1 +1,1 @@
-export default "conext.index";
+export default "context.index";

@@ -37,7 +37,7 @@ it("sync: with sub directories", () => {
     ]);
   });
 
-  it("  follows swebpacl id convetion", () => {
+  it("  follows webpack id convention", () => {
     expect(context2.id).toBe("./context/ sync .js$/");
   });
 });
