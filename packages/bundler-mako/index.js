@@ -299,7 +299,6 @@ function checkConfig(opts) {
   // 不支持但对构建影响不明确的配置项，会统一警告
   const riskyKeys = [
     'config.autoprefixer',
-    'config.analyze',
     'config.cssPublicPath',
     'config.cssLoader',
     'config.cssLoaderModules',
@@ -441,6 +440,7 @@ async function getMakoConfig(opts) {
     forkTSChecker,
     inlineCSS,
     makoPlugins,
+    analyze,
   } = opts.config;
   let { codeSplitting } = opts.config;
   // TODO:
@@ -606,6 +606,7 @@ async function getMakoConfig(opts) {
       plugins: opts.config.lessLoader?.plugins,
     },
     plugins: makoPlugins || [],
+    analyze: analyze || process.env.ANALYZE ? {} : undefined,
   };
 
   return makoConfig;
