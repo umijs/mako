@@ -178,12 +178,12 @@ mod tests {
     #[ignore = "later"]
     #[test]
     fn invalid_require_context() {
-        let code = transform_code(
+        assert_eq!(
+            transform_code(r#" const ctxt = require.context("./", foo, /\.js$/i, "sync"); "#,),
             r#"
         const ctxt = require.context("./", foo, /\.js$/i, "sync");
-        "#,
+        "#
+            .trim()
         );
-
-        println!("{}", code);
     }
 }
