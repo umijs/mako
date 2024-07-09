@@ -1,1 +1,1 @@
-export default "conext.dir.index";
+export default "context.dir.index";
