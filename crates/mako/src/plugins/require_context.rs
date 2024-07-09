@@ -63,11 +63,12 @@ impl Plugin for RequireContextPlugin {
             context: context.clone(),
             current_path: PathBuf::from(param.path),
             unresolved_mark: param.unresolved_mark,
+            res: Ok(()),
         };
 
         ast.visit_mut_with(&mut visitor);
 
-        Ok(())
+        visitor.res
     }
 }
 

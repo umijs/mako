@@ -41,12 +41,6 @@ impl ContextParam {
             ignore_case,
         ))
     }
-
-    pub fn invalid(from: &Path) -> String {
-        let parent = from.to_string_lossy().to_string();
-
-        format!("virtual:context?from={}&invalid=true", parent)
-    }
 }
 
 #[derive(Error, Debug)]

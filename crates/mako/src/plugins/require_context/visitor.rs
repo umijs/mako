@@ -1,19 +1,23 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use anyhow::{anyhow, Result};
 use swc_core::common::{Mark, Spanned};
 use swc_core::ecma::ast::{CallExpr, Callee, Expr, ExprOrSpread};
 use swc_core::ecma::utils::{quote_ident, quote_str, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use super::param::{ContextParam, ContextParamBuilder};
+use crate::ast::error::{code_frame, ErrorSpan};
 use crate::ast::utils::is_ident_undefined;
+use crate::build::parse::ParseError;
 use crate::compiler::Context;
 
 pub struct RequireContextVisitor {
     pub(crate) current_path: PathBuf,
     pub(crate) unresolved_mark: Mark,
     pub(crate) context: Arc<Context>,
+    pub(crate) res: Result<()>,
 }
 
 impl RequireContextVisitor {
@@ -73,12 +77,14 @@ impl VisitMut for RequireContextVisitor {
 
                         *expr = call_expr;
                     } else {
-                        let call_expr = quote_ident!("__mako_require__").as_call(
-                            expr.span(),
-                            vec![quote_str!(ContextParam::invalid(&self.current_path)).as_arg()],
-                        );
-
-                        *expr = call_expr;
+                        self.res = Err(anyhow!(ParseError::InvalidExpression {
+                            path: self.current_path.to_string_lossy().to_string(),
+                            message: code_frame(
+                                ErrorSpan::Js(call_expr.span()),
+                                "Bad context path",
+                                self.context.clone(),
+                            )
+                        }));
                     }
                     return;
                 }
@@ -109,6 +115,7 @@ mod tests {
                 current_path: PathBuf::from("/project/src/index.js"),
                 unresolved_mark: js_ast.unresolved_mark,
                 context: tu.context.clone(),
+                res: Ok(()),
             });
         });
 

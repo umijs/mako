@@ -106,10 +106,10 @@ impl VirtualContextModuleRender {
             .to_string_lossy()
             .to_string();
 
-        if root_path.starts_with("../") {
+        if self.root.starts_with("../") {
             return Err(anyhow!(
-                "Invalid path: {}, reference file out of reference project root \
-            not allowed.",
+                "Context Module Using Invalid path: `{}` , reference file out of current project \
+                root not allowed.",
                 root_path
             ));
         }
