@@ -1,5 +1,5 @@
 use swc_core::common::{Mark, DUMMY_SP};
-use swc_core::ecma::ast::{CallExpr, Expr, ExprOrSpread, Lit, ModuleItem};
+use swc_core::ecma::ast::{CallExpr, Expr, ExprOrSpread, Lit, ModuleItem, Stmt, Str};
 use swc_core::ecma::utils::{member_expr, IsDirective};
 use swc_core::ecma::visit::VisitMut;
 
@@ -8,20 +8,18 @@ pub struct OptimizeDefineUtils {
     pub top_level_mark: Mark,
     pub unresolved_mark: Mark,
 }
-
 impl VisitMut for OptimizeDefineUtils {
     fn visit_mut_module_items(&mut self, items: &mut Vec<ModuleItem>) {
         let mut no_directive_index = 0;
         for (index, item) in items.iter().enumerate() {
             if let Some(stmt) = item.as_stmt()
-                && stmt.is_directive()
+                && is_directive_for_stmt_value_and_raw(stmt.clone())
             {
                 no_directive_index = index + 1
             } else {
                 break;
             }
         }
-
         let mut iter = items.iter_mut().skip(no_directive_index);
 
         if let Some(item) = iter.next()
@@ -155,4 +153,21 @@ fn is_string_lit_arg_with_value(arg: Option<&ExprOrSpread>, value: &str) -> bool
 fn is_obj_lit_arg(arg: Option<&ExprOrSpread>) -> bool {
     arg.map(|arg| arg.spread.is_none() && arg.expr.as_object().map(|_| true).unwrap_or(false))
         .unwrap_or(false)
+}
+
+fn is_directive_for_stmt_value_and_raw(stmt: Stmt) -> bool {
+    match stmt.as_ref() {
+        Some(Stmt::Expr(expr)) => match &*expr.expr {
+            Expr::Lit(Lit::Str(Str { raw: Some(raw), .. })) => {
+                raw.starts_with("\"use ") || raw.starts_with("'use ")
+            }
+            Expr::Lit(Lit::Str(Str {
+                value: v,
+                raw: None,
+                ..
+            })) => v.to_string().starts_with("use "),
+            _ => false,
+        },
+        _ => false,
+    }
 }
