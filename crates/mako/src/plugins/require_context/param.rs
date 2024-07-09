@@ -18,7 +18,7 @@ pub struct ContextParam {
     pub mode: ContextLoadMode,
 }
 
-fn encode(s: &str) -> String {
+pub fn encode(s: &str) -> String {
     utf8_percent_encode(s, NON_ALPHANUMERIC).to_string()
 }
 
@@ -55,6 +55,15 @@ pub enum ParseContextLoadModeError {
     UnsupportedValue(String),
 }
 
+/*
+ref https://webpack.js.org/guides/dependency-management/#requirecontext
+require.context(
+  directory,
+  (useSubdirectories = true),
+  (regExp = /^\.\/.*$/),
+  (mode = 'sync')
+);
+*/
 pub struct ContextParamBuilder {
     valid: bool,
     rel_path: Option<String>,
@@ -71,7 +80,7 @@ impl Default for ContextParamBuilder {
             use_subdirectories: true,
             reg_expr: Regex {
                 span: Default::default(),
-                exp: r#""#.into(),
+                exp: r#"^\.\/.*$"#.into(),
                 flags: "".into(),
             },
             mode: ContextLoadMode::Sync,
@@ -118,16 +127,18 @@ impl ContextParamBuilder {
             return self;
         }
 
-        if let Some(&ExprOrSpread {
-            expr: box Expr::Lit(Lit::Bool(sub)),
-            ..
-        }) = arg
-        {
-            self.use_subdirectories = sub.value;
-        } else {
-            self.valid = false;
+        match arg {
+            Some(ExprOrSpread {
+                expr: box Expr::Lit(Lit::Bool(sub)),
+                ..
+            }) => {
+                self.use_subdirectories = sub.value;
+            }
+            None => {}
+            _ => {
+                self.valid = false;
+            }
         }
-
         self
     }
 
@@ -136,23 +147,24 @@ impl ContextParamBuilder {
             return self;
         }
 
-        if let Some(&ExprOrSpread {
-            expr: box Expr::Lit(Lit::Str(ref mode_str)),
-            ..
-        }) = arg
-        {
-            let mode = mode_str.value.to_string();
+        match &arg {
+            Some(&ExprOrSpread {
+                expr: box Expr::Lit(Lit::Str(ref mode_str)),
+                ..
+            }) => {
+                let mode = mode_str.value.to_string();
+                match ContextLoadMode::try_from(&mode) {
+                    Ok(mode) => {
+                        self.mode = mode;
+                    }
+                    Err(_err) => {
+                        self.valid = false;
+                    }
+                };
+            }
+            None => {}
 
-            match ContextLoadMode::try_from(&mode) {
-                Ok(mode) => {
-                    self.mode = mode;
-                }
-                Err(_err) => {
-                    self.valid = false;
-                }
-            };
-        } else {
-            self.valid = false;
+            _ => self.valid = false,
         }
 
         self
@@ -162,15 +174,18 @@ impl ContextParamBuilder {
         if !self.valid {
             return self;
         }
+        match arg {
+            Some(&ExprOrSpread {
+                expr: box Expr::Lit(Lit::Regex(ref reg)),
+                ..
+            }) => {
+                self.reg_expr = reg.clone();
+            }
+            None => {}
 
-        if let Some(&ExprOrSpread {
-            expr: box Expr::Lit(Lit::Regex(ref reg)),
-            ..
-        }) = arg
-        {
-            self.reg_expr = reg.clone();
-        } else {
-            self.valid = false;
+            _ => {
+                self.valid = false;
+            }
         }
 
         self

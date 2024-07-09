@@ -19,10 +19,83 @@ pub struct VirtualContextModuleRender {
     sub_directories: bool,
 }
 
+impl ContextLoadMode {
+    fn render_module_import(&self, map: &BTreeMap<String, String>) -> String {
+        let mut map_str = String::from(r#"var _map_lazy = {"#);
+        map.iter().for_each(|(key, value)| match self {
+            ContextLoadMode::Sync => {
+                map_str.push_str(&format!(
+                    r#"
+  "{}": ()=> require("{}"),"#,
+                    key, value
+                ));
+            }
+
+            ContextLoadMode::Lazy => {
+                map_str.push_str(&format!(
+                    r#"
+  "{}": ()=> import("{}"),"#,
+                    key, value
+                ));
+            }
+            ContextLoadMode::Eager | ContextLoadMode::Weak | ContextLoadMode::LazyOnce => {
+                unimplemented!("{} Mode not implemented", self);
+            }
+        });
+
+        map_str.push_str("\n};\n");
+        map_str
+    }
+
+    fn module_context(self) -> String {
+        match self {
+            ContextLoadMode::Sync => r#"
+  module.exports = function contextRequire(req){{
+    var call  = _map_lazy[req];
+    if(call){{
+      return call()
+    }}else{{
+      var e = new Error("Cannot find module '" + req + "'");
+	  e.code = 'MODULE_NOT_FOUND';
+	  throw e;
+    }}
+  }};
+"#
+            .to_string(),
+            ContextLoadMode::Lazy => r#"
+  module.exports = function contextRequire(req){{
+    var call  = _map_lazy[req];
+    if(call){{
+      return call()
+    }}else{{
+      var e = new Error("Cannot find module '" + req + "'");
+      e.code = 'MODULE_NOT_FOUND';
+      return Promise.reject(e)
+    }} 
+  }};  
+"#
+            .to_string(),
+            ContextLoadMode::Eager | ContextLoadMode::Weak | ContextLoadMode::LazyOnce => {
+                unimplemented!("{} Mode not implemented", self)
+            }
+        }
+    }
+}
+
 impl VirtualContextModuleRender {
     fn id(&self) -> String {
         // TODO align with webpack
-        format!("{} {} {}", self.root, self.reg, self.mode)
+        format!(
+            "./{}/ {} {}{}/",
+            self.root,
+            self.mode,
+            if self.sub_directories {
+                ""
+            } else {
+                "nonrecursive "
+            },
+            &self.reg,
+        )
     }
 
     fn matched_files(&self, context: &Arc<Context>) -> Result<BTreeMap<String, String>> {
@@ -86,18 +159,12 @@ impl VirtualContextModuleRender {
         map_str
     }
 
-    pub fn module_require(&self, map: &BTreeMap<String, String>) -> String {
-        let mut map_str = String::from(r#"var _map_lazy = {"#);
-        for (key, value) in map.iter() {
-            map_str.push_str(&format!(
-                r#"
-  "{}": ()=> require("{}"),"#,
-                key, value
-            ));
-        }
-        map_str.push_str("\n};\n");
+    pub fn module_import(&self, map: &BTreeMap<String, String>) -> String {
+        self.mode.render_module_import(map)
+    }
 
-        map_str
+    pub fn module_context(&self) -> String {
+        self.mode.module_context()
     }
 
     pub fn render(&self, context: Arc<Context>) -> Result<String> {
@@ -110,16 +177,8 @@ impl VirtualContextModuleRender {
 {}
 // context lazy require function Map 
 {}
-module.exports = function contextRequire(req){{
-    var call  = _map_lazy[req];
-    if(call){{
-      call()
-    }}else{{
-      var e = new Error("Cannot find module '" + req + "'");
-	  e.code = 'MODULE_NOT_FOUND';
-	  throw e;
-    }}
-}};            
+// context require
+{}
 module.exports.resolve  = function(req) {{
     var r = _map[req];
     if(r){{
@@ -136,7 +195,8 @@ module.exports.keys = function() {{ return Object.keys(_map); }}
 module.exports.id = "{id}";            
 "#,
             self.module_id_map(&source_to_path, &context),
-            self.module_require(&source_to_path),
+            self.module_import(&source_to_path),
+            self.module_context(),
         ))
     }
 }

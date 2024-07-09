@@ -43,8 +43,6 @@ impl Plugin for RequireContextPlugin {
             let render = VirtualContextModuleRender::try_from(params)?;
 
             return render.render(_context.clone()).map(|content| {
-                println!("then content\n{}", content);
-
                 Some(Content::Js(JsContent {
                     content,
                     is_jsx: false,

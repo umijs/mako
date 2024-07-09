@@ -92,6 +92,7 @@ impl VisitMut for RequireContextVisitor {
 
 #[cfg(test)]
 mod tests {
+    use percent_encoding::percent_decode_str;
     use swc_core::common::GLOBALS;
     use swc_core::ecma::visit::VisitMutWith;
 
@@ -111,7 +112,10 @@ mod tests {
             });
         });
 
-        tu.js_ast_to_code()
+        percent_decode_str(&tu.js_ast_to_code())
+            .decode_utf8()
+            .unwrap()
+            .to_string()
     }
 
     #[test]
@@ -119,7 +123,7 @@ mod tests {
         assert_eq!(
             transform_code(r#" const ctxt = require.context("./", false, /\.js$/, "sync"); "#),
             r#"
-            const ctxt = __mako_require__("virtual:context?root=%2Fproject%2Fsrc&sub=false&reg=%5C%2Ejs%24&mode=sync&ig=false");
+            const ctxt = __mako_require__("virtual:context?root=/project/src&sub=false&reg=\.js$&mode=sync&ig=false");
             "#
                 .trim()
         );
@@ -130,7 +134,7 @@ mod tests {
         assert_eq!(
             transform_code(r#" const ctxt = require.context("./", true, /\.js$/, "sync"); "#),
             r#"
-            const ctxt = __mako_require__("virtual:context?root=%2Fproject%2Fsrc&sub=true&reg=%5C%2Ejs%24&mode=sync&ig=false");
+            const ctxt = __mako_require__("virtual:context?root=/project/src&sub=true&reg=\.js$&mode=sync&ig=false");
             "#
                 .trim()
         )
@@ -144,8 +148,22 @@ mod tests {
             "#)
             ,
             r#"
-            const ctxt = __mako_require__("virtual:context?root=%2Fproject%2Fsrc&sub=false&reg=%5C%2Ejs%24&mode=sync&ig=true");
+            const ctxt = __mako_require__("virtual:context?root=/project/src&sub=false&reg=\.js$&mode=sync&ig=true");
             "#
+                .trim()
+        );
+    }
+
+    #[test]
+    fn all_default_value() {
+        assert_eq!(
+            transform_code(r#"
+               const ctxt = require.context("./");
+            "#)
+            ,
+            r#"
+            const ctxt = __mako_require__("virtual:context?root=/project/src&sub=true&reg=^\.\/.*$&mode=sync&ig=false"); 
+           "#
                 .trim()
         );
     }
