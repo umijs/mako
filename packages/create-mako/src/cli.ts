@@ -1,12 +1,23 @@
 import fs from 'fs';
-import path from 'path';
+import path, { resolve } from 'path';
 import { globSync } from 'glob';
+import type { QuestionCollection } from 'inquirer';
 import yargs from 'yargs-parser';
 
 const args = yargs(process.argv.slice(2));
+const baseTemplatesPath = path.join(__dirname, '../templates');
 
-async function init(projectName: string) {
-  let templatePath = path.join(__dirname, '../templates/react');
+type InitOptions = {
+  projectName: string;
+  template: string;
+};
+
+async function init({ projectName, template }: InitOptions) {
+  let templatePath = path.join(baseTemplatesPath, template);
+  if (!fs.existsSync(templatePath)) {
+    console.error(`Template "${template}" does not exist.`);
+    process.exit(1);
+  }
   let files = globSync('**/*', { cwd: templatePath, nodir: true });
 
   // Use the project name entered by the user as the target folder name.
@@ -49,15 +60,16 @@ async function init(projectName: string) {
   console.log('Happy coding!');
 }
 
-async function main() {
+type InitQuestion = {
+  name: string;
+  template: string;
+};
+
+async function checkEmptyDir(name: string) {
   const inquirer = (await import('inquirer')).default;
-
-  // Check if the current directory is empty.
   const cwd = process.cwd();
-  const isDirEmpty = fs.readdirSync(cwd).length === 0;
-
-  // If the current directory is not empty, prompt the user to confirm whether they want to continue creating the project.
-  if (!isDirEmpty) {
+  const exist = fs.existsSync(resolve(cwd, name));
+  if (exist && fs.readdirSync(resolve(cwd, name)).length > 0) {
     const answersContinue = await inquirer.prompt([
       {
         type: 'confirm',
@@ -69,13 +81,19 @@ async function main() {
     ]);
 
     if (!answersContinue.continue) {
-      return;
+      process.exit(1);
     }
   }
+}
 
-  let name = args._[0];
+async function main() {
+  const inquirer = (await import('inquirer')).default;
+
+  let name: string = args._[0] as string;
+  let { template } = args;
+  let questions: QuestionCollection[] = [];
   if (!name) {
-    let answers = await inquirer.prompt([
+    let answers = await inquirer.prompt<InitQuestion>([
       {
         type: 'input',
         name: 'name',
@@ -85,8 +103,25 @@ async function main() {
     ]);
     name = answers.name;
   }
-
-  return init(String(name));
+  await checkEmptyDir(name);
+  if (!template) {
+    const templates = globSync('**/', {
+      cwd: baseTemplatesPath,
+      maxDepth: 1,
+    }).filter((dir) => dir !== '.');
+    questions.push({
+      type: 'list',
+      name: 'template',
+      message: 'Select a template:',
+      choices: templates,
+      default: 'react',
+    });
+  }
+  if (questions.length > 0) {
+    let answers = await inquirer.prompt<InitQuestion>(questions);
+    template = template || answers.template;
+  }
+  return init({ projectName: String(name), template });
 }
 
 main().catch((err) => {
