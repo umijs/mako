@@ -237,11 +237,14 @@ impl Compiler {
             Arc::new(plugins::async_runtime::AsyncRuntimePlugin {}),
             Arc::new(plugins::emotion::EmotionPlugin {}),
             Arc::new(plugins::tree_shaking::FarmTreeShake {}),
-            Arc::new(plugins::require_context::RequireContextPlugin {}),
         ];
         plugins.extend(builtin_plugins);
 
         let mut config = config;
+
+        if config.experimental.enable_require_context {
+            plugins.push(Arc::new(plugins::require_context::RequireContextPlugin {}))
+        }
 
         if config.output.mode == OutputMode::Bundless {
             plugins.insert(0, Arc::new(plugins::bundless_compiler::BundlessCompiler {}));
