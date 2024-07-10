@@ -32,3 +32,48 @@ impl ParseRegex for Option<String> {
         })
     }
 }
+
+pub fn process_req_url(public_path: &str, req_url: &str) -> Result<String> {
+    let public_path = format!("/{}/", public_path.trim_matches('/'));
+    if req_url.starts_with(&public_path) {
+        return Ok(req_url[public_path.len() - 1..].to_string());
+    }
+    Ok(req_url.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_process_req_url() {
+        assert_eq!(
+            process_req_url("/public/", "/public/index.html").unwrap(),
+            "/index.html"
+        );
+        assert_eq!(
+            process_req_url("public/", "/public/index.html").unwrap(),
+            "/index.html"
+        );
+        assert_eq!(
+            process_req_url("/public/foo/", "/public/foo/index.html").unwrap(),
+            "/index.html"
+        );
+        assert_eq!(
+            process_req_url("public/foo/", "/public/foo/index.html").unwrap(),
+            "/index.html"
+        );
+        assert_eq!(process_req_url("/", "/index.html").unwrap(), "/index.html");
+        assert_eq!(
+            process_req_url("/#/", "/#/index.html").unwrap(),
+            "/index.html"
+        );
+        assert_eq!(
+            process_req_url("/公共路径/", "/公共路径/index.html").unwrap(),
+            "/index.html"
+        );
+        assert_eq!(
+            process_req_url("公共路径/", "/公共路径/index.html").unwrap(),
+            "/index.html"
+        );
+    }
+}
