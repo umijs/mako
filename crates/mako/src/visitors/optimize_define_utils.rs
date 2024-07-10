@@ -158,11 +158,31 @@ fn is_obj_lit_arg(arg: Option<&ExprOrSpread>) -> bool {
 fn is_stmt_directive(stmt: &Stmt) -> bool {
     if let Stmt::Expr(ExprStmt {
         expr: box Expr::Lit(Lit::Str(Str { value, .. })),
-        span: DUMMY_SP,
+        ..
     }) = stmt
     {
         value.starts_with("use ")
     } else {
         false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ast::tests::TestUtils;
+
+    #[test]
+    fn test_is_stmt_directive() {
+        let tu = TestUtils::gen_js_ast(
+            r#"
+        "use strict";
+        let a= 1;
+        "#,
+        );
+        let ast = tu.ast.js();
+        let use_strict_stmt = ast.ast.body[0].as_stmt().unwrap();
+
+        assert!(is_stmt_directive(use_strict_stmt));
     }
 }
