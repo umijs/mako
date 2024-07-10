@@ -243,7 +243,6 @@ function checkConfig(opts) {
     'px2rem',
     'experimental',
     'flexBugs',
-    'moduleIdStrategy',
     'optimization',
   ];
   // umi mako config
