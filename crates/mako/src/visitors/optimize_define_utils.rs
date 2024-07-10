@@ -1,6 +1,6 @@
 use swc_core::common::{Mark, DUMMY_SP};
-use swc_core::ecma::ast::{CallExpr, Expr, ExprOrSpread, Lit, ModuleItem, Stmt, Str};
-use swc_core::ecma::utils::{member_expr, IsDirective};
+use swc_core::ecma::ast::{CallExpr, Expr, ExprOrSpread, ExprStmt, Lit, ModuleItem, Stmt, Str};
+use swc_core::ecma::utils::member_expr;
 use swc_core::ecma::visit::VisitMut;
 
 // TODO: add testcases
@@ -13,7 +13,7 @@ impl VisitMut for OptimizeDefineUtils {
         let mut no_directive_index = 0;
         for (index, item) in items.iter().enumerate() {
             if let Some(stmt) = item.as_stmt()
-                && is_directive_judged_by_stmt_value_and_raw(stmt)
+                && is_stmt_directive(stmt)
             {
                 no_directive_index = index + 1
             } else {
@@ -155,19 +155,14 @@ fn is_obj_lit_arg(arg: Option<&ExprOrSpread>) -> bool {
         .unwrap_or(false)
 }
 
-fn is_directive_judged_by_stmt_value_and_raw(stmt: &Stmt) -> bool {
-    match stmt.as_ref() {
-        Some(Stmt::Expr(expr)) => match &*expr.expr {
-            Expr::Lit(Lit::Str(Str { raw: Some(raw), .. })) => {
-                raw.starts_with("\"use ") || raw.starts_with("'use ")
-            }
-            Expr::Lit(Lit::Str(Str {
-                value: v,
-                raw: None,
-                ..
-            })) => v.to_string().starts_with("use "),
-            _ => false,
-        },
-        _ => false,
+fn is_stmt_directive(stmt: &Stmt) -> bool {
+    if let Stmt::Expr(ExprStmt {
+        expr: box Expr::Lit(Lit::Str(Str { value, .. })),
+        span: DUMMY_SP,
+    }) = stmt
+    {
+        value.starts_with("use ")
+    } else {
+        false
     }
 }
