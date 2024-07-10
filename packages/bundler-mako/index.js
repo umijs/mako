@@ -254,22 +254,6 @@ function checkConfig(opts) {
       `umi config mako.${key} is not supported`,
     );
   });
-  // 支持透传给 mako 的配置
-  const supportMakoConfigKeys = [
-    'px2rem',
-    'experimental',
-    'flexBugs',
-    'moduleIdStrategy',
-    'optimization',
-  ];
-  // umi mako config
-  const { mako } = opts.config;
-  Object.keys(mako).forEach((key) => {
-    assert(
-      supportMakoConfigKeys.includes(key),
-      `umi config mako.${key} is not supported`,
-    );
-  });
   // 暂不支持 { from, to } 格式
   const { copy } = opts.config;
   if (copy) {
@@ -331,7 +315,6 @@ function checkConfig(opts) {
   // 不支持但对构建影响不明确的配置项，会统一警告
   const riskyKeys = [
     'config.autoprefixer',
-    'config.analyze',
     'config.cssPublicPath',
     'config.cssLoader',
     'config.cssLoaderModules',
