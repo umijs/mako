@@ -38,8 +38,8 @@ assert.match(
   files["index.js"].replace(/\s/g, ""),
   new RegExp(`Promise.all\\(\\[${
     [
-      "common",
       "vendors_0",
+      "common",
       "vendors_1",
       "src/should-be-split.ts",
     ].map((f) => `__mako_require__.ensure\\("${f}"\\)`).join(",")
