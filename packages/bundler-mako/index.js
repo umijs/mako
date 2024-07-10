@@ -254,6 +254,22 @@ function checkConfig(opts) {
       `umi config mako.${key} is not supported`,
     );
   });
+  // 支持透传给 mako 的配置
+  const supportMakoConfigKeys = [
+    'px2rem',
+    'experimental',
+    'flexBugs',
+    'moduleIdStrategy',
+    'optimization',
+  ];
+  // umi mako config
+  const { mako } = opts.config;
+  Object.keys(mako).forEach((key) => {
+    assert(
+      supportMakoConfigKeys.includes(key),
+      `umi config mako.${key} is not supported`,
+    );
+  });
   // 暂不支持 { from, to } 格式
   const { copy } = opts.config;
   if (copy) {
@@ -457,7 +473,7 @@ async function getMakoConfig(opts) {
     forkTSChecker,
     inlineCSS,
     makoPlugins,
-    // umi config mako
+    analyze,
     mako,
   } = opts.config;
 
@@ -625,6 +641,7 @@ async function getMakoConfig(opts) {
       plugins: opts.config.lessLoader?.plugins,
     },
     plugins: makoPlugins || [],
+    analyze: analyze || process.env.ANALYZE ? {} : undefined,
     ...mako,
   };
 
