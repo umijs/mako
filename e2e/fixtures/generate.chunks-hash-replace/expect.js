@@ -10,7 +10,7 @@ assert(
 );
 
 assert(
-  entryDistContent.includes('"src/lazy.ts":"src_lazy_ts-async.d869db5c.js"'),
+  entryDistContent.includes('"src/lazy.ts":"src_lazy_ts-async.a495b694.js"'),
   "should correctly replace async js chunk hash"
 );
 
