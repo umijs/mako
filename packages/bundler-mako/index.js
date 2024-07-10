@@ -238,6 +238,21 @@ function checkConfig(opts) {
     assert(!opts.config[key], `${key} is not supported in Mako bundler`);
   });
 
+  // 支持透传给 mako 的配置
+  const supportMakoConfigKeys = [
+    'px2rem',
+    'experimental',
+    'flexBugs',
+    'optimization',
+  ];
+  // umi mako config
+  const { mako } = opts.config;
+  Object.keys(mako).forEach((key) => {
+    assert(
+      supportMakoConfigKeys.includes(key),
+      `umi config mako.${key} is not supported`,
+    );
+  });
   // 暂不支持 { from, to } 格式
   const { copy } = opts.config;
   if (copy) {
@@ -441,7 +456,9 @@ async function getMakoConfig(opts) {
     inlineCSS,
     makoPlugins,
     analyze,
+    mako,
   } = opts.config;
+
   let { codeSplitting } = opts.config;
   // TODO:
   // 暂不支持 $ 结尾，等 resolve 支持后可以把这段去掉
@@ -607,6 +624,7 @@ async function getMakoConfig(opts) {
     },
     plugins: makoPlugins || [],
     analyze: analyze || process.env.ANALYZE ? {} : undefined,
+    ...mako,
   };
 
   return makoConfig;
