@@ -75,12 +75,12 @@ impl Plugin for CopyPlugin {
         "copy"
     }
 
-    fn build_success(&self, _stats: &StatsJsonMap, context: &Arc<Context>) -> Result<Option<()>> {
+    fn build_success(&self, _stats: &StatsJsonMap, context: &Arc<Context>) -> Result<()> {
         CopyPlugin::copy(context)?;
         if context.args.watch {
             CopyPlugin::watch(context);
         }
-        Ok(None)
+        Ok(())
     }
 }
 

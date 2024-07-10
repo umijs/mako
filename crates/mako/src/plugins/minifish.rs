@@ -172,7 +172,7 @@ impl Plugin for MinifishPlugin {
         Ok(())
     }
 
-    fn build_success(&self, _stats: &StatsJsonMap, context: &Arc<Context>) -> Result<Option<()>> {
+    fn build_success(&self, _stats: &StatsJsonMap, context: &Arc<Context>) -> Result<()> {
         if let Some(meta_path) = &self.meta_path {
             let mg = context.module_graph.read().unwrap();
 
@@ -217,7 +217,7 @@ impl Plugin for MinifishPlugin {
                 .map_err(|e| anyhow!("write meta file({}) error: {}", meta_path.display(), e))?;
         }
 
-        Ok(None)
+        Ok(())
     }
 }
 #[derive(Serialize)]

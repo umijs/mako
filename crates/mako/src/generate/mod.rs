@@ -29,6 +29,7 @@ use crate::config::{DevtoolConfig, OutputMode, TreeShakingStrategy};
 use crate::dev::update::UpdateResult;
 use crate::generate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::module::{Dependency, ModuleId};
+use crate::plugins::bundless_compiler::BundlessCompiler;
 use crate::stats::{create_stats_info, print_stats, write_stats};
 use crate::utils::base64_encode;
 use crate::visitors::async_module::mark_async;
@@ -48,8 +49,9 @@ struct ChunksUrlMap {
 }
 
 impl Compiler {
-    fn generate_with_plugin_driver(&self) -> Result<()> {
-        self.context.plugin_driver.generate(&self.context)?;
+    fn generate_bundless(&self) -> Result<()> {
+        let bundless_compiler = BundlessCompiler::new(self.context.clone());
+        bundless_compiler.generate()?;
 
         let stats = create_stats_info(0, self);
 
@@ -114,9 +116,8 @@ impl Compiler {
         }
         let t_tree_shaking = t_tree_shaking.elapsed();
 
-        // TODO: improve this hardcode
         if self.context.config.output.mode == OutputMode::Bundless {
-            return self.generate_with_plugin_driver();
+            return self.generate_bundless();
         }
 
         let t_group_chunks = Instant::now();
@@ -183,7 +184,7 @@ impl Compiler {
         let stats = create_stats_info(0, self);
 
         if self.context.config.stats.is_some() {
-            write_stats(&stats, self);
+            write_stats(&stats, &self.context.config.output.path);
         }
 
         // build_success hook
@@ -197,7 +198,7 @@ impl Compiler {
         }
 
         if self.context.config.analyze.is_some() {
-            Analyze::write_analyze(&stats, self.context.clone())?;
+            Analyze::write_analyze(&stats, &self.context.config.output.path)?;
         }
 
         debug!("generate done in {}ms", t_generate.elapsed().as_millis());
@@ -351,7 +352,7 @@ impl Compiler {
         // ref: https://github.com/umijs/mako/issues/1107
         if self.context.config.stats.is_some() {
             let stats = create_stats_info(0, self);
-            write_stats(&stats, self);
+            write_stats(&stats, &self.context.config.output.path);
         }
 
         let t_generate = t_generate.elapsed();
