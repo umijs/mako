@@ -426,7 +426,7 @@ pub struct RscClientConfig {
 #[serde(rename_all = "camelCase")]
 pub struct ExperimentalConfig {
     pub webpack_syntax_validate: Vec<String>,
-    pub enable_require_context: bool,
+    pub require_context: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -698,7 +698,7 @@ const DEFAULT_CONFIG: &str = r#"
     "inlineCSS": false,
     "rscServer": false,
     "rscClient": false,
-    "experimental": { "webpackSyntaxValidate": [], enableRequireContext: true},
+    "experimental": { "webpackSyntaxValidate": [], requireContext: true},
     "useDefineForClassFields": true,
     "watch": { "ignorePaths": [] },
     "devServer": { "host": "127.0.0.1", "port": 3000 }

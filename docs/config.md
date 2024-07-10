@@ -207,6 +207,23 @@ e.g.
 }
 ```
 
+### experimental.requireContext
+
+- Type: `bool`
+- Default: `true`
+
+Experimental configuration, to enable or disable the [`require.context`](https://webpack.js.org/guides/dependency-management/#requirecontext) feature.
+
+e.g.
+
+```json
+{
+  "experimental": {
+    "requireContext": false
+  }
+}
+```
+
 ### experimental.webpackSyntaxValidate
 
 - Type: `string[]`
@@ -221,23 +238,6 @@ e.g.
   experimental: {
     webpackSyntaxValidate: ["foo", "bar"],
   },
-}
-```
-
-### experimental.enableRequireContext
-
-- Type: `bool`
-- Default: `true`
-
-Experimental configuration, to enable or disable the [`require.context`](https://webpack.js.org/guides/dependency-management/#requirecontext) feature.
-
-e.g.
-
-```json
-{
-  "experimental": {
-    "enableRequireContext": false
-  }
 }
 ```
 

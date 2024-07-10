@@ -242,7 +242,7 @@ impl Compiler {
 
         let mut config = config;
 
-        if config.experimental.enable_require_context {
+        if config.experimental.require_context {
             plugins.push(Arc::new(plugins::require_context::RequireContextPlugin {}))
         }
 
