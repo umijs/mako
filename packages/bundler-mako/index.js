@@ -191,6 +191,7 @@ exports.dev = async function (opts) {
   const makoConfig = await getMakoConfig(opts);
   makoConfig.hmr = {};
   makoConfig.devServer = { port: hmrPort, host: opts.host };
+  makoConfig.plugins = makoConfig.plugins || [];
   makoConfig.plugins.push({
     name: 'mako-dev',
     generateEnd: (args) => {
