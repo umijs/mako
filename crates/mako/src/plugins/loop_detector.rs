@@ -15,7 +15,7 @@ impl Plugin for LoopDetector {
         "loop_detector"
     }
 
-    fn generate_beg(&self, context: &Arc<Context>) -> Result<()> {
+    fn generate_begin(&self, context: &Arc<Context>) -> Result<()> {
         if let Some(detect_loop) = &context.config.experimental.detect_loop
             && !context.args.watch
         {
