@@ -32,8 +32,11 @@ impl Plugin for LoopDetector {
                     }
                 })
                 .map(|module_ids| {
-                    let mut loop_str = module_ids
+                    let loop_end = module_ids.first().unwrap().clone();
+
+                    module_ids
                         .iter()
+                        .chain(std::iter::once(&loop_end))
                         .map(|id| {
                             let absolute_path = PathBuf::from(id.id.clone());
                             let relative_path =
@@ -42,11 +45,8 @@ impl Plugin for LoopDetector {
 
                             format!(r#""{}""#, relative_path)
                         })
-                        .collect::<Vec<_>>();
-
-                    loop_str.push(loop_str.first().unwrap().clone());
-
-                    loop_str.join(" -> ").to_string()
+                        .collect::<Vec<_>>()
+                        .join(" -> ")
                 })
                 .collect::<Vec<_>>();
 
