@@ -27,38 +27,154 @@ use crate::plugin::{Plugin, PluginTransformJsParam};
 use crate::visitors::dep_replacer::{DepReplacer, DependenciesToReplace};
 use crate::visitors::dynamic_import::DynamicImport;
 
-pub struct BundlessCompiler {}
+pub struct BundlessCompiler {
+    context: Arc<Context>,
+}
 
 impl BundlessCompiler {
-    pub fn transform_all(&self, context: &Arc<Context>) -> Result<()> {
-        let module_graph = context.module_graph.read().unwrap();
-        let module_ids = module_graph.get_module_ids();
-        drop(module_graph);
-        transform_modules(module_ids, context)?;
+    pub(crate) fn new(context: Arc<Context>) -> Self {
+        Self { context }
+    }
+
+    fn transform_all(&self) -> Result<()> {
+        crate::mako_profile_function!();
+        let module_ids = self.context.module_graph.read().unwrap().get_module_ids();
+        let context = &self.context;
+
+        module_ids
+            .par_iter()
+            .map(|module_id| {
+                let module_graph = context.module_graph.read().unwrap();
+                let deps = module_graph.get_dependencies(module_id);
+
+                let module_dist_path = to_dist_path(&module_id.id, context)
+                    .parent()
+                    .unwrap()
+                    .to_path_buf();
+
+                let resolved_deps = deps
+                    .clone()
+                    .into_iter()
+                    // .map(|(id, dep)| (dep.source.clone(), id.generate(context)))
+                    .map(|(id, dep)| {
+                        let dep_dist_path = to_dist_path(&id.id, context);
+
+                        let rel_path =
+                            diff_paths(&dep_dist_path, &module_dist_path).ok_or_else(|| {
+                                anyhow!(
+                                    "failed to get relative path from {:?} to {:?}",
+                                    dep_dist_path,
+                                    module_dist_path
+                                )
+                            })?;
+
+                        let rel_path = normalize_extension(rel_path);
+
+                        let replacement: String = {
+                            let mut to_path = rel_path.to_str().unwrap().to_string();
+                            if to_path.starts_with("./") || to_path.starts_with("../") {
+                                to_path
+                            } else {
+                                to_path.insert_str(0, "./");
+                                to_path
+                            }
+                        };
+
+                        Ok((dep.source.clone(), (replacement.clone(), replacement)))
+                    })
+                    .collect::<Result<Vec<_>>>();
+
+                let resolved_deps: HashMap<String, (String, String)> =
+                    resolved_deps?.into_iter().collect();
+
+                drop(module_graph);
+
+                // let deps: Vec<(&ModuleId, &crate::module::Dependency)> =
+                //     module_graph.get_dependencies(module_id);
+                let mut module_graph = context.module_graph.write().unwrap();
+                let module = module_graph.get_module_mut(module_id).unwrap();
+                let info = module.info.as_mut().unwrap();
+                let ast = &mut info.ast;
+
+                let deps_to_replace = DependenciesToReplace {
+                    resolved: resolved_deps,
+                    missing: info.deps.missing_deps.clone(),
+                };
+
+                if let ModuleAst::Script(ast) = ast {
+                    transform_js_generate(
+                        &module.id,
+                        context,
+                        ast,
+                        &deps_to_replace,
+                        module.is_entry,
+                    );
+                }
+
+                Ok(())
+            })
+            .collect::<Result<Vec<_>>>()?;
         Ok(())
     }
 
-    pub fn write_to_dist<P: AsRef<std::path::Path>, C: AsRef<[u8]>>(
-        &self,
-        filename: P,
-        content: C,
-        context: &Arc<Context>,
-    ) {
-        let to = context.config.output.path.join(&filename);
+    fn write_to_dist<P: AsRef<std::path::Path>, C: AsRef<[u8]>>(&self, filename: P, content: C) {
+        let to = self.context.config.output.path.join(&filename);
         let to = normalize_extension(to);
 
-        context
+        self.context
             .plugin_driver
             .before_write_fs(&to, content.as_ref())
             .unwrap();
 
-        if !context.config.output.skip_write {
+        if !self.context.config.output.skip_write {
             fs::write(to, content).unwrap();
         }
     }
+
+    pub(crate) fn generate(&self) -> Result<()> {
+        self.transform_all()?;
+
+        let mg = self.context.module_graph.read().unwrap();
+
+        let ids = mg.get_module_ids();
+
+        // TODO try tokio fs later
+        ids.iter().for_each(|id| {
+            let target = to_dist_path(&id.id, &self.context);
+            create_dir_all(target.parent().unwrap()).unwrap();
+        });
+
+        ids.par_iter().for_each(|id| {
+            let module = mg.get_module(id).expect("module not exits");
+
+            let info = module.info.as_ref().expect("module info missing");
+
+            match &info.ast {
+                ModuleAst::Script(js_ast) => {
+                    if module.id.id.ends_with(".json") {
+                        // nothing
+                        // todo: generate resolved AJSON
+                    } else {
+                        let code = js_ast.generate(self.context.clone()).unwrap().code;
+                        let target = to_dist_path(&id.id, &self.context);
+                        self.write_to_dist(target, code);
+                    }
+                }
+                ModuleAst::Css(_style) => {}
+                ModuleAst::None => {
+                    let target = to_dist_path(&id.id, &self.context);
+                    self.write_to_dist(target, &info.raw);
+                }
+            }
+        });
+
+        Ok(())
+    }
 }
 
-impl Plugin for BundlessCompiler {
+pub struct BundlessCompilerPlugin {}
+
+impl Plugin for BundlessCompilerPlugin {
     fn name(&self) -> &str {
         "bundless_compiler"
     }
@@ -74,119 +190,6 @@ impl Plugin for BundlessCompiler {
 
         Ok(())
     }
-
-    fn generate(&self, context: &Arc<Context>) -> Result<Option<()>> {
-        self.transform_all(context)?;
-
-        let mg = context.module_graph.read().unwrap();
-
-        let ids = mg.get_module_ids();
-
-        // TODO try tokio fs later
-        ids.iter().for_each(|id| {
-            let target = to_dist_path(&id.id, context);
-            create_dir_all(target.parent().unwrap()).unwrap();
-        });
-
-        ids.par_iter().for_each(|id| {
-            let module = mg.get_module(id).expect("module not exits");
-
-            let info = module.info.as_ref().expect("module info missing");
-
-            match &info.ast {
-                ModuleAst::Script(js_ast) => {
-                    if module.id.id.ends_with(".json") {
-                        // nothing
-                        // todo: generate resolved AJSON
-                    } else {
-                        let code = js_ast.generate(context.clone()).unwrap().code;
-                        let target = to_dist_path(&id.id, context);
-                        self.write_to_dist(target, code, context);
-                    }
-                }
-                ModuleAst::Css(_style) => {}
-                ModuleAst::None => {
-                    let target = to_dist_path(&id.id, context);
-                    self.write_to_dist(target, &info.raw, context);
-                }
-            }
-        });
-
-        Ok(Some(()))
-    }
-}
-
-fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> Result<()> {
-    crate::mako_profile_function!();
-
-    module_ids
-        .par_iter()
-        .map(|module_id| {
-            let module_graph = context.module_graph.read().unwrap();
-            let deps = module_graph.get_dependencies(module_id);
-
-            let module_dist_path = to_dist_path(&module_id.id, context)
-                .parent()
-                .unwrap()
-                .to_path_buf();
-
-            let resolved_deps = deps
-                .clone()
-                .into_iter()
-                // .map(|(id, dep)| (dep.source.clone(), id.generate(context)))
-                .map(|(id, dep)| {
-                    let dep_dist_path = to_dist_path(&id.id, context);
-
-                    let rel_path =
-                        diff_paths(&dep_dist_path, &module_dist_path).ok_or_else(|| {
-                            anyhow!(
-                                "failed to get relative path from {:?} to {:?}",
-                                dep_dist_path,
-                                module_dist_path
-                            )
-                        })?;
-
-                    let rel_path = normalize_extension(rel_path);
-
-                    let replacement: String = {
-                        let mut to_path = rel_path.to_str().unwrap().to_string();
-                        if to_path.starts_with("./") || to_path.starts_with("../") {
-                            to_path
-                        } else {
-                            to_path.insert_str(0, "./");
-                            to_path
-                        }
-                    };
-
-                    Ok((dep.source.clone(), (replacement.clone(), replacement)))
-                })
-                .collect::<Result<Vec<_>>>();
-
-            let resolved_deps: HashMap<String, (String, String)> =
-                resolved_deps?.into_iter().collect();
-
-            drop(module_graph);
-
-            // let deps: Vec<(&ModuleId, &crate::module::Dependency)> =
-            //     module_graph.get_dependencies(module_id);
-            let mut module_graph = context.module_graph.write().unwrap();
-            let module = module_graph.get_module_mut(module_id).unwrap();
-            let info = module.info.as_mut().unwrap();
-            let ast = &mut info.ast;
-
-            let deps_to_replace = DependenciesToReplace {
-                resolved: resolved_deps,
-                missing: info.deps.missing_deps.clone(),
-            };
-
-            if let ModuleAst::Script(ast) = ast {
-                transform_js_generate(&module.id, context, ast, &deps_to_replace, module.is_entry);
-            }
-
-            Ok(())
-        })
-        .collect::<Result<Vec<_>>>()?;
-    Ok(())
 }
 
 fn transform_js_generate(

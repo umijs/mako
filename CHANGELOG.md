@@ -1,4 +1,29 @@
 
+## 0.7.5
+
+`2024-07-11`
+
+- New: Added console warning for HMR if React is external by [@PeachScript](https://github.com/PeachScript) in [#1354](https://github.com/umijs/mako/pull/1354)
+- New: CLI now supports custom project names by [@kiner-tang](https://github.com/kiner-tang) in [#1340](https://github.com/umijs/mako/pull/1340)
+- New: Upgraded hyper-staticfile to fix JS file charset issues by [@whyer11](https://github.com/whyer11) in [#1363](https://github.com/umijs/mako/pull/1363)
+- New: CLI now checks if there are existing files in the current directory by [@liangchaofei](https://github.com/liangchaofei) in [#1368](https://github.com/umijs/mako/pull/1368)
+- New: Support for selecting templates from the templates directory by [@kiner-tang](https://github.com/kiner-tang) in [#1370](https://github.com/umijs/mako/pull/1370)
+- New: px2rem now supports selectorDoubleRemList by [@xiaohuoni](https://github.com/xiaohuoni) in [#1336](https://github.com/umijs/mako/pull/1336)
+- New: Pass umi configuration to mako by [@xiaohuoni](https://github.com/xiaohuoni) in [#1394](https://github.com/umijs/mako/pull/1394)
+- Improvement: More idiomatic and concise SWC AST generation by [@stormslowly](https://github.com/stormslowly) in [#1372](https://github.com/umijs/mako/pull/1372)
+- Improvement: Clearer code logic and types by [@xusd320](https://github.com/xusd320) in [#1397](https://github.com/umijs/mako/pull/1397)
+- Fix: Decoded paths for less plugin by [@stormslowly](https://github.com/stormslowly) in [#1360](https://github.com/umijs/mako/pull/1360)
+- Fix: Stringifying object values causing panic by [@xusd320](https://github.com/xusd320) in [#1349](https://github.com/umijs/mako/pull/1349)
+- Fix: HMR does not support React.lazy + import() components by [@sorrycc](https://github.com/sorrycc) in [#1369](https://github.com/umijs/mako/pull/1369)
+- Fix: Corrected spelling mistakes by [@kiner-tang](https://github.com/kiner-tang) in [#1371](https://github.com/umijs/mako/pull/1371)
+- Fix: pnpm installation issues by [@sorrycc](https://github.com/sorrycc) in [#1376](https://github.com/umijs/mako/pull/1376)
+- Fix: Unstable entry hash by [@stormslowly](https://github.com/stormslowly) in [#1374](https://github.com/umijs/mako/pull/1374)
+- Fix: analyze not working in umi by [@sorrycc](https://github.com/sorrycc) in [#1387](https://github.com/umijs/mako/pull/1387)
+- Fix: Loss of CSS order after sorting dependencies alphabetically by [@xusd320](https://github.com/xusd320) in [#1391](https://github.com/umijs/mako/pull/1391)
+- Fix: Should check reserved words after preset_env by [@Jinbao1001](https://github.com/Jinbao1001) in [#1367](https://github.com/umijs/mako/pull/1367)
+- Fix: commonjs might lack use strict directive by [@Jinbao1001](https://github.com/Jinbao1001) in [#1386](https://github.com/umijs/mako/pull/1386)
+
+
 ## 0.7.4
 
 `2024-07-02`

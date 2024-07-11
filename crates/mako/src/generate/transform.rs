@@ -9,14 +9,12 @@ use swc_core::common::errors::HANDLER;
 use swc_core::common::GLOBALS;
 use swc_core::css::ast;
 use swc_core::css::visit::VisitMutWith as CSSVisitMutWith;
-use swc_core::ecma::transforms::base::feature::FeatureFlag;
 use swc_core::ecma::transforms::base::fixer::fixer;
 use swc_core::ecma::transforms::base::helpers::{inject_helpers, Helpers, HELPERS};
 use swc_core::ecma::transforms::base::hygiene;
 use swc_core::ecma::transforms::base::hygiene::hygiene_with_config;
-use swc_core::ecma::transforms::module::common_js;
 use swc_core::ecma::transforms::module::import_analysis::import_analyzer;
-use swc_core::ecma::transforms::module::util::{Config, ImportInterop};
+use swc_core::ecma::transforms::module::util::ImportInterop;
 use swc_core::ecma::visit::VisitMutWith;
 use swc_error_reporters::handler::try_with_handler;
 use tracing::debug;
@@ -26,6 +24,7 @@ use crate::compiler::{Compiler, Context};
 use crate::module::{Dependency, ModuleAst, ModuleId, ModuleType, ResolveType};
 use crate::utils::thread_pool;
 use crate::visitors::async_module::{mark_async, AsyncModule};
+use crate::visitors::common_js::common_js;
 use crate::visitors::css_imports::CSSImports;
 use crate::visitors::dep_replacer::{DepReplacer, DependenciesToReplace};
 use crate::visitors::dynamic_import::DynamicImport;
@@ -197,27 +196,9 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()>
                         ast.ast.visit_mut_with(&mut inject_helpers(unresolved_mark));
 
                         ast.ast.visit_mut_with(&mut common_js(
+                            context.clone(),
                             unresolved_mark,
-                            Config {
-                                import_interop: Some(import_interop),
-                                // NOTE: 这里后面要调整为注入自定义require
-                                ignore_dynamic: true,
-                                preserve_import_meta: true,
-                                // TODO: set to false when esm
-                                allow_top_level_this: true,
-                                strict_mode: false,
-                                ..Default::default()
-                            },
-                            FeatureFlag::empty(),
-                            Some(
-                                context
-                                    .meta
-                                    .script
-                                    .origin_comments
-                                    .read()
-                                    .unwrap()
-                                    .get_swc_comments(),
-                            ),
+                            import_interop,
                         ));
 
                         ast.ast.visit_mut_with(&mut OptimizeDefineUtils {

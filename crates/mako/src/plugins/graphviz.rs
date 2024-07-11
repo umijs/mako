@@ -35,7 +35,7 @@ impl Plugin for Graphviz {
         "graphviz"
     }
 
-    fn generate_beg(&self, context: &Arc<Context>) -> Result<()> {
+    fn generate_begin(&self, context: &Arc<Context>) -> Result<()> {
         Graphviz::write_graph(
             context.root.join("_mako_module_graph_origin.dot"),
             &context.module_graph.read().unwrap().graph,
@@ -55,7 +55,7 @@ impl Plugin for Graphviz {
         &self,
         _params: &PluginGenerateEndParams,
         context: &Arc<Context>,
-    ) -> Result<Option<()>> {
+    ) -> Result<()> {
         Graphviz::write_graph(
             context.root.join("_mako_chunk_graph_finale.dot"),
             &context.chunk_graph.read().unwrap().graph,
@@ -66,6 +66,6 @@ impl Plugin for Graphviz {
             &context.module_graph.read().unwrap().graph,
         )?;
 
-        Ok(None)
+        Ok(())
     }
 }

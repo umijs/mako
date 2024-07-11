@@ -453,7 +453,7 @@ module.export = Promise.all(
         Ok(())
     }
 
-    fn build_start(&self, context: &Arc<Context>) -> Result<Option<()>> {
+    fn build_start(&self, context: &Arc<Context>) -> Result<()> {
         if let Some(content) = self.load_cached_state(context) {
             let mut state = self.cached_state.lock().unwrap();
             *state = content;
@@ -461,7 +461,7 @@ module.export = Promise.all(
 
         self.current_state.lock().unwrap().config_hash = Self::config_hash(&context.config);
 
-        Ok(None)
+        Ok(())
     }
 
     fn runtime_plugins(&self, _context: &Arc<Context>) -> Result<Vec<String>> {
