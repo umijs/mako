@@ -240,6 +240,7 @@ function checkConfig(opts) {
 
   // 支持透传给 mako 的配置
   const supportMakoConfigKeys = [
+    'plugins',
     'px2rem',
     'experimental',
     'flexBugs',
@@ -454,7 +455,6 @@ async function getMakoConfig(opts) {
     clean,
     forkTSChecker,
     inlineCSS,
-    makoPlugins,
     analyze,
     mako,
   } = opts.config;
@@ -622,7 +622,6 @@ async function getMakoConfig(opts) {
       math: opts.config.lessLoader?.math,
       plugins: opts.config.lessLoader?.plugins,
     },
-    plugins: makoPlugins || [],
     analyze: analyze || process.env.ANALYZE ? {} : undefined,
     ...mako,
   };
