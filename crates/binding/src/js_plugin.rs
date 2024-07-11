@@ -16,7 +16,7 @@ impl Plugin for JsPlugin {
         "js_plugin"
     }
 
-    fn build_start(&self, _context: &Arc<Context>) -> Result<Option<()>> {
+    fn build_start(&self, _context: &Arc<Context>) -> Result<()> {
         if let Some(hook) = &self.hooks.build_start {
             let (tx, rx) = mpsc::channel::<napi::Result<()>>();
             hook.call(
@@ -26,7 +26,7 @@ impl Plugin for JsPlugin {
             rx.recv()
                 .unwrap_or_else(|e| panic!("recv error: {:?}", e.to_string()))?;
         }
-        Ok(None)
+        Ok(())
     }
 
     fn load(&self, param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
@@ -64,11 +64,7 @@ impl Plugin for JsPlugin {
         Ok(None)
     }
 
-    fn generate_end(
-        &self,
-        param: &PluginGenerateEndParams,
-        _context: &Arc<Context>,
-    ) -> Result<Option<()>> {
+    fn generate_end(&self, param: &PluginGenerateEndParams, _context: &Arc<Context>) -> Result<()> {
         if let Some(hook) = &self.hooks.generate_end {
             let (tx, rx) = mpsc::channel::<napi::Result<()>>();
             hook.call(
@@ -81,7 +77,7 @@ impl Plugin for JsPlugin {
             rx.recv()
                 .unwrap_or_else(|e| panic!("recv error: {:?}", e.to_string()))?;
         }
-        Ok(None)
+        Ok(())
     }
 
     fn before_write_fs(&self, path: &std::path::Path, content: &[u8]) -> Result<()> {
