@@ -19,11 +19,8 @@ function replaceText(to_replace: string) {
 }
 
 let cwd = process.cwd();
-let changelogPaths = [
-  'CHANGELOG.md',
-  'CHANGELOG_zh-CN.md',
-]
-changelogPaths.forEach(changelogPath => {
+let changelogPaths = ['CHANGELOG.md', 'CHANGELOG_zh-CN.md'];
+changelogPaths.forEach((changelogPath) => {
   changelogPath = path.join(cwd, changelogPath);
   const content = fs.readFileSync(changelogPath, 'utf-8');
   const newContent = replaceText(content);
