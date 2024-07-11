@@ -429,7 +429,7 @@ pub struct RscClientConfig {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct DetectLoop {
-    pub skip_node_modules: bool,
+    pub ignore_node_modules: bool,
     pub graphviz: bool,
 }
 
@@ -714,7 +714,7 @@ const DEFAULT_CONFIG: &str = r#"
     "experimental": {
       "webpackSyntaxValidate": [], 
       "requireContext": true, 
-      "detectLoop": { "skipNodeModules": true, "graphviz": false }
+      "detectLoop": { "ignoreNodeModules": true, "graphviz": false }
     },
     "useDefineForClassFields": true,
     "watch": { "ignorePaths": [] },

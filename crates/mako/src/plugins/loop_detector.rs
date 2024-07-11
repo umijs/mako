@@ -25,7 +25,7 @@ impl Plugin for LoopDetector {
             let loop_lines = loops
                 .iter()
                 .filter(|ids| {
-                    if detect_loop.skip_node_modules {
+                    if detect_loop.ignore_node_modules {
                         !ids.iter().any(|id| id.id.contains("node_modules"))
                     } else {
                         true
