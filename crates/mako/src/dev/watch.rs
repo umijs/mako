@@ -117,19 +117,18 @@ impl<'a> Watcher<'a> {
     }
 
     fn get_ignore_list(&self, ignore_list_args: IgnoreListArgs) -> Vec<PathBuf> {
-        let mut ignore_list: Vec<&str> = vec![".git", "node_modules", ".DS_Store", ".node"];
+        let mut ignore_list: Vec<&str> = vec![".git", ".DS_Store", ".node"];
+        let overrides_ignore_list = vec!["node_modules"];
         if ignore_list_args.with_output_dir {
             ignore_list.push(self.compiler.context.config.output.path.to_str().unwrap());
         }
-        ignore_list.extend(
-            self.compiler
-                .context
-                .config
-                .watch
-                .ignore_paths
-                .iter()
-                .map(|p: &String| p.as_str()),
-        );
+        let config_ignore_path = &self.compiler.context.config.watch.ignore_paths;
+        if config_ignore_path.is_empty() {
+            ignore_list.extend(overrides_ignore_list);
+        } else {
+            ignore_list.extend(config_ignore_path.iter().map(|p: &String| p.as_str()));
+        }
+
         if ignore_list_args.with_node_modules {
             ignore_list.retain(|&item| item != "node_modules");
             return ignore_list.into_iter().map(PathBuf::from).collect();
