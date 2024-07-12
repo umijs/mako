@@ -33,6 +33,7 @@ use crate::visitors::dynamic_import_to_require::DynamicImportToRequire;
 use crate::visitors::env_replacer::{build_env_map, EnvReplacer};
 use crate::visitors::fix_helper_inject_position::FixHelperInjectPosition;
 use crate::visitors::fix_symbol_conflict::FixSymbolConflict;
+use crate::visitors::import_template_to_string_literal::ImportTemplateToStringLiteral;
 use crate::visitors::new_url_assets::NewUrlAssets;
 use crate::visitors::provide::Provide;
 use crate::visitors::react::react;
@@ -141,6 +142,7 @@ impl Transform {
                     }));
                     // TODO: move ContextModuleVisitor out of plugin
                     visitors.push(Box::new(ContextModuleVisitor { unresolved_mark }));
+                    visitors.push(Box::new(ImportTemplateToStringLiteral {}));
                     // DynamicImportToRequire must be after ContextModuleVisitor
                     // since ContextModuleVisitor will add extra dynamic imports
                     if context.config.dynamic_import_to_require {

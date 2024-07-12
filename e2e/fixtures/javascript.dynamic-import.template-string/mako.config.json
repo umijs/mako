@@ -1,0 +1,11 @@
+{
+  "entry": {
+    "index": "./index.js"
+  },
+  "optimization": {
+    "skipModules": false,
+    "concatenateModules": false
+  },
+  "platform": "node",
+  "chunkLoadingGlobal": "dynamic_import_async_module"
+}
