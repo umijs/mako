@@ -343,9 +343,13 @@ fn chunk_map_decls(
 }
 
 fn to_object_lit(value: &HashMap<String, String>) -> ObjectLit {
-    let props = value
-        .iter()
-        .map(|(k, v)| {
+    let mut keys = value.keys().collect::<Vec<_>>();
+    keys.sort();
+
+    let props = keys
+        .into_iter()
+        .map(|k| {
+            let v = value.get(k).unwrap();
             Prop::KeyValue(KeyValueProp {
                 key: quote_str!(k.clone()).into(),
                 value: quote_str!(v.clone()).into(),
