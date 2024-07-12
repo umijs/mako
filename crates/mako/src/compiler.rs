@@ -242,8 +242,15 @@ impl Compiler {
 
         let mut config = config;
 
+        if config.experimental.require_context {
+            plugins.push(Arc::new(plugins::require_context::RequireContextPlugin {}))
+        }
+
         if config.output.mode == OutputMode::Bundless {
-            plugins.insert(0, Arc::new(plugins::bundless_compiler::BundlessCompiler {}));
+            plugins.insert(
+                0,
+                Arc::new(plugins::bundless_compiler::BundlessCompilerPlugin {}),
+            );
         }
 
         if std::env::var("DEBUG_GRAPH").is_ok_and(|v| v == "true") {

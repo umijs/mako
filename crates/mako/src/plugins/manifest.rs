@@ -21,7 +21,7 @@ impl Plugin for ManifestPlugin {
         "manifest"
     }
 
-    fn build_success(&self, _stats: &StatsJsonMap, context: &Arc<Context>) -> Result<Option<()>> {
+    fn build_success(&self, _stats: &StatsJsonMap, context: &Arc<Context>) -> Result<()> {
         if let Some(manifest_config) = &context.config.manifest {
             let assets = &context.stats_info.get_assets();
             let mut manifest: BTreeMap<String, String> = BTreeMap::new();
@@ -41,7 +41,7 @@ impl Plugin for ManifestPlugin {
 
             fs::write(output_path, manifest_json).unwrap();
         }
-        Ok(None)
+        Ok(())
     }
 }
 

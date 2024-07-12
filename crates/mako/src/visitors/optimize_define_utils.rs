@@ -1,6 +1,6 @@
 use swc_core::common::{Mark, DUMMY_SP};
-use swc_core::ecma::ast::{CallExpr, Expr, ExprOrSpread, Lit, ModuleItem};
-use swc_core::ecma::utils::{member_expr, IsDirective};
+use swc_core::ecma::ast::{CallExpr, Expr, ExprOrSpread, ExprStmt, Lit, ModuleItem, Stmt, Str};
+use swc_core::ecma::utils::member_expr;
 use swc_core::ecma::visit::VisitMut;
 
 // TODO: add testcases
@@ -8,20 +8,18 @@ pub struct OptimizeDefineUtils {
     pub top_level_mark: Mark,
     pub unresolved_mark: Mark,
 }
-
 impl VisitMut for OptimizeDefineUtils {
     fn visit_mut_module_items(&mut self, items: &mut Vec<ModuleItem>) {
         let mut no_directive_index = 0;
         for (index, item) in items.iter().enumerate() {
             if let Some(stmt) = item.as_stmt()
-                && stmt.is_directive()
+                && is_stmt_directive(stmt)
             {
                 no_directive_index = index + 1
             } else {
                 break;
             }
         }
-
         let mut iter = items.iter_mut().skip(no_directive_index);
 
         if let Some(item) = iter.next()
@@ -155,4 +153,36 @@ fn is_string_lit_arg_with_value(arg: Option<&ExprOrSpread>, value: &str) -> bool
 fn is_obj_lit_arg(arg: Option<&ExprOrSpread>) -> bool {
     arg.map(|arg| arg.spread.is_none() && arg.expr.as_object().map(|_| true).unwrap_or(false))
         .unwrap_or(false)
+}
+
+fn is_stmt_directive(stmt: &Stmt) -> bool {
+    if let Stmt::Expr(ExprStmt {
+        expr: box Expr::Lit(Lit::Str(Str { value, .. })),
+        ..
+    }) = stmt
+    {
+        value.starts_with("use ")
+    } else {
+        false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ast::tests::TestUtils;
+
+    #[test]
+    fn test_is_stmt_directive() {
+        let tu = TestUtils::gen_js_ast(
+            r#"
+        "use strict";
+        let a= 1;
+        "#,
+        );
+        let ast = tu.ast.js();
+        let use_strict_stmt = ast.ast.body[0].as_stmt().unwrap();
+
+        assert!(is_stmt_directive(use_strict_stmt));
+    }
 }

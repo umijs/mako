@@ -207,6 +207,23 @@ e.g.
 }
 ```
 
+### experimental.requireContext
+
+- Type: `bool`
+- Default: `true`
+
+Experimental configuration, to enable or disable the [`require.context`](https://webpack.js.org/guides/dependency-management/#requirecontext) feature.
+
+e.g.
+
+```json
+{
+  "experimental": {
+    "requireContext": false
+  }
+}
+```
+
 ### experimental.webpackSyntaxValidate
 
 - Type: `string[]`
@@ -495,7 +512,7 @@ publicPath configuration. Note: There is a special value `"runtime"`, which mean
 
 ### px2rem
 
-- Type: `false | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[], selectorWhiteList?: string[], minPixelValue?: number }`
+- Type: `false | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[], selectorWhiteList?: string[], selectorDoubleList?: string[], minPixelValue?: number }`
 - Default: `false`
 
 Whether to enable px2rem conversion.
@@ -505,6 +522,7 @@ Whether to enable px2rem conversion.
 - `propWhiteList`, property white list
 - `selectorBlackList`, selector black list
 - `selectorWhiteList`, selector white list
+- `selectorDoubleList`, selector double rem list
 - `minPixelValue`，minimum pixel value, default is `0`
 
 ### react

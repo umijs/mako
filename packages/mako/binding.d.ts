@@ -104,6 +104,7 @@ export interface BuildParams {
           propWhiteList?: string[];
           selectorBlackList?: string[];
           selectorWhiteList?: string[];
+          selectorDoubleList?: string[];
         };
     stats?: boolean;
     hash?: boolean;

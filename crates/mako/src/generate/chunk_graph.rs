@@ -111,15 +111,11 @@ impl ChunkGraph {
 
     pub fn sync_dependencies_chunk(&self, chunk_id: &ChunkId) -> Vec<ChunkId> {
         let idx = self.id_index_map.get(chunk_id).unwrap();
-        let mut chunk_ids = self
-            .graph
+        self.graph
             .neighbors_directed(*idx, Direction::Outgoing)
             .filter(|idx| matches!(self.graph[*idx].chunk_type, ChunkType::Sync))
             .map(|idx| self.graph[idx].id.clone())
-            .collect::<Vec<ChunkId>>();
-
-        chunk_ids.sort_by(|id1, id2| id1.id.cmp(&id2.id));
-        chunk_ids
+            .collect::<Vec<ChunkId>>()
     }
 
     pub fn entry_dependencies_chunk(&self, chunk_id: &ChunkId) -> Vec<ChunkId> {
