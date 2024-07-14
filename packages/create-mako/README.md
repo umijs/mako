@@ -1,3 +1,20 @@
-# @umijs/mako
+# create-mako
 
-。
+Create a new project by selecting one of the built-in templates that uses mako as the build tool.
+
+## Quick Overview
+
+Create a new project by following command:
+
+```bash
+# create new project by mako
+yarn create mako
+```
+
+![img1](https://private-user-images.githubusercontent.com/10286961/345647180-1078be92-52e9-41a0-9f25-1ab68e96b5d0.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3MjA4Njc3MDAsIm5iZiI6MTcyMDg2NzQwMCwicGF0aCI6Ii8xMDI4Njk2MS8zNDU2NDcxODAtMTA3OGJlOTItNTJlOS00MWEwLTlmMjUtMWFiNjhlOTZiNWQwLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNDA3MTMlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjQwNzEzVDEwNDMyMFomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPWI1ZjI2OTkyYjE0YmM1ZDhmYmMzMjI4OTk2OWZkYzQ2OTcwNTQ2NDNhYjIyNzVmZTM1MDAxNzRhOGI5MDNlOWUmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JmFjdG9yX2lkPTAma2V5X2lkPTAmcmVwb19pZD0wIn0.OshPo0Y1oeS3m2DkeYlbhqZkq8eQOky47-kXRP-cY8A)
+
+You can also create a project with more precise arguments:
+
+```bash
+yarn create mako your-project-name --template=react
+```
