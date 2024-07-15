@@ -208,7 +208,7 @@ e.g.
 ```
 ### experimental.detectLoop
 
-- Type: `false| { "ignoreNodeModules": bool, "graphviz": bool } `
+- Type: `false| { "ignoreNodeModules": bool, "graphviz": bool }`
 - Default: `{ "ignoreNodeModules": true, "graphviz": false }`
 
 Experimental configuration for generating dependence loop info. `false` to disable the feature.
