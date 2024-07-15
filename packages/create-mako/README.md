@@ -11,7 +11,8 @@ Create a new project by following command:
 yarn create mako
 ```
 
-![](https://img.alicdn.com/imgextra/i2/O1CN01bcncrE1a6kSpWiEhb_!!6000000003281-0-tps-1976-168.jpg)
+![image](https://github.com/user-attachments/assets/5be2d98d-9636-4ffe-ac30-da37af5784d2)
+
 
 You can also create a project with more precise arguments:
 
