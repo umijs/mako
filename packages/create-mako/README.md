@@ -9,9 +9,12 @@ Create a new project by following command:
 ```bash
 # create new project by mako
 yarn create mako
-```
 
-![image](https://github.com/user-attachments/assets/5be2d98d-9636-4ffe-ac30-da37af5784d2)
+# ? Project name: mako-project
+# ? Select a template: (Use arrow keys)
+#   umi 
+# ❯ react 
+```
 
 
 You can also create a project with more precise arguments:
