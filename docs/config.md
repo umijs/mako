@@ -14,7 +14,7 @@ e.g.
 }
 ```
 
-Notice: When you're using mako with Umi, prefer to config the bundler in `.umirc.ts` or `config/config.ts` file.
+Notice: When you're using Mako with Umi, prefer to config the bundler in `.umirc.ts` or `config/config.ts` file.
 
 ## Configuration items
 
