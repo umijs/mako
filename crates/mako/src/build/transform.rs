@@ -158,10 +158,12 @@ impl Transform {
 
                     // folders
                     let mut folders: Vec<Box<dyn Fold>> = vec![];
-                    // decorators should go before preset_env, when compile down to es5, classes become functions, then the decorators on the functions will be removed silently.
+                    // decorators should go before preset_env, when compile down to es5,
+                    // classes become functions, then the decorators on the functions
+                    // will be removed silently.
                     folders.push(Box::new(decorators(decorators::Config {
                         legacy: true,
-                        emit_metadata: false,
+                        emit_metadata: context.config.emit_decorator_metadata,
                         ..Default::default()
                     })));
                     let comments = origin_comments.get_swc_comments().clone();

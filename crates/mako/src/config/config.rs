@@ -545,6 +545,7 @@ pub struct Config {
     pub experimental: ExperimentalConfig,
     pub watch: WatchConfig,
     pub use_define_for_class_fields: bool,
+    pub emit_decorator_metadata: bool,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
@@ -717,6 +718,7 @@ const DEFAULT_CONFIG: &str = r#"
       "detectLoop": { "ignoreNodeModules": true, "graphviz": false }
     },
     "useDefineForClassFields": true,
+    "emitDecoratorMetadata": false,
     "watch": { "ignorePaths": [] },
     "devServer": { "host": "127.0.0.1", "port": 3000 }
 }

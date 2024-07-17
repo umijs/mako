@@ -182,6 +182,13 @@ import("./a.js");
 
 Whether to output assets files. Usually set to `false` when building a pure server-side rendering project, because assets files are not needed at this time.
 
+### emitDecoratorMetadata
+
+- Type: `boolean`
+- Default: `false`
+
+Whether to emit decorator metadata.
+
 ### emotion
 
 - Type: `boolean`
@@ -691,7 +698,7 @@ Whether to output umd format.
 ### useDefineForClassFields
 
 - Type: `boolean`
-- Default: `false`
+- Default: `true`
 
 Whether to use `defineProperty` to define class fields.
 
