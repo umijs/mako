@@ -26,24 +26,6 @@ pub fn optimize_modules(module_graph: &mut ModuleGraph, context: &Arc<Context>) 
         module_graph.toposort()
     };
 
-    #[cfg(debug_assertions)]
-    {
-        use tracing::debug;
-        if !_cyclic_modules.is_empty() {
-            debug!("{} cycles in project", _cyclic_modules.len());
-
-            for circle in &_cyclic_modules {
-                let circle_str = circle
-                    .iter()
-                    .map(|i| i.id.clone())
-                    .collect::<Vec<_>>()
-                    .join("\n");
-
-                debug!("{}:\n{}", circle.len(), circle_str);
-            }
-        }
-    }
-
     let mut tree_shake_modules_ids = vec![];
     let mut tree_shake_modules_map = std::collections::HashMap::new();
 

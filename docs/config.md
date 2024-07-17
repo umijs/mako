@@ -206,6 +206,28 @@ e.g.
   },
 }
 ```
+### experimental.detectLoop
+
+- Type: `false| { "ignoreNodeModules": bool, "graphviz": bool }`
+- Default: `{ "ignoreNodeModules": true, "graphviz": false }`
+
+Experimental configuration for generating dependence loop info. `false` to disable the feature.
+
+Options:
+
+- `ignoreNodeModules` to ignore dependence loops which contains files from  node_modules.
+- `graphviz` to generate a graphviz dot file named `_mako_loop_detector.dot` at root of project for visualizing dependence loops.
+
+e.g.
+
+```json
+{
+  "experimental": {
+    "ignoreNodeModules": false,
+    "graphviz": true
+  }
+}
+```
 
 ### experimental.requireContext
 
