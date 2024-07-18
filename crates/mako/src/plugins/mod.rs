@@ -8,7 +8,7 @@ pub mod hmr_runtime;
 pub mod ignore;
 pub mod import;
 pub mod invalid_webpack_syntax;
-pub mod loop_detector;
+pub mod loop_circular_dependence;
 pub mod manifest;
 pub mod minifish;
 pub mod require_context;
