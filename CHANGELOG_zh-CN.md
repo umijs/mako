@@ -1,3 +1,16 @@
+## 0.7.6
+
+`2024-07-18`
+
+- 新增: `create-mako` 增加 Umi 模板 by [@kiner-tang](https://github.com/kiner-tang) in https://github.com/umijs/mako/pull/1408
+- 新增: 支持检测模块循环依赖 by [@stormslowly](https://github.com/stormslowly) in https://github.com/umijs/mako/pull/1401
+- 新增: 支持 `emitDecoratorMetadata` 配置项 by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1420
+- 新增: 支持在 CLI 传递 `mode` 值时使用缩写，例如 "prod" by [@stormslowly](https://github.com/stormslowly) in https://github.com/umijs/mako/pull/1419
+- 修复: `mako.plugins` 不生效的问题 by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1400
+- 修复: `plugins` 配置项不存在时报错的问题 by [@xierenyuan](https://github.com/xierenyuan) in https://github.com/umijs/mako/pull/1402
+- 修复: 动态 import 不支持使用模板字符串的问题 by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1405
+- 修复: node_modules 下的文件变更不会触发热更新的问题 by [@Jinbao1001](https://github.com/Jinbao1001) in https://github.com/umijs/mako/pull/1385
+- 修复: 动态 import 转换为 require 后没有被正确 interop 的问题 by [@Jinbao1001](https://github.com/Jinbao1001) in https://github.com/umijs/mako/pull/1361
 
 ## 0.7.5
 

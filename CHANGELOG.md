@@ -1,3 +1,16 @@
+## 0.7.6
+
+`2024-07-18`
+
+- New: add umi template for `create-mako` by [@kiner-tang](https://github.com/kiner-tang) in https://github.com/umijs/mako/pull/1408
+- New: circular dependency detector by [@stormslowly](https://github.com/stormslowly) in https://github.com/umijs/mako/pull/1401
+- New: add `emitDecoratorMetadata` config by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1420
+- New: support mako cli using abbreviated `mode` value, like "prod" by [@stormslowly](https://github.com/stormslowly) in https://github.com/umijs/mako/pull/1419
+- Fix: config `mako.plugins` should work by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1400
+- Fix: assignment failure when `plugins` are undefined by [@xierenyuan](https://github.com/xierenyuan) in https://github.com/umijs/mako/pull/1402
+- Fix: support dynamic import with template string by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1405
+- Fix: watch files change of module graph in node_modules by [@Jinbao1001](https://github.com/Jinbao1001) in https://github.com/umijs/mako/pull/1385
+- Fix: dynamic import to require need interop by [@Jinbao1001](https://github.com/Jinbao1001) in https://github.com/umijs/mako/pull/1361
 
 ## 0.7.5
 
