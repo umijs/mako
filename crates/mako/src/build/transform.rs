@@ -146,7 +146,7 @@ impl Transform {
                     // DynamicImportToRequire must be after ContextModuleVisitor
                     // since ContextModuleVisitor will add extra dynamic imports
                     if context.config.dynamic_import_to_require {
-                        visitors.push(Box::new(DynamicImportToRequire { unresolved_mark }));
+                        visitors.push(Box::new(DynamicImportToRequire::new(unresolved_mark)));
                     }
                     if matches!(context.config.platform, crate::config::Platform::Node) {
                         visitors.push(Box::new(features::node::MockFilenameAndDirname {
