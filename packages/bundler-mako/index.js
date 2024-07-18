@@ -624,6 +624,14 @@ async function getMakoConfig(opts) {
       plugins: opts.config.lessLoader?.plugins,
     },
     analyze: analyze || process.env.ANALYZE ? {} : undefined,
+    experimental: {
+      webpackSyntaxValidate: [],
+      requireContext: true,
+      detectCircularDependence: {
+        ignores: ['node_modules', '\\.umi'],
+        graphviz: false,
+      },
+    },
     ...mako,
   };
 
