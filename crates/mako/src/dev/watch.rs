@@ -20,11 +20,6 @@ pub struct Watcher<'a> {
     pub watched_dirs: HashSet<PathBuf>,
 }
 
-pub struct IgnoreListArgs {
-    with_output_dir: bool,
-    with_node_modules: bool,
-}
-
 impl<'a> Watcher<'a> {
     pub fn new(
         root: &'a PathBuf,
@@ -44,13 +39,7 @@ impl<'a> Watcher<'a> {
     pub fn watch(&mut self) -> anyhow::Result<()> {
         let t_watch = Instant::now();
 
-        self.watch_dir_recursive(
-            self.root.into(),
-            &self.get_ignore_list(IgnoreListArgs {
-                with_output_dir: true,
-                with_node_modules: false,
-            }),
-        )?;
+        self.watch_dir_recursive(self.root.into(), &self.get_ignore_list(true))?;
 
         let module_graph = self.compiler.context.module_graph.read().unwrap();
         let mut dirs = HashSet::new();
@@ -68,23 +57,10 @@ impl<'a> Watcher<'a> {
                         dirs.insert(dir);
                     }
                 }
-                let _ = self.watch_file_or_dir(
-                    resource.0.path().to_path_buf(),
-                    &self.get_ignore_list(IgnoreListArgs {
-                        with_output_dir: false,
-                        with_node_modules: true,
-                    }),
-                );
             }
         });
         dirs.iter().try_for_each(|dir| {
-            self.watch_dir_recursive(
-                dir.into(),
-                &self.get_ignore_list(IgnoreListArgs {
-                    with_output_dir: false,
-                    with_node_modules: false,
-                }),
-            )?;
+            self.watch_dir_recursive(dir.into(), &self.get_ignore_list(false))?;
             Ok(())
         })?;
 
@@ -116,23 +92,20 @@ impl<'a> Watcher<'a> {
         Ok(())
     }
 
-    fn get_ignore_list(&self, ignore_list_args: IgnoreListArgs) -> Vec<PathBuf> {
-        let mut ignore_list: Vec<&str> = vec![".git", ".DS_Store", ".node"];
-        let overrides_ignore_list = vec!["node_modules"];
-        if ignore_list_args.with_output_dir {
+    fn get_ignore_list(&self, with_output_dir: bool) -> Vec<PathBuf> {
+        let mut ignore_list = vec![".git", "node_modules", ".DS_Store", ".node"];
+        if with_output_dir {
             ignore_list.push(self.compiler.context.config.output.path.to_str().unwrap());
         }
-        let config_ignore_path = &self.compiler.context.config.watch.ignore_paths;
-        if config_ignore_path.is_empty() {
-            ignore_list.extend(overrides_ignore_list);
-        } else {
-            ignore_list.extend(config_ignore_path.iter().map(|p: &String| p.as_str()));
-        }
-
-        if ignore_list_args.with_node_modules {
-            ignore_list.retain(|&item| item != "node_modules");
-            return ignore_list.into_iter().map(PathBuf::from).collect();
-        }
+        ignore_list.extend(
+            self.compiler
+                .context
+                .config
+                .watch
+                .ignore_paths
+                .iter()
+                .map(|p| p.as_str()),
+        );
 
         // node_modules of root dictionary and root dictionary's parent dictionaries should be ignored
         // for resolving the issue of "too many files open" in monorepo
