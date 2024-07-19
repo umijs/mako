@@ -101,7 +101,7 @@ create_deserialize_fn!(deserialize_inline_css, InlineCssConfig);
 create_deserialize_fn!(deserialize_rsc_client, RscClientConfig);
 create_deserialize_fn!(deserialize_rsc_server, RscServerConfig);
 create_deserialize_fn!(deserialize_stats, StatsConfig);
-create_deserialize_fn!(deserialize_detect_loop, DetectLoop);
+create_deserialize_fn!(deserialize_detect_loop, DetectCircularDependence);
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -428,8 +428,8 @@ pub struct RscClientConfig {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct DetectLoop {
-    pub ignore_node_modules: bool,
+pub struct DetectCircularDependence {
+    pub ignores: Vec<String>,
     pub graphviz: bool,
 }
 
@@ -439,7 +439,7 @@ pub struct ExperimentalConfig {
     pub webpack_syntax_validate: Vec<String>,
     pub require_context: bool,
     #[serde(deserialize_with = "deserialize_detect_loop")]
-    pub detect_loop: Option<DetectLoop>,
+    pub detect_circular_dependence: Option<DetectCircularDependence>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -715,7 +715,7 @@ const DEFAULT_CONFIG: &str = r#"
     "experimental": {
       "webpackSyntaxValidate": [], 
       "requireContext": true, 
-      "detectLoop": { "ignoreNodeModules": true, "graphviz": false }
+      "detectCircularDependence": { "ignores": ["node_modules"], "graphviz": false }
     },
     "useDefineForClassFields": true,
     "emitDecoratorMetadata": false,

@@ -12,21 +12,32 @@ pub struct LoopDetector {}
 
 impl Plugin for LoopDetector {
     fn name(&self) -> &str {
-        "loop_detector"
+        "loop_circular_dependence"
     }
 
     fn generate_begin(&self, context: &Arc<Context>) -> Result<()> {
-        if let Some(detect_loop) = &context.config.experimental.detect_loop
+        if let Some(detect_loop) = &context.config.experimental.detect_circular_dependence
             && !context.args.watch
         {
             let module_graph = context.module_graph.read().unwrap();
             let (_, loops) = module_graph.toposort();
 
+            let ignore_regexes = detect_loop
+                .ignores
+                .iter()
+                .map(|s| {
+                    regex::Regex::new(s).map_err(|e| {
+                        anyhow::anyhow!("Invalid regex: {} in detectCircularDependence#ignore", e)
+                    })
+                })
+                .collect::<Result<Vec<_>>>()?;
+
             let loop_lines = loops
                 .iter()
                 .filter(|ids| {
-                    if detect_loop.ignore_node_modules {
-                        !ids.iter().any(|id| id.id.contains("node_modules"))
+                    if !ignore_regexes.is_empty() {
+                        !ids.iter()
+                            .any(|id| ignore_regexes.iter().any(|r| r.is_match(&id.id)))
                     } else {
                         true
                     }
@@ -52,7 +63,7 @@ impl Plugin for LoopDetector {
 
             if !loop_lines.is_empty() {
                 for l in &loop_lines {
-                    println!("{} Found a Dependency Loop: {}", "Warning".yellow(), l);
+                    println!("{} Circular Dependencies: {}", "Warning".yellow(), l);
                 }
 
                 if detect_loop.graphviz {
@@ -61,10 +72,7 @@ impl Plugin for LoopDetector {
                     std::fs::write(context.root.join("_mako_loop_detector.dot"), dot)?;
                 }
             }
-
-            Ok(())
-        } else {
-            Ok(())
         }
+        Ok(())
     }
 }
