@@ -250,6 +250,8 @@ pub struct Px2RemConfig {
     pub selector_doublelist: Vec<String>,
     #[serde(rename = "minPixelValue", default)]
     pub min_pixel_value: f64,
+    #[serde(rename = "mediaQuery", default)]
+    pub media_query: bool,
 }
 
 impl Default for Px2RemConfig {
@@ -262,6 +264,7 @@ impl Default for Px2RemConfig {
             selector_whitelist: vec![],
             selector_doublelist: vec![],
             min_pixel_value: 0.0,
+            media_query: false,
         }
     }
 }
