@@ -541,7 +541,8 @@ publicPath configuration. Note: There is a special value `"runtime"`, which mean
 
 ### px2rem
 
-- Type: `false | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[], selectorWhiteList?: string[], selectorDoubleList?: string[], minPixelValue?: number }`
+- Type: `false | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[], 
+  selectorWhiteList?: string[], selectorDoubleList?: string[], minPixelValue?: number, mediaQuery?: boolean }`
 - Default: `false`
 
 Whether to enable px2rem conversion.
@@ -553,6 +554,7 @@ Whether to enable px2rem conversion.
 - `selectorWhiteList`, selector white list
 - `selectorDoubleList`, selector double rem list
 - `minPixelValue`，minimum pixel value, default is `0`
+- `mediaQuery`，allow px to be converted in media queries, default is `false`
 
 ### react
 
