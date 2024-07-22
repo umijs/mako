@@ -21,7 +21,7 @@ use {hyper, hyper_staticfile, hyper_tungstenite, open};
 
 use crate::compiler::{Compiler, Context};
 use crate::plugin::{PluginGenerateEndParams, PluginGenerateStats};
-use crate::utils::tokio_runtime;
+use crate::utils::{process_req_url, tokio_runtime};
 
 pub struct DevServer {
     root: PathBuf,
@@ -124,7 +124,19 @@ impl DevServer {
         staticfile: hyper_staticfile::Static,
         txws: broadcast::Sender<WsMessage>,
     ) -> Result<hyper::Response<Body>> {
-        let path = req.uri().path();
+        let mut path = req.uri().path().to_string();
+        let public_path = &context.config.public_path;
+        if !public_path.is_empty() && public_path.starts_with('/') && public_path != "/" {
+            path = match process_req_url(public_path, &path) {
+                Ok(p) => p,
+                Err(_) => {
+                    return Ok(hyper::Response::builder()
+                        .status(hyper::StatusCode::BAD_REQUEST)
+                        .body(hyper::Body::from("Bad Request"))
+                        .unwrap());
+                }
+            };
+        }
         let path_without_slash_start = path.trim_start_matches('/');
         let not_found_response = || {
             hyper::Response::builder()
@@ -132,7 +144,7 @@ impl DevServer {
                 .body(hyper::Body::empty())
                 .unwrap()
         };
-        match path {
+        match path.as_str() {
             "/__/hmr-ws" => {
                 if hyper_tungstenite::is_upgrade_request(&req) {
                     debug!("new websocket connection");
