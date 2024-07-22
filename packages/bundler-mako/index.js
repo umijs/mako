@@ -207,6 +207,7 @@ exports.dev = async function (opts) {
   const makoConfig = await getMakoConfig(opts);
   makoConfig.hmr = {};
   makoConfig.devServer = { port: hmrPort, host: opts.host };
+  makoConfig.plugins = makoConfig.plugins || [];
   makoConfig.plugins.push({
     name: 'mako-dev',
     generateEnd: (args) => {
@@ -254,6 +255,22 @@ function checkConfig(opts) {
     assert(!opts.config[key], `${key} is not supported in Mako bundler`);
   });
 
+  // 支持透传给 mako 的配置
+  const supportMakoConfigKeys = [
+    'plugins',
+    'px2rem',
+    'experimental',
+    'flexBugs',
+    'optimization',
+  ];
+  // umi mako config
+  const { mako } = opts.config;
+  Object.keys(mako).forEach((key) => {
+    assert(
+      supportMakoConfigKeys.includes(key),
+      `umi config mako.${key} is not supported`,
+    );
+  });
   // 暂不支持 { from, to } 格式
   const { copy } = opts.config;
   if (copy) {
@@ -455,9 +472,10 @@ async function getMakoConfig(opts) {
     clean,
     forkTSChecker,
     inlineCSS,
-    makoPlugins,
     analyze,
+    mako,
   } = opts.config;
+
   let { codeSplitting } = opts.config;
   // TODO:
   // 暂不支持 $ 结尾，等 resolve 支持后可以把这段去掉
@@ -621,8 +639,16 @@ async function getMakoConfig(opts) {
       math: opts.config.lessLoader?.math,
       plugins: opts.config.lessLoader?.plugins,
     },
-    plugins: makoPlugins || [],
     analyze: analyze || process.env.ANALYZE ? {} : undefined,
+    experimental: {
+      webpackSyntaxValidate: [],
+      requireContext: true,
+      detectCircularDependence: {
+        ignores: ['node_modules', '\\.umi'],
+        graphviz: false,
+      },
+    },
+    ...mako,
   };
 
   return makoConfig;

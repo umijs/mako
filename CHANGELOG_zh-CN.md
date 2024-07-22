@@ -1,3 +1,41 @@
+## 0.7.6
+
+`2024-07-18`
+
+- 新增: `create-mako` 增加 Umi 模板 by [@kiner-tang](https://github.com/kiner-tang) in https://github.com/umijs/mako/pull/1408
+- 新增: 支持检测模块循环依赖 by [@stormslowly](https://github.com/stormslowly) in https://github.com/umijs/mako/pull/1401
+- 新增: 支持 `emitDecoratorMetadata` 配置项 by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1420
+- 新增: 支持在 CLI 传递 `mode` 值时使用缩写，例如 "prod" by [@stormslowly](https://github.com/stormslowly) in https://github.com/umijs/mako/pull/1419
+- 修复: `mako.plugins` 不生效的问题 by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1400
+- 修复: `plugins` 配置项不存在时报错的问题 by [@xierenyuan](https://github.com/xierenyuan) in https://github.com/umijs/mako/pull/1402
+- 修复: 动态 import 不支持使用模板字符串的问题 by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1405
+- 修复: node_modules 下的文件变更不会触发热更新的问题 by [@Jinbao1001](https://github.com/Jinbao1001) in https://github.com/umijs/mako/pull/1385
+- 修复: 动态 import 转换为 require 后没有被正确 interop 的问题 by [@Jinbao1001](https://github.com/Jinbao1001) in https://github.com/umijs/mako/pull/1361
+
+## 0.7.5
+
+`2024-07-11`
+
+- 新增: 为 HMR 增加控制台警告，如果 React 被 external by [@PeachScript](https://github.com/PeachScript) in [#1354](https://github.com/umijs/mako/pull/1354)
+- 新增: CLI 支持自定义项目名称 by [@kiner-tang](https://github.com/kiner-tang) in [#1340](https://github.com/umijs/mako/pull/1340)
+- 新增: 升级 hyper-staticfile，修复 JS 文件字符集问题 by [@whyer11](https://github.com/whyer11) in [#1363](https://github.com/umijs/mako/pull/1363)
+- 新增: CLI 增加判断当前目录是否存在文件 by [@liangchaofei](https://github.com/liangchaofei) in [#1368](https://github.com/umijs/mako/pull/1368)
+- 新增: 支持从 templates 目录选择模板 by [@kiner-tang](https://github.com/kiner-tang) in [#1370](https://github.com/umijs/mako/pull/1370)
+- 新增: px2rem 支持 selectorDoubleRemList by [@xiaohuoni](https://github.com/xiaohuoni) in [#1336](https://github.com/umijs/mako/pull/1336)
+- 新增: 传递 umi 配置到 mako by [@xiaohuoni](https://github.com/xiaohuoni) in [#1394](https://github.com/umijs/mako/pull/1394)
+- 优化: 更加惯用和简洁的 SWC AST 生成 by [@stormslowly](https://github.com/stormslowly) in [#1372](https://github.com/umijs/mako/pull/1372)
+- 优化: 代码逻辑和类型更清晰 by [@xusd320](https://github.com/xusd320) in [#1397](https://github.com/umijs/mako/pull/1397)
+- 修复: less 插件未解码路径 by [@stormslowly](https://github.com/stormslowly) in [#1360](https://github.com/umijs/mako/pull/1360)
+- 修复: 字符串化对象值会导致 panic by [@xusd320](https://github.com/xusd320) in [#1349](https://github.com/umijs/mako/pull/1349)
+- 修复: HMR 不支持 React.lazy + import() 组件 by [@sorrycc](https://github.com/sorrycc) in [#1369](https://github.com/umijs/mako/pull/1369)
+- 修复: 拼写错误 by [@kiner-tang](https://github.com/kiner-tang) in [#1371](https://github.com/umijs/mako/pull/1371)
+- 修复: pnpm 安装问题 by [@sorrycc](https://github.com/sorrycc) in [#1376](https://github.com/umijs/mako/pull/1376)
+- 修复: entry 哈希不稳定 by [@stormslowly](https://github.com/stormslowly) in [#1374](https://github.com/umijs/mako/pull/1374)
+- 修复: analyze 在 umi 中不起作用 by [@sorrycc](https://github.com/sorrycc) in [#1387](https://github.com/umijs/mako/pull/1387)
+- 修复: 按字母顺序排序依赖项后丢失 CSS 顺序 by [@xusd320](https://github.com/xusd320) in [#1391](https://github.com/umijs/mako/pull/1391)
+- 修复: 在 preset_env 之后应该检查保留字 by [@Jinbao1001](https://github.com/Jinbao1001) in [#1367](https://github.com/umijs/mako/pull/1367)
+- 修复: commonjs 可能缺少 use strict 指令 by [@Jinbao1001](https://github.com/Jinbao1001) in [#1386](https://github.com/umijs/mako/pull/1386)
+
 ## 0.7.4
 
 `2024-07-02`

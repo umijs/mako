@@ -1,9 +1,7 @@
-use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
-use std::rc::Rc;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -303,7 +301,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
     let chunks = chunk_graph.get_chunks();
 
     // 在 chunks 中获取 modules
-    let modules_vec: Rc<RefCell<Vec<StatsJsonChunkModuleItem>>> = Rc::new(RefCell::new(Vec::new()));
+    let mut chunk_modules: Vec<StatsJsonChunkModuleItem> = Vec::new();
 
     // 获取 chunks
     stats_map.chunks = chunks
@@ -334,7 +332,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
                         // TODO: 现在是从每个 chunk 中找到包含的 module, 所以 chunk_id 是单个, 但是一个 module 有可能存在于多个 chunk 中
                         chunks: vec![chunk.id.id.clone()],
                     };
-                    modules_vec.borrow_mut().push(module.clone());
+                    chunk_modules.push(module.clone());
                     module
                 })
                 .collect();
@@ -429,8 +427,6 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
             _ => None,
         })
         .collect::<HashMap<_, _>>();
-    let chunk_modules: Vec<StatsJsonChunkModuleItem> =
-        modules_vec.borrow().iter().cloned().collect();
     stats_map.chunk_modules = chunk_modules;
 
     stats_map.modules = stats_info.get_modules();
@@ -440,8 +436,8 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
     stats_map
 }
 
-pub fn write_stats(stats: &StatsJsonMap, compiler: &Compiler) {
-    let path = &compiler.context.config.output.path.join("stats.json");
+pub fn write_stats(stats: &StatsJsonMap, path: &Path) {
+    let path = path.join("stats.json");
     let stats_json = serde_json::to_string_pretty(stats).unwrap();
     fs::write(path, stats_json).unwrap();
 }

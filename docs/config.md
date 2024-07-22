@@ -14,7 +14,7 @@ e.g.
 }
 ```
 
-Notice: When you're using mako with Umi, prefer to config the bundler in `.umirc.ts` or `config/config.ts` file.
+Notice: When you're using Mako with Umi, prefer to config the bundler in `.umirc.ts` or `config/config.ts` file.
 
 ## Configuration items
 
@@ -182,6 +182,13 @@ import("./a.js");
 
 Whether to output assets files. Usually set to `false` when building a pure server-side rendering project, because assets files are not needed at this time.
 
+### emitDecoratorMetadata
+
+- Type: `boolean`
+- Default: `false`
+
+Whether to emit decorator metadata.
+
 ### emotion
 
 - Type: `boolean`
@@ -204,6 +211,45 @@ e.g.
     index: "./src/index.js",
     login: "./src/login.js",
   },
+}
+```
+### experimental.detectLoop
+
+- Type: `false| { "ignoreNodeModules": bool, "graphviz": bool }`
+- Default: `{ "ignoreNodeModules": true, "graphviz": false }`
+
+Experimental configuration for generating dependence loop info. `false` to disable the feature.
+
+Options:
+
+- `ignoreNodeModules` to ignore dependence loops which contains files from  node_modules.
+- `graphviz` to generate a graphviz dot file named `_mako_loop_detector.dot` at root of project for visualizing dependence loops.
+
+e.g.
+
+```json
+{
+  "experimental": {
+    "ignoreNodeModules": false,
+    "graphviz": true
+  }
+}
+```
+
+### experimental.requireContext
+
+- Type: `bool`
+- Default: `true`
+
+Experimental configuration, to enable or disable the [`require.context`](https://webpack.js.org/guides/dependency-management/#requirecontext) feature.
+
+e.g.
+
+```json
+{
+  "experimental": {
+    "requireContext": false
+  }
 }
 ```
 
@@ -652,7 +698,7 @@ Whether to output umd format.
 ### useDefineForClassFields
 
 - Type: `boolean`
-- Default: `false`
+- Default: `true`
 
 Whether to use `defineProperty` to define class fields.
 

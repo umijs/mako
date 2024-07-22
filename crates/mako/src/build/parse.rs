@@ -29,6 +29,8 @@ pub enum ParseError {
     UnsupportedServerAction { path: String },
     #[error("The `\"{directive:?}\"` directive must be put at the top of the file.")]
     DirectiveNotOnTop { directive: String },
+    #[error("{path}\n{message}")]
+    InvalidExpression { message: String, path: String },
 }
 
 pub struct Parse {}

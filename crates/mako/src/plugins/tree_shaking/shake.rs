@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use swc_core::common::comments::{Comment, CommentKind};
+use swc_core::common::util::take::Take;
 use swc_core::common::{DUMMY_SP, GLOBALS};
 
 use self::skip_module::skip_module_optimize;
@@ -25,24 +26,6 @@ pub fn optimize_modules(module_graph: &mut ModuleGraph, context: &Arc<Context>) 
         crate::mako_profile_scope!("tree shake topo-sort");
         module_graph.toposort()
     };
-
-    #[cfg(debug_assertions)]
-    {
-        use tracing::debug;
-        if !_cyclic_modules.is_empty() {
-            debug!("{} cycles in project", _cyclic_modules.len());
-
-            for circle in &_cyclic_modules {
-                let circle_str = circle
-                    .iter()
-                    .map(|i| i.id.clone())
-                    .collect::<Vec<_>>()
-                    .join("\n");
-
-                debug!("{}:\n{}", circle.len(), circle_str);
-            }
-        }
-    }
 
     let mut tree_shake_modules_ids = vec![];
     let mut tree_shake_modules_map = std::collections::HashMap::new();
@@ -274,11 +257,11 @@ pub fn optimize_modules(module_graph: &mut ModuleGraph, context: &Arc<Context>) 
     }
 
     for (module_id, tsm) in &tree_shake_modules_map {
-        let tsm = tsm.borrow();
+        let mut tsm = tsm.borrow_mut();
 
         if tsm.not_used() {
             module_graph.remove_module(module_id);
-        } else if let Some(swc_module) = &tsm.updated_ast {
+        } else if let Some(swc_module) = &mut tsm.updated_ast {
             module_graph
                 .get_module_mut(module_id)
                 .unwrap()
@@ -287,7 +270,7 @@ pub fn optimize_modules(module_graph: &mut ModuleGraph, context: &Arc<Context>) 
                 .unwrap()
                 .ast
                 .as_script_ast_mut()
-                .body = swc_module.body.clone();
+                .body = swc_module.body.take();
         }
     }
 

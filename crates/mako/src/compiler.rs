@@ -237,13 +237,21 @@ impl Compiler {
             Arc::new(plugins::async_runtime::AsyncRuntimePlugin {}),
             Arc::new(plugins::emotion::EmotionPlugin {}),
             Arc::new(plugins::tree_shaking::FarmTreeShake {}),
+            Arc::new(plugins::detect_circular_dependence::LoopDetector {}),
         ];
         plugins.extend(builtin_plugins);
 
         let mut config = config;
 
+        if config.experimental.require_context {
+            plugins.push(Arc::new(plugins::require_context::RequireContextPlugin {}))
+        }
+
         if config.output.mode == OutputMode::Bundless {
-            plugins.insert(0, Arc::new(plugins::bundless_compiler::BundlessCompiler {}));
+            plugins.insert(
+                0,
+                Arc::new(plugins::bundless_compiler::BundlessCompilerPlugin {}),
+            );
         }
 
         if std::env::var("DEBUG_GRAPH").is_ok_and(|v| v == "true") {

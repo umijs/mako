@@ -1,4 +1,5 @@
 pub(crate) mod async_module;
+pub(crate) mod common_js;
 pub(crate) mod css_assets;
 pub(crate) mod css_dep_analyzer;
 pub(crate) mod css_flexbugs;
@@ -12,6 +13,7 @@ pub(crate) mod dynamic_import_to_require;
 pub(crate) mod env_replacer;
 pub(crate) mod fix_helper_inject_position;
 pub(crate) mod fix_symbol_conflict;
+pub(crate) mod import_template_to_string_literal;
 pub(crate) mod mako_require;
 pub(crate) mod meta_url_replacer;
 pub(crate) mod new_url_assets;
