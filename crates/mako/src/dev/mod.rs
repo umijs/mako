@@ -126,7 +126,7 @@ impl DevServer {
     ) -> Result<hyper::Response<Body>> {
         let mut path = req.uri().path().to_string();
         let public_path = &context.config.public_path;
-        if !public_path.is_empty() {
+        if !public_path.is_empty() && public_path.starts_with('/') {
             path = match process_req_url(public_path, &path) {
                 Ok(p) => p,
                 Err(_) => {

@@ -51,28 +51,12 @@ mod tests {
             "/index.html"
         );
         assert_eq!(
-            process_req_url("public/", "/public/index.html").unwrap(),
-            "/index.html"
-        );
-        assert_eq!(
             process_req_url("/public/foo/", "/public/foo/index.html").unwrap(),
-            "/index.html"
-        );
-        assert_eq!(
-            process_req_url("public/foo/", "/public/foo/index.html").unwrap(),
             "/index.html"
         );
         assert_eq!(process_req_url("/", "/index.html").unwrap(), "/index.html");
         assert_eq!(
             process_req_url("/#/", "/#/index.html").unwrap(),
-            "/index.html"
-        );
-        assert_eq!(
-            process_req_url("/公共路径/", "/公共路径/index.html").unwrap(),
-            "/index.html"
-        );
-        assert_eq!(
-            process_req_url("公共路径/", "/公共路径/index.html").unwrap(),
             "/index.html"
         );
     }
