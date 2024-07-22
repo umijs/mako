@@ -2,7 +2,7 @@ const assert = require("assert");
 const { parseBuildResult, moduleReg } = require("../../../scripts/test-utils");
 const { files } = parseBuildResult(__dirname);
 
-let content = files["umi.js"];
+let content = files["pages_index_tsx-async.js"];
 content = content.replace(/\s/g, "");
 
 assert(content.includes("\"production\""), "support process.env.NODE_ENV");

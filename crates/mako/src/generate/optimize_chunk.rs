@@ -41,9 +41,6 @@ impl Compiler {
 
             optimize_chunks_infos.sort_by_key(|o| -o.group_options.priority);
 
-            // stage: deasync
-            self.merge_minimal_async_chunks(&optimize_options);
-
             // stage: modules
             self.module_to_optimize_infos(&mut optimize_chunks_infos, None);
 
@@ -114,58 +111,6 @@ impl Compiler {
 
             // stage: apply
             self.apply_hot_update_optimize_infos(&optimize_infos);
-        }
-    }
-
-    fn merge_minimal_async_chunks(&self, options: &CodeSplittingAdvancedOptions) {
-        let mut async_to_entry = vec![];
-        let chunk_graph = self.context.chunk_graph.read().unwrap();
-        let chunks = chunk_graph.get_all_chunks();
-
-        // find minimal async chunks to merge to entry chunk
-        // TODO: continue to merge deep-level async chunk
-        for chunk in chunks {
-            if chunk.chunk_type == ChunkType::Async && self.get_chunk_size(chunk) < options.min_size
-            {
-                let entry_ids = chunk_graph.entry_dependents_chunk(&chunk.id);
-
-                // merge if there is only one entry chunk
-                // TODO: don't merge if entry chunk size is greater than max_size
-                if entry_ids.len() == 1 {
-                    async_to_entry.push((
-                        chunk.id.clone(),
-                        entry_ids[0].clone(),
-                        chunk.modules.iter().cloned().collect::<Vec<_>>(),
-                    ));
-                }
-            }
-        }
-        drop(chunk_graph);
-
-        // update chunk_graph
-        let mut chunk_graph = self.context.chunk_graph.write().unwrap();
-        let mut merged_modules = vec![];
-
-        for (chunk_id, entry_chunk_id, chunk_modules) in async_to_entry.iter() {
-            let entry_chunk: &mut Chunk = chunk_graph.mut_chunk(entry_chunk_id).unwrap();
-
-            // merge modules to entry chunk
-            for m in chunk_modules {
-                entry_chunk.add_module(m.clone());
-                merged_modules.push(m);
-            }
-
-            // remove original async chunks
-            chunk_graph.merge_to_chunk(chunk_id, entry_chunk_id);
-        }
-
-        // remove merged modules from other async chunks
-        let mut chunks = chunk_graph.mut_chunks();
-
-        for chunk in chunks.iter_mut() {
-            if chunk.chunk_type == ChunkType::Async {
-                chunk.modules.retain(|m| !merged_modules.contains(&m));
-            }
         }
     }
 
