@@ -666,6 +666,21 @@ function App() {
 - `clientComponentTpl`，客户端组件模板，使用 `{{path}}` 表示组件的路径，使用 `{{id}}` 表示模块的 id。
 - `emitCSS`，是否输出 CSS 组件。
 
+### sass
+
+- 类型: `sass.Options<'async'>`
+- 默认值: `{}`
+
+指定 sass [配置](https://sass-lang.com/documentation/js-api/interfaces/options/).
+
+例如：
+
+```ts
+{
+  "sourceMap": false
+}
+```
+
 ### stats
 
 - 类型：`{ modules: bool } | false`

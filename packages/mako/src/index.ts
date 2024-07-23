@@ -5,6 +5,7 @@ import resolve from 'resolve';
 import * as binding from '../binding';
 import { ForkTSChecker as ForkTSChecker } from './forkTSChecker';
 import { LessLoaderOpts, lessLoader } from './lessLoader';
+import { sassLoader } from './sassLoader';
 
 type Config = binding.BuildParams['config'] & {
   plugins?: binding.BuildParams['plugins'];
@@ -109,6 +110,23 @@ export async function build(params: BuildParams) {
     },
   });
 
+  if (makoConfig?.sass) {
+    let sass = sassLoader(null, makoConfig?.sass);
+    params.config.plugins.push({
+      name: 'sass',
+      async load(filePath: string) {
+        let sassResult = await sass.render(filePath);
+        if (sassResult) {
+          return sassResult;
+        }
+      },
+      generateEnd() {
+        if (!params.watch) {
+          sass.terminate();
+        }
+      },
+    });
+  }
   // support dump mako config
   if (process.env.DUMP_MAKO_CONFIG) {
     const configFile = path.join(params.root, 'mako.config.json');

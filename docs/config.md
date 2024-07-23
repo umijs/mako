@@ -547,7 +547,7 @@ __mako_public_path__ = '/foo/';
 
 ### px2rem
 
-- Type: `false | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[], 
+- Type: `false | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[],
   selectorWhiteList?: string[], selectorDoubleList?: string[], minPixelValue?: number, mediaQuery?: boolean }`
 - Default: `false`
 
@@ -665,6 +665,21 @@ Child configuration items:
 
 - `clientComponentTpl`, client component template, use `{{path}}` to represent the path of the component, and use `{{id}}` to represent the id of the module.
 - `emitCSS`, whether to output CSS components.
+
+### sass
+
+- Type: `sass.Options<'async'>`
+- Default: `{}`
+
+Specify the sass [configuration](https://sass-lang.com/documentation/js-api/interfaces/options/).
+
+e.g.
+
+```ts
+{
+  "sourceMap": false
+}
+```
 
 ### stats
 
