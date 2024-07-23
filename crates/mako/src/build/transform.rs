@@ -36,6 +36,7 @@ use crate::visitors::fix_symbol_conflict::FixSymbolConflict;
 use crate::visitors::import_template_to_string_literal::ImportTemplateToStringLiteral;
 use crate::visitors::new_url_assets::NewUrlAssets;
 use crate::visitors::provide::Provide;
+use crate::visitors::public_path_assignment::PublicPathAssignment;
 use crate::visitors::react::react;
 use crate::visitors::try_resolve::TryResolve;
 use crate::visitors::ts_strip::ts_strip;
@@ -131,6 +132,7 @@ impl Transform {
                         context: context.clone(),
                         unresolved_mark,
                     }));
+                    visitors.push(Box::new(PublicPathAssignment {}));
                     // TODO: refact provide
                     visitors.push(Box::new(Provide::new(
                         context.config.providers.clone(),

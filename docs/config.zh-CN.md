@@ -540,6 +540,12 @@ Buffer;
 
 publicPath 配置。注意：有一个特殊值 `"runtime"`，这意味着它将切换到运行时模式并使用运行时的 `window.publicPath` 作为 publicPath。
 
+如果你想在运行时设置 `publicPath`，请使用 `__mako_public_path__`。（注：`__webpack_public_path__` 也是支持的）
+
+```ts
+__mako_public_path__ = '/foo/';
+```
+
 ### px2rem
 
 - 类型：`false | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[], selectorWhiteList?: string[], selectorDoubleList?: string[], minPixelValue?: number }`

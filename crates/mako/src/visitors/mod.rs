@@ -19,6 +19,7 @@ pub(crate) mod meta_url_replacer;
 pub(crate) mod new_url_assets;
 pub(crate) mod optimize_define_utils;
 pub(crate) mod provide;
+pub(crate) mod public_path_assignment;
 pub(crate) mod react;
 pub(crate) mod try_resolve;
 pub(crate) mod ts_strip;
