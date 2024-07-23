@@ -7,6 +7,7 @@ use anyhow::{self, Ok};
 use colored::Colorize;
 use notify::{self, EventKind, Watcher as NotifyWatcher};
 use notify_debouncer_full::DebouncedEvent;
+use regex::Regex;
 use tracing::debug;
 
 use crate::compiler::Compiler;
@@ -55,6 +56,19 @@ impl<'a> Watcher<'a> {
                     if dir.strip_prefix(self.root).is_err() && self.root.strip_prefix(dir).is_err()
                     {
                         dirs.insert(dir);
+                    }
+                }
+                let node_modules_regexes = &self.compiler.context.config.watch.node_modules_regexes;
+                if !node_modules_regexes.is_empty() {
+                    let regexes = node_modules_regexes.iter().map(|s| Regex::new(s).unwrap());
+                    let is_match = regexes
+                        .into_iter()
+                        .any(|regex| regex.is_match(resource.0.path().to_str().unwrap()));
+                    if is_match {
+                        let _ = self.watcher.watch(
+                            resource.0.path().to_path_buf().as_path(),
+                            notify::RecursiveMode::NonRecursive,
+                        );
                     }
                 }
             }
