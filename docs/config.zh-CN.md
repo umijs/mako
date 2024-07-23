@@ -554,6 +554,7 @@ publicPath 配置。注意：有一个特殊值 `"runtime"`，这意味着它将
 - `selectorWhiteList`，选择器白名单
 - `selectorDoubleList`，选择器白名单，会被转换为两倍的值
 - `minPixelValue`，最小像素值，默认为 `0`
+- `mediaQuery`，是否转换媒体查询中的 px, 默认 `false`
 
 ### react
 
