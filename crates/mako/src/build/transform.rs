@@ -132,7 +132,7 @@ impl Transform {
                         context: context.clone(),
                         unresolved_mark,
                     }));
-                    visitors.push(Box::new(PublicPathAssignment {}));
+                    visitors.push(Box::new(PublicPathAssignment { unresolved_mark }));
                     // TODO: refact provide
                     visitors.push(Box::new(Provide::new(
                         context.config.providers.clone(),
