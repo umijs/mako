@@ -50,7 +50,7 @@ impl ChunkFile {
                 hasher.write_str(self.file_name.as_str());
                 return format!(
                     "{}.{}",
-                    &hasher.finish().to_string()[11..],
+                    &hasher.finish().to_string()[0..8],
                     &self.file_name[self.file_name.len() - reserve_file_name_length..]
                 );
             }
