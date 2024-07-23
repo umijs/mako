@@ -36,6 +36,12 @@ pub struct Dependency {
 
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Default)]
+    pub struct ResolveTypeFlags: u16 {
+        const Sync  = 1;
+        const Async = 1<<2;
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Default)]
     pub struct ImportType: u16 {
         const Default = 1;
         const Named = 1<<2;
@@ -48,6 +54,15 @@ bitflags! {
         const Named = 1;
         const Default = 1<<2;
         const Namespace = 1<<3;
+    }
+}
+
+impl From<&ResolveType> for ResolveTypeFlags {
+    fn from(value: &ResolveType) -> Self {
+        match value {
+            ResolveType::DynamicImport | ResolveType::Worker => Self::Async,
+            _ => Self::Sync,
+        }
     }
 }
 
