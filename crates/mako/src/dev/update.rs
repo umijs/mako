@@ -10,7 +10,8 @@ use tracing::debug;
 use crate::build::BuildError;
 use crate::compiler::Compiler;
 use crate::generate::transform::transform_modules;
-use crate::module::{Dependency, Module, ModuleId, ResolveType};
+use crate::module::{Dependency, Module, ModuleId, ResolveTypeFlags};
+use crate::module_graph::ModuleGraph;
 use crate::resolve::{self, clear_resolver_cache};
 
 #[derive(Debug, Clone)]
@@ -320,33 +321,38 @@ impl Compiler {
                     add_modules.insert(module_id, module);
                 });
 
-                let mut d = diff(current_dependencies, target_dependencies);
-                // if added dep is a dynamic dependency, need to full re-group
-                d.added.iter().for_each(|added| {
-                    if added.1.resolve_type == ResolveType::DynamicImport {
-                        d.dep_changed.insert((module.id.clone(), added.1.clone()));
-                    }
-                });
+                let modules_diff = diff(&current_dependencies, &target_dependencies);
 
                 debug!("build by modify: {:?} end", entry);
-                Result::Ok((module, d.added, d.removed, d.dep_changed, add_modules))
+                Result::Ok((module, modules_diff, add_modules, target_dependencies))
             })
             .collect::<Result<Vec<_>>>();
-        let result = result?;
+        let modified_results = result?;
 
         let mut added = vec![];
         let mut modified_module_ids = HashSet::new();
         let mut dep_changed_module_ids = HashSet::new();
 
         let mut module_graph = self.context.module_graph.write().unwrap();
-        for (module, add, remove, dep_change, mut add_modules) in result {
+        for (modified_module, diff, mut add_modules, dependencies) in modified_results {
+            if diff.dependence_changed(&modified_module.id, &module_graph, &dependencies) {
+                dep_changed_module_ids.insert(modified_module.id.clone());
+            }
+
             // remove bind dependency
-            for (remove_module_id, dep) in remove {
-                module_graph.remove_dependency(&module.id, &remove_module_id, &dep);
+            for remove_module_id in &diff.removed {
+                module_graph.clear_dependency(&modified_module.id, remove_module_id);
             }
 
             // add bind dependency
-            for (add_module_id, dep) in &add {
+            for add_module_id in &diff.added {
+                let mut deps = dependencies
+                    .iter()
+                    .filter(|(module_id, _dep)| module_id == add_module_id)
+                    .map(|(_, dep)| dep)
+                    .collect::<Vec<_>>();
+                deps.sort_by_key(|d| d.order);
+
                 // english: In theory, the add_module_id that add_modules should exist in must exist, but in actual scenarios, an unwrap() error still occurs, so add a guard check here
                 // TODO: Need to find the root cause
                 let add_module = add_modules.remove(add_module_id);
@@ -361,21 +367,30 @@ impl Compiler {
                 }
 
                 module_graph.add_module(add_module);
-                module_graph.add_dependency(&module.id, add_module_id, dep.clone());
+
+                deps.iter().for_each(|&dep| {
+                    module_graph.add_dependency(&modified_module.id, add_module_id, dep.clone());
+                });
             }
 
-            if !&dep_change.is_empty() {
-                dep_changed_module_ids.insert(module.id.clone());
+            diff.modified.iter().for_each(|to_module_id| {
+                let deps = dependencies
+                    .iter()
+                    .filter(|(module_id, _dep)| module_id == to_module_id)
+                    .map(|(_, dep)| dep)
+                    .collect::<Vec<_>>();
 
-                for (dep_change_module_id, dep) in &dep_change {
-                    module_graph.add_dependency(&module.id, dep_change_module_id, dep.clone());
-                }
-            }
+                module_graph.clear_dependency(&modified_module.id, to_module_id);
 
-            modified_module_ids.insert(module.id.clone());
+                deps.iter().for_each(|&dep| {
+                    module_graph.add_dependency(&modified_module.id, to_module_id, dep.clone());
+                });
+            });
+
+            modified_module_ids.insert(modified_module.id.clone());
 
             // replace module
-            module_graph.replace_module(module);
+            module_graph.replace_module(modified_module);
         }
 
         Result::Ok((modified_module_ids, dep_changed_module_ids, added))
@@ -410,50 +425,84 @@ impl Compiler {
 }
 
 pub struct Diff {
-    added: HashSet<(ModuleId, Dependency)>,
-    removed: HashSet<(ModuleId, Dependency)>,
-    dep_changed: HashSet<(ModuleId, Dependency)>,
+    added: HashSet<ModuleId>,
+    removed: HashSet<ModuleId>,
+    modified: HashSet<ModuleId>,
 }
 
-// 对比两颗 Dependency 的差异
-fn diff(origin: Vec<(ModuleId, Dependency)>, target: Vec<(ModuleId, Dependency)>) -> Diff {
+impl Diff {
+    fn dependence_changed(
+        &self,
+        module_id: &ModuleId,
+        module_graph: &ModuleGraph,
+        new_dependencies: &[(ModuleId, Dependency)],
+    ) -> bool {
+        if !self.added.is_empty() {
+            return true;
+        }
+
+        if !self.removed.is_empty() {
+            return true;
+        }
+
+        let new_deps = new_dependencies
+            .iter()
+            .fold(HashMap::new(), |mut map, (module_id, dep)| {
+                let flag: ResolveTypeFlags = (&dep.resolve_type).into();
+
+                map.entry(module_id.clone())
+                    .and_modify(|e: &mut ResolveTypeFlags| {
+                        e.insert(flag);
+                    })
+                    .or_insert(flag);
+                map
+            });
+
+        let original = module_graph.get_dependencies(module_id).into_iter().fold(
+            HashMap::new(),
+            |mut map, (module_id, dep)| {
+                let flag: ResolveTypeFlags = (&dep.resolve_type).into();
+                map.entry(module_id.clone())
+                    .and_modify(|e: &mut ResolveTypeFlags| e.insert(flag))
+                    .or_insert(flag);
+                map
+            },
+        );
+
+        new_deps.eq(&original)
+    }
+}
+
+// 比较两个依赖列表的差异
+// 未变化的模块算作 modified，因为依赖数据必然发生了变化；eg: order，span
+fn diff(origin: &Vec<(ModuleId, Dependency)>, new_deps: &Vec<(ModuleId, Dependency)>) -> Diff {
     let origin_module_ids = origin
         .iter()
-        .map(|(module_id, _dep)| module_id)
+        .map(|(module_id, _dep)| module_id.clone())
         .collect::<HashSet<_>>();
-    let target_module_ids = target
+    let target_module_ids = new_deps
         .iter()
-        .map(|(module_id, _dep)| module_id)
+        .map(|(module_id, _dep)| module_id.clone())
         .collect::<HashSet<_>>();
 
-    let mut added: HashSet<(ModuleId, Dependency)> = HashSet::new();
-    let mut removed: HashSet<(ModuleId, Dependency)> = HashSet::new();
-    let mut dep_changed: HashSet<(ModuleId, Dependency)> = HashSet::new();
+    let removed = origin_module_ids
+        .difference(&target_module_ids)
+        .cloned()
+        .collect::<HashSet<_>>();
 
-    target
-        .iter()
-        .filter(|(module_id, _dep)| !origin_module_ids.contains(module_id))
-        .for_each(|(module_id, dep)| {
-            added.insert((module_id.clone(), dep.clone()));
-        });
+    let added = target_module_ids
+        .difference(&origin_module_ids)
+        .cloned()
+        .collect::<HashSet<_>>();
 
-    origin.iter().for_each(|(module_id, dep)| {
-        if target_module_ids.contains(module_id) {
-            let (_, t_dep) = target
-                .iter()
-                .find(|(t_module_id, _)| t_module_id == module_id)
-                .unwrap();
-            if dep.resolve_type != t_dep.resolve_type {
-                dep_changed.insert((module_id.clone(), t_dep.clone()));
-            }
-        } else {
-            removed.insert((module_id.clone(), dep.clone()));
-        }
-    });
+    let modified = origin_module_ids
+        .intersection(&target_module_ids)
+        .cloned()
+        .collect::<HashSet<_>>();
 
     Diff {
         added,
         removed,
-        dep_changed,
+        modified,
     }
 }
