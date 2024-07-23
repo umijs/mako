@@ -105,6 +105,29 @@ impl ModuleGraph {
         self.graph.node_weights_mut().collect()
     }
 
+    pub fn clear_dependency(&mut self, from: &ModuleId, to: &ModuleId) {
+        let from_index = self.id_index_map.get(from).unwrap_or_else(|| {
+            panic!(
+                r#"from node "{}" does not exist in the module graph when remove edge"#,
+                from.id
+            )
+        });
+
+        let to_index = self.id_index_map.get(to).unwrap_or_else(|| {
+            panic!(
+                r#"to node "{}" does not exist in the module graph when remove edge"#,
+                to.id
+            )
+        });
+
+        self.graph
+            .find_edge(*from_index, *to_index)
+            .and_then(|edge| {
+                self.graph.remove_edge(edge);
+                None::<()>
+            });
+    }
+
     pub fn remove_dependency(&mut self, from: &ModuleId, to: &ModuleId, dep: &Dependency) {
         let from_index = self.id_index_map.get(from).unwrap_or_else(|| {
             panic!(
