@@ -19,6 +19,7 @@ pub struct Watcher<'a> {
     pub compiler: &'a Compiler,
     pub watched_files: HashSet<PathBuf>,
     pub watched_dirs: HashSet<PathBuf>,
+    node_modules_regexes: Vec<Regex>,
 }
 
 impl<'a> Watcher<'a> {
@@ -33,6 +34,14 @@ impl<'a> Watcher<'a> {
             compiler,
             watched_dirs: HashSet::new(),
             watched_files: HashSet::new(),
+            node_modules_regexes: compiler
+                .context
+                .config
+                .watch
+                .node_modules_regexes
+                .iter()
+                .map(|s| Regex::new(s).unwrap())
+                .collect::<Vec<Regex>>(),
         }
     }
 
@@ -58,11 +67,10 @@ impl<'a> Watcher<'a> {
                         dirs.insert(dir);
                     }
                 }
-                let node_modules_regexes = &self.compiler.context.config.watch.node_modules_regexes;
-                if !node_modules_regexes.is_empty() {
-                    let regexes = node_modules_regexes.iter().map(|s| Regex::new(s).unwrap());
-                    let is_match = regexes
-                        .into_iter()
+                if !self.node_modules_regexes.is_empty() {
+                    let is_match = self
+                        .node_modules_regexes
+                        .iter()
                         .any(|regex| regex.is_match(resource.0.path().to_str().unwrap()));
                     if is_match {
                         let _ = self.watcher.watch(
