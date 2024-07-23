@@ -115,11 +115,9 @@ exports.dev = async function (opts) {
     if (!publicPath.startsWith('/')) {
       publicPath = '/' + publicPath;
     }
-    if (reqURL.startsWith(publicPath)) {
-      return reqURL.slice(publicPath.length - 1);
-    } else {
-      return reqURL;
-    }
+    return reqURL.startsWith(publicPath)
+      ? reqURL.slice(publicPath.length - 1)
+      : reqURL;
   }
 
   if (opts.config.publicPath) {
