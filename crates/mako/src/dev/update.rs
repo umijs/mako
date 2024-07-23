@@ -475,7 +475,7 @@ impl Diff {
 
 // 比较两个依赖列表的差异
 // 未变化的模块算作 modified，因为依赖数据必然发生了变化；eg: order，span
-fn diff(origin: &Vec<(ModuleId, Dependency)>, new_deps: &Vec<(ModuleId, Dependency)>) -> Diff {
+fn diff(origin: &[(ModuleId, Dependency)], new_deps: &[(ModuleId, Dependency)]) -> Diff {
     let origin_module_ids = origin
         .iter()
         .map(|(module_id, _dep)| module_id.clone())
