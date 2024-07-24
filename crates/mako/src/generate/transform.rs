@@ -328,7 +328,7 @@ mod tests {
     }
 
     fn transform_css_code(content: &str, path: Option<&str>) -> String {
-        let path = if let Some(p) = path { p } else { "test.css" };
+        let path = path.unwrap_or("test.css");
         let context: Arc<Context> = Arc::new(Default::default());
         let mut ast = CssAst::build(path, content, context.clone(), false).unwrap();
         transform_css_generate(&mut ast.ast, &context);

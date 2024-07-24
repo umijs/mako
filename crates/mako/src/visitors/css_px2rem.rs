@@ -103,7 +103,7 @@ impl VisitMut for Px2Rem {
     }
 
     fn visit_mut_length(&mut self, n: &mut Length) {
-        if n.unit.value.to_string() == "px" && self.should_transform(n.value.value) {
+        if n.unit.value == "px" && self.should_transform(n.value.value) {
             n.value.value /= self.config.root;
             if self.is_any_in_doublelist() {
                 n.value.value *= 2.0;
@@ -119,7 +119,7 @@ impl VisitMut for Px2Rem {
     // .a { --a-b: var(--c-d, 88px); }
     fn visit_mut_token(&mut self, t: &mut Token) {
         if let Token::Dimension(dimension) = t {
-            if dimension.unit.to_string() == "px" && self.should_transform(dimension.value) {
+            if dimension.unit == "px" && self.should_transform(dimension.value) {
                 let mut rem_val = dimension.value / self.config.root;
                 dimension.raw_value = rem_val.to_string().into();
                 if self.is_any_in_doublelist() {

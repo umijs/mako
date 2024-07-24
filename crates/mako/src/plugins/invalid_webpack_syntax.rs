@@ -90,9 +90,9 @@ fn is_member_prop(
         ..
     } = expr
     {
-        let is_obj_match = ident.sym.to_string() == obj;
+        let is_obj_match = ident.sym == obj;
         let has_binding = ident.span.ctxt.outer() != unresolved_mark;
-        let is_prop_match = prop_ident.sym.to_string() == prop;
+        let is_prop_match = prop_ident.sym == prop;
         is_obj_match && (check_obj_binding && !has_binding) && is_prop_match
     } else {
         false

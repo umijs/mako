@@ -141,8 +141,8 @@ impl VisitMut for MockFilenameAndDirname {
         if let Expr::Ident(ident) = expr
             && ident.span.ctxt.outer() == self.unresolved_mark
         {
-            let is_filename = ident.sym.to_string() == "__filename";
-            let is_dirname = ident.sym.to_string() == "__dirname";
+            let is_filename = ident.sym == "__filename";
+            let is_dirname = ident.sym == "__dirname";
             if is_filename || is_dirname {
                 let path = diff_paths(&self.current_path, &self.context.root).unwrap_or("".into());
                 let value = if is_filename {

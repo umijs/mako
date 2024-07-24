@@ -321,10 +321,7 @@ pub fn create_stats_info(compile_time: u128, compiler: &Compiler) -> StatsJsonMa
                     let id = module.id.clone();
                     // 去拿 module 的文件 size 时，有可能 module 不存在，size 则设为 0
                     // 场景: xlsx 中引入了 fs 模块
-                    let size = match file_size(&id) {
-                        Ok(size) => size,
-                        Err(..) => 0,
-                    };
+                    let size = file_size(&id).unwrap_or_default();
                     let module = StatsJsonChunkModuleItem {
                         module_type: StatsJsonType::Module("module".to_string()),
                         size,

@@ -218,11 +218,7 @@ fn pot_to_chunk_module_object_string(
     chunk_prefix_offset: u32,
 ) -> Result<(String, RawSourceMap)> {
     let sorted_kv = {
-        let mut sorted_kv = pot
-            .module_map
-            .iter()
-            .map(|(k, v)| (k, v))
-            .collect::<Vec<_>>();
+        let mut sorted_kv = pot.module_map.iter().collect::<Vec<_>>();
 
         sorted_kv.sort_by_key(|(k, _)| *k);
 

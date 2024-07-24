@@ -203,8 +203,7 @@ fn try_replace_context_arg(
         // handle `(...)`
         Expr::Paren(ParenExpr {
             expr: paren_expr, ..
-        }) => try_replace_context_arg(paren_expr, has_visit_top_bin)
-            .map(|(prefix, suffix)| (prefix, suffix)),
+        }) => try_replace_context_arg(paren_expr, has_visit_top_bin),
 
         // handle `'./foo/' + bar`
         Expr::Bin(BinExpr {
