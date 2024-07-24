@@ -262,6 +262,8 @@ function checkConfig(opts) {
     'experimental',
     'flexBugs',
     'optimization',
+    'sass',
+    'autoCSSModules',
   ];
   // umi mako config
   const { mako } = opts.config;

@@ -2,7 +2,10 @@ import url from 'url';
 import { type Options } from 'sass';
 import { createParallelLoader } from './parallelSassLoader';
 
-function sassLoader(fn: Function | null, opts: Options<'async'>) {
+function sassLoader(
+  fn: Function | null,
+  opts: Omit<Options<'async'>, 'functions'>,
+) {
   let parallelSassLoader: ReturnType<typeof createParallelLoader> | undefined;
   return {
     render: async (filePath: string) => {

@@ -668,10 +668,12 @@ function App() {
 
 ### sass
 
-- 类型: `sass.Options<'async'>`
+- 类型: `Omit<sass.Options<'async'>,'functions'>`
 - 默认值: `{}`
 
 指定 sass [配置](https://sass-lang.com/documentation/js-api/interfaces/options/).
+
+> [不支持 functions 配置](https://github.com/piscinajs/piscina/issues/130#issuecomment-842164393)，可以在 scss 文件中定义 functions ，然后在头文件中引入使用。
 
 例如：
 

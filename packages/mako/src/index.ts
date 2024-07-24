@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { omit } from 'lodash';
 import resolve from 'resolve';
+import { type Options } from 'sass';
 import * as binding from '../binding';
 import { ForkTSChecker as ForkTSChecker } from './forkTSChecker';
 import { LessLoaderOpts, lessLoader } from './lessLoader';
@@ -10,6 +11,7 @@ import { sassLoader } from './sassLoader';
 type Config = binding.BuildParams['config'] & {
   plugins?: binding.BuildParams['plugins'];
   less?: LessLoaderOpts;
+  sass?: Omit<Options<'async'>, 'functions'>;
   forkTSChecker?: boolean;
 };
 
@@ -110,8 +112,18 @@ export async function build(params: BuildParams) {
     },
   });
 
-  if (makoConfig?.sass) {
-    let sass = sassLoader(null, makoConfig?.sass);
+  if (makoConfig?.sass || params.config?.sass) {
+    const sassOpts = {
+      ...(makoConfig?.sass || {}),
+      ...(params.config?.sass || {}),
+    };
+    if (sassOpts?.functions) {
+      console.warn('sass.functions is no support');
+    }
+    // Symbols cannot be cloned by the structured cloning algorithm that is used behind the scenes when using postMessage with the worker thread. Since you didn't provide a full example I assume you are trying to pass your custom class to or from a worker. That's not possible. Even without symbols in your object it would always end up as a plain Object on the other end without any prototype information.
+    // https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm
+    // https://nodejs.org/api/worker_threads.html#worker_threads_port_postmessage_value_transferlist
+    let sass = sassLoader(null, omit(sassOpts, ['functions']));
     params.config.plugins.push({
       name: 'sass',
       async load(filePath: string) {
@@ -179,6 +191,7 @@ export async function build(params: BuildParams) {
   });
   params.config = omit(params.config, [
     'less',
+    'sass',
     'forkTSChecker',
     'plugins',
   ]) as BuildParams['config'];
