@@ -1,8 +1,5 @@
-use std::path::PathBuf;
-
-use merge_source_map::sourcemap::SourceMap as MergeSourceMap;
-use merge_source_map::{merge, MergeOptions};
-use pathdiff::diff_paths;
+// use merge_source_map::sourcemap::SourceMap as MergeSourceMap;
+// use merge_source_map::{merge, MergeOptions};
 use swc_core::base::sourcemap;
 use swc_core::common::source_map::SourceMapGenConfig;
 use swc_core::common::sync::Lrc;
@@ -69,34 +66,45 @@ impl From<sourcemap::SourceMap> for RawSourceMap {
 impl From<RawSourceMap> for sourcemap::SourceMap {
     fn from(rsm: RawSourceMap) -> Self {
         Self::new(
-            rsm.file,
+            rsm.file.map(|f| f.into_boxed_str().into()),
             rsm.tokens,
-            rsm.names,
-            rsm.sources,
-            Some(rsm.sources_content),
+            rsm.names
+                .into_iter()
+                .map(|n| n.into_boxed_str().into())
+                .collect(),
+            rsm.sources
+                .into_iter()
+                .map(|n| n.into_boxed_str().into())
+                .collect(),
+            Some(
+                rsm.sources_content
+                    .into_iter()
+                    .map(|op_string| op_string.map(|s| s.into_boxed_str().into()))
+                    .collect(),
+            ),
         )
     }
 }
-
-pub fn merge_source_map(source_map_chain: Vec<Vec<u8>>, root: PathBuf) -> Vec<u8> {
-    let source_map_chain = source_map_chain
-        .iter()
-        .map(|s| MergeSourceMap::from_slice(s).unwrap())
-        .collect::<Vec<_>>();
-
-    let merged = merge(
-        source_map_chain,
-        MergeOptions {
-            source_replacer: Some(Box::new(move |src| {
-                diff_paths(src, &root)
-                    .unwrap_or(src.into())
-                    .to_string_lossy()
-                    .to_string()
-            })),
-        },
-    );
-
-    let mut buf = vec![];
-    merged.to_writer(&mut buf).unwrap();
-    buf
-}
+//
+// pub fn merge_source_map(source_map_chain: Vec<Vec<u8>>, root: PathBuf) -> Vec<u8> {
+//     let source_map_chain = source_map_chain
+//         .iter()
+//         .map(|s| MergeSourceMap::from_slice(s).unwrap())
+//         .collect::<Vec<_>>();
+//
+//     let merged = merge(
+//         source_map_chain,
+//         MergeOptions {
+//             source_replacer: Some(Box::new(move |src| {
+//                 diff_paths(src, &root)
+//                     .unwrap_or(src.into())
+//                     .to_string_lossy()
+//                     .to_string()
+//             })),
+//         },
+//     );
+//
+//     let mut buf = vec![];
+//     merged.to_writer(&mut buf).unwrap();
+//     buf
+// }

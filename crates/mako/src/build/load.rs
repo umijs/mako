@@ -133,7 +133,7 @@ export function moduleToDom(css) {
                 Err(reason) => {
                     return Err(anyhow!(LoadError::CompileMdError {
                         path: file.path.to_string_lossy().to_string(),
-                        reason,
+                        reason: reason.to_string(),
                     }));
                 }
             };

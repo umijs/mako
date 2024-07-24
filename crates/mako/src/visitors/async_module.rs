@@ -4,8 +4,8 @@ use std::sync::Arc;
 use swc_core::common::util::take::Take;
 use swc_core::common::{Mark, DUMMY_SP};
 use swc_core::ecma::ast::{
-    ArrayLit, AssignExpr, AssignOp, AwaitExpr, BlockStmt, BlockStmtOrExpr, CondExpr, Expr, Ident,
-    Lit, ModuleItem, ParenExpr, Stmt, VarDeclKind,
+    ArrayLit, ArrayPat, AssignExpr, AssignOp, AwaitExpr, BlockStmt, BlockStmtOrExpr, CondExpr,
+    Expr, Ident, Lit, ModuleItem, ParenExpr, Stmt, VarDeclKind,
 };
 use swc_core::ecma::utils::{member_expr, quote_expr, quote_ident, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
@@ -124,17 +124,19 @@ impl VisitMut for AsyncModule<'_> {
             self.prepend_module_items.push(ModuleItem::Stmt(
                 AssignExpr {
                     op: AssignOp::Assign,
-                    left: ArrayLit {
+                    left: ArrayPat {
                         span: DUMMY_SP,
+                        optional: false,
                         elems: self
                             .async_deps_idents
                             .iter()
-                            .map(|ident| Some(ident.clone().as_arg()))
+                            .map(|ident| Some(ident.clone().into()))
                             .collect(),
+                        type_ann: None,
                     }
-                    .as_pat_or_expr(),
+                    .into(),
                     right: CondExpr {
-                        test: member_expr!(DUMMY_SP, __mako_async_dependencies__.then),
+                        test: member_expr!(DUMMY_SP, __mako_async_dependencies__.then).into(),
                         cons: ParenExpr {
                             expr: AwaitExpr {
                                 span: DUMMY_SP,
@@ -261,9 +263,7 @@ __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
     var __mako_async_dependencies__ = handleAsyncDeps([
         _async__mako_imported_module_0__
     ]);
-    [
-        _async__mako_imported_module_0__
-    ] = __mako_async_dependencies__.then ? (await __mako_async_dependencies__)() : __mako_async_dependencies__;
+    [_async__mako_imported_module_0__] = __mako_async_dependencies__.then ? (await __mako_async_dependencies__)() : __mako_async_dependencies__;
     var _async = _interop_require_default._(_async__mako_imported_module_0__);
     0, _async.default(1, 2);
     asyncResult();
@@ -296,10 +296,7 @@ __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
         _async__mako_imported_module_0__,
         _async__mako_imported_module_1__
     ]);
-    [
-        _async__mako_imported_module_0__,
-        _async__mako_imported_module_1__
-    ] = __mako_async_dependencies__.then ? (await __mako_async_dependencies__)() : __mako_async_dependencies__;
+    [_async__mako_imported_module_0__, _async__mako_imported_module_1__] = __mako_async_dependencies__.then ? (await __mako_async_dependencies__)() : __mako_async_dependencies__;
     var _async = _interop_require_default._(_async__mako_imported_module_0__);
     var _async_2 = _interop_require_default._(_async__mako_imported_module_1__);
     0, _async.default(1, 2);
@@ -333,9 +330,7 @@ __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
     var __mako_async_dependencies__ = handleAsyncDeps([
         _async__mako_imported_module_0__
     ]);
-    [
-        _async__mako_imported_module_0__
-    ] = __mako_async_dependencies__.then ? (await __mako_async_dependencies__)() : __mako_async_dependencies__;
+    [_async__mako_imported_module_0__] = __mako_async_dependencies__.then ? (await __mako_async_dependencies__)() : __mako_async_dependencies__;
     var _async = _interop_require_default._(_export_star._(_async__mako_imported_module_0__, exports));
     0, _async.default(1, 2);
     asyncResult();
@@ -387,9 +382,7 @@ __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
     var __mako_async_dependencies__ = handleAsyncDeps([
         _async__mako_imported_module_0__
     ]);
-    [
-        _async__mako_imported_module_0__
-    ] = __mako_async_dependencies__.then ? (await __mako_async_dependencies__)() : __mako_async_dependencies__;
+    [_async__mako_imported_module_0__] = __mako_async_dependencies__.then ? (await __mako_async_dependencies__)() : __mako_async_dependencies__;
     var _miexed_async = _interop_require_default._(_async__mako_imported_module_0__);
     async.add(1, 2);
     const async = require('./miexed_async');

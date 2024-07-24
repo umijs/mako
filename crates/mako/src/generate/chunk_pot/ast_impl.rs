@@ -15,7 +15,7 @@ use swc_core::ecma::ast::{
 use swc_core::ecma::utils::{quote_ident, quote_str, ExprFactory};
 
 use crate::ast::js_ast::JsAst;
-use crate::ast::sourcemap::{build_source_map_to_buf, merge_source_map};
+use crate::ast::sourcemap::build_source_map_to_buf;
 use crate::compiler::Context;
 use crate::config::Mode;
 use crate::generate::chunk::{Chunk, ChunkType};
@@ -97,7 +97,9 @@ pub(crate) fn render_css_chunk(
 
             source_map_chain.push(build_source_map_to_buf(&source_map, cm));
 
-            Some(merge_source_map(source_map_chain, context.root.clone()))
+            // TODO
+            // Some(merge_source_map(source_map_chain, context.root.clone()))
+            source_map_chain.pop()
         }
     };
 

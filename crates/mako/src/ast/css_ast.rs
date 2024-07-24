@@ -46,7 +46,10 @@ impl CssAst {
             legacy_ie: true,
             ..Default::default()
         };
-        let lexer = parser::lexer::Lexer::new(StringInput::from(&*fm), config);
+
+        let comments = context.meta.css.comments.clone();
+
+        let lexer = parser::lexer::Lexer::new(StringInput::from(&*fm), Some(&comments), config);
         let mut parser = parser::parser::Parser::new(lexer, config);
         let parse_result = parser.parse_all();
         let mut ast_errors = parser.take_errors();

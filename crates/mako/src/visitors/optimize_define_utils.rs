@@ -1,6 +1,6 @@
 use swc_core::common::{Mark, DUMMY_SP};
 use swc_core::ecma::ast::{CallExpr, Expr, ExprOrSpread, ExprStmt, Lit, ModuleItem, Stmt, Str};
-use swc_core::ecma::utils::member_expr;
+use swc_core::ecma::utils::{member_expr, ExprFactory};
 use swc_core::ecma::visit::VisitMut;
 
 // TODO: add testcases
@@ -35,7 +35,7 @@ impl VisitMut for OptimizeDefineUtils {
                 && is_obj_lit_arg(call_expr.args.get(2))
             {
                 call_expr.callee =
-                    member_expr!(DUMMY_SP.apply_mark(self.unresolved_mark), require.d).into();
+                    member_expr!(DUMMY_SP.apply_mark(self.unresolved_mark), require.d).as_callee();
             } else {
                 return;
             }
@@ -56,7 +56,8 @@ impl VisitMut for OptimizeDefineUtils {
                     && is_obj_lit_arg(call_expr.args.get(2))
                 {
                     call_expr.callee =
-                        member_expr!(DUMMY_SP.apply_mark(self.unresolved_mark), require.d).into();
+                        member_expr!(DUMMY_SP.apply_mark(self.unresolved_mark), require.d)
+                            .as_callee();
                     return;
                 }
 
@@ -66,7 +67,7 @@ impl VisitMut for OptimizeDefineUtils {
                     && call_expr.args.len() == 2
                     && is_export_arg(call_expr.args.first())
                     && is_obj_lit_arg(call_expr.args.get(1))
-                    && callee_ident.sym.to_string() == "_export"
+                    && callee_ident.sym == "_export"
                     // is private ident
                     && !callee_ident
                         .span
@@ -75,7 +76,8 @@ impl VisitMut for OptimizeDefineUtils {
                         .is_descendant_of(self.top_level_mark)
                 {
                     call_expr.callee =
-                        member_expr!(DUMMY_SP.apply_mark(self.unresolved_mark), require.e).into();
+                        member_expr!(DUMMY_SP.apply_mark(self.unresolved_mark), require.e)
+                            .as_callee();
                     return;
                 }
             }
@@ -95,14 +97,14 @@ fn is_object_define(expr: &Expr) -> bool {
             let is_object = member
                 .obj
                 .as_ident()
-                .map(|ident| ident.sym.to_string() == "Object")
+                .map(|ident| ident.sym == "Object")
                 .unwrap_or(false);
 
             is_object
                 && member
                     .prop
                     .as_ident()
-                    .map(|ident| ident.sym.to_string() == "defineProperty")
+                    .map(|ident| ident.sym == "defineProperty")
                     .unwrap_or(false)
         })
         .unwrap_or(false)
@@ -114,7 +116,7 @@ fn is_export_arg(arg: Option<&ExprOrSpread>) -> bool {
             && arg
                 .expr
                 .as_ident()
-                .map(|ident| ident.sym.to_string() == "exports")
+                .map(|ident| ident.sym == "exports")
                 .unwrap_or(false)
     })
     .unwrap_or(false)
@@ -140,7 +142,7 @@ fn is_string_lit_arg_with_value(arg: Option<&ExprOrSpread>, value: &str) -> bool
                 .as_lit()
                 .map(|lit| {
                     if let Lit::Str(str_lit) = lit {
-                        str_lit.value.to_string() == value
+                        str_lit.value == value
                     } else {
                         false
                     }

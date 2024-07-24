@@ -51,8 +51,8 @@ impl NewUrlAssets {
             Expr::Bin(BinExpr {
                 span: DUMMY_SP,
                 op: BinaryOp::LogicalOr,
-                left: member_expr!(DUMMY_SP, document.baseURI),
-                right: member_expr!(DUMMY_SP, self.location.href),
+                left: member_expr!(DUMMY_SP, document.baseURI).into(),
+                right: member_expr!(DUMMY_SP, self.location.href).into(),
             })
         } else {
             Expr::Lit(
@@ -91,7 +91,8 @@ impl VisitMut for NewUrlAssets {
                                 Expr::Bin(BinExpr {
                                     span: DUMMY_SP,
                                     op: BinaryOp::Add,
-                                    left: member_expr!(DUMMY_SP, __mako_require__.publicPath),
+                                    left: member_expr!(DUMMY_SP, __mako_require__.publicPath)
+                                        .into(),
                                     right: Lit::Str(url.into()).into(),
                                 })
                                 .into()

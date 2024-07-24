@@ -123,7 +123,7 @@ where
     K: Hash + Eq + Ord,
     V: Hash,
 {
-    let mut sorted_kv = map.iter().map(|(k, v)| (k, v)).collect::<Vec<_>>();
+    let mut sorted_kv = map.iter().collect::<Vec<_>>();
     sorted_kv.sort_by_key(|(k, _)| *k);
 
     let mut hasher: XxHash64 = Default::default();
@@ -156,11 +156,7 @@ pub(super) fn to_array_lit(elems: Vec<ExprOrSpread>) -> ArrayLit {
 pub(crate) fn pot_to_module_object(pot: &ChunkPot, context: &Arc<Context>) -> Result<ObjectLit> {
     crate::mako_profile_function!();
 
-    let mut sorted_kv = pot
-        .module_map
-        .iter()
-        .map(|(k, v)| (k, v))
-        .collect::<Vec<_>>();
+    let mut sorted_kv = pot.module_map.iter().collect::<Vec<_>>();
     sorted_kv.sort_by_key(|(k, _)| *k);
 
     let mut props = Vec::new();
@@ -240,7 +236,7 @@ pub(crate) fn pot_to_chunk_module(
             }
             .into(),
         )
-        .make_assign_to(AssignOp::Assign, chunk_global_expr.clone().as_pat_or_expr())
+        .make_assign_to(AssignOp::Assign, chunk_global_expr.clone().into())
         .wrap_with_paren()
         .make_member::<Ident>(quote_ident!("push"));
     let chunk_register_stmt = chunk_global_obj

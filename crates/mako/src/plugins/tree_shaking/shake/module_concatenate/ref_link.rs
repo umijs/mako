@@ -73,7 +73,7 @@ impl Visit for PatDefineIdCollector {
                             self.visit_pat(&kv_prop.value);
                         }
                         ObjectPatProp::Assign(assign_prop) => {
-                            self.defined_idents.insert(assign_prop.key.clone());
+                            self.defined_idents.insert(assign_prop.key.clone().into());
                         }
                         ObjectPatProp::Rest(rest_prop) => {
                             self.visit_pat(&rest_prop.arg);

@@ -5,7 +5,7 @@ use swc_core::common::{Span, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::*;
 use swc_core::ecma::transforms::base::helpers::HELPERS;
 use swc_core::ecma::utils::{
-    is_valid_prop_ident, quote_ident, quote_str, undefined, ExprFactory, IntoIndirectCall,
+    is_valid_prop_ident, quote_ident, quote_str, ExprFactory, IntoIndirectCall,
 };
 use swc_core::ecma::visit::{noop_visit_mut_type, VisitMut, VisitMutWith};
 
@@ -91,7 +91,7 @@ impl VisitMut for ModuleRefRewriter<'_> {
 
             Expr::This(ThisExpr { span }) => {
                 if !self.allow_top_level_this && self.is_global_this {
-                    *n = *undefined(*span);
+                    *n = *Expr::undefined(*span);
                 }
             }
 

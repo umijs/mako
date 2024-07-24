@@ -3,7 +3,7 @@ pub mod bundless_compiler;
 pub mod context_module;
 pub mod copy;
 pub mod detect_circular_dependence;
-pub mod emotion;
+// pub mod emotion;
 pub mod graphviz;
 pub mod hmr_runtime;
 pub mod ignore;

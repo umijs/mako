@@ -83,22 +83,16 @@ impl VisitMut for EnvReplacer {
         if let Expr::Member(MemberExpr { obj, prop, .. }) = expr {
             if let Expr::Member(MemberExpr {
                 obj: first_obj,
-                prop:
-                    MemberProp::Ident(Ident {
-                        sym: js_word!("env"),
-                        ..
-                    }),
+                prop: MemberProp::Ident(ident),
                 ..
             }) = &**obj
+                && ident.sym.eq("env")
             {
                 // handle `env.XX`
                 let mut envs = EnvsType::Node(self.envs.clone());
 
                 if match &**first_obj {
-                    Expr::Ident(Ident {
-                        sym: js_word!("process"),
-                        ..
-                    }) => true,
+                    Expr::Ident(Ident { sym, .. }) if sym.eq("process") => true,
                     Expr::MetaProp(MetaPropExpr {
                         kind: MetaPropKind::ImportMeta,
                         ..
@@ -146,13 +140,10 @@ impl VisitMut for EnvReplacer {
                         kind: MetaPropKind::ImportMeta,
                         ..
                     }),
-                prop:
-                    MemberProp::Ident(Ident {
-                        sym: js_word!("env"),
-                        ..
-                    }),
+                prop: MemberProp::Ident(ref ident),
                 ..
             }) = *expr
+                && ident.sym.eq("env")
             {
                 // replace independent `import.meta.env` to json object
                 let mut props = Vec::new();

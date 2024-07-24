@@ -196,6 +196,7 @@ impl Inject {
         };
 
         let decl: ModuleDecl = ImportDecl {
+            phase: Default::default(),
             span: DUMMY_SP,
             specifiers: vec![specifier],
             type_only: false,
