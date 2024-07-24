@@ -1,5 +1,5 @@
 use swc_core::common::{Mark, DUMMY_SP};
-use swc_core::ecma::ast::{AssignExpr, AssignOp, Pat, PatOrExpr};
+use swc_core::ecma::ast::{AssignExpr, AssignOp, Ident};
 use swc_core::ecma::utils::member_expr;
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
@@ -9,18 +9,15 @@ pub struct PublicPathAssignment {
 
 impl VisitMut for PublicPathAssignment {
     fn visit_mut_assign_expr(&mut self, n: &mut AssignExpr) {
-        if n.op == AssignOp::Assign {
-            if let PatOrExpr::Pat(box Pat::Ident(ident)) = &n.left {
-                let sym = ident.sym.as_ref();
-                if ident.span.ctxt.outer() == self.unresolved_mark
-                    && (sym == "__webpack_public_path__" || sym == "__mako_public_path__")
-                {
-                    *n = AssignExpr {
-                        left: PatOrExpr::Expr(member_expr!(DUMMY_SP, __mako_require__.publicPath)),
-                        ..n.clone()
-                    };
-                }
-            }
+        if n.op == AssignOp::Assign
+            && let Some(Ident { sym, span, .. }) = n.left.as_ident()
+            && (sym == "__webpack_public_path__" || sym == "__mako_public_path__")
+            && span.ctxt.outer() == self.unresolved_mark
+        {
+            *n = AssignExpr {
+                left: member_expr!(DUMMY_SP, __mako_require__.publicPath).into(),
+                ..n.clone()
+            };
         }
         n.visit_mut_children_with(self);
     }
