@@ -200,6 +200,10 @@ impl DevServer {
 
                 // for hmr files
                 debug!("serve with staticfile server: {}", path);
+                let req = hyper::Request::builder()
+                    .uri(path)
+                    .body(hyper::Body::empty())
+                    .unwrap();
                 let res = staticfile.serve(req).await;
                 res.map_err(anyhow::Error::from)
             }
