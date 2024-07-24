@@ -118,6 +118,7 @@ pub struct BuildParams {
         selectorBlackList?: string[];
         selectorWhiteList?: string[];
         selectorDoubleList?: string[];
+        mediaQuery?: boolean;
     };
     stats?: boolean;
     hash?: boolean;

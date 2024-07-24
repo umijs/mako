@@ -520,6 +520,8 @@ pub fn print_stats(compiler: &Compiler) {
         assets_vec.push((asset.hashname.clone(), asset.size, 0));
     }
 
+    // Sort the output stats by their size in desc order
+    assets_vec.sort_by_key(|(_, size, _)| std::cmp::Reverse(*size));
     // 输出 stats
     let mut s = String::new();
     for asset in assets_vec {

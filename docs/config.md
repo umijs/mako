@@ -539,9 +539,16 @@ Buffer;
 
 publicPath configuration. Note: There is a special value `"runtime"`, which means that it will switch to runtime mode and use the runtime `window.publicPath` as publicPath.
 
+If you want to set the `publicPath` in the runtime, use `__mako_public_path__`. (Notice: `__webpack_public_path__` is also supported)
+
+```ts
+__mako_public_path__ = '/foo/';
+```
+
 ### px2rem
 
-- Type: `false | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[], selectorWhiteList?: string[], selectorDoubleList?: string[], minPixelValue?: number }`
+- Type: `false | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[], 
+  selectorWhiteList?: string[], selectorDoubleList?: string[], minPixelValue?: number, mediaQuery?: boolean }`
 - Default: `false`
 
 Whether to enable px2rem conversion.
@@ -553,6 +560,7 @@ Whether to enable px2rem conversion.
 - `selectorWhiteList`, selector white list
 - `selectorDoubleList`, selector double rem list
 - `minPixelValue`，minimum pixel value, default is `0`
+- `mediaQuery`，allow px to be converted in media queries, default is `false`
 
 ### react
 

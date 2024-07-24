@@ -62,7 +62,9 @@ impl<'a> Visit for InvalidSyntaxVisitor<'a> {
     }
     fn visit_ident(&mut self, n: &Ident) {
         // why keep __webpack_nonce__? since styled-components is using it
-        let is_webpack_prefix = n.sym.starts_with("__webpack_") && &n.sym != "__webpack_nonce__";
+        let is_webpack_prefix = n.sym.starts_with("__webpack_")
+            && &n.sym != "__webpack_nonce__"
+            && &n.sym != "__webpack_public_path__";
         let has_binding = n.span.ctxt.outer() != self.unresolved_mark;
         if is_webpack_prefix && !has_binding {
             self.handler
