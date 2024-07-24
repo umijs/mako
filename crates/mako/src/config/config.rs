@@ -445,8 +445,8 @@ pub struct ExperimentalConfig {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct WatchConfig {
-    pub ignore_paths: Vec<String>,
-    pub node_modules_regexes: Vec<String>,
+    pub ignore_paths: Option<Vec<String>>,
+    pub node_modules_regexes: Option<Vec<String>>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

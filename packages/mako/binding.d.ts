@@ -183,6 +183,7 @@ export interface BuildParams {
     };
     watch?: {
       ignoredPaths?: string[];
+      nodeModulesRegexes?: string[];
     };
   };
   plugins: Array<JsHooks>;

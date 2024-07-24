@@ -39,6 +39,8 @@ impl<'a> Watcher<'a> {
                 .config
                 .watch
                 .node_modules_regexes
+                .clone()
+                .unwrap_or_default()
                 .iter()
                 .map(|s| Regex::new(s).unwrap())
                 .collect::<Vec<Regex>>(),
@@ -125,6 +127,8 @@ impl<'a> Watcher<'a> {
                 .config
                 .watch
                 .ignore_paths
+                .as_deref()
+                .unwrap_or(&[])
                 .iter()
                 .map(|p| p.as_str()),
         );
