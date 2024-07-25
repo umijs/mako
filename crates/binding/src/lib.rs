@@ -169,6 +169,7 @@ pub struct BuildParams {
     };
     watch?: {
         ignoredPaths?: string[];
+        nodeModulesRegexes?: string[];
     };
 }"#)]
     pub config: serde_json::Value,
