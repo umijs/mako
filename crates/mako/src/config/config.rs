@@ -446,6 +446,7 @@ pub struct ExperimentalConfig {
 #[serde(rename_all = "camelCase")]
 pub struct WatchConfig {
     pub ignore_paths: Option<Vec<String>>,
+    #[serde(rename = "_nodeModulesRegexes")]
     pub node_modules_regexes: Option<Vec<String>>,
 }
 
@@ -720,7 +721,7 @@ const DEFAULT_CONFIG: &str = r#"
     },
     "useDefineForClassFields": true,
     "emitDecoratorMetadata": false,
-    "watch": { "ignorePaths": [], "nodeModulesRegexes": [] },
+    "watch": { "ignorePaths": [], "_nodeModulesRegexes": [] },
     "devServer": { "host": "127.0.0.1", "port": 3000 }
 }
 "#;
