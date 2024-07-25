@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
-use std::time::{Instant, UNIX_EPOCH};
+use std::time::Instant;
 
 use anyhow::{anyhow, Error, Result};
 use colored::Colorize;
@@ -17,7 +17,7 @@ use crate::config::{Config, OutputMode};
 use crate::generate::chunk_graph::ChunkGraph;
 use crate::generate::optimize_chunk::OptimizeChunksInfo;
 use crate::module_graph::ModuleGraph;
-use crate::plugin::{Plugin, PluginDriver, PluginGenerateEndParams, PluginGenerateStats};
+use crate::plugin::{Plugin, PluginDriver, PluginGenerateEndParams};
 use crate::plugins;
 use crate::resolve::{get_resolvers, Resolvers};
 use crate::stats::StatsInfo;
@@ -339,7 +339,7 @@ impl Compiler {
         }
 
         let t_compiler = Instant::now();
-        let start_time = std::time::SystemTime::now();
+        let start_time = chrono::Local::now().timestamp_millis();
         let building_with_message = format!(
             "Building with {} for {}...",
             "mako".to_string().cyan(),
@@ -378,6 +378,9 @@ impl Compiler {
                 .plugin_driver
                 .after_build(&self.context, self)?;
         }
+
+        self.context.plugin_driver.before_generate(&self.context)?;
+
         let result = {
             crate::mako_profile_scope!("Generate Stage");
             // need to put all rayon parallel iterators run in the existed scope, or else rayon
@@ -385,33 +388,32 @@ impl Compiler {
             thread_pool::scope(|_| self.generate())
         };
         let t_compiler_duration = t_compiler.elapsed();
-        if result.is_ok() {
-            println!(
-                "{}",
-                format!(
-                    "✓ Built in {}",
-                    format!("{}ms", t_compiler_duration.as_millis()).bold()
-                )
-                .green()
-            );
-            if !self.context.args.watch {
-                println!("{}", "Complete!".bold());
+        match result {
+            Ok(mut stats) => {
+                stats.start_time = start_time;
+                stats.end_time = chrono::Local::now().timestamp_millis();
+                println!(
+                    "{}",
+                    format!(
+                        "✓ Built in {}",
+                        format!("{}ms", t_compiler_duration.as_millis()).bold()
+                    )
+                    .green()
+                );
+                if !self.context.args.watch {
+                    println!("{}", "Complete!".bold());
+                }
+                let params = PluginGenerateEndParams {
+                    is_first_compile: true,
+                    time: t_compiler.elapsed().as_millis() as i64,
+                    stats,
+                };
+                self.context
+                    .plugin_driver
+                    .generate_end(&params, &self.context)?;
+                Ok(())
             }
-            let end_time = std::time::SystemTime::now();
-            let params = PluginGenerateEndParams {
-                is_first_compile: true,
-                time: t_compiler.elapsed().as_millis() as u64,
-                stats: PluginGenerateStats {
-                    start_time: start_time.duration_since(UNIX_EPOCH)?.as_millis() as u64,
-                    end_time: end_time.duration_since(UNIX_EPOCH)?.as_millis() as u64,
-                },
-            };
-            self.context
-                .plugin_driver
-                .generate_end(&params, &self.context)?;
-            Ok(())
-        } else {
-            result
+            Err(e) => Err(e),
         }
     }
 

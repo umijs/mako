@@ -96,7 +96,7 @@ async fn run() -> Result<()> {
         if cli.watch {
             let d = dev::DevServer::new(root.clone(), compiler);
             // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
-            d.serve(move |_params| {}).await;
+            d.serve().await;
         }
     }
     Ok(())

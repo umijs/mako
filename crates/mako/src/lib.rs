@@ -16,7 +16,7 @@ mod module_graph;
 pub mod plugin;
 mod plugins;
 mod resolve;
-mod stats;
+pub mod stats;
 pub mod utils;
 mod visitors;
 
