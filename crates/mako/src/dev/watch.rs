@@ -70,10 +70,12 @@ impl<'a> Watcher<'a> {
                     }
                 }
                 if !self.node_modules_regexes.is_empty() {
-                    let is_match = self
-                        .node_modules_regexes
-                        .iter()
-                        .any(|regex| regex.is_match(resource.0.path().to_str().unwrap()));
+                    let file_path = resource.0.path().to_str().unwrap();
+                    let is_match = file_path.contains("node_modules")
+                        && self
+                            .node_modules_regexes
+                            .iter()
+                            .any(|regex| regex.is_match(file_path));
                     if is_match {
                         let _ = self.watcher.watch(
                             resource.0.path().to_path_buf().as_path(),
