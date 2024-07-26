@@ -567,7 +567,7 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
 
     let dist_name = chunk_file.disk_name();
 
-    let to: PathBuf = context.config.output.path.join(&dist_name);
+    let to: PathBuf = context.config.output.path.join(dist_name.as_str());
     let stats_info = &context.stats_info;
 
     match context.config.devtool {
@@ -581,7 +581,7 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
                     size,
                     chunk_file.source_map_name(),
                     chunk_file.chunk_id.clone(),
-                    dist_name.clone(),
+                    to.to_string_lossy().to_string(),
                     chunk_file.source_map_disk_name(),
                 );
                 fs::write(
@@ -616,8 +616,8 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
                 size,
                 chunk_file.file_name.clone(),
                 chunk_file.chunk_id.clone(),
+                to.to_string_lossy().to_string(),
                 dist_name.clone(),
-                chunk_file.disk_name(),
             );
             fs::write(to, &code).unwrap();
         }
@@ -640,8 +640,8 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
                 size,
                 chunk_file.file_name.clone(),
                 chunk_file.chunk_id.clone(),
+                to.to_string_lossy().to_string(),
                 dist_name.clone(),
-                chunk_file.disk_name(),
             );
             fs::write(to, code).unwrap();
         }
@@ -650,8 +650,8 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
                 chunk_file.content.len() as u64,
                 chunk_file.file_name.clone(),
                 chunk_file.chunk_id.clone(),
+                to.to_string_lossy().to_string(),
                 dist_name,
-                chunk_file.disk_name(),
             );
 
             fs::write(to, &chunk_file.content).unwrap();
