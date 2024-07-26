@@ -600,9 +600,7 @@ async function getMakoConfig(opts) {
     },
     mode: 'development',
     publicPath: runtimePublicPath ? 'runtime' : publicPath || '/',
-    targets: targets || {
-      chrome: 80,
-    },
+    targets: targets || {},
     manifest,
     mdx: !!mdx,
     codeSplitting:
