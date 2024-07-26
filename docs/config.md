@@ -671,6 +671,8 @@ Child configuration items:
 - Type: `Omit<sass.Options<'async'>,'functions'>`
 - Default: `{}`
 
+> The "sass" package is not installed. Please run "npm install sass" to install it.
+
 Specify the sass [configuration](https://sass-lang.com/documentation/js-api/interfaces/options/).
 
 > [functions configuration not supported](https://github.com/piscinajs/piscina/issues/130#issuecomment -842164393), functions can be defined in the scss file and then introduced for use in the header file.
