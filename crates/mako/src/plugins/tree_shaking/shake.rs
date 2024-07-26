@@ -45,7 +45,7 @@ pub fn optimize_modules(module_graph: &mut ModuleGraph, context: &Arc<Context>) 
                         let dep_module_type = dep_module.get_module_type();
 
                         if dep_module_type != ModuleType::Script {
-                            return false;
+                            return true;
                         }
 
                         dep_module.side_effects = true;
