@@ -21,6 +21,8 @@ use crate::plugins::tree_shaking::shake::module_concatenate::optimize_module_gra
 use crate::plugins::tree_shaking::statement_graph::{ExportInfo, ExportSpecifierInfo, ImportInfo};
 use crate::plugins::tree_shaking::{module, remove_useless_stmts, statement_graph};
 
+type TreeShakingModuleMap = HashMap<ModuleId, RefCell<TreeShakeModule>>;
+
 pub fn optimize_modules(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> Result<()> {
     let (topo_sorted_modules, _cyclic_modules) = {
         crate::mako_profile_scope!("tree shake topo-sort");
@@ -143,117 +145,130 @@ pub fn optimize_modules(module_graph: &mut ModuleGraph, context: &Arc<Context>) 
     let mut current_index: usize = 0;
     let len = tree_shake_modules_ids.len();
     while current_index < len {
-        let mut next_index = current_index + 1;
+        fn shake_module(
+            module_graph: &ModuleGraph,
+            tree_shake_modules_ids: &[ModuleId],
+            tree_shake_modules_map: &TreeShakingModuleMap,
+            current_index: usize,
+        ) -> usize {
+            let mut next_index = current_index + 1;
 
-        let tree_shake_module_id = &tree_shake_modules_ids[current_index];
+            let tree_shake_module_id = &tree_shake_modules_ids[current_index];
 
-        let mut tree_shake_module = tree_shake_modules_map
-            .get(tree_shake_module_id)
-            .unwrap()
-            .borrow_mut();
+            let mut tree_shake_module = tree_shake_modules_map
+                .get(tree_shake_module_id)
+                .unwrap()
+                .borrow_mut();
 
-        // if module is not esm, mark all imported modules as [UsedExports::All]
-        if !matches!(tree_shake_module.module_system, ModuleSystem::ESModule) {
-            drop(tree_shake_module);
-            for (dep_id, _) in module_graph.get_dependencies(tree_shake_module_id) {
-                if let Some(ref_cell) = tree_shake_modules_map.get(dep_id) {
-                    let mut dep_module = ref_cell.borrow_mut();
-
-                    if dep_module.use_all_exports() && dep_module.topo_order < next_index {
-                        next_index = dep_module.topo_order;
-                    }
-                }
-            }
-        } else {
-            if tree_shake_module.not_used() {
-                //if the module's used_exports is empty, means this module is not used and will be removed
-                current_index = next_index;
-
-                continue;
-            }
-
-            let side_effects = tree_shake_module.side_effects;
-
-            let module = module_graph
-                .get_module_mut(&tree_shake_module.module_id)
-                .unwrap();
-            let ast = &mut module.info.as_mut().unwrap().ast;
-
-            if let ModuleAst::Script(swc_module) = ast {
-                // remove useless statements and useless imports/exports identifiers, then all preserved import info and export info will be added to the used_exports.
-
-                let mut shadow = swc_module.ast.clone();
-
-                let (used_imports, used_exports_from) = remove_useless_stmts::remove_useless_stmts(
-                    tree_shake_module.deref_mut(),
-                    &mut shadow,
-                );
-
-                tree_shake_module.updated_ast = Some(shadow);
-
-                // 解决模块自己引用自己，导致 tree_shake_module 同时存在多个可变引用
+            // if module is not esm, mark all imported modules as [UsedExports::All]
+            if !matches!(tree_shake_module.module_system, ModuleSystem::ESModule) {
                 drop(tree_shake_module);
+                for (dep_id, _) in module_graph.get_dependencies(tree_shake_module_id) {
+                    if let Some(ref_cell) = tree_shake_modules_map.get(dep_id) {
+                        let mut dep_module = ref_cell.borrow_mut();
 
-                for import_info in used_imports {
-                    if let Some(order) = add_used_exports_by_import_info(
-                        &tree_shake_modules_map,
-                        &*module_graph,
-                        tree_shake_module_id,
-                        &import_info,
-                    ) {
-                        if next_index > order {
-                            next_index = order;
+                        if dep_module.use_all_exports() && dep_module.topo_order < next_index {
+                            next_index = dep_module.topo_order;
                         }
                     }
                 }
+            } else {
+                if tree_shake_module.not_used() {
+                    //if the module's used_exports is empty, means this module is not used and will be removed
+                    return next_index;
+                }
 
-                for export_info in used_exports_from {
-                    if let Some(order) = add_used_exports_by_export_info(
-                        &tree_shake_modules_map,
-                        &*module_graph,
-                        tree_shake_module_id,
-                        side_effects,
-                        &export_info,
-                    ) {
-                        if next_index > order {
-                            next_index = order;
+                let side_effects = tree_shake_module.side_effects;
+
+                let module = module_graph
+                    .get_module(&tree_shake_module.module_id)
+                    .unwrap();
+                let ast = &module.info.as_ref().unwrap().ast;
+
+                if let ModuleAst::Script(swc_module) = ast {
+                    // remove useless statements and useless imports/exports identifiers, then all preserved import info and export info will be added to the used_exports.
+
+                    let mut shadow = swc_module.ast.clone();
+
+                    let (used_imports, used_exports_from) =
+                        remove_useless_stmts::remove_useless_stmts(
+                            tree_shake_module.deref_mut(),
+                            &mut shadow,
+                        );
+
+                    tree_shake_module.updated_ast = Some(shadow);
+
+                    // 解决模块自己引用自己，导致 tree_shake_module 同时存在多个可变引用
+                    drop(tree_shake_module);
+
+                    for import_info in used_imports {
+                        if let Some(order) = add_used_exports_by_import_info(
+                            tree_shake_modules_map,
+                            module_graph,
+                            tree_shake_module_id,
+                            &import_info,
+                        ) {
+                            if next_index > order {
+                                next_index = order;
+                            }
+                        }
+                    }
+
+                    for export_info in used_exports_from {
+                        if let Some(order) = add_used_exports_by_export_info(
+                            tree_shake_modules_map,
+                            module_graph,
+                            tree_shake_module_id,
+                            side_effects,
+                            &export_info,
+                        ) {
+                            if next_index > order {
+                                next_index = order;
+                            }
                         }
                     }
                 }
             }
-        }
 
-        // add all dynamic imported dependencies as [UsedExports::All]
-        for (dep, edge) in module_graph.get_dependencies(tree_shake_module_id) {
-            match edge.resolve_type {
-                ResolveType::DynamicImport | ResolveType::Worker => {
-                    if let Some(ref_cell) = tree_shake_modules_map.get(dep) {
-                        let mut tree_shake_module = ref_cell.borrow_mut();
-                        if tree_shake_module.use_all_exports()
-                            && tree_shake_module.topo_order < next_index
-                        {
-                            next_index = tree_shake_module.topo_order;
-                        }
+            // add all dynamic imported dependencies as [UsedExports::All]
+            for (dep, edge) in module_graph.get_dependencies(tree_shake_module_id) {
+                match edge.resolve_type {
+                    ResolveType::DynamicImport | ResolveType::Worker => {
+                        if let Some(ref_cell) = tree_shake_modules_map.get(dep) {
+                            let mut tree_shake_module = ref_cell.borrow_mut();
+                            if tree_shake_module.use_all_exports()
+                                && tree_shake_module.topo_order < next_index
+                            {
+                                next_index = tree_shake_module.topo_order;
+                            }
 
-                        tree_shake_module.side_effects = true;
-                    }
-                }
-                ResolveType::Require => {
-                    if let Some(ref_cell) = tree_shake_modules_map.get(dep) {
-                        let mut tree_shake_module = ref_cell.borrow_mut();
-
-                        if tree_shake_module.use_all_exports()
-                            && tree_shake_module.topo_order < next_index
-                        {
-                            next_index = tree_shake_module.topo_order;
+                            tree_shake_module.side_effects = true;
                         }
                     }
+                    ResolveType::Require => {
+                        if let Some(ref_cell) = tree_shake_modules_map.get(dep) {
+                            let mut tree_shake_module = ref_cell.borrow_mut();
+
+                            if tree_shake_module.use_all_exports()
+                                && tree_shake_module.topo_order < next_index
+                            {
+                                next_index = tree_shake_module.topo_order;
+                            }
+                        }
+                    }
+                    _ => {}
                 }
-                _ => {}
             }
+
+            next_index
         }
 
-        current_index = next_index;
+        current_index = shake_module(
+            module_graph,
+            &tree_shake_modules_ids,
+            &tree_shake_modules_map,
+            current_index,
+        );
     }
 
     for (module_id, tsm) in &tree_shake_modules_map {
