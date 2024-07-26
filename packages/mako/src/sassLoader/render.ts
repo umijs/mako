@@ -8,10 +8,9 @@ module.exports = async function render(param: {
   try {
     sass = require('sass');
   } catch (err) {
-    console.error(
+    throw new Error(
       'The "sass" package is not installed. Please run "npm install sass" to install it.',
     );
-    return { content: '', type: 'css' };
   }
   const result = await sass
     .compileAsync(param.filename, { style: 'compressed', ...param.opts })
