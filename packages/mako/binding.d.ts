@@ -16,6 +16,39 @@ export interface JsHooks {
     isFirstCompile: boolean;
     time: number;
     stats: {
+      hash: number;
+      builtAt: number;
+      rootPath: string;
+      outputPath: string;
+      assets: { type: string; name: string; path: string; size: number }[];
+      chunkModules: {
+        type: string;
+        id: string;
+        chunks: string[];
+        size: number;
+      }[];
+      modules: Record<
+        string,
+        { id: string; dependents: string[]; dependencies: string[] }
+      >;
+      chunks: {
+        type: string;
+        id: string;
+        files: string[];
+        entry: boolean;
+        modules: { type: string; id: string; size: number; chunks: string[] }[];
+        siblings: string[];
+        origin: {
+          module: string;
+          moduleIdentifier: string;
+          moduleName: string;
+          loc: string;
+          request: string;
+        }[];
+      }[];
+      entrypoints: Record<string, { name: string; chunks: string[] }>;
+      rscClientComponents: { path; string; moduleId: string }[];
+      rscCSSModules: { path; string; moduleId: string; modules: boolean }[];
       startTime: number;
       endTime: number;
     };

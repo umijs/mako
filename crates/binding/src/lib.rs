@@ -218,7 +218,7 @@ pub fn build(env: Env, build_params: BuildParams) -> napi::Result<JsObject> {
                 }
                 let d = DevServer::new(root.clone(), Arc::new(compiler));
                 deferred.resolve(move |env| env.get_undefined());
-                d.serve(move |_params| {}).await;
+                d.serve().await;
                 Ok(())
             },
             move |&mut _, _res| Ok(()),

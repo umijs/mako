@@ -492,6 +492,7 @@ Specify the plugins to use.
     stats: {
       startTime: number;
       endTime: number;
+      ...
     };
   }) => void;
   load?: (filePath: string) => Promise<{ content: string, type: 'css'|'js'|'jsx'|'ts'|'tsx' }>;
@@ -547,7 +548,7 @@ __mako_public_path__ = '/foo/';
 
 ### px2rem
 
-- Type: `false | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[], 
+- Type: `false | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[],
   selectorWhiteList?: string[], selectorDoubleList?: string[], minPixelValue?: number, mediaQuery?: boolean }`
 - Default: `false`
 
