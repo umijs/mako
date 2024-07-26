@@ -8,9 +8,9 @@ use std::ops::DerefMut;
 use std::sync::Arc;
 
 use anyhow::Result;
-use swc_core::common::comments::{Comment, CommentKind};
+use rayon::prelude::*;
 use swc_core::common::util::take::Take;
-use swc_core::common::{DUMMY_SP, GLOBALS};
+use swc_core::common::GLOBALS;
 
 use self::skip_module::skip_module_optimize;
 use crate::compiler::Context;
@@ -29,63 +29,47 @@ pub fn optimize_modules(module_graph: &mut ModuleGraph, context: &Arc<Context>) 
         module_graph.toposort()
     };
 
-    let mut tree_shake_modules_ids = vec![];
-    let mut tree_shake_modules_map = std::collections::HashMap::new();
+    let (_skipped, tree_shake_modules_ids): (Vec<ModuleId>, Vec<ModuleId>) =
+        topo_sorted_modules.into_iter().partition(|module_id| {
+            let module = module_graph.get_module(module_id).unwrap();
 
-    let mut order: usize = 0;
-    for module_id in topo_sorted_modules.iter() {
-        let module = module_graph.get_module(module_id).unwrap();
+            let module_type = module.get_module_type();
 
-        let module_type = module.get_module_type();
+            // skip non script modules and external modules
+            if module_type != ModuleType::Script || module.is_external() {
+                if module_type != ModuleType::Script && !module.is_external() {
+                    // mark all non script modules' script dependencies as side_effects
+                    for dep_id in module_graph.dependence_module_ids(module_id) {
+                        let dep_module = module_graph.get_module_mut(&dep_id).unwrap();
 
-        // skip non script modules and external modules
-        if module_type != ModuleType::Script || module.is_external() {
-            if module_type != ModuleType::Script && !module.is_external() {
-                // mark all non script modules' script dependencies as side_effects
-                for dep_id in module_graph.dependence_module_ids(module_id) {
-                    let dep_module = module_graph.get_module_mut(&dep_id).unwrap();
+                        let dep_module_type = dep_module.get_module_type();
 
-                    let dep_module_type = dep_module.get_module_type();
+                        if dep_module_type != ModuleType::Script {
+                            return false;
+                        }
 
-                    if dep_module_type != ModuleType::Script {
-                        continue;
+                        dep_module.side_effects = true;
                     }
-
-                    dep_module.side_effects = true;
                 }
-            }
+                return true;
+            };
 
-            continue;
-        };
-
-        let tree_shake_module = GLOBALS.set(&context.meta.script.globals, || {
-            TreeShakeModule::new(module, order, module_graph)
+            false
         });
 
-        if std::env::var("TS_DEBUG").is_ok() {
-            let mut comments = context.meta.script.output_comments.write().unwrap();
+    let tree_shake_modules_map = tree_shake_modules_ids
+        .par_iter()
+        .enumerate()
+        .map(|(index, module_id)| {
+            let module = module_graph.get_module(module_id).unwrap();
 
-            for s in tree_shake_module.stmt_graph.stmts() {
-                if s.is_self_executed {
-                    comments.add_leading_comment_at(
-                        s.span.lo,
-                        Comment {
-                            kind: CommentKind::Line,
-                            span: DUMMY_SP,
-                            text: "__SELF_EXECUTED__".into(),
-                        },
-                    );
-                }
-            }
-        }
+            let tree_shake_module = GLOBALS.set(&context.meta.script.globals, || {
+                TreeShakeModule::new(module, index)
+            });
 
-        order += 1;
-        tree_shake_modules_ids.push(tree_shake_module.module_id.clone());
-        tree_shake_modules_map.insert(
-            tree_shake_module.module_id.clone(),
-            RefCell::new(tree_shake_module),
-        );
-    }
+            (module_id.clone(), RefCell::new(tree_shake_module))
+        })
+        .collect::<HashMap<_, _>>();
 
     let mut current_index = (tree_shake_modules_ids.len() - 1) as i64;
 
