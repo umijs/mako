@@ -12,6 +12,7 @@
     "hasher",
     "hashname",
     "indexmap",
+    "inited",
     "Jemalloc",
     "jemallocator",
     "mimalloc",
