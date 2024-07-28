@@ -1,6 +1,7 @@
 {
   "rust-analyzer.showUnlinkedFileNotification": false,
   "cSpell.words": [
+    "aarch",
     "bitflags",
     "bundless",
     "canonicalize",
@@ -11,10 +12,13 @@
     "hasher",
     "hashname",
     "indexmap",
+    "Jemalloc",
+    "jemallocator",
     "mimalloc",
     "minifish",
     "pathdiff",
     "petgraph",
-    "prefixfree"
+    "prefixfree",
+    "tikv"
   ]
 }
