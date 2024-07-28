@@ -64,7 +64,7 @@ impl Compiler {
     fn mark_async(&self) -> HashMap<ModuleId, Vec<Dependency>> {
         let module_ids = {
             let module_graph = self.context.module_graph.read().unwrap();
-            let (mut module_ids, _) = module_graph.topological_sort();
+            let (mut module_ids, _) = module_graph.toposort();
             // start from the leaf nodes, so reverser the sort
             module_ids.reverse();
             drop(module_graph);

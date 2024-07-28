@@ -13,6 +13,7 @@
     "hashname",
     "indexmap",
     "inited",
+    "insta",
     "Jemalloc",
     "jemallocator",
     "mimalloc",
@@ -20,6 +21,7 @@
     "pathdiff",
     "petgraph",
     "prefixfree",
-    "tikv"
+    "tikv",
+    "toposort"
   ]
 }

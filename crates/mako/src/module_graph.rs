@@ -296,7 +296,7 @@ impl ModuleGraph {
     /**
      * 拓扑排序，得到成环依赖
      */
-    pub fn topological_sort(&self) -> (Vec<ModuleId>, Vec<Vec<ModuleId>>) {
+    pub fn toposort(&self) -> (Vec<ModuleId>, Vec<Vec<ModuleId>>) {
         fn dfs(
             entry: &ModuleId,
             graph: &ModuleGraph,
