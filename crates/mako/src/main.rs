@@ -6,14 +6,15 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use clap::Parser;
+use mako::cli::Cli;
 use mako::compiler::{self, Args};
+use mako::config;
 #[cfg(not(feature = "profile"))]
 use mako::dev;
 use mako::utils::logger::init_logger;
 #[cfg(feature = "profile")]
 use mako::utils::profile_gui::ProfileApp;
 use mako::utils::tokio_runtime;
-use mako::{cli, config};
 use tracing::debug;
 
 #[cfg(not(target_os = "linux"))]
@@ -39,17 +40,19 @@ async fn run() -> Result<()> {
     init_logger();
 
     // cli
-    let cli = cli::Cli::parse();
+    let Cli {
+        watch, root, mode, ..
+    } = Cli::parse();
     debug!(
         "cli: watch = {}, mode = {}, root = {}",
-        cli.watch,
-        cli.mode,
-        cli.root.to_str().unwrap()
+        watch,
+        mode,
+        root.to_str().unwrap()
     );
-    let root = if cli.root.is_absolute() {
-        cli.root
+    let root = if root.is_absolute() {
+        root
     } else {
-        std::env::current_dir()?.join(cli.root)
+        std::env::current_dir()?.join(root)
     };
     let root = root
         .canonicalize()
@@ -62,17 +65,17 @@ async fn run() -> Result<()> {
             "mode": "{}"
         }}
         "#,
-        cli.mode
+        mode
     );
     let mut config = config::Config::new(&root, None, Some(cli_args.as_str()))
         .map_err(|e| anyhow!(format!("Load config failed: {}", e)))?;
 
-    config.mode = cli.mode;
+    config.mode = mode;
 
     debug!("config: {:?}", config);
 
     // compiler
-    let compiler = compiler::Compiler::new(config, root.clone(), Args { watch: cli.watch }, None)?;
+    let compiler = compiler::Compiler::new(config, root.clone(), Args { watch }, None)?;
     let compiler = Arc::new(compiler);
 
     #[cfg(feature = "profile")]
@@ -93,7 +96,7 @@ async fn run() -> Result<()> {
             eprintln!("{}", e);
             std::process::exit(1);
         }
-        if cli.watch {
+        if watch {
             let d = dev::DevServer::new(root.clone(), compiler);
             // TODO: when in Dev Mode, Dev Server should start asap, and provider a loading  while in first compiling
             d.serve(move |_params| {}).await;
