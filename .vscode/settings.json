@@ -1,3 +1,20 @@
 {
-  "rust-analyzer.showUnlinkedFileNotification": false
+  "rust-analyzer.showUnlinkedFileNotification": false,
+  "cSpell.words": [
+    "bitflags",
+    "bundless",
+    "canonicalize",
+    "eframe",
+    "egui",
+    "fixedbitset",
+    "graphviz",
+    "hasher",
+    "hashname",
+    "indexmap",
+    "mimalloc",
+    "minifish",
+    "pathdiff",
+    "petgraph",
+    "prefixfree"
+  ]
 }

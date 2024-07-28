@@ -34,7 +34,7 @@ pub fn optimize_module_graph(
     tree_shake_modules_map: &HashMap<ModuleId, RefCell<TreeShakeModule>>,
     context: &Arc<Context>,
 ) -> anyhow::Result<()> {
-    let (sorted_module_ids, circles) = module_graph.toposort();
+    let (sorted_module_ids, circles) = module_graph.topological_sort();
 
     let all_in_circles: HashSet<_> = circles.into_iter().flatten().collect();
 

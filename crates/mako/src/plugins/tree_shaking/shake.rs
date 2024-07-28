@@ -23,7 +23,7 @@ use crate::plugins::tree_shaking::{module, remove_useless_stmts, statement_graph
 pub fn optimize_modules(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> Result<()> {
     let (topo_sorted_modules, _cyclic_modules) = {
         crate::mako_profile_scope!("tree shake topo-sort");
-        module_graph.toposort()
+        module_graph.topological_sort()
     };
 
     #[cfg(debug_assertions)]
