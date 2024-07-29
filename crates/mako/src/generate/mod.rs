@@ -34,14 +34,6 @@ use crate::stats::{write_stats, StatsJsonMap};
 use crate::utils::base64_encode;
 use crate::visitors::async_module::mark_async;
 
-#[derive(Clone)]
-pub struct EmitFile {
-    pub filename: String,
-    pub content: String,
-    pub chunk_id: String,
-    pub hashname: String,
-}
-
 #[derive(Serialize)]
 struct ChunksUrlMap {
     js: HashMap<String, String>,

@@ -235,7 +235,6 @@ fn transform_js_generate(
                                 to_replace: dep_map,
                                 context,
                                 unresolved_mark: ast.unresolved_mark,
-                                top_level_mark: ast.top_level_mark,
                             };
                             ast.ast.visit_mut_with(&mut dep_replacer);
 

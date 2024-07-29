@@ -162,7 +162,7 @@ impl From<&ReExportType> for ImportType {
 
 pub(super) fn skip_module_optimize(
     module_graph: &mut ModuleGraph,
-    tree_shake_modules_ids: &Vec<ModuleId>,
+    tree_shake_modules_ids: &[ModuleId],
     tree_shake_modules_map: &HashMap<ModuleId, RefCell<TreeShakeModule>>,
     _context: &Arc<Context>,
 ) -> Result<()> {

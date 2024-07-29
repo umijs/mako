@@ -36,7 +36,6 @@ impl Plugin for InvalidWebpackSyntaxPlugin {
         ast.visit_with(&mut InvalidSyntaxVisitor {
             unresolved_mark: param.unresolved_mark,
             handler: param.handler,
-            path: param.path,
         });
         Ok(())
     }
@@ -45,7 +44,6 @@ impl Plugin for InvalidWebpackSyntaxPlugin {
 pub struct InvalidSyntaxVisitor<'a> {
     unresolved_mark: Mark,
     pub handler: &'a Handler,
-    pub path: &'a str,
 }
 
 impl<'a> Visit for InvalidSyntaxVisitor<'a> {

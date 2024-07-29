@@ -20,7 +20,6 @@ pub struct DepReplacer<'a> {
     pub to_replace: &'a DependenciesToReplace,
     pub context: &'a Arc<Context>,
     pub unresolved_mark: Mark,
-    pub top_level_mark: Mark,
 }
 
 type ResolvedModuleId = String;
@@ -380,7 +379,6 @@ try {
                 to_replace: &DependenciesToReplace { resolved, missing },
                 context: &test_utils.context,
                 unresolved_mark: ast.unresolved_mark,
-                top_level_mark: ast.top_level_mark,
             };
             ast.ast.visit_mut_with(&mut visitor);
         });

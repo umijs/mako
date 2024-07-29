@@ -12,7 +12,7 @@ use swc_core::css::ast::Stylesheet;
 
 use crate::compiler::Context;
 use crate::config::Mode;
-use crate::generate::chunk::{Chunk, ChunkType};
+use crate::generate::chunk::Chunk;
 pub use crate::generate::chunk_pot::util::CHUNK_FILE_NAME_HASH_LENGTH;
 use crate::generate::chunk_pot::util::{hash_hashmap, hash_vec};
 use crate::generate::generate_chunks::ChunkFile;
@@ -22,7 +22,6 @@ use crate::ternary;
 
 pub struct ChunkPot<'a> {
     pub chunk_id: String,
-    pub chunk_type: ChunkType,
     pub js_name: String,
     pub module_map: HashMap<String, (&'a Module, u64)>,
     pub js_hash: u64,
@@ -39,7 +38,6 @@ impl<'cp> ChunkPot<'cp> {
 
         ChunkPot {
             js_name: chunk.filename(),
-            chunk_type: chunk.chunk_type.clone(),
             chunk_id: chunk.id.id.clone(),
             module_map: js_modules.module_map,
             js_hash: js_modules.raw_hash,

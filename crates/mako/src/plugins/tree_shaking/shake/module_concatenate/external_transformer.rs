@@ -26,7 +26,7 @@ impl<'a> ExternalTransformer<'_> {
 
     fn require_arg_to_module_namespace(
         &self,
-        args: &Vec<ExprOrSpread>,
+        args: &[ExprOrSpread],
     ) -> Option<((String, String), ModuleId)> {
         if args.len() == 1
             && let Some(arg) = args.first()

@@ -218,7 +218,6 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()>
                             to_replace: dep_map,
                             context,
                             unresolved_mark,
-                            top_level_mark,
                         };
                         ast.ast.visit_mut_with(&mut dep_replacer);
 

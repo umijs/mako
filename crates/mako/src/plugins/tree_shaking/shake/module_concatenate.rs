@@ -1,6 +1,5 @@
 mod concatenate_context;
 mod concatenated_transformer;
-mod exports_transform;
 mod external_transformer;
 mod module_ref_rewriter;
 mod ref_link;
