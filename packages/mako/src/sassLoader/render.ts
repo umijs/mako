@@ -14,7 +14,7 @@ module.exports = async function render(param: {
   }
   const result = await sass
     .compileAsync(param.filename, { style: 'compressed', ...param.opts })
-    .catch((err) => {
+    .catch((err: any) => {
       throw new Error(err.toString());
     });
   return { content: result.css, type: 'css' };
