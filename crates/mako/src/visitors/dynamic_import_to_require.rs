@@ -31,11 +31,7 @@ impl VisitMut for DynamicImportToRequire {
             let insert_at = n
                 .body
                 .iter()
-                .position(|module_item| {
-                    !module_item
-                        .as_stmt()
-                        .map_or(false, |stmt| stmt.is_directive())
-                })
+                .position(|module_item| !module_item.directive_continue())
                 .unwrap();
             let require_interop = quote_ident!("__mako_require__").as_call(
                 DUMMY_SP,

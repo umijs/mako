@@ -11,7 +11,7 @@ use swc_core::ecma::codegen::text_writer::JsWriter;
 use swc_core::ecma::codegen::{Config as JsCodegenConfig, Emitter};
 use swc_core::ecma::parser::error::SyntaxError;
 use swc_core::ecma::parser::lexer::Lexer;
-use swc_core::ecma::parser::{EsConfig, Parser, StringInput, Syntax, TsConfig};
+use swc_core::ecma::parser::{EsSyntax, Parser, StringInput, Syntax, TsSyntax};
 use swc_core::ecma::transforms::base::helpers::{inject_helpers, Helpers, HELPERS};
 use swc_core::ecma::utils::contains_top_level_await;
 use swc_core::ecma::visit;
@@ -51,7 +51,7 @@ impl JsAst {
         let comments = context.meta.script.origin_comments.read().unwrap();
         let extname = &file.extname;
         let syntax = if extname == "ts" || extname == "tsx" {
-            Syntax::Typescript(TsConfig {
+            Syntax::Typescript(TsSyntax {
                 tsx: extname == "tsx",
                 decorators: true,
                 ..Default::default()
@@ -60,7 +60,7 @@ impl JsAst {
             let jsx = file.is_content_jsx()
                 || extname == "jsx"
                 || (extname == "js" && !file.is_under_node_modules);
-            Syntax::Es(EsConfig {
+            Syntax::Es(EsSyntax {
                 jsx,
                 decorators: true,
                 decorators_before_export: true,
