@@ -1,5 +1,5 @@
 ## 0.7.8
-`2024-07-23`
+`2024-07-25`
 
 - feat(px2rem): add mediaQuery config by [@stormslowly](https://github.com/stormslowly) in [#1431](https://github.com/umijs/mako/pull/1431)
 - feat: support \_\_webpack\_public\_path and \_\_mako\_public\_path assignment by [@sorrycc](https://github.com/sorrycc) in [#1441](https://github.com/umijs/mako/pull/1441)
