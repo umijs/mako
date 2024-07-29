@@ -30,7 +30,7 @@ use crate::dev::update::UpdateResult;
 use crate::generate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::module::{Dependency, ModuleId};
 use crate::plugins::bundless_compiler::BundlessCompiler;
-use crate::stats::{create_stats_info, print_stats, write_stats};
+use crate::stats::{write_stats, StatsJsonMap};
 use crate::utils::base64_encode;
 use crate::visitors::async_module::mark_async;
 
@@ -49,16 +49,16 @@ struct ChunksUrlMap {
 }
 
 impl Compiler {
-    fn generate_bundless(&self) -> Result<()> {
+    fn generate_bundless(&self) -> Result<StatsJsonMap> {
         let bundless_compiler = BundlessCompiler::new(self.context.clone());
         bundless_compiler.generate()?;
 
-        let stats = create_stats_info(0, self);
+        let stats = self.create_stats_info();
 
         self.context
             .plugin_driver
             .build_success(&stats, &self.context)?;
-        Ok(())
+        Ok(stats)
     }
 
     fn mark_async(&self) -> HashMap<ModuleId, Vec<Dependency>> {
@@ -73,9 +73,7 @@ impl Compiler {
         mark_async(&module_ids, &self.context)
     }
 
-    pub fn generate(&self) -> Result<()> {
-        self.context.plugin_driver.before_generate(&self.context)?;
-
+    pub fn generate(&self) -> Result<StatsJsonMap> {
         debug!("generate");
         let t_generate = Instant::now();
 
@@ -117,7 +115,8 @@ impl Compiler {
         let t_tree_shaking = t_tree_shaking.elapsed();
 
         if self.context.config.output.mode == OutputMode::Bundless {
-            return self.generate_bundless();
+            let stats = self.generate_bundless()?;
+            return Ok(stats);
         }
 
         let t_group_chunks = Instant::now();
@@ -181,10 +180,10 @@ impl Compiler {
         }
 
         // generate stats
-        let stats = create_stats_info(0, self);
+        let stats = self.create_stats_info();
 
         if self.context.config.stats.is_some() {
-            write_stats(&stats, &self.context.config.output.path);
+            write_stats(&self.context.config.output.path, &stats);
         }
 
         // build_success hook
@@ -194,7 +193,7 @@ impl Compiler {
 
         // print stats
         if !self.context.args.watch {
-            print_stats(self);
+            self.print_stats();
         }
 
         if self.context.config.analyze.is_some() {
@@ -215,7 +214,7 @@ impl Compiler {
             t_ast_to_code_and_write.as_millis()
         );
 
-        Ok(())
+        Ok(stats)
     }
 
     fn write_chunk_files(&self, full_hash: u64) -> Result<(Duration, Duration)> {
@@ -268,11 +267,14 @@ impl Compiler {
         emit_chunk_file(&self.context, chunk_file);
     }
 
-    pub fn emit_dev_chunks(&self, current_hmr_hash: u64, last_hmr_hash: u64) -> Result<()> {
+    pub fn emit_dev_chunks(
+        &self,
+        current_hmr_hash: u64,
+        last_hmr_hash: u64,
+    ) -> Result<StatsJsonMap> {
         crate::mako_profile_function!("emit_dev_chunks");
 
         debug!("generate(hmr-fullbuild)");
-
         let t_generate = Instant::now();
 
         if self
@@ -347,12 +349,13 @@ impl Compiler {
         }
         let t_write_assets = t_write_assets.elapsed();
 
+        let stats = self.create_stats_info();
+
         // TODO: do not write to fs, using jsapi hooks to pass stats
         // why generate stats?
         // ref: https://github.com/umijs/mako/issues/1107
         if self.context.config.stats.is_some() {
-            let stats = create_stats_info(0, self);
-            write_stats(&stats, &self.context.config.output.path);
+            write_stats(&self.context.config.output.path, &stats);
         }
 
         let t_generate = t_generate.elapsed();
@@ -368,7 +371,7 @@ impl Compiler {
         );
         debug!("  - write assets: {}ms", t_write_assets.as_millis());
 
-        Ok(())
+        Ok(stats)
     }
 
     // TODO: integrate into generate fn
@@ -542,12 +545,13 @@ fn write_dev_chunk_file(context: &Arc<Context>, chunk: &ChunkFile) -> Result<()>
         // why add chunk info in dev mode?
         // ref: https://github.com/umijs/mako/issues/1094
         let size = code.len() as u64;
+        let dist_name = chunk.disk_name();
         context.stats_info.add_assets(
             size,
             chunk.file_name.clone(),
             chunk.chunk_id.clone(),
-            PathBuf::from(chunk.disk_name()),
-            chunk.disk_name(),
+            dist_name.clone(),
+            dist_name,
         );
 
         context.write_static_content(chunk.disk_name(), code, chunk.raw_hash)?;
@@ -561,7 +565,9 @@ fn write_dev_chunk_file(context: &Arc<Context>, chunk: &ChunkFile) -> Result<()>
 fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
     crate::mako_profile_function!(&chunk_file.file_name);
 
-    let to: PathBuf = context.config.output.path.join(chunk_file.disk_name());
+    let dist_name = chunk_file.disk_name();
+
+    let to: PathBuf = context.config.output.path.join(dist_name.as_str());
     let stats_info = &context.stats_info;
 
     match context.config.devtool {
@@ -575,7 +581,7 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
                     size,
                     chunk_file.source_map_name(),
                     chunk_file.chunk_id.clone(),
-                    to.clone(),
+                    to.to_string_lossy().to_string(),
                     chunk_file.source_map_disk_name(),
                 );
                 fs::write(
@@ -610,8 +616,8 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
                 size,
                 chunk_file.file_name.clone(),
                 chunk_file.chunk_id.clone(),
-                to.clone(),
-                chunk_file.disk_name(),
+                to.to_string_lossy().to_string(),
+                dist_name.clone(),
             );
             fs::write(to, &code).unwrap();
         }
@@ -634,8 +640,8 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
                 size,
                 chunk_file.file_name.clone(),
                 chunk_file.chunk_id.clone(),
-                to.clone(),
-                chunk_file.disk_name(),
+                to.to_string_lossy().to_string(),
+                dist_name.clone(),
             );
             fs::write(to, code).unwrap();
         }
@@ -644,8 +650,8 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
                 chunk_file.content.len() as u64,
                 chunk_file.file_name.clone(),
                 chunk_file.chunk_id.clone(),
-                to.clone(),
-                chunk_file.disk_name(),
+                to.to_string_lossy().to_string(),
+                dist_name,
             );
 
             fs::write(to, &chunk_file.content).unwrap();

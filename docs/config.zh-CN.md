@@ -493,6 +493,7 @@ e.g.
     stats: {
       startTime: number;
       endTime: number;
+      ...
     };
   }) => void;
   load?: (filePath: string) => Promise<{ content: string, type: 'css'|'js'|'jsx'|'ts'|'tsx' }>;
@@ -665,6 +666,25 @@ function App() {
 
 - `clientComponentTpl`，客户端组件模板，使用 `{{path}}` 表示组件的路径，使用 `{{id}}` 表示模块的 id。
 - `emitCSS`，是否输出 CSS 组件。
+
+### sass
+
+- 类型: `Omit<sass.Options<'async'>,'functions'>`
+- 默认值: `{}`
+
+> 未安装 `sass` 包。请运行 `npm install sass` 进行安装。
+
+指定 sass [配置](https://sass-lang.com/documentation/js-api/interfaces/options/).
+
+> [不支持 functions 配置](https://github.com/piscinajs/piscina/issues/130#issuecomment-842164393)，可以在 scss 文件中定义 functions ，然后在头文件中引入使用。
+
+例如：
+
+```ts
+{
+  "sourceMap": false
+}
+```
 
 ### stats
 

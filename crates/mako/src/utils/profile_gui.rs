@@ -31,7 +31,7 @@ impl eframe::App for ProfileApp {
                 tokio_runtime::spawn(async move {
                     let root = for_spawn.context.root.clone();
                     let d = crate::dev::DevServer::new(root, for_spawn);
-                    d.serve(move |_params| {}).await;
+                    d.serve().await;
                 });
             }
             self.inited = true;
