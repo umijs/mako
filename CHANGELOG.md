@@ -1,3 +1,13 @@
+## 0.7.8
+`2024-07-23`
+
+- feat(px2rem): add mediaQuery config by [@stormslowly](https://github.com/stormslowly) in [#1431](https://github.com/umijs/mako/pull/1431)
+- feat: support \_\_webpack\_public\_path and \_\_mako\_public\_path assignment by [@sorrycc](https://github.com/sorrycc) in [#1441](https://github.com/umijs/mako/pull/1441)
+- feat: sort stat by size in desc order by [@jason89521](https://github.com/jason89521) in [#1393](https://github.com/umijs/mako/pull/1393)
+- fix: async module missing async deps after update by [@stormslowly](https://github.com/stormslowly) in [#1437](https://github.com/umijs/mako/pull/1437)
+- fix: chunk file name should be url-friendly by [@PeachScript](https://github.com/PeachScript) in [#1434](https://github.com/umijs/mako/pull/1434)
+
+
 ## 0.7.7
 `2024-07-23`
 

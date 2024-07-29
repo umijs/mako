@@ -1,3 +1,13 @@
+## 0.7.8
+
+`2024-07-23`
+
+- 新增 px2rem mediaQuery 配置项 by [@stormslowly](https://github.com/stormslowly) in [#1431](https://github.com/umijs/mako/pull/1431)
+- 新增支持 \_\_webpack\_public\_path and \_\_mako\_public\_path 用以运行时修 public path by [@sorrycc](https://github.com/sorrycc) in [#1441](https://github.com/umijs/mako/pull/1441)
+- 新增产物构建列表按产物尺寸逆序排序 by [@jason89521](https://github.com/jason89521) in [#1393](https://github.com/umijs/mako/pull/1393)
+- 修复异步模块在热更新后丢失异步依赖的问题 by [@stormslowly](https://github.com/stormslowly) in [#1437](https://github.com/umijs/mako/pull/1437)
+- 优化 chunk 文件名更加 URL 友好  by [@PeachScript](https://github.com/PeachScript) in [#1434](https://github.com/umijs/mako/pull/1434)
+
 ## 0.7.7
 
 `2024-07-23`
