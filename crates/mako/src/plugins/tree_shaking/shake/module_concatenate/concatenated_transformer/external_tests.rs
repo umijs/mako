@@ -289,7 +289,7 @@ fn run_test(code: &str, ccn_ctx: &mut ConcatenateContext) -> String {
 
     let current_module_id = ModuleId::from("mut.js");
     let module_map = hashmap! {
-       "external".to_string() => ModuleId::from("external")
+       "external".into() => ModuleId::from("external")
     };
 
     GLOBALS.set(&context.meta.script.globals, || {

@@ -21,7 +21,7 @@ impl ModuleInfo {
                     side_effects.map(|side_effect| {
                         Self::match_flag(
                             side_effect,
-                            relative_to_root(&self.file.path.to_string_lossy().to_string(), &root)
+                            relative_to_root(self.file.path.to_string_lossy().as_ref(), &root)
                                 .as_str(),
                         )
                     })
@@ -52,11 +52,8 @@ impl ModuleInfo {
 
                             Self::match_flag(
                                 side_effect,
-                                relative_to_root(
-                                    &self.file.path.to_string_lossy().to_string(),
-                                    &root,
-                                )
-                                .as_str(),
+                                relative_to_root(self.file.path.to_string_lossy().as_ref(), &root)
+                                    .as_str(),
                             )
                         }
                         None => true,

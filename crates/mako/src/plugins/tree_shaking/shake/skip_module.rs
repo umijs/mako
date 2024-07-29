@@ -33,26 +33,26 @@ impl ReExportReplace {
             ReExportType::Default => {
                 quote!("export { default as $ident } from \"$from\";" as ModuleItem,
                     ident: Ident = ident,
-                    from: Str = quote_str!(self.from_module_id.id.clone())
+                    from: Str = quote_str!(self.from_module_id.id.as_str())
                 )
             }
             ReExportType::Namespace => {
                 quote!("export * as $ident from \"$from\";" as ModuleItem,
                     ident: Ident = ident,
-                    from: Str = quote_str!(self.from_module_id.id.clone())
+                    from: Str = quote_str!(self.from_module_id.id.as_str())
                 )
             }
             ReExportType::Named(local) => {
                 if ident.sym.eq(local) {
                     quote!("export { $ident } from \"$from\";" as ModuleItem,
                         ident: Ident = ident,
-                        from: Str = quote_str!(self.from_module_id.id.clone())
+                        from: Str = quote_str!(self.from_module_id.id.as_str())
                     )
                 } else {
                     quote!("export { $local as $ident } from \"$from\";" as ModuleItem,
                         local: Ident = quote_ident!(local.clone()),
                         ident: Ident = ident,
-                        from: Str = quote_str!(self.from_module_id.id.clone())
+                        from: Str = quote_str!(self.from_module_id.id.as_str())
                     )
                 }
             }
@@ -63,7 +63,7 @@ impl ReExportReplace {
         let import_type: ImportType = (&self.re_export_source.re_export_type).into();
 
         Dependency {
-            source: self.from_module_id.id.clone(),
+            source: self.from_module_id.id.to_string(),
             span: Some(span),
             order: 0,
             resolve_as: None,
@@ -79,7 +79,7 @@ impl ReExportReplace {
         };
 
         Dependency {
-            source: self.from_module_id.id.clone(),
+            source: self.from_module_id.id.to_string(),
             resolve_as: None,
             resolve_type,
             order: 0,
@@ -92,27 +92,27 @@ impl ReExportReplace {
             ReExportType::Default => {
                 quote!("import $ident from \"$from\";" as ModuleItem,
                     ident: Ident = ident,
-                    from: Str = quote_str!(self.from_module_id.id.clone())
+                    from: Str = quote_str!(self.from_module_id.id.as_str())
                 )
             }
             ReExportType::Named(local) => {
                 if ident.sym.eq(local) {
                     quote!("import { $ident } from \"$from\";" as ModuleItem,
                         ident: Ident = ident,
-                        from: Str = quote_str!(self.from_module_id.id.clone())
+                        from: Str = quote_str!(self.from_module_id.id.as_str())
                     )
                 } else {
                     quote!("import { $local as $ident } from \"$from\";" as ModuleItem,
                         local: Ident = quote_ident!(local.clone()),
                         ident: Ident = ident,
-                        from: Str = quote_str!(self.from_module_id.id.clone())
+                        from: Str = quote_str!(self.from_module_id.id.as_str())
                     )
                 }
             }
             ReExportType::Namespace => {
                 quote!("import * as $ident from \"$from\";" as ModuleItem,
                     ident: Ident = ident,
-                    from: Str = quote_str!(self.from_module_id.id.clone())
+                    from: Str = quote_str!(self.from_module_id.id.as_str())
                 )
             }
         }
@@ -514,7 +514,7 @@ pub(super) fn skip_module_optimize(
 
 fn get_imported_tree_shake_module<'a>(
     from_module_id: &ModuleId,
-    source: &String,
+    source: &str,
     module_graph: &ModuleGraph,
     tree_shake_modules_map: &'a HashMap<ModuleId, RefCell<TreeShakeModule>>,
 ) -> Option<&'a RefCell<TreeShakeModule>> {

@@ -278,7 +278,7 @@ pub fn optimize_module_graph(
                             (cjs_name.clone(), cjs_name)
                         };
 
-                        let require_src = id.id.clone();
+                        let require_src = id.id.to_string();
                         module_items.extend(interop.inject_external_export_decl(
                             &require_src,
                             &exposed_names,

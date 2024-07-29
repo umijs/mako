@@ -19,6 +19,7 @@ use std::time::{Duration, Instant};
 
 use analyze::Analyze;
 use anyhow::{anyhow, Result};
+use arcstr::ArcStr;
 use indexmap::IndexSet;
 use rayon::prelude::*;
 use serde::Serialize;
@@ -44,8 +45,8 @@ pub struct EmitFile {
 
 #[derive(Serialize)]
 struct ChunksUrlMap {
-    js: HashMap<String, String>,
-    css: HashMap<String, String>,
+    js: HashMap<ArcStr, ArcStr>,
+    css: HashMap<ArcStr, ArcStr>,
 }
 
 impl Compiler {
@@ -166,8 +167,8 @@ impl Compiler {
             {
                 let assets_info = &(*self.context.assets_info.lock().unwrap());
                 for (k, v) in assets_info {
-                    let asset_path = &self.context.root.join(k);
-                    let asset_output_path = &config.output.path.join(v);
+                    let asset_path = &self.context.root.join(k.as_str());
+                    let asset_output_path = &config.output.path.join(v.as_str());
                     if asset_path.exists() {
                         fs::copy(asset_path, asset_output_path)?;
                     } else {
@@ -338,8 +339,8 @@ impl Compiler {
         {
             let assets_info = &(*self.context.assets_info.lock().unwrap());
             for (k, v) in assets_info {
-                let asset_path = &self.context.root.join(k);
-                let asset_output_path = &config.output.path.join(v);
+                let asset_path = &self.context.root.join(k.as_str());
+                let asset_output_path = &config.output.path.join(v.as_str());
                 if asset_path.exists() {
                     fs::copy(asset_path, asset_output_path)?;
                 } else {
@@ -383,7 +384,7 @@ impl Compiler {
     ) -> Result<(u64, u64, u64)> {
         debug!("generate_hot_update_chunks start");
 
-        let last_chunk_names: HashSet<String> = {
+        let last_chunk_names: HashSet<ArcStr> = {
             let chunk_graph = self.context.chunk_graph.read().unwrap();
             chunk_graph.chunk_names()
         };
@@ -435,7 +436,7 @@ impl Compiler {
 
                 let chunk_names = cg.chunk_names();
 
-                let modified_chunks: Vec<String> = cg
+                let modified_chunks: Vec<ArcStr> = cg
                     .get_chunks()
                     .iter()
                     .filter(|c| {
@@ -452,7 +453,7 @@ impl Compiler {
                 (chunk_names, modified_chunks)
             };
 
-            let removed_chunks: Vec<String> = last_chunk_names
+            let removed_chunks: Vec<ArcStr> = last_chunk_names
                 .difference(&current_chunks)
                 .cloned()
                 .collect();
@@ -581,7 +582,7 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
                     size,
                     chunk_file.source_map_name(),
                     chunk_file.chunk_id.clone(),
-                    to.to_string_lossy().to_string(),
+                    to.to_string_lossy().into(),
                     chunk_file.source_map_disk_name(),
                 );
                 fs::write(
@@ -589,7 +590,7 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
                         .config
                         .output
                         .path
-                        .join(chunk_file.source_map_disk_name()),
+                        .join(chunk_file.source_map_disk_name().as_str()),
                     source_map,
                 )
                 .unwrap();
@@ -616,7 +617,7 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
                 size,
                 chunk_file.file_name.clone(),
                 chunk_file.chunk_id.clone(),
-                to.to_string_lossy().to_string(),
+                to.to_string_lossy().into(),
                 dist_name.clone(),
             );
             fs::write(to, &code).unwrap();
@@ -640,7 +641,7 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
                 size,
                 chunk_file.file_name.clone(),
                 chunk_file.chunk_id.clone(),
-                to.to_string_lossy().to_string(),
+                to.to_string_lossy().into(),
                 dist_name.clone(),
             );
             fs::write(to, code).unwrap();
@@ -650,7 +651,7 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
                 chunk_file.content.len() as u64,
                 chunk_file.file_name.clone(),
                 chunk_file.chunk_id.clone(),
-                to.to_string_lossy().to_string(),
+                to.to_string_lossy().into(),
                 dist_name,
             );
 
@@ -659,7 +660,7 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
     }
 }
 
-fn to_hot_update_chunk_name(chunk_name: &String, hash: u64) -> String {
+fn to_hot_update_chunk_name(chunk_name: &str, hash: u64) -> String {
     match chunk_name.rsplit_once('.') {
         None => {
             format!("{chunk_name}.{hash}.hot-update")
@@ -673,10 +674,10 @@ fn to_hot_update_chunk_name(chunk_name: &String, hash: u64) -> String {
 #[derive(Serialize)]
 struct HotUpdateManifest {
     #[serde(rename(serialize = "c"))]
-    modified_chunks: Vec<String>,
+    modified_chunks: Vec<ArcStr>,
 
     #[serde(rename(serialize = "r"))]
-    removed_chunks: Vec<String>,
+    removed_chunks: Vec<ArcStr>,
     // TODO
     // #[serde(rename(serialize = "c"))]
     // removed_modules: Vec<String>,

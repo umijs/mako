@@ -5,6 +5,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
+use arcstr::ArcStr;
 use colored::*;
 use indexmap::IndexMap;
 use pathdiff::diff_paths;
@@ -44,16 +45,16 @@ impl Compiler {
                 let size = file_size(asset.0).unwrap();
                 stats_info.add_assets(
                     size,
-                    asset.1.clone(),
-                    "".to_string(),
+                    asset.1.into(),
+                    "".into(),
                     self.context
                         .config
                         .output
                         .path
-                        .join(asset.1.clone())
+                        .join(asset.1.as_str())
                         .to_string_lossy()
-                        .to_string(),
-                    asset.1.clone(),
+                        .into(),
+                    asset.1.into(),
                 );
             });
 
@@ -109,7 +110,7 @@ impl Compiler {
                         module
                     })
                     .collect();
-                let files: Vec<String> = stats_info
+                let files: Vec<ArcStr> = stats_info
                     .get_assets()
                     .iter()
                     .filter(|asset| asset.chunk_id == id)
@@ -224,11 +225,11 @@ impl Compiler {
         let dist = path_str.truecolor(128, 128, 128);
 
         // 最长的文件名字, size长度, map_size长度, 后续保持输出整齐
-        let mut max_length_name = String::new();
+        let mut max_length_name = ArcStr::new();
         let mut max_size = 0;
         let mut max_map_size = 0;
         // 记录 name size map_size 的数组
-        let mut assets_vec: Vec<(String, u64, u64)> = vec![];
+        let mut assets_vec: Vec<(ArcStr, u64, u64)> = vec![];
 
         // 生成 (name, size, map_size) 的 vec
         for asset in assets {
@@ -313,10 +314,10 @@ impl Compiler {
 pub struct AssetsInfo {
     pub assets_type: String,
     pub size: u64,
-    pub name: String,
-    pub hashname: String,
-    pub chunk_id: String,
-    pub path: String,
+    pub name: ArcStr,
+    pub hashname: ArcStr,
+    pub chunk_id: ArcStr,
+    pub path: ArcStr,
 }
 
 impl Ord for AssetsInfo {
@@ -333,9 +334,9 @@ impl PartialOrd for AssetsInfo {
 
 #[derive(Serialize, Debug, Clone)]
 pub struct ModuleInfo {
-    pub id: String,
-    pub dependencies: Vec<String>,
-    pub dependents: Vec<String>,
+    pub id: ArcStr,
+    pub dependencies: Vec<ArcStr>,
+    pub dependents: Vec<ArcStr>,
 }
 
 #[derive(Debug)]
@@ -343,7 +344,7 @@ pub struct StatsInfo {
     pub assets: Mutex<Vec<AssetsInfo>>,
     pub rsc_client_components: Mutex<Vec<RscClientInfo>>,
     pub rsc_css_modules: Mutex<Vec<RscCssModules>>,
-    pub modules: Mutex<HashMap<String, ModuleInfo>>,
+    pub modules: Mutex<HashMap<ArcStr, ModuleInfo>>,
 }
 
 impl StatsInfo {
@@ -359,10 +360,10 @@ impl StatsInfo {
     pub fn add_assets(
         &self,
         size: u64,
-        name: String,
-        chunk_id: String,
-        path: String,
-        hashname: String,
+        name: ArcStr,
+        chunk_id: ArcStr,
+        path: ArcStr,
+        hashname: ArcStr,
     ) {
         let mut assets = self.assets.lock().unwrap();
         assets.push(AssetsInfo {
@@ -409,7 +410,7 @@ impl StatsInfo {
         });
     }
 
-    pub fn get_modules(&self) -> HashMap<String, ModuleInfo> {
+    pub fn get_modules(&self) -> HashMap<ArcStr, ModuleInfo> {
         self.modules.lock().unwrap().clone()
     }
 
@@ -454,8 +455,8 @@ pub struct StatsJsonAssetsItem {
     #[serde(flatten)]
     pub assets_type: StatsJsonType,
     pub size: u64,
-    pub name: String,
-    pub path: String,
+    pub name: ArcStr,
+    pub path: ArcStr,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -469,15 +470,15 @@ pub struct StatsJsonChunkModuleItem {
     #[serde(flatten)]
     pub module_type: StatsJsonType,
     pub size: u64,
-    pub id: String,
-    pub chunks: Vec<String>,
+    pub id: ArcStr,
+    pub chunks: Vec<ArcStr>,
 }
 
 #[derive(Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct StatsJsonChunkOriginItem {
-    pub module: String,
-    pub module_identifier: String,
+    pub module: ArcStr,
+    pub module_identifier: ArcStr,
     pub module_name: String,
     pub loc: String,
     pub request: String,
@@ -486,17 +487,17 @@ pub struct StatsJsonChunkOriginItem {
 pub struct StatsJsonChunkItem {
     #[serde(flatten)]
     pub chunk_type: StatsJsonType,
-    pub id: String,
-    pub files: Vec<String>,
+    pub id: ArcStr,
+    pub files: Vec<ArcStr>,
     pub entry: bool,
     pub modules: Vec<StatsJsonChunkModuleItem>,
-    pub siblings: Vec<String>,
+    pub siblings: Vec<ArcStr>,
     pub origins: Vec<StatsJsonChunkOriginItem>,
 }
 #[derive(Serialize, Debug, Clone)]
 pub struct StatsJsonEntryItem {
-    pub name: String,
-    pub chunks: Vec<String>,
+    pub name: ArcStr,
+    pub chunks: Vec<ArcStr>,
 }
 #[derive(Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -507,9 +508,9 @@ pub struct StatsJsonMap {
     output_path: String,
     assets: Vec<StatsJsonAssetsItem>,
     chunk_modules: Vec<StatsJsonChunkModuleItem>,
-    modules: HashMap<String, ModuleInfo>,
+    modules: HashMap<ArcStr, ModuleInfo>,
     chunks: Vec<StatsJsonChunkItem>,
-    entrypoints: HashMap<String, StatsJsonEntryItem>,
+    entrypoints: HashMap<ArcStr, StatsJsonEntryItem>,
     rsc_client_components: Vec<RscClientInfo>,
     #[serde(rename = "rscCSSModules")]
     rsc_css_modules: Vec<RscCssModules>,

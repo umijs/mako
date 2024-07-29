@@ -56,7 +56,7 @@ impl<'a> VisitMut for DynamicImport<'a> {
                 .unwrap();
 
             let require_interop = quote_ident!("__mako_require__")
-                .as_call(DUMMY_SP, vec![quote_str!(id.clone()).as_arg()]);
+                .as_call(DUMMY_SP, vec![quote_str!(id.as_str()).as_arg()]);
 
             let stmt: Stmt = Expr::Member(MemberExpr {
                 span: DUMMY_SP,
@@ -125,7 +125,7 @@ impl<'a> VisitMut for DynamicImport<'a> {
                             .map(|c_id| {
                                 Some(ExprOrSpread {
                                     spread: None,
-                                    expr: Box::new(require_ensure(c_id.clone())),
+                                    expr: Box::new(require_ensure(c_id.as_str())),
                                 })
                             })
                             .collect::<Vec<_>>();
@@ -201,7 +201,7 @@ Promise.all([
         let dep_to_replace = DependenciesToReplace {
             resolved: maplit::hashmap! {
                 "@swc/helpers/_/_interop_require_wildcard".to_string() =>
-                ("hashed_helper".to_string(), "dummy".into())
+                ("hashed_helper".into(), "dummy".into())
             },
             missing: HashMap::new(),
         };

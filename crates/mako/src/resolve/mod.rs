@@ -50,7 +50,9 @@ pub fn resolve(
     crate::mako_profile_scope!("resolve", &dep.source);
 
     if dep.source.starts_with("virtual:") {
-        return Ok(ResolverResource::Virtual(PathBuf::from(&dep.source)));
+        return Ok(ResolverResource::Virtual(PathBuf::from(
+            dep.source.as_str(),
+        )));
     }
 
     let has_context_query = parse_path(&dep.source)?

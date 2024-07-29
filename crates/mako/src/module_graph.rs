@@ -301,7 +301,7 @@ impl ModuleGraph {
     pub fn get_dependency_module_by_source(
         &self,
         module_id: &ModuleId,
-        source: &String,
+        source: &str,
     ) -> Option<&ModuleId> {
         let deps = self.get_dependencies(module_id);
         for (module_id, dep) in deps {

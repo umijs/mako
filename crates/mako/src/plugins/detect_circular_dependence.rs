@@ -49,7 +49,7 @@ impl Plugin for LoopDetector {
                         .iter()
                         .chain(std::iter::once(&loop_end))
                         .map(|id| {
-                            let absolute_path = PathBuf::from(id.id.clone());
+                            let absolute_path = PathBuf::from(id.id.as_str());
                             let relative_path =
                                 diff_paths(&absolute_path, &context.root).unwrap_or(absolute_path);
                             let relative_path = relative_path.to_string_lossy().to_string();

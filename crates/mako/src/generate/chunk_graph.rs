@@ -2,6 +2,7 @@ use core::fmt;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hasher;
 
+use arcstr::ArcStr;
 use petgraph::stable_graph::{DefaultIx, NodeIndex, StableDiGraph};
 use petgraph::visit::Dfs;
 use petgraph::Direction;
@@ -55,7 +56,7 @@ impl ChunkGraph {
         self.graph.node_weights_mut().collect()
     }
 
-    pub fn get_chunk_by_name(&self, name: &String) -> Option<&Chunk> {
+    pub fn get_chunk_by_name(&self, name: &str) -> Option<&Chunk> {
         self.graph.node_weights().find(|c| c.filename().eq(name))
     }
 
@@ -94,7 +95,7 @@ impl ChunkGraph {
             .remove_edge(self.graph.find_edge(*from, *to).unwrap());
     }
 
-    pub fn chunk_names(&self) -> HashSet<String> {
+    pub fn chunk_names(&self) -> HashSet<ArcStr> {
         self.graph.node_weights().map(|c| c.filename()).collect()
     }
 

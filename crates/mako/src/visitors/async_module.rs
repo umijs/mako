@@ -402,10 +402,10 @@ __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
     fn run(js_code: &str) -> String {
         let mut test_utils = TestUtils::gen_js_ast(js_code);
         let mut chunk = Chunk::new(
-            "./async".to_string().into(),
-            ChunkType::Entry("./async".to_string().into(), "async".to_string(), false),
+            "./async".into(),
+            ChunkType::Entry("./async".into(), "async".into(), false),
         );
-        chunk.add_module("./async".to_string().into());
+        chunk.add_module("./async".into());
         test_utils
             .context
             .chunk_graph

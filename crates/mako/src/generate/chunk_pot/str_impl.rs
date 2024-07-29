@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
+use arcstr::ArcStr;
 use cached::proc_macro::cached;
 use cached::SizedCache;
 use rayon::prelude::*;
@@ -22,8 +23,8 @@ use crate::ternary;
 
 pub(super) fn render_entry_js_chunk(
     pot: &ChunkPot,
-    js_map: &HashMap<String, String>,
-    css_map: &HashMap<String, String>,
+    js_map: &HashMap<ArcStr, ArcStr>,
+    css_map: &HashMap<ArcStr, ArcStr>,
     chunk: &Chunk,
     context: &Arc<Context>,
     hmr_hash: u64,

@@ -188,7 +188,7 @@ pub(crate) fn pot_to_module_object(pot: &ChunkPot, context: &Arc<Context>) -> Re
                         },
                     );
                     let pv: PropOrSpread = Prop::KeyValue(KeyValueProp {
-                        key: quote_str!(span, module_id_str.clone()).into(),
+                        key: quote_str!(span, module_id_str.as_str()).into(),
                         value: fn_expr.into(),
                     })
                     .into();
@@ -248,7 +248,7 @@ pub(crate) fn pot_to_chunk_module(
             DUMMY_SP,
             // [[ "module id"], { module object }]
             vec![to_array_lit(vec![
-                to_array_lit(vec![quote_str!(pot.chunk_id.clone()).as_arg()]).as_arg(),
+                to_array_lit(vec![quote_str!(pot.chunk_id.as_str()).as_arg()]).as_arg(),
                 module_object.as_arg(),
             ])
             .as_arg()],

@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
 
 use anyhow::{anyhow, Error, Result};
+use arcstr::ArcStr;
 use colored::Colorize;
 use regex::Regex;
 use swc_core::common::sync::Lrc;
@@ -27,7 +28,7 @@ pub struct Context {
     pub module_graph: RwLock<ModuleGraph>,
     pub chunk_graph: RwLock<ChunkGraph>,
     pub assets_info: Mutex<HashMap<String, String>>,
-    pub modules_with_missing_deps: RwLock<Vec<String>>,
+    pub modules_with_missing_deps: RwLock<Vec<ArcStr>>,
     pub config: Config,
     pub args: Args,
     pub root: PathBuf,

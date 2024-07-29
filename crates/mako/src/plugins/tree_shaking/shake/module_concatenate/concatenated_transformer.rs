@@ -124,7 +124,7 @@ impl<'a> ConcatenatedTransform<'a> {
                             }
                             Symbol::Namespace => map.get("*").unwrap().clone(),
                             Symbol::Var(ident) => {
-                                if let Some(mf) = map.get(&ident.sym.to_string()) {
+                                if let Some(mf) = map.get(ident.sym.as_ref()) {
                                     mf.clone()
                                 } else {
                                     (quote_ident!("undefined"), None)
@@ -159,7 +159,7 @@ impl<'a> ConcatenatedTransform<'a> {
 
         var_map.iter().for_each(|(id, link)| match link {
             VarLink::Direct(direct_id) => {
-                ref_map.insert(id.0.to_string(), (direct_id.clone().into(), None));
+                ref_map.insert(id.0.as_ref().into(), (direct_id.clone().into(), None));
             }
             VarLink::InDirect(symbol, source) => {
                 let src_module_id = self.src_to_module.get(source).unwrap();
@@ -176,18 +176,18 @@ impl<'a> ConcatenatedTransform<'a> {
                             }
                             Symbol::Namespace => map.get("*").unwrap().clone(),
                             Symbol::Var(ident) => {
-                                if let Some(mf) = map.get(&ident.sym.to_string()) {
+                                if let Some(mf) = map.get(ident.sym.as_ref()) {
                                     mf.clone()
                                 } else {
                                     (quote_ident!("undefined"), None)
                                 }
                             }
                         };
-                        ref_map.insert(id.0.to_string(), module_ref);
+                        ref_map.insert(id.0.as_ref().into(), module_ref);
                     }
                     InnerOrExternal::External(external_names) => {
                         ref_map.insert(
-                            id.0.to_string(),
+                            id.0.as_ref().into(),
                             (quote_ident!(external_names.1.clone()), symbol.to_field()),
                         );
                     }
@@ -356,7 +356,7 @@ impl<'a> ConcatenatedTransform<'a> {
         for (k, module_ref) in &mut *export_ref_map {
             key_value_props.push(
                 Prop::KeyValue(KeyValueProp {
-                    key: quote_ident!(k.clone()).into(),
+                    key: quote_ident!(k.as_str()).into(),
                     value: module_ref_to_expr(module_ref).into_lazy_fn(vec![]).into(),
                 })
                 .into(),
@@ -377,7 +377,7 @@ impl<'a> ConcatenatedTransform<'a> {
             )
             .into_stmt();
 
-        export_ref_map.insert("*".to_string(), (quote_ident!(ns_name.clone()), None));
+        export_ref_map.insert("*".into(), (quote_ident!(ns_name.clone()), None));
         self.my_top_decls.insert(ns_name);
 
         n.body.push(init_stmt.into());

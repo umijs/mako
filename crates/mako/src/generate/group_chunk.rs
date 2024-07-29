@@ -1,6 +1,7 @@
 use std::collections::{HashSet, VecDeque};
 use std::vec;
 
+use arcstr::ArcStr;
 use tracing::debug;
 
 use crate::ast::file::parse_path;
@@ -40,7 +41,7 @@ impl Compiler {
 
             let (chunk, dynamic_dependencies, worker_dependencies) = self.create_chunk(
                 &entry,
-                ChunkType::Entry(entry.clone(), entry_chunk_name.to_string(), false),
+                ChunkType::Entry(entry.clone(), entry_chunk_name.into(), false),
                 &mut chunk_graph,
                 vec![],
             );
@@ -62,7 +63,7 @@ impl Compiler {
 
             // 抽离成两个函数处理动态依赖中可能有 worker 依赖、worker 依赖中可能有动态依赖的复杂情况
             self.handle_dynamic_dependencies(
-                &chunk_name,
+                chunk_name.clone(),
                 dynamic_dependencies,
                 &visited,
                 &mut edges,
@@ -70,7 +71,7 @@ impl Compiler {
                 &mut visited_workers,
             );
             self.handle_worker_dependencies(
-                &chunk_name,
+                chunk_name.clone(),
                 worker_dependencies,
                 &visited,
                 &mut edges,
@@ -86,7 +87,7 @@ impl Compiler {
 
     fn handle_dynamic_dependencies(
         &self,
-        chunk_name: &str,
+        chunk_name: ArcStr,
         dynamic_dependencies: Vec<ModuleId>,
         visited: &HashSet<ModuleId>,
         edges: &mut Vec<(ModuleId, ModuleId)>,
@@ -98,7 +99,7 @@ impl Compiler {
                 head,
                 ChunkType::Async,
                 chunk_graph,
-                vec![chunk_name.to_string()],
+                vec![chunk_name.clone()],
             );
 
             worker_dependencies.retain(|w| !visited_workers.contains(w));
@@ -112,7 +113,7 @@ impl Compiler {
             chunk_graph.add_chunk(chunk);
 
             self.handle_worker_dependencies(
-                chunk_name,
+                chunk_name.clone(),
                 worker_dependencies,
                 visited,
                 edges,
@@ -126,7 +127,7 @@ impl Compiler {
 
     fn handle_worker_dependencies(
         &self,
-        chunk_name: &str,
+        chunk_name: ArcStr,
         worker_dependencies: Vec<ModuleId>,
         visited: &HashSet<ModuleId>,
         edges: &mut Vec<(ModuleId, ModuleId)>,
@@ -138,7 +139,7 @@ impl Compiler {
                 head,
                 ChunkType::Worker(head.clone()),
                 chunk_graph,
-                vec![chunk_name.to_string()],
+                vec![chunk_name.clone()],
             );
 
             worker_dependencies.retain(|w| !visited_workers.contains(w));
@@ -155,7 +156,7 @@ impl Compiler {
             visited_workers.insert(head.clone());
 
             self.handle_dynamic_dependencies(
-                chunk_name,
+                chunk_name.clone(),
                 dynamic_dependencies,
                 visited,
                 edges,
@@ -265,7 +266,7 @@ impl Compiler {
         &self,
         module_id: &ModuleId,
         chunk_graph: &ChunkGraph,
-    ) -> Vec<(ModuleId, String)> {
+    ) -> Vec<(ModuleId, ArcStr)> {
         let chunks = chunk_graph.get_all_chunks();
 
         chunks
@@ -279,7 +280,7 @@ impl Compiler {
         &self,
         module_id: &ModuleId,
         chunk_graph: &ChunkGraph,
-    ) -> Vec<String> {
+    ) -> Vec<ArcStr> {
         let module_chunks = self.get_module_chunks(module_id, chunk_graph);
         let mut ret = vec![];
 
@@ -364,7 +365,7 @@ impl Compiler {
     fn is_entry_shared_module(
         &self,
         module_id: &ModuleId,
-        shared_chunk_names: &[String],
+        shared_chunk_names: &[ArcStr],
         chunk_graph: &ChunkGraph,
     ) -> bool {
         shared_chunk_names.iter().any(|name| {
@@ -380,7 +381,7 @@ impl Compiler {
         entry_module_id: &ModuleId,
         chunk_type: ChunkType,
         chunk_graph: &mut ChunkGraph,
-        shared_chunk_names: Vec<String>,
+        shared_chunk_names: Vec<ArcStr>,
     ) -> (Chunk, Vec<ModuleId>, Vec<ModuleId>) {
         crate::mako_profile_function!(&entry_module_id.id);
         let mut dynamic_entries = vec![];
@@ -442,7 +443,7 @@ impl Compiler {
         &self,
         async_module_ids: Vec<ModuleId>,
         chunk_graph: &mut ChunkGraph,
-        shared_chunk_names: Vec<String>,
+        shared_chunk_names: Vec<ArcStr>,
     ) -> Vec<ChunkId> {
         let mut edges = vec![];
         let mut new_chunks = vec![];

@@ -6,7 +6,7 @@ use heck::ToSnakeCase;
 use crate::module::ModuleId;
 
 pub fn uniq_module_prefix(module_id: &ModuleId) -> String {
-    let path = Path::new(&module_id.id);
+    let path = Path::new(module_id.id.as_str());
     let len = path.components().count() as i32;
     let mut skip = max(len - 3, 0);
     let mut p = path.components();

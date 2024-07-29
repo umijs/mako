@@ -2,6 +2,7 @@ use std::fmt;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
+use arcstr::ArcStr;
 use swc_core::base::try_with_handler;
 use swc_core::common::errors::HANDLER;
 use swc_core::common::util::take::Take;
@@ -32,7 +33,7 @@ pub struct JsAst {
     pub ast: Module,
     pub unresolved_mark: Mark,
     pub top_level_mark: Mark,
-    pub path: String,
+    pub path: ArcStr,
     pub contains_top_level_await: bool,
 }
 
@@ -109,7 +110,7 @@ impl JsAst {
                 ast,
                 unresolved_mark,
                 top_level_mark,
-                path: file.relative_path.to_string_lossy().to_string(),
+                path: file.relative_path.to_string_lossy().into(),
                 contains_top_level_await,
             })
         })

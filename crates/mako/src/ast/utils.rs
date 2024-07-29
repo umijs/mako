@@ -143,7 +143,7 @@ pub fn member_call(obj: Expr, member_prop: MemberProp, args: Vec<ExprOrSpread>) 
     })
 }
 
-pub fn require_ensure(source: String) -> Expr {
+pub fn require_ensure(source: &str) -> Expr {
     member_call(
         Expr::Ident(id("__mako_require__")),
         MemberProp::Ident(id("ensure")),

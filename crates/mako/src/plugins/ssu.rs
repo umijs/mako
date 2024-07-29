@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
+use arcstr::ArcStr;
 use dashmap::DashSet;
 use rayon::prelude::*;
 use regex::Regex;
@@ -29,8 +30,8 @@ struct CacheState {
     config_hash: u64,
     reversed_required_files: HashSet<String>,
     cached_boundaries: HashMap<String, String>,
-    js_patch_map: HashMap<String, String>,
-    css_patch_map: HashMap<String, String>,
+    js_patch_map: HashMap<ArcStr, ArcStr>,
+    css_patch_map: HashMap<ArcStr, ArcStr>,
 }
 
 impl CacheState {
@@ -428,9 +429,13 @@ module.export = Promise.all(
             .par_iter()
             .filter(|&cf| cf.file_name.starts_with("node_modules"))
             .for_each(|cf| {
-                let p = cache_root.join(cf.disk_name());
+                let p = cache_root.join(cf.disk_name().as_str());
                 if let Some(source_map) = &cf.source_map {
-                    fs::write(cache_root.join(cf.source_map_disk_name()), source_map).unwrap();
+                    fs::write(
+                        cache_root.join(cf.source_map_disk_name().as_str()),
+                        source_map,
+                    )
+                    .unwrap();
 
                     let mut f = SysFile::create(&p).unwrap();
 

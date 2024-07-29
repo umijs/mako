@@ -616,7 +616,7 @@ fn test_export_from_var() {
     let mut ccn_ctx = ConcatenateContext {
         modules_exports_map: hashmap! {
             ModuleId::from("src/index.js") => hashmap! {
-                "default".to_string() => (quote_ident!("src_index_default"), None)
+                "default".into() => (quote_ident!("src_index_default"), None)
             }
         },
         ..Default::default()
@@ -650,10 +650,10 @@ fn concatenate_context_fixture_with_inner_module() -> ConcatenateContext {
         },
         modules_exports_map: hashmap! {
             ModuleId::from("src/index.js") => hashmap!{
-                "*".to_string() => (quote_ident!("inner_namespace"), None),
-                "default".to_string() => ( quote_ident!("inner_default_export"), None),
-                "foo".to_string() => (quote_ident!("bar") ,None),
-                "named".to_string() => (quote_ident!("named"), None)
+                "*".into() => (quote_ident!("inner_namespace"), None),
+                "default".into() => ( quote_ident!("inner_default_export"), None),
+                "foo".into() => (quote_ident!("bar") ,None),
+                "named".into() => (quote_ident!("named"), None)
             },
             ModuleId::from("src/no_exports.js") => hashmap!{},
         },
@@ -685,9 +685,9 @@ fn inner_trans_code(code: &str, concatenate_context: &mut ConcatenateContext) ->
     let module_id = ModuleId::from("mut.js");
 
     let src_to_module = hashmap! {
-        "./src".to_string() => ModuleId::from("src/index.js"),
-        "./no_exports".to_string() => ModuleId::from("src/no_exports.js"),
-    "external".to_string() => ModuleId::from("external")
+        "./src".into() => ModuleId::from("src/index.js"),
+        "./no_exports".into() => ModuleId::from("src/no_exports.js"),
+    "external".into() => ModuleId::from("external")
     };
 
     GLOBALS.set(&context.meta.script.globals, || {

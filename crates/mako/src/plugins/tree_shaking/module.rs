@@ -210,7 +210,7 @@ impl TreeShakeModule {
                 .as_ref()
                 .and_then(|export_info| export_info.source.as_ref())
             {
-                if self.side_effect_dep_sources.contains(source) {
+                if self.side_effect_dep_sources.contains(source.as_str()) {
                     side_effect_stmts.push(s.id);
                 }
             }
@@ -221,7 +221,7 @@ impl TreeShakeModule {
                 .map(|import_info| &import_info.source)
                 .as_ref()
             {
-                if self.side_effect_dep_sources.contains(source) {
+                if self.side_effect_dep_sources.contains(source.as_str()) {
                     side_effect_stmts.push(s.id);
                 }
             }

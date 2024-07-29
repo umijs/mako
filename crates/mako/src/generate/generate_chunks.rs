@@ -3,6 +3,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
+use arcstr::ArcStr;
 use indexmap::IndexSet;
 use nanoid::nanoid;
 use rayon::prelude::*;
@@ -31,31 +32,31 @@ pub struct ChunkFile {
     pub content: Vec<u8>,
     pub source_map: Option<Vec<u8>>,
     pub hash: Option<String>,
-    pub file_name: String,
-    pub chunk_id: String,
+    pub file_name: ArcStr,
+    pub chunk_id: ArcStr,
     pub file_type: ChunkFileType,
 }
 
 impl ChunkFile {
-    pub fn disk_name(&self) -> String {
+    pub fn disk_name(&self) -> ArcStr {
         if let Some(hash) = &self.hash {
-            hash_file_name(&self.file_name, hash)
+            hash_file_name(self.file_name.as_str(), hash)
         } else {
             self.file_name.clone()
         }
     }
 
-    pub fn source_map_disk_name(&self) -> String {
-        format!("{}.map", self.disk_name())
+    pub fn source_map_disk_name(&self) -> ArcStr {
+        format!("{}.map", self.disk_name()).into()
     }
 
-    pub fn source_map_name(&self) -> String {
-        format!("{}.map", self.file_name)
+    pub fn source_map_name(&self) -> ArcStr {
+        format!("{}.map", self.file_name).into()
     }
 }
 
-type ChunksHashPlaceholder = HashMap<String, String>;
-type ChunksHashReplacer = HashMap<String, String>;
+type ChunksHashPlaceholder = HashMap<ArcStr, ArcStr>;
+type ChunksHashReplacer = HashMap<ArcStr, ArcStr>;
 
 impl Compiler {
     pub fn generate_chunk_files(&self, hmr_hash: u64) -> Result<Vec<ChunkFile>> {
@@ -335,7 +336,7 @@ pub fn modules_to_js_stmts(
     context: &Arc<Context>,
 ) -> Result<(Vec<PropOrSpread>, Option<Stylesheet>)> {
     let mut js_stmts = vec![];
-    let mut merged_css_modules: Vec<(String, Stylesheet)> = vec![];
+    let mut merged_css_modules: Vec<(ArcStr, Stylesheet)> = vec![];
 
     let module_ids: Vec<_> = module_ids.iter().collect();
 
@@ -380,10 +381,10 @@ pub fn modules_to_js_stmts(
     }
 }
 
-fn hash_file_name(file_name: &String, hash: &String) -> String {
+fn hash_file_name(file_name: &str, hash: &str) -> ArcStr {
     let path = Path::new(&file_name);
     let file_stem = path.file_stem().unwrap().to_str().unwrap();
     let file_extension = path.extension().unwrap().to_str().unwrap();
 
-    format!("{}.{}.{}", file_stem, hash, file_extension)
+    format!("{}.{}.{}", file_stem, hash, file_extension).into()
 }

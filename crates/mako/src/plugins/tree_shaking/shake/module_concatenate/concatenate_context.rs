@@ -393,7 +393,7 @@ impl ConcatenateContext {
                 .into_iter()
                 .map(|(k, ref_expr)| {
                     Prop::KeyValue(KeyValueProp {
-                        key: quote_ident!(k).into(),
+                        key: quote_ident!(k.as_str()).into(),
                         value: ref_expr.into_lazy_fn(vec![]).into(),
                     })
                     .into()

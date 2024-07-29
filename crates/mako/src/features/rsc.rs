@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
+use arcstr::ArcStr;
 use serde::Serialize;
 use swc_core::ecma::ast::{Expr, ExprStmt, Lit, Module, ModuleItem, Stmt, Str};
 
@@ -16,14 +17,14 @@ use crate::module::{ModuleAst, ModuleId};
 #[serde(rename_all = "camelCase")]
 pub struct RscClientInfo {
     pub path: String,
-    pub module_id: String,
+    pub module_id: ArcStr,
 }
 
 #[derive(Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct RscCssModules {
     pub path: String,
-    pub module_id: String,
+    pub module_id: ArcStr,
     pub modules: bool,
 }
 
@@ -61,7 +62,7 @@ impl Rsc {
     }
 
     fn generate_client(file: &File, tpl: &str, context: Arc<Context>) -> ModuleAst {
-        let id = ModuleId::new(file.path.to_string_lossy().to_string()).generate(&context);
+        let id = ModuleId::new(file.path.to_string_lossy().as_ref()).generate(&context);
         let path = file.relative_path.to_string_lossy().to_string();
         let content = tpl
             .replace("{{path}}", path.as_str())

@@ -492,7 +492,7 @@ my.call("toast");
         };
         let context = Arc::new(context);
         let file = File::with_content(
-            "cut.js".to_string(),
+            "cut.js".into(),
             crate::ast::file::Content::Js(JsContent {
                 content: code.to_string(),
                 ..Default::default()

@@ -13,6 +13,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
+use arcstr::ArcStr;
 pub(crate) use inject::Inject;
 use inject::MyInjector;
 use rayon::prelude::*;
@@ -163,7 +164,7 @@ impl Plugin for MinifishPlugin {
 
         for dep in deps.iter_mut() {
             if dep.source.starts_with('/') {
-                let mut resolve_as = dep.source.clone();
+                let mut resolve_as = dep.source.to_string();
                 resolve_as.replace_range(0..0, src_root);
                 dep.resolve_as = Some(resolve_as);
             }
@@ -196,7 +197,7 @@ impl Plugin for MinifishPlugin {
                         to_dist_path(&id.id, context)
                             .with_extension("js")
                             .to_string_lossy()
-                            .to_string()
+                            .into()
                     };
 
                     Module {
@@ -228,14 +229,14 @@ struct ModuleGraphOutput {
 #[derive(Serialize)]
 struct Module {
     filename: String,
-    id: String,
+    id: ArcStr,
     dependencies: Vec<Dependency>,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Dependency {
-    module: String,
+    module: ArcStr,
     import_type: ResolveType,
 }
 

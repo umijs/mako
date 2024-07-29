@@ -72,6 +72,7 @@ swc_error_reporters = "0.16.1"
 swc_node_comments   = "0.19.1"
 
 anyhow                = "1.0.71"
+arcstr                = { version = "1.2.0", features = ["serde"] }
 base64                = "0.21.2"
 chrono                = "0.4.38"
 clap                  = { version = "4.3.11", features = ["derive"] }

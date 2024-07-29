@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
+use arcstr::ArcStr;
 use pathdiff::diff_paths;
 use rayon::prelude::*;
 use swc_core::common::errors::HANDLER;
@@ -80,11 +81,13 @@ impl BundlessCompiler {
                             }
                         };
 
+                        let replacement = ArcStr::from(replacement);
+
                         Ok((dep.source.clone(), (replacement.clone(), replacement)))
                     })
                     .collect::<Result<Vec<_>>>();
 
-                let resolved_deps: HashMap<String, (String, String)> =
+                let resolved_deps: HashMap<String, (ArcStr, ArcStr)> =
                     resolved_deps?.into_iter().collect();
 
                 drop(module_graph);

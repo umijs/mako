@@ -458,7 +458,7 @@ mod tests {
         let _module_graph = context.module_graph.write().unwrap();
 
         let file = File::with_content(
-            "test.js".to_string(),
+            "test.js".into(),
             Content::Js(JsContent {
                 content: code.to_string(),
                 ..Default::default()

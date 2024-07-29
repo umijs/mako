@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Result;
+use arcstr::ArcStr;
 use cached::proc_macro::cached;
 use cached::SizedCache;
 use swc_core::common::{Mark, DUMMY_SP, GLOBALS};
@@ -142,7 +143,7 @@ pub(crate) fn render_normal_js_chunk(
         unresolved_mark: Mark::new(),
         top_level_mark: Mark::new(),
         contains_top_level_await: false,
-        path: "".to_string(),
+        path: "".into(),
     });
 
     if context.config.minify && matches!(context.config.mode, Mode::Production) {
@@ -170,8 +171,8 @@ pub(crate) fn render_normal_js_chunk(
 
 pub(crate) fn render_entry_js_chunk(
     pot: &ChunkPot,
-    js_map: &HashMap<String, String>,
-    css_map: &HashMap<String, String>,
+    js_map: &HashMap<ArcStr, ArcStr>,
+    css_map: &HashMap<ArcStr, ArcStr>,
     chunk: &Chunk,
     context: &Arc<Context>,
     hmr_hash: u64,
@@ -214,8 +215,8 @@ pub(crate) fn render_entry_js_chunk(
 )]
 fn render_entry_chunk_js_without_full_hash(
     pot: &ChunkPot,
-    js_map: &HashMap<String, String>,
-    css_map: &HashMap<String, String>,
+    js_map: &HashMap<ArcStr, ArcStr>,
+    css_map: &HashMap<ArcStr, ArcStr>,
     chunk: &Chunk,
     context: &Arc<Context>,
 ) -> Result<RenderedChunk> {
@@ -230,14 +231,14 @@ fn render_entry_chunk_js_without_full_hash(
 
     match &chunk.chunk_type {
         ChunkType::Entry(module_id, _, _) => {
-            let main_id_decl: Stmt = quote_str!(module_id.generate(context))
+            let main_id_decl: Stmt = quote_str!(module_id.generate(context).as_str())
                 .into_var_decl(VarDeclKind::Var, quote_ident!("e").into()) // e brief for entry_module_id
                 .into();
 
             stmts.push(main_id_decl);
         }
         ChunkType::Worker(module_id) => {
-            let main_id_decl: Stmt = quote_str!(module_id.generate(context))
+            let main_id_decl: Stmt = quote_str!(module_id.generate(context).as_str())
                 .into_var_decl(VarDeclKind::Var, quote_ident!("e").into()) // e brief for entry_module_id
                 .into();
 
@@ -251,7 +252,7 @@ fn render_entry_chunk_js_without_full_hash(
         ObjectLit {
             span: DUMMY_SP,
             props: vec![Prop::KeyValue(KeyValueProp {
-                key: quote_str!(pot.chunk_id.clone()).into(),
+                key: quote_str!(pot.chunk_id.as_str()).into(),
                 value: Lit::Num(Number {
                     span: DUMMY_SP,
                     value: 0f64,
@@ -328,8 +329,8 @@ struct RenderedChunk {
 }
 
 fn chunk_map_decls(
-    js_map: &HashMap<String, String>,
-    css_map: &HashMap<String, String>,
+    js_map: &HashMap<ArcStr, ArcStr>,
+    css_map: &HashMap<ArcStr, ArcStr>,
 ) -> (Stmt, Stmt) {
     let js_chunk_map_dcl_stmt: Stmt = to_object_lit(js_map)
         .into_var_decl(VarDeclKind::Var, quote_ident!("chunksIdToUrlMap").into())
@@ -342,7 +343,7 @@ fn chunk_map_decls(
     (js_chunk_map_dcl_stmt, css_chunk_map_dcl_stmt)
 }
 
-fn to_object_lit(value: &HashMap<String, String>) -> ObjectLit {
+fn to_object_lit(value: &HashMap<ArcStr, ArcStr>) -> ObjectLit {
     let mut keys = value.keys().collect::<Vec<_>>();
     keys.sort();
 
@@ -351,8 +352,8 @@ fn to_object_lit(value: &HashMap<String, String>) -> ObjectLit {
         .map(|k| {
             let v = value.get(k).unwrap();
             Prop::KeyValue(KeyValueProp {
-                key: quote_str!(k.clone()).into(),
-                value: quote_str!(v.clone()).into(),
+                key: quote_str!(k.as_str()).into(),
+                value: quote_str!(v.as_str()).into(),
             })
             .into()
         })

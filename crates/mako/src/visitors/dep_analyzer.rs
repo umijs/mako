@@ -97,7 +97,11 @@ impl Visit for DepAnalyzer {
         // e.g.
         // new Worker(new URL('a', import.meta.url));
         if let Some(str) = resolve_web_worker(expr, self.unresolved_mark) {
-            self.add_dependency(str.value.to_string(), ResolveType::Worker, Some(str.span));
+            self.add_dependency(
+                str.value.as_ref().into(),
+                ResolveType::Worker,
+                Some(str.span),
+            );
         }
         expr.visit_children_with(self);
     }

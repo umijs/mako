@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use anyhow::{Error, Result};
+use arcstr::ArcStr;
 use regex::Regex;
 use swc_core::common::errors::HANDLER;
 use swc_core::common::GLOBALS;
@@ -82,7 +83,7 @@ pub fn transform_modules_in_thread(
         thread_pool::spawn(move || {
             let module_graph = context.module_graph.read().unwrap();
             let deps = module_graph.get_dependencies(&module_id);
-            let mut resolved_deps: HashMap<String, (String, String)> = deps
+            let mut resolved_deps: HashMap<String, (ArcStr, ArcStr)> = deps
                 .into_iter()
                 .map(|(id, dep)| {
                     (
@@ -146,7 +147,7 @@ pub fn transform_modules_in_thread(
     Ok(())
 }
 
-fn insert_swc_helper_replace(map: &mut HashMap<String, (String, String)>, context: &Arc<Context>) {
+fn insert_swc_helper_replace(map: &mut HashMap<String, (ArcStr, ArcStr)>, context: &Arc<Context>) {
     let helpers = vec![
         "@swc/helpers/_/_interop_require_default",
         "@swc/helpers/_/_interop_require_wildcard",
@@ -154,8 +155,8 @@ fn insert_swc_helper_replace(map: &mut HashMap<String, (String, String)>, contex
     ];
 
     helpers.into_iter().for_each(|h| {
-        let m_id: ModuleId = h.to_string().into();
-        map.insert(m_id.id.clone(), (m_id.generate(context), h.to_string()));
+        let m_id: ModuleId = ModuleId::from(h);
+        map.insert(m_id.id.to_string(), (m_id.generate(context), h.into()));
     });
 }
 

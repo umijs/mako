@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use arcstr::ArcStr;
 use swc_core::common::{Mark, DUMMY_SP};
 use swc_core::ecma::ast::{
     AssignOp, BlockStmt, Expr, ExprOrSpread, FnExpr, Function, Ident, ImportDecl, Lit, NamedExport,
@@ -23,8 +24,8 @@ pub struct DepReplacer<'a> {
     pub top_level_mark: Mark,
 }
 
-type ResolvedModuleId = String;
-type ResolvedModulePath = String;
+type ResolvedModuleId = ArcStr;
+type ResolvedModulePath = ArcStr;
 
 #[derive(Debug, Clone)]
 pub struct DependenciesToReplace {
@@ -98,12 +99,11 @@ impl VisitMut for DepReplacer<'_> {
                 } = &mut call_expr.args[0]
                 {
                     // js
-                    let source_string = source.value.clone().to_string();
-                    match self.to_replace.missing.get(&source_string) {
+                    match self.to_replace.missing.get(source.value.as_ref()) {
                         Some(_) => {
                             call_expr.args[0] = ExprOrSpread {
                                 spread: None,
-                                expr: Box::new(miss_throw_stmt(&source_string)),
+                                expr: Box::new(miss_throw_stmt(source.value.as_ref())),
                             };
                             return;
                         }
@@ -114,17 +114,18 @@ impl VisitMut for DepReplacer<'_> {
 
                     // css
                     // TODO: add testcases for this
-                    let is_replaceable_css =
-                        if let Some((_, raw_id)) = self.to_replace.resolved.get(&source_string) {
-                            let (path, _search, query, _) = parse_path(raw_id).unwrap();
-                            // when inline_css is enabled
-                            // css is parsed as js modules
-                            self.context.config.inline_css.is_none()
-                                && is_css_path(&path)
-                                && (query.is_empty() || query.iter().any(|(k, _)| *k == "modules"))
-                        } else {
-                            false
-                        };
+                    let is_replaceable_css = if let Some((_, raw_id)) =
+                        self.to_replace.resolved.get(source.value.as_ref())
+                    {
+                        let (path, _search, query, _) = parse_path(raw_id).unwrap();
+                        // when inline_css is enabled
+                        // css is parsed as js modules
+                        self.context.config.inline_css.is_none()
+                            && is_css_path(&path)
+                            && (query.is_empty() || query.iter().any(|(k, _)| *k == "modules"))
+                    } else {
+                        false
+                    };
                     if is_replaceable_css {
                         // remove `require('./xxx.css');`
                         if is_commonjs_require_flag {
@@ -133,8 +134,10 @@ impl VisitMut for DepReplacer<'_> {
                         } else {
                             // `import('./xxx.css')` 中的 css 模块会被拆分到单独的 chunk, 这里需要改为加载 css chunk
                             let module_graph = self.context.module_graph.read().unwrap();
-                            let dep_module_id = module_graph
-                                .get_dependency_module_by_source(self.module_id, &source_string);
+                            let dep_module_id = module_graph.get_dependency_module_by_source(
+                                self.module_id,
+                                source.value.as_ref(),
+                            );
 
                             if let Some(dep_module_id) = dep_module_id {
                                 let chunk_graph = self.context.chunk_graph.read().unwrap();
@@ -145,7 +148,10 @@ impl VisitMut for DepReplacer<'_> {
                                     let chunk_id = chunk.id.id.clone();
                                     // `import('./xxx.css')` => `__mako_require__.ensure('./xxx.css')`
                                     *expr = member_expr!(DUMMY_SP, __mako_require__.ensure)
-                                        .as_call(DUMMY_SP, vec![quote_str!(chunk_id).as_arg()]);
+                                        .as_call(
+                                            DUMMY_SP,
+                                            vec![quote_str!(chunk_id.as_str()).as_arg()],
+                                        );
                                     return;
                                 } else {
                                     *expr = Expr::Lit(quote_str!("").into());
@@ -183,10 +189,10 @@ impl VisitMut for DepReplacer<'_> {
 
 impl DepReplacer<'_> {
     fn replace_source(&mut self, source: &mut Str) {
-        if let Some(replacement) = self.to_replace.resolved.get(&source.value.to_string()) {
+        if let Some(replacement) = self.to_replace.resolved.get(source.value.as_ref()) {
             let module_id = replacement.0.clone();
             let span = source.span;
-            *source = Str::from(module_id);
+            *source = Str::from(module_id.as_str());
             source.span = span;
         }
     }
@@ -349,17 +355,17 @@ try {
             key.to_string() =>
             (
 
-             module_id.to_string(),
-             "".to_string()
+             module_id.into(),
+             "".into()
             )
         }
     }
 
     fn build_missing(key: &str) -> HashMap<String, Dependency> {
         hashmap! {
-            key.to_string() => Dependency {
+            key.into() => Dependency {
                 resolve_type: ResolveType::Import(ImportType::Default),
-                source: key.to_string(),
+                source: key.into(),
                 resolve_as: None,
                 span: None,
                 order: 0,
@@ -376,7 +382,7 @@ try {
         let ast = test_utils.ast.js_mut();
         GLOBALS.set(&test_utils.context.meta.script.globals, || {
             let mut visitor = DepReplacer {
-                module_id: &ModuleId::new("index.jsx".into()),
+                module_id: &ModuleId::new("index.jsx"),
                 to_replace: &DependenciesToReplace { resolved, missing },
                 context: &test_utils.context,
                 unresolved_mark: ast.unresolved_mark,
