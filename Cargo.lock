@@ -590,6 +590,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
 
 [[package]]
+name = "base64"
+version = "0.22.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
+
+[[package]]
 name = "base64-simd"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6434,24 +6440,24 @@ dependencies = [
 
 [[package]]
 name = "swc_emotion"
-version = "0.51.0"
+version = "0.72.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d1a13c3241b2812f15e751687924b0458b55ca7c3576a752b939e954cb4b0ba"
+checksum = "5c77a41e3908561af55baec3d0a7911270822a17f173bab8fb2d3e30ed241128"
 dependencies = [
- "base64 0.13.1",
+ "base64 0.22.1",
  "byteorder",
  "fxhash",
  "once_cell",
  "radix_fmt",
  "regex",
  "serde",
- "sourcemap 6.4.1",
- "swc_atoms 0.5.9",
- "swc_common 0.32.2",
- "swc_ecma_ast 0.109.2",
- "swc_ecma_codegen 0.145.7",
- "swc_ecma_utils 0.123.3",
- "swc_ecma_visit 0.95.2",
+ "sourcemap 8.0.1",
+ "swc_atoms 0.6.7",
+ "swc_common 0.34.4",
+ "swc_ecma_ast 0.115.1",
+ "swc_ecma_codegen 0.151.1",
+ "swc_ecma_utils 0.130.3",
+ "swc_ecma_visit 0.101.0",
  "swc_trace_macro",
  "tracing",
 ]

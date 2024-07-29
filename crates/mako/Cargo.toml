@@ -68,7 +68,7 @@ swc_core = { workspace = true, features = [
   "swc_ecma_quote_macros",
 ] }
 
-swc_emotion         = "0.51.0"
+swc_emotion         = "=0.72.16"
 swc_error_reporters = "=0.18.1"
 swc_node_comments   = "=0.21.0"
 
