@@ -238,7 +238,7 @@ impl Compiler {
             Arc::new(plugins::hmr_runtime::HMRRuntimePlugin {}),
             Arc::new(plugins::wasm_runtime::WasmRuntimePlugin {}),
             Arc::new(plugins::async_runtime::AsyncRuntimePlugin {}),
-            // Arc::new(plugins::emotion::EmotionPlugin {}),
+            Arc::new(plugins::emotion::EmotionPlugin {}),
             Arc::new(plugins::tree_shaking::FarmTreeShake {}),
             Arc::new(plugins::detect_circular_dependence::LoopDetector {}),
         ];
