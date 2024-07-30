@@ -2771,7 +2771,7 @@ dependencies = [
  "maplit",
  "md5",
  "mdxjs",
- "merge-source-map 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "merge-source-map",
  "miette 5.10.0",
  "mimalloc-rust",
  "mime_guess",
@@ -2917,13 +2917,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a"
 dependencies = [
  "autocfg",
-]
-
-[[package]]
-name = "merge-source-map"
-version = "1.2.0"
-dependencies = [
- "sourcemap 7.1.1",
 ]
 
 [[package]]
