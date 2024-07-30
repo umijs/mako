@@ -2771,6 +2771,7 @@ dependencies = [
  "maplit",
  "md5",
  "mdxjs",
+ "merge-source-map 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "miette 5.10.0",
  "mimalloc-rust",
  "mime_guess",
@@ -2916,6 +2917,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a"
 dependencies = [
  "autocfg",
+]
+
+[[package]]
+name = "merge-source-map"
+version = "1.2.0"
+dependencies = [
+ "sourcemap 7.1.1",
+]
+
+[[package]]
+name = "merge-source-map"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f20543fa819b8d7b4f0fd51514aef9cfad3b1d746ad88c63d2f68b2b8cc034dd"
+dependencies = [
+ "sourcemap 7.1.1",
 ]
 
 [[package]]
@@ -4717,6 +4734,23 @@ dependencies = [
  "serde",
  "serde_json",
  "unicode-id",
+ "url",
+]
+
+[[package]]
+name = "sourcemap"
+version = "7.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e7768edd06c02535e0d50653968f46e1e0d3aa54742190d35dd9466f59de9c71"
+dependencies = [
+ "base64-simd",
+ "data-encoding",
+ "debugid",
+ "if_chain",
+ "rustc_version",
+ "serde",
+ "serde_json",
+ "unicode-id-start",
  "url",
 ]
 
