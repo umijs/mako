@@ -1641,7 +1641,7 @@ runTest('js: response correct content-type', async () => {
       const headers = response.headers();
       assert.equal(
         headers['content-type'],
-        'application/javascript; charset=utf-8',
+        'text/javascript; charset=utf-8',
         'hot-update content-type',
       );
       cleanup({ process, browser });
