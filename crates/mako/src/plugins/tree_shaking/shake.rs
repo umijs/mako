@@ -20,12 +20,13 @@ use crate::plugins::tree_shaking::module::{AllExports, ModuleSystem, TreeShakeMo
 use crate::plugins::tree_shaking::shake::module_concatenate::optimize_module_graph;
 use crate::plugins::tree_shaking::statement_graph::{ExportInfo, ExportSpecifierInfo, ImportInfo};
 use crate::plugins::tree_shaking::{module, remove_useless_stmts, statement_graph};
+use crate::{mako_profile_function, mako_profile_scope};
 
 type TreeShakingModuleMap = HashMap<ModuleId, RefCell<TreeShakeModule>>;
 
 pub fn optimize_modules(module_graph: &mut ModuleGraph, context: &Arc<Context>) -> Result<()> {
     let (topo_sorted_modules, _cyclic_modules) = {
-        crate::mako_profile_scope!("tree shake topo-sort");
+        mako_profile_scope!("tree shake topo-sort");
         module_graph.toposort()
     };
 
@@ -57,20 +58,24 @@ pub fn optimize_modules(module_graph: &mut ModuleGraph, context: &Arc<Context>) 
             false
         });
 
-    let tree_shake_modules_map = tree_shake_modules_ids
-        .par_iter()
-        .enumerate()
-        .map(|(index, module_id)| {
-            let module = module_graph.get_module(module_id).unwrap();
+    let tree_shake_modules_map = {
+        mako_profile_scope!("init_tree_shake_modules_map");
+        tree_shake_modules_ids
+            .par_iter()
+            .enumerate()
+            .map(|(index, module_id)| {
+                mako_profile_scope!("init", &module_id.id);
 
-            let tree_shake_module = GLOBALS.set(&context.meta.script.globals, || {
-                TreeShakeModule::new(module, index)
-            });
+                let module = module_graph.get_module(module_id).unwrap();
 
-            (module_id.clone(), RefCell::new(tree_shake_module))
-        })
-        .collect::<HashMap<_, _>>();
+                let tree_shake_module = GLOBALS.set(&context.meta.script.globals, || {
+                    TreeShakeModule::new(module, index)
+                });
 
+                (module_id.clone(), RefCell::new(tree_shake_module))
+            })
+            .collect::<HashMap<_, _>>()
+    };
     let mut current_index = (tree_shake_modules_ids.len() - 1) as i64;
 
     // update tree-shake module side_effects flag in reversed topo-sort order
@@ -128,30 +133,44 @@ pub fn optimize_modules(module_graph: &mut ModuleGraph, context: &Arc<Context>) 
     // traverse the tree_shake_modules
     let mut current_index: usize = 0;
     let len = tree_shake_modules_ids.len();
-    while current_index < len {
-        current_index = shake_module(
-            module_graph,
-            &tree_shake_modules_ids,
-            &tree_shake_modules_map,
-            current_index,
-        );
+
+    {
+        mako_profile_scope!("tree-shake");
+
+        while current_index < len {
+            mako_profile_scope!(
+                "tree-shake-module",
+                &tree_shake_modules_ids[current_index].id
+            );
+
+            current_index = shake_module(
+                module_graph,
+                &tree_shake_modules_ids,
+                &tree_shake_modules_map,
+                current_index,
+            );
+        }
     }
 
-    for (module_id, tsm) in &tree_shake_modules_map {
-        let mut tsm = tsm.borrow_mut();
+    {
+        mako_profile_scope!("update ast");
+        for (module_id, tsm) in &tree_shake_modules_map {
+            mako_profile_scope!("update ast", &module_id.id);
+            let mut tsm = tsm.borrow_mut();
 
-        if tsm.not_used() {
-            module_graph.remove_module(module_id);
-        } else if let Some(swc_module) = &mut tsm.updated_ast {
-            module_graph
-                .get_module_mut(module_id)
-                .unwrap()
-                .info
-                .as_mut()
-                .unwrap()
-                .ast
-                .as_script_ast_mut()
-                .body = swc_module.body.take();
+            if tsm.not_used() {
+                module_graph.remove_module(module_id);
+            } else if let Some(swc_module) = &mut tsm.updated_ast {
+                module_graph
+                    .get_module_mut(module_id)
+                    .unwrap()
+                    .info
+                    .as_mut()
+                    .unwrap()
+                    .ast
+                    .as_script_ast_mut()
+                    .body = swc_module.body.take();
+            }
         }
     }
 
@@ -342,6 +361,8 @@ fn fill_all_export_start_export_info(
     tree_shake_modules_map: &HashMap<ModuleId, RefCell<TreeShakeModule>>,
     module_graph: &ModuleGraph,
 ) {
+    mako_profile_function!();
+
     for module_id in tree_shake_modules_ids.iter() {
         let tsm = tree_shake_modules_map.get(module_id).unwrap().borrow();
 
