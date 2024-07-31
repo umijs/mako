@@ -12,6 +12,7 @@ use std::sync::Arc;
 
 use concatenated_transformer::ConcatenatedTransform;
 use external_transformer::ExternalTransformer;
+use rayon::prelude::*;
 use swc_core::common::util::take::Take;
 use swc_core::common::{Span, SyntaxContext, GLOBALS};
 use swc_core::ecma::transforms::base::hygiene::hygiene;
@@ -242,10 +243,10 @@ pub fn optimize_module_graph(
         src_2_module_id
     }
 
-    GLOBALS.set(&context.meta.script.globals, || {
-        let res = concat_configurations
-            .iter()
-            .map(|config| {
+    let res = concat_configurations
+        .par_iter()
+        .map(|config| {
+            GLOBALS.set(&context.meta.script.globals, || {
                 mako_profile_scope!("concatenate", &config.root.id);
 
                 let mut new_deps = vec![];
@@ -281,18 +282,6 @@ pub fn optimize_module_graph(
                         ));
 
                         concatenate_context.add_external_names(id, exposed_names);
-
-                        module_graph.add_dependency(
-                            &config.root,
-                            id,
-                            Dependency {
-                                source: require_src.clone(),
-                                resolve_as: None,
-                                resolve_type: ResolveType::Require,
-                                order: 0,
-                                span: None,
-                            },
-                        );
 
                         new_deps.push((
                             id.clone(),
@@ -433,27 +422,27 @@ pub fn optimize_module_graph(
 
                 (new_deps, root_module_ast)
             })
-            .collect::<Vec<_>>();
+        })
+        .collect::<Vec<_>>();
 
-        concat_configurations
-            .iter()
-            .zip(res)
-            .for_each(|(config, (new_deps, module_ast))| {
-                new_deps.into_iter().for_each(|(to, dep)| {
-                    module_graph.add_dependency(&config.root, &to, dep);
-                });
-
-                config.inners.iter().for_each(|inner| {
-                    module_graph.remove_module(inner);
-                });
-
-                let module = module_graph.get_module_mut(&config.root).unwrap();
-                let module_info = module.info.as_mut().unwrap();
-                let js_ast = module_info.ast.as_script_ast_mut();
-
-                *js_ast = module_ast;
+    concat_configurations
+        .iter()
+        .zip(res)
+        .for_each(|(config, (new_deps, module_ast))| {
+            new_deps.into_iter().for_each(|(to, dep)| {
+                module_graph.add_dependency(&config.root, &to, dep);
             });
-    });
+
+            config.inners.iter().for_each(|inner| {
+                module_graph.remove_module(inner);
+            });
+
+            let module = module_graph.get_module_mut(&config.root).unwrap();
+            let module_info = module.info.as_mut().unwrap();
+            let js_ast = module_info.ast.as_script_ast_mut();
+
+            *js_ast = module_ast;
+        });
 
     Ok(())
 }
