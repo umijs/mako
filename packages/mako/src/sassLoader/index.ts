@@ -1,12 +1,7 @@
 import url from 'url';
 import { type Options } from 'sass';
-import { createParallelLoader } from './parallelSassLoader';
 
-function sassLoader(
-  fn: Function | null,
-  opts: Omit<Options<'async'>, 'functions'>,
-) {
-  let parallelSassLoader: ReturnType<typeof createParallelLoader> | undefined;
+function sassLoader(fn: Function | null, opts: Options<'async'>) {
   return {
     render: async (filePath: string) => {
       let filename = '';
@@ -16,17 +11,14 @@ function sassLoader(
         return;
       }
       if (filename?.endsWith('.scss')) {
-        parallelSassLoader ||= createParallelLoader();
-        return await parallelSassLoader.run({ filename, opts });
+        const { render } = require('./render');
+        return render({ filename, opts });
       } else {
         // TODO: remove this
         fn && fn(filePath);
       }
     },
-    terminate: () => {
-      parallelSassLoader?.destroy();
-      parallelSassLoader = undefined;
-    },
+    terminate: () => {},
   };
 }
 
