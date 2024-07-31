@@ -128,10 +128,10 @@ impl VisitMut for Px2Rem {
         if let Token::Dimension(dimension) = t {
             if dimension.unit.to_string() == "px" && self.should_transform(dimension.value) {
                 let mut rem_val = dimension.value / self.config.root;
-                dimension.raw_value = rem_val.to_string().into();
                 if self.is_any_in_doublelist() {
                     rem_val *= 2.0;
                 }
+                dimension.raw_value = rem_val.to_string().into();
                 dimension.value = rem_val;
                 dimension.raw_unit = "rem".into();
                 dimension.unit = "rem".into();
@@ -644,6 +644,26 @@ mod tests {
                 }
             ),
             r#".a{width:2rem}"#
+        );
+        assert_eq!(
+            run(
+                r#".a-x{width:100px;}"#,
+                Px2RemConfig {
+                    selector_doublelist: vec!["^.a-".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#".a-x{width:2rem}"#
+        );
+        assert_eq!(
+            run(
+                r#":root{width:100px;}"#,
+                Px2RemConfig {
+                    selector_doublelist: vec!["^:root".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#":root{width:2rem}"#
         );
     }
 
