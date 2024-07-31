@@ -1,6 +1,5 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use anyhow::Result;
 use bitflags::bitflags;
 use serde::Serialize;
 use swc_core::base::atoms::JsWord;
@@ -278,7 +277,7 @@ pub struct ConcatenateContext {
 }
 
 impl ConcatenateContext {
-    pub fn init(config: &ConcatenateConfig, module_graph: &ModuleGraph) -> Result<Self> {
+    pub fn init(config: &ConcatenateConfig, module_graph: &ModuleGraph) -> Self {
         let mut all_used_globals = HashSet::new();
         config.inners.iter().for_each(|inner| {
             let module = module_graph.get_module(inner).unwrap();
@@ -295,7 +294,7 @@ impl ConcatenateContext {
         };
         context.setup_runtime_interops(config.merged_runtime_flags());
 
-        Ok(context)
+        context
     }
 
     pub fn top_level_vars(ast: &Module, top_level_mark: Mark) -> HashSet<String> {
