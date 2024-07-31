@@ -3,6 +3,7 @@ import { createParallelLoader } from './parallelLessLoader';
 
 export interface LessLoaderOpts {
   modifyVars: Record<string, string>;
+  globalVars?: Record<string, string>;
   math:
     | 'always'
     | 'strict'
