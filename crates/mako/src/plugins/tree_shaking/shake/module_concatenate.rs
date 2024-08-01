@@ -27,12 +27,15 @@ use crate::plugins::tree_shaking::module::{AllExports, ModuleSystem, TreeShakeMo
 use crate::plugins::tree_shaking::shake::module_concatenate::concatenate_context::{
     ConcatenateContext, RuntimeFlags,
 };
+use crate::{mako_profile_function, mako_profile_scope};
 
 pub fn optimize_module_graph(
     module_graph: &mut ModuleGraph,
     tree_shake_modules_map: &HashMap<ModuleId, RefCell<TreeShakeModule>>,
     context: &Arc<Context>,
 ) -> anyhow::Result<()> {
+    mako_profile_function!();
+
     let (sorted_module_ids, circles) = module_graph.toposort();
 
     let all_in_circles: HashSet<_> = circles.into_iter().flatten().collect();
@@ -240,6 +243,8 @@ pub fn optimize_module_graph(
 
     GLOBALS.set(&context.meta.script.globals, || {
         for config in &concat_configurations {
+            mako_profile_scope!("concatenate", &config.root.id);
+
             if let Some(info) = module_graph
                 .get_module_mut(&config.root)
                 .and_then(|module| module.info.as_mut())
