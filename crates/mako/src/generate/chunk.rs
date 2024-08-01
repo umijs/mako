@@ -4,7 +4,7 @@ use std::path::{Component, Path};
 
 use base64::engine::general_purpose;
 use base64::Engine;
-use indexmap::IndexSet;
+use hashlink::LinkedHashSet;
 use twox_hash::XxHash64;
 
 use crate::ast::file::parse_path;
@@ -31,7 +31,7 @@ pub enum ChunkType {
 pub struct Chunk {
     pub id: ChunkId,
     pub chunk_type: ChunkType,
-    pub modules: IndexSet<ModuleId>,
+    pub modules: LinkedHashSet<ModuleId>,
     pub content: Option<String>,
     pub source_map: Option<String>,
 }
@@ -52,7 +52,7 @@ impl Debug for Chunk {
 impl Chunk {
     pub fn new(id: ChunkId, chunk_type: ChunkType) -> Self {
         Self {
-            modules: IndexSet::new(),
+            modules: LinkedHashSet::new(),
             id,
             chunk_type,
             content: None,
@@ -105,24 +105,15 @@ impl Chunk {
     }
 
     pub fn add_module(&mut self, module_id: ModuleId) {
-        if let (pos, false) = self.modules.insert_full(module_id.clone()) {
-            // module already exists, move it to the back
-            self.modules.shift_remove_index(pos);
-            self.modules.insert(module_id);
-        }
+        self.modules.insert(module_id);
     }
 
-    pub fn get_modules(&self) -> &IndexSet<ModuleId> {
+    pub fn get_modules(&self) -> &LinkedHashSet<ModuleId> {
         &self.modules
     }
 
-    #[allow(dead_code)]
-    pub fn mut_modules(&mut self) -> &mut IndexSet<ModuleId> {
-        &mut self.modules
-    }
-
     pub fn remove_module(&mut self, module_id: &ModuleId) {
-        self.modules.shift_remove(module_id);
+        self.modules.remove(module_id);
     }
 
     pub fn has_module(&self, module_id: &ModuleId) -> bool {
