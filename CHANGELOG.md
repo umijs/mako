@@ -1,3 +1,15 @@
+## 0.7.9
+`2024-08-01`
+
+- feat: generate_end with stats by[@xusd320] in [#1450](https://github.com/umijs/mako/pull/1450)
+- feat: support sass by[@xiaohuoni] in [#1443](https://github.com/umijs/mako/pull/1443)
+- feat: sass option support function by[@xiaohuoni] in [#1461](https://github.com/umijs/mako/pull/1461)
+- fix: double value lose by[@xiaohuoni] in [#1462](https://github.com/umijs/mako/pull/1462)
+- perf: use hashlink, speed up 300% when building big project by[@xusd320] in [#1460](https://github.com/umijs/mako/pull/1460)
+- perf(tree-shaking): parallelize tree shaking module map init by[@stormslowly] in https://github.com/umijs/mako/pull/1452
+
+
+
 ## 0.7.8
 `2024-07-25`
 

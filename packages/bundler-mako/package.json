@@ -1,6 +1,6 @@
 {
   "name": "@umijs/bundler-mako",
-  "version": "0.7.8",
+  "version": "0.7.9",
   "dependencies": {
     "@umijs/bundler-utils": "^4.0.81",
     "@umijs/mako": "0.7.9",
