@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
@@ -59,13 +58,6 @@ impl ProgressPlugin {
 
         progress_bar.set_style(progress_bar_style);
         progress_bar.enable_steady_tick(Duration::from_millis(200));
-
-        let mut step_increments = HashMap::new();
-        step_increments.insert(3, 0.0015);
-        step_increments.insert(4, 0.002);
-        step_increments.insert(5, 0.0025);
-        step_increments.insert(6, 0.003);
-        step_increments.insert(7, 0.001);
 
         Self {
             options,
