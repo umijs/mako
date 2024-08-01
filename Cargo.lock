@@ -2663,6 +2663,7 @@ dependencies = [
  "notify-debouncer-full",
  "open",
  "oxc_resolver",
+ "parking_lot",
  "path-clean 1.0.1",
  "pathdiff",
  "percent-encoding",
