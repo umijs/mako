@@ -30,14 +30,6 @@ serde_json       = { workspace = true }
 url              = { version = "2.5.0" }
 
 swc_core = { workspace = true, features = [
-  "__common",
-  "__ecma",
-  "__ecma_plugin_transform",
-  "__ecma_transforms",
-  "__parser",
-  "__testing_transform",
-  "__utils",
-  "__visit",
   "base_node",
   "common_concurrent",
   "common_sourcemap",
@@ -64,6 +56,7 @@ swc_core = { workspace = true, features = [
   "ecma_transforms_proposal",
   "ecma_transforms_react",
   "ecma_transforms_typescript",
+  "ecma_utils",
   "ecma_visit_path",
   "swc_ecma_quote_macros",
 ] }
