@@ -4,7 +4,6 @@ use swc_core::common::SyntaxContext;
 use swc_core::ecma::ast::{Module as SwcModule, ModuleItem};
 
 use crate::module::{Module, ModuleId};
-use crate::module_graph::ModuleGraph;
 use crate::plugins::tree_shaking::statement_graph::{
     ExportInfo, ExportInfoMatch, ExportSource, ExportSpecifierInfo, ImportInfo, StatementGraph,
     StatementId,
@@ -278,7 +277,7 @@ impl TreeShakeModule {
         self.used_exports.is_empty()
     }
 
-    pub fn new(module: &Module, order: usize, _module_graph: &ModuleGraph) -> Self {
+    pub fn new(module: &Module, order: usize) -> Self {
         let module_info = module.info.as_ref().unwrap();
 
         let mut unresolved_ctxt = SyntaxContext::empty();

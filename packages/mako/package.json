@@ -1,6 +1,6 @@
 {
   "name": "@umijs/mako",
-  "version": "0.7.7",
+  "version": "0.7.9",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -20,8 +20,8 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@types/resolve": "^1.20.6",
     "@swc/helpers": "0.5.1",
+    "@types/resolve": "^1.20.6",
     "chalk": "^4.1.2",
     "less": "^4.2.0",
     "less-plugin-resolve": "^1.0.2",
@@ -72,10 +72,10 @@
     "src:build": "father build"
   },
   "optionalDependencies": {
-    "@umijs/mako-darwin-arm64": "0.7.7",
-    "@umijs/mako-darwin-x64": "0.7.7",
-    "@umijs/mako-linux-x64-gnu": "0.7.7",
-    "@umijs/mako-linux-x64-musl": "0.7.7"
+    "@umijs/mako-darwin-arm64": "0.7.9",
+    "@umijs/mako-darwin-x64": "0.7.9",
+    "@umijs/mako-linux-x64-gnu": "0.7.9",
+    "@umijs/mako-linux-x64-musl": "0.7.9"
   },
   "repository": "git@github.com:umijs/mako.git"
 }

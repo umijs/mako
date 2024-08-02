@@ -492,6 +492,7 @@ Specify the plugins to use.
     stats: {
       startTime: number;
       endTime: number;
+      ...
     };
   }) => void;
   load?: (filePath: string) => Promise<{ content: string, type: 'css'|'js'|'jsx'|'ts'|'tsx' }>;
@@ -547,7 +548,7 @@ __mako_public_path__ = '/foo/';
 
 ### px2rem
 
-- Type: `false | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[], 
+- Type: `false | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[],
   selectorWhiteList?: string[], selectorDoubleList?: string[], minPixelValue?: number, mediaQuery?: boolean }`
 - Default: `false`
 
@@ -665,6 +666,24 @@ Child configuration items:
 
 - `clientComponentTpl`, client component template, use `{{path}}` to represent the path of the component, and use `{{id}}` to represent the id of the module.
 - `emitCSS`, whether to output CSS components.
+
+### sass
+
+- Type: `Options<'async'>`
+- Default: `{}`
+
+> The "sass" package is not installed. Please run "npm install sass" to install it.
+
+Specify the sass [configuration](https://sass-lang.com/documentation/js-api/interfaces/options/).
+
+
+e.g.
+
+```ts
+{
+  "sourceMap": false
+}
+```
 
 ### stats
 

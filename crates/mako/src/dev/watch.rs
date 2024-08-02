@@ -7,6 +7,7 @@ use anyhow::{self, Ok};
 use colored::Colorize;
 use notify::{self, EventKind, Watcher as NotifyWatcher};
 use notify_debouncer_full::DebouncedEvent;
+use regex::Regex;
 use tracing::debug;
 
 use crate::compiler::Compiler;
@@ -18,6 +19,7 @@ pub struct Watcher<'a> {
     pub compiler: &'a Compiler,
     pub watched_files: HashSet<PathBuf>,
     pub watched_dirs: HashSet<PathBuf>,
+    node_modules_regexes: Vec<Regex>,
 }
 
 impl<'a> Watcher<'a> {
@@ -32,6 +34,16 @@ impl<'a> Watcher<'a> {
             compiler,
             watched_dirs: HashSet::new(),
             watched_files: HashSet::new(),
+            node_modules_regexes: compiler
+                .context
+                .config
+                .watch
+                .node_modules_regexes
+                .clone()
+                .unwrap_or_default()
+                .iter()
+                .map(|s| Regex::new(s).unwrap())
+                .collect::<Vec<Regex>>(),
         }
     }
 
@@ -55,6 +67,20 @@ impl<'a> Watcher<'a> {
                     if dir.strip_prefix(self.root).is_err() && self.root.strip_prefix(dir).is_err()
                     {
                         dirs.insert(dir);
+                    }
+                }
+                if !self.node_modules_regexes.is_empty() {
+                    let file_path = resource.0.path().to_str().unwrap();
+                    let is_match = file_path.contains("node_modules")
+                        && self
+                            .node_modules_regexes
+                            .iter()
+                            .any(|regex| regex.is_match(file_path));
+                    if is_match {
+                        let _ = self.watcher.watch(
+                            resource.0.path().to_path_buf().as_path(),
+                            notify::RecursiveMode::NonRecursive,
+                        );
                     }
                 }
             }
@@ -103,6 +129,8 @@ impl<'a> Watcher<'a> {
                 .config
                 .watch
                 .ignore_paths
+                .as_deref()
+                .unwrap_or(&[])
                 .iter()
                 .map(|p| p.as_str()),
         );

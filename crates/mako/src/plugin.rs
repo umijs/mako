@@ -3,6 +3,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::Result;
+use serde::Serialize;
 use swc_core::common::errors::Handler;
 use swc_core::common::Mark;
 use swc_core::ecma::ast::Module;
@@ -33,11 +34,11 @@ pub struct PluginTransformJsParam<'a> {
     pub unresolved_mark: Mark,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct PluginGenerateEndParams {
     pub is_first_compile: bool,
-    pub time: u64,
-    pub stats: PluginGenerateStats,
+    pub time: i64,
+    pub stats: StatsJsonMap,
 }
 
 #[derive(Clone)]
@@ -277,11 +278,11 @@ impl PluginDriver {
 
     pub fn generate_end(
         &self,
-        param: &PluginGenerateEndParams,
+        params: &PluginGenerateEndParams,
         context: &Arc<Context>,
     ) -> Result<()> {
         for plugin in &self.plugins {
-            plugin.generate_end(param, context)?;
+            plugin.generate_end(params, context)?;
         }
         Ok(())
     }

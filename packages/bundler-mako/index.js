@@ -252,6 +252,8 @@ function checkConfig(opts) {
     'experimental',
     'flexBugs',
     'optimization',
+    'sass',
+    'autoCSSModules',
   ];
   // umi mako config
   const { mako } = opts.config;
@@ -328,7 +330,6 @@ function checkConfig(opts) {
     'config.classPropertiesLoose',
     'config.extraPostCSSPlugins',
     'config.postcssLoader',
-    'config.sassLoader',
     'config.styleLoader',
     'config.stylusLoader',
     'config.chainWebpack',
@@ -463,6 +464,7 @@ async function getMakoConfig(opts) {
     forkTSChecker,
     inlineCSS,
     analyze,
+    sassLoader,
     mako,
   } = opts.config;
 
@@ -638,6 +640,7 @@ async function getMakoConfig(opts) {
         graphviz: false,
       },
     },
+    sass: sassLoader,
     ...mako,
   };
 

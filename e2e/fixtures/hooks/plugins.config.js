@@ -7,9 +7,10 @@ module.exports = [{
     await delay(1000);
     console.log('>> build start after delay 1s');
   },
-  async generateEnd() {
+  async generateEnd(params) {
     console.log('>> generate end');
     await delay(1000);
+    console.dir(params.stats,{ depth: 10 });
     console.log('>> generate end after delay 1s');
   },
   async load(path) {
