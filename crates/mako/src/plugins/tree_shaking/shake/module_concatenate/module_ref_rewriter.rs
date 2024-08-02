@@ -56,7 +56,7 @@ impl<'a> ModuleRefRewriter<'a> {
                 HELPERS
                     .is_set()
                     .then(|| HELPERS.with(|helper| helper.mark()))
-                    .map(|mark| SyntaxContext::empty().apply_mark(mark))
+                    .map(|mark| DUMMY_CTXT.apply_mark(mark))
             },
         }
     }

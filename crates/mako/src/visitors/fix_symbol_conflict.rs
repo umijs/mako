@@ -8,6 +8,8 @@ use swc_core::ecma::ast::{Id, Ident, Module};
 use swc_core::ecma::utils::IdentRenamer;
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
+use crate::DUMMY_CTXT;
+
 pub(crate) struct FixSymbolConflict {
     idents_named_symbol: HashSet<Id>,
     top_level_ctxt: SyntaxContext,
@@ -17,7 +19,7 @@ impl FixSymbolConflict {
     pub fn new(top_level_mark: Mark) -> Self {
         Self {
             idents_named_symbol: Default::default(),
-            top_level_ctxt: SyntaxContext::empty().apply_mark(top_level_mark),
+            top_level_ctxt: DUMMY_CTXT.apply_mark(top_level_mark),
         }
     }
 }

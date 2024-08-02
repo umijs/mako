@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use swc_core::common::util::take::Take;
-use swc_core::common::{Mark, SyntaxContext, DUMMY_SP};
+use swc_core::common::{Mark, DUMMY_SP};
 use swc_core::ecma::ast::{
     ArrayLit, ArrayPat, AssignExpr, AssignOp, AwaitExpr, BlockStmt, BlockStmtOrExpr, CondExpr,
     Expr, Ident, Lit, ModuleItem, ParenExpr, Stmt, VarDeclKind,
@@ -138,12 +138,8 @@ impl VisitMut for AsyncModule<'_> {
                     }
                     .into(),
                     right: CondExpr {
-                        test: member_expr!(
-                            SyntaxContext::empty(),
-                            DUMMY_SP,
-                            __mako_async_dependencies__.then
-                        )
-                        .into(),
+                        test: member_expr!(DUMMY_CTXT, DUMMY_SP, __mako_async_dependencies__.then)
+                            .into(),
                         cons: ParenExpr {
                             expr: AwaitExpr {
                                 span: DUMMY_SP,
@@ -179,7 +175,7 @@ impl VisitMut for AsyncModule<'_> {
         //   module, async (handleAsyncDeps, asyncResult) => { }, bool
         // );`
         *module_items = vec![ModuleItem::Stmt(
-            member_expr!(SyntaxContext::empty(), DUMMY_SP, __mako_require__._async)
+            member_expr!(DUMMY_CTXT, DUMMY_SP, __mako_require__._async)
                 .as_call(
                     DUMMY_SP,
                     vec![
@@ -192,7 +188,7 @@ impl VisitMut for AsyncModule<'_> {
                             arrow_fn.is_async = true;
                             arrow_fn.body = BlockStmtOrExpr::BlockStmt(BlockStmt {
                                 span: DUMMY_SP,
-                                ctxt: SyntaxContext::empty(),
+                                ctxt: DUMMY_CTXT,
                                 stmts: module_items
                                     .iter()
                                     .map(|stmt| stmt.as_stmt().unwrap().clone())

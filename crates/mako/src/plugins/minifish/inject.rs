@@ -12,6 +12,8 @@ use swc_core::ecma::ast::{
 use swc_core::ecma::utils::{quote_ident, quote_str, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
+use crate::DUMMY_CTXT;
+
 pub(super) struct MyInjector<'a> {
     unresolved_mark: Mark,
     injects: HashMap<String, &'a Inject>,
@@ -117,7 +119,7 @@ impl Hash for Inject {
 impl Inject {
     fn into_require_with(self, ctxt: SyntaxContext, unresolved_mark: Mark) -> ModuleItem {
         let name_span = DUMMY_SP;
-        let unresolved_ctxt = SyntaxContext::empty().apply_mark(unresolved_mark);
+        let unresolved_ctxt = DUMMY_CTXT.apply_mark(unresolved_mark);
 
         let require_source_expr = quote_ident!(unresolved_ctxt, DUMMY_SP, "require")
             .as_call(DUMMY_SP, vec![quote_str!(self.from).as_arg()]);

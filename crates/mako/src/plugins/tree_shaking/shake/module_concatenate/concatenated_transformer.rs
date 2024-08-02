@@ -4,7 +4,7 @@ use std::sync::Arc;
 use swc_core::common::collections::AHashSet;
 use swc_core::common::comments::{Comment, CommentKind};
 use swc_core::common::util::take::Take;
-use swc_core::common::{Mark, Spanned, SyntaxContext, DUMMY_SP};
+use swc_core::common::{Mark, Spanned, DUMMY_SP};
 use swc_core::ecma::ast::{
     ClassDecl, DefaultDecl, ExportAll, ExportDecl, ExportDefaultDecl, ExportDefaultExpr, FnDecl,
     Id, ImportDecl, KeyValueProp, Module, ModuleItem, NamedExport, ObjectLit, Prop, PropOrSpread,
@@ -296,7 +296,7 @@ impl<'a> ConcatenatedTransform<'a> {
     }
 
     fn resolve_conflict(&mut self, import_module_ref: &ImportModuleRefMap) {
-        let top_ctxt = SyntaxContext::empty().apply_mark(self.top_level_mark);
+        let top_ctxt = DUMMY_CTXT.apply_mark(self.top_level_mark);
 
         let imported_reference = all_referenced_variables(import_module_ref);
 
@@ -481,7 +481,7 @@ impl<'a> VisitMut for ConcatenatedTransform<'a> {
 
     fn visit_mut_export_default_expr(&mut self, export_default_expr: &mut ExportDefaultExpr) {
         let span = export_default_expr.span;
-        let ctxt = SyntaxContext::empty().apply_mark(self.top_level_mark);
+        let ctxt = DUMMY_CTXT.apply_mark(self.top_level_mark);
 
         let default_binding_name = self.default_bind_name.clone();
 

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Result;
-use swc_core::common::{Mark, SyntaxContext, DUMMY_SP};
+use swc_core::common::{Mark, DUMMY_SP};
 use swc_core::ecma::ast::{BinExpr, BinaryOp, Expr, Lit};
 use swc_core::ecma::utils::{member_expr, quote_str};
 use swc_core::ecma::visit::VisitMut;
@@ -13,7 +13,7 @@ use crate::build::load::Load;
 use crate::compiler::Context;
 use crate::config::Platform;
 use crate::module::{Dependency, ResolveType};
-use crate::resolve;
+use crate::{resolve, DUMMY_CTXT};
 
 pub struct NewUrlAssets {
     pub context: Arc<Context>,
@@ -51,8 +51,8 @@ impl NewUrlAssets {
             Expr::Bin(BinExpr {
                 span: DUMMY_SP,
                 op: BinaryOp::LogicalOr,
-                left: member_expr!(SyntaxContext::empty(), DUMMY_SP, document.baseURI).into(),
-                right: member_expr!(SyntaxContext::empty(), DUMMY_SP, self.location.href).into(),
+                left: member_expr!(DUMMY_CTXT, DUMMY_SP, document.baseURI).into(),
+                right: member_expr!(DUMMY_CTXT, DUMMY_SP, self.location.href).into(),
             })
         } else {
             Expr::Lit(
@@ -92,7 +92,7 @@ impl VisitMut for NewUrlAssets {
                                     span: DUMMY_SP,
                                     op: BinaryOp::Add,
                                     left: member_expr!(
-                                        SyntaxContext::empty(),
+                                        DUMMY_CTXT,
                                         DUMMY_SP,
                                         __mako_require__.publicPath
                                     )

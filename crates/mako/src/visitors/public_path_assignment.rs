@@ -1,7 +1,9 @@
-use swc_core::common::{Mark, SyntaxContext, DUMMY_SP};
+use swc_core::common::{Mark, DUMMY_SP};
 use swc_core::ecma::ast::{AssignExpr, AssignOp, BindingIdent, Ident};
 use swc_core::ecma::utils::member_expr;
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
+
+use crate::DUMMY_CTXT;
 
 pub struct PublicPathAssignment {
     pub unresolved_mark: Mark,
@@ -18,12 +20,7 @@ impl VisitMut for PublicPathAssignment {
             && ctxt.outer() == self.unresolved_mark
         {
             *n = AssignExpr {
-                left: member_expr!(
-                    SyntaxContext::empty(),
-                    DUMMY_SP,
-                    __mako_require__.publicPath
-                )
-                .into(),
+                left: member_expr!(DUMMY_CTXT, DUMMY_SP, __mako_require__.publicPath).into(),
                 ..n.clone()
             };
         }

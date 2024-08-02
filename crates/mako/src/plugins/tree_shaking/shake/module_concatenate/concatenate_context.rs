@@ -302,7 +302,7 @@ impl ConcatenateContext {
     pub fn top_level_vars(ast: &Module, top_level_mark: Mark) -> HashSet<String> {
         let mut top_level_vars = HashSet::new();
         top_level_vars.extend(
-            collect_decls_with_ctxt(ast, SyntaxContext::empty().apply_mark(top_level_mark))
+            collect_decls_with_ctxt(ast, DUMMY_CTXT.apply_mark(top_level_mark))
                 .iter()
                 .map(|id: &Id| id.0.to_string()),
         );
@@ -328,7 +328,7 @@ impl ConcatenateContext {
     pub fn global_vars(ast: &Module, unresolved_mark: Mark) -> HashSet<String> {
         let mut globals = HashSet::new();
 
-        let mut collector = GlobalCollect::new(SyntaxContext::empty().apply_mark(unresolved_mark));
+        let mut collector = GlobalCollect::new(DUMMY_CTXT.apply_mark(unresolved_mark));
         ast.visit_with(&mut collector);
         globals.extend(
             collector

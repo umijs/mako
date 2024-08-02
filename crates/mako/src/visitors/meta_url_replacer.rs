@@ -1,9 +1,10 @@
-use swc_core::common::{SyntaxContext, DUMMY_SP};
+use swc_core::common::DUMMY_SP;
 use swc_core::ecma::ast::{CondExpr, Expr};
 use swc_core::ecma::utils::member_expr;
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::utils::is_import_meta_url;
+use crate::DUMMY_CTXT;
 
 pub struct MetaUrlReplacer {}
 
@@ -13,9 +14,9 @@ impl VisitMut for MetaUrlReplacer {
             // Compatible with workers: self.document ? self.document.baseURI : self.location.href
             *expr = Expr::Cond(CondExpr {
                 span: DUMMY_SP,
-                test: member_expr!(SyntaxContext::empty(), DUMMY_SP, self.document).into(),
-                cons: member_expr!(SyntaxContext::empty(), DUMMY_SP, self.document.baseURI).into(),
-                alt: member_expr!(SyntaxContext::empty(), DUMMY_SP, self.location.href).into(),
+                test: member_expr!(DUMMY_CTXT, DUMMY_SP, self.document).into(),
+                cons: member_expr!(DUMMY_CTXT, DUMMY_SP, self.document.baseURI).into(),
+                alt: member_expr!(DUMMY_CTXT, DUMMY_SP, self.location.href).into(),
             });
         }
 

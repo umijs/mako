@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use glob::glob;
-use swc_core::common::{Mark, SyntaxContext, DUMMY_SP};
+use swc_core::common::{Mark, DUMMY_SP};
 use swc_core::ecma::ast::{
     BinExpr, BinaryOp, CallExpr, Expr, ExprOrSpread, Lit, ParenExpr, TplElement,
 };
@@ -17,6 +17,7 @@ use crate::build::load::JS_EXTENSIONS;
 use crate::compiler::Context;
 use crate::plugin::{Plugin, PluginLoadParam};
 use crate::resolve::get_module_extensions;
+use crate::DUMMY_CTXT;
 
 pub struct ContextModulePlugin {}
 
@@ -176,7 +177,7 @@ impl VisitMut for ContextModuleVisitor {
                     .as_callee();
                     // TODO: allow use await in args
                     // eg: import(`./i18n${await xxx()}`)
-                    expr.args = vec![member_expr!(SyntaxContext::empty(), DUMMY_SP, m.default)
+                    expr.args = vec![member_expr!(DUMMY_CTXT, DUMMY_SP, m.default)
                         .as_call(DUMMY_SP, expr.args.clone())
                         .as_expr()
                         .to_owned()

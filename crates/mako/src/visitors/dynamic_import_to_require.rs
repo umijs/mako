@@ -1,4 +1,4 @@
-use swc_core::common::{Mark, SyntaxContext, DUMMY_SP};
+use swc_core::common::{Mark, DUMMY_SP};
 use swc_core::ecma::ast::{Expr, ExprOrSpread, Ident, Lit, MemberExpr, Stmt, VarDeclKind};
 use swc_core::ecma::utils::{
     member_expr, private_ident, quote_ident, quote_str, ExprFactory, IsDirective,
@@ -6,6 +6,8 @@ use swc_core::ecma::utils::{
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::utils::is_dynamic_import;
+use crate::DUMMY_CTXT;
+
 pub struct DynamicImportToRequire {
     pub unresolved_mark: Mark,
     changed: bool,
@@ -58,7 +60,7 @@ impl VisitMut for DynamicImportToRequire {
                     ..
                 } = &mut call_expr.args[0]
                 {
-                    let ctxt = SyntaxContext::empty().apply_mark(self.unresolved_mark);
+                    let ctxt = DUMMY_CTXT.apply_mark(self.unresolved_mark);
 
                     let source_lazy_require = quote_ident!(ctxt, "require")
                         .as_call(DUMMY_SP, vec![quote_str!(source.value.clone()).as_arg()])
@@ -66,11 +68,11 @@ impl VisitMut for DynamicImportToRequire {
 
                     // Promise.resolve()
                     let promise_resolve: Box<Expr> =
-                        member_expr!(SyntaxContext::empty(), DUMMY_SP, Promise.resolve)
+                        member_expr!(DUMMY_CTXT, DUMMY_SP, Promise.resolve)
                             .as_call(DUMMY_SP, vec![])
                             .into();
 
-                    let interop_call = quote_ident!(SyntaxContext::empty(), self.interop.as_ref());
+                    let interop_call = quote_ident!(DUMMY_CTXT, self.interop.as_ref());
                     let promised_require: Expr = member_expr!(@EXT,DUMMY_SP, promise_resolve, then)
                         .as_call(DUMMY_SP, vec![source_lazy_require.as_arg()]);
                     let interop_require =

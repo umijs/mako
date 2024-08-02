@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use swc_core::common::{Mark, SyntaxContext, DUMMY_SP};
+use swc_core::common::{Mark, DUMMY_SP};
 use swc_core::ecma::ast::{
     AssignOp, BlockStmt, Expr, ExprOrSpread, FnExpr, Function, Ident, ImportDecl, Lit, NamedExport,
     NewExpr, Stmt, Str, ThrowStmt, VarDeclKind,
@@ -149,12 +149,9 @@ impl VisitMut for DepReplacer<'_> {
                                 if let Some(chunk) = chunk {
                                     let chunk_id = chunk.id.id.clone();
                                     // `import('./xxx.css')` => `__mako_require__.ensure('./xxx.css')`
-                                    *expr = member_expr!(
-                                        SyntaxContext::empty(),
-                                        DUMMY_SP,
-                                        __mako_require__.ensure
-                                    )
-                                    .as_call(DUMMY_SP, vec![quote_str!(chunk_id).as_arg()]);
+                                    *expr =
+                                        member_expr!(DUMMY_CTXT, DUMMY_SP, __mako_require__.ensure)
+                                            .as_call(DUMMY_SP, vec![quote_str!(chunk_id).as_arg()]);
                                     return;
                                 } else {
                                     *expr = Expr::Lit(quote_str!("").into());

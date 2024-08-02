@@ -7,6 +7,8 @@ use swc_core::ecma::utils::{quote_ident, quote_str, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::config::Providers;
+use crate::DUMMY_CTXT;
+
 pub struct Provide {
     unresolved_mark: Mark,
     top_level_mark: Mark,
@@ -87,7 +89,7 @@ impl ToTopLevelVars {
         let mut replaces: HashMap<String, SyntaxContext> = Default::default();
 
         vars.iter().for_each(|(k, _)| {
-            let ctxt = SyntaxContext::empty().apply_mark(top_level_mark);
+            let ctxt = DUMMY_CTXT.apply_mark(top_level_mark);
             replaces.insert(k.clone(), ctxt);
         });
 
