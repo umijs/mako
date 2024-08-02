@@ -375,7 +375,9 @@ fn wrap_in_iife(module: SwcModule) -> SwcModule {
         params: vec![],
         decorators: vec![],
         span: DUMMY_SP,
+        ctxt: Default::default(),
         body: Some(BlockStmt {
+            ctxt: Default::default(),
             span: DUMMY_SP,
             stmts,
         }),

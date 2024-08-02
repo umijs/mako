@@ -35,6 +35,7 @@ impl VisitMut for DefaultExportNamer {
                         return_type,
                         type_params,
                         span,
+                        ctxt,
                         ..
                     } = arrow_expr.clone();
                     *item = ModuleDecl::ExportDefaultDecl(ExportDefaultDecl {
@@ -50,6 +51,7 @@ impl VisitMut for DefaultExportNamer {
                                     BlockStmtOrExpr::BlockStmt(block_stmt) => block_stmt,
                                     BlockStmtOrExpr::Expr(expr) => BlockStmt {
                                         span,
+                                        ctxt,
                                         stmts: vec![Stmt::Return(ReturnStmt {
                                             span,
                                             arg: Some(expr),
@@ -59,6 +61,7 @@ impl VisitMut for DefaultExportNamer {
                                 is_async,
                                 is_generator,
                                 span,
+                                ctxt,
                                 return_type,
                                 type_params,
                                 decorators: vec![],

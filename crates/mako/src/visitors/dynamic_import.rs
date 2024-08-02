@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use swc_core::common::DUMMY_SP;
+use swc_core::common::{SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
     ArrayLit, Expr, ExprOrSpread, Ident, Lit, MemberExpr, Module, Stmt, VarDeclKind,
 };
@@ -134,18 +134,21 @@ impl<'a> VisitMut for DynamicImport<'a> {
                             .into(),
                         });
 
-                        let lazy_require_call = member_expr!(DUMMY_SP, __mako_require__.bind)
-                            .as_call(
-                                DUMMY_SP,
-                                vec![
-                                    quote_ident!("__mako_require__").as_arg(),
-                                    quote_str!(resolved_source.clone()).as_arg(),
-                                ],
-                            );
-                        let dr_call = member_expr!(DUMMY_SP, __mako_require__.dr).as_call(
-                            DUMMY_SP,
-                            vec![self.interop.clone().as_arg(), lazy_require_call.as_arg()],
-                        );
+                        let lazy_require_call =
+                            member_expr!(SyntaxContext::empty(), DUMMY_SP, __mako_require__.bind)
+                                .as_call(
+                                    DUMMY_SP,
+                                    vec![
+                                        quote_ident!("__mako_require__").as_arg(),
+                                        quote_str!(resolved_source.clone()).as_arg(),
+                                    ],
+                                );
+                        let dr_call =
+                            member_expr!(SyntaxContext::empty(), DUMMY_SP, __mako_require__.dr)
+                                .as_call(
+                                    DUMMY_SP,
+                                    vec![self.interop.clone().as_arg(), lazy_require_call.as_arg()],
+                                );
 
                         member_expr!(@EXT, DUMMY_SP, load_promise.into(), then)
                             .as_call(call_expr.span, vec![dr_call.as_arg()])

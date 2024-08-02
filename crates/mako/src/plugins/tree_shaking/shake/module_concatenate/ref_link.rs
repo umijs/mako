@@ -47,6 +47,8 @@ use swc_core::ecma::ast::{
 use swc_core::ecma::utils::quote_ident;
 use swc_core::ecma::visit::{Visit, VisitWith};
 
+use crate::DUMMY_CTXT;
+
 #[derive(Default)]
 pub(super) struct PatDefineIdCollector {
     defined_idents: HashSet<Ident>,
@@ -284,8 +286,10 @@ impl Visit for ModuleDeclMapCollector {
                     }
                 };
 
-                self.export_map
-                    .insert(quote_ident!("default").to_id(), VarLink::Direct(default_id));
+                self.export_map.insert(
+                    quote_ident!(DUMMY_CTXT, "default").to_id(),
+                    VarLink::Direct(default_id),
+                );
             }
             ModuleDecl::ExportDefaultExpr(export_default_expr) => {
                 let id = match export_default_expr.expr.as_ident() {
@@ -296,12 +300,14 @@ impl Visit for ModuleDeclMapCollector {
                     ),
                 };
 
-                self.export_map
-                    .insert(quote_ident!("default").to_id(), VarLink::Direct(id));
+                self.export_map.insert(
+                    quote_ident!(DUMMY_CTXT, "default").to_id(),
+                    VarLink::Direct(id),
+                );
             }
             ModuleDecl::ExportAll(export_all) => {
                 self.export_map.insert(
-                    quote_ident!(format!("*:{}", self.current_stmt_id)).to_id(),
+                    quote_ident!(DUMMY_CTXT, format!("*:{}", self.current_stmt_id)).to_id(),
                     VarLink::All(export_all.src.value.to_string(), self.current_stmt_id),
                 );
             }

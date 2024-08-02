@@ -10,7 +10,7 @@ use swc_core::common::comments::{Comment, CommentKind, Comments};
 use swc_core::common::errors::HANDLER;
 use swc_core::common::{Span, DUMMY_SP, GLOBALS};
 use swc_core::ecma::ast::{
-    ArrayLit, AssignOp, BinaryOp, BlockStmt, CondExpr, Expr, ExprOrSpread, FnExpr, Function, Ident,
+    ArrayLit, AssignOp, BinaryOp, BlockStmt, CondExpr, Expr, ExprOrSpread, FnExpr, Function,
     KeyValueProp, Module as SwcModule, ObjectLit, Prop, PropOrSpread, UnaryExpr, UnaryOp,
 };
 use swc_core::ecma::atoms::js_word;
@@ -70,6 +70,7 @@ pub(crate) fn render_module_js(
 pub(crate) fn empty_module_fn_expr() -> FnExpr {
     let func = Function {
         span: DUMMY_SP,
+        ctxt: Default::default(),
         params: vec![
             quote_ident!("module").into(),
             quote_ident!("exports").into(),
@@ -77,6 +78,7 @@ pub(crate) fn empty_module_fn_expr() -> FnExpr {
         ],
         decorators: vec![],
         body: Some(BlockStmt {
+            ctxt: Default::default(),
             span: DUMMY_SP,
             stmts: vec![],
         }),
@@ -238,7 +240,7 @@ pub(crate) fn pot_to_chunk_module(
         )
         .make_assign_to(AssignOp::Assign, chunk_global_expr.clone().into())
         .wrap_with_paren()
-        .make_member::<Ident>(quote_ident!("push"));
+        .make_member(quote_ident!("push"));
     let chunk_register_stmt = chunk_global_obj
         .as_call(
             DUMMY_SP,
@@ -289,6 +291,7 @@ fn to_module_fn_expr(module: &Module) -> Result<FnExpr> {
 
             let func = Function {
                 span: DUMMY_SP,
+                ctxt: Default::default(),
                 params: vec![
                     quote_ident!("module").into(),
                     quote_ident!("exports").into(),
@@ -297,6 +300,7 @@ fn to_module_fn_expr(module: &Module) -> Result<FnExpr> {
                 decorators: vec![],
                 body: Some(BlockStmt {
                     span: DUMMY_SP,
+                    ctxt: Default::default(),
                     stmts,
                 }),
                 is_generator: false,

@@ -175,6 +175,7 @@ impl ScriptMeta {
 
 fn build_ident(ident: &str) -> Ident {
     Ident {
+        ctxt: Default::default(),
         span: DUMMY_SP,
         sym: ident.into(),
         optional: false,

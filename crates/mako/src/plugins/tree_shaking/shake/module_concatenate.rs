@@ -12,7 +12,7 @@ use std::sync::Arc;
 use concatenated_transformer::ConcatenatedTransform;
 use external_transformer::ExternalTransformer;
 use swc_core::common::util::take::Take;
-use swc_core::common::{Span, SyntaxContext, GLOBALS};
+use swc_core::common::{SyntaxContext, GLOBALS};
 use swc_core::ecma::transforms::base::hygiene::hygiene;
 use swc_core::ecma::transforms::base::resolver;
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
@@ -451,8 +451,8 @@ impl ConcatenateConfig {}
 pub struct CleanSyntaxContext;
 
 impl VisitMut for CleanSyntaxContext {
-    fn visit_mut_span(&mut self, n: &mut Span) {
-        n.ctxt = SyntaxContext::empty();
+    fn visit_mut_syntax_context(&mut self, ctxt: &mut SyntaxContext) {
+        *ctxt = SyntaxContext::empty();
     }
 }
 

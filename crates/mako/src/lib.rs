@@ -2,6 +2,8 @@
 #![feature(hasher_prefixfree_extras)]
 #![feature(let_chains)]
 
+use swc_core::common::SyntaxContext;
+
 pub mod ast;
 mod build;
 pub mod cli;
@@ -53,3 +55,5 @@ macro_rules! ternary {
         }
     };
 }
+
+pub const DUMMY_CTXT: SyntaxContext = SyntaxContext::empty();

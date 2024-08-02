@@ -8,9 +8,9 @@ use swc_core::common::collections::AHashMap;
 use swc_core::common::sync::Lrc;
 use swc_core::common::{Mark, DUMMY_SP};
 use swc_core::ecma::ast::{
-    ArrayLit, Bool, ComputedPropName, Expr, ExprOrSpread, Ident, KeyValueProp, Lit, MemberExpr,
-    MemberProp, MetaPropExpr, MetaPropKind, ModuleItem, Null, Number, ObjectLit, Prop, PropName,
-    PropOrSpread, Stmt, Str,
+    ArrayLit, Bool, ComputedPropName, Expr, ExprOrSpread, Ident, IdentName, KeyValueProp, Lit,
+    MemberExpr, MemberProp, MetaPropExpr, MetaPropKind, ModuleItem, Null, Number, ObjectLit, Prop,
+    PropName, PropOrSpread, Stmt, Str,
 };
 use swc_core::ecma::atoms::{js_word, JsWord};
 use swc_core::ecma::utils::{quote_ident, ExprExt};
@@ -64,11 +64,11 @@ impl EnvReplacer {
 }
 impl VisitMut for EnvReplacer {
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
-        if let Expr::Ident(Ident { ref sym, span, .. }) = expr {
+        if let Expr::Ident(Ident { ref sym, ctxt, .. }) = expr {
             let envs = EnvsType::Node(self.envs.clone());
 
             // 先判断 env 中的变量名称，是否是上下文中已经存在的变量名称
-            if span.ctxt.outer() != self.unresolved_mark {
+            if ctxt.outer() != self.unresolved_mark {
                 expr.visit_mut_children_with(self);
                 return;
             }
@@ -114,12 +114,13 @@ impl VisitMut for EnvReplacer {
                                     *expr = *Box::new(Expr::Ident(Ident::new(
                                         js_word!("undefined"),
                                         DUMMY_SP,
+                                        Default::default(),
                                     )));
                                 }
                             }
                         }
 
-                        MemberProp::Ident(Ident { sym, .. }) => {
+                        MemberProp::Ident(IdentName { sym, .. }) => {
                             if let Some(env) = EnvReplacer::get_env(&envs, sym) {
                                 // replace with real value if env found
                                 *expr = env;
@@ -128,6 +129,7 @@ impl VisitMut for EnvReplacer {
                                 *expr = *Box::new(Expr::Ident(Ident::new(
                                     js_word!("undefined"),
                                     DUMMY_SP,
+                                    Default::default(),
                                 )));
                             }
                         }
@@ -151,7 +153,7 @@ impl VisitMut for EnvReplacer {
                 // convert envs to object properties
                 for (k, v) in self.meta_envs.iter() {
                     props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                        key: PropName::Ident(Ident::new(k.clone().into(), DUMMY_SP)),
+                        key: PropName::Ident(IdentName::new(k.clone().into(), DUMMY_SP)),
                         value: Box::new(v.clone()),
                     }))));
                 }

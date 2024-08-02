@@ -9,7 +9,7 @@ use colored::*;
 use indexmap::IndexMap;
 use pathdiff::diff_paths;
 use serde::Serialize;
-use swc_core::common::source_map::Pos;
+use swc_core::common::source_map::SmallPos;
 
 use crate::compiler::{Compiler, Context};
 use crate::features::rsc::{RscClientInfo, RscCssModules};

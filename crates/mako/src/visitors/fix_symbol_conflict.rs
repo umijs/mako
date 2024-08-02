@@ -24,7 +24,7 @@ impl FixSymbolConflict {
 
 impl VisitMut for FixSymbolConflict {
     fn visit_mut_ident(&mut self, n: &mut Ident) {
-        if n.sym.eq("Symbol") && n.span.ctxt == self.top_level_ctxt {
+        if n.sym.eq("Symbol") && n.ctxt == self.top_level_ctxt {
             self.idents_named_symbol.insert(n.to_id());
         }
     }

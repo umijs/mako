@@ -19,7 +19,7 @@ use crate::plugins::tree_shaking::shake::strip_context;
 use crate::plugins::tree_shaking::statement_graph::{
     ExportSpecifierInfo, ImportSpecifierInfo, StatementId,
 };
-use crate::{mako_profile_function, mako_profile_scope};
+use crate::{mako_profile_function, mako_profile_scope, DUMMY_CTXT};
 
 #[derive(Debug)]
 pub struct ReExportReplace {
@@ -51,7 +51,7 @@ impl ReExportReplace {
                     )
                 } else {
                     quote!("export { $local as $ident } from \"$from\";" as ModuleItem,
-                        local: Ident = quote_ident!(local.clone()),
+                        local: Ident = quote_ident!(DUMMY_CTXT, local.clone()),
                         ident: Ident = ident,
                         from: Str = quote_str!(self.from_module_id.id.clone())
                     )
@@ -104,7 +104,7 @@ impl ReExportReplace {
                     )
                 } else {
                     quote!("import { $local as $ident } from \"$from\";" as ModuleItem,
-                        local: Ident = quote_ident!(local.clone()),
+                        local: Ident = quote_ident!(DUMMY_CTXT,local.clone()),
                         ident: Ident = ident,
                         from: Str = quote_str!(self.from_module_id.id.clone())
                     )

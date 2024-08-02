@@ -18,6 +18,7 @@ use swc_core::ecma::visit::{Visit, VisitWith};
 use crate::module::{ImportType, ModuleId, NamedExportType, ResolveType};
 use crate::module_graph::ModuleGraph;
 use crate::plugins::tree_shaking::shake::module_concatenate::ConcatenateConfig;
+use crate::DUMMY_CTXT;
 
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Default)]
@@ -250,10 +251,10 @@ pub type ImportModuleRefMap = HashMap<Id, ModuleRef>;
 
 pub fn module_ref_to_expr(module_ref: &ModuleRef) -> Expr {
     match module_ref {
-        (id, None) => quote_ident!(id.sym.clone()).into(),
+        (id, None) => quote_ident!(DUMMY_CTXT, id.sym.clone()).into(),
         (id, Some(field)) => MemberExpr {
             span: DUMMY_SP,
-            obj: quote_ident!(id.sym.clone()).into(),
+            obj: quote_ident!(DUMMY_CTXT, id.sym.clone()).into(),
             prop: quote_ident!(field.clone()).into(),
         }
         .into(),
@@ -401,7 +402,7 @@ impl ConcatenateContext {
                 .collect();
 
             // __mako_require__.d(exports, __esModule, { value: true });
-            let esm_compat = member_expr!(DUMMY_SP, __mako_require__.d)
+            let esm_compat = member_expr!(DUMMY_CTXT, DUMMY_SP, __mako_require__.d)
                 .as_call(
                     DUMMY_SP,
                     vec![
@@ -426,7 +427,7 @@ impl ConcatenateContext {
 
             if !key_value_props.is_empty() {
                 // __mako_require__.e(exports, { exported: function(){ return v}, ... });
-                let export_stmt = member_expr!(DUMMY_SP, __mako_require__.e)
+                let export_stmt = member_expr!(DUMMY_CTXT, DUMMY_SP, __mako_require__.e)
                     .as_call(
                         DUMMY_SP,
                         vec![
@@ -527,7 +528,7 @@ impl GlobalCollect {
 
 impl Visit for GlobalCollect {
     fn visit_ident(&mut self, n: &Ident) {
-        if n.span.ctxt == self.unresolved_ctxt {
+        if n.ctxt == self.unresolved_ctxt {
             self.refed_globals.insert(n.to_id());
         }
     }

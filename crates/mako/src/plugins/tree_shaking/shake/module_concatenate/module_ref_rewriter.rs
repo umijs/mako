@@ -10,6 +10,7 @@ use swc_core::ecma::utils::{
 use swc_core::ecma::visit::{noop_visit_mut_type, VisitMut, VisitMutWith};
 
 use super::concatenate_context::ImportModuleRefMap;
+use crate::DUMMY_CTXT;
 
 pub struct ModuleRefRewriter<'a> {
     /// ```javascript
@@ -104,7 +105,7 @@ impl VisitMut for ModuleRefRewriter<'_> {
             Callee::Expr(e) if e.is_ident() => {
                 let is_indirect_callee = e
                     .as_ident()
-                    .filter(|ident| self.helper_ctxt.iter().all(|ctxt| ctxt != &ident.span.ctxt))
+                    .filter(|ident| self.helper_ctxt.iter().all(|ctxt| ctxt != &ident.ctxt))
                     .and_then(|ident| self.import_map.get(&ident.to_id()))
                     .map(|(_, prop)| prop.is_some())
                     .unwrap_or_default();
@@ -124,7 +125,7 @@ impl VisitMut for ModuleRefRewriter<'_> {
         let is_indirect = n
             .tag
             .as_ident()
-            .filter(|ident| self.helper_ctxt.iter().all(|ctxt| ctxt != &ident.span.ctxt))
+            .filter(|ident| self.helper_ctxt.iter().all(|ctxt| ctxt != &ident.ctxt))
             .and_then(|ident| self.import_map.get(&ident.to_id()))
             .map(|(_, prop)| prop.is_some())
             .unwrap_or_default();
@@ -190,7 +191,7 @@ impl ModuleRefRewriter<'_> {
             .get(&ref_ident.to_id())
             .map(|(mod_ident, mod_prop)| -> Expr {
                 let mut mod_ident = mod_ident.clone();
-                let span = ref_ident.span.with_ctxt(mod_ident.span.ctxt);
+                let span = ref_ident.span;
                 mod_ident.span = span;
 
                 let mod_expr = if self.lazy_record.contains(&mod_ident.to_id()) {
@@ -217,7 +218,7 @@ impl ModuleRefRewriter<'_> {
 
 fn prop_name(key: &str, span: Span) -> IdentOrStr {
     if is_valid_prop_ident(key) {
-        IdentOrStr::Ident(quote_ident!(span, key))
+        IdentOrStr::Ident(quote_ident!(DUMMY_CTXT, span, key))
     } else {
         IdentOrStr::Str(quote_str!(span, key))
     }
@@ -231,7 +232,7 @@ enum IdentOrStr {
 impl From<IdentOrStr> for PropName {
     fn from(val: IdentOrStr) -> Self {
         match val {
-            IdentOrStr::Ident(i) => Self::Ident(i),
+            IdentOrStr::Ident(i) => Self::Ident(i.into()),
             IdentOrStr::Str(s) => Self::Str(s),
         }
     }
@@ -240,7 +241,7 @@ impl From<IdentOrStr> for PropName {
 impl From<IdentOrStr> for MemberProp {
     fn from(val: IdentOrStr) -> Self {
         match val {
-            IdentOrStr::Ident(i) => Self::Ident(i),
+            IdentOrStr::Ident(i) => Self::Ident(i.into()),
             IdentOrStr::Str(s) => Self::Computed(ComputedPropName {
                 span: DUMMY_SP,
                 expr: s.into(),

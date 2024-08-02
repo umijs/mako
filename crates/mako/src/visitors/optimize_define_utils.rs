@@ -1,4 +1,4 @@
-use swc_core::common::{Mark, DUMMY_SP};
+use swc_core::common::{Mark, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{CallExpr, Expr, ExprOrSpread, ExprStmt, Lit, ModuleItem, Stmt, Str};
 use swc_core::ecma::utils::{member_expr, ExprFactory};
 use swc_core::ecma::visit::VisitMut;
@@ -34,8 +34,12 @@ impl VisitMut for OptimizeDefineUtils {
                 && is_string_lit_arg_with_value(call_expr.args.get(1), "__esModule")
                 && is_obj_lit_arg(call_expr.args.get(2))
             {
-                call_expr.callee =
-                    member_expr!(DUMMY_SP.apply_mark(self.unresolved_mark), require.d).as_callee();
+                call_expr.callee = member_expr!(
+                    SyntaxContext::empty().apply_mark(self.unresolved_mark),
+                    DUMMY_SP,
+                    require.d
+                )
+                .as_callee();
             } else {
                 return;
             }
@@ -56,8 +60,7 @@ impl VisitMut for OptimizeDefineUtils {
                     && is_obj_lit_arg(call_expr.args.get(2))
                 {
                     call_expr.callee =
-                        member_expr!(DUMMY_SP.apply_mark(self.unresolved_mark), require.d)
-                            .as_callee();
+                        member_expr!(SyntaxContext::empty(), DUMMY_SP, require.d).as_callee();
                     return;
                 }
 
@@ -70,14 +73,12 @@ impl VisitMut for OptimizeDefineUtils {
                     && callee_ident.sym == "_export"
                     // is private ident
                     && !callee_ident
-                        .span
                         .ctxt
                         .outer()
                         .is_descendant_of(self.top_level_mark)
                 {
                     call_expr.callee =
-                        member_expr!(DUMMY_SP.apply_mark(self.unresolved_mark), require.e)
-                            .as_callee();
+                        member_expr!(SyntaxContext::empty(), DUMMY_SP, require.e).as_callee();
                     return;
                 }
             }

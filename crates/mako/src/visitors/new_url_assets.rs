@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Result;
-use swc_core::common::{Mark, DUMMY_SP};
+use swc_core::common::{Mark, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{BinExpr, BinaryOp, Expr, Lit};
 use swc_core::ecma::utils::{member_expr, quote_str};
 use swc_core::ecma::visit::VisitMut;
@@ -51,8 +51,8 @@ impl NewUrlAssets {
             Expr::Bin(BinExpr {
                 span: DUMMY_SP,
                 op: BinaryOp::LogicalOr,
-                left: member_expr!(DUMMY_SP, document.baseURI).into(),
-                right: member_expr!(DUMMY_SP, self.location.href).into(),
+                left: member_expr!(SyntaxContext::empty(), DUMMY_SP, document.baseURI).into(),
+                right: member_expr!(SyntaxContext::empty(), DUMMY_SP, self.location.href).into(),
             })
         } else {
             Expr::Lit(
@@ -91,8 +91,12 @@ impl VisitMut for NewUrlAssets {
                                 Expr::Bin(BinExpr {
                                     span: DUMMY_SP,
                                     op: BinaryOp::Add,
-                                    left: member_expr!(DUMMY_SP, __mako_require__.publicPath)
-                                        .into(),
+                                    left: member_expr!(
+                                        SyntaxContext::empty(),
+                                        DUMMY_SP,
+                                        __mako_require__.publicPath
+                                    )
+                                    .into(),
                                     right: Lit::Str(url.into()).into(),
                                 })
                                 .into()

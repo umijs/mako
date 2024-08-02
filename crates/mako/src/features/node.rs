@@ -139,7 +139,7 @@ pub struct MockFilenameAndDirname {
 impl VisitMut for MockFilenameAndDirname {
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Ident(ident) = expr
-            && ident.span.ctxt.outer() == self.unresolved_mark
+            && ident.ctxt.outer() == self.unresolved_mark
         {
             let is_filename = ident.sym == "__filename";
             let is_dirname = ident.sym == "__dirname";

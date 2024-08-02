@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use glob::glob;
-use swc_core::common::{Mark, DUMMY_SP};
+use swc_core::common::{Mark, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
     BinExpr, BinaryOp, CallExpr, Expr, ExprOrSpread, Lit, ParenExpr, TplElement,
 };
@@ -151,6 +151,7 @@ impl VisitMut for ContextModuleVisitor {
                 let args_literals = format!("{}?context&glob={}", from, glob);
 
                 let mut ctxt_call_expr = CallExpr {
+                    ctxt: Default::default(),
                     callee: expr.callee.clone(),
                     args: vec![quote_str!(args_literals.clone()).as_arg()],
                     span: DUMMY_SP,
@@ -175,7 +176,7 @@ impl VisitMut for ContextModuleVisitor {
                     .as_callee();
                     // TODO: allow use await in args
                     // eg: import(`./i18n${await xxx()}`)
-                    expr.args = vec![member_expr!(DUMMY_SP, m.default)
+                    expr.args = vec![member_expr!(SyntaxContext::empty(), DUMMY_SP, m.default)
                         .as_call(DUMMY_SP, expr.args.clone())
                         .as_expr()
                         .to_owned()

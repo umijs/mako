@@ -3,7 +3,7 @@ use std::hash::{Hash, Hasher};
 
 use indexmap::IndexSet;
 use regex::Regex;
-use swc_core::common::{Mark, Span, SyntaxContext, DUMMY_SP};
+use swc_core::common::{Mark, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
     ExportSpecifier, Ident, ImportDecl, ImportDefaultSpecifier, ImportNamedSpecifier,
     ImportSpecifier, ImportStarAsSpecifier, MemberExpr, ModuleDecl, ModuleItem, NamedExport, Stmt,
@@ -36,11 +36,11 @@ impl VisitMut for MyInjector<'_> {
             return;
         }
 
-        if n.span.ctxt.outer() == self.unresolved_mark {
+        if n.ctxt.outer() == self.unresolved_mark {
             let name = n.sym.to_string();
 
             if let Some(inject) = self.injects.remove(&name) {
-                self.will_inject.insert((inject, n.span.ctxt));
+                self.will_inject.insert((inject, n.ctxt));
             }
         }
     }
@@ -116,9 +116,10 @@ impl Hash for Inject {
 
 impl Inject {
     fn into_require_with(self, ctxt: SyntaxContext, unresolved_mark: Mark) -> ModuleItem {
-        let name_span = Span { ctxt, ..DUMMY_SP };
+        let name_span = DUMMY_SP;
+        let unresolved_ctxt = SyntaxContext::empty().apply_mark(unresolved_mark);
 
-        let require_source_expr = quote_ident!(DUMMY_SP.apply_mark(unresolved_mark), "require")
+        let require_source_expr = quote_ident!(unresolved_ctxt, DUMMY_SP, "require")
             .as_call(DUMMY_SP, vec![quote_str!(self.from).as_arg()]);
 
         let stmt: Stmt = match (&self.named, &self.namespace) {
@@ -130,14 +131,14 @@ impl Inject {
             }
             .into_var_decl(
                 VarDeclKind::Var,
-                quote_ident!(name_span, self.name.clone()).into(),
+                quote_ident!(ctxt, name_span, self.name.clone()).into(),
             )
             .into(),
             // import * as x
             (None, Some(true)) => require_source_expr
                 .into_var_decl(
                     VarDeclKind::Var,
-                    quote_ident!(name_span, self.name.clone()).into(),
+                    quote_ident!(ctxt, name_span, self.name.clone()).into(),
                 )
                 .into(),
 
@@ -149,7 +150,7 @@ impl Inject {
             }
             .into_var_decl(
                 VarDeclKind::Var,
-                quote_ident!(name_span, self.name.clone()).into(),
+                quote_ident!(ctxt, name_span, self.name.clone()).into(),
             )
             .into(),
             (Some(_), Some(true)) => {
@@ -161,12 +162,12 @@ impl Inject {
     }
 
     fn into_with(self, ctxt: SyntaxContext) -> ModuleItem {
-        let name_span = Span { ctxt, ..DUMMY_SP };
+        let name_span = DUMMY_SP;
         let specifier: ImportSpecifier = match (&self.named, &self.namespace) {
             // import { named as x }
             (Some(named), None | Some(false)) => ImportNamedSpecifier {
                 span: DUMMY_SP,
-                local: quote_ident!(name_span, self.name.clone()),
+                local: quote_ident!(ctxt, name_span, self.name.clone()),
                 imported: if *named == self.name {
                     None
                 } else {
@@ -179,14 +180,14 @@ impl Inject {
             // import * as x
             (None, Some(true)) => ImportStarAsSpecifier {
                 span: DUMMY_SP,
-                local: quote_ident!(name_span, self.name),
+                local: quote_ident!(ctxt, name_span, self.name),
             }
             .into(),
 
             // import x
             (None, None | Some(false)) => ImportDefaultSpecifier {
                 span: DUMMY_SP,
-                local: quote_ident!(name_span, self.name),
+                local: quote_ident!(ctxt, name_span, self.name),
             }
             .into(),
 

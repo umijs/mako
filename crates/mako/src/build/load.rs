@@ -3,7 +3,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
-use mdxjs::{compile, Options as MdxOptions};
+// use mdxjs::{compile, Options as MdxOptions};
 use serde_xml_rs::from_str as from_xml_str;
 use serde_yaml::{from_str as from_yaml_str, Value as YamlValue};
 use thiserror::Error;
@@ -12,7 +12,6 @@ use tracing::debug;
 
 use crate::ast::file::{Content, File, JsContent};
 use crate::compiler::Context;
-use crate::config::Mode;
 use crate::plugin::PluginLoadParam;
 
 #[derive(Debug, Error)]
@@ -121,51 +120,51 @@ export function moduleToDom(css) {
             return Ok(Content::Css(content));
         }
 
-        // md & mdx
-        if MD_EXTENSIONS.contains(&file.extname.as_str()) {
-            let content = FileSystem::read_file(&file.pathname)?;
-            let options = MdxOptions {
-                development: matches!(context.config.mode, Mode::Development),
-                ..Default::default()
-            };
-            let content = match compile(&content, &options) {
-                Ok(js_string) => js_string,
-                Err(reason) => {
-                    return Err(anyhow!(LoadError::CompileMdError {
-                        path: file.path.to_string_lossy().to_string(),
-                        reason: reason.to_string(),
-                    }));
-                }
-            };
-            let is_jsx = file.extname.as_str() == "mdx";
-            return Ok(Content::Js(JsContent { content, is_jsx }));
-        }
-
+        // // md & mdx
+        // if MD_EXTENSIONS.contains(&file.extname.as_str()) {
+        //     let content = FileSystem::read_file(&file.pathname)?;
+        //     let options = MdxOptions {
+        //         development: matches!(context.config.mode, Mode::Development),
+        //         ..Default::default()
+        //     };
+        //     let content = match compile(&content, &options) {
+        //         Ok(js_string) => js_string,
+        //         Err(reason) => {
+        //             return Err(anyhow!(LoadError::CompileMdError {
+        //                 path: file.path.to_string_lossy().to_string(),
+        //                 reason: reason.to_string(),
+        //             }));
+        //         }
+        //     };
+        //     let is_jsx = file.extname.as_str() == "mdx";
+        //     return Ok(Content::Js(JsContent { content, is_jsx }));
+        // }
+        //
         // svg
         // TODO: Not all svg files need to be converted to React Component, unnecessary performance consumption here
-        if SVG_EXTENSIONS.contains(&file.extname.as_str()) {
-            let content = FileSystem::read_file(&file.pathname)?;
-            let svgr_transformed = svgr_rs::transform(
-                content,
-                svgr_rs::Config {
-                    named_export: SVGR_NAMED_EXPORT.to_string(),
-                    export_type: Some(svgr_rs::ExportType::Named),
-                    ..Default::default()
-                },
-                svgr_rs::State {
-                    ..Default::default()
-                },
-            )
-            .map_err(|err| LoadError::ToSvgrError {
-                path: file.path.to_string_lossy().to_string(),
-                reason: err.to_string(),
-            })?;
-            let asset_path = Self::handle_asset(file, true, true, context.clone())?;
-            return Ok(Content::Js(JsContent {
-                content: format!("{}\nexport default {};", svgr_transformed, asset_path),
-                is_jsx: true,
-            }));
-        }
+        // if SVG_EXTENSIONS.contains(&file.extname.as_str()) {
+        //     let content = FileSystem::read_file(&file.pathname)?;
+        //     let svgr_transformed = svgr_rs::transform(
+        //         content,
+        //         svgr_rs::Config {
+        //             named_export: SVGR_NAMED_EXPORT.to_string(),
+        //             export_type: Some(svgr_rs::ExportType::Named),
+        //             ..Default::default()
+        //         },
+        //         svgr_rs::State {
+        //             ..Default::default()
+        //         },
+        //     )
+        //     .map_err(|err| LoadError::ToSvgrError {
+        //         path: file.path.to_string_lossy().to_string(),
+        //         reason: err.to_string(),
+        //     })?;
+        //     let asset_path = Self::handle_asset(file, true, true, context.clone())?;
+        //     return Ok(Content::Js(JsContent {
+        //         content: format!("{}\nexport default {};", svgr_transformed, asset_path),
+        //         is_jsx: true,
+        //     }));
+        // }
 
         // toml
         if TOML_EXTENSIONS.contains(&file.extname.as_str()) {

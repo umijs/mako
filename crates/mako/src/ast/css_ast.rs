@@ -38,7 +38,7 @@ impl fmt::Debug for CssAst {
 impl CssAst {
     pub fn new(file: &File, context: Arc<Context>, css_modules: bool) -> Result<Self> {
         let fm = context.meta.css.cm.new_source_file(
-            FileName::Real(file.relative_path.clone()),
+            FileName::Real(file.relative_path.clone()).into(),
             file.get_content_raw(),
         );
         let config = parser::parser::ParserConfig {

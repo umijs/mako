@@ -3,6 +3,8 @@ use swc_core::common::DUMMY_SP;
 use swc_core::ecma::ast::{BlockStmt, IfStmt, Stmt};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
+use crate::DUMMY_CTXT;
+
 pub(super) struct UnSimplify {}
 
 impl VisitMut for UnSimplify {
@@ -14,6 +16,7 @@ impl VisitMut for UnSimplify {
 
                 if_stmt.cons = Box::new(
                     BlockStmt {
+                        ctxt: DUMMY_CTXT,
                         span: DUMMY_SP,
                         stmts: vec![*cons],
                     }

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use swc_core::common::util::take::Take;
-use swc_core::common::{Mark, DUMMY_SP};
+use swc_core::common::{Mark, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
     ArrayLit, ArrayPat, AssignExpr, AssignOp, AwaitExpr, BlockStmt, BlockStmtOrExpr, CondExpr,
     Expr, Ident, Lit, ModuleItem, ParenExpr, Stmt, VarDeclKind,
@@ -13,6 +13,7 @@ use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 use crate::ast::utils::is_commonjs_require;
 use crate::compiler::Context;
 use crate::module::{Dependency, ModuleId};
+use crate::DUMMY_CTXT;
 
 const ASYNC_IMPORTED_MODULE: &str = "_async__mako_imported_module_";
 
@@ -58,7 +59,8 @@ impl VisitMut for AsyncModule<'_> {
                     && let Some(dep_span) = dep.span
                     && dep_span.contains(str.span)
                 {
-                    let ident_name = quote_ident!(format!("{}{}__", ASYNC_IMPORTED_MODULE, idx));
+                    let ident_name =
+                        quote_ident!(DUMMY_CTXT, format!("{}{}__", ASYNC_IMPORTED_MODULE, idx));
                     if !self.async_deps_idents.contains(&ident_name) {
                         self.async_deps_idents.push(ident_name.clone());
 
@@ -136,7 +138,12 @@ impl VisitMut for AsyncModule<'_> {
                     }
                     .into(),
                     right: CondExpr {
-                        test: member_expr!(DUMMY_SP, __mako_async_dependencies__.then).into(),
+                        test: member_expr!(
+                            SyntaxContext::empty(),
+                            DUMMY_SP,
+                            __mako_async_dependencies__.then
+                        )
+                        .into(),
                         cons: ParenExpr {
                             expr: AwaitExpr {
                                 span: DUMMY_SP,
@@ -172,7 +179,7 @@ impl VisitMut for AsyncModule<'_> {
         //   module, async (handleAsyncDeps, asyncResult) => { }, bool
         // );`
         *module_items = vec![ModuleItem::Stmt(
-            member_expr!(DUMMY_SP, __mako_require__._async)
+            member_expr!(SyntaxContext::empty(), DUMMY_SP, __mako_require__._async)
                 .as_call(
                     DUMMY_SP,
                     vec![
@@ -185,6 +192,7 @@ impl VisitMut for AsyncModule<'_> {
                             arrow_fn.is_async = true;
                             arrow_fn.body = BlockStmtOrExpr::BlockStmt(BlockStmt {
                                 span: DUMMY_SP,
+                                ctxt: SyntaxContext::empty(),
                                 stmts: module_items
                                     .iter()
                                     .map(|stmt| stmt.as_stmt().unwrap().clone())
