@@ -1,3 +1,15 @@
+## 0.7.9
+`2024-08-01`
+
+- 新增: 钩子携带 stats信息 by[@xusd320] in [#1450](https://github.com/umijs/mako/pull/1450)
+- 新增: 支持 saas by[@xiaohuoni] in [#1443](https://github.com/umijs/mako/pull/1443)
+- 新增: saas 配置支持 function by[@xiaohuoni] in [#1461](https://github.com/umijs/mako/pull/1461)
+- 修复: px2rem 没有正确复制 raw_value by[@xiaohuoni] in [#1462](https://github.com/umijs/mako/pull/1462)
+- 优化: 使用 hashlink 让大型项目 codeSplitting 提速 300% by[@xusd320] in [#1460](https://github.com/umijs/mako/pull/1460)
+- 优化: 并行处理树摇逻辑 by[@stormslowly] in https://github.com/umijs/mako/pull/1452
+
+
+
 ## 0.7.8
 
 `2024-07-25`
