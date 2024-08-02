@@ -1,3 +1,21 @@
-a {
+@testOverride: #ff0022;
+
+.normal {
   color: @primaryColor;
+}
+
+.override {
+  color: @testOverride;
+}
+
+.inConfig {
+  color: @globalColorInConfig;
+}
+
+.overrideInConfig {
+  color: @overrideInConfig;
+}
+
+.useAtPrefix {
+  color: @useAtPrefix;
 }
