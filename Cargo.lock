@@ -2667,6 +2667,7 @@ dependencies = [
  "insta",
  "maplit",
  "md5",
+ "mdxjs",
  "merge-source-map",
  "miette 5.10.0",
  "mimalloc-rust",
@@ -2739,6 +2740,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
 
 [[package]]
+name = "markdown"
+version = "1.0.0-alpha.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4e61c5c85b392273c4d4ea546e6399ace3e3db172ab01b6de8f3d398d1dbd2ec"
+dependencies = [
+ "unicode-id",
+]
+
+[[package]]
 name = "matchers"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2752,6 +2762,15 @@ name = "md5"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "490cc448043f947bae3cbee9c203358d62dbee0db12107a74be5c30ccfd09771"
+
+[[package]]
+name = "mdxjs"
+version = "0.2.5"
+source = "git+https://github.com/kdy1/mdxjs-rs.git?branch=swc-0-99#892af74e68f81a15272914c918933331337d1f03"
+dependencies = [
+ "markdown",
+ "swc_core",
+]
 
 [[package]]
 name = "memchr"
