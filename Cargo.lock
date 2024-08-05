@@ -2654,6 +2654,7 @@ dependencies = [
  "mimalloc-rust",
  "mime_guess",
  "nanoid",
+ "nohash-hasher",
  "notify",
  "notify-debouncer-full",
  "open",
