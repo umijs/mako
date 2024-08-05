@@ -563,6 +563,14 @@ Whether to enable px2rem conversion.
 - `minPixelValue`，minimum pixel value, default is `0`
 - `mediaQuery`，allow px to be converted in media queries, default is `false`
 
+Among them, `selectorBlackList`, `selectorWhiteList` and `selectorDoubleList` all support passing regular expressions or strings, such as
+
+```json
+"selectorBlackList": [".a","/.__CustomClass_/"]
+```
+
+> The string wrapped by the characters `/` will be parsed as a regular expression.
+
 ### react
 
 - Type: `{ runtime: "automatic" | "classic", pragma: string, import_source: string, pragma_frag: string }`

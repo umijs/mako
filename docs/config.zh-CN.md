@@ -563,6 +563,14 @@ __mako_public_path__ = '/foo/';
 - `minPixelValue`，最小像素值，默认为 `0`
 - `mediaQuery`，是否转换媒体查询中的 px, 默认 `false`
 
+其中 `selectorBlackList`、`selectorWhiteList`、`selectorDoubleList` 均支持传递正则表达式或者字符串，如
+
+```json
+"selectorBlackList": [".a","/.__CustomClass_/"]
+```
+
+> 被字符 `/` 包裹的字符串会被当作正则表达式解析。
+
 ### react
 
 - 类型：`{ runtime: "automatic" | "classic", pragma: string, import_source: string, pragma_frag: string }`
