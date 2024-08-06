@@ -40,7 +40,7 @@ pub struct ChunkFile {
 
 impl ChunkFile {
     pub fn disk_name(&self) -> String {
-        // fixed os error 63 file name too long, reserve 48 bytes for _js-async、extention、.map and others
+        // fixed os error 63 file name too long, reserve 48 bytes for _js-async、extension、.map and others
         let reserve_file_name_length = 207;
         let file_path = Path::new(&self.file_name);
         if let Some(hash) = &self.hash {
@@ -49,7 +49,7 @@ impl ChunkFile {
             if self.file_name.len() > reserve_file_name_length {
                 let mut hasher: XxHash64 = Default::default();
                 hasher.write_str(self.file_name.as_str());
-                let file_extention = file_path.extension().unwrap();
+                let file_extension = file_path.extension().unwrap();
                 let file_stem = file_path.file_stem().unwrap().to_string_lossy().to_string();
                 let (_, reserve_file_path) =
                     file_stem.split_at(file_stem.len() - reserve_file_name_length);
@@ -57,7 +57,7 @@ impl ChunkFile {
                     "{}.{}.{}",
                     reserve_file_path,
                     &hasher.finish().to_string()[0..8],
-                    file_extention.to_str().unwrap()
+                    file_extension.to_str().unwrap()
                 );
             }
             self.file_name.clone()
