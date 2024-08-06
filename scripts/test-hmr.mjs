@@ -1526,6 +1526,52 @@ runTest('change async import to import', async () => {
   await cleanup({ process, browser });
 });
 
+runTest('async module update', async () => {
+  write(
+    normalizeFiles({
+      '/src/index.tsx': `
+      import g2 from "@antv/g2";
+      console.log(g2);
+      document.getElementById("root").innerHTML = "g2 loaded";
+      `,
+      'mako.config.json': `
+      {
+        "externals": {
+          "@antv/g2": {
+            "root": "G2",
+            "script": "https://gw.alipayobjects.com/os/lib/antv/g2/3.5.19/dist/g2.min.js"
+          }
+        }
+      }
+      `,
+    }),
+  );
+  const { process } = await startMakoDevServer();
+  await delay(DELAY_TIME);
+  const { browser, page } = await startBrowser();
+  let lastResult;
+  let thisResult;
+  lastResult = normalizeHtml(await getRootHtml(page));
+  console.log('last html', lastResult.html);
+  assert.match(lastResult.html, /g2 loaded/);
+  write({
+    '/src/index.tsx': `
+    import g2 from "@antv/g2";
+    console.log(g2);
+    if (g2.version === "3.5.19"){
+      document.getElementById("root").innerHTML = "Update Success";
+    }else{
+      document.getElementById("root").innerHTML = "Failed";
+    }
+    `,
+  });
+  await delay(DELAY_TIME);
+  thisResult = normalizeHtml(await getRootHtml(page));
+  console.log(`new html`, thisResult.html);
+  assert.match(thisResult.html, /Update Success/, 'after reload');
+  await cleanup({ process, browser });
+});
+
 runTest('add async import', async () => {
   write(
     normalizeFiles({

@@ -36,6 +36,7 @@ use crate::visitors::fix_symbol_conflict::FixSymbolConflict;
 use crate::visitors::import_template_to_string_literal::ImportTemplateToStringLiteral;
 use crate::visitors::new_url_assets::NewUrlAssets;
 use crate::visitors::provide::Provide;
+use crate::visitors::public_path_assignment::PublicPathAssignment;
 use crate::visitors::react::react;
 use crate::visitors::try_resolve::TryResolve;
 use crate::visitors::ts_strip::ts_strip;
@@ -131,6 +132,7 @@ impl Transform {
                         context: context.clone(),
                         unresolved_mark,
                     }));
+                    visitors.push(Box::new(PublicPathAssignment { unresolved_mark }));
                     // TODO: refact provide
                     visitors.push(Box::new(Provide::new(
                         context.config.providers.clone(),
@@ -146,7 +148,7 @@ impl Transform {
                     // DynamicImportToRequire must be after ContextModuleVisitor
                     // since ContextModuleVisitor will add extra dynamic imports
                     if context.config.dynamic_import_to_require {
-                        visitors.push(Box::new(DynamicImportToRequire { unresolved_mark }));
+                        visitors.push(Box::new(DynamicImportToRequire::new(unresolved_mark)));
                     }
                     if matches!(context.config.platform, crate::config::Platform::Node) {
                         visitors.push(Box::new(features::node::MockFilenameAndDirname {
@@ -158,10 +160,12 @@ impl Transform {
 
                     // folders
                     let mut folders: Vec<Box<dyn Fold>> = vec![];
-                    // decorators should go before preset_env, when compile down to es5, classes become functions, then the decorators on the functions will be removed silently.
+                    // decorators should go before preset_env, when compile down to es5,
+                    // classes become functions, then the decorators on the functions
+                    // will be removed silently.
                     folders.push(Box::new(decorators(decorators::Config {
                         legacy: true,
-                        emit_metadata: false,
+                        emit_metadata: context.config.emit_decorator_metadata,
                         ..Default::default()
                     })));
                     let comments = origin_comments.get_swc_comments().clone();

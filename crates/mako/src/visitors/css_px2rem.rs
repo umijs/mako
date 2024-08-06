@@ -2,7 +2,8 @@ use cached::proc_macro::cached;
 use regex::Regex;
 use swc_core::css::ast::{
     self as swc_css_ast, AttributeSelector, Combinator, CombinatorValue, ComplexSelector,
-    ComplexSelectorChildren, CompoundSelector, Length, SubclassSelector, Token, TypeSelector,
+    ComplexSelectorChildren, CompoundSelector, Length, MediaQueryList, SubclassSelector, Token,
+    TypeSelector,
 };
 use swc_core::css::visit::{VisitMut, VisitMutWith};
 
@@ -80,6 +81,12 @@ impl Px2Rem {
 }
 
 impl VisitMut for Px2Rem {
+    fn visit_mut_complex_selector(&mut self, n: &mut ComplexSelector) {
+        let selector = parse_complex_selector(n);
+        self.current_selectors.push(selector);
+        n.visit_mut_children_with(self);
+    }
+
     fn visit_mut_declaration(&mut self, n: &mut swc_css_ast::Declaration) {
         self.current_decl = match n.name {
             swc_css_ast::DeclarationName::Ident(ref ident) => Some(ident.value.to_string()),
@@ -89,17 +96,6 @@ impl VisitMut for Px2Rem {
         };
         n.visit_mut_children_with(self);
         self.current_decl = None;
-    }
-
-    fn visit_mut_qualified_rule(&mut self, n: &mut swc_css_ast::QualifiedRule) {
-        self.current_selectors = vec![];
-        n.visit_mut_children_with(self);
-    }
-
-    fn visit_mut_complex_selector(&mut self, n: &mut ComplexSelector) {
-        let selector = parse_complex_selector(n);
-        self.current_selectors.push(selector);
-        n.visit_mut_children_with(self);
     }
 
     fn visit_mut_length(&mut self, n: &mut Length) {
@@ -114,6 +110,17 @@ impl VisitMut for Px2Rem {
         n.visit_mut_children_with(self);
     }
 
+    fn visit_mut_media_query_list(&mut self, n: &mut MediaQueryList) {
+        if self.config.media_query {
+            n.visit_mut_children_with(self);
+        }
+    }
+
+    fn visit_mut_qualified_rule(&mut self, n: &mut swc_css_ast::QualifiedRule) {
+        self.current_selectors = vec![];
+        n.visit_mut_children_with(self);
+    }
+
     // css variables use as token
     // e.g.
     // .a { --a-b: var(--c-d, 88px); }
@@ -121,10 +128,10 @@ impl VisitMut for Px2Rem {
         if let Token::Dimension(dimension) = t {
             if dimension.unit.to_string() == "px" && self.should_transform(dimension.value) {
                 let mut rem_val = dimension.value / self.config.root;
-                dimension.raw_value = rem_val.to_string().into();
                 if self.is_any_in_doublelist() {
                     rem_val *= 2.0;
                 }
+                dimension.raw_value = rem_val.to_string().into();
                 dimension.value = rem_val;
                 dimension.raw_unit = "rem".into();
                 dimension.unit = "rem".into();
@@ -282,10 +289,30 @@ mod tests {
     }
 
     #[test]
-    fn test_media_query() {
+    fn test_media_query_off() {
         assert_eq!(
-            run_with_default(r#"@media (min-width: 500px) {}"#),
-            r#"@media(min-width:5rem){}"#
+            run_with_default(
+                r#"@media (min-width: 500px) {
+                h1{ width: 100px; }
+            }"#
+            ),
+            r#"@media(min-width:500px){h1{width:1rem}}"#
+        );
+    }
+    #[test]
+
+    fn test_media_query_on() {
+        assert_eq!(
+            run(
+                r#"@media (min-width: 500px) {
+                h1{ width: 100px; }
+            }"#,
+                Px2RemConfig {
+                    media_query: true,
+                    ..Default::default()
+                }
+            ),
+            r#"@media(min-width:5rem){h1{width:1rem}}"#
         );
     }
 
@@ -617,6 +644,26 @@ mod tests {
                 }
             ),
             r#".a{width:2rem}"#
+        );
+        assert_eq!(
+            run(
+                r#".a-x{width:100px;}"#,
+                Px2RemConfig {
+                    selector_doublelist: vec!["^.a-".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#".a-x{width:2rem}"#
+        );
+        assert_eq!(
+            run(
+                r#":root{width:100px;}"#,
+                Px2RemConfig {
+                    selector_doublelist: vec!["^:root".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#":root{width:2rem}"#
         );
     }
 

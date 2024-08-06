@@ -14,7 +14,7 @@ e.g.
 }
 ```
 
-Notice: When you're using mako with Umi, prefer to config the bundler in `.umirc.ts` or `config/config.ts` file.
+Notice: When you're using Mako with Umi, prefer to config the bundler in `.umirc.ts` or `config/config.ts` file.
 
 ## Configuration items
 
@@ -182,6 +182,13 @@ import("./a.js");
 
 Whether to output assets files. Usually set to `false` when building a pure server-side rendering project, because assets files are not needed at this time.
 
+### emitDecoratorMetadata
+
+- Type: `boolean`
+- Default: `false`
+
+Whether to emit decorator metadata.
+
 ### emotion
 
 - Type: `boolean`
@@ -204,6 +211,28 @@ e.g.
     index: "./src/index.js",
     login: "./src/login.js",
   },
+}
+```
+### experimental.detectLoop
+
+- Type: `false| { "ignoreNodeModules": bool, "graphviz": bool }`
+- Default: `{ "ignoreNodeModules": true, "graphviz": false }`
+
+Experimental configuration for generating dependence loop info. `false` to disable the feature.
+
+Options:
+
+- `ignoreNodeModules` to ignore dependence loops which contains files from  node_modules.
+- `graphviz` to generate a graphviz dot file named `_mako_loop_detector.dot` at root of project for visualizing dependence loops.
+
+e.g.
+
+```json
+{
+  "experimental": {
+    "ignoreNodeModules": false,
+    "graphviz": true
+  }
 }
 ```
 
@@ -463,6 +492,7 @@ Specify the plugins to use.
     stats: {
       startTime: number;
       endTime: number;
+      ...
     };
   }) => void;
   load?: (filePath: string) => Promise<{ content: string, type: 'css'|'js'|'jsx'|'ts'|'tsx' }>;
@@ -510,9 +540,16 @@ Buffer;
 
 publicPath configuration. Note: There is a special value `"runtime"`, which means that it will switch to runtime mode and use the runtime `window.publicPath` as publicPath.
 
+If you want to set the `publicPath` in the runtime, use `__mako_public_path__`. (Notice: `__webpack_public_path__` is also supported)
+
+```ts
+__mako_public_path__ = '/foo/';
+```
+
 ### px2rem
 
-- Type: `false | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[], selectorWhiteList?: string[], selectorDoubleList?: string[], minPixelValue?: number }`
+- Type: `false | { root?: number, propBlackList?: string[], propWhiteList?: string[], selectorBlackList?: string[],
+  selectorWhiteList?: string[], selectorDoubleList?: string[], minPixelValue?: number, mediaQuery?: boolean }`
 - Default: `false`
 
 Whether to enable px2rem conversion.
@@ -524,6 +561,7 @@ Whether to enable px2rem conversion.
 - `selectorWhiteList`, selector white list
 - `selectorDoubleList`, selector double rem list
 - `minPixelValue`，minimum pixel value, default is `0`
+- `mediaQuery`，allow px to be converted in media queries, default is `false`
 
 ### react
 
@@ -629,6 +667,24 @@ Child configuration items:
 - `clientComponentTpl`, client component template, use `{{path}}` to represent the path of the component, and use `{{id}}` to represent the id of the module.
 - `emitCSS`, whether to output CSS components.
 
+### sass
+
+- Type: `Options<'async'>`
+- Default: `{}`
+
+> The "sass" package is not installed. Please run "npm install sass" to install it.
+
+Specify the sass [configuration](https://sass-lang.com/documentation/js-api/interfaces/options/).
+
+
+e.g.
+
+```ts
+{
+  "sourceMap": false
+}
+```
+
 ### stats
 
 - Type: `{ modules: bool } | false`
@@ -669,7 +725,7 @@ Whether to output umd format.
 ### useDefineForClassFields
 
 - Type: `boolean`
-- Default: `false`
+- Default: `true`
 
 Whether to use `defineProperty` to define class fields.
 

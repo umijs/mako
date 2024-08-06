@@ -1,3 +1,48 @@
+## 0.7.9
+`2024-08-01`
+
+- feat: generate_end with stats by[@xusd320] in [#1450](https://github.com/umijs/mako/pull/1450)
+- feat: support sass by[@xiaohuoni] in [#1443](https://github.com/umijs/mako/pull/1443)
+- feat: sass option support function by[@xiaohuoni] in [#1461](https://github.com/umijs/mako/pull/1461)
+- fix: double value lose by[@xiaohuoni] in [#1462](https://github.com/umijs/mako/pull/1462)
+- perf: use hashlink, speed up codeSplitting by 300% when building big project by[@xusd320] in [#1460](https://github.com/umijs/mako/pull/1460)
+- perf(tree-shaking): parallelize tree shaking module map init by[@stormslowly] in https://github.com/umijs/mako/pull/1452
+
+
+
+## 0.7.8
+`2024-07-25`
+
+- feat(px2rem): add mediaQuery config by [@stormslowly](https://github.com/stormslowly) in [#1431](https://github.com/umijs/mako/pull/1431)
+- feat: support \_\_webpack\_public\_path and \_\_mako\_public\_path assignment by [@sorrycc](https://github.com/sorrycc) in [#1441](https://github.com/umijs/mako/pull/1441)
+- feat: sort stat by size in desc order by [@jason89521](https://github.com/jason89521) in [#1393](https://github.com/umijs/mako/pull/1393)
+- fix: async module missing async deps after update by [@stormslowly](https://github.com/stormslowly) in [#1437](https://github.com/umijs/mako/pull/1437)
+- fix: chunk file name should be url-friendly by [@PeachScript](https://github.com/PeachScript) in [#1434](https://github.com/umijs/mako/pull/1434)
+
+
+## 0.7.7
+`2024-07-23`
+
+- Perf: remove an ast clone when tree-shaking by [@stormslowly](https://github.com/stormslowly) in [#1429](https://github.com/umijs/mako/pull/1429)
+- Improvement: detect circular dependencies support ignore config by [@stormslowly](https://github.com/stormslowly) in [#1425](https://github.com/umijs/mako/pull/1425)
+- Fix: not merge small async chunks to entry by [@xusd320](https://github.com/xusd320) in [#1397](https://github.com/umijs/mako/pull/1435)
+- Fix: dev server support "publicPath" by [@whyer11](https://github.com/whyer11) and [@sorrycc](https://github.com/sorrycc) in [#1398](https://github.com/umijs/mako/pull/1398)
+- Revert [#1385](https://github.com/umijs/mako/pull/1385) by [@Jinbao1001](https://github.com/Jinbao1001)
+
+
+## 0.7.6
+
+`2024-07-18`
+
+- New: add umi template for `create-mako` by [@kiner-tang](https://github.com/kiner-tang) in [#1408](https://github.com/umijs/mako/pull/1408)
+- New: circular dependency detector by [@stormslowly](https://github.com/stormslowly) in [#1401](https://github.com/umijs/mako/pull/1401)
+- New: add `emitDecoratorMetadata` config by [@sorrycc](https://github.com/sorrycc) in [#1420](https://github.com/umijs/mako/pull/1420)
+- New: support mako cli using abbreviated `mode` value, like "prod" by [@stormslowly](https://github.com/stormslowly) in [#1419](https://github.com/umijs/mako/pull/1419)
+- Fix: config `mako.plugins` should work by [@sorrycc](https://github.com/sorrycc) in [#1400](https://github.com/umijs/mako/pull/1400)
+- Fix: assignment failure when `plugins` are undefined by [@xierenyuan](https://github.com/xierenyuan) in [#1402](https://github.com/umijs/mako/pull/1402)
+- Fix: support dynamic import with template string by [@sorrycc](https://github.com/sorrycc) in [#1405](https://github.com/umijs/mako/pull/1405)
+- Fix: watch files change of module graph in node_modules by [@Jinbao1001](https://github.com/Jinbao1001) in [#1385](https://github.com/umijs/mako/pull/1385)
+- Fix: dynamic import to require need interop by [@Jinbao1001](https://github.com/Jinbao1001) in [#1363](https://github.com/umijs/mako/pull/1361)
 
 ## 0.7.5
 

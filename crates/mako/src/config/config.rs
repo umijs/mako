@@ -101,6 +101,7 @@ create_deserialize_fn!(deserialize_inline_css, InlineCssConfig);
 create_deserialize_fn!(deserialize_rsc_client, RscClientConfig);
 create_deserialize_fn!(deserialize_rsc_server, RscServerConfig);
 create_deserialize_fn!(deserialize_stats, StatsConfig);
+create_deserialize_fn!(deserialize_detect_loop, DetectCircularDependence);
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -249,6 +250,8 @@ pub struct Px2RemConfig {
     pub selector_doublelist: Vec<String>,
     #[serde(rename = "minPixelValue", default)]
     pub min_pixel_value: f64,
+    #[serde(rename = "mediaQuery", default)]
+    pub media_query: bool,
 }
 
 impl Default for Px2RemConfig {
@@ -261,6 +264,7 @@ impl Default for Px2RemConfig {
             selector_whitelist: vec![],
             selector_doublelist: vec![],
             min_pixel_value: 0.0,
+            media_query: false,
         }
     }
 }
@@ -427,15 +431,26 @@ pub struct RscClientConfig {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct DetectCircularDependence {
+    pub ignores: Vec<String>,
+    pub graphviz: bool,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct ExperimentalConfig {
     pub webpack_syntax_validate: Vec<String>,
     pub require_context: bool,
+    #[serde(deserialize_with = "deserialize_detect_loop")]
+    pub detect_circular_dependence: Option<DetectCircularDependence>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct WatchConfig {
-    pub ignore_paths: Vec<String>,
+    pub ignore_paths: Option<Vec<String>>,
+    #[serde(rename = "_nodeModulesRegexes")]
+    pub node_modules_regexes: Option<Vec<String>>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -535,6 +550,7 @@ pub struct Config {
     pub experimental: ExperimentalConfig,
     pub watch: WatchConfig,
     pub use_define_for_class_fields: bool,
+    pub emit_decorator_metadata: bool,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
@@ -701,9 +717,14 @@ const DEFAULT_CONFIG: &str = r#"
     "inlineCSS": false,
     "rscServer": false,
     "rscClient": false,
-    "experimental": { "webpackSyntaxValidate": [], requireContext: true},
+    "experimental": {
+      "webpackSyntaxValidate": [], 
+      "requireContext": true, 
+      "detectCircularDependence": { "ignores": ["node_modules"], "graphviz": false }
+    },
     "useDefineForClassFields": true,
-    "watch": { "ignorePaths": [] },
+    "emitDecoratorMetadata": false,
+    "watch": { "ignorePaths": [], "_nodeModulesRegexes": [] },
     "devServer": { "host": "127.0.0.1", "port": 3000 }
 }
 "#;

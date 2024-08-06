@@ -111,6 +111,22 @@ exports.dev = async function (opts) {
 
   const outputPath = path.resolve(opts.cwd, opts.config.outputPath || 'dist');
 
+  function processReqURL(publicPath, reqURL) {
+    if (!publicPath.startsWith('/')) {
+      publicPath = '/' + publicPath;
+    }
+    return reqURL.startsWith(publicPath)
+      ? reqURL.slice(publicPath.length - 1)
+      : reqURL;
+  }
+
+  if (opts.config.publicPath) {
+    app.use((req, _res, next) => {
+      req.url = processReqURL(opts.config.publicPath, req.url);
+      next();
+    });
+  }
+
   // serve dist files
   app.use(express.static(outputPath));
 
@@ -246,6 +262,8 @@ function checkConfig(opts) {
     'experimental',
     'flexBugs',
     'optimization',
+    'sass',
+    'autoCSSModules',
   ];
   // umi mako config
   const { mako } = opts.config;
@@ -322,7 +340,6 @@ function checkConfig(opts) {
     'config.classPropertiesLoose',
     'config.extraPostCSSPlugins',
     'config.postcssLoader',
-    'config.sassLoader',
     'config.styleLoader',
     'config.stylusLoader',
     'config.chainWebpack',
@@ -457,6 +474,7 @@ async function getMakoConfig(opts) {
     forkTSChecker,
     inlineCSS,
     analyze,
+    sassLoader,
     mako,
   } = opts.config;
 
@@ -624,6 +642,15 @@ async function getMakoConfig(opts) {
       plugins: opts.config.lessLoader?.plugins,
     },
     analyze: analyze || process.env.ANALYZE ? {} : undefined,
+    experimental: {
+      webpackSyntaxValidate: [],
+      requireContext: true,
+      detectCircularDependence: {
+        ignores: ['node_modules', '\\.umi'],
+        graphviz: false,
+      },
+    },
+    sass: sassLoader,
     ...mako,
   };
 

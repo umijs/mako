@@ -181,7 +181,7 @@ impl TreeShakeModule {
 
 #[cfg(test)]
 mod tests {
-    use std::ops::Deref;
+
     use std::sync::Arc;
 
     use swc_core::common::GLOBALS;
@@ -455,7 +455,7 @@ mod tests {
     fn tsm_with_code(code: &str) -> TreeShakeModule {
         let context: Arc<Context> = Default::default();
 
-        let module_graph = context.module_graph.write().unwrap();
+        let _module_graph = context.module_graph.write().unwrap();
 
         let file = File::with_content(
             "test.js".to_string(),
@@ -478,10 +478,8 @@ mod tests {
             side_effects: false,
         };
 
-        let tsm = GLOBALS.set(&context.meta.script.globals, || {
-            TreeShakeModule::new(&mako_module, 0, module_graph.deref())
-        });
-
-        tsm
+        GLOBALS.set(&context.meta.script.globals, || {
+            TreeShakeModule::new(&mako_module, 0)
+        })
     }
 }
