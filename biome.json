@@ -20,7 +20,8 @@
       "./tmp/**",
       "./.pnpm-store/**",
       "./packages/*/dist/**",
-      "**/package.json"
+      "**/package.json",
+      "./crates/svgr-rs/__fixture__/**"
     ]
   },
   "formatter": {
