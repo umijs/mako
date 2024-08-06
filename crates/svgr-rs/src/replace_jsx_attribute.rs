@@ -68,7 +68,7 @@ mod tests {
     use swc_core::ecma::codegen::text_writer::JsWriter;
     use swc_core::ecma::codegen::Emitter;
     use swc_core::ecma::parser::lexer::Lexer;
-    use swc_core::ecma::parser::{EsConfig, Parser, StringInput, Syntax};
+    use swc_core::ecma::parser::{EsSyntax, Parser, StringInput, Syntax};
     use swc_core::ecma::visit::{as_folder, FoldWith};
 
     use super::*;
@@ -78,7 +78,7 @@ mod tests {
         let fm = cm.new_source_file(FileName::Anon.into(), input.to_string());
 
         let lexer = Lexer::new(
-            Syntax::Es(EsConfig {
+            Syntax::Es(EsSyntax {
                 decorators: true,
                 jsx: true,
                 ..Default::default()

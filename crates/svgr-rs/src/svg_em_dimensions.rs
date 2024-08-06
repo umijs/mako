@@ -54,7 +54,7 @@ impl VisitMut for Visitor {
     fn visit_mut_jsx_opening_element(&mut self, n: &mut JSXOpeningElement) {
         let is_svg = ELEMENTS.iter().any(|element| {
             if let JSXElementName::Ident(ident) = n.name.clone() {
-                return ident.sym.to_string() == *element;
+                return ident.sym == *element;
             }
             false
         });
@@ -73,7 +73,7 @@ impl VisitMut for Visitor {
                         .iter()
                         .enumerate()
                         .for_each(|(index, attr)| {
-                            if ident.sym.to_string() == *attr {
+                            if ident.sym == *attr {
                                 match *attr {
                                     "height" => {
                                         jsx_attr.value.replace(get_value(self.height.as_ref()));
@@ -139,7 +139,7 @@ mod tests {
     use swc_core::ecma::codegen::text_writer::JsWriter;
     use swc_core::ecma::codegen::Emitter;
     use swc_core::ecma::parser::lexer::Lexer;
-    use swc_core::ecma::parser::{EsConfig, Parser, StringInput, Syntax};
+    use swc_core::ecma::parser::{EsSyntax, Parser, StringInput, Syntax};
     use swc_core::ecma::visit::{as_folder, FoldWith};
 
     use super::*;
@@ -154,7 +154,7 @@ mod tests {
         let fm = cm.new_source_file(FileName::Anon.into(), input.to_string());
 
         let lexer = Lexer::new(
-            Syntax::Es(EsConfig {
+            Syntax::Es(EsSyntax {
                 decorators: true,
                 jsx: true,
                 ..Default::default()

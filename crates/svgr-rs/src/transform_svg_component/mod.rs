@@ -151,7 +151,7 @@ mod tests {
         let mut recovered_errors = vec![];
         let expr = parser::parse_file_as_expr(
             fm.borrow(),
-            parser::Syntax::Es(parser::EsConfig {
+            parser::Syntax::Es(parser::EsSyntax {
                 jsx: true,
                 ..Default::default()
             }),

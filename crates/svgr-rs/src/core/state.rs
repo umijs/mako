@@ -52,6 +52,7 @@ pub struct Config {
 
 #[derive(Debug)]
 pub struct InternalConfig {
+    #[allow(dead_code)]
     pub file_path: Option<String>,
     pub component_name: String,
     pub caller: Option<Caller>,

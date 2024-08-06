@@ -9,6 +9,7 @@ use super::core;
 use crate::SvgrError;
 
 pub struct TemplateVariables {
+    #[allow(dead_code)]
     pub component_name: String,
     pub interfaces: Vec<ModuleItem>,
     pub props: Vec<Pat>,
@@ -329,7 +330,7 @@ pub fn get_variables(
                     let mut recovered_errors = vec![];
                     let module = parser::parse_file_as_module(
                         fm.borrow(),
-                        parser::Syntax::Es(parser::EsConfig {
+                        parser::Syntax::Es(parser::EsSyntax {
                             jsx: true,
                             ..Default::default()
                         }),
