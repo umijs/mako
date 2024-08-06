@@ -140,32 +140,32 @@ export function moduleToDom(css) {
             let is_jsx = file.extname.as_str() == "mdx";
             return Ok(Content::Js(JsContent { content, is_jsx }));
         }
-        //
+
         // svg
         // TODO: Not all svg files need to be converted to React Component, unnecessary performance consumption here
-        // if SVG_EXTENSIONS.contains(&file.extname.as_str()) {
-        //     let content = FileSystem::read_file(&file.pathname)?;
-        //     let svgr_transformed = svgr_rs::transform(
-        //         content,
-        //         svgr_rs::Config {
-        //             named_export: SVGR_NAMED_EXPORT.to_string(),
-        //             export_type: Some(svgr_rs::ExportType::Named),
-        //             ..Default::default()
-        //         },
-        //         svgr_rs::State {
-        //             ..Default::default()
-        //         },
-        //     )
-        //     .map_err(|err| LoadError::ToSvgrError {
-        //         path: file.path.to_string_lossy().to_string(),
-        //         reason: err.to_string(),
-        //     })?;
-        //     let asset_path = Self::handle_asset(file, true, true, context.clone())?;
-        //     return Ok(Content::Js(JsContent {
-        //         content: format!("{}\nexport default {};", svgr_transformed, asset_path),
-        //         is_jsx: true,
-        //     }));
-        // }
+        if SVG_EXTENSIONS.contains(&file.extname.as_str()) {
+            let content = FileSystem::read_file(&file.pathname)?;
+            let svgr_transformed = svgr_rs::transform(
+                content,
+                svgr_rs::Config {
+                    named_export: SVGR_NAMED_EXPORT.to_string(),
+                    export_type: Some(svgr_rs::ExportType::Named),
+                    ..Default::default()
+                },
+                svgr_rs::State {
+                    ..Default::default()
+                },
+            )
+            .map_err(|err| LoadError::ToSvgrError {
+                path: file.path.to_string_lossy().to_string(),
+                reason: err.to_string(),
+            })?;
+            let asset_path = Self::handle_asset(file, true, true, context.clone())?;
+            return Ok(Content::Js(JsContent {
+                content: format!("{}\nexport default {};", svgr_transformed, asset_path),
+                is_jsx: true,
+            }));
+        }
 
         // toml
         if TOML_EXTENSIONS.contains(&file.extname.as_str()) {
