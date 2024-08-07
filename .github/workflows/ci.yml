@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Get cache expires mark (non-windows)
+      - name: Get cache expires mark
         id: week_mark
         run: echo "EXPIRES_WEEK_MARK=$(date +%U)" >> "$GITHUB_OUTPUT"
       - name: Install Rust Toolchain
@@ -52,11 +52,15 @@ jobs:
     if: ${{ !startsWith(github.event.head_commit.message, 'release:') && !startsWith(github.event.head_commit.message, 'ci:') && !startsWith(github.event.head_commit.message, 'docs:') }}
     steps:
       - uses: actions/checkout@v4
+      - name: Get cache expires mark
+        id: week_mark
+        run: echo "EXPIRES_WEEK_MARK=$(date +%U)" >> "$GITHUB_OUTPUT"
       - name: Install Rust Toolchain
         uses: ./.github/actions/rustup
         with:
           clippy: true
-          save-cache: ${{ github.ref_name == 'master' }}
+          save-cache:  true
+          shared-key: mako-build-${{ matrix.os }}-${{ steps.week_mark.outputs.EXPIRES_WEEK_MARK }}-${{ hashFiles('./Cargo.lock') }}
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -67,16 +71,24 @@ jobs:
           cache: "pnpm"
           token: ${{ secrets.GH_DOTCOM_TOKEN }}
       - run: pnpm i
-      - run: pnpm playwright install chromium
       - name: Build
         run: pnpm build
+      - name: ls
+        run: ls
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: bindings-${{ matrix.os }}
+          path: |
+            ./packages/mako/*.node
+            ./packages/mako/binding.*
+          if-no-files-found: error 
       - name: Test E2E
         run: pnpm test:e2e
       - name: Test HMR
         run: pnpm test:hmr
       - name: Test Umi
         run: pnpm test:umi
-
   lint:
     name: Clippy
     runs-on: ubuntu-latest
