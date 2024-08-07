@@ -42,6 +42,7 @@ jobs:
           cache: "pnpm"
           token: ${{ secrets.GH_DOTCOM_TOKEN }}
       - run: pnpm i --no-lockfile
+      - run: pnpm playwright install chromium
       - name: Install cargo-nextest
         uses: taiki-e/install-action@cargo-nextest
       - name: Test
