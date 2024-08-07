@@ -16,49 +16,122 @@ concurrency:
   cancel-in-progress: ${{ github.ref_name != 'master' }}
 
 jobs:
-  test:
-    name: Test
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-    runs-on: ${{ matrix.os }}
-    if: ${{ !startsWith(github.event.head_commit.message, 'release:') && !startsWith(github.event.head_commit.message, 'ci:') && !startsWith(github.event.head_commit.message, 'docs:') }}
+  cargo-test:
+    name: Cargo Test
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Get cache expires mark
+        id: week_mark
+        run: echo "EXPIRES_WEEK_MARK=$(date +%U)" >> "$GITHUB_OUTPUT"
       - name: Install Rust Toolchain
         uses: ./.github/actions/rustup
         with:
-          clippy: true
-          save-cache: ${{ github.ref_name == 'master' }}
+          clippy: false
+          save-cache: true
+          shared-key: x86-cargo-test-ubuntu-latest-${{ steps.week_mark.outputs.EXPIRES_WEEK_MARK }}-${{ hashFiles('./Cargo.lock') }}
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 8.15.8
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: '20'
           cache: "pnpm"
           token: ${{ secrets.GH_DOTCOM_TOKEN }}
-      - run: pnpm i --no-lockfile
-      - name: Install cargo-nextest
-        uses: taiki-e/install-action@cargo-nextest
-      - name: Test
-        shell: bash
-        run: cargo nextest run
-
+      - run: pnpm i
+      - name: Clean Sailfish cache
+        run: rm -rf target/debug/build/sailfish-*
+      - run: cargo test
+  build:
+    name: Mako Build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest ]
+    runs-on: ${{ matrix.os }}
+    if: ${{ !startsWith(github.event.head_commit.message, 'release:') && !startsWith(github.event.head_commit.message, 'ci:') && !startsWith(github.event.head_commit.message, 'docs:') }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get cache expires mark
+        id: week_mark
+        run: echo "EXPIRES_WEEK_MARK=$(date +%U)" >> "$GITHUB_OUTPUT"
+      - name: Install Rust Toolchain
+        uses: ./.github/actions/rustup
+        with:
+          clippy: true
+          save-cache:  true
+          shared-key: mako-build-${{ matrix.os }}-${{ steps.week_mark.outputs.EXPIRES_WEEK_MARK }}-${{ hashFiles('./Cargo.lock') }}
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8.15.8
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: "pnpm"
+          token: ${{ secrets.GH_DOTCOM_TOKEN }}
+      - run: pnpm i
+      - name: Build
+        run: pnpm build
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bindings-${{ matrix.os }}
+          path: |
+            ./packages/mako/*.node
+            ./packages/mako/binding.*
+            ./packages/mako/dist
+          if-no-files-found: error 
+  test_e2e:
+    name: E2E
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        script: [ "test:e2e", "test:hmr", "test:umi" ]
+        os: [ ubuntu-latest ]
+    runs-on: ${{ matrix.os }} 
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8.15.8
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: "pnpm"
+          token: ${{ secrets.GH_DOTCOM_TOKEN }}
+      - run: |
+          pnpm i
+          pnpm playwright install chromium
+      
+      - name: Download bindings
+        uses: actions/download-artifact@v4
+        with:
+          name: bindings-${{ matrix.os }} 
+          path: packages/mako/
+      - name: LS
+        run: ls -l ./packages/mako
+      - name: Test E2E
+        run: pnpm ${{ matrix.script }}
+  
   lint:
     name: Clippy
     runs-on: ubuntu-latest
     if: ${{ !startsWith(github.event.head_commit.message, 'release:') && !startsWith(github.event.head_commit.message, 'ci:') && !startsWith(github.event.head_commit.message, 'docs:') }}
     steps:
       - uses: actions/checkout@v4
+      - name: Get cache expires mark
+        id: week_mark
+        run: echo "EXPIRES_WEEK_MARK=$(date +%U)" >> "$GITHUB_OUTPUT"
       - name: Install Rust Toolchain
         uses: ./.github/actions/rustup
         with:
           clippy: true
-          restore-cache: false
+          shared-key: x86-cargo-test-ubuntu-latest-${{ steps.week_mark.outputs.EXPIRES_WEEK_MARK }}-${{ hashFiles('./Cargo.lock') }}
+          
       - name: Clippy
         run: cargo clippy --locked -- -D warnings
 
@@ -77,9 +150,9 @@ jobs:
         uses: pnpm/action-setup@v4
         with:
           version: 8.15.8
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: '20'
           cache: "pnpm"
           token: ${{ secrets.GH_DOTCOM_TOKEN }}
       - run: pnpm i
