@@ -22,17 +22,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Get cache expires mark (non-windows)
-        if: runner.os != 'Windows'
-        run: echo "EXPIRES_WEEK_MARK=$(date +%U)" >> $GITHUB_OUTPUT
-      - name: Get cache expires mark (windows)
-        if: runner.os == 'Windows'
-        run: echo "EXPIRES_WEEK_MARK=$(date +%U)" >> $env:GITHUB_OUTPUT        
+        id: week_mark
+        run: echo "EXPIRES_WEEK_MARK=$(date +%U)" >> "$GITHUB_OUTPUT"
       - name: Install Rust Toolchain
         uses: ./.github/actions/rustup
         with:
           clippy: false
           save-cache: true
-          shared-key: x86-cargo-test-ubuntu-latest-${{ env.EXPIRES_WEEK_MARK }}-${{ hashFiles('./Cargo.lock') }}
+          shared-key: x86-cargo-test-ubuntu-latest-${{ steps.week_mark.outputs.EXPIRES_WEEK_MARK }}-${{ hashFiles('./Cargo.lock') }}
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -42,7 +39,7 @@ jobs:
           node-version: 20
           cache: "pnpm"
           token: ${{ secrets.GH_DOTCOM_TOKEN }}
-      - run: pnpm i --no-lockfile
+      - run: pnpm i
       - run: cargo test
   test:
     name: Test
@@ -69,7 +66,7 @@ jobs:
           node-version: 20
           cache: "pnpm"
           token: ${{ secrets.GH_DOTCOM_TOKEN }}
-      - run: pnpm i --no-lockfile
+      - run: pnpm i
       - run: pnpm playwright install chromium
       - name: Build
         run: pnpm build
