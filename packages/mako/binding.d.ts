@@ -6,6 +6,11 @@
 export interface TransformOutput {
   code: string;
   map?: string;
+  output?: string;
+}
+export interface TransformOutput {
+  code: string;
+  map?: string;
 }
 export interface JsHooks {
   name?: string;

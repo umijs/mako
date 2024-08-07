@@ -42,7 +42,6 @@ jobs:
       - run: pnpm i
       - run: cargo test
   build:
-    id: mako_build
     name: Mako Build
     strategy:
       fail-fast: false
