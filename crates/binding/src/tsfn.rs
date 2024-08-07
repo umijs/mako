@@ -15,10 +15,47 @@ pub struct JsHooks {
         ts_type = "(filePath: string) => Promise<{ content: string, type: 'css'|'js' } | void> | void;"
     )]
     pub load: Option<JsFunction>,
-    #[napi(ts_type = "(data: {isFirstCompile: boolean; time: number; stats: {
-        startTime: number;
-        endTime: number;
-    }}) =>void ;")]
+    #[napi(ts_type = r#"(data: {
+    isFirstCompile: boolean;
+    time: number;
+    stats: {
+      hash: number;
+      builtAt: number;
+      rootPath: string;
+      outputPath: string;
+      assets: { type: string; name: string; path: string; size: number }[];
+      chunkModules: {
+        type: string;
+        id: string;
+        chunks: string[];
+        size: number;
+      }[];
+      modules: Record<
+        string,
+        { id: string; dependents: string[]; dependencies: string[] }
+      >;
+      chunks: {
+        type: string;
+        id: string;
+        files: string[];
+        entry: boolean;
+        modules: { type: string; id: string; size: number; chunks: string[] }[];
+        siblings: string[];
+        origin: {
+          module: string;
+          moduleIdentifier: string;
+          moduleName: string;
+          loc: string;
+          request: string;
+        }[];
+      }[];
+      entrypoints: Record<string, { name: string; chunks: string[] }>;
+      rscClientComponents: { path; string; moduleId: string }[];
+      rscCSSModules: { path; string; moduleId: string; modules: boolean }[];
+      startTime: number;
+      endTime: number;
+    };
+  }) => void"#)]
     pub generate_end: Option<JsFunction>,
     #[napi(ts_type = "(path: string, content: Buffer) => Promise<void>;")]
     pub _on_generate_file: Option<JsFunction>,
@@ -67,27 +104,9 @@ impl TsFnHooks {
                     |ctx: threadsafe_function::ThreadSafeCallContext<
                         ReadMessage<PluginGenerateEndParams, ()>,
                     >| {
-                        let mut obj = ctx.env.create_object()?;
-                        let mut stats = ctx.env.create_object()?;
-                        stats.set_named_property(
-                            "startTime",
-                            ctx.env
-                                .create_int64(ctx.value.message.stats.start_time as i64)?,
-                        )?;
-                        stats.set_named_property(
-                            "endTime",
-                            ctx.env
-                                .create_int64(ctx.value.message.stats.end_time as i64)?,
-                        )?;
-                        obj.set_named_property(
-                            "isFirstCompile",
-                            ctx.value.message.is_first_compile,
-                        )?;
-                        obj.set_named_property(
-                            "time",
-                            ctx.env.create_int64(ctx.value.message.time as i64),
-                        )?;
-                        obj.set_named_property("stats", stats)?;
+                        let obj = ctx
+                            .env
+                            .to_js_value(&serde_json::to_value(ctx.value.message)?)?;
                         let result = ctx.callback.unwrap().call(None, &[obj])?;
                         await_promise_with_void(ctx.env, result, ctx.value.tx).unwrap();
                         Ok(())

@@ -1,15 +1,14 @@
 use std::fs;
-use std::sync::Arc;
+use std::path::Path;
 
 use anyhow::Result;
 
-use crate::compiler::Context;
 use crate::stats::StatsJsonMap;
 
 pub struct Analyze {}
 
 impl Analyze {
-    pub fn write_analyze(stats: &StatsJsonMap, context: Arc<Context>) -> Result<()> {
+    pub fn write_analyze(stats: &StatsJsonMap, path: &Path) -> Result<()> {
         let stats_json = serde_json::to_string_pretty(&stats).unwrap();
         let html_str = format!(
             r#"<!DOCTYPE html>
@@ -31,8 +30,12 @@ impl Analyze {
             stats_json,
             include_str!("../../../../client/dist/index.js").replace("</script>", "<\\/script>")
         );
-        let report_path = context.config.output.path.join("report.html");
-        fs::write(report_path, html_str).unwrap();
+        let report_path = path.join("analyze-report.html");
+        fs::write(&report_path, html_str).unwrap();
+        println!(
+            "Analyze report generated at: {}",
+            report_path.to_string_lossy()
+        );
         Ok(())
     }
 }

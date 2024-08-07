@@ -2,7 +2,8 @@ use std::any::Any;
 use std::path::Path;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
+use serde::Serialize;
 use swc_core::common::errors::Handler;
 use swc_core::common::Mark;
 use swc_core::ecma::ast::Module;
@@ -33,11 +34,11 @@ pub struct PluginTransformJsParam<'a> {
     pub unresolved_mark: Mark,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct PluginGenerateEndParams {
     pub is_first_compile: bool,
-    pub time: u64,
-    pub stats: PluginGenerateStats,
+    pub time: i64,
+    pub stats: StatsJsonMap,
 }
 
 #[derive(Clone)]
@@ -95,10 +96,6 @@ pub trait Plugin: Any + Send + Sync {
         Ok(())
     }
 
-    fn generate(&self, _context: &Arc<Context>) -> Result<Option<()>> {
-        Ok(None)
-    }
-
     fn after_generate_chunk_files(
         &self,
         _chunk_files: &[ChunkFile],
@@ -107,15 +104,15 @@ pub trait Plugin: Any + Send + Sync {
         Ok(())
     }
 
-    fn build_success(&self, _stats: &StatsJsonMap, _context: &Arc<Context>) -> Result<Option<()>> {
-        Ok(None)
+    fn build_success(&self, _stats: &StatsJsonMap, _context: &Arc<Context>) -> Result<()> {
+        Ok(())
     }
 
-    fn build_start(&self, _context: &Arc<Context>) -> Result<Option<()>> {
-        Ok(None)
+    fn build_start(&self, _context: &Arc<Context>) -> Result<()> {
+        Ok(())
     }
 
-    fn generate_beg(&self, _context: &Arc<Context>) -> Result<()> {
+    fn generate_begin(&self, _context: &Arc<Context>) -> Result<()> {
         Ok(())
     }
 
@@ -123,8 +120,8 @@ pub trait Plugin: Any + Send + Sync {
         &self,
         _params: &PluginGenerateEndParams,
         _context: &Arc<Context>,
-    ) -> Result<Option<()>> {
-        Ok(None)
+    ) -> Result<()> {
+        Ok(())
     }
 
     fn runtime_plugins(&self, _context: &Arc<Context>) -> Result<Vec<String>> {
@@ -255,19 +252,9 @@ impl PluginDriver {
 
     pub fn before_generate(&self, context: &Arc<Context>) -> Result<()> {
         for plugin in &self.plugins {
-            plugin.generate_beg(context)?;
+            plugin.generate_begin(context)?;
         }
         Ok(())
-    }
-
-    pub fn generate(&self, context: &Arc<Context>) -> Result<Option<()>> {
-        for plugin in &self.plugins {
-            let ret = plugin.generate(context)?;
-            if ret.is_some() {
-                return Ok(Some(()));
-            }
-        }
-        Err(anyhow!("None of the plugins generate content"))
     }
 
     pub(crate) fn after_generate_chunk_files(
@@ -282,40 +269,36 @@ impl PluginDriver {
         Ok(())
     }
 
-    pub fn build_start(&self, context: &Arc<Context>) -> Result<Option<()>> {
+    pub fn build_start(&self, context: &Arc<Context>) -> Result<()> {
         for plugin in &self.plugins {
             plugin.build_start(context)?;
         }
-        Ok(None)
+        Ok(())
     }
 
     pub fn generate_end(
         &self,
-        param: &PluginGenerateEndParams,
+        params: &PluginGenerateEndParams,
         context: &Arc<Context>,
-    ) -> Result<Option<()>> {
+    ) -> Result<()> {
         for plugin in &self.plugins {
-            plugin.generate_end(param, context)?;
+            plugin.generate_end(params, context)?;
         }
-        Ok(None)
+        Ok(())
     }
 
-    pub fn generate_beg(&self, context: &Arc<Context>) -> Result<Option<()>> {
+    pub fn generate_begin(&self, context: &Arc<Context>) -> Result<()> {
         for plugin in &self.plugins {
-            plugin.generate_beg(context)?;
+            plugin.generate_begin(context)?;
         }
-        Ok(None)
+        Ok(())
     }
 
-    pub fn build_success(
-        &self,
-        stats: &StatsJsonMap,
-        context: &Arc<Context>,
-    ) -> Result<Option<()>> {
+    pub fn build_success(&self, stats: &StatsJsonMap, context: &Arc<Context>) -> Result<()> {
         for plugin in &self.plugins {
             plugin.build_success(stats, context)?;
         }
-        Ok(None)
+        Ok(())
     }
 
     pub fn runtime_plugins_code(&self, context: &Arc<Context>) -> Result<String> {

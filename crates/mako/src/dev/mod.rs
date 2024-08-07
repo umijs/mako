@@ -4,7 +4,7 @@ mod watch;
 use std::net::{SocketAddr, TcpListener};
 use std::path::PathBuf;
 use std::sync::{mpsc, Arc};
-use std::time::{Duration, Instant, UNIX_EPOCH};
+use std::time::{Duration, Instant};
 
 use anyhow::{self, Result};
 use colored::Colorize;
@@ -20,8 +20,8 @@ use tungstenite::Message;
 use {hyper, hyper_staticfile, hyper_tungstenite, open};
 
 use crate::compiler::{Compiler, Context};
-use crate::plugin::{PluginGenerateEndParams, PluginGenerateStats};
-use crate::utils::tokio_runtime;
+use crate::plugin::PluginGenerateEndParams;
+use crate::utils::{process_req_url, tokio_runtime};
 
 pub struct DevServer {
     root: PathBuf,
@@ -33,10 +33,7 @@ impl DevServer {
         Self { root, compiler }
     }
 
-    pub async fn serve(
-        &self,
-        callback: impl Fn(OnDevCompleteParams) + Send + Sync + Clone + 'static,
-    ) {
+    pub async fn serve(&self) {
         let (txws, _) = broadcast::channel::<WsMessage>(256);
 
         // watch
@@ -46,11 +43,11 @@ impl DevServer {
 
         if self.compiler.context.config.dev_server.is_some() {
             std::thread::spawn(move || {
-                if let Err(e) = Self::watch_for_changes(root, compiler, txws_watch, callback) {
+                if let Err(e) = Self::watch_for_changes(root, compiler, txws_watch) {
                     eprintln!("Error watching files: {:?}", e);
                 }
             });
-        } else if let Err(e) = Self::watch_for_changes(root, compiler, txws_watch, callback) {
+        } else if let Err(e) = Self::watch_for_changes(root, compiler, txws_watch) {
             eprintln!("Error watching files: {:?}", e);
         }
 
@@ -124,7 +121,19 @@ impl DevServer {
         staticfile: hyper_staticfile::Static,
         txws: broadcast::Sender<WsMessage>,
     ) -> Result<hyper::Response<Body>> {
-        let path = req.uri().path();
+        let mut path = req.uri().path().to_string();
+        let public_path = &context.config.public_path;
+        if !public_path.is_empty() && public_path.starts_with('/') && public_path != "/" {
+            path = match process_req_url(public_path, &path) {
+                Ok(p) => p,
+                Err(_) => {
+                    return Ok(hyper::Response::builder()
+                        .status(hyper::StatusCode::BAD_REQUEST)
+                        .body(hyper::Body::from("Bad Request"))
+                        .unwrap());
+                }
+            };
+        }
         let path_without_slash_start = path.trim_start_matches('/');
         let not_found_response = || {
             hyper::Response::builder()
@@ -132,7 +141,7 @@ impl DevServer {
                 .body(hyper::Body::empty())
                 .unwrap()
         };
-        match path {
+        match path.as_str() {
             "/__/hmr-ws" => {
                 if hyper_tungstenite::is_upgrade_request(&req) {
                     debug!("new websocket connection");
@@ -254,7 +263,6 @@ impl DevServer {
         root: PathBuf,
         compiler: Arc<Compiler>,
         txws: broadcast::Sender<WsMessage>,
-        callback: impl Fn(OnDevCompleteParams) + Clone,
     ) -> Result<()> {
         let (tx, rx) = mpsc::channel();
         // let mut watcher = RecommendedWatcher::new(tx, notify::Config::default())?;
@@ -275,15 +283,9 @@ impl DevServer {
             if !paths.is_empty() {
                 let compiler = compiler.clone();
                 let txws = txws.clone();
-                let callback = callback.clone();
-                if let Err(e) = Self::rebuild(
-                    paths,
-                    compiler,
-                    txws,
-                    &mut snapshot_hash,
-                    &mut hmr_hash,
-                    callback,
-                ) {
+                if let Err(e) =
+                    Self::rebuild(paths, compiler, txws, &mut snapshot_hash, &mut hmr_hash)
+                {
                     eprintln!("Error rebuilding: {:?}", e);
                 }
             }
@@ -298,7 +300,6 @@ impl DevServer {
         txws: broadcast::Sender<WsMessage>,
         last_snapshot_hash: &mut Box<u64>,
         hmr_hash: &mut Box<u64>,
-        callback: impl Fn(OnDevCompleteParams),
     ) -> Result<()> {
         debug!("watch paths detected: {:?}", paths);
         debug!("checking update status...");
@@ -332,7 +333,7 @@ impl DevServer {
         }
 
         let t_compiler = Instant::now();
-        let start_time = std::time::SystemTime::now();
+        let start_time = chrono::Local::now().timestamp_millis();
         let next_hash = compiler.generate_hot_update_chunks(res, **last_snapshot_hash, **hmr_hash);
         debug!(
             "hot update chunks generated, next_full_hash: {:?}",
@@ -367,10 +368,16 @@ impl DevServer {
 
         compiler.context.stats_info.clear_assets();
 
-        if let Err(e) = compiler.emit_dev_chunks(next_hmr_hash, current_hmr_hash) {
-            debug!("  > build failed: {:?}", e);
-            return Err(e);
-        }
+        let mut stats = compiler
+            .emit_dev_chunks(next_hmr_hash, current_hmr_hash)
+            .map_err(|e| {
+                debug!("  > build failed: {:?}", e);
+                e
+            })?;
+
+        stats.start_time = start_time;
+        stats.end_time = chrono::Local::now().timestamp_millis();
+
         debug!("full rebuild...done");
         if !has_missing_deps {
             println!(
@@ -378,29 +385,16 @@ impl DevServer {
                 format!("{}ms", t_compiler.elapsed().as_millis()).bold()
             );
 
-            let end_time = std::time::SystemTime::now();
             let params = PluginGenerateEndParams {
                 is_first_compile: false,
-                time: t_compiler.elapsed().as_millis() as u64,
-                stats: PluginGenerateStats {
-                    start_time: start_time.duration_since(UNIX_EPOCH).unwrap().as_millis() as u64,
-                    end_time: end_time.duration_since(UNIX_EPOCH).unwrap().as_millis() as u64,
-                },
+                time: t_compiler.elapsed().as_millis() as i64,
+                stats,
             };
             compiler
                 .context
                 .plugin_driver
                 .generate_end(&params, &compiler.context)
                 .unwrap();
-            // TODO: remove this?
-            callback(OnDevCompleteParams {
-                is_first_compile: false,
-                time: t_compiler.elapsed().as_millis() as u64,
-                stats: Stats {
-                    start_time: start_time.duration_since(UNIX_EPOCH).unwrap().as_millis() as u64,
-                    end_time: end_time.duration_since(UNIX_EPOCH).unwrap().as_millis() as u64,
-                },
-            });
         }
 
         let receiver_count = txws.receiver_count();
@@ -412,17 +406,6 @@ impl DevServer {
 
         Ok(())
     }
-}
-
-pub struct OnDevCompleteParams {
-    pub is_first_compile: bool,
-    pub time: u64,
-    pub stats: Stats,
-}
-
-pub struct Stats {
-    pub start_time: u64,
-    pub end_time: u64,
 }
 
 #[derive(Clone, Debug)]

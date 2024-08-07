@@ -2,7 +2,8 @@ use cached::proc_macro::cached;
 use regex::Regex;
 use swc_core::css::ast::{
     self as swc_css_ast, AttributeSelector, Combinator, CombinatorValue, ComplexSelector,
-    ComplexSelectorChildren, CompoundSelector, Length, SubclassSelector, Token, TypeSelector,
+    ComplexSelectorChildren, CompoundSelector, Length, MediaQueryList, SubclassSelector, Token,
+    TypeSelector,
 };
 use swc_core::css::visit::{VisitMut, VisitMutWith};
 
@@ -18,21 +19,32 @@ pub struct Px2Rem {
     current_selectors: Vec<String>,
     selector_blacklist: Vec<Regex>,
     selector_whitelist: Vec<Regex>,
+    selector_doublelist: Vec<Regex>,
 }
 
 impl Px2Rem {
     pub fn new(config: Px2RemConfig) -> Self {
         let selector_blacklist = parse_patterns(&config.selector_blacklist);
         let selector_whitelist = parse_patterns(&config.selector_whitelist);
+        let selector_doublelist = parse_patterns(&config.selector_doublelist);
         Self {
             config,
             current_decl: None,
             current_selectors: vec![],
             selector_blacklist,
             selector_whitelist,
+            selector_doublelist,
         }
     }
 
+    fn is_any_in_doublelist(&self) -> bool {
+        let is_any_in_doublelist = self.current_selectors.iter().any(|selector| {
+            self.selector_doublelist
+                .iter()
+                .any(|regx| regx.is_match(selector))
+        });
+        is_any_in_doublelist
+    }
     fn should_transform(&self, val: f64) -> bool {
         if val.abs() < self.config.min_pixel_value {
             return false;
@@ -55,18 +67,26 @@ impl Px2Rem {
                     .iter()
                     .any(|regx| regx.is_match(selector))
             });
+
             let is_any_in_blacklist = self.current_selectors.iter().any(|selector| {
                 self.selector_blacklist
                     .iter()
                     .any(|regx| regx.is_match(selector))
             });
-            (is_whitelist_empty || is_all_in_whitelist) && !is_any_in_blacklist
+            (is_whitelist_empty || is_all_in_whitelist || self.is_any_in_doublelist())
+                && !is_any_in_blacklist
         };
         is_prop_valid && is_selector_valid
     }
 }
 
 impl VisitMut for Px2Rem {
+    fn visit_mut_complex_selector(&mut self, n: &mut ComplexSelector) {
+        let selector = parse_complex_selector(n);
+        self.current_selectors.push(selector);
+        n.visit_mut_children_with(self);
+    }
+
     fn visit_mut_declaration(&mut self, n: &mut swc_css_ast::Declaration) {
         self.current_decl = match n.name {
             swc_css_ast::DeclarationName::Ident(ref ident) => Some(ident.value.to_string()),
@@ -78,23 +98,26 @@ impl VisitMut for Px2Rem {
         self.current_decl = None;
     }
 
-    fn visit_mut_qualified_rule(&mut self, n: &mut swc_css_ast::QualifiedRule) {
-        self.current_selectors = vec![];
-        n.visit_mut_children_with(self);
-    }
-
-    fn visit_mut_complex_selector(&mut self, n: &mut ComplexSelector) {
-        let selector = parse_complex_selector(n);
-        self.current_selectors.push(selector);
-        n.visit_mut_children_with(self);
-    }
-
     fn visit_mut_length(&mut self, n: &mut Length) {
         if n.unit.value.to_string() == "px" && self.should_transform(n.value.value) {
             n.value.value /= self.config.root;
+            if self.is_any_in_doublelist() {
+                n.value.value *= 2.0;
+            }
             n.value.raw = None;
             n.unit.value = "rem".into();
         }
+        n.visit_mut_children_with(self);
+    }
+
+    fn visit_mut_media_query_list(&mut self, n: &mut MediaQueryList) {
+        if self.config.media_query {
+            n.visit_mut_children_with(self);
+        }
+    }
+
+    fn visit_mut_qualified_rule(&mut self, n: &mut swc_css_ast::QualifiedRule) {
+        self.current_selectors = vec![];
         n.visit_mut_children_with(self);
     }
 
@@ -104,7 +127,10 @@ impl VisitMut for Px2Rem {
     fn visit_mut_token(&mut self, t: &mut Token) {
         if let Token::Dimension(dimension) = t {
             if dimension.unit.to_string() == "px" && self.should_transform(dimension.value) {
-                let rem_val = dimension.value / self.config.root;
+                let mut rem_val = dimension.value / self.config.root;
+                if self.is_any_in_doublelist() {
+                    rem_val *= 2.0;
+                }
                 dimension.raw_value = rem_val.to_string().into();
                 dimension.value = rem_val;
                 dimension.raw_unit = "rem".into();
@@ -263,10 +289,30 @@ mod tests {
     }
 
     #[test]
-    fn test_media_query() {
+    fn test_media_query_off() {
         assert_eq!(
-            run_with_default(r#"@media (min-width: 500px) {}"#),
-            r#"@media(min-width:5rem){}"#
+            run_with_default(
+                r#"@media (min-width: 500px) {
+                h1{ width: 100px; }
+            }"#
+            ),
+            r#"@media(min-width:500px){h1{width:1rem}}"#
+        );
+    }
+    #[test]
+
+    fn test_media_query_on() {
+        assert_eq!(
+            run(
+                r#"@media (min-width: 500px) {
+                h1{ width: 100px; }
+            }"#,
+                Px2RemConfig {
+                    media_query: true,
+                    ..Default::default()
+                }
+            ),
+            r#"@media(min-width:5rem){h1{width:1rem}}"#
         );
     }
 
@@ -574,6 +620,50 @@ mod tests {
                 }
             ),
             r#".a,.b{width:100px}"#
+        );
+    }
+
+    #[test]
+    fn test_multi_selector_doublelist() {
+        assert_eq!(
+            run(
+                r#".a{width:100px;}"#,
+                Px2RemConfig {
+                    selector_doublelist: vec![],
+                    ..Default::default()
+                }
+            ),
+            r#".a{width:1rem}"#
+        );
+        assert_eq!(
+            run(
+                r#".a{width:100px;}"#,
+                Px2RemConfig {
+                    selector_doublelist: vec![".a".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#".a{width:2rem}"#
+        );
+        assert_eq!(
+            run(
+                r#".a-x{width:100px;}"#,
+                Px2RemConfig {
+                    selector_doublelist: vec!["^.a-".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#".a-x{width:2rem}"#
+        );
+        assert_eq!(
+            run(
+                r#":root{width:100px;}"#,
+                Px2RemConfig {
+                    selector_doublelist: vec!["^:root".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#":root{width:2rem}"#
         );
     }
 

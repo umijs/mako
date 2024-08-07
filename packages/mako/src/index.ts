@@ -2,13 +2,16 @@ import fs from 'fs';
 import path from 'path';
 import { omit } from 'lodash';
 import resolve from 'resolve';
+import { type Options } from 'sass';
 import * as binding from '../binding';
 import { ForkTSChecker as ForkTSChecker } from './forkTSChecker';
 import { LessLoaderOpts, lessLoader } from './lessLoader';
+import { sassLoader } from './sassLoader';
 
 type Config = binding.BuildParams['config'] & {
   plugins?: binding.BuildParams['plugins'];
   less?: LessLoaderOpts;
+  sass?: Options<'async'> & { resources: string[] };
   forkTSChecker?: boolean;
 };
 
@@ -87,6 +90,7 @@ export async function build(params: BuildParams) {
   // built-in less-loader
   let less = lessLoader(null, {
     modifyVars: params.config.less?.modifyVars || {},
+    globalVars: params.config.less?.globalVars,
     math: params.config.less?.math,
     sourceMap: params.config.less?.sourceMap || false,
     plugins: [
@@ -109,6 +113,27 @@ export async function build(params: BuildParams) {
     },
   });
 
+  if (makoConfig?.sass || params.config?.sass) {
+    const sassOpts = {
+      ...(makoConfig?.sass || {}),
+      ...(params.config?.sass || {}),
+    };
+    let sass = sassLoader(null, sassOpts);
+    params.config.plugins.push({
+      name: 'sass',
+      async load(filePath: string) {
+        let sassResult = await sass.render(filePath);
+        if (sassResult) {
+          return sassResult;
+        }
+      },
+      generateEnd() {
+        if (!params.watch) {
+          sass.terminate();
+        }
+      },
+    });
+  }
   // support dump mako config
   if (process.env.DUMP_MAKO_CONFIG) {
     const configFile = path.join(params.root, 'mako.config.json');
@@ -161,6 +186,7 @@ export async function build(params: BuildParams) {
   });
   params.config = omit(params.config, [
     'less',
+    'sass',
     'forkTSChecker',
     'plugins',
   ]) as BuildParams['config'];

@@ -111,6 +111,22 @@ exports.dev = async function (opts) {
 
   const outputPath = path.resolve(opts.cwd, opts.config.outputPath || 'dist');
 
+  function processReqURL(publicPath, reqURL) {
+    if (!publicPath.startsWith('/')) {
+      publicPath = '/' + publicPath;
+    }
+    return reqURL.startsWith(publicPath)
+      ? reqURL.slice(publicPath.length - 1)
+      : reqURL;
+  }
+
+  if (opts.config.publicPath) {
+    app.use((req, _res, next) => {
+      req.url = processReqURL(opts.config.publicPath, req.url);
+      next();
+    });
+  }
+
   // serve dist files
   app.use(express.static(outputPath));
 
@@ -191,6 +207,7 @@ exports.dev = async function (opts) {
   const makoConfig = await getMakoConfig(opts);
   makoConfig.hmr = {};
   makoConfig.devServer = { port: hmrPort, host: opts.host };
+  makoConfig.plugins = makoConfig.plugins || [];
   makoConfig.plugins.push({
     name: 'mako-dev',
     generateEnd: (args) => {
@@ -238,6 +255,24 @@ function checkConfig(opts) {
     assert(!opts.config[key], `${key} is not supported in Mako bundler`);
   });
 
+  // 支持透传给 mako 的配置
+  const supportMakoConfigKeys = [
+    'plugins',
+    'px2rem',
+    'experimental',
+    'flexBugs',
+    'optimization',
+    'sass',
+    'autoCSSModules',
+  ];
+  // umi mako config
+  const { mako } = opts.config;
+  Object.keys(mako).forEach((key) => {
+    assert(
+      supportMakoConfigKeys.includes(key),
+      `umi config mako.${key} is not supported`,
+    );
+  });
   // 暂不支持 { from, to } 格式
   const { copy } = opts.config;
   if (copy) {
@@ -299,14 +334,12 @@ function checkConfig(opts) {
   // 不支持但对构建影响不明确的配置项，会统一警告
   const riskyKeys = [
     'config.autoprefixer',
-    'config.analyze',
     'config.cssPublicPath',
     'config.cssLoader',
     'config.cssLoaderModules',
     'config.classPropertiesLoose',
     'config.extraPostCSSPlugins',
     'config.postcssLoader',
-    'config.sassLoader',
     'config.styleLoader',
     'config.stylusLoader',
     'config.chainWebpack',
@@ -331,6 +364,7 @@ function checkConfig(opts) {
       .difference(Object.keys(opts.config.lessLoader), [
         'javascriptEnabled',
         'modifyVars',
+        'globalVars',
         'math',
         'plugins',
       ])
@@ -440,8 +474,11 @@ async function getMakoConfig(opts) {
     clean,
     forkTSChecker,
     inlineCSS,
-    makoPlugins,
+    analyze,
+    sassLoader,
+    mako,
   } = opts.config;
+
   let { codeSplitting } = opts.config;
   // TODO:
   // 暂不支持 $ 结尾，等 resolve 支持后可以把这段去掉
@@ -601,11 +638,22 @@ async function getMakoConfig(opts) {
     forkTSChecker: !!forkTSChecker,
     less: {
       modifyVars: opts.config.lessLoader?.modifyVars || opts.config.theme,
+      globalVars: opts.config.lessLoader?.globalVars,
       sourceMap: getLessSourceMapConfig(normalizedDevtool),
       math: opts.config.lessLoader?.math,
       plugins: opts.config.lessLoader?.plugins,
     },
-    plugins: makoPlugins || [],
+    analyze: analyze || process.env.ANALYZE ? {} : undefined,
+    experimental: {
+      webpackSyntaxValidate: [],
+      requireContext: true,
+      detectCircularDependence: {
+        ignores: ['node_modules', '\\.umi'],
+        graphviz: false,
+      },
+    },
+    sass: sassLoader,
+    ...mako,
   };
 
   return makoConfig;

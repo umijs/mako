@@ -10,6 +10,7 @@ use swc_core::ecma::preset_env::{self as swc_preset_env};
 use swc_core::ecma::transforms::base::feature::FeatureFlag;
 use swc_core::ecma::transforms::base::fixer::paren_remover;
 use swc_core::ecma::transforms::base::{resolver, Assumptions};
+use swc_core::ecma::transforms::compat::reserved_words;
 use swc_core::ecma::transforms::optimization::simplifier;
 use swc_core::ecma::transforms::optimization::simplify::{dce, Config as SimpilifyConfig};
 use swc_core::ecma::transforms::proposal::decorators;
@@ -32,8 +33,10 @@ use crate::visitors::dynamic_import_to_require::DynamicImportToRequire;
 use crate::visitors::env_replacer::{build_env_map, EnvReplacer};
 use crate::visitors::fix_helper_inject_position::FixHelperInjectPosition;
 use crate::visitors::fix_symbol_conflict::FixSymbolConflict;
+use crate::visitors::import_template_to_string_literal::ImportTemplateToStringLiteral;
 use crate::visitors::new_url_assets::NewUrlAssets;
 use crate::visitors::provide::Provide;
+use crate::visitors::public_path_assignment::PublicPathAssignment;
 use crate::visitors::react::react;
 use crate::visitors::try_resolve::TryResolve;
 use crate::visitors::ts_strip::ts_strip;
@@ -129,6 +132,7 @@ impl Transform {
                         context: context.clone(),
                         unresolved_mark,
                     }));
+                    visitors.push(Box::new(PublicPathAssignment { unresolved_mark }));
                     // TODO: refact provide
                     visitors.push(Box::new(Provide::new(
                         context.config.providers.clone(),
@@ -140,10 +144,11 @@ impl Transform {
                     }));
                     // TODO: move ContextModuleVisitor out of plugin
                     visitors.push(Box::new(ContextModuleVisitor { unresolved_mark }));
+                    visitors.push(Box::new(ImportTemplateToStringLiteral {}));
                     // DynamicImportToRequire must be after ContextModuleVisitor
                     // since ContextModuleVisitor will add extra dynamic imports
                     if context.config.dynamic_import_to_require {
-                        visitors.push(Box::new(DynamicImportToRequire { unresolved_mark }));
+                        visitors.push(Box::new(DynamicImportToRequire::new(unresolved_mark)));
                     }
                     if matches!(context.config.platform, crate::config::Platform::Node) {
                         visitors.push(Box::new(features::node::MockFilenameAndDirname {
@@ -155,10 +160,12 @@ impl Transform {
 
                     // folders
                     let mut folders: Vec<Box<dyn Fold>> = vec![];
-                    // decorators should go before preset_env, when compile down to es5, classes become functions, then the decorators on the functions will be removed silently.
+                    // decorators should go before preset_env, when compile down to es5,
+                    // classes become functions, then the decorators on the functions
+                    // will be removed silently.
                     folders.push(Box::new(decorators(decorators::Config {
                         legacy: true,
-                        emit_metadata: false,
+                        emit_metadata: context.config.emit_decorator_metadata,
                         ..Default::default()
                     })));
                     let comments = origin_comments.get_swc_comments().clone();
@@ -177,6 +184,7 @@ impl Transform {
                         assumptions,
                         &mut FeatureFlag::default(),
                     )));
+                    folders.push(Box::new(reserved_words::reserved_words()));
                     folders.push(Box::new(paren_remover(Default::default())));
                     // simplify, but keep top level dead code
                     // e.g. import x from 'foo'; but x is not used

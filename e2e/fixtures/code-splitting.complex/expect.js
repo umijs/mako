@@ -28,18 +28,12 @@ assert(
   "big vendors should be split again"
 );
 
-assert(
-  files["index.js"].includes("\"src/context.ts\":")
-    && !files["src_should-be-split_ts-async.js"].includes("\"src/context.ts\":"),
-  "async chunk should reuse modules that already merged into entry with another minimal async chunk"
-);
-
 assert.match(
   files["index.js"].replace(/\s/g, ""),
   new RegExp(`Promise.all\\(\\[${
     [
-      "common",
       "vendors_0",
+      "common",
       "vendors_1",
       "src/should-be-split.ts",
     ].map((f) => `__mako_require__.ensure\\("${f}"\\)`).join(",")

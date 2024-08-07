@@ -117,6 +117,8 @@ pub struct BuildParams {
         propWhiteList?: string[];
         selectorBlackList?: string[];
         selectorWhiteList?: string[];
+        selectorDoubleList?: string[];
+        mediaQuery?: boolean;
     };
     stats?: boolean;
     hash?: boolean;
@@ -167,6 +169,7 @@ pub struct BuildParams {
     };
     watch?: {
         ignoredPaths?: string[];
+        _nodeModulesRegexes?: string[];
     };
 }"#)]
     pub config: serde_json::Value,
@@ -215,7 +218,7 @@ pub fn build(env: Env, build_params: BuildParams) -> napi::Result<JsObject> {
                 }
                 let d = DevServer::new(root.clone(), Arc::new(compiler));
                 deferred.resolve(move |env| env.get_undefined());
-                d.serve(move |_params| {}).await;
+                d.serve().await;
                 Ok(())
             },
             move |&mut _, _res| Ok(()),
