@@ -375,7 +375,7 @@ e.g.
 
 ### less
 
-- 类型：`{ modifyVars?: Record<string, string>, sourceMap?: { sourceMapFileInline?: boolean, outputSourceFiles?: boolean }, math?: "always" | "strict" | "parens-division" | "parens" | "strict-legacy" | number, plugins?: ([string, Record<string, any>]|string)[] }`
+- 类型：`{ modifyVars?: Record<string, string>, globalVars?: Record<string, string>, sourceMap?: { sourceMapFileInline?: boolean, outputSourceFiles?: boolean }, math?: "always" | "strict" | "parens-division" | "parens" | "strict-legacy" | number, plugins?: ([string, Record<string, any>]|string)[] }`
 - 默认值：`{}`
 
 指定 less 配置。
@@ -387,6 +387,10 @@ e.g.
   modifyVars: {
     'primary-color': '#1DA57A',
     'link-color': '#1DA57A',
+  },
+  globalVars: {
+    'primary-color': '#ffff00',
+    hack: 'true; @import "your-global-less-file.less";',
   },
   sourceMap: {
     sourceMapFileInline: true,
