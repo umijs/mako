@@ -392,7 +392,10 @@ function checkConfig(opts) {
     .some((p) => {
       const isImportPlugin = /^import$|babel-plugin-import/.test(p[0]);
       const isEmotionPlugin = p === '@emotion' || p === '@emotion/babel-plugin';
-      if (!isImportPlugin && !isEmotionPlugin) {
+      const isDynamicImportNode = /^(babel-plugin-)?dynamic-import-node$/.test(
+        p,
+      );
+      if (!isImportPlugin && !isEmotionPlugin && !isDynamicImportNode) {
         warningKeys.push('extraBabelPlugins');
         return true;
       }
@@ -450,12 +453,20 @@ async function getMakoConfig(opts) {
   }
   const webpackConfig = webpackChainConfig.toConfig();
   let umd = false;
-  if (
-    webpackConfig.output &&
-    webpackConfig.output.libraryTarget === 'umd' &&
-    webpackConfig.output.library
-  ) {
-    umd = webpackConfig.output.library;
+  let { dynamicImportToRequire } = opts.config;
+  if (webpackConfig.output) {
+    // handle asyncChunks config
+    if (webpackConfig.output.asyncChunks === false) {
+      dynamicImportToRequire = true;
+    }
+
+    // handle umd output config
+    if (
+      webpackConfig.output.libraryTarget === 'umd' &&
+      webpackConfig.output.library
+    ) {
+      umd = webpackConfig.output.library;
+    }
   }
 
   let platform = 'browser';
@@ -470,7 +481,6 @@ async function getMakoConfig(opts) {
     mdx,
     devtool,
     cjs,
-    dynamicImportToRequire,
     jsMinifier,
     externals,
     copy = [],
@@ -520,11 +530,19 @@ async function getMakoConfig(opts) {
   if (process.env.COMPRESS === 'none') {
     minify = false;
   }
-  // transform babel-plugin-import plugins to transformImport
   const extraBabelPlugins = [
     ...(opts.extraBabelPlugins || []),
     ...(opts.config.extraBabelPlugins || []),
   ];
+
+  // transform babel-plugin-dynamic-import-node to dynamicImportToRequire
+  dynamicImportToRequire ??= Boolean(
+    extraBabelPlugins.find((p) =>
+      /^(babel-plugin-)?dynamic-import-node$/.test(p),
+    ),
+  );
+
+  // transform babel-plugin-import plugins to transformImport
   const transformImport = extraBabelPlugins
     .filter((p) => /^import$|babel-plugin-import/.test(p[0]))
     .map(([_, v]) => {
