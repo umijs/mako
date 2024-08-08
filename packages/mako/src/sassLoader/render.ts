@@ -1,8 +1,8 @@
 import { type Options } from 'sass';
 
-module.exports = async function render(param: {
+async function render(param: {
   filename: string;
-  opts: Omit<Options<'async'>, 'functions'>;
+  opts: Options<'async'> & { resources: string[] };
 }): Promise<{ content: string; type: 'css' }> {
   let sass;
   try {
@@ -18,4 +18,6 @@ module.exports = async function render(param: {
       throw new Error(err.toString());
     });
   return { content: result.css, type: 'css' };
-};
+}
+
+export { render };

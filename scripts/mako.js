@@ -40,6 +40,7 @@ function getMakoConfig() {
   makoConfig.resolve.alias = makoConfig.resolve.alias || [];
   makoConfig.less = {
     modifyVars: makoConfig.less?.theme || {},
+    globalVars: makoConfig.less?.globalVars,
   };
   makoConfig.plugins = getPlugins();
   makoConfig.resolve.alias.forEach((alias) => {
