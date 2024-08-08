@@ -40,7 +40,7 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
     } else {
       try {
         // run mako build
-        await $`${path.join(root, 'scripts', 'mako.js')} ${cwd}`;
+        await $`node ${path.join(root, 'scripts', 'mako.js')} ${cwd}`;
       } catch (e) {
         const isErrorCase = dir.split('.').includes('error');
         if (isErrorCase) {
