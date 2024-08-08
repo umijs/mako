@@ -8,7 +8,7 @@ use std::vec;
 
 use anyhow::Result;
 use arcstr::ArcStr;
-use indexmap::IndexSet;
+use hashlink::LinkedHashSet;
 use swc_core::css::ast::Stylesheet;
 
 use crate::compiler::Context;
@@ -145,7 +145,7 @@ impl<'cp> ChunkPot<'cp> {
     }
 
     fn split_modules<'a>(
-        module_ids: &'a IndexSet<ModuleId>,
+        module_ids: &LinkedHashSet<ModuleId>,
         module_graph: &'a ModuleGraph,
         context: &'a Arc<Context>,
     ) -> (JsModules<'a>, Option<CssModules<'a>>) {
@@ -156,13 +156,11 @@ impl<'cp> ChunkPot<'cp> {
         let mut module_raw_hash_map: HashMap<ArcStr, u64> = Default::default();
         let mut css_raw_hashes = vec![];
 
-        let module_ids: Vec<_> = module_ids.iter().collect();
-
-        for module_id in module_ids {
+        module_ids.iter().for_each(|module_id| {
             let module = module_graph.get_module(module_id).unwrap();
 
             if module.info.is_none() {
-                continue;
+                return;
             }
 
             let module_info = module.info.as_ref().unwrap();
@@ -174,22 +172,13 @@ impl<'cp> ChunkPot<'cp> {
             }
 
             if let ModuleAst::Css(ast) = ast {
-                // only apply the last css module if chunk depend on it multiple times
-                // make sure the rules order is correct
-                if let Some(index) = merged_css_modules
-                    .iter()
-                    .position(|(id, _)| id.eq(&module.id.id))
-                {
-                    merged_css_modules.remove(index);
-                }
-
                 // not add empty css to chunk
                 if !ast.ast.rules.is_empty() {
                     merged_css_modules.push((module.id.id.clone(), &ast.ast));
                     css_raw_hashes.push(module_info.raw_hash);
                 }
             }
-        }
+        });
 
         let raw_hash = hash_hashmap(&module_raw_hash_map);
 

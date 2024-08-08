@@ -4,6 +4,7 @@ use std::string::String;
 use arcstr::ArcStr;
 use base64::engine::general_purpose;
 use base64::Engine;
+use hashlink::LinkedHashSet;
 use indexmap::{IndexMap, IndexSet};
 use regex::Regex;
 use tracing::debug;
@@ -125,7 +126,7 @@ impl Compiler {
         let async_chunk_root_modules = chunks
             .iter()
             .filter_map(|chunk| match chunk.chunk_type {
-                ChunkType::Async => chunk.modules.last(),
+                ChunkType::Async => chunk.modules.iter().last(),
                 _ => None,
             })
             .collect::<Vec<_>>();
@@ -213,7 +214,7 @@ impl Compiler {
                         .module_to_chunks
                         .keys()
                         .cloned()
-                        .collect::<IndexSet<_>>(),
+                        .collect::<LinkedHashSet<_>>(),
                     id: ChunkId { id: "".into() },
                     chunk_type: ChunkType::Sync,
                     content: None,
@@ -439,7 +440,7 @@ impl Compiler {
                     .module_to_chunks
                     .keys()
                     .cloned()
-                    .collect::<IndexSet<_>>(),
+                    .collect::<LinkedHashSet<_>>(),
                 id: info_chunk_id.clone(),
                 chunk_type: info_chunk_type,
                 content: None,

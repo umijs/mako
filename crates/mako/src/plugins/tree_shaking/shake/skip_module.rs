@@ -19,6 +19,7 @@ use crate::plugins::tree_shaking::shake::strip_context;
 use crate::plugins::tree_shaking::statement_graph::{
     ExportSpecifierInfo, ImportSpecifierInfo, StatementId,
 };
+use crate::{mako_profile_function, mako_profile_scope};
 
 #[derive(Debug)]
 pub struct ReExportReplace {
@@ -166,6 +167,8 @@ pub(super) fn skip_module_optimize(
     tree_shake_modules_map: &HashMap<ModuleId, RefCell<TreeShakeModule>>,
     _context: &Arc<Context>,
 ) -> Result<()> {
+    mako_profile_function!();
+
     let mut re_export_replace_map: HashMap<
         ModuleId,
         Vec<(StatementId, Vec<ReExportReplace>, String)>,
@@ -340,6 +343,8 @@ pub(super) fn skip_module_optimize(
     }
 
     while current_index < len {
+        mako_profile_scope!("skip", &tree_shake_modules_ids[current_index].id);
+
         let current_module_id = &tree_shake_modules_ids[current_index];
 
         let mut replaces = vec![];

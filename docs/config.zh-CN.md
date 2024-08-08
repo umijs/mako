@@ -375,7 +375,7 @@ e.g.
 
 ### less
 
-- 类型：`{ modifyVars?: Record<string, string>, sourceMap?: { sourceMapFileInline?: boolean, outputSourceFiles?: boolean }, math?: "always" | "strict" | "parens-division" | "parens" | "strict-legacy" | number, plugins?: ([string, Record<string, any>]|string)[] }`
+- 类型：`{ modifyVars?: Record<string, string>, globalVars?: Record<string, string>, sourceMap?: { sourceMapFileInline?: boolean, outputSourceFiles?: boolean }, math?: "always" | "strict" | "parens-division" | "parens" | "strict-legacy" | number, plugins?: ([string, Record<string, any>]|string)[] }`
 - 默认值：`{}`
 
 指定 less 配置。
@@ -387,6 +387,10 @@ e.g.
   modifyVars: {
     'primary-color': '#1DA57A',
     'link-color': '#1DA57A',
+  },
+  globalVars: {
+    'primary-color': '#ffff00',
+    hack: 'true; @import "your-global-less-file.less";',
   },
   sourceMap: {
     sourceMapFileInline: true,
@@ -669,14 +673,13 @@ function App() {
 
 ### sass
 
-- 类型: `Omit<sass.Options<'async'>,'functions'>`
+- 类型: `Options<'async'>`
 - 默认值: `{}`
 
 > 未安装 `sass` 包。请运行 `npm install sass` 进行安装。
 
 指定 sass [配置](https://sass-lang.com/documentation/js-api/interfaces/options/).
 
-> [不支持 functions 配置](https://github.com/piscinajs/piscina/issues/130#issuecomment-842164393)，可以在 scss 文件中定义 functions ，然后在头文件中引入使用。
 
 例如：
 

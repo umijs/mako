@@ -389,7 +389,7 @@ impl Compiler {
 
         let chunk_id = entry_module_id.generate(&self.context);
         let mut chunk = Chunk::new(chunk_id.into(), chunk_type.clone());
-        let mut visited_modules: Vec<ModuleId> = vec![entry_module_id.clone()];
+        let mut visited_modules: Vec<&ModuleId> = vec![entry_module_id];
 
         let module_graph = self.context.module_graph.read().unwrap();
 
@@ -419,7 +419,7 @@ impl Compiler {
                     {
                         next_module_ids.push(dep_module_id.clone());
                         // collect normal deps for current head
-                        normal_deps.push(dep_module_id.clone());
+                        normal_deps.push(dep_module_id);
                     }
                     _ => {}
                 }
@@ -433,7 +433,7 @@ impl Compiler {
 
         // add modules to chunk as dfs order
         for module_id in visited_modules {
-            chunk.add_module(module_id);
+            chunk.add_module(module_id.clone());
         }
 
         (chunk, dynamic_entries, worker_entries)

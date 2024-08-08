@@ -374,7 +374,7 @@ Specify the size limit of the assets file that needs to be converted to `base64`
 
 ### less
 
-- Type: `{ modifyVars?: Record<string, string>, sourceMap?: { sourceMapFileInline?: boolean, outputSourceFiles?: boolean }, math?: "always" | "strict" | "parens-division" | "parens" | "strict-legacy" | number, plugins?: ([string, Record<string, any>]|string)[] }`
+- Type: `{ modifyVars?: Record<string, string>, globalVars?: Record<string, string>, sourceMap?: { sourceMapFileInline?: boolean, outputSourceFiles?: boolean }, math?: "always" | "strict" | "parens-division" | "parens" | "strict-legacy" | number, plugins?: ([string, Record<string, any>]|string)[] }`
 - Default: `{}`
 
 Specify the less configuration.
@@ -386,6 +386,10 @@ e.g.
   modifyVars: {
     'primary-color': '#1DA57A',
     'link-color': '#1DA57A',
+  },
+  globalVars: {
+    'primary-color': '#ffff00',
+    hack: 'true; @import "your-global-less-file.less";',
   },
   sourceMap: {
     sourceMapFileInline: true,
@@ -669,14 +673,13 @@ Child configuration items:
 
 ### sass
 
-- Type: `Omit<sass.Options<'async'>,'functions'>`
+- Type: `Options<'async'>`
 - Default: `{}`
 
 > The "sass" package is not installed. Please run "npm install sass" to install it.
 
 Specify the sass [configuration](https://sass-lang.com/documentation/js-api/interfaces/options/).
 
-> [functions configuration not supported](https://github.com/piscinajs/piscina/issues/130#issuecomment -842164393), functions can be defined in the scss file and then introduced for use in the header file.
 
 e.g.
 
