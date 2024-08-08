@@ -1,16 +1,26 @@
+
+## 0.8.0
+
+`2024-08-08`
+
+* [Breaking Change] refactor: not write stats.json anymore by [@xusd320](https://github.com/xusd320) in https://github.com/umijs/mako/pull/1485
+* feat: less support "globalVars" by [@gin-lsl](https://github.com/gin-lsl) in https://github.com/umijs/mako/pull/1465
+* feat(bundler-mako): generate dynamicImportToRequire from babel and webpack config by [@PeachScript](https://github.com/PeachScript) in https://github.com/umijs/mako/pull/1479
+* refactor: avoid underscore prefix for chunk file name by [@PeachScript](https://github.com/PeachScript) in https://github.com/umijs/mako/pull/1471
+
 ## 0.7.9
+
 `2024-08-01`
 
-- feat: generate_end with stats by[@xusd320] in [#1450](https://github.com/umijs/mako/pull/1450)
-- feat: support sass by[@xiaohuoni] in [#1443](https://github.com/umijs/mako/pull/1443)
-- feat: sass option support function by[@xiaohuoni] in [#1461](https://github.com/umijs/mako/pull/1461)
-- fix: double value lose by[@xiaohuoni] in [#1462](https://github.com/umijs/mako/pull/1462)
-- perf: use hashlink, speed up codeSplitting by 300% when building big project by[@xusd320] in [#1460](https://github.com/umijs/mako/pull/1460)
-- perf(tree-shaking): parallelize tree shaking module map init by[@stormslowly] in https://github.com/umijs/mako/pull/1452
-
-
+- feat: generate_end with stats by [@xusd320](https://github.com/xusd320) in [#1450](https://github.com/umijs/mako/pull/1450)
+- feat: support sass by [@xiaohuoni] in [#1443](https://github.com/umijs/mako/pull/1443)
+- feat: sass option support function by [@xiaohuoni](https://github.com/xiaohuoni) in [#1461](https://github.com/umijs/mako/pull/1461)
+- fix: double value lose by [@xiaohuoni](https://github.com/xiaohuoni) in [#1462](https://github.com/umijs/mako/pull/1462)
+- perf: use hashlink, speed up codeSplitting by 300% when building big project by [@xusd320](https://github.com/xusd320) in [#1460](https://github.com/umijs/mako/pull/1460)
+- perf(tree-shaking): parallelize tree shaking module map init by [@stormslowly](https://github.com/stormslowly) in https://github.com/umijs/mako/pull/1452
 
 ## 0.7.8
+
 `2024-07-25`
 
 - feat(px2rem): add mediaQuery config by [@stormslowly](https://github.com/stormslowly) in [#1431](https://github.com/umijs/mako/pull/1431)
@@ -21,6 +31,7 @@
 
 
 ## 0.7.7
+
 `2024-07-23`
 
 - Perf: remove an ast clone when tree-shaking by [@stormslowly](https://github.com/stormslowly) in [#1429](https://github.com/umijs/mako/pull/1429)
