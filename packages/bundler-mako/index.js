@@ -32,6 +32,16 @@ exports.build = async function (opts) {
     makoConfig.moduleIdStrategy = 'hashed';
   }
 
+  makoConfig.plugins = makoConfig.plugins || [];
+
+  let statsJson;
+  makoConfig.plugins.push({
+    name: 'mako-stats',
+    generateEnd: (args) => {
+      statsJson = args.stats;
+    },
+  });
+
   const { build } = require('@umijs/mako');
   try {
     await build({
@@ -46,13 +56,6 @@ exports.build = async function (opts) {
     err.stack = null;
     throw err;
   }
-  const outputPath = path.resolve(opts.cwd, opts.config.outputPath || 'dist');
-
-  const statsJsonPath = path.join(outputPath, 'stats.json');
-  const statsJson = JSON.parse(fs.readFileSync(statsJsonPath, 'utf-8'));
-
-  // remove stats.json file if user did not enable it
-  if (originStats !== true) fs.rmSync(statsJsonPath);
 
   const stats = {
     compilation: {
