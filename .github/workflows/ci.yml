@@ -90,7 +90,7 @@ jobs:
       fail-fast: false
       matrix:
         script: [ "test:e2e", "test:hmr", "test:umi" ]
-        os: [ ubuntu-latest ]
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
