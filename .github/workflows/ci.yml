@@ -3,11 +3,11 @@ name: CI
 on:
   workflow_dispatch:
   push:
-    branches: [master]
+    branches: [ master ]
     paths-ignore:
       - '**/*.md'
   pull_request:
-    types: [opened, synchronize]
+    types: [ opened, synchronize ]
     paths-ignore:
       - '**/*.md'
 
@@ -48,7 +48,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest ]
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
     runs-on: ${{ matrix.os }}
     if: ${{ !startsWith(github.event.head_commit.message, 'release:') && !startsWith(github.event.head_commit.message, 'ci:') && !startsWith(github.event.head_commit.message, 'docs:') }}
     steps:
@@ -60,7 +60,7 @@ jobs:
         uses: ./.github/actions/rustup
         with:
           clippy: true
-          save-cache:  true
+          save-cache: true
           shared-key: mako-build-${{ matrix.os }}-${{ steps.week_mark.outputs.EXPIRES_WEEK_MARK }}-${{ hashFiles('./Cargo.lock') }}
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -82,7 +82,7 @@ jobs:
             ./packages/mako/*.node
             ./packages/mako/binding.*
             ./packages/mako/dist
-          if-no-files-found: error 
+          if-no-files-found: error
   test_e2e:
     name: E2E
     needs: build
@@ -91,7 +91,7 @@ jobs:
       matrix:
         script: [ "test:e2e", "test:hmr", "test:umi" ]
         os: [ ubuntu-latest ]
-    runs-on: ${{ matrix.os }} 
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - name: Install pnpm
@@ -106,11 +106,11 @@ jobs:
       - run: |
           pnpm i
           pnpm playwright install chromium
-      
+
       - name: Download bindings
         uses: actions/download-artifact@v4
         with:
-          name: bindings-${{ matrix.os }} 
+          name: bindings-${{ matrix.os }}
           path: packages/mako/
       - name: LS
         run: ls -l ./packages/mako
@@ -131,7 +131,7 @@ jobs:
         with:
           clippy: true
           shared-key: x86-cargo-test-ubuntu-latest-${{ steps.week_mark.outputs.EXPIRES_WEEK_MARK }}-${{ hashFiles('./Cargo.lock') }}
-          
+
       - name: Clippy
         run: cargo clippy --locked -- -D warnings
 
