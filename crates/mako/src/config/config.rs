@@ -718,8 +718,8 @@ const DEFAULT_CONFIG: &str = r#"
     "rscServer": false,
     "rscClient": false,
     "experimental": {
-      "webpackSyntaxValidate": [], 
-      "requireContext": true, 
+      "webpackSyntaxValidate": [],
+      "requireContext": true,
       "detectCircularDependence": { "ignores": ["node_modules"], "graphviz": false }
     },
     "useDefineForClassFields": true,
