@@ -1,1 +1,1 @@
-{ "dynamicImportToRequire": true }
+{ "dynamicImportToRequire": true, "moduleIdStrategy": "hashed"}

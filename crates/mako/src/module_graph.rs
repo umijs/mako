@@ -13,7 +13,7 @@ use crate::module::{Dependencies, Dependency, Module, ModuleId, ResolveType};
 
 #[derive(Debug)]
 pub struct ModuleGraph {
-    id_index_map: HashMap<ModuleId, NodeIndex<DefaultIx>>,
+    pub id_index_map: HashMap<ModuleId, NodeIndex<DefaultIx>>,
     pub graph: StableDiGraph<Module, Dependencies>,
     entries: HashSet<ModuleId>,
 }
