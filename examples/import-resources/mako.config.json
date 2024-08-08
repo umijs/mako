@@ -1,6 +1,8 @@
 {
   "inlineLimit": 0,
-  "stats": true,
+  "stats": {
+    "modules": true
+  },
   "mdx": true,
   "manifest": {},
   "manifestConfig": {
