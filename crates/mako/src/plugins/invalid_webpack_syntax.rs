@@ -36,7 +36,6 @@ impl Plugin for InvalidWebpackSyntaxPlugin {
         ast.visit_with(&mut InvalidSyntaxVisitor {
             unresolved_mark: param.unresolved_mark,
             handler: param.handler,
-            path: param.path,
         });
         Ok(())
     }
@@ -45,7 +44,6 @@ impl Plugin for InvalidWebpackSyntaxPlugin {
 pub struct InvalidSyntaxVisitor<'a> {
     unresolved_mark: Mark,
     pub handler: &'a Handler,
-    pub path: &'a str,
 }
 
 impl<'a> Visit for InvalidSyntaxVisitor<'a> {
@@ -65,7 +63,7 @@ impl<'a> Visit for InvalidSyntaxVisitor<'a> {
         let is_webpack_prefix = n.sym.starts_with("__webpack_")
             && &n.sym != "__webpack_nonce__"
             && &n.sym != "__webpack_public_path__";
-        let has_binding = n.span.ctxt.outer() != self.unresolved_mark;
+        let has_binding = n.ctxt.outer() != self.unresolved_mark;
         if is_webpack_prefix && !has_binding {
             self.handler
                 .struct_span_err(
@@ -92,9 +90,9 @@ fn is_member_prop(
         ..
     } = expr
     {
-        let is_obj_match = ident.sym.to_string() == obj;
-        let has_binding = ident.span.ctxt.outer() != unresolved_mark;
-        let is_prop_match = prop_ident.sym.to_string() == prop;
+        let is_obj_match = ident.sym == obj;
+        let has_binding = ident.ctxt.outer() != unresolved_mark;
+        let is_prop_match = prop_ident.sym == prop;
         is_obj_match && (check_obj_binding && !has_binding) && is_prop_match
     } else {
         false

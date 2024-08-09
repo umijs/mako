@@ -64,6 +64,7 @@ pub struct JsHooks {
 }
 
 pub struct TsFnHooks {
+    #[allow(dead_code)]
     pub name: String,
     pub build_start: Option<threadsafe_function::ThreadsafeFunction<ReadMessage<(), ()>>>,
     pub generate_end:

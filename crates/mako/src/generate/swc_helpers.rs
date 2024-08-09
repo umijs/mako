@@ -1,6 +1,7 @@
 use indexmap::IndexSet;
 
 pub struct SwcHelpers {
+    #[allow(dead_code)]
     pub helpers: IndexSet<String>,
 }
 

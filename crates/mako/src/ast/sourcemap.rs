@@ -69,11 +69,22 @@ impl From<sourcemap::SourceMap> for RawSourceMap {
 impl From<RawSourceMap> for sourcemap::SourceMap {
     fn from(rsm: RawSourceMap) -> Self {
         Self::new(
-            rsm.file,
+            rsm.file.map(|f| f.into_boxed_str().into()),
             rsm.tokens,
-            rsm.names,
-            rsm.sources,
-            Some(rsm.sources_content),
+            rsm.names
+                .into_iter()
+                .map(|n| n.into_boxed_str().into())
+                .collect(),
+            rsm.sources
+                .into_iter()
+                .map(|n| n.into_boxed_str().into())
+                .collect(),
+            Some(
+                rsm.sources_content
+                    .into_iter()
+                    .map(|op_string| op_string.map(|s| s.into_boxed_str().into()))
+                    .collect(),
+            ),
         )
     }
 }

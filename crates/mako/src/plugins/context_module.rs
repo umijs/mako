@@ -17,6 +17,7 @@ use crate::build::load::JS_EXTENSIONS;
 use crate::compiler::Context;
 use crate::plugin::{Plugin, PluginLoadParam};
 use crate::resolve::get_module_extensions;
+use crate::DUMMY_CTXT;
 
 pub struct ContextModulePlugin {}
 
@@ -151,6 +152,7 @@ impl VisitMut for ContextModuleVisitor {
                 let args_literals = format!("{}?context&glob={}", from, glob);
 
                 let mut ctxt_call_expr = CallExpr {
+                    ctxt: Default::default(),
                     callee: expr.callee.clone(),
                     args: vec![quote_str!(args_literals.clone()).as_arg()],
                     span: DUMMY_SP,
@@ -175,7 +177,7 @@ impl VisitMut for ContextModuleVisitor {
                     .as_callee();
                     // TODO: allow use await in args
                     // eg: import(`./i18n${await xxx()}`)
-                    expr.args = vec![member_expr!(DUMMY_SP, m.default)
+                    expr.args = vec![member_expr!(DUMMY_CTXT, DUMMY_SP, m.default)
                         .as_call(DUMMY_SP, expr.args.clone())
                         .as_expr()
                         .to_owned()
@@ -203,8 +205,7 @@ fn try_replace_context_arg(
         // handle `(...)`
         Expr::Paren(ParenExpr {
             expr: paren_expr, ..
-        }) => try_replace_context_arg(paren_expr, has_visit_top_bin)
-            .map(|(prefix, suffix)| (prefix, suffix)),
+        }) => try_replace_context_arg(paren_expr, has_visit_top_bin),
 
         // handle `'./foo/' + bar`
         Expr::Bin(BinExpr {

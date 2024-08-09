@@ -84,13 +84,14 @@ impl Transform {
                             cm.clone(),
                             context.clone(),
                             top_level_mark,
+                            unresolved_mark,
                         )))
                     }
                     // strip should be ts only
                     // since when use this in js, it will remove all unused imports
                     // which is not expected as what webpack does
                     if is_ts {
-                        visitors.push(Box::new(ts_strip(top_level_mark)))
+                        visitors.push(Box::new(ts_strip(unresolved_mark, top_level_mark)));
                     }
                     // named default export
                     if context.args.watch && !file.is_under_node_modules && is_jsx {

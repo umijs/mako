@@ -1,7 +1,8 @@
 #![feature(box_patterns)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(let_chains)]
-#![feature(result_option_inspect)]
+
+use swc_core::common::SyntaxContext;
 
 pub mod ast;
 mod build;
@@ -54,3 +55,5 @@ macro_rules! ternary {
         }
     };
 }
+
+pub const DUMMY_CTXT: SyntaxContext = SyntaxContext::empty();

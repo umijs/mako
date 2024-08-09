@@ -14,6 +14,7 @@ pub struct TsxStrip {
     cm: Arc<swc_core::common::SourceMap>,
     context: Arc<Context>,
     top_level_mark: Mark,
+    unresolved_mark: Mark,
 }
 
 impl VisitMut for TsxStrip {
@@ -29,6 +30,7 @@ impl VisitMut for TsxStrip {
             Default::default(),
             tsx_config,
             comments,
+            self.unresolved_mark,
             self.top_level_mark,
         ));
         *n = p.module().unwrap();
@@ -39,10 +41,12 @@ pub fn tsx_strip(
     cm: Arc<swc_core::common::SourceMap>,
     context: Arc<Context>,
     top_level_mark: Mark,
+    unresolved_mark: Mark,
 ) -> impl VisitMut {
     TsxStrip {
         cm,
         context,
         top_level_mark,
+        unresolved_mark,
     }
 }

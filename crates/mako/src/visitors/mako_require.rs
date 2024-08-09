@@ -16,7 +16,7 @@ impl MakoRequire {
     fn replace_require(&mut self, ident: &mut Ident) {
         // replace native require to __mako_require__ except ignored identities
         if is_ident_undefined(ident, "require", &self.unresolved_mark) {
-            *ident = Ident::new(MAKO_REQUIRE.into(), ident.span);
+            *ident = Ident::new(MAKO_REQUIRE.into(), ident.span, ident.ctxt);
         }
     }
 }
