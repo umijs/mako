@@ -245,7 +245,7 @@ impl Compiler {
                     template:
                         "● {prefix:.bold} {bar:25.green/white.dim} ({percent}%) {wide_msg:.dim}"
                             .to_string(),
-                    progress_chars: "█▉".to_string(),
+                    progress_chars: "▨▨".to_string(),
                 },
             )),
         ];
