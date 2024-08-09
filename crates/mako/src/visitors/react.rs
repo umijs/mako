@@ -160,8 +160,21 @@ fn react_refresh_module_postfix(context: &Arc<Context>) -> Box<dyn VisitMut> {
         code: r#"
 if (prevRefreshReg) self.$RefreshReg$ = prevRefreshReg;
 if (prevRefreshSig) self.$RefreshSig$ = prevRefreshSig;
+function registerExportsForReactRefresh(filename, moduleExports) {
+  for (const key in moduleExports) {
+    try {
+        if (key === "__esModule") continue;
+        const exportValue = moduleExports[key];
+        if (RefreshRuntime.isLikelyComponentType(exportValue)) {
+        RefreshRuntime.register(exportValue, filename + " " + key);
+        }
+    } catch (e) {
+        // in case the moduleExports[key] is not accessible due depedence loop
+    }
+  }
+}
 function $RefreshIsReactComponentLike$(moduleExports) {
-  if (RefreshRuntime.isLikelyComponentType(moduleExports.default || moduleExports)) {
+  if (RefreshRuntime.isLikelyComponentType(moduleExports || moduleExports.default)) {
     return true;
   }
   for (var key in moduleExports) {
@@ -175,6 +188,7 @@ function $RefreshIsReactComponentLike$(moduleExports) {
   }
   return false;
 }
+registerExportsForReactRefresh(module.id, module.exports);
 if ($RefreshIsReactComponentLike$(module.exports)) {
     module.meta.hot.accept();
     RefreshRuntime.performReactRefresh();

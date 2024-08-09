@@ -6,5 +6,5 @@ import 'b'
 import 'c'
 import 'd'
 
- * but actucally: a, b, c imports are removed
+ * but actually: a, b, c imports are removed
  */
