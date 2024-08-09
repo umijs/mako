@@ -123,7 +123,7 @@ prevRefreshSig = self.$RefreshSig$;
 self.$RefreshReg$ = (type, id) => {
   RefreshRuntime.register(type, module.id + id);
 };
-self.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
+self.$RefreshSig$ = () => " %exports%";
 "#
     .to_string();
 
@@ -161,12 +161,18 @@ fn react_refresh_module_postfix(context: &Arc<Context>) -> Box<dyn VisitMut> {
 if (prevRefreshReg) self.$RefreshReg$ = prevRefreshReg;
 if (prevRefreshSig) self.$RefreshSig$ = prevRefreshSig;
 function $RefreshIsReactComponentLike$(moduleExports) {
-  if (RefreshRuntime.isLikelyComponentType(moduleExports.default || moduleExports)) {
+  if (RefreshRuntime.isLikelyComponentType(moduleExports)) {
+    RefreshRuntime.register(moduleExports, module.id + ' %exports%');
+    return true;
+  }
+  if (RefreshRuntime.isLikelyComponentType(moduleExports.default)) {
+    RefreshRuntime.register(moduleExports.default, module.id + ' %exports%');
     return true;
   }
   for (var key in moduleExports) {
     try{
       if (RefreshRuntime.isLikelyComponentType(moduleExports[key])) {
+        RefreshRuntime.register(moduleExports[key], module.id + ' %exports%');
         return true;
       }
     }catch(e){
@@ -196,7 +202,7 @@ mod tests {
     #[test]
     fn test_use_refresh() {
         let code = run("console.log('entry');", true);
-        assert!(code.contains("self.$RefreshSig$ = RefreshRuntime."));
+        assert!(code.contains("self.$RefreshSig$ = ()=>\" %exports%"));
         assert!(code.contains("if (prevRefreshReg) self.$RefreshReg$ = prevRefreshReg;"));
     }
 
