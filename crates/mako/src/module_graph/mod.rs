@@ -2,14 +2,19 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 use fixedbitset::FixedBitSet;
+use hashlink::LinkedHashSet;
+use nohash_hasher::BuildNoHashHasher;
 use petgraph::graph::{DefaultIx, NodeIndex};
-use petgraph::prelude::{Dfs, EdgeRef};
+use petgraph::prelude::Dfs;
 use petgraph::stable_graph::{StableDiGraph, WalkNeighbors};
-use petgraph::visit::IntoEdgeReferences;
+use petgraph::visit::{EdgeRef, IntoEdgeReferences};
 use petgraph::Direction;
 use tracing::debug;
 
 use crate::module::{Dependencies, Dependency, Module, ModuleId, ResolveType};
+
+mod link_back_dfs_visit;
+use link_back_dfs_visit::LinkBackDfs;
 
 #[derive(Debug)]
 pub struct ModuleGraph {
@@ -202,6 +207,28 @@ impl ModuleGraph {
         }
         deps.sort_by_key(|(_, dep)| dep.order);
         deps
+    }
+
+    pub fn get_dependencies_by_link_back_dfs(&self, module_id: &ModuleId) -> Vec<&ModuleId> {
+        let start = self.id_index_map.get(module_id).unwrap();
+        let mut dfs_post_order = LinkBackDfs::new(&self.graph, *start);
+        let mut deps = LinkedHashSet::<usize, BuildNoHashHasher<usize>>::with_hasher(
+            BuildNoHashHasher::default(),
+        );
+        while let Some(nth) = dfs_post_order.next(&self.graph, |ex| {
+            let dependencies = self.graph.edge_weight(ex).unwrap();
+            dependencies.iter().any(|d| {
+                matches!(
+                    d.resolve_type,
+                    ResolveType::DynamicImport | ResolveType::Worker
+                )
+            })
+        }) {
+            deps.insert(nth.index());
+        }
+        deps.iter()
+            .map(|e| &self.graph[NodeIndex::new(*e)].id)
+            .collect()
     }
 
     pub fn get_dependents(&self, module_id: &ModuleId) -> Vec<(&ModuleId, &Dependency)> {
