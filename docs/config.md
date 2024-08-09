@@ -506,6 +506,13 @@ JSHooks is a set of hook functions used to extend the compilation process of Mak
 - `load`, used to load files, return file content and type, type supports `css`, `js`, `jsx`, `ts`, `tsx`
 - `generateEnd`, called after Generate completes, `isFirstCompile` can be used to determine if it is the first compilation, `time` is the compilation time, and `stats` is the compilation statistics information
 
+### progress
+
+- Type: false | { progressChars: string }
+- Default: { progressChars: "▨▨" }
+
+Whether to display the build progress bar.
+
 ### providers
 
 - Type: `Record<string, [string, string]>`

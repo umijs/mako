@@ -36,7 +36,6 @@ pub struct ProgressPluginOptions {
 }
 
 pub struct ProgressPlugin {
-    // TODO 支持接受回调函数
     options: ProgressPluginOptions,
     progress_bar: Mutex<Option<ProgressBar>>,
     module_count: Arc<Mutex<u32>>,

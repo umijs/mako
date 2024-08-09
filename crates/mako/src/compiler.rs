@@ -238,20 +238,22 @@ impl Compiler {
             Arc::new(plugins::emotion::EmotionPlugin {}),
             Arc::new(plugins::tree_shaking::FarmTreeShake {}),
             Arc::new(plugins::detect_circular_dependence::LoopDetector {}),
-            // TODO 通过配置传入开启
-            Arc::new(plugins::progress::ProgressPlugin::new(
+        ];
+        plugins.extend(builtin_plugins);
+
+        let mut config = config;
+
+        if let Some(progress) = &config.progress {
+            plugins.push(Arc::new(plugins::progress::ProgressPlugin::new(
                 plugins::progress::ProgressPluginOptions {
                     prefix: "Mako".to_string(),
                     template:
                         "● {prefix:.bold} {bar:25.green/white.dim} ({percent}%) {wide_msg:.dim}"
                             .to_string(),
-                    progress_chars: "▨▨".to_string(),
+                    progress_chars: progress.progress_chars.clone(),
                 },
-            )),
-        ];
-        plugins.extend(builtin_plugins);
-
-        let mut config = config;
+            )));
+        }
 
         if config.experimental.require_context {
             plugins.push(Arc::new(plugins::require_context::RequireContextPlugin {}))
