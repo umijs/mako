@@ -511,6 +511,13 @@ JSHooks 是一组用来扩展 Mako 编译过程的钩子函数。
 - `load`，用于加载文件，返回文件内容和类型，类型支持 `css`、`js`、`jsx`、`ts`、`tsx`
 - `generateEnd`，生成完成后调用，`isFirstCompile` 可用于判断是否为首次编译，`time` 为编译时间，`stats` 是编译统计信息
 
+### progress
+
+- Type: false | { progressChars: string }
+- Default: { progressChars: "▨▨" }
+
+是否显示构建进度条。
+
 ### providers
 
 - 类型：`Record<string, [string, string]>`
