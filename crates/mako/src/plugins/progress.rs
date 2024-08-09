@@ -1,4 +1,3 @@
-use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -7,8 +6,7 @@ use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 use parking_lot::Mutex;
 
 use crate::ast::file::Content;
-use crate::compiler::{Args, Context};
-use crate::config::Config;
+use crate::compiler::Context;
 use crate::plugin::{Plugin, PluginLoadParam};
 
 /**
@@ -40,8 +38,7 @@ pub struct ProgressPluginOptions {
 pub struct ProgressPlugin {
     // TODO 支持接受回调函数
     options: ProgressPluginOptions,
-    progress_bar: ProgressBar,
-
+    progress_bar: Mutex<Option<ProgressBar>>,
     module_count: Arc<Mutex<u32>>,
     first_build: Mutex<bool>,
     percent: Arc<Mutex<f32>>,
@@ -49,30 +46,40 @@ pub struct ProgressPlugin {
 
 impl ProgressPlugin {
     pub fn new(options: ProgressPluginOptions) -> Self {
-        let progress_bar =
-            ProgressBar::with_draw_target(Some(100), ProgressDrawTarget::stdout_with_hz(100));
-        let progress_bar_style = ProgressStyle::with_template(&options.template)
-            .unwrap()
-            .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
-            .progress_chars(&options.progress_chars);
-
-        progress_bar.set_style(progress_bar_style);
-        progress_bar.enable_steady_tick(Duration::from_millis(200));
-
         Self {
             options,
-            progress_bar,
-
+            progress_bar: Mutex::new(None),
             module_count: Arc::new(Mutex::new(0)),
             first_build: Mutex::new(true),
             percent: Arc::new(Mutex::new(0.1)),
         }
     }
 
+    pub fn init_progress_bar(&self) {
+        let progress_bar =
+            ProgressBar::with_draw_target(Some(100), ProgressDrawTarget::stdout_with_hz(100));
+        let progress_bar_style = ProgressStyle::with_template(&self.options.template)
+            .unwrap()
+            .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
+            .progress_chars(&self.options.progress_chars);
+        progress_bar.set_style(progress_bar_style);
+        progress_bar.enable_steady_tick(Duration::from_millis(200));
+        progress_bar.set_prefix(self.options.prefix.clone());
+        progress_bar.reset();
+        *self.progress_bar.lock() = Some(progress_bar);
+    }
+
     pub fn handler(&self, percent: f32, msg: String, state_items: Vec<String>) {
         self.progress_bar
+            .lock()
+            .as_ref()
+            .unwrap()
             .set_message(msg + " " + state_items.join(" ").as_str());
-        self.progress_bar.set_position((percent * 100.0) as u64);
+        self.progress_bar
+            .lock()
+            .as_ref()
+            .unwrap()
+            .set_position((percent * 100.0) as u64);
     }
 
     pub fn increment_module_count(&self) {
@@ -111,19 +118,8 @@ impl Plugin for ProgressPlugin {
         "progress_plugin"
     }
 
-    fn modify_config(
-        &self,
-        _config: &mut Config,
-        _root: &Path,
-        _args: &Args,
-    ) -> anyhow::Result<()> {
-        self.progress_bar.set_prefix(self.options.prefix.clone());
-        self.progress_bar.reset();
-        // self.handler(0.01, "setup".to_string(), vec!["modify config".to_string()]);
-        Ok(())
-    }
-
     fn build_start(&self, _context: &Arc<Context>) -> anyhow::Result<()> {
+        self.init_progress_bar();
         self.handler(
             0.1,
             "build start".to_string(),
@@ -306,6 +302,9 @@ impl Plugin for ProgressPlugin {
         _context: &Arc<Context>,
     ) -> anyhow::Result<()> {
         self.progress_bar
+            .lock()
+            .as_ref()
+            .unwrap()
             .finish_with_message("Compiled successfully".to_string());
         Ok(())
     }
