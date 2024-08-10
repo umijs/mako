@@ -123,7 +123,7 @@ prevRefreshSig = self.$RefreshSig$;
 self.$RefreshReg$ = (type, id) => {
   RefreshRuntime.register(type, module.id + id);
 };
-self.$RefreshSig$ = ()=>{ throw Error("booom")}
+self.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
 "#
     .to_string();
 
