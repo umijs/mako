@@ -726,8 +726,8 @@ export default App;
 
 runTest('js: entry > react component use hooks', async () => {
   await commonTest(
-      {
-        '/src/App.tsx': `
+    {
+      '/src/App.tsx': `
 import React from 'react';
 function App() {
   const [name] = React.useState("App");
@@ -735,18 +735,18 @@ function App() {
 }
 export default App;
       `,
-        '/src/index.tsx': `
+      '/src/index.tsx': `
 import React from 'react';
 import ReactDOM from "react-dom/client";
 import App from './App';
 ReactDOM.createRoot(document.getElementById("root")!).render(<><App /><section>{Math.random()}</section></>);
     `,
-      },
-      (lastResult) => {
-        assert.equal(lastResult.html, '<div>App</div>', 'Initial render');
-      },
-      {
-        '/src/App.tsx': `
+    },
+    (lastResult) => {
+      assert.equal(lastResult.html, '<div>App</div>', 'Initial render');
+    },
+    {
+      '/src/App.tsx': `
 import React from 'react';
 function App() {
   const [name] = React.useState("App update");
@@ -754,13 +754,13 @@ function App() {
 }
 export default App;
       `,
-      },
-      (thisResult) => {
-        assert.equal(thisResult.html, '<div>App update</div>', 'Second render');
-      },
-      false,
+    },
+    (thisResult) => {
+      assert.equal(thisResult.html, '<div>App update</div>', 'Second render');
+    },
+    false,
   );
-})
+});
 
 runTest('js: entry > react component + js', async () => {
   await commonTest(
