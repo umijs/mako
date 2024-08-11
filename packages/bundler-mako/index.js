@@ -32,6 +32,16 @@ exports.build = async function (opts) {
     makoConfig.moduleIdStrategy = 'hashed';
   }
 
+  makoConfig.plugins = makoConfig.plugins || [];
+
+  let statsJson;
+  makoConfig.plugins.push({
+    name: 'mako-stats',
+    generateEnd: (args) => {
+      statsJson = args.stats;
+    },
+  });
+
   const { build } = require('@umijs/mako');
   try {
     await build({
@@ -46,13 +56,6 @@ exports.build = async function (opts) {
     err.stack = null;
     throw err;
   }
-  const outputPath = path.resolve(opts.cwd, opts.config.outputPath || 'dist');
-
-  const statsJsonPath = path.join(outputPath, 'stats.json');
-  const statsJson = JSON.parse(fs.readFileSync(statsJsonPath, 'utf-8'));
-
-  // remove stats.json file if user did not enable it
-  if (originStats !== true) fs.rmSync(statsJsonPath);
 
   const stats = {
     compilation: {
@@ -354,6 +357,7 @@ function checkConfig(opts) {
       .difference(Object.keys(opts.config.lessLoader), [
         'javascriptEnabled',
         'modifyVars',
+        'globalVars',
         'math',
         'plugins',
       ])
@@ -378,7 +382,10 @@ function checkConfig(opts) {
     .some((p) => {
       const isImportPlugin = /^import$|babel-plugin-import/.test(p[0]);
       const isEmotionPlugin = p === '@emotion' || p === '@emotion/babel-plugin';
-      if (!isImportPlugin && !isEmotionPlugin) {
+      const isDynamicImportNode = /^(babel-plugin-)?dynamic-import-node$/.test(
+        p,
+      );
+      if (!isImportPlugin && !isEmotionPlugin && !isDynamicImportNode) {
         warningKeys.push('extraBabelPlugins');
         return true;
       }
@@ -436,12 +443,20 @@ async function getMakoConfig(opts) {
   }
   const webpackConfig = webpackChainConfig.toConfig();
   let umd = false;
-  if (
-    webpackConfig.output &&
-    webpackConfig.output.libraryTarget === 'umd' &&
-    webpackConfig.output.library
-  ) {
-    umd = webpackConfig.output.library;
+  let { dynamicImportToRequire } = opts.config;
+  if (webpackConfig.output) {
+    // handle asyncChunks config
+    if (webpackConfig.output.asyncChunks === false) {
+      dynamicImportToRequire = true;
+    }
+
+    // handle umd output config
+    if (
+      webpackConfig.output.libraryTarget === 'umd' &&
+      webpackConfig.output.library
+    ) {
+      umd = webpackConfig.output.library;
+    }
   }
 
   let platform = 'browser';
@@ -456,7 +471,6 @@ async function getMakoConfig(opts) {
     mdx,
     devtool,
     cjs,
-    dynamicImportToRequire,
     jsMinifier,
     externals,
     copy = [],
@@ -506,11 +520,19 @@ async function getMakoConfig(opts) {
   if (process.env.COMPRESS === 'none') {
     minify = false;
   }
-  // transform babel-plugin-import plugins to transformImport
   const extraBabelPlugins = [
     ...(opts.extraBabelPlugins || []),
     ...(opts.config.extraBabelPlugins || []),
   ];
+
+  // transform babel-plugin-dynamic-import-node to dynamicImportToRequire
+  dynamicImportToRequire ??= Boolean(
+    extraBabelPlugins.find((p) =>
+      /^(babel-plugin-)?dynamic-import-node$/.test(p),
+    ),
+  );
+
+  // transform babel-plugin-import plugins to transformImport
   const transformImport = extraBabelPlugins
     .filter((p) => /^import$|babel-plugin-import/.test(p[0]))
     .map(([_, v]) => {
@@ -627,6 +649,7 @@ async function getMakoConfig(opts) {
     forkTSChecker: !!forkTSChecker,
     less: {
       modifyVars: opts.config.lessLoader?.modifyVars || opts.config.theme,
+      globalVars: opts.config.lessLoader?.globalVars,
       sourceMap: getLessSourceMapConfig(normalizedDevtool),
       math: opts.config.lessLoader?.math,
       plugins: opts.config.lessLoader?.plugins,

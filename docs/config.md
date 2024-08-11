@@ -374,7 +374,7 @@ Specify the size limit of the assets file that needs to be converted to `base64`
 
 ### less
 
-- Type: `{ modifyVars?: Record<string, string>, sourceMap?: { sourceMapFileInline?: boolean, outputSourceFiles?: boolean }, math?: "always" | "strict" | "parens-division" | "parens" | "strict-legacy" | number, plugins?: ([string, Record<string, any>]|string)[] }`
+- Type: `{ modifyVars?: Record<string, string>, globalVars?: Record<string, string>, sourceMap?: { sourceMapFileInline?: boolean, outputSourceFiles?: boolean }, math?: "always" | "strict" | "parens-division" | "parens" | "strict-legacy" | number, plugins?: ([string, Record<string, any>]|string)[] }`
 - Default: `{}`
 
 Specify the less configuration.
@@ -386,6 +386,10 @@ e.g.
   modifyVars: {
     'primary-color': '#1DA57A',
     'link-color': '#1DA57A',
+  },
+  globalVars: {
+    'primary-color': '#ffff00',
+    hack: 'true; @import "your-global-less-file.less";',
   },
   sourceMap: {
     sourceMapFileInline: true,
@@ -505,6 +509,13 @@ JSHooks is a set of hook functions used to extend the compilation process of Mak
 - `buildStart`, called before Build starts
 - `load`, used to load files, return file content and type, type supports `css`, `js`, `jsx`, `ts`, `tsx`
 - `generateEnd`, called after Generate completes, `isFirstCompile` can be used to determine if it is the first compilation, `time` is the compilation time, and `stats` is the compilation statistics information
+
+### progress
+
+- Type: false | { progressChars: string }
+- Default: { progressChars: "▨▨" }
+
+Whether to display the build progress bar.
 
 ### providers
 

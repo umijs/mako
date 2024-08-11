@@ -1,14 +1,23 @@
+
+## 0.8.0
+
+`2024-08-08`
+
+- Break Change: 不再写入 stats.json 文件 by [@xusd320](https://github.com/xusd320) in [#1485](https://github.com/umijs/mako/pull/1485)
+- 新增: less 支持 “globalVars” 功能 by [@gin-lsl](https://github.com/gin-lsl) in [#1465](https://github.com/umijs/mako/pull/1465)
+- 新增(bundler-mako): 通过 babel 和 webpack 配置生成 dynamicImportToRequire by [@PeachScript](https://github.com/PeachScript) in [#1479](https://github.com/umijs/mako/pull/1479)
+- 优化: 避免 chunk 文件名称使用下划线前缀 by [@PeachScript](https://github.com/PeachScript) in [#1471](https://github.com/umijs/mako/pull/1471)
+
 ## 0.7.9
+
 `2024-08-01`
 
-- 新增: 钩子携带 stats信息 by[@xusd320] in [#1450](https://github.com/umijs/mako/pull/1450)
-- 新增: 支持 saas by[@xiaohuoni] in [#1443](https://github.com/umijs/mako/pull/1443)
-- 新增: saas 配置支持 function by[@xiaohuoni] in [#1461](https://github.com/umijs/mako/pull/1461)
-- 修复: px2rem 没有正确复制 raw_value by[@xiaohuoni] in [#1462](https://github.com/umijs/mako/pull/1462)
-- 优化: 使用 hashlink 让大型项目 codeSplitting 提速 300% by[@xusd320] in [#1460](https://github.com/umijs/mako/pull/1460)
-- 优化: 并行处理树摇逻辑 by[@stormslowly] in https://github.com/umijs/mako/pull/1452
-
-
+- 新增: 钩子携带 stats信息 by [@xusd320](https://github.com/xusd320) in [#1450](https://github.com/umijs/mako/pull/1450)
+- 新增: 支持 saas by [@xiaohuoni](https://github.com/xiaohuoni) in [#1443](https://github.com/umijs/mako/pull/1443)
+- 新增: saas 配置支持 function by [@xiaohuoni](https://github.com/xiaohuoni) in [#1461](https://github.com/umijs/mako/pull/1461)
+- 修复: px2rem 没有正确复制 raw_value by [@xiaohuoni](https://github.com/xiaohuoni) in [#1462](https://github.com/umijs/mako/pull/1462)
+- 优化: 使用 hashlink 让大型项目 codeSplitting 提速 300% by [@xusd320](https://github.com/xusd320) in [#1460](https://github.com/umijs/mako/pull/1460)
+- 优化: 并行处理树摇逻辑 by [@stormslowly](https://github.com/stormslowly) in https://github.com/umijs/mako/pull/1452
 
 ## 0.7.8
 

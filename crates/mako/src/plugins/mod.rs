@@ -11,6 +11,7 @@ pub mod import;
 pub mod invalid_webpack_syntax;
 pub mod manifest;
 pub mod minifish;
+pub mod progress;
 pub mod require_context;
 pub mod runtime;
 pub mod ssu;
