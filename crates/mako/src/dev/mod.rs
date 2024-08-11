@@ -171,14 +171,16 @@ impl DevServer {
                 // staticfile has 302 problems when modify tooooo fast in 1 second
                 // it will response 302 and we will get the old file
                 // TODO: fix the 302 problem?
-                if let Some(res) = context.get_static_content(path_without_slash_start) {
-                    debug!("serve with context.get_static_content: {}", path);
+                if !context.config.write_to_disk {
+                    if let Some(res) = context.get_static_content(path_without_slash_start) {
+                        debug!("serve with context.get_static_content: {}", path);
 
-                    return Ok(hyper::Response::builder()
-                        .status(hyper::StatusCode::OK)
-                        .header(CONTENT_TYPE, content_type)
-                        .body(hyper::Body::from(res))
-                        .unwrap());
+                        return Ok(hyper::Response::builder()
+                            .status(hyper::StatusCode::OK)
+                            .header(CONTENT_TYPE, content_type)
+                            .body(hyper::Body::from(res))
+                            .unwrap());
+                    }
                 }
                 // for cached dep
                 let abs_path = context
