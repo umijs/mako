@@ -37,7 +37,7 @@ swc_core = { workspace = true, features = [
   "__testing_transform",
   "__utils",
   "__visit",
-  "base_node",
+  "base",
   "common_concurrent",
   "common_sourcemap",
   "common_tty",

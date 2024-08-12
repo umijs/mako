@@ -4688,8 +4688,6 @@ dependencies = [
  "indexmap 1.9.3",
  "jsonc-parser",
  "lru",
- "napi",
- "napi-derive",
  "once_cell",
  "parking_lot",
  "pathdiff",
@@ -5022,7 +5020,6 @@ dependencies = [
  "swc_ecma_transforms_typescript",
  "swc_ecma_utils 0.123.0",
  "swc_ecma_visit 0.95.1",
- "swc_nodejs_common",
  "swc_plugin",
  "swc_plugin_macro",
  "swc_plugin_proxy",
@@ -6058,20 +6055,6 @@ dependencies = [
  "dashmap 5.5.3",
  "swc_atoms 0.5.9",
  "swc_common 0.32.1",
-]
-
-[[package]]
-name = "swc_nodejs_common"
-version = "0.0.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c121e55ae90c12401f80a95f0e6de71ba3f3c4dd22b512d163e46fae2f9e175b"
-dependencies = [
- "anyhow",
- "napi",
- "serde",
- "serde_json",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
