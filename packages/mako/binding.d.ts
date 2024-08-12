@@ -7,6 +7,11 @@ export interface TransformOutput {
   code: string;
   map?: string;
 }
+export interface TransformOutput {
+  code: string;
+  map?: string;
+  output?: string;
+}
 export interface JsHooks {
   name?: string;
   load?: (
@@ -227,4 +232,4 @@ export interface BuildParams {
   plugins: Array<JsHooks>;
   watch: boolean;
 }
-export function build(buildParams: BuildParams): Promise<void>;
+export declare function build(buildParams: BuildParams): Promise<void>;
