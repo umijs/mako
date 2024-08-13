@@ -763,3 +763,28 @@ babel-plugin-import 的简化版本，仅支持三个配置项：libraryName，l
 - 默认值：`true`
 
 是否在开发模式下将构建结果写入磁盘。
+
+### duplicatePackageChecker
+
+- 类型：`{ verbose: boolean, showHelp: boolean, emitError: boolean } | false`
+- 默认值：`false`
+
+重复包检查器的配置。
+
+子配置项：
+
+- `verbose`：是否输出详细信息。
+- `showHelp`：是否显示帮助信息。
+- `emitError`：发现重复包时是否抛出错误。
+
+示例：
+
+```json
+{
+  "duplicatePackageChecker": {
+    "verbose": true,
+    "showHelp": true,
+    "emitError": false
+  }
+}
+```

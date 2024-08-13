@@ -763,3 +763,28 @@ e.g. If you want to ignore the `foo` directory under root directory, you can set
 - Default: `true`
 
 Whether to write the build result to disk when mode is development.
+
+### duplicatePackageChecker
+
+- Type: `{ verbose: boolean, showHelp: boolean, emitError: boolean } | false`
+- Default: `false`
+
+Configuration for duplicate package checker.
+
+Child configuration items:
+
+- `verbose`: Whether to output detailed information.
+- `showHelp`: Whether to show help information.
+- `emitError`: Whether to emit an error when duplicate packages are found.
+
+Example:
+
+```json
+{
+  "duplicatePackageChecker": {
+    "verbose": true,
+    "showHelp": true,
+    "emitError": false
+  }
+}
+```
