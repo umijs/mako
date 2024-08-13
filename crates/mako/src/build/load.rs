@@ -38,7 +38,7 @@ const WASM_EXTENSIONS: [&str; 1] = ["wasm"];
 const TOML_EXTENSIONS: [&str; 1] = ["toml"];
 const SVG_EXTENSIONS: [&str; 1] = ["svg"];
 const MD_EXTENSIONS: [&str; 2] = ["md", "mdx"];
-const UNSUPPORTED_EXTENSIONS: [&str; 3] = ["sass", "scss", "stylus"];
+const UNSUPPORTED_EXTENSIONS: [&str; 2] = ["sass", "stylus"];
 
 const SVGR_NAMED_EXPORT: &str = r#"ReactComponent"#;
 

@@ -4,7 +4,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
-use base64::engine::{general_purpose, Engine};
 use bitflags::bitflags;
 use pathdiff::diff_paths;
 use serde::Serialize;
@@ -202,9 +201,10 @@ impl Default for ModuleInfo {
 }
 
 fn md5_hash(source_str: &str, lens: usize) -> String {
-    let digest = md5::compute(source_str);
-    let hash = general_purpose::URL_SAFE.encode(digest.0);
-    hash[..lens].to_string()
+    format!("{:x}", md5::compute(source_str))
+        .chars()
+        .take(lens)
+        .collect::<String>()
 }
 
 pub fn generate_module_id(origin_module_id: String, context: &Arc<Context>) -> String {

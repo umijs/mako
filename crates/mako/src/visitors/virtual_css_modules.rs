@@ -10,7 +10,7 @@ fn is_css_modules_path(path: &str) -> bool {
 }
 
 pub fn is_css_path(path: &str) -> bool {
-    path.ends_with(".css") || path.ends_with(".less")
+    path.ends_with(".css") || path.ends_with(".less") || path.ends_with(".scss")
 }
 
 impl VisitMut for VirtualCSSModules {

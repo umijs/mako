@@ -724,6 +724,84 @@ export default App;
   );
 });
 
+runTest('js: entry > react component use hooks', async () => {
+  await commonTest(
+    {
+      '/src/App.tsx': `
+import React from 'react';
+function App() {
+  const [name] = React.useState("App");
+  return <div>{name}</div>;
+}
+export default App;
+      `,
+      '/src/index.tsx': `
+import React from 'react';
+import ReactDOM from "react-dom/client";
+import App from './App';
+ReactDOM.createRoot(document.getElementById("root")!).render(<><App /><section>{Math.random()}</section></>);
+    `,
+    },
+    (lastResult) => {
+      assert.equal(lastResult.html, '<div>App</div>', 'Initial render');
+    },
+    {
+      '/src/App.tsx': `
+import React from 'react';
+function App() {
+  const [name] = React.useState("App update");
+  return <div>{name}</div>;
+}
+export default App;
+      `,
+    },
+    (thisResult) => {
+      assert.equal(thisResult.html, '<div>App update</div>', 'Second render');
+    },
+    false,
+  );
+});
+
+runTest('js: entry > react component change hooks order', async () => {
+  await commonTest(
+    {
+      '/src/App.tsx': `
+import React from 'react';
+function App() {
+  const [name] = React.useState("App");
+  const [index] = React.useState(0);
+  return <div>{name}-{index}</div>;
+}
+export default App;
+      `,
+      '/src/index.tsx': `
+import React from 'react';
+import ReactDOM from "react-dom/client";
+import App from './App';
+ReactDOM.createRoot(document.getElementById("root")!).render(<><App /><section>{Math.random()}</section></>);
+    `,
+    },
+    (lastResult) => {
+      assert.equal(lastResult.html, '<div>App-0</div>', 'Initial render');
+    },
+    {
+      '/src/App.tsx': `
+import React from 'react';
+function App() {
+  const [index] = React.useState(1);
+  const [name] = React.useState("App");
+  return <div>{name}-{index}</div>;
+}
+export default App;
+      `,
+    },
+    (thisResult) => {
+      assert.equal(thisResult.html, '<div>App-1</div>', 'Second render');
+    },
+    false,
+  );
+});
+
 runTest('js: entry > react component + js', async () => {
   await commonTest(
     {

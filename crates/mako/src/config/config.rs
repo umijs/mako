@@ -92,6 +92,7 @@ create_deserialize_fn!(deserialize_dev_server, DevServerConfig);
 create_deserialize_fn!(deserialize_manifest, ManifestConfig);
 create_deserialize_fn!(deserialize_code_splitting, CodeSplitting);
 create_deserialize_fn!(deserialize_px2rem, Px2RemConfig);
+create_deserialize_fn!(deserialize_progress, ProgressConfig);
 create_deserialize_fn!(deserialize_umd, String);
 create_deserialize_fn!(deserialize_devtool, DevtoolConfig);
 create_deserialize_fn!(deserialize_tree_shaking, TreeShakingStrategy);
@@ -252,6 +253,12 @@ pub struct Px2RemConfig {
     pub min_pixel_value: f64,
     #[serde(rename = "mediaQuery", default)]
     pub media_query: bool,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct ProgressConfig {
+    #[serde(rename = "progressChars", default)]
+    pub progress_chars: String,
 }
 
 impl Default for Px2RemConfig {
@@ -496,6 +503,8 @@ pub struct Config {
     pub code_splitting: Option<CodeSplitting>,
     #[serde(deserialize_with = "deserialize_px2rem", default)]
     pub px2rem: Option<Px2RemConfig>,
+    #[serde(deserialize_with = "deserialize_progress", default)]
+    pub progress: Option<ProgressConfig>,
     pub hash: bool,
     #[serde(rename = "_treeShaking", deserialize_with = "deserialize_tree_shaking")]
     pub _tree_shaking: Option<TreeShakingStrategy>,
@@ -711,6 +720,9 @@ const DEFAULT_CONFIG: &str = r#"
       "importSource": "react",
       "runtime": "automatic",
       "pragmaFrag": "React.Fragment"
+    },
+    "progress": {
+      "progressChars": "▨▨"
     },
     "emitAssets": true,
     "cssModulesExportOnlyLocales": false,
