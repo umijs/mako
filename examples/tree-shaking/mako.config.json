@@ -1,6 +1,8 @@
 {
   "mode": "production",
-  "stats": true,
+  "stats": {
+    "modules": true
+  },
   "entry": {
     "index": "./index.js"
   },

@@ -375,7 +375,7 @@ e.g.
 
 ### less
 
-- 类型：`{ modifyVars?: Record<string, string>, sourceMap?: { sourceMapFileInline?: boolean, outputSourceFiles?: boolean }, math?: "always" | "strict" | "parens-division" | "parens" | "strict-legacy" | number, plugins?: ([string, Record<string, any>]|string)[] }`
+- 类型：`{ modifyVars?: Record<string, string>, globalVars?: Record<string, string>, sourceMap?: { sourceMapFileInline?: boolean, outputSourceFiles?: boolean }, math?: "always" | "strict" | "parens-division" | "parens" | "strict-legacy" | number, plugins?: ([string, Record<string, any>]|string)[] }`
 - 默认值：`{}`
 
 指定 less 配置。
@@ -387,6 +387,10 @@ e.g.
   modifyVars: {
     'primary-color': '#1DA57A',
     'link-color': '#1DA57A',
+  },
+  globalVars: {
+    'primary-color': '#ffff00',
+    hack: 'true; @import "your-global-less-file.less";',
   },
   sourceMap: {
     sourceMapFileInline: true,
@@ -506,6 +510,13 @@ JSHooks 是一组用来扩展 Mako 编译过程的钩子函数。
 - `buildStart`，构建开始前调用
 - `load`，用于加载文件，返回文件内容和类型，类型支持 `css`、`js`、`jsx`、`ts`、`tsx`
 - `generateEnd`，生成完成后调用，`isFirstCompile` 可用于判断是否为首次编译，`time` 为编译时间，`stats` 是编译统计信息
+
+### progress
+
+- Type: false | { progressChars: string }
+- Default: { progressChars: "▨▨" }
+
+是否显示构建进度条。
 
 ### providers
 
