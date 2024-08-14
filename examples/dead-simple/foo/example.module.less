@@ -1,0 +1,30 @@
+.debug_watch_variable {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    overflow: visible;
+    &.value {
+      color: var(--debugTokenExpression-value);
+    }
+  
+    &.name {
+      color: var(--debugTokenExpression-name);
+    }
+  
+    &.error {
+      color: var(--debugTokenExpression-error);
+    }
+  
+    &.number {
+      color: var(--debugTokenExpression-number);
+    }
+  
+    &.boolean {
+      color: var(--debugTokenExpression-boolean);
+    }
+  
+    &.string {
+      color: var(--debugTokenExpression-string);
+    }
+  }
+  

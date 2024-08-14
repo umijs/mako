@@ -1,8 +1,12 @@
-use swc_core::ecma::ast::{ImportDecl, Str};
+use swc_core::common::Mark;
+use swc_core::ecma::ast::{CallExpr, ImportDecl, Lit, Str};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
+
+use crate::ast::utils::{is_commonjs_require, is_dynamic_import};
 
 pub struct VirtualCSSModules {
     pub auto_css_modules: bool,
+    pub unresolved_mark: Mark,
 }
 
 fn is_css_modules_path(path: &str) -> bool {
@@ -23,6 +27,30 @@ impl VisitMut for VirtualCSSModules {
             self.replace_source(&mut import_decl.src);
         }
         import_decl.visit_mut_children_with(self);
+    }
+
+    fn visit_mut_call_expr(&mut self, expr: &mut CallExpr) {
+        let commonjs_require = is_commonjs_require(expr, &self.unresolved_mark);
+        let dynamic_import = is_dynamic_import(expr);
+
+        if commonjs_require || dynamic_import {
+            let args = &mut expr.args;
+            if args.len() == 1
+                && let Some(arg) = args.first_mut()
+                && arg.spread.is_none()
+                && let Some(lit) = arg.expr.as_mut_lit()
+                && let Lit::Str(ref mut str) = lit
+            {
+                let ref_ = str.value.as_ref();
+                let is_css_modules =
+                    is_css_modules_path(ref_) || (self.auto_css_modules && is_css_path(ref_));
+                if is_css_modules {
+                    self.replace_source(str);
+                }
+            }
+        }
+
+        expr.visit_mut_children_with(self);
     }
 }
 
@@ -53,6 +81,22 @@ mod tests {
             run(r#"import "./foo.css";"#, false),
             r#"import "./foo.css";"#
         );
+        assert_eq!(
+            run(r#"import("./bar.module.css");"#, false),
+            r#"import("./bar.module.css?asmodule");"#
+        );
+        assert_eq!(
+            run(r#"import("./bar.css");"#, false),
+            r#"import("./bar.css");"#
+        );
+        assert_eq!(
+            run(r#"require("./baz.module.css");"#, false),
+            r#"require("./baz.module.css?asmodule");"#
+        );
+        assert_eq!(
+            run(r#"require("./baz.css");"#, false),
+            r#"require("./baz.css");"#
+        );
     }
 
     #[test]
@@ -65,13 +109,26 @@ mod tests {
             run(r#"import "./foo.css";"#, true),
             r#"import "./foo.css";"#
         );
+        assert_eq!(
+            run(r#"import("./bar.css");"#, true),
+            r#"import("./bar.css");"#
+        );
+        assert_eq!(
+            run(r#"require("./baz.css");"#, true),
+            r#"require("./baz.css");"#
+        );
     }
 
     fn run(js_code: &str, auto_css_modules: bool) -> String {
         let mut test_utils = TestUtils::gen_js_ast(js_code);
         let ast = test_utils.ast.js_mut();
+        let unresolved_mark = ast.unresolved_mark;
+
         GLOBALS.set(&test_utils.context.meta.script.globals, || {
-            let mut visitor = VirtualCSSModules { auto_css_modules };
+            let mut visitor = VirtualCSSModules {
+                auto_css_modules,
+                unresolved_mark,
+            };
             ast.ast.visit_mut_with(&mut visitor);
         });
         test_utils.js_ast_to_code()
