@@ -67,7 +67,7 @@ impl VisitMut for Emotion {
         let mut folder = emotion(
             EmotionOptions {
                 enabled: Some(true),
-                sourcemap: Some(true),
+                sourcemap: Some(is_dev),
                 auto_label: Some(is_dev),
                 import_map: None,
                 ..Default::default()
