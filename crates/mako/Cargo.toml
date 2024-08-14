@@ -30,7 +30,7 @@ serde_json       = { workspace = true }
 url              = { version = "2.5.0" }
 
 swc_core = { workspace = true, features = [
-  "base_node",
+  "base",
   "common_concurrent",
   "common_sourcemap",
   "common_tty",
