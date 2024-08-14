@@ -42,8 +42,8 @@ impl VisitMut for VirtualCSSModules {
                 && let Lit::Str(ref mut str) = lit
             {
                 let ref_ = str.value.as_ref();
-                let is_css_modules =
-                    is_css_modules_path(ref_) || (self.auto_css_modules && is_css_path(ref_));
+                // do not support auto_css_modules now
+                let is_css_modules = is_css_modules_path(ref_);
                 if is_css_modules {
                     self.replace_source(str);
                 }
