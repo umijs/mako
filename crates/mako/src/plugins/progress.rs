@@ -41,6 +41,7 @@ pub struct ProgressPlugin {
     module_count: Arc<Mutex<u32>>,
     first_build: Mutex<bool>,
     percent: Arc<Mutex<f32>>,
+    stop: Mutex<bool>,
 }
 
 impl ProgressPlugin {
@@ -51,6 +52,7 @@ impl ProgressPlugin {
             module_count: Arc::new(Mutex::new(0)),
             first_build: Mutex::new(true),
             percent: Arc::new(Mutex::new(0.1)),
+            stop: Mutex::new(false),
         }
     }
 
@@ -69,16 +71,19 @@ impl ProgressPlugin {
     }
 
     pub fn handler(&self, percent: f32, msg: String, state_items: Vec<String>) {
-        self.progress_bar
-            .lock()
-            .as_ref()
-            .unwrap()
-            .set_message(msg + " " + state_items.join(" ").as_str());
-        self.progress_bar
-            .lock()
-            .as_ref()
-            .unwrap()
-            .set_position((percent * 100.0) as u64);
+        if *self.stop.lock() {
+            self.progress_bar
+                .lock()
+                .as_ref()
+                .unwrap()
+                .finish_and_clear();
+            return;
+        }
+
+        self.progress_bar.lock().as_ref().inspect(|bar| {
+            bar.set_message(msg + " " + state_items.join(" ").as_str());
+            bar.set_position((percent * 100.0) as u64);
+        });
     }
 
     pub fn increment_module_count(&self) {
@@ -300,11 +305,8 @@ impl Plugin for ProgressPlugin {
         _stats: &crate::stats::StatsJsonMap,
         _context: &Arc<Context>,
     ) -> anyhow::Result<()> {
-        self.progress_bar
-            .lock()
-            .as_ref()
-            .unwrap()
-            .finish_with_message("Compiled successfully".to_string());
+        self.handler(1.0, "Compiled successfully".to_string(), vec![]);
+        *self.stop.lock() = true;
         Ok(())
     }
 }
