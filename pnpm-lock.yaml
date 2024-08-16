@@ -415,7 +415,7 @@ importers:
         specifier: ^4.0.81
         version: 4.1.6
       '@umijs/mako':
-        specifier: 0.8.1-canary.20240814.2
+        specifier: 0.8.1
         version: link:../mako
       chalk:
         specifier: ^4.1.2
@@ -513,17 +513,17 @@ importers:
         version: 21.1.1
     optionalDependencies:
       '@umijs/mako-darwin-arm64':
-        specifier: 0.8.1-canary.20240814.2
-        version: 0.8.1-canary.20240814.2
+        specifier: 0.8.1
+        version: 0.8.1
       '@umijs/mako-darwin-x64':
-        specifier: 0.8.1-canary.20240814.2
-        version: 0.8.1-canary.20240814.2
+        specifier: 0.8.1
+        version: 0.8.1
       '@umijs/mako-linux-x64-gnu':
-        specifier: 0.8.1-canary.20240814.2
-        version: 0.8.1-canary.20240814.2
+        specifier: 0.8.1
+        version: 0.8.1
       '@umijs/mako-linux-x64-musl':
-        specifier: 0.8.1-canary.20240814.2
-        version: 0.8.1-canary.20240814.2
+        specifier: 0.8.1
+        version: 0.8.1
     devDependencies:
       '@napi-rs/cli':
         specifier: ^2.18.0
@@ -845,7 +845,7 @@ packages:
       '@ant-design/pro-skeleton': 2.1.3(antd@5.18.0)(react-dom@18.2.0)(react@18.2.0)
       '@ant-design/pro-table': 3.6.11(antd@5.18.0)(prop-types@15.8.1)(rc-field-form@1.41.0)(react-dom@18.2.0)(react@18.2.0)
       '@ant-design/pro-utils': 2.10.0(antd@5.18.0)(react-dom@18.2.0)(react@18.2.0)
-      '@babel/runtime': 7.24.7
+      '@babel/runtime': 7.22.11
       antd: 5.18.0(react-dom@18.2.0)(react@18.2.0)
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
@@ -6459,8 +6459,8 @@ packages:
     dev: true
     optional: true
 
-  /@umijs/mako-darwin-arm64@0.8.1-canary.20240814.2:
-    resolution: {integrity: sha512-OweNurkgR43KMUJe5EHT48ZMVsEAghxfmDoBCpe5kAPahn7b7rGdA7kcASAm8Xce24L26Uaq1TN6o/yJ5ILrpQ==}
+  /@umijs/mako-darwin-arm64@0.8.1:
+    resolution: {integrity: sha512-d035fGP9Zu+xz6zOhQbBZZqNtoXdMa2rikjDeQWnQ5s+wi62EkA01Vobkk1AgJKM2DetPRO18/jAq51Ik46//w==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
@@ -6477,8 +6477,8 @@ packages:
     dev: true
     optional: true
 
-  /@umijs/mako-darwin-x64@0.8.1-canary.20240814.2:
-    resolution: {integrity: sha512-asLx+dfH/ML05hx2qKiM3yJh1GTuTULQr4EoztwTR84UdyXYTZR79CifgUe2IDyEYGk+C4lNjad+Gk7Axspnlw==}
+  /@umijs/mako-darwin-x64@0.8.1:
+    resolution: {integrity: sha512-AqJ5LjeTwliIXqChDlLHQMD03cd9OrTKsyKFUv+EpVZ5XwnDGiAkqeAT81k5gIOcGEHMfMd25iR5PZ58+fcl5A==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
@@ -6495,8 +6495,8 @@ packages:
     dev: true
     optional: true
 
-  /@umijs/mako-linux-x64-gnu@0.8.1-canary.20240814.2:
-    resolution: {integrity: sha512-S/UGixHmRB4XLPWbYQONxyMoaXz5E0FW6zPlv3BEG5Aa5VySvatwAivKrw3YTcD4Gw8ihNuWRv+9xBvRX1KmLg==}
+  /@umijs/mako-linux-x64-gnu@0.8.1:
+    resolution: {integrity: sha512-ipujy9+6wkpNzJfPhq+m6NKDzQyHvYIAX/FQzQ+ip2zoC1xOYC6mjrvOwzl4VWJXAJskWYOFylgPYTd+K56ONw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
@@ -6513,8 +6513,8 @@ packages:
     dev: true
     optional: true
 
-  /@umijs/mako-linux-x64-musl@0.8.1-canary.20240814.2:
-    resolution: {integrity: sha512-QA1IKiAMGiIoS5LCGMVo5t86TtZPODX/XP/bKfQrY0aJnHpMzkCEYSQH3LSfD3dbYJF2Xw1lEDbamdSKKR6vWw==}
+  /@umijs/mako-linux-x64-musl@0.8.1:
+    resolution: {integrity: sha512-50QGYgaGnW1o+h1e0bI+ZSsVCB+mTa0OlYI8JVHnaxXrH0NmKQmDmxm2MiaDlH4yipZ0q/jZ/sY7LfgLFL2hDw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]

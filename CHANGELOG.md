@@ -1,3 +1,15 @@
+## 0.8.1
+
+`2024-08-16`
+
+- feat: support progress by [@xierenyuan](https://github.com/xierenyuan) in [#1466](https://github.com/umijs/mako/pull/1466)
+- refactor: ✨ disable emotion source map in prod by [@stormslowly](https://github.com/stormslowly) in [#1494](https://github.com/umijs/mako/pull/1494)
+- refactor: define env by [@xusd320](https://github.com/xusd320) in [#1499](https://github.com/umijs/mako/pull/1499)
+- fix: sass plugin support `.scss` extension by [@jeasonnow](https://github.com/jeasonnow) in [#1482](https://github.com/umijs/mako/pull/1482)
+- fix: try require should support return stmt by [@sorrycc](https://github.com/sorrycc) in [#1488](https://github.com/umijs/mako/pull/1488)
+- fix: hashed chunk file name starts with underscore by [@stormslowly](https://github.com/stormslowly) in [#1498](https://github.com/umijs/mako/pull/1498)
+- fix: no unnecessary chunk group in update by [@stormslowly](https://github.com/stormslowly) in [#1503](https://github.com/umijs/mako/pull/1503)
+- fix: support require css modules by [@bytemain](https://github.com/bytemain) in [#1501](https://github.com/umijs/mako/pull/1501)
 
 ## 0.8.0
 

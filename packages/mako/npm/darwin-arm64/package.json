@@ -1,6 +1,10 @@
 {
   "name": "@umijs/mako-darwin-arm64",
+<<<<<<< HEAD
   "version": "0.8.1-canary.20240814.2",
+=======
+  "version": "0.8.1",
+>>>>>>> origin/master
   "os": [
     "darwin"
   ],

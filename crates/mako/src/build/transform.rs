@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use swc_core::common::sync::Lrc;
 use swc_core::common::GLOBALS;
 use swc_core::css::ast::{AtRule, AtRulePrelude, ImportHref, Rule, Str, Stylesheet, UrlValue};
 use swc_core::css::compat::compiler::{self, Compiler};
@@ -115,18 +114,14 @@ impl Transform {
                             &unresolved_mark,
                         ));
                     }
-                    // TODO: refact env replacer
                     {
                         let mut define = context.config.define.clone();
                         let mode = context.config.mode.to_string();
                         define
-                            .entry("NODE_ENV".to_string())
+                            .entry("process.env.NODE_ENV".to_string())
                             .or_insert_with(|| format!("\"{}\"", mode).into());
                         let env_map = build_env_map(define, &context)?;
-                        visitors.push(Box::new(EnvReplacer::new(
-                            Lrc::new(env_map),
-                            unresolved_mark,
-                        )));
+                        visitors.push(Box::new(EnvReplacer::new(env_map, unresolved_mark)));
                     }
                     visitors.push(Box::new(TryResolve {
                         path: file.path.to_string_lossy().to_string(),
@@ -142,6 +137,7 @@ impl Transform {
                     )));
                     visitors.push(Box::new(VirtualCSSModules {
                         auto_css_modules: context.config.auto_css_modules,
+                        unresolved_mark,
                     }));
                     // TODO: move ContextModuleVisitor out of plugin
                     visitors.push(Box::new(ContextModuleVisitor { unresolved_mark }));
