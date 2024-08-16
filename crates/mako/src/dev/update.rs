@@ -334,8 +334,6 @@ impl Compiler {
             .collect::<Result<Vec<_>>>();
         let modified_results = result?;
 
-        dbg!(&modified_results);
-
         let mut added = vec![];
         let mut modified_module_ids = HashSet::new();
         let mut dep_changed_module_ids = HashSet::new();
