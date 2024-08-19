@@ -1,3 +1,9 @@
+## 0.8.2
+
+`2024-08-16`
+
+- Revert "refactor: define env ([#1499](https://github.com/umijs/mako/pull/1499))" by [@stormslowly](https://github.com/stormslowly) in [#1504](https://github.com/umijs/mako/pull/1504)
+
 ## 0.8.1
 
 `2024-08-16`
