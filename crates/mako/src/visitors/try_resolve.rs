@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use swc_core::common::Mark;
 use swc_core::ecma::ast::{
-    AssignExpr, BlockStmt, CallExpr, Decl, Expr, ExprOrSpread, ExprStmt, Stmt, TryStmt,
+    AssignExpr, BlockStmt, CallExpr, Decl, Expr, ExprOrSpread, ExprStmt, ReturnStmt, Stmt, TryStmt,
 };
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
@@ -70,6 +70,13 @@ impl VisitMut for TryResolve {
         {
             for stmt in stmts {
                 match stmt {
+                    // e.g. return require('x');
+                    Stmt::Return(ReturnStmt {
+                        arg: Some(box Expr::Call(call_expr)),
+                        ..
+                    }) => {
+                        self.handle_call_expr(call_expr);
+                    }
                     Stmt::Expr(ExprStmt {
                         expr: box Expr::Call(call_expr),
                         ..
@@ -121,6 +128,25 @@ try {
         throw e;
     }()));
 } catch (e) {}
+        "#
+            .trim()
+        );
+    }
+
+    #[test]
+    fn test_try_require_support_return_stmt() {
+        assert_eq!(
+            run(r#"function a() {try{return require('foo')}catch(e){}}"#),
+            r#"
+function a() {
+    try {
+        return require(Object(function makoMissingModule() {
+            var e = new Error("Cannot find module 'foo'");
+            e.code = "MODULE_NOT_FOUND";
+            throw e;
+        }()));
+    } catch (e) {}
+}
         "#
             .trim()
         );

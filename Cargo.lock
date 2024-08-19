@@ -1004,6 +1004,7 @@ dependencies = [
  "encode_unicode",
  "lazy_static",
  "libc",
+ "unicode-width",
  "windows-sys 0.45.0",
 ]
 
@@ -2219,6 +2220,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "indicatif"
+version = "0.17.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "763a5a8f45087d6bcea4222e7b72c291a054edf80e4ef6efd2a4979878c7bea3"
+dependencies = [
+ "console",
+ "instant",
+ "number_prefix",
+ "portable-atomic",
+ "unicode-width",
+]
+
+[[package]]
 name = "inotify"
 version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2645,6 +2659,7 @@ dependencies = [
  "hyper-staticfile",
  "hyper-tungstenite",
  "indexmap 2.2.6",
+ "indicatif",
  "insta",
  "maplit",
  "md5",
@@ -2658,6 +2673,7 @@ dependencies = [
  "notify-debouncer-full",
  "open",
  "oxc_resolver",
+ "parking_lot",
  "path-clean 1.0.1",
  "pathdiff",
  "percent-encoding",
@@ -3251,6 +3267,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "number_prefix"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
+
+[[package]]
 name = "objc"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3674,6 +3696,12 @@ dependencies = [
  "pin-project-lite",
  "windows-sys 0.48.0",
 ]
+
+[[package]]
+name = "portable-atomic"
+version = "1.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da544ee218f0d287a911e9c99a39a8c9bc8fcad3cb8db5959940044ecfc67265"
 
 [[package]]
 name = "ppv-lite86"
@@ -4660,8 +4688,6 @@ dependencies = [
  "indexmap 1.9.3",
  "jsonc-parser",
  "lru",
- "napi",
- "napi-derive",
  "once_cell",
  "parking_lot",
  "pathdiff",
@@ -4994,7 +5020,6 @@ dependencies = [
  "swc_ecma_transforms_typescript",
  "swc_ecma_utils 0.123.0",
  "swc_ecma_visit 0.95.1",
- "swc_nodejs_common",
  "swc_plugin",
  "swc_plugin_macro",
  "swc_plugin_proxy",
@@ -6030,20 +6055,6 @@ dependencies = [
  "dashmap 5.5.3",
  "swc_atoms 0.5.9",
  "swc_common 0.32.1",
-]
-
-[[package]]
-name = "swc_nodejs_common"
-version = "0.0.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c121e55ae90c12401f80a95f0e6de71ba3f3c4dd22b512d163e46fae2f9e175b"
-dependencies = [
- "anyhow",
- "napi",
- "serde",
- "serde_json",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]

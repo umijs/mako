@@ -141,6 +141,7 @@ impl Transform {
                     )));
                     visitors.push(Box::new(VirtualCSSModules {
                         auto_css_modules: context.config.auto_css_modules,
+                        unresolved_mark,
                     }));
                     // TODO: move ContextModuleVisitor out of plugin
                     visitors.push(Box::new(ContextModuleVisitor { unresolved_mark }));
