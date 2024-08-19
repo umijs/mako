@@ -32,6 +32,7 @@ use crate::visitors::dynamic_import_to_require::DynamicImportToRequire;
 use crate::visitors::env_replacer::{build_env_map, EnvReplacer};
 use crate::visitors::fix_helper_inject_position::FixHelperInjectPosition;
 use crate::visitors::fix_symbol_conflict::FixSymbolConflict;
+use crate::visitors::import_meta_env_replacer::ImportMetaEnvReplacer;
 use crate::visitors::import_template_to_string_literal::ImportTemplateToStringLiteral;
 use crate::visitors::new_url_assets::NewUrlAssets;
 use crate::visitors::provide::Provide;
@@ -121,6 +122,7 @@ impl Transform {
                             .or_insert_with(|| format!("\"{}\"", mode).into());
                         let env_map = build_env_map(define, &context)?;
                         visitors.push(Box::new(EnvReplacer::new(env_map, unresolved_mark)));
+                        visitors.push(Box::new(ImportMetaEnvReplacer::new(mode)));
                     }
                     visitors.push(Box::new(TryResolve {
                         path: file.path.to_string_lossy().to_string(),
