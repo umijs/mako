@@ -74,8 +74,8 @@ impl Chunk {
                     .components()
                     .filter(|c| !matches!(c, Component::RootDir | Component::CurDir))
                     .map(|c| match c {
-                        Component::ParentDir => "_pd_".to_string(),
-                        Component::Prefix(_) => "_ps_".to_string(),
+                        Component::ParentDir => "pd_".to_string(),
+                        Component::Prefix(_) => "ps_".to_string(),
                         Component::RootDir => "".to_string(),
                         Component::CurDir => "".to_string(),
                         Component::Normal(seg) => {

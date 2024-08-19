@@ -37,7 +37,7 @@ swc_core = { workspace = true, features = [
   "__testing_transform",
   "__utils",
   "__visit",
-  "base_node",
+  "base",
   "common_concurrent",
   "common_sourcemap",
   "common_tty",
@@ -87,6 +87,7 @@ hyper                 = { version = "0.14.27", features = ["full"] }
 hyper-staticfile      = "0.9.6"
 hyper-tungstenite     = "0.10.0"
 indexmap              = "2.0.0"
+indicatif             = "0.17.8"
 md5                   = "0.7.0"
 mdxjs                 = "0.1.14"
 merge-source-map      = "1.2.0"
@@ -94,6 +95,7 @@ mime_guess            = "2.0.4"
 nohash-hasher         = "0.2.0"
 notify                = { version = "6.1.1", default-features = false, features = ["macos_kqueue"] }
 notify-debouncer-full = { version = "0.3.1", default-features = false }
+parking_lot           = { version = "0.12", features = ["nightly"] }
 path-clean            = "1.0.1"
 pathdiff              = "0.2.1"
 petgraph              = "0.6.3"

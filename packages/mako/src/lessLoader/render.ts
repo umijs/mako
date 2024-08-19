@@ -6,7 +6,7 @@ module.exports = async function render(param: {
   filename: string;
   opts: LessLoaderOpts;
 }): Promise<{ content: string; type: 'css' }> {
-  const { modifyVars, math, sourceMap, plugins } = param.opts;
+  const { modifyVars, globalVars, math, sourceMap, plugins } = param.opts;
   const input = fs.readFileSync(param.filename, 'utf-8');
 
   const pluginInstances: Less.Plugin[] | undefined = plugins?.map((p) => {
@@ -26,6 +26,7 @@ module.exports = async function render(param: {
       math,
       plugins: pluginInstances,
       modifyVars,
+      globalVars,
       sourceMap,
       rewriteUrls: 'all',
     } as unknown as Less.Options)
