@@ -146,23 +146,14 @@ fn parse_patterns(patterns: &[String]) -> Vec<Regex> {
     patterns
         .iter()
         .map(|pattern| {
-            let pattern = if contains_magic_chars(pattern) {
-                pattern.to_string()
+            let pattern = if pattern.starts_with('/') && pattern.ends_with('/') {
+                pattern[1..pattern.len() - 1].to_string()
             } else {
                 format!("^{}$", pattern)
             };
             Regex::new(pattern.as_str()).unwrap()
         })
         .collect()
-}
-
-fn contains_magic_chars(pattern: &str) -> bool {
-    pattern.contains('*')
-        || pattern.contains('\\')
-        || pattern.contains('(')
-        || pattern.contains(')')
-        || pattern.contains('^')
-        || pattern.contains('$')
 }
 
 fn parse_combinator(combinator: &Combinator) -> String {
@@ -415,7 +406,7 @@ mod tests {
             run(
                 r#".a{width:100px;}.ac{width:100px;}.b{width:100px;}"#,
                 Px2RemConfig {
-                    selector_blacklist: vec!["^.a$".to_string()],
+                    selector_blacklist: vec!["/^.a$/".to_string()],
                     ..Default::default()
                 }
             ),
@@ -457,7 +448,7 @@ mod tests {
             run(
                 r#"div *{width:100px;}"#,
                 Px2RemConfig {
-                    selector_blacklist: vec!["div *".to_string()],
+                    selector_blacklist: vec!["/div */".to_string()],
                     ..Default::default()
                 }
             ),
@@ -499,7 +490,7 @@ mod tests {
             run(
                 r#"[class*="button"]{width:100px;}"#,
                 Px2RemConfig {
-                    selector_blacklist: vec!["[class*=\"button\"]".to_string()],
+                    selector_blacklist: vec!["/[class*=\"button\"]/".to_string()],
                     ..Default::default()
                 }
             ),
@@ -513,7 +504,7 @@ mod tests {
             run(
                 r#"[class*="button"]{width:100px;}"#,
                 Px2RemConfig {
-                    selector_whitelist: vec!["[class*=\"button\"]".to_string()],
+                    selector_whitelist: vec!["/[class*=\"button\"]/".to_string()],
                     ..Default::default()
                 }
             ),
@@ -649,7 +640,7 @@ mod tests {
             run(
                 r#".a-x{width:100px;}"#,
                 Px2RemConfig {
-                    selector_doublelist: vec!["^.a-".to_string()],
+                    selector_doublelist: vec!["/^.a-/".to_string()],
                     ..Default::default()
                 }
             ),
@@ -664,6 +655,17 @@ mod tests {
                 }
             ),
             r#":root{width:2rem}"#
+        );
+        assert_eq!(
+            run(
+                r#".a{width:100px;}.b{width:100px;}.b.a{width:100px;}"#,
+                Px2RemConfig {
+                    selector_whitelist: vec!["/.a/".to_string()],
+                    selector_blacklist: vec![],
+                    ..Default::default()
+                }
+            ),
+            r#".a{width:1rem}.b{width:100px}.b.a{width:1rem}"#
         );
     }
 
