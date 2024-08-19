@@ -577,7 +577,7 @@ __mako_public_path__ = '/foo/';
 其中 `selectorBlackList`、`selectorWhiteList`、`selectorDoubleList` 均支持传递正则表达式或者字符串，如
 
 ```json
-"selectorBlackList": [".a","/.__CustomClass_/"]
+"selectorBlackList": [".a", "/.__CustomClass_/"]
 ```
 
 > 被字符 `/` 包裹的字符串会被当作正则表达式解析。
