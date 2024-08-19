@@ -577,7 +577,7 @@ Whether to enable px2rem conversion.
 Among them, `selectorBlackList`, `selectorWhiteList` and `selectorDoubleList` all support passing regular expressions or strings, such as
 
 ```json
-"selectorBlackList": [".a","/.__CustomClass_/"]
+"selectorBlackList": [".a", "/.__CustomClass_/"]
 ```
 
 > The string wrapped by the characters `/` will be parsed as a regular expression.
