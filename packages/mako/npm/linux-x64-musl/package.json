@@ -1,14 +1,6 @@
 {
   "name": "@umijs/mako-linux-x64-musl",
-<<<<<<< HEAD
-<<<<<<< HEAD
-  "version": "0.8.1-canary.20240814.2",
-=======
-  "version": "0.8.1",
->>>>>>> origin/master
-=======
   "version": "0.8.2",
->>>>>>> origin/master
   "os": [
     "linux"
   ],
