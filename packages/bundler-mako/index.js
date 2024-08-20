@@ -364,6 +364,7 @@ function checkConfig(opts) {
       .difference(Object.keys(opts.config.lessLoader), [
         'javascriptEnabled',
         'modifyVars',
+        'globalVars',
         'math',
         'plugins',
       ])
@@ -637,6 +638,7 @@ async function getMakoConfig(opts) {
     forkTSChecker: !!forkTSChecker,
     less: {
       modifyVars: opts.config.lessLoader?.modifyVars || opts.config.theme,
+      globalVars: opts.config.lessLoader?.globalVars,
       sourceMap: getLessSourceMapConfig(normalizedDevtool),
       math: opts.config.lessLoader?.math,
       plugins: opts.config.lessLoader?.plugins,
