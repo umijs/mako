@@ -129,7 +129,6 @@ jobs:
         with:
           path: packages/mako/artifacts
           merge-multiple: true
-          pattern: "*.node"
       - name: List packages
         run: ls -R ./packages/mako/artifacts
         shell: bash
