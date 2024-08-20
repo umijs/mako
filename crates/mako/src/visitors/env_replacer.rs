@@ -45,12 +45,21 @@ impl VisitMut for EnvReplacer {
         }
 
         match expr {
-            Expr::Member(MemberExpr {
-                obj,
-                prop: MemberProp::Ident(Ident { sym, .. }),
-                ..
-            }) => {
-                let mut member_visit_path = sym.to_string();
+            Expr::Member(MemberExpr { obj, prop, .. }) => {
+                let mut member_visit_path = match prop {
+                    MemberProp::Ident(Ident { sym, .. }) => sym.to_string(),
+                    MemberProp::Computed(ComputedPropName {
+                        expr: expr_computed,
+                        ..
+                    }) => match expr_computed.as_ref() {
+                        Expr::Lit(Lit::Str(Str { value, .. })) => value.to_string(),
+
+                        Expr::Lit(Lit::Num(Number { value, .. })) => value.to_string(),
+                        _ => return,
+                    },
+                    _ => return,
+                };
+
                 let mut current_member_obj = obj.as_ref();
 
                 while let Expr::Member(MemberExpr { obj, prop, .. }) = current_member_obj {
@@ -70,10 +79,10 @@ impl VisitMut for EnvReplacer {
                                     member_visit_path.push('.');
                                     member_visit_path.push_str(&value.to_string());
                                 }
-                                _ => (),
+                                _ => return,
                             }
                         }
-                        _ => {}
+                        _ => return,
                     }
                     current_member_obj = obj.as_ref();
                 }
@@ -92,28 +101,7 @@ impl VisitMut for EnvReplacer {
                     *expr = env
                 }
             }
-            Expr::Member(MemberExpr {
-                obj: box Expr::Ident(Ident { sym, .. }),
-                prop:
-                    MemberProp::Computed(ComputedPropName {
-                        expr: expr_computed,
-                        ..
-                    }),
-                ..
-            }) => match expr_computed.as_ref() {
-                Expr::Lit(Lit::Str(Str { value, .. })) => {
-                    if let Some(env) = self.get_define_env(&format!("{}.{}", sym, value)) {
-                        *expr = env
-                    }
-                }
 
-                Expr::Lit(Lit::Num(Number { value, .. })) => {
-                    if let Some(env) = self.get_define_env(&format!("{}.{}", sym, value)) {
-                        *expr = env
-                    }
-                }
-                _ => (),
-            },
             Expr::Ident(Ident { sym, .. }) => {
                 if let Some(env) = self.get_define_env(sym.as_ref()) {
                     *expr = env
@@ -368,6 +356,19 @@ log([
                 r#"log(A[1])"#,
                 hashmap! {
                     "A.1".to_string() => json!(1)
+                }
+            ),
+            r#"log(1);"#
+        );
+    }
+
+    #[test]
+    fn test_complicated() {
+        assert_eq!(
+            run(
+                r#"log(A.v["v"])"#,
+                hashmap! {
+                    "A.v.v".to_string() => json!(1)
                 }
             ),
             r#"log(1);"#

@@ -4,7 +4,7 @@ use swc_core::ecma::ast::{
     PropOrSpread,
 };
 use swc_core::ecma::atoms::js_word;
-use swc_core::ecma::utils::{quote_ident, quote_str};
+use swc_core::ecma::utils::{quote_ident, quote_str, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 #[derive(Debug)]
@@ -19,46 +19,6 @@ impl ImportMetaEnvReplacer {
 }
 
 impl VisitMut for ImportMetaEnvReplacer {
-    fn visit_mut_member_expr(&mut self, member_expr: &mut MemberExpr) {
-        match member_expr {
-            MemberExpr {
-                obj:
-                    box Expr::Member(MemberExpr {
-                        obj:
-                            box Expr::MetaProp(MetaPropExpr {
-                                kind: MetaPropKind::ImportMeta,
-                                ..
-                            }),
-                        prop:
-                            MemberProp::Ident(Ident {
-                                sym: js_word!("env"),
-                                ..
-                            }),
-                        ..
-                    }),
-                ..
-            } => {
-                // replace import.meta.env.MODE with "({ MODE: 'production' }).MODE"
-                *member_expr.obj = Expr::Paren(swc_core::ecma::ast::ParenExpr {
-                    span: DUMMY_SP,
-                    expr: ObjectLit {
-                        props: vec![PropOrSpread::Prop(
-                            Prop::KeyValue(KeyValueProp {
-                                key: quote_ident!("MODE").into(),
-                                value: quote_str!(self.mode.clone()).into(),
-                            })
-                            .into(),
-                        )],
-                        span: DUMMY_SP,
-                    }
-                    .into(),
-                });
-            }
-
-            _ => member_expr.visit_mut_children_with(self),
-        }
-    }
-
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         match expr {
             Expr::Member(MemberExpr {
@@ -75,7 +35,7 @@ impl VisitMut for ImportMetaEnvReplacer {
                 ..
             }) => {
                 // replace import.meta.env with "({ MODE: 'production' })"
-                *expr = Expr::Object(ObjectLit {
+                *expr = ObjectLit {
                     props: vec![PropOrSpread::Prop(
                         Prop::KeyValue(KeyValueProp {
                             key: quote_ident!("MODE").into(),
@@ -84,7 +44,8 @@ impl VisitMut for ImportMetaEnvReplacer {
                         .into(),
                     )],
                     span: DUMMY_SP,
-                });
+                }
+                .wrap_with_paren();
             }
             _ => expr.visit_mut_children_with(self),
         }
@@ -106,9 +67,9 @@ mod tests {
             run(
                 r#"typeof import.meta.env === "object" ? import.meta.env.MODE : process.env.NODE_ENV"#
             ),
-            r#"typeof {
+            r#"typeof ({
     MODE: "development"
-} === "object" ? ({
+}) === "object" ? ({
     MODE: "development"
 }).MODE : process.env.NODE_ENV;"#
         );
