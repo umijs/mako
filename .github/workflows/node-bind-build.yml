@@ -6,7 +6,7 @@ env:
 'on':
   push:
     branches:
-      - master
+      - feat-build-all-platform-by-ci
     tags-ignore:
       - '**'
     paths-ignore:
@@ -172,9 +172,9 @@ jobs:
         shell: bash
       - name: Publish
         run: |
-          if git log -1 --pretty=%B | grep "^Release [0-9]\+\.[0-9]\+\.[0-9]\+"; then
+          if git log -1 --pretty=%B | grep "^release: [0-9]\+\.[0-9]\+\.[0-9]\+"; then
             echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
-            pnpm --filter @okamjs/okam publish --access public
+            pnpm --filter @umijs/mako publish --access public
           else
             echo "Not a release, skipping publish"
           fi
