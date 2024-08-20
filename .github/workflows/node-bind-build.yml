@@ -108,7 +108,7 @@ jobs:
           options: '--user 0:0 -v ${{ github.workspace }}/.cargo-cache/git/db:/usr/local/cargo/git/db -v ${{ github.workspace }}/.cargo/registry/cache:/usr/local/cargo/registry/cache -v ${{ github.workspace }}/.cargo/registry/index:/usr/local/cargo/registry/index -v ${{ github.workspace }}:/build -w /build'
           run: ${{ matrix.settings.build }}
       - name: Build
-        run: ${{ matrix.settings.build }
+        run: ${{ matrix.settings.build }}
         if: ${{ !matrix.settings.docker }}
         shell: bash
       - name: Upload artifact
@@ -123,10 +123,25 @@ jobs:
     needs:
       - build
     steps:
+      - uses: actions/checkout@v3
       - name: Download all artifacts
         uses: actions/download-artifact@v3
         with:
           path: packages/mako/artifacts
+          merge-multiple: true
+          pattern: "*.node"
       - name: List packages
         run: ls -R ./packages/mako/artifacts
         shell: bash
+      
+      - name: Get commit ID
+        run: echo "COMMIT_ID=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+      
+      - name: Archive Artifacts
+        run: |
+          tar -cvf artifacts-${{ env.COMMIT_ID }}.tar -C ./packages/mako/artifacts/*.node
+      - name: Upload tar file
+        uses: actions/upload-artifact@v3
+        with:
+          name: artifacts-${{ env.COMMIT_ID }}.tar
+          path: artifacts-${{ env.COMMIT_ID }}.tar
