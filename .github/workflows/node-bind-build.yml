@@ -174,8 +174,8 @@ jobs:
       - name: Publish
         run: |
           if git log -1 --pretty=%B | grep "^release: [0-9]\+\.[0-9]\+\.[0-9]\+"; then
-            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
-            pnpm --filter @umijs/mako publish --access public
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
+            pnpm --filter @umijs/mako publish --access public --no-git-checks
           else
             echo "Not a release, skipping publish"
           fi
