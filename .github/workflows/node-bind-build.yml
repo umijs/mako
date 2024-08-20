@@ -112,7 +112,7 @@ jobs:
         if: ${{ !matrix.settings.docker }}
         shell: bash
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: bindings-${{ matrix.settings.target }}
           path: ./packages/mako/*.node
@@ -123,7 +123,6 @@ jobs:
     needs:
       - build
     steps:
-      - uses: actions/checkout@v3
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -133,14 +132,11 @@ jobs:
         run: ls -R ./packages/mako/artifacts
         shell: bash
       
-      - name: Get commit ID
-        run: echo "COMMIT_ID=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-      
       - name: Archive Artifacts
         run: |
-          tar -cvf artifacts-${{ env.COMMIT_ID }}.tar -C ./packages/mako/artifacts/*.node
+          tar -cvf artifacts-${{ github.event.pull_request.head.sha }}.tar -C ./packages/mako/artifacts .
       - name: Upload tar file
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: artifacts-${{ env.COMMIT_ID }}.tar
-          path: artifacts-${{ env.COMMIT_ID }}.tar
+          path: artifacts-${{ github.event.pull_request.head.sha }}.tar
+          name: artifacts-${{ github.event.pull_request.head.sha }}.tar
