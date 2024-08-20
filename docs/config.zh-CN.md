@@ -511,6 +511,13 @@ JSHooks 是一组用来扩展 Mako 编译过程的钩子函数。
 - `load`，用于加载文件，返回文件内容和类型，类型支持 `css`、`js`、`jsx`、`ts`、`tsx`
 - `generateEnd`，生成完成后调用，`isFirstCompile` 可用于判断是否为首次编译，`time` 为编译时间，`stats` 是编译统计信息
 
+### progress
+
+- Type: false | { progressChars: string }
+- Default: { progressChars: "▨▨" }
+
+是否显示构建进度条。
+
 ### providers
 
 - 类型：`Record<string, [string, string]>`
@@ -566,6 +573,14 @@ __mako_public_path__ = '/foo/';
 - `selectorDoubleList`，选择器白名单，会被转换为两倍的值
 - `minPixelValue`，最小像素值，默认为 `0`
 - `mediaQuery`，是否转换媒体查询中的 px, 默认 `false`
+
+其中 `selectorBlackList`、`selectorWhiteList`、`selectorDoubleList` 均支持传递正则表达式或者字符串，如
+
+```json
+"selectorBlackList": [".a", "/.__CustomClass_/"]
+```
+
+> 被字符 `/` 包裹的字符串会被当作正则表达式解析。
 
 ### react
 

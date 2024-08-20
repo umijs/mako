@@ -30,7 +30,7 @@ use crate::dev::update::UpdateResult;
 use crate::generate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::module::{Dependency, ModuleId};
 use crate::plugins::bundless_compiler::BundlessCompiler;
-use crate::stats::{write_stats, StatsJsonMap};
+use crate::stats::StatsJsonMap;
 use crate::utils::base64_encode;
 use crate::visitors::async_module::mark_async;
 
@@ -181,10 +181,6 @@ impl Compiler {
 
         // generate stats
         let stats = self.create_stats_info();
-
-        if self.context.config.stats.is_some() {
-            write_stats(&self.context.config.output.path, &stats);
-        }
 
         // build_success hook
         self.context
@@ -350,13 +346,6 @@ impl Compiler {
         let t_write_assets = t_write_assets.elapsed();
 
         let stats = self.create_stats_info();
-
-        // TODO: do not write to fs, using jsapi hooks to pass stats
-        // why generate stats?
-        // ref: https://github.com/umijs/mako/issues/1107
-        if self.context.config.stats.is_some() {
-            write_stats(&self.context.config.output.path, &stats);
-        }
 
         let t_generate = t_generate.elapsed();
 
@@ -577,11 +566,17 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
 
             if let Some(source_map) = &chunk_file.source_map {
                 let size = source_map.len() as u64;
+
+                let source_map_file_path = context
+                    .config
+                    .output
+                    .path
+                    .join(chunk_file.source_map_disk_name());
                 stats_info.add_assets(
                     size,
                     chunk_file.source_map_name(),
                     chunk_file.chunk_id.clone(),
-                    to.to_string_lossy().to_string(),
+                    source_map_file_path.to_string_lossy().to_string(),
                     chunk_file.source_map_disk_name(),
                 );
                 fs::write(

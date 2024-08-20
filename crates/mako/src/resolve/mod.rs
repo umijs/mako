@@ -381,7 +381,7 @@ fn get_resolver(config: &Config, resolver_type: ResolverType) -> Resolver {
         },
         // css must be browser
         (ResolverType::Css, _) => ResolveOptions {
-            extensions: vec![".css".to_string(), ".less".to_string()],
+            extensions: vec![".css".to_string(), ".less".to_string(), ".scss".to_string()],
             alias,
             main_fields: vec!["css".to_string(), "style".to_string(), "main".to_string()],
             condition_names: vec!["style".to_string()],

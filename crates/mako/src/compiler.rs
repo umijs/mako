@@ -249,6 +249,18 @@ impl Compiler {
 
         let mut config = config;
 
+        if let Some(progress) = &config.progress {
+            plugins.push(Arc::new(plugins::progress::ProgressPlugin::new(
+                plugins::progress::ProgressPluginOptions {
+                    prefix: "Mako".to_string(),
+                    template:
+                        "● {prefix:.bold} {bar:25.green/white.dim} ({percent}%) {wide_msg:.dim}"
+                            .to_string(),
+                    progress_chars: progress.progress_chars.clone(),
+                },
+            )));
+        }
+
         if config.experimental.require_context {
             plugins.push(Arc::new(plugins::require_context::RequireContextPlugin {}))
         }
