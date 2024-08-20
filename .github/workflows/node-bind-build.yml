@@ -6,7 +6,7 @@ env:
 'on':
   push:
     branches:
-      - feat-build-all-platform-by-ci
+      - master
     tags-ignore:
       - '**'
     paths-ignore:
@@ -170,9 +170,15 @@ jobs:
       - name: List packages
         run: ls -R ./packages/mako/npm
         shell: bash
+
       - name: Publish
         run: |
-          echo "Not a release, skipping publish"
+          if git log -1 --pretty=%B | grep "^release: [0-9]\+\.[0-9]\+\.[0-9]\+"; then
+            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
+            pnpm --filter @umijs/mako publish --access public
+          else
+            echo "Not a release, skipping publish"
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
