@@ -216,6 +216,13 @@ pub fn generate_module_id(origin_module_id: String, context: &Arc<Context>) -> S
             let relative_path = diff_paths(&absolute_path, &context.root).unwrap_or(absolute_path);
             relative_path.to_string_lossy().to_string()
         }
+        ModuleIdStrategy::Deterministic => {
+            let deterministic_ids_map = context.deterministic_ids_map.read().unwrap();
+            deterministic_ids_map
+                .get(&origin_module_id)
+                .unwrap()
+                .to_string()
+        }
     }
 }
 

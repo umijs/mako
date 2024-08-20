@@ -132,7 +132,7 @@ pub struct BuildParams {
     clean?: boolean;
     nodePolyfill?: boolean;
     ignores?: string[];
-    moduleIdStrategy?: "hashed" | "named";
+    moduleIdStrategy?: "hashed" | "named" | "deterministic";
     minify?: boolean;
     _minifish?: false | {
         mapping: Record<string, string>;

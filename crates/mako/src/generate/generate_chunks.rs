@@ -345,7 +345,6 @@ pub fn modules_to_js_stmts(
         let ast = &ast.ast;
 
         let fn_expr = module.to_module_fn_expr()?;
-
         js_stmts.push(build_props(
             module.id.generate(context).as_str(),
             fn_expr.into(),

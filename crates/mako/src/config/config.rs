@@ -185,6 +185,8 @@ pub enum ModuleIdStrategy {
     Hashed,
     #[serde(rename = "named")]
     Named,
+    #[serde(rename = "deterministic")]
+    Deterministic,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
