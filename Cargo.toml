@@ -14,9 +14,12 @@ tikv-jemallocator = { version = "=0.5.4", features = ["disable_initial_exec_tls"
 
 [profile.release]
 debug = false
+lto   = true
+strip = true
 
 # Use the `--profile release-debug` flag to show symbols in release mode.
 # e.g. `cargo build --profile release-debug`
 [profile.release-debug]
 debug    = true
 inherits = "release"
+strip    = false

@@ -1,9 +1,8 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 
-use merge_source_map::sourcemap::SourceMap as MergeSourceMap;
-use merge_source_map::{merge, MergeOptions};
 use pathdiff::diff_paths;
-use swc_core::base::sourcemap;
+use swc_core::base::sourcemap as swc_sourcemap;
 use swc_core::common::source_map::SourceMapGenConfig;
 use swc_core::common::sync::Lrc;
 use swc_core::common::{BytePos, FileName, LineCol, SourceMap};
@@ -34,7 +33,7 @@ pub fn build_source_map_to_buf(mappings: &[(BytePos, LineCol)], cm: &Lrc<SourceM
 pub fn build_source_map(
     mappings: &[(BytePos, LineCol)],
     cm: &Lrc<SourceMap>,
-) -> sourcemap::SourceMap {
+) -> swc_sourcemap::SourceMap {
     let config = SwcSourceMapGenConfig;
 
     cm.build_source_map_with_config(mappings, None, config)
@@ -45,14 +44,14 @@ pub fn build_source_map(
 #[derive(Clone, Default, Debug)]
 pub struct RawSourceMap {
     pub file: Option<String>,
-    pub tokens: Vec<sourcemap::RawToken>,
+    pub tokens: Vec<swc_sourcemap::RawToken>,
     pub names: Vec<String>,
     pub sources: Vec<String>,
     pub sources_content: Vec<Option<String>>,
 }
 
-impl From<sourcemap::SourceMap> for RawSourceMap {
-    fn from(sm: sourcemap::SourceMap) -> Self {
+impl From<swc_sourcemap::SourceMap> for RawSourceMap {
+    fn from(sm: swc_sourcemap::SourceMap) -> Self {
         Self {
             file: sm.get_file().map(|f| f.to_owned()),
             tokens: sm.tokens().map(|t| t.get_raw_token()).collect(),
@@ -66,7 +65,7 @@ impl From<sourcemap::SourceMap> for RawSourceMap {
     }
 }
 
-impl From<RawSourceMap> for sourcemap::SourceMap {
+impl From<RawSourceMap> for swc_sourcemap::SourceMap {
     fn from(rsm: RawSourceMap) -> Self {
         Self::new(
             rsm.file.map(|f| f.into_boxed_str().into()),
@@ -89,25 +88,125 @@ impl From<RawSourceMap> for sourcemap::SourceMap {
     }
 }
 
-pub fn merge_source_map(source_map_chain: Vec<Vec<u8>>, root: PathBuf) -> Vec<u8> {
-    let source_map_chain = source_map_chain
-        .iter()
-        .map(|s| MergeSourceMap::from_slice(s).unwrap())
-        .collect::<Vec<_>>();
+pub fn merge_source_map(
+    target_source_map: swc_sourcemap::SourceMap,
+    chain_map: HashMap<String, Vec<swc_sourcemap::SourceMap>>,
+    root: &PathBuf,
+) -> swc_sourcemap::SourceMap {
+    let mut builder = swc_sourcemap::SourceMapBuilder::new(None);
+    target_source_map.tokens().for_each(|token| {
+        if let Some(source) = token.get_source() {
+            let mut final_token = token;
+            let mut searched_in_chain = true;
 
-    let merged = merge(
-        source_map_chain,
-        MergeOptions {
-            source_replacer: Some(Box::new(move |src| {
-                diff_paths(src, &root)
-                    .unwrap_or(src.into())
-                    .to_string_lossy()
-                    .to_string()
-            })),
-        },
-    );
+            if let Some(source_map_chain) = chain_map.get(source)
+                && !source_map_chain.is_empty()
+            {
+                for map in source_map_chain.iter().rev() {
+                    if let Some(map_token) =
+                        map.lookup_token(token.get_src_line(), token.get_src_col())
+                    {
+                        final_token = map_token;
+                    } else {
+                        searched_in_chain = false;
+                        break;
+                    }
+                }
 
-    let mut buf = vec![];
-    merged.to_writer(&mut buf).unwrap();
-    buf
+                if !searched_in_chain {
+                    return;
+                }
+
+                // replace source
+                let replaced_source = final_token.get_source().map(|src| {
+                    diff_paths(src, root)
+                        .unwrap_or(src.into())
+                        .to_string_lossy()
+                        .to_string()
+                });
+
+                // add mapping
+                let added_token = builder.add(
+                    token.get_dst_line(),
+                    token.get_dst_col(),
+                    final_token.get_src_line(),
+                    final_token.get_src_col(),
+                    replaced_source.as_deref(),
+                    final_token.get_name(),
+                    false,
+                );
+
+                // add source centent
+                if !builder.has_source_contents(added_token.src_id) {
+                    let source_content = final_token.get_source_view().map(|view| view.source());
+
+                    builder.set_source_contents(added_token.src_id, source_content);
+                }
+            }
+        }
+    });
+
+    builder.into_sourcemap()
+}
+
+#[cfg(test)]
+mod test {
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+    use std::str::FromStr;
+
+    use crate::ast::sourcemap::{merge_source_map, swc_sourcemap};
+
+    #[test]
+    fn test_merge() {
+        let sourcemap1 = r#"{
+            "version": 3,
+            "file": "index.js",
+            "sourceRoot": "",
+            "sources": [
+              "index.ts"
+            ],
+            "names": [],
+            "mappings": "AAAA,SAAS,QAAQ,CAAC,IAAY;IAC5B,OAAO,CAAC,GAAG,CAAC,iBAAU,IAAI,CAAE,CAAC,CAAC;AAChC,CAAC",
+            "sourcesContent": [
+              "function sayHello(name: string) {\n  console.log(`Hello, ${name}`);\n}\n"
+            ]
+        }"#;
+        let sourcemap2 = r#"{
+            "version": 3,
+            "file": "minify.js",
+            "sourceRoot": "",
+            "sources": [
+              "index.ts"
+            ],
+            "names": [
+              "sayHello",
+              "name",
+              "console",
+              "log",
+              "concat"
+            ],
+            "mappings": "AAAA,SAASA,SAASC,CAAI,EAClBC,QAAQC,GAAG,CAAC,UAAUC,MAAM,CAACH,GACjC",
+            "sourcesContent": [
+              "function sayHello(name) {\n    console.log(\"Hello, \".concat(name));\n}\n"
+            ]
+        }"#;
+
+        let merged_source_map = merge_source_map(
+            swc_sourcemap::SourceMap::from_reader(sourcemap2.as_bytes()).unwrap(),
+            HashMap::<String, Vec<swc_sourcemap::SourceMap>>::from([(
+                "index.ts".to_string(),
+                vec![swc_sourcemap::SourceMap::from_reader(sourcemap1.as_bytes()).unwrap()],
+            )]),
+            &PathBuf::from_str("./").unwrap(),
+        );
+
+        let mut buf = vec![];
+
+        merged_source_map.to_writer(&mut buf).unwrap();
+
+        let merged = String::from_utf8(buf).unwrap();
+
+        assert!(merged.eq(r#"{"version":3,"sources":["index.ts"],"sourcesContent":["function sayHello(name: string) {\n  console.log(`Hello, ${name}`);\n}\n"],"names":[],"mappings":"AAAA,SAAS,SAAS,CAAY,EAC5B,QAAQ,GAAG,CAAC,UAAA,MAAA,CAAU,GACxB"}"#));
+    }
 }
