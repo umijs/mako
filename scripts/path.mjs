@@ -1,3 +1,5 @@
+import path from 'path';
+
 function winPath(path) {
   const isExtendedLengthPath = /^\\\\\?\\/.test(path);
   if (isExtendedLengthPath) {
