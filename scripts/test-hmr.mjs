@@ -4,12 +4,13 @@ import getPort, { clearLockedPorts } from 'get-port';
 import { chromium, devices } from 'playwright';
 import waitPort from 'wait-port';
 import 'zx/globals';
+import { winJoin } from './path';
 
 function skip() {}
 
 const root = process.cwd();
-const tmp = path.join(root, 'tmp', 'hmr');
-const tmpPackages = path.join(root, 'tmp', 'packages');
+const tmp = winJoin(root, 'tmp', 'hmr');
+const tmpPackages = winJoin(root, 'tmp', 'packages');
 if (!fs.existsSync(tmp)) {
   fs.mkdirSync(tmp, { recursive: true });
 }
@@ -1096,7 +1097,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(<><App /><section>{
       assert.equal(lastResult.html, '<div>App</div>', 'Initial render');
     },
     async () => {
-      const gitPath = path.join(tmp, '.git');
+      const gitPath = winJoin(tmp, '.git');
       if (fs.existsSync(gitPath)) {
         await $`rm -rf ${gitPath}`;
       }
@@ -1151,7 +1152,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(<><A /><section>{Ma
       assert.equal(lastResult.html, '<div>A b</div>', 'Initial render');
     },
     async () => {
-      const gitPath = path.join(tmp, '.git');
+      const gitPath = winJoin(tmp, '.git');
       if (fs.existsSync(gitPath)) {
         await $`rm -rf ${gitPath}`;
       }
@@ -1692,7 +1693,7 @@ function normalizeFiles(files, makoConfig = {}) {
 
 function write(files) {
   for (const [file, content] of Object.entries(files)) {
-    const p = path.join(tmp, file);
+    const p = winJoin(tmp, file);
     fs.mkdirSync(path.dirname(p), { recursive: true });
     fs.writeFileSync(p, content, 'utf-8');
   }
@@ -1700,14 +1701,14 @@ function write(files) {
 
 function writePackage(packageName, files) {
   for (const [file, content] of Object.entries(files)) {
-    const p = path.join(tmpPackages, packageName, file);
+    const p = winJoin(tmpPackages, packageName, file);
     fs.mkdirSync(path.dirname(p), { recursive: true });
     fs.writeFileSync(p, content, 'utf-8');
   }
 }
 
 function remove(file) {
-  const p = path.join(tmp, file);
+  const p = winJoin(tmp, file);
   fs.unlinkSync(p);
 }
 
@@ -1719,7 +1720,7 @@ async function startMakoDevServer() {
     assert(port === MAKO_DEV_PORT, `port ${MAKO_DEV_PORT} is not available`);
     isFirstCase = false;
   }
-  const p = $`${path.join(
+  const p = $`node ${winJoin(
     root,
     'scripts',
     'mako.js',

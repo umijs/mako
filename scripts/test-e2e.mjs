@@ -1,5 +1,6 @@
 import test from 'node:test';
 import 'zx/globals';
+import { winJoin } from './path';
 
 // node version 小于 20 时退出
 const nodeVersion = process.versions.node.split('.')[0];
@@ -25,7 +26,7 @@ const dirs = fs.readdirSync(fixtures).filter((dir) => {
 for (const dir of onlyDir ? [onlyDir] : dirs) {
   const testFn = dir.includes('failed') && !argv.only ? test.skip : test;
   await testFn(dir, async () => {
-    const cwd = path.join(fixtures, dir);
+    const cwd = winJoin(fixtures, dir);
     if (argv.umi) {
       if (!fs.existsSync(path.join(cwd, 'node_modules'))) {
         await $`cd ${cwd} && mkdir node_modules`;
