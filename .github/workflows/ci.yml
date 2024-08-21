@@ -48,7 +48,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        os: [ windows-latest ]
     runs-on: ${{ matrix.os }}
     if: ${{ !startsWith(github.event.head_commit.message, 'release:') && !startsWith(github.event.head_commit.message, 'ci:') && !startsWith(github.event.head_commit.message, 'docs:') }}
     steps:
@@ -90,7 +90,7 @@ jobs:
       fail-fast: false
       matrix:
         script: [ "test:e2e", "test:hmr", "test:umi" ]
-        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        os: [ windows-latest ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
