@@ -335,7 +335,7 @@ type Fragment = Option<String>;
 
 pub fn parse_path(path: &str) -> Result<(PathName, Search, Params, Fragment)> {
     #[cfg(windows)]
-    let path: String = format!("files://{}", path);
+    let path: String = format!("file://{}", path);
     #[cfg(not(windows))]
     let path: String = path.to_owned();
     let base = "http://a.com/";
