@@ -45,9 +45,6 @@ jobs:
       - run: cargo test
   build:
     name: Mako Build
-    defaults:
-      run:
-       shell: powershell
     strategy:
       fail-fast: false
       matrix:
