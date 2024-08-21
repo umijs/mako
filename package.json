@@ -5,6 +5,7 @@
     "prepare": "husky install",
     "build": "pnpm --filter @umijs/mako build && pnpm --filter @umijs/mako src:build && pnpm biome:format",
     "build:debug": "pnpm --filter @umijs/mako build:debug && pnpm --filter @umijs/mako src:build && pnpm biome:format",
+    "build:profile": "pnpm --filter @umijs/mako build:profile && pnpm --filter @umijs/mako src:build && pnpm biome:format",
     "build:client": "pnpm --filter client build",
     "biome:check": "biome check .",
     "biome:format": "biome check --write .",
