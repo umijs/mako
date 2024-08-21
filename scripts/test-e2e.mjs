@@ -1,6 +1,6 @@
 import test from 'node:test';
 import 'zx/globals';
-import { winJoin } from './path';
+import { winJoin } from './path.mjs';
 
 // node version 小于 20 时退出
 const nodeVersion = process.versions.node.split('.')[0];

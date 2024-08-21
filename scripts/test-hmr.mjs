@@ -4,7 +4,7 @@ import getPort, { clearLockedPorts } from 'get-port';
 import { chromium, devices } from 'playwright';
 import waitPort from 'wait-port';
 import 'zx/globals';
-import { winJoin } from './path';
+import { winJoin } from './path.mjs';
 
 function skip() {}
 

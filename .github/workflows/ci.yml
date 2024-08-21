@@ -44,7 +44,7 @@ jobs:
         run: rm -rf target/debug/build/sailfish-*
       - run: cargo test
   build:
-    name: Mako Build
+    name: Mako Test
     strategy:
       fail-fast: false
       matrix:
@@ -74,7 +74,7 @@ jobs:
       - run: pnpm i
       - name: Build
         run: pnpm build
-      - name:
+      - name: Playwright Install
         run: pnpm playwright install chromium
       - name: Test E2E
         shell: pwsh
@@ -100,7 +100,6 @@ jobs:
         with:
           clippy: true
           shared-key: x86-cargo-test-ubuntu-latest-${{ steps.week_mark.outputs.EXPIRES_WEEK_MARK }}-${{ hashFiles('./Cargo.lock') }}
-
       - name: Clippy
         run: cargo clippy --locked -- -D warnings
 
