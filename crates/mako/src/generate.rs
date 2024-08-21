@@ -566,11 +566,17 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
 
             if let Some(source_map) = &chunk_file.source_map {
                 let size = source_map.len() as u64;
+
+                let source_map_file_path = context
+                    .config
+                    .output
+                    .path
+                    .join(chunk_file.source_map_disk_name());
                 stats_info.add_assets(
                     size,
                     chunk_file.source_map_name(),
                     chunk_file.chunk_id.clone(),
-                    to.to_string_lossy().to_string(),
+                    source_map_file_path.to_string_lossy().to_string(),
                     chunk_file.source_map_disk_name(),
                 );
                 fs::write(
