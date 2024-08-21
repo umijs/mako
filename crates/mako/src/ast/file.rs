@@ -335,13 +335,9 @@ type Fragment = Option<String>;
 
 pub fn parse_path(path: &str) -> Result<(PathName, Search, Params, Fragment)> {
     let base = "http://a.com/";
-    println!("{}", path);
     let base_url = Url::parse(base)?;
-    println!("{}", base_url);
     let full_url = base_url.join(path)?;
-    println!("{}", full_url);
     let path = full_url.path().to_string();
-    println!("{}", path);
     let fragment = full_url.fragment().map(|s| s.to_string());
     let search = full_url.query().unwrap_or("").to_string();
     let query_vec = full_url

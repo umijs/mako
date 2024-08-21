@@ -29,6 +29,7 @@ impl Compiler {
             let mut entry_chunk_name = "index";
 
             for (key, value) in &self.context.config.entry {
+                println!("{}", &value.to_string_lossy());
                 // hmr entry id has query '?hmr'
                 if parse_path(&value.to_string_lossy()).unwrap().0
                     == parse_path(&entry.id).unwrap().0
