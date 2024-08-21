@@ -13,13 +13,14 @@ use swc_core::ecma::ast::Ident;
 use tracing::debug;
 
 use crate::ast::comments::Comments;
-use crate::config::{Config, OutputMode};
+use crate::config::{Config, ModuleIdStrategy, OutputMode};
 use crate::generate::chunk_graph::ChunkGraph;
 use crate::generate::optimize_chunk::OptimizeChunksInfo;
 use crate::module_graph::ModuleGraph;
 use crate::plugin::{Plugin, PluginDriver, PluginGenerateEndParams};
 use crate::plugins;
 use crate::resolve::{get_resolvers, Resolvers};
+use crate::share::helpers::SWC_HELPERS;
 use crate::stats::StatsInfo;
 use crate::utils::id_helper::{
     assign_deterministic_ids, compare_modules_by_pre_order_index_or_identifier,
@@ -114,13 +115,17 @@ impl Default for Context {
     fn default() -> Self {
         let config: Config = Default::default();
         let resolvers = get_resolvers(&config);
+        let mut deterministic_ids_map = HashMap::new();
+        SWC_HELPERS.iter().enumerate().for_each(|(i, item)| {
+            deterministic_ids_map.insert(item.to_string(), i);
+        });
         Self {
             config,
             args: Args { watch: false },
             root: PathBuf::from(""),
             module_graph: RwLock::new(ModuleGraph::new()),
             chunk_graph: RwLock::new(ChunkGraph::new()),
-            deterministic_ids_map: RwLock::new(HashMap::new()),
+            deterministic_ids_map: RwLock::new(deterministic_ids_map),
             assets_info: Mutex::new(HashMap::new()),
             modules_with_missing_deps: RwLock::new(Vec::new()),
             meta: Meta::new(),
@@ -327,6 +332,10 @@ impl Compiler {
         plugin_driver.modify_config(&mut config, &root, &args)?;
 
         let resolvers = get_resolvers(&config);
+        let mut deterministic_ids_map = HashMap::new();
+        SWC_HELPERS.iter().enumerate().for_each(|(i, item)| {
+            deterministic_ids_map.insert(item.to_string(), i);
+        });
         Ok(Self {
             context: Arc::new(Context {
                 static_cache: if config.write_to_disk {
@@ -340,7 +349,7 @@ impl Compiler {
                 module_graph: RwLock::new(ModuleGraph::new()),
                 chunk_graph: RwLock::new(ChunkGraph::new()),
                 assets_info: Mutex::new(HashMap::new()),
-                deterministic_ids_map: RwLock::new(HashMap::new()),
+                deterministic_ids_map: RwLock::new(deterministic_ids_map),
                 modules_with_missing_deps: RwLock::new(Vec::new()),
                 meta: Meta::new(),
                 plugin_driver,
@@ -401,34 +410,46 @@ impl Compiler {
         self.context.plugin_driver.before_generate(&self.context)?;
 
         // deterministicIds
-        let mut used_ids = get_used_module_ids_and_modules();
-        let mut conflicts = 0;
-        let max_length: u32 = 3;
-        let salt = 0;
-        let fixed_length = false;
-        let used_ids_len = used_ids.len();
-        let module_graph = self.context.module_graph.read().unwrap();
-        let modules = module_graph.modules();
-        assign_deterministic_ids(
-            modules,
-            |m| m.id.id.clone(),
-            |a, b| compare_modules_by_pre_order_index_or_identifier(&module_graph, &a.id, &b.id),
-            |module, id| {
-                let size = used_ids.len();
-                used_ids.insert(id.to_string());
-                if used_ids.len() == size {
-                    conflicts += 1;
-                    return false;
-                }
-                let mut deterministic_ids_map = self.context.deterministic_ids_map.write().unwrap();
-                deterministic_ids_map.insert(module.id.id.clone(), id);
-                true
-            },
-            &[usize::pow(10, max_length)],
-            if fixed_length { 0 } else { 10 },
-            used_ids_len,
-            salt,
-        );
+        match self.context.config.module_id_strategy {
+            ModuleIdStrategy::Deterministic => {
+                let mut used_ids = get_used_module_ids_and_modules();
+                let mut conflicts = 0;
+                let max_length: u32 = 3;
+                let salt = 0;
+                let fixed_length = false;
+                let used_ids_len = used_ids.len();
+                let module_graph = self.context.module_graph.read().unwrap();
+                let modules = module_graph.modules();
+                assign_deterministic_ids(
+                    modules,
+                    |m| m.id.id.clone(),
+                    |a, b| {
+                        compare_modules_by_pre_order_index_or_identifier(
+                            &module_graph,
+                            &a.id,
+                            &b.id,
+                        )
+                    },
+                    |module, id| {
+                        let size: usize = used_ids.len();
+                        used_ids.insert(id.to_string());
+                        if used_ids.len() == size {
+                            conflicts += 1;
+                            return false;
+                        }
+                        let mut deterministic_ids_map =
+                            self.context.deterministic_ids_map.write().unwrap();
+                        deterministic_ids_map.insert(module.id.id.clone(), id);
+                        true
+                    },
+                    &[usize::pow(10, max_length)],
+                    if fixed_length { 0 } else { 10 },
+                    used_ids_len,
+                    salt,
+                );
+            }
+            _ => unreachable!(),
+        }
 
         let result = {
             crate::mako_profile_scope!("Generate Stage");

@@ -218,10 +218,11 @@ pub fn generate_module_id(origin_module_id: String, context: &Arc<Context>) -> S
         }
         ModuleIdStrategy::Deterministic => {
             let deterministic_ids_map = context.deterministic_ids_map.read().unwrap();
-            deterministic_ids_map
-                .get(&origin_module_id)
-                .unwrap()
-                .to_string()
+            if let Some(deterministic_id) = deterministic_ids_map.get(&origin_module_id) {
+                deterministic_id.to_string()
+            } else {
+                md5_hash(&origin_module_id, 8)
+            }
         }
     }
 }

@@ -3,10 +3,15 @@ use std::collections::HashSet;
 
 use crate::module::ModuleId;
 use crate::module_graph::ModuleGraph;
+use crate::share::helpers::SWC_HELPERS;
 use crate::utils::comparators::{compare_ids, compare_numbers};
 
 pub fn get_used_module_ids_and_modules() -> HashSet<String> {
-    HashSet::new()
+    let mut ids = HashSet::new();
+    for (index, _) in SWC_HELPERS.iter().enumerate() {
+        ids.insert(index.to_string());
+    }
+    ids
 }
 
 // Port from https://github.com/web-infra-dev/rspack/blob/7e47dcee91c13e32ef3adbc4df479a09eae18c14/crates/rspack_util/src/number_hash.rs
