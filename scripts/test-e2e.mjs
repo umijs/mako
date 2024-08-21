@@ -32,9 +32,10 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
         await $`cd ${cwd} && mkdir node_modules`;
       }
       // run umi build
-      const x = winJoin(
-        await import.meta.resolve('@umijs/bundler-mako'),
-      ).replace(/^file:\//, '');
+      const x = (await import.meta.resolve('@umijs/bundler-mako')).replace(
+        /^file:\/\//,
+        '',
+      );
       console.log(`cd ${cwd} && COMPRESS=none OKAM=${x} umi build`);
       await $`cd ${cwd} && COMPRESS=none OKAM=${x} umi build`;
     } else {

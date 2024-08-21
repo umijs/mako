@@ -334,9 +334,13 @@ type Params = Vec<(String, String)>;
 type Fragment = Option<String>;
 
 pub fn parse_path(path: &str) -> Result<(PathName, Search, Params, Fragment)> {
+    #[cfg(windows)]
+    let path: String = format!("files://{}", path);
+    #[cfg(not(windows))]
+    let path: String = path.to_owned();
     let base = "http://a.com/";
     let base_url = Url::parse(base)?;
-    let full_url = base_url.join(path)?;
+    let full_url = base_url.join(&path)?;
     let path = full_url.path().to_string();
     let fragment = full_url.fragment().map(|s| s.to_string());
     let search = full_url.query().unwrap_or("").to_string();
