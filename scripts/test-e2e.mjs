@@ -34,7 +34,7 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
       // run umi build
       const x = winJoin(
         await import.meta.resolve('@umijs/bundler-mako'),
-      ).replace(/^file:\/\//, '');
+      ).replace(/^file:\//, '');
       console.log(`cd ${cwd} && COMPRESS=none OKAM=${x} umi build`);
       await $`cd ${cwd} && COMPRESS=none OKAM=${x} umi build`;
     } else {
