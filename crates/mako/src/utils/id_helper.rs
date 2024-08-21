@@ -61,6 +61,7 @@ pub fn compare_modules_by_pre_order_index_or_identifier(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn assign_deterministic_ids<T: Copy>(
     mut items: Vec<T>,
     get_name: impl Fn(T) -> String,
