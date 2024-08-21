@@ -409,46 +409,38 @@ impl Compiler {
 
         self.context.plugin_driver.before_generate(&self.context)?;
 
-        // deterministicIds
-        match self.context.config.module_id_strategy {
-            ModuleIdStrategy::Deterministic => {
-                let mut used_ids = get_used_module_ids_and_modules();
-                let mut conflicts = 0;
-                let max_length: u32 = 3;
-                let salt = 0;
-                let fixed_length = false;
-                let used_ids_len = used_ids.len();
-                let module_graph = self.context.module_graph.read().unwrap();
-                let modules = module_graph.modules();
-                assign_deterministic_ids(
-                    modules,
-                    |m| m.id.id.clone(),
-                    |a, b| {
-                        compare_modules_by_pre_order_index_or_identifier(
-                            &module_graph,
-                            &a.id,
-                            &b.id,
-                        )
-                    },
-                    |module, id| {
-                        let size: usize = used_ids.len();
-                        used_ids.insert(id.to_string());
-                        if used_ids.len() == size {
-                            conflicts += 1;
-                            return false;
-                        }
-                        let mut deterministic_ids_map =
-                            self.context.deterministic_ids_map.write().unwrap();
-                        deterministic_ids_map.insert(module.id.id.clone(), id);
-                        true
-                    },
-                    &[usize::pow(10, max_length)],
-                    if fixed_length { 0 } else { 10 },
-                    used_ids_len,
-                    salt,
-                );
-            }
-            _ => unreachable!(),
+        if let ModuleIdStrategy::Deterministic = self.context.config.module_id_strategy {
+            let mut used_ids = get_used_module_ids_and_modules();
+            let mut conflicts = 0;
+            let max_length: u32 = 3;
+            let salt = 0;
+            let fixed_length = false;
+            let used_ids_len = used_ids.len();
+            let module_graph = self.context.module_graph.read().unwrap();
+            let modules = module_graph.modules();
+            assign_deterministic_ids(
+                modules,
+                |m| m.id.id.clone(),
+                |a, b| {
+                    compare_modules_by_pre_order_index_or_identifier(&module_graph, &a.id, &b.id)
+                },
+                |module, id| {
+                    let size: usize = used_ids.len();
+                    used_ids.insert(id.to_string());
+                    if used_ids.len() == size {
+                        conflicts += 1;
+                        return false;
+                    }
+                    let mut deterministic_ids_map =
+                        self.context.deterministic_ids_map.write().unwrap();
+                    deterministic_ids_map.insert(module.id.id.clone(), id);
+                    true
+                },
+                &[usize::pow(10, max_length)],
+                if fixed_length { 0 } else { 10 },
+                used_ids_len,
+                salt,
+            );
         }
 
         let result = {
