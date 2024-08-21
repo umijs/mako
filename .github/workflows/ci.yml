@@ -86,9 +86,6 @@ jobs:
   test_e2e:
     name: E2E
     needs: build
-    defaults:
-      run:
-       shell: powershell
     strategy:
       fail-fast: false
       matrix:
@@ -109,7 +106,6 @@ jobs:
       - run: |
           pnpm i
           pnpm playwright install chromium
-
       - name: Download bindings
         uses: actions/download-artifact@v4
         with:
@@ -118,6 +114,7 @@ jobs:
       - name: LS
         run: ls -l ./packages/mako
       - name: Test E2E
+        shell: pwsh
         run: pnpm ${{ matrix.script }}
 
   lint:
