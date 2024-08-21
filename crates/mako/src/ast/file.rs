@@ -333,20 +333,11 @@ type Search = String;
 type Params = Vec<(String, String)>;
 type Fragment = Option<String>;
 
-fn win_path(path: &str) -> String {
-    let is_extended_length_path = path.starts_with("\\\\?\\");
-    if is_extended_length_path {
-        path.to_string()
-    } else {
-        path.replace('\\', "/")
-    }
-}
-
 pub fn parse_path(path: &str) -> Result<(PathName, Search, Params, Fragment)> {
     let base = "http://a.com/";
     let base_url = Url::parse(base)?;
     let full_url = base_url.join(path)?;
-    let path = win_path(full_url.path()).to_string();
+    let path = full_url.path().to_string();
     let fragment = full_url.fragment().map(|s| s.to_string());
     let search = full_url.query().unwrap_or("").to_string();
     let query_vec = full_url
