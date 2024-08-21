@@ -44,7 +44,7 @@ jobs:
         run: rm -rf target/debug/build/sailfish-*
       - run: cargo test
   build:
-    name: Mako Test
+    name: Mako Build
     strategy:
       fail-fast: false
       matrix:
@@ -74,17 +74,49 @@ jobs:
       - run: pnpm i
       - name: Build
         run: pnpm build
-      - name: Playwright Install
-        run: pnpm playwright install chromium
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bindings-${{ matrix.os }}
+          path: |
+            ./packages/mako/*.node
+            ./packages/mako/binding.*
+            ./packages/mako/dist
+          if-no-files-found: error
+  test_e2e:
+    name: E2E
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        script: [ "test:e2e", "test:hmr", "test:umi" ]
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8.15.8
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: "pnpm"
+          token: ${{ secrets.GH_DOTCOM_TOKEN }}
+      - run: |
+          pnpm i
+          pnpm playwright install chromium
+
+      - name: Download bindings
+        uses: actions/download-artifact@v4
+        with:
+          name: bindings-${{ matrix.os }}
+          path: packages/mako/
+      - name: LS
+        run: ls -l ./packages/mako
       - name: Test E2E
         shell: pwsh
-        run: pnpm test:e2e
-      - name: Test HMR
-        shell: pwsh
-        run: pnpm test:hmr
-      - name: Test UMI
-        shell: pwsh
-        run: pnpm test:umi
+        run: pnpm ${{ matrix.script }}
 
   lint:
     name: Clippy
@@ -100,6 +132,7 @@ jobs:
         with:
           clippy: true
           shared-key: x86-cargo-test-ubuntu-latest-${{ steps.week_mark.outputs.EXPIRES_WEEK_MARK }}-${{ hashFiles('./Cargo.lock') }}
+
       - name: Clippy
         run: cargo clippy --locked -- -D warnings
 

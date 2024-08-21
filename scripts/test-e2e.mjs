@@ -10,7 +10,7 @@ if (nodeVersion < 20) {
 }
 
 const root = process.cwd();
-const fixtures = path.join(root, argv.fixtures || 'e2e/fixtures');
+const fixtures = winJoin(root, argv.fixtures || 'e2e/fixtures');
 let onlyDir = argv.only ? argv.only : null;
 const dirs = fs.readdirSync(fixtures).filter((dir) => {
   if (dir.endsWith('-only')) {
@@ -18,8 +18,8 @@ const dirs = fs.readdirSync(fixtures).filter((dir) => {
   }
   return (
     !dir.startsWith('.') &&
-    fs.statSync(path.join(fixtures, dir)).isDirectory() &&
-    fs.existsSync(path.join(fixtures, dir, 'expect.js'))
+    fs.statSync(winJoin(fixtures, dir)).isDirectory() &&
+    fs.existsSync(winJoin(fixtures, dir, 'expect.js'))
   );
 });
 
@@ -28,7 +28,7 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
   await testFn(dir, async () => {
     const cwd = winJoin(fixtures, dir);
     if (argv.umi) {
-      if (!fs.existsSync(path.join(cwd, 'node_modules'))) {
+      if (!fs.existsSync(winJoin(cwd, 'node_modules'))) {
         await $`cd ${cwd} && mkdir node_modules`;
       }
       // run umi build
@@ -41,11 +41,11 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
     } else {
       try {
         // run mako build
-        await $`node ${path.join(root, 'scripts', 'mako.js')} ${cwd}`;
+        await $`node ${winJoin(root, 'scripts', 'mako.js')} ${cwd}`;
       } catch (e) {
         const isErrorCase = dir.split('.').includes('error');
         if (isErrorCase) {
-          const mod = await import(path.join(fixtures, dir, 'expect.js'));
+          const mod = await import(winJoin(fixtures, dir, 'expect.js'));
           mod.default(e);
           return;
         } else {
@@ -54,7 +54,7 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
       }
     }
     // run expect.js
-    const mod = await import(path.join(fixtures, dir, 'expect.js'));
+    const mod = await import(winJoin(fixtures, dir, 'expect.js'));
     if (mod && typeof mod.default === 'function') {
       await mod.default();
     }
