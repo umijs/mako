@@ -3,7 +3,7 @@
 const path = require('path');
 const fs = require('fs');
 const { build } = require('@umijs/mako');
-const cwd = process.argv[2] || process.cwd();
+const cwd = process.argv[2];
 
 console.log('> run mako build for', cwd);
 const config = getMakoConfig();

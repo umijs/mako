@@ -45,6 +45,9 @@ jobs:
       - run: cargo test
   build:
     name: Mako Build
+    defaults:
+      run:
+       shell: powershell
     strategy:
       fail-fast: false
       matrix:
@@ -86,6 +89,9 @@ jobs:
   test_e2e:
     name: E2E
     needs: build
+    defaults:
+      run:
+       shell: powershell
     strategy:
       fail-fast: false
       matrix:
@@ -116,7 +122,7 @@ jobs:
         run: ls -l ./packages/mako
       - name: Test E2E
         run: pnpm ${{ matrix.script }}
-  
+
   lint:
     name: Clippy
     runs-on: ubuntu-latest
