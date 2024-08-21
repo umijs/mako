@@ -49,7 +49,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest, windows-latest, macos-latest ]
-        script: [ "test:e2e", "test:hmr", "test:umi" ]
     runs-on: ${{ matrix.os }}
     if: ${{ !startsWith(github.event.head_commit.message, 'release:') && !startsWith(github.event.head_commit.message, 'ci:') && !startsWith(github.event.head_commit.message, 'docs:') }}
     steps:
@@ -79,7 +78,13 @@ jobs:
         run: pnpm playwright install chromium
       - name: Test E2E
         shell: pwsh
-        run: pnpm ${{ matrix.script }}
+        run: pnpm test:e2e
+      - name: Test HMR
+        shell: pwsh
+        run: pnpm test:hmr
+      - name: Test UMI
+        shell: pwsh
+        run: pnpm test:umi
 
   lint:
     name: Clippy
