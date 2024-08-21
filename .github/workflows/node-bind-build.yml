@@ -47,7 +47,6 @@ jobs:
             target: x86_64-unknown-linux-musl
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
             build: |
-              rustup target add aarch64-apple-darwin
               pnpm --filter @umijs/mako build --target  x86_64-unknown-linux-musl
               strip -x ./packages/mako/*.node
     name: stable - ${{ matrix.settings.target }} - node@20
