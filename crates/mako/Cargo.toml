@@ -14,7 +14,6 @@ test = false
 bitflags     = { version = "2.4.2", features = ["serde"] }
 cached       = { workspace = true }
 dashmap      = "4.0.1"
-delegate     = "0.12.0"
 fixedbitset  = "0.4.2"
 get_if_addrs = "0.5.3"
 glob-match   = "0.2.1"

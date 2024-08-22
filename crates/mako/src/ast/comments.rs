@@ -1,14 +1,13 @@
-use delegate::delegate;
 use swc_core::common;
 use swc_core::common::comments::{Comment, Comments as CommentsTrait};
 use swc_core::common::{BytePos, Span};
 use swc_node_comments::SwcComments;
 
 #[derive(Default)]
-pub struct Comments(MakoComments);
+pub struct Comments(SwcComments);
 
 impl Comments {
-    pub fn get_swc_comments(&self) -> &MakoComments {
+    pub fn get_swc_comments(&self) -> &SwcComments {
         &self.0
     }
 
@@ -83,40 +82,5 @@ impl Comments {
         }
 
         found
-    }
-}
-
-#[derive(Clone, Default)]
-pub struct MakoComments(SwcComments);
-
-impl CommentsTrait for MakoComments {
-    fn add_pure_comment(&self, pos: BytePos) {
-        //ref: https://github.com/swc-project/swc/pull/8172
-        if pos.is_dummy() {
-            #[cfg(debug_assertions)]
-            {
-                use tracing::warn;
-                warn!("still got pure comments at dummy pos! UPGRADE SWC!!!");
-            }
-            return;
-        }
-        self.0.add_pure_comment(pos);
-    }
-
-    delegate! {
-        to self.0 {
-            fn add_leading(&self, pos: BytePos, cmt: Comment);
-            fn add_leading_comments(&self, pos: BytePos, comments: Vec<Comment>);
-            fn has_leading(&self, pos: BytePos) -> bool;
-            fn move_leading(&self, from: BytePos, to: BytePos);
-            fn take_leading(&self, pos: BytePos) -> Option<Vec<Comment>>;
-            fn get_leading(&self, pos: BytePos) -> Option<Vec<Comment>>;
-            fn add_trailing(&self, pos: BytePos, cmt: Comment);
-            fn add_trailing_comments(&self, pos: BytePos, comments: Vec<Comment>);
-            fn has_trailing(&self, pos: BytePos) -> bool;
-            fn move_trailing(&self, from: BytePos, to: BytePos);
-            fn take_trailing(&self, pos: BytePos) -> Option<Vec<Comment>>;
-            fn get_trailing(&self, pos: BytePos) -> Option<Vec<Comment>>;
-        }
     }
 }
