@@ -45,7 +45,7 @@ impl LinkBackDfs {
     where
         F: Fn(EdgeIndex) -> bool,
     {
-        while let Some((&nx, _)) = self.stack.iter().last().as_ref() {
+        while let Some((&nx, _)) = self.stack.back() {
             if self.discovered.visit(nx) {
                 let mut nxs = Vec::<NodeIndex>::new();
 
