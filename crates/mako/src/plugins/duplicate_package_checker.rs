@@ -162,3 +162,38 @@ impl Plugin for DuplicatePackageCheckerPlugin {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use crate::config::{Config, DuplicatePackageCheckerConfig};
+    use crate::plugin::Plugin;
+    use crate::plugins::duplicate_package_checker::DuplicatePackageCheckerPlugin;
+    use crate::utils::test_helper::setup_compiler;
+
+    #[test]
+    fn test_duplicate_package_checker() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test/build/duplicate-package");
+        let mut config = Config::new(&root, None, None).unwrap();
+        config.check_duplicate_package = Some(DuplicatePackageCheckerConfig {
+            verbose: true,
+            emit_error: false,
+            show_help: true,
+        });
+
+        let compiler = setup_compiler("test/build/duplicate-package", false);
+        let plugin = DuplicatePackageCheckerPlugin::new()
+            .verbose(true)
+            .show_help(true)
+            .emit_error(false);
+
+        // 运行编译
+        compiler.compile().unwrap();
+
+        // 执行插件的 after_build 方法
+        let result = plugin.after_build(&compiler.context, &compiler);
+
+        assert!(result.is_ok());
+    }
+}
