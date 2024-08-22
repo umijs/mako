@@ -9,12 +9,11 @@ mimalloc-rust     = { version = "=0.2.1" }
 regex             = "1.9.3"
 serde             = "1.0.171"
 serde_json        = "1.0.100"
-swc_core          = { version = "0.100.6", default-features = false }
+swc_core          = { version = "0.101.4", default-features = false }
 tikv-jemallocator = { version = "=0.5.4", features = ["disable_initial_exec_tls"] }
 
 [profile.release]
 debug = false
-lto   = true
 strip = true
 
 # Use the `--profile release-debug` flag to show symbols in release mode.

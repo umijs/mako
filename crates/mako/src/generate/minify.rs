@@ -7,7 +7,7 @@ use swc_core::css::ast::Stylesheet;
 use swc_core::css::minifier;
 use swc_core::ecma::minifier::optimize;
 use swc_core::ecma::minifier::option::{ExtraOptions, MinifyOptions};
-use swc_core::ecma::transforms::base::fixer::fixer;
+use swc_core::ecma::transforms::base::fixer::{fixer, paren_remover};
 use swc_core::ecma::transforms::base::helpers::{Helpers, HELPERS};
 use swc_core::ecma::transforms::base::resolver;
 use swc_core::ecma::visit::VisitMutWith;
@@ -28,24 +28,21 @@ pub fn minify_js(ast: &mut JsAst, context: &Arc<Context>) -> Result<()> {
                         let unresolved_mark = ast.unresolved_mark;
                         let top_level_mark = ast.top_level_mark;
 
+                        let comments_lock = context.meta.script.origin_comments.read().unwrap();
+
+                        let comments = comments_lock.get_swc_comments();
+
                         ast.ast.visit_mut_with(&mut resolver(
                             unresolved_mark,
                             top_level_mark,
                             false,
                         ));
+                        ast.ast.visit_mut_with(&mut paren_remover(Some(comments)));
 
                         let mut minified = optimize(
                             ast.ast.clone().into(),
                             context.meta.script.cm.clone(),
-                            Some(
-                                context
-                                    .meta
-                                    .script
-                                    .origin_comments
-                                    .read()
-                                    .unwrap()
-                                    .get_swc_comments(),
-                            ),
+                            Some(comments),
                             None,
                             &MinifyOptions {
                                 compress: Some(Default::default()),
@@ -59,15 +56,7 @@ pub fn minify_js(ast: &mut JsAst, context: &Arc<Context>) -> Result<()> {
                         )
                         .expect_module();
 
-                        minified.visit_mut_with(&mut fixer(Some(
-                            context
-                                .meta
-                                .script
-                                .origin_comments
-                                .read()
-                                .unwrap()
-                                .get_swc_comments(),
-                        )));
+                        minified.visit_mut_with(&mut fixer(Some(comments)));
 
                         ast.ast = minified;
                         Ok(())
