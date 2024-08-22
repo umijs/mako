@@ -56,7 +56,6 @@ jobs:
               set -e &&
               rustup target add aarch64-unknown-linux-musl &&
               pnpm --filter @umijs/mako build --target aarch64-unknown-linux-musl
-              strip -x ./packages/mako/*.node
     name: stable - ${{ matrix.settings.target }} - node@20
     runs-on: ${{ matrix.settings.host }}
     steps:
