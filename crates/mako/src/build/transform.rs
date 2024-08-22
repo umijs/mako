@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use swc_core::common::sync::Lrc;
 use swc_core::common::GLOBALS;
 use swc_core::css::ast::{AtRule, AtRulePrelude, ImportHref, Rule, Str, Stylesheet, UrlValue};
 use swc_core::css::compat::compiler::{self, Compiler};
@@ -33,6 +32,7 @@ use crate::visitors::dynamic_import_to_require::DynamicImportToRequire;
 use crate::visitors::env_replacer::{build_env_map, EnvReplacer};
 use crate::visitors::fix_helper_inject_position::FixHelperInjectPosition;
 use crate::visitors::fix_symbol_conflict::FixSymbolConflict;
+use crate::visitors::import_meta_env_replacer::ImportMetaEnvReplacer;
 use crate::visitors::import_template_to_string_literal::ImportTemplateToStringLiteral;
 use crate::visitors::new_url_assets::NewUrlAssets;
 use crate::visitors::provide::Provide;
@@ -115,18 +115,15 @@ impl Transform {
                             &unresolved_mark,
                         ));
                     }
-                    // TODO: refact env replacer
                     {
                         let mut define = context.config.define.clone();
                         let mode = context.config.mode.to_string();
                         define
-                            .entry("NODE_ENV".to_string())
+                            .entry("process.env.NODE_ENV".to_string())
                             .or_insert_with(|| format!("\"{}\"", mode).into());
                         let env_map = build_env_map(define, &context)?;
-                        visitors.push(Box::new(EnvReplacer::new(
-                            Lrc::new(env_map),
-                            unresolved_mark,
-                        )));
+                        visitors.push(Box::new(EnvReplacer::new(env_map, unresolved_mark)));
+                        visitors.push(Box::new(ImportMetaEnvReplacer::new(mode)));
                     }
                     visitors.push(Box::new(TryResolve {
                         path: file.path.to_string_lossy().to_string(),
