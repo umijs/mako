@@ -1,3 +1,9 @@
+## 0.8.4
+
+`2024-08-23`
+
+- fix: should not alias define XXX to process.env.XXX by [@xusd320](https://github.com/xusd320) in [#1504](https://github.com/umijs/mako/pull/1526)
+
 ## 0.8.2
 
 `2024-08-16`
