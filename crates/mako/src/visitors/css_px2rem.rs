@@ -2,8 +2,8 @@ use cached::proc_macro::cached;
 use regex::Regex;
 use swc_core::css::ast::{
     self as swc_css_ast, AttributeSelector, Combinator, CombinatorValue, ComplexSelector,
-    ComplexSelectorChildren, CompoundSelector, Length, MediaQueryList, SubclassSelector, Token,
-    TypeSelector,
+    ComplexSelectorChildren, CompoundSelector, Ident, Length, MediaQueryList, Number,
+    SubclassSelector, Token, TypeSelector, UnknownDimension,
 };
 use swc_core::css::visit::{VisitMut, VisitMutWith};
 
@@ -11,6 +11,10 @@ use crate::config::Px2RemConfig;
 
 pub(crate) fn default_root() -> f64 {
     100.0
+}
+
+pub(crate) fn default_unit() -> String {
+    "px".to_string()
 }
 
 pub struct Px2Rem {
@@ -45,6 +49,7 @@ impl Px2Rem {
         });
         is_any_in_doublelist
     }
+
     fn should_transform(&self, val: f64) -> bool {
         if val.abs() < self.config.min_pixel_value {
             return false;
@@ -78,6 +83,15 @@ impl Px2Rem {
         };
         is_prop_valid && is_selector_valid
     }
+
+    fn transform_declaration_unit(&mut self, value: &mut Number, unit: &mut Ident) {
+        value.value /= self.config.root;
+        if self.is_any_in_doublelist() {
+            value.value *= 2.0;
+        }
+        value.raw = None;
+        unit.value = "rem".into();
+    }
 }
 
 impl VisitMut for Px2Rem {
@@ -99,13 +113,19 @@ impl VisitMut for Px2Rem {
     }
 
     fn visit_mut_length(&mut self, n: &mut Length) {
-        if n.unit.value.to_string() == "px" && self.should_transform(n.value.value) {
-            n.value.value /= self.config.root;
-            if self.is_any_in_doublelist() {
-                n.value.value *= 2.0;
-            }
-            n.value.raw = None;
-            n.unit.value = "rem".into();
+        if n.unit.value == self.config.unit && self.should_transform(n.value.value) {
+            self.transform_declaration_unit(&mut n.value, &mut n.unit);
+        }
+        n.visit_mut_children_with(self);
+    }
+
+    // custom unit use as unknown_dimension
+    // e.g.
+    // .a { width: 100rpx; }
+    // the `rpx` is a unknown_dimension
+    fn visit_mut_unknown_dimension(&mut self, n: &mut UnknownDimension) {
+        if n.unit.value == self.config.unit && self.should_transform(n.value.value) {
+            self.transform_declaration_unit(&mut n.value, &mut n.unit);
         }
         n.visit_mut_children_with(self);
     }
@@ -126,7 +146,7 @@ impl VisitMut for Px2Rem {
     // .a { --a-b: var(--c-d, 88px); }
     fn visit_mut_token(&mut self, t: &mut Token) {
         if let Token::Dimension(dimension) = t {
-            if dimension.unit.to_string() == "px" && self.should_transform(dimension.value) {
+            if dimension.unit == self.config.unit && self.should_transform(dimension.value) {
                 let mut rem_val = dimension.value / self.config.root;
                 if self.is_any_in_doublelist() {
                     rem_val *= 2.0;
@@ -666,6 +686,20 @@ mod tests {
                 }
             ),
             r#".a{width:1rem}.b{width:100px}.b.a{width:1rem}"#
+        );
+    }
+
+    #[test]
+    fn test_special_custom_unit() {
+        assert_eq!(
+            run(
+                r#".a{width:100rpx;height:40px;}"#,
+                Px2RemConfig {
+                    unit: "rpx".to_string(),
+                    ..Default::default()
+                }
+            ),
+            r#".a{width:1rem;height:40px}"#
         );
     }
 

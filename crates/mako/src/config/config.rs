@@ -253,6 +253,8 @@ pub struct Px2RemConfig {
     pub min_pixel_value: f64,
     #[serde(rename = "mediaQuery", default)]
     pub media_query: bool,
+    #[serde(rename = "unit", default = "visitors::css_px2rem::default_unit")]
+    pub unit: String,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -272,6 +274,7 @@ impl Default for Px2RemConfig {
             selector_doublelist: vec![],
             min_pixel_value: 0.0,
             media_query: false,
+            unit: visitors::css_px2rem::default_unit(),
         }
     }
 }
