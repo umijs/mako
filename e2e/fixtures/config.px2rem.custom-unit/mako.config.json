@@ -1,0 +1,6 @@
+{
+  "px2rem": {
+    "mediaQuery": true,
+    "unit": "rpx"
+  }
+}

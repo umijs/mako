@@ -1,0 +1,41 @@
+.px {
+  width: 34px;
+}
+
+.a {
+  margin: 0 0 20rpx;
+  font-size: 32rpx;
+  line-height: 1.2;
+  letter-spacing: 1rpx;
+}
+
+
+.b {
+  font-size: 2em;
+}
+
+.c {
+  margin: 0.5rpx;
+}
+
+.d {
+  content: "16rpx";
+  font-family: "16rpx";
+  font-size: 16rpx;
+}
+
+@media (min-width: 500rpx) {
+  .rule {
+    font-size: 16rpx;
+  }
+}
+
+h1 {
+  --border-radius: var(--adm-button-border-radius, 88rpx);
+  --border-top: var(--adm-button-border-radius, 88em);
+  width: 88rpx;
+  height: var(--state, var(--button-color, var(--brand-color, 88rpx)));
+  min-height: var(--state, var(--button-color, var(--brand-color, 88em)));
+  --my-height: var(--state, var(--button-color, var(--brand-color, calc(100% - 88rpx))));
+  --your-height: var(--state, var(--button-color, var(--brand-color, calc(100% - 88em))));
+}
