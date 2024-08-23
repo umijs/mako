@@ -3,7 +3,7 @@
 `2024-08-23`
 
 - 修复 bundler-mako 中 define process.env.XXX 不生效的问题 by [@xusd320](https://github.com/xusd320) in [#1504](https://github.com/umijs/mako/pull/1526)
-- 
+
 ## 0.8.2
 
 `2024-08-16`
