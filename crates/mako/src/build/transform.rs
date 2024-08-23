@@ -172,21 +172,7 @@ impl Transform {
                     })));
                     let comments = origin_comments.get_swc_comments().clone();
                     let assumptions = context.assumptions_for(file);
-                    folders.push(Box::new(reserved_words::reserved_words()));
-                    folders.push(Box::new(paren_remover(Default::default())));
-                    // simplify, but keep top level dead code
-                    // e.g. import x from 'foo'; but x is not used
-                    // this must be kept for tree shaking to work
-                    folders.push(Box::new(simplifier(
-                        unresolved_mark,
-                        SimpilifyConfig {
-                            dce: dce::Config {
-                                top_level: false,
-                                ..Default::default()
-                            },
-                            ..Default::default()
-                        },
-                    )));
+
                     // NOTICE: remove optimize_package_imports temporarily
                     // folders.push(Box::new(Optional {
                     //     enabled: should_optimize(file.path.to_str().unwrap(), context.clone()),
@@ -218,20 +204,37 @@ impl Transform {
                     })?;
 
                     // preset_env should go last
-                    let preset_env = Box::new(swc_preset_env::preset_env(
-                        unresolved_mark,
-                        Some(comments),
-                        swc_preset_env::Config {
-                            mode: Some(swc_preset_env::Mode::Entry),
-                            targets: Some(swc_preset_env_targets_from_map(
-                                context.config.targets.clone(),
-                            )),
-                            ..Default::default()
-                        },
-                        assumptions,
-                        &mut FeatureFlag::default(),
-                    ));
-                    ast.transform(&mut vec![], &mut vec![preset_env], true, context.clone())?;
+                    let mut preset_folders: Vec<Box<dyn Fold>> = vec![
+                        Box::new(swc_preset_env::preset_env(
+                            unresolved_mark,
+                            Some(comments),
+                            swc_preset_env::Config {
+                                mode: Some(swc_preset_env::Mode::Entry),
+                                targets: Some(swc_preset_env_targets_from_map(
+                                    context.config.targets.clone(),
+                                )),
+                                ..Default::default()
+                            },
+                            assumptions,
+                            &mut FeatureFlag::default(),
+                        )),
+                        Box::new(reserved_words::reserved_words()),
+                        Box::new(paren_remover(Default::default())),
+                        // simplify, but keep top level dead code
+                        // e.g. import x from 'foo'; but x is not used
+                        // this must be kept for tree shaking to work
+                        Box::new(simplifier(
+                            unresolved_mark,
+                            SimpilifyConfig {
+                                dce: dce::Config {
+                                    top_level: false,
+                                    ..Default::default()
+                                },
+                                ..Default::default()
+                            },
+                        )),
+                    ];
+                    ast.transform(&mut vec![], &mut preset_folders, true, context.clone())?;
 
                     Ok(())
                 })
