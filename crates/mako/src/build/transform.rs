@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use swc_core::common::errors::HANDLER;
 use swc_core::common::GLOBALS;
 use swc_core::css::ast::{AtRule, AtRulePrelude, ImportHref, Rule, Str, Stylesheet, UrlValue};
 use swc_core::css::compat::compiler::{self, Compiler};
@@ -8,12 +9,14 @@ use swc_core::css::{compat as swc_css_compat, prefixer, visit as swc_css_visit};
 use swc_core::ecma::preset_env::{self as swc_preset_env};
 use swc_core::ecma::transforms::base::feature::FeatureFlag;
 use swc_core::ecma::transforms::base::fixer::paren_remover;
+use swc_core::ecma::transforms::base::helpers::{Helpers, HELPERS};
 use swc_core::ecma::transforms::base::{resolver, Assumptions};
 use swc_core::ecma::transforms::compat::reserved_words;
 use swc_core::ecma::transforms::optimization::simplifier;
 use swc_core::ecma::transforms::optimization::simplify::{dce, Config as SimpilifyConfig};
 use swc_core::ecma::transforms::proposal::decorators;
 use swc_core::ecma::visit::{Fold, VisitMut};
+use swc_error_reporters::handler::try_with_handler;
 
 use crate::ast::css_ast::CssAst;
 use crate::ast::file::File;
@@ -23,6 +26,7 @@ use crate::compiler::Context;
 use crate::config::Mode;
 use crate::features;
 use crate::module::ModuleAst;
+use crate::plugin::PluginTransformJsParam;
 use crate::plugins::context_module::ContextModuleVisitor;
 use crate::visitors::css_assets::CSSAssets;
 use crate::visitors::css_flexbugs::CSSFlexbugs;
@@ -107,7 +111,7 @@ impl Transform {
                         && is_browser;
                     if is_jsx {
                         visitors.push(react(
-                            cm,
+                            cm.clone(),
                             context.clone(),
                             use_refresh,
                             &top_level_mark,
@@ -168,20 +172,6 @@ impl Transform {
                     })));
                     let comments = origin_comments.get_swc_comments().clone();
                     let assumptions = context.assumptions_for(file);
-
-                    folders.push(Box::new(swc_preset_env::preset_env(
-                        unresolved_mark,
-                        Some(comments),
-                        swc_preset_env::Config {
-                            mode: Some(swc_preset_env::Mode::Entry),
-                            targets: Some(swc_preset_env_targets_from_map(
-                                context.config.targets.clone(),
-                            )),
-                            ..Default::default()
-                        },
-                        assumptions,
-                        &mut FeatureFlag::default(),
-                    )));
                     folders.push(Box::new(reserved_words::reserved_words()));
                     folders.push(Box::new(paren_remover(Default::default())));
                     // simplify, but keep top level dead code
@@ -206,7 +196,42 @@ impl Transform {
                     //     ),
                     // }));
 
-                    ast.transform(&mut visitors, &mut folders, file, true, context.clone())?;
+                    ast.transform(&mut visitors, &mut folders, false, context.clone())?;
+
+                    // run transform js in plugins
+                    try_with_handler(cm.clone(), Default::default(), |handler| {
+                        HELPERS.set(&Helpers::new(true), || {
+                            HANDLER.set(handler, || {
+                                // transform with plugin
+                                context.plugin_driver.transform_js(
+                                    &PluginTransformJsParam {
+                                        handler,
+                                        path: file.path.to_str().unwrap(),
+                                        top_level_mark,
+                                        unresolved_mark,
+                                    },
+                                    &mut ast.ast,
+                                    &context,
+                                )
+                            })
+                        })
+                    })?;
+
+                    // preset_env should go last
+                    let preset_env = Box::new(swc_preset_env::preset_env(
+                        unresolved_mark,
+                        Some(comments),
+                        swc_preset_env::Config {
+                            mode: Some(swc_preset_env::Mode::Entry),
+                            targets: Some(swc_preset_env_targets_from_map(
+                                context.config.targets.clone(),
+                            )),
+                            ..Default::default()
+                        },
+                        assumptions,
+                        &mut FeatureFlag::default(),
+                    ));
+                    ast.transform(&mut vec![], &mut vec![preset_env], true, context.clone())?;
 
                     Ok(())
                 })
