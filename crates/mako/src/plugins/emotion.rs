@@ -3,6 +3,7 @@ use std::path::Path;
 use anyhow::Ok;
 use swc_core::common::comments::NoopComments;
 use swc_core::common::sync::Lrc;
+use swc_core::common::util::take::Take;
 use swc_core::common::SourceMap;
 use swc_core::ecma::ast::Module;
 use swc_core::ecma::visit::{Fold, VisitMut, VisitMutWith};
@@ -77,8 +78,7 @@ impl VisitMut for Emotion {
             self.cm.clone(),
             NoopComments,
         );
-        module.body = folder.fold_module(module.clone()).body;
 
-        module.visit_mut_children_with(self);
+        *module = folder.fold_module(module.take());
     }
 }
