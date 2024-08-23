@@ -97,7 +97,6 @@ mod tests {
     use swc_core::ecma::visit::{Fold, VisitMut, VisitMutWith};
 
     use super::FixHelperInjectPosition;
-    use crate::ast::file::File;
     use crate::ast::tests::TestUtils;
     use crate::build::targets::swc_preset_env_targets_from_map;
 
@@ -190,8 +189,7 @@ export { foo };
             )));
             let mut visitors: Vec<Box<dyn VisitMut>> = vec![];
             let context = test_utils.context.clone();
-            let file = File::new("test.ts".to_string(), context.clone());
-            ast.transform(&mut visitors, &mut folders, &file, false, context)
+            ast.transform(&mut visitors, &mut folders, false, context)
                 .unwrap();
         });
         test_utils.js_ast_to_code()
