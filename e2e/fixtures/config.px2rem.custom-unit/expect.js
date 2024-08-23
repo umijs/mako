@@ -1,9 +1,10 @@
 const assert = require("assert");
-const { parseBuildResult, string2RegExp } = require("../../../scripts/test-utils");
+const { parseBuildResult } = require("../../../scripts/test-utils");
 const { files } = parseBuildResult(__dirname);
 
 const content = files["index.css"];
 
+// only convert rpx to rem, px need to be kept
 assert.doesNotMatch(
   content,
   /width: 0.34rem;/,
