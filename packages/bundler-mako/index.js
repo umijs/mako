@@ -509,16 +509,7 @@ async function getMakoConfig(opts) {
   const define = {};
   if (opts.config.define) {
     for (const key of Object.keys(opts.config.define)) {
-      // mako 的 define 会先去判断 process.env.xxx，再去判断 xxx
-      // 这里传 process.env.xxx 反而不会生效
-      // TODO: 待 mako 改成和 umi/webpack 的方式一致之后，可以把这段去掉
-      if (key.startsWith('process.env.')) {
-        define[key.replace(/^process\.env\./, '')] = normalizeDefineValue(
-          opts.config.define[key],
-        );
-      } else {
-        define[key] = normalizeDefineValue(opts.config.define[key]);
-      }
+      define[key] = normalizeDefineValue(opts.config.define[key]);
     }
   }
 
