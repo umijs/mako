@@ -92,6 +92,7 @@ mod tests {
     use swc_core::common::GLOBALS;
     use swc_core::ecma::preset_env::{self as swc_preset_env};
     use swc_core::ecma::transforms::base::feature::FeatureFlag;
+    use swc_core::ecma::transforms::base::helpers::{Helpers, HELPERS};
     use swc_core::ecma::transforms::base::Assumptions;
     use swc_core::ecma::transforms::proposal::decorators;
     use swc_core::ecma::visit::{Fold, VisitMut, VisitMutWith};
@@ -156,41 +157,43 @@ export { foo };
         let ast = test_utils.ast.js_mut();
         let unresolved_mark = ast.unresolved_mark;
         GLOBALS.set(&test_utils.context.meta.script.globals, || {
-            let mut v = FixHelperInjectPosition { exports: vec![] };
-            ast.ast.visit_mut_with(&mut v);
+            HELPERS.set(&Helpers::new(true), || {
+                let mut v = FixHelperInjectPosition { exports: vec![] };
+                ast.ast.visit_mut_with(&mut v);
 
-            // preset_env
-            let mut folders: Vec<Box<dyn Fold>> = vec![];
-            folders.push(Box::new(decorators(decorators::Config {
-                legacy: true,
-                emit_metadata: false,
-                ..Default::default()
-            })));
-            let origin_comments = test_utils
-                .context
-                .meta
-                .script
-                .origin_comments
-                .read()
-                .unwrap();
-            let comments = origin_comments.get_swc_comments().clone();
-            let mut targets = HashMap::new();
-            targets.insert("chrome".to_string(), 50.0);
-            folders.push(Box::new(swc_preset_env::preset_env(
-                unresolved_mark,
-                Some(comments),
-                swc_preset_env::Config {
-                    mode: Some(swc_preset_env::Mode::Entry),
-                    targets: Some(swc_preset_env_targets_from_map(targets)),
+                // preset_env
+                let mut folders: Vec<Box<dyn Fold>> = vec![];
+                folders.push(Box::new(decorators(decorators::Config {
+                    legacy: true,
+                    emit_metadata: false,
                     ..Default::default()
-                },
-                Assumptions::default(),
-                &mut FeatureFlag::default(),
-            )));
-            let mut visitors: Vec<Box<dyn VisitMut>> = vec![];
-            let context = test_utils.context.clone();
-            ast.transform(&mut visitors, &mut folders, false, context)
-                .unwrap();
+                })));
+                let origin_comments = test_utils
+                    .context
+                    .meta
+                    .script
+                    .origin_comments
+                    .read()
+                    .unwrap();
+                let comments = origin_comments.get_swc_comments().clone();
+                let mut targets = HashMap::new();
+                targets.insert("chrome".to_string(), 50.0);
+                folders.push(Box::new(swc_preset_env::preset_env(
+                    unresolved_mark,
+                    Some(comments),
+                    swc_preset_env::Config {
+                        mode: Some(swc_preset_env::Mode::Entry),
+                        targets: Some(swc_preset_env_targets_from_map(targets)),
+                        ..Default::default()
+                    },
+                    Assumptions::default(),
+                    &mut FeatureFlag::default(),
+                )));
+                let mut visitors: Vec<Box<dyn VisitMut>> = vec![];
+                let context = test_utils.context.clone();
+                ast.transform(&mut visitors, &mut folders, false, context)
+                    .unwrap();
+            });
         });
         test_utils.js_ast_to_code()
     }
