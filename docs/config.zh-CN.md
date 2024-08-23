@@ -573,6 +573,7 @@ __mako_public_path__ = '/foo/';
 - `selectorDoubleList`，选择器白名单，会被转换为两倍的值
 - `minPixelValue`，最小像素值，默认为 `0`
 - `mediaQuery`，是否转换媒体查询中的 px, 默认 `false`
+- `unit`，需要转换的单位，默认为 `px`
 
 其中 `selectorBlackList`、`selectorWhiteList`、`selectorDoubleList` 均支持传递正则表达式或者字符串，如
 

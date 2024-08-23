@@ -573,6 +573,7 @@ Whether to enable px2rem conversion.
 - `selectorDoubleList`, selector double rem list
 - `minPixelValue`，minimum pixel value, default is `0`
 - `mediaQuery`，allow px to be converted in media queries, default is `false`
+- `unit`, the unit to be converted, default is `px`
 
 Among them, `selectorBlackList`, `selectorWhiteList` and `selectorDoubleList` all support passing regular expressions or strings, such as
 
