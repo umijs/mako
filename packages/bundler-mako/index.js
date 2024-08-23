@@ -514,7 +514,9 @@ async function getMakoConfig(opts) {
   }
 
   if (process.env.SOCKET_SERVER) {
-    define.SOCKET_SERVER = normalizeDefineValue(process.env.SOCKET_SERVER);
+    define['process.env.SOCKET_SERVER'] = normalizeDefineValue(
+      process.env.SOCKET_SERVER,
+    );
   }
 
   let minify = jsMinifier === 'none' ? false : true;
