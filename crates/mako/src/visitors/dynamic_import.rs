@@ -76,6 +76,7 @@ impl<'a> VisitMut for DynamicImport<'a> {
                 if call_expr.args.is_empty() {
                     return;
                 }
+
                 if let ExprOrSpread {
                     expr: box Expr::Lit(Lit::Str(ref mut source)),
                     ..
@@ -83,7 +84,7 @@ impl<'a> VisitMut for DynamicImport<'a> {
                 {
                     // note: the source is replaced!
                     let resolved_source = source.value.clone().to_string();
-                    let chunk_ids = {
+                    let _chunk_ids = {
                         let chunk_id: ChunkId = resolved_source.clone().into();
                         let chunk_graph = &self.context.chunk_graph.read().unwrap();
                         let chunk = chunk_graph.chunk(&chunk_id);
@@ -119,24 +120,12 @@ impl<'a> VisitMut for DynamicImport<'a> {
                     // e.g.
                     // Promise.all([ require.ensure("id") ]).then(require.bind(require, "id"))
                     // Promise.all([ require.ensure("d1"), require.ensure("id)]).then(require.bind(require, "id"))
+                    // version 2
+                    // require.ensure2("id").then(require.bind(require,"id"))
+
                     *expr = {
-                        let to_ensure_elems = chunk_ids
-                            .iter()
-                            .map(|c_id| {
-                                Some(ExprOrSpread {
-                                    spread: None,
-                                    expr: Box::new(require_ensure(c_id.clone())),
-                                })
-                            })
-                            .collect::<Vec<_>>();
-                        let load_promise = promise_all(ExprOrSpread {
-                            spread: None,
-                            expr: ArrayLit {
-                                span: DUMMY_SP,
-                                elems: to_ensure_elems,
-                            }
-                            .into(),
-                        });
+                        // let load_promise = self.make_load_promise(&chunk_ids);
+                        let load_promise = self.make_load_promise_2(&resolved_source);
 
                         let lazy_require_call = member_expr!(DUMMY_SP, __mako_require__.bind)
                             .as_call(
@@ -158,6 +147,33 @@ impl<'a> VisitMut for DynamicImport<'a> {
             }
         }
         expr.visit_mut_children_with(self);
+    }
+}
+
+impl DynamicImport<'_> {
+    fn make_load_promise_2(&self, module_id: &str) -> Expr {
+        member_expr!(DUMMY_SP, __mako_require__.ensure2)
+            .as_call(DUMMY_SP, vec![quote_str!(module_id).as_arg()])
+    }
+
+    fn make_load_promise(&self, chunk_ids: &Vec<String>) -> Expr {
+        let to_ensure_elems = chunk_ids
+            .iter()
+            .map(|c_id| {
+                Some(ExprOrSpread {
+                    spread: None,
+                    expr: Box::new(require_ensure(c_id.clone())),
+                })
+            })
+            .collect::<Vec<_>>();
+        promise_all(ExprOrSpread {
+            spread: None,
+            expr: ArrayLit {
+                span: DUMMY_SP,
+                elems: to_ensure_elems,
+            }
+            .into(),
+        })
     }
 }
 
