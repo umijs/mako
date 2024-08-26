@@ -207,6 +207,15 @@ function createRuntime(makoModules, entryModuleId, global) {
       link.rel = 'stylesheet';
       link.type = 'text/css';
       link.href = url;
+      <% if let Some(col_val) = cross_origin_loading.clone() { %>
+        <% if col_val == "use-credentials" { %>
+      link.crossOrigin = 'use-credentials';
+        <% } else { %>
+      if (link.href.indexOf(window.location.origin + '/') !== 0) {
+        link.crossOrigin = '<%= col_val %>';
+      }
+        <% } %>
+      <% } %>
       link.onerror = link.onload = function (event) {
         // avoid mem leaks, from webpack
         link.onerror = link.onload = null;
@@ -300,6 +309,15 @@ function createRuntime(makoModules, entryModuleId, global) {
         script = document.createElement('script');
         script.timeout = 120;
         script.src = url;
+        <% if let Some(col_val) = cross_origin_loading.clone() { %>
+          <% if col_val == "use-credentials" { %>
+        script.crossOrigin = 'use-credentials';
+          <% } else { %>
+        if (script.src.indexOf(window.location.origin + '/') !== 0) {
+          script.crossOrigin = '<%= col_val %>';
+        }
+          <% } %>
+        <% } %>
       }
 
       inProgress[url] = [done];

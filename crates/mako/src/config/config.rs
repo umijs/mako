@@ -103,6 +103,7 @@ create_deserialize_fn!(deserialize_rsc_client, RscClientConfig);
 create_deserialize_fn!(deserialize_rsc_server, RscServerConfig);
 create_deserialize_fn!(deserialize_stats, StatsConfig);
 create_deserialize_fn!(deserialize_detect_loop, DetectCircularDependence);
+create_deserialize_fn!(deserialize_cross_origin_loading, CrossOriginLoading);
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -115,6 +116,25 @@ pub struct OutputConfig {
     pub preserve_modules: bool,
     pub preserve_modules_root: PathBuf,
     pub skip_write: bool,
+    #[serde(deserialize_with = "deserialize_cross_origin_loading")]
+    pub cross_origin_loading: Option<CrossOriginLoading>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub enum CrossOriginLoading {
+    #[serde(rename = "anonymous")]
+    Anonymous,
+    #[serde(rename = "use-credentials")]
+    UseCredentials,
+}
+
+impl fmt::Display for CrossOriginLoading {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CrossOriginLoading::Anonymous => write!(f, "anonymous"),
+            CrossOriginLoading::UseCredentials => write!(f, "use-credentials"),
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -681,7 +701,8 @@ const DEFAULT_CONFIG: &str = r#"
       "chunkLoadingGlobal": "",
       "preserveModules": false,
       "preserveModulesRoot": "",
-      "skipWrite": false
+      "skipWrite": false,
+      "crossOriginLoading": false
     },
     "resolve": { "alias": [], "extensions": ["js", "jsx", "ts", "tsx"] },
     "mode": "development",
