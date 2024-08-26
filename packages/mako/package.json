@@ -1,6 +1,6 @@
 {
   "name": "@umijs/mako",
-  "version": "0.8.3",
+  "version": "0.8.5-canary.20240826.1",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -12,6 +12,7 @@
       "defaults": false,
       "additional": [
         "aarch64-apple-darwin",
+        "aarch64-unknown-linux-musl",
         "x86_64-apple-darwin",
         "x86_64-unknown-linux-gnu",
         "x86_64-unknown-linux-musl"
@@ -73,10 +74,11 @@
     "src:build": "father build"
   },
   "optionalDependencies": {
-    "@umijs/mako-darwin-arm64": "0.8.3",
-    "@umijs/mako-darwin-x64": "0.8.3",
-    "@umijs/mako-linux-x64-gnu": "0.8.3",
-    "@umijs/mako-linux-x64-musl": "0.8.3"
+    "@umijs/mako-darwin-arm64": "0.8.5-canary.20240825.2",
+    "@umijs/mako-linux-arm64-musl": "0.8.5-canary.20240825.2",
+    "@umijs/mako-darwin-x64": "0.8.5-canary.20240825.2",
+    "@umijs/mako-linux-x64-gnu": "0.8.5-canary.20240825.2",
+    "@umijs/mako-linux-x64-musl": "0.8.5-canary.20240825.2"
   },
   "repository": "git@github.com:umijs/mako.git"
 }

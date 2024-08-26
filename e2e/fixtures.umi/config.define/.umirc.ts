@@ -15,7 +15,6 @@ export default {
     DDD: true,
     EEE: false,
     FFF: null,
-    GGG: ["a", 1],
-    "process.env.HHH": false,
+    GGG: ["a", 1]
   },
 };
