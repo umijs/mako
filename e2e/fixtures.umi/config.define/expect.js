@@ -13,7 +13,6 @@ assert(content.includes("console.log(1);"), "support Number");
 assert(content.includes("console.log(true);"), "support Boolean");
 assert(content.includes("console.log(false);"), "support Boolean");
 assert(content.includes("console.log(null);"), "support Null");
-assert(content.includes("console.log('process.env',false);"), "support normalize process.env.XXX");
 
 /**
 "production";

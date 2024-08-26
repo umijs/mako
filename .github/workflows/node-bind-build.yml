@@ -1,9 +1,10 @@
 name: node-bind-build
 env:
   DEBUG: napi:*
-  APP_NAME: okam
+  APP_NAME: mako
   MACOSX_DEPLOYMENT_TARGET: '10.13'
-'on':
+on:
+  workflow_dispatch:
   push:
     branches:
       - master
@@ -16,28 +17,9 @@ env:
       - .editorconfig
       - docs/**
   pull_request:
-    types: [opened, synchronize]
+    types: [ opened, synchronize ]
 jobs:
-  pre-check:
-    name: Check Is Release node-binding
-    if: "contains(github.event.head_commit.message, 'Release')"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: is Release Commit
-        run: |
-          echo Start Release
-          if git log -1 --pretty=%B | grep "^Release [0-9]\+\.[0-9]\+\.[0-9]\+"; then
-            echo "start Release"
-          else
-            gh run cancel ${{ github.run_id }}
-            gh run watch ${{ github.run_id }}
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   build:
-    needs:
-      - pre-check
     strategy:
       fail-fast: false
       matrix:
@@ -45,32 +27,42 @@ jobs:
           - host: macos-latest
             target: x86_64-apple-darwin
             build: |
-              pnpm --filter @okamjs/okam build --target x86_64-apple-darwin
+              rustup target add x86_64-apple-darwin
+              pnpm --filter @umijs/mako build --target x86_64-apple-darwin
               strip -x ./packages/mako/*.node
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian
             build: |-
               set -e &&
-              pnpm --filter @okamjs/okam build --target x86_64-unknown-linux-gnu &&
+              pnpm --filter @umijs/mako build --target x86_64-unknown-linux-gnu &&
               strip ./packages/mako/*.node
           - host: macos-latest
             target: aarch64-apple-darwin
             build: |
               rustup target add aarch64-apple-darwin
-              pnpm --filter @okamjs/okam build --target aarch64-apple-darwin
+              pnpm --filter @umijs/mako build --target aarch64-apple-darwin
               strip -x ./packages/mako/*.node
-    name: stable - ${{ matrix.settings.target }} - node@18
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
+            build: |
+              pnpm --filter @umijs/mako build --target  x86_64-unknown-linux-musl
+              strip -x ./packages/mako/*.node
+          - host: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
+            build: |-
+              set -e &&
+              rustup target add aarch64-unknown-linux-musl &&
+              pnpm --filter @umijs/mako build --target aarch64-unknown-linux-musl
+    name: stable - ${{ matrix.settings.target }} - node@20
     runs-on: ${{ matrix.settings.host }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: pnpm/action-setup@v2
-        name: Install pnpm
-        id: pnpm-install
-        with:
-          version: 8
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - name: Setup node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         if: ${{ !matrix.settings.docker }}
         with:
           node-version: 18
@@ -83,7 +75,7 @@ jobs:
           toolchain: stable
           targets: ${{ matrix.settings.target }}
       - name: Cache cargo
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry/index/
@@ -99,10 +91,6 @@ jobs:
       - name: Setup toolchain
         run: ${{ matrix.settings.setup }}
         if: ${{ matrix.settings.setup }}
-        shell: bash
-      - name: Setup node x86
-        if: matrix.settings.target == 'i686-pc-windows-msvc'
-        run: yarn config set supportedArchitectures.cpu "ia32"
         shell: bash
       - name: Install dependencies
         run: pnpm install
@@ -126,49 +114,35 @@ jobs:
         if: ${{ !matrix.settings.docker }}
         shell: bash
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: bindings-${{ matrix.settings.target }}
-          path: ./packaegs/mako/${{ env.APP_NAME }}.*.node
+          path: ./packages/mako/*.node
           if-no-files-found: error
-  publish:
-    name: Publish
+  zip:
+    name: Zip
     runs-on: ubuntu-latest
     needs:
       - build
     steps:
-      - uses: actions/checkout@v3
-      - uses: pnpm/action-setup@v2
-        name: Install pnpm
-        id: pnpm-install
-        with:
-          version: 8
-      - name: Setup node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-          check-latest: true
-          cache: pnpm
-      - name: Install dependencies
-        run: pnpm install
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
-          path: packaegs/mako/artifacts
-      - name: Move artifacts
-        run: pnpm --filter @okamjs/okam artifacts
+          path: ./
+          merge-multiple: true
       - name: List packages
-        run: ls -R ./packaegs/mako/npm
+        run: ls *.node
         shell: bash
 
-      - name: Publish
-        run: |
-          if git log -1 --pretty=%B | grep "^Release [0-9]\+\.[0-9]\+\.[0-9]\+"; then
-            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
-            pnpm --filter @okamjs/okam publish --access public
-          else
-            echo "Not a release, skipping publish"
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Upload Zip file
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: actions/upload-artifact@v4
+        with:
+          path: mako.*.node
+          name: artifacts-${{ github.sha }}
+      - name: Upload Zip file CI
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        uses: actions/upload-artifact@v4
+        with:
+          path: mako.*.node
+          name: artifacts-${{ github.event.pull_request.head.sha }}

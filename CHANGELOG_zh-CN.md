@@ -1,3 +1,27 @@
+## 0.8.4
+
+`2024-08-23`
+
+- 修复 bundler-mako 中 define process.env.XXX 不生效的问题 by [@xusd320](https://github.com/xusd320) in [#1504](https://github.com/umijs/mako/pull/1526)
+
+## 0.8.2
+
+`2024-08-16`
+
+- 回滚 "改进 define 实现" ([#1499](https://github.com/umijs/mako/pull/1499))" by [@stormslowly](https://github.com/stormslowly) in [#1504](https://github.com/umijs/mako/pull/1504)
+
+## 0.8.1
+
+`2024-08-16`
+
+- 新增构建进度条 by [@xierenyuan](https://github.com/xierenyuan) in [#1466](https://github.com/umijs/mako/pull/1466)
+- 改进 emtion 插件在生产构建关闭 source map by [@stormslowly](https://github.com/stormslowly) in [#1494](https://github.com/umijs/mako/pull/1494)
+- 改进 define 实现 by [@xusd320](https://github.com/xusd320) in [#1499](https://github.com/umijs/mako/pull/1499)
+- 修复 sass 插件以支持 `.scss` 后缀 by [@jeasonnow](https://github.com/jeasonnow) in [#1482](https://github.com/umijs/mako/pull/1482)
+- 修复 try 代码块中使用 `return require()` 的解析问题 [@sorrycc](https://github.com/sorrycc) in [#1488](https://github.com/umijs/mako/pull/1488)
+- 修复 chunk 文件名以下划线开头 by [@stormslowly](https://github.com/stormslowly) in [#1498](https://github.com/umijs/mako/pull/1498)
+- 修复 热更新时没有必要的分 chunk 调用 by [@stormslowly](https://github.com/stormslowly) in [#1503](https://github.com/umijs/mako/pull/1503)
+- 修复 require css module 错误调换语句的问题 by [@bytemain](https://github.com/bytemain) in [#1501](https://github.com/umijs/mako/pull/1501)
 
 ## 0.8.0
 

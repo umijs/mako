@@ -21,7 +21,9 @@ impl Plugin for AsyncRuntimePlugin {
             .iter()
             .any(|module| module.info.as_ref().is_some_and(|info| info.is_async))
         {
-            Ok(vec![include_str!("async_runtime.js").to_string()])
+            Ok(vec![
+                include_str!("./async_runtime/async_runtime.js").to_string()
+            ])
         } else {
             Ok(vec![])
         }

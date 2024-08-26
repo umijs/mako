@@ -8,7 +8,7 @@
 [![](https://badgen.net/npm/dm/@umijs/mako)](https://www.npmjs.com/package/@umijs/mako)
 [![](https://github.com/umijs/mako/actions/workflows/ci.yml/badge.svg)](https://github.com/umijs/mako/actions/workflows/ci.yml)
 [![](https://badgen.net/npm/license/umi)](https://www.npmjs.com/package/@umijs/mako)
-
+[![codecov](https://codecov.io/gh/umijs/mako/graph/badge.svg?token=ptCnNedFGf)](https://codecov.io/gh/umijs/mako)
 
 Mako `['mɑːkoʊ]` is an **extremely fast**, **production-grade** web bundler based on **Rust**. 
 

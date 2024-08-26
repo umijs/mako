@@ -305,7 +305,7 @@ impl Compiler {
                     .collect();
                 drop(module_graph);
 
-                let mut add_modules: HashMap<ModuleId, Module> = HashMap::new();
+                let mut dependence_modules: HashMap<ModuleId, Module> = HashMap::new();
                 let mut target_dependencies: Vec<(ModuleId, Dependency)> = vec![];
                 let resolved_deps = &module.info.as_ref().unwrap().deps.resolved_deps;
                 resolved_deps.iter().for_each(|dep| {
@@ -318,13 +318,18 @@ impl Compiler {
                         Self::create_empty_module(&module_id)
                     };
                     target_dependencies.push((module_id.clone(), dep.dependency.clone()));
-                    add_modules.insert(module_id, module);
+                    dependence_modules.insert(module_id, module);
                 });
 
                 let modules_diff = diff(&current_dependencies, &target_dependencies);
 
                 debug!("build by modify: {:?} end", entry);
-                Result::Ok((module, modules_diff, add_modules, target_dependencies))
+                Result::Ok((
+                    module,
+                    modules_diff,
+                    dependence_modules,
+                    target_dependencies,
+                ))
             })
             .collect::<Result<Vec<_>>>();
         let modified_results = result?;
@@ -334,7 +339,7 @@ impl Compiler {
         let mut dep_changed_module_ids = HashSet::new();
 
         let mut module_graph = self.context.module_graph.write().unwrap();
-        for (modified_module, diff, mut add_modules, dependencies) in modified_results {
+        for (modified_module, diff, mut dependence_modules, dependencies) in modified_results {
             if diff.dependence_changed(&modified_module.id, &module_graph, &dependencies) {
                 dep_changed_module_ids.insert(modified_module.id.clone());
             }
@@ -355,7 +360,7 @@ impl Compiler {
 
                 // english: In theory, the add_module_id that add_modules should exist in must exist, but in actual scenarios, an unwrap() error still occurs, so add a guard check here
                 // TODO: Need to find the root cause
-                let add_module = add_modules.remove(add_module_id);
+                let add_module = dependence_modules.remove(add_module_id);
                 if add_module.is_none() {
                     continue;
                 }
@@ -424,6 +429,7 @@ impl Compiler {
     }
 }
 
+#[derive(Debug)]
 pub struct Diff {
     added: HashSet<ModuleId>,
     removed: HashSet<ModuleId>,
@@ -469,7 +475,10 @@ impl Diff {
             },
         );
 
-        new_deps.eq(&original)
+        // there is an edge case we need to consider later
+        // if an edge ResolveTypeFlag(Sync + Async) changes to ResolveTypeFlag(Sync), is it
+        // changed nor not ?
+        !new_deps.eq(&original)
     }
 }
 
