@@ -90,6 +90,7 @@ indexmap              = "2.0.0"
 indicatif             = "0.17.8"
 md5                   = "0.7.0"
 mdxjs                 = "0.1.14"
+merge-source-map      = "1.2.0"
 mime_guess            = "2.0.4"
 nohash-hasher         = "0.2.0"
 notify                = { version = "6.1.1", default-features = false, features = ["macos_kqueue"] }

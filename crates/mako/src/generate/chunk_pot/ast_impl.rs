@@ -4,8 +4,6 @@ use std::sync::Arc;
 use anyhow::Result;
 use cached::proc_macro::cached;
 use cached::SizedCache;
-use pathdiff::diff_paths;
-use swc_core::base::sourcemap as swc_sourcemap;
 use swc_core::common::{Mark, DUMMY_SP, GLOBALS};
 use swc_core::css::ast::Stylesheet;
 use swc_core::css::codegen::writer::basic::{BasicCssWriter, BasicCssWriterConfig};
@@ -17,7 +15,7 @@ use swc_core::ecma::ast::{
 use swc_core::ecma::utils::{quote_ident, quote_str, ExprFactory};
 
 use crate::ast::js_ast::JsAst;
-use crate::ast::sourcemap::{build_source_map, merge_source_map};
+use crate::ast::sourcemap::{build_source_map_to_buf, merge_source_map};
 use crate::compiler::Context;
 use crate::config::Mode;
 use crate::generate::chunk::{Chunk, ChunkType};
@@ -84,40 +82,22 @@ pub(crate) fn render_css_chunk(
         None => None,
         _ => {
             mako_profile_scope!("build_source_map");
+            // source map chain
+            let mut source_map_chain: Vec<Vec<u8>> = vec![];
 
             let module_graph = context.module_graph.read().unwrap();
-            let chunk_source_map = build_source_map(&source_map, cm);
-
-            let mut chain_map = HashMap::<String, Vec<swc_sourcemap::SourceMap>>::new();
-
             chunk.get_modules().iter().for_each(|module_id| {
-                if let Some(module) = module_graph.get_module(module_id) {
-                    if let Some(info) = module.info.as_ref()
-                        && matches!(info.ast, crate::module::ModuleAst::Css(_))
-                    {
-                        let relative_source = diff_paths(&module_id.id, &context.root)
-                            .unwrap_or((&module_id.id).into())
-                            .to_string_lossy()
-                            .to_string();
-
-                        chain_map.insert(
-                            relative_source,
-                            info.source_map_chain
-                                .iter()
-                                .map(|sc| swc_sourcemap::SourceMap::from_slice(sc).unwrap())
-                                .collect::<Vec<_>>(),
-                        );
-                    }
+                let module = module_graph.get_module(module_id).unwrap();
+                if let Some(info) = module.info.as_ref()
+                    && matches!(info.ast, crate::module::ModuleAst::Css(_))
+                {
+                    source_map_chain.append(&mut info.source_map_chain.clone());
                 }
             });
 
-            let merged_source_map = merge_source_map(chunk_source_map, chain_map, &context.root);
+            source_map_chain.push(build_source_map_to_buf(&source_map, cm));
 
-            let mut buf = vec![];
-
-            merged_source_map.to_writer(&mut buf).unwrap();
-
-            Some(buf)
+            Some(merge_source_map(source_map_chain, context.root.clone()))
         }
     };
 
