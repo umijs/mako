@@ -388,11 +388,16 @@ impl Compiler {
 
         let chunk_id = entry_module_id.generate(&self.context);
         let mut chunk = Chunk::new(chunk_id.into(), chunk_type.clone());
-        let mut normal_deps = HashSet::<&ModuleId>::from_iter([entry_module_id]);
+        let mut visited_modules: Vec<&ModuleId> = vec![entry_module_id];
 
         let module_graph = self.context.module_graph.read().unwrap();
 
         visit_modules(vec![entry_module_id.clone()], None, |head| {
+            let parent_index = visited_modules
+                .iter()
+                .position(|m| m.id == head.id)
+                .unwrap_or(0);
+            let mut normal_deps = vec![];
             let mut next_module_ids = vec![];
 
             for (dep_module_id, dep) in module_graph.get_dependencies(head) {
@@ -413,22 +418,21 @@ impl Compiler {
                     {
                         next_module_ids.push(dep_module_id.clone());
                         // collect normal deps for current head
-                        normal_deps.insert(dep_module_id);
+                        normal_deps.push(dep_module_id);
                     }
                     _ => {}
                 }
             }
 
+            // insert normal deps before head, so that we can keep the dfs order
+            visited_modules.splice(parent_index..parent_index, normal_deps);
+
             next_module_ids
         });
 
-        let mut deps = module_graph.get_dependencies_by_link_back_dfs(entry_module_id);
-
         // add modules to chunk as dfs order
-        while let Some(module_id) = deps.pop() {
-            if let Some(module_id) = normal_deps.take(module_id) {
-                chunk.add_module(module_id.clone());
-            }
+        for module_id in visited_modules {
+            chunk.add_module(module_id.clone());
         }
 
         (chunk, dynamic_entries, worker_entries)
