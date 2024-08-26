@@ -17,7 +17,7 @@ on:
       - .editorconfig
       - docs/**
   pull_request:
-    types: [opened, synchronize]
+    types: [ opened, synchronize ]
 jobs:
   build:
     strategy:
@@ -59,14 +59,10 @@ jobs:
     name: stable - ${{ matrix.settings.target }} - node@20
     runs-on: ${{ matrix.settings.host }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: pnpm/action-setup@v2
-        name: Install pnpm
-        id: pnpm-install
-        with:
-          version: 8
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - name: Setup node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         if: ${{ !matrix.settings.docker }}
         with:
           node-version: 18
@@ -79,7 +75,7 @@ jobs:
           toolchain: stable
           targets: ${{ matrix.settings.target }}
       - name: Cache cargo
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry/index/
@@ -132,17 +128,21 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: packages/mako/artifacts
+          path: ./
           merge-multiple: true
       - name: List packages
-        run: ls -R ./packages/mako/artifacts
+        run: ls *.node
         shell: bash
-      
-      - name: Archive Artifacts
-        run: |
-          tar -cvf artifacts-${{ github.event.pull_request.head.sha }}.tar -C ./packages/mako/artifacts .
-      - name: Upload tar file
+
+      - name: Upload Zip file
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         uses: actions/upload-artifact@v4
         with:
-          path: artifacts-${{ github.event.pull_request.head.sha }}.tar
-          name: artifacts-${{ github.event.pull_request.head.sha }}.tar
+          path: mako.*.node
+          name: artifacts-${{ github.sha }}
+      - name: Upload Zip file CI
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        uses: actions/upload-artifact@v4
+        with:
+          path: mako.*.node
+          name: artifacts-${{ github.event.pull_request.head.sha }}
