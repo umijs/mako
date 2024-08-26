@@ -121,6 +121,8 @@ impl DevServer {
         staticfile: hyper_staticfile::Static,
         txws: broadcast::Sender<WsMessage>,
     ) -> Result<hyper::Response<Body>> {
+        debug!("> {} {}", req.method().to_string(), req.uri().path());
+
         let mut path = req.uri().path().to_string();
         let public_path = &context.config.public_path;
         if !public_path.is_empty() && public_path.starts_with('/') && public_path != "/" {
@@ -198,7 +200,7 @@ impl DevServer {
                 }
 
                 // for hmr files
-                debug!("serve with staticfile server: {}", path);
+                debug!("< static file serve: {}", path);
                 let req = hyper::Request::builder()
                     .uri(path)
                     .body(hyper::Body::empty())
