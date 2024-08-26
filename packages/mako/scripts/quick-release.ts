@@ -20,7 +20,7 @@ async function run() {
   await ensureGitStatus();
 
   const commitId = (await $`git rev-parse HEAD`).stdout.trim();
-  const artifactsFile = `artifacts-${commitId}.tar`;
+  const artifactsFile = `artifacts-${commitId}.zip`;
   const hasArtifacts = fs.existsSync(path.join(process.cwd(), artifactsFile));
   assert(hasArtifacts, `${artifactsFile} not found in cwd`);
 
@@ -53,6 +53,6 @@ async function build() {
 
 async function artifacts(artifactsFile: string) {
   await $`rm -rf *.node`;
-  await $`tar -vxf ${artifactsFile}`;
+  await $`unzip ${artifactsFile}`;
   await $`npm run artifacts:local`;
 }
