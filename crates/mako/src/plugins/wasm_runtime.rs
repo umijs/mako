@@ -20,7 +20,9 @@ impl Plugin for WasmRuntimePlugin {
             .values()
             .any(|info| info.ends_with(".wasm"))
         {
-            Ok(vec![include_str!("wasm_runtime.js").to_string()])
+            Ok(vec![
+                include_str!("./wasm_runtime/wasm_runtime.js").to_string()
+            ])
         } else {
             Ok(vec![])
         }
