@@ -13,11 +13,11 @@ use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::file::{Content, JsContent};
 use crate::ast::utils::{is_commonjs_require, is_dynamic_import};
+use crate::ast::DUMMY_CTXT;
 use crate::build::load::JS_EXTENSIONS;
 use crate::compiler::Context;
 use crate::plugin::{Plugin, PluginLoadParam};
 use crate::resolve::get_module_extensions;
-use crate::DUMMY_CTXT;
 
 pub struct ContextModulePlugin {}
 

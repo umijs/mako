@@ -10,10 +10,10 @@ use super::super::ConcatenateContext;
 use super::utils::describe_export_map;
 use super::ConcatenatedTransform;
 use crate::ast::js_ast::JsAst;
+use crate::ast::DUMMY_CTXT;
 use crate::compiler::Context;
 use crate::config::{Config, Mode, OptimizationConfig};
 use crate::module::ModuleId;
-use crate::DUMMY_CTXT;
 
 #[test]
 fn test_import_default_from_inner() {

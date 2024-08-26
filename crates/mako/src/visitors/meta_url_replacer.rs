@@ -4,7 +4,7 @@ use swc_core::ecma::utils::member_expr;
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::utils::is_import_meta_url;
-use crate::DUMMY_CTXT;
+use crate::ast::DUMMY_CTXT;
 
 pub struct MetaUrlReplacer {}
 

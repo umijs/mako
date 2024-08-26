@@ -10,7 +10,7 @@ use swc_core::ecma::utils::{
 use swc_core::ecma::visit::{noop_visit_mut_type, VisitMut, VisitMutWith};
 
 use super::concatenate_context::ImportModuleRefMap;
-use crate::DUMMY_CTXT;
+use crate::ast::DUMMY_CTXT;
 
 pub struct ModuleRefRewriter<'a> {
     /// ```javascript

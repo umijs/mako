@@ -3,7 +3,7 @@ use swc_core::common::DUMMY_SP;
 use swc_core::ecma::ast::{BlockStmt, IfStmt, Stmt};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
-use crate::DUMMY_CTXT;
+use crate::ast::DUMMY_CTXT;
 
 pub(super) struct UnSimplify {}
 

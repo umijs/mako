@@ -6,7 +6,7 @@ use swc_core::ecma::utils::{
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::utils::is_dynamic_import;
-use crate::DUMMY_CTXT;
+use crate::ast::DUMMY_CTXT;
 
 pub struct DynamicImportToRequire {
     pub unresolved_mark: Mark,

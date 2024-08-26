@@ -11,6 +11,7 @@ use swc_core::ecma::ast::{
 use swc_core::ecma::utils::{quote_ident, quote_str};
 use swc_core::quote;
 
+use crate::ast::DUMMY_CTXT;
 use crate::compiler::Context;
 use crate::module::{Dependency, ImportType, ModuleId, NamedExportType, ResolveType};
 use crate::module_graph::ModuleGraph;
@@ -19,7 +20,7 @@ use crate::plugins::tree_shaking::shake::strip_context;
 use crate::plugins::tree_shaking::statement_graph::{
     ExportSpecifierInfo, ImportSpecifierInfo, StatementId,
 };
-use crate::{mako_profile_function, mako_profile_scope, DUMMY_CTXT};
+use crate::{mako_profile_function, mako_profile_scope};
 
 #[derive(Debug)]
 pub struct ReExportReplace {

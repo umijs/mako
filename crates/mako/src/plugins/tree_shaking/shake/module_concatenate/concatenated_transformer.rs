@@ -19,9 +19,9 @@ use super::concatenate_context::{
 use super::module_ref_rewriter::ModuleRefRewriter;
 use super::ref_link::{ModuleDeclMapCollector, Symbol, VarLink};
 use super::utils::{uniq_module_default_export_name, uniq_module_namespace_name};
+use crate::ast::DUMMY_CTXT;
 use crate::compiler::Context;
 use crate::module::{relative_to_root, ImportType, ModuleId};
-use crate::DUMMY_CTXT;
 
 pub enum InnerOrExternal<'a> {
     Inner(&'a HashMap<String, ModuleRef>),

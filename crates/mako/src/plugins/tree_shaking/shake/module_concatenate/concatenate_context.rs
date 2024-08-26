@@ -15,10 +15,10 @@ use swc_core::ecma::utils::{
 };
 use swc_core::ecma::visit::{Visit, VisitWith};
 
+use crate::ast::DUMMY_CTXT;
 use crate::module::{ImportType, ModuleId, NamedExportType, ResolveType};
 use crate::module_graph::ModuleGraph;
 use crate::plugins::tree_shaking::shake::module_concatenate::ConcatenateConfig;
-use crate::DUMMY_CTXT;
 
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Default)]

@@ -8,7 +8,7 @@ use swc_core::ecma::ast::{Id, Ident, Module};
 use swc_core::ecma::utils::IdentRenamer;
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
-use crate::DUMMY_CTXT;
+use crate::ast::DUMMY_CTXT;
 
 pub(crate) struct FixSymbolConflict {
     idents_named_symbol: HashSet<Id>,

@@ -11,9 +11,9 @@ use swc_core::ecma::utils::{member_expr, quote_expr, quote_ident, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::utils::is_commonjs_require;
+use crate::ast::DUMMY_CTXT;
 use crate::compiler::Context;
 use crate::module::{Dependency, ModuleId};
-use crate::DUMMY_CTXT;
 
 const ASYNC_IMPORTED_MODULE: &str = "_async__mako_imported_module_";
 

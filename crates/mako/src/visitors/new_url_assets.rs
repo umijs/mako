@@ -8,12 +8,12 @@ use swc_core::ecma::utils::{member_expr, quote_str};
 use swc_core::ecma::visit::VisitMut;
 
 use crate::ast::file::File;
-use crate::ast::utils;
+use crate::ast::{utils, DUMMY_CTXT};
 use crate::build::load::Load;
 use crate::compiler::Context;
 use crate::config::Platform;
 use crate::module::{Dependency, ResolveType};
-use crate::{resolve, DUMMY_CTXT};
+use crate::resolve;
 
 pub struct NewUrlAssets {
     pub context: Arc<Context>,

@@ -12,7 +12,7 @@ use swc_core::ecma::ast::{
 use swc_core::ecma::utils::{quote_ident, quote_str, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
-use crate::DUMMY_CTXT;
+use crate::ast::DUMMY_CTXT;
 
 pub(super) struct MyInjector<'a> {
     unresolved_mark: Mark,

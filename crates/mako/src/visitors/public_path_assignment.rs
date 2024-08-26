@@ -3,7 +3,7 @@ use swc_core::ecma::ast::{AssignExpr, AssignOp, BindingIdent, Ident};
 use swc_core::ecma::utils::member_expr;
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
-use crate::DUMMY_CTXT;
+use crate::ast::DUMMY_CTXT;
 
 pub struct PublicPathAssignment {
     pub unresolved_mark: Mark,

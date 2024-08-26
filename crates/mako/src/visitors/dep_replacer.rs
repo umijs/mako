@@ -11,10 +11,10 @@ use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::file::parse_path;
 use crate::ast::utils::{is_commonjs_require, is_dynamic_import, is_remote_or_data};
+use crate::ast::DUMMY_CTXT;
 use crate::compiler::Context;
 use crate::module::{Dependency, ModuleId};
 use crate::visitors::virtual_css_modules::is_css_path;
-use crate::DUMMY_CTXT;
 
 pub struct DepReplacer<'a> {
     pub module_id: &'a ModuleId,

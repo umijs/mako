@@ -6,8 +6,8 @@ use swc_core::ecma::ast::{Expr, Ident, MemberExpr, Module, ModuleItem, VarDeclKi
 use swc_core::ecma::utils::{quote_ident, quote_str, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
+use crate::ast::DUMMY_CTXT;
 use crate::config::Providers;
-use crate::DUMMY_CTXT;
 
 pub struct Provide {
     unresolved_mark: Mark,

@@ -47,7 +47,7 @@ use swc_core::ecma::ast::{
 use swc_core::ecma::utils::quote_ident;
 use swc_core::ecma::visit::{Visit, VisitWith};
 
-use crate::DUMMY_CTXT;
+use crate::ast::DUMMY_CTXT;
 
 #[derive(Default)]
 pub(super) struct PatDefineIdCollector {

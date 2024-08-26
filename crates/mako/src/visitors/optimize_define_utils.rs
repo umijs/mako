@@ -3,7 +3,7 @@ use swc_core::ecma::ast::{CallExpr, Expr, ExprOrSpread, ExprStmt, Lit, ModuleIte
 use swc_core::ecma::utils::{member_expr, ExprFactory};
 use swc_core::ecma::visit::VisitMut;
 
-use crate::DUMMY_CTXT;
+use crate::ast::DUMMY_CTXT;
 
 // TODO: add testcases
 pub struct OptimizeDefineUtils {

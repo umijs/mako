@@ -10,10 +10,10 @@ use swc_core::ecma::utils::{
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::utils::{is_dynamic_import, promise_all, require_ensure};
+use crate::ast::DUMMY_CTXT;
 use crate::compiler::Context;
 use crate::generate::chunk::ChunkId;
 use crate::visitors::dep_replacer::DependenciesToReplace;
-use crate::DUMMY_CTXT;
 
 pub struct DynamicImport<'a> {
     pub context: Arc<Context>,
