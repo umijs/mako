@@ -1,6 +1,7 @@
 use std::collections::{HashSet, VecDeque};
 use std::vec;
 
+use petgraph::graph::NodeIndex;
 use tracing::debug;
 
 use crate::ast::file::parse_path;
@@ -388,14 +389,14 @@ impl Compiler {
 
         let chunk_id = entry_module_id.generate(&self.context);
         let mut chunk = Chunk::new(chunk_id.into(), chunk_type.clone());
-        let mut visited_modules: Vec<&ModuleId> = vec![entry_module_id];
-
         let module_graph = self.context.module_graph.read().unwrap();
+        let mut visited_modules: Vec<&NodeIndex> =
+            vec![module_graph.get_module_idx(entry_module_id).unwrap()];
 
         visit_modules(vec![entry_module_id.clone()], None, |head| {
             let parent_index = visited_modules
                 .iter()
-                .position(|m| m.id == head.id)
+                .position(|m| *m == module_graph.get_module_idx(head).unwrap())
                 .unwrap_or(0);
             let mut normal_deps = vec![];
             let mut next_module_ids = vec![];
@@ -425,14 +426,19 @@ impl Compiler {
             }
 
             // insert normal deps before head, so that we can keep the dfs order
-            visited_modules.splice(parent_index..parent_index, normal_deps);
+            visited_modules.splice(
+                parent_index..parent_index,
+                normal_deps
+                    .iter()
+                    .map(|np| module_graph.get_module_idx(np).unwrap()),
+            );
 
             next_module_ids
         });
 
         // add modules to chunk as dfs order
         for module_id in visited_modules {
-            chunk.add_module(module_id.clone());
+            chunk.add_module(module_graph.graph[*module_id].id.clone());
         }
 
         (chunk, dynamic_entries, worker_entries)

@@ -7,14 +7,17 @@ const content = files["index.css"];
 
 assert(
   content.includes(`
-.a {
-  color: red;
+.c {
+  color: green;
 }
 .b {
   color: blue;
 }
-.c {
-  color: green;
+.a {
+  color: red;
+}
+.d {
+  color: black;
 }
   `.trim()),
   "css merge in js should work"

@@ -1,3 +1,5 @@
-@import 'c.css';
+@import "c.css";
 
-.b { color: blue }
+.b {
+  color: blue;
+}

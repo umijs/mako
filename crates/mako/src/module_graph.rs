@@ -385,6 +385,10 @@ impl ModuleGraph {
     pub fn dfs(&self, start: &ModuleId) -> Dfs<NodeIndex, FixedBitSet> {
         Dfs::new(&self.graph, *self.id_index_map.get(start).unwrap())
     }
+
+    pub fn get_module_idx(&self, module_id: &ModuleId) -> Option<&NodeIndex> {
+        self.id_index_map.get(module_id)
+    }
 }
 
 impl fmt::Display for ModuleGraph {
