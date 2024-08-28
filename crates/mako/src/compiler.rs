@@ -233,6 +233,7 @@ impl Compiler {
             Arc::new(plugins::runtime::MakoRuntime {}),
             Arc::new(plugins::invalid_webpack_syntax::InvalidWebpackSyntaxPlugin {}),
             Arc::new(plugins::hmr_runtime::HMRRuntimePlugin {}),
+            Arc::new(plugins::ensure_2::Ensure2 {}),
             Arc::new(plugins::wasm_runtime::WasmRuntimePlugin {}),
             Arc::new(plugins::async_runtime::AsyncRuntimePlugin {}),
             Arc::new(plugins::emotion::EmotionPlugin {}),
