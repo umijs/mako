@@ -101,35 +101,35 @@ pub fn merge_source_map(
                         break;
                     }
                 }
+            }
 
-                if !searched_in_chain {
-                    return;
-                }
+            if !searched_in_chain {
+                return;
+            }
 
-                // replace source
-                let replaced_source = final_token.get_source().map(|src| {
-                    diff_paths(src, root)
-                        .unwrap_or(src.into())
-                        .to_string_lossy()
-                        .to_string()
-                });
+            // replace source
+            let replaced_source = final_token.get_source().map(|src| {
+                diff_paths(src, root)
+                    .unwrap_or(src.into())
+                    .to_string_lossy()
+                    .to_string()
+            });
 
-                // add mapping
-                let added_token = builder.add(
-                    token.get_dst_line(),
-                    token.get_dst_col(),
-                    final_token.get_src_line(),
-                    final_token.get_src_col(),
-                    replaced_source.as_deref(),
-                    final_token.get_name(),
-                );
+            // add mapping
+            let added_token = builder.add(
+                token.get_dst_line(),
+                token.get_dst_col(),
+                final_token.get_src_line(),
+                final_token.get_src_col(),
+                replaced_source.as_deref(),
+                final_token.get_name(),
+            );
 
-                // add source centent
-                if !builder.has_source_contents(added_token.src_id) {
-                    let source_content = final_token.get_source_view().map(|view| view.source());
+            // add source centent
+            if !builder.has_source_contents(added_token.src_id) {
+                let source_content = final_token.get_source_view().map(|view| view.source());
 
-                    builder.set_source_contents(added_token.src_id, source_content);
-                }
+                builder.set_source_contents(added_token.src_id, source_content);
             }
         }
     });
@@ -144,6 +144,43 @@ mod test {
     use std::str::FromStr;
 
     use crate::ast::sourcemap::{merge_source_map, swc_sourcemap};
+
+    #[test]
+    fn test_merge_empty_chain() {
+        let sourcemap2 = r#"{
+            "version": 3,
+            "file": "minify.js",
+            "sourceRoot": "",
+            "sources": [
+              "index.ts"
+            ],
+            "names": [
+              "sayHello",
+              "name",
+              "console",
+              "log",
+              "concat"
+            ],
+            "mappings": "AAAA,SAASA,SAASC,CAAI,EAClBC,QAAQC,GAAG,CAAC,UAAUC,MAAM,CAACH,GACjC",
+            "sourcesContent": [
+              "function sayHello(name) {\n    console.log(\"Hello, \".concat(name));\n}\n"
+            ]
+        }"#;
+
+        let merged_source_map = merge_source_map(
+            swc_sourcemap::SourceMap::from_reader(sourcemap2.as_bytes()).unwrap(),
+            HashMap::<String, Vec<swc_sourcemap::SourceMap>>::new(),
+            &PathBuf::from_str("./").unwrap(),
+        );
+
+        let mut buf = vec![];
+
+        merged_source_map.to_writer(&mut buf).unwrap();
+
+        let merged = String::from_utf8(buf).unwrap();
+
+        assert!(merged.eq(r#"{"version":3,"sources":["index.ts"],"sourcesContent":["function sayHello(name) {\n    console.log(\"Hello, \".concat(name));\n}\n"],"names":["sayHello","name","console","log","concat"],"mappings":"AAAA,SAASA,SAASC,CAAI,EAClBC,QAAQC,GAAG,CAAC,UAAUC,MAAM,CAACH,GACjC"}"#))
+    }
 
     #[test]
     fn test_merge() {
