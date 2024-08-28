@@ -137,9 +137,9 @@ fn get_env_expr(v: Value, context: &Arc<Context>) -> Result<Expr> {
 
             let module = {
                 // the string content is treat as expression, so it has to be parsed
-                let mut ast = JsAst::build("_mako_internal/_define_.js", &safe_value, context
-                    .clone())
-                    .unwrap();
+                let mut ast =
+                    JsAst::build("_mako_internal/_define_.js", &safe_value, context.clone())
+                        .unwrap();
                 ast.ast.visit_mut_with(&mut strip_span());
                 ast.ast.body.pop().unwrap()
             };
