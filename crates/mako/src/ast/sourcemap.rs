@@ -77,6 +77,8 @@ impl From<RawSourceMap> for swc_sourcemap::SourceMap {
     }
 }
 
+// This is based on https://github.com/jiesia/merge-source-map/blob/main/src/lib.rs#L95,
+// just refactor it with a hash map to determinate which source should be searched accurately
 pub fn merge_source_map(
     target_source_map: swc_sourcemap::SourceMap,
     chain_map: HashMap<String, Vec<swc_sourcemap::SourceMap>>,
@@ -103,6 +105,7 @@ pub fn merge_source_map(
                 }
             }
 
+            // This maybe impossible ?
             if !searched_in_chain {
                 return;
             }
