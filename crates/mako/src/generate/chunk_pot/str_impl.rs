@@ -6,7 +6,6 @@ use cached::proc_macro::cached;
 use cached::SizedCache;
 use rayon::prelude::*;
 use swc_core::base::sourcemap;
-use swc_core::common::SourceMap;
 use swc_core::ecma::codegen::text_writer::JsWriter;
 use swc_core::ecma::codegen::{Config as JsCodegenConfig, Emitter};
 
@@ -238,17 +237,14 @@ fn pot_to_chunk_module_object_string(
         })
         .collect::<Result<Vec<(String, Option<RawSourceMap>)>>>()?;
 
-    let cm = context.meta.script.cm.clone();
-
     let (chunk_content, chunk_raw_sourcemap) =
-        merge_code_and_sourcemap(emitted_modules_with_mapping, cm, chunk_prefix_offset);
+        merge_code_and_sourcemap(emitted_modules_with_mapping, chunk_prefix_offset);
 
     Ok((format!(r#"{{ {} }}"#, chunk_content), chunk_raw_sourcemap))
 }
 
 fn merge_code_and_sourcemap(
     modules_with_sourcemap: Vec<EmittedWithMapping>,
-    _cm: Arc<SourceMap>,
     chunk_prefix_offset: u32,
 ) -> (String, RawSourceMap) {
     let mut dst_line_offset = 0u32;
@@ -267,10 +263,9 @@ fn merge_code_and_sourcemap(
                         //    need to add 1
                         // 2. we also have added some prefix code lines in entry chunks or normal
                         //    chunks before chunk output, which it's lines count been stored in PrefixCode,
-                        //    need to add it's line count
+                        //    need to add its line count
                         // 3. we need to add all code lines count of modules before current
                         dst_line: t.dst_line + 1 + chunk_prefix_offset + dst_line_offset,
-
                         src_id: t.src_id + src_id_offset,
                         name_id: t.name_id + name_id_offset,
                         ..t
@@ -353,7 +348,6 @@ mod tests {
                 &context,
             )
             .unwrap();
-            let cm = context.meta.script.cm.clone();
 
             let emitted_add_code = emitted_add.0.clone();
             let emitted_add_sourcemap: sourcemap::SourceMap =
@@ -364,7 +358,7 @@ mod tests {
             let chunk_prefix_offset = 1u32;
 
             let merged_code_and_sourcemap =
-                merge_code_and_sourcemap(vec![emitted_add, emitted_sub], cm, chunk_prefix_offset);
+                merge_code_and_sourcemap(vec![emitted_add, emitted_sub], chunk_prefix_offset);
 
             let merged_sourcemap: sourcemap::SourceMap = merged_code_and_sourcemap.1.into();
 
