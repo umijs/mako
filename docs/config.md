@@ -471,8 +471,8 @@ Whether to enable node polyfill.
 
 ### output
 
-- Type: `{ path: string, mode: "bundle" | "bundless", esVersion: "es3" | "es5" | "es2015" | "es2016" | "es2017" | "es2018" | "es2019" | "es2020" | "es2021" | "es2022" | "esnext", meta: boolean, chunkLoadingGlobal: string, preserveModules: boolean, preserveModulesRoot: string }`
-- Default: `{ path: "dist", mode: "bundle", esVersion: "es2022", meta: false, chunkLoadingGlobal: "", preserveModules: false, preserveModulesRoot: "" }`
+- Type: `{ path: string, mode: "bundle" | "bundless", esVersion: "es3" | "es5" | "es2015" | "es2016" | "es2017" | "es2018" | "es2019" | "es2020" | "es2021" | "es2022" | "esnext", meta: boolean, chunkLoadingGlobal: string, preserveModules: boolean, preserveModulesRoot: string; crossOriginLoading: false | "anonymous" | "use-credentials" }`
+- Default: `{ path: "dist", mode: "bundle", esVersion: "es2022", meta: false, chunkLoadingGlobal: "", preserveModules: false, preserveModulesRoot: "", crossOriginLoading: false }`
 
 Output related configuration.
 
@@ -483,6 +483,7 @@ Output related configuration.
 - `chunkLoadingGlobal`, global variable name for `chunk loading`
 - `preserveModules`, whether to preserve the module directory structure (Bundless Only)
 - `preserveModulesRoot`, preserve the root directory of the module directory structure (Bundless Only)
+- `crossOriginLoading`, control the `crossorigin` attribute of the `script` tag and `link` tag for load async chunks
 
 ### optimization
 
