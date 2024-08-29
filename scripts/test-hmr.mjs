@@ -1639,7 +1639,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
         );
       },
       (thisResult) => {
-        console.log(1228, thisResult.html);
         assert.equal(thisResult.html, '<div>foobar</div>', 'Second render');
       },
       true,
