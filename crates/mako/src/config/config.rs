@@ -93,6 +93,10 @@ create_deserialize_fn!(deserialize_manifest, ManifestConfig);
 create_deserialize_fn!(deserialize_code_splitting, CodeSplitting);
 create_deserialize_fn!(deserialize_px2rem, Px2RemConfig);
 create_deserialize_fn!(deserialize_progress, ProgressConfig);
+create_deserialize_fn!(
+    deserialize_check_duplicate_package,
+    DuplicatePackageCheckerConfig
+);
 create_deserialize_fn!(deserialize_umd, String);
 create_deserialize_fn!(deserialize_devtool, DevtoolConfig);
 create_deserialize_fn!(deserialize_tree_shaking, TreeShakingStrategy);
@@ -279,6 +283,16 @@ pub struct Px2RemConfig {
 pub struct ProgressConfig {
     #[serde(rename = "progressChars", default)]
     pub progress_chars: String,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct DuplicatePackageCheckerConfig {
+    #[serde(rename = "verbose", default)]
+    pub verbose: bool,
+    #[serde(rename = "emitError", default)]
+    pub emit_error: bool,
+    #[serde(rename = "showHelp", default)]
+    pub show_help: bool,
 }
 
 impl Default for Px2RemConfig {
@@ -580,6 +594,12 @@ pub struct Config {
     pub watch: WatchConfig,
     pub use_define_for_class_fields: bool,
     pub emit_decorator_metadata: bool,
+    #[serde(
+        rename = "duplicatePackageChecker",
+        deserialize_with = "deserialize_check_duplicate_package",
+        default
+    )]
+    pub check_duplicate_package: Option<DuplicatePackageCheckerConfig>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
@@ -744,6 +764,11 @@ const DEFAULT_CONFIG: &str = r#"
     },
     "progress": {
       "progressChars": "▨▨"
+    },
+    "duplicatePackageChecker": {
+        "verbose": false,
+        "showHelp": false,
+        "emitError": false,
     },
     "emitAssets": true,
     "cssModulesExportOnlyLocales": false,
