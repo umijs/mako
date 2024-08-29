@@ -177,7 +177,6 @@ impl<'a> Watcher<'a> {
     }
 
     fn should_ignore_event(path: &Path, kind: &EventKind) -> bool {
-        println!("kind is:{:?}", kind);
         if matches!(
             kind,
             EventKind::Modify(notify::event::ModifyKind::Metadata(_))
