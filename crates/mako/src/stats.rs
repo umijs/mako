@@ -123,9 +123,11 @@ impl Compiler {
                     ChunkType::Sync => chunk_graph
                         .dependents_chunk(&chunk.id)
                         .iter()
-                        .filter_map(|chunk_id| chunk_graph.chunk(chunk_id).unwrap().modules.back())
+                        .filter_map(|chunk_id| {
+                            chunk_graph.chunk(chunk_id).unwrap().modules.iter().last()
+                        })
                         .collect::<Vec<_>>(),
-                    _ => vec![chunk.modules.back().unwrap()],
+                    _ => vec![chunk.modules.iter().last().unwrap()],
                 };
                 let mut origins_set = IndexMap::new();
                 for origin_chunk_module in origin_chunk_modules {

@@ -161,6 +161,31 @@
 
 指定源映射类型。
 
+### duplicatePackageChecker
+
+- 类型：`{ verbose: boolean, showHelp: boolean, emitError: boolean } | false`
+- 默认值：`false`
+
+重复包检查器的配置。
+
+子配置项：
+
+- `verbose`：是否输出详细信息。
+- `showHelp`：是否显示帮助信息。
+- `emitError`：发现重复包时是否抛出错误。
+
+示例：
+
+```json
+{
+  "duplicatePackageChecker": {
+    "verbose": true,
+    "showHelp": true,
+    "emitError": false
+  }
+}
+```
+
 ### dynamicImportToRequire
 
 - 类型：`boolean`
@@ -447,8 +472,8 @@ e.g.
 
 ### output
 
-- 类型：`{ path: string, mode: "bundle" | "bundless", esVersion: "es3" | "es5" | "es2015" | "es2016" | "es2017" | "es2018" | "es2019" | "es2020" | "es2021" | "es2022" | "esnext", meta: boolean, chunkLoadingGlobal: string, preserveModules: boolean, preserveModulesRoot: string }`
-- 默认值：`{ path: "dist", mode: "bundle", esVersion: "es2022", meta: false, chunkLoadingGlobal: "", preserveModules: false, preserveModulesRoot: "" }`
+- 类型：`{ path: string, mode: "bundle" | "bundless", esVersion: "es3" | "es5" | "es2015" | "es2016" | "es2017" | "es2018" | "es2019" | "es2020" | "es2021" | "es2022" | "esnext", meta: boolean, chunkLoadingGlobal: string, preserveModules: boolean, preserveModulesRoot: string; crossOriginLoading: false | "anonymous" | "use-credentials" }`
+- 默认值：`{ path: "dist", mode: "bundle", esVersion: "es2022", meta: false, chunkLoadingGlobal: "", preserveModules: false, preserveModulesRoot: "", crossOriginLoading: false }`
 
 输出相关配置。
 
@@ -459,6 +484,7 @@ e.g.
 - `chunkLoadingGlobal`，`chunk loading` 的全局变量名称
 - `preserveModules`，是否保留模块目录结构（仅适用于 Bundless）
 - `preserveModulesRoot`，是否保留模块目录结构的根目录（仅限 Bundless）
+- `crossOriginLoading`，控制异步 chunk 加载时 `script` 及 `link` 标签的 `crossorigin` 属性值
 
 ### optimization
 

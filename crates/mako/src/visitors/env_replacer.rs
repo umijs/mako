@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use serde_json::Value;
-use swc_core::common::{Mark, DUMMY_SP};
+use swc_core::common::{Mark, Span, DUMMY_SP};
 use swc_core::ecma::ast::{
     ArrayLit, Bool, ComputedPropName, Expr, ExprOrSpread, Ident, IdentName, KeyValueProp, Lit,
     MemberExpr, MemberProp, ModuleItem, Null, Number, ObjectLit, Prop, PropOrSpread, Stmt, Str,
@@ -134,10 +134,14 @@ fn get_env_expr(v: Value, context: &Arc<Context>) -> Result<Expr> {
                 v.clone()
             };
 
-            // the string content is treat as expression, so it has to be parsed
-            let ast =
-                JsAst::build("_mako_internal/_define_.js", &safe_value, context.clone()).unwrap();
-            let module = ast.ast.body.first().unwrap();
+            let module = {
+                // the string content is treat as expression, so it has to be parsed
+                let mut ast =
+                    JsAst::build("_mako_internal/_define_.js", &safe_value, context.clone())
+                        .unwrap();
+                ast.ast.visit_mut_with(&mut strip_span());
+                ast.ast.body.pop().unwrap()
+            };
 
             match module {
                 ModuleItem::Stmt(Stmt::Expr(stmt_expr)) => {
@@ -192,6 +196,17 @@ fn get_env_expr(v: Value, context: &Arc<Context>) -> Result<Expr> {
             .into())
         }
     }
+}
+
+struct SpanStrip {}
+impl VisitMut for SpanStrip {
+    fn visit_mut_span(&mut self, span: &mut Span) {
+        *span = DUMMY_SP;
+    }
+}
+
+fn strip_span() -> impl VisitMut {
+    SpanStrip {}
 }
 
 #[cfg(test)]

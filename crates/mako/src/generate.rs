@@ -571,15 +571,12 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
                     source_map_file_path.to_string_lossy().to_string(),
                     chunk_file.source_map_disk_name(),
                 );
-                fs::write(
-                    context
-                        .config
-                        .output
-                        .path
-                        .join(chunk_file.source_map_disk_name()),
-                    source_map,
-                )
-                .unwrap();
+                let to = context
+                    .config
+                    .output
+                    .path
+                    .join(chunk_file.source_map_disk_name());
+                write_to_file(to.to_str().unwrap(), source_map).unwrap();
 
                 let source_map_url_line = match chunk_file.file_type {
                     ChunkFileType::JS => {
@@ -606,7 +603,7 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
                 to.to_string_lossy().to_string(),
                 dist_name.clone(),
             );
-            fs::write(to, &code).unwrap();
+            write_to_file(to.to_str().unwrap(), &code).unwrap();
         }
         Some(DevtoolConfig::InlineSourceMap) => {
             let mut code = Vec::new();
@@ -630,7 +627,7 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
                 to.to_string_lossy().to_string(),
                 dist_name.clone(),
             );
-            fs::write(to, code).unwrap();
+            write_to_file(to.to_str().unwrap(), &code).unwrap();
         }
         None => {
             stats_info.add_assets(
@@ -640,10 +637,18 @@ fn emit_chunk_file(context: &Arc<Context>, chunk_file: &ChunkFile) {
                 to.to_string_lossy().to_string(),
                 dist_name,
             );
-
-            fs::write(to, &chunk_file.content).unwrap();
+            write_to_file(to.to_str().unwrap(), &chunk_file.content).unwrap();
         }
     }
+}
+
+fn write_to_file(path: &str, content: &Vec<u8>) -> std::io::Result<()> {
+    if let Some(parent) = std::path::Path::new(path).parent() {
+        if !parent.exists() {
+            fs::create_dir_all(parent)?;
+        }
+    }
+    fs::write(path, content)
 }
 
 fn to_hot_update_chunk_name(chunk_name: &String, hash: u64) -> String {

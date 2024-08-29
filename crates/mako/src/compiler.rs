@@ -259,6 +259,15 @@ impl Compiler {
             )));
         }
 
+        if let Some(duplicate_package_checker) = &config.check_duplicate_package {
+            plugins.push(Arc::new(
+                plugins::duplicate_package_checker::DuplicatePackageCheckerPlugin::new()
+                    .show_help(duplicate_package_checker.show_help)
+                    .emit_error(duplicate_package_checker.emit_error)
+                    .verbose(duplicate_package_checker.verbose),
+            ));
+        }
+
         if config.experimental.require_context {
             plugins.push(Arc::new(plugins::require_context::RequireContextPlugin {}))
         }

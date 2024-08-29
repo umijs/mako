@@ -84,7 +84,6 @@ indicatif             = "0.17.8"
 md5                   = "0.7.0"
 mdxjs                 = "0.2.6"
 mime_guess            = "2.0.4"
-nohash-hasher         = "0.2.0"
 notify                = { version = "6.1.1", default-features = false, features = ["macos_kqueue"] }
 notify-debouncer-full = { version = "0.3.1", default-features = false }
 parking_lot           = { version = "0.12", features = ["nightly"] }
@@ -96,6 +95,7 @@ puffin_egui           = { version = "0.22.0", optional = true }
 rayon                 = "1.7.0"
 regex                 = { workspace = true }
 sailfish              = "0.8.3"
+semver                = "1.0.23"
 serde-xml-rs          = "0.6.0"
 serde_yaml            = "0.9.22"
 svgr-rs               = { path = "../svgr-rs" }

@@ -4,6 +4,17 @@
 
 - fix: should not alias define XXX to process.env.XXX by [@xusd320](https://github.com/xusd320) in [#1504](https://github.com/umijs/mako/pull/1526)
 
+## 0.8.3
+
+`2024-08-22`
+
+- fix: wrong file extension for map file paths in stat.json by [@stormslowly](https://github.com/stormslowly) in https://github.com/umijs/mako/pull/1506
+- fix: resolve failed when package use `node` as key by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1516
+- perf: merge source map, speed up generation by 800% by [@xusd320](https://github.com/xusd320) in https://github.com/umijs/mako/pull/1509
+- perf: optimize group_chunks, speed up group_chunks by 500% by [@xusd320](https://github.com/xusd320) in https://github.com/umijs/mako/pull/1475
+- refactor: improve regex convention for px2rem config by [@xiaohuoni](https://github.com/xiaohuoni) in https://github.com/umijs/mako/pull/1469
+- refactor: improve behavior of define config by [@xusd320](https://github.com/xusd320) in https://github.com/umijs/mako/pull/1505
+
 ## 0.8.2
 
 `2024-08-16`

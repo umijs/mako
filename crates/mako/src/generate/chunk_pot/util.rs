@@ -105,6 +105,12 @@ pub(crate) fn runtime_code(context: &Arc<Context>) -> Result<String> {
         is_browser: matches!(context.config.platform, crate::config::Platform::Browser),
         cjs: context.config.cjs,
         chunk_loading_global: context.config.output.chunk_loading_global.clone(),
+        cross_origin_loading: context
+            .config
+            .output
+            .cross_origin_loading
+            .clone()
+            .map(|s| s.to_string()),
         pkg_name: get_pkg_name(&context.root),
         concatenate_enabled: context
             .config

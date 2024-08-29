@@ -111,27 +111,17 @@ exports.dev = async function (opts) {
     logLevel: 'silent',
   });
   app.use('/__/hmr-ws', wsProxy);
-
-  const outputPath = path.resolve(opts.cwd, opts.config.outputPath || 'dist');
-
-  function processReqURL(publicPath, reqURL) {
-    if (!publicPath.startsWith('/')) {
-      publicPath = '/' + publicPath;
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      return next();
     }
-    return reqURL.startsWith(publicPath)
-      ? reqURL.slice(publicPath.length - 1)
-      : reqURL;
-  }
-
-  if (opts.config.publicPath) {
-    app.use((req, _res, next) => {
-      req.url = processReqURL(opts.config.publicPath, req.url);
+    if (req.accepts().join('').includes('html')) {
+      return next();
+    }
+    wsProxy(req, res, () => {
       next();
     });
-  }
-
-  // serve dist files
-  app.use(express.static(outputPath));
+  });
 
   if (process.env.SSU === 'true') {
     // for ssu cache chunks
@@ -453,6 +443,7 @@ async function getMakoConfig(opts) {
   }
   const webpackConfig = webpackChainConfig.toConfig();
   let umd = false;
+  let crossOriginLoading = false;
   let { dynamicImportToRequire } = opts.config;
   if (webpackConfig.output) {
     // handle asyncChunks config
@@ -466,6 +457,11 @@ async function getMakoConfig(opts) {
       webpackConfig.output.library
     ) {
       umd = webpackConfig.output.library;
+    }
+
+    // handle crossOriginLoading config
+    if (webpackConfig.output.crossOriginLoading) {
+      crossOriginLoading = webpackConfig.output.crossOriginLoading;
     }
   }
 
@@ -611,7 +607,7 @@ async function getMakoConfig(opts) {
 
   const makoConfig = {
     entry: opts.entry,
-    output: { path: outputPath },
+    output: { path: outputPath, crossOriginLoading },
     resolve: {
       alias: generatorAlias,
     },
