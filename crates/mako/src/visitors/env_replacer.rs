@@ -49,18 +49,21 @@ impl VisitMut for EnvReplacer {
                 let mut member_visit_path = match prop {
                     MemberProp::Ident(Ident { sym, .. }) => sym.to_string(),
                     MemberProp::Computed(ComputedPropName {
-                        expr: expr_computed,
-                        ..
-                    }) => match expr_computed.as_ref() {
+                        expr: expr_compute, ..
+                    }) => match expr_compute.as_ref() {
                         Expr::Lit(Lit::Str(Str { value, .. })) => value.to_string(),
 
                         Expr::Lit(Lit::Num(Number { value, .. })) => value.to_string(),
-                        _ => return,
+                        _ => {
+                            obj.visit_mut_with(self);
+                            expr_compute.visit_mut_with(self);
+                            return;
+                        }
                     },
                     _ => return,
                 };
 
-                let mut current_member_obj = obj.as_ref();
+                let mut current_member_obj = obj.as_mut();
 
                 while let Expr::Member(MemberExpr { obj, prop, .. }) = current_member_obj {
                     match prop {
@@ -68,23 +71,27 @@ impl VisitMut for EnvReplacer {
                             member_visit_path.push('.');
                             member_visit_path.push_str(sym.as_ref());
                         }
-                        MemberProp::Computed(ComputedPropName { expr, .. }) => {
-                            match expr.as_ref() {
-                                Expr::Lit(Lit::Str(Str { value, .. })) => {
-                                    member_visit_path.push('.');
-                                    member_visit_path.push_str(value.as_ref());
-                                }
-
-                                Expr::Lit(Lit::Num(Number { value, .. })) => {
-                                    member_visit_path.push('.');
-                                    member_visit_path.push_str(&value.to_string());
-                                }
-                                _ => return,
+                        MemberProp::Computed(ComputedPropName {
+                            expr: expr_compute, ..
+                        }) => match expr_compute.as_ref() {
+                            Expr::Lit(Lit::Str(Str { value, .. })) => {
+                                member_visit_path.push('.');
+                                member_visit_path.push_str(value.as_ref());
                             }
-                        }
+
+                            Expr::Lit(Lit::Num(Number { value, .. })) => {
+                                member_visit_path.push('.');
+                                member_visit_path.push_str(&value.to_string());
+                            }
+                            _ => {
+                                obj.visit_mut_with(self);
+                                expr_compute.visit_mut_with(self);
+                                return;
+                            }
+                        },
                         _ => return,
                     }
-                    current_member_obj = obj.as_ref();
+                    current_member_obj = obj.as_mut();
                 }
 
                 if let Expr::Ident(Ident { sym, .. }) = current_member_obj {
@@ -378,7 +385,7 @@ log([
     }
 
     #[test]
-    fn test_complicated() {
+    fn test_computed_after_ident() {
         assert_eq!(
             run(
                 r#"log(A.v["v"])"#,
@@ -387,6 +394,87 @@ log([
                 }
             ),
             r#"log(1);"#
+        );
+    }
+
+    #[test]
+    fn test_computed_as_member_key() {
+        assert_eq!(
+            run(
+                r#"log(A[v])"#,
+                hashmap! {
+                    "v".to_string() => json!(1)
+                }
+            ),
+            r#"log(A[1]);"#
+        );
+    }
+
+    #[test]
+    fn test_complited_computed_as_member_key() {
+        assert_eq!(
+            run(
+                r#"log(A[v.v])"#,
+                hashmap! {
+                    "v.v".to_string() => json!(1)
+                }
+            ),
+            r#"log(A[1]);"#
+        );
+    }
+
+    #[test]
+    fn test_computed_nested() {
+        assert_eq!(
+            run(
+                r#"log(A[v].B[v][v].C[v][v][v])"#,
+                hashmap! {
+                    "v".to_string() => json!(1)
+                }
+            ),
+            r#"log(A[1].B[1][1].C[1][1][1]);"#
+        );
+    }
+
+    #[test]
+    fn test_should_not_replace_exsited() {
+        assert_eq!(
+            run(
+                r#"let v = 2;log(A[v])"#,
+                hashmap! {
+                    "v".to_string() => json!(1)
+                }
+            ),
+            r#"let v = 2;
+log(A[v]);"#
+        );
+    }
+
+    #[test]
+    fn test_should_define_before_computed() {
+        assert_eq!(
+            run(
+                r#"log(A[B].v)"#,
+                hashmap! {
+                    "A.B".to_string() => json!("{\"v\": 1}")
+                }
+            ),
+            r#"log(x[({
+    "v": 1
+}).v]);"#
+        );
+    }
+
+    #[test]
+    fn test_should_not_replace_as_member_ident() {
+        assert_eq!(
+            run(
+                r#"log(A.v)"#,
+                hashmap! {
+                    "v".to_string() => json!(1)
+                }
+            ),
+            r#"log(A.v);"#
         );
     }
 
