@@ -4,6 +4,18 @@
 
 - 修复 bundler-mako 中 define process.env.XXX 不生效的问题 by [@xusd320](https://github.com/xusd320) in [#1504](https://github.com/umijs/mako/pull/1526)
 
+## 0.8.3
+
+`2024-08-22`
+
+- 修复：stat.json 中 map 文件路径中的后缀名错误 by [@stormslowly](https://github.com/stormslowly) in https://github.com/umijs/mako/pull/1506
+- 修复：无法解析使用 `node` 导出字段的依赖包 by [@sorrycc](https://github.com/sorrycc) in https://github.com/umijs/mako/pull/1516
+- 性能：合并 source map，最高为 generation 阶段提速 800% by [@xusd320](https://github.com/xusd320) in https://github.com/umijs/mako/pull/1509
+- 性能：优化 chunk 分组逻辑，最高为 group_chunks 阶段提速 500% by [@xusd320](https://github.com/xusd320) in https://github.com/umijs/mako/pull/1475
+- 改进：调整 px2rem 配置中正则值的约定方式 by [@xiaohuoni](https://github.com/xiaohuoni) in https://github.com/umijs/mako/pull/1469
+- 改进：调整 define 配置的替换行为，与社区共识保持一致 by [@xusd320](https://github.com/xusd320) in https://github.com/umijs/mako/pull/1505
+
+
 ## 0.8.2
 
 `2024-08-16`

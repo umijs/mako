@@ -1,4 +1,5 @@
-use swc_core::ecma::ast::{CallExpr, Callee, Expr, Lit};
+use swc_core::ecma::ast::{CallExpr, Callee, Expr};
+use swc_core::ecma::utils::quote_str;
 use swc_core::ecma::visit::VisitMut;
 
 pub struct ImportTemplateToStringLiteral {}
@@ -8,8 +9,9 @@ impl VisitMut for ImportTemplateToStringLiteral {
         if matches!(n.callee, Callee::Import(_)) && n.args.len() == 1 {
             if let box Expr::Tpl(tpl) = &n.args[0].expr {
                 if tpl.exprs.is_empty() && tpl.quasis.len() == 1 {
-                    let s: String = tpl.quasis[0].raw.clone().to_string();
-                    n.args[0].expr = Expr::Lit(Lit::Str(s.into())).into();
+                    let s: String = tpl.quasis[0].raw.to_string();
+
+                    n.args[0].expr = quote_str!(tpl.span, s).into();
                 }
             }
         }
