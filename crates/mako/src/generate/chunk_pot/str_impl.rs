@@ -6,7 +6,6 @@ use cached::proc_macro::cached;
 use cached::SizedCache;
 use rayon::prelude::*;
 use swc_core::base::sourcemap;
-use swc_core::common::{BytePos, LineCol, SourceMap};
 use swc_core::ecma::codegen::text_writer::JsWriter;
 use swc_core::ecma::codegen::{Config as JsCodegenConfig, Emitter};
 
@@ -147,7 +146,7 @@ pub(super) fn render_normal_js_chunk(
     })
 }
 
-type EmittedWithMapping = (String, Option<Vec<(BytePos, LineCol)>>);
+type EmittedWithMapping = (String, Option<RawSourceMap>);
 
 #[cached(
     result = true,
@@ -187,6 +186,8 @@ fn emit_module_with_mapping(
             };
             emitter.emit_module(&ast.ast)?;
 
+            let source_map = build_source_map(&source_mappings, &cm);
+
             let content = { String::from_utf8_lossy(&buf) };
             Ok((
                 format!(
@@ -196,7 +197,7 @@ fn emit_module_with_mapping(
 "#,
                     module_id, content
                 ),
-                Some(source_mappings),
+                Some(source_map.into()),
             ))
         }
         ModuleAst::Css(_) => Ok((
@@ -234,59 +235,51 @@ fn pot_to_chunk_module_object_string(
         .map(|(module_id, module_and_hash)| {
             emit_module_with_mapping(module_id, module_and_hash.0, module_and_hash.1, context)
         })
-        .collect::<Result<Vec<(String, Option<Vec<(BytePos, LineCol)>>)>>>()?;
-
-    let cm = context.meta.script.cm.clone();
+        .collect::<Result<Vec<(String, Option<RawSourceMap>)>>>()?;
 
     let (chunk_content, chunk_raw_sourcemap) =
-        merge_code_and_sourcemap(emitted_modules_with_mapping, cm, chunk_prefix_offset);
+        merge_code_and_sourcemap(emitted_modules_with_mapping, chunk_prefix_offset);
 
     Ok((format!(r#"{{ {} }}"#, chunk_content), chunk_raw_sourcemap))
 }
 
 fn merge_code_and_sourcemap(
     modules_with_sourcemap: Vec<EmittedWithMapping>,
-    cm: Arc<SourceMap>,
     chunk_prefix_offset: u32,
 ) -> (String, RawSourceMap) {
     let mut dst_line_offset = 0u32;
     let mut src_id_offset = 0u32;
     let mut name_id_offset = 0u32;
-    let (chunk_content, chunk_raw_sourcemap) = modules_with_sourcemap.iter().fold(
+    let (chunk_content, chunk_raw_sourcemap) = modules_with_sourcemap.into_iter().fold(
         (String::new(), RawSourceMap::default()),
         |(mut chunk_content, mut chunk_raw_sourcemap), (module_content, source_mapping)| {
-            chunk_content.push_str(module_content);
+            chunk_content.push_str(&module_content);
 
-            if let Some(mappings) = source_mapping {
-                let cur_source_map = build_source_map(mappings, &cm);
+            if let Some(mut mappings) = source_mapping {
                 chunk_raw_sourcemap
                     .tokens
-                    .extend(cur_source_map.tokens().map(|t| sourcemap::RawToken {
+                    .extend(mappings.tokens.drain(0..).map(|t| sourcemap::RawToken {
                         // 1. in emit_module_with_sourcemap, we have added 1 line code before module output,
                         //    need to add 1
                         // 2. we also have added some prefix code lines in entry chunks or normal
                         //    chunks before chunk output, which it's lines count been stored in PrefixCode,
-                        //    need to add it's line count
+                        //    need to add its line count
                         // 3. we need to add all code lines count of modules before current
-                        dst_line: t.get_dst_line() + 1 + chunk_prefix_offset + dst_line_offset,
-                        src_id: t.get_src_id() + src_id_offset,
-                        name_id: t.get_name_id() + name_id_offset,
-                        ..t.get_raw_token()
+                        dst_line: t.dst_line + 1 + chunk_prefix_offset + dst_line_offset,
+                        src_id: t.src_id + src_id_offset,
+                        name_id: t.name_id + name_id_offset,
+                        ..t
                     }));
 
-                chunk_raw_sourcemap
-                    .names
-                    .extend(cur_source_map.names().map(|n| n.to_owned()));
+                chunk_raw_sourcemap.names.extend(mappings.names.drain(0..));
 
                 chunk_raw_sourcemap
                     .sources
-                    .extend(cur_source_map.sources().map(|s| s.to_owned()));
+                    .extend(mappings.sources.drain(0..));
 
-                chunk_raw_sourcemap.sources_content.extend(
-                    cur_source_map
-                        .source_contents()
-                        .map(|c| c.map(|s| s.to_owned())),
-                );
+                chunk_raw_sourcemap
+                    .sources_content
+                    .extend(mappings.sources_content.drain(0..));
 
                 name_id_offset = chunk_raw_sourcemap.names.len() as u32;
                 src_id_offset = chunk_raw_sourcemap.sources.len() as u32;
@@ -355,16 +348,17 @@ mod tests {
                 &context,
             )
             .unwrap();
-            let cm = context.meta.script.cm.clone();
 
             let emitted_add_code = emitted_add.0.clone();
-            let emitted_add_sourcemap = build_source_map(emitted_add.1.as_ref().unwrap(), &cm);
-            let emitted_sub_sourcemap = build_source_map(emitted_sub.1.as_ref().unwrap(), &cm);
+            let emitted_add_sourcemap: sourcemap::SourceMap =
+                emitted_add.1.as_ref().unwrap().clone().into();
+            let emitted_sub_sourcemap: sourcemap::SourceMap =
+                emitted_sub.1.as_ref().unwrap().clone().into();
 
             let chunk_prefix_offset = 1u32;
 
             let merged_code_and_sourcemap =
-                merge_code_and_sourcemap(vec![emitted_add, emitted_sub], cm, chunk_prefix_offset);
+                merge_code_and_sourcemap(vec![emitted_add, emitted_sub], chunk_prefix_offset);
 
             let merged_sourcemap: sourcemap::SourceMap = merged_code_and_sourcemap.1.into();
 
@@ -443,6 +437,7 @@ mod tests {
         }
 
         let code = String::from_utf8(buf)?;
-        Ok((code, Some(source_map_buf)))
+        let source_map = build_source_map(&source_map_buf, cm);
+        Ok((code, Some(source_map.into())))
     }
 }

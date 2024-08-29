@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::hash::Hasher;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -10,6 +11,7 @@ use swc_core::common::DUMMY_SP;
 use swc_core::css::ast::Stylesheet;
 use swc_core::ecma::ast::{Expr, KeyValueProp, Prop, PropName, PropOrSpread, Str};
 use tracing::warn;
+use twox_hash::XxHash64;
 
 use crate::compiler::{Compiler, Context};
 use crate::generate::chunk::{Chunk, ChunkType};
@@ -38,10 +40,29 @@ pub struct ChunkFile {
 
 impl ChunkFile {
     pub fn disk_name(&self) -> String {
+        // fixed os error 63 file name too long, reserve 48 bytes for _js-async、extension、.map and others
+        let reserve_file_name_length = 207;
+        let file_path = Path::new(&self.file_name);
+        let mut format_file_name = self.file_name.clone();
+        if self.file_name.len() > reserve_file_name_length {
+            let mut hasher: XxHash64 = Default::default();
+            hasher.write_str(self.file_name.as_str());
+            let file_extension = file_path.extension().unwrap();
+            let file_stem = file_path.file_stem().unwrap().to_string_lossy().to_string();
+            let (_, reserve_file_path) =
+                file_stem.split_at(file_stem.len() - reserve_file_name_length);
+            format_file_name = format!(
+                "{}.{}.{}",
+                reserve_file_path,
+                &hasher.finish().to_string()[0..8],
+                file_extension.to_str().unwrap()
+            );
+        }
+
         if let Some(hash) = &self.hash {
-            hash_file_name(&self.file_name, hash)
+            hash_file_name(&format_file_name, hash)
         } else {
-            self.file_name.clone()
+            format_file_name
         }
     }
 
