@@ -140,7 +140,7 @@ pub fn merge_source_map(
                 false,
             );
 
-            // add source centent
+            // add source content
             if !builder.has_source_contents(added_token.src_id) {
                 let source_content = final_token.get_source_view().map(|view| view.source());
 
