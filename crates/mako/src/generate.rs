@@ -193,7 +193,12 @@ impl Compiler {
         }
 
         if self.context.config.analyze.is_some() {
-            Analyze::write_analyze(&stats, &self.context.config.output.path)?;
+            let analyze = &self.context.config.analyze.clone().unwrap();
+            let mut is_watch = false;
+            if analyze.watch.is_some() && analyze.watch.unwrap() {
+                is_watch = true;
+            }
+            Analyze::write_analyze(&stats, &self.context.config.output.path, is_watch)?;
         }
 
         debug!("generate done in {}ms", t_generate.elapsed().as_millis());

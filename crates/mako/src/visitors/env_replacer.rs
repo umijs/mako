@@ -403,7 +403,7 @@ mod tests {
     }
 
     #[test]
-    fn test_complited_computed_as_member_key() {
+    fn test_completed_computed_as_member_key() {
         assert_eq!(
             run(
                 r#"log(A[v.v])"#,
