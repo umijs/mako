@@ -223,6 +223,7 @@ mod tests {
     use std::sync::Arc;
 
     use maplit::hashmap;
+    use regex::Regex;
     use serde_json::{json, Value};
     use swc_core::common::GLOBALS;
     use swc_core::ecma::visit::VisitMutWith;
@@ -267,7 +268,7 @@ mod tests {
                     "A".to_string() => json!(true)
                 }
             ),
-            r#"log(true);"#
+            "log(true);"
         );
     }
 
@@ -280,7 +281,7 @@ mod tests {
                     "A".to_string() => json!(1)
                 }
             ),
-            r#"log(1);"#
+            "log(1);"
         );
     }
 
@@ -293,7 +294,7 @@ mod tests {
                     "A".to_string() => json!("\"foo\"")
                 }
             ),
-            r#"log("foo");"#
+            "log(\"foo\");"
         );
     }
 
@@ -303,17 +304,10 @@ mod tests {
             run(
                 r#"log(A)"#,
                 hashmap! {
-                    "A".to_string() => json!([1, true, "\"foo\""])
+                    "A".to_string() => json!([1,true,"\"foo\""])
                 }
             ),
-            r#"
-log([
-    1,
-    true,
-    "foo"
-]);
-            "#
-            .trim()
+            "log([1,true,\"foo\"]);".trim()
         );
     }
 
@@ -326,9 +320,7 @@ log([
                     "A".to_string() => json!("{\"v\": 1}")
                 }
             ),
-            r#"log(({
-    "v": 1
-}));"#
+            "log(({\"v\": 1}));"
         );
     }
 
@@ -341,7 +333,7 @@ log([
                     "x.y".to_string() => json!(true)
                 }
             ),
-            r#"log(true);"#
+            "log(true);"
         );
     }
 
@@ -354,7 +346,7 @@ log([
                     "process.env.A".to_string() => json!(true)
                 }
             ),
-            r#"log(true);"#
+            "log(true);"
         );
     }
 
@@ -367,7 +359,7 @@ log([
                     "A.B".to_string() => json!(1)
                 }
             ),
-            r#"log(1);"#
+            "log(1);"
         );
     }
 
@@ -380,7 +372,7 @@ log([
                     "A.1".to_string() => json!(1)
                 }
             ),
-            r#"log(1);"#
+            "log(1);"
         );
     }
 
@@ -393,7 +385,7 @@ log([
                     "A.v.v".to_string() => json!(1)
                 }
             ),
-            r#"log(1);"#
+            "log(1);"
         );
     }
 
@@ -406,7 +398,7 @@ log([
                     "v".to_string() => json!(1)
                 }
             ),
-            r#"log(A[1]);"#
+            "log(A[1]);"
         );
     }
 
@@ -419,7 +411,7 @@ log([
                     "v.v".to_string() => json!(1)
                 }
             ),
-            r#"log(A[1]);"#
+            "log(A[1]);"
         );
     }
 
@@ -432,7 +424,7 @@ log([
                     "v".to_string() => json!(1)
                 }
             ),
-            r#"log(A[1].B[1][1].C[1][1][1]);"#
+            "log(A[1].B[1][1].C[1][1][1]);"
         );
     }
 
@@ -445,13 +437,12 @@ log([
                     "v".to_string() => json!(1)
                 }
             ),
-            r#"let v = 2;
-log(A[v]);"#
+            "let v = 2;log(A[v]);"
         );
     }
 
     #[test]
-    fn test_should_define_before_computed() {
+    fn test_should_not_replace_not_defined() {
         assert_eq!(
             run(
                 r#"log(A[B].v)"#,
@@ -459,9 +450,7 @@ log(A[v]);"#
                     "A.B".to_string() => json!("{\"v\": 1}")
                 }
             ),
-            r#"log(x[({
-    "v": 1
-}).v]);"#
+            "log(A[B].v);"
         );
     }
 
@@ -474,7 +463,7 @@ log(A[v]);"#
                     "v".to_string() => json!(1)
                 }
             ),
-            r#"log(A.v);"#
+            "log(A.v);"
         );
     }
 
@@ -486,6 +475,10 @@ log(A[v]);"#
             let mut visitor = EnvReplacer::new(envs, ast.unresolved_mark);
             ast.ast.visit_mut_with(&mut visitor);
         });
-        test_utils.js_ast_to_code()
+        let code = test_utils.js_ast_to_code();
+        Regex::new(r"\s*\n\s*")
+            .unwrap()
+            .replace_all(&code, "")
+            .to_string()
     }
 }
