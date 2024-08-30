@@ -429,7 +429,7 @@ mod tests {
     }
 
     #[test]
-    fn test_should_not_replace_exsited() {
+    fn test_should_not_replace_existed() {
         assert_eq!(
             run(
                 r#"let v = 2;log(A[v])"#,
