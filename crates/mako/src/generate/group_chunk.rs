@@ -1,4 +1,6 @@
-use std::collections::{HashSet, VecDeque};
+use std::collections::HashSet;
+use std::fmt::Display;
+use std::hash::Hash;
 use std::vec;
 
 use tracing::debug;
@@ -388,16 +390,10 @@ impl Compiler {
 
         let chunk_id = entry_module_id.generate(&self.context);
         let mut chunk = Chunk::new(chunk_id.into(), chunk_type.clone());
-        let mut visited_modules: Vec<&ModuleId> = vec![entry_module_id];
 
         let module_graph = self.context.module_graph.read().unwrap();
 
-        visit_modules(vec![entry_module_id.clone()], None, |head| {
-            let parent_index = visited_modules
-                .iter()
-                .position(|m| m.id == head.id)
-                .unwrap_or(0);
-            let mut normal_deps = vec![];
+        let mut chunk_deps = visit_modules(vec![entry_module_id.clone()], None, |head| {
             let mut next_module_ids = vec![];
 
             for (dep_module_id, dep) in module_graph.get_dependencies(head) {
@@ -417,22 +413,17 @@ impl Compiler {
                         ) =>
                     {
                         next_module_ids.push(dep_module_id.clone());
-                        // collect normal deps for current head
-                        normal_deps.push(dep_module_id);
                     }
                     _ => {}
                 }
             }
 
-            // insert normal deps before head, so that we can keep the dfs order
-            visited_modules.splice(parent_index..parent_index, normal_deps);
-
             next_module_ids
         });
 
         // add modules to chunk as dfs order
-        for module_id in visited_modules {
-            chunk.add_module(module_id.clone());
+        while let Some(dep) = chunk_deps.pop() {
+            chunk.add_module(dep);
         }
 
         (chunk, dynamic_entries, worker_entries)
@@ -492,19 +483,24 @@ impl Compiler {
     }
 }
 
-fn visit_modules<F>(ids: Vec<ModuleId>, visited: Option<HashSet<ModuleId>>, mut callback: F)
+fn visit_modules<F, T>(mut queue: Vec<T>, visited: Option<HashSet<T>>, mut callback: F) -> Vec<T>
 where
-    F: FnMut(&ModuleId) -> Vec<ModuleId>,
+    F: FnMut(&T) -> Vec<T>,
+    T: Hash + Eq + Clone + Display,
 {
-    let mut queue = VecDeque::from(ids);
+    let mut post_order_dfs_ret: Vec<T> = Vec::new();
+
     let mut visited = visited.unwrap_or_default();
 
-    while let Some(id) = queue.pop_front() {
+    while let Some(id) = queue.pop() {
         if visited.contains(&id) {
             continue;
         }
+        post_order_dfs_ret.push(id.clone());
         visited.insert(id.clone());
 
         queue.extend(callback(&id));
     }
+
+    post_order_dfs_ret
 }

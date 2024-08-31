@@ -45,8 +45,8 @@ assert.match(
   files["index.js"].replace(/\s/g, ""),
   new RegExp(`Promise.all\\(\\[${
     [
+      "vendors_0",
       "common",
-      "vendors_1",
       "src/other-dynamic.ts",
     ].map((f) => `__mako_require__.ensure\\("${f}"\\)`).join(",")
   }\\]\\)`),

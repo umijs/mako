@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::fmt::{Debug, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -247,6 +247,12 @@ impl Ord for ModuleId {
 impl PartialOrd for ModuleId {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+impl Display for ModuleId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.id)
     }
 }
 
