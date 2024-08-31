@@ -496,7 +496,9 @@ where
         if visited.contains(&id) {
             continue;
         }
+
         post_order_dfs_ret.push(id.clone());
+
         visited.insert(id.clone());
 
         queue.extend(callback(&id));
