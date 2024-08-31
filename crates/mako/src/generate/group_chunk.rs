@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use std::fmt::Display;
 use std::hash::Hash;
 use std::vec;
 
@@ -486,7 +485,7 @@ impl Compiler {
 fn visit_modules<F, T>(mut queue: Vec<T>, visited: Option<HashSet<T>>, mut callback: F) -> Vec<T>
 where
     F: FnMut(&T) -> Vec<T>,
-    T: Hash + Eq + Clone + Display,
+    T: Hash + Eq + Clone,
 {
     let mut post_order_dfs_ret: Vec<T> = Vec::new();
 
