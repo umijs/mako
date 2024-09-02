@@ -1,3 +1,23 @@
+## 0.8.7
+
+`2024-08-30`
+
+* refactor: 🎨 assign tpl's span to literal string by [@stormslowly](https://github.com/umijs/mako/pull/1529)
+* perf: reapply pr 1509 and sourcemap missing when chain_map is empty by [@xusd320](https://github.com/umijs/mako/pull/1542)
+* chore: ✨ strip span when parsing define's expression by [@stormslowly](https://github.com/umijs/mako/pull/1540)
+* feat: support to control crossorigin for async chunk scripts and links by [@PeachScript](https://github.com/umijs/mako/)pull/1539
+* refactory:  in str-impl chunk generate, remove cm when  merge_code_and_sourcemap by [@stormslowly](https://github.com/umijs/mako/pull/1541)
+* fix: entry support sub paths by [@sorrycc](https://github.com/umijs/mako/pull/1547)
+* fix: filename too long when use pnpm by [@Jinbao1001](https://github.com/umijs/mako/pull/1421)
+* refactor: Unify the static server in bundler-mako and devServer by [@whyer11](https://github.com/umijs/mako/pull/1468)
+* feat: #1491 add duplicate package checker plugin by [@jeasonnow](https://github.com/umijs/mako/pull/1496)
+* fix: #1478 support react class-component hot-update by [@jeasonnow](https://github.com/umijs/mako/pull/1489)
+* fix(plugin:emotion): panic when target to chrome 40 by [@stormslowly](https://github.com/umijs/mako/pull/1527)
+
+
+**Full Changelog**: https://github.com/umijs/mako/compare/v0.8.4...v0.8.7
+
+
 ## 0.8.4
 
 `2024-08-23`

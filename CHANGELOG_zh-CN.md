@@ -1,3 +1,21 @@
+## 0.8.7
+
+`2024-08-30`
+
+* 特性: 支持控制异步块脚本和链接的 crossorigin 属性 by [@PeachScript](https://github.com/umijs/mako/)pull/1539
+* 特性: 添加重复包检查插件 by [@jeasonnow](https://github.com/umijs/mako/pull/1496)
+* 重构: 在 str-impl 块生成中，当 merge_code_and_sourcemap 时删除 cm by [@stormslowly](https://github.com/umijs/mako/pull/1541)
+* 重构: 统一 bundler-mako 和 devServer 中的静态服务器 by [@whyer11](https://github.com/umijs/mako/pull/1468)
+* 修复: 修复入口支持子路径的问题 by [@sorrycc](https://github.com/umijs/mako/pull/1547)
+* 修复: 修复使用 pnpm 时文件名过长的问题 by [@Jinbao1001](https://github.com/umijs/mako/pull/1421)
+* 修复: 支持 React 类组件热更新 by [@jeasonnow](https://github.com/umijs/mako/pull/1489)
+* 修复(plugin:emotion): 修复将目标设置为 Chrome 40 时 emotion 插件崩溃的问题 by [@stormslowly](https://github.com/umijs/mako/pull/1527)
+* 改进: 🎨 将 tpl 的 span 分配给文字字符串 by [@stormslowly](https://github.com/umijs/mako/pull/1529)
+* 优化: 重新应用 PR 1509，修复 chain_map 为空时 sourcemap 丢失的问题 by [@xusd320](https://github.com/umijs/mako/pull/1542)
+* 杂项: 解析 define 表达式时去除 span by [@stormslowly](https://github.com/umijs/mako/pull/1540)
+
+
+
 ## 0.8.4
 
 `2024-08-23`
