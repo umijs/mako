@@ -17,5 +17,5 @@ assert(
   color: blue;
 }
   `.trim()),
-  "css merge in css should work"
+  "css merge in css multi imports should work"
 );

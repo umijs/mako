@@ -471,11 +471,7 @@ impl Compiler {
         // add edge to original chunks
         edges_map
             .iter()
-            .flat_map(|(from, tos)| {
-                // The neighbors ordering is reversed, see https://github.com/petgraph/petgraph/issues/116,
-                // so need to add edges by reversed order
-                tos.iter().rev().map(move |to| (from, to))
-            })
+            .flat_map(|(from, tos)| tos.iter().map(move |to| (from, to)))
             .for_each(|(from, to)| {
                 chunk_graph.add_edge(from, to);
             });

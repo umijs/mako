@@ -26,5 +26,5 @@ assert(
   color: red;
 }
   `.trim()),
-  "css merge in js should work"
+  "css merge deep level should work"
 );

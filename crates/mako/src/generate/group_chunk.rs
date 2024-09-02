@@ -482,6 +482,30 @@ impl Compiler {
     }
 }
 
+/*
+*  Visit dependencies by post order DFS. The reason for this is that
+*  the rightmost and deepest css dependence should have the highest priority.
+*  For example, the dependencies graph is:
+*
+*  ----------
+*  index.css
+*   -> a.css
+*       -> b.css
+*           -> c.css
+*       -> c.css
+*   -> b.css
+*       -> c.css
+* ----------
+* the final dependencies orders in chunk should be:
+*
+* ----------
+* a.css
+* c.css
+* b.css
+* index.css
+* ----------
+* note that c.css, b.css, c.css before a.css will be deduplicated.
+*/
 fn visit_modules<F, T>(mut queue: Vec<T>, visited: Option<HashSet<T>>, mut callback: F) -> Vec<T>
 where
     F: FnMut(&T) -> Vec<T>,

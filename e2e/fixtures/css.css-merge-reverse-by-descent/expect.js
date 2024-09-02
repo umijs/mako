@@ -19,5 +19,5 @@ assert(
 .d {
   color: black;
 }`.trim()),
-  "css merge in js should work"
+  "css merge reverse by descent should work"
 );
