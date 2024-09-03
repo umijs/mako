@@ -121,8 +121,6 @@ impl DevServer {
         staticfile: hyper_staticfile::Static,
         txws: broadcast::Sender<WsMessage>,
     ) -> Result<hyper::Response<Body>> {
-        debug!("> {} {}", req.method().to_string(), req.uri().path());
-
         let mut path = req.uri().path().to_string();
         let public_path = &context.config.public_path;
         if !public_path.is_empty() && public_path.starts_with('/') && public_path != "/" {
@@ -173,16 +171,14 @@ impl DevServer {
                 // staticfile has 302 problems when modify tooooo fast in 1 second
                 // it will response 302 and we will get the old file
                 // TODO: fix the 302 problem?
-                if !context.config.write_to_disk {
-                    if let Some(res) = context.get_static_content(path_without_slash_start) {
-                        debug!("serve with context.get_static_content: {}", path);
+                if let Some(res) = context.get_static_content(path_without_slash_start) {
+                    debug!("serve with context.get_static_content: {}", path);
 
-                        return Ok(hyper::Response::builder()
-                            .status(hyper::StatusCode::OK)
-                            .header(CONTENT_TYPE, content_type)
-                            .body(hyper::Body::from(res))
-                            .unwrap());
-                    }
+                    return Ok(hyper::Response::builder()
+                        .status(hyper::StatusCode::OK)
+                        .header(CONTENT_TYPE, content_type)
+                        .body(hyper::Body::from(res))
+                        .unwrap());
                 }
                 // for cached dep
                 let abs_path = context
@@ -200,11 +196,7 @@ impl DevServer {
                 }
 
                 // for hmr files
-                debug!("< static file serve: {}", path);
-                let req = hyper::Request::builder()
-                    .uri(path)
-                    .body(hyper::Body::empty())
-                    .unwrap();
+                debug!("serve with staticfile server: {}", path);
                 let res = staticfile.serve(req).await;
                 res.map_err(anyhow::Error::from)
             }
