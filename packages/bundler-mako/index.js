@@ -111,17 +111,6 @@ exports.dev = async function (opts) {
     logLevel: 'silent',
   });
   app.use('/__/hmr-ws', wsProxy);
-  app.use((req, res, next) => {
-    if (req.method !== 'GET' && req.method !== 'HEAD') {
-      return next();
-    }
-    if (req.accepts().join('').includes('html')) {
-      return next();
-    }
-    wsProxy(req, res, () => {
-      next();
-    });
-  });
 
   if (process.env.SSU === 'true') {
     // for ssu cache chunks
@@ -156,6 +145,35 @@ exports.dev = async function (opts) {
   if (opts.config.proxy) {
     createProxy(opts.config.proxy, app);
   }
+
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      return next();
+    }
+
+    if (req.accepts().join('').includes('html')) {
+      return next();
+    }
+
+    const devServerProxy = createProxyMiddleware({
+      // mako server in the same host so hard code is ok
+      target: `http://127.0.0.1:${hmrPort}`,
+      selfHandleResponse: true,
+      onProxyRes: (proxyRes, req, res) => {
+        if (proxyRes.statusCode !== 200) {
+          next();
+        } else {
+          proxyRes.pipe(res);
+        }
+      },
+      onError: (err, req, res) => {
+        next();
+      },
+    });
+    devServerProxy(req, res, () => {
+      next();
+    });
+  });
 
   // after middlewares
   (opts.afterMiddlewares || []).forEach((m) => {
