@@ -469,12 +469,12 @@ impl Compiler {
         }
 
         // add edge to original chunks
-        for (from, to) in edges_map
+        edges_map
             .iter()
             .flat_map(|(from, tos)| tos.iter().map(move |to| (from, to)))
-        {
-            chunk_graph.add_edge(from, to);
-        }
+            .for_each(|(from, to)| {
+                chunk_graph.add_edge(from, to);
+            });
     }
 
     fn apply_hot_update_optimize_infos(&self, optimize_chunks_infos: &Vec<OptimizeChunksInfo>) {
@@ -506,9 +506,9 @@ impl Compiler {
             }
 
             // add edge to original chunks
-            for (from, to) in edges.iter() {
+            edges.iter().for_each(|(from, to)| {
                 chunk_graph.add_edge(from, to);
-            }
+            });
         }
     }
 
