@@ -118,7 +118,7 @@ impl ChunkGraph {
             .map(|idx| self.graph[idx].id.clone())
             .collect::<Vec<ChunkId>>();
         // The neighbors ordering is reversed, see https://github.com/petgraph/petgraph/issues/116,
-        // so need to add edges by reversed order
+        // so need to collect by reversed order
         ret.into_iter().rev().collect()
     }
 
