@@ -1,5 +1,44 @@
+import net from 'net';
 import test from 'node:test';
 import 'zx/globals';
+
+const defaultPort = 8000;
+function checkServer(port, host, callback) {
+  const client = new net.Socket();
+
+  client.connect({ port, host }, () => {
+    client.end();
+    callback(true);
+  });
+
+  client.on('error', () => {
+    client.destroy();
+    callback(false);
+  });
+}
+
+async function waitForServer(port, host, interval, maxAttempts) {
+  return new Promise((resolve) => {
+    let attempts = 0;
+
+    const intervalId = setInterval(() => {
+      if (attempts >= maxAttempts) {
+        clearInterval(intervalId);
+        resolve(false);
+        return;
+      }
+
+      checkServer(port, host, (isRunning) => {
+        if (isRunning) {
+          clearInterval(intervalId);
+          resolve(true);
+        } else {
+          attempts++;
+        }
+      });
+    }, interval);
+  });
+}
 
 // node version 小于 20 时退出
 const nodeVersion = process.versions.node.split('.')[0];
@@ -18,9 +57,25 @@ const dirs = fs.readdirSync(fixtures).filter((dir) => {
   return (
     !dir.startsWith('.') &&
     fs.statSync(path.join(fixtures, dir)).isDirectory() &&
-    fs.existsSync(path.join(fixtures, dir, 'expect.js'))
+    (fs.existsSync(path.join(fixtures, dir, 'expect.js')) ||
+      fs.existsSync(path.join(fixtures, dir, 'expect.mjs')))
   );
 });
+
+async function runExpect(dir) {
+  let mod;
+  try {
+    mod = await import(path.join(fixtures, dir, 'expect.mjs'));
+  } catch (e) {
+    mod = await import(path.join(fixtures, dir, 'expect.js'));
+  }
+  if (mod && typeof mod.default === 'function') {
+    await mod.default();
+  }
+  if (dir === 'config.targets.runtime') {
+    await $`npx es-check es5 ./e2e/fixtures/config.targets.runtime/dist/*.js`;
+  }
+}
 
 for (const dir of onlyDir ? [onlyDir] : dirs) {
   const testFn = dir.includes('failed') && !argv.only ? test.skip : test;
@@ -35,8 +90,27 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
         /^file:\/\//,
         '',
       );
-      console.log(`cd ${cwd} && COMPRESS=none OKAM=${x} umi build`);
-      await $`cd ${cwd} && COMPRESS=none OKAM=${x} umi build`;
+      // 如果目录名以dev开头,则运行dev命令否则运行build命令
+      if (dir.startsWith('dev')) {
+        console.log(`cd ${cwd} && umi dev`);
+        $.spawn('sh', ['-c', `cd ${cwd} && umi dev`], { stdio: 'inherit' });
+        const isRunning = await waitForServer(
+          defaultPort,
+          'localhost',
+          1000,
+          30,
+        );
+        if (isRunning) {
+          console.log(`Server is running on port ${defaultPort}`);
+          await runExpect(dir);
+        } else {
+          console.log(`Failed to connect to server on port ${defaultPort}`);
+        }
+        return;
+      } else {
+        console.log(`cd ${cwd} && COMPRESS=none OKAM=${x} umi build`);
+        await $`cd ${cwd} && COMPRESS=none OKAM=${x} umi build`;
+      }
     } else {
       try {
         // run mako build
@@ -53,12 +127,6 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
       }
     }
     // run expect.js
-    const mod = await import(path.join(fixtures, dir, 'expect.js'));
-    if (mod && typeof mod.default === 'function') {
-      await mod.default();
-    }
-    if (dir === 'config.targets.runtime') {
-      await $`npx es-check es5 ./e2e/fixtures/config.targets.runtime/dist/*.js`;
-    }
+    await runExpect(dir);
   });
 }
