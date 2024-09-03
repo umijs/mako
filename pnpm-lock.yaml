@@ -848,7 +848,7 @@ packages:
       '@ant-design/pro-skeleton': 2.1.3(antd@5.18.0)(react-dom@18.2.0)(react@18.2.0)
       '@ant-design/pro-table': 3.6.11(antd@5.18.0)(prop-types@15.8.1)(rc-field-form@1.41.0)(react-dom@18.2.0)(react@18.2.0)
       '@ant-design/pro-utils': 2.10.0(antd@5.18.0)(react-dom@18.2.0)(react@18.2.0)
-      '@babel/runtime': 7.22.11
+      '@babel/runtime': 7.24.7
       antd: 5.18.0(react-dom@18.2.0)(react@18.2.0)
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
