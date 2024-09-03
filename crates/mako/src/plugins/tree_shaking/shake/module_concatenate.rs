@@ -15,7 +15,7 @@ use swc_core::common::util::take::Take;
 use swc_core::common::{SyntaxContext, GLOBALS};
 use swc_core::ecma::transforms::base::hygiene::hygiene;
 use swc_core::ecma::transforms::base::resolver;
-use swc_core::ecma::visit::{VisitMut, VisitMutWith};
+use swc_core::ecma::visit::{as_folder, Fold, VisitMut, VisitMutWith};
 
 use self::concatenate_context::EsmDependantFlags;
 use self::utils::uniq_module_prefix;
@@ -355,7 +355,7 @@ pub fn optimize_module_graph(
                     ccn_trans.imported(all_import_type);
 
                     script_ast.ast.visit_mut_with(&mut ccn_trans);
-                    script_ast.ast.visit_mut_with(&mut CleanSyntaxContext {});
+                    script_ast.ast.visit_mut_with(&mut clean_syntax_context());
 
                     if cfg!(debug_assertions) && inner_print {
                         let code = script_ast.generate(context.clone()).unwrap().code;
@@ -411,7 +411,7 @@ pub fn optimize_module_graph(
                     println!("root after all:\n{}\n", code);
                 }
 
-                root_module_ast.visit_mut_with(&mut CleanSyntaxContext {});
+                root_module_ast.visit_mut_with(&mut clean_syntax_context());
 
                 let prefix_items = concatenate_context.root_exports_stmts(&config.root);
                 module_items.splice(0..0, prefix_items);
@@ -446,9 +446,11 @@ struct ConcatenateConfig {
     externals: HashMap<ModuleId, EsmDependantFlags>,
 }
 
-impl ConcatenateConfig {}
+struct CleanSyntaxContext;
 
-pub struct CleanSyntaxContext;
+pub fn clean_syntax_context() -> impl VisitMut + Fold {
+    as_folder(CleanSyntaxContext {})
+}
 
 impl VisitMut for CleanSyntaxContext {
     fn visit_mut_syntax_context(&mut self, ctxt: &mut SyntaxContext) {
