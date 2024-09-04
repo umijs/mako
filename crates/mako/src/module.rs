@@ -216,6 +216,14 @@ pub fn generate_module_id(origin_module_id: String, context: &Arc<Context>) -> S
             let relative_path = diff_paths(&absolute_path, &context.root).unwrap_or(absolute_path);
             relative_path.to_string_lossy().to_string()
         }
+        ModuleIdStrategy::Numberous => {
+            let numberous_ids_map = context.numberous_ids_map.read().unwrap();
+            if let Some(numberous_id) = numberous_ids_map.get(&origin_module_id) {
+                numberous_id.to_string()
+            } else {
+                md5_hash(&origin_module_id, 8)
+            }
+        }
     }
 }
 

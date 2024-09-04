@@ -13,7 +13,7 @@ use crate::module::{Dependencies, Dependency, Module, ModuleId, ResolveType};
 
 #[derive(Debug)]
 pub struct ModuleGraph {
-    id_index_map: HashMap<ModuleId, NodeIndex<DefaultIx>>,
+    pub id_index_map: HashMap<ModuleId, NodeIndex<DefaultIx>>,
     pub graph: StableDiGraph<Module, Dependencies>,
     entries: HashSet<ModuleId>,
 }
@@ -181,7 +181,7 @@ impl ModuleGraph {
     }
 
     // 公共方法抽出, InComing 找 targets, Outing 找 dependencies
-    fn get_edges(&self, module_id: &ModuleId, direction: Direction) -> WalkNeighbors<u32> {
+    pub fn get_edges(&self, module_id: &ModuleId, direction: Direction) -> WalkNeighbors<u32> {
         let i = self
             .id_index_map
             .get(module_id)
