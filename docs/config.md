@@ -457,7 +457,7 @@ Specify the build mode, `"development"` or `"production"`.
 
 ### moduleIdStrategy
 
-- Type: `"named" | "hashed" | "numberous"`
+- Type: `"named" | "hashed" | "numeral"`
 - Default: `"named"` when mode is development, `"hashed"` when mode is production
 
 Specify the strategy for generating moduleId.

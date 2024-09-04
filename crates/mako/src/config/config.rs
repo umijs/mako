@@ -210,8 +210,8 @@ pub enum ModuleIdStrategy {
     Hashed,
     #[serde(rename = "named")]
     Named,
-    #[serde(rename = "numberous")]
-    Numberous,
+    #[serde(rename = "numeral")]
+    Numeral,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
