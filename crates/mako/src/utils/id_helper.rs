@@ -15,7 +15,7 @@ fn get_edges_count(graph: &ModuleGraph, module_id: &ModuleId) -> usize {
     graph.graph.edges_directed(*node_index, Incoming).count()
 }
 
-pub fn compare_modules_by_incomming_edges(
+pub fn compare_modules_by_incoming_edges(
     module_graph: &ModuleGraph,
     a: &ModuleId,
     b: &ModuleId,

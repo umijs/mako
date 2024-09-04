@@ -22,7 +22,7 @@ use crate::plugins;
 use crate::resolve::{get_resolvers, Resolvers};
 use crate::share::helpers::SWC_HELPERS;
 use crate::stats::StatsInfo;
-use crate::utils::id_helper::{assign_numeral_ids, compare_modules_by_incomming_edges};
+use crate::utils::id_helper::{assign_numeral_ids, compare_modules_by_incoming_edges};
 use crate::utils::{thread_pool, ParseRegex};
 
 pub struct Context {
@@ -419,7 +419,7 @@ impl Compiler {
             let module_graph = self.context.module_graph.read().unwrap();
             assign_numeral_ids(
                 module_graph.modules(),
-                |a, b| compare_modules_by_incomming_edges(&module_graph, &a.id, &b.id),
+                |a, b| compare_modules_by_incoming_edges(&module_graph, &a.id, &b.id),
                 |module, id| {
                     let mut numeral_ids_map = self.context.numeral_ids_map.write().unwrap();
                     // reserved ten indexes for swc helper and others runtime module
