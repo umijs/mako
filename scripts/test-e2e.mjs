@@ -63,15 +63,17 @@ const dirs = fs.readdirSync(fixtures).filter((dir) => {
 });
 
 async function runExpect(dir) {
-  let mod;
-  try {
-    mod = await import(path.join(fixtures, dir, 'expect.mjs'));
-  } catch (e) {
-    mod = await import(path.join(fixtures, dir, 'expect.js'));
-  }
-  if (mod && typeof mod.default === 'function') {
+  const mod = await Promise.any([
+    import(path.join(fixtures, dir, 'expect.mjs')),
+    import(path.join(fixtures, dir, 'expect.js')),
+  ]);
+
+  if (typeof mod.default === 'function') {
     await mod.default();
+  } else {
+    console.warn(`Warning: No default export found in expect file for ${dir}`);
   }
+
   if (dir === 'config.targets.runtime') {
     await $`npx es-check es5 ./e2e/fixtures/config.targets.runtime/dist/*.js`;
   }
