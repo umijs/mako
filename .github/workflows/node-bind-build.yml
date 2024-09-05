@@ -30,13 +30,6 @@ jobs:
               rustup target add x86_64-apple-darwin
               pnpm --filter @umijs/mako build --target x86_64-apple-darwin
               strip -x ./packages/mako/*.node
-          - host: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian
-            build: |-
-              set -e &&
-              pnpm --filter @umijs/mako build --target x86_64-unknown-linux-gnu &&
-              strip ./packages/mako/*.node
           - host: macos-latest
             target: aarch64-apple-darwin
             build: |
@@ -44,14 +37,28 @@ jobs:
               pnpm --filter @umijs/mako build --target aarch64-apple-darwin
               strip -x ./packages/mako/*.node
           - host: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian
+            build: |-
+              set -e &&
+              pnpm --filter @umijs/mako build --target x86_64-unknown-linux-gnu &&
+              strip ./packages/mako/*.node
+          - host: ubuntu-latest
             target: x86_64-unknown-linux-musl
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
             build: |
               pnpm --filter @umijs/mako build --target  x86_64-unknown-linux-musl
               strip -x ./packages/mako/*.node
           - host: ubuntu-latest
-            target: aarch64-unknown-linux-musl
+            target: aarch64-unknown-linux-gnu
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
+            build: |-
+              set -e &&
+              rustup target add aarch64-unknown-linux-gnu &&
+              pnpm --filter @umijs/mako build --target aarch64-unknown-linux-gnu
+          - host: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian-aarch64
             build: |-
               set -e &&
               rustup target add aarch64-unknown-linux-musl &&
@@ -107,7 +114,7 @@ jobs:
         if: ${{ matrix.settings.docker }}
         with:
           image: ${{ matrix.settings.docker }}
-          options: '--user 0:0 -v ${{ github.workspace }}/.cargo-cache/git/db:/usr/local/cargo/git/db -v ${{ github.workspace }}/.cargo/registry/cache:/usr/local/cargo/registry/cache -v ${{ github.workspace }}/.cargo/registry/index:/usr/local/cargo/registry/index -v ${{ github.workspace }}:/build -w /build'
+          options: "--user 0:0 -v ${{ github.workspace }}/.cargo-cache/git/db:/usr/local/cargo/git/db -v ${{ github.workspace }}/.cargo/registry/cache:/usr/local/cargo/registry/cache -v ${{ github.workspace }}/.cargo/registry/index:/usr/local/cargo/registry/index -v ${{ github.workspace }}:/build -w /build"
           run: ${{ matrix.settings.build }}
       - name: Build
         run: ${{ matrix.settings.build }}
