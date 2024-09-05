@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 use std::string::String;
 
-use base64::engine::general_purpose;
-use base64::Engine;
 use hashlink::LinkedHashSet;
 use indexmap::{IndexMap, IndexSet};
 use regex::Regex;
@@ -18,6 +16,7 @@ use crate::generate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::generate::group_chunk::GroupUpdateResult;
 use crate::module::{Module, ModuleId, ModuleInfo};
 use crate::resolve::{ResolvedResource, ResolverResource};
+use crate::utils::url_safe_base64_encode;
 
 pub struct OptimizeChunksInfo {
     pub group_options: OptimizeChunkGroup,
@@ -663,6 +662,6 @@ fn md5_chunk_ids(chunk_ids: &[ChunkId]) -> String {
         context.consume(cd.id.as_bytes());
     });
     let digest = context.compute();
-    let hash = general_purpose::URL_SAFE.encode(digest.0);
+    let hash = url_safe_base64_encode(digest.0);
     hash[..8].to_string()
 }
