@@ -1,3 +1,15 @@
+## 0.8.8
+
+`2024-09-05`
+
+* perf: group chunks with post order dfs by [@xusd320](https://github.com/xusd320) in [#1554](https://github.com/umijs/mako/pull/1554)
+* refactor: unify base64 utils by [@xusd320](https://github.com/xusd320) in [#1557](https://github.com/umijs/mako/pull/1557)
+* Revert "refactor: Unify the static server in bundler-mako and devServer" by [@stormslowly](https://github.com/stormslowly) in [#1556](https://github.com/umijs/mako/pull/1556)
+* fix: define env by [@xusd320](https://github.com/xusd320) in [#1551](https://github.com/umijs/mako/pull/1551)
+* fix: When hmr=none,mako does not take effect by [@Wu-kung](https://github.com/Wu-kung) in [#1552](https://github.com/umijs/mako/pull/1552)
+* fix: 🐛 concatenated module exported namespace should sort key  by [@stormslowly](https://github.com/stormslowly) in [#1564](https://github.com/umijs/mako/pull/1564)
+* fix: camel case in napi binding params by [@xusd320](https://github.com/xusd320) in [#1565](https://github.com/umijs/mako/pull/1565)
+
 ## 0.8.7
 
 `2024-08-30`

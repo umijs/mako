@@ -1,3 +1,15 @@
+## 0.8.8
+
+`2024-09-05`
+
+* 优化 group chunks 的性能，基于 post order dfs by [@xusd320](https://github.com/xusd320) in [#1554](https://github.com/umijs/mako/pull/1554)
+* 重构 base64 utils by [@xusd320](https://github.com/xusd320) in [#1557](https://github.com/umijs/mako/pull/1557)
+* 回滚 "refactor: Unify the static server in bundler-mako and devServer" by [@stormslowly](https://github.com/stormslowly) in [#1556](https://github.com/umijs/mako/pull/1556)
+* 修复 define env by [@xusd320](https://github.com/xusd320) in [#1551](https://github.com/umijs/mako/pull/1551)
+* 修复(bundler-mako) HMR=none 无效的问题 by [@Wu-kung](https://github.com/Wu-kung) in [#1552](https://github.com/umijs/mako/pull/1552)
+* 修复 concatenated module exported namespace 应该基于 key 排序 by [@stormslowly](https://github.com/stormslowly) in [#1564](https://github.com/umijs/mako/pull/1564)
+* 修复 napi binding params 的大小写问题 by [@xusd320](https://github.com/xusd320) in [#1565](https://github.com/umijs/mako/pull/1565)
+
 ## 0.8.7
 
 `2024-08-30`
