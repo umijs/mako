@@ -65,7 +65,7 @@ swc_error_reporters = "0.21.0"
 swc_node_comments   = "0.24.0"
 
 anyhow                = "1.0.71"
-base64                = "0.21.2"
+base64                = "0.22.1"
 chrono                = "0.4.38"
 clap                  = { workspace = true, features = ["derive"] }
 colored               = "2"

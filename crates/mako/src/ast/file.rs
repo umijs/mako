@@ -4,8 +4,6 @@ use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
 
 use anyhow::{anyhow, Result};
-use base64::alphabet::STANDARD;
-use base64::{engine, Engine};
 use pathdiff::diff_paths;
 use percent_encoding::percent_decode_str;
 use regex::Regex;
@@ -15,7 +13,7 @@ use url::Url;
 use {md5, mime_guess};
 
 use crate::compiler::Context;
-use crate::utils::base64_decode;
+use crate::utils::{base64_decode, base64_encode};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Asset {
@@ -228,14 +226,13 @@ impl File {
 
     pub fn get_base64(&self) -> Result<String> {
         let content = std::fs::read(&self.pathname)?;
-        let engine = engine::GeneralPurpose::new(&STANDARD, engine::general_purpose::PAD);
-        let content = engine.encode(content);
+        let content_base64 = base64_encode(content);
         let guess = mime_guess::from_path(&self.pathname);
         if let Some(mime) = guess.first() {
             Ok(format!(
                 "data:{};base64,{}",
                 mime,
-                content.replace("\r\n", "")
+                content_base64.replace("\r\n", "")
             ))
         } else {
             Err(anyhow!(FileError::ToBase64Error {

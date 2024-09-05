@@ -358,17 +358,21 @@ impl<'a> ConcatenatedTransform<'a> {
             .into_var_decl(VarDeclKind::Var, ns_ident.clone().into())
             .into();
 
-        let mut key_value_props: Vec<PropOrSpread> = vec![];
+        let mut key_value_props: Vec<KeyValueProp> = vec![];
 
         for (k, module_ref) in &mut *export_ref_map {
-            key_value_props.push(
-                Prop::KeyValue(KeyValueProp {
-                    key: quote_ident!(k.clone()).into(),
-                    value: module_ref_to_expr(module_ref).into_lazy_fn(vec![]).into(),
-                })
-                .into(),
-            )
+            key_value_props.push(KeyValueProp {
+                key: quote_ident!(k.clone()).into(),
+                value: module_ref_to_expr(module_ref).into_lazy_fn(vec![]).into(),
+            });
         }
+
+        key_value_props.sort_by_key(|prop| prop.key.as_ident().unwrap().sym.to_string());
+        let key_value_props = key_value_props
+            .into_iter()
+            .map(Prop::KeyValue)
+            .map(Into::into)
+            .collect::<Vec<PropOrSpread>>();
 
         let define_exports: Stmt = member_expr!(DUMMY_CTXT, DUMMY_SP, __mako_require__.e)
             .as_call(

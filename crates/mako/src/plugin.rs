@@ -35,16 +35,11 @@ pub struct PluginTransformJsParam<'a> {
 }
 
 #[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PluginGenerateEndParams {
     pub is_first_compile: bool,
     pub time: i64,
     pub stats: StatsJsonMap,
-}
-
-#[derive(Clone)]
-pub struct PluginGenerateStats {
-    pub start_time: u64,
-    pub end_time: u64,
 }
 
 pub trait Plugin: Any + Send + Sync {
