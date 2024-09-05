@@ -1,3 +1,4 @@
+use std::env;
 use std::hash::{Hash, Hasher};
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
@@ -331,20 +332,32 @@ type Params = Vec<(String, String)>;
 type Fragment = Option<String>;
 
 pub fn parse_path(path: &str) -> Result<(PathName, Search, Params, Fragment)> {
-    let base = "http://a.com/";
-    let base_url = Url::parse(base)?;
-    let full_url = base_url.join(path)?;
-    let path = full_url.path().to_string();
-    let fragment = full_url.fragment().map(|s| s.to_string());
-    let search = full_url.query().unwrap_or("").to_string();
-    let query_vec = full_url
-        .query_pairs()
-        .map(|(k, v)| (k.to_string(), v.to_string()))
-        .collect();
-    // dir or filename may contains space or other special characters
-    // so we need to decode it, e.g. "a%20b" -> "a b"
-    let path = percent_decode_str(&path).decode_utf8()?;
-    Ok((path.to_string(), search, query_vec, fragment))
+    let path = if env::consts::OS == "windows" {
+        let prefix = "\\\\?\\";
+        let path = path.trim_start_matches(prefix);
+        path.replace('\\', "/")
+    } else {
+        path.to_string()
+    };
+    if path.contains('?') {
+        let (path, search) = path.split_once('?').unwrap();
+        let base = "http://a.com/";
+        let base_url = Url::parse(base)?;
+        let full_url = base_url.join(format!("?{}", search).as_str())?;
+        let fragment = full_url.fragment().map(|s| s.to_string());
+        let search = full_url.query().unwrap_or("").to_string();
+        let query_vec = full_url
+            .query_pairs()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
+        // dir or filename may contains space or other special characters
+        // so we need to decode it, e.g. "a%20b" -> "a b"
+        let path = percent_decode_str(path).decode_utf8()?;
+        Ok((path.to_string(), search.to_string(), query_vec, fragment))
+    } else {
+        let path = percent_decode_str(&path).decode_utf8()?;
+        Ok((path.to_string(), "".to_string(), vec![], None))
+    }
 }
 
 #[cfg(test)]
@@ -370,5 +383,15 @@ mod tests {
             Arc::new(Context::default()),
         );
         assert_eq!(f.path(), Some("/root/d.js".to_string()));
+    }
+
+    #[test]
+    fn test_parse_path_support_windows() {
+        let path = "C:\\a\\b\\c?foo";
+        let (path, search, params, fragment) = parse_path(path).unwrap();
+        assert_eq!(path, "C:\\a\\b\\c");
+        assert_eq!(search, "foo");
+        assert_eq!(params, vec![("foo".to_string(), "".to_string())]);
+        assert_eq!(fragment, None);
     }
 }
