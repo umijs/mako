@@ -2,7 +2,7 @@
 
 `2024-09-05`
 
-* perf: group chunks with post order dfs by [@xusd320](https://github.com/xusd320) in [#1554](https://github.com/umijs/mako/pull/1554)
+* perf: group chunks with right first dfs by [@xusd320](https://github.com/xusd320) in [#1554](https://github.com/umijs/mako/pull/1554)
 * refactor: unify base64 utils by [@xusd320](https://github.com/xusd320) in [#1557](https://github.com/umijs/mako/pull/1557)
 * Revert "refactor: Unify the static server in bundler-mako and devServer" by [@stormslowly](https://github.com/stormslowly) in [#1556](https://github.com/umijs/mako/pull/1556)
 * fix: define env by [@xusd320](https://github.com/xusd320) in [#1551](https://github.com/umijs/mako/pull/1551)
