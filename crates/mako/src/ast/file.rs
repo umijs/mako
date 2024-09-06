@@ -330,21 +330,47 @@ type Search = String;
 type Params = Vec<(String, String)>;
 type Fragment = Option<String>;
 
+fn has_hash_without_dot(input: &str) -> bool {
+    if let Some(pos) = input.find('#') {
+        let after_hash = &input[pos + 1..];
+        !after_hash.contains('.')
+    } else {
+        false
+    }
+}
+
 pub fn parse_path(path: &str) -> Result<(PathName, Search, Params, Fragment)> {
-    let base = "http://a.com/";
-    let base_url = Url::parse(base)?;
-    let full_url = base_url.join(path)?;
-    let path = full_url.path().to_string();
-    let fragment = full_url.fragment().map(|s| s.to_string());
-    let search = full_url.query().unwrap_or("").to_string();
-    let query_vec = full_url
-        .query_pairs()
-        .map(|(k, v)| (k.to_string(), v.to_string()))
-        .collect();
-    // dir or filename may contains space or other special characters
-    // so we need to decode it, e.g. "a%20b" -> "a b"
-    let path = percent_decode_str(&path).decode_utf8()?;
-    Ok((path.to_string(), search, query_vec, fragment))
+    #[cfg(target_os = "windows")]
+    let path = {
+        let prefix = "\\\\?\\";
+        let path = path.trim_start_matches(prefix);
+        path.replace('\\', "/")
+    };
+    #[cfg(not(target_os = "windows"))]
+    let path = path.to_string();
+    if path.contains('?') || has_hash_without_dot(path.as_str()) {
+        let (path, search) = if path.contains('?') {
+            path.split_once('?').unwrap_or((path.as_str(), ""))
+        } else {
+            path.split_once('#').unwrap_or((path.as_str(), ""))
+        };
+        let base = "http://a.com/";
+        let base_url = Url::parse(base)?;
+        let full_url = base_url.join(format!("?{}", search).as_str())?;
+        let fragment = full_url.fragment().map(|s| s.to_string());
+        let search = full_url.query().unwrap_or("").to_string();
+        let query_vec = full_url
+            .query_pairs()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
+        // dir or filename may contains space or other special characters
+        // so we need to decode it, e.g. "a%20b" -> "a b"
+        let path = percent_decode_str(path).decode_utf8()?;
+        Ok((path.to_string(), search.to_string(), query_vec, fragment))
+    } else {
+        let path = percent_decode_str(&path).decode_utf8()?;
+        Ok((path.to_string(), "".to_string(), vec![], None))
+    }
 }
 
 #[cfg(test)]
@@ -370,5 +396,30 @@ mod tests {
             Arc::new(Context::default()),
         );
         assert_eq!(f.path(), Some("/root/d.js".to_string()));
+    }
+
+    #[test]
+    fn test_parse_path_support_windows() {
+        let path = "C:\\a\\b\\c?foo";
+        let (path, search, params, fragment) = parse_path(path).unwrap();
+        assert_eq!(path, "C:\\a\\b\\c");
+        assert_eq!(search, "foo");
+        assert_eq!(params, vec![("foo".to_string(), "".to_string())]);
+        assert_eq!(fragment, None);
+    }
+
+    #[test]
+    fn test_parse_path_with_fragment() {
+        assert_eq!(parse_path("foo.ts#bar").unwrap().0, "foo.ts");
+        assert_eq!(parse_path("foo#bar.ts").unwrap().0, "foo#bar.ts");
+    }
+
+    #[test]
+    fn test_has_hash_without_dot() {
+        assert_eq!(has_hash_without_dot("foo.ts#world"), true);
+        assert_eq!(has_hash_without_dot("foo#bar.ts"), false);
+        assert_eq!(has_hash_without_dot("#no_dot"), true);
+        assert_eq!(has_hash_without_dot("no_hash"), false);
+        assert_eq!(has_hash_without_dot("#.dot_after_hash"), false);
     }
 }
