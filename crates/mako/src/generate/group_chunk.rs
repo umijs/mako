@@ -483,7 +483,7 @@ impl Compiler {
 }
 
 /*
-*  Visit dependencies by post order DFS. The reason for this is that
+*  Visit dependencies by right first DFS. The reason for this is that
 *  the rightmost and deepest css dependence should have the highest priority.
 *  For example, the dependencies graph is:
 *
@@ -499,19 +499,19 @@ impl Compiler {
 * the final dependencies orders in chunk should be:
 *
 * ----------
-* a.css
-* c.css
-* b.css
 * index.css
+* b.css
+* c.css
+* a.css
 * ----------
-* note that c.css, b.css, c.css before a.css will be deduplicated.
+* note that c.css, b.css, c.css after a.css will be deduplicated.
 */
 fn visit_modules<F, T>(mut queue: Vec<T>, visited: Option<HashSet<T>>, mut callback: F) -> Vec<T>
 where
     F: FnMut(&T) -> Vec<T>,
     T: Hash + Eq + Clone,
 {
-    let mut post_order_dfs_ret: Vec<T> = Vec::new();
+    let mut right_firtst_dfs_ret: Vec<T> = Vec::new();
 
     let mut visited = visited.unwrap_or_default();
 
@@ -520,12 +520,12 @@ where
             continue;
         }
 
-        post_order_dfs_ret.push(id.clone());
+        right_firtst_dfs_ret.push(id.clone());
 
         visited.insert(id.clone());
 
         queue.extend(callback(&id));
     }
 
-    post_order_dfs_ret
+    right_firtst_dfs_ret
 }

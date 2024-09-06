@@ -2,7 +2,7 @@
 
 `2024-09-05`
 
-* 优化 group chunks 的性能，基于 post order dfs by [@xusd320](https://github.com/xusd320) in [#1554](https://github.com/umijs/mako/pull/1554)
+* 优化 group chunks 的性能，基于 right first dfs by [@xusd320](https://github.com/xusd320) in [#1554](https://github.com/umijs/mako/pull/1554)
 * 重构 base64 utils by [@xusd320](https://github.com/xusd320) in [#1557](https://github.com/umijs/mako/pull/1557)
 * 回滚 "refactor: Unify the static server in bundler-mako and devServer" by [@stormslowly](https://github.com/stormslowly) in [#1556](https://github.com/umijs/mako/pull/1556)
 * 修复 define env by [@xusd320](https://github.com/xusd320) in [#1551](https://github.com/umijs/mako/pull/1551)
