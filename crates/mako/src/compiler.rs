@@ -2,10 +2,12 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
-use std::time::Instant;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::{anyhow, Error, Result};
 use colored::Colorize;
+use r2d2::Pool;
+use r2d2_sqlite::SqliteConnectionManager;
 use regex::Regex;
 use swc_core::common::sync::Lrc;
 use swc_core::common::{Globals, SourceMap, DUMMY_SP};
@@ -38,6 +40,87 @@ pub struct Context {
     pub resolvers: Resolvers,
     pub static_cache: RwLock<MemoryChunkFileCache>,
     pub optimize_infos: Mutex<Option<Vec<OptimizeChunksInfo>>>,
+    pub cache: SimpleCache,
+}
+
+pub struct SimpleCache {
+    // connection: rusqlite::Connection,
+    connection: Pool<SqliteConnectionManager>,
+}
+
+impl SimpleCache {
+    fn new() -> Self {
+        let manager = SqliteConnectionManager::file("mako_cache.db");
+        let pool = r2d2::Pool::new(manager).unwrap();
+
+        SimpleCache { connection: pool }
+    }
+
+    fn init_db(&self) -> Result<()> {
+        self.connection.get().unwrap().execute(
+            "
+CREATE TABLE IF NOT EXISTS cache (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    file_path        TEXT        NOT NULL,
+    file_hash        TEXT        NOT NULL,
+    serialized_data  BLOB        NOT NULL,
+    last_modified    INTEGER     NOT NULL,
+    UNIQUE(file_path, file_hash)
+);
+
+CREATE INDEX IF NOT EXISTS idx_file_path_file_hash ON cache(file_path, file_hash);
+PRAGMA mmap_size = 268435456;
+        ",
+            (),
+        )?;
+        Ok(())
+    }
+
+    pub fn get_ast(&self, file_path: &str, file_hash: u64) -> Option<Vec<u8>> {
+        let connection = self.connection.get().unwrap();
+
+        let mut statement = connection
+            .prepare(
+                "
+        SELECT serialized_data FROM cache WHERE file_path = ? AND file_hash = ?;
+        ",
+            )
+            .ok()?;
+
+        let mut rows = statement
+            .query((file_path, file_hash.to_string().as_str()))
+            .ok()?;
+
+        if let Some(row) = rows.next().ok()? {
+            return row.get(0).ok();
+        }
+        None
+    }
+
+    pub fn insert(&self, file_path: &str, file_hash: u64, serialized_data: &[u8]) -> Result<()> {
+        let last_modified = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64;
+
+        let connection = self.connection.get().unwrap();
+
+        let mut statement =connection
+            .prepare(
+                "
+        INSERT INTO cache (file_path, file_hash, serialized_data, last_modified) 
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(file_path, file_hash) 
+        DO UPDATE SET serialized_data=excluded.serialized_data, last_modified=excluded.last_modified;
+        ",
+            )?;
+
+        statement.execute((
+            file_path,
+            file_hash.to_string().as_str(),
+            serialized_data,
+            last_modified,
+        ))?;
+
+        Ok(())
+    }
 }
 
 #[derive(Default)]
@@ -124,6 +207,7 @@ impl Default for Context {
             resolvers,
             optimize_infos: Mutex::new(None),
             static_cache: Default::default(),
+            cache: SimpleCache::new(),
         }
     }
 }
@@ -237,6 +321,7 @@ impl Compiler {
             Arc::new(plugins::runtime::MakoRuntime {}),
             Arc::new(plugins::invalid_webpack_syntax::InvalidWebpackSyntaxPlugin {}),
             Arc::new(plugins::hmr_runtime::HMRRuntimePlugin {}),
+            Arc::new(plugins::ensure_2::Ensure2 {}),
             Arc::new(plugins::wasm_runtime::WasmRuntimePlugin {}),
             Arc::new(plugins::async_runtime::AsyncRuntimePlugin {}),
             Arc::new(plugins::emotion::EmotionPlugin {}),
@@ -353,6 +438,7 @@ impl Compiler {
                 stats_info: StatsInfo::new(),
                 resolvers,
                 optimize_infos: Mutex::new(None),
+                cache: SimpleCache::new(),
             }),
         })
     }
@@ -362,6 +448,7 @@ impl Compiler {
         if self.context.config.clean {
             self.clean_dist()?;
         }
+        self.context.cache.init_db().unwrap();
 
         let t_compiler = Instant::now();
         let start_time = chrono::Local::now().timestamp_millis();

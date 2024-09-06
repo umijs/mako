@@ -484,6 +484,7 @@ pub struct ExperimentalConfig {
     pub require_context: bool,
     #[serde(deserialize_with = "deserialize_detect_loop")]
     pub detect_circular_dependence: Option<DetectCircularDependence>,
+    pub persistent_cache: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -778,7 +779,8 @@ const DEFAULT_CONFIG: &str = r#"
     "experimental": {
       "webpackSyntaxValidate": [],
       "requireContext": true,
-      "detectCircularDependence": { "ignores": ["node_modules"], "graphviz": false }
+      "detectCircularDependence": { "ignores": ["node_modules"], "graphviz": false },
+      "persistentCache": false
     },
     "useDefineForClassFields": true,
     "emitDecoratorMetadata": false,

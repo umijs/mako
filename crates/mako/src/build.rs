@@ -10,15 +10,31 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use colored::Colorize;
+use rkyv::Deserialize;
+use swc_core::common::sync::Lrc;
+use swc_core::common::{FileName, Mark, SourceMap as CM, SyntaxContext, GLOBALS};
+use swc_core::ecma::ast::Module as SwcModule;
+use swc_core::ecma::transforms::base::resolver;
+use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 use thiserror::Error;
+use tokio::time::Instant;
 
 use crate::ast::file::{Content, File, JsContent};
+use crate::ast::js_ast::JsAst;
 use crate::compiler::{Compiler, Context};
 use crate::generate::chunk_pot::util::hash_hashmap;
 use crate::module::{Module, ModuleAst, ModuleId, ModuleInfo};
 use crate::plugin::NextBuildParam;
 use crate::resolve::ResolverResource;
 use crate::utils::thread_pool;
+
+pub struct CleanSyntaxContext;
+
+impl VisitMut for CleanSyntaxContext {
+    fn visit_mut_syntax_context(&mut self, ctxt: &mut SyntaxContext) {
+        *ctxt = SyntaxContext::empty();
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum BuildError {
@@ -274,14 +290,104 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         let content = load::Load::load(&file, context.clone())?;
         file.set_content(content);
 
-        // 2. parse
-        let mut ast = parse::Parse::parse(&file, context.clone())?;
+        let star = Instant::now();
 
-        // 3. transform
-        transform::Transform::transform(&mut ast, &file, context.clone())?;
+        let mut hit = false;
 
-        // 4. analyze deps + resolve
-        let deps = analyze_deps::AnalyzeDeps::analyze_deps(&ast, &file, context.clone())?;
+        let (ast, deps) = if let Some(Content::Js(_)) = &file.content {
+            let raw_hash = file.get_raw_hash();
+            let file_path = file.relative_path.to_string_lossy().to_string();
+
+            let ast = if let Some(bytes) = context.cache.get_ast(&file_path, raw_hash) {
+                let loadtakes = star.elapsed().as_micros();
+                hit = true;
+
+                let archived = unsafe { rkyv::archived_root::<SwcModule>(&bytes) };
+
+                let mut deserialized_module: SwcModule = archived
+                    .deserialize(&mut rkyv::de::deserializers::SharedDeserializeMap::new())
+                    .unwrap();
+
+                deserialized_module.visit_mut_with(&mut CleanSyntaxContext {});
+
+                let ast = GLOBALS.set(&context.meta.script.globals, || {
+                    let top_level_mark = Mark::new();
+                    let unresolved_mark = Mark::new();
+                    let contains_top_level_await = false;
+
+                    let cm = Lrc::new(CM::default());
+
+                    cm.new_source_file(
+                        FileName::Real(file.relative_path.to_path_buf()).into(),
+                        file.get_content_raw(),
+                    );
+
+                    deserialized_module.visit_mut_with(&mut resolver(
+                        unresolved_mark,
+                        top_level_mark,
+                        false,
+                    ));
+
+                    ModuleAst::Script(JsAst {
+                        ast: deserialized_module,
+                        cm,
+                        unresolved_mark,
+                        top_level_mark,
+                        path: file.relative_path.to_string_lossy().to_string(),
+                        contains_top_level_await,
+                    })
+                });
+
+                println!(
+                    "parse: {} {} {} ",
+                    file.relative_path.to_string_lossy(),
+                    star.elapsed().as_micros(),
+                    loadtakes
+                );
+
+                ast
+            } else {
+                let mut ast = parse::Parse::parse(&file, context.clone())?;
+                transform::Transform::transform(&mut ast, &file, context.clone())?;
+
+                println!(
+                    "parse: {} {}ms",
+                    file.relative_path.to_string_lossy(),
+                    star.elapsed().as_micros()
+                );
+
+                ast
+            };
+
+            // 3. transform
+
+            // 4. analyze deps + resolve
+            let deps = analyze_deps::AnalyzeDeps::analyze_deps(&ast, &file, context.clone())?;
+
+            if !hit {
+                let bs = rkyv::to_bytes::<SwcModule, 512>(ast.as_script_ast())
+                    .unwrap()
+                    .to_vec();
+
+                context.cache.insert(&file_path, raw_hash, &bs).unwrap();
+            }
+
+            (ast, deps)
+        } else {
+            // no css section
+            // 2. parse
+            let mut ast = parse::Parse::parse(&file, context.clone())?;
+
+            // 3. transform
+            transform::Transform::transform(&mut ast, &file, context.clone())?;
+
+            // 4. analyze deps + resolve
+            let deps = analyze_deps::AnalyzeDeps::analyze_deps(&ast, &file, context.clone())?;
+
+            (ast, deps)
+        };
+
+        // above is for cache optimization
 
         // 5. create module
         let path = file.path.to_string_lossy().to_string();

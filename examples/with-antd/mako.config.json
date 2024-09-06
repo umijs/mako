@@ -5,5 +5,13 @@
   "minify": true,
   "moduleIdStrategy": "named",
   "optimizePackageImports": false,
-  "optimization": { "skipModules": true, "concatenateModules": true }
+  "optimization": { "skipModules": true, "concatenateModules": true },
+  "experimental": {
+    "webpackSyntaxValidate": [],
+    "requireContext": true,
+    "detectCircularDependence": false,
+    "persistentCache": true
+  },
+  "progress": false,
+  "devtool": false
 }

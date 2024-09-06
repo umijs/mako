@@ -24,9 +24,15 @@ open         = "5.1.4"
 # On oxc_resolver 1.8.0 version, this pr https://github.com/oxc-project/oxc-resolver/pull/168 will break alias resolving
 oxc_resolver     = { version = "=1.7.0", features = ["package_json_raw_json_api"] }
 percent-encoding = { version = "2.3.1" }
+rkyv             = "=0.7.44"
 serde            = { workspace = true }
 serde_json       = { workspace = true }
 url              = { version = "2.5.0" }
+
+#sqlite = "0.36.1"
+#rusqlite = { version = "0.32.0", features = ["bundled", "modern_sqlite"] }
+r2d2        = "0.8.10"
+r2d2_sqlite = "0.25.0"
 
 swc_core = { workspace = true, features = [
   "base",
@@ -47,6 +53,7 @@ swc_core = { workspace = true, features = [
   "ecma_minifier",
   "ecma_minifier_concurrent",
   "ecma_parser",
+  "ecma_plugin_transform",
   "ecma_preset_env",
   "ecma_quote",
   "ecma_transforms_compat",

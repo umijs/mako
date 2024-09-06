@@ -2,8 +2,6 @@ use std::fmt;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
-use swc_core::base::try_with_handler;
-use swc_core::common::errors::HANDLER;
 use swc_core::common::sync::Lrc;
 use swc_core::common::util::take::Take;
 use swc_core::common::{FileName, Mark, SourceMap as CM, Spanned, GLOBALS};
