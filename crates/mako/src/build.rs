@@ -338,23 +338,10 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
                     })
                 });
 
-                println!(
-                    "parse: {} {} {} ",
-                    file.relative_path.to_string_lossy(),
-                    star.elapsed().as_micros(),
-                    loadtakes
-                );
-
                 ast
             } else {
                 let mut ast = parse::Parse::parse(&file, context.clone())?;
                 transform::Transform::transform(&mut ast, &file, context.clone())?;
-
-                println!(
-                    "parse: {} {}ms",
-                    file.relative_path.to_string_lossy(),
-                    star.elapsed().as_micros()
-                );
 
                 ast
             };
