@@ -158,6 +158,7 @@ pub(crate) fn render_normal_js_chunk(
     )?;
 
     let mut ast = GLOBALS.set(&context.meta.script.globals, || JsAst {
+        cm: context.meta.script.cm.clone(),
         ast: module,
         unresolved_mark: Mark::new(),
         top_level_mark: Mark::new(),

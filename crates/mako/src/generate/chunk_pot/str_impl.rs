@@ -163,7 +163,6 @@ fn emit_module_with_mapping(
 ) -> Result<EmittedWithMapping> {
     match &module.info.as_ref().unwrap().ast {
         ModuleAst::Script(ast) => {
-            let cm = context.meta.script.cm.clone();
             let comments = context.meta.script.origin_comments.read().unwrap();
             let swc_comments = comments.get_swc_comments();
 
@@ -175,10 +174,10 @@ fn emit_module_with_mapping(
                     .with_target(context.config.output.es_version)
                     .with_ascii_only(false)
                     .with_omit_last_semi(true),
-                cm: cm.clone(),
+                cm: ast.cm.clone(),
                 comments: Some(swc_comments),
                 wr: Box::new(JsWriter::new(
-                    cm.clone(),
+                    ast.cm.clone(),
                     "\n",
                     &mut buf,
                     Some(&mut source_mappings),
@@ -186,7 +185,7 @@ fn emit_module_with_mapping(
             };
             emitter.emit_module(&ast.ast)?;
 
-            let source_map = build_source_map(&source_mappings, &cm);
+            let source_map = build_source_map(&source_mappings, &ast.cm);
 
             let content = { String::from_utf8_lossy(&buf) };
             Ok((

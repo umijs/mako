@@ -2,8 +2,11 @@ use std::fmt;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
+use swc_core::base::try_with_handler;
+use swc_core::common::errors::HANDLER;
+use swc_core::common::sync::Lrc;
 use swc_core::common::util::take::Take;
-use swc_core::common::{FileName, Mark, Spanned, GLOBALS};
+use swc_core::common::{FileName, Mark, SourceMap as CM, Spanned, GLOBALS};
 use swc_core::ecma::ast::{EsVersion, Module};
 use swc_core::ecma::codegen::text_writer::JsWriter;
 use swc_core::ecma::codegen::{Config as JsCodegenConfig, Emitter};
@@ -27,6 +30,7 @@ use crate::visitors::dep_analyzer::DepAnalyzer;
 #[derive(Clone)]
 pub struct JsAst {
     pub ast: Module,
+    pub cm: Lrc<CM>,
     pub unresolved_mark: Mark,
     pub top_level_mark: Mark,
     pub path: String,
@@ -41,7 +45,13 @@ impl fmt::Debug for JsAst {
 
 impl JsAst {
     pub fn new(file: &File, context: Arc<Context>) -> Result<Self> {
-        let fm = context.meta.script.cm.new_source_file(
+        let cm: Lrc<CM> = if context.config.experimental.persistent_cache {
+            Default::default()
+        } else {
+            context.meta.script.cm.clone()
+        };
+
+        let fm = cm.new_source_file(
             FileName::Real(file.relative_path.to_path_buf()).into(),
             file.get_content_raw(),
         );
@@ -104,6 +114,7 @@ impl JsAst {
             let contains_top_level_await = contains_top_level_await(&ast);
             Ok(JsAst {
                 ast,
+                cm,
                 unresolved_mark,
                 top_level_mark,
                 path: file.relative_path.to_string_lossy().to_string(),

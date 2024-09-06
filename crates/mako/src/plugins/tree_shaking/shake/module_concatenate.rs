@@ -400,6 +400,7 @@ pub fn optimize_module_graph(
 
                 if cfg!(debug_assertions) && root_print {
                     let a = JsAst {
+                        cm: Default::default(),
                         ast: root_module_ast.clone(),
                         unresolved_mark,
                         top_level_mark,
