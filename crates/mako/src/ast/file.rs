@@ -1,4 +1,3 @@
-use std::env;
 use std::hash::{Hash, Hasher};
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
@@ -332,13 +331,14 @@ type Params = Vec<(String, String)>;
 type Fragment = Option<String>;
 
 pub fn parse_path(path: &str) -> Result<(PathName, Search, Params, Fragment)> {
-    let path = if env::consts::OS == "windows" {
+    #[cfg(target_os = "windows")]
+    let path = {
         let prefix = "\\\\?\\";
         let path = path.trim_start_matches(prefix);
         path.replace('\\', "/")
-    } else {
-        path.to_string()
     };
+    #[cfg(not(target_os = "windows"))]
+    let path = path.to_string();
     if path.contains('?') {
         let (path, search) = path.split_once('?').unwrap();
         let base = "http://a.com/";
