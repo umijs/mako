@@ -1,6 +1,6 @@
 {
   "name": "@umijs/mako-darwin-x64",
-  "version": "0.8.9-canary.20240906.2",
+  "version": "0.8.10",
   "os": [
     "darwin"
   ],
