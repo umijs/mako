@@ -122,6 +122,7 @@ pub struct OutputConfig {
     pub skip_write: bool,
     #[serde(deserialize_with = "deserialize_cross_origin_loading")]
     pub cross_origin_loading: Option<CrossOriginLoading>,
+    pub global_module_registry: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -722,7 +723,8 @@ const DEFAULT_CONFIG: &str = r#"
       "preserveModules": false,
       "preserveModulesRoot": "",
       "skipWrite": false,
-      "crossOriginLoading": false
+      "crossOriginLoading": false,
+      "globalModuleRegistry": false,
     },
     "resolve": { "alias": [], "extensions": ["js", "jsx", "ts", "tsx"] },
     "mode": "development",
