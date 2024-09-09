@@ -8,7 +8,7 @@ use crate::stats::StatsJsonMap;
 pub struct Analyze {}
 
 impl Analyze {
-    pub fn write_analyze(stats: &StatsJsonMap, path: &Path) -> Result<()> {
+    pub fn write_analyze(stats: &StatsJsonMap, path: &Path, is_watch: bool) -> Result<()> {
         let stats_json = serde_json::to_string_pretty(&stats).unwrap();
         let html_str = format!(
             r#"<!DOCTYPE html>
@@ -22,12 +22,14 @@ impl Analyze {
     <div id="root"></div>
     <script>
       window.chartData = {};
+      window.hmrWatch = {}
     </script>
     <script>{}</script>
   </body>
 </html>"#,
             include_str!("../../../../client/dist/index.css"),
             stats_json,
+            is_watch,
             include_str!("../../../../client/dist/index.js").replace("</script>", "<\\/script>")
         );
         let report_path = path.join("analyze-report.html");
