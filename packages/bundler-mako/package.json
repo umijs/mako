@@ -1,9 +1,9 @@
 {
   "name": "@umijs/bundler-mako",
-  "version": "0.8.8",
+  "version": "0.8.9-canary.20240906.2",
   "dependencies": {
     "@umijs/bundler-utils": "^4.0.81",
-    "@umijs/mako": "0.8.8",
+    "@umijs/mako": "0.8.9-canary.20240906.2",
     "chalk": "^4.1.2",
     "compression": "^1.7.4",
     "connect-history-api-fallback": "^2.0.0",

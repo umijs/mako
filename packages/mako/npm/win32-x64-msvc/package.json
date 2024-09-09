@@ -1,6 +1,6 @@
 {
   "name": "@umijs/mako-win32-x64-msvc",
-  "version": "0.0.0",
+  "version": "0.8.9-canary.20240906.2",
   "os": [
     "win32"
   ],
