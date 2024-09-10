@@ -416,10 +416,10 @@ mod tests {
 
     #[test]
     fn test_has_hash_without_dot() {
-        assert_eq!(has_hash_without_dot("foo.ts#world"), true);
-        assert_eq!(has_hash_without_dot("foo#bar.ts"), false);
-        assert_eq!(has_hash_without_dot("#no_dot"), true);
-        assert_eq!(has_hash_without_dot("no_hash"), false);
-        assert_eq!(has_hash_without_dot("#.dot_after_hash"), false);
+        assert!(has_hash_without_dot("foo.ts#world"));
+        assert!(!has_hash_without_dot("foo#bar.ts"));
+        assert!(has_hash_without_dot("#no_dot"));
+        assert!(!has_hash_without_dot("no_hash"));
+        assert!(!has_hash_without_dot("#.dot_after_hash"));
     }
 }

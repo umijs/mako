@@ -94,10 +94,15 @@ impl VisitMut for EnvReplacer {
                     current_member_obj = obj.as_mut();
                 }
 
-                if let Expr::Ident(Ident { sym, .. }) = current_member_obj {
+                if let Expr::Ident(Ident { sym, span, .. }) = current_member_obj {
+                    if span.ctxt.outer() != self.unresolved_mark {
+                        expr.visit_mut_children_with(self);
+                        return;
+                    }
                     member_visit_path.push('.');
                     member_visit_path.push_str(sym.as_ref());
                 }
+
                 let member_visit_path = member_visit_path
                     .split('.')
                     .rev()
@@ -403,7 +408,7 @@ mod tests {
     }
 
     #[test]
-    fn test_complited_computed_as_member_key() {
+    fn test_complicated_computed_as_member_key() {
         assert_eq!(
             run(
                 r#"log(A[v.v])"#,
@@ -438,6 +443,19 @@ mod tests {
                 }
             ),
             "let v = 2;log(A[v]);"
+        );
+    }
+
+    #[test]
+    fn test_should_not_replace_existed_as_member_prop() {
+        assert_eq!(
+            run(
+                r#"let A = {};log(A.v)"#,
+                hashmap! {
+                    "A".to_string() => json!("{\"v\": 1}")
+                }
+            ),
+            "let A = {};log(A.v);"
         );
     }
 
