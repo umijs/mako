@@ -680,7 +680,7 @@ async function getMakoConfig(opts) {
     ...mako,
   };
 
-  return makoConfig;
+  return lodash.merge(makoConfig, mako);
 }
 
 function getLessSourceMapConfig(devtool) {
