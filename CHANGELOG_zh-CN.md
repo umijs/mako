@@ -1,3 +1,12 @@
+## 0.8.10
+
+`2024-09-05`
+
+* 新增: 支持 linux-arm64-gnu by [@xusd320](https://github.com/xusd320) in [#1570](https://github.com/umijs/mako/pull/1570)
+* 修复: windows 系统下文件路径解析 by [@sorrycc](https://github.com/sorrycc) in [#1571](https://github.com/umijs/mako/pull/1571)
+* 新增: 支持全局共享的模块注册中心 by [@xusd320](https://github.com/xusd320) in [#1574](https://github.com/umijs/mako/pull/1574)
+* 新增: 支持 window 系统 by [@sorrycc](https://github.com/sorrycc) in [#1575](https://github.com/umijs/mako/pull/1575)
+
 ## 0.8.8
 
 `2024-09-05`
@@ -26,7 +35,18 @@
 * 优化: 重新应用 PR 1509，修复 chain_map 为空时 sourcemap 丢失的问题 by [@xusd320](https://github.com/umijs/mako/pull/1542)
 * 杂项: 解析 define 表达式时去除 span by [@stormslowly](https://github.com/umijs/mako/pull/1540)
 
+## 0.8.6
 
+`2024-08-26`
+
+- 回滚: [#1538](https://github.com/umijs/mako/pull/1475) and [#1538](https://github.com/umijs/mako/pull/1509) by [@xusd320](https://github.com/xusd320) in [#1538](https://github.com/umijs/mako/pull/1538)
+
+
+## 0.8.5
+
+`2024-08-26`
+
+- 新增: 支持 aarch64-unknown-linux-musl 平台 by [@stormslowly](https://github.com/stormslowly) in [#1535](https://github.com/umijs/mako/pull/1535)
 
 ## 0.8.4
 

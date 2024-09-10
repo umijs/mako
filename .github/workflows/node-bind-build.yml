@@ -65,6 +65,18 @@ jobs:
               set -e &&
               rustup target add aarch64-unknown-linux-musl &&
               pnpm --filter @umijs/mako build --target aarch64-unknown-linux-musl
+          - host: windows-latest
+            build: |
+              rustup target add x86_64-pc-windows-msvc
+              pnpm --filter @umijs/mako build --target x86_64-pc-windows-msvc
+              strip -x ./packages/mako/*.node
+            target: x86_64-pc-windows-msvc
+          - host: windows-latest
+            build: |
+              rustup target add i686-pc-windows-msvc
+              pnpm --filter @umijs/mako build --target i686-pc-windows-msvc
+              strip -x ./packages/mako/*.node
+            target: i686-pc-windows-msvc
     name: stable - ${{ matrix.settings.target }} - node@20
     runs-on: ${{ matrix.settings.host }}
     steps:
