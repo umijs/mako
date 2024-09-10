@@ -451,7 +451,7 @@ mod tests {
             run(
                 r#"let A = {};log(A.v, A[X.Y])"#,
                 hashmap! {
-                    "A".to_string() => json!("{\"v\": 1}"),
+                    "A".to_string() => json!(r#"{"v": 1}"#),
                     "X.Y".to_string() => json!(r#""xy""#)
                 }
             ),
