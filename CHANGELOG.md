@@ -1,3 +1,9 @@
+## 0.8.11
+
+`2024-09-10`
+
+* fix: env_replacer should not replace user defined variable in scope by [@xusd320](https://github.com/xusd320) in [#1577](https://github.com/umijs/mako/pull/1577)
+
 ## 0.8.10
 
 `2024-09-05`
