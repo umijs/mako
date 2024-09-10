@@ -19,6 +19,14 @@ pub fn base64_decode(bytes: &[u8]) -> Vec<u8> {
     general_purpose::STANDARD.decode(bytes).unwrap()
 }
 
+pub fn url_safe_base64_encode<T: AsRef<[u8]>>(raw: T) -> String {
+    general_purpose::URL_SAFE.encode(raw)
+}
+
+pub fn url_safe_base64_decode(bytes: &[u8]) -> Vec<u8> {
+    general_purpose::URL_SAFE.decode(bytes).unwrap()
+}
+
 pub trait ParseRegex {
     fn parse_into_regex(&self) -> Result<Option<Regex>>;
 }

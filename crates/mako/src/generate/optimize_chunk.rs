@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 use std::string::String;
 
-use base64::engine::general_purpose;
-use base64::Engine;
 use hashlink::LinkedHashSet;
 use indexmap::{IndexMap, IndexSet};
 use regex::Regex;
@@ -18,6 +16,7 @@ use crate::generate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::generate::group_chunk::GroupUpdateResult;
 use crate::module::{Module, ModuleId, ModuleInfo};
 use crate::resolve::{ResolvedResource, ResolverResource};
+use crate::utils::url_safe_base64_encode;
 
 pub struct OptimizeChunksInfo {
     pub group_options: OptimizeChunkGroup,
@@ -469,12 +468,12 @@ impl Compiler {
         }
 
         // add edge to original chunks
-        for (from, to) in edges_map
+        edges_map
             .iter()
             .flat_map(|(from, tos)| tos.iter().map(move |to| (from, to)))
-        {
-            chunk_graph.add_edge(from, to);
-        }
+            .for_each(|(from, to)| {
+                chunk_graph.add_edge(from, to);
+            });
     }
 
     fn apply_hot_update_optimize_infos(&self, optimize_chunks_infos: &Vec<OptimizeChunksInfo>) {
@@ -506,9 +505,9 @@ impl Compiler {
             }
 
             // add edge to original chunks
-            for (from, to) in edges.iter() {
+            edges.iter().for_each(|(from, to)| {
                 chunk_graph.add_edge(from, to);
-            }
+            });
         }
     }
 
@@ -663,6 +662,6 @@ fn md5_chunk_ids(chunk_ids: &[ChunkId]) -> String {
         context.consume(cd.id.as_bytes());
     });
     let digest = context.compute();
-    let hash = general_purpose::URL_SAFE.encode(digest.0);
+    let hash = url_safe_base64_encode(digest.0);
     hash[..8].to_string()
 }

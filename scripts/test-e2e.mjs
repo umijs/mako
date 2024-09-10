@@ -62,27 +62,11 @@ const dirs = fs.readdirSync(fixtures).filter((dir) => {
   );
 });
 
-async function runExpect(dir) {
-  const mod = await Promise.any([
-    import(path.join(fixtures, dir, 'expect.mjs')),
-    import(path.join(fixtures, dir, 'expect.js')),
-  ]);
-
-  if (typeof mod.default === 'function') {
-    await mod.default();
-  } else {
-    console.warn(`Warning: No default export found in expect file for ${dir}`);
-  }
-
-  if (dir === 'config.targets.runtime') {
-    await $`npx es-check es5 ./e2e/fixtures/config.targets.runtime/dist/*.js`;
-  }
-}
-
 for (const dir of onlyDir ? [onlyDir] : dirs) {
   const testFn = dir.includes('failed') && !argv.only ? test.skip : test;
   await testFn(dir, async () => {
     const cwd = path.join(fixtures, dir);
+    const expectPath = `file://${path.join(fixtures, dir, 'expect.js')}`;
     if (argv.umi) {
       if (!fs.existsSync(path.join(cwd, 'node_modules'))) {
         await $`cd ${cwd} && mkdir node_modules`;
@@ -116,11 +100,11 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
     } else {
       try {
         // run mako build
-        await $`${path.join(root, 'scripts', 'mako.js')} ${cwd}`;
+        await $`node ${path.join(root, 'scripts', 'mako.js')} ${cwd}`;
       } catch (e) {
         const isErrorCase = dir.split('.').includes('error');
         if (isErrorCase) {
-          const mod = await import(path.join(fixtures, dir, 'expect.js'));
+          const mod = await import(expectPath);
           mod.default(e);
           return;
         } else {
@@ -129,6 +113,12 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
       }
     }
     // run expect.js
-    await runExpect(dir);
+    const mod = await import(expectPath);
+    if (mod && typeof mod.default === 'function') {
+      await mod.default();
+    }
+    if (dir === 'config.targets.runtime') {
+      await $`npx es-check es5 ./e2e/fixtures/config.targets.runtime/dist/*.js`;
+    }
   });
 }

@@ -111,11 +111,15 @@ impl ChunkGraph {
 
     pub fn sync_dependencies_chunk(&self, chunk_id: &ChunkId) -> Vec<ChunkId> {
         let idx = self.id_index_map.get(chunk_id).unwrap();
-        self.graph
+        let ret = self
+            .graph
             .neighbors_directed(*idx, Direction::Outgoing)
             .filter(|idx| matches!(self.graph[*idx].chunk_type, ChunkType::Sync))
             .map(|idx| self.graph[idx].id.clone())
-            .collect::<Vec<ChunkId>>()
+            .collect::<Vec<ChunkId>>();
+        // The neighbors ordering is reversed, see https://github.com/petgraph/petgraph/issues/116,
+        // so need to collect by reversed order
+        ret.into_iter().rev().collect()
     }
 
     pub fn entry_dependencies_chunk(&self, chunk_id: &ChunkId) -> Vec<ChunkId> {

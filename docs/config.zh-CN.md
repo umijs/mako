@@ -485,6 +485,7 @@ e.g.
 - `preserveModules`，是否保留模块目录结构（仅适用于 Bundless）
 - `preserveModulesRoot`，是否保留模块目录结构的根目录（仅限 Bundless）
 - `crossOriginLoading`，控制异步 chunk 加载时 `script` 及 `link` 标签的 `crossorigin` 属性值
+- `globalModuleRegistry`，是否允许在多 entry 之间共享模块注册中心
 
 ### optimization
 

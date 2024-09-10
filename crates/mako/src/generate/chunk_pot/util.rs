@@ -115,6 +115,7 @@ pub(crate) fn runtime_code(context: &Arc<Context>) -> Result<String> {
             .optimization
             .as_ref()
             .map_or(false, |o| o.concatenate_modules.unwrap_or(false)),
+        global_module_registry: context.config.output.global_module_registry,
     };
     let app_runtime = app_runtime.render_once()?;
     let app_runtime = app_runtime.replace(

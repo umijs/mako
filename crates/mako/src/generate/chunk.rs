@@ -2,14 +2,13 @@ use std::fmt::{Debug, Formatter};
 use std::hash::Hasher;
 use std::path::{Component, Path};
 
-use base64::engine::general_purpose;
-use base64::Engine;
 use hashlink::LinkedHashSet;
 use twox_hash::XxHash64;
 
 use crate::ast::file::parse_path;
 use crate::module::ModuleId;
 use crate::module_graph::ModuleGraph;
+use crate::utils::url_safe_base64_encode;
 
 pub type ChunkId = ModuleId;
 
@@ -87,7 +86,7 @@ impl Chunk {
 
                 if !search.is_empty() {
                     let search_hash =
-                        general_purpose::URL_SAFE.encode(md5::compute(search).0)[..4].to_string();
+                        url_safe_base64_encode(md5::compute(search).0)[..4].to_string();
                     name = format!("{}_q_{}", name, search_hash);
                 }
 
