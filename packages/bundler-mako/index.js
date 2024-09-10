@@ -331,8 +331,7 @@ function checkConfig(opts) {
       // throw error for other type prefixes
       // ex. `commonjs`、`var 1 + 1`、`global`
       throw new Error(
-        `externals string value prefix \`${
-          v.split(' ')[0]
+        `externals string value prefix \`${v.split(' ')[0]
         } \` is not supported in Mako bundler`,
       );
     }
@@ -436,8 +435,8 @@ function checkConfig(opts) {
     - ${warningKeys.join('\n    - ')}
 
   So this project may fail in compile-time or error in runtime, ${chalk.bold(
-    'please test and release carefully',
-  )}.
+          'please test and release carefully',
+        )}.
 =====================================================================================================
       `,
       ),
@@ -636,7 +635,7 @@ async function getMakoConfig(opts) {
       codeSplitting === false
         ? false
         : typeof codeSplitting === 'object' &&
-            codeSplitting.strategy === 'granular'
+          codeSplitting.strategy === 'granular'
           ? codeSplitting
           : { strategy: 'auto' },
     devtool: normalizedDevtool,
@@ -680,7 +679,7 @@ async function getMakoConfig(opts) {
     ...mako,
   };
 
-  return makoConfig;
+  return lodash.merge(makoConfig, mako);
 }
 
 function getLessSourceMapConfig(devtool) {
