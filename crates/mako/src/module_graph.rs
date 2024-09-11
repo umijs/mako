@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
+use colored::Colorize;
 use fixedbitset::FixedBitSet;
 use petgraph::graph::{DefaultIx, NodeIndex};
 use petgraph::prelude::{Dfs, EdgeRef};
@@ -106,57 +107,84 @@ impl ModuleGraph {
     }
 
     pub fn clear_dependency(&mut self, from: &ModuleId, to: &ModuleId) {
-        let from_index = self.id_index_map.get(from).unwrap_or_else(|| {
-            panic!(
-                r#"from node "{}" does not exist in the module graph when remove edge"#,
-                from.id
-            )
-        });
+        let from_index = self.id_index_map.get(from).map_or_else(
+            || {
+                println!(
+                    "{}:clear from node {} does not exist in the module graph when remove edge",
+                    "warning".to_string().yellow(),
+                    from.id
+                );
+                None
+            },
+            Some,
+        );
 
-        let to_index = self.id_index_map.get(to).unwrap_or_else(|| {
-            panic!(
-                r#"to node "{}" does not exist in the module graph when remove edge"#,
-                to.id
-            )
-        });
-
-        self.graph
-            .find_edge(*from_index, *to_index)
-            .and_then(|edge| {
-                self.graph.remove_edge(edge);
-                None::<()>
-            });
+        let to_index = self.id_index_map.get(to).map_or_else(
+            || {
+                println!(
+                    "{}:clear to node {} does not exist in the module graph when remove edge",
+                    "warning".to_string().yellow(),
+                    to.id
+                );
+                None
+            },
+            Some,
+        );
+        if let (Some(from_index), Some(to_index)) = (from_index, to_index) {
+            self.graph
+                .find_edge(*from_index, *to_index)
+                .and_then(|edge| {
+                    self.graph.remove_edge(edge);
+                    None::<()>
+                });
+        }
     }
 
     pub fn remove_dependency(&mut self, from: &ModuleId, to: &ModuleId, dep: &Dependency) {
-        let from_index = self.id_index_map.get(from).unwrap_or_else(|| {
-            panic!(
-                r#"from node "{}" does not exist in the module graph when remove edge"#,
-                from.id
-            )
-        });
+        let from_index = self.id_index_map.get(from).map_or_else(
+            || {
+                println!(
+                    "{}:remove from node {} does not exist in the module graph when remove edge",
+                    "warning".to_string().yellow(),
+                    from.id
+                );
+                None
+            },
+            Some,
+        );
 
-        let to_index = self.id_index_map.get(to).unwrap_or_else(|| {
-            panic!(
-                r#"to node "{}" does not exist in the module graph when remove edge"#,
-                to.id
-            )
-        });
+        let to_index = self.id_index_map.get(to).map_or_else(
+            || {
+                println!(
+                    "{}:remove to node {} does not exist in the module graph when remove edge",
+                    "warning".to_string().yellow(),
+                    to.id
+                );
+                None
+            },
+            Some,
+        );
+        if let (Some(from_index), Some(to_index)) = (from_index, to_index) {
+            let edge = self.graph.find_edge(*from_index, *to_index).map_or_else(
+                || {
+                    println!(
+                        "{}:edge {} -> {} does not exist in the module graph when remove edge",
+                        "warning".to_string().yellow(),
+                        from.id,
+                        to.id
+                    );
+                    None
+                },
+                Some,
+            );
+            if let Some(edge) = edge {
+                let deps = self.graph.edge_weight_mut(edge).unwrap();
+                deps.remove(dep);
 
-        let edge = self
-            .graph
-            .find_edge(*from_index, *to_index)
-            .unwrap_or_else(|| {
-                panic!(
-                    r#"edge "{}" -> "{}" does not exist in the module graph when remove edge"#,
-                    from.id, to.id
-                )
-            });
-        let deps = self.graph.edge_weight_mut(edge).unwrap();
-        deps.remove(dep);
-
-        if deps.is_empty() {
-            self.graph.remove_edge(edge);
+                if deps.is_empty() {
+                    self.graph.remove_edge(edge);
+                }
+            }
         }
     }
 
