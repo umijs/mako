@@ -63,15 +63,8 @@ const dirs = fs.readdirSync(fixtures).filter((dir) => {
 });
 // import expect.mjs or expect.js
 async function runExpect(dir, error) {
-  const expectPath = [
-    `file://${path.join(fixtures, dir, 'expect.js')}`,
-    `file://${path.join(fixtures, dir, 'expect.mjs')}`,
-  ];
-  const mod = await Promise.any(
-    expectPath.map(async (path) => {
-      return import(path);
-    }),
-  );
+  const expectPath = `file://${path.join(fixtures, dir, 'expect.js')}`;
+  const mod = await import(expectPath);
   if (mod && typeof mod.default === 'function') {
     await mod.default(error);
   }
@@ -103,13 +96,13 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
         );
         if (isRunning) {
           console.log(`Server is running on port ${defaultPort}`);
-          try{
+          try {
             await runExpect(dir);
-          }catch(e){
-            console.log("dev error", e);
-            throw  e;
-          }finally {
-              p.kill(9)
+          } catch (e) {
+            console.log('dev error', e);
+            throw e;
+          } finally {
+            p.kill(9);
           }
         } else {
           console.log(`Failed to connect to server on port ${defaultPort}`);
