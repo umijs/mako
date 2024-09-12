@@ -4,49 +4,49 @@ use swc_core::ecma::ast::{ComputedPropName, Id, Ident, Lit, MemberExpr, MemberPr
 use swc_core::ecma::visit::{Visit, VisitWith};
 
 #[derive(Debug)]
-pub struct IdExplicitVisitCollector {
+pub struct IdExplicitPropAccessCollector {
     to_detected: HashSet<Id>,
-    member_visited_count: HashMap<Id, usize>,
-    ident_visited_count: HashMap<Id, usize>,
-    visited_by: HashMap<Id, HashSet<String>>,
+    accessed_by_explicit_prop_count: HashMap<Id, usize>,
+    ident_accessed_count: HashMap<Id, usize>,
+    accessed_by: HashMap<Id, HashSet<String>>,
 }
 
-impl IdExplicitVisitCollector {
+impl IdExplicitPropAccessCollector {
     pub(crate) fn new(ids: HashSet<Id>) -> Self {
         Self {
             to_detected: ids,
-            member_visited_count: Default::default(),
-            ident_visited_count: Default::default(),
-            visited_by: Default::default(),
+            accessed_by_explicit_prop_count: Default::default(),
+            ident_accessed_count: Default::default(),
+            accessed_by: Default::default(),
         }
     }
-    pub(crate) fn explicit_visited(mut self) -> HashMap<String, Vec<String>> {
+    pub(crate) fn explicit_accessed_props(mut self) -> HashMap<String, Vec<String>> {
         self.to_detected
             .iter()
             .filter_map(|id| {
-                let member_visited = self.member_visited_count.get(id);
-                let ident_visited = self.ident_visited_count.get(id);
+                let member_prop_accessed = self.accessed_by_explicit_prop_count.get(id);
+                let ident_accessed = self.ident_accessed_count.get(id);
 
-                match (member_visited, ident_visited) {
-                    // all ident are visited explicitly, so there is member expr there is a name
+                match (member_prop_accessed, ident_accessed) {
+                    // all ident are accessed explicitly, so there is member expr there is a name
                     // ident, and at last plus the extra ident in import decl, that's 1 comes from.
                     (Some(m), Some(i)) if (i - m) == 1 => {
-                        let mut visited_by = Vec::from_iter(self.visited_by.remove(id).unwrap());
-                        visited_by.sort();
+                        let mut accessed_by = Vec::from_iter(self.accessed_by.remove(id).unwrap());
+                        accessed_by.sort();
 
                         let str_key = format!("{}#{}", id.0, id.1.as_u32());
 
-                        Some((str_key, visited_by))
+                        Some((str_key, accessed_by))
                     }
-                    // Some un-explicitly visit like obj[foo]
+                    // Some un-explicitly access e.g: obj[foo]
                     _ => None,
                 }
             })
             .collect()
     }
 
-    fn increase_explicit_prop_visited_count(&mut self, id: Id) {
-        self.member_visited_count
+    fn increase_explicit_prop_accessed_count(&mut self, id: Id) {
+        self.accessed_by_explicit_prop_count
             .entry(id.clone())
             .and_modify(|c| {
                 *c += 1;
@@ -54,23 +54,23 @@ impl IdExplicitVisitCollector {
             .or_insert(1);
     }
 
-    fn insert_member_visited_by(&mut self, id: Id, visited_by: &str) {
-        self.increase_explicit_prop_visited_count(id.clone());
-        self.visited_by
+    fn insert_member_accessed_by(&mut self, id: Id, prop: &str) {
+        self.increase_explicit_prop_accessed_count(id.clone());
+        self.accessed_by
             .entry(id)
-            .and_modify(|visited| {
-                visited.insert(visited_by.to_string());
+            .and_modify(|accessed| {
+                accessed.insert(prop.to_string());
             })
-            .or_insert(HashSet::from([visited_by.to_string()]));
+            .or_insert(HashSet::from([prop.to_string()]));
     }
 }
 
-impl Visit for IdExplicitVisitCollector {
+impl Visit for IdExplicitPropAccessCollector {
     fn visit_ident(&mut self, n: &Ident) {
         let id = n.to_id();
 
         if self.to_detected.contains(&id) {
-            self.ident_visited_count
+            self.ident_accessed_count
                 .entry(id)
                 .and_modify(|c| {
                     *c += 1;
@@ -86,7 +86,7 @@ impl Visit for IdExplicitVisitCollector {
             if self.to_detected.contains(&id) {
                 match &n.prop {
                     MemberProp::Ident(prop_ident) => {
-                        self.insert_member_visited_by(id, prop_ident.sym.as_ref());
+                        self.insert_member_accessed_by(id, prop_ident.sym.as_ref());
                     }
                     MemberProp::PrivateName(_) => {}
                     MemberProp::Computed(ComputedPropName { expr, .. }) => {
@@ -94,7 +94,7 @@ impl Visit for IdExplicitVisitCollector {
                             && let Lit::Str(str) = lit
                         {
                             let visited_by = str.value.to_string();
-                            self.insert_member_visited_by(id, &visited_by)
+                            self.insert_member_accessed_by(id, &visited_by)
                         }
                     }
                 }
@@ -201,10 +201,10 @@ mod tests {
         let id = namespace_id(&tu);
         let str = format!("{}#{}", id.0, id.1.as_u32());
 
-        let mut v = IdExplicitVisitCollector::new(hashset! { id });
+        let mut v = IdExplicitPropAccessCollector::new(hashset! { id });
         tu.ast.js().ast.visit_with(&mut v);
 
-        v.explicit_visited().remove(&str)
+        v.explicit_accessed_props().remove(&str)
     }
 
     fn namespace_id(tu: &TestUtils) -> Id {
