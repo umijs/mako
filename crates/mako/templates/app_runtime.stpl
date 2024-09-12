@@ -1,5 +1,11 @@
 function createRuntime(makoModules, entryModuleId, global) {
+<% if global_module_registry { %>
+    var modulesRegistry = (
+      (typeof globalThis !== "undefined" ? globalThis : self).__mako_module_registry =
+        ((typeof globalThis !== "undefined" ? globalThis : self).__mako_module_registry || {}));
+<% } else { %>
   var modulesRegistry = {};
+<% } %>
 
   function requireModule(moduleId) {
     var cachedModule = modulesRegistry[moduleId];

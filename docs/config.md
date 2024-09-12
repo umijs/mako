@@ -484,6 +484,7 @@ Output related configuration.
 - `preserveModules`, whether to preserve the module directory structure (Bundless Only)
 - `preserveModulesRoot`, preserve the root directory of the module directory structure (Bundless Only)
 - `crossOriginLoading`, control the `crossorigin` attribute of the `script` tag and `link` tag for load async chunks
+- `globalModuleRegistry`, whether enable shared module registry across multi entries
 
 ### optimization
 

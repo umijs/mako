@@ -30,13 +30,6 @@ jobs:
               rustup target add x86_64-apple-darwin
               pnpm --filter @umijs/mako build --target x86_64-apple-darwin
               strip -x ./packages/mako/*.node
-          - host: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian
-            build: |-
-              set -e &&
-              pnpm --filter @umijs/mako build --target x86_64-unknown-linux-gnu &&
-              strip ./packages/mako/*.node
           - host: macos-latest
             target: aarch64-apple-darwin
             build: |
@@ -44,11 +37,27 @@ jobs:
               pnpm --filter @umijs/mako build --target aarch64-apple-darwin
               strip -x ./packages/mako/*.node
           - host: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian
+            build: |-
+              set -e &&
+              pnpm --filter @umijs/mako build --target x86_64-unknown-linux-gnu &&
+              strip ./packages/mako/*.node
+          - host: ubuntu-latest
             target: x86_64-unknown-linux-musl
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
             build: |
               pnpm --filter @umijs/mako build --target  x86_64-unknown-linux-musl
               strip -x ./packages/mako/*.node
+          - host: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian-aarch64
+            build: |-
+              set -e &&
+              export JEMALLOC_SYS_WITH_LG_PAGE=16 &&
+              export CC_aarch64_unknown_linux_gnu=/usr/aarch64-unknown-linux-gnu/bin/aarch64-unknown-linux-gnu-gcc &&
+              rustup target add aarch64-unknown-linux-gnu &&
+              pnpm --filter @umijs/mako build --target aarch64-unknown-linux-gnu
           - host: ubuntu-latest
             target: aarch64-unknown-linux-musl
             docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
@@ -56,6 +65,18 @@ jobs:
               set -e &&
               rustup target add aarch64-unknown-linux-musl &&
               pnpm --filter @umijs/mako build --target aarch64-unknown-linux-musl
+          - host: windows-latest
+            build: |
+              rustup target add x86_64-pc-windows-msvc
+              pnpm --filter @umijs/mako build --target x86_64-pc-windows-msvc
+              strip -x ./packages/mako/*.node
+            target: x86_64-pc-windows-msvc
+          - host: windows-latest
+            build: |
+              rustup target add i686-pc-windows-msvc
+              pnpm --filter @umijs/mako build --target i686-pc-windows-msvc
+              strip -x ./packages/mako/*.node
+            target: i686-pc-windows-msvc
     name: stable - ${{ matrix.settings.target }} - node@20
     runs-on: ${{ matrix.settings.host }}
     steps:

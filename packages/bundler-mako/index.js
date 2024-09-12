@@ -111,17 +111,27 @@ exports.dev = async function (opts) {
     logLevel: 'silent',
   });
   app.use('/__/hmr-ws', wsProxy);
-  app.use((req, res, next) => {
-    if (req.method !== 'GET' && req.method !== 'HEAD') {
-      return next();
+
+  const outputPath = path.resolve(opts.cwd, opts.config.outputPath || 'dist');
+
+  function processReqURL(publicPath, reqURL) {
+    if (!publicPath.startsWith('/')) {
+      publicPath = '/' + publicPath;
     }
-    if (req.accepts().join('').includes('html')) {
-      return next();
-    }
-    wsProxy(req, res, () => {
+    return reqURL.startsWith(publicPath)
+      ? reqURL.slice(publicPath.length - 1)
+      : reqURL;
+  }
+
+  if (opts.config.publicPath) {
+    app.use((req, _res, next) => {
+      req.url = processReqURL(opts.config.publicPath, req.url);
       next();
     });
-  });
+  }
+
+  // serve dist files
+  app.use(express.static(outputPath));
 
   if (process.env.SSU === 'true') {
     // for ssu cache chunks
@@ -198,7 +208,11 @@ exports.dev = async function (opts) {
   // mako dev
   const { build } = require('@umijs/mako');
   const makoConfig = await getMakoConfig(opts);
-  makoConfig.hmr = {};
+  if (process.env.HMR === 'none') {
+    makoConfig.hmr = false;
+  } else {
+    makoConfig.hmr = {};
+  }
   makoConfig.devServer = { port: hmrPort, host: opts.host };
   makoConfig.plugins = makoConfig.plugins || [];
   makoConfig.plugins.push({

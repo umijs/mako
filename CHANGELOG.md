@@ -1,3 +1,30 @@
+## 0.8.11
+
+`2024-09-10`
+
+* fix: env_replacer should not replace user defined variable in scope by [@xusd320](https://github.com/xusd320) in [#1577](https://github.com/umijs/mako/pull/1577)
+
+## 0.8.10
+
+`2024-09-05`
+
+* feat: support linux arm64 gnu by [@xusd320](https://github.com/xusd320) in [#1570](https://github.com/umijs/mako/pull/1570)
+* fix: parse_path failed under windows by [@sorrycc](https://github.com/sorrycc) in [#1571](https://github.com/umijs/mako/pull/1571)
+* feat: support runtime global module registry by [@xusd320](https://github.com/xusd320) in [#1574](https://github.com/umijs/mako/pull/1574)
+* feat: add bundle for windows  by [@sorrycc](https://github.com/sorrycc) in [#1575](https://github.com/umijs/mako/pull/1575)
+
+## 0.8.8
+
+`2024-09-05`
+
+* perf: group chunks with right first dfs by [@xusd320](https://github.com/xusd320) in [#1554](https://github.com/umijs/mako/pull/1554)
+* refactor: unify base64 utils by [@xusd320](https://github.com/xusd320) in [#1557](https://github.com/umijs/mako/pull/1557)
+* Revert "refactor: Unify the static server in bundler-mako and devServer" by [@stormslowly](https://github.com/stormslowly) in [#1556](https://github.com/umijs/mako/pull/1556)
+* fix: define env by [@xusd320](https://github.com/xusd320) in [#1551](https://github.com/umijs/mako/pull/1551)
+* fix: When hmr=none,mako does not take effect by [@Wu-kung](https://github.com/Wu-kung) in [#1552](https://github.com/umijs/mako/pull/1552)
+* fix: 🐛 concatenated module exported namespace should sort key  by [@stormslowly](https://github.com/stormslowly) in [#1564](https://github.com/umijs/mako/pull/1564)
+* fix: camel case in napi binding params by [@xusd320](https://github.com/xusd320) in [#1565](https://github.com/umijs/mako/pull/1565)
+
 ## 0.8.7
 
 `2024-08-30`
@@ -14,9 +41,18 @@
 * fix: #1478 support react class-component hot-update by [@jeasonnow](https://github.com/umijs/mako/pull/1489)
 * fix(plugin:emotion): panic when target to chrome 40 by [@stormslowly](https://github.com/umijs/mako/pull/1527)
 
+## 0.8.6
 
-**Full Changelog**: https://github.com/umijs/mako/compare/v0.8.4...v0.8.7
+`2024-08-26`
 
+- revert: [#1538](https://github.com/umijs/mako/pull/1475) and [#1538](https://github.com/umijs/mako/pull/1509) by [@xusd320](https://github.com/xusd320) in [#1538](https://github.com/umijs/mako/pull/1538)
+
+
+## 0.8.5
+
+`2024-08-26`
+
+- feat: support aarch64-unknown-linux-musl by [@stormslowly](https://github.com/stormslowly) in [#1535](https://github.com/umijs/mako/pull/1535)
 
 ## 0.8.4
 
