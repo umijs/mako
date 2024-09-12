@@ -34,4 +34,3 @@ await fetchHome();
 await fetchApi();
 await fetchHTMLFile();
 await fetchCSSFile();
-await $`lsof -i :${port} -t | xargs kill -9`

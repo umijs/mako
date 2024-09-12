@@ -92,7 +92,7 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
       // 如果目录名以dev开头,则运行dev命令否则运行build命令
       if (dir.startsWith('dev')) {
         console.log(`cd ${cwd} && umi dev`);
-        $.spawn('sh', ['-c', `cd ${cwd} && OKAM=${x} umi dev`], {
+        let p = $.spawn('sh', ['-c', `cd ${cwd} && OKAM=${x} umi dev`], {
           stdio: 'inherit',
         });
         const isRunning = await waitForServer(
@@ -103,7 +103,14 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
         );
         if (isRunning) {
           console.log(`Server is running on port ${defaultPort}`);
-          await runExpect(dir);
+          try{
+            await runExpect(dir);
+          }catch(e){
+            console.log("dev error", e);
+            throw  e;
+          }finally {
+              p.kill(9)
+          }
         } else {
           console.log(`Failed to connect to server on port ${defaultPort}`);
         }
