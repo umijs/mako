@@ -62,7 +62,7 @@ const dirs = fs.readdirSync(fixtures).filter((dir) => {
   );
 });
 // import expect.mjs or expect.js
-async function runExpect(dir) {
+async function runExpect(dir, error) {
   const expectPath = [
     `file://${path.join(fixtures, dir, 'expect.js')}`,
     `file://${path.join(fixtures, dir, 'expect.mjs')}`,
@@ -73,7 +73,7 @@ async function runExpect(dir) {
     }),
   );
   if (mod && typeof mod.default === 'function') {
-    await mod.default();
+    await mod.default(error);
   }
 }
 for (const dir of onlyDir ? [onlyDir] : dirs) {
@@ -117,7 +117,7 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
       } catch (e) {
         const isErrorCase = dir.split('.').includes('error');
         if (isErrorCase) {
-          await runExpect(dir);
+          await runExpect(dir, e);
           return;
         } else {
           throw e;
