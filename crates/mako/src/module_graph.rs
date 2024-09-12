@@ -190,6 +190,16 @@ impl ModuleGraph {
         edges
     }
 
+    pub fn get_edges_count(&self, module_id: &ModuleId, direction: Direction) -> usize {
+        let node_index = self.id_index_map.get(module_id).unwrap_or_else(|| {
+            panic!(
+                r#" module "{}" does not exist in the module graph when get edges count"#,
+                module_id.id
+            )
+        });
+        self.graph.edges_directed(*node_index, direction).count()
+    }
+
     pub fn get_dependencies(&self, module_id: &ModuleId) -> Vec<(&ModuleId, &Dependency)> {
         let mut edges = self.get_edges(module_id, Direction::Outgoing);
         let mut deps: Vec<(&ModuleId, &Dependency)> = vec![];
