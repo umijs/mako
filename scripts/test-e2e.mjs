@@ -92,7 +92,9 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
       // 如果目录名以dev开头,则运行dev命令否则运行build命令
       if (dir.startsWith('dev')) {
         console.log(`cd ${cwd} && umi dev`);
-        $.spawn('sh', ['-c', `cd ${cwd} && umi dev`], { stdio: 'inherit' });
+        $.spawn('sh', ['-c', `cd ${cwd} && OKAM=${x} umi dev`], {
+          stdio: 'inherit',
+        });
         const isRunning = await waitForServer(
           defaultPort,
           'localhost',
