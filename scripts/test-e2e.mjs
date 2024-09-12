@@ -96,7 +96,7 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
           stdio: 'inherit',
         });
         const isRunning = await waitForServer(
-          defaultPort,
+          defaultPort + 1, // mako's port, when it's open, dev can serve
           'localhost',
           1000,
           30,
