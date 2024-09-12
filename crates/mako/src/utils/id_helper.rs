@@ -15,7 +15,7 @@ pub fn compare_modules_by_incoming_edges(
         .cmp(&module_graph.get_edges_count(a, Incoming))
 }
 
-pub fn assign_numberic_ids<T>(
+pub fn assign_numeric_ids<T>(
     mut items: Vec<T>,
     comparator: impl Fn(&T, &T) -> Ordering,
     mut assign_id: impl FnMut(&T, usize),
