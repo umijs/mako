@@ -77,13 +77,6 @@
     "src:build": "father build"
   },
   "optionalDependencies": {
-<<<<<<< HEAD
-    "@umijs/mako-darwin-arm64": "0.8.8-rc.1",
-    "@umijs/mako-linux-arm64-musl": "0.8.8-rc.1",
-    "@umijs/mako-darwin-x64": "0.8.8-rc.1",
-    "@umijs/mako-linux-x64-gnu": "0.8.8-rc.1",
-    "@umijs/mako-linux-x64-musl": "0.8.8-rc.1"
-=======
     "@umijs/mako-darwin-arm64": "0.8.11",
     "@umijs/mako-linux-arm64-gnu": "0.8.11",
     "@umijs/mako-linux-arm64-musl": "0.8.11",
@@ -92,7 +85,6 @@
     "@umijs/mako-win32-x64-msvc": "0.8.11",
     "@umijs/mako-linux-x64-gnu": "0.8.11",
     "@umijs/mako-linux-x64-musl": "0.8.11"
->>>>>>> origin/master
   },
   "repository": "git@github.com:umijs/mako.git"
 }
