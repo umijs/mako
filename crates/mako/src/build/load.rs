@@ -257,7 +257,14 @@ export function moduleToDom(css) {
                 Ok(final_file_name)
             }
         };
-        if !limit || file_size > context.config.inline_limit.try_into().unwrap() {
+        let should_not_transform_base64 = context
+            .linline_excludes_regexes
+            .iter()
+            .any(|regex| regex.is_match(&file.extname));
+        if !limit
+            || file_size > context.config.inline_limit.try_into().unwrap()
+            || should_not_transform_base64
+        {
             emit_assets()
         } else {
             let base64_result = file.get_base64();
