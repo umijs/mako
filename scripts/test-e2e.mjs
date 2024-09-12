@@ -61,12 +61,25 @@ const dirs = fs.readdirSync(fixtures).filter((dir) => {
       fs.existsSync(path.join(fixtures, dir, 'expect.mjs')))
   );
 });
-
+// import expect.mjs or expect.js
+async function runExpect(dir) {
+  const expectPath = [
+    `file://${path.join(fixtures, dir, 'expect.js')}`,
+    `file://${path.join(fixtures, dir, 'expect.mjs')}`,
+  ];
+  const mod = await Promise.any(
+    expectPath.map(async (path) => {
+      return import(path);
+    }),
+  );
+  if (mod && typeof mod.default === 'function') {
+    await mod.default();
+  }
+}
 for (const dir of onlyDir ? [onlyDir] : dirs) {
   const testFn = dir.includes('failed') && !argv.only ? test.skip : test;
   await testFn(dir, async () => {
     const cwd = path.join(fixtures, dir);
-    const expectPath = `file://${path.join(fixtures, dir, 'expect.js')}`;
     if (argv.umi) {
       if (!fs.existsSync(path.join(cwd, 'node_modules'))) {
         await $`cd ${cwd} && mkdir node_modules`;
@@ -104,8 +117,7 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
       } catch (e) {
         const isErrorCase = dir.split('.').includes('error');
         if (isErrorCase) {
-          const mod = await import(expectPath);
-          mod.default(e);
+          await runExpect(dir);
           return;
         } else {
           throw e;
@@ -113,10 +125,7 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
       }
     }
     // run expect.js
-    const mod = await import(expectPath);
-    if (mod && typeof mod.default === 'function') {
-      await mod.default();
-    }
+    await runExpect(dir);
     if (dir === 'config.targets.runtime') {
       await $`npx es-check es5 ./e2e/fixtures/config.targets.runtime/dist/*.js`;
     }
