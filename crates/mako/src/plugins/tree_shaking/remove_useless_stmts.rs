@@ -6,7 +6,8 @@ use swc_core::ecma::ast::{
     Decl, ExportDecl, ExportSpecifier, Id, ImportDecl, ImportSpecifier, Module as SwcModule,
     Module, ModuleExportName,
 };
-use swc_core::ecma::visit::{VisitMut, VisitMutWith, VisitWith};
+use swc_core::ecma::transforms::compat::es2015::destructuring;
+use swc_core::ecma::visit::{Fold, VisitMut, VisitMutWith, VisitWith};
 
 use super::collect_explicit_prop::IdExplicitPropAccessCollector;
 use crate::plugins::tree_shaking::module::TreeShakeModule;
@@ -113,7 +114,6 @@ pub fn remove_useless_stmts(
     for stmt in stmts_to_remove {
         swc_module.body.remove(stmt);
     }
-
     optimize_import_namespace(&mut used_import_infos, swc_module);
 
     (used_import_infos, used_export_from_infos)
@@ -266,35 +266,37 @@ fn optimize_import_namespace(import_infos: &mut [ImportInfo], module: &mut Modul
         })
         .collect::<HashSet<Id>>();
 
-    let mut v = IdExplicitPropAccessCollector::new(ids);
-    module.visit_with(&mut v);
+    if !ids.is_empty() {
+        let mut v = IdExplicitPropAccessCollector::new(ids);
+        let destucturing_module = destructuring(Default::default()).fold_module(module.clone());
+        destucturing_module.visit_with(&mut v);
+        let explicit_prop_accessed_ids = v.explicit_accessed_props();
 
-    let explicit_prop_accessed_ids = v.explicit_accessed_props();
-
-    import_infos.iter_mut().for_each(|ii| {
-        ii.specifiers = ii
-            .specifiers
-            .take()
-            .into_iter()
-            .flat_map(|specifier_info| {
-                if let ImportSpecifierInfo::Namespace(ref ns) = specifier_info {
-                    if let Some(visited_fields) = explicit_prop_accessed_ids.get(ns) {
-                        return visited_fields
-                            .iter()
-                            .map(|v| {
-                                let imported_name = format!("{v}#0");
-                                ImportSpecifierInfo::Named {
-                                    imported: Some(imported_name.clone()),
-                                    local: imported_name,
-                                }
-                            })
-                            .collect::<Vec<_>>();
+        import_infos.iter_mut().for_each(|ii| {
+            ii.specifiers = ii
+                .specifiers
+                .take()
+                .into_iter()
+                .flat_map(|specifier_info| {
+                    if let ImportSpecifierInfo::Namespace(ref ns) = specifier_info {
+                        if let Some(visited_fields) = explicit_prop_accessed_ids.get(ns) {
+                            return visited_fields
+                                .iter()
+                                .map(|v| {
+                                    let imported_name = format!("{v}#0");
+                                    ImportSpecifierInfo::Named {
+                                        imported: Some(imported_name.clone()),
+                                        local: imported_name,
+                                    }
+                                })
+                                .collect::<Vec<_>>();
+                        }
                     }
-                }
-                vec![specifier_info]
-            })
-            .collect::<Vec<_>>();
-    })
+                    vec![specifier_info]
+                })
+                .collect::<Vec<_>>();
+        })
+    }
 }
 
 #[cfg(test)]

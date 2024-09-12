@@ -11,3 +11,7 @@ const content = files["index.js"];
 
 expect(content).toContain("shouldKeep");
 expect(content).not.toContain("shouldNotKeep");
+
+expect(content).toContain("needKeep");
+expect(content).not.toContain("needNotKeep");
+
