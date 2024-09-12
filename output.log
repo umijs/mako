@@ -1,0 +1,872 @@
+
+> test
+> npm run test:e2e && npm run test:hmr && npm run test:umi
+
+
+> test:e2e
+> node scripts/test-e2e.mjs
+
+TAP version 13
+# Subtest: assets.images
+ok 1 - assets.images
+  ---
+  duration_ms: 1249.706167
+  ...
+# Subtest: assets.images.base64
+ok 2 - assets.images.base64
+  ---
+  duration_ms: 94.911042
+  ...
+# Subtest: assets.new_url
+ok 3 - assets.new_url
+  ---
+  duration_ms: 97.9475
+  ...
+# Subtest: assets.svg
+ok 4 - assets.svg
+  ---
+  duration_ms: 120.193208
+  ...
+# Subtest: assets.svg.base64
+ok 5 - assets.svg.base64
+  ---
+  duration_ms: 108.11925
+  ...
+# Subtest: assets.svg.svgr
+ok 6 - assets.svg.svgr
+  ---
+  duration_ms: 109.1925
+  ...
+# Subtest: assets.svg.svgr.base64
+ok 7 - assets.svg.svgr.base64
+  ---
+  duration_ms: 113.225833
+  ...
+# Subtest: assets.unkown-mime
+ok 8 - assets.unkown-mime
+  ---
+  duration_ms: 93.759875
+  ...
+# Subtest: assets.with-query
+ok 9 - assets.with-query
+  ---
+  duration_ms: 105.96225
+  ...
+# Subtest: code-splitting.basic
+ok 10 - code-splitting.basic
+  ---
+  duration_ms: 133.077833
+  ...
+# Subtest: code-splitting.complex
+ok 11 - code-splitting.complex
+  ---
+  duration_ms: 1228.640042
+  ...
+# Subtest: code-splitting.granular
+ok 12 - code-splitting.granular
+  ---
+  duration_ms: 126.134375
+  ...
+http://localhost:8000/
+# Subtest: code-splitting.hashed
+ok 13 - code-splitting.hashed
+  ---
+  duration_ms: 936.999333
+  ...
+# Subtest: code-splitting.many-pages
+ok 14 - code-splitting.many-pages
+  ---
+  duration_ms: 114.38425
+  ...
+# Subtest: code-splitting.multi-entry-shared-chunk
+ok 15 - code-splitting.multi-entry-shared-chunk
+  ---
+  duration_ms: 97.028042
+  ...
+# Subtest: config.cjs
+ok 16 - config.cjs
+  ---
+  duration_ms: 88.393292
+  ...
+# Subtest: config.copy
+ok 17 - config.copy
+  ---
+  duration_ms: 86.252708
+  ...
+# Subtest: config.crossOriginLoading
+ok 18 - config.crossOriginLoading
+  ---
+  duration_ms: 91.833959
+  ...
+# Subtest: config.css_modules_export_only_locales
+ok 19 - config.css_modules_export_only_locales
+  ---
+  duration_ms: 92.77275
+  ...
+[34m[102mPASS[49m[39m : defined string value should be right
+[34m[102mPASS[49m[39m : defined number value should be right
+[34m[102mPASS[49m[39m : defined boolean true value should be right
+[34m[102mPASS[49m[39m : defined boolean false value should be right
+[34m[102mPASS[49m[39m : defined null value should be right
+[34m[102mPASS[49m[39m : defined array value should be right
+[34m[102mPASS[49m[39m : defined caculcation value should be right
+[34m[102mPASS[49m[39m : defined complex object value should be right
+[34m[102mPASS[49m[39m : defined stringified object value should be right
+# Subtest: config.define
+ok 20 - config.define
+  ---
+  duration_ms: 299.109459
+  ...
+# Subtest: config.devtool.inline-source-map
+ok 21 - config.devtool.inline-source-map
+  ---
+  duration_ms: 90.161041
+  ...
+# Subtest: config.devtool.none
+ok 22 - config.devtool.none
+  ---
+  duration_ms: 92.876125
+  ...
+# Subtest: config.devtool.source-map
+ok 23 - config.devtool.source-map
+  ---
+  duration_ms: 90.068542
+  ...
+foo
+foo module
+foo loaded
+foo module loaded
+{ default: [Getter] }
+# Subtest: config.dynamic_import_to_require
+ok 24 - config.dynamic_import_to_require
+  ---
+  duration_ms: 97.342583
+  ...
+# Subtest: config.dynamic_import_to_require_with_context_require
+ok 25 - config.dynamic_import_to_require_with_context_require
+  ---
+  duration_ms: 94.880375
+  ...
+# Subtest: config.emit_assets.false
+ok 26 - config.emit_assets.false
+  ---
+  duration_ms: 89.466875
+  ...
+http://localhost:8001/
+http://localhost:8000/
+# Subtest: config.emotion
+ok 27 - config.emotion
+  ---
+  duration_ms: 723.709375
+  ...
+# Subtest: config.entry
+ok 28 - config.entry
+  ---
+  duration_ms: 91.620666
+  ...
+# Subtest: config.experimental.webpack_syntax_validate
+ok 29 - config.experimental.webpack_syntax_validate
+  ---
+  duration_ms: 95.230167
+  ...
+# Subtest: config.externals
+ok 30 - config.externals
+  ---
+  duration_ms: 94.591167
+  ...
+# Subtest: config.failed.ignores.with-bundle
+ok 31 - config.failed.ignores.with-bundle # SKIP
+  ---
+  duration_ms: 0.060333
+  ...
+# Subtest: config.global-module-registry
+ok 32 - config.global-module-registry
+  ---
+  duration_ms: 94.056416
+  ...
+# Subtest: config.inline_css
+ok 33 - config.inline_css
+  ---
+  duration_ms: 142.048833
+  ...
+# Subtest: config.inline_limit
+ok 34 - config.inline_limit
+  ---
+  duration_ms: 105.403375
+  ...
+# Subtest: config.manifest
+ok 35 - config.manifest
+  ---
+  duration_ms: 98.710875
+  ...
+# Subtest: config.manifest.config
+ok 36 - config.manifest.config
+  ---
+  duration_ms: 100.791375
+  ...
+# Subtest: config.mode.development
+ok 37 - config.mode.development
+  ---
+  duration_ms: 98.80575
+  ...
+# Subtest: config.mode.production
+ok 38 - config.mode.production
+  ---
+  duration_ms: 97.995667
+  ...
+# Subtest: config.platform.browser
+ok 39 - config.platform.browser
+  ---
+  duration_ms: 94.588541
+  ...
+# Subtest: config.platform.node
+ok 40 - config.platform.node
+  ---
+  duration_ms: 95.587792
+  ...
+# Subtest: config.platform.node.resolve
+ok 41 - config.platform.node.resolve
+  ---
+  duration_ms: 99.057
+  ...
+# Subtest: config.platform.node.with-code-splitting
+ok 42 - config.platform.node.with-code-splitting
+  ---
+  duration_ms: 98.561875
+  ...
+# Subtest: config.public_path
+ok 43 - config.public_path
+  ---
+  duration_ms: 95.924667
+  ...
+# Subtest: config.public_path.runtime
+ok 44 - config.public_path.runtime
+  ---
+  duration_ms: 91.446042
+  ...
+# Subtest: config.public_path.with-assignment
+ok 45 - config.public_path.with-assignment
+  ---
+  duration_ms: 94.96675
+  ...
+# Subtest: config.px2rem
+ok 46 - config.px2rem
+  ---
+  duration_ms: 95.552417
+  ...
+# Subtest: config.react.runtime.classic
+ok 47 - config.react.runtime.classic
+  ---
+  duration_ms: 91.314291
+  ...
+[Function: f]
+_default {}
+[34m[102mPASS[49m[39m : class with obj.default should work 
+# Subtest: config.targets
+ok 48 - config.targets
+  ---
+  duration_ms: 94.574583
+  ...
+# Subtest: config.targets.autoprefixer
+ok 49 - config.targets.autoprefixer
+  ---
+  duration_ms: 101.028125
+  ...
+# Subtest: config.targets.node_modules
+ok 50 - config.targets.node_modules
+  ---
+  duration_ms: 93.590083
+  ...
+# Subtest: config.targets.runtime
+ok 51 - config.targets.runtime
+  ---
+  duration_ms: 742.98825
+  ...
+# Subtest: config.transformImport
+ok 52 - config.transformImport
+  ---
+  duration_ms: 91.812875
+  ...
+# Subtest: config.umd
+ok 53 - config.umd
+  ---
+  duration_ms: 88.816125
+  ...
+# Subtest: copy.public
+ok 54 - copy.public
+  ---
+  duration_ms: 88.232125
+  ...
+# Subtest: css.alias
+ok 55 - css.alias
+  ---
+  duration_ms: 93.844958
+  ...
+# Subtest: css.async-chunk
+ok 56 - css.async-chunk
+  ---
+  duration_ms: 95.781459
+  ...
+# Subtest: css.css-merge-deep-level
+ok 57 - css.css-merge-deep-level
+  ---
+  duration_ms: 101.721708
+  ...
+# Subtest: css.css-merge-in-css
+ok 58 - css.css-merge-in-css
+  ---
+  duration_ms: 93.694708
+  ...
+# Subtest: css.css-merge-in-css-multi-imports
+ok 59 - css.css-merge-in-css-multi-imports
+  ---
+  duration_ms: 90.801167
+  ...
+# Subtest: css.css-merge-in-js
+ok 60 - css.css-merge-in-js
+  ---
+  duration_ms: 92.170583
+  ...
+# Subtest: css.css-merge-mixed
+ok 61 - css.css-merge-mixed
+  ---
+  duration_ms: 90.759916
+  ...
+# Subtest: css.css-merge-reverse-by-descent
+ok 62 - css.css-merge-reverse-by-descent
+  ---
+  duration_ms: 92.150333
+  ...
+# Subtest: css.css-modules
+ok 63 - css.css-modules
+  ---
+  duration_ms: 104.105541
+  ...
+# Subtest: css.css-modules.aliased.failed
+ok 64 - css.css-modules.aliased.failed # SKIP
+  ---
+  duration_ms: 0.050333
+  ...
+# Subtest: css.css-modules.dynamic-import
+ok 65 - css.css-modules.dynamic-import
+  ---
+  duration_ms: 90.520042
+  ...
+# Subtest: css.dep_aliased
+ok 66 - css.dep_aliased
+  ---
+  duration_ms: 90.788834
+  ...
+# Subtest: css.deps
+ok 67 - css.deps
+  ---
+  duration_ms: 93.749333
+  ...
+# Subtest: css.flex-bugs
+ok 68 - css.flex-bugs
+  ---
+  duration_ms: 91.084042
+  ...
+# Subtest: css.import-npm-deps
+ok 69 - css.import-npm-deps
+  ---
+  duration_ms: 90.205333
+  ...
+# Subtest: css.nesting
+ok 70 - css.nesting
+  ---
+  duration_ms: 90.167583
+  ...
+# Subtest: css.prefixer
+ok 71 - css.prefixer
+  ---
+  duration_ms: 91.702125
+  ...
+# Subtest: css.px_2_rem
+ok 72 - css.px_2_rem
+  ---
+  duration_ms: 90.575083
+  ...
+# Subtest: css.remote-assets
+ok 73 - css.remote-assets
+  ---
+  duration_ms: 96.284208
+  ...
+# Subtest: css.remove-css-only-assets
+ok 74 - css.remove-css-only-assets
+  ---
+  duration_ms: 91.82925
+  ...
+# Subtest: error.less.resolve-failed
+ok 75 - error.less.resolve-failed # SKIP
+  ---
+  duration_ms: 0.05275
+  ...
+# Subtest: error.less.syntax-error
+ok 76 - error.less.syntax-error
+  ---
+  duration_ms: 210.274666
+  ...
+# Subtest: error.no-entry
+ok 77 - error.no-entry
+  ---
+  duration_ms: 81.205292
+  ...
+# Subtest: error.resolve.module-not-found
+ok 78 - error.resolve.module-not-found
+  ---
+  duration_ms: 85.107334
+  ...
+# Subtest: error.webpack-loader
+ok 79 - error.webpack-loader
+  ---
+  duration_ms: 103.146083
+  ...
+# Subtest: generate.chunks-hash-replace
+ok 80 - generate.chunks-hash-replace
+  ---
+  duration_ms: 113.804
+  ...
+# Subtest: hooks
+ok 81 - hooks
+  ---
+  duration_ms: 2141.221042
+  ...
+[34m[102mPASS[49m[39m : should replace import.meta.env
+# Subtest: import.meta.env
+ok 82 - import.meta.env
+  ---
+  duration_ms: 96.433708
+  ...
+# Subtest: issue.empty_chunk
+ok 83 - issue.empty_chunk
+  ---
+  duration_ms: 108.595083
+  ...
+# Subtest: javascript.alias
+ok 84 - javascript.alias
+  ---
+  duration_ms: 105.861917
+  ...
+# Subtest: javascript.dynamic-import.template-string
+ok 85 - javascript.dynamic-import.template-string
+  ---
+  duration_ms: 95.394667
+  ...
+[34m[102mPASS[49m[39m : should have the correct values
+# Subtest: javascript.dynamic_import_async_module
+ok 86 - javascript.dynamic_import_async_module
+  ---
+  duration_ms: 95.170958
+  ...
+# Subtest: javascript.fake-require
+ok 87 - javascript.fake-require
+  ---
+  duration_ms: 103.683708
+  ...
+[34m[102mPASS[49m[39m : for-of should work
+[34m[102mPASS[49m[39m : should overwrite Symbol
+# Subtest: javascript.issue-1274
+ok 88 - javascript.issue-1274
+  ---
+  duration_ms: 92.181167
+  ...
+# Subtest: javascript.keep-comments
+ok 89 - javascript.keep-comments
+  ---
+  duration_ms: 93.550375
+  ...
+[34m[102mPASS[49m[39m : should run the decortate
+# Subtest: javascript.legacy-decorator
+ok 90 - javascript.legacy-decorator
+  ---
+  duration_ms: 100.8985
+  ...
+# Subtest: javascript.remove-falsy-condition
+ok 91 - javascript.remove-falsy-condition
+  ---
+  duration_ms: 92.0015
+  ...
+[34m[102mPASS[49m[39m :   should get list of context files
+[34m[102mPASS[49m[39m :   should require after resolve
+[34m[102mPASS[49m[39m :   should require directly by context
+[34m[102mPASS[49m[39m :   follow webpack id convention
+[34m[102mPASS[49m[39m : sync: no sub directorie
+[34m[102mPASS[49m[39m :   should contains all the js files
+[34m[102mPASS[49m[39m :   follows webpack id convention
+[34m[102mPASS[49m[39m : sync: with sub directories
+[34m[102mPASS[49m[39m : throws when resolve unknow request
+[34m[102mPASS[49m[39m :   should get list of context files
+[34m[102mPASS[49m[39m :   can require
+[34m[102mPASS[49m[39m :   follow webpack id convention
+[34m[102mPASS[49m[39m : lazy: no sub directorie
+[34m[102mPASS[49m[39m :   should contains all the js files
+[34m[102mPASS[49m[39m :   follows webpack id convention
+[34m[102mPASS[49m[39m : lazy: with sub directories
+[34m[102mPASS[49m[39m : throws when resolve unknow request
+[34m[102mPASS[49m[39m : rejects when require unknow request
+# Subtest: javascript.require-context
+ok 92 - javascript.require-context
+  ---
+  duration_ms: 114.675542
+  ...
+# Subtest: javascript.require-dynamic
+ok 93 - javascript.require-dynamic
+  ---
+  duration_ms: 99.863291
+  ...
+# Subtest: javascript.swc-bug.export-function-with-array
+ok 94 - javascript.swc-bug.export-function-with-array
+  ---
+  duration_ms: 93.287083
+  ...
+# Subtest: javascript.target.es5
+ok 95 - javascript.target.es5
+  ---
+  duration_ms: 88.065458
+  ...
+abc
+# Subtest: javascript.target.ie11
+ok 96 - javascript.target.ie11
+  ---
+  duration_ms: 93.7745
+  ...
+[34m[102mPASS[49m[39m : top level await should work
+# Subtest: javascript.top-level-await
+ok 97 - javascript.top-level-await
+  ---
+  duration_ms: 89.2645
+  ...
+# Subtest: javascript.top-level-await-in-deps
+ok 98 - javascript.top-level-await-in-deps
+  ---
+  duration_ms: 97.928
+  ...
+[34m[102mPASS[49m[39m : should run fn successfully under strict mode with scripts
+[34m[102mPASS[49m[39m : should run fn successfully under strict mode with a esm module
+# Subtest: javascript.transform.commonjs
+ok 99 - javascript.transform.commonjs
+  ---
+  duration_ms: 95.779916
+  ...
+# Subtest: javascript.transform.emit_decorator_metadata
+ok 100 - javascript.transform.emit_decorator_metadata
+  ---
+  duration_ms: 95.791292
+  ...
+[34m[102mPASS[49m[39m : define the field with descriptor by default
+# Subtest: javascript.transform.use_define_for_class_fields
+ok 101 - javascript.transform.use_define_for_class_fields
+  ---
+  duration_ms: 92.718708
+  ...
+[34m[102mPASS[49m[39m : has no descriptor when disable use define for class fields
+# Subtest: javascript.transform.use_define_for_class_fields_off
+ok 102 - javascript.transform.use_define_for_class_fields_off
+  ---
+  duration_ms: 91.612958
+  ...
+{
+  type: 'div',
+  props: {
+    __source: { fileName: 'index.tsx', lineNumber: 4, columnNumber: 3 },
+    __self: {},
+    children: 'Foo'
+  },
+  key: undefined,
+  ref: undefined,
+  __k: null,
+  __: null,
+  __b: 0,
+  __e: null,
+  __d: undefined,
+  __c: null,
+  constructor: undefined,
+  __v: 1,
+  __i: -1,
+  __u: 0
+}
+[34m[102mPASS[49m[39m : can create Foo component
+# Subtest: javascript.tsx.preact
+ok 103 - javascript.tsx.preact
+  ---
+  duration_ms: 110.794458
+  ...
+{
+  '$$typeof': Symbol(react.element),
+  type: 'div',
+  key: null,
+  ref: null,
+  props: { children: 'Foo' },
+  _owner: null,
+  _store: {}
+}
+[34m[102mPASS[49m[39m : can create Foo component
+# Subtest: javascript.tsx.react
+ok 104 - javascript.tsx.react
+  ---
+  duration_ms: 107.38475
+  ...
+# Subtest: javascript.typescript
+ok 105 - javascript.typescript
+  ---
+  duration_ms: 96.156625
+  ...
+[34m[102mPASS[49m[39m : cant import value
+[34m[102mPASS[49m[39m : export namespace type as undefined
+# Subtest: javascript.typescript.export-namespace-type
+ok 106 - javascript.typescript.export-namespace-type
+  ---
+  duration_ms: 89.347625
+  ...
+# Subtest: javascript.typescript.import-type
+ok 107 - javascript.typescript.import-type
+  ---
+  duration_ms: 89.135125
+  ...
+[34m[102mPASS[49m[39m : should return the enum value
+# Subtest: javascript.typescript.resolve_enum_ctxt
+ok 108 - javascript.typescript.resolve_enum_ctxt
+  ---
+  duration_ms: 93.344125
+  ...
+# Subtest: javascript.with
+ok 109 - javascript.with
+  ---
+  duration_ms: 108.364459
+  ...
+# Subtest: json
+ok 110 - json
+  ---
+  duration_ms: 119.697958
+  ...
+# Subtest: json.import-without-json-ext
+ok 111 - json.import-without-json-ext
+  ---
+  duration_ms: 99.514167
+  ...
+# Subtest: less.alias
+ok 112 - less.alias
+  ---
+  duration_ms: 228.665541
+  ...
+# Subtest: less.bug.1
+ok 113 - less.bug.1
+  ---
+  duration_ms: 234.372333
+  ...
+# Subtest: less.import-npm-deps
+ok 114 - less.import-npm-deps
+  ---
+  duration_ms: 233.361291
+  ...
+# Subtest: less.normal
+ok 115 - less.normal
+  ---
+  duration_ms: 228.475583
+  ...
+# Subtest: less.theme
+ok 116 - less.theme
+  ---
+  duration_ms: 215.52825
+  ...
+# Subtest: load.non_utf8
+ok 117 - load.non_utf8
+  ---
+  duration_ms: 97.334833
+  ...
+# Subtest: loaders
+ok 118 - loaders
+  ---
+  duration_ms: 147.356125
+  ...
+[34m[102mPASS[49m[39m : should have the correct values
+# Subtest: mako.scope-hoisting.async-module
+ok 119 - mako.scope-hoisting.async-module
+  ---
+  duration_ms: 94.795209
+  ...
+[class Conflict] [class Conflict_1]
+[34m[102mPASS[49m[39m : should not conflict error
+# Subtest: mako.scope-hoisting.conflict_with_class_name
+ok 120 - mako.scope-hoisting.conflict_with_class_name
+  ---
+  duration_ms: 93.069833
+  ...
+99
+21
+[34m[102mPASS[49m[39m : should keep root named unchanged
+# Subtest: mako.scope-hoisting.conflict_with_root_named_export
+ok 121 - mako.scope-hoisting.conflict_with_root_named_export
+  ---
+  duration_ms: 91.919042
+  ...
+[34m[102mPASS[49m[39m : should got raw default export from async module
+[34m[102mPASS[49m[39m : should return promise when use require directly
+[34m[102mPASS[49m[39m : can solve conflict in local scope
+# Subtest: mako.scope-hoisting.export_conflict_with_local_var
+ok 122 - mako.scope-hoisting.export_conflict_with_local_var
+  ---
+  duration_ms: 96.088791
+  ...
+[34m[102mPASS[49m[39m : should have the correct values
+# Subtest: mako.scope-hoisting.export_default_anonymous_decl
+ok 123 - mako.scope-hoisting.export_default_anonymous_decl
+  ---
+  duration_ms: 92.926917
+  ...
+A {}
+[34m[102mPASS[49m[39m : should run without error
+# Subtest: mako.scope-hoisting.export_default_babel_setprototypeof
+ok 124 - mako.scope-hoisting.export_default_babel_setprototypeof
+  ---
+  duration_ms: 93.2205
+  ...
+[34m[102mPASS[49m[39m : should have the correct values
+# Subtest: mako.scope-hoisting.export_default_decl
+ok 125 - mako.scope-hoisting.export_default_decl
+  ---
+  duration_ms: 90.929875
+  ...
+[34m[102mPASS[49m[39m : should have the correct values
+# Subtest: mako.scope-hoisting.export_named_from_external
+ok 126 - mako.scope-hoisting.export_named_from_external
+  ---
+  duration_ms: 92.554334
+  ...
+# Subtest: mako.scope-hoisting.export_star_from_exts_and_inner.failed
+ok 127 - mako.scope-hoisting.export_star_from_exts_and_inner.failed # SKIP
+  ---
+  duration_ms: 0.047
+  ...
+[34m[102mPASS[49m[39m : should export all exports from inner
+# Subtest: mako.scope-hoisting.export_star_from_exts_keep_order
+ok 128 - mako.scope-hoisting.export_star_from_exts_keep_order
+  ---
+  duration_ms: 99.862584
+  ...
+[34m[102mPASS[49m[39m : should export all exports from inner
+# Subtest: mako.scope-hoisting.export_start_from_inner
+ok 129 - mako.scope-hoisting.export_start_from_inner
+  ---
+  duration_ms: 94.524292
+  ...
+[34m[102mPASS[49m[39m : should have the correct values
+# Subtest: mako.scope-hoisting.ignored-module
+ok 130 - mako.scope-hoisting.ignored-module
+  ---
+  duration_ms: 93.457792
+  ...
+[34m[102mPASS[49m[39m : should have the correct values
+# Subtest: mako.scope-hoisting.import_external_css
+ok 131 - mako.scope-hoisting.import_external_css
+  ---
+  duration_ms: 93.983584
+  ...
+[34m[102mPASS[49m[39m : should keep shared reference after concatenate
+# Subtest: mako.scope-hoisting.import_share_reference_bewteen_inners
+ok 132 - mako.scope-hoisting.import_share_reference_bewteen_inners
+  ---
+  duration_ms: 95.345083
+  ...
+[34m[102mPASS[49m[39m : should keep shared reference after concatenate
+# Subtest: mako.scope-hoisting.import_share_reference_in_root
+ok 133 - mako.scope-hoisting.import_share_reference_in_root
+  ---
+  duration_ms: 87.651
+  ...
+[34m[102mPASS[49m[39m : should keep shared reference after concatenate
+# Subtest: mako.scope-hoisting.import_share_reference_via_proxy
+ok 134 - mako.scope-hoisting.import_share_reference_via_proxy
+  ---
+  duration_ms: 92.10725
+  ...
+undefined undefined undefined
+[34m[102mPASS[49m[39m : should keep shared reference after concatenate
+{ not_exist_named: [Getter] } undefined
+# Subtest: mako.scope-hoisting.import_undefined_from_inner
+ok 135 - mako.scope-hoisting.import_undefined_from_inner
+  ---
+  duration_ms: 90.614833
+  ...
+# Subtest: mako.scope-hoisting.import_worker
+ok 136 - mako.scope-hoisting.import_worker
+  ---
+  duration_ms: 144.671416
+  ...
+[34m[102mPASS[49m[39m : should have the correct values
+# Subtest: mako.scope-hoisting.inner-esm-mix-require
+ok 137 - mako.scope-hoisting.inner-esm-mix-require
+  ---
+  duration_ms: 90.376834
+  ...
+{}
+[34m[102mPASS[49m[39m : should have the correct values
+# Subtest: mako.scope-hoisting.inner-esm-using-process
+ok 138 - mako.scope-hoisting.inner-esm-using-process
+  ---
+  duration_ms: 97.582625
+  ...
+[34m[102mPASS[49m[39m : should have the correct values
+# Subtest: mako.scope-hoisting.inner-import-require-same-cjs
+ok 139 - mako.scope-hoisting.inner-import-require-same-cjs
+  ---
+  duration_ms: 91.994
+  ...
+99
+[34m[102mPASS[49m[39m : should keep root named unchanged
+# Subtest: mako.scope-hoisting.inner_conflict_with_others_refed_global
+ok 140 - mako.scope-hoisting.inner_conflict_with_others_refed_global
+  ---
+  duration_ms: 92.965125
+  ...
+[34m[102mPASS[49m[39m : keep the order in root
+# Subtest: mako.scope-hoisting.keep_module_order_in_root
+ok 141 - mako.scope-hoisting.keep_module_order_in_root
+  ---
+  duration_ms: 93.777042
+  ...
+[34m[102mPASS[49m[39m : should have the correct values
+# Subtest: mako.scope-hoisting.keep_private_ident
+ok 142 - mako.scope-hoisting.keep_private_ident
+  ---
+  duration_ms: 94.996542
+  ...
+[34m[102mPASS[49m[39m : should have the correct values
+# Subtest: mako.scope-hoisting.mix_require_in_esm_stmt_with_a_member_expr
+ok 143 - mako.scope-hoisting.mix_require_in_esm_stmt_with_a_member_expr
+  ---
+  duration_ms: 87.885792
+  ...
+[34m[102mPASS[49m[39m : should keep root named unchanged
+# Subtest: mako.scope-hoisting.ployfill_replace
+ok 144 - mako.scope-hoisting.ployfill_replace
+  ---
+  duration_ms: 99.540291
+  ...
+conflict
+[34m[102mPASS[49m[39m : should check existing variables when renaming
+# Subtest: mako.scope-hoisting.renaming-conflict_with_local_var
+ok 145 - mako.scope-hoisting.renaming-conflict_with_local_var
+  ---
+  duration_ms: 89.672709
+  ...
+[34m[102mPASS[49m[39m : should detect nested named fn expr ident
+# Subtest: mako.scope-hoisting.renaming_conflicted_with_nested_named_fn_expr_ident
+ok 146 - mako.scope-hoisting.renaming_conflicted_with_nested_named_fn_expr_ident
+  ---
+  duration_ms: 90.162542
+  ...
+[34m[102mPASS[49m[39m : should keep export name
+# Subtest: mako.scope-hoisting.root-esModule-export
+ok 147 - mako.scope-hoisting.root-esModule-export
+  ---
+  duration_ms: 95.852292
+  ...
+99
+[34m[102mPASS[49m[39m : should keep root named unchanged
+# Subtest: mako.scope-hoisting.root_top_level_conflict_with_inner_refed_global
+ok 148 - mako.scope-hoisting.root_top_level_conflict_with_inner_refed_global
+  ---
+  duration_ms: 90.739333
+  ...
