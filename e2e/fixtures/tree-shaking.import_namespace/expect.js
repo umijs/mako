@@ -9,9 +9,6 @@ const { files } = parseBuildResult(__dirname);
 injectSimpleJest();
 const content = files["index.js"];
 
-expect(content).toContain("shouldKeep");
+expect(content).toContain("shouldKeep1");
+expect(content).toContain("shouldKeep2");
 expect(content).not.toContain("shouldNotKeep");
-
-expect(content).toContain("needKeep");
-expect(content).not.toContain("needNotKeep");
-
