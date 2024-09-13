@@ -484,7 +484,7 @@ impl Compiler {
 
 /*
 *  Visit dependencies by right first DFS. The reason for this is that
-*  the rightmost and deepest css dependence should have the highest priority.
+*  the rightmost and topmost css dependence should have the highest priority.
 *  For example, the dependencies graph is:
 *
 *  ----------
@@ -505,13 +505,14 @@ impl Compiler {
 * a.css
 * ----------
 * note that c.css, b.css, c.css after a.css will be deduplicated.
+* Notice: the returned Vec must be consumed by revered order.
 */
 fn visit_modules<F, T>(mut queue: Vec<T>, visited: Option<HashSet<T>>, mut callback: F) -> Vec<T>
 where
     F: FnMut(&T) -> Vec<T>,
     T: Hash + Eq + Clone,
 {
-    let mut right_firtst_dfs_ret: Vec<T> = Vec::new();
+    let mut right_first_dfs_ret: Vec<T> = Vec::new();
 
     let mut visited = visited.unwrap_or_default();
 
@@ -520,12 +521,12 @@ where
             continue;
         }
 
-        right_firtst_dfs_ret.push(id.clone());
+        right_first_dfs_ret.push(id.clone());
 
         visited.insert(id.clone());
 
         queue.extend(callback(&id));
     }
 
-    right_firtst_dfs_ret
+    right_first_dfs_ret
 }
