@@ -213,7 +213,7 @@ impl Compiler {
                         .keys()
                         .cloned()
                         .collect::<LinkedHashSet<_>>(),
-                    id: ChunkId { id: "".to_string() },
+                    id: ChunkId { id: "".into() },
                     chunk_type: ChunkType::Sync,
                     content: None,
                     source_map: None,
@@ -243,7 +243,7 @@ impl Compiler {
             let mut package_size_map = chunk_modules.iter().fold(
                 IndexMap::<String, (usize, IndexMap<ModuleId, Vec<ChunkId>>)>::new(),
                 |mut size_map, mtc| {
-                    let pkg_name = self.get_package_name(mtc.0).unwrap_or(mtc.0.id.clone());
+                    let pkg_name = self.get_package_name(mtc.0).unwrap_or(mtc.0.id.to_string());
 
                     let module_size = module_graph.get_module(mtc.0).unwrap().get_module_size();
 
@@ -424,7 +424,7 @@ impl Compiler {
         for info in optimize_chunks_infos {
             // create new chunk
             let info_chunk_id = ChunkId {
-                id: info.group_options.name.clone(),
+                id: info.group_options.name.as_str().into(),
             };
             let info_chunk_type =
                 if matches!(info.group_options.allow_chunks, OptimizeAllowChunks::Async) {
@@ -485,7 +485,7 @@ impl Compiler {
                 // get chunk
                 let info_chunk = chunk_graph
                     .mut_chunk(&ChunkId {
-                        id: info.group_options.name.clone(),
+                        id: info.group_options.name.as_str().into(),
                     })
                     .unwrap();
                 let info_chunk_id = info_chunk.id.clone();

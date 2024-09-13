@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
+use hstr::Atom;
 use thiserror::Error;
 
 use crate::ast::error;
@@ -21,7 +22,7 @@ pub struct AnalyzeDepsResult {
     pub resolved_deps: Vec<ResolvedDep>,
     // why use hash map?
     // since we need source as key to replace in generate step
-    pub missing_deps: HashMap<String, Dependency>,
+    pub missing_deps: HashMap<Atom, Dependency>,
 }
 
 #[derive(Debug, Clone)]

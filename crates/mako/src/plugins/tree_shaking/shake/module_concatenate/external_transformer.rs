@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use hstr::Atom;
 use swc_core::common::Mark;
 use swc_core::ecma::ast::{Expr, ExprOrSpread, Lit, MemberExpr, Module};
 use swc_core::ecma::utils::quote_ident;
@@ -11,12 +12,12 @@ use crate::module::ModuleId;
 
 pub(super) struct ExternalTransformer<'a> {
     pub concatenate_context: &'a mut ConcatenateContext,
-    pub src_to_module: &'a HashMap<String, ModuleId>,
+    pub src_to_module: &'a HashMap<Atom, ModuleId>,
     pub unresolved_mark: Mark,
 }
 
 impl<'a> ExternalTransformer<'_> {
-    fn src_to_export_name(&'a self, src: &str) -> Option<((String, String), ModuleId)> {
+    fn src_to_export_name(&'a self, src: &Atom) -> Option<((String, String), ModuleId)> {
         self.src_to_module.get(src).and_then(|module_id| {
             self.concatenate_context
                 .external_expose_names(module_id)
@@ -34,7 +35,7 @@ impl<'a> ExternalTransformer<'_> {
             && let Some(lit) = arg.expr.as_lit()
             && let Lit::Str(str) = lit
         {
-            self.src_to_export_name(str.value.as_ref())
+            self.src_to_export_name(&str.value.as_ref().into())
         } else {
             None
         }

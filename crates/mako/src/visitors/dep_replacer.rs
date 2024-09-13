@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use hstr::Atom;
 use swc_core::common::{Mark, DUMMY_SP};
 use swc_core::ecma::ast::{
     AssignOp, BlockStmt, Expr, ExprOrSpread, FnExpr, Function, Ident, ImportDecl, Lit, NamedExport,
@@ -23,15 +24,15 @@ pub struct DepReplacer<'a> {
     pub top_level_mark: Mark,
 }
 
-type ResolvedModuleId = String;
+type ResolvedModuleId = Atom;
 type ResolvedModulePath = String;
 
 #[derive(Debug, Clone)]
 pub struct DependenciesToReplace {
     // resolved stores the "source" maps to (generate_id, raw_module_id)
     // e.g. "react" => ("hashed_id", "/abs/to/react/index.js")
-    pub resolved: HashMap<String, (ResolvedModuleId, ResolvedModulePath)>,
-    pub missing: HashMap<String, Dependency>,
+    pub resolved: HashMap<Atom, (ResolvedModuleId, ResolvedModulePath)>,
+    pub missing: HashMap<Atom, Dependency>,
 }
 
 pub fn miss_throw_stmt<T: AsRef<str>>(source: T) -> Expr {
@@ -98,7 +99,7 @@ impl VisitMut for DepReplacer<'_> {
                 } = &mut call_expr.args[0]
                 {
                     // js
-                    let source_string = source.value.clone().to_string();
+                    let source_string = source.value.as_ref().into();
                     match self.to_replace.missing.get(&source_string) {
                         Some(_) => {
                             call_expr.args[0] = ExprOrSpread {
@@ -145,7 +146,10 @@ impl VisitMut for DepReplacer<'_> {
                                     let chunk_id = chunk.id.id.clone();
                                     // `import('./xxx.css')` => `__mako_require__.ensure('./xxx.css')`
                                     *expr = member_expr!(DUMMY_SP, __mako_require__.ensure)
-                                        .as_call(DUMMY_SP, vec![quote_str!(chunk_id).as_arg()]);
+                                        .as_call(
+                                            DUMMY_SP,
+                                            vec![quote_str!(chunk_id.as_ref()).as_arg()],
+                                        );
                                     return;
                                 } else {
                                     *expr = Expr::Lit(quote_str!("").into());
@@ -183,10 +187,10 @@ impl VisitMut for DepReplacer<'_> {
 
 impl DepReplacer<'_> {
     fn replace_source(&mut self, source: &mut Str) {
-        if let Some(replacement) = self.to_replace.resolved.get(&source.value.to_string()) {
+        if let Some(replacement) = self.to_replace.resolved.get(&source.value.as_ref().into()) {
             let module_id = replacement.0.clone();
             let span = source.span;
-            *source = Str::from(module_id);
+            *source = Str::from(module_id.as_ref());
             source.span = span;
         }
     }

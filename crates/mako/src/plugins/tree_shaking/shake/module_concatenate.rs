@@ -12,6 +12,7 @@ use std::sync::Arc;
 
 use concatenated_transformer::ConcatenatedTransform;
 use external_transformer::ExternalTransformer;
+use hstr::Atom;
 use swc_core::common::util::take::Take;
 use swc_core::common::{Span, SyntaxContext, GLOBALS};
 use swc_core::ecma::transforms::base::hygiene::hygiene;
@@ -230,7 +231,7 @@ pub fn optimize_module_graph(
         }
     }
 
-    fn source_to_module_id(module_id: &ModuleId, mg: &ModuleGraph) -> HashMap<String, ModuleId> {
+    fn source_to_module_id(module_id: &ModuleId, mg: &ModuleGraph) -> HashMap<Atom, ModuleId> {
         let dep = mg.get_dependencies(module_id);
 
         let mut src_2_module_id = HashMap::new();
@@ -404,7 +405,7 @@ pub fn optimize_module_graph(
                         ast: root_module_ast.clone(),
                         unresolved_mark,
                         top_level_mark,
-                        path: config.root.id.clone(),
+                        path: config.root.id.to_string(),
                         contains_top_level_await: false,
                     };
 

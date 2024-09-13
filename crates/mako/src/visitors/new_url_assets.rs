@@ -24,7 +24,7 @@ pub struct NewUrlAssets {
 impl NewUrlAssets {
     fn handle_asset(&self, url: String) -> Result<String> {
         let dep = Dependency {
-            source: url,
+            source: url.into(),
             resolve_as: None,
             resolve_type: ResolveType::Css,
             order: 0,

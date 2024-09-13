@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use hstr::Atom;
 use swc_core::common::util::take::Take;
 use swc_core::common::{Mark, DUMMY_SP};
 use swc_core::ecma::ast::{
@@ -50,7 +51,7 @@ impl VisitMut for AsyncModule<'_> {
             && is_commonjs_require(call_expr, &self.unresolved_mark)
             && let box Expr::Lit(Lit::Str(str)) = &call_expr.args[0].expr
         {
-            let source = str.value.to_string();
+            let source: Atom = str.value.as_ref().into();
             for (idx, dep) in self.async_deps.iter().enumerate() {
                 // not only source map, but also span compare
                 if dep.source == source

@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use anyhow::{Error, Result};
+use hstr::Atom;
 use regex::Regex;
 use swc_core::base::try_with_handler;
 use swc_core::common::errors::HANDLER;
@@ -83,7 +84,7 @@ pub fn transform_modules_in_thread(
         thread_pool::spawn(move || {
             let module_graph = context.module_graph.read().unwrap();
             let deps = module_graph.get_dependencies(&module_id);
-            let mut resolved_deps: HashMap<String, (String, String)> = deps
+            let mut resolved_deps: HashMap<Atom, (Atom, String)> = deps
                 .into_iter()
                 .map(|(id, dep)| {
                     (
@@ -92,15 +93,19 @@ pub fn transform_modules_in_thread(
                             if dep.resolve_type == ResolveType::Worker {
                                 let chunk_id = id.generate(&context);
                                 let chunk_graph = context.chunk_graph.read().unwrap();
-                                chunk_graph.chunk(&chunk_id.into()).unwrap().filename()
+                                chunk_graph
+                                    .chunk(&chunk_id.into())
+                                    .unwrap()
+                                    .filename()
+                                    .into()
                             } else {
                                 id.generate(&context)
                             },
-                            id.id.clone(),
+                            id.id.to_string(),
                         ),
                     )
                 })
-                .collect();
+                .collect::<_>();
             insert_swc_helper_replace(&mut resolved_deps, &context);
             let module = module_graph.get_module(&module_id).unwrap();
             let info = module.info.as_ref().unwrap();
@@ -147,10 +152,10 @@ pub fn transform_modules_in_thread(
     Ok(())
 }
 
-fn insert_swc_helper_replace(map: &mut HashMap<String, (String, String)>, context: &Arc<Context>) {
+fn insert_swc_helper_replace(map: &mut HashMap<Atom, (Atom, String)>, context: &Arc<Context>) {
     SWC_HELPERS.into_iter().for_each(|h| {
-        let m_id: ModuleId = h.to_string().into();
-        map.insert(m_id.id.clone(), (m_id.generate(context), h.to_string()));
+        let m_id: ModuleId = h.into();
+        map.insert(m_id.id.clone(), (m_id.generate(context), h.into()));
     });
 }
 

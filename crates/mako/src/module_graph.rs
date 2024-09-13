@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 use fixedbitset::FixedBitSet;
+use hstr::Atom;
 use petgraph::graph::{DefaultIx, NodeIndex};
 use petgraph::prelude::{Dfs, EdgeRef};
 use petgraph::stable_graph::{StableDiGraph, WalkNeighbors};
@@ -307,7 +308,7 @@ impl ModuleGraph {
     pub fn remove_dependency_module_by_source_and_resolve_type(
         &mut self,
         module_id: &ModuleId,
-        source: &String,
+        source: &Atom,
         resolve_type: ResolveType,
     ) {
         let mut edges = self.get_edges(module_id, Direction::Outgoing);
@@ -332,7 +333,7 @@ impl ModuleGraph {
     pub fn get_dependency_module_by_source(
         &self,
         module_id: &ModuleId,
-        source: &String,
+        source: &Atom,
     ) -> Option<&ModuleId> {
         let deps = self.get_dependencies(module_id);
         for (module_id, dep) in deps {

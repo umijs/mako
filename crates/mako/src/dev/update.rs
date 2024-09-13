@@ -128,7 +128,7 @@ impl Compiler {
                 self.context.modules_with_missing_deps.write().unwrap();
             let mut module_graph = self.context.module_graph.write().unwrap();
             for module_id in modules_with_missing_deps.clone().iter() {
-                let id = ModuleId::new(module_id.clone());
+                let id = ModuleId::new(module_id);
                 let module = module_graph.get_module_mut(&id).unwrap();
                 let missing_deps = module.info.clone().unwrap().deps.missing_deps;
                 for (_source, dep) in missing_deps {
@@ -139,7 +139,7 @@ impl Compiler {
                             "  > missing deps resolved {:?} from {:?}",
                             dep.source, module_id
                         );
-                        modified.push(PathBuf::from(module_id.clone()));
+                        modified.push(PathBuf::from(module_id.as_ref()));
                         let info = module.info.as_mut().unwrap();
                         info.deps.missing_deps.remove(&dep.source);
                         if info.deps.missing_deps.is_empty() {
@@ -168,12 +168,14 @@ impl Compiler {
                     let id: ModuleId = format!("{}{}", path, search).into();
                     if module_graph.has_module(&id) {
                         debug!("  > {} is filtered", &id.id);
-                        new_paths.push((PathBuf::from(&id.id), update_type.clone()));
+                        new_paths.push((PathBuf::from(id.id.as_ref()), update_type.clone()));
                         let dependents = module_graph.get_dependents(&id);
                         for dependent in dependents {
                             debug!("  > {} is filtered", dependent.0.id);
-                            new_paths
-                                .push((PathBuf::from(dependent.0.id.clone()), update_type.clone()));
+                            new_paths.push((
+                                PathBuf::from(dependent.0.id.as_ref()),
+                                update_type.clone(),
+                            ));
                         }
                     }
                 }
@@ -287,7 +289,7 @@ impl Compiler {
                         .modules_with_missing_deps
                         .write()
                         .unwrap()
-                        .retain(|id| id != &module.id.id);
+                        .retain(|id| id != module.id.id.as_ref());
                 } else {
                     self.context
                         .modules_with_missing_deps
@@ -311,7 +313,7 @@ impl Compiler {
                 resolved_deps.iter().for_each(|dep| {
                     let resolved_path = dep.resolver_resource.get_resolved_path();
                     let is_external = dep.resolver_resource.get_external().is_some();
-                    let module_id = ModuleId::new(resolved_path.clone());
+                    let module_id = ModuleId::new(&resolved_path);
                     let module = if is_external {
                         Self::create_external_module(&dep.resolver_resource, self.context.clone())
                     } else {

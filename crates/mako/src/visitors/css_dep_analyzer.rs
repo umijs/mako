@@ -25,7 +25,7 @@ impl CSSDepAnalyzer {
         }
         let url = utils::remove_first_tilde(url);
         self.dependencies.push(Dependency {
-            source: url,
+            source: url.into(),
             resolve_as: None,
             order: self.order,
             resolve_type: ResolveType::Css,

@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use bitflags::bitflags;
+use hstr::Atom;
 use pathdiff::diff_paths;
 use serde::Serialize;
 use swc_core::common::{Span, DUMMY_SP};
@@ -26,7 +27,7 @@ pub type Dependencies = HashSet<Dependency>;
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct Dependency {
-    pub source: String,
+    pub source: Atom,
     pub resolve_as: Option<String>,
     pub resolve_type: ResolveType,
     pub order: usize,
@@ -200,26 +201,27 @@ impl Default for ModuleInfo {
     }
 }
 
-fn md5_hash(source_str: &str, lens: usize) -> String {
+fn md5_hash(source_str: &str, lens: usize) -> Atom {
     format!("{:x}", md5::compute(source_str))
         .chars()
         .take(lens)
         .collect::<String>()
+        .into()
 }
 
-pub fn generate_module_id(origin_module_id: String, context: &Arc<Context>) -> String {
+pub fn generate_module_id(origin_module_id: Atom, context: &Arc<Context>) -> Atom {
     match context.config.module_id_strategy {
         ModuleIdStrategy::Hashed => md5_hash(&origin_module_id, 8),
         ModuleIdStrategy::Named => {
             // readable ids for debugging usage
-            let absolute_path = PathBuf::from(origin_module_id);
+            let absolute_path = PathBuf::from(origin_module_id.as_ref());
             let relative_path = diff_paths(&absolute_path, &context.root).unwrap_or(absolute_path);
-            win_path(relative_path.to_str().unwrap())
+            win_path(relative_path.to_str().unwrap()).into()
         }
         ModuleIdStrategy::Numeric => {
             let numeric_ids_map = context.numeric_ids_map.read().unwrap();
             if let Some(numeric_id) = numeric_ids_map.get(&origin_module_id) {
-                numeric_id.to_string()
+                numeric_id.to_string().into()
             } else {
                 md5_hash(&origin_module_id, 8)
             }
@@ -227,7 +229,7 @@ pub fn generate_module_id(origin_module_id: String, context: &Arc<Context>) -> S
     }
 }
 
-pub fn relative_to_root(module_path: &String, root: &PathBuf) -> String {
+pub fn relative_to_root(module_path: &str, root: &PathBuf) -> String {
     let absolute_path = PathBuf::from(module_path);
     let relative_path = diff_paths(&absolute_path, root).unwrap_or(absolute_path);
     // diff_paths result always starts with ".."/"." or not
@@ -243,7 +245,7 @@ pub fn relative_to_root(module_path: &String, root: &PathBuf) -> String {
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct ModuleId {
-    pub id: String,
+    pub id: Atom,
 }
 
 impl Ord for ModuleId {
@@ -260,43 +262,49 @@ impl PartialOrd for ModuleId {
 
 impl ModuleId {
     // we use absolute path as module id now
-    pub fn new(id: String) -> Self {
-        Self { id }
+    pub fn new(id: &str) -> Self {
+        Self { id: id.into() }
     }
 
-    pub fn generate(&self, context: &Arc<Context>) -> String {
+    pub fn generate(&self, context: &Arc<Context>) -> Atom {
         // TODO: 如果是 Hashed 的话，stats 拿不到原始的 chunk_id
         generate_module_id(self.id.clone(), context)
     }
 
     pub fn from_path(path_buf: PathBuf) -> Self {
         Self {
-            id: path_buf.to_string_lossy().to_string(),
+            id: path_buf.to_string_lossy().into(),
         }
     }
 
     // FIXME: 这里暂时直接通过 module_id 转换为 path，后续如果改了逻辑要记得改
     pub fn to_path(&self) -> PathBuf {
-        PathBuf::from(self.id.clone())
+        PathBuf::from(self.id.as_ref())
     }
 }
 
 impl From<String> for ModuleId {
     fn from(id: String) -> Self {
-        Self { id }
+        Self { id: id.into() }
     }
 }
 
 impl From<&str> for ModuleId {
     fn from(id: &str) -> Self {
-        Self { id: id.to_string() }
+        Self { id: id.into() }
+    }
+}
+
+impl From<Atom> for ModuleId {
+    fn from(id: Atom) -> Self {
+        Self { id }
     }
 }
 
 impl From<PathBuf> for ModuleId {
     fn from(path: PathBuf) -> Self {
         Self {
-            id: path.to_string_lossy().to_string(),
+            id: path.to_string_lossy().into(),
         }
     }
 }

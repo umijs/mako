@@ -21,8 +21,8 @@ use crate::ternary;
 
 pub(super) fn render_entry_js_chunk(
     pot: &ChunkPot,
-    js_map: &HashMap<String, String>,
-    css_map: &HashMap<String, String>,
+    js_map: &HashMap<hstr::Atom, String>,
+    css_map: &HashMap<hstr::Atom, String>,
     chunk: &Chunk,
     context: &Arc<Context>,
     hmr_hash: u64,
@@ -227,7 +227,7 @@ fn pot_to_chunk_module_object_string(
             .map(|(k, v)| (k, v))
             .collect::<Vec<_>>();
 
-        sorted_kv.sort_by_key(|(k, _)| *k);
+        sorted_kv.sort_by_key(|(k, _)| k.to_string());
 
         sorted_kv
     };

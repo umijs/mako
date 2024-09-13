@@ -1,3 +1,4 @@
+use hstr::Atom;
 use swc_core::common::{Mark, DUMMY_SP};
 use swc_core::ecma::ast::{
     CallExpr, Callee, Expr, ExprOrSpread, Ident, Import, Lit, MemberExpr, MemberProp, MetaPropExpr,
@@ -69,10 +70,10 @@ pub fn is_ident_undefined(ident: &Ident, sym: &str, unresolved_mark: &Mark) -> b
     ident.sym == *sym && ident.span.ctxt.outer() == *unresolved_mark
 }
 
-pub fn get_first_str_arg(call_expr: &CallExpr) -> Option<String> {
+pub fn get_first_str_arg(call_expr: &CallExpr) -> Option<Atom> {
     if let Some(arg) = call_expr.args.first() {
         if let box Expr::Lit(Lit::Str(str_)) = &arg.expr {
-            return Some(str_.value.to_string());
+            return Some(str_.value.as_ref().into());
         }
     }
     None
@@ -137,13 +138,13 @@ pub fn member_call(obj: Expr, member_prop: MemberProp, args: Vec<ExprOrSpread>) 
     })
 }
 
-pub fn require_ensure(source: String) -> Expr {
+pub fn require_ensure(source: Atom) -> Expr {
     member_call(
         Expr::Ident(id("__mako_require__")),
         MemberProp::Ident(id("ensure")),
         vec![ExprOrSpread {
             spread: None,
-            expr: Box::new(Expr::Lit(Lit::Str(source.into()))),
+            expr: Box::new(Expr::Lit(Lit::Str(source.as_ref().into()))),
         }],
     )
 }

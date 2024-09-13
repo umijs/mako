@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
 use colored::*;
+use hstr::Atom;
 use indexmap::IndexMap;
 use pathdiff::diff_paths;
 use serde::Serialize;
@@ -45,7 +46,7 @@ impl Compiler {
                 stats_info.add_assets(
                     size,
                     asset.1.clone(),
-                    "".to_string(),
+                    "".into(),
                     self.context
                         .config
                         .output
@@ -317,7 +318,7 @@ pub struct AssetsInfo {
     pub size: u64,
     pub name: String,
     pub hashname: String,
-    pub chunk_id: String,
+    pub chunk_id: Atom,
     pub path: String,
 }
 
@@ -335,9 +336,9 @@ impl PartialOrd for AssetsInfo {
 
 #[derive(Serialize, Debug, Clone)]
 pub struct ModuleInfo {
-    pub id: String,
-    pub dependencies: Vec<String>,
-    pub dependents: Vec<String>,
+    pub id: Atom,
+    pub dependencies: Vec<Atom>,
+    pub dependents: Vec<Atom>,
 }
 
 #[derive(Debug)]
@@ -345,7 +346,7 @@ pub struct StatsInfo {
     pub assets: Mutex<Vec<AssetsInfo>>,
     pub rsc_client_components: Mutex<Vec<RscClientInfo>>,
     pub rsc_css_modules: Mutex<Vec<RscCssModules>>,
-    pub modules: Mutex<HashMap<String, ModuleInfo>>,
+    pub modules: Mutex<HashMap<Atom, ModuleInfo>>,
 }
 
 impl StatsInfo {
@@ -362,7 +363,7 @@ impl StatsInfo {
         &self,
         size: u64,
         name: String,
-        chunk_id: String,
+        chunk_id: Atom,
         path: String,
         hashname: String,
     ) {
@@ -411,7 +412,7 @@ impl StatsInfo {
         });
     }
 
-    pub fn get_modules(&self) -> HashMap<String, ModuleInfo> {
+    pub fn get_modules(&self) -> HashMap<Atom, ModuleInfo> {
         self.modules.lock().unwrap().clone()
     }
 
@@ -471,34 +472,34 @@ pub struct StatsJsonChunkModuleItem {
     #[serde(flatten)]
     pub module_type: StatsJsonType,
     pub size: u64,
-    pub id: String,
-    pub chunks: Vec<String>,
+    pub id: Atom,
+    pub chunks: Vec<Atom>,
 }
 
 #[derive(Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct StatsJsonChunkOriginItem {
-    pub module: String,
-    pub module_identifier: String,
+    pub module: Atom,
+    pub module_identifier: Atom,
     pub module_name: String,
     pub loc: String,
-    pub request: String,
+    pub request: Atom,
 }
 #[derive(Serialize, Debug, Clone)]
 pub struct StatsJsonChunkItem {
     #[serde(flatten)]
     pub chunk_type: StatsJsonType,
-    pub id: String,
+    pub id: Atom,
     pub files: Vec<String>,
     pub entry: bool,
     pub modules: Vec<StatsJsonChunkModuleItem>,
-    pub siblings: Vec<String>,
+    pub siblings: Vec<Atom>,
     pub origins: Vec<StatsJsonChunkOriginItem>,
 }
 #[derive(Serialize, Debug, Clone)]
 pub struct StatsJsonEntryItem {
     pub name: String,
-    pub chunks: Vec<String>,
+    pub chunks: Vec<Atom>,
 }
 #[derive(Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -509,7 +510,7 @@ pub struct StatsJsonMap {
     output_path: String,
     assets: Vec<StatsJsonAssetsItem>,
     chunk_modules: Vec<StatsJsonChunkModuleItem>,
-    modules: HashMap<String, ModuleInfo>,
+    modules: HashMap<Atom, ModuleInfo>,
     chunks: Vec<StatsJsonChunkItem>,
     entrypoints: HashMap<String, StatsJsonEntryItem>,
     rsc_client_components: Vec<RscClientInfo>,

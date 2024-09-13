@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests;
 
+use hstr::Atom;
 use swc_core::ecma::ast::{
     DefaultDecl, Id, Ident, ImportDecl, ImportSpecifier, Module, ModuleItem,
 };
@@ -8,8 +9,8 @@ use swc_core::ecma::ast::{
 #[derive(Debug, Clone)]
 pub(super) enum VarLink {
     Direct(Id),
-    InDirect(Symbol, String),
-    All(String, usize),
+    InDirect(Symbol, Atom),
+    All(Atom, usize),
 }
 
 #[derive(Debug, Clone)]
@@ -92,7 +93,7 @@ impl Visit for PatDefineIdCollector {
 
 #[derive(Default, Debug)]
 pub(super) struct ModuleDeclMapCollector {
-    current_source: Option<String>,
+    current_source: Option<Atom>,
     current_stmt_id: usize,
     pub import_map: HashMap<Id, VarLink>,
     pub export_map: HashMap<Id, VarLink>,
@@ -123,8 +124,10 @@ impl ModuleDeclMapCollector {
         };
 
         if let Some(source) = &self.current_source {
-            self.export_map
-                .insert(ident.to_id(), VarLink::InDirect(symbol, source.clone()));
+            self.export_map.insert(
+                ident.to_id(),
+                VarLink::InDirect(symbol, source.as_ref().into()),
+            );
         } else if let Some(id) = symbol.as_id() {
             self.export_map.insert(ident.to_id(), VarLink::Direct(id));
         } else {
@@ -187,7 +190,7 @@ impl Visit for ModuleDeclMapCollector {
     fn visit_module_decl(&mut self, n: &ModuleDecl) {
         match n {
             ModuleDecl::Import(import) => {
-                self.current_source = Some(import.src.value.to_string());
+                self.current_source = Some(import.src.value.as_ref().into());
                 n.visit_children_with(self);
                 self.current_source = None;
             }
@@ -225,7 +228,7 @@ impl Visit for ModuleDeclMapCollector {
                 Decl::TsModule(_) => {}
             },
             ModuleDecl::ExportNamed(export_named) => {
-                self.current_source = export_named.src.as_ref().map(|x| x.value.to_string());
+                self.current_source = export_named.src.as_ref().map(|x| x.value.as_ref().into());
                 export_named.specifiers.iter().for_each(
                     |export_specifier| match &export_specifier {
                         ExportSpecifier::Namespace(namespace) => {
@@ -302,7 +305,7 @@ impl Visit for ModuleDeclMapCollector {
             ModuleDecl::ExportAll(export_all) => {
                 self.export_map.insert(
                     quote_ident!(format!("*:{}", self.current_stmt_id)).to_id(),
-                    VarLink::All(export_all.src.value.to_string(), self.current_stmt_id),
+                    VarLink::All(export_all.src.value.as_ref().into(), self.current_stmt_id),
                 );
             }
             ModuleDecl::TsImportEquals(_) => {}

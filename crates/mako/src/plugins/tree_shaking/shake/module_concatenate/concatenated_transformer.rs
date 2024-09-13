@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use hstr::Atom;
 use swc_core::common::collections::AHashSet;
 use swc_core::common::comments::{Comment, CommentKind};
 use swc_core::common::util::take::Take;
@@ -32,7 +33,7 @@ pub(super) struct ConcatenatedTransform<'a> {
     pub context: &'a Arc<Context>,
     pub module_id: &'a ModuleId,
 
-    pub src_to_module: &'a HashMap<String, ModuleId>,
+    pub src_to_module: &'a HashMap<Atom, ModuleId>,
     pub top_level_mark: Mark,
 
     my_top_decls: HashSet<String>,
@@ -49,7 +50,7 @@ impl<'a> ConcatenatedTransform<'a> {
     pub fn new(
         concatenate_context: &'a mut ConcatenateContext,
         module_id: &'a ModuleId,
-        src_to_module: &'a HashMap<String, ModuleId>,
+        src_to_module: &'a HashMap<Atom, ModuleId>,
         context: &'a Arc<Context>,
         top_level_mark: Mark,
     ) -> Self {

@@ -102,7 +102,7 @@ impl Compiler {
             // handle deps
             for dep in resolved_deps {
                 let path = dep.resolver_resource.get_resolved_path();
-                let dep_module_id = ModuleId::new(path.clone());
+                let dep_module_id = ModuleId::new(&path);
                 if !module_graph.has_module(&dep_module_id) {
                     let module = match dep.resolver_resource {
                         ResolverResource::Virtual(_) | ResolverResource::Resolved(_) => {
@@ -190,7 +190,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
             raw,
             ..Default::default()
         };
-        let module_id = ModuleId::new(origin_path.to_string());
+        let module_id = ModuleId::new(&origin_path);
         Module::new(module_id, false, Some(info))
     }
 
@@ -202,8 +202,8 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
             ..Default::default()
         }));
         let ast = parse::Parse::parse(&file, context.clone())?;
-        let path = file.path.to_string_lossy().to_string();
-        let module_id = ModuleId::new(path.clone());
+        let path = file.path.to_string_lossy();
+        let module_id = ModuleId::new(&path);
         let raw = file.get_content_raw();
         let info = ModuleInfo {
             file,
@@ -215,7 +215,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
     }
 
     fn create_ignored_module(path: &str, context: Arc<Context>) -> Module {
-        let module_id = ModuleId::new(path.to_owned());
+        let module_id = ModuleId::new(path);
 
         let mut module = Module::new(module_id, false, None);
 
@@ -284,8 +284,8 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         let deps = analyze_deps::AnalyzeDeps::analyze_deps(&ast, &file, context.clone())?;
 
         // 5. create module
-        let path = file.path.to_string_lossy().to_string();
-        let module_id = ModuleId::new(path.clone());
+        let path = file.path.to_string_lossy();
+        let module_id = ModuleId::new(path.as_ref());
         let raw = file.get_content_raw();
         let is_entry = file.is_entry;
         let source_map_chain = file.get_source_map_chain(context.clone());

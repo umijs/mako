@@ -6,6 +6,7 @@ use std::time::Instant;
 
 use anyhow::{anyhow, Error, Result};
 use colored::Colorize;
+use hstr::Atom;
 use regex::Regex;
 use swc_core::common::sync::Lrc;
 use swc_core::common::{Globals, SourceMap, DUMMY_SP};
@@ -29,9 +30,9 @@ pub struct Context {
     pub module_graph: RwLock<ModuleGraph>,
     pub chunk_graph: RwLock<ChunkGraph>,
     pub assets_info: Mutex<HashMap<String, String>>,
-    pub modules_with_missing_deps: RwLock<Vec<String>>,
+    pub modules_with_missing_deps: RwLock<Vec<Atom>>,
     pub config: Config,
-    pub numeric_ids_map: RwLock<HashMap<String, usize>>,
+    pub numeric_ids_map: RwLock<HashMap<Atom, usize>>,
     pub args: Args,
     pub root: PathBuf,
     pub meta: Meta,
@@ -112,7 +113,7 @@ impl Default for Context {
     fn default() -> Self {
         let mut numeric_ids_map = HashMap::new();
         SWC_HELPERS.iter().enumerate().for_each(|(i, item)| {
-            numeric_ids_map.insert(item.to_string(), i);
+            numeric_ids_map.insert(Atom::new(*item), i);
         });
         let config: Config = Default::default();
         let resolvers = get_resolvers(&config);
@@ -340,7 +341,7 @@ impl Compiler {
         let resolvers = get_resolvers(&config);
         let mut numeric_ids_map = HashMap::new();
         SWC_HELPERS.iter().enumerate().for_each(|(i, item)| {
-            numeric_ids_map.insert(item.to_string(), i);
+            numeric_ids_map.insert(Atom::new(*item), i);
         });
         Ok(Self {
             context: Arc::new(Context {

@@ -50,7 +50,9 @@ pub fn resolve(
     crate::mako_profile_scope!("resolve", &dep.source);
 
     if dep.source.starts_with("virtual:") {
-        return Ok(ResolverResource::Virtual(PathBuf::from(&dep.source)));
+        return Ok(ResolverResource::Virtual(PathBuf::from(
+            dep.source.as_ref(),
+        )));
     }
 
     let has_context_query = parse_path(&dep.source)?
@@ -68,9 +70,20 @@ pub fn resolve(
     }
     .unwrap();
 
-    let source = dep.resolve_as.as_ref().unwrap_or(&dep.source);
-
-    do_resolve(path, source, resolver, Some(&context.config.externals))
+    match dep.resolve_as.as_ref() {
+        Some(source) => do_resolve(
+            path,
+            source.as_str(),
+            resolver,
+            Some(&context.config.externals),
+        ),
+        None => do_resolve(
+            path,
+            dep.source.as_ref(),
+            resolver,
+            Some(&context.config.externals),
+        ),
+    }
 }
 
 #[cached(key = "String", convert = r#"{ re.to_string() }"#)]

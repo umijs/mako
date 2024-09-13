@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
 use dashmap::DashSet;
+use hstr::Atom;
 use rayon::prelude::*;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -29,8 +30,8 @@ struct CacheState {
     config_hash: u64,
     reversed_required_files: HashSet<String>,
     cached_boundaries: HashMap<String, String>,
-    js_patch_map: HashMap<String, String>,
-    css_patch_map: HashMap<String, String>,
+    js_patch_map: HashMap<Atom, String>,
+    css_patch_map: HashMap<Atom, String>,
 }
 
 impl CacheState {

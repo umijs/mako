@@ -121,7 +121,7 @@ impl Chunk {
 
     pub fn hash(&self, mg: &ModuleGraph) -> u64 {
         let mut sorted_module_ids = self.modules.iter().cloned().collect::<Vec<ModuleId>>();
-        sorted_module_ids.sort_by_key(|m| m.id.clone());
+        sorted_module_ids.sort_by_key(|m| m.id.to_string());
 
         let mut hash: XxHash64 = Default::default();
 

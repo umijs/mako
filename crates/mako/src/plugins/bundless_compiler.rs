@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
+use hstr::Atom;
 use pathdiff::diff_paths;
 use rayon::prelude::*;
 use swc_core::base::try_with_handler;
@@ -80,11 +81,14 @@ impl BundlessCompiler {
                             }
                         };
 
-                        Ok((dep.source.clone(), (replacement.clone(), replacement)))
+                        Ok((
+                            dep.source.clone(),
+                            (replacement.as_str().into(), replacement),
+                        ))
                     })
                     .collect::<Result<Vec<_>>>();
 
-                let resolved_deps: HashMap<String, (String, String)> =
+                let resolved_deps: HashMap<Atom, (Atom, String)> =
                     resolved_deps?.into_iter().collect();
 
                 drop(module_graph);

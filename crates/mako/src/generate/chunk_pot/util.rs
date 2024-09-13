@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
@@ -128,11 +129,11 @@ pub(crate) fn runtime_code(context: &Arc<Context>) -> Result<String> {
 
 pub(crate) fn hash_hashmap<K, V>(map: &HashMap<K, V>) -> u64
 where
-    K: Hash + Eq + Ord,
+    K: Hash + Eq + AsRef<str> + Display,
     V: Hash,
 {
     let mut sorted_kv = map.iter().map(|(k, v)| (k, v)).collect::<Vec<_>>();
-    sorted_kv.sort_by_key(|(k, _)| *k);
+    sorted_kv.sort_by_key(|(k, _)| k.to_string());
 
     let mut hasher: XxHash64 = Default::default();
     for c in sorted_kv {
@@ -169,7 +170,7 @@ pub(crate) fn pot_to_module_object(pot: &ChunkPot, context: &Arc<Context>) -> Re
         .iter()
         .map(|(k, v)| (k, v))
         .collect::<Vec<_>>();
-    sorted_kv.sort_by_key(|(k, _)| *k);
+    sorted_kv.sort_by_key(|(k, _)| k.to_string());
 
     let mut props = Vec::new();
 
@@ -184,7 +185,7 @@ pub(crate) fn pot_to_module_object(pot: &ChunkPot, context: &Arc<Context>) -> Re
                     let fn_expr = to_module_fn_expr(module.0)?;
 
                     let span = Span::dummy_with_cmt();
-                    let id = relative_to_root(&module.0.id.id, &context.root);
+                    let id = relative_to_root(module.0.id.id.as_ref(), &context.root);
                     // to avoid comment broken by glob=**/* for context module
                     let id = id.replace("*/", "*\\/");
                     comments.add_leading(
@@ -196,7 +197,7 @@ pub(crate) fn pot_to_module_object(pot: &ChunkPot, context: &Arc<Context>) -> Re
                         },
                     );
                     let pv: PropOrSpread = Prop::KeyValue(KeyValueProp {
-                        key: quote_str!(span, module_id_str.clone()).into(),
+                        key: quote_str!(span, module_id_str.as_ref()).into(),
                         value: fn_expr.into(),
                     })
                     .into();
@@ -256,7 +257,7 @@ pub(crate) fn pot_to_chunk_module(
             DUMMY_SP,
             // [[ "module id"], { module object }]
             vec![to_array_lit(vec![
-                to_array_lit(vec![quote_str!(pot.chunk_id.clone()).as_arg()]).as_arg(),
+                to_array_lit(vec![quote_str!(pot.chunk_id.as_ref()).as_arg()]).as_arg(),
                 module_object.as_arg(),
             ])
             .as_arg()],

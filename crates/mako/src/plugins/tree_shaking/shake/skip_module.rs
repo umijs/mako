@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Result;
+use hstr::Atom;
 use swc_core::common::util::take::Take;
 use swc_core::common::{Span, Spanned};
 use swc_core::ecma::ast::{
@@ -34,26 +35,26 @@ impl ReExportReplace {
             ReExportType::Default => {
                 quote!("export { default as $ident } from \"$from\";" as ModuleItem,
                     ident: Ident = ident,
-                    from: Str = quote_str!(self.from_module_id.id.clone())
+                    from: Str = quote_str!(self.from_module_id.id.as_ref())
                 )
             }
             ReExportType::Namespace => {
                 quote!("export * as $ident from \"$from\";" as ModuleItem,
                     ident: Ident = ident,
-                    from: Str = quote_str!(self.from_module_id.id.clone())
+                    from: Str = quote_str!(self.from_module_id.id.as_ref())
                 )
             }
             ReExportType::Named(local) => {
                 if ident.sym.eq(local) {
                     quote!("export { $ident } from \"$from\";" as ModuleItem,
                         ident: Ident = ident,
-                        from: Str = quote_str!(self.from_module_id.id.clone())
+                        from: Str = quote_str!(self.from_module_id.id.as_ref())
                     )
                 } else {
                     quote!("export { $local as $ident } from \"$from\";" as ModuleItem,
                         local: Ident = quote_ident!(local.clone()),
                         ident: Ident = ident,
-                        from: Str = quote_str!(self.from_module_id.id.clone())
+                        from: Str = quote_str!(self.from_module_id.id.as_ref())
                     )
                 }
             }
@@ -93,27 +94,27 @@ impl ReExportReplace {
             ReExportType::Default => {
                 quote!("import $ident from \"$from\";" as ModuleItem,
                     ident: Ident = ident,
-                    from: Str = quote_str!(self.from_module_id.id.clone())
+                    from: Str = quote_str!(self.from_module_id.id.as_ref())
                 )
             }
             ReExportType::Named(local) => {
                 if ident.sym.eq(local) {
                     quote!("import { $ident } from \"$from\";" as ModuleItem,
                         ident: Ident = ident,
-                        from: Str = quote_str!(self.from_module_id.id.clone())
+                        from: Str = quote_str!(self.from_module_id.id.as_ref())
                     )
                 } else {
                     quote!("import { $local as $ident } from \"$from\";" as ModuleItem,
                         local: Ident = quote_ident!(local.clone()),
                         ident: Ident = ident,
-                        from: Str = quote_str!(self.from_module_id.id.clone())
+                        from: Str = quote_str!(self.from_module_id.id.as_ref())
                     )
                 }
             }
             ReExportType::Namespace => {
                 quote!("import * as $ident from \"$from\";" as ModuleItem,
                     ident: Ident = ident,
-                    from: Str = quote_str!(self.from_module_id.id.clone())
+                    from: Str = quote_str!(self.from_module_id.id.as_ref())
                 )
             }
         }
@@ -122,7 +123,7 @@ impl ReExportReplace {
 
 #[derive(Debug)]
 pub struct ReExportSource {
-    pub(crate) source: Option<String>,
+    pub(crate) source: Option<Atom>,
     pub(crate) re_export_type: ReExportType,
 }
 
@@ -171,14 +172,14 @@ pub(super) fn skip_module_optimize(
 
     let mut re_export_replace_map: HashMap<
         ModuleId,
-        Vec<(StatementId, Vec<ReExportReplace>, String)>,
+        Vec<(StatementId, Vec<ReExportReplace>, Atom)>,
     > = HashMap::new();
 
     let mut current_index: usize = 0;
     let len = tree_shake_modules_ids.len();
 
     fn apply_replace(
-        to_replace: &(StatementId, Vec<ReExportReplace>, String),
+        to_replace: &(StatementId, Vec<ReExportReplace>, Atom),
         module_id: &ModuleId,
         module_graph: &mut ModuleGraph,
     ) {
@@ -519,7 +520,7 @@ pub(super) fn skip_module_optimize(
 
 fn get_imported_tree_shake_module<'a>(
     from_module_id: &ModuleId,
-    source: &String,
+    source: &Atom,
     module_graph: &ModuleGraph,
     tree_shake_modules_map: &'a HashMap<ModuleId, RefCell<TreeShakeModule>>,
 ) -> Option<&'a RefCell<TreeShakeModule>> {

@@ -33,7 +33,7 @@ impl VisitMut for CSSAssets {
         }
         let url = remove_first_tilde(url);
         let dep = Dependency {
-            source: url,
+            source: url.into(),
             resolve_as: None,
             resolve_type: ResolveType::Css,
             order: 0,

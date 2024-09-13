@@ -8,6 +8,7 @@ use std::vec;
 
 use anyhow::Result;
 use hashlink::LinkedHashSet;
+use hstr::Atom;
 use swc_core::css::ast::Stylesheet;
 
 use crate::compiler::Context;
@@ -21,10 +22,10 @@ use crate::module_graph::ModuleGraph;
 use crate::ternary;
 
 pub struct ChunkPot<'a> {
-    pub chunk_id: String,
+    pub chunk_id: Atom,
     pub chunk_type: ChunkType,
     pub js_name: String,
-    pub module_map: HashMap<String, (&'a Module, u64)>,
+    pub module_map: HashMap<Atom, (&'a Module, u64)>,
     pub js_hash: u64,
     pub stylesheet: Option<CssModules<'a>>,
 }
@@ -96,8 +97,8 @@ impl<'cp> ChunkPot<'cp> {
     pub fn to_entry_chunk_files(
         &self,
         context: &Arc<Context>,
-        js_map: &HashMap<String, String>,
-        css_map: &HashMap<String, String>,
+        js_map: &HashMap<Atom, String>,
+        css_map: &HashMap<Atom, String>,
         chunk: &Chunk,
         hmr_hash: u64,
     ) -> Result<Vec<ChunkFile>> {
@@ -149,10 +150,10 @@ impl<'cp> ChunkPot<'cp> {
         context: &'a Arc<Context>,
     ) -> (JsModules<'a>, Option<CssModules<'a>>) {
         crate::mako_profile_function!(module_ids.len().to_string());
-        let mut module_map: HashMap<String, (&Module, u64)> = Default::default();
-        let mut merged_css_modules: Vec<(String, &Stylesheet)> = vec![];
+        let mut module_map: HashMap<Atom, (&Module, u64)> = Default::default();
+        let mut merged_css_modules: Vec<(Atom, &Stylesheet)> = vec![];
 
-        let mut module_raw_hash_map: HashMap<String, u64> = Default::default();
+        let mut module_raw_hash_map: HashMap<Atom, u64> = Default::default();
         let mut css_raw_hashes = vec![];
 
         module_ids.iter().for_each(|module_id| {
@@ -215,7 +216,7 @@ impl<'cp> ChunkPot<'cp> {
 }
 
 struct JsModules<'a> {
-    pub module_map: HashMap<String, (&'a Module, u64)>,
+    pub module_map: HashMap<Atom, (&'a Module, u64)>,
     raw_hash: u64,
 }
 

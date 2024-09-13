@@ -19,6 +19,7 @@ use std::time::{Duration, Instant};
 
 use analyze::Analyze;
 use anyhow::{anyhow, Result};
+use hstr::Atom;
 use indexmap::IndexSet;
 use rayon::prelude::*;
 use serde::Serialize;
@@ -44,8 +45,8 @@ pub struct EmitFile {
 
 #[derive(Serialize)]
 struct ChunksUrlMap {
-    js: HashMap<String, String>,
-    css: HashMap<String, String>,
+    js: HashMap<Atom, String>,
+    css: HashMap<Atom, String>,
 }
 
 impl Compiler {

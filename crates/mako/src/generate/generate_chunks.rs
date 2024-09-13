@@ -4,6 +4,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
+use hstr::Atom;
 use indexmap::IndexSet;
 use nanoid::nanoid;
 use rayon::prelude::*;
@@ -34,7 +35,7 @@ pub struct ChunkFile {
     pub source_map: Option<Vec<u8>>,
     pub hash: Option<String>,
     pub file_name: String,
-    pub chunk_id: String,
+    pub chunk_id: Atom,
     pub file_type: ChunkFileType,
 }
 
@@ -75,8 +76,8 @@ impl ChunkFile {
     }
 }
 
-type ChunksHashPlaceholder = HashMap<String, String>;
-type ChunksHashReplacer = HashMap<String, String>;
+type ChunksHashPlaceholder = HashMap<Atom, String>;
+type ChunksHashReplacer = HashMap<Atom, String>;
 
 impl Compiler {
     pub fn generate_chunk_files(&self, hmr_hash: u64) -> Result<Vec<ChunkFile>> {
@@ -356,7 +357,7 @@ pub fn modules_to_js_stmts(
     context: &Arc<Context>,
 ) -> Result<(Vec<PropOrSpread>, Option<Stylesheet>)> {
     let mut js_stmts = vec![];
-    let mut merged_css_modules: Vec<(String, Stylesheet)> = vec![];
+    let mut merged_css_modules: Vec<(Atom, Stylesheet)> = vec![];
 
     let module_ids: Vec<_> = module_ids.iter().collect();
 
@@ -368,7 +369,7 @@ pub fn modules_to_js_stmts(
         let fn_expr = module.to_module_fn_expr()?;
 
         js_stmts.push(build_props(
-            module.id.generate(context).as_str(),
+            module.id.generate(context).as_ref(),
             fn_expr.into(),
         ));
 
@@ -377,7 +378,7 @@ pub fn modules_to_js_stmts(
             // make sure the rules order is correct
             if let Some(index) = merged_css_modules
                 .iter()
-                .position(|(id, _)| id.eq(&module.id.id))
+                .position(|(id, _)| id == &module.id.id)
             {
                 merged_css_modules.remove(index);
             }

@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashSet};
 
+use hstr::Atom;
 use swc_core::common::SyntaxContext;
 use swc_core::ecma::ast::{Module as SwcModule, ModuleItem};
 
@@ -171,7 +172,7 @@ pub struct TreeShakeModule {
     pub all_exports: AllExports,
     pub topo_order: usize,
     pub updated_ast: Option<SwcModule>,
-    pub side_effect_dep_sources: HashSet<String>,
+    pub side_effect_dep_sources: HashSet<Atom>,
     pub unresolved_ctxt: SyntaxContext,
 }
 

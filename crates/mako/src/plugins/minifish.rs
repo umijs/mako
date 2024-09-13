@@ -13,6 +13,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
+use hstr::Atom;
 pub(crate) use inject::Inject;
 use inject::MyInjector;
 use rayon::prelude::*;
@@ -163,7 +164,7 @@ impl Plugin for MinifishPlugin {
 
         for dep in deps.iter_mut() {
             if dep.source.starts_with('/') {
-                let mut resolve_as = dep.source.clone();
+                let mut resolve_as = dep.source.to_string();
                 resolve_as.replace_range(0..0, src_root);
                 dep.resolve_as = Some(resolve_as);
             }
@@ -185,7 +186,7 @@ impl Plugin for MinifishPlugin {
                         .get_dependencies(id)
                         .iter()
                         .map(|dep| Dependency {
-                            module: dep.0.id.clone(),
+                            module: dep.0.id.to_string(),
                             import_type: dep.1.resolve_type,
                         })
                         .collect();
@@ -228,7 +229,7 @@ struct ModuleGraphOutput {
 #[derive(Serialize)]
 struct Module {
     filename: String,
-    id: String,
+    id: Atom,
     dependencies: Vec<Dependency>,
 }
 

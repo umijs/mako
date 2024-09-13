@@ -39,22 +39,21 @@ pub fn analyze_imports_and_exports(
     let mut is_self_executed = false;
     let mut span = DUMMY_SP;
 
-    let mut analyze_and_insert_used_idents =
-        |stmt: &dyn VisitWith<UsedIdentsCollector>, ident: Option<String>| {
-            // skip if used_defined_idents is not None as it is only uses the imports and exports for now
-            if used_defined_idents.is_some() {
-                return;
-            }
+    let mut analyze_and_insert_used_idents = |stmt: &dyn VisitWith<UsedIdentsCollector>, ident: Option<String>| {
+        // skip if used_defined_idents is not None as it is only uses the imports and exports for now
+        if used_defined_idents.is_some() {
+            return;
+        }
 
-            let mut used_idents_collector = used_idents_collector::UsedIdentsCollector::new();
-            stmt.visit_with(&mut used_idents_collector);
+        let mut used_idents_collector = used_idents_collector::UsedIdentsCollector::new();
+        stmt.visit_with(&mut used_idents_collector);
 
-            if let Some(ident) = ident {
-                defined_idents_map.insert(ident, used_idents_collector.used_idents.clone());
-            }
+        if let Some(ident) = ident {
+            defined_idents_map.insert(ident, used_idents_collector.used_idents.clone());
+        }
 
-            used_idents.extend(used_idents_collector.used_idents);
-        };
+        used_idents.extend(used_idents_collector.used_idents);
+    };
 
     let is_ident_used = |ident: &String| {
         if let Some(used_defined_idents) = &used_defined_idents {
@@ -67,7 +66,7 @@ pub fn analyze_imports_and_exports(
     match stmt {
         ModuleItem::ModuleDecl(module_decl) => match module_decl {
             swc_ecma_ast::ModuleDecl::Import(import_decl) => {
-                let source = import_decl.src.value.to_string();
+                let source = import_decl.src.value.as_ref().into();
                 let mut specifiers = vec![];
 
                 for specifier in &import_decl.specifiers {
@@ -121,7 +120,7 @@ pub fn analyze_imports_and_exports(
             swc_ecma_ast::ModuleDecl::ExportAll(export_all) => {
                 span = export_all.span;
                 exports = Some(ExportInfo {
-                    source: Some(export_all.src.value.to_string()),
+                    source: Some(export_all.src.value.as_ref().into()),
                     specifiers: vec![ExportSpecifierInfo::All(vec![])],
                     stmt_id: *id,
                 })
@@ -292,7 +291,7 @@ pub fn analyze_imports_and_exports(
                 }
 
                 exports = Some(ExportInfo {
-                    source: export_named.src.as_ref().map(|s| s.value.to_string()),
+                    source: export_named.src.as_ref().map(|s| s.value.as_ref().into()),
                     specifiers,
                     stmt_id: *id,
                 });

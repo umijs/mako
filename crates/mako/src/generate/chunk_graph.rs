@@ -100,7 +100,7 @@ impl ChunkGraph {
 
     pub fn full_hash(&self, module_graph: &ModuleGraph) -> u64 {
         let mut chunks = self.get_all_chunks();
-        chunks.sort_by_key(|c| c.id.id.clone());
+        chunks.sort_by_key(|c| c.id.id.as_ref());
 
         let mut hasher: XxHash64 = Default::default();
         for c in chunks {

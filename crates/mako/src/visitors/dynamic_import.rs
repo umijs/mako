@@ -52,11 +52,11 @@ impl<'a> VisitMut for DynamicImport<'a> {
             let (id, _) = self
                 .dep_to_replace
                 .resolved
-                .get("@swc/helpers/_/_interop_require_wildcard")
+                .get(&"@swc/helpers/_/_interop_require_wildcard".into())
                 .unwrap();
 
             let require_interop = quote_ident!("__mako_require__")
-                .as_call(DUMMY_SP, vec![quote_str!(id.clone()).as_arg()]);
+                .as_call(DUMMY_SP, vec![quote_str!(id.as_ref()).as_arg()]);
 
             let stmt: Stmt = Expr::Member(MemberExpr {
                 span: DUMMY_SP,

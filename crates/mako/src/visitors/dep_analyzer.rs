@@ -1,3 +1,4 @@
+use hstr::Atom;
 use swc_core::common::{Mark, Span};
 use swc_core::ecma::ast::{CallExpr, Expr, Lit, ModuleDecl, NewExpr, Str};
 use swc_core::ecma::visit::{Visit, VisitWith};
@@ -19,7 +20,7 @@ impl DepAnalyzer {
             unresolved_mark,
         }
     }
-    fn add_dependency(&mut self, source: String, resolve_type: ResolveType, span: Option<Span>) {
+    fn add_dependency(&mut self, source: Atom, resolve_type: ResolveType, span: Option<Span>) {
         self.dependencies.push(Dependency {
             source,
             resolve_as: None,
@@ -40,7 +41,7 @@ impl Visit for DepAnalyzer {
                 if import.type_only {
                     return;
                 }
-                let src = import.src.value.to_string();
+                let src = import.src.value.as_ref().into();
                 self.add_dependency(
                     src,
                     ResolveType::Import(import.into()),
@@ -52,7 +53,7 @@ impl Visit for DepAnalyzer {
             ModuleDecl::ExportNamed(export) => {
                 if let Some(src) = &export.src {
                     self.add_dependency(
-                        src.value.to_string(),
+                        src.value.as_ref().into(),
                         ResolveType::ExportNamed(export.into()),
                         Some(src.span),
                     );
@@ -61,7 +62,7 @@ impl Visit for DepAnalyzer {
             // e.g.
             // export * from './module';
             ModuleDecl::ExportAll(export) => {
-                let src = export.src.value.to_string();
+                let src = export.src.value.as_ref().into();
                 self.add_dependency(src, ResolveType::ExportAll, Some(export.src.span));
             }
             _ => {}
@@ -97,7 +98,11 @@ impl Visit for DepAnalyzer {
         // e.g.
         // new Worker(new URL('a', import.meta.url));
         if let Some(str) = resolve_web_worker(expr, self.unresolved_mark) {
-            self.add_dependency(str.value.to_string(), ResolveType::Worker, Some(str.span));
+            self.add_dependency(
+                str.value.as_ref().into(),
+                ResolveType::Worker,
+                Some(str.span),
+            );
         }
         expr.visit_children_with(self);
     }

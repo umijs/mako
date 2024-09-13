@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
+use hstr::Atom;
 use petgraph;
 use petgraph::stable_graph::NodeIndex;
 use swc_core::ecma::ast::{Module as SwcModule, ModuleItem};
@@ -29,7 +30,7 @@ pub enum ImportSpecifierInfo {
 
 #[derive(Debug, Clone)]
 pub struct ImportInfo {
-    pub source: String,
+    pub source: Atom,
     pub specifiers: Vec<ImportSpecifierInfo>,
     pub stmt_id: StatementId,
 }
@@ -123,7 +124,7 @@ impl ExportSpecifierInfo {
 
 #[derive(Debug, Clone)]
 pub struct ExportInfo {
-    pub source: Option<String>,
+    pub source: Option<Atom>,
     pub specifiers: Vec<ExportSpecifierInfo>,
     pub stmt_id: StatementId,
 }
