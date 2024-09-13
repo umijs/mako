@@ -677,9 +677,10 @@ async function getMakoConfig(opts) {
       },
     },
     sass: sassLoader,
+    ...mako,
   };
 
-  return lodash.merge(makoConfig, mako);
+  return makoConfig;
 }
 
 function getLessSourceMapConfig(devtool) {
