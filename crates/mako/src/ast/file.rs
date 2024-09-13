@@ -339,7 +339,7 @@ fn has_hash_without_dot(input: &str) -> bool {
     }
 }
 
-pub fn parse_path(path: &str) -> Result<(PathName, Search, Params, Fragment)> {
+pub fn win_path(path: &str) -> String {
     #[cfg(target_os = "windows")]
     let path = {
         let prefix = "\\\\?\\";
@@ -348,6 +348,11 @@ pub fn parse_path(path: &str) -> Result<(PathName, Search, Params, Fragment)> {
     };
     #[cfg(not(target_os = "windows"))]
     let path = path.to_string();
+    path
+}
+
+pub fn parse_path(path: &str) -> Result<(PathName, Search, Params, Fragment)> {
+    let path = win_path(path);
     if path.contains('?') || has_hash_without_dot(path.as_str()) {
         let (path, search) = if path.contains('?') {
             path.split_once('?').unwrap_or((path.as_str(), ""))

@@ -9,6 +9,7 @@ use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use tokio::sync::mpsc::channel;
 use tracing::debug;
 
+use crate::ast::file::win_path;
 use crate::compiler::Context;
 use crate::plugin::Plugin;
 use crate::stats::StatsJsonMap;
@@ -85,7 +86,8 @@ impl Plugin for CopyPlugin {
 }
 
 fn copy(src: &Path, dest: &Path) -> Result<()> {
-    let paths = glob(src.to_str().unwrap())?;
+    let src = win_path(src.to_str().unwrap());
+    let paths = glob(&src)?;
 
     for entry in paths {
         let entry = entry.unwrap();
