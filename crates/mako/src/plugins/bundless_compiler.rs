@@ -7,6 +7,7 @@ use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use pathdiff::diff_paths;
 use rayon::prelude::*;
+use swc_core::base::try_with_handler;
 use swc_core::common::errors::HANDLER;
 use swc_core::common::GLOBALS;
 use swc_core::ecma::transforms::base::fixer::fixer;
@@ -16,7 +17,6 @@ use swc_core::ecma::transforms::base::hygiene::hygiene_with_config;
 use swc_core::ecma::transforms::module::import_analysis::import_analyzer;
 use swc_core::ecma::transforms::module::util::ImportInterop;
 use swc_core::ecma::visit::VisitMutWith;
-use swc_error_reporters::handler::try_with_handler;
 use tracing::warn;
 
 use crate::ast::js_ast::JsAst;

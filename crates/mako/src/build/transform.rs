@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use swc_core::base::try_with_handler;
 use swc_core::common::errors::HANDLER;
 use swc_core::common::GLOBALS;
 use swc_core::css::ast::{AtRule, AtRulePrelude, ImportHref, Rule, Str, Stylesheet, UrlValue};
@@ -16,7 +17,6 @@ use swc_core::ecma::transforms::optimization::simplifier;
 use swc_core::ecma::transforms::optimization::simplify::{dce, Config as SimpilifyConfig};
 use swc_core::ecma::transforms::proposal::decorators;
 use swc_core::ecma::visit::{Fold, VisitMut};
-use swc_error_reporters::handler::try_with_handler;
 
 use crate::ast::css_ast::CssAst;
 use crate::ast::file::File;
