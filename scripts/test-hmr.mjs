@@ -1832,22 +1832,21 @@ async function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function killMakoDevServer(makoPort) {
+async function killMakoDevServer() {
   const res = await $`ps -ax | grep mako | grep -v grep | awk '{print $1}'`;
   console.error('stdout', res.stdout);
   await $`ps -ax | grep mako | grep -v grep | awk '{print $1}' | xargs kill -9`;
-  const portShouldBeReleased = makoPort || MAKO_DEV_PORT;
   let waited = 0;
   while (waited < 10000) {
     await delay(1000);
     clearLockedPorts();
-    let port = await getPort({ port: portShouldBeReleased });
-    if (port == MAKO_DportShouldBeReleasedEV_PORT) {
+    let port = await getPort({ port: MAKO_DEV_PORT });
+    if (port == MAKO_DEV_PORT) {
       return;
     }
     waited += 1000;
   }
-  throw Error(`port(${portShouldBeReleased}) not released for ${waited}ms`);
+  throw Error(`port(${MAKO_DEV_PORT}) not released for ${waited}ms`);
 }
 
 function normalizeHtml(html) {

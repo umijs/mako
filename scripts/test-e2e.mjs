@@ -3,6 +3,7 @@ import test from 'node:test';
 import 'zx/globals';
 
 const defaultPort = 8000;
+
 function checkServer(port, host, callback) {
   const client = new net.Socket();
 
@@ -57,10 +58,10 @@ const dirs = fs.readdirSync(fixtures).filter((dir) => {
   return (
     !dir.startsWith('.') &&
     fs.statSync(path.join(fixtures, dir)).isDirectory() &&
-    (fs.existsSync(path.join(fixtures, dir, 'expect.js')) ||
-      fs.existsSync(path.join(fixtures, dir, 'expect.mjs')))
+    fs.existsSync(path.join(fixtures, dir, 'expect.js'))
   );
 });
+
 // import expect.mjs or expect.js
 async function runExpect(dir, error) {
   const expectPath = `file://${path.join(fixtures, dir, 'expect.js')}`;
@@ -69,6 +70,7 @@ async function runExpect(dir, error) {
     await mod.default(error);
   }
 }
+
 for (const dir of onlyDir ? [onlyDir] : dirs) {
   const testFn = dir.includes('failed') && !argv.only ? test.skip : test;
   await testFn(dir, async () => {
@@ -78,16 +80,14 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
         await $`cd ${cwd} && mkdir node_modules`;
       }
       // run umi build
-      const x = (await import.meta.resolve('@umijs/bundler-mako')).replace(
-        /^file:\/\//,
-        '',
-      );
+      const localMako = (
+        await import.meta.resolve('@umijs/bundler-mako')
+      ).replace(/^file:\/\//, '');
       // 如果目录名以dev开头,则运行dev命令否则运行build命令
       if (dir.startsWith('dev')) {
         console.log(`cd ${cwd} && umi dev`);
-        let p = $.spawn('sh', ['-c', `cd ${cwd} && OKAM=${x} umi dev`], {
-          stdio: 'inherit',
-        });
+        let p = $`APP_ROOT=${cwd} OKAM=${localMako} umi dev`;
+
         const isRunning = await waitForServer(
           defaultPort + 1, // mako's port, when it's open, dev can serve
           'localhost',
@@ -100,17 +100,17 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
             await runExpect(dir);
           } catch (e) {
             console.log('dev error', e);
-            throw e;
-          } finally {
             p.kill(9);
+            throw e;
           }
         } else {
           console.log(`Failed to connect to server on port ${defaultPort}`);
         }
+        p.kill(9);
         return;
       } else {
-        console.log(`cd ${cwd} && COMPRESS=none OKAM=${x} umi build`);
-        await $`cd ${cwd} && COMPRESS=none OKAM=${x} umi build`;
+        console.log(`cd ${cwd} && COMPRESS=none OKAM=${localMako} umi build`);
+        await $`cd ${cwd} && COMPRESS=none OKAM=${localMako} umi build`;
       }
     } else {
       try {
