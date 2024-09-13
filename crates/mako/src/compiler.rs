@@ -13,14 +13,16 @@ use swc_core::ecma::ast::Ident;
 use tracing::debug;
 
 use crate::ast::comments::Comments;
-use crate::config::{Config, OutputMode};
+use crate::config::{Config, ModuleIdStrategy, OutputMode};
 use crate::generate::chunk_graph::ChunkGraph;
 use crate::generate::optimize_chunk::OptimizeChunksInfo;
 use crate::module_graph::ModuleGraph;
 use crate::plugin::{Plugin, PluginDriver, PluginGenerateEndParams};
 use crate::plugins;
 use crate::resolve::{get_resolvers, Resolvers};
+use crate::share::helpers::SWC_HELPERS;
 use crate::stats::StatsInfo;
+use crate::utils::id_helper::{assign_numeric_ids, compare_modules_by_incoming_edges};
 use crate::utils::{thread_pool, ParseRegex};
 
 pub struct Context {
@@ -29,6 +31,7 @@ pub struct Context {
     pub assets_info: Mutex<HashMap<String, String>>,
     pub modules_with_missing_deps: RwLock<Vec<String>>,
     pub config: Config,
+    pub numeric_ids_map: RwLock<HashMap<String, usize>>,
     pub args: Args,
     pub root: PathBuf,
     pub meta: Meta,
@@ -107,6 +110,10 @@ impl Context {
 
 impl Default for Context {
     fn default() -> Self {
+        let mut numeric_ids_map = HashMap::new();
+        SWC_HELPERS.iter().enumerate().for_each(|(i, item)| {
+            numeric_ids_map.insert(item.to_string(), i);
+        });
         let config: Config = Default::default();
         let resolvers = get_resolvers(&config);
         Self {
@@ -123,6 +130,7 @@ impl Default for Context {
             resolvers,
             optimize_infos: Mutex::new(None),
             static_cache: Default::default(),
+            numeric_ids_map: RwLock::new(numeric_ids_map),
         }
     }
 }
@@ -330,6 +338,10 @@ impl Compiler {
         plugin_driver.modify_config(&mut config, &root, &args)?;
 
         let resolvers = get_resolvers(&config);
+        let mut numeric_ids_map = HashMap::new();
+        SWC_HELPERS.iter().enumerate().for_each(|(i, item)| {
+            numeric_ids_map.insert(item.to_string(), i);
+        });
         Ok(Self {
             context: Arc::new(Context {
                 static_cache: if config.write_to_disk {
@@ -346,6 +358,7 @@ impl Compiler {
                 modules_with_missing_deps: RwLock::new(Vec::new()),
                 meta: Meta::new(),
                 plugin_driver,
+                numeric_ids_map: RwLock::new(numeric_ids_map),
                 stats_info: StatsInfo::new(),
                 resolvers,
                 optimize_infos: Mutex::new(None),
@@ -401,6 +414,19 @@ impl Compiler {
         }
 
         self.context.plugin_driver.before_generate(&self.context)?;
+
+        if let ModuleIdStrategy::Numeric = self.context.config.module_id_strategy {
+            let module_graph = self.context.module_graph.read().unwrap();
+            assign_numeric_ids(
+                module_graph.modules(),
+                |a, b| compare_modules_by_incoming_edges(&module_graph, &a.id, &b.id),
+                |module, id| {
+                    let mut numeric_ids_map = self.context.numeric_ids_map.write().unwrap();
+                    // reserved ten indexes for swc helper and others runtime module
+                    numeric_ids_map.insert(module.id.id.clone(), id + 10);
+                },
+            )
+        }
 
         let result = {
             crate::mako_profile_scope!("Generate Stage");
