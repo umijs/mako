@@ -82,6 +82,7 @@ exports.dev = async function (opts) {
   assert(opts, 'opts should be supplied');
   checkConfig(opts);
   const express = require('express');
+  const proxy = require('express-http-proxy');
   const app = express();
   const port = opts.port || 8000;
   const hmrPort = opts.port + 1;
@@ -112,68 +113,21 @@ exports.dev = async function (opts) {
   });
   app.use('/__/hmr-ws', wsProxy);
 
-  if (process.env.SSU === 'true') {
-    // for ssu cache chunks
-
-    app.use(function (req, res, next) {
-      if (req.method !== 'GET' && req.method !== 'HEAD') {
-        return next();
-      }
-
-      let proxy = createProxyMiddleware({
-        target: `http://127.0.0.1:${hmrPort}`,
-        selfHandleResponse: true,
-        onProxyRes: (proxyRes, req, res) => {
-          if (proxyRes.statusCode !== 200) {
-            next();
-          } else {
-            proxyRes.pipe(res);
-          }
-        },
-        onError: (err, req, res) => {
-          next();
-        },
-      });
-
-      proxy(req, res, () => {
-        next();
-      });
-    });
-  }
-
   // proxy
   if (opts.config.proxy) {
     createProxy(opts.config.proxy, app);
   }
 
-  app.use((req, res, next) => {
-    if (req.method !== 'GET' && req.method !== 'HEAD') {
-      return next();
-    }
-
-    if (req.accepts().join('').includes('html')) {
-      return next();
-    }
-
-    const devServerProxy = createProxyMiddleware({
-      // mako server in the same host so hard code is ok
-      target: `http://127.0.0.1:${hmrPort}`,
-      selfHandleResponse: true,
-      onProxyRes: (proxyRes, req, res) => {
-        if (proxyRes.statusCode !== 200) {
-          next();
-        } else {
-          proxyRes.pipe(res);
-        }
+  app.use(
+    proxy(`http://127.0.0.1:${hmrPort}`, {
+      filter: function (req, res) {
+        return req.method == 'GET' || req.method == 'HEAD';
       },
-      onError: (err, req, res) => {
-        next();
+      skipToNextHandlerFilter: function (proxyRes) {
+        return proxyRes.statusCode !== 200;
       },
-    });
-    devServerProxy(req, res, () => {
-      next();
-    });
-  });
+    }),
+  );
 
   // after middlewares
   (opts.afterMiddlewares || []).forEach((m) => {
