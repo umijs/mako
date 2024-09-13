@@ -62,18 +62,11 @@ const dirs = fs.readdirSync(fixtures).filter((dir) => {
   );
 });
 // import expect.mjs or expect.js
-async function runExpect(dir) {
-  const expectPath = [
-    `file://${path.join(fixtures, dir, 'expect.js')}`,
-    `file://${path.join(fixtures, dir, 'expect.mjs')}`,
-  ];
-  const mod = await Promise.any(
-    expectPath.map(async (path) => {
-      return import(path);
-    }),
-  );
+async function runExpect(dir, error) {
+  const expectPath = `file://${path.join(fixtures, dir, 'expect.js')}`;
+  const mod = await import(expectPath);
   if (mod && typeof mod.default === 'function') {
-    await mod.default();
+    await mod.default(error);
   }
 }
 for (const dir of onlyDir ? [onlyDir] : dirs) {
@@ -92,16 +85,25 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
       // 如果目录名以dev开头,则运行dev命令否则运行build命令
       if (dir.startsWith('dev')) {
         console.log(`cd ${cwd} && umi dev`);
-        $.spawn('sh', ['-c', `cd ${cwd} && umi dev`], { stdio: 'inherit' });
+        let p = $.spawn('sh', ['-c', `cd ${cwd} && OKAM=${x} umi dev`], {
+          stdio: 'inherit',
+        });
         const isRunning = await waitForServer(
-          defaultPort,
+          defaultPort + 1, // mako's port, when it's open, dev can serve
           'localhost',
           1000,
           30,
         );
         if (isRunning) {
           console.log(`Server is running on port ${defaultPort}`);
-          await runExpect(dir);
+          try {
+            await runExpect(dir);
+          } catch (e) {
+            console.log('dev error', e);
+            throw e;
+          } finally {
+            p.kill(9);
+          }
         } else {
           console.log(`Failed to connect to server on port ${defaultPort}`);
         }
@@ -117,7 +119,7 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
       } catch (e) {
         const isErrorCase = dir.split('.').includes('error');
         if (isErrorCase) {
-          await runExpect(dir);
+          await runExpect(dir, e);
           return;
         } else {
           throw e;
