@@ -103,21 +103,6 @@ impl<'a> Watcher<'a> {
         Ok(())
     }
 
-    pub fn refresh_watch(&mut self) -> anyhow::Result<()> {
-        let t_refresh_watch = Instant::now();
-        self.watch()?;
-        let t_refresh_watch_duration = t_refresh_watch.elapsed();
-        debug!(
-            "{}",
-            format!(
-                "✓ refresh watch in {}",
-                format!("{}ms", t_refresh_watch_duration.as_millis()).bold()
-            )
-            .green()
-        );
-        Ok(())
-    }
-
     fn get_ignore_list(&self, with_output_dir: bool) -> Vec<PathBuf> {
         let mut ignore_list = vec![".git", "node_modules", ".DS_Store", ".node"];
         if with_output_dir {
