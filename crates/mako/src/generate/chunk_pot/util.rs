@@ -102,7 +102,8 @@ pub(crate) fn runtime_code(context: &Arc<Context>) -> Result<String> {
         umd,
         is_browser: matches!(context.config.platform, crate::config::Platform::Browser),
         cjs: context.config.cjs,
-        chunk_loading_global: context.config.output.chunk_loading_global.clone(),
+        chunk_loading_global: serde_json::to_string(&context.config.output.chunk_loading_global)
+            .unwrap(),
         cross_origin_loading: context
             .config
             .output
