@@ -1,5 +1,4 @@
-import assert from "assert";
-import 'zx/globals';
+const assert = require("assert");
 
 const port = '8000';
 
@@ -31,7 +30,7 @@ async function fetchCSSFile() {
     return res;
 }
 
-export default async function () {
+module.exports = async function test () {
     await fetchHome();
     await fetchApi();
     await fetchHTMLFile();
