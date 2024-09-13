@@ -87,6 +87,7 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
       if (dir.startsWith('dev')) {
         console.log(`cd ${cwd} && umi dev`);
         let p = $`APP_ROOT=${cwd} OKAM=${localMako} umi dev`;
+        p.catch(() => {});
 
         const isRunning = await waitForServer(
           defaultPort + 1, // mako's port, when it's open, dev can serve
