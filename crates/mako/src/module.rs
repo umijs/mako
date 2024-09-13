@@ -15,7 +15,7 @@ use swc_core::ecma::ast::{
 use swc_core::ecma::utils::quote_ident;
 
 use crate::ast::css_ast::CssAst;
-use crate::ast::file::File;
+use crate::ast::file::{win_path, File};
 use crate::ast::js_ast::JsAst;
 use crate::build::analyze_deps::AnalyzeDepsResult;
 use crate::compiler::Context;
@@ -214,7 +214,7 @@ pub fn generate_module_id(origin_module_id: String, context: &Arc<Context>) -> S
             // readable ids for debugging usage
             let absolute_path = PathBuf::from(origin_module_id);
             let relative_path = diff_paths(&absolute_path, &context.root).unwrap_or(absolute_path);
-            relative_path.to_string_lossy().to_string()
+            win_path(relative_path.to_str().unwrap())
         }
     }
 }
