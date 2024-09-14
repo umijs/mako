@@ -1,3 +1,19 @@
+## 0.8.12
+
+`2024-09-13`
+
+* fix(tree-shaking): detect export var side effects by @stormslowly in https://github.com/umijs/mako/pull/1579
+* fix: bad output when chunk_loading_global containing quotation mark by @xusd320 in https://github.com/umijs/mako/pull/1582
+* chore: ➕ add a subdot cli tool script for debug  module/chunk graph  by @stormslowly in https://github.com/umijs/mako/pull/1585
+* fix(win): copy don't work under windows by @sorrycc in https://github.com/umijs/mako/pull/1587
+* fix(win): module id should be win_pathed by @sorrycc in https://github.com/umijs/mako/pull/1588
+* feat(tree-shaking): optimize import namespace used all exports to partial used of source modules by @stormslowly in https://github.com/umijs/mako/pull/1584
+* fix: merge mako config by @hualigushi in https://github.com/umijs/mako/pull/1578
+* fix:clear deps should not panic when module not found by @Jinbao1001 in https://github.com/umijs/mako/pull/1581
+* Revert "fix: merge mako config" by @stormslowly in https://github.com/umijs/mako/pull/1589
+* fix: watch too many file error by @Jinbao1001 in https://github.com/umijs/mako/pull/1550
+* feat: support numeric module Id by @Jinbao1001 in https://github.com/umijs/mako/pull/1561
+
 ## 0.8.11
 
 `2024-09-10`

@@ -15,7 +15,7 @@ use swc_core::ecma::ast::{
 use swc_core::ecma::utils::quote_ident;
 
 use crate::ast::css_ast::CssAst;
-use crate::ast::file::File;
+use crate::ast::file::{win_path, File};
 use crate::ast::js_ast::JsAst;
 use crate::build::analyze_deps::AnalyzeDepsResult;
 use crate::compiler::Context;
@@ -214,7 +214,15 @@ pub fn generate_module_id(origin_module_id: String, context: &Arc<Context>) -> S
             // readable ids for debugging usage
             let absolute_path = PathBuf::from(origin_module_id);
             let relative_path = diff_paths(&absolute_path, &context.root).unwrap_or(absolute_path);
-            relative_path.to_string_lossy().to_string()
+            win_path(relative_path.to_str().unwrap())
+        }
+        ModuleIdStrategy::Numeric => {
+            let numeric_ids_map = context.numeric_ids_map.read().unwrap();
+            if let Some(numeric_id) = numeric_ids_map.get(&origin_module_id) {
+                numeric_id.to_string()
+            } else {
+                md5_hash(&origin_module_id, 8)
+            }
         }
     }
 }

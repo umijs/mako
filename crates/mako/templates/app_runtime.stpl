@@ -377,7 +377,7 @@ function createRuntime(makoModules, entryModuleId, global) {
       installedChunks[id] = 0;
     }
   };
-  var chunkLoadingGlobal = global['<%= chunk_loading_global.clone() %>'] = global['<%= chunk_loading_global.clone() %>'] || [];
+  var chunkLoadingGlobal = global[<%- chunk_loading_global.clone() %>] = global[<%- chunk_loading_global.clone() %>] || [];
 	chunkLoadingGlobal.forEach(jsonpCallback.bind(null));
   chunkLoadingGlobal.push = (function(push, data) {
     push(data);

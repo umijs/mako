@@ -22,6 +22,7 @@ use tracing::debug;
 use crate::ast::js_ast::JsAst;
 use crate::compiler::{Compiler, Context};
 use crate::module::{Dependency, ModuleAst, ModuleId, ModuleType, ResolveType};
+use crate::share::helpers::SWC_HELPERS;
 use crate::utils::thread_pool;
 use crate::visitors::async_module::{mark_async, AsyncModule};
 use crate::visitors::common_js::common_js;
@@ -147,13 +148,7 @@ pub fn transform_modules_in_thread(
 }
 
 fn insert_swc_helper_replace(map: &mut HashMap<String, (String, String)>, context: &Arc<Context>) {
-    let helpers = vec![
-        "@swc/helpers/_/_interop_require_default",
-        "@swc/helpers/_/_interop_require_wildcard",
-        "@swc/helpers/_/_export_star",
-    ];
-
-    helpers.into_iter().for_each(|h| {
+    SWC_HELPERS.into_iter().for_each(|h| {
         let m_id: ModuleId = h.to_string().into();
         map.insert(m_id.id.clone(), (m_id.generate(context), h.to_string()));
     });

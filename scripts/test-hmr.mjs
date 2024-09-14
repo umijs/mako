@@ -1558,6 +1558,94 @@ ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
   );
 });
 
+runTest(
+  'link npm packages: import a not exit file then add it without main entry',
+  async () => {
+    await commonTest(
+      async () => {
+        write(
+          normalizeFiles({
+            '/src/index.tsx': `
+import React from 'react';
+import ReactDOM from "react-dom/client";
+import { foo } from "mako-test-package-link/lib1";
+
+function App() {
+  return <div>{foo}<section>{Math.random()}</section></div>;
+}
+ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
+    `,
+          }),
+        );
+        writePackage(
+          'mako-test-package-link',
+          normalizeFiles({
+            'package.json': `
+{
+  "name": "mako-test-package-link",
+  "version": "1.0.0",
+  "exports": {
+    "./lib1": {
+      "import": "./lib1/index.js"
+    },
+    "./lib2": {
+    "import": "./lib2/index.js"
+    }
+  }
+}
+  `,
+
+            'lib1/index.js': `
+const foo = 'foo';
+export { foo };
+  `,
+          }),
+        );
+        execSync(
+          'cd ./tmp/packages/mako-test-package-link && pnpm link --global',
+        );
+        execSync('pnpm link --global mako-test-package-link');
+      },
+      (lastResult) => {
+        assert.equal(lastResult.html, '<div>foo</div>', 'Initial render');
+      },
+      async () => {
+        // add import to added file
+        write(
+          normalizeFiles({
+            '/src/index.tsx': `
+import React from 'react';
+import ReactDOM from "react-dom/client";
+import { foo } from "mako-test-package-link/lib1";
+import { bar } from "mako-test-package-link/lib2";
+
+function App() {
+  return <div>{foo}{bar}<section>{Math.random()}</section></div>;
+}
+ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
+    `,
+          }),
+        );
+        await delay(DELAY_TIME);
+        // add files
+        writePackage(
+          'mako-test-package-link',
+          normalizeFiles({
+            'lib2/index.js': `
+        const bar = 'bar';
+        export { bar };
+      `,
+          }),
+        );
+      },
+      (thisResult) => {
+        assert.equal(thisResult.html, '<div>foobar</div>', 'Second render');
+      },
+      true,
+    );
+  },
+);
+
 runTest('change async import to import', async () => {
   write(
     normalizeFiles({

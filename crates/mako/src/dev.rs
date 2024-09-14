@@ -289,7 +289,6 @@ impl DevServer {
                     eprintln!("Error rebuilding: {:?}", e);
                 }
             }
-            watcher.refresh_watch()?;
         }
         Ok(())
     }

@@ -1,5 +1,7 @@
 use indexmap::IndexSet;
 
+use crate::share::helpers::SWC_HELPERS;
+
 pub struct SwcHelpers {
     #[allow(dead_code)]
     pub helpers: IndexSet<String>,
@@ -17,9 +19,9 @@ impl SwcHelpers {
 
     pub fn full_helpers() -> IndexSet<String> {
         let mut helpers = IndexSet::new();
-        helpers.insert("@swc/helpers/_/_interop_require_default".into());
-        helpers.insert("@swc/helpers/_/_interop_require_wildcard".into());
-        helpers.insert("@swc/helpers/_/_export_star".into());
+        SWC_HELPERS.iter().for_each(|h| {
+            helpers.insert(h.to_string());
+        });
         helpers
     }
 }
