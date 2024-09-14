@@ -122,10 +122,8 @@ mimalloc-rust = { workspace = true }
 tikv-jemallocator = { workspace = true }
 
 [dev-dependencies]
-insta                       = { version = "1.30.0", features = ["yaml"] }
-maplit                      = "1.0.2"
-swc_ecma_transforms_testing = "0.136.2"
-testing                     = "0.35.10"
+insta  = { version = "1.30.0", features = ["yaml"] }
+maplit = "1.0.2"
 
 [features]
 profile = ["dep:eframe", "dep:puffin", "dep:puffin_egui"]
