@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use swc_core::base::try_with_handler;
 use swc_core::common::errors::HANDLER;
 use swc_core::common::GLOBALS;
 use swc_core::css::ast::Stylesheet;
@@ -11,7 +12,6 @@ use swc_core::ecma::transforms::base::fixer::{fixer, paren_remover};
 use swc_core::ecma::transforms::base::helpers::{Helpers, HELPERS};
 use swc_core::ecma::transforms::base::resolver;
 use swc_core::ecma::visit::VisitMutWith;
-use swc_error_reporters::handler::try_with_handler;
 
 use crate::ast::js_ast::JsAst;
 use crate::compiler::Context;

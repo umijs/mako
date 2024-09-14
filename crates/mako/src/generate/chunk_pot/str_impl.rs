@@ -303,7 +303,6 @@ mod tests {
     use swc_core::ecma::transforms::base::hygiene::hygiene_with_config;
     use swc_core::ecma::transforms::base::{hygiene, resolver};
     use swc_core::ecma::visit::VisitMutWith;
-    use testing::assert_eq;
 
     use super::{merge_code_and_sourcemap, EmittedWithMapping};
     use crate::ast::js_ast::JsAst;
