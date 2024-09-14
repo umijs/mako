@@ -1,5 +1,45 @@
+import net from 'net';
 import test from 'node:test';
 import 'zx/globals';
+
+const defaultPort = 8000;
+
+function checkServer(port, host, callback) {
+  const client = new net.Socket();
+
+  client.connect({ port, host }, () => {
+    client.end();
+    callback(true);
+  });
+
+  client.on('error', () => {
+    client.destroy();
+    callback(false);
+  });
+}
+
+async function waitForServer(port, host, interval, maxAttempts) {
+  return new Promise((resolve) => {
+    let attempts = 0;
+
+    const intervalId = setInterval(() => {
+      if (attempts >= maxAttempts) {
+        clearInterval(intervalId);
+        resolve(false);
+        return;
+      }
+
+      checkServer(port, host, (isRunning) => {
+        if (isRunning) {
+          clearInterval(intervalId);
+          resolve(true);
+        } else {
+          attempts++;
+        }
+      });
+    }, interval);
+  });
+}
 
 // node version 小于 20 时退出
 const nodeVersion = process.versions.node.split('.')[0];
@@ -22,22 +62,57 @@ const dirs = fs.readdirSync(fixtures).filter((dir) => {
   );
 });
 
+// import expect.mjs or expect.js
+async function runExpect(dir, error) {
+  const expectPath = `file://${path.join(fixtures, dir, 'expect.js')}`;
+  const mod = await import(expectPath);
+  if (mod && typeof mod.default === 'function') {
+    await mod.default(error);
+  }
+}
+
 for (const dir of onlyDir ? [onlyDir] : dirs) {
   const testFn = dir.includes('failed') && !argv.only ? test.skip : test;
   await testFn(dir, async () => {
     const cwd = path.join(fixtures, dir);
-    const expectPath = `file://${path.join(fixtures, dir, 'expect.js')}`;
     if (argv.umi) {
       if (!fs.existsSync(path.join(cwd, 'node_modules'))) {
         await $`cd ${cwd} && mkdir node_modules`;
       }
       // run umi build
-      const x = (await import.meta.resolve('@umijs/bundler-mako')).replace(
-        /^file:\/\//,
-        '',
-      );
-      console.log(`cd ${cwd} && COMPRESS=none OKAM=${x} umi build`);
-      await $`cd ${cwd} && COMPRESS=none OKAM=${x} umi build`;
+      const localMako = (
+        await import.meta.resolve('@umijs/bundler-mako')
+      ).replace(/^file:\/\//, '');
+      // 如果目录名以dev开头,则运行dev命令否则运行build命令
+      if (dir.startsWith('dev')) {
+        console.log(`cd ${cwd} && umi dev`);
+        let p = $`APP_ROOT=${cwd} OKAM=${localMako} umi dev`;
+        p.catch(() => {});
+
+        const isRunning = await waitForServer(
+          defaultPort + 1, // mako's port, when it's open, dev can serve
+          'localhost',
+          1000,
+          30,
+        );
+        if (isRunning) {
+          console.log(`Server is running on port ${defaultPort}`);
+          try {
+            await runExpect(dir);
+          } catch (e) {
+            console.log('dev error', e);
+            p.kill(9);
+            throw e;
+          }
+        } else {
+          console.log(`Failed to connect to server on port ${defaultPort}`);
+        }
+        p.kill(9);
+        return;
+      } else {
+        console.log(`cd ${cwd} && COMPRESS=none OKAM=${localMako} umi build`);
+        await $`cd ${cwd} && COMPRESS=none OKAM=${localMako} umi build`;
+      }
     } else {
       try {
         // run mako build
@@ -45,8 +120,7 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
       } catch (e) {
         const isErrorCase = dir.split('.').includes('error');
         if (isErrorCase) {
-          const mod = await import(expectPath);
-          mod.default(e);
+          await runExpect(dir, e);
           return;
         } else {
           throw e;
@@ -54,10 +128,7 @@ for (const dir of onlyDir ? [onlyDir] : dirs) {
       }
     }
     // run expect.js
-    const mod = await import(expectPath);
-    if (mod && typeof mod.default === 'function') {
-      await mod.default();
-    }
+    await runExpect(dir);
     if (dir === 'config.targets.runtime') {
       await $`npx es-check es5 ./e2e/fixtures/config.targets.runtime/dist/*.js`;
     }
