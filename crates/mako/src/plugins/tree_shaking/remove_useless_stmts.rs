@@ -7,7 +7,8 @@ use swc_core::ecma::ast::{
     Module, ModuleExportName,
 };
 use swc_core::ecma::transforms::compat::es2015::destructuring;
-use swc_core::ecma::visit::{Fold, VisitMut, VisitMutWith, VisitWith};
+use swc_core::ecma::transforms::compat::es2018::object_rest_spread;
+use swc_core::ecma::visit::{VisitMut, VisitMutWith, VisitWith};
 
 use super::collect_explicit_prop::IdExplicitPropAccessCollector;
 use crate::plugins::tree_shaking::module::TreeShakeModule;
@@ -268,8 +269,12 @@ fn optimize_import_namespace(import_infos: &mut [ImportInfo], module: &mut Modul
 
     if !ids.is_empty() {
         let mut v = IdExplicitPropAccessCollector::new(ids);
-        let destucturing_module = destructuring(Default::default()).fold_module(module.clone());
-        destucturing_module.visit_with(&mut v);
+        let mut shadow = module.clone();
+
+        shadow.visit_mut_with(&mut object_rest_spread(Default::default()));
+        shadow.visit_mut_with(&mut destructuring(Default::default()));
+        shadow.visit_with(&mut v);
+
         let explicit_prop_accessed_ids = v.explicit_accessed_props();
 
         import_infos.iter_mut().for_each(|ii| {
