@@ -142,7 +142,7 @@ const injectSimpleJest = () => {
   }
 
   function ignore(testName, fn) {
-    // chalk.blueBright(chalk.bgYellowBright('IGNORED'))
+    // picocolors.blueBright(picocolors.bgYellowBright('IGNORED'))
     console.log('\x1B[94m\x1B[103mIGNORED\x1B[49m\x1B[39m', ':', testName);
   }
 

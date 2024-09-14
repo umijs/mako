@@ -1,4 +1,4 @@
-import chalk from 'chalk';
+import c from 'picocolors';
 import yParser from 'yargs-parser';
 import { check } from './checker';
 
@@ -7,7 +7,7 @@ import { check } from './checker';
   // so that we can print extra information
   process.env.MAKO_CLI = '1';
   console.log();
-  console.log(chalk.bold(`Mako v${require('../package.json').version}`));
+  console.log(c.bold(`Mako v${require('../package.json').version}`));
   console.log();
 
   let argv = yParser(process.argv.slice(2));
