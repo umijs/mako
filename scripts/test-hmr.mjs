@@ -4,6 +4,7 @@ import getPort, { clearLockedPorts } from 'get-port';
 import { chromium, devices } from 'playwright';
 import waitPort from 'wait-port';
 import 'zx/globals';
+import c from 'picocolors';
 
 function skip() {}
 
@@ -1983,11 +1984,11 @@ async function commonTest(
 (async () => {
   console.log('tests', Object.keys(tests).join(',\n'));
   for (const [name, fn] of Object.entries(tests)) {
-    console.log(`> ${chalk.green(name)}`);
+    console.log(`> ${c.green(name)}`);
     await fn();
   }
 })().catch(async (e) => {
-  console.error(chalk.red(e));
+  console.error(c.red(e));
   await cleanup();
   process.exit(1);
 });

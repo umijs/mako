@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import chalk from 'chalk';
+import c from 'picocolors';
 import semver from 'semver';
 
 let BLACKLIST_PACKAGES: any = {
@@ -28,7 +28,7 @@ export function check(root: string) {
         version &&
         semver.satisfies(version, BLACKLIST_PACKAGES[name].version)
       ) {
-        console.error(chalk.red(`Error: ${BLACKLIST_PACKAGES[name].message}`));
+        console.error(c.red(`Error: ${BLACKLIST_PACKAGES[name].message}`));
         process.exit(1);
       }
     }

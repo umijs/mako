@@ -4,7 +4,7 @@ const http = require('http');
 const assert = require('assert');
 const { createProxy, createHttpsServer } = require('@umijs/bundler-utils');
 const lodash = require('lodash');
-const chalk = require('chalk');
+const c = require('picocolors');
 const { parseTsconfig } = require('get-tsconfig');
 const {
   createProxyMiddleware,
@@ -203,10 +203,8 @@ function getDevBanner(protocol, host, port, ip) {
   const hostStr = host === '0.0.0.0' ? 'localhost' : host;
   const messages = [];
   messages.push('  App listening at:');
-  messages.push(
-    `  - Local:   ${chalk.cyan(`${protocol}//${hostStr}:${port}`)}`,
-  );
-  messages.push(`  - Network: ${chalk.cyan(`${protocol}//${ip}:${port}`)}`);
+  messages.push(`  - Local:   ${c.cyan(`${protocol}//${hostStr}:${port}`)}`);
+  messages.push(`  - Network: ${c.cyan(`${protocol}//${ip}:${port}`)}`);
   return messages.join('\n');
 }
 
@@ -380,7 +378,7 @@ function checkConfig(opts) {
 
   if (warningKeys.length) {
     console.warn(
-      chalk.yellow(
+      c.yellow(
         `
 =====================================================================================================
 
@@ -397,7 +395,7 @@ function checkConfig(opts) {
   Mako bundler does not support the following options:
     - ${warningKeys.join('\n    - ')}
 
-  So this project may fail in compile-time or error in runtime, ${chalk.bold(
+  So this project may fail in compile-time or error in runtime, ${c.bold(
     'please test and release carefully',
   )}.
 =====================================================================================================

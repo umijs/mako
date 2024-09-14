@@ -44,6 +44,7 @@
     "husky": "^8.0.3",
     "less": "^4.2.0",
     "node-libs-browser-okam": "^2.2.5",
+    "picocolors": "^1.1.0",
     "playwright": "^1.39.0",
     "portfinder": "^1.0.32",
     "preact": "10.22.0",
