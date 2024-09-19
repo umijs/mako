@@ -6,9 +6,9 @@ static THREAD_POOL: OnceLock<ThreadPool> = OnceLock::new();
 
 fn build_rayon_thread_pool() -> ThreadPool {
     ThreadPoolBuilder::new()
-        .thread_name(|i| format!("rayon thread {}", i))
+        .thread_name(|i| format!("Mako thread {}", i))
         .build()
-        .expect("failed to create rayon thread pool.")
+        .expect("Mako failed to create thread pool.")
 }
 
 pub fn spawn<F>(func: F)
