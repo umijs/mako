@@ -738,7 +738,7 @@ const DEFAULT_CONFIG: &str = r#"
     "providers": {},
     "publicPath": "/",
     "inlineLimit": 10000,
-    "inline_excludes_regexes": [],
+    "inlineExcludesRegexes": [],
     "targets": { "chrome": 80 },
     "less": { "theme": {}, "lesscPath": "", javascriptEnabled: true },
     "define": {},
