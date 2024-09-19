@@ -525,7 +525,7 @@ pub struct Config {
     pub copy: Vec<String>,
     pub public_path: String,
     pub inline_limit: usize,
-    pub linline_excludes_extensions: Vec<String>,
+    pub inline_excludes_extensions: Vec<String>,
     pub targets: HashMap<String, f32>,
     pub platform: Platform,
     pub module_id_strategy: ModuleIdStrategy,

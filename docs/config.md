@@ -403,7 +403,7 @@ Specify the size limit of the assets file that needs to be converted to `base64`
 - Type: `string[]`
 - Default: `[]`
 
-Excludes assets file extension list that don't needs to be converted to `base64` format.
+Excludes assets file extension list that don't need to be converted to `base64` format.
 
 e.g.
 
