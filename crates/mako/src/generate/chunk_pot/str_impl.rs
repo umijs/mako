@@ -112,12 +112,14 @@ pub(super) fn render_normal_js_chunk(
 ) -> Result<ChunkFile> {
     let (content_buf, source_map_buf) = {
         let pot = chunk_pot;
+
+        // to avoid ' or " been included in chunk_loading_global
+        let safe_prop = serde_json::to_string(&context.config.output.chunk_loading_global).unwrap();
+
         let chunk_prefix_code = format!(
-            r#"((typeof globalThis !== 'undefined' ? globalThis : self)['{}'] = (typeof globalThis !== 'undefined' ? globalThis : self)['{}'] || []).push([
-['{}'],"#,
-            context.config.output.chunk_loading_global,
-            context.config.output.chunk_loading_global,
-            pot.chunk_id,
+            r#"((typeof globalThis !== 'undefined' ? globalThis : self)[{}] = (typeof globalThis !== 'undefined' ? globalThis : self)[{}] || []).push([
+        ['{}'],"#,
+            safe_prop, safe_prop, pot.chunk_id,
         );
 
         let (chunk_content, chunk_raw_sourcemap) = pot_to_chunk_module_object_string(
@@ -305,7 +307,6 @@ mod tests {
     use swc_core::ecma::transforms::base::hygiene::hygiene_with_config;
     use swc_core::ecma::transforms::base::{hygiene, resolver};
     use swc_core::ecma::visit::VisitMutWith;
-    use testing::assert_eq;
 
     use super::{merge_code_and_sourcemap, EmittedWithMapping};
     use crate::ast::js_ast::JsAst;
