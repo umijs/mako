@@ -398,6 +398,22 @@ e.g.
 
 指定需要转换为 `base64` 格式的资产文件的大小限制。
 
+
+### linlineExcludesRegexes
+
+- 类型: `number`
+- 默认值: `10000`
+
+指定不需要转换为 `base64` 格式的资产文件的后缀名列表。
+
+例如：
+
+```ts
+{
+  "linlineExcludesRegexes": ["webp"]
+}
+```
+
 ### less
 
 - 类型：`{ modifyVars?: Record<string, string>, globalVars?: Record<string, string>, sourceMap?: { sourceMapFileInline?: boolean, outputSourceFiles?: boolean }, math?: "always" | "strict" | "parens-division" | "parens" | "strict-legacy" | number, plugins?: ([string, Record<string, any>]|string)[] }`

@@ -4,10 +4,9 @@ use std::sync::Arc;
 use std::vec;
 
 use anyhow::{anyhow, Result};
-use cached::proc_macro::cached;
 use convert_case::{Case, Casing};
 use oxc_resolver::{Alias, AliasValue, ResolveError as OxcResolveError, ResolveOptions, Resolver};
-use regex::{Captures, Regex};
+use regex::Captures;
 use thiserror::Error;
 use tracing::debug;
 
@@ -22,6 +21,7 @@ use crate::config::{
 };
 use crate::features::rsc::Rsc;
 use crate::module::{Dependency, ResolveType};
+use crate::utils::create_cached_regex;
 
 #[derive(Debug, Error)]
 #[error("Resolve {path:?} failed from {from:?}")]
@@ -73,11 +73,6 @@ pub fn resolve(
     do_resolve(path, source, resolver, Some(&context.config.externals))
 }
 
-#[cached(key = "String", convert = r#"{ re.to_string() }"#)]
-fn create_external_regex(re: &str) -> Regex {
-    Regex::new(re).unwrap()
-}
-
 fn get_external_target(
     externals: &HashMap<String, ExternalConfig>,
     source: &str,
@@ -113,7 +108,7 @@ fn get_external_target(
         externals.iter().find_map(|(key, config)| {
             match config {
                 ExternalConfig::Advanced(config) if config.subpath.is_some() => {
-                    if let Some(caps) = create_external_regex(&format!(
+                    if let Some(caps) = create_cached_regex(&format!(
                         r#"(?:^|/node_modules/|[a-zA-Z\d]@){}(/|$)"#,
                         key
                     ))
@@ -126,7 +121,7 @@ fn get_external_target(
                             // skip if source is excluded
                             Some(exclude)
                                 if exclude.iter().any(|e| {
-                                    create_external_regex(&format!("(^|/){}(/|$)", e))
+                                    create_cached_regex(&format!("(^|/){}(/|$)", e))
                                         .is_match(subpath.as_str())
                                 }) =>
                             {
@@ -146,7 +141,7 @@ fn get_external_target(
         // ex. import Button from 'antd/es/button';
         // find matched subpath rule
         if let Some((rule, caps)) = subpath_config.rules.iter().find_map(|r| {
-            let regex = create_external_regex(r.regex.as_str());
+            let regex = create_cached_regex(r.regex.as_str());
 
             if regex.is_match(subpath.as_str()) {
                 Some((r, regex.captures(subpath.as_str()).unwrap()))
@@ -162,7 +157,7 @@ fn get_external_target(
                 }
                 // external to target template
                 ExternalAdvancedSubpathTarget::Tpl(target) => {
-                    let regex = create_external_regex(r"\$(\d+)");
+                    let regex = create_cached_regex(r"\$(\d+)");
 
                     // replace $1, $2, ... with captured groups
                     let mut replaced = regex

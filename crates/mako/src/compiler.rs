@@ -37,7 +37,6 @@ pub struct Context {
     pub resolvers: Resolvers,
     pub static_cache: RwLock<MemoryChunkFileCache>,
     pub optimize_infos: Mutex<Option<Vec<OptimizeChunksInfo>>>,
-    pub linline_excludes_regexes: Vec<Regex>,
 }
 
 #[derive(Default)]
@@ -109,12 +108,6 @@ impl Context {
 impl Default for Context {
     fn default() -> Self {
         let config: Config = Default::default();
-        let linline_excludes_regexes = config
-            .linline_excludes_regexes
-            .clone()
-            .iter()
-            .map(|s| Regex::new(s).unwrap())
-            .collect::<Vec<Regex>>();
         let resolvers = get_resolvers(&config);
         Self {
             config,
@@ -130,7 +123,6 @@ impl Default for Context {
             resolvers,
             optimize_infos: Mutex::new(None),
             static_cache: Default::default(),
-            linline_excludes_regexes,
         }
     }
 }
@@ -251,13 +243,6 @@ impl Compiler {
 
         let mut config = config;
 
-        let linline_excludes_regexes = config
-            .linline_excludes_regexes
-            .clone()
-            .iter()
-            .map(|s| Regex::new(s).unwrap())
-            .collect::<Vec<Regex>>();
-
         if let Some(progress) = &config.progress {
             plugins.push(Arc::new(plugins::progress::ProgressPlugin::new(
                 plugins::progress::ProgressPluginOptions {
@@ -364,7 +349,6 @@ impl Compiler {
                 stats_info: StatsInfo::new(),
                 resolvers,
                 optimize_infos: Mutex::new(None),
-                linline_excludes_regexes,
             }),
         })
     }

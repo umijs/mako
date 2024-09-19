@@ -392,10 +392,27 @@ Notice: This configuration can only be used with umd, because injecting CSS is n
 
 ### inlineLimit
 
+- Type: `string[]`
+- Default: `[]`
+
+Specify the size limit of the assets file that needs to be converted to `base64` format.
+
+
+### linlineExcludesRegexes
+
 - Type: `number`
 - Default: `10000`
 
-Specify the size limit of the assets file that needs to be converted to `base64` format.
+Excludes assets file extension list that don't needs to be converted to `base64` format.
+
+e.g.
+
+```ts
+{
+  "linlineExcludesRegexes": ["webp"]
+}
+```
+
 
 ### less
 
