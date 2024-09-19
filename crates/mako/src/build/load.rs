@@ -259,14 +259,14 @@ export function moduleToDom(css) {
                 Ok(final_file_name)
             }
         };
-        let linline_excludes_regexes = context
+        let linline_excludes_extensions = context
             .config
-            .linline_excludes_regexes
+            .linline_excludes_extensions
             .clone()
             .iter()
             .map(|s| create_cached_regex(s))
             .collect::<Vec<Regex>>();
-        let should_not_transform_base64 = linline_excludes_regexes
+        let should_not_transform_base64 = linline_excludes_extensions
             .iter()
             .any(|regex| regex.is_match(&file.extname));
         if !limit

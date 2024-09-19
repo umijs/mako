@@ -399,7 +399,7 @@ e.g.
 指定需要转换为 `base64` 格式的资产文件的大小限制。
 
 
-### inlineExcludesRegexes
+### inlineExcludesExtensions
 
 - 类型: `string[]`
 - 默认值: `[]`
@@ -410,7 +410,7 @@ e.g.
 
 ```ts
 {
-  "inlineExcludesRegexes": ["webp"]
+  "inlineExcludesExtensions": ["webp"]
 }
 ```
 
