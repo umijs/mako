@@ -1,4 +1,4 @@
 {
-  "linlineExcludesRegexes": ["webp"],
+  "inlineExcludesRegexes": ["webp"],
   "inlineLimit": 1000000
 }

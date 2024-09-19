@@ -399,10 +399,10 @@ e.g.
 指定需要转换为 `base64` 格式的资产文件的大小限制。
 
 
-### linlineExcludesRegexes
+### inlineExcludesRegexes
 
-- 类型: `number`
-- 默认值: `10000`
+- 类型: `string[]`
+- 默认值: `[]`
 
 指定不需要转换为 `base64` 格式的资产文件的后缀名列表。
 
@@ -410,7 +410,7 @@ e.g.
 
 ```ts
 {
-  "linlineExcludesRegexes": ["webp"]
+  "inlineExcludesRegexes": ["webp"]
 }
 ```
 
