@@ -6,6 +6,7 @@ use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use bitflags::bitflags;
 use pathdiff::diff_paths;
+use rkyv::{Archive, Deserialize, Serialize as RkyvSerialize};
 use serde::Serialize;
 use swc_core::common::{Span, DUMMY_SP};
 use swc_core::ecma::ast::{
@@ -24,13 +25,43 @@ use crate::resolve::ResolverResource;
 
 pub type Dependencies = HashSet<Dependency>;
 
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq, Archive, Deserialize, RkyvSerialize)]
 pub struct Dependency {
     pub source: String,
     pub resolve_as: Option<String>,
     pub resolve_type: ResolveType,
     pub order: usize,
     pub span: Option<Span>,
+}
+
+macro_rules! impl_rkyv_for_bitflags {
+    ($flag_type:ty) => {
+        impl Archive for $flag_type {
+            type Archived = u16;
+            type Resolver = u16;
+
+            unsafe fn resolve(
+                &self,
+                _pos: usize,
+                _resolver: Self::Resolver,
+                out: *mut Self::Archived,
+            ) {
+                *out = self.bits();
+            }
+        }
+
+        impl<S: rkyv::ser::Serializer + ?Sized> RkyvSerialize<S> for $flag_type {
+            fn serialize(&self, _: &mut S) -> Result<Self::Archived, S::Error> {
+                Ok(self.bits())
+            }
+        }
+
+        impl<D: rkyv::Fallible> Deserialize<$flag_type, D> for u16 {
+            fn deserialize(&self, _: &mut D) -> Result<$flag_type, D::Error> {
+                Ok(<$flag_type>::from_bits_truncate(*self))
+            }
+        }
+    };
 }
 
 bitflags! {
@@ -55,6 +86,10 @@ bitflags! {
         const Namespace = 1<<3;
     }
 }
+
+impl_rkyv_for_bitflags!(ResolveTypeFlags);
+impl_rkyv_for_bitflags!(ImportType);
+impl_rkyv_for_bitflags!(NamedExportType);
 
 impl From<&ResolveType> for ResolveTypeFlags {
     fn from(value: &ResolveType) -> Self {
@@ -126,7 +161,9 @@ impl From<&NamedExport> for NamedExportType {
     }
 }
 
-#[derive(Eq, Hash, PartialEq, Serialize, Debug, Clone, Copy)]
+#[derive(
+    Eq, Hash, PartialEq, Serialize, Debug, Clone, Copy, Archive, Deserialize, RkyvSerialize,
+)]
 pub enum ResolveType {
     Import(ImportType),
     ExportNamed(NamedExportType),

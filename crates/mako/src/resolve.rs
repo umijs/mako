@@ -50,7 +50,7 @@ pub fn resolve(
     crate::mako_profile_scope!("resolve", &dep.source);
 
     if dep.source.starts_with("virtual:") {
-        return Ok(ResolverResource::Virtual(PathBuf::from(&dep.source)));
+        return Ok(ResolverResource::Virtual(dep.source.clone()));
     }
 
     let has_context_query = parse_path(&dep.source)?
@@ -249,7 +249,9 @@ fn do_resolve(
                 // TODO: 临时方案，需要改成删除文件时删 resolve cache 里的内容
                 // 比如把 util.ts 改名为 util.tsx，目前应该是还有问题的
                 if resolution.path().exists() {
-                    Ok(ResolverResource::Resolved(ResolvedResource(resolution)))
+                    Ok(ResolverResource::Resolved(ResolvedResource(
+                        resolution.into(),
+                    )))
                 } else {
                     Err(anyhow!(ResolveError {
                         path: source.to_string(),
@@ -260,7 +262,9 @@ fn do_resolve(
             Err(oxc_resolve_err) => match oxc_resolve_err {
                 OxcResolveError::Ignored(path) => {
                     debug!("resolve ignored: {:?}", source);
-                    Ok(ResolverResource::Ignored(path))
+                    Ok(ResolverResource::Ignored(
+                        path.to_string_lossy().to_string(),
+                    ))
                 }
                 _ => {
                     eprintln!(

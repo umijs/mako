@@ -553,7 +553,7 @@ impl Compiler {
                         ..
                     }),
                 ..
-            }) => resolution.package_json().and_then(|r| r.name.clone()),
+            }) => resolution.pkg_json.name.clone(),
             _ => None,
         }
     }

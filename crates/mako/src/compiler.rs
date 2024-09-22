@@ -1,15 +1,20 @@
 use std::collections::HashMap;
 use std::fs;
+use std::hash::Hasher;
+use std::ops::Deref;
 use std::path::PathBuf;
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex, RwLock};
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::{anyhow, Error, Result};
 use colored::Colorize;
 use r2d2::Pool;
+use r2d2_sqlite::rusqlite::Connection;
 use r2d2_sqlite::SqliteConnectionManager;
 use regex::Regex;
 use swc_core::common::sync::Lrc;
+use swc_core::common::util::take::Take;
 use swc_core::common::{Globals, SourceMap, DUMMY_SP};
 use swc_core::ecma::ast::Ident;
 use swc_node_comments::SwcComments;
@@ -21,10 +26,10 @@ use crate::generate::chunk_graph::ChunkGraph;
 use crate::generate::optimize_chunk::OptimizeChunksInfo;
 use crate::module_graph::ModuleGraph;
 use crate::plugin::{Plugin, PluginDriver, PluginGenerateEndParams};
-use crate::plugins;
 use crate::resolve::{get_resolvers, Resolvers};
 use crate::stats::StatsInfo;
 use crate::utils::{thread_pool, ParseRegex};
+use crate::{mako_profile_function, plugins};
 
 pub struct Context {
     pub module_graph: RwLock<ModuleGraph>,
@@ -43,9 +48,99 @@ pub struct Context {
     pub cache: SimpleCache,
 }
 
+type CacheData = (String, u64, Vec<u8>, Vec<u8>);
+
 pub struct SimpleCache {
-    // connection: rusqlite::Connection,
-    connection: Pool<SqliteConnectionManager>,
+    pub sender: Sender<CacheData>,
+    pub pool: Pool<SqliteConnectionManager>,
+}
+
+const SIZE_8M: usize = 8 * 1024 * 1024;
+
+fn db_writer_thread(rx: Receiver<CacheData>) {
+    let mut conn = r2d2_sqlite::rusqlite::Connection::open("mako_cache.db").unwrap();
+    let mut batch = Vec::new();
+    let mut buffered_bytes: usize = 0;
+    let mut last_insert = Instant::now();
+
+    loop {
+        while let Ok(data) = rx.recv_timeout(Duration::from_secs(30)) {
+            buffered_bytes += data.2.len() + data.3.len();
+            batch.push(data);
+
+            if buffered_bytes >= SIZE_8M {
+                break; // 批量插入的最大数目
+            }
+        }
+
+        if buffered_bytes < SIZE_8M && last_insert.elapsed() < Duration::from_secs(60) {
+            continue;
+        }
+
+        // 如果有数据，插入到数据库
+        if !batch.is_empty() {
+            match insert_into_db(&mut conn, batch.take()) {
+                Ok(_) => {}
+                Err(e) => eprintln!("Failed to insert batch: {}", e),
+            }
+
+            buffered_bytes = 0;
+            last_insert = Instant::now();
+        }
+    }
+}
+
+fn insert_into_db(conn: &mut Connection, data: Vec<CacheData>) -> Result<()> {
+    mako_profile_function!(data.len().to_string());
+
+    let tx = conn.transaction()?; // 开启事务
+    {
+        let last_modified = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64;
+
+        let mut stmt = tx.prepare(
+            "INSERT INTO cache (file_path, file_hash, module_data, deps_data, last_modified) 
+             VALUES (?, ?, ?, ?, ?)
+             ON CONFLICT(file_path, file_hash) 
+             DO UPDATE SET module_data=excluded.module_data, deps_data=excluded.deps_data, last_modified=excluded.last_modified;"
+        )?;
+
+        // 批量插入数据
+        for cache in data {
+            stmt.execute((
+                cache.0,
+                cache.1.to_string(),
+                cache.2,
+                cache.3,
+                last_modified,
+            ))?;
+        }
+    }
+    tx.commit()?; // 提交事务
+    Ok(())
+}
+
+fn init_db(connection: &Connection) -> Result<()> {
+    connection.execute_batch(
+        "
+    CREATE TABLE IF NOT EXISTS cache (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        file_path        TEXT        NOT NULL,
+        file_hash        TEXT        NOT NULL,
+        module_data      BLOB        NOT NULL,
+        deps_data        BLOB        NOT NULL,
+        last_modified    INTEGER     NOT NULL,
+        UNIQUE(file_path, file_hash)
+    );
+    
+        PRAGMA journal_mode = WAL;
+        PRAGMA wal_autocheckpoint = 10000;
+        PRAGMA synchronous = OFF;
+        PRAGMA cache_size = -20000;
+        PRAGMA temp_store = MEMORY;
+        PRAGMA read_uncommitted = 1;
+    ",
+    )?;
+    Ok(())
 }
 
 impl SimpleCache {
@@ -53,36 +148,27 @@ impl SimpleCache {
         let manager = SqliteConnectionManager::file("mako_cache.db");
         let pool = r2d2::Pool::new(manager).unwrap();
 
-        SimpleCache { connection: pool }
+        let conn = pool.get().unwrap();
+        init_db(conn.deref()).unwrap();
+
+        let (sender, receiver) = channel::<CacheData>();
+
+        std::thread::spawn(move || {
+            db_writer_thread(receiver);
+        });
+
+        SimpleCache { pool, sender }
     }
 
-    fn init_db(&self) -> Result<()> {
-        self.connection.get().unwrap().execute(
-            "
-CREATE TABLE IF NOT EXISTS cache (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    file_path        TEXT        NOT NULL,
-    file_hash        TEXT        NOT NULL,
-    serialized_data  BLOB        NOT NULL,
-    last_modified    INTEGER     NOT NULL,
-    UNIQUE(file_path, file_hash)
-);
-
-CREATE INDEX IF NOT EXISTS idx_file_path_file_hash ON cache(file_path, file_hash);
-PRAGMA mmap_size = 268435456;
-        ",
-            (),
-        )?;
-        Ok(())
-    }
-
-    pub fn get_ast(&self, file_path: &str, file_hash: u64) -> Option<Vec<u8>> {
-        let connection = self.connection.get().unwrap();
+    pub fn get_cached(&self, file_path: &str, file_hash: u64) -> Option<(Vec<u8>, Vec<u8>)> {
+        mako_profile_function!(file_path);
+        let start = Instant::now();
+        let connection = self.pool.get().unwrap();
 
         let mut statement = connection
             .prepare(
                 "
-        SELECT serialized_data FROM cache WHERE file_path = ? AND file_hash = ?;
+        SELECT module_data, deps_data FROM cache WHERE file_path = ? AND file_hash = ?;
         ",
             )
             .ok()?;
@@ -92,17 +178,44 @@ PRAGMA mmap_size = 268435456;
             .ok()?;
 
         if let Some(row) = rows.next().ok()? {
-            return row.get(0).ok();
+            let module_data: Vec<u8> = row.get(0).ok().unwrap();
+            let deps_data: Vec<u8> = row.get(1).ok().unwrap();
+            let elapsed = start.elapsed();
+
+            debug!(
+                "{file_path} takes  {} ({} {})",
+                elapsed.as_millis(),
+                module_data.len(),
+                deps_data.len()
+            );
+
+            return Some((module_data, deps_data));
         }
         None
     }
 
-    pub fn insert(&self, file_path: &str, file_hash: u64, serialized_data: &[u8]) -> Result<()> {
+    pub fn insert(
+        &self,
+        file_path: String,
+        file_hash: u64,
+        serialized_data: Vec<u8>,
+        deps_data: Vec<u8>,
+    ) -> Result<()> {
+        self.sender
+            .send((file_path, file_hash, serialized_data, deps_data))?;
+        Ok(())
+    }
+
+    pub fn insert_sql(
+        &self,
+        file_path: &str,
+        file_hash: u64,
+        serialized_data: &[u8],
+    ) -> Result<()> {
         let last_modified = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64;
+        let con = self.pool.get().unwrap();
 
-        let connection = self.connection.get().unwrap();
-
-        let mut statement =connection
+        let mut statement  = con
             .prepare(
                 "
         INSERT INTO cache (file_path, file_hash, serialized_data, last_modified) 
@@ -448,7 +561,6 @@ impl Compiler {
         if self.context.config.clean {
             self.clean_dist()?;
         }
-        self.context.cache.init_db().unwrap();
 
         let t_compiler = Instant::now();
         let start_time = chrono::Local::now().timestamp_millis();

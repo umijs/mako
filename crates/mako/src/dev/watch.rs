@@ -61,16 +61,16 @@ impl<'a> Watcher<'a> {
                 .as_ref()
                 .and_then(|info| info.resolved_resource.as_ref())
             {
-                if let Some(dir) = &resource.0.package_json() {
-                    let dir = dir.directory();
+                if let Some(pkg_root) = &resource.0.pkg_root {
+                    let dir: PathBuf = pkg_root.into();
                     // not in root dir or is root's parent dir
-                    if dir.strip_prefix(self.root).is_err() && self.root.strip_prefix(dir).is_err()
+                    if dir.strip_prefix(self.root).is_err() && self.root.strip_prefix(&dir).is_err()
                     {
                         dirs.insert(dir);
                     }
                 }
                 if !self.node_modules_regexes.is_empty() {
-                    let file_path = resource.0.path().to_str().unwrap();
+                    let file_path = resource.0.path.as_str();
                     let is_match = file_path.contains("node_modules")
                         && self
                             .node_modules_regexes
@@ -78,7 +78,7 @@ impl<'a> Watcher<'a> {
                             .any(|regex| regex.is_match(file_path));
                     if is_match {
                         let _ = self.watcher.watch(
-                            resource.0.path().to_path_buf().as_path(),
+                            PathBuf::from(file_path).as_path(),
                             notify::RecursiveMode::NonRecursive,
                         );
                     }

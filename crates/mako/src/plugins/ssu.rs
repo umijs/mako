@@ -293,11 +293,10 @@ module.export = Promise.all(
 
                     let version = resolved
                         .0
-                        .package_json()
-                        .and_then(|p| p.raw_json().get("version"))
-                        .map_or("0.0.0".to_string(), |v| {
-                            v.as_str().unwrap_or("0.0.0").to_string()
-                        });
+                        .pkg_json
+                        .version
+                        .as_ref()
+                        .map_or("0.0.0".to_string(), |v| v.clone());
 
                     self.current_state
                         .lock()
