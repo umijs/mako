@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
+use rkyv::{Archive, Deserialize, Serialize as RkyvSerialize};
 use thiserror::Error;
 
 use crate::ast::error;
@@ -16,7 +17,7 @@ pub enum AnalyzeDepsError {
     ModuleNotFound { message: String },
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Archive, Deserialize, RkyvSerialize)]
 pub struct AnalyzeDepsResult {
     pub resolved_deps: Vec<ResolvedDep>,
     // why use hash map?
@@ -24,7 +25,7 @@ pub struct AnalyzeDepsResult {
     pub missing_deps: HashMap<String, Dependency>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Archive, Deserialize, RkyvSerialize)]
 pub struct ResolvedDep {
     pub resolver_resource: ResolverResource,
     pub dependency: Dependency,
@@ -38,7 +39,7 @@ impl AnalyzeDeps {
         file: &File,
         context: Arc<Context>,
     ) -> Result<AnalyzeDepsResult> {
-        crate::mako_profile_function!();
+        crate::mako_profile_function!(&file.relative_path.to_string_lossy());
         let mut deps = match ast {
             ModuleAst::Script(ast) => ast.analyze_deps(context.clone()),
             ModuleAst::Css(ast) => ast.analyze_deps(),
