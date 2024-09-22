@@ -18,8 +18,6 @@ use swc_core::ecma::transforms::base::resolver;
 use swc_core::ecma::utils::parallel::Items;
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 use thiserror::Error;
-use tokio::time::Instant;
-use tracing::debug;
 
 use crate::ast::file::{Content, File, JsContent};
 use crate::ast::js_ast::JsAst;
@@ -289,7 +287,7 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         parent_resource: Option<ResolverResource>,
         context: Arc<Context>,
     ) -> Result<Module> {
-        mako_profile_function!(file.relative_path.to_string_lossy().to_string());
+        mako_profile_function!(&file.relative_path.to_string_lossy());
 
         // 1. load
         let mut file = file.clone();

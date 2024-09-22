@@ -52,7 +52,7 @@ pub struct Transform {}
 
 impl Transform {
     pub fn transform(ast: &mut ModuleAst, file: &File, context: Arc<Context>) -> Result<()> {
-        crate::mako_profile_function!();
+        crate::mako_profile_function!(&file.relative_path.to_string_lossy());
         match ast {
             ModuleAst::Script(ast) => {
                 let cm = context.meta.script.cm.clone();
