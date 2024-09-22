@@ -17,7 +17,7 @@ use crate::generate::chunk_pot::util::runtime_code;
 use crate::generate::chunk_pot::ChunkPot;
 use crate::generate::generate_chunks::{ChunkFile, ChunkFileType};
 use crate::module::{Module, ModuleAst};
-use crate::ternary;
+use crate::{mako_profile_function, mako_profile_scope, ternary};
 
 pub(super) fn render_entry_js_chunk(
     pot: &ChunkPot,
@@ -161,6 +161,7 @@ fn emit_module_with_mapping(
     _raw_hash: u64, // used for cache key
     context: &Arc<Context>,
 ) -> Result<EmittedWithMapping> {
+    mako_profile_function!();
     match &module.info.as_ref().unwrap().ast {
         ModuleAst::Script(ast) => {
             let comments = context.meta.script.origin_comments.read().unwrap();
@@ -175,7 +176,7 @@ fn emit_module_with_mapping(
                     .with_ascii_only(false)
                     .with_omit_last_semi(true),
                 cm: ast.cm.clone(),
-                comments: Some(swc_comments),
+                comments: None, //Some(swc_comments),
                 wr: Box::new(JsWriter::new(
                     ast.cm.clone(),
                     "\n",
@@ -217,6 +218,8 @@ fn pot_to_chunk_module_object_string(
     context: &Arc<Context>,
     chunk_prefix_offset: u32,
 ) -> Result<(String, RawSourceMap)> {
+    mako_profile_function!(pot.chunk_id.clone());
+
     let sorted_kv = {
         let mut sorted_kv = pot.module_map.iter().collect::<Vec<_>>();
 
@@ -228,6 +231,7 @@ fn pot_to_chunk_module_object_string(
     let emitted_modules_with_mapping = sorted_kv
         .par_iter()
         .map(|(module_id, module_and_hash)| {
+            mako_profile_scope!("emit_module_with_mapping", module_id.clone());
             emit_module_with_mapping(module_id, module_and_hash.0, module_and_hash.1, context)
         })
         .collect::<Result<Vec<(String, Option<RawSourceMap>)>>>()?;
@@ -242,6 +246,8 @@ fn merge_code_and_sourcemap(
     modules_with_sourcemap: Vec<EmittedWithMapping>,
     chunk_prefix_offset: u32,
 ) -> (String, RawSourceMap) {
+    mako_profile_function!();
+
     let mut dst_line_offset = 0u32;
     let mut src_id_offset = 0u32;
     let mut name_id_offset = 0u32;
