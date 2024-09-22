@@ -46,6 +46,16 @@ pub enum Content {
     Assets(Asset),
 }
 
+impl Content {
+    pub fn len(&self) ->usize {
+        match self {
+            Content::Js(JsContent { content, .. }) => content.len(),
+            Content::Css(content) => content.len(),
+            Content::Assets(asset) => asset.content.len(),
+        }
+    }
+}
+
 #[derive(Debug, Error)]
 enum FileError {
     #[error("To base64 error: {path:?}")]
