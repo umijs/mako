@@ -15,14 +15,18 @@ use swc_core::common::sync::Lrc;
 use swc_core::common::{FileName, Mark, SourceMap as CM, SyntaxContext, GLOBALS};
 use swc_core::ecma::ast::Module as SwcModule;
 use swc_core::ecma::transforms::base::resolver;
+use swc_core::ecma::utils::parallel::Items;
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 use thiserror::Error;
 use tokio::time::Instant;
+use tracing::debug;
 
 use crate::ast::file::{Content, File, JsContent};
 use crate::ast::js_ast::JsAst;
+use crate::build::analyze_deps::AnalyzeDepsResult;
 use crate::compiler::{Compiler, Context};
 use crate::generate::chunk_pot::util::hash_hashmap;
+use crate::mako_profile_function;
 use crate::module::{Module, ModuleAst, ModuleId, ModuleInfo};
 use crate::plugin::NextBuildParam;
 use crate::resolve::ResolverResource;
@@ -285,12 +289,12 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
         parent_resource: Option<ResolverResource>,
         context: Arc<Context>,
     ) -> Result<Module> {
+        mako_profile_function!(file.relative_path.to_string_lossy().to_string());
+
         // 1. load
         let mut file = file.clone();
         let content = load::Load::load(&file, context.clone())?;
         file.set_content(content);
-
-        let star = Instant::now();
 
         let mut hit = false;
 
@@ -298,13 +302,19 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
             let raw_hash = file.get_raw_hash();
             let file_path = file.relative_path.to_string_lossy().to_string();
 
-            let ast = if let Some(bytes) = context.cache.get_ast(&file_path, raw_hash) {
-                let loadtakes = star.elapsed().as_micros();
+            let (ast, deps) = if let Some((bytes, deps_bytes)) =
+                context.cache.get_cached(&file_path, raw_hash)
+            {
                 hit = true;
 
                 let archived = unsafe { rkyv::archived_root::<SwcModule>(&bytes) };
 
                 let mut deserialized_module: SwcModule = archived
+                    .deserialize(&mut rkyv::de::deserializers::SharedDeserializeMap::new())
+                    .unwrap();
+
+                let archived = unsafe { rkyv::archived_root::<AnalyzeDepsResult>(&deps_bytes) };
+                let deps: AnalyzeDepsResult = archived
                     .deserialize(&mut rkyv::de::deserializers::SharedDeserializeMap::new())
                     .unwrap();
 
@@ -338,30 +348,35 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
                     })
                 });
 
-                ast
+                (ast, deps)
             } else {
                 let mut ast = parse::Parse::parse(&file, context.clone())?;
+                // 3. transform
                 transform::Transform::transform(&mut ast, &file, context.clone())?;
+                // 4. analyze deps + resolve
+                let deps = analyze_deps::AnalyzeDeps::analyze_deps(&ast, &file, context.clone())?;
 
-                ast
+                (ast, deps)
             };
 
-            // 3. transform
-
-            // 4. analyze deps + resolve
-            let deps = analyze_deps::AnalyzeDeps::analyze_deps(&ast, &file, context.clone())?;
-
             if !hit {
-                let bs = rkyv::to_bytes::<SwcModule, 512>(ast.as_script_ast())
+                let module_bytes = rkyv::to_bytes::<SwcModule, 512>(ast.as_script_ast())
                     .unwrap()
                     .to_vec();
 
-                context.cache.insert(&file_path, raw_hash, &bs).unwrap();
+                let deps_bytes = rkyv::to_bytes::<AnalyzeDepsResult, 512>(&deps)
+                    .unwrap()
+                    .to_vec();
+
+                let _ =
+                    context
+                        .cache
+                        .insert(file_path.to_string(), raw_hash, module_bytes, deps_bytes);
             }
 
             (ast, deps)
         } else {
-            // no css section
+            // CSS module
             // 2. parse
             let mut ast = parse::Parse::parse(&file, context.clone())?;
 
