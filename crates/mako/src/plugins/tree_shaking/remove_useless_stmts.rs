@@ -1,15 +1,9 @@
-use std::collections::HashSet;
-
-use swc_core::common::util::take::Take;
-use swc_core::common::SyntaxContext;
 use swc_core::ecma::ast::{
-    Decl, ExportDecl, ExportSpecifier, Id, ImportDecl, ImportSpecifier, Module as SwcModule,
-    Module, ModuleExportName,
+    Decl, ExportDecl, ExportSpecifier, ImportDecl, ImportSpecifier, Module as SwcModule,
+    ModuleExportName,
 };
-use swc_core::ecma::transforms::compat::es2015::destructuring;
-use swc_core::ecma::visit::{Fold, VisitMut, VisitMutWith, VisitWith};
+use swc_core::ecma::visit::{VisitMut, VisitMutWith, VisitWith};
 
-use super::collect_explicit_prop::IdExplicitPropAccessCollector;
 use crate::plugins::tree_shaking::module::TreeShakeModule;
 use crate::plugins::tree_shaking::statement_graph::analyze_imports_and_exports::{
     analyze_imports_and_exports, StatementInfo,
@@ -111,10 +105,10 @@ pub fn remove_useless_stmts(
 
     // remove from the end to the start
     stmts_to_remove.reverse();
+
     for stmt in stmts_to_remove {
         swc_module.body.remove(stmt);
     }
-    optimize_import_namespace(&mut used_import_infos, swc_module);
 
     (used_import_infos, used_export_from_infos)
 }
@@ -234,68 +228,6 @@ impl VisitMut for UselessExportStmtRemover {
         for index in specifiers_to_remove {
             specifiers.remove(index);
         }
-    }
-}
-
-fn optimize_import_namespace(import_infos: &mut [ImportInfo], module: &mut Module) {
-    let namespaces = import_infos
-        .iter()
-        .filter_map(|import_info| {
-            let ns = import_info
-                .specifiers
-                .iter()
-                .filter_map(|sp| match sp {
-                    ImportSpecifierInfo::Namespace(ns) => Some(ns.clone()),
-                    _ => None,
-                })
-                .collect::<Vec<String>>();
-            if ns.is_empty() {
-                None
-            } else {
-                Some(ns)
-            }
-        })
-        .flatten()
-        .collect::<Vec<String>>();
-
-    let ids = namespaces
-        .iter()
-        .map(|ns| {
-            let (sym, ctxt) = ns.rsplit_once('#').unwrap();
-            (sym.into(), SyntaxContext::from_u32(ctxt.parse().unwrap()))
-        })
-        .collect::<HashSet<Id>>();
-
-    if !ids.is_empty() {
-        let mut v = IdExplicitPropAccessCollector::new(ids);
-        let destucturing_module = destructuring(Default::default()).fold_module(module.clone());
-        destucturing_module.visit_with(&mut v);
-        let explicit_prop_accessed_ids = v.explicit_accessed_props();
-
-        import_infos.iter_mut().for_each(|ii| {
-            ii.specifiers = ii
-                .specifiers
-                .take()
-                .into_iter()
-                .flat_map(|specifier_info| {
-                    if let ImportSpecifierInfo::Namespace(ref ns) = specifier_info {
-                        if let Some(visited_fields) = explicit_prop_accessed_ids.get(ns) {
-                            return visited_fields
-                                .iter()
-                                .map(|v| {
-                                    let imported_name = format!("{v}#0");
-                                    ImportSpecifierInfo::Named {
-                                        imported: Some(imported_name.clone()),
-                                        local: imported_name,
-                                    }
-                                })
-                                .collect::<Vec<_>>();
-                        }
-                    }
-                    vec![specifier_info]
-                })
-                .collect::<Vec<_>>();
-        })
     }
 }
 
