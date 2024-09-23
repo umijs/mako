@@ -2,7 +2,7 @@
 
 `2024-09-23`
 
-* 修复: chunk_loading_global dev 未转移问题 by @xusd320 in https://github.com/umijs/mako/pull/1590
+* 修复: chunk_loading_global dev 内容未转义问题 by @xusd320 in https://github.com/umijs/mako/pull/1590
 * 修复: mako-bundler devServer 静态文件服务和 umi proxy 中间件执行顺序 by @whyer11 in https://github.com/umijs/mako/pull/1558
 * 回滚: `import * as` 的 tree shaking 优化 by @stormslowly in https://github.com/umijs/mako/pull/1606
 
