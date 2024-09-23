@@ -1,17 +1,25 @@
+## 0.8.13
+
+`2024-09-23`
+
+* 修复: chunk_loading_global dev 未转移问题 by @xusd320 in https://github.com/umijs/mako/pull/1590
+* 修复: mako-bundler devServer 静态文件服务和 umi proxy 中间件执行顺序 by @whyer11 in https://github.com/umijs/mako/pull/1558
+* 回滚: `import * as` 的 tree shaking 优化 by @stormslowly in https://github.com/umijs/mako/pull/1606
+
 ## 0.8.12
 
 `2024-09-13`
 
-修复: 检测导出变量的副作用以进行 tree-shaking 优化 (by @stormslowly in #1579)
-修复: 修复 chunk_loading_global 包含引号时的输出错误 (by @xusd320 in #1582)
-其他: 添加用于调试模块/块图的 subdot cli 工具脚本 (by @stormslowly in #1585)
-修复: 修复 Windows 下复制功能失效的问题 (by @sorrycc in #1587)
-修复: 修复 Windows 下模块 ID 的路径问题 (by @sorrycc in #1588)
-优化: 优化按需引入命名空间，减少冗余代码 (by @stormslowly in #1584)
-修复 (已回滚): 修复 Mako 配置合并问题 (by @hualigushi in #1578)
-修复: 修复清除依赖项时找不到模块导致程序崩溃的问题 (by @Jinbao1001 in #1581)
-修复: 修复监视过多文件导致的错误 (by @Jinbao1001 in #1550)
-新增: 支持数字模块 ID (by @Jinbao1001 in #1561)
+* 修复: 检测导出变量的副作用以进行 tree-shaking 优化 (by @stormslowly in #1579)
+* 修复: 修复 chunk_loading_global 包含引号时的输出错误 (by @xusd320 in #1582)
+* 其他: 添加用于调试模块/块图的 subdot cli 工具脚本 (by @stormslowly in #1585)
+* 修复: 修复 Windows 下复制功能失效的问题 (by @sorrycc in #1587)
+* 修复: 修复 Windows 下模块 ID 的路径问题 (by @sorrycc in #1588)
+* 优化: 优化按需引入命名空间，减少冗余代码 (by @stormslowly in #1584)
+* 修复 (已回滚): 修复 Mako 配置合并问题 (by @hualigushi in #1578)
+* 修复: 修复清除依赖项时找不到模块导致程序崩溃的问题 (by @Jinbao1001 in #1581)
+* 修复: 修复监视过多文件导致的错误 (by @Jinbao1001 in #1550)
+* 新增: 支持数字模块 ID (by @Jinbao1001 in #1561)
 
 ## 0.8.11
 
