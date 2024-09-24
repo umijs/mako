@@ -330,6 +330,16 @@ impl ModuleGraph {
         }
     }
 
+    pub fn rewrite_dependency(&mut self, module_id: &ModuleId, deps: Vec<(&ModuleId, Dependency)>) {
+        let mut edges = self.get_edges(module_id, Direction::Outgoing);
+        while let Some((edge_index, _node_index)) = edges.next(&self.graph) {
+            self.graph.remove_edge(edge_index);
+        }
+        deps.iter().for_each(|(m, d)| {
+            self.add_dependency(module_id, m, d.clone());
+        });
+    }
+
     pub fn get_dependency_module_by_source(
         &self,
         module_id: &ModuleId,
