@@ -436,7 +436,7 @@ importers:
         specifier: ^4.0.81
         version: 4.1.6
       '@umijs/mako':
-        specifier: 0.8.13
+        specifier: 0.8.14-canary.20240924.1
         version: link:../mako
       chalk:
         specifier: ^4.1.2
@@ -537,29 +537,29 @@ importers:
         version: 21.1.1
     optionalDependencies:
       '@umijs/mako-darwin-arm64':
-        specifier: 0.8.13
-        version: 0.8.13
+        specifier: 0.8.14-canary.20240924.1
+        version: 0.8.14-canary.20240924.1
       '@umijs/mako-darwin-x64':
-        specifier: 0.8.13
-        version: 0.8.13
+        specifier: 0.8.14-canary.20240924.1
+        version: 0.8.14-canary.20240924.1
       '@umijs/mako-linux-arm64-gnu':
-        specifier: 0.8.13
-        version: 0.8.13
+        specifier: 0.8.14-canary.20240924.1
+        version: 0.8.14-canary.20240924.1
       '@umijs/mako-linux-arm64-musl':
-        specifier: 0.8.13
-        version: 0.8.13
+        specifier: 0.8.14-canary.20240924.1
+        version: 0.8.14-canary.20240924.1
       '@umijs/mako-linux-x64-gnu':
-        specifier: 0.8.13
-        version: 0.8.13
+        specifier: 0.8.14-canary.20240924.1
+        version: 0.8.14-canary.20240924.1
       '@umijs/mako-linux-x64-musl':
-        specifier: 0.8.13
-        version: 0.8.13
+        specifier: 0.8.14-canary.20240924.1
+        version: 0.8.14-canary.20240924.1
       '@umijs/mako-win32-ia32-msvc':
-        specifier: 0.8.13
-        version: 0.8.13
+        specifier: 0.8.14-canary.20240924.1
+        version: 0.8.14-canary.20240924.1
       '@umijs/mako-win32-x64-msvc':
-        specifier: 0.8.13
-        version: 0.8.13
+        specifier: 0.8.14-canary.20240924.1
+        version: 0.8.14-canary.20240924.1
     devDependencies:
       '@napi-rs/cli':
         specifier: ^2.18.0
@@ -6512,8 +6512,8 @@ packages:
     dev: true
     optional: true
 
-  /@umijs/mako-darwin-arm64@0.8.13:
-    resolution: {integrity: sha512-PyFNH4GIUHJVXPNcs5g6GzHWoRpesBToNleYbsiih1hYNYX2nS6XDrufth4zhm10X/JZ/FCyW5rQOF57t5w+dw==}
+  /@umijs/mako-darwin-arm64@0.8.14-canary.20240924.1:
+    resolution: {integrity: sha512-hixaSUCw1j40Wb8tnbGwtILIKoX0GXMF/XaoomvDomE4DKW4Mab2kmGUVcntgoFCRsaXXlPxXfS3fDF/clEVfg==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
@@ -6530,8 +6530,8 @@ packages:
     dev: true
     optional: true
 
-  /@umijs/mako-darwin-x64@0.8.13:
-    resolution: {integrity: sha512-LS6XHhKiSn2fPdKa2Sb0W2o5Ftl93/AC+JNQdeM+ya7sCD+qn55HrT20s2/u7xIMKg7nsy7soGy2+gBrcPu1lQ==}
+  /@umijs/mako-darwin-x64@0.8.14-canary.20240924.1:
+    resolution: {integrity: sha512-nOH+MgA5G7UnT4j3+c2kXTHZ4msA6Lw8bXW+7AZeWd+QL6CdyejrGnQJ76J5npLncoO5T/4zUOl2JrEqr/CyjQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
@@ -6539,8 +6539,8 @@ packages:
     dev: false
     optional: true
 
-  /@umijs/mako-linux-arm64-gnu@0.8.13:
-    resolution: {integrity: sha512-lvz8fnY5TzArfk9h+Kfuq+L586l8oEEa9s7BHzSf7Lpv0/BCvjusTt8UjhyryHGeC05O87XXhs16jO7vLhSbBQ==}
+  /@umijs/mako-linux-arm64-gnu@0.8.14-canary.20240924.1:
+    resolution: {integrity: sha512-324pA7e8jjXDOHWSVm39zopzcIe9l92SwdUzuJXFIj7gcarvqF2UfsPuE4GuPbMh6FW5QdWDVxf9I3EUiXN1ow==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
@@ -6548,8 +6548,8 @@ packages:
     dev: false
     optional: true
 
-  /@umijs/mako-linux-arm64-musl@0.8.13:
-    resolution: {integrity: sha512-iVChkN2Zf1UiXZEVjfYxmjZiMJp2IDbPiysP8zpF7Wl8NvtvrlT7w9V+7U/2CR7VLYzmwWUc7X94PJUXKAXdMw==}
+  /@umijs/mako-linux-arm64-musl@0.8.14-canary.20240924.1:
+    resolution: {integrity: sha512-l/QP2oObnbOgcjdGFUtwbpUpuC3lzzVPwkGPLyMQ1ltR6qa684bWmqUMkZ/YmcDwZyy4maMBtz7X83AI510UPQ==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
@@ -6566,8 +6566,8 @@ packages:
     dev: true
     optional: true
 
-  /@umijs/mako-linux-x64-gnu@0.8.13:
-    resolution: {integrity: sha512-0tLZ1vD3B9wRr0lruI8/520IlMbnFTbfzOArGyaAQechGmCaPQx1mQcw+KVWqGUxk5z6U/XNMrP/EC9629i3Sw==}
+  /@umijs/mako-linux-x64-gnu@0.8.14-canary.20240924.1:
+    resolution: {integrity: sha512-s1F01BnJSbFYhwdchwjkqOEFI4+5rj19blEbUgT1FBvFwVs/6jMn7UrmSjZ1MqX7RLyvri0GgSi2bSOU/zG7UQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
@@ -6584,8 +6584,8 @@ packages:
     dev: true
     optional: true
 
-  /@umijs/mako-linux-x64-musl@0.8.13:
-    resolution: {integrity: sha512-Z+/mJ4cFCLLblK1dkVi3sfkOTnFFmHLF89YYF4tZ1OsO9709kQAooe4LVeKBUdVGbdldvHVSZscMRRLmDhp+/w==}
+  /@umijs/mako-linux-x64-musl@0.8.14-canary.20240924.1:
+    resolution: {integrity: sha512-ExTjw1SG5oO+dtjT9+FVw/wbtkMA+55KlH1lT3n9Ajo3VaKkiljyolznVueTbf5RKwsgs2pP0QGBiYQSOlXaPA==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
@@ -6593,8 +6593,8 @@ packages:
     dev: false
     optional: true
 
-  /@umijs/mako-win32-ia32-msvc@0.8.13:
-    resolution: {integrity: sha512-7thhScKlCaepDnppy2wGJsiz0yiBjRPT6KmYGi5dRMv/dsgv1Lfhy39wSBX6LiD3pIWgfYHCUUQgRc6yzDVrAA==}
+  /@umijs/mako-win32-ia32-msvc@0.8.14-canary.20240924.1:
+    resolution: {integrity: sha512-6vMPJQXDcVWiZXRUlGV/x7HEbnYh9QbF2b9413MQ45ESimaYsWpmG68pgofwmsqHqUiz89ppBHhXr4ThbXuGIw==}
     engines: {node: '>= 10'}
     cpu: [ia32]
     os: [win32]
@@ -6602,8 +6602,8 @@ packages:
     dev: false
     optional: true
 
-  /@umijs/mako-win32-x64-msvc@0.8.13:
-    resolution: {integrity: sha512-Mxr12n0xGK0IdeQnVj+2rrl+3Yj3fSA87eMgAgWFr01fzQURYeV4RXMgLx+vtZWJFESUPxJbmBRwgRVEkqLH6A==}
+  /@umijs/mako-win32-x64-msvc@0.8.14-canary.20240924.1:
+    resolution: {integrity: sha512-pFauSjWJgKMdTDb9euFY7LbJU3p46xu/LQ+vTjHEtlTNHELRZSnkl1OBQSNrjpyqXE2Wg32TIblf8C7T1mtkPg==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
