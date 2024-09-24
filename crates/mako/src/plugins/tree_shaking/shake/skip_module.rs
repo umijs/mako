@@ -328,10 +328,13 @@ pub(super) fn skip_module_optimize(
         }
 
         let info = &module.info.as_mut().unwrap();
-        let mut deps_vec: Vec<(&ModuleId, Dependency)> = vec![];
+        let mut deps_vec: Vec<(ModuleId, Dependency)> = vec![];
         let deps = analyze_deps::AnalyzeDeps::analyze_deps(&info.ast, &info.file, context.clone());
         deps.unwrap().resolved_deps.iter().for_each(|r| {
-            deps_vec.push((&module_id, r.dependency.clone()));
+            deps_vec.push((
+                ModuleId::new(r.resolver_resource.get_resolved_path()),
+                r.dependency.clone(),
+            ));
         });
         module_graph.rewrite_dependency(module_id, deps_vec);
     }
