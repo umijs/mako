@@ -196,13 +196,10 @@ pub(super) fn skip_module_optimize(
         let mut to_insert = vec![];
         let mut to_insert_deps = vec![];
         let mut to_delete = false;
-        let mut resolve_type: Option<ResolveType> = None;
 
         match &mut stmt {
             ModuleItem::ModuleDecl(module_decl) => match module_decl {
                 ModuleDecl::Import(import_decl) => {
-                    resolve_type = Some(ResolveType::Import(ImportType::empty()));
-
                     for replace in replaces {
                         let mut matched_index = None;
                         let mut matched_ident = None;
@@ -254,8 +251,6 @@ pub(super) fn skip_module_optimize(
                 ModuleDecl::ExportDecl(_) => {}
                 ModuleDecl::ExportNamed(export_named) => {
                     if export_named.src.is_some() {
-                        resolve_type = Some(ResolveType::ExportNamed(NamedExportType::empty()));
-
                         for replace in replaces {
                             let mut matched_index = None;
                             let mut matched_ident = None;

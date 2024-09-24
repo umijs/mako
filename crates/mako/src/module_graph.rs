@@ -9,7 +9,7 @@ use petgraph::visit::IntoEdgeReferences;
 use petgraph::Direction;
 use tracing::{debug, warn};
 
-use crate::module::{Dependencies, Dependency, Module, ModuleId, ResolveType};
+use crate::module::{Dependencies, Dependency, Module, ModuleId};
 
 #[derive(Debug)]
 pub struct ModuleGraph {
@@ -302,32 +302,6 @@ impl ModuleGraph {
         }
 
         targets
-    }
-
-    pub fn remove_dependency_module_by_source_and_resolve_type(
-        &mut self,
-        module_id: &ModuleId,
-        source: &String,
-        resolve_type: ResolveType,
-    ) {
-        let mut edges = self.get_edges(module_id, Direction::Outgoing);
-
-        while let Some((edge_index, _node_index)) = edges.next(&self.graph) {
-            let dependencies = self.graph.edge_weight_mut(edge_index).unwrap();
-            let mut found = false;
-            dependencies.retain(|dep| {
-                if !found && source == &dep.source && dep.resolve_type.same_enum(&resolve_type) {
-                    found = true;
-                    false
-                } else {
-                    true
-                }
-            });
-            if dependencies.is_empty() {
-                self.graph.remove_edge(edge_index);
-            }
-            return;
-        }
     }
 
     pub fn rewrite_dependency(&mut self, module_id: &ModuleId, deps: Vec<(&ModuleId, Dependency)>) {
