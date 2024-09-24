@@ -82,10 +82,10 @@ exports.dev = async function (opts) {
   assert(opts, 'opts should be supplied');
   checkConfig(opts);
   const express = require('express');
-  const proxy = require('express-http-proxy');
   const app = express();
   const port = opts.port || 8000;
   const hmrPort = opts.port + 1;
+  const makoConfig = await getMakoConfig(opts);
 
   // cors
   app.use(
@@ -118,16 +118,8 @@ exports.dev = async function (opts) {
     createProxy(opts.config.proxy, app);
   }
 
-  app.use(
-    proxy(`http://127.0.0.1:${hmrPort}`, {
-      filter: function (req, res) {
-        return req.method == 'GET' || req.method == 'HEAD';
-      },
-      skipToNextHandlerFilter: function (proxyRes) {
-        return proxyRes.statusCode !== 200;
-      },
-    }),
-  );
+  // serve dist files
+  app.use(express.static(makoConfig.output.path));
 
   // after middlewares
   (opts.afterMiddlewares || []).forEach((m) => {
@@ -169,7 +161,6 @@ exports.dev = async function (opts) {
 
   // mako dev
   const { build } = require('@umijs/mako');
-  const makoConfig = await getMakoConfig(opts);
   if (process.env.HMR === 'none') {
     makoConfig.hmr = false;
   } else {
