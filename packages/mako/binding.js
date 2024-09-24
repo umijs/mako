@@ -304,6 +304,7 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`);
 }
 
-const { build } = nativeBinding;
+const { WriteFile, build } = nativeBinding;
 
+module.exports.WriteFile = WriteFile;
 module.exports.build = build;

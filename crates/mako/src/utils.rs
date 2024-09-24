@@ -4,7 +4,7 @@ pub mod logger;
 pub mod profile_gui;
 #[cfg(test)]
 pub(crate) mod test_helper;
-pub(crate) mod thread_pool;
+pub mod thread_pool;
 pub mod tokio_runtime;
 
 use anyhow::{anyhow, Result};

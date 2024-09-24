@@ -11,14 +11,14 @@ use mako::config::Config;
 use mako::dev::DevServer;
 use mako::plugin::Plugin;
 use mako::utils::logger::init_logger;
+use mako::utils::thread_pool;
 use napi::bindgen_prelude::*;
 use napi::{JsObject, Status};
 use tsfn::{JsHooks, TsFnHooks};
 
 mod js_plugin;
+mod threadsafe_function;
 mod tsfn;
-
-pub(crate) mod threadsafe_function;
 
 #[cfg(not(target_os = "linux"))]
 #[global_allocator]
@@ -226,7 +226,7 @@ pub fn build(env: Env, build_params: BuildParams) -> napi::Result<JsObject> {
         Ok(promise)
     } else {
         let (deferred, promise) = env.create_deferred()?;
-        rayon::spawn(move || {
+        thread_pool::spawn(move || {
             let compiler =
                 Compiler::new(config, root.clone(), Args { watch: false }, Some(plugins))
                     .map_err(|e| napi::Error::new(Status::GenericFailure, format!("{}", e)));
