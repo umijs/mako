@@ -314,18 +314,19 @@ impl ModuleGraph {
 
         while let Some((edge_index, _node_index)) = edges.next(&self.graph) {
             let dependencies = self.graph.edge_weight_mut(edge_index).unwrap();
-
-            if let Some(to_del_dep) = dependencies
-                .iter()
-                .position(|dep| *source == dep.source && dep.resolve_type.same_enum(&resolve_type))
-            {
-                dependencies.take(&dependencies.iter().nth(to_del_dep).unwrap().clone());
-
-                if dependencies.is_empty() {
-                    self.graph.remove_edge(edge_index);
+            let mut found = false;
+            dependencies.retain(|dep| {
+                if !found && source == &dep.source && dep.resolve_type.same_enum(&resolve_type) {
+                    found = true;
+                    false
+                } else {
+                    true
                 }
-                return;
+            });
+            if dependencies.is_empty() {
+                self.graph.remove_edge(edge_index);
             }
+            return;
         }
     }
 
