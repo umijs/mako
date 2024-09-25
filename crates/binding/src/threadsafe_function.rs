@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use napi::bindgen_prelude::{spawn, FromNapiValue, JsValuesTupleIntoVec, Promise};
 use napi::sys::{napi_env, napi_value};
 use napi::threadsafe_function::{
@@ -46,20 +46,26 @@ impl<P: 'static, R: FromNapiValue + Send + 'static> ThreadsafeFunction<P, R> {
                 if r.is_promise().unwrap() {
                     let promise = Promise::<R>::from_unknown(r).unwrap();
                     spawn(async move {
-                        let r = promise.await.unwrap();
-                        sender.send(r).expect("Failed to send napi returned value.");
+                        let r = promise.await;
+                        sender
+                            .send(
+                                r.map_err(|e| anyhow!("Tsfn promise rejected {}.", e.to_string())),
+                            )
+                            .expect("Failed to send napi returned value.");
                     });
                 } else {
                     let r = R::from_unknown(r).unwrap();
-                    sender.send(r).expect("Failed to send napi returned value.");
+                    sender
+                        .send(Ok(r))
+                        .expect("Failed to send napi returned value.");
                 }
                 Ok(())
             },
         );
-        let ret = receiver
+
+        receiver
             .recv()
-            .expect("Failed to receive napi returned value.");
-        Ok(ret)
+            .expect("Failed to receive napi returned value.")
     }
 }
 
