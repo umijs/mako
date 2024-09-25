@@ -1,3 +1,9 @@
+## 0.8.14
+
+`2024-09-25`
+
+* 修复: dev 服务器加载 chunk 文件 504 错误 by [@stormslowly](https://github.com/stormslowly) in [#1612](https://github.com/umijs/mako/pull/1612)
+
 ## 0.8.13
 
 `2024-09-23`
