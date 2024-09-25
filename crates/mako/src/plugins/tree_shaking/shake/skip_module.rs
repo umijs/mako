@@ -166,7 +166,7 @@ pub(super) fn skip_module_optimize(
     module_graph: &mut ModuleGraph,
     tree_shake_modules_ids: &Vec<ModuleId>,
     tree_shake_modules_map: &HashMap<ModuleId, RefCell<TreeShakeModule>>,
-    _context: &Arc<Context>,
+    context: &Arc<Context>,
 ) -> Result<()> {
     mako_profile_function!();
 
@@ -493,7 +493,7 @@ pub(super) fn skip_module_optimize(
             // stmt_id is reversed order
             for to_replace in replaces.iter() {
                 // println!("{} apply with {:?}", module_id.id, to_replace.1);
-                apply_replace(to_replace, module_id, module_graph, _context);
+                apply_replace(to_replace, module_id, module_graph, context);
             }
 
             let mut tsm = tree_shake_modules_map.get(module_id).unwrap().borrow_mut();
