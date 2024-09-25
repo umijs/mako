@@ -86,7 +86,7 @@ impl TsFnHooks {
     }
 }
 
-#[napi]
+#[napi(object)]
 pub struct WriteFile {
     pub path: String,
     #[napi(ts_type = "Buffer")]
