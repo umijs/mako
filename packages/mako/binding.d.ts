@@ -54,7 +54,7 @@ export interface JsHooks {
 }
 export interface LoadResult {
   content: string;
-  contentType: string;
+  type: string;
 }
 export interface BuildParams {
   root: string;
