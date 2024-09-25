@@ -1,8 +1,9 @@
 use napi::bindgen_prelude::*;
 use napi::NapiRaw;
+use napi_derive::napi;
 use serde_json::Value;
 
-use crate::threadsafe_function;
+use crate::threadsafe_function::ThreadsafeFunction;
 
 #[napi(object)]
 pub struct JsHooks {
@@ -60,40 +61,26 @@ pub struct JsHooks {
 }
 
 pub struct TsFnHooks {
-    pub name: String,
-    pub build_start: Option<threadsafe_function::ThreadsafeFunction<(), ()>>,
-    pub generate_end: Option<threadsafe_function::ThreadsafeFunction<Value, ()>>,
-    pub load: Option<threadsafe_function::ThreadsafeFunction<String, Option<LoadResult>>>,
-    pub _on_generate_file: Option<threadsafe_function::ThreadsafeFunction<WriteFile, ()>>,
+    pub build_start: Option<ThreadsafeFunction<(), ()>>,
+    pub generate_end: Option<ThreadsafeFunction<Value, ()>>,
+    pub load: Option<ThreadsafeFunction<String, Option<LoadResult>>>,
+    pub _on_generate_file: Option<ThreadsafeFunction<WriteFile, ()>>,
 }
 
 impl TsFnHooks {
     pub fn new(env: Env, hooks: &JsHooks) -> Self {
-        let name = if let Some(name) = &hooks.name {
-            name.clone()
-        } else {
-            "unnamed_js_plugin".to_string()
-        };
         Self {
-            name,
             build_start: hooks.build_start.as_ref().map(|hook| unsafe {
-                threadsafe_function::ThreadsafeFunction::from_napi_value(env.raw(), hook.raw())
-                    .unwrap()
+                ThreadsafeFunction::from_napi_value(env.raw(), hook.raw()).unwrap()
             }),
             generate_end: hooks.generate_end.as_ref().map(|hook| unsafe {
-                threadsafe_function::ThreadsafeFunction::<Value, ()>::from_napi_value(
-                    env.raw(),
-                    hook.raw(),
-                )
-                .unwrap()
+                ThreadsafeFunction::from_napi_value(env.raw(), hook.raw()).unwrap()
             }),
             load: hooks.load.as_ref().map(|hook| unsafe {
-                threadsafe_function::ThreadsafeFunction::from_napi_value(env.raw(), hook.raw())
-                    .unwrap()
+                ThreadsafeFunction::from_napi_value(env.raw(), hook.raw()).unwrap()
             }),
             _on_generate_file: hooks._on_generate_file.as_ref().map(|hook| unsafe {
-                threadsafe_function::ThreadsafeFunction::from_napi_value(env.raw(), hook.raw())
-                    .unwrap()
+                ThreadsafeFunction::from_napi_value(env.raw(), hook.raw()).unwrap()
             }),
         }
     }
@@ -102,6 +89,7 @@ impl TsFnHooks {
 #[napi]
 pub struct WriteFile {
     pub path: String,
+    #[napi(ts_type = "Buffer")]
     pub content: Vec<u8>,
 }
 

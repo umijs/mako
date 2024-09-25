@@ -1,10 +1,8 @@
 #![deny(clippy::all)]
 
-#[macro_use]
-extern crate napi_derive;
-
 use std::sync::{Arc, Once};
 
+use js_hook::{JsHooks, TsFnHooks};
 use js_plugin::JsPlugin;
 use mako::compiler::{Args, Compiler};
 use mako::config::Config;
@@ -14,11 +12,11 @@ use mako::utils::logger::init_logger;
 use mako::utils::thread_pool;
 use napi::bindgen_prelude::*;
 use napi::{JsObject, Status};
-use tsfn::{JsHooks, TsFnHooks};
+use napi_derive::napi;
 
+mod js_hook;
 mod js_plugin;
 mod threadsafe_function;
-mod tsfn;
 
 #[cfg(not(target_os = "linux"))]
 #[global_allocator]

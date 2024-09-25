@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::tsfn::{LoadResult, TsFnHooks, WriteFile};
+use crate::js_hook::{LoadResult, TsFnHooks, WriteFile};
 
 pub struct JsPlugin {
     pub hooks: TsFnHooks,

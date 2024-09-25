@@ -230,5 +230,5 @@ export interface BuildParams {
 export declare function build(buildParams: BuildParams): Promise<void>;
 export class WriteFile {
   path: string;
-  content: Array<number>;
+  content: Buffer;
 }

@@ -2693,7 +2693,6 @@ dependencies = [
  "napi-build",
  "napi-derive",
  "oneshot",
- "rayon",
  "serde",
  "serde_json",
  "tikv-jemallocator",
