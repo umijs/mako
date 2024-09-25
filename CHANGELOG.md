@@ -1,3 +1,11 @@
+## 0.8.13
+
+`2024-09-23`
+
+* fix: chunk_loading_global  by @xusd320 in https://github.com/umijs/mako/pull/1590
+* fix: devServer put static serve proxy after umi proxy middleware  by @whyer11 in https://github.com/umijs/mako/pull/1558
+* revert: import namespace optimize  by @stormslowly in https://github.com/umijs/mako/pull/1606
+
 ## 0.8.12
 
 `2024-09-13`

@@ -115,8 +115,6 @@ jobs:
       - name: LS
         run: ls -l ./packages/mako
       - name: Test E2E
-        env:
-          RUST_BACKTRACE: full
         run: pnpm ${{ matrix.script }}
   
   lint:
