@@ -120,15 +120,12 @@ exports.dev = async function (opts) {
 
   app.use(
     proxy(`http://127.0.0.1:${hmrPort}`, {
-      proxyTimeout: 50000,
-
       proxyReqOptDecorator: function (proxyReqOpts) {
         // keep alive is on by default https://nodejs.org/docs/latest/api/http.html#httpglobalagent
         // 禁用 keep-alive
         proxyReqOpts.agent = false;
         return proxyReqOpts;
       },
-
       filter: function (req, res) {
         return req.method == 'GET' || req.method == 'HEAD';
       },
