@@ -10,6 +10,7 @@ pub mod tokio_runtime;
 use anyhow::{anyhow, Result};
 use base64::engine::general_purpose;
 use base64::Engine;
+use cached::proc_macro::cached;
 use regex::Regex;
 
 pub fn base64_encode<T: AsRef<[u8]>>(raw: T) -> String {
@@ -50,6 +51,10 @@ pub fn process_req_url(public_path: &str, req_url: &str) -> Result<String> {
     Ok(req_url.to_string())
 }
 
+#[cached(key = "String", convert = r#"{ re.to_string() }"#)]
+pub fn create_cached_regex(re: &str) -> Regex {
+    Regex::new(re).unwrap()
+}
 #[cfg(test)]
 mod tests {
     use super::*;
