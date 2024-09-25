@@ -9,6 +9,7 @@ use crate::compiler::Context;
 use crate::module_graph::ModuleGraph;
 use crate::plugin::{Plugin, PluginTransformJsParam};
 
+mod collect_explicit_prop;
 mod module;
 mod module_side_effects_flag;
 mod remove_useless_stmts;
