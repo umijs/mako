@@ -309,8 +309,8 @@ impl ModuleGraph {
         while let Some((edge_index, _node_index)) = edges.next(&self.graph) {
             self.graph.remove_edge(edge_index);
         }
-        deps.iter().for_each(|(m, d)| {
-            self.add_dependency(module_id, m, d.clone());
+        deps.into_iter().for_each(|(m, d)| {
+            self.add_dependency(module_id, &m, d);
         });
     }
 
