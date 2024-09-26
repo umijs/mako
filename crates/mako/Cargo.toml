@@ -64,7 +64,7 @@ swc_emotion         = "0.72.19"
 swc_error_reporters = "0.21.0"
 swc_node_comments   = "0.24.0"
 
-anyhow                = "1.0.71"
+anyhow                = { workspace = true }
 base64                = "0.22.1"
 chrono                = "0.4.38"
 clap                  = { workspace = true, features = ["derive"] }

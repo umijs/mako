@@ -2830,7 +2830,8 @@ dependencies = [
  "napi",
  "napi-build",
  "napi-derive",
- "rayon",
+ "oneshot",
+ "serde",
  "serde_json",
  "tikv-jemallocator",
 ]
@@ -3079,9 +3080,9 @@ dependencies = [
 
 [[package]]
 name = "napi"
-version = "2.16.10"
+version = "2.16.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04409e8c2d61995696e44d2181b79b68c1dd41f7e24a17cde60bbd9f54ddddef"
+checksum = "53575dfa17f208dd1ce3a2da2da4659aae393b256a472f2738a8586a6c4107fd"
 dependencies = [
  "bitflags 2.6.0",
  "ctor",
@@ -3523,6 +3524,12 @@ name = "once_cell"
 version = "1.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33ea5043e58958ee56f3e15a90aee535795cd7dfd319846288d93c5b57d85cbe"
+
+[[package]]
+name = "oneshot"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e296cf87e61c9cfc1a61c3c63a0f7f286ed4554e0e22be84e8a38e1d264a2a29"
 
 [[package]]
 name = "open"

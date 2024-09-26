@@ -3,9 +3,11 @@ members  = ["crates/*"]
 resolver = "2"
 
 [workspace.dependencies]
+anyhow            = "1.0.71"
 cached            = "0.46.1"
 clap              = "4.3.11"
 mimalloc-rust     = { version = "=0.2.1" }
+oneshot           = "0.1.8"
 regex             = "1.9.3"
 serde             = "1.0.171"
 serde_json        = "1.0.100"

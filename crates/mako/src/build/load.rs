@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use mdxjs::{compile, Options as MdxOptions};
+use regex::Regex;
 use serde_xml_rs::from_str as from_xml_str;
 use serde_yaml::{from_str as from_yaml_str, Value as YamlValue};
 use thiserror::Error;
@@ -14,6 +15,7 @@ use crate::ast::file::{Content, File, JsContent};
 use crate::compiler::Context;
 use crate::config::Mode;
 use crate::plugin::PluginLoadParam;
+use crate::utils::create_cached_regex;
 
 #[derive(Debug, Error)]
 enum LoadError {
@@ -257,7 +259,20 @@ export function moduleToDom(css) {
                 Ok(final_file_name)
             }
         };
-        if !limit || file_size > context.config.inline_limit.try_into().unwrap() {
+        let inline_excludes_extensions = context
+            .config
+            .inline_excludes_extensions
+            .clone()
+            .iter()
+            .map(|s| create_cached_regex(s))
+            .collect::<Vec<Regex>>();
+        let should_not_transform_base64 = inline_excludes_extensions
+            .iter()
+            .any(|regex| regex.is_match(&file.extname));
+        if !limit
+            || file_size > context.config.inline_limit.try_into().unwrap()
+            || should_not_transform_base64
+        {
             emit_assets()
         } else {
             let base64_result = file.get_base64();

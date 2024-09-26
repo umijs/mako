@@ -52,6 +52,14 @@ export interface JsHooks {
   onGenerateFile?: (path: string, content: Buffer) => Promise<void>;
   buildStart?: () => Promise<void>;
 }
+export interface WriteFile {
+  path: string;
+  content: Buffer;
+}
+export interface LoadResult {
+  content: string;
+  type: string;
+}
 export interface BuildParams {
   root: string;
   config: {

@@ -1,6 +1,6 @@
 {
   "name": "@umijs/mako-linux-arm64-musl",
-  "version": "0.8.14-canary.20240924.1",
+  "version": "0.8.14",
   "os": [
     "linux"
   ],
