@@ -636,6 +636,8 @@ async function getMakoConfig(opts) {
       plugins: opts.config.lessLoader?.plugins,
     },
     analyze: analyze || process.env.ANALYZE ? {} : undefined,
+    sass: sassLoader,
+    ...mako,
     experimental: {
       webpackSyntaxValidate: [],
       requireContext: true,
@@ -643,9 +645,8 @@ async function getMakoConfig(opts) {
         ignores: ['node_modules', '\\.umi'],
         graphviz: false,
       },
+      ...mako.experimental,
     },
-    sass: sassLoader,
-    ...mako,
   };
 
   return makoConfig;
