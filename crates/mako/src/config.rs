@@ -248,8 +248,7 @@ impl Config {
             c
         };
         // validate user config
-        validate_mako_config(abs_config_file.to_string())
-            .map_err(|e| anyhow!("{}", format!("{:?}", e)))?;
+        validate_mako_config(abs_config_file.to_string()).map_err(|e| anyhow!("{}", e))?;
         // user config
         let c = c.add_source(config::File::with_name(abs_config_file).required(false));
         // cli config
