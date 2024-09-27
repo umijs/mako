@@ -21,10 +21,11 @@ use twox_hash::XxHash64;
 
 use crate::ast::sourcemap::build_source_map_to_buf;
 use crate::compiler::Context;
-use crate::config::{get_pkg_name, Mode};
+use crate::config::Mode;
 use crate::generate::chunk_pot::ChunkPot;
 use crate::generate::runtime::AppRuntimeTemplate;
 use crate::module::{relative_to_root, Module, ModuleAst};
+use crate::utils::get_pkg_name;
 
 pub(crate) fn render_module_js(
     ast: &SwcModule,
