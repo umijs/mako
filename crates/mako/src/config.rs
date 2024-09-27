@@ -6,7 +6,7 @@ mod duplicate_package_checker;
 mod experimental;
 mod external;
 mod generic_usize;
-mod hrm;
+mod hmr;
 mod inline_css;
 mod macros;
 mod manifest;
@@ -48,7 +48,7 @@ pub use external::{
     ExternalAdvancedSubpathRule, ExternalAdvancedSubpathTarget, ExternalConfig,
 };
 pub use generic_usize::GenericUsizeDefault;
-pub use hrm::{deserialize_hmr, HmrConfig};
+pub use hmr::{deserialize_hmr, HmrConfig};
 pub use inline_css::{deserialize_inline_css, InlineCssConfig};
 pub use manifest::{deserialize_manifest, ManifestConfig};
 use miette::{miette, ByteOffset, Diagnostic, NamedSource, SourceOffset, SourceSpan};
