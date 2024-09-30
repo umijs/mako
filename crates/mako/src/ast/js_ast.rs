@@ -42,7 +42,7 @@ impl fmt::Debug for JsAst {
 impl JsAst {
     pub fn new(file: &File, context: Arc<Context>) -> Result<Self> {
         let fm = context.meta.script.cm.new_source_file(
-            FileName::Real(file.relative_path.to_path_buf()),
+            FileName::Real(file.path.to_path_buf()),
             file.get_content_raw(),
         );
         let comments = context.meta.script.origin_comments.read().unwrap();

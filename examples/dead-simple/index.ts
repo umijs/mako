@@ -1,6 +1,9 @@
-import { foo } from './foo';
-import './foo/foo';
+// import { foo } from './foo';
+// import './foo/foo';
+
+import App from './app';
+
 /**
  * abcd
  */
-console.log(foo);
+console.log(App);
