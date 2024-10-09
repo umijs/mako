@@ -1,6 +1,7 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::js_hook::{LoadResult, TsFnHooks, WriteFile};
+use crate::js_hook::{LoadResult, ResolveIdResult, TsFnHooks, WriteFile};
 
 pub struct JsPlugin {
     pub hooks: TsFnHooks,
@@ -9,6 +10,7 @@ use anyhow::{anyhow, Result};
 use mako::ast::file::{Content, JsContent};
 use mako::compiler::Context;
 use mako::plugin::{Plugin, PluginGenerateEndParams, PluginLoadParam};
+use mako::resolve::{Resolution, ResolvedResource, ResolverResource};
 
 impl Plugin for JsPlugin {
     fn name(&self) -> &str {
@@ -42,6 +44,29 @@ impl Plugin for JsPlugin {
                     "css" => return Ok(Some(Content::Css(x.content))),
                     _ => return Err(anyhow!("Unsupported content type: {}", x.content_type)),
                 }
+            }
+        }
+        Ok(None)
+    }
+
+    fn resolve_id(
+        &self,
+        source: &str,
+        importer: &str,
+        _context: &Arc<Context>,
+    ) -> Result<Option<ResolverResource>> {
+        if let Some(hook) = &self.hooks.resolve_id {
+            let x: Option<ResolveIdResult> =
+                hook.call((source.to_string(), importer.to_string()))?;
+            if let Some(x) = x {
+                return Ok(Some(ResolverResource::Resolved(ResolvedResource(
+                    Resolution {
+                        path: PathBuf::from(x.id),
+                        query: None,
+                        fragment: None,
+                        package_json: None,
+                    },
+                ))));
             }
         }
         Ok(None)

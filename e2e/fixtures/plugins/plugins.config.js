@@ -19,5 +19,14 @@ module.exports = [
         };
       }
     }
-  }
+  },
+  {
+    async resolveId(source, importer) {
+      if (source === 'resolve_id') {
+        console.log('resolveId', source, importer);
+        return { id: require('path').join(__dirname, 'resolve_id_mock.js') };
+      }
+      return null;
+    }
+  },
 ];
