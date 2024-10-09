@@ -544,6 +544,7 @@ Specify the plugins to use.
     };
   }) => void;
   load?: (filePath: string) => Promise<{ content: string, type: 'css'|'js'|'jsx'|'ts'|'tsx' }>;
+  resolveId?: (id: string, importer: string) => Promise<{ id: string }>;
 }
 ```
 
