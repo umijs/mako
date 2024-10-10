@@ -13,7 +13,7 @@
     "test:e2e": "node scripts/test-e2e.mjs",
     "test:umi": "node scripts/test-e2e.mjs --fixtures e2e/fixtures.umi --umi",
     "test:hmr": "node scripts/test-hmr.mjs",
-    "release": "esno scripts/release.ts",
+    "release": "npm run release:mako && npm run release:bundler-mako",
     "release:mako": "pnpm --filter @umijs/mako release",
     "release:bundler-mako": "esno scripts/release-bundler-mako.ts",
     "release:rsc": "esno scripts/release-rsc.ts",
