@@ -14,7 +14,7 @@ mod module;
 mod module_graph;
 pub mod plugin;
 mod plugins;
-mod resolve;
+pub mod resolve;
 pub mod share;
 pub mod stats;
 pub mod utils;
