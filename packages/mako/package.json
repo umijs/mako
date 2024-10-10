@@ -71,8 +71,6 @@
     "universal": "napi universal",
     "version": "napi version",
     "release": "esno scripts/release.ts",
-    "release:quick": "esno scripts/quick-release.ts",
-    "release:build": "esno scripts/release.ts --build",
     "src:dev": "father dev",
     "src:build": "father build"
   },
