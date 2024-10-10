@@ -168,7 +168,9 @@ fn parse_combinator(combinator: &Combinator) -> String {
 
 fn parse_compound_selector(selector: &CompoundSelector) -> String {
     let mut result = String::new();
-    // TODO: support selector.nesting_selector
+    if selector.nesting_selector.is_some() {
+        result.push('&');
+    }
     if let Some(type_selector) = &selector.type_selector {
         let type_selector = type_selector.as_ref();
         match type_selector {
@@ -513,6 +515,19 @@ mod tests {
     }
 
     #[test]
+    fn test_child_select() {
+        assert_eq!(
+            run(
+                r#".a .b{width:100px;}"#,
+                Px2RemConfig {
+                    ..Default::default()
+                }
+            ),
+            r#".a .b{width:1rem}"#
+        );
+    }
+
+    #[test]
     fn test_attribute() {
         assert_eq!(
             run(
@@ -563,6 +578,47 @@ mod tests {
                 }
             ),
             r#".jj:before,.jj:after{width:100px}"#
+        );
+    }
+
+    #[test]
+    fn test_nesting_selector() {
+        assert_eq!(
+            run(
+                r#".test{width:300px;.son & {width:100px;}}"#,
+                Px2RemConfig {
+                    ..Default::default()
+                }
+            ),
+            r#".test{width:3rem;.son &{width:1rem}}"#
+        );
+    }
+
+    #[test]
+    fn test_nesting_selector_black() {
+        assert_eq!(
+            run(
+                r#".test{width:300px;.son & {width:100px;}}"#,
+                Px2RemConfig {
+                    selector_blacklist: vec![".son &".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#".test{width:3rem;.son &{width:100px}}"#
+        );
+    }
+
+    #[test]
+    fn test_nesting_selector_white() {
+        assert_eq!(
+            run(
+                r#".test{width:300px;.son & {width:100px;}}"#,
+                Px2RemConfig {
+                    selector_whitelist: vec![".son &".to_string()],
+                    ..Default::default()
+                }
+            ),
+            r#".test{width:300px;.son &{width:1rem}}"#
         );
     }
 
