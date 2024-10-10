@@ -89,12 +89,13 @@ pub fn transform_modules_in_thread(
                     (
                         dep.source.clone(),
                         (
-                            if dep.resolve_type == ResolveType::Worker {
-                                let chunk_id = id.generate(&context);
-                                let chunk_graph = context.chunk_graph.read().unwrap();
-                                chunk_graph.chunk(&chunk_id.into()).unwrap().filename()
-                            } else {
-                                id.generate(&context)
+                            match dep.resolve_type {
+                                ResolveType::Worker(_) => {
+                                    let chunk_id = id.generate(&context);
+                                    let chunk_graph = context.chunk_graph.read().unwrap();
+                                    chunk_graph.chunk(&chunk_id.into()).unwrap().filename()
+                                }
+                                _ => id.generate(&context),
                             },
                             id.id.clone(),
                         ),

@@ -72,6 +72,7 @@ pub(crate) fn get_pkg_name(root: &Path) -> Option<String> {
 pub fn create_cached_regex(re: &str) -> Regex {
     Regex::new(re).unwrap()
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;

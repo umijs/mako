@@ -186,7 +186,7 @@ impl Plugin for MinifishPlugin {
                         .iter()
                         .map(|dep| Dependency {
                             module: dep.0.id.clone(),
-                            import_type: dep.1.resolve_type,
+                            import_type: dep.1.resolve_type.clone(),
                         })
                         .collect();
 

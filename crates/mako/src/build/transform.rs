@@ -14,7 +14,7 @@ use swc_core::ecma::transforms::base::helpers::{Helpers, HELPERS};
 use swc_core::ecma::transforms::base::{resolver, Assumptions};
 use swc_core::ecma::transforms::compat::reserved_words;
 use swc_core::ecma::transforms::optimization::simplifier;
-use swc_core::ecma::transforms::optimization::simplify::{dce, Config as SimpilifyConfig};
+use swc_core::ecma::transforms::optimization::simplify::{dce, Config as SimplifyConfig};
 use swc_core::ecma::transforms::proposal::decorators;
 use swc_core::ecma::visit::{Fold, VisitMut};
 
@@ -236,7 +236,7 @@ impl Transform {
                                     // this must be kept for tree shaking to work
                                     Box::new(simplifier(
                                         unresolved_mark,
-                                        SimpilifyConfig {
+                                        SimplifyConfig {
                                             dce: dce::Config {
                                                 top_level: false,
                                                 ..Default::default()

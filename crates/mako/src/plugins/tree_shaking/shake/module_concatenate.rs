@@ -64,7 +64,7 @@ pub fn optimize_module_graph(
             let incoming_deps = module_graph.dependant_dependencies(module_id);
             let dynamic_imported = incoming_deps.iter().any(|&deps| {
                 deps.iter()
-                    .any(|d| matches!(d.resolve_type, ResolveType::DynamicImport))
+                    .any(|d| matches!(d.resolve_type, ResolveType::DynamicImport(_)))
             });
 
             if dynamic_imported {
@@ -75,7 +75,7 @@ pub fn optimize_module_graph(
 
             let has_not_supported_syntax = deps.iter().any(|(_, dep, is_async)| {
                 dep.resolve_type.is_dynamic_esm()
-                    || matches!(dep.resolve_type, ResolveType::Worker)
+                    || matches!(dep.resolve_type, ResolveType::Worker(_))
                     || (*is_async && dep.resolve_type.is_sync_esm())
             });
             if has_not_supported_syntax {
@@ -143,9 +143,9 @@ pub fn optimize_module_graph(
                 ResolveType::ExportNamed(_) => true,
                 ResolveType::ExportAll => true,
                 ResolveType::Require => false,
-                ResolveType::DynamicImport => false,
+                ResolveType::DynamicImport(_) => false,
                 ResolveType::Css => false,
-                ResolveType::Worker => false,
+                ResolveType::Worker(_) => false,
             };
 
             if candidate.contains(module_id) && esm_import {

@@ -174,7 +174,7 @@ impl JsAst {
     }
 
     pub fn analyze_deps(&self, context: Arc<Context>) -> Vec<Dependency> {
-        let mut visitor = DepAnalyzer::new(self.unresolved_mark);
+        let mut visitor = DepAnalyzer::new(self.unresolved_mark, context.clone());
         GLOBALS.set(&context.meta.script.globals, || {
             self.ast.visit_with(&mut visitor);
             visitor.dependencies
