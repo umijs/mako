@@ -575,7 +575,7 @@ fn shake_module(
     // add all dynamic imported dependencies as [UsedExports::All]
     for (dep, edge) in module_graph.get_dependencies(tree_shake_module_id) {
         match edge.resolve_type {
-            ResolveType::DynamicImport | ResolveType::Worker => {
+            ResolveType::DynamicImport(_) | ResolveType::Worker(_) => {
                 if let Some(ref_cell) = tree_shake_modules_map.get(dep) {
                     let mut tree_shake_module = ref_cell.borrow_mut();
                     if tree_shake_module.use_all_exports()

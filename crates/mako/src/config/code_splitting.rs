@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use super::generic_usize::GenericUsizeDefault;
 use crate::create_deserialize_fn;
 
-#[derive(Deserialize, Serialize, Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub enum AllowChunks {
     #[serde(rename = "all")]
     All,
@@ -62,7 +62,7 @@ impl Default for CodeSplittingAdvancedOptions {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, Eq, PartialEq)]
+#[derive(Deserialize, Serialize, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum ChunkNameSuffixStrategy {
     #[serde(rename = "packageName")]
     PackageName,
@@ -70,7 +70,7 @@ pub enum ChunkNameSuffixStrategy {
     DependentsHash,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, Eq, PartialEq)]
+#[derive(Deserialize, Serialize, Clone, Debug, Eq, PartialEq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct ChunkGroup {
     pub name: String,

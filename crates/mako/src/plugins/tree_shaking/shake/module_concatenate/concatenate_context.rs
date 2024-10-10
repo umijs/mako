@@ -238,9 +238,9 @@ impl From<&ResolveType> for EsmDependantFlags {
             ResolveType::ExportNamed(named_export_type) => named_export_type.into(),
             ResolveType::ExportAll => EsmDependantFlags::ExportAll,
             ResolveType::Require => EsmDependantFlags::empty(),
-            ResolveType::DynamicImport => EsmDependantFlags::empty(),
+            ResolveType::DynamicImport(_) => EsmDependantFlags::empty(),
             ResolveType::Css => EsmDependantFlags::empty(),
-            ResolveType::Worker => EsmDependantFlags::empty(),
+            ResolveType::Worker(_) => EsmDependantFlags::empty(),
         }
     }
 }

@@ -415,7 +415,8 @@ __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
         let ast = test_utils.ast.js_mut();
         GLOBALS.set(&test_utils.context.meta.script.globals, || {
             HELPERS.set(&Helpers::new(true), || {
-                let mut dep_collector = DepAnalyzer::new(ast.unresolved_mark);
+                let mut dep_collector =
+                    DepAnalyzer::new(ast.unresolved_mark, test_utils.context.clone());
                 ast.ast.visit_with(&mut dep_collector);
 
                 let import_interop = ImportInterop::Swc;

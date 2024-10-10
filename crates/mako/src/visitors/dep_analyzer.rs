@@ -1,22 +1,32 @@
-use swc_core::common::{Mark, Span};
+use std::sync::Arc;
+use std::{i8, usize};
+
+use regex::Regex;
+use swc_core::common::comments::Comments;
+use swc_core::common::{BytePos, Mark, Span, Spanned};
 use swc_core::ecma::ast::{CallExpr, Expr, Lit, ModuleDecl, NewExpr, Str};
 use swc_core::ecma::visit::{Visit, VisitWith};
 
 use crate::ast::utils;
+use crate::compiler::Context;
+use crate::config::ChunkGroup;
 use crate::module::{Dependency, ResolveType};
+use crate::utils::create_cached_regex;
 
 pub struct DepAnalyzer {
     pub dependencies: Vec<Dependency>,
     order: usize,
     unresolved_mark: Mark,
+    context: Arc<Context>,
 }
 
 impl DepAnalyzer {
-    pub fn new(unresolved_mark: Mark) -> Self {
+    pub fn new(unresolved_mark: Mark, context: Arc<Context>) -> Self {
         Self {
             dependencies: vec![],
             order: 1,
             unresolved_mark,
+            context,
         }
     }
     fn add_dependency(&mut self, source: String, resolve_type: ResolveType, span: Option<Span>) {
@@ -28,6 +38,37 @@ impl DepAnalyzer {
             span,
         });
         self.order += 1;
+    }
+
+    fn analyze_magic_comment_chunk_group(&mut self, pos: BytePos) -> Option<ChunkGroup> {
+        let magic_comment_chunk_name = {
+            let comments_texts = self
+                .context
+                .meta
+                .script
+                .origin_comments
+                .read()
+                .unwrap()
+                .get_swc_comments()
+                .get_leading(pos)
+                .map_or(Vec::new(), |cms| {
+                    cms.iter().map(|c| c.text.to_string()).collect()
+                });
+            comments_texts.iter().find_map(|t| {
+                get_magic_comment_chunk_name_regex()
+                    .captures(t.trim())
+                    .and_then(|matched| matched.get(2).map(|m| m.as_str().to_string()))
+            })
+        };
+
+        magic_comment_chunk_name.map(|name| ChunkGroup {
+            name,
+            min_chunks: 1,
+            min_size: usize::MIN,
+            max_size: usize::MAX,
+            priority: i8::MAX,
+            ..Default::default()
+        })
     }
 }
 
@@ -85,7 +126,24 @@ impl Visit for DepAnalyzer {
         // import('a')
         else if utils::is_dynamic_import(expr) {
             if let Some(src) = utils::get_first_str_arg(expr) {
-                self.add_dependency(src, ResolveType::DynamicImport, Some(expr.span));
+                let maybe_magic_comments_pos = {
+                    if !expr.args.is_empty() {
+                        match &expr.args[0].expr {
+                            box Expr::Lit(s) => Some(s.span().lo),
+                            _ => None,
+                        }
+                    } else {
+                        None
+                    }
+                };
+
+                let chunk_group = maybe_magic_comments_pos
+                    .and_then(|pos| self.analyze_magic_comment_chunk_group(pos));
+                self.add_dependency(
+                    src,
+                    ResolveType::DynamicImport(chunk_group),
+                    Some(expr.span),
+                );
                 return;
             }
         }
@@ -97,7 +155,24 @@ impl Visit for DepAnalyzer {
         // e.g.
         // new Worker(new URL('a', import.meta.url));
         if let Some(str) = resolve_web_worker(expr, self.unresolved_mark) {
-            self.add_dependency(str.value.to_string(), ResolveType::Worker, Some(str.span));
+            let maybe_magic_comments_pos = expr.args.as_ref().and_then(|args| {
+                if !args.is_empty() {
+                    match &args[0].expr {
+                        box Expr::Lit(s) => Some(s.span().lo),
+                        _ => None,
+                    }
+                } else {
+                    None
+                }
+            });
+
+            let chunk_group = maybe_magic_comments_pos
+                .and_then(|pos| self.analyze_magic_comment_chunk_group(pos));
+            self.add_dependency(
+                str.value.to_string(),
+                ResolveType::Worker(chunk_group),
+                Some(str.span),
+            );
         }
         expr.visit_children_with(self);
     }
@@ -146,6 +221,10 @@ fn resolve_web_worker(expr: &NewExpr, unresolved_mark: Mark) -> Option<&Str> {
     }
 
     None
+}
+
+fn get_magic_comment_chunk_name_regex() -> Regex {
+    create_cached_regex(r#"(makoChunkName|webpackChunkName):\s*['"`](\w+)['"`]"#)
 }
 
 #[cfg(test)]
@@ -212,7 +291,7 @@ mod tests {
     fn run(js_code: &str) -> Vec<String> {
         let mut test_utils = TestUtils::gen_js_ast(js_code);
         let ast = test_utils.ast.js_mut();
-        let mut analyzer = super::DepAnalyzer::new(ast.unresolved_mark);
+        let mut analyzer = super::DepAnalyzer::new(ast.unresolved_mark, test_utils.context.clone());
         GLOBALS.set(&test_utils.context.meta.script.globals, || {
             ast.ast.visit_with(&mut analyzer);
         });

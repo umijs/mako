@@ -17,6 +17,7 @@ use crate::module::{Module, ModuleId, ModuleInfo};
 use crate::resolve::{ResolvedResource, ResolverResource};
 use crate::utils::{create_cached_regex, url_safe_base64_encode};
 
+#[derive(Debug)]
 pub struct OptimizeChunksInfo {
     pub group_options: ChunkGroup,
     pub module_to_chunks: IndexMap<ModuleId, Vec<ChunkId>>,
@@ -26,6 +27,7 @@ impl Compiler {
     pub fn optimize_chunk(&self) {
         crate::mako_profile_function!();
         debug!("optimize chunk");
+
         if let Some(optimize_options) = self.get_optimize_chunk_options() {
             debug!("optimize options: {:?}", optimize_options);
             // stage: prepare
@@ -58,6 +60,39 @@ impl Compiler {
             }
         }
     }
+
+    // fn collect_magic_chunk_groups(&self) -> Vec<OptimizeChunksInfo> {
+    //     let module_graph = self.context.module_graph.read().unwrap();
+    //     let edge_filter = EdgeFiltered::from_fn(&module_graph.graph, |edge_ref| {
+    //         edge_ref
+    //             .weight()
+    //             .iter()
+    //             .any(|d| matches!(d.resolve_type, ResolveType::DynamicImport(Some(_))))
+    //     });
+    //     edge_filter
+    //         .edge_references()
+    //         .fold(Vec::new(), |mut acc, e| {
+    //             acc.extend(
+    //                 e.weight()
+    //                     .iter()
+    //                     .filter_map(|d| {
+    //                         if let ResolveType::DynamicImport(Some(chunk_group)) = &d.resolve_type {
+    //                             Some(OptimizeChunksInfo {
+    //                                 group_options: chunk_group.clone(),
+    //                                 module_to_chunks: IndexMap::from_iter([(
+    //                                     module_graph.graph[e.target()].id.clone(),
+    //                                     vec![ChunkId::new(chunk_group.name.clone())],
+    //                                 )]),
+    //                             })
+    //                         } else {
+    //                             None
+    //                         }
+    //                     })
+    //                     .collect::<Vec<_>>(),
+    //             );
+    //             acc
+    //         })
+    // }
 
     pub fn optimize_hot_update_chunk(&self, group_result: &GroupUpdateResult) {
         crate::mako_profile_function!();
@@ -451,6 +486,9 @@ impl Compiler {
             // remove modules from original chunks and add edge to new chunk
             for (module_id, chunk_ids) in &info.module_to_chunks {
                 for chunk_id in chunk_ids {
+                    if chunk_id.id == info_chunk_id.id {
+                        continue;
+                    }
                     let chunk = chunk_graph.mut_chunk(chunk_id).unwrap();
 
                     chunk.remove_module(module_id);

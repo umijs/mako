@@ -19,7 +19,7 @@ use crate::ast::file::{win_path, File};
 use crate::ast::js_ast::JsAst;
 use crate::build::analyze_deps::AnalyzeDepsResult;
 use crate::compiler::Context;
-use crate::config::ModuleIdStrategy;
+use crate::config::{ChunkGroup, ModuleIdStrategy};
 use crate::resolve::ResolverResource;
 
 pub type Dependencies = HashSet<Dependency>;
@@ -59,7 +59,7 @@ bitflags! {
 impl From<&ResolveType> for ResolveTypeFlags {
     fn from(value: &ResolveType) -> Self {
         match value {
-            ResolveType::DynamicImport | ResolveType::Worker => Self::Async,
+            ResolveType::DynamicImport(_) | ResolveType::Worker(_) => Self::Async,
             _ => Self::Sync,
         }
     }
@@ -126,15 +126,15 @@ impl From<&NamedExport> for NamedExportType {
     }
 }
 
-#[derive(Eq, Hash, PartialEq, Serialize, Debug, Clone, Copy)]
+#[derive(Eq, Hash, PartialEq, Serialize, Debug, Clone)]
 pub enum ResolveType {
     Import(ImportType),
     ExportNamed(NamedExportType),
     ExportAll,
     Require,
-    DynamicImport,
+    DynamicImport(Option<ChunkGroup>),
     Css,
-    Worker,
+    Worker(Option<ChunkGroup>),
 }
 
 impl ResolveType {
@@ -159,7 +159,7 @@ impl ResolveType {
     }
 
     pub fn is_dynamic_esm(&self) -> bool {
-        matches!(self, ResolveType::DynamicImport)
+        matches!(self, ResolveType::DynamicImport(_))
     }
 }
 
