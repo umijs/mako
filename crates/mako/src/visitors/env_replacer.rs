@@ -6,8 +6,8 @@ use anyhow::{anyhow, Result};
 use serde_json::Value;
 use swc_core::common::{Mark, Span, DUMMY_SP};
 use swc_core::ecma::ast::{
-    ArrayLit, Bool, ComputedPropName, Expr, ExprOrSpread, Ident, KeyValueProp, Lit, MemberExpr,
-    MemberProp, ModuleItem, Null, Number, ObjectLit, Prop, PropOrSpread, Stmt, Str,
+    ArrayLit, Bool, ComputedPropName, Expr, ExprOrSpread, Ident, IdentName, KeyValueProp, Lit,
+    MemberExpr, MemberProp, ModuleItem, Null, Number, ObjectLit, Prop, PropOrSpread, Stmt, Str,
 };
 use swc_core::ecma::utils::{quote_ident, ExprExt};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
@@ -36,9 +36,9 @@ impl EnvReplacer {
 }
 impl VisitMut for EnvReplacer {
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
-        if let Expr::Ident(Ident { span, .. }) = expr {
+        if let Expr::Ident(Ident { ctxt, .. }) = expr {
             // 先判断 env 中的变量名称，是否是上下文中已经存在的变量名称
-            if span.ctxt.outer() != self.unresolved_mark {
+            if ctxt.outer() != self.unresolved_mark {
                 expr.visit_mut_children_with(self);
                 return;
             }
@@ -47,12 +47,11 @@ impl VisitMut for EnvReplacer {
         match expr {
             Expr::Member(MemberExpr { obj, prop, .. }) => {
                 let mut member_visit_path = match prop {
-                    MemberProp::Ident(Ident { sym, .. }) => sym.to_string(),
+                    MemberProp::Ident(IdentName { sym, .. }) => sym.to_string(),
                     MemberProp::Computed(ComputedPropName {
                         expr: expr_compute, ..
                     }) => match expr_compute.as_ref() {
                         Expr::Lit(Lit::Str(Str { value, .. })) => value.to_string(),
-
                         Expr::Lit(Lit::Num(Number { value, .. })) => value.to_string(),
                         _ => {
                             obj.visit_mut_with(self);
@@ -67,7 +66,7 @@ impl VisitMut for EnvReplacer {
 
                 while let Expr::Member(MemberExpr { obj, prop, .. }) = current_member_obj {
                     match prop {
-                        MemberProp::Ident(Ident { sym, .. }) => {
+                        MemberProp::Ident(IdentName { sym, .. }) => {
                             member_visit_path.push('.');
                             member_visit_path.push_str(sym.as_ref());
                         }
@@ -94,8 +93,8 @@ impl VisitMut for EnvReplacer {
                     current_member_obj = obj.as_mut();
                 }
 
-                if let Expr::Ident(Ident { sym, span, .. }) = current_member_obj {
-                    if span.ctxt.outer() != self.unresolved_mark {
+                if let Expr::Ident(Ident { sym, ctxt, .. }) = current_member_obj {
+                    if ctxt.outer() != self.unresolved_mark {
                         return;
                     }
                     member_visit_path.push('.');

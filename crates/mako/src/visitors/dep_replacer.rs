@@ -11,6 +11,7 @@ use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::file::parse_path;
 use crate::ast::utils::{is_commonjs_require, is_dynamic_import, is_remote_or_data};
+use crate::ast::DUMMY_CTXT;
 use crate::compiler::Context;
 use crate::module::{Dependency, ModuleId};
 use crate::visitors::virtual_css_modules::is_css_path;
@@ -20,7 +21,6 @@ pub struct DepReplacer<'a> {
     pub to_replace: &'a DependenciesToReplace,
     pub context: &'a Arc<Context>,
     pub unresolved_mark: Mark,
-    pub top_level_mark: Mark,
 }
 
 type ResolvedModuleId = String;
@@ -49,18 +49,23 @@ pub fn miss_throw_stmt<T: AsRef<str>>(source: T) -> Expr {
 
     // e.code = "MODULE_NOT_FOUND"
     let assign_error = quote_str!("MODULE_NOT_FOUND")
-        .make_assign_to(AssignOp::Assign, member_expr!(DUMMY_SP, e.code).into())
+        .make_assign_to(
+            AssignOp::Assign,
+            member_expr!(DUMMY_CTXT, DUMMY_SP, e.code).into(),
+        )
         .into_stmt();
 
     // function() { ...; throw e }
     let fn_expr = Expr::Fn(FnExpr {
-        ident: Some(quote_ident!("makoMissingModule")),
+        ident: Some(quote_ident!(DUMMY_CTXT, "makoMissingModule")),
         function: Box::new(Function {
             is_async: false,
             params: vec![],
             decorators: vec![],
             span: DUMMY_SP,
+            ctxt: DUMMY_CTXT,
             body: Some(BlockStmt {
+                ctxt: Default::default(),
                 span: DUMMY_SP,
                 stmts: vec![
                     decl_error.into(),
@@ -144,8 +149,9 @@ impl VisitMut for DepReplacer<'_> {
                                 if let Some(chunk) = chunk {
                                     let chunk_id = chunk.id.id.clone();
                                     // `import('./xxx.css')` => `__mako_require__.ensure('./xxx.css')`
-                                    *expr = member_expr!(DUMMY_SP, __mako_require__.ensure)
-                                        .as_call(DUMMY_SP, vec![quote_str!(chunk_id).as_arg()]);
+                                    *expr =
+                                        member_expr!(DUMMY_CTXT, DUMMY_SP, __mako_require__.ensure)
+                                            .as_call(DUMMY_SP, vec![quote_str!(chunk_id).as_arg()]);
                                     return;
                                 } else {
                                     *expr = Expr::Lit(quote_str!("").into());
@@ -198,9 +204,9 @@ pub fn resolve_web_worker_mut(new_expr: &mut NewExpr, unresolved_mark: Mark) -> 
         return None;
     }
 
-    if let box Expr::Ident(Ident { span, sym, .. }) = &mut new_expr.callee {
+    if let box Expr::Ident(Ident { sym, ctxt, .. }) = &mut new_expr.callee {
         // `Worker` must be unresolved
-        if sym == "Worker" && (span.ctxt.outer() == unresolved_mark) {
+        if sym == "Worker" && (ctxt.outer() == unresolved_mark) {
             let args = new_expr.args.as_mut().unwrap();
 
             // new Worker(new URL(''), base);
@@ -211,8 +217,8 @@ pub fn resolve_web_worker_mut(new_expr: &mut NewExpr, unresolved_mark: Mark) -> 
                     return None;
                 }
 
-                if let box Expr::Ident(Ident { span, sym, .. }) = &new_expr.callee {
-                    if sym == "URL" && (span.ctxt.outer() == unresolved_mark) {
+                if let box Expr::Ident(Ident { sym, ctxt, .. }) = &new_expr.callee {
+                    if sym == "URL" && (ctxt.outer() == unresolved_mark) {
                         // new URL('');
                         let args = new_expr.args.as_mut().unwrap();
                         if let box Expr::Lit(Lit::Str(ref mut str)) = &mut args[0].expr {
@@ -380,7 +386,6 @@ try {
                 to_replace: &DependenciesToReplace { resolved, missing },
                 context: &test_utils.context,
                 unresolved_mark: ast.unresolved_mark,
-                top_level_mark: ast.top_level_mark,
             };
             ast.ast.visit_mut_with(&mut visitor);
         });

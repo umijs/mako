@@ -6,7 +6,9 @@ use swc_core::ecma::ast::{Expr, Ident, MemberExpr, Module, ModuleItem, VarDeclKi
 use swc_core::ecma::utils::{quote_ident, quote_str, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
+use crate::ast::DUMMY_CTXT;
 use crate::config::Providers;
+
 pub struct Provide {
     unresolved_mark: Mark,
     top_level_mark: Mark,
@@ -38,7 +40,7 @@ impl VisitMut for Provide {
         ))
     }
     fn visit_mut_ident(&mut self, n: &mut Ident) {
-        let has_binding = n.span.ctxt.outer() != self.unresolved_mark;
+        let has_binding = n.ctxt.outer() != self.unresolved_mark;
         let name = &n.sym.to_string();
         let provider = self.providers.get(name);
 
@@ -87,7 +89,7 @@ impl ToTopLevelVars {
         let mut replaces: HashMap<String, SyntaxContext> = Default::default();
 
         vars.iter().for_each(|(k, _)| {
-            let ctxt = SyntaxContext::empty().apply_mark(top_level_mark);
+            let ctxt = DUMMY_CTXT.apply_mark(top_level_mark);
             replaces.insert(k.clone(), ctxt);
         });
 
@@ -100,9 +102,9 @@ impl ToTopLevelVars {
 
 impl VisitMut for ToTopLevelVars {
     fn visit_mut_ident(&mut self, i: &mut Ident) {
-        if i.span.ctxt.outer() == self.unresolved_mark {
+        if i.ctxt.outer() == self.unresolved_mark {
             if let Some(ctxt) = self.replaces_map.get(&i.sym.to_string()) {
-                i.span.ctxt = *ctxt;
+                i.ctxt = *ctxt;
             }
         }
     }

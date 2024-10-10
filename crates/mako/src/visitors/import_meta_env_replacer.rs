@@ -1,9 +1,8 @@
 use swc_core::common::DUMMY_SP;
 use swc_core::ecma::ast::{
-    Expr, Ident, KeyValueProp, MemberExpr, MemberProp, MetaPropExpr, MetaPropKind, ObjectLit, Prop,
-    PropOrSpread,
+    Expr, IdentName, KeyValueProp, MemberExpr, MemberProp, MetaPropExpr, MetaPropKind, ObjectLit,
+    Prop, PropOrSpread,
 };
-use swc_core::ecma::atoms::js_word;
 use swc_core::ecma::utils::{quote_ident, quote_str, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
@@ -27,13 +26,9 @@ impl VisitMut for ImportMetaEnvReplacer {
                         kind: MetaPropKind::ImportMeta,
                         ..
                     }),
-                prop:
-                    MemberProp::Ident(Ident {
-                        sym: js_word!("env"),
-                        ..
-                    }),
+                prop: MemberProp::Ident(IdentName { sym, .. }),
                 ..
-            }) => {
+            }) if sym == "env" => {
                 // replace import.meta.env with "({ MODE: 'production' })"
                 *expr = ObjectLit {
                     props: vec![PropOrSpread::Prop(
@@ -54,7 +49,6 @@ impl VisitMut for ImportMetaEnvReplacer {
 
 #[cfg(test)]
 mod tests {
-
     use swc_core::common::GLOBALS;
     use swc_core::ecma::visit::VisitMutWith;
 

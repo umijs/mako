@@ -6,6 +6,8 @@ use swc_core::ecma::utils::{
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::utils::is_dynamic_import;
+use crate::ast::DUMMY_CTXT;
+
 pub struct DynamicImportToRequire {
     pub unresolved_mark: Mark,
     changed: bool,
@@ -31,11 +33,7 @@ impl VisitMut for DynamicImportToRequire {
             let insert_at = n
                 .body
                 .iter()
-                .position(|module_item| {
-                    !module_item
-                        .as_stmt()
-                        .map_or(false, |stmt| stmt.is_directive())
-                })
+                .position(|module_item| !module_item.directive_continue())
                 .unwrap();
             let require_interop = quote_ident!("__mako_require__").as_call(
                 DUMMY_SP,
@@ -62,17 +60,19 @@ impl VisitMut for DynamicImportToRequire {
                     ..
                 } = &mut call_expr.args[0]
                 {
-                    let source_lazy_require =
-                        quote_ident!(DUMMY_SP.apply_mark(self.unresolved_mark), "require")
-                            .as_call(DUMMY_SP, vec![quote_str!(source.value.clone()).as_arg()])
-                            .into_lazy_arrow(vec![]);
+                    let ctxt = DUMMY_CTXT.apply_mark(self.unresolved_mark);
+
+                    let source_lazy_require = quote_ident!(ctxt, "require")
+                        .as_call(DUMMY_SP, vec![quote_str!(source.value.clone()).as_arg()])
+                        .into_lazy_arrow(vec![]);
 
                     // Promise.resolve()
-                    let promise_resolve: Box<Expr> = member_expr!(DUMMY_SP, Promise.resolve)
-                        .as_call(DUMMY_SP, vec![])
-                        .into();
+                    let promise_resolve: Box<Expr> =
+                        member_expr!(DUMMY_CTXT, DUMMY_SP, Promise.resolve)
+                            .as_call(DUMMY_SP, vec![])
+                            .into();
 
-                    let interop_call = quote_ident!(DUMMY_SP, self.interop.as_ref());
+                    let interop_call = quote_ident!(DUMMY_CTXT, self.interop.as_ref());
                     let promised_require: Expr = member_expr!(@EXT,DUMMY_SP, promise_resolve, then)
                         .as_call(DUMMY_SP, vec![source_lazy_require.as_arg()]);
                     let interop_require =

@@ -10,6 +10,7 @@ use swc_core::ecma::utils::{
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::utils::{is_dynamic_import, promise_all, require_ensure};
+use crate::ast::DUMMY_CTXT;
 use crate::compiler::Context;
 use crate::generate::chunk::ChunkId;
 use crate::visitors::dep_replacer::DependenciesToReplace;
@@ -42,11 +43,7 @@ impl<'a> VisitMut for DynamicImport<'a> {
             let insert_at = n
                 .body
                 .iter()
-                .position(|module_item| {
-                    !module_item
-                        .as_stmt()
-                        .map_or(false, |stmt| stmt.is_directive())
-                })
+                .position(|module_item| !module_item.directive_continue())
                 .unwrap();
 
             let (id, _) = self
@@ -138,18 +135,19 @@ impl<'a> VisitMut for DynamicImport<'a> {
                             .into(),
                         });
 
-                        let lazy_require_call = member_expr!(DUMMY_SP, __mako_require__.bind)
-                            .as_call(
+                        let lazy_require_call =
+                            member_expr!(DUMMY_CTXT, DUMMY_SP, __mako_require__.bind).as_call(
                                 DUMMY_SP,
                                 vec![
                                     quote_ident!("__mako_require__").as_arg(),
                                     quote_str!(resolved_source.clone()).as_arg(),
                                 ],
                             );
-                        let dr_call = member_expr!(DUMMY_SP, __mako_require__.dr).as_call(
-                            DUMMY_SP,
-                            vec![self.interop.clone().as_arg(), lazy_require_call.as_arg()],
-                        );
+                        let dr_call = member_expr!(DUMMY_CTXT, DUMMY_SP, __mako_require__.dr)
+                            .as_call(
+                                DUMMY_SP,
+                                vec![self.interop.clone().as_arg(), lazy_require_call.as_arg()],
+                            );
 
                         member_expr!(@EXT, DUMMY_SP, load_promise.into(), then)
                             .as_call(call_expr.span, vec![dr_call.as_arg()])

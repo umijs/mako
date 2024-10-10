@@ -47,7 +47,7 @@ impl RequireContextVisitor {
         builder.build()
     }
 
-    fn is_valid_args(&self, args: &Vec<ExprOrSpread>) -> bool {
+    fn is_valid_args(&self, args: &[ExprOrSpread]) -> bool {
         if !args.is_empty() && args.len() <= 4 {
             args.iter().all(|arg| {
                 if arg.spread.is_some() {

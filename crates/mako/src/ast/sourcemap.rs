@@ -68,11 +68,22 @@ impl From<swc_sourcemap::SourceMap> for RawSourceMap {
 impl From<RawSourceMap> for swc_sourcemap::SourceMap {
     fn from(rsm: RawSourceMap) -> Self {
         Self::new(
-            rsm.file,
+            rsm.file.map(|f| f.into_boxed_str().into()),
             rsm.tokens,
-            rsm.names,
-            rsm.sources,
-            Some(rsm.sources_content),
+            rsm.names
+                .into_iter()
+                .map(|n| n.into_boxed_str().into())
+                .collect(),
+            rsm.sources
+                .into_iter()
+                .map(|n| n.into_boxed_str().into())
+                .collect(),
+            Some(
+                rsm.sources_content
+                    .into_iter()
+                    .map(|op_string| op_string.map(|s| s.into_boxed_str().into()))
+                    .collect(),
+            ),
         )
     }
 }
@@ -126,9 +137,10 @@ pub fn merge_source_map(
                 final_token.get_src_col(),
                 replaced_source.as_deref(),
                 final_token.get_name(),
+                false,
             );
 
-            // add source centent
+            // add source content
             if !builder.has_source_contents(added_token.src_id) {
                 let source_content = final_token.get_source_view().map(|view| view.source());
 

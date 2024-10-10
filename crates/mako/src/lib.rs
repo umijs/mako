@@ -1,7 +1,6 @@
 #![feature(box_patterns)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(let_chains)]
-#![feature(result_option_inspect)]
 
 pub mod ast;
 mod build;

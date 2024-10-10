@@ -37,7 +37,7 @@ impl fmt::Debug for CssAst {
 impl CssAst {
     pub fn new(file: &File, context: Arc<Context>, css_modules: bool) -> Result<Self> {
         let fm = context.meta.css.cm.new_source_file(
-            FileName::Real(file.relative_path.clone()),
+            FileName::Real(file.relative_path.clone()).into(),
             file.get_content_raw(),
         );
         let config = parser::parser::ParserConfig {
@@ -45,7 +45,10 @@ impl CssAst {
             legacy_ie: true,
             ..Default::default()
         };
-        let lexer = parser::lexer::Lexer::new(StringInput::from(&*fm), config);
+
+        let comments = context.meta.css.comments.clone();
+
+        let lexer = parser::lexer::Lexer::new(StringInput::from(&*fm), Some(&comments), config);
         let mut parser = parser::parser::Parser::new(lexer, config);
         let parse_result = parser.parse_all();
         let mut ast_errors = parser.take_errors();
