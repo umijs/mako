@@ -63,6 +63,7 @@ export interface LoadResult {
 }
 export interface ResolveIdResult {
   id: string;
+  external: boolean | null;
 }
 export interface BuildParams {
   root: string;

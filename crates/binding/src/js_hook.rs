@@ -109,4 +109,5 @@ pub struct LoadResult {
 #[napi(object, use_nullable = true)]
 pub struct ResolveIdResult {
     pub id: String,
+    pub external: Option<bool>,
 }

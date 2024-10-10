@@ -22,9 +22,12 @@ module.exports = [
   },
   {
     async resolveId(source, importer) {
+      console.log('resolveId', source, importer);
       if (source === 'resolve_id') {
-        console.log('resolveId', source, importer);
-        return { id: require('path').join(__dirname, 'resolve_id_mock.js') };
+        return { id: require('path').join(__dirname, 'resolve_id_mock.js'), external: false };
+      }
+      if (source === 'resolve_id_external') {
+        return { id: 'resolve_id_external', external: true };
       }
       return null;
     }
