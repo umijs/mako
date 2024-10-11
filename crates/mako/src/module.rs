@@ -19,7 +19,7 @@ use crate::ast::file::{win_path, File};
 use crate::ast::js_ast::JsAst;
 use crate::build::analyze_deps::AnalyzeDepsResult;
 use crate::compiler::Context;
-use crate::config::{ChunkGroup, ModuleIdStrategy};
+use crate::config::ModuleIdStrategy;
 use crate::resolve::ResolverResource;
 
 pub type Dependencies = HashSet<Dependency>;
@@ -126,15 +126,26 @@ impl From<&NamedExport> for NamedExportType {
     }
 }
 
+#[derive(Eq, Hash, PartialEq, Serialize, Debug, Clone, Default)]
+pub struct ImportOptions {
+    pub chunk_name: Option<String>,
+}
+
+impl ImportOptions {
+    pub fn get_chunk_name(&self) -> &Option<String> {
+        &self.chunk_name
+    }
+}
+
 #[derive(Eq, Hash, PartialEq, Serialize, Debug, Clone)]
 pub enum ResolveType {
     Import(ImportType),
     ExportNamed(NamedExportType),
     ExportAll,
     Require,
-    DynamicImport(Option<ChunkGroup>),
+    DynamicImport(ImportOptions),
     Css,
-    Worker(Option<ChunkGroup>),
+    Worker(ImportOptions),
 }
 
 impl ResolveType {

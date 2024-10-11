@@ -6,11 +6,10 @@ use tracing::debug;
 
 use crate::ast::file::parse_path;
 use crate::compiler::Compiler;
-use crate::config::ChunkGroup;
 use crate::dev::update::UpdateResult;
 use crate::generate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::generate::chunk_graph::ChunkGraph;
-use crate::module::{generate_module_id, ModuleId, ResolveType};
+use crate::module::{generate_module_id, ImportOptions, ModuleId, ResolveType};
 
 pub type GroupUpdateResult = Option<(Vec<ChunkId>, Vec<(ModuleId, ChunkId, ChunkType)>)>;
 
@@ -45,10 +44,10 @@ impl Compiler {
                 ChunkType::Entry(entry.clone(), entry_chunk_name.to_string(), false),
                 &mut chunk_graph,
                 vec![],
-                &None,
+                &ImportOptions::default(),
             );
             let chunk_name = chunk.filename();
-            visited.insert((chunk.id.clone(), None));
+            visited.insert((chunk.id.clone(), ImportOptions::default()));
             edges.extend(
                 [dynamic_dependencies.clone(), worker_dependencies.clone()]
                     .concat()
@@ -56,11 +55,11 @@ impl Compiler {
                     .map(|dep| {
                         (
                             chunk.id.clone(),
-                            match dep {
-                                (_, Some(chunk_group)) => {
-                                    generate_module_id(&chunk_group.name, &self.context).into()
+                            match dep.1.get_chunk_name() {
+                                Some(chunk_name) => {
+                                    generate_module_id(chunk_name, &self.context).into()
                                 }
-                                (module_id, None) => module_id.generate(&self.context).into(),
+                                None => dep.0.generate(&self.context).into(),
                             },
                         )
                     }),
@@ -71,7 +70,7 @@ impl Compiler {
              * a real case is https://unpkg.com/browse/@antv/layout-wasm@1.4.0/pkg-parallel/.
              * Memorize handled workers to avoid infinite resolving
              */
-            let mut visited_workers = HashSet::<(ModuleId, Option<ChunkGroup>)>::new();
+            let mut visited_workers = HashSet::<(ModuleId, ImportOptions)>::new();
 
             // 抽离成两个函数处理动态依赖中可能有 worker 依赖、worker 依赖中可能有动态依赖的复杂情况
             self.handle_dynamic_dependencies(
@@ -100,11 +99,11 @@ impl Compiler {
     fn handle_dynamic_dependencies(
         &self,
         chunk_name: &str,
-        dynamic_dependencies: Vec<(ModuleId, Option<ChunkGroup>)>,
-        visited: &HashSet<(ModuleId, Option<ChunkGroup>)>,
+        dynamic_dependencies: Vec<(ModuleId, ImportOptions)>,
+        visited: &HashSet<(ModuleId, ImportOptions)>,
         edges: &mut Vec<(ModuleId, ModuleId)>,
         chunk_graph: &mut ChunkGraph,
-        visited_workers: &mut HashSet<(ModuleId, Option<ChunkGroup>)>,
+        visited_workers: &mut HashSet<(ModuleId, ImportOptions)>,
     ) {
         visit_modules(dynamic_dependencies, Some(visited.clone()), |head| {
             let (chunk, dynamic_dependencies, mut worker_dependencies) = self.create_chunk(
@@ -130,11 +129,11 @@ impl Compiler {
                         .map(|dep| {
                             (
                                 chunk.id.clone(),
-                                match dep {
-                                    (_, Some(chunk_group)) => {
-                                        generate_module_id(&chunk_group.name, &self.context).into()
+                                match dep.1.get_chunk_name() {
+                                    Some(chunk_name) => {
+                                        generate_module_id(chunk_name, &self.context).into()
                                     }
-                                    (module_id, None) => module_id.generate(&self.context).into(),
+                                    None => dep.0.generate(&self.context).into(),
                                 },
                             )
                         }),
@@ -158,11 +157,11 @@ impl Compiler {
     fn handle_worker_dependencies(
         &self,
         chunk_name: &str,
-        worker_dependencies: Vec<(ModuleId, Option<ChunkGroup>)>,
-        visited: &HashSet<(ModuleId, Option<ChunkGroup>)>,
+        worker_dependencies: Vec<(ModuleId, ImportOptions)>,
+        visited: &HashSet<(ModuleId, ImportOptions)>,
         edges: &mut Vec<(ModuleId, ModuleId)>,
         chunk_graph: &mut ChunkGraph,
-        visited_workers: &mut HashSet<(ModuleId, Option<ChunkGroup>)>,
+        visited_workers: &mut HashSet<(ModuleId, ImportOptions)>,
     ) {
         visit_modules(worker_dependencies, Some(visited.clone()), |head| {
             let (chunk, dynamic_dependencies, mut worker_dependencies) = self.create_chunk(
@@ -182,11 +181,11 @@ impl Compiler {
                     .map(|dep| {
                         (
                             chunk.id.clone(),
-                            match dep {
-                                (_, Some(chunk_group)) => {
-                                    generate_module_id(&chunk_group.name, &self.context).into()
+                            match dep.1.get_chunk_name() {
+                                Some(chunk_name) => {
+                                    generate_module_id(chunk_name, &self.context).into()
                                 }
-                                (module_id, None) => module_id.generate(&self.context).into(),
+                                None => dep.0.generate(&self.context).into(),
                             },
                         )
                     }),
@@ -284,8 +283,8 @@ impl Compiler {
                         .get_dependents(module_id)
                         .iter()
                         .find_map(|(_, dep)| match &dep.resolve_type {
-                            ResolveType::DynamicImport(chunk_group) => {
-                                Some((module_id.clone(), chunk_group.clone()))
+                            ResolveType::DynamicImport(import_options) => {
+                                Some((module_id.clone(), import_options.clone()))
                             }
                             _ => None,
                         })
@@ -430,18 +429,18 @@ impl Compiler {
         chunk_type: ChunkType,
         chunk_graph: &mut ChunkGraph,
         shared_chunk_names: Vec<String>,
-        chunk_group: &Option<ChunkGroup>,
+        import_options: &ImportOptions,
     ) -> (
         Chunk,
-        Vec<(ModuleId, Option<ChunkGroup>)>,
-        Vec<(ModuleId, Option<ChunkGroup>)>,
+        Vec<(ModuleId, ImportOptions)>,
+        Vec<(ModuleId, ImportOptions)>,
     ) {
         crate::mako_profile_function!(&chunk_id.id);
         let mut dynamic_entries = vec![];
         let mut worker_entries = vec![];
 
-        let chunk_id_str = match chunk_group {
-            Some(chunk_group) => generate_module_id(&chunk_group.name, &self.context),
+        let chunk_id_str = match import_options.get_chunk_name() {
+            Some(chunk_name) => generate_module_id(chunk_name, &self.context),
             None => chunk_id.generate(&self.context),
         };
         let mut chunk = Chunk::new(chunk_id_str.into(), chunk_type.clone());
@@ -486,7 +485,7 @@ impl Compiler {
 
     fn create_update_async_chunks(
         &self,
-        async_module_ids: Vec<(ModuleId, Option<ChunkGroup>)>,
+        async_module_ids: Vec<(ModuleId, ImportOptions)>,
         chunk_graph: &mut ChunkGraph,
         shared_chunk_names: Vec<String>,
     ) -> Vec<ChunkId> {
@@ -515,11 +514,11 @@ impl Compiler {
                                 // ref existing chunk
                                 Some(chunk) => chunk.id.clone(),
                                 // ref new chunk
-                                None => match dep {
-                                    (_, Some(chunk_group)) => {
-                                        generate_module_id(&chunk_group.name, &self.context).into()
+                                None => match dep.1.get_chunk_name() {
+                                    Some(chunk_name) => {
+                                        generate_module_id(chunk_name, &self.context).into()
                                     }
-                                    (module_id, None) => module_id.generate(&self.context).into(),
+                                    None => dep.0.generate(&self.context).into(),
                                 },
                             },
                         )
@@ -532,7 +531,7 @@ impl Compiler {
             dynamic_dependencies
                 .into_iter()
                 .filter(|dep| chunk_graph.get_chunk_for_module(&dep.0).is_none())
-                .collect::<Vec<(ModuleId, Option<ChunkGroup>)>>()
+                .collect::<Vec<(ModuleId, ImportOptions)>>()
         });
 
         // add edges

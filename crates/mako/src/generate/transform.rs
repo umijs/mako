@@ -90,10 +90,10 @@ pub fn transform_modules_in_thread(
                         dep.source.clone(),
                         (
                             match &dep.resolve_type {
-                                ResolveType::Worker(chunk_group) => {
-                                    let chunk_id = match chunk_group {
-                                        Some(chunk_group) => {
-                                            generate_module_id(&chunk_group.name, &context)
+                                ResolveType::Worker(import_options) => {
+                                    let chunk_id = match import_options.get_chunk_name() {
+                                        Some(chunk_name) => {
+                                            generate_module_id(chunk_name, &context)
                                         }
                                         None => id.generate(&context),
                                     };

@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::{i8, usize};
 
 use regex::Regex;
 use swc_core::common::comments::Comments;
@@ -9,8 +8,7 @@ use swc_core::ecma::visit::{Visit, VisitWith};
 
 use crate::ast::utils;
 use crate::compiler::Context;
-use crate::config::ChunkGroup;
-use crate::module::{Dependency, ResolveType};
+use crate::module::{Dependency, ImportOptions, ResolveType};
 use crate::utils::create_cached_regex;
 
 pub struct DepAnalyzer {
@@ -40,8 +38,8 @@ impl DepAnalyzer {
         self.order += 1;
     }
 
-    fn analyze_magic_comment_chunk_group(&mut self, pos: BytePos) -> Option<ChunkGroup> {
-        let magic_comment_chunk_name = {
+    fn analyze_import_options(&mut self, magic_comments_pos: Option<BytePos>) -> ImportOptions {
+        let chunk_name = magic_comments_pos.and_then(|pos| {
             let comments_texts = self
                 .context
                 .meta
@@ -59,16 +57,9 @@ impl DepAnalyzer {
                     .captures(t.trim())
                     .and_then(|matched| matched.get(2).map(|m| m.as_str().to_string()))
             })
-        };
+        });
 
-        magic_comment_chunk_name.map(|name| ChunkGroup {
-            name,
-            min_chunks: 1,
-            min_size: usize::MIN,
-            max_size: usize::MAX,
-            priority: i8::MAX,
-            ..Default::default()
-        })
+        ImportOptions { chunk_name }
     }
 }
 
@@ -137,11 +128,10 @@ impl Visit for DepAnalyzer {
                     }
                 };
 
-                let chunk_group = maybe_magic_comments_pos
-                    .and_then(|pos| self.analyze_magic_comment_chunk_group(pos));
+                let import_options = self.analyze_import_options(maybe_magic_comments_pos);
                 self.add_dependency(
                     src,
-                    ResolveType::DynamicImport(chunk_group),
+                    ResolveType::DynamicImport(import_options),
                     Some(expr.span),
                 );
                 return;
@@ -166,11 +156,10 @@ impl Visit for DepAnalyzer {
                 }
             });
 
-            let chunk_group = maybe_magic_comments_pos
-                .and_then(|pos| self.analyze_magic_comment_chunk_group(pos));
+            let import_options = self.analyze_import_options(maybe_magic_comments_pos);
             self.add_dependency(
                 str.value.to_string(),
-                ResolveType::Worker(chunk_group),
+                ResolveType::Worker(import_options),
                 Some(str.span),
             );
         }
