@@ -10,3 +10,7 @@ assert("chunk_a-async.js" in files
 assert("chunk_b-async.js" in files
   && files["chunk_b-async.js"].includes('console.log("lazy_b")'),
 "should have chunk_b-async.js");
+
+assert("my_worker-worker.js" in files
+  && files["my_worker-worker.js"].includes('console.log("worker")'),
+"should have my_worker-worker.js");

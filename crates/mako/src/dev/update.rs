@@ -10,7 +10,7 @@ use tracing::debug;
 use crate::build::BuildError;
 use crate::compiler::Compiler;
 use crate::generate::transform::transform_modules;
-use crate::module::{Dependency, Module, ModuleId, ResolveTypeFlags};
+use crate::module::{Dependency, Module, ModuleId};
 use crate::module_graph::ModuleGraph;
 use crate::resolve::{self, clear_resolver_cache};
 
@@ -453,31 +453,15 @@ impl Diff {
 
         let new_deps = new_dependencies
             .iter()
-            .fold(HashMap::new(), |mut map, (module_id, dep)| {
-                let flag: ResolveTypeFlags = (&dep.resolve_type).into();
+            .map(|(module_id, dep)| (module_id, dep))
+            .collect::<HashMap<_, _>>();
 
-                map.entry(module_id.clone())
-                    .and_modify(|e: &mut ResolveTypeFlags| {
-                        e.insert(flag);
-                    })
-                    .or_insert(flag);
-                map
-            });
+        let original = module_graph
+            .get_dependencies(module_id)
+            .into_iter()
+            .map(|(module_id, dep)| (module_id, dep))
+            .collect::<HashMap<_, _>>();
 
-        let original = module_graph.get_dependencies(module_id).into_iter().fold(
-            HashMap::new(),
-            |mut map, (module_id, dep)| {
-                let flag: ResolveTypeFlags = (&dep.resolve_type).into();
-                map.entry(module_id.clone())
-                    .and_modify(|e: &mut ResolveTypeFlags| e.insert(flag))
-                    .or_insert(flag);
-                map
-            },
-        );
-
-        // there is an edge case we need to consider later
-        // if an edge ResolveTypeFlag(Sync + Async) changes to ResolveTypeFlag(Sync), is it
-        // changed nor not ?
         !new_deps.eq(&original)
     }
 }

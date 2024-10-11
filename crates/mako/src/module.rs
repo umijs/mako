@@ -207,9 +207,9 @@ fn md5_hash(source_str: &str, lens: usize) -> String {
         .collect::<String>()
 }
 
-pub fn generate_module_id(origin_module_id: String, context: &Arc<Context>) -> String {
+pub fn generate_module_id(origin_module_id: &str, context: &Arc<Context>) -> String {
     match context.config.module_id_strategy {
-        ModuleIdStrategy::Hashed => md5_hash(&origin_module_id, 8),
+        ModuleIdStrategy::Hashed => md5_hash(origin_module_id, 8),
         ModuleIdStrategy::Named => {
             // readable ids for debugging usage
             let absolute_path = PathBuf::from(origin_module_id);
@@ -218,10 +218,10 @@ pub fn generate_module_id(origin_module_id: String, context: &Arc<Context>) -> S
         }
         ModuleIdStrategy::Numeric => {
             let numeric_ids_map = context.numeric_ids_map.read().unwrap();
-            if let Some(numeric_id) = numeric_ids_map.get(&origin_module_id) {
+            if let Some(numeric_id) = numeric_ids_map.get(origin_module_id) {
                 numeric_id.to_string()
             } else {
-                md5_hash(&origin_module_id, 8)
+                md5_hash(origin_module_id, 8)
             }
         }
     }
@@ -266,7 +266,7 @@ impl ModuleId {
 
     pub fn generate(&self, context: &Arc<Context>) -> String {
         // TODO: 如果是 Hashed 的话，stats 拿不到原始的 chunk_id
-        generate_module_id(self.id.clone(), context)
+        generate_module_id(&self.id, context)
     }
 
     pub fn from_path(path_buf: PathBuf) -> Self {

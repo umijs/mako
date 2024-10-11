@@ -52,13 +52,13 @@ impl Compiler {
             edges.extend(
                 [dynamic_dependencies.clone(), worker_dependencies.clone()]
                     .concat()
-                    .into_iter()
+                    .iter()
                     .map(|dep| {
                         (
                             chunk.id.clone(),
                             match dep {
                                 (_, Some(chunk_group)) => {
-                                    generate_module_id(chunk_group.name, &self.context).into()
+                                    generate_module_id(&chunk_group.name, &self.context).into()
                                 }
                                 (module_id, None) => module_id.generate(&self.context).into(),
                             },
@@ -126,13 +126,13 @@ impl Compiler {
                 edges.extend(
                     [dynamic_dependencies.clone(), worker_dependencies.clone()]
                         .concat()
-                        .into_iter()
+                        .iter()
                         .map(|dep| {
                             (
                                 chunk.id.clone(),
                                 match dep {
                                     (_, Some(chunk_group)) => {
-                                        generate_module_id(chunk_group.name, &self.context).into()
+                                        generate_module_id(&chunk_group.name, &self.context).into()
                                     }
                                     (module_id, None) => module_id.generate(&self.context).into(),
                                 },
@@ -178,13 +178,13 @@ impl Compiler {
             edges.extend(
                 [dynamic_dependencies.clone(), worker_dependencies.clone()]
                     .concat()
-                    .into_iter()
+                    .iter()
                     .map(|dep| {
                         (
                             chunk.id.clone(),
                             match dep {
                                 (_, Some(chunk_group)) => {
-                                    generate_module_id(chunk_group.name, &self.context).into()
+                                    generate_module_id(&chunk_group.name, &self.context).into()
                                 }
                                 (module_id, None) => module_id.generate(&self.context).into(),
                             },
@@ -441,7 +441,7 @@ impl Compiler {
         let mut worker_entries = vec![];
 
         let chunk_id_str = match chunk_group {
-            Some(chunk_group) => generate_module_id(chunk_group.name.clone(), &self.context),
+            Some(chunk_group) => generate_module_id(&chunk_group.name, &self.context),
             None => chunk_id.generate(&self.context),
         };
         let mut chunk = Chunk::new(chunk_id_str.into(), chunk_type.clone());
@@ -507,7 +507,7 @@ impl Compiler {
             edges.extend(
                 [dynamic_dependencies.clone(), worker_dependencies.clone()]
                     .concat()
-                    .into_iter()
+                    .iter()
                     .map(|dep| {
                         (
                             chunk_id.clone(),
@@ -517,7 +517,7 @@ impl Compiler {
                                 // ref new chunk
                                 None => match dep {
                                     (_, Some(chunk_group)) => {
-                                        generate_module_id(chunk_group.name, &self.context).into()
+                                        generate_module_id(&chunk_group.name, &self.context).into()
                                     }
                                     (module_id, None) => module_id.generate(&self.context).into(),
                                 },

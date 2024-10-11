@@ -158,7 +158,7 @@ impl Visit for DepAnalyzer {
             let maybe_magic_comments_pos = expr.args.as_ref().and_then(|args| {
                 if !args.is_empty() {
                     match &args[0].expr {
-                        box Expr::Lit(s) => Some(s.span().lo),
+                        box Expr::New(s) => Some(s.span().lo),
                         _ => None,
                     }
                 } else {

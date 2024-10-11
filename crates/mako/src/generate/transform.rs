@@ -21,7 +21,7 @@ use tracing::debug;
 
 use crate::ast::js_ast::JsAst;
 use crate::compiler::{Compiler, Context};
-use crate::module::{Dependency, ModuleAst, ModuleId, ModuleType, ResolveType};
+use crate::module::{generate_module_id, Dependency, ModuleAst, ModuleId, ModuleType, ResolveType};
 use crate::share::helpers::SWC_HELPERS;
 use crate::utils::thread_pool;
 use crate::visitors::async_module::{mark_async, AsyncModule};
@@ -89,9 +89,14 @@ pub fn transform_modules_in_thread(
                     (
                         dep.source.clone(),
                         (
-                            match dep.resolve_type {
-                                ResolveType::Worker(_) => {
-                                    let chunk_id = id.generate(&context);
+                            match &dep.resolve_type {
+                                ResolveType::Worker(chunk_group) => {
+                                    let chunk_id = match chunk_group {
+                                        Some(chunk_group) => {
+                                            generate_module_id(&chunk_group.name, &context)
+                                        }
+                                        None => id.generate(&context),
+                                    };
                                     let chunk_graph = context.chunk_graph.read().unwrap();
                                     chunk_graph.chunk(&chunk_id.into()).unwrap().filename()
                                 }
