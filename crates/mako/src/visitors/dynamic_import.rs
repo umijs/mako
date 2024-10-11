@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use pathdiff::diff_paths;
 use swc_core::common::DUMMY_SP;
 use swc_core::ecma::ast::{
     ArrayLit, Expr, ExprOrSpread, Ident, Lit, MemberExpr, Module, Stmt, VarDeclKind,
@@ -82,9 +83,13 @@ impl<'a> VisitMut for DynamicImport<'a> {
                 } = &mut call_expr.args[0]
                 {
                     // note: the source is replaced!
-                    let resolved_source = source.value.clone().to_string();
+                    let resolved_info = self
+                        .dep_to_replace
+                        .resolved
+                        .get(source.value.as_ref())
+                        .unwrap();
                     let chunk_ids = {
-                        let chunk_id: ChunkId = resolved_source.clone().into();
+                        let chunk_id: ChunkId = resolved_info.0.as_str().into();
                         let chunk_graph = &self.context.chunk_graph.read().unwrap();
                         let chunk = chunk_graph.chunk(&chunk_id);
                         let chunk_ids = match chunk {
@@ -138,12 +143,14 @@ impl<'a> VisitMut for DynamicImport<'a> {
                             .into(),
                         });
 
+                        let relative_path =
+                            diff_paths(resolved_info.1.as_str(), &self.context.root).unwrap();
                         let lazy_require_call = member_expr!(DUMMY_SP, __mako_require__.bind)
                             .as_call(
                                 DUMMY_SP,
                                 vec![
                                     quote_ident!("__mako_require__").as_arg(),
-                                    quote_str!(resolved_source.clone()).as_arg(),
+                                    quote_str!(relative_path.to_str().unwrap()).as_arg(),
                                 ],
                             );
                         let dr_call = member_expr!(DUMMY_SP, __mako_require__.dr).as_call(

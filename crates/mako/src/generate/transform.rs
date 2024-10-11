@@ -100,6 +100,14 @@ pub fn transform_modules_in_thread(
                                     let chunk_graph = context.chunk_graph.read().unwrap();
                                     chunk_graph.chunk(&chunk_id.into()).unwrap().filename()
                                 }
+                                ResolveType::DynamicImport(import_options) => {
+                                    match import_options.get_chunk_name() {
+                                        Some(chunk_name) => {
+                                            generate_module_id(chunk_name, &context)
+                                        }
+                                        None => id.generate(&context),
+                                    }
+                                }
                                 _ => id.generate(&context),
                             },
                             id.id.clone(),
