@@ -11,8 +11,8 @@ use swc_core::ecma::ast::{
 use swc_core::ecma::utils::{quote_ident, quote_str};
 use swc_core::quote;
 
-use crate::build::analyze_deps;
 use crate::ast::DUMMY_CTXT;
+use crate::build::analyze_deps;
 use crate::compiler::Context;
 use crate::module::{Dependency, ImportType, ModuleId, NamedExportType, ResolveType};
 use crate::module_graph::ModuleGraph;
