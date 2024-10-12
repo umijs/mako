@@ -60,7 +60,9 @@ pub struct JsHooks {
     pub _on_generate_file: Option<JsFunction>,
     #[napi(ts_type = "() => Promise<void>;")]
     pub build_start: Option<JsFunction>,
-    #[napi(ts_type = "(source: string, importer: string) => Promise<{ id: string }>;")]
+    #[napi(
+        ts_type = "(source: string, importer: string, { isEntry: bool }) => Promise<{ id: string }>;"
+    )]
     pub resolve_id: Option<JsFunction>,
 }
 
@@ -69,7 +71,8 @@ pub struct TsFnHooks {
     pub generate_end: Option<ThreadsafeFunction<Value, ()>>,
     pub load: Option<ThreadsafeFunction<String, Option<LoadResult>>>,
     pub load_include: Option<ThreadsafeFunction<String, Option<bool>>>,
-    pub resolve_id: Option<ThreadsafeFunction<(String, String), Option<ResolveIdResult>>>,
+    pub resolve_id:
+        Option<ThreadsafeFunction<(String, String, ResolveIdParams), Option<ResolveIdResult>>>,
     pub _on_generate_file: Option<ThreadsafeFunction<WriteFile, ()>>,
 }
 
@@ -116,4 +119,9 @@ pub struct LoadResult {
 pub struct ResolveIdResult {
     pub id: String,
     pub external: Option<bool>,
+}
+
+#[napi(object)]
+pub struct ResolveIdParams {
+    pub is_entry: bool,
 }

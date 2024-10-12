@@ -23,6 +23,7 @@ use crate::config::{
 };
 use crate::features::rsc::Rsc;
 use crate::module::{Dependency, ResolveType};
+use crate::plugin::PluginResolveIdParams;
 use crate::utils::create_cached_regex;
 
 #[derive(Debug, Error)]
@@ -52,10 +53,15 @@ pub fn resolve(
     crate::mako_profile_scope!("resolve", &dep.source);
 
     // plugin first
-    if let Some(resolved) = context
-        .plugin_driver
-        .resolve_id(&dep.source, path, context)?
-    {
+    if let Some(resolved) = context.plugin_driver.resolve_id(
+        &dep.source,
+        path,
+        // it's a compatibility feature for unplugin hooks
+        // is_entry is always false for dependencies
+        // since entry file does not need be be resolved
+        &PluginResolveIdParams { is_entry: false },
+        context,
+    )? {
         return Ok(resolved);
     }
 

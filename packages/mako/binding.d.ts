@@ -52,7 +52,11 @@ export interface JsHooks {
   }) => void;
   onGenerateFile?: (path: string, content: Buffer) => Promise<void>;
   buildStart?: () => Promise<void>;
-  resolveId?: (source: string, importer: string) => Promise<{ id: string }>;
+  resolveId?: (
+    source: string,
+    importer: string,
+    { isEntry: bool },
+  ) => Promise<{ id: string }>;
 }
 export interface WriteFile {
   path: string;
@@ -65,6 +69,9 @@ export interface LoadResult {
 export interface ResolveIdResult {
   id: string;
   external: boolean | null;
+}
+export interface ResolveIdParams {
+  isEntry: boolean;
 }
 export interface BuildParams {
   root: string;

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::js_hook::{LoadResult, ResolveIdResult, TsFnHooks, WriteFile};
+use crate::js_hook::{LoadResult, ResolveIdParams, ResolveIdResult, TsFnHooks, WriteFile};
 
 pub struct JsPlugin {
     pub hooks: TsFnHooks,
@@ -9,7 +9,7 @@ pub struct JsPlugin {
 use anyhow::{anyhow, Result};
 use mako::ast::file::{Content, JsContent};
 use mako::compiler::Context;
-use mako::plugin::{Plugin, PluginGenerateEndParams, PluginLoadParam};
+use mako::plugin::{Plugin, PluginGenerateEndParams, PluginLoadParam, PluginResolveIdParams};
 use mako::resolve::{ExternalResource, Resolution, ResolvedResource, ResolverResource};
 
 impl Plugin for JsPlugin {
@@ -64,11 +64,17 @@ impl Plugin for JsPlugin {
         &self,
         source: &str,
         importer: &str,
+        params: &PluginResolveIdParams,
         _context: &Arc<Context>,
     ) -> Result<Option<ResolverResource>> {
         if let Some(hook) = &self.hooks.resolve_id {
-            let x: Option<ResolveIdResult> =
-                hook.call((source.to_string(), importer.to_string()))?;
+            let x: Option<ResolveIdResult> = hook.call((
+                source.to_string(),
+                importer.to_string(),
+                ResolveIdParams {
+                    is_entry: params.is_entry,
+                },
+            ))?;
             if let Some(x) = x {
                 if let Some(true) = x.external {
                     return Ok(Some(ResolverResource::External(ExternalResource {
