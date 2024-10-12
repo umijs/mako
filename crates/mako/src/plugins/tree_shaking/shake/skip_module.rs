@@ -12,6 +12,7 @@ use swc_core::ecma::utils::{quote_ident, quote_str};
 use swc_core::quote;
 
 use crate::ast::DUMMY_CTXT;
+use crate::build::analyze_deps;
 use crate::compiler::Context;
 use crate::module::{Dependency, ImportType, ModuleId, NamedExportType, ResolveType};
 use crate::module_graph::ModuleGraph;
@@ -166,7 +167,7 @@ pub(super) fn skip_module_optimize(
     module_graph: &mut ModuleGraph,
     tree_shake_modules_ids: &[ModuleId],
     tree_shake_modules_map: &HashMap<ModuleId, RefCell<TreeShakeModule>>,
-    _context: &Arc<Context>,
+    context: &Arc<Context>,
 ) -> Result<()> {
     mako_profile_function!();
 
@@ -182,10 +183,11 @@ pub(super) fn skip_module_optimize(
         to_replace: &(StatementId, Vec<ReExportReplace>, String),
         module_id: &ModuleId,
         module_graph: &mut ModuleGraph,
+        context: &Arc<Context>,
     ) {
         let stmt_id = to_replace.0;
         let replaces = &to_replace.1;
-        let source = &to_replace.2;
+        let _source = &to_replace.2;
 
         let module = module_graph.get_module_mut(module_id).unwrap();
 
@@ -195,13 +197,10 @@ pub(super) fn skip_module_optimize(
         let mut to_insert = vec![];
         let mut to_insert_deps = vec![];
         let mut to_delete = false;
-        let mut resolve_type: Option<ResolveType> = None;
 
         match &mut stmt {
             ModuleItem::ModuleDecl(module_decl) => match module_decl {
                 ModuleDecl::Import(import_decl) => {
-                    resolve_type = Some(ResolveType::Import(ImportType::empty()));
-
                     for replace in replaces {
                         let mut matched_index = None;
                         let mut matched_ident = None;
@@ -253,8 +252,6 @@ pub(super) fn skip_module_optimize(
                 ModuleDecl::ExportDecl(_) => {}
                 ModuleDecl::ExportNamed(export_named) => {
                     if export_named.src.is_some() {
-                        resolve_type = Some(ResolveType::ExportNamed(NamedExportType::empty()));
-
                         for replace in replaces {
                             let mut matched_index = None;
                             let mut matched_ident = None;
@@ -331,16 +328,16 @@ pub(super) fn skip_module_optimize(
             swc_module.body.splice(stmt_id..stmt_id, to_insert);
         }
 
-        if to_delete {
-            module_graph.remove_dependency_module_by_source_and_resolve_type(
-                module_id,
-                source,
-                resolve_type.unwrap(),
-            );
-        }
-        for dep in to_insert_deps {
-            module_graph.add_dependency(module_id, &dep.source.clone().into(), dep);
-        }
+        let info = &module.info.as_mut().unwrap();
+        let mut deps_vec: Vec<(ModuleId, Dependency)> = vec![];
+        let deps = analyze_deps::AnalyzeDeps::analyze_deps(&info.ast, &info.file, context.clone());
+        deps.unwrap().resolved_deps.into_iter().for_each(|r| {
+            deps_vec.push((
+                ModuleId::new(r.resolver_resource.get_resolved_path()),
+                r.dependency,
+            ));
+        });
+        module_graph.rewrite_dependency(module_id, deps_vec);
     }
 
     while current_index < len {
@@ -497,7 +494,7 @@ pub(super) fn skip_module_optimize(
             // stmt_id is reversed order
             for to_replace in replaces.iter() {
                 // println!("{} apply with {:?}", module_id.id, to_replace.1);
-                apply_replace(to_replace, module_id, module_graph);
+                apply_replace(to_replace, module_id, module_graph, context);
             }
 
             let mut tsm = tree_shake_modules_map.get(module_id).unwrap().borrow_mut();

@@ -1,0 +1,5 @@
+{
+  "optimization": {
+    "concatenateModules": false
+  }
+}
