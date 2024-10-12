@@ -10,8 +10,10 @@ use regex::Captures;
 use thiserror::Error;
 use tracing::debug;
 
+mod resolution;
 mod resource;
-pub(crate) use resource::{ExternalResource, ResolvedResource, ResolverResource};
+pub use resolution::Resolution;
+pub use resource::{ExternalResource, ResolvedResource, ResolverResource};
 
 use crate::ast::file::parse_path;
 use crate::compiler::Context;
@@ -48,6 +50,14 @@ pub fn resolve(
 ) -> Result<ResolverResource> {
     crate::mako_profile_function!();
     crate::mako_profile_scope!("resolve", &dep.source);
+
+    // plugin first
+    if let Some(resolved) = context
+        .plugin_driver
+        .resolve_id(&dep.source, path, context)?
+    {
+        return Ok(resolved);
+    }
 
     if dep.source.starts_with("virtual:") {
         return Ok(ResolverResource::Virtual(PathBuf::from(&dep.source)));
@@ -244,7 +254,12 @@ fn do_resolve(
                 // TODO: 临时方案，需要改成删除文件时删 resolve cache 里的内容
                 // 比如把 util.ts 改名为 util.tsx，目前应该是还有问题的
                 if resolution.path().exists() {
-                    Ok(ResolverResource::Resolved(ResolvedResource(resolution)))
+                    Ok(ResolverResource::Resolved(ResolvedResource(Resolution {
+                        package_json: resolution.package_json().cloned(),
+                        path: resolution.clone().into_path_buf(),
+                        query: resolution.query().map(|q| q.to_string()),
+                        fragment: resolution.fragment().map(|f| f.to_string()),
+                    })))
                 } else {
                     Err(anyhow!(ResolveError {
                         path: source.to_string(),
