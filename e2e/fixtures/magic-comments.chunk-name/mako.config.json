@@ -1,5 +1,8 @@
 {
   "codeSplitting": {
     "strategy": "auto"
+  },
+  "experimental": {
+    "magicCommentChunkName": true
   }
 }

@@ -127,10 +127,15 @@ impl Visit for DepAnalyzer {
                     }
                 };
 
-                let import_options = maybe_magic_comments_pos
-                    .map_or(ImportOptions::default(), |magic_comments_pos| {
-                        self.analyze_import_options(magic_comments_pos)
-                    });
+                let import_options = if self.context.config.experimental.magic_comment_chunk_name {
+                    maybe_magic_comments_pos
+                        .map_or(ImportOptions::default(), |magic_comments_pos| {
+                            self.analyze_import_options(magic_comments_pos)
+                        })
+                } else {
+                    ImportOptions::default()
+                };
+
                 self.add_dependency(
                     src,
                     ResolveType::DynamicImport(import_options),
@@ -158,10 +163,13 @@ impl Visit for DepAnalyzer {
                 }
             });
 
-            let import_options = maybe_magic_comments_pos
-                .map_or(ImportOptions::default(), |magic_comments_pos| {
+            let import_options = if self.context.config.experimental.magic_comment_chunk_name {
+                maybe_magic_comments_pos.map_or(ImportOptions::default(), |magic_comments_pos| {
                     self.analyze_import_options(magic_comments_pos)
-                });
+                })
+            } else {
+                ImportOptions::default()
+            };
             self.add_dependency(
                 str.value.to_string(),
                 ResolveType::Worker(import_options),

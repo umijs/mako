@@ -1867,6 +1867,11 @@ runTest('change async import magic comment chunk name', async () => {
       const App = React.lazy(() => import(/* webpackChunkName: 'chunkApp' */ './App'))
       ReactDOM.createRoot(document.getElementById("root")!).render(<><App /><section>{Math.random()}</section></>);
           `,
+      './mako.config.json': JSON.stringify({
+        experimental: {
+          magicCommentChunkName: true,
+        },
+      }),
     }),
   );
   const { process } = await startMakoDevServer();

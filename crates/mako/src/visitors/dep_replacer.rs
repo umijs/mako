@@ -10,7 +10,7 @@ use swc_core::ecma::utils::{member_expr, quote_ident, quote_str, ExprFactory};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 use crate::ast::file::parse_path;
-use crate::ast::utils::{is_commonjs_require, is_remote_or_data};
+use crate::ast::utils::{is_commonjs_require, is_dynamic_import, is_remote_or_data};
 use crate::compiler::Context;
 use crate::module::{Dependency, ModuleId};
 use crate::visitors::virtual_css_modules::is_css_path;
@@ -88,7 +88,8 @@ impl VisitMut for DepReplacer<'_> {
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Call(call_expr) = expr {
             let is_commonjs_require_flag = is_commonjs_require(call_expr, &self.unresolved_mark);
-            if is_commonjs_require_flag {
+            let is_dynamic_import_flag = is_dynamic_import(call_expr);
+            if is_commonjs_require_flag || is_dynamic_import_flag {
                 if call_expr.args.is_empty() {
                     return;
                 }
@@ -97,18 +98,21 @@ impl VisitMut for DepReplacer<'_> {
                     ..
                 } = &mut call_expr.args[0]
                 {
-                    // js
+                    // commonjs require
                     let source_string = source.value.clone().to_string();
-                    match self.to_replace.missing.get(&source_string) {
-                        Some(_) => {
-                            call_expr.args[0] = ExprOrSpread {
-                                spread: None,
-                                expr: Box::new(miss_throw_stmt(&source_string)),
-                            };
-                            return;
-                        }
-                        None => {
-                            self.replace_source(source);
+
+                    if !is_dynamic_import_flag {
+                        match self.to_replace.missing.get(&source_string) {
+                            Some(_) => {
+                                call_expr.args[0] = ExprOrSpread {
+                                    spread: None,
+                                    expr: Box::new(miss_throw_stmt(&source_string)),
+                                };
+                                return;
+                            }
+                            None => {
+                                self.replace_source(source);
+                            }
                         }
                     }
 

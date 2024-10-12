@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use pathdiff::diff_paths;
 use swc_core::common::DUMMY_SP;
 use swc_core::ecma::ast::{
     ArrayLit, Expr, ExprOrSpread, Ident, Lit, MemberExpr, Module, Stmt, VarDeclKind,
@@ -14,6 +13,7 @@ use super::dep_replacer::miss_throw_stmt;
 use crate::ast::utils::{is_dynamic_import, promise_all, require_ensure};
 use crate::compiler::Context;
 use crate::generate::chunk::ChunkId;
+use crate::module::generate_module_id;
 use crate::visitors::dep_replacer::DependenciesToReplace;
 
 pub struct DynamicImport<'a> {
@@ -159,15 +159,14 @@ impl<'a> VisitMut for DynamicImport<'a> {
                             .into(),
                         });
 
-                        let relative_source = diff_paths(&resolved_info.1, &self.context.root)
-                            .map_or(resolved_info.1.clone(), |p| p.to_string_lossy().to_string());
+                        let require_module = generate_module_id(&resolved_info.1, &self.context);
 
                         let lazy_require_call = member_expr!(DUMMY_SP, __mako_require__.bind)
                             .as_call(
                                 DUMMY_SP,
                                 vec![
                                     quote_ident!("__mako_require__").as_arg(),
-                                    quote_str!(relative_source.as_str()).as_arg(),
+                                    quote_str!(require_module.as_str()).as_arg(),
                                 ],
                             );
                         let dr_call = member_expr!(DUMMY_SP, __mako_require__.dr).as_call(
