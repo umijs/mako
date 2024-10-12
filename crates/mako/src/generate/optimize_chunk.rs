@@ -61,39 +61,6 @@ impl Compiler {
         }
     }
 
-    // fn collect_magic_chunk_groups(&self) -> Vec<OptimizeChunksInfo> {
-    //     let module_graph = self.context.module_graph.read().unwrap();
-    //     let edge_filter = EdgeFiltered::from_fn(&module_graph.graph, |edge_ref| {
-    //         edge_ref
-    //             .weight()
-    //             .iter()
-    //             .any(|d| matches!(d.resolve_type, ResolveType::DynamicImport(Some(_))))
-    //     });
-    //     edge_filter
-    //         .edge_references()
-    //         .fold(Vec::new(), |mut acc, e| {
-    //             acc.extend(
-    //                 e.weight()
-    //                     .iter()
-    //                     .filter_map(|d| {
-    //                         if let ResolveType::DynamicImport(Some(chunk_group)) = &d.resolve_type {
-    //                             Some(OptimizeChunksInfo {
-    //                                 group_options: chunk_group.clone(),
-    //                                 module_to_chunks: IndexMap::from_iter([(
-    //                                     module_graph.graph[e.target()].id.clone(),
-    //                                     vec![ChunkId::new(chunk_group.name.clone())],
-    //                                 )]),
-    //                             })
-    //                         } else {
-    //                             None
-    //                         }
-    //                     })
-    //                     .collect::<Vec<_>>(),
-    //             );
-    //             acc
-    //         })
-    // }
-
     pub fn optimize_hot_update_chunk(&self, group_result: &GroupUpdateResult) {
         crate::mako_profile_function!();
         debug!("optimize hot update chunk");
