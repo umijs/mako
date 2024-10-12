@@ -17,7 +17,6 @@ use crate::module::{Module, ModuleId, ModuleInfo};
 use crate::resolve::{ResolvedResource, ResolverResource};
 use crate::utils::{create_cached_regex, url_safe_base64_encode};
 
-#[derive(Debug)]
 pub struct OptimizeChunksInfo {
     pub group_options: ChunkGroup,
     pub module_to_chunks: IndexMap<ModuleId, Vec<ChunkId>>,
@@ -27,7 +26,6 @@ impl Compiler {
     pub fn optimize_chunk(&self) {
         crate::mako_profile_function!();
         debug!("optimize chunk");
-
         if let Some(optimize_options) = self.get_optimize_chunk_options() {
             debug!("optimize options: {:?}", optimize_options);
             // stage: prepare
@@ -453,9 +451,6 @@ impl Compiler {
             // remove modules from original chunks and add edge to new chunk
             for (module_id, chunk_ids) in &info.module_to_chunks {
                 for chunk_id in chunk_ids {
-                    if chunk_id.id == info_chunk_id.id {
-                        continue;
-                    }
                     let chunk = chunk_graph.mut_chunk(chunk_id).unwrap();
 
                     chunk.remove_module(module_id);
