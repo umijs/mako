@@ -1,11 +1,10 @@
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use super::generic_usize::GenericUsizeDefault;
 use crate::create_deserialize_fn;
 
-#[derive(Deserialize, Serialize, Clone, Debug, Default)]
-pub enum OptimizeAllowChunks {
+#[derive(Deserialize, Serialize, Clone, Debug, Default, Eq, PartialEq)]
+pub enum AllowChunks {
     #[serde(rename = "all")]
     All,
     #[serde(rename = "entry")]
@@ -51,7 +50,7 @@ pub struct CodeSplittingGranularOptions {
 pub struct CodeSplittingAdvancedOptions {
     #[serde(default = "GenericUsizeDefault::<20000>::value")]
     pub min_size: usize,
-    pub groups: Vec<OptimizeChunkGroup>,
+    pub groups: Vec<ChunkGroup>,
 }
 
 impl Default for CodeSplittingAdvancedOptions {
@@ -63,22 +62,22 @@ impl Default for CodeSplittingAdvancedOptions {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
-pub enum OptimizeChunkNameSuffixStrategy {
+#[derive(Deserialize, Serialize, Clone, Debug, Eq, PartialEq)]
+pub enum ChunkNameSuffixStrategy {
     #[serde(rename = "packageName")]
     PackageName,
     #[serde(rename = "dependentsHash")]
     DependentsHash,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct OptimizeChunkGroup {
+pub struct ChunkGroup {
     pub name: String,
     #[serde(default)]
-    pub name_suffix: Option<OptimizeChunkNameSuffixStrategy>,
+    pub name_suffix: Option<ChunkNameSuffixStrategy>,
     #[serde(default)]
-    pub allow_chunks: OptimizeAllowChunks,
+    pub allow_chunks: AllowChunks,
     #[serde(default = "GenericUsizeDefault::<1>::value")]
     pub min_chunks: usize,
     #[serde(default = "GenericUsizeDefault::<20000>::value")]
@@ -89,14 +88,15 @@ pub struct OptimizeChunkGroup {
     pub min_module_size: Option<usize>,
     #[serde(default)]
     pub priority: i8,
-    #[serde(default, with = "optimize_test_format")]
-    pub test: Option<Regex>,
+    #[serde(default)]
+    // A string raw of regex
+    pub test: Option<String>,
 }
 
-impl Default for OptimizeChunkGroup {
+impl Default for ChunkGroup {
     fn default() -> Self {
         Self {
-            allow_chunks: OptimizeAllowChunks::default(),
+            allow_chunks: AllowChunks::default(),
             min_chunks: GenericUsizeDefault::<1>::value(),
             min_size: GenericUsizeDefault::<20000>::value(),
             max_size: GenericUsizeDefault::<5000000>::value(),
@@ -105,39 +105,6 @@ impl Default for OptimizeChunkGroup {
             min_module_size: None,
             test: None,
             priority: i8::default(),
-        }
-    }
-}
-
-/**
- * custom formatter for convert string to regex
- * @see https://serde.rs/custom-date-format.html
- */
-mod optimize_test_format {
-    use regex::Regex;
-    use serde::{self, Deserialize, Deserializer, Serializer};
-
-    pub fn serialize<S>(v: &Option<Regex>, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        if let Some(v) = v {
-            serializer.serialize_str(&v.to_string())
-        } else {
-            serializer.serialize_none()
-        }
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Regex>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let v = String::deserialize(deserializer)?;
-
-        if v.is_empty() {
-            Ok(None)
-        } else {
-            Ok(Regex::new(v.as_str()).ok())
         }
     }
 }

@@ -3,23 +3,22 @@ use std::string::String;
 
 use hashlink::LinkedHashSet;
 use indexmap::{IndexMap, IndexSet};
-use regex::Regex;
 use tracing::debug;
 
 use crate::compiler::Compiler;
 use crate::config::{
-    CodeSplitting, CodeSplittingAdvancedOptions, CodeSplittingGranularOptions,
-    CodeSplittingStrategy, CodeSplittingStrategyOptions, GenericUsizeDefault, OptimizeAllowChunks,
-    OptimizeChunkGroup, OptimizeChunkNameSuffixStrategy,
+    AllowChunks, ChunkGroup, ChunkNameSuffixStrategy, CodeSplitting, CodeSplittingAdvancedOptions,
+    CodeSplittingGranularOptions, CodeSplittingStrategy, CodeSplittingStrategyOptions,
+    GenericUsizeDefault,
 };
 use crate::generate::chunk::{Chunk, ChunkId, ChunkType};
 use crate::generate::group_chunk::GroupUpdateResult;
 use crate::module::{Module, ModuleId, ModuleInfo};
 use crate::resolve::{ResolvedResource, ResolverResource};
-use crate::utils::url_safe_base64_encode;
+use crate::utils::{create_cached_regex, url_safe_base64_encode};
 
 pub struct OptimizeChunksInfo {
-    pub group_options: OptimizeChunkGroup,
+    pub group_options: ChunkGroup,
     pub module_to_chunks: IndexMap<ModuleId, Vec<ChunkId>>,
 }
 
@@ -171,7 +170,7 @@ impl Compiler {
 
                 // check test regex
                 if let Some(test) = &optimize_info.group_options.test {
-                    if !test.is_match(&module_id.id) {
+                    if !create_cached_regex(test).is_match(&module_id.id) {
                         continue;
                     }
                 }
@@ -330,7 +329,7 @@ impl Compiler {
         for info in &mut *optimize_chunks_infos {
             if let Some(name_suffix) = &info.group_options.name_suffix {
                 match name_suffix {
-                    OptimizeChunkNameSuffixStrategy::PackageName => {
+                    ChunkNameSuffixStrategy::PackageName => {
                         let mut module_to_package_map: HashMap<String, Vec<ModuleId>> =
                             HashMap::new();
                         info.module_to_chunks.keys().for_each(|module_id| {
@@ -367,7 +366,7 @@ impl Compiler {
                                 })
                             });
                     }
-                    OptimizeChunkNameSuffixStrategy::DependentsHash => {
+                    ChunkNameSuffixStrategy::DependentsHash => {
                         let mut module_to_dependents_md5_map: HashMap<String, Vec<ModuleId>> =
                             HashMap::new();
                         info.module_to_chunks
@@ -426,12 +425,11 @@ impl Compiler {
             let info_chunk_id = ChunkId {
                 id: info.group_options.name.clone(),
             };
-            let info_chunk_type =
-                if matches!(info.group_options.allow_chunks, OptimizeAllowChunks::Async) {
-                    ChunkType::Sync
-                } else {
-                    ChunkType::Entry(info_chunk_id.clone(), info.group_options.name.clone(), true)
-                };
+            let info_chunk_type = if matches!(info.group_options.allow_chunks, AllowChunks::Async) {
+                ChunkType::Sync
+            } else {
+                ChunkType::Entry(info_chunk_id.clone(), info.group_options.name.clone(), true)
+            };
             let info_chunk = Chunk {
                 modules: info
                     .module_to_chunks
@@ -513,18 +511,14 @@ impl Compiler {
 
     /* the following is util methods */
 
-    fn check_chunk_type_allow(
-        &self,
-        allow_chunks: &OptimizeAllowChunks,
-        chunk_type: &ChunkType,
-    ) -> bool {
+    fn check_chunk_type_allow(&self, allow_chunks: &AllowChunks, chunk_type: &ChunkType) -> bool {
         match allow_chunks {
-            OptimizeAllowChunks::All => matches!(
+            AllowChunks::All => matches!(
                 chunk_type,
                 &ChunkType::Entry(_, _, false) | &ChunkType::Async
             ),
-            OptimizeAllowChunks::Entry => matches!(chunk_type, &ChunkType::Entry(_, _, false)),
-            OptimizeAllowChunks::Async => chunk_type == &ChunkType::Async,
+            AllowChunks::Entry => matches!(chunk_type, &ChunkType::Entry(_, _, false)),
+            AllowChunks::Async => chunk_type == &ChunkType::Async,
         }
     }
 
@@ -594,13 +588,13 @@ impl Compiler {
 fn code_splitting_strategy_auto() -> CodeSplittingAdvancedOptions {
     CodeSplittingAdvancedOptions {
         groups: vec![
-            OptimizeChunkGroup {
+            ChunkGroup {
                 name: "vendors".to_string(),
-                test: Regex::new(r"[/\\]node_modules[/\\]").ok(),
+                test: Some(r"[/\\]node_modules[/\\]".to_string()),
                 priority: -10,
                 ..Default::default()
             },
-            OptimizeChunkGroup {
+            ChunkGroup {
                 name: "common".to_string(),
                 min_chunks: 2,
                 // always split, to avoid multi-instance risk
@@ -619,34 +613,36 @@ fn code_splitting_strategy_granular(
 ) -> CodeSplittingAdvancedOptions {
     CodeSplittingAdvancedOptions {
         groups: vec![
-            OptimizeChunkGroup {
+            ChunkGroup {
                 name: "framework".to_string(),
-                allow_chunks: OptimizeAllowChunks::All,
+                allow_chunks: AllowChunks::All,
                 test: if framework_packages.is_empty() {
-                    Regex::new("^$").ok()
+                    Some("^$".to_string())
                 } else {
-                    Regex::new(&format!(
-                        r#"[/\\]node_modules[/\\].*({})[/\\]"#,
-                        framework_packages.join("|")
-                    ))
-                    .ok()
+                    Some(
+                        format!(
+                            r#"[/\\]node_modules[/\\].*({})[/\\]"#,
+                            framework_packages.join("|")
+                        )
+                        .to_string(),
+                    )
                 },
                 priority: -10,
                 ..Default::default()
             },
-            OptimizeChunkGroup {
+            ChunkGroup {
                 name: "lib".to_string(),
-                name_suffix: Some(OptimizeChunkNameSuffixStrategy::PackageName),
-                allow_chunks: OptimizeAllowChunks::Async,
-                test: Regex::new(r"[/\\]node_modules[/\\]").ok(),
+                name_suffix: Some(ChunkNameSuffixStrategy::PackageName),
+                allow_chunks: AllowChunks::Async,
+                test: Some(r"[/\\]node_modules[/\\]".to_string()),
                 min_module_size: Some(lib_min_size),
                 priority: -20,
                 ..Default::default()
             },
-            OptimizeChunkGroup {
+            ChunkGroup {
                 name: "shared".to_string(),
-                name_suffix: Some(OptimizeChunkNameSuffixStrategy::DependentsHash),
-                allow_chunks: OptimizeAllowChunks::Async,
+                name_suffix: Some(ChunkNameSuffixStrategy::DependentsHash),
+                allow_chunks: AllowChunks::Async,
                 priority: -30,
                 min_chunks: 2,
                 ..Default::default()
