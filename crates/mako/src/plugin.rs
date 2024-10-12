@@ -23,6 +23,11 @@ pub struct PluginLoadParam<'a> {
     pub file: &'a File,
 }
 
+#[derive(Debug)]
+pub struct PluginResolveIdParams {
+    pub is_entry: bool,
+}
+
 pub struct PluginParseParam<'a> {
     pub file: &'a File,
 }
@@ -57,6 +62,7 @@ pub trait Plugin: Any + Send + Sync {
         &self,
         _source: &str,
         _importer: &str,
+        _params: &PluginResolveIdParams,
         _context: &Arc<Context>,
     ) -> Result<Option<ResolverResource>> {
         Ok(None)
@@ -256,10 +262,11 @@ impl PluginDriver {
         &self,
         source: &str,
         importer: &str,
+        params: &PluginResolveIdParams,
         context: &Arc<Context>,
     ) -> Result<Option<ResolverResource>> {
         for plugin in &self.plugins {
-            let ret = plugin.resolve_id(source, importer, context)?;
+            let ret = plugin.resolve_id(source, importer, params, context)?;
             if ret.is_some() {
                 return Ok(ret);
             }
