@@ -12,6 +12,8 @@ pub struct JsHooks {
         ts_type = "(filePath: string) => Promise<{ content: string, type: 'css'|'js' } | void> | void;"
     )]
     pub load: Option<JsFunction>,
+    #[napi(ts_type = "(filePath: string) => Promise<bool> | bool;")]
+    pub load_include: Option<JsFunction>,
     #[napi(ts_type = r#"(data: {
     isFirstCompile: boolean;
     time: number;
@@ -66,6 +68,7 @@ pub struct TsFnHooks {
     pub build_start: Option<ThreadsafeFunction<(), ()>>,
     pub generate_end: Option<ThreadsafeFunction<Value, ()>>,
     pub load: Option<ThreadsafeFunction<String, Option<LoadResult>>>,
+    pub load_include: Option<ThreadsafeFunction<String, Option<bool>>>,
     pub resolve_id: Option<ThreadsafeFunction<(String, String), Option<ResolveIdResult>>>,
     pub _on_generate_file: Option<ThreadsafeFunction<WriteFile, ()>>,
 }
@@ -80,6 +83,9 @@ impl TsFnHooks {
                 ThreadsafeFunction::from_napi_value(env.raw(), hook.raw()).unwrap()
             }),
             load: hooks.load.as_ref().map(|hook| unsafe {
+                ThreadsafeFunction::from_napi_value(env.raw(), hook.raw()).unwrap()
+            }),
+            load_include: hooks.load_include.as_ref().map(|hook| unsafe {
                 ThreadsafeFunction::from_napi_value(env.raw(), hook.raw()).unwrap()
             }),
             resolve_id: hooks.resolve_id.as_ref().map(|hook| unsafe {

@@ -11,13 +11,14 @@ module.exports = [
     }
   },
   {
-    async load(path) {
-      if (path.endsWith('.bar')) {
-        return {
-          content: `export default () => <Foooo>.bar</Foooo>;`,
-          type: 'jsx',
-        };
-      }
+    async loadInclude(path) {
+      return path.endsWith('.bar');
+    },
+    async load() {
+      return {
+        content: `export default () => <Foooo>.bar</Foooo>;`,
+        type: 'jsx',
+      };
     }
   },
   {
