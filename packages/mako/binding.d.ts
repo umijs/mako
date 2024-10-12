@@ -8,6 +8,7 @@ export interface JsHooks {
   load?: (
     filePath: string,
   ) => Promise<{ content: string; type: 'css' | 'js' } | void> | void;
+  loadInclude?: (filePath: string) => Promise<bool> | bool;
   generateEnd?: (data: {
     isFirstCompile: boolean;
     time: number;

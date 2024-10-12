@@ -26,6 +26,17 @@ impl Plugin for JsPlugin {
 
     fn load(&self, param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
         if let Some(hook) = &self.hooks.load {
+            if self.hooks.load_include.is_some()
+                && self
+                    .hooks
+                    .load_include
+                    .as_ref()
+                    .unwrap()
+                    .call(param.file.path.to_string_lossy().to_string())?
+                    == Some(false)
+            {
+                return Ok(None);
+            }
             let x: Option<LoadResult> = hook.call(param.file.path.to_string_lossy().to_string())?;
             if let Some(x) = x {
                 match x.content_type.as_str() {
