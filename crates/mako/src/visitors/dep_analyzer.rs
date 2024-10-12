@@ -38,25 +38,24 @@ impl DepAnalyzer {
         self.order += 1;
     }
 
-    fn analyze_import_options(&mut self, magic_comments_pos: Option<BytePos>) -> ImportOptions {
-        let chunk_name = magic_comments_pos.and_then(|pos| {
-            let comments_texts = self
-                .context
-                .meta
-                .script
-                .origin_comments
-                .read()
-                .unwrap()
-                .get_swc_comments()
-                .get_leading(pos)
-                .map_or(Vec::new(), |cms| {
-                    cms.iter().map(|c| c.text.to_string()).collect()
-                });
-            comments_texts.iter().find_map(|t| {
-                get_magic_comment_chunk_name_regex()
-                    .captures(t.trim())
-                    .and_then(|matched| matched.get(2).map(|m| m.as_str().to_string()))
-            })
+    fn analyze_import_options(&self, magic_comments_pos: BytePos) -> ImportOptions {
+        let comments_texts = self
+            .context
+            .meta
+            .script
+            .origin_comments
+            .read()
+            .unwrap()
+            .get_swc_comments()
+            .get_leading(magic_comments_pos)
+            .map_or(Vec::new(), |cms| {
+                cms.iter().map(|c| c.text.to_string()).collect()
+            });
+
+        let chunk_name = comments_texts.iter().find_map(|t| {
+            get_magic_comment_chunk_name_regex()
+                .captures(t.trim())
+                .and_then(|matched| matched.get(2).map(|m| m.as_str().to_string()))
         });
 
         ImportOptions { chunk_name }
@@ -128,7 +127,10 @@ impl Visit for DepAnalyzer {
                     }
                 };
 
-                let import_options = self.analyze_import_options(maybe_magic_comments_pos);
+                let import_options = maybe_magic_comments_pos
+                    .map_or(ImportOptions::default(), |magic_comments_pos| {
+                        self.analyze_import_options(magic_comments_pos)
+                    });
                 self.add_dependency(
                     src,
                     ResolveType::DynamicImport(import_options),
@@ -156,7 +158,10 @@ impl Visit for DepAnalyzer {
                 }
             });
 
-            let import_options = self.analyze_import_options(maybe_magic_comments_pos);
+            let import_options = maybe_magic_comments_pos
+                .map_or(ImportOptions::default(), |magic_comments_pos| {
+                    self.analyze_import_options(magic_comments_pos)
+                });
             self.add_dependency(
                 str.value.to_string(),
                 ResolveType::Worker(import_options),
