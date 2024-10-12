@@ -10,6 +10,7 @@ use swc_core::ecma::utils::{
 };
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
+use super::dep_replacer::miss_throw_stmt;
 use crate::ast::utils::{is_dynamic_import, promise_all, require_ensure};
 use crate::compiler::Context;
 use crate::generate::chunk::ChunkId;
@@ -82,12 +83,27 @@ impl<'a> VisitMut for DynamicImport<'a> {
                     ..
                 } = &mut call_expr.args[0]
                 {
-                    // note: the source is replaced!
+                    if self
+                        .dep_to_replace
+                        .missing
+                        .get(source.value.as_ref())
+                        .is_some()
+                    {
+                        call_expr.args[0] = ExprOrSpread {
+                            spread: None,
+                            expr: Box::new(miss_throw_stmt(source.value.as_ref())),
+                        };
+                        return;
+                    }
+
                     let resolved_info = self
                         .dep_to_replace
                         .resolved
                         .get(source.value.as_ref())
+                        // If the identifier is not in dep_to_replace.missing,
+                        // it must be resolved, so unwrap is safe here.
                         .unwrap();
+
                     let chunk_ids = {
                         let chunk_id: ChunkId = resolved_info.0.as_str().into();
                         let chunk_graph = &self.context.chunk_graph.read().unwrap();
@@ -143,14 +159,15 @@ impl<'a> VisitMut for DynamicImport<'a> {
                             .into(),
                         });
 
-                        let relative_path =
-                            diff_paths(resolved_info.1.as_str(), &self.context.root).unwrap();
+                        let relative_source = diff_paths(&resolved_info.1, &self.context.root)
+                            .map_or(resolved_info.1.clone(), |p| p.to_string_lossy().to_string());
+
                         let lazy_require_call = member_expr!(DUMMY_SP, __mako_require__.bind)
                             .as_call(
                                 DUMMY_SP,
                                 vec![
                                     quote_ident!("__mako_require__").as_arg(),
-                                    quote_str!(relative_path.to_str().unwrap()).as_arg(),
+                                    quote_str!(relative_source.as_str()).as_arg(),
                                 ],
                             );
                         let dr_call = member_expr!(DUMMY_SP, __mako_require__.dr).as_call(

@@ -451,16 +451,15 @@ impl Diff {
             return true;
         }
 
-        let new_deps = new_dependencies
+        let new_deps: HashMap<&ModuleId, &Dependency> = new_dependencies
             .iter()
             .map(|(module_id, dep)| (module_id, dep))
-            .collect::<HashMap<_, _>>();
+            .collect();
 
-        let original = module_graph
+        let original: HashMap<&ModuleId, &Dependency> = module_graph
             .get_dependencies(module_id)
             .into_iter()
-            .map(|(module_id, dep)| (module_id, dep))
-            .collect::<HashMap<_, _>>();
+            .collect();
 
         !new_deps.eq(&original)
     }

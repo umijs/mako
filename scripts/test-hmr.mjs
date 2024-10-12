@@ -1285,6 +1285,34 @@ runTest('add missing dep after watch start', async () => {
   );
 });
 
+runTest('add missing dynamic import after watch start', async () => {
+  await commonTest(
+    {
+      '/src/index.tsx': `
+        import React from 'react';
+        import ReactDOM from "react-dom/client";
+        const App = React.lazy(() => import('./App'))
+        ReactDOM.createRoot(document.getElementById("root")!).render(<><App /><section>{Math.random()}</section></>);
+      `,
+    },
+    (lastResult) => {
+      assert.equal(lastResult.html, '', 'Initial render');
+    },
+    {
+      '/src/App.tsx': `
+        function App() {
+          return <div>App</div>;
+        }
+        export default App;
+      `,
+    },
+    (thisResult) => {
+      assert.equal(thisResult.html, '<div>App</div>', 'Second render');
+    },
+    true,
+  );
+});
+
 runTest('issue: 861', async () => {
   write(
     normalizeFiles({
