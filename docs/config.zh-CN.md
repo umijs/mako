@@ -398,6 +398,22 @@ e.g.
 
 指定需要转换为 `base64` 格式的资产文件的大小限制。
 
+
+### inlineExcludesExtensions
+
+- 类型: `string[]`
+- 默认值: `[]`
+
+指定不需要转换为 `base64` 格式的资产文件的后缀名列表。
+
+例如：
+
+```ts
+{
+  "inlineExcludesExtensions": ["webp"]
+}
+```
+
 ### less
 
 - 类型：`{ modifyVars?: Record<string, string>, globalVars?: Record<string, string>, sourceMap?: { sourceMapFileInline?: boolean, outputSourceFiles?: boolean }, math?: "always" | "strict" | "parens-division" | "parens" | "strict-legacy" | number, plugins?: ([string, Record<string, any>]|string)[] }`
@@ -528,6 +544,8 @@ e.g.
     };
   }) => void;
   load?: (filePath: string) => Promise<{ content: string, type: 'css'|'js'|'jsx'|'ts'|'tsx' }>;
+  loadInclude?: (filePath: string) => boolean;
+  resolveId?: (id: string, importer: string, { isEntry: bool }) => Promise<{ id: string, external: bool }>;
 }
 ```
 

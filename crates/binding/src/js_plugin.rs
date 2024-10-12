@@ -1,7 +1,7 @@
-use std::sync::{mpsc, Arc};
+use std::path::PathBuf;
+use std::sync::Arc;
 
-use crate::threadsafe_function;
-use crate::tsfn::{LoadResult, ReadMessage, TsFnHooks, WriteRequest};
+use crate::js_hook::{LoadResult, ResolveIdParams, ResolveIdResult, TsFnHooks, WriteFile};
 
 pub struct JsPlugin {
     pub hooks: TsFnHooks,
@@ -9,7 +9,8 @@ pub struct JsPlugin {
 use anyhow::{anyhow, Result};
 use mako::ast::file::{Content, JsContent};
 use mako::compiler::Context;
-use mako::plugin::{Plugin, PluginGenerateEndParams, PluginLoadParam};
+use mako::plugin::{Plugin, PluginGenerateEndParams, PluginLoadParam, PluginResolveIdParams};
+use mako::resolve::{ExternalResource, Resolution, ResolvedResource, ResolverResource};
 
 impl Plugin for JsPlugin {
     fn name(&self) -> &str {
@@ -18,30 +19,25 @@ impl Plugin for JsPlugin {
 
     fn build_start(&self, _context: &Arc<Context>) -> Result<()> {
         if let Some(hook) = &self.hooks.build_start {
-            let (tx, rx) = mpsc::channel::<napi::Result<()>>();
-            hook.call(
-                ReadMessage { message: (), tx },
-                threadsafe_function::ThreadsafeFunctionCallMode::Blocking,
-            );
-            rx.recv()
-                .unwrap_or_else(|e| panic!("recv error: {:?}", e.to_string()))?;
+            hook.call(())?
         }
         Ok(())
     }
 
     fn load(&self, param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
         if let Some(hook) = &self.hooks.load {
-            let (tx, rx) = mpsc::channel::<napi::Result<Option<LoadResult>>>();
-            hook.call(
-                ReadMessage {
-                    message: param.file.path.to_string_lossy().to_string(),
-                    tx,
-                },
-                threadsafe_function::ThreadsafeFunctionCallMode::Blocking,
-            );
-            let x = rx
-                .recv()
-                .unwrap_or_else(|e| panic!("recv error: {:?}", e.to_string()))?;
+            if self.hooks.load_include.is_some()
+                && self
+                    .hooks
+                    .load_include
+                    .as_ref()
+                    .unwrap()
+                    .call(param.file.path.to_string_lossy().to_string())?
+                    == Some(false)
+            {
+                return Ok(None);
+            }
+            let x: Option<LoadResult> = hook.call(param.file.path.to_string_lossy().to_string())?;
             if let Some(x) = x {
                 match x.content_type.as_str() {
                     "js" | "ts" => {
@@ -64,35 +60,55 @@ impl Plugin for JsPlugin {
         Ok(None)
     }
 
+    fn resolve_id(
+        &self,
+        source: &str,
+        importer: &str,
+        params: &PluginResolveIdParams,
+        _context: &Arc<Context>,
+    ) -> Result<Option<ResolverResource>> {
+        if let Some(hook) = &self.hooks.resolve_id {
+            let x: Option<ResolveIdResult> = hook.call((
+                source.to_string(),
+                importer.to_string(),
+                ResolveIdParams {
+                    is_entry: params.is_entry,
+                },
+            ))?;
+            if let Some(x) = x {
+                if let Some(true) = x.external {
+                    return Ok(Some(ResolverResource::External(ExternalResource {
+                        source: source.to_string(),
+                        external: source.to_string(),
+                        script: None,
+                    })));
+                }
+                return Ok(Some(ResolverResource::Resolved(ResolvedResource(
+                    Resolution {
+                        path: PathBuf::from(x.id),
+                        query: None,
+                        fragment: None,
+                        package_json: None,
+                    },
+                ))));
+            }
+        }
+        Ok(None)
+    }
+
     fn generate_end(&self, param: &PluginGenerateEndParams, _context: &Arc<Context>) -> Result<()> {
         if let Some(hook) = &self.hooks.generate_end {
-            let (tx, rx) = mpsc::channel::<napi::Result<()>>();
-            hook.call(
-                ReadMessage {
-                    message: param.clone(),
-                    tx,
-                },
-                threadsafe_function::ThreadsafeFunctionCallMode::Blocking,
-            );
-            rx.recv()
-                .unwrap_or_else(|e| panic!("recv error: {:?}", e.to_string()))?;
+            hook.call(serde_json::to_value(param)?)?
         }
         Ok(())
     }
 
     fn before_write_fs(&self, path: &std::path::Path, content: &[u8]) -> Result<()> {
         if let Some(hook) = &self.hooks._on_generate_file {
-            let (tx, rx) = mpsc::channel::<napi::Result<()>>();
-            hook.call(
-                WriteRequest {
-                    path: path.to_path_buf(),
-                    content: content.to_vec(),
-                    tx,
-                },
-                threadsafe_function::ThreadsafeFunctionCallMode::Blocking,
-            );
-            rx.recv()
-                .unwrap_or_else(|e| panic!("recv error: {:?}", e.to_string()))?;
+            hook.call(WriteFile {
+                path: path.to_string_lossy().to_string(),
+                content: content.to_vec(),
+            })?;
         }
         Ok(())
     }

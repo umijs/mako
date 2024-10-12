@@ -8,6 +8,7 @@ export interface JsHooks {
   load?: (
     filePath: string,
   ) => Promise<{ content: string; type: 'css' | 'js' } | void> | void;
+  loadInclude?: (filePath: string) => Promise<bool> | bool;
   generateEnd?: (data: {
     isFirstCompile: boolean;
     time: number;
@@ -51,6 +52,26 @@ export interface JsHooks {
   }) => void;
   onGenerateFile?: (path: string, content: Buffer) => Promise<void>;
   buildStart?: () => Promise<void>;
+  resolveId?: (
+    source: string,
+    importer: string,
+    { isEntry: bool },
+  ) => Promise<{ id: string }>;
+}
+export interface WriteFile {
+  path: string;
+  content: Buffer;
+}
+export interface LoadResult {
+  content: string;
+  type: string;
+}
+export interface ResolveIdResult {
+  id: string;
+  external: boolean | null;
+}
+export interface ResolveIdParams {
+  isEntry: boolean;
 }
 export interface BuildParams {
   root: string;
@@ -223,4 +244,4 @@ export interface BuildParams {
   plugins: Array<JsHooks>;
   watch: boolean;
 }
-export function build(buildParams: BuildParams): Promise<void>;
+export declare function build(buildParams: BuildParams): Promise<void>;

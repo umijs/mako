@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use oxc_resolver::Resolution;
+use crate::resolve::Resolution;
 
 #[derive(Debug, Clone)]
 pub struct ExternalResource {

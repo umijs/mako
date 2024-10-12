@@ -23,6 +23,11 @@ pub struct PluginLoadParam<'a> {
     pub file: &'a File,
 }
 
+#[derive(Debug)]
+pub struct PluginResolveIdParams {
+    pub is_entry: bool,
+}
+
 pub struct PluginParseParam<'a> {
     pub file: &'a File,
 }
@@ -50,6 +55,16 @@ pub trait Plugin: Any + Send + Sync {
     }
 
     fn load(&self, _param: &PluginLoadParam, _context: &Arc<Context>) -> Result<Option<Content>> {
+        Ok(None)
+    }
+
+    fn resolve_id(
+        &self,
+        _source: &str,
+        _importer: &str,
+        _params: &PluginResolveIdParams,
+        _context: &Arc<Context>,
+    ) -> Result<Option<ResolverResource>> {
         Ok(None)
     }
 
@@ -208,7 +223,6 @@ impl PluginDriver {
         Ok(None)
     }
 
-    #[allow(dead_code)]
     pub fn transform_js(
         &self,
         param: &PluginTransformJsParam,
@@ -233,7 +247,6 @@ impl PluginDriver {
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub fn before_resolve(
         &self,
         param: &mut Vec<Dependency>,
@@ -243,6 +256,22 @@ impl PluginDriver {
             plugin.before_resolve(param, context)?;
         }
         Ok(())
+    }
+
+    pub fn resolve_id(
+        &self,
+        source: &str,
+        importer: &str,
+        params: &PluginResolveIdParams,
+        context: &Arc<Context>,
+    ) -> Result<Option<ResolverResource>> {
+        for plugin in &self.plugins {
+            let ret = plugin.resolve_id(source, importer, params, context)?;
+            if ret.is_some() {
+                return Ok(ret);
+            }
+        }
+        Ok(None)
     }
 
     pub fn before_generate(&self, context: &Arc<Context>) -> Result<()> {

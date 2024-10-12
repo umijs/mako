@@ -99,17 +99,19 @@ impl DuplicatePackageCheckerPlugin {
                     .as_ref()
                     .and_then(|info| info.resolved_resource.as_ref())
                 {
-                    let package_json = resource.0.package_json().unwrap();
-                    let raw_json = package_json.raw_json();
-                    if let Some(name) = package_json.name.clone() {
-                        if let Some(version) = raw_json.as_object().unwrap().get("version") {
-                            let package_info = PackageInfo {
-                                name,
-                                version: semver::Version::parse(version.as_str().unwrap()).unwrap(),
-                                path: package_json.path.clone(),
-                            };
+                    if let Some(package_json) = resource.0.package_json() {
+                        let raw_json = package_json.raw_json();
+                        if let Some(name) = package_json.name.clone() {
+                            if let Some(version) = raw_json.as_object().unwrap().get("version") {
+                                let package_info = PackageInfo {
+                                    name,
+                                    version: semver::Version::parse(version.as_str().unwrap())
+                                        .unwrap(),
+                                    path: package_json.path.clone(),
+                                };
 
-                            packages.push(package_info);
+                                packages.push(package_info);
+                            }
                         }
                     }
                 }

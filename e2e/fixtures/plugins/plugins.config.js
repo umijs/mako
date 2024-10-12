@@ -11,13 +11,26 @@ module.exports = [
     }
   },
   {
-    async load(path) {
-      if (path.endsWith('.bar')) {
-        return {
-          content: `export default () => <Foooo>.bar</Foooo>;`,
-          type: 'jsx',
-        };
-      }
+    async loadInclude(path) {
+      return path.endsWith('.bar');
+    },
+    async load() {
+      return {
+        content: `export default () => <Foooo>.bar</Foooo>;`,
+        type: 'jsx',
+      };
     }
-  }
+  },
+  {
+    async resolveId(source, importer, options) {
+      console.log('resolveId', source, importer, options);
+      if (source === 'resolve_id') {
+        return { id: require('path').join(__dirname, 'resolve_id_mock.js'), external: false };
+      }
+      if (source === 'resolve_id_external') {
+        return { id: 'resolve_id_external', external: true };
+      }
+      return null;
+    }
+  },
 ];

@@ -12,6 +12,7 @@ use swc_core::ecma::utils::{quote_ident, quote_str};
 use swc_core::quote;
 
 use crate::build::analyze_deps;
+use crate::ast::DUMMY_CTXT;
 use crate::compiler::Context;
 use crate::module::{Dependency, ImportType, ModuleId, NamedExportType, ResolveType};
 use crate::module_graph::ModuleGraph;
@@ -52,7 +53,7 @@ impl ReExportReplace {
                     )
                 } else {
                     quote!("export { $local as $ident } from \"$from\";" as ModuleItem,
-                        local: Ident = quote_ident!(local.clone()),
+                        local: Ident = quote_ident!(DUMMY_CTXT, local.clone()),
                         ident: Ident = ident,
                         from: Str = quote_str!(self.from_module_id.id.clone())
                     )
@@ -105,7 +106,7 @@ impl ReExportReplace {
                     )
                 } else {
                     quote!("import { $local as $ident } from \"$from\";" as ModuleItem,
-                        local: Ident = quote_ident!(local.clone()),
+                        local: Ident = quote_ident!(DUMMY_CTXT,local.clone()),
                         ident: Ident = ident,
                         from: Str = quote_str!(self.from_module_id.id.clone())
                     )
@@ -164,7 +165,7 @@ impl From<&ReExportType> for ImportType {
 
 pub(super) fn skip_module_optimize(
     module_graph: &mut ModuleGraph,
-    tree_shake_modules_ids: &Vec<ModuleId>,
+    tree_shake_modules_ids: &[ModuleId],
     tree_shake_modules_map: &HashMap<ModuleId, RefCell<TreeShakeModule>>,
     context: &Arc<Context>,
 ) -> Result<()> {

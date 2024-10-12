@@ -120,6 +120,12 @@ exports.dev = async function (opts) {
 
   app.use(
     proxy(`http://127.0.0.1:${hmrPort}`, {
+      proxyReqOptDecorator: function (proxyReqOpts) {
+        // keep alive is on by default https://nodejs.org/docs/latest/api/http.html#httpglobalagent
+        // 禁用 keep-alive
+        proxyReqOpts.agent = false;
+        return proxyReqOpts;
+      },
       filter: function (req, res) {
         return req.method == 'GET' || req.method == 'HEAD';
       },
@@ -630,6 +636,8 @@ async function getMakoConfig(opts) {
       plugins: opts.config.lessLoader?.plugins,
     },
     analyze: analyze || process.env.ANALYZE ? {} : undefined,
+    sass: sassLoader,
+    ...mako,
     experimental: {
       webpackSyntaxValidate: [],
       requireContext: true,
@@ -637,9 +645,8 @@ async function getMakoConfig(opts) {
         ignores: ['node_modules', '\\.umi'],
         graphviz: false,
       },
+      ...mako.experimental,
     },
-    sass: sassLoader,
-    ...mako,
   };
 
   return makoConfig;

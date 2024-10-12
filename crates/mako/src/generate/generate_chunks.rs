@@ -40,24 +40,7 @@ pub struct ChunkFile {
 
 impl ChunkFile {
     pub fn disk_name(&self) -> String {
-        // fixed os error 63 file name too long, reserve 48 bytes for _js-async、extension、.map and others
-        let reserve_file_name_length = 207;
-        let file_path = Path::new(&self.file_name);
-        let mut format_file_name = self.file_name.clone();
-        if self.file_name.len() > reserve_file_name_length {
-            let mut hasher: XxHash64 = Default::default();
-            hasher.write_str(self.file_name.as_str());
-            let file_extension = file_path.extension().unwrap();
-            let file_stem = file_path.file_stem().unwrap().to_string_lossy().to_string();
-            let (_, reserve_file_path) =
-                file_stem.split_at(file_stem.len() - reserve_file_name_length);
-            format_file_name = format!(
-                "{}.{}.{}",
-                reserve_file_path,
-                &hasher.finish().to_string()[0..8],
-                file_extension.to_str().unwrap()
-            );
-        }
+        let format_file_name = hash_too_long_file_name(&self.file_name);
 
         if let Some(hash) = &self.hash {
             hash_file_name(&format_file_name, hash)
@@ -191,7 +174,7 @@ impl Compiler {
                                     hash_file_name(&js_filename, &placeholder),
                                 );
                             } else {
-                                let js_filename = chunk_pot.js_name;
+                                let js_filename = hash_too_long_file_name(&chunk_pot.js_name);
 
                                 if chunk_pot.stylesheet.is_some() {
                                     let css_filename = get_css_chunk_filename(&js_filename);
@@ -407,4 +390,27 @@ fn hash_file_name(file_name: &String, hash: &String) -> String {
     let file_extension = path.extension().unwrap().to_str().unwrap();
 
     format!("{}.{}.{}", file_stem, hash, file_extension)
+}
+
+fn hash_too_long_file_name(file_name: &String) -> String {
+    // fixed os error 63 file name too long, reserve 48 bytes for _js-async、extension、.map and others
+    let reserve_file_name_length = 207;
+    let file_path = Path::new(&file_name);
+
+    let mut format_file_name = file_name.to_string();
+    let file_stem = file_path.file_stem().unwrap().to_string_lossy().to_string();
+    if file_stem.len() > reserve_file_name_length {
+        let mut hasher: XxHash64 = Default::default();
+        hasher.write_str(file_name.as_str());
+        let file_extension = file_path.extension().unwrap();
+        let (_, reserve_file_path) = file_stem.split_at(file_stem.len() - reserve_file_name_length);
+        format_file_name = format!(
+            "{}.{}.{}",
+            reserve_file_path,
+            &hasher.finish().to_string()[0..8],
+            file_extension.to_str().unwrap()
+        );
+    }
+
+    format_file_name.to_string()
 }

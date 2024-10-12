@@ -1,7 +1,7 @@
 use swc_core::common::{Mark, DUMMY_SP};
 use swc_core::ecma::ast::{
-    CallExpr, Callee, Expr, ExprOrSpread, Ident, Import, Lit, MemberExpr, MemberProp, MetaPropExpr,
-    MetaPropKind, Module, ModuleItem,
+    CallExpr, Callee, Expr, ExprOrSpread, Ident, IdentName, Import, Lit, MemberExpr, MemberProp,
+    MetaPropExpr, MetaPropKind, Module, ModuleItem,
 };
 
 pub fn is_remote_or_data(url: &str) -> bool {
@@ -66,7 +66,7 @@ pub fn get_call_expr_ident(call_expr: &CallExpr) -> Option<&Ident> {
 }
 
 pub fn is_ident_undefined(ident: &Ident, sym: &str, unresolved_mark: &Mark) -> bool {
-    ident.sym == *sym && ident.span.ctxt.outer() == *unresolved_mark
+    ident.sym == *sym && ident.ctxt.outer() == *unresolved_mark
 }
 
 pub fn get_first_str_arg(call_expr: &CallExpr) -> Option<String> {
@@ -92,7 +92,7 @@ pub fn is_import_meta_url(expr: &Expr) -> bool {
                     ..
                 }),
             prop:
-                MemberProp::Ident(Ident {
+                MemberProp::Ident(IdentName {
                     sym,
                     ..
                 }),
@@ -103,16 +103,16 @@ pub fn is_import_meta_url(expr: &Expr) -> bool {
 
 pub fn id(s: &str) -> Ident {
     Ident {
+        ctxt: Default::default(),
         span: DUMMY_SP,
         sym: s.into(),
         optional: false,
     }
 }
 pub fn member_prop(s: &str) -> MemberProp {
-    MemberProp::Ident(Ident {
+    MemberProp::Ident(IdentName {
         span: DUMMY_SP,
         sym: s.into(),
-        optional: false,
     })
 }
 
@@ -127,6 +127,7 @@ pub fn promise_all(promises: ExprOrSpread) -> Expr {
 pub fn member_call(obj: Expr, member_prop: MemberProp, args: Vec<ExprOrSpread>) -> Expr {
     Expr::Call(CallExpr {
         span: DUMMY_SP,
+        ctxt: Default::default(),
         callee: Callee::Expr(Box::new(Expr::Member(MemberExpr {
             span: DUMMY_SP,
             obj: Box::new(obj),
@@ -140,7 +141,7 @@ pub fn member_call(obj: Expr, member_prop: MemberProp, args: Vec<ExprOrSpread>) 
 pub fn require_ensure(source: String) -> Expr {
     member_call(
         Expr::Ident(id("__mako_require__")),
-        MemberProp::Ident(id("ensure")),
+        MemberProp::Ident(id("ensure").into()),
         vec![ExprOrSpread {
             spread: None,
             expr: Box::new(Expr::Lit(Lit::Str(source.into()))),

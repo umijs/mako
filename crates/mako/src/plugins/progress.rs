@@ -9,7 +9,7 @@ use crate::ast::file::Content;
 use crate::compiler::Context;
 use crate::plugin::{Plugin, PluginLoadParam};
 
-/**
+/*
  * 插件执行顺序 3 ~ 7 会重复执行
  * 1. modify_config
  * 2. build_start

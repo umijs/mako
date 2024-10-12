@@ -19,22 +19,14 @@ pub struct Commonjs {
 
 impl VisitMut for Commonjs {
     fn visit_mut_module(&mut self, n: &mut Module) {
-        let mut use_strict = false;
-        if utils::is_esm(n) {
-            use_strict = true
+        let use_strict = if utils::is_esm(n) {
+            true
         } else {
-            for item in n.body.iter() {
-                if let Some(stmt) = item.as_stmt() {
-                    if stmt.is_directive() {
-                        if stmt.is_use_strict() {
-                            use_strict = true;
-                        }
-                    } else {
-                        break;
-                    }
-                }
-            }
-        }
+            n.body
+                .iter()
+                .take_while(|s| s.directive_continue())
+                .any(|s| s.is_use_strict())
+        };
 
         n.visit_mut_with(&mut swc_common_js(
             self.unresolved_mark,

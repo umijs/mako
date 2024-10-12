@@ -4,15 +4,16 @@ use std::sync::Arc;
 use std::vec;
 
 use anyhow::{anyhow, Result};
-use cached::proc_macro::cached;
 use convert_case::{Case, Casing};
 use oxc_resolver::{Alias, AliasValue, ResolveError as OxcResolveError, ResolveOptions, Resolver};
-use regex::{Captures, Regex};
+use regex::Captures;
 use thiserror::Error;
 use tracing::debug;
 
+mod resolution;
 mod resource;
-pub(crate) use resource::{ExternalResource, ResolvedResource, ResolverResource};
+pub use resolution::Resolution;
+pub use resource::{ExternalResource, ResolvedResource, ResolverResource};
 
 use crate::ast::file::parse_path;
 use crate::compiler::Context;
@@ -22,6 +23,8 @@ use crate::config::{
 };
 use crate::features::rsc::Rsc;
 use crate::module::{Dependency, ResolveType};
+use crate::plugin::PluginResolveIdParams;
+use crate::utils::create_cached_regex;
 
 #[derive(Debug, Error)]
 #[error("Resolve {path:?} failed from {from:?}")]
@@ -49,6 +52,19 @@ pub fn resolve(
     crate::mako_profile_function!();
     crate::mako_profile_scope!("resolve", &dep.source);
 
+    // plugin first
+    if let Some(resolved) = context.plugin_driver.resolve_id(
+        &dep.source,
+        path,
+        // it's a compatibility feature for unplugin hooks
+        // is_entry is always false for dependencies
+        // since entry file does not need be be resolved
+        &PluginResolveIdParams { is_entry: false },
+        context,
+    )? {
+        return Ok(resolved);
+    }
+
     if dep.source.starts_with("virtual:") {
         return Ok(ResolverResource::Virtual(PathBuf::from(&dep.source)));
     }
@@ -71,11 +87,6 @@ pub fn resolve(
     let source = dep.resolve_as.as_ref().unwrap_or(&dep.source);
 
     do_resolve(path, source, resolver, Some(&context.config.externals))
-}
-
-#[cached(key = "String", convert = r#"{ re.to_string() }"#)]
-fn create_external_regex(re: &str) -> Regex {
-    Regex::new(re).unwrap()
 }
 
 fn get_external_target(
@@ -113,7 +124,7 @@ fn get_external_target(
         externals.iter().find_map(|(key, config)| {
             match config {
                 ExternalConfig::Advanced(config) if config.subpath.is_some() => {
-                    if let Some(caps) = create_external_regex(&format!(
+                    if let Some(caps) = create_cached_regex(&format!(
                         r#"(?:^|/node_modules/|[a-zA-Z\d]@){}(/|$)"#,
                         key
                     ))
@@ -126,7 +137,7 @@ fn get_external_target(
                             // skip if source is excluded
                             Some(exclude)
                                 if exclude.iter().any(|e| {
-                                    create_external_regex(&format!("(^|/){}(/|$)", e))
+                                    create_cached_regex(&format!("(^|/){}(/|$)", e))
                                         .is_match(subpath.as_str())
                                 }) =>
                             {
@@ -146,7 +157,7 @@ fn get_external_target(
         // ex. import Button from 'antd/es/button';
         // find matched subpath rule
         if let Some((rule, caps)) = subpath_config.rules.iter().find_map(|r| {
-            let regex = create_external_regex(r.regex.as_str());
+            let regex = create_cached_regex(r.regex.as_str());
 
             if regex.is_match(subpath.as_str()) {
                 Some((r, regex.captures(subpath.as_str()).unwrap()))
@@ -162,7 +173,7 @@ fn get_external_target(
                 }
                 // external to target template
                 ExternalAdvancedSubpathTarget::Tpl(target) => {
-                    let regex = create_external_regex(r"\$(\d+)");
+                    let regex = create_cached_regex(r"\$(\d+)");
 
                     // replace $1, $2, ... with captured groups
                     let mut replaced = regex
@@ -249,7 +260,12 @@ fn do_resolve(
                 // TODO: 临时方案，需要改成删除文件时删 resolve cache 里的内容
                 // 比如把 util.ts 改名为 util.tsx，目前应该是还有问题的
                 if resolution.path().exists() {
-                    Ok(ResolverResource::Resolved(ResolvedResource(resolution)))
+                    Ok(ResolverResource::Resolved(ResolvedResource(Resolution {
+                        package_json: resolution.package_json().cloned(),
+                        path: resolution.clone().into_path_buf(),
+                        query: resolution.query().map(|q| q.to_string()),
+                        fragment: resolution.fragment().map(|f| f.to_string()),
+                    })))
                 } else {
                     Err(anyhow!(ResolveError {
                         path: source.to_string(),

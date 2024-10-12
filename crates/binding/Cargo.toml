@@ -7,12 +7,13 @@ version = "0.0.0"
 crate-type = ["cdylib"]
 
 [dependencies]
-anyhow      = "1.0.71"
+anyhow      = { workspace = true }
 cached      = { workspace = true }
 mako        = { path = '../mako' }
-napi        = { version = "2.14.0", default-features = false, features = ["napi4", "napi5", "serde-json", "tokio_rt"] }
-napi-derive = "2.14.0"
-rayon       = "1.7.0"
+napi        = { version = "2.16.11", default-features = false, features = ["async", "napi4", "serde-json"] }
+napi-derive = "2.16.12"
+oneshot     = { workspace = true }
+serde       = { workspace = true }
 serde_json  = { workspace = true }
 
 [target.'cfg(not(target_os = "linux"))'.dependencies]
