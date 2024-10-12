@@ -254,18 +254,6 @@ mod tests {
     }
 
     #[test]
-    fn test_dynamic_import() {
-        assert_eq!(
-            run(
-                r#"const x = import("x");"#,
-                build_resolved("x", "/x/index.js"),
-                Default::default()
-            ),
-            r#"const x = import("/x/index.js");"#,
-        );
-    }
-
-    #[test]
     fn test_import() {
         assert_eq!(
             run(

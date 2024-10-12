@@ -225,7 +225,8 @@ Promise.all([
         let dep_to_replace = DependenciesToReplace {
             resolved: maplit::hashmap! {
                 "@swc/helpers/_/_interop_require_wildcard".to_string() =>
-                ("hashed_helper".to_string(), "dummy".into())
+                ("hashed_helper".to_string(), "dummy".into()),
+                "foo".to_string() => ("foo".to_string(), "foo".to_string())
             },
             missing: HashMap::new(),
         };
