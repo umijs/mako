@@ -453,6 +453,7 @@ impl Module {
 
                 let func = Function {
                     span: DUMMY_SP,
+                    ctxt: Default::default(),
                     params: vec![
                         quote_ident!("module").into(),
                         quote_ident!("exports").into(),
@@ -461,6 +462,7 @@ impl Module {
                     decorators: vec![],
                     body: Some(BlockStmt {
                         span: DUMMY_SP,
+                        ctxt: Default::default(),
                         stmts,
                     }),
                     is_generator: false,
@@ -488,6 +490,7 @@ impl Debug for Module {
 
 fn empty_module_fn_expr() -> FnExpr {
     let func = Function {
+        ctxt: Default::default(),
         span: DUMMY_SP,
         params: vec![
             quote_ident!("module").into(),
@@ -496,6 +499,7 @@ fn empty_module_fn_expr() -> FnExpr {
         ],
         decorators: vec![],
         body: Some(BlockStmt {
+            ctxt: Default::default(),
             span: DUMMY_SP,
             stmts: vec![],
         }),

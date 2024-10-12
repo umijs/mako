@@ -31,6 +31,7 @@ pub enum ImportSpecifierInfo {
 pub struct ImportInfo {
     pub source: String,
     pub specifiers: Vec<ImportSpecifierInfo>,
+    #[allow(dead_code)]
     pub stmt_id: StatementId,
 }
 
@@ -244,7 +245,9 @@ pub struct Statement {
     /// transform it to Ident.to_string() is exactly what we want
     pub defined_idents_map: HashMap<String, HashSet<String>>,
     pub is_self_executed: bool,
+    #[allow(dead_code)]
     pub has_side_effects: bool,
+    #[allow(dead_code)]
     pub span: Span,
 }
 

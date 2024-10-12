@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, HashSet};
+use std::fmt::Display;
 
 use swc_core::common::SyntaxContext;
 use swc_core::ecma::ast::{Module as SwcModule, ModuleItem};
@@ -21,14 +22,15 @@ pub enum UsedIdent {
     ExportAll,
 }
 
-impl ToString for UsedIdent {
-    fn to_string(&self) -> String {
-        match self {
+impl Display for UsedIdent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
             UsedIdent::SwcIdent(ident) => ident.to_string(),
             UsedIdent::Default => "default".to_string(),
             UsedIdent::InExportAll(ident) => ident.to_string(),
             UsedIdent::ExportAll => "*".to_string(),
-        }
+        };
+        write!(f, "{}", str)
     }
 }
 

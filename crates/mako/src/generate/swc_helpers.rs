@@ -3,6 +3,7 @@ use indexmap::IndexSet;
 use crate::share::helpers::SWC_HELPERS;
 
 pub struct SwcHelpers {
+    #[allow(dead_code)]
     pub helpers: IndexSet<String>,
 }
 

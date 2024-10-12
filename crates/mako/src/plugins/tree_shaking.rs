@@ -55,13 +55,14 @@ impl VisitMut for TopLevelDeclSplitter {
             if let ModuleItem::Stmt(Stmt::Decl(Decl::Var(var_decl))) = module_item {
                 if var_decl.decls.len() > 1 {
                     let declarators = var_decl.decls.take();
-
+                    let ctxt = var_decl.ctxt;
                     let kind = var_decl.kind;
 
                     let items = declarators
                         .into_iter()
                         .map(|decl| {
                             let i: ModuleItem = VarDecl {
+                                ctxt,
                                 span: decl.span,
                                 kind,
                                 declare: false,
