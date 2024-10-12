@@ -1886,7 +1886,6 @@ runTest('change async import magic comment chunk name', async () => {
     '/src/index.tsx': `
       import React from 'react';
       import ReactDOM from "react-dom/client";
-      import App from './App';
       const App = React.lazy(() => import(/* webpackChunkName: 'chunkAppNew' */ './App'))
       ReactDOM.createRoot(document.getElementById("root")!).render(<><App /><section>{Math.random()}</section></>);
    `,
