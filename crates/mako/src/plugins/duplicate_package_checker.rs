@@ -103,14 +103,15 @@ impl DuplicatePackageCheckerPlugin {
                         let raw_json = package_json.raw_json();
                         if let Some(name) = package_json.name.clone() {
                             if let Some(version) = raw_json.as_object().unwrap().get("version") {
-                                let package_info = PackageInfo {
-                                    name,
-                                    version: semver::Version::parse(version.as_str().unwrap())
-                                        .unwrap(),
-                                    path: package_json.path.clone(),
-                                };
-
-                                packages.push(package_info);
+                                let version = semver::Version::parse(version.as_str().unwrap());
+                                if let Ok(version) = version {
+                                    let package_info = PackageInfo {
+                                        name,
+                                        version,
+                                        path: package_json.path.clone(),
+                                    };
+                                    packages.push(package_info);
+                                }
                             }
                         }
                     }
