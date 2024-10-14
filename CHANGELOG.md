@@ -1,3 +1,11 @@
+## 0.9.0
+
+`2024-10-14`
+
+- feat: add loadInclude plugin hook by [@sorrycc](https://github.com/sorrycc) in [#1630](https://github.com/umijs/mako/pull/1630)
+- feat: add { isEntry } for resolve\_id plugin hook by [@sorrycc](https://github.com/sorrycc) in [#1631](https://github.com/umijs/mako/pull/1631)
+- feat: upgrade swc\_core to 0.101.x by [@stormslowly](https://github.com/stormslowly) in [#1444](https://github.com/umijs/mako/pull/1444)
+- fix: hash not stable caused by module concatenate by [@Jinbao1001](https://github.com/Jinbao1001) in [#1610](https://github.com/umijs/mako/pull/1610)
 
 ## 0.8.15
 

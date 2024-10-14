@@ -12,6 +12,8 @@ pub struct JsHooks {
         ts_type = "(filePath: string) => Promise<{ content: string, type: 'css'|'js' } | void> | void;"
     )]
     pub load: Option<JsFunction>,
+    #[napi(ts_type = "(filePath: string) => Promise<bool> | bool;")]
+    pub load_include: Option<JsFunction>,
     #[napi(ts_type = r#"(data: {
     isFirstCompile: boolean;
     time: number;
@@ -58,7 +60,9 @@ pub struct JsHooks {
     pub _on_generate_file: Option<JsFunction>,
     #[napi(ts_type = "() => Promise<void>;")]
     pub build_start: Option<JsFunction>,
-    #[napi(ts_type = "(source: string, importer: string) => Promise<{ id: string }>;")]
+    #[napi(
+        ts_type = "(source: string, importer: string, { isEntry: bool }) => Promise<{ id: string }>;"
+    )]
     pub resolve_id: Option<JsFunction>,
 }
 
@@ -66,7 +70,9 @@ pub struct TsFnHooks {
     pub build_start: Option<ThreadsafeFunction<(), ()>>,
     pub generate_end: Option<ThreadsafeFunction<Value, ()>>,
     pub load: Option<ThreadsafeFunction<String, Option<LoadResult>>>,
-    pub resolve_id: Option<ThreadsafeFunction<(String, String), Option<ResolveIdResult>>>,
+    pub load_include: Option<ThreadsafeFunction<String, Option<bool>>>,
+    pub resolve_id:
+        Option<ThreadsafeFunction<(String, String, ResolveIdParams), Option<ResolveIdResult>>>,
     pub _on_generate_file: Option<ThreadsafeFunction<WriteFile, ()>>,
 }
 
@@ -80,6 +86,9 @@ impl TsFnHooks {
                 ThreadsafeFunction::from_napi_value(env.raw(), hook.raw()).unwrap()
             }),
             load: hooks.load.as_ref().map(|hook| unsafe {
+                ThreadsafeFunction::from_napi_value(env.raw(), hook.raw()).unwrap()
+            }),
+            load_include: hooks.load_include.as_ref().map(|hook| unsafe {
                 ThreadsafeFunction::from_napi_value(env.raw(), hook.raw()).unwrap()
             }),
             resolve_id: hooks.resolve_id.as_ref().map(|hook| unsafe {
@@ -110,4 +119,9 @@ pub struct LoadResult {
 pub struct ResolveIdResult {
     pub id: String,
     pub external: Option<bool>,
+}
+
+#[napi(object)]
+pub struct ResolveIdParams {
+    pub is_entry: bool,
 }

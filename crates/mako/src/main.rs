@@ -1,6 +1,5 @@
 #![feature(box_patterns)]
 #![feature(let_chains)]
-#![feature(result_option_inspect)]
 
 use std::sync::Arc;
 

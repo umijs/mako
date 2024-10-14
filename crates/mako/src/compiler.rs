@@ -10,6 +10,7 @@ use regex::Regex;
 use swc_core::common::sync::Lrc;
 use swc_core::common::{Globals, SourceMap, DUMMY_SP};
 use swc_core::ecma::ast::Ident;
+use swc_node_comments::SwcComments;
 use tracing::debug;
 
 use crate::ast::comments::Comments;
@@ -182,6 +183,7 @@ impl ScriptMeta {
 
 fn build_ident(ident: &str) -> Ident {
     Ident {
+        ctxt: Default::default(),
         span: DUMMY_SP,
         sym: ident.into(),
         optional: false,
@@ -191,6 +193,7 @@ fn build_ident(ident: &str) -> Ident {
 pub struct CssMeta {
     pub cm: Lrc<SourceMap>,
     pub globals: Globals,
+    pub comments: SwcComments,
 }
 
 impl CssMeta {
@@ -198,6 +201,7 @@ impl CssMeta {
         Self {
             cm: Default::default(),
             globals: Globals::default(),
+            comments: Default::default(),
         }
     }
 }

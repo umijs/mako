@@ -52,7 +52,6 @@ impl AnalyzeDeps {
 
         for dep in deps {
             let result = resolve(
-                // .
                 &file.resolve_from(&context),
                 &dep,
                 &context.resolvers,

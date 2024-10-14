@@ -1,3 +1,16 @@
+## 0.9.0
+
+`2024-10-14`
+
+- 新增: 插件 loadInclude 钩子 by [@sorrycc](https://github.com/sorrycc) in [#1630](https://github.
+  com/umijs/mako/pull/1630)
+- 新增: 在 resolve\_id 插件钩子 isEntry 信息 by [@sorrycc](https://github.com/sorrycc) in [#1631](https://github.
+   com/umijs/mako/pull/1631)
+- 新增: 升级 swc\_core to 0.101.x by [@stormslowly](https://github.com/stormslowly) in [#1444](https://github.
+  com/umijs/mako/pull/1444)
+- 修复: 模块合并引起的 hash 不稳定问题 by [@Jinbao1001](https://github.com/Jinbao1001)
+  in [#1610]
+  (https://github.com/umijs/mako/pull/1610)
 
 ## 0.8.15
 

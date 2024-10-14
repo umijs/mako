@@ -573,7 +573,8 @@ Specify the plugins to use.
     };
   }) => void;
   load?: (filePath: string) => Promise<{ content: string, type: 'css'|'js'|'jsx'|'ts'|'tsx' }>;
-  resolveId?: (id: string, importer: string) => Promise<{ id: string, external: bool }>;
+  loadInclude?: (filePath: string) => boolean;
+  resolveId?: (id: string, importer: string, { isEntry: bool }) => Promise<{ id: string, external: bool }>;
 }
 ```
 
