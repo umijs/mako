@@ -3,7 +3,7 @@ const { parseBuildResult, moduleReg } = require("../../../scripts/test-utils");
 const { files } = parseBuildResult(__dirname);
 
 /** @type string */
-let content = files["pages_index_tsx-async.css"];
+let content = files["p__index-async.css"];
 
 // remove sourcemap
 content = content.slice(0, content.indexOf("/*")).trim();

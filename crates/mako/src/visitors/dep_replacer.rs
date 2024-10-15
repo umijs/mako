@@ -93,7 +93,8 @@ impl VisitMut for DepReplacer<'_> {
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         if let Expr::Call(call_expr) = expr {
             let is_commonjs_require_flag = is_commonjs_require(call_expr, &self.unresolved_mark);
-            if is_commonjs_require_flag || is_dynamic_import(call_expr) {
+            let is_dynamic_import_flag = is_dynamic_import(call_expr);
+            if is_commonjs_require_flag || is_dynamic_import_flag {
                 if call_expr.args.is_empty() {
                     return;
                 }
@@ -102,18 +103,21 @@ impl VisitMut for DepReplacer<'_> {
                     ..
                 } = &mut call_expr.args[0]
                 {
-                    // js
+                    // commonjs require
                     let source_string = source.value.clone().to_string();
-                    match self.to_replace.missing.get(&source_string) {
-                        Some(_) => {
-                            call_expr.args[0] = ExprOrSpread {
-                                spread: None,
-                                expr: Box::new(miss_throw_stmt(&source_string)),
-                            };
-                            return;
-                        }
-                        None => {
-                            self.replace_source(source);
+
+                    if !is_dynamic_import_flag {
+                        match self.to_replace.missing.get(&source_string) {
+                            Some(_) => {
+                                call_expr.args[0] = ExprOrSpread {
+                                    spread: None,
+                                    expr: Box::new(miss_throw_stmt(&source_string)),
+                                };
+                                return;
+                            }
+                            None => {
+                                self.replace_source(source);
+                            }
                         }
                     }
 
@@ -256,18 +260,6 @@ mod tests {
                 Default::default()
             ),
             r#"require("/root/node_modules/react/index.js");"#,
-        );
-    }
-
-    #[test]
-    fn test_dynamic_import() {
-        assert_eq!(
-            run(
-                r#"const x = import("x");"#,
-                build_resolved("x", "/x/index.js"),
-                Default::default()
-            ),
-            r#"const x = import("/x/index.js");"#,
         );
     }
 

@@ -10,6 +10,20 @@ use crate::module::ModuleId;
 use crate::module_graph::ModuleGraph;
 use crate::utils::url_safe_base64_encode;
 
+// TODO: Refact ChunkId
+/*
+* ChunkId and ModuleId is not a same thing. For example, like below codes:
+* import(/* webpackChunkName: "myChunk" */, './lazy');
+* the chunkId should be "myChunk", not be moduleId of "./lazy".
+* We need a struct to store more chunk info, it may be like:
+* struct {
+*   identifier: JsWord,
+*   root_module: ModuleId,
+*   import_options: import_options {
+*       chunk_name: Option<String>
+*   }
+* }
+* */
 pub type ChunkId = ModuleId;
 
 #[derive(Clone, PartialEq, Eq, Debug)]

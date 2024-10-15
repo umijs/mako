@@ -9,10 +9,12 @@ use swc_core::ecma::utils::{
 };
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
+use super::dep_replacer::miss_throw_stmt;
 use crate::ast::utils::{is_dynamic_import, promise_all, require_ensure};
 use crate::ast::DUMMY_CTXT;
 use crate::compiler::Context;
 use crate::generate::chunk::ChunkId;
+use crate::module::generate_module_id;
 use crate::visitors::dep_replacer::DependenciesToReplace;
 
 pub struct DynamicImport<'a> {
@@ -78,10 +80,28 @@ impl<'a> VisitMut for DynamicImport<'a> {
                     ..
                 } = &mut call_expr.args[0]
                 {
-                    // note: the source is replaced!
-                    let resolved_source = source.value.clone().to_string();
+                    if self
+                        .dep_to_replace
+                        .missing
+                        .contains_key(source.value.as_ref())
+                    {
+                        call_expr.args[0] = ExprOrSpread {
+                            spread: None,
+                            expr: Box::new(miss_throw_stmt(source.value.as_ref())),
+                        };
+                        return;
+                    }
+
+                    let resolved_info = self
+                        .dep_to_replace
+                        .resolved
+                        .get(source.value.as_ref())
+                        // If the identifier is not in dep_to_replace.missing,
+                        // it must be resolved, so unwrap is safe here.
+                        .unwrap();
+
                     let chunk_ids = {
-                        let chunk_id: ChunkId = resolved_source.clone().into();
+                        let chunk_id: ChunkId = resolved_info.0.as_str().into();
                         let chunk_graph = &self.context.chunk_graph.read().unwrap();
                         let chunk = chunk_graph.chunk(&chunk_id);
                         let chunk_ids = match chunk {
@@ -135,12 +155,14 @@ impl<'a> VisitMut for DynamicImport<'a> {
                             .into(),
                         });
 
+                        let require_module = generate_module_id(&resolved_info.1, &self.context);
+
                         let lazy_require_call =
                             member_expr!(DUMMY_CTXT, DUMMY_SP, __mako_require__.bind).as_call(
                                 DUMMY_SP,
                                 vec![
                                     quote_ident!("__mako_require__").as_arg(),
-                                    quote_str!(resolved_source.clone()).as_arg(),
+                                    quote_str!(require_module.as_str()).as_arg(),
                                 ],
                             );
                         let dr_call = member_expr!(DUMMY_CTXT, DUMMY_SP, __mako_require__.dr)
@@ -199,7 +221,8 @@ Promise.all([
         let dep_to_replace = DependenciesToReplace {
             resolved: maplit::hashmap! {
                 "@swc/helpers/_/_interop_require_wildcard".to_string() =>
-                ("hashed_helper".to_string(), "dummy".into())
+                ("hashed_helper".to_string(), "dummy".into()),
+                "foo".to_string() => ("foo".to_string(), "foo".to_string())
             },
             missing: HashMap::new(),
         };

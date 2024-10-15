@@ -21,7 +21,7 @@ use tracing::debug;
 
 use crate::ast::js_ast::JsAst;
 use crate::compiler::{Compiler, Context};
-use crate::module::{Dependency, ModuleAst, ModuleId, ModuleType, ResolveType};
+use crate::module::{generate_module_id, Dependency, ModuleAst, ModuleId, ModuleType, ResolveType};
 use crate::share::helpers::SWC_HELPERS;
 use crate::utils::thread_pool;
 use crate::visitors::async_module::{mark_async, AsyncModule};
@@ -89,12 +89,26 @@ pub fn transform_modules_in_thread(
                     (
                         dep.source.clone(),
                         (
-                            if dep.resolve_type == ResolveType::Worker {
-                                let chunk_id = id.generate(&context);
-                                let chunk_graph = context.chunk_graph.read().unwrap();
-                                chunk_graph.chunk(&chunk_id.into()).unwrap().filename()
-                            } else {
-                                id.generate(&context)
+                            match &dep.resolve_type {
+                                ResolveType::Worker(import_options) => {
+                                    let chunk_id = match import_options.get_chunk_name() {
+                                        Some(chunk_name) => {
+                                            generate_module_id(chunk_name, &context)
+                                        }
+                                        None => id.generate(&context),
+                                    };
+                                    let chunk_graph = context.chunk_graph.read().unwrap();
+                                    chunk_graph.chunk(&chunk_id.into()).unwrap().filename()
+                                }
+                                ResolveType::DynamicImport(import_options) => {
+                                    match import_options.get_chunk_name() {
+                                        Some(chunk_name) => {
+                                            generate_module_id(chunk_name, &context)
+                                        }
+                                        None => id.generate(&context),
+                                    }
+                                }
+                                _ => id.generate(&context),
                             },
                             id.id.clone(),
                         ),
