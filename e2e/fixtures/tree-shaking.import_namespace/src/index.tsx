@@ -19,3 +19,10 @@ let {a, ...restObject} = object
 console.log(a,restObject)
 let copiedObject = {...object}
 console.log(copiedObject)
+
+// ref https://github.com/swc-project/swc/discussions/9647 
+for (const [k1, v1] of Object.entries(object)){
+  for (const [k2, v2] of Object.entries(object)){
+    console.log(k1,k2,v1,v2);
+  }
+}
