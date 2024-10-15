@@ -75,7 +75,7 @@
       // 将被拆分到框架 chunk 的 Node 模块
       frameworkPackages: [ "react", "antd" ],
       // （可选）被拆分的 node 模块的最小大小
-      lib_min_size: 160000
+      libMinSize: 160000
     }
   }
 }
