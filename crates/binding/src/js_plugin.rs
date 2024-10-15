@@ -1,16 +1,19 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::js_hook::{LoadResult, ResolveIdParams, ResolveIdResult, TsFnHooks, WriteFile};
-
-pub struct JsPlugin {
-    pub hooks: TsFnHooks,
-}
 use anyhow::{anyhow, Result};
 use mako::ast::file::{Content, JsContent};
 use mako::compiler::Context;
 use mako::plugin::{Plugin, PluginGenerateEndParams, PluginLoadParam, PluginResolveIdParams};
 use mako::resolve::{ExternalResource, Resolution, ResolvedResource, ResolverResource};
+
+use crate::js_hook::{
+    LoadResult, ResolveIdParams, ResolveIdResult, TransformResult, TsFnHooks, WriteFile,
+};
+
+pub struct JsPlugin {
+    pub hooks: TsFnHooks,
+}
 
 impl Plugin for JsPlugin {
     fn name(&self) -> &str {
@@ -111,5 +114,42 @@ impl Plugin for JsPlugin {
             })?;
         }
         Ok(())
+    }
+
+    fn load_transform(
+        &self,
+        content: &mut Content,
+        path: &str,
+        _context: &Arc<Context>,
+    ) -> Result<Option<Content>> {
+        if let Some(hook) = &self.hooks.transform {
+            let content_str = match content {
+                Content::Js(js_content) => js_content.content.clone(),
+                Content::Css(css_content) => css_content.clone(),
+                _ => return Ok(None),
+            };
+
+            let result: Option<TransformResult> = hook.call((content_str, path.to_string()))?;
+
+            if let Some(result) = result {
+                match result.content_type.as_str() {
+                    "js" | "ts" => {
+                        return Ok(Some(Content::Js(JsContent {
+                            content: result.content,
+                            is_jsx: false,
+                        })))
+                    }
+                    "jsx" | "tsx" => {
+                        return Ok(Some(Content::Js(JsContent {
+                            content: result.content,
+                            is_jsx: true,
+                        })))
+                    }
+                    "css" => return Ok(Some(Content::Css(result.content))),
+                    _ => return Err(anyhow!("Unsupported content type: {}", result.content_type)),
+                }
+            }
+        }
+        Ok(None)
     }
 }

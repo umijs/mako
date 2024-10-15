@@ -271,7 +271,12 @@ __mako_require__.loadScript('{}', (e) => e.type === 'load' ? resolve() : reject(
     ) -> Result<Module> {
         // 1. load
         let mut file = file.clone();
-        let content = load::Load::load(&file, context.clone())?;
+        let mut content = load::Load::load(&file, context.clone())?;
+        let content = context.plugin_driver.load_transform(
+            &mut content,
+            &file.path.to_string_lossy(),
+            &context,
+        )?;
         file.set_content(content);
 
         // 2. parse

@@ -58,6 +58,15 @@ pub trait Plugin: Any + Send + Sync {
         Ok(None)
     }
 
+    fn load_transform(
+        &self,
+        _content: &mut Content,
+        _path: &str,
+        _context: &Arc<Context>,
+    ) -> Result<Option<Content>> {
+        Ok(None)
+    }
+
     fn resolve_id(
         &self,
         _source: &str,
@@ -376,5 +385,19 @@ impl PluginDriver {
         }
 
         Ok(())
+    }
+
+    pub fn load_transform(
+        &self,
+        content: &mut Content,
+        path: &str,
+        context: &Arc<Context>,
+    ) -> Result<Content> {
+        for plugin in &self.plugins {
+            if let Some(transformed) = plugin.load_transform(content, path, context)? {
+                *content = transformed;
+            }
+        }
+        Ok(content.clone())
     }
 }
