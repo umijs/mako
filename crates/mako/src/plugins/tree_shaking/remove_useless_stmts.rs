@@ -6,7 +6,7 @@ use swc_core::ecma::ast::{
     Decl, ExportDecl, ExportSpecifier, Id, ImportDecl, ImportSpecifier, Module as SwcModule,
     Module, ModuleExportName,
 };
-use swc_core::ecma::transforms::compat::es2015::destructuring;
+use swc_core::ecma::transforms::compat::es2015::{destructuring, for_of};
 use swc_core::ecma::transforms::compat::es2018::object_rest_spread;
 use swc_core::ecma::visit::{VisitMut, VisitMutWith, VisitWith};
 
@@ -272,6 +272,7 @@ fn optimize_import_namespace(import_infos: &mut [ImportInfo], module: &mut Modul
         let mut shadow = module.clone();
 
         shadow.visit_mut_with(&mut object_rest_spread(Default::default()));
+        shadow.visit_mut_with(&mut for_of(Default::default()));
         shadow.visit_mut_with(&mut destructuring(Default::default()));
         shadow.visit_with(&mut v);
 
