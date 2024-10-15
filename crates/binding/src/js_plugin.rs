@@ -60,7 +60,8 @@ impl Plugin for JsPlugin {
                 return content_from_result(TransformResult {
                     content: x.content,
                     content_type: x.content_type,
-                }).map(Some)
+                })
+                .map(Some);
             }
         }
         Ok(None)
