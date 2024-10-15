@@ -92,10 +92,16 @@ impl<'a> VisitMut for DynamicImport<'a> {
                         return;
                     }
 
-                    let resolved_info = self
-                        .dep_to_replace
-                        .resolved
-                        .get(source.value.as_ref())
+                    let resolved_info = self.dep_to_replace.resolved.get(source.value.as_ref());
+
+                    // e.g.
+                    // import(/* webpackIgnore: true */ "foo")
+                    // will be ignored
+                    if resolved_info.is_none() {
+                        return;
+                    }
+
+                    let resolved_info = resolved_info
                         // If the identifier is not in dep_to_replace.missing,
                         // it must be resolved, so unwrap is safe here.
                         .unwrap();

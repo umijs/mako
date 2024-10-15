@@ -1,6 +1,6 @@
 {
 	"optimization": { "skipModules": true, "concatenateModules": false },
   "experimental": {
-    "magicCommentChunkName": true
+    "magicComment": true
   }
 }
