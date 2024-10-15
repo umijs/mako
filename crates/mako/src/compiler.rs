@@ -328,14 +328,12 @@ impl Compiler {
             );
         }
 
-        if !config.ignores.is_empty() {
-            let ignores = config
-                .ignores
-                .iter()
-                .map(|ignore| Regex::new(ignore).map_err(Error::new))
-                .collect::<Result<Vec<Regex>>>()?;
-            plugins.push(Arc::new(plugins::ignore::IgnorePlugin { ignores }))
-        }
+        let ignores = config
+            .ignores
+            .iter()
+            .map(|ignore| Regex::new(ignore).map_err(Error::new))
+            .collect::<Result<Vec<Regex>>>()?;
+        plugins.push(Arc::new(plugins::ignore::IgnorePlugin { ignores }));
 
         let plugin_driver = PluginDriver::new(plugins);
 

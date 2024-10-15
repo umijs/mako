@@ -58,7 +58,15 @@ impl DepAnalyzer {
                 .and_then(|matched| matched.get(2).map(|m| m.as_str().to_string()))
         });
 
-        ImportOptions { chunk_name }
+        let ignore = comments_texts.iter().any(|t| {
+            get_magic_comment_ignore_regex()
+                .captures(t.trim())
+                .map_or(false, |cap| {
+                    cap.get(2).map_or(false, |m| m.as_str() == "true")
+                })
+        });
+
+        ImportOptions { chunk_name, ignore }
     }
 }
 
@@ -227,6 +235,10 @@ fn resolve_web_worker(expr: &NewExpr, unresolved_mark: Mark) -> Option<&Str> {
 
 fn get_magic_comment_chunk_name_regex() -> Regex {
     create_cached_regex(r#"(makoChunkName|webpackChunkName):\s*['"`](\w+)['"`]"#)
+}
+
+fn get_magic_comment_ignore_regex() -> Regex {
+    create_cached_regex(r#"(makoIgnore|webpackIgnore):\s*(true|false)"#)
 }
 
 #[cfg(test)]

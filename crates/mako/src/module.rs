@@ -129,6 +129,7 @@ impl From<&NamedExport> for NamedExportType {
 #[derive(Eq, Hash, PartialEq, Serialize, Debug, Clone, Default)]
 pub struct ImportOptions {
     pub chunk_name: Option<String>,
+    pub ignore: bool,
 }
 
 impl ImportOptions {
