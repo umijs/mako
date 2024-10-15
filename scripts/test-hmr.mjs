@@ -1869,7 +1869,7 @@ runTest('change async import magic comment chunk name', async () => {
           `,
       './mako.config.json': JSON.stringify({
         experimental: {
-          magicCommentChunkName: true,
+          magicComment: true,
         },
       }),
     }),

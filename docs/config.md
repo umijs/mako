@@ -295,19 +295,19 @@ e.g.
 }
 ```
 
-### experimental.magicCommentChunkName
+### experimental.magicComment
 
 - Type: boolean
 - Default: false
 
-Experimental configuration, whether to support grouping chunk by magic comment chunk name like webpack.
+Experimental configuration, whether to support magic comments like webpack.
 
 e.g.
 
 ```ts
 {
   experimental: {
-    magicCommentChunkName: true,
+    magicComment: true,
   },
 }
 ```
@@ -316,12 +316,11 @@ the magic comment is like below:
 
 ```ts
 import(/* makoChunkName: 'myChunk' */ "./lazy");
-
 import(/* webpackChunkName: 'myChunk' */ "./lazy");
-
 new Worker(/* makoChunkName: 'myWorker' */ new URL("./worker", import.meta.url));
-
 new Worker(/* webpackChunkName: 'myWorker' */ new URL("./worker", import.meta.url));
+import(/* makoIgnore: true */ "./foo");
+import(/* webpackIgnore: true */ "./foo");
 ```
 
 ### externals

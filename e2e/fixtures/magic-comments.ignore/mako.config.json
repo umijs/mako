@@ -3,6 +3,6 @@
     "strategy": "auto"
   },
   "experimental": {
-    "magicCommentChunkName": true
+    "magicComment": true
   }
 }

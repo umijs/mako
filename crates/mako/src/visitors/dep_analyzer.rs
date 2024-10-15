@@ -135,7 +135,7 @@ impl Visit for DepAnalyzer {
                     }
                 };
 
-                let import_options = if self.context.config.experimental.magic_comment_chunk_name {
+                let import_options = if self.context.config.experimental.magic_comment {
                     maybe_magic_comments_pos
                         .map_or(ImportOptions::default(), |magic_comments_pos| {
                             self.analyze_import_options(magic_comments_pos)
@@ -171,7 +171,7 @@ impl Visit for DepAnalyzer {
                 }
             });
 
-            let import_options = if self.context.config.experimental.magic_comment_chunk_name {
+            let import_options = if self.context.config.experimental.magic_comment {
                 maybe_magic_comments_pos.map_or(ImportOptions::default(), |magic_comments_pos| {
                     self.analyze_import_options(magic_comments_pos)
                 })

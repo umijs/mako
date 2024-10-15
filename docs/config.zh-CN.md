@@ -296,31 +296,30 @@ e.g.
 }
 ```
 
-### experimental.magicCommentChunkName
+### experimental.magicComment
 
 - 类型: boolean
 - 默认值: false
 
-实验性配置, 是否支持通过类似 webpack 的魔法注释控制 chunk 拆分.
+实验性配置，是否支持通过类似 webpack 的魔法注释。
 
 e.g.
 
 ```ts
 {
   experimental: {
-    magicCommentChunkName: true,
+    magicComment: true,
   },
 }
 ```
 魔法注释如下：
 ```ts
 import(/* makoChunkName: 'myChunk' */  "./lazy");
-
 import(/* webpackChunkName: 'myChunk' */  "./lazy");
-
 new Worker(/* makoChunkName: 'myWorker' */  new URL("./worker", import.meta.url));
-
 new Worker(/* webpackChunkName: 'myWorker' */  new URL("./worker", import.meta.url));
+import(/* makoIgnore: true */ "./foo");
+import(/* webpackIgnore: true */ "./foo");
 ```
 
 ### externals
