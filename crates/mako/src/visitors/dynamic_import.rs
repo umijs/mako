@@ -92,10 +92,7 @@ impl<'a> VisitMut for DynamicImport<'a> {
                         return;
                     }
 
-                    let resolved_info = self
-                        .dep_to_replace
-                        .resolved
-                        .get(source.value.as_ref());
+                    let resolved_info = self.dep_to_replace.resolved.get(source.value.as_ref());
 
                     // e.g.
                     // import(/* webpackIgnore: true */ "foo")
