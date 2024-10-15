@@ -8,7 +8,7 @@ use mako::plugin::{Plugin, PluginGenerateEndParams, PluginLoadParam, PluginResol
 use mako::resolve::{ExternalResource, Resolution, ResolvedResource, ResolverResource};
 
 use crate::js_hook::{
-    LoadResult, TransformResult, ResolveIdParams, ResolveIdResult, TsFnHooks, WriteFile,
+    LoadResult, ResolveIdParams, ResolveIdResult, TransformResult, TsFnHooks, WriteFile,
 };
 
 pub struct JsPlugin {
