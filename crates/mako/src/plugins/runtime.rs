@@ -46,7 +46,8 @@ impl MakoRuntime {
         let helpers = SwcHelpers::full_helpers()
             .into_iter()
             .map(|source| {
-                let code = Self::get_swc_helper_code(&source).unwrap();
+                let code =
+                    Self::get_swc_helper_code(&source, context.config.legacy_interop).unwrap();
                 let module_id: ModuleId = source.into();
                 let module_id = module_id.generate(context);
                 format!("\"{}\": {}", module_id, code)
@@ -65,7 +66,22 @@ impl MakoRuntime {
         ))
     }
 
-    fn get_swc_helper_code(path: &str) -> Result<String> {
+    fn modify_legacy_code(origin_code: &str, legacy_interop: bool) -> String {
+        let mut new_code = origin_code.to_string();
+        if legacy_interop {
+            new_code = new_code.replace(
+                "// ### legacy_interop ###",
+                r#"
+            if (typeof obj === "function") {
+                return obj
+            };
+            "#,
+            );
+        }
+        new_code
+    }
+
+    fn get_swc_helper_code(path: &str, legacy_interop: bool) -> Result<String> {
         let code = match path {
             "@swc/helpers/_/_interop_require_default" => r#"
 function(module, exports, __mako_require__) {
@@ -93,7 +109,8 @@ function(module, exports, __mako_require__) {
     }
 }
             "#.trim(),
-            "@swc/helpers/_/_interop_require_wildcard" => r#"
+            "@swc/helpers/_/_interop_require_wildcard" => {
+                let origin = r#"
 function(module, exports, __mako_require__) {
     __mako_require__.d(exports, "__esModule", {
         value: true
@@ -125,6 +142,7 @@ function(module, exports, __mako_require__) {
         if (obj === null || typeof obj !== "object" && typeof obj !== "function") return {
             default: obj
         };
+        // ### legacy_interop ###
         var cache = _getRequireWildcardCache(nodeInterop);
         if (cache && cache.has(obj)) return cache.get(obj);
         var newObj = {};
@@ -139,7 +157,9 @@ function(module, exports, __mako_require__) {
         return newObj;
     }
 }
-            "#.trim(),
+            "#.trim();
+            &Self::modify_legacy_code(origin, legacy_interop)
+            },
             "@swc/helpers/_/_export_star" => r#"
 function(module, exports, __mako_require__) {
     __mako_require__.d(exports, "__esModule", {

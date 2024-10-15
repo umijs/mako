@@ -175,6 +175,8 @@ pub struct Config {
     pub clean: bool,
     pub node_polyfill: bool,
     pub ignores: Vec<String>,
+    #[serde(rename = "legacyInterop")]
+    pub legacy_interop: bool,
     #[serde(
         rename = "_minifish",
         deserialize_with = "deserialize_minifish",
