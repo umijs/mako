@@ -64,6 +64,10 @@ pub struct JsHooks {
         ts_type = "(source: string, importer: string, { isEntry: bool }) => Promise<{ id: string }>;"
     )]
     pub resolve_id: Option<JsFunction>,
+    #[napi(
+        ts_type = "(content: { content: string, type: 'css' | 'js' }, path: string) => Promise<{ content: string, type: 'css' | 'js' } | void> | void;"
+    )]
+    pub transform: Option<JsFunction>,
 }
 
 pub struct TsFnHooks {
@@ -74,6 +78,7 @@ pub struct TsFnHooks {
     pub resolve_id:
         Option<ThreadsafeFunction<(String, String, ResolveIdParams), Option<ResolveIdResult>>>,
     pub _on_generate_file: Option<ThreadsafeFunction<WriteFile, ()>>,
+    pub transform: Option<ThreadsafeFunction<(String, String), Option<TransformResult>>>,
 }
 
 impl TsFnHooks {
@@ -95,6 +100,9 @@ impl TsFnHooks {
                 ThreadsafeFunction::from_napi_value(env.raw(), hook.raw()).unwrap()
             }),
             _on_generate_file: hooks._on_generate_file.as_ref().map(|hook| unsafe {
+                ThreadsafeFunction::from_napi_value(env.raw(), hook.raw()).unwrap()
+            }),
+            transform: hooks.transform.as_ref().map(|hook| unsafe {
                 ThreadsafeFunction::from_napi_value(env.raw(), hook.raw()).unwrap()
             }),
         }
@@ -124,4 +132,11 @@ pub struct ResolveIdResult {
 #[napi(object)]
 pub struct ResolveIdParams {
     pub is_entry: bool,
+}
+
+#[napi(object, use_nullable = true)]
+pub struct TransformResult {
+    pub content: String,
+    #[napi(js_name = "type")]
+    pub content_type: String,
 }
