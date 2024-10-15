@@ -72,6 +72,7 @@
       "graphviz": false
     }
   },
+  "legacyInterop": false,
   "useDefineForClassFields": true,
   "emitDecoratorMetadata": false,
   "watch": { "ignorePaths": [], "_nodeModulesRegexes": [] },
