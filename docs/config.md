@@ -575,6 +575,7 @@ Specify the plugins to use.
   loadInclude?: (filePath: string) => boolean;
   resolveId?: (id: string, importer: string, { isEntry: bool }) => Promise<{ id: string, external: bool }>;
   transform?: (content: string, id: string) => Promise<{ content: string, type: 'css'|'js'|'jsx'|'ts'|'tsx' }>;
+  transformInclude?: (filePath: string) => Promise<boolean> | boolean;
 }
 ```
 
