@@ -61,6 +61,7 @@ export interface JsHooks {
     content: { content: string; type: 'css' | 'js' },
     path: string,
   ) => Promise<{ content: string; type: 'css' | 'js' } | void> | void;
+  transformInclude?: (filePath: string) => Promise<bool> | bool;
 }
 export interface WriteFile {
   path: string;
@@ -77,7 +78,7 @@ export interface ResolveIdResult {
 export interface ResolveIdParams {
   isEntry: boolean;
 }
-export interface LoadTransformResult {
+export interface TransformResult {
   content: string;
   type: string;
 }

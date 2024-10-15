@@ -11,6 +11,21 @@ use crate::js_hook::{
     LoadResult, ResolveIdParams, ResolveIdResult, TransformResult, TsFnHooks, WriteFile,
 };
 
+fn content_from_result(result: TransformResult) -> Result<Content> {
+    match result.content_type.as_str() {
+        "js" | "ts" => Ok(Content::Js(JsContent {
+            content: result.content,
+            is_jsx: false,
+        })),
+        "jsx" | "tsx" => Ok(Content::Js(JsContent {
+            content: result.content,
+            is_jsx: true,
+        })),
+        "css" => Ok(Content::Css(result.content)),
+        _ => Err(anyhow!("Unsupported content type: {}", result.content_type)),
+    }
+}
+
 pub struct JsPlugin {
     pub hooks: TsFnHooks,
 }
@@ -42,22 +57,11 @@ impl Plugin for JsPlugin {
             }
             let x: Option<LoadResult> = hook.call(param.file.path.to_string_lossy().to_string())?;
             if let Some(x) = x {
-                match x.content_type.as_str() {
-                    "js" | "ts" => {
-                        return Ok(Some(Content::Js(JsContent {
-                            content: x.content,
-                            is_jsx: false,
-                        })))
-                    }
-                    "jsx" | "tsx" => {
-                        return Ok(Some(Content::Js(JsContent {
-                            content: x.content,
-                            is_jsx: true,
-                        })))
-                    }
-                    "css" => return Ok(Some(Content::Css(x.content))),
-                    _ => return Err(anyhow!("Unsupported content type: {}", x.content_type)),
-                }
+                return content_from_result(TransformResult {
+                    content: x.content,
+                    content_type: x.content_type,
+                })
+                .map(Some);
             }
         }
         Ok(None)
@@ -122,6 +126,12 @@ impl Plugin for JsPlugin {
         path: &str,
         _context: &Arc<Context>,
     ) -> Result<Option<Content>> {
+        if let Some(hook) = &self.hooks.transform_include {
+            if hook.call(path.to_string())? == Some(false) {
+                return Ok(None);
+            }
+        }
+
         if let Some(hook) = &self.hooks.transform {
             let content_str = match content {
                 Content::Js(js_content) => js_content.content.clone(),
@@ -132,22 +142,7 @@ impl Plugin for JsPlugin {
             let result: Option<TransformResult> = hook.call((content_str, path.to_string()))?;
 
             if let Some(result) = result {
-                match result.content_type.as_str() {
-                    "js" | "ts" => {
-                        return Ok(Some(Content::Js(JsContent {
-                            content: result.content,
-                            is_jsx: false,
-                        })))
-                    }
-                    "jsx" | "tsx" => {
-                        return Ok(Some(Content::Js(JsContent {
-                            content: result.content,
-                            is_jsx: true,
-                        })))
-                    }
-                    "css" => return Ok(Some(Content::Css(result.content))),
-                    _ => return Err(anyhow!("Unsupported content type: {}", result.content_type)),
-                }
+                return content_from_result(result).map(Some);
             }
         }
         Ok(None)
