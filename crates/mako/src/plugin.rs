@@ -393,12 +393,11 @@ impl PluginDriver {
         path: &str,
         context: &Arc<Context>,
     ) -> Result<Content> {
-        let mut content = content.clone();
         for plugin in &self.plugins {
-            if let Some(transformed) = plugin.load_transform(&mut content, path, context)? {
-                content = transformed;
+            if let Some(transformed) = plugin.load_transform(content, path, context)? {
+                *content = transformed;
             }
         }
-        Ok(content)
+        Ok(content.clone())
     }
 }
