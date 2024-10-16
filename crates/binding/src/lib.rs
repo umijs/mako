@@ -1,5 +1,6 @@
 #![deny(clippy::all)]
 
+use std::cmp::Ordering;
 use std::sync::{Arc, Once};
 
 use js_hook::{JsHooks, TsFnHooks};
@@ -184,9 +185,49 @@ pub fn build(env: Env, build_params: BuildParams) -> napi::Result<JsObject> {
     let mut plugins: Vec<Arc<dyn Plugin>> = vec![];
     for hooks in build_params.plugins.iter() {
         let tsfn_hooks = TsFnHooks::new(env, hooks);
-        let plugin = JsPlugin { hooks: tsfn_hooks };
+        let plugin = JsPlugin {
+            name: hooks.name.clone(),
+            hooks: tsfn_hooks,
+            enforce: hooks.enforce.clone(),
+        };
         plugins.push(Arc::new(plugin));
     }
+
+    // sort with enforce: pre / post
+    plugins.sort_by(|a, b| {
+        let a_enforce = a.enforce();
+        let b_enforce = b.enforce();
+        match (a_enforce, b_enforce) {
+            (Some(a_enforce), Some(b_enforce)) => {
+                if a_enforce == "pre" || b_enforce == "post" {
+                    Ordering::Less
+                } else if a_enforce == "post" || b_enforce == "pre" {
+                    Ordering::Greater
+                } else {
+                    Ordering::Equal
+                }
+            }
+            (Some(a_enforce), None) => {
+                if a_enforce == "pre" {
+                    Ordering::Less
+                } else if a_enforce == "post" {
+                    Ordering::Greater
+                } else {
+                    Ordering::Equal
+                }
+            }
+            (None, Some(b_enforce)) => {
+                if b_enforce == "post" {
+                    Ordering::Greater
+                } else if b_enforce == "pre" {
+                    Ordering::Less
+                } else {
+                    Ordering::Equal
+                }
+            }
+            (None, None) => Ordering::Equal,
+        }
+    });
 
     let root = std::path::PathBuf::from(&build_params.root);
     let default_config = serde_json::to_string(&build_params.config).unwrap();

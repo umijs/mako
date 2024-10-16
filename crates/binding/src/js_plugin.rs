@@ -28,11 +28,17 @@ fn content_from_result(result: TransformResult) -> Result<Content> {
 
 pub struct JsPlugin {
     pub hooks: TsFnHooks,
+    pub name: Option<String>,
+    pub enforce: Option<String>,
 }
 
 impl Plugin for JsPlugin {
     fn name(&self) -> &str {
-        "js_plugin"
+        self.name.as_deref().unwrap_or("js_plugin")
+    }
+
+    fn enforce(&self) -> Option<String> {
+        self.enforce.clone()
     }
 
     fn build_start(&self, _context: &Arc<Context>) -> Result<()> {
