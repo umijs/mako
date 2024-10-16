@@ -104,8 +104,13 @@ impl Plugin for JsPlugin {
     }
 
     fn generate_end(&self, param: &PluginGenerateEndParams, _context: &Arc<Context>) -> Result<()> {
+        // keep generate_end for compatibility
+        // since build_end does not have none error params in unplugin's api spec
         if let Some(hook) = &self.hooks.generate_end {
             hook.call(serde_json::to_value(param)?)?
+        }
+        if let Some(hook) = &self.hooks.build_end {
+            hook.call(())?
         }
         Ok(())
     }

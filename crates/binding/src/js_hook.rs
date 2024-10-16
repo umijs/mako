@@ -60,6 +60,8 @@ pub struct JsHooks {
     pub _on_generate_file: Option<JsFunction>,
     #[napi(ts_type = "() => Promise<void>;")]
     pub build_start: Option<JsFunction>,
+    #[napi(ts_type = "() => Promise<void>;")]
+    pub build_end: Option<JsFunction>,
     #[napi(
         ts_type = "(source: string, importer: string, { isEntry: bool }) => Promise<{ id: string }>;"
     )]
@@ -74,6 +76,7 @@ pub struct JsHooks {
 
 pub struct TsFnHooks {
     pub build_start: Option<ThreadsafeFunction<(), ()>>,
+    pub build_end: Option<ThreadsafeFunction<(), ()>>,
     pub generate_end: Option<ThreadsafeFunction<Value, ()>>,
     pub load: Option<ThreadsafeFunction<String, Option<LoadResult>>>,
     pub load_include: Option<ThreadsafeFunction<String, Option<bool>>>,
@@ -88,6 +91,9 @@ impl TsFnHooks {
     pub fn new(env: Env, hooks: &JsHooks) -> Self {
         Self {
             build_start: hooks.build_start.as_ref().map(|hook| unsafe {
+                ThreadsafeFunction::from_napi_value(env.raw(), hook.raw()).unwrap()
+            }),
+            build_end: hooks.build_end.as_ref().map(|hook| unsafe {
                 ThreadsafeFunction::from_napi_value(env.raw(), hook.raw()).unwrap()
             }),
             generate_end: hooks.generate_end.as_ref().map(|hook| unsafe {
