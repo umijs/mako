@@ -37,8 +37,8 @@ impl Plugin for JsPlugin {
         self.name.as_deref().unwrap_or("js_plugin")
     }
 
-    fn enforce(&self) -> Option<String> {
-        self.enforce.clone()
+    fn enforce(&self) -> Option<&str> {
+        self.enforce.as_deref()
     }
 
     fn build_start(&self, _context: &Arc<Context>) -> Result<()> {
