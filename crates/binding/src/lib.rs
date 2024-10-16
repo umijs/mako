@@ -193,7 +193,7 @@ pub fn build(env: Env, build_params: BuildParams) -> napi::Result<JsObject> {
     }
 
     // sort with enforce: pre / post
-    plugins.sort_by_key(|plugin| match plugin.enforce().as_deref() {
+    plugins.sort_by_key(|plugin| match plugin.enforce() {
         Some("pre") => 0,
         Some("post") => 2,
         _ => 1,
