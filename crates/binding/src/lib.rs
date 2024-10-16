@@ -184,9 +184,20 @@ pub fn build(env: Env, build_params: BuildParams) -> napi::Result<JsObject> {
     let mut plugins: Vec<Arc<dyn Plugin>> = vec![];
     for hooks in build_params.plugins.iter() {
         let tsfn_hooks = TsFnHooks::new(env, hooks);
-        let plugin = JsPlugin { hooks: tsfn_hooks };
+        let plugin = JsPlugin {
+            name: hooks.name.clone(),
+            hooks: tsfn_hooks,
+            enforce: hooks.enforce.clone(),
+        };
         plugins.push(Arc::new(plugin));
     }
+
+    // sort with enforce: pre / post
+    plugins.sort_by_key(|plugin| match plugin.enforce() {
+        Some("pre") => 0,
+        Some("post") => 2,
+        _ => 1,
+    });
 
     let root = std::path::PathBuf::from(&build_params.root);
     let default_config = serde_json::to_string(&build_params.config).unwrap();

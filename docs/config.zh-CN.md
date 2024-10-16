@@ -559,6 +559,7 @@ import(/* webpackIgnore: true */ "./foo");
 // JSHooks
 {
   name?: string;
+  enforce?: "pre" | "post";
   buildStart?: () => void;
   buildEnd?: () => void;
   generateEnd?: (data: {

@@ -561,6 +561,7 @@ Specify the plugins to use.
 // JSHooks
 {
   name?: string;
+  enforce?: "pre" | "post";
   buildStart?: () => void;
   buildEnd?: () => void;
   generateEnd?: (data: {

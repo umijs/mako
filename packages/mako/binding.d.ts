@@ -5,6 +5,7 @@
 
 export interface JsHooks {
   name?: string;
+  enforce?: string;
   load?: (
     filePath: string,
   ) => Promise<{ content: string; type: 'css' | 'js' } | void> | void;
@@ -52,6 +53,7 @@ export interface JsHooks {
   }) => void;
   onGenerateFile?: (path: string, content: Buffer) => Promise<void>;
   buildStart?: () => Promise<void>;
+  buildEnd?: () => Promise<void>;
   resolveId?: (
     source: string,
     importer: string,

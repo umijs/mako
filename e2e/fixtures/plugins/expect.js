@@ -14,4 +14,4 @@ assert(content.includes(`resolve_id mocked`), `resolve_id hook works`);
 assert(content.includes(`module.exports = resolve_id_external;`), `resolve_id hook with external works`);
 
 // transform hook
-assert(content.includes(`console.log('transform_2_1');`), `transform hook works`);
+assert(content.includes(`console.log('transform_1_2');`), `transform hook works`);

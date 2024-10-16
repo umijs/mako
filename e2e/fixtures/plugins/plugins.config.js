@@ -47,6 +47,7 @@ module.exports = [
     },
   },
   {
+    enforce: "pre",
     async transform(code, id) {
       if (id.endsWith("transform.ts")) {
         console.log("transform", code, id);

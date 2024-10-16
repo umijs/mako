@@ -8,6 +8,7 @@ use crate::threadsafe_function::ThreadsafeFunction;
 #[napi(object)]
 pub struct JsHooks {
     pub name: Option<String>,
+    pub enforce: Option<String>,
     #[napi(
         ts_type = "(filePath: string) => Promise<{ content: string, type: 'css'|'js' } | void> | void;"
     )]

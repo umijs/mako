@@ -50,6 +50,10 @@ pub struct PluginGenerateEndParams {
 pub trait Plugin: Any + Send + Sync {
     fn name(&self) -> &str;
 
+    fn enforce(&self) -> Option<&str> {
+        None
+    }
+
     fn modify_config(&self, _config: &mut Config, _root: &Path, _args: &Args) -> Result<()> {
         Ok(())
     }
