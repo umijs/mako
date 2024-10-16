@@ -562,6 +562,7 @@ Specify the plugins to use.
 {
   name?: string;
   buildStart?: () => void;
+  buildEnd?: () => void;
   generateEnd?: (data: {
     isFirstCompile: boolean;
     time: number;

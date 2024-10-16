@@ -560,6 +560,7 @@ import(/* webpackIgnore: true */ "./foo");
 {
   name?: string;
   buildStart?: () => void;
+  buildEnd?: () => void;
   generateEnd?: (data: {
     isFirstCompile: boolean;
     time: number;
