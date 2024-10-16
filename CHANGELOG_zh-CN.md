@@ -1,5 +1,15 @@
 ## 0.9.0
 
+`2024-10-16`
+
+- 新增: 支持 `webpackIgnore` 和 `makoIgnore` 魔法注释 by [@sorrycc](https://github.com/sorrycc) in [#1636](https://github.com/umijs/mako/pull/1636)
+- 新增: 添加 `transform` 插件钩子 by [@sorrycc](https://github.com/sorrycc) in [#1637](https://github.com/umijs/mako/pull/1637)
+- 新增: 添加 `transformInclude` 插件钩子 by [@sorrycc](https://github.com/sorrycc) in [#1639](https://github.com/umijs/mako/pull/1639)
+- 修复: 导入命名空间优化在代码有嵌套 `for of` 时崩溃问题 by [@stormslowly](https://github.com/stormslowly) in [#1640](https://github.com/umijs/mako/pull/1640)
+- 修复: 当 `package.json` 没有 `version` 字段时 `duplicate_package_checker` 崩溃问题 by [@sorrycc](https://github.com/sorrycc) in [#1634](https://github.com/umijs/mako/pull/1634)
+
+## 0.9.0
+
 `2024-10-14`
 
 - 新增: 插件 loadInclude 钩子 by [@sorrycc](https://github.com/sorrycc) in [#1630](https://github.

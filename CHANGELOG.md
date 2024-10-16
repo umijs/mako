@@ -1,3 +1,13 @@
+## 0.9.2
+
+`2024-10-16`
+
+- feat: support webpackIgnore and makoIgnore magic comment by [@sorrycc](https://github.com/sorrycc) in [#1636](https://github.com/umijs/mako/pull/1636)
+- feat: add transform plugin hook by [@sorrycc](https://github.com/sorrycc) in [#1637](https://github.com/umijs/mako/pull/1637)
+- feat: add transformInclude plugin hook by [@sorrycc](https://github.com/sorrycc) in [#1639](https://github.com/umijs/mako/pull/1639)
+- fix: import namespace optimize panic with nested for of stmt by [@stormslowly](https://github.com/stormslowly) in [#1640](https://github.com/umijs/mako/pull/1640)
+- fix: duplicate\_package\_checker panic when package.json has no version field by [@sorrycc](https://github.com/sorrycc) in [#1634](https://github.com/umijs/mako/pull/1634)
+
 ## 0.9.0
 
 `2024-10-14`
