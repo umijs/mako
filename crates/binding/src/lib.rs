@@ -105,6 +105,7 @@ pub struct BuildParams {
     providers?: Record<string, string[]>;
     publicPath?: string;
     inlineLimit?: number;
+    inlineExcludesExtensions?: string[];
     targets?: Record<string, number>;
     platform?: "node" | "browser";
     hmr?: false | {};
