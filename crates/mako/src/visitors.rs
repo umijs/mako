@@ -1,3 +1,4 @@
+pub(crate) mod amd_define_overrides;
 pub(crate) mod async_module;
 pub(crate) mod common_js;
 pub(crate) mod css_assets;

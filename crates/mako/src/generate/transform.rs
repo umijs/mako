@@ -258,7 +258,6 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()>
                         let origin_comments = context.meta.script.origin_comments.read().unwrap();
                         let swc_comments = origin_comments.get_swc_comments();
                         ast.ast.visit_mut_with(&mut fixer(Some(swc_comments)));
-
                         Ok(())
                     })
                 })
