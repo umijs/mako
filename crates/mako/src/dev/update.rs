@@ -186,12 +186,21 @@ impl Compiler {
         for (path, update_type) in paths {
             match update_type {
                 UpdateType::Add => {
+                    self.context
+                        .plugin_driver
+                        .watch_changes(&path.to_string_lossy(), "create", &self.context)?;
                     added.push(path);
                 }
                 UpdateType::Remove => {
+                    self.context
+                        .plugin_driver
+                        .watch_changes(&path.to_string_lossy(), "delete", &self.context)?;
                     removed.push(path);
                 }
                 UpdateType::Modify => {
+                    self.context
+                        .plugin_driver
+                        .watch_changes(&path.to_string_lossy(), "update", &self.context)?;
                     modified.push(path);
                 }
             }

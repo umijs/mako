@@ -151,6 +151,10 @@ pub trait Plugin: Any + Send + Sync {
         Ok(())
     }
 
+    fn watch_changes(&self, id: &str, event: &str, _context: &Arc<Context>) -> Result<()> {
+        Ok(())
+    }
+
     fn runtime_plugins(&self, _context: &Arc<Context>) -> Result<Vec<String>> {
         Ok(Vec::new())
     }
@@ -331,6 +335,13 @@ impl PluginDriver {
     pub fn write_bundle(&self, context: &Arc<Context>) -> Result<()> {
         for plugin in &self.plugins {
             plugin.write_bundle(context)?;
+        }
+        Ok(())
+    }
+
+    pub fn watch_changes(&self, id: &str, event: &str, context: &Arc<Context>) -> Result<()> {
+        for plugin in &self.plugins {
+            plugin.watch_changes(id, event, context)?;
         }
         Ok(())
     }
