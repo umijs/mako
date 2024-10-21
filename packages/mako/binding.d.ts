@@ -51,6 +51,7 @@ export interface JsHooks {
       endTime: number;
     };
   }) => void;
+  writeBundle?: () => Promise<void>;
   onGenerateFile?: (path: string, content: Buffer) => Promise<void>;
   buildStart?: () => Promise<void>;
   buildEnd?: () => Promise<void>;

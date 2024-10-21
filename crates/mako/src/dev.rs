@@ -402,6 +402,11 @@ impl DevServer {
                 .plugin_driver
                 .generate_end(&params, &compiler.context)
                 .unwrap();
+            compiler
+                .context
+                .plugin_driver
+                .write_bundle(&compiler.context)
+                .unwrap();
         }
 
         let receiver_count = txws.receiver_count();

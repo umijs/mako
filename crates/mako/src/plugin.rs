@@ -147,6 +147,10 @@ pub trait Plugin: Any + Send + Sync {
         Ok(())
     }
 
+    fn write_bundle(&self, _context: &Arc<Context>) -> Result<()> {
+        Ok(())
+    }
+
     fn runtime_plugins(&self, _context: &Arc<Context>) -> Result<Vec<String>> {
         Ok(Vec::new())
     }
@@ -320,6 +324,13 @@ impl PluginDriver {
     ) -> Result<()> {
         for plugin in &self.plugins {
             plugin.generate_end(params, context)?;
+        }
+        Ok(())
+    }
+
+    pub fn write_bundle(&self, context: &Arc<Context>) -> Result<()> {
+        for plugin in &self.plugins {
+            plugin.write_bundle(context)?;
         }
         Ok(())
     }

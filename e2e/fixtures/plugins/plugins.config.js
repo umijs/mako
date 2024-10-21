@@ -8,6 +8,9 @@ module.exports = [
         };
       }
     },
+    async writeBundle() {
+      console.log("writeBundle");
+    },
   },
   {
     async loadInclude(path) {
