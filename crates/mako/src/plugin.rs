@@ -151,7 +151,7 @@ pub trait Plugin: Any + Send + Sync {
         Ok(())
     }
 
-    fn watch_changes(&self, id: &str, event: &str, _context: &Arc<Context>) -> Result<()> {
+    fn watch_changes(&self, _id: &str, _event: &str, _context: &Arc<Context>) -> Result<()> {
         Ok(())
     }
 

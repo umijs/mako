@@ -8,7 +8,8 @@ use mako::plugin::{Plugin, PluginGenerateEndParams, PluginLoadParam, PluginResol
 use mako::resolve::{ExternalResource, Resolution, ResolvedResource, ResolverResource};
 
 use crate::js_hook::{
-    LoadResult, ResolveIdParams, ResolveIdResult, TransformResult, TsFnHooks, WatchChangesParams, WriteFile
+    LoadResult, ResolveIdParams, ResolveIdResult, TransformResult, TsFnHooks, WatchChangesParams,
+    WriteFile,
 };
 
 fn content_from_result(result: TransformResult) -> Result<Content> {
@@ -123,7 +124,12 @@ impl Plugin for JsPlugin {
 
     fn watch_changes(&self, id: &str, event: &str, _context: &Arc<Context>) -> Result<()> {
         if let Some(hook) = &self.hooks.watch_changes {
-            hook.call((id.to_string(), WatchChangesParams { event: event.to_string() }))?
+            hook.call((
+                id.to_string(),
+                WatchChangesParams {
+                    event: event.to_string(),
+                },
+            ))?
         }
         Ok(())
     }

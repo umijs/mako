@@ -59,7 +59,9 @@ pub struct JsHooks {
     pub generate_end: Option<JsFunction>,
     #[napi(ts_type = "() => Promise<void>;")]
     pub write_bundle: Option<JsFunction>,
-    #[napi(ts_type = "(id: string, { event: 'create' | 'delete' | 'update' }) => Promise<void> | void;")]
+    #[napi(
+        ts_type = "(id: string, { event: 'create' | 'delete' | 'update' }) => Promise<void> | void;"
+    )]
     pub watch_changes: Option<JsFunction>,
     #[napi(ts_type = "(path: string, content: Buffer) => Promise<void>;")]
     pub _on_generate_file: Option<JsFunction>,
