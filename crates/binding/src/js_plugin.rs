@@ -121,6 +121,13 @@ impl Plugin for JsPlugin {
         Ok(())
     }
 
+    fn write_bundle(&self, _context: &Arc<Context>) -> Result<()> {
+        if let Some(hook) = &self.hooks.write_bundle {
+            hook.call(())?
+        }
+        Ok(())
+    }
+
     fn before_write_fs(&self, path: &std::path::Path, content: &[u8]) -> Result<()> {
         if let Some(hook) = &self.hooks._on_generate_file {
             hook.call(WriteFile {
