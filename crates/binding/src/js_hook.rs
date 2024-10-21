@@ -59,6 +59,10 @@ pub struct JsHooks {
     pub generate_end: Option<JsFunction>,
     #[napi(ts_type = "() => Promise<void>;")]
     pub write_bundle: Option<JsFunction>,
+    #[napi(
+        ts_type = "(id: string, change: { event: 'create' | 'delete' | 'update' }) => Promise<void> | void;"
+    )]
+    pub watch_changes: Option<JsFunction>,
     #[napi(ts_type = "(path: string, content: Buffer) => Promise<void>;")]
     pub _on_generate_file: Option<JsFunction>,
     #[napi(ts_type = "() => Promise<void>;")]
@@ -84,6 +88,7 @@ pub struct TsFnHooks {
     pub generate_end: Option<ThreadsafeFunction<Value, ()>>,
     pub load: Option<ThreadsafeFunction<String, Option<LoadResult>>>,
     pub load_include: Option<ThreadsafeFunction<String, Option<bool>>>,
+    pub watch_changes: Option<ThreadsafeFunction<(String, WatchChangesParams), ()>>,
     pub resolve_id:
         Option<ThreadsafeFunction<(String, String, ResolveIdParams), Option<ResolveIdResult>>>,
     pub _on_generate_file: Option<ThreadsafeFunction<WriteFile, ()>>,
@@ -104,6 +109,9 @@ impl TsFnHooks {
                 ThreadsafeFunction::from_napi_value(env.raw(), hook.raw()).unwrap()
             }),
             generate_end: hooks.generate_end.as_ref().map(|hook| unsafe {
+                ThreadsafeFunction::from_napi_value(env.raw(), hook.raw()).unwrap()
+            }),
+            watch_changes: hooks.watch_changes.as_ref().map(|hook| unsafe {
                 ThreadsafeFunction::from_napi_value(env.raw(), hook.raw()).unwrap()
             }),
             load: hooks.load.as_ref().map(|hook| unsafe {
@@ -140,6 +148,11 @@ pub struct LoadResult {
     pub content: String,
     #[napi(js_name = "type")]
     pub content_type: String,
+}
+
+#[napi(object, use_nullable = true)]
+pub struct WatchChangesParams {
+    pub event: String,
 }
 
 #[napi(object, use_nullable = true)]

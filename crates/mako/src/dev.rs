@@ -346,12 +346,6 @@ impl DevServer {
             "hot update chunks generated, next_full_hash: {:?}",
             next_hash
         );
-        // if !has_missing_deps {
-        //     println!(
-        //         "Hot rebuilt in {}",
-        //         format!("{}ms", t_compiler.elapsed().as_millis()).bold()
-        //     );
-        // }
         if let Err(e) = next_hash {
             eprintln!("Error in watch: {:?}", e);
             return Err(e);
@@ -391,7 +385,6 @@ impl DevServer {
                 "Full rebuilt in {}",
                 format!("{}ms", t_compiler.elapsed().as_millis()).bold()
             );
-
             let params = PluginGenerateEndParams {
                 is_first_compile: false,
                 time: t_compiler.elapsed().as_millis() as i64,
@@ -401,12 +394,18 @@ impl DevServer {
                 .context
                 .plugin_driver
                 .generate_end(&params, &compiler.context)
-                .unwrap();
+                .map_err(|e| {
+                    debug!("generate end failed: {:?}", e);
+                    e
+                })?;
             compiler
                 .context
                 .plugin_driver
                 .write_bundle(&compiler.context)
-                .unwrap();
+                .map_err(|e| {
+                    debug!("write bundle failed: {:?}", e);
+                    e
+                })?;
         }
 
         let receiver_count = txws.receiver_count();

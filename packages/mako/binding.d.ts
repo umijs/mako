@@ -52,6 +52,10 @@ export interface JsHooks {
     };
   }) => void;
   writeBundle?: () => Promise<void>;
+  watchChanges?: (
+    id: string,
+    change: { event: 'create' | 'delete' | 'update' },
+  ) => Promise<void> | void;
   onGenerateFile?: (path: string, content: Buffer) => Promise<void>;
   buildStart?: () => Promise<void>;
   buildEnd?: () => Promise<void>;
@@ -73,6 +77,9 @@ export interface WriteFile {
 export interface LoadResult {
   content: string;
   type: string;
+}
+export interface WatchChangesParams {
+  event: string;
 }
 export interface ResolveIdResult {
   id: string;
