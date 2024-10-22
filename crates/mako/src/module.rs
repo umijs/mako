@@ -417,11 +417,6 @@ impl Module {
         self.get_module_type() == ModuleType::PlaceHolder
     }
 
-    #[allow(dead_code)]
-    pub fn is_node_module(&self) -> bool {
-        self.id.id.contains("node_modules")
-    }
-
     pub fn get_module_type(&self) -> ModuleType {
         self.info
             .as_ref()
