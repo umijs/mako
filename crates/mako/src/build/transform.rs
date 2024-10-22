@@ -247,7 +247,7 @@ impl Transform {
                                             ..Default::default()
                                         },
                                     )),
-                                    Box::new(amd_define_overrides()),
+                                    Box::new(amd_define_overrides(unresolved_mark)),
                                 ];
                                 ast.transform(
                                     &mut vec![],
