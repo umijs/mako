@@ -14,6 +14,7 @@ use swc_node_comments::SwcComments;
 use tracing::debug;
 
 use crate::ast::comments::Comments;
+use crate::ast::file::win_path;
 use crate::config::{Config, ModuleIdStrategy, OutputMode};
 use crate::generate::chunk_graph::ChunkGraph;
 use crate::generate::optimize_chunk::OptimizeChunksInfo;
@@ -227,6 +228,8 @@ impl Compiler {
         if !root.is_absolute() {
             return Err(anyhow!("root path must be absolute"));
         }
+
+        let root = PathBuf::from(win_path(root.to_str().unwrap()));
 
         // why add plugins before builtin plugins?
         // because plugins like less-loader need to be added before assets plugin

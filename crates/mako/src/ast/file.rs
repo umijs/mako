@@ -150,6 +150,7 @@ impl File {
             }
         } else {
             let relative_path = diff_paths(&path, &context.root).unwrap_or(path.clone());
+            let relative_path = PathBuf::from(win_path(relative_path.to_str().unwrap()));
             File {
                 is_virtual,
                 path,
