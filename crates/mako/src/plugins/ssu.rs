@@ -9,6 +9,7 @@ use anyhow::Result;
 use dashmap::DashSet;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tracing::debug;
 
 use crate::ast::file::{Content, File, JsContent};
@@ -189,6 +190,11 @@ impl Plugin for SUPlus {
                 },
             )),
         });
+
+        config
+            .define
+            .entry("process.env.SOCKET_SERVER".to_owned())
+            .or_insert(Value::Null);
 
         Ok(())
     }
