@@ -28,6 +28,7 @@ use crate::features;
 use crate::module::ModuleAst;
 use crate::plugin::PluginTransformJsParam;
 use crate::plugins::context_module::ContextModuleVisitor;
+use crate::visitors::amd_define_overrides::amd_define_overrides;
 use crate::visitors::css_assets::CSSAssets;
 use crate::visitors::css_flexbugs::CSSFlexbugs;
 use crate::visitors::css_px2rem::Px2Rem;
@@ -246,6 +247,7 @@ impl Transform {
                                             ..Default::default()
                                         },
                                     )),
+                                    Box::new(amd_define_overrides(unresolved_mark)),
                                 ];
                                 ast.transform(
                                     &mut vec![],
