@@ -10,7 +10,7 @@ use tracing::debug;
 use crate::build::BuildError;
 use crate::compiler::Compiler;
 use crate::generate::transform::transform_modules;
-use crate::module::{Dependency, Module, ModuleId};
+use crate::module::{Dependency, Module, ModuleId, ResolveType};
 use crate::module_graph::ModuleGraph;
 use crate::resolve::{self, clear_resolver_cache};
 
@@ -466,14 +466,15 @@ impl Diff {
             return true;
         }
 
-        let new_deps: HashMap<&ModuleId, &Dependency> = new_dependencies
+        let new_deps: HashMap<&ModuleId, &ResolveType> = new_dependencies
             .iter()
-            .map(|(module_id, dep)| (module_id, dep))
+            .map(|(module_id, dep)| (module_id, &dep.resolve_type))
             .collect();
 
-        let original: HashMap<&ModuleId, &Dependency> = module_graph
+        let original: HashMap<&ModuleId, &ResolveType> = module_graph
             .get_dependencies(module_id)
             .into_iter()
+            .map(|(module_id, dep)| (module_id, &dep.resolve_type))
             .collect();
 
         !new_deps.eq(&original)
