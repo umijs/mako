@@ -21,6 +21,7 @@ use crate::plugins::tree_shaking::module::{AllExports, ModuleSystem, TreeShakeMo
 use crate::plugins::tree_shaking::shake::module_concatenate::optimize_module_graph;
 use crate::plugins::tree_shaking::statement_graph::{ExportInfo, ExportSpecifierInfo, ImportInfo};
 use crate::plugins::tree_shaking::{module, remove_useless_stmts, statement_graph};
+use crate::visitors::async_module::mark_async;
 use crate::{mako_profile_function, mako_profile_scope};
 
 type TreeShakingModuleMap = HashMap<ModuleId, RefCell<TreeShakeModule>>;
@@ -175,6 +176,16 @@ pub fn optimize_modules(module_graph: &mut ModuleGraph, context: &Arc<Context>) 
             }
         }
     }
+
+    // mark async should before concatenate && after skip module
+
+    let module_ids = {
+        let (mut module_ids, _) = module_graph.toposort();
+        // start from the leaf nodes, so reverser the sort
+        module_ids.reverse();
+        module_ids
+    };
+    mark_async(&module_ids, context);
 
     if context
         .config

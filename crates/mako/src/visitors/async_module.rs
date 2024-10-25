@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use swc_core::common::util::take::Take;
@@ -205,11 +204,7 @@ impl VisitMut for AsyncModule<'_> {
     }
 }
 
-pub fn mark_async(
-    module_ids: &[ModuleId],
-    context: &Arc<Context>,
-) -> HashMap<ModuleId, Vec<Dependency>> {
-    let mut async_deps_by_module_id = HashMap::new();
+pub fn mark_async(module_ids: &[ModuleId], context: &Arc<Context>) {
     let mut module_graph = context.module_graph.write().unwrap();
     // TODO: 考虑成环的场景
     module_ids.iter().for_each(|module_id| {
@@ -220,15 +215,16 @@ pub fn mark_async(
             .map(|(_, dep, _)| dep.clone())
             .collect();
         let module = module_graph.get_module_mut(module_id).unwrap();
+        let mut async_deps_map = context.async_deps_map.write().unwrap();
         if let Some(info) = module.info.as_mut() {
             // a module with async deps need to be polluted into async module
             if !info.is_async && !async_deps.is_empty() {
                 info.is_async = true;
             }
-            async_deps_by_module_id.insert(module_id.clone(), async_deps);
+
+            async_deps_map.insert(module_id.clone(), async_deps);
         }
     });
-    async_deps_by_module_id
 }
 
 #[cfg(test)]

@@ -5,6 +5,7 @@
 /examples/*/.umi-production
 /client/node_modules
 /e2e/*/*/dist
+/e2e/**/node_modules
 /e2e/fixtures.umi/*/node_modules/.cache
 /e2e/fixtures.umi/stable-hash/node_modules
 /e2e/fixtures.umi/*/.umi

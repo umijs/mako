@@ -28,11 +28,10 @@ use crate::compiler::{Compiler, Context};
 use crate::config::{DevtoolConfig, OutputMode, TreeShakingStrategy};
 use crate::dev::update::UpdateResult;
 use crate::generate::generate_chunks::{ChunkFile, ChunkFileType};
-use crate::module::{Dependency, ModuleId};
+use crate::module::ModuleId;
 use crate::plugins::bundless_compiler::BundlessCompiler;
 use crate::stats::StatsJsonMap;
 use crate::utils::base64_encode;
-use crate::visitors::async_module::mark_async;
 
 #[derive(Serialize)]
 struct ChunksUrlMap {
@@ -53,18 +52,6 @@ impl Compiler {
         Ok(stats)
     }
 
-    fn mark_async(&self) -> HashMap<ModuleId, Vec<Dependency>> {
-        let module_ids = {
-            let module_graph = self.context.module_graph.read().unwrap();
-            let (mut module_ids, _) = module_graph.toposort();
-            // start from the leaf nodes, so reverser the sort
-            module_ids.reverse();
-            drop(module_graph);
-            module_ids
-        };
-        mark_async(&module_ids, &self.context)
-    }
-
     pub fn generate(&self) -> Result<StatsJsonMap> {
         debug!("generate");
         let t_generate = Instant::now();
@@ -81,8 +68,6 @@ impl Compiler {
 
         debug!("tree_shaking");
         let t_tree_shaking = Instant::now();
-
-        let async_dep_map = self.mark_async();
 
         // Disable tree shaking in watch mode temporarily
         // ref: https://github.com/umijs/mako/issues/396
@@ -139,7 +124,7 @@ impl Compiler {
         // 因为放 chunks 的循环里，一个 module 可能存在于多个 chunk 里，可能会被编译多遍
         let t_transform_modules = Instant::now();
         debug!("transform all modules");
-        self.transform_all(async_dep_map)?;
+        self.transform_all()?;
         let t_transform_modules = t_transform_modules.elapsed();
 
         // ensure output dir exists

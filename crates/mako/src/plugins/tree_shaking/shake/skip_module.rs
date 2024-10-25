@@ -493,7 +493,6 @@ pub(super) fn skip_module_optimize(
         if module_graph.has_module(module_id) {
             // stmt_id is reversed order
             for to_replace in replaces.iter() {
-                // println!("{} apply with {:?}", module_id.id, to_replace.1);
                 apply_replace(to_replace, module_id, module_graph, context);
             }
 

@@ -18,6 +18,7 @@ use crate::ast::file::win_path;
 use crate::config::{Config, ModuleIdStrategy, OutputMode};
 use crate::generate::chunk_graph::ChunkGraph;
 use crate::generate::optimize_chunk::OptimizeChunksInfo;
+use crate::module::{Dependency, ModuleId};
 use crate::module_graph::ModuleGraph;
 use crate::plugin::{Plugin, PluginDriver, PluginGenerateEndParams};
 use crate::plugins;
@@ -32,6 +33,7 @@ pub struct Context {
     pub chunk_graph: RwLock<ChunkGraph>,
     pub assets_info: Mutex<HashMap<String, String>>,
     pub modules_with_missing_deps: RwLock<Vec<String>>,
+    pub async_deps_map: RwLock<HashMap<ModuleId, Vec<Dependency>>>,
     pub config: Config,
     pub numeric_ids_map: RwLock<HashMap<String, usize>>,
     pub args: Args,
@@ -125,6 +127,7 @@ impl Default for Context {
             module_graph: RwLock::new(ModuleGraph::new()),
             chunk_graph: RwLock::new(ChunkGraph::new()),
             assets_info: Mutex::new(HashMap::new()),
+            async_deps_map: RwLock::new(HashMap::new()),
             modules_with_missing_deps: RwLock::new(Vec::new()),
             meta: Meta::new(),
             plugin_driver: Default::default(),
@@ -360,6 +363,7 @@ impl Compiler {
                 module_graph: RwLock::new(ModuleGraph::new()),
                 chunk_graph: RwLock::new(ChunkGraph::new()),
                 assets_info: Mutex::new(HashMap::new()),
+                async_deps_map: RwLock::new(HashMap::new()),
                 modules_with_missing_deps: RwLock::new(Vec::new()),
                 meta: Meta::new(),
                 plugin_driver,

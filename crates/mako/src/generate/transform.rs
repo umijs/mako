@@ -34,7 +34,7 @@ use crate::visitors::meta_url_replacer::MetaUrlReplacer;
 use crate::visitors::optimize_define_utils::OptimizeDefineUtils;
 
 impl Compiler {
-    pub fn transform_all(&self, async_deps_map: HashMap<ModuleId, Vec<Dependency>>) -> Result<()> {
+    pub fn transform_all(&self) -> Result<()> {
         let t = Instant::now();
         let context = &self.context;
         let module_ids = {
@@ -47,7 +47,7 @@ impl Compiler {
                 .collect::<Vec<_>>()
         };
 
-        transform_modules_in_thread(&module_ids, context, async_deps_map)?;
+        transform_modules_in_thread(&module_ids, context)?;
         debug!(">> transform modules in {}ms", t.elapsed().as_millis());
         Ok(())
     }
@@ -55,10 +55,10 @@ impl Compiler {
 
 pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> Result<()> {
     let t = Instant::now();
-    let async_deps_by_module_id = mark_async(&module_ids, context);
+    mark_async(&module_ids, context);
     debug!(">> mark async in {}ms", t.elapsed().as_millis());
     let t = Instant::now();
-    transform_modules_in_thread(&module_ids, context, async_deps_by_module_id)?;
+    transform_modules_in_thread(&module_ids, context)?;
     debug!(">> transform modules in {}ms", t.elapsed().as_millis());
     Ok(())
 }
@@ -66,12 +66,11 @@ pub fn transform_modules(module_ids: Vec<ModuleId>, context: &Arc<Context>) -> R
 pub fn transform_modules_in_thread(
     module_ids: &Vec<ModuleId>,
     context: &Arc<Context>,
-    async_deps_by_module_id: HashMap<ModuleId, Vec<Dependency>>,
 ) -> Result<()> {
     crate::mako_profile_function!();
 
     let (rs, rr) = channel::<Result<(ModuleId, ModuleAst)>>();
-
+    let async_deps_by_module_id = context.async_deps_map.read().unwrap();
     for module_id in module_ids {
         let context = context.clone();
         let rs = rs.clone();

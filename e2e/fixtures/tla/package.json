@@ -1,0 +1,6 @@
+{
+  "repository": "git@github.com:umijs/mako.git",
+  "dependencies": {
+    "@alipay/huamei-components": "^3.6.2"
+  }
+}
