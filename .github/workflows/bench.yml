@@ -69,7 +69,7 @@ jobs:
       - uses: actions/github-script@v7
         id: trigger
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.MAKO_BOT_ACCESS_TOKEN }}
           result-encoding: string
           script: |
             const prData = ${{ steps.get-pr-data.outputs.result }}
