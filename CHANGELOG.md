@@ -1,3 +1,17 @@
+## 0.9.3
+
+`2024-10-25`
+
+- feat: add `buildEnd` plugin hook by [@sorrycc](https://github.com/sorrycc) in [#1644](https://github.com/umijs/mako/pull/1644)
+- feat: add `enforce` plugin hook by [@sorrycc](https://github.com/sorrycc) in [#1646](https://github.com/umijs/mako/pull/1646)
+- feat: add `writeBundle` plugin hook by [@sorrycc](https://github.com/sorrycc) in [#1650](https://github.com/umijs/mako/pull/1650)
+- feat: add `watchChanges` plugin hook by [@sorrycc](https://github.com/sorrycc) in [#1651](https://github.com/umijs/mako/pull/1651)
+- fix: mako on windows don't work by [@sorrycc](https://github.com/sorrycc) in [#1652](https://github.com/umijs/mako/pull/1652)
+- fix: devtool sourcemap explosion in windows by [@sorrycc](https://github.com/sorrycc) in [#1653](https://github.com/umijs/mako/pull/1653)
+- fix: should not re-group when span changed by [@xusd320](https://github.com/xusd320) in [#1654](https://github.com/umijs/mako/pull/1654)
+- fix: umd should be import as cjs by [@Jinbao1001](https://github.com/Jinbao1001) in [#1642](https://github.com/umijs/mako/pull/1642)
+- fix: add `process.env.SOCKET_SERVER` define to prevent process polyfilll by [@stormslowly](https://github.com/stormslowly) in [#1655](https://github.com/umijs/mako/pull/1655)
+
 ## 0.9.2
 
 `2024-10-16`

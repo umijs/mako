@@ -1,4 +1,18 @@
-## 0.9.0
+## 0.9.3
+
+`2024-10-25`
+
+- 新增：支持 `buildEnd` 插件勾子 by [@sorrycc](https://github.com/sorrycc) in [#1644](https://github.com/umijs/mako/pull/1644)
+- 新增：支持 `enforce` 插件勾子 by [@sorrycc](https://github.com/sorrycc) in [#1646](https://github.com/umijs/mako/pull/1646)
+- 新增：支持 `writeBundle` 插件勾子 by [@sorrycc](https://github.com/sorrycc) in [#1650](https://github.com/umijs/mako/pull/1650)
+- 新增：支持 `watchChanges` 插件勾子 by [@sorrycc](https://github.com/sorrycc) in [#1651](https://github.com/umijs/mako/pull/1651)
+- 修复：在 Windows 环境中异常中断的问题 by [@sorrycc](https://github.com/sorrycc) in [#1652](https://github.com/umijs/mako/pull/1652)
+- 修复：在 Windows 环境中 sourcemap 后缀不正确的问题 by [@sorrycc](https://github.com/sorrycc) in [#1653](https://github.com/umijs/mako/pull/1653)
+- 修复：span 改变时会重新执行 chunk group 的问题 by [@xusd320](https://github.com/xusd320) in [#1654](https://github.com/umijs/mako/pull/1654)
+- 修复：引入 umd 模块异常的问题 by [@Jinbao1001](https://github.com/Jinbao1001) in [#1642](https://github.com/umijs/mako/pull/1642)
+- 修复：预置 `process.env.SOCKET_SERVER` 防止 process pollyfill 引入异常 by [@stormslowly](https://github.com/stormslowly) in [#1655](https://github.com/umijs/mako/pull/1655)
+
+## 0.9.2
 
 `2024-10-16`
 
