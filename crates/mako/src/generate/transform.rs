@@ -77,8 +77,9 @@ pub fn transform_modules_in_thread(
         let module_id = module_id.clone();
         let async_deps = async_deps_by_module_id
             .get(&module_id)
-            .expect(&module_id.id)
-            .clone();
+            .cloned()
+            .unwrap_or(vec![]);
+
         thread_pool::spawn(move || {
             let module_graph = context.module_graph.read().unwrap();
             let deps = module_graph.get_dependencies(&module_id);

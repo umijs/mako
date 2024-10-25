@@ -125,6 +125,7 @@ impl Compiler {
         let t_transform_modules = Instant::now();
         debug!("transform all modules");
         self.transform_all()?;
+
         let t_transform_modules = t_transform_modules.elapsed();
 
         // ensure output dir exists

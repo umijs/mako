@@ -1,3 +1,4 @@
+use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
 
 use swc_core::common::util::take::Take;
@@ -206,7 +207,49 @@ impl VisitMut for AsyncModule<'_> {
 
 pub fn mark_async(module_ids: &[ModuleId], context: &Arc<Context>) {
     let mut module_graph = context.module_graph.write().unwrap();
-    // TODO: 考虑成环的场景
+
+    let mut to_visit_queue = module_graph
+        .modules()
+        .iter()
+        .filter_map(|m| {
+            m.info
+                .as_ref()
+                .and_then(|i| if i.is_async { Some(m.id.clone()) } else { None })
+        })
+        .collect::<VecDeque<_>>();
+    let mut visited = HashSet::new();
+
+    // polluted async to dependants
+    while let Some(module_id) = to_visit_queue.pop_front() {
+        if visited.contains(&module_id) {
+            continue;
+        }
+
+        module_graph
+            .get_dependents(&module_id)
+            .iter()
+            .filter_map(|(dependant, dependency)| {
+                if !dependency.resolve_type.is_sync_esm() {
+                    return None;
+                }
+                if !visited.contains(*dependant) {
+                    Some((*dependant).clone())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>()
+            .iter()
+            .for_each(|module_id| {
+                let m = module_graph.get_module_mut(module_id).unwrap();
+                m.info.as_mut().unwrap().is_async = true;
+
+                to_visit_queue.push_back(module_id.clone());
+            });
+
+        visited.insert(module_id.clone());
+    }
+
     module_ids.iter().for_each(|module_id| {
         let deps = module_graph.get_dependencies_info(module_id);
         let async_deps: Vec<Dependency> = deps
@@ -221,10 +264,11 @@ pub fn mark_async(module_ids: &[ModuleId], context: &Arc<Context>) {
             if !info.is_async && !async_deps.is_empty() {
                 info.is_async = true;
             }
-
-            async_deps_map.insert(module_id.clone(), async_deps);
+            if !async_deps.is_empty() {
+                async_deps_map.insert(module_id.clone(), async_deps);
+            }
         }
-    });
+    })
 }
 
 #[cfg(test)]
@@ -251,8 +295,8 @@ add(1, 2);
         "#
         .trim());
         assert_eq!(
-            code,
-            r#"
+      code,
+      r#"
 __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
     "use strict";
     Object.defineProperty(exports, "__esModule", {
@@ -269,7 +313,7 @@ __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
     asyncResult();
 }, true);
             "#.trim()
-        );
+    );
     }
 
     #[test]
@@ -282,8 +326,8 @@ console.log(foo)
         "#
         .trim());
         assert_eq!(
-            code,
-            r#"
+      code,
+      r#"
 __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
     "use strict";
     Object.defineProperty(exports, "__esModule", {
@@ -304,8 +348,8 @@ __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
     asyncResult();
 }, true);
 "#
-                .trim()
-        );
+        .trim()
+    );
     }
 
     #[test]
@@ -317,8 +361,8 @@ add(1, 2);
                 "#
         .trim());
         assert_eq!(
-            code,
-            r#"
+      code,
+      r#"
 __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
     "use strict";
     Object.defineProperty(exports, "__esModule", {
@@ -336,8 +380,8 @@ __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
     asyncResult();
 }, true);
 "#
-                .trim()
-        );
+        .trim()
+    );
     }
 
     #[test]
@@ -370,8 +414,8 @@ const async = require('./miexed_async');
                 "#
         .trim());
         assert_eq!(
-            code,
-            r#"
+      code,
+      r#"
 __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
     "use strict";
     Object.defineProperty(exports, "__esModule", {
@@ -389,7 +433,7 @@ __mako_require__._async(module, async (handleAsyncDeps, asyncResult)=>{
     asyncResult();
 }, true);
 "#.trim()
-        );
+    );
     }
 
     fn run(js_code: &str) -> String {
