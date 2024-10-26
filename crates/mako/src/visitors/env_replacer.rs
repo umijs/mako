@@ -4,10 +4,10 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use serde_json::Value;
-use swc_core::common::{Mark, DUMMY_SP};
+use swc_core::common::{Mark, Span, DUMMY_SP};
 use swc_core::ecma::ast::{
-    ArrayLit, Bool, ComputedPropName, Expr, ExprOrSpread, Ident, KeyValueProp, Lit, MemberExpr,
-    MemberProp, ModuleItem, Null, Number, ObjectLit, Prop, PropOrSpread, Stmt, Str,
+    ArrayLit, Bool, ComputedPropName, Expr, ExprOrSpread, Ident, IdentName, KeyValueProp, Lit,
+    MemberExpr, MemberProp, ModuleItem, Null, Number, ObjectLit, Prop, PropOrSpread, Stmt, Str,
 };
 use swc_core::ecma::utils::{quote_ident, ExprExt};
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
@@ -36,9 +36,9 @@ impl EnvReplacer {
 }
 impl VisitMut for EnvReplacer {
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
-        if let Expr::Ident(Ident { span, .. }) = expr {
+        if let Expr::Ident(Ident { ctxt, .. }) = expr {
             // 先判断 env 中的变量名称，是否是上下文中已经存在的变量名称
-            if span.ctxt.outer() != self.unresolved_mark {
+            if ctxt.outer() != self.unresolved_mark {
                 expr.visit_mut_children_with(self);
                 return;
             }
@@ -47,50 +47,60 @@ impl VisitMut for EnvReplacer {
         match expr {
             Expr::Member(MemberExpr { obj, prop, .. }) => {
                 let mut member_visit_path = match prop {
-                    MemberProp::Ident(Ident { sym, .. }) => sym.to_string(),
+                    MemberProp::Ident(IdentName { sym, .. }) => sym.to_string(),
                     MemberProp::Computed(ComputedPropName {
-                        expr: expr_computed,
-                        ..
-                    }) => match expr_computed.as_ref() {
+                        expr: expr_compute, ..
+                    }) => match expr_compute.as_ref() {
                         Expr::Lit(Lit::Str(Str { value, .. })) => value.to_string(),
-
                         Expr::Lit(Lit::Num(Number { value, .. })) => value.to_string(),
-                        _ => return,
+                        _ => {
+                            obj.visit_mut_with(self);
+                            expr_compute.visit_mut_with(self);
+                            return;
+                        }
                     },
                     _ => return,
                 };
 
-                let mut current_member_obj = obj.as_ref();
+                let mut current_member_obj = obj.as_mut();
 
                 while let Expr::Member(MemberExpr { obj, prop, .. }) = current_member_obj {
                     match prop {
-                        MemberProp::Ident(Ident { sym, .. }) => {
+                        MemberProp::Ident(IdentName { sym, .. }) => {
                             member_visit_path.push('.');
                             member_visit_path.push_str(sym.as_ref());
                         }
-                        MemberProp::Computed(ComputedPropName { expr, .. }) => {
-                            match expr.as_ref() {
-                                Expr::Lit(Lit::Str(Str { value, .. })) => {
-                                    member_visit_path.push('.');
-                                    member_visit_path.push_str(value.as_ref());
-                                }
-
-                                Expr::Lit(Lit::Num(Number { value, .. })) => {
-                                    member_visit_path.push('.');
-                                    member_visit_path.push_str(&value.to_string());
-                                }
-                                _ => return,
+                        MemberProp::Computed(ComputedPropName {
+                            expr: expr_compute, ..
+                        }) => match expr_compute.as_ref() {
+                            Expr::Lit(Lit::Str(Str { value, .. })) => {
+                                member_visit_path.push('.');
+                                member_visit_path.push_str(value.as_ref());
                             }
-                        }
+
+                            Expr::Lit(Lit::Num(Number { value, .. })) => {
+                                member_visit_path.push('.');
+                                member_visit_path.push_str(&value.to_string());
+                            }
+                            _ => {
+                                obj.visit_mut_with(self);
+                                expr_compute.visit_mut_with(self);
+                                return;
+                            }
+                        },
                         _ => return,
                     }
-                    current_member_obj = obj.as_ref();
+                    current_member_obj = obj.as_mut();
                 }
 
-                if let Expr::Ident(Ident { sym, .. }) = current_member_obj {
+                if let Expr::Ident(Ident { sym, ctxt, .. }) = current_member_obj {
+                    if ctxt.outer() != self.unresolved_mark {
+                        return;
+                    }
                     member_visit_path.push('.');
                     member_visit_path.push_str(sym.as_ref());
                 }
+
                 let member_visit_path = member_visit_path
                     .split('.')
                     .rev()
@@ -135,10 +145,14 @@ fn get_env_expr(v: Value, context: &Arc<Context>) -> Result<Expr> {
                 v.clone()
             };
 
-            // the string content is treat as expression, so it has to be parsed
-            let ast =
-                JsAst::build("_mako_internal/_define_.js", &safe_value, context.clone()).unwrap();
-            let module = ast.ast.body.first().unwrap();
+            let module = {
+                // the string content is treat as expression, so it has to be parsed
+                let mut ast =
+                    JsAst::build("_mako_internal/_define_.js", &safe_value, context.clone())
+                        .unwrap();
+                ast.ast.visit_mut_with(&mut strip_span());
+                ast.ast.body.pop().unwrap()
+            };
 
             match module {
                 ModuleItem::Stmt(Stmt::Expr(stmt_expr)) => {
@@ -195,12 +209,24 @@ fn get_env_expr(v: Value, context: &Arc<Context>) -> Result<Expr> {
     }
 }
 
+struct SpanStrip {}
+impl VisitMut for SpanStrip {
+    fn visit_mut_span(&mut self, span: &mut Span) {
+        *span = DUMMY_SP;
+    }
+}
+
+fn strip_span() -> impl VisitMut {
+    SpanStrip {}
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
     use std::sync::Arc;
 
     use maplit::hashmap;
+    use regex::Regex;
     use serde_json::{json, Value};
     use swc_core::common::GLOBALS;
     use swc_core::ecma::visit::VisitMutWith;
@@ -245,7 +271,7 @@ mod tests {
                     "A".to_string() => json!(true)
                 }
             ),
-            r#"log(true);"#
+            "log(true);"
         );
     }
 
@@ -258,7 +284,7 @@ mod tests {
                     "A".to_string() => json!(1)
                 }
             ),
-            r#"log(1);"#
+            "log(1);"
         );
     }
 
@@ -271,7 +297,7 @@ mod tests {
                     "A".to_string() => json!("\"foo\"")
                 }
             ),
-            r#"log("foo");"#
+            "log(\"foo\");"
         );
     }
 
@@ -281,17 +307,10 @@ mod tests {
             run(
                 r#"log(A)"#,
                 hashmap! {
-                    "A".to_string() => json!([1, true, "\"foo\""])
+                    "A".to_string() => json!([1,true,"\"foo\""])
                 }
             ),
-            r#"
-log([
-    1,
-    true,
-    "foo"
-]);
-            "#
-            .trim()
+            "log([1,true,\"foo\"]);".trim()
         );
     }
 
@@ -304,9 +323,7 @@ log([
                     "A".to_string() => json!("{\"v\": 1}")
                 }
             ),
-            r#"log(({
-    "v": 1
-}));"#
+            "log(({\"v\": 1}));"
         );
     }
 
@@ -319,7 +336,7 @@ log([
                     "x.y".to_string() => json!(true)
                 }
             ),
-            r#"log(true);"#
+            "log(true);"
         );
     }
 
@@ -332,7 +349,7 @@ log([
                     "process.env.A".to_string() => json!(true)
                 }
             ),
-            r#"log(true);"#
+            "log(true);"
         );
     }
 
@@ -345,7 +362,7 @@ log([
                     "A.B".to_string() => json!(1)
                 }
             ),
-            r#"log(1);"#
+            "log(1);"
         );
     }
 
@@ -358,12 +375,12 @@ log([
                     "A.1".to_string() => json!(1)
                 }
             ),
-            r#"log(1);"#
+            "log(1);"
         );
     }
 
     #[test]
-    fn test_complicated() {
+    fn test_computed_after_ident() {
         assert_eq!(
             run(
                 r#"log(A.v["v"])"#,
@@ -371,7 +388,99 @@ log([
                     "A.v.v".to_string() => json!(1)
                 }
             ),
-            r#"log(1);"#
+            "log(1);"
+        );
+    }
+
+    #[test]
+    fn test_computed_as_member_key() {
+        assert_eq!(
+            run(
+                r#"log(A[v])"#,
+                hashmap! {
+                    "v".to_string() => json!(1)
+                }
+            ),
+            "log(A[1]);"
+        );
+    }
+
+    #[test]
+    fn test_complicated_computed_as_member_key() {
+        assert_eq!(
+            run(
+                r#"log(A[v.v])"#,
+                hashmap! {
+                    "v.v".to_string() => json!(1)
+                }
+            ),
+            "log(A[1]);"
+        );
+    }
+
+    #[test]
+    fn test_computed_nested() {
+        assert_eq!(
+            run(
+                r#"log(A[v].B[v][v].C[v][v][v])"#,
+                hashmap! {
+                    "v".to_string() => json!(1)
+                }
+            ),
+            "log(A[1].B[1][1].C[1][1][1]);"
+        );
+    }
+
+    #[test]
+    fn test_should_not_replace_existed() {
+        assert_eq!(
+            run(
+                r#"let v = 2;log(A[v])"#,
+                hashmap! {
+                    "v".to_string() => json!(1)
+                }
+            ),
+            "let v = 2;log(A[v]);"
+        );
+    }
+
+    #[test]
+    fn test_should_not_replace_existed_as_member_prop() {
+        assert_eq!(
+            run(
+                r#"let A = {};log(A.v, A[X.Y])"#,
+                hashmap! {
+                    "A".to_string() => json!(r#"{"v": 1}"#),
+                    "X.Y".to_string() => json!(r#""xy""#)
+                }
+            ),
+            r#"let A = {};log(A.v, A["xy"]);"#
+        );
+    }
+
+    #[test]
+    fn test_should_not_replace_not_defined() {
+        assert_eq!(
+            run(
+                r#"log(A[B].v)"#,
+                hashmap! {
+                    "A.B".to_string() => json!("{\"v\": 1}")
+                }
+            ),
+            "log(A[B].v);"
+        );
+    }
+
+    #[test]
+    fn test_should_not_replace_as_member_ident() {
+        assert_eq!(
+            run(
+                r#"log(A.v)"#,
+                hashmap! {
+                    "v".to_string() => json!(1)
+                }
+            ),
+            "log(A.v);"
         );
     }
 
@@ -383,6 +492,10 @@ log([
             let mut visitor = EnvReplacer::new(envs, ast.unresolved_mark);
             ast.ast.visit_mut_with(&mut visitor);
         });
-        test_utils.js_ast_to_code()
+        let code = test_utils.js_ast_to_code();
+        Regex::new(r"\s*\n\s*")
+            .unwrap()
+            .replace_all(&code, "")
+            .to_string()
     }
 }

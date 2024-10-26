@@ -8,15 +8,15 @@ use std::sync::{Arc, Mutex};
 use anyhow::Result;
 use dashmap::DashSet;
 use rayon::prelude::*;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tracing::debug;
 
 use crate::ast::file::{Content, File, JsContent};
 use crate::compiler::{Args, Compiler, Context};
 use crate::config::{
-    CodeSplitting, CodeSplittingAdvancedOptions, CodeSplittingStrategy,
-    CodeSplittingStrategyOptions, Config, OptimizeAllowChunks, OptimizeChunkGroup,
+    AllowChunks, ChunkGroup, CodeSplitting, CodeSplittingAdvancedOptions, CodeSplittingStrategy,
+    CodeSplittingStrategyOptions, Config,
 };
 use crate::generate::chunk::ChunkType;
 use crate::generate::chunk_pot::util::{hash_hashmap, hash_vec};
@@ -164,18 +164,18 @@ impl Plugin for SUPlus {
                 CodeSplittingAdvancedOptions {
                     min_size: 0,
                     groups: vec![
-                        OptimizeChunkGroup {
+                        ChunkGroup {
                             name: "node_modules".to_string(),
                             name_suffix: None,
-                            allow_chunks: OptimizeAllowChunks::All,
+                            allow_chunks: AllowChunks::All,
                             min_chunks: 0,
                             min_size: 0,
                             max_size: usize::MAX,
                             min_module_size: None,
                             priority: 10,
-                            test: Regex::new(r"[/\\]node_modules[/\\]").ok(),
+                            test: Some(r"[/\\]node_modules[/\\]".to_string()),
                         },
-                        OptimizeChunkGroup {
+                        ChunkGroup {
                             name: "common".to_string(),
                             min_chunks: 0,
                             // always split, to avoid multi-instance risk
@@ -190,6 +190,11 @@ impl Plugin for SUPlus {
                 },
             )),
         });
+
+        config
+            .define
+            .entry("process.env.SOCKET_SERVER".to_owned())
+            .or_insert(Value::Null);
 
         Ok(())
     }

@@ -1,8 +1,156 @@
+## 0.9.3
+
+`2024-10-25`
+
+- 新增：支持 `buildEnd` 插件勾子 by [@sorrycc](https://github.com/sorrycc) in [#1644](https://github.com/umijs/mako/pull/1644)
+- 新增：支持 `enforce` 插件勾子 by [@sorrycc](https://github.com/sorrycc) in [#1646](https://github.com/umijs/mako/pull/1646)
+- 新增：支持 `writeBundle` 插件勾子 by [@sorrycc](https://github.com/sorrycc) in [#1650](https://github.com/umijs/mako/pull/1650)
+- 新增：支持 `watchChanges` 插件勾子 by [@sorrycc](https://github.com/sorrycc) in [#1651](https://github.com/umijs/mako/pull/1651)
+- 修复：在 Windows 环境中异常中断的问题 by [@sorrycc](https://github.com/sorrycc) in [#1652](https://github.com/umijs/mako/pull/1652)
+- 修复：在 Windows 环境中 sourcemap 后缀不正确的问题 by [@sorrycc](https://github.com/sorrycc) in [#1653](https://github.com/umijs/mako/pull/1653)
+- 修复：span 改变时会重新执行 chunk group 的问题 by [@xusd320](https://github.com/xusd320) in [#1654](https://github.com/umijs/mako/pull/1654)
+- 修复：引入 umd 模块异常的问题 by [@Jinbao1001](https://github.com/Jinbao1001) in [#1642](https://github.com/umijs/mako/pull/1642)
+- 修复：预置 `process.env.SOCKET_SERVER` 防止 process pollyfill 引入异常 by [@stormslowly](https://github.com/stormslowly) in [#1655](https://github.com/umijs/mako/pull/1655)
+
+## 0.9.2
+
+`2024-10-16`
+
+- 新增: 支持 `webpackIgnore` 和 `makoIgnore` 魔法注释 by [@sorrycc](https://github.com/sorrycc) in [#1636](https://github.com/umijs/mako/pull/1636)
+- 新增: 添加 `transform` 插件钩子 by [@sorrycc](https://github.com/sorrycc) in [#1637](https://github.com/umijs/mako/pull/1637)
+- 新增: 添加 `transformInclude` 插件钩子 by [@sorrycc](https://github.com/sorrycc) in [#1639](https://github.com/umijs/mako/pull/1639)
+- 修复: 导入命名空间优化在代码有嵌套 `for of` 时崩溃问题 by [@stormslowly](https://github.com/stormslowly) in [#1640](https://github.com/umijs/mako/pull/1640)
+- 修复: 当 `package.json` 没有 `version` 字段时 `duplicate_package_checker` 崩溃问题 by [@sorrycc](https://github.com/sorrycc) in [#1634](https://github.com/umijs/mako/pull/1634)
+
+## 0.9.0
+
+`2024-10-14`
+
+- 新增: 插件 loadInclude 钩子 by [@sorrycc](https://github.com/sorrycc) in [#1630](https://github.
+  com/umijs/mako/pull/1630)
+- 新增: 在 resolve\_id 插件钩子 isEntry 信息 by [@sorrycc](https://github.com/sorrycc) in [#1631](https://github.
+   com/umijs/mako/pull/1631)
+- 新增: 升级 swc\_core to 0.101.x by [@stormslowly](https://github.com/stormslowly) in [#1444](https://github.
+  com/umijs/mako/pull/1444)
+- 修复: 模块合并引起的 hash 不稳定问题 by [@Jinbao1001](https://github.com/Jinbao1001)
+  in [#1610]
+  (https://github.com/umijs/mako/pull/1610)
+
+## 0.8.15
+
+`2024-10-10`
+
+* 功能：禁用 webp 转 base64 功能 by [@Jinbao1001](https://github.com/Jinbao1001) in [#1602](https://github.com/umijs/mako/pull/1602)
+* 功能：添加 resolve_id 插件钩子 by [@sorrycc](https://github.com/sorrycc) in [#1625](https://github.com/umijs/mako/pull/1625)
+* 重构：napi 线程安全函数 by [@xusd320](https://github.com/xusd320) in [#1608](https://github.com/umijs/mako/pull/1608)
+* 重构：配置代码的组织方式 by [@xusd320](https://github.com/xusd320) in [#1618](https://github.com/umijs/mako/pull/1618)
+* 修复（bundler-mako）：实验性配置应进行深度合并 by [@sorrycc](https://github.com/sorrycc) in [#1617](https://github.com/umijs/mako/pull/1617)
+* 修复：clickToComponent 功能失效 by [@sorrycc](https://github.com/sorrycc) in [#1620](https://github.com/umijs/mako/pull/1620)
+* 修复：在没有 package.json 文件时 duplicate_package_checker 会崩溃 by [@sorrycc](https://github.com/sorrycc) in [#1621](https://github.com/umijs/mako/pull/1621)
+* 修复：file_stem 索引超出范围问题 by [@Jinbao1001](https://github.com/Jinbao1001) in [#1623](https://github.com/umijs/mako/pull/1623)
+
+## 0.8.14
+
+`2024-09-25`
+
+* 修复: dev 服务器加载 chunk 文件 504 错误 by [@stormslowly](https://github.com/stormslowly) in [#1612](https://github.com/umijs/mako/pull/1612)
+
+## 0.8.13
+
+`2024-09-23`
+
+* 修复: chunk_loading_global dev 内容未转义问题 by [@xusd320](https://github.com/xusd320) in [#1590](https://github.com/umijs/mako/pull/1590)
+* 修复: mako-bundler devServer 静态文件服务和 umi proxy 中间件执行顺序 by [@whyer11](https://github.com/whyer11) in [#1558](https://github.com/umijs/mako/pull/1558)
+* 回滚: `import * as` 的 tree shaking 优化 by [@stormslowly](https://github.com/stormslowly) in [#1606](https://github.com/umijs/mako/pull/1606)
+
+## 0.8.12
+
+`2024-09-13`
+
+* 修复: 检测导出变量的副作用以进行 tree-shaking 优化 (by [@stormslowly](https://github.com/stormslowly) in [#1579](https://github.com/umijs/mako/pull/1579))
+* 修复: 修复 chunk_loading_global 包含引号时的输出错误 (by [@xusd320](https://github.com/xusd320) in [#1582](https://github.com/umijs/mako/pull/1582))
+* 其他: 添加用于调试模块/块图的 subdot cli 工具脚本 (by [@stormslowly](https://github.com/stormslowly) in [#1585](https://github.com/umijs/mako/pull/1585))
+* 修复: 修复 Windows 下复制功能失效的问题 (by [@sorrycc](https://github.com/sorrycc) in [#1587](https://github.com/umijs/mako/pull/1587))
+* 修复: 修复 Windows 下模块 ID 的路径问题 (by [@sorrycc](https://github.com/sorrycc) in [#1588](https://github.com/umijs/mako/pull/1588))
+* 优化: 优化按需引入命名空间，减少冗余代码 (by [@stormslowly](https://github.com/stormslowly) in [#1584](https://github.com/umijs/mako/pull/1584))
+* 修复 (已回滚): 修复 Mako 配置合并问题 (by [@hualigushi](https://github.com/hualigushi) in [#1578](https://github.com/umijs/mako/pull/1578))
+* 修复: 修复清除依赖项时找不到模块导致程序崩溃的问题 (by [@Jinbao1001](https://github.com/Jinbao1001) in [#1581](https://github.com/umijs/mako/pull/1581))
+* 修复: 修复监视过多文件导致的错误 (by [@Jinbao1001](https://github.com/Jinbao1001) in [#1550](https://github.com/umijs/mako/pull/1550))
+* 新增: 支持数字模块 ID (by [@Jinbao1001](https://github.com/Jinbao1001) in [#1561](https://github.com/umijs/mako/pull/1561))
+
+## 0.8.11
+
+`2024-09-10`
+
+* fix: env_replacer 不应替换作用域内已定义的变量 by [@xusd320](https://github.com/xusd320) in [#1577](https://github.com/umijs/mako/pull/1577)
+
+## 0.8.10
+
+`2024-09-05`
+
+* 新增: 支持 linux-arm64-gnu by [@xusd320](https://github.com/xusd320) in [#1570](https://github.com/umijs/mako/pull/1570)
+* 修复: windows 系统下文件路径解析 by [@sorrycc](https://github.com/sorrycc) in [#1571](https://github.com/umijs/mako/pull/1571)
+* 新增: 支持全局共享的模块注册中心 by [@xusd320](https://github.com/xusd320) in [#1574](https://github.com/umijs/mako/pull/1574)
+* 新增: 支持 window 系统 by [@sorrycc](https://github.com/sorrycc) in [#1575](https://github.com/umijs/mako/pull/1575)
+
+## 0.8.8
+
+`2024-09-05`
+
+* 优化 group chunks 的性能，基于 right first dfs by [@xusd320](https://github.com/xusd320) in [#1554](https://github.com/umijs/mako/pull/1554)
+* 重构 base64 utils by [@xusd320](https://github.com/xusd320) in [#1557](https://github.com/umijs/mako/pull/1557)
+* 回滚 "refactor: Unify the static server in bundler-mako and devServer" by [@stormslowly](https://github.com/stormslowly) in [#1556](https://github.com/umijs/mako/pull/1556)
+* 修复 define env by [@xusd320](https://github.com/xusd320) in [#1551](https://github.com/umijs/mako/pull/1551)
+* 修复(bundler-mako) HMR=none 无效的问题 by [@Wu-kung](https://github.com/Wu-kung) in [#1552](https://github.com/umijs/mako/pull/1552)
+* 修复 concatenated module exported namespace 应该基于 key 排序 by [@stormslowly](https://github.com/stormslowly) in [#1564](https://github.com/umijs/mako/pull/1564)
+* 修复 napi binding params 的大小写问题 by [@xusd320](https://github.com/xusd320) in [#1565](https://github.com/umijs/mako/pull/1565)
+
+## 0.8.7
+
+`2024-08-30`
+
+* 特性: 支持控制异步块脚本和链接的 crossorigin 属性 by [@PeachScript](https://github.com/umijs/mako/)pull/1539
+* 特性: 添加重复包检查插件 by [@jeasonnow](https://github.com/umijs/mako/pull/1496)
+* 重构: 在 str-impl 块生成中，当 merge_code_and_sourcemap 时删除 cm by [@stormslowly](https://github.com/umijs/mako/pull/1541)
+* 重构: 统一 bundler-mako 和 devServer 中的静态服务器 by [@whyer11](https://github.com/umijs/mako/pull/1468)
+* 修复: 修复入口支持子路径的问题 by [@sorrycc](https://github.com/umijs/mako/pull/1547)
+* 修复: 修复使用 pnpm 时文件名过长的问题 by [@Jinbao1001](https://github.com/umijs/mako/pull/1421)
+* 修复: 支持 React 类组件热更新 by [@jeasonnow](https://github.com/umijs/mako/pull/1489)
+* 修复(plugin:emotion): 修复将目标设置为 Chrome 40 时 emotion 插件崩溃的问题 by [@stormslowly](https://github.com/umijs/mako/pull/1527)
+* 改进: 🎨 将 tpl 的 span 分配给文字字符串 by [@stormslowly](https://github.com/umijs/mako/pull/1529)
+* 优化: 重新应用 PR 1509，修复 chain_map 为空时 sourcemap 丢失的问题 by [@xusd320](https://github.com/umijs/mako/pull/1542)
+* 杂项: 解析 define 表达式时去除 span by [@stormslowly](https://github.com/umijs/mako/pull/1540)
+
+## 0.8.6
+
+`2024-08-26`
+
+- 回滚: [#1538](https://github.com/umijs/mako/pull/1475) and [#1538](https://github.com/umijs/mako/pull/1509) by [@xusd320](https://github.com/xusd320) in [#1538](https://github.com/umijs/mako/pull/1538)
+
+
+## 0.8.5
+
+`2024-08-26`
+
+- 新增: 支持 aarch64-unknown-linux-musl 平台 by [@stormslowly](https://github.com/stormslowly) in [#1535](https://github.com/umijs/mako/pull/1535)
+
 ## 0.8.4
 
 `2024-08-23`
 
 - 修复 bundler-mako 中 define process.env.XXX 不生效的问题 by [@xusd320](https://github.com/xusd320) in [#1504](https://github.com/umijs/mako/pull/1526)
+
+## 0.8.3
+
+`2024-08-22`
+
+- 修复：stat.json 中 map 文件路径中的后缀名错误 by [@stormslowly](https://github.com/stormslowly) in [#1506](https://github.com/umijs/mako/pull/1506)
+- 修复：无法解析使用 `node` 导出字段的依赖包 by [@sorrycc](https://github.com/sorrycc) in [#1516](https://github.com/umijs/mako/pull/1516)
+- 性能：合并 source map，最高为 generation 阶段提速 800% by [@xusd320](https://github.com/xusd320) in [#1509](https://github.com/umijs/mako/pull/1509)
+- 性能：优化 chunk 分组逻辑，最高为 group_chunks 阶段提速 500% by [@xusd320](https://github.com/xusd320) in [#1475](https://github.com/umijs/mako/pull/1475)
+- 改进：调整 px2rem 配置中正则值的约定方式 by [@xiaohuoni](https://github.com/xiaohuoni) in [#1469](https://github.com/umijs/mako/pull/1469)
+- 改进：调整 define 配置的替换行为，与社区共识保持一致 by [@xusd320](https://github.com/xusd320) in [#1505](https://github.com/umijs/mako/pull/1505)
+
 
 ## 0.8.2
 
@@ -41,7 +189,7 @@
 - 新增: saas 配置支持 function by [@xiaohuoni](https://github.com/xiaohuoni) in [#1461](https://github.com/umijs/mako/pull/1461)
 - 修复: px2rem 没有正确复制 raw_value by [@xiaohuoni](https://github.com/xiaohuoni) in [#1462](https://github.com/umijs/mako/pull/1462)
 - 优化: 使用 hashlink 让大型项目 codeSplitting 提速 300% by [@xusd320](https://github.com/xusd320) in [#1460](https://github.com/umijs/mako/pull/1460)
-- 优化: 并行处理树摇逻辑 by [@stormslowly](https://github.com/stormslowly) in https://github.com/umijs/mako/pull/1452
+- 优化: 并行处理树摇逻辑 by [@stormslowly](https://github.com/stormslowly) in [#1452](https://github.com/umijs/mako/pull/1452)
 
 ## 0.7.8
 

@@ -1,3 +1,6 @@
 {
-	"optimization": { "skipModules": true, "concatenateModules": false }
+	"optimization": { "skipModules": true, "concatenateModules": false },
+  "experimental": {
+    "magicComment": true
+  }
 }

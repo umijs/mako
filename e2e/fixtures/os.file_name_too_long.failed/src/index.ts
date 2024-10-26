@@ -1,0 +1,5 @@
+const fn = async() => {
+  await import ('./abcdefghigklmnupqlmfdfsdfjsdfijsdfiujsdfjsdifjsdfjsdfabcdefghigklmnupqlmfdfsdfjsdfijsdfiujsdfjsdifjsdfjsdfabcdefghigklmnupqlmfdfsdfjsdfijsdfiujsdfjsdifjsdfjsdfabcdefghigklmnupqlmfdfsdfjsdfijsdfiujsdfjsdifjsdfjsdfabcdefghigklmnupqlmfdfsdfjsdfijsdfiujs')
+}
+
+fn()

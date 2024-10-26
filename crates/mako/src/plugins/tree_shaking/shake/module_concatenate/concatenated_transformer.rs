@@ -4,7 +4,7 @@ use std::sync::Arc;
 use swc_core::common::collections::AHashSet;
 use swc_core::common::comments::{Comment, CommentKind};
 use swc_core::common::util::take::Take;
-use swc_core::common::{Mark, Spanned, SyntaxContext, DUMMY_SP};
+use swc_core::common::{Mark, Spanned, DUMMY_SP};
 use swc_core::ecma::ast::{
     ClassDecl, DefaultDecl, ExportAll, ExportDecl, ExportDefaultDecl, ExportDefaultExpr, FnDecl,
     Id, ImportDecl, KeyValueProp, Module, ModuleItem, NamedExport, ObjectLit, Prop, PropOrSpread,
@@ -19,6 +19,7 @@ use super::concatenate_context::{
 use super::module_ref_rewriter::ModuleRefRewriter;
 use super::ref_link::{ModuleDeclMapCollector, Symbol, VarLink};
 use super::utils::{uniq_module_default_export_name, uniq_module_namespace_name};
+use crate::ast::DUMMY_CTXT;
 use crate::compiler::Context;
 use crate::module::{relative_to_root, ImportType, ModuleId};
 
@@ -119,7 +120,7 @@ impl<'a> ConcatenatedTransform<'a> {
                                 if let Some(mf) = map.get("default") {
                                     mf.clone()
                                 } else {
-                                    (quote_ident!("undefined"), None)
+                                    (quote_ident!(DUMMY_CTXT, "undefined"), None)
                                 }
                             }
                             Symbol::Namespace => map.get("*").unwrap().clone(),
@@ -127,7 +128,7 @@ impl<'a> ConcatenatedTransform<'a> {
                                 if let Some(mf) = map.get(&ident.sym.to_string()) {
                                     mf.clone()
                                 } else {
-                                    (quote_ident!("undefined"), None)
+                                    (quote_ident!(DUMMY_CTXT, "undefined"), None)
                                 }
                             }
                         };
@@ -137,7 +138,10 @@ impl<'a> ConcatenatedTransform<'a> {
                     InnerOrExternal::External(external_names) => {
                         ref_map.insert(
                             id.clone(),
-                            (quote_ident!(external_names.1.clone()), symbol.to_field()),
+                            (
+                                quote_ident!(DUMMY_CTXT, external_names.1.clone()),
+                                symbol.to_field(),
+                            ),
                         );
                     }
                 }
@@ -171,7 +175,7 @@ impl<'a> ConcatenatedTransform<'a> {
                                 if let Some(mf) = map.get("default") {
                                     mf.clone()
                                 } else {
-                                    (quote_ident!("undefined"), None)
+                                    (quote_ident!(DUMMY_CTXT, "undefined"), None)
                                 }
                             }
                             Symbol::Namespace => map.get("*").unwrap().clone(),
@@ -179,7 +183,7 @@ impl<'a> ConcatenatedTransform<'a> {
                                 if let Some(mf) = map.get(&ident.sym.to_string()) {
                                     mf.clone()
                                 } else {
-                                    (quote_ident!("undefined"), None)
+                                    (quote_ident!(DUMMY_CTXT, "undefined"), None)
                                 }
                             }
                         };
@@ -188,7 +192,10 @@ impl<'a> ConcatenatedTransform<'a> {
                     InnerOrExternal::External(external_names) => {
                         ref_map.insert(
                             id.0.to_string(),
-                            (quote_ident!(external_names.1.clone()), symbol.to_field()),
+                            (
+                                quote_ident!(DUMMY_CTXT, external_names.1.clone()),
+                                symbol.to_field(),
+                            ),
                         );
                     }
                 }
@@ -289,7 +296,7 @@ impl<'a> ConcatenatedTransform<'a> {
     }
 
     fn resolve_conflict(&mut self, import_module_ref: &ImportModuleRefMap) {
-        let top_ctxt = SyntaxContext::empty().apply_mark(self.top_level_mark);
+        let top_ctxt = DUMMY_CTXT.apply_mark(self.top_level_mark);
 
         let imported_reference = all_referenced_variables(import_module_ref);
 
@@ -351,19 +358,23 @@ impl<'a> ConcatenatedTransform<'a> {
             .into_var_decl(VarDeclKind::Var, ns_ident.clone().into())
             .into();
 
-        let mut key_value_props: Vec<PropOrSpread> = vec![];
+        let mut key_value_props: Vec<KeyValueProp> = vec![];
 
         for (k, module_ref) in &mut *export_ref_map {
-            key_value_props.push(
-                Prop::KeyValue(KeyValueProp {
-                    key: quote_ident!(k.clone()).into(),
-                    value: module_ref_to_expr(module_ref).into_lazy_fn(vec![]).into(),
-                })
-                .into(),
-            )
+            key_value_props.push(KeyValueProp {
+                key: quote_ident!(k.clone()).into(),
+                value: module_ref_to_expr(module_ref).into_lazy_fn(vec![]).into(),
+            });
         }
 
-        let define_exports: Stmt = member_expr!(DUMMY_SP, __mako_require__.e)
+        key_value_props.sort_by_key(|prop| prop.key.as_ident().unwrap().sym.to_string());
+        let key_value_props = key_value_props
+            .into_iter()
+            .map(Prop::KeyValue)
+            .map(Into::into)
+            .collect::<Vec<PropOrSpread>>();
+
+        let define_exports: Stmt = member_expr!(DUMMY_CTXT, DUMMY_SP, __mako_require__.e)
             .as_call(
                 DUMMY_SP,
                 vec![
@@ -377,7 +388,10 @@ impl<'a> ConcatenatedTransform<'a> {
             )
             .into_stmt();
 
-        export_ref_map.insert("*".to_string(), (quote_ident!(ns_name.clone()), None));
+        export_ref_map.insert(
+            "*".to_string(),
+            (quote_ident!(DUMMY_CTXT, ns_name.clone()), None),
+        );
         self.my_top_decls.insert(ns_name);
 
         n.body.push(init_stmt.into());
@@ -470,7 +484,8 @@ impl<'a> VisitMut for ConcatenatedTransform<'a> {
     }
 
     fn visit_mut_export_default_expr(&mut self, export_default_expr: &mut ExportDefaultExpr) {
-        let span = export_default_expr.span.apply_mark(self.top_level_mark);
+        let span = export_default_expr.span;
+        let ctxt = DUMMY_CTXT.apply_mark(self.top_level_mark);
 
         let default_binding_name = self.default_bind_name.clone();
 
@@ -482,7 +497,7 @@ impl<'a> VisitMut for ConcatenatedTransform<'a> {
                 .take()
                 .into_var_decl(
                     VarDeclKind::Var,
-                    quote_ident!(span, default_binding_name.clone()).into(),
+                    quote_ident!(ctxt, span, default_binding_name.clone()).into(),
                 )
                 .into();
             self.my_top_decls.insert(default_binding_name.clone());

@@ -32,9 +32,9 @@ assert.match(
   files["index.js"].replace(/\s/g, ""),
   new RegExp(`Promise.all\\(\\[${
     [
-      "vendors_0",
-      "common",
       "vendors_1",
+      "common",
+      "vendors_0",
       "src/should-be-split.ts",
     ].map((f) => `__mako_require__.ensure\\("${f}"\\)`).join(",")
   }\\]\\)`),
@@ -46,7 +46,7 @@ assert.match(
   new RegExp(`Promise.all\\(\\[${
     [
       "common",
-      "vendors_1",
+      "vendors_0",
       "src/other-dynamic.ts",
     ].map((f) => `__mako_require__.ensure\\("${f}"\\)`).join(",")
   }\\]\\)`),

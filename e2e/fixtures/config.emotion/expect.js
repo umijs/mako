@@ -55,3 +55,7 @@ const test = async () => {
   }
 };
 module.exports = test;
+
+if (!module.parent) {
+  test();
+}

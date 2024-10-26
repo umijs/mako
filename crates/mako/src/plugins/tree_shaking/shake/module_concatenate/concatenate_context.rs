@@ -15,6 +15,7 @@ use swc_core::ecma::utils::{
 };
 use swc_core::ecma::visit::{Visit, VisitWith};
 
+use crate::ast::DUMMY_CTXT;
 use crate::module::{ImportType, ModuleId, NamedExportType, ResolveType};
 use crate::module_graph::ModuleGraph;
 use crate::plugins::tree_shaking::shake::module_concatenate::ConcatenateConfig;
@@ -238,9 +239,9 @@ impl From<&ResolveType> for EsmDependantFlags {
             ResolveType::ExportNamed(named_export_type) => named_export_type.into(),
             ResolveType::ExportAll => EsmDependantFlags::ExportAll,
             ResolveType::Require => EsmDependantFlags::empty(),
-            ResolveType::DynamicImport => EsmDependantFlags::empty(),
+            ResolveType::DynamicImport(_) => EsmDependantFlags::empty(),
             ResolveType::Css => EsmDependantFlags::empty(),
-            ResolveType::Worker => EsmDependantFlags::empty(),
+            ResolveType::Worker(_) => EsmDependantFlags::empty(),
         }
     }
 }
@@ -250,10 +251,10 @@ pub type ImportModuleRefMap = HashMap<Id, ModuleRef>;
 
 pub fn module_ref_to_expr(module_ref: &ModuleRef) -> Expr {
     match module_ref {
-        (id, None) => quote_ident!(id.sym.clone()).into(),
+        (id, None) => quote_ident!(DUMMY_CTXT, id.sym.clone()).into(),
         (id, Some(field)) => MemberExpr {
             span: DUMMY_SP,
-            obj: quote_ident!(id.sym.clone()).into(),
+            obj: quote_ident!(DUMMY_CTXT, id.sym.clone()).into(),
             prop: quote_ident!(field.clone()).into(),
         }
         .into(),
@@ -301,7 +302,7 @@ impl ConcatenateContext {
     pub fn top_level_vars(ast: &Module, top_level_mark: Mark) -> HashSet<String> {
         let mut top_level_vars = HashSet::new();
         top_level_vars.extend(
-            collect_decls_with_ctxt(ast, SyntaxContext::empty().apply_mark(top_level_mark))
+            collect_decls_with_ctxt(ast, DUMMY_CTXT.apply_mark(top_level_mark))
                 .iter()
                 .map(|id: &Id| id.0.to_string()),
         );
@@ -327,7 +328,7 @@ impl ConcatenateContext {
     pub fn global_vars(ast: &Module, unresolved_mark: Mark) -> HashSet<String> {
         let mut globals = HashSet::new();
 
-        let mut collector = GlobalCollect::new(SyntaxContext::empty().apply_mark(unresolved_mark));
+        let mut collector = GlobalCollect::new(DUMMY_CTXT.apply_mark(unresolved_mark));
         ast.visit_with(&mut collector);
         globals.extend(
             collector
@@ -401,7 +402,7 @@ impl ConcatenateContext {
                 .collect();
 
             // __mako_require__.d(exports, __esModule, { value: true });
-            let esm_compat = member_expr!(DUMMY_SP, __mako_require__.d)
+            let esm_compat = member_expr!(DUMMY_CTXT, DUMMY_SP, __mako_require__.d)
                 .as_call(
                     DUMMY_SP,
                     vec![
@@ -426,7 +427,7 @@ impl ConcatenateContext {
 
             if !key_value_props.is_empty() {
                 // __mako_require__.e(exports, { exported: function(){ return v}, ... });
-                let export_stmt = member_expr!(DUMMY_SP, __mako_require__.e)
+                let export_stmt = member_expr!(DUMMY_CTXT, DUMMY_SP, __mako_require__.e)
                     .as_call(
                         DUMMY_SP,
                         vec![
@@ -527,7 +528,7 @@ impl GlobalCollect {
 
 impl Visit for GlobalCollect {
     fn visit_ident(&mut self, n: &Ident) {
-        if n.span.ctxt == self.unresolved_ctxt {
+        if n.ctxt == self.unresolved_ctxt {
             self.refed_globals.insert(n.to_id());
         }
     }

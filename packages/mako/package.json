@@ -1,6 +1,6 @@
 {
   "name": "@umijs/mako",
-  "version": "0.8.5-canary.20240826.1",
+  "version": "0.9.3",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -12,8 +12,11 @@
       "defaults": false,
       "additional": [
         "aarch64-apple-darwin",
+        "aarch64-unknown-linux-gnu",
         "aarch64-unknown-linux-musl",
+        "i686-pc-windows-msvc",
         "x86_64-apple-darwin",
+        "x86_64-pc-windows-msvc",
         "x86_64-unknown-linux-gnu",
         "x86_64-unknown-linux-musl"
       ]
@@ -55,7 +58,7 @@
     "artifacts": "napi artifacts",
     "artifacts:local": "rm -rf tmp && mkdir tmp && cp *.node tmp/ && napi artifacts --dir ./tmp --dist npm",
     "build": "napi build --release --cargo-cwd ../../crates/binding --platform --js ./binding.js --dts ./binding.d.ts",
-    "clean": "rm -rf *.node artifacts-*.tar node_modules/.cache",
+    "clean": "rm -rf *.node artifacts-*.* node_modules/.cache",
     "postbuild": "npm run format",
     "build:mac:x86": "npm run build -- --target x86_64-apple-darwin",
     "build:mac:aarch": "npm run build -- --target aarch64-apple-darwin",
@@ -68,17 +71,18 @@
     "universal": "napi universal",
     "version": "napi version",
     "release": "esno scripts/release.ts",
-    "release:quick": "esno scripts/quick-release.ts",
-    "release:build": "esno scripts/release.ts --build",
     "src:dev": "father dev",
     "src:build": "father build"
   },
   "optionalDependencies": {
-    "@umijs/mako-darwin-arm64": "0.8.5-canary.20240825.2",
-    "@umijs/mako-linux-arm64-musl": "0.8.5-canary.20240825.2",
-    "@umijs/mako-darwin-x64": "0.8.5-canary.20240825.2",
-    "@umijs/mako-linux-x64-gnu": "0.8.5-canary.20240825.2",
-    "@umijs/mako-linux-x64-musl": "0.8.5-canary.20240825.2"
+    "@umijs/mako-darwin-arm64": "0.9.3",
+    "@umijs/mako-linux-arm64-gnu": "0.9.3",
+    "@umijs/mako-linux-arm64-musl": "0.9.3",
+    "@umijs/mako-win32-ia32-msvc": "0.9.3",
+    "@umijs/mako-darwin-x64": "0.9.3",
+    "@umijs/mako-win32-x64-msvc": "0.9.3",
+    "@umijs/mako-linux-x64-gnu": "0.9.3",
+    "@umijs/mako-linux-x64-musl": "0.9.3"
   },
   "repository": "git@github.com:umijs/mako.git"
 }

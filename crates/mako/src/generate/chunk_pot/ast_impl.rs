@@ -96,9 +96,7 @@ pub(crate) fn render_css_chunk(
                         && matches!(info.ast, crate::module::ModuleAst::Css(_))
                     {
                         let relative_source = diff_paths(&module_id.id, &context.root)
-                            .unwrap_or((&module_id.id).into())
-                            .to_string_lossy()
-                            .to_string();
+                            .map_or(module_id.id.clone(), |p| p.to_string_lossy().to_string());
 
                         chain_map.insert(
                             relative_source,
@@ -395,7 +393,9 @@ fn wrap_in_iife(module: SwcModule) -> SwcModule {
         params: vec![],
         decorators: vec![],
         span: DUMMY_SP,
+        ctxt: Default::default(),
         body: Some(BlockStmt {
+            ctxt: Default::default(),
             span: DUMMY_SP,
             stmts,
         }),

@@ -166,21 +166,26 @@ $ XCODE_PROFILE=1 OKAM=/PATH/TO/umijs/marko/packages/bundler-mako/index.js bigfi
 
 ## Release
 
-You can release mako with ci or locally.
-
-### Release with CI
-
-> NOTICE: _canary_ and _dev_ tags are now supported to be released with CI.
+Before release, please make sure everything is ok.
 
 ```bash
-# Make sure everything is ok
 $ just ready
-# Release with CI
-$ npm run release
-# After released successful, you need to release bundler-mako manually.
-$ npm run release:bundler-mako
 ```
 
-### Release Locally
+Open https://github.com/umijs/mako/actions?query=branch%3Amaster+event%3Apush to checkout the latest master push action with name "node-bind-build", and download the artifacts to packages/mako directory. If the artifacts has no commit hash in the name, you should add the commit hash manually.
 
-Refer to https://yuque.antfin.com/mako/vz2gn4/vkp4qs8u4zcuxqoc for details.
+```bash
+$ git rev-parse HEAD
+```
+
+Then you can release the new version.
+
+```
+# Release @umijs/mako and @umijs/bundler-mako
+$ npm run release
+```
+
+After release, you must do 2 things:
+
+- Release the new version on github
+- Update the changelog in CHANGELOG.md and CHANGELOG_zh-CN.md

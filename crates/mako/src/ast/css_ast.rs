@@ -2,8 +2,6 @@ use std::fmt;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
-use base64::engine::general_purpose;
-use base64::Engine;
 use md5;
 use swc_core::common::FileName;
 use swc_core::css::ast::Stylesheet;
@@ -15,12 +13,13 @@ use swc_core::css::{parser, visit};
 use swc_core::ecma::atoms;
 use swc_core::ecma::parser::StringInput;
 
+use crate::ast::error;
 use crate::ast::file::{Content, File};
 use crate::ast::sourcemap::build_source_map_to_buf;
-use crate::ast::{error, utils};
 use crate::compiler::Context;
 use crate::config::{DevtoolConfig, Mode};
 use crate::module::Dependency;
+use crate::utils::{base64_encode, url_safe_base64_encode};
 use crate::visitors::css_dep_analyzer::CSSDepAnalyzer;
 
 #[derive(Clone)]
@@ -38,7 +37,7 @@ impl fmt::Debug for CssAst {
 impl CssAst {
     pub fn new(file: &File, context: Arc<Context>, css_modules: bool) -> Result<Self> {
         let fm = context.meta.css.cm.new_source_file(
-            FileName::Real(file.relative_path.clone()),
+            FileName::Real(file.relative_path.clone()).into(),
             file.get_content_raw(),
         );
         let config = parser::parser::ParserConfig {
@@ -46,7 +45,10 @@ impl CssAst {
             legacy_ie: true,
             ..Default::default()
         };
-        let lexer = parser::lexer::Lexer::new(StringInput::from(&*fm), config);
+
+        let comments = context.meta.css.comments.clone();
+
+        let lexer = parser::lexer::Lexer::new(StringInput::from(&*fm), Some(&comments), config);
         let mut parser = parser::parser::Parser::new(lexer, config);
         let parse_result = parser.parse_all();
         let mut ast_errors = parser.take_errors();
@@ -136,7 +138,7 @@ impl CssAst {
             code.push_str(
                 format!(
                     "\n/*# sourceMappingURL=data:application/json;charset=utf-8;base64,{}*/",
-                    utils::base64_encode(&sourcemap)
+                    base64_encode(&sourcemap)
                 )
                 .as_str(),
             );
@@ -225,7 +227,7 @@ impl TransformConfig for CssModuleRename {
 fn ident_name(path: &str, name: &str) -> String {
     let source = format!("{}__{}", path, name);
     let digest = md5::compute(source);
-    let hash = general_purpose::URL_SAFE.encode(digest.0);
+    let hash = url_safe_base64_encode(digest.0);
     let hash_slice = hash[..8].to_string();
     format!("{}-{}", name, hash_slice)
 }

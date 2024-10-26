@@ -1,4 +1,5 @@
 {
+  "output": { "crossOriginLoading": "anonymous" },
   "minify": false,
   "moduleIdStrategy": "hashed",
   "resolve": {

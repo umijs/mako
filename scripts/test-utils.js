@@ -7,7 +7,18 @@ const { getPortPromise } = require('portfinder');
 function parseBuildResult(cwd) {
   const distDir = path.join(cwd, 'dist');
   const files = fs.readdirSync(distDir).reduce((acc, file) => {
-    acc[file] = fs.readFileSync(path.join(distDir, file), 'utf-8');
+    let fileOrDir = path.join(distDir, file);
+    if (fs.statSync(fileOrDir).isFile()) {
+      acc[file] = fs.readFileSync(path.join(distDir, file), 'utf-8');
+    } else {
+      const subFiles = fs.readdirSync(fileOrDir);
+      subFiles.forEach((subFile) => {
+        acc[`${file}/${subFile}`] = fs.readFileSync(
+          path.join(fileOrDir, subFile),
+          'utf-8',
+        );
+      });
+    }
     return acc;
   }, {});
   return {

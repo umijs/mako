@@ -1,6 +1,5 @@
 mod concatenate_context;
 mod concatenated_transformer;
-mod exports_transform;
 mod external_transformer;
 mod module_ref_rewriter;
 mod ref_link;
@@ -13,10 +12,10 @@ use std::sync::Arc;
 use concatenated_transformer::ConcatenatedTransform;
 use external_transformer::ExternalTransformer;
 use swc_core::common::util::take::Take;
-use swc_core::common::{Span, SyntaxContext, GLOBALS};
+use swc_core::common::{SyntaxContext, GLOBALS};
 use swc_core::ecma::transforms::base::hygiene::hygiene;
 use swc_core::ecma::transforms::base::resolver;
-use swc_core::ecma::visit::{VisitMut, VisitMutWith};
+use swc_core::ecma::visit::{as_folder, Fold, VisitMut, VisitMutWith};
 
 use self::concatenate_context::EsmDependantFlags;
 use self::utils::uniq_module_prefix;
@@ -64,7 +63,7 @@ pub fn optimize_module_graph(
             let incoming_deps = module_graph.dependant_dependencies(module_id);
             let dynamic_imported = incoming_deps.iter().any(|&deps| {
                 deps.iter()
-                    .any(|d| matches!(d.resolve_type, ResolveType::DynamicImport))
+                    .any(|d| matches!(d.resolve_type, ResolveType::DynamicImport(_)))
             });
 
             if dynamic_imported {
@@ -75,7 +74,7 @@ pub fn optimize_module_graph(
 
             let has_not_supported_syntax = deps.iter().any(|(_, dep, is_async)| {
                 dep.resolve_type.is_dynamic_esm()
-                    || matches!(dep.resolve_type, ResolveType::Worker)
+                    || matches!(dep.resolve_type, ResolveType::Worker(_))
                     || (*is_async && dep.resolve_type.is_sync_esm())
             });
             if has_not_supported_syntax {
@@ -143,9 +142,9 @@ pub fn optimize_module_graph(
                 ResolveType::ExportNamed(_) => true,
                 ResolveType::ExportAll => true,
                 ResolveType::Require => false,
-                ResolveType::DynamicImport => false,
+                ResolveType::DynamicImport(_) => false,
                 ResolveType::Css => false,
-                ResolveType::Worker => false,
+                ResolveType::Worker(_) => false,
             };
 
             if candidate.contains(module_id) && esm_import {
@@ -356,7 +355,7 @@ pub fn optimize_module_graph(
                     ccn_trans.imported(all_import_type);
 
                     script_ast.ast.visit_mut_with(&mut ccn_trans);
-                    script_ast.ast.visit_mut_with(&mut CleanSyntaxContext {});
+                    script_ast.ast.visit_mut_with(&mut clean_syntax_context());
 
                     if cfg!(debug_assertions) && inner_print {
                         let code = script_ast.generate(context.clone()).unwrap().code;
@@ -412,7 +411,7 @@ pub fn optimize_module_graph(
                     println!("root after all:\n{}\n", code);
                 }
 
-                root_module_ast.visit_mut_with(&mut CleanSyntaxContext {});
+                root_module_ast.visit_mut_with(&mut clean_syntax_context());
 
                 let prefix_items = concatenate_context.root_exports_stmts(&config.root);
                 module_items.splice(0..0, prefix_items);
@@ -447,13 +446,15 @@ struct ConcatenateConfig {
     externals: HashMap<ModuleId, EsmDependantFlags>,
 }
 
-impl ConcatenateConfig {}
+struct CleanSyntaxContext;
 
-pub struct CleanSyntaxContext;
+pub fn clean_syntax_context() -> impl VisitMut + Fold {
+    as_folder(CleanSyntaxContext {})
+}
 
 impl VisitMut for CleanSyntaxContext {
-    fn visit_mut_span(&mut self, n: &mut Span) {
-        n.ctxt = SyntaxContext::empty();
+    fn visit_mut_syntax_context(&mut self, ctxt: &mut SyntaxContext) {
+        *ctxt = SyntaxContext::empty();
     }
 }
 

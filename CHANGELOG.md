@@ -1,8 +1,151 @@
+## 0.9.3
+
+`2024-10-25`
+
+- feat: add `buildEnd` plugin hook by [@sorrycc](https://github.com/sorrycc) in [#1644](https://github.com/umijs/mako/pull/1644)
+- feat: add `enforce` plugin hook by [@sorrycc](https://github.com/sorrycc) in [#1646](https://github.com/umijs/mako/pull/1646)
+- feat: add `writeBundle` plugin hook by [@sorrycc](https://github.com/sorrycc) in [#1650](https://github.com/umijs/mako/pull/1650)
+- feat: add `watchChanges` plugin hook by [@sorrycc](https://github.com/sorrycc) in [#1651](https://github.com/umijs/mako/pull/1651)
+- fix: mako on windows don't work by [@sorrycc](https://github.com/sorrycc) in [#1652](https://github.com/umijs/mako/pull/1652)
+- fix: devtool sourcemap explosion in windows by [@sorrycc](https://github.com/sorrycc) in [#1653](https://github.com/umijs/mako/pull/1653)
+- fix: should not re-group when span changed by [@xusd320](https://github.com/xusd320) in [#1654](https://github.com/umijs/mako/pull/1654)
+- fix: umd should be import as cjs by [@Jinbao1001](https://github.com/Jinbao1001) in [#1642](https://github.com/umijs/mako/pull/1642)
+- fix: add `process.env.SOCKET_SERVER` define to prevent process polyfilll by [@stormslowly](https://github.com/stormslowly) in [#1655](https://github.com/umijs/mako/pull/1655)
+
+## 0.9.2
+
+`2024-10-16`
+
+- feat: support webpackIgnore and makoIgnore magic comment by [@sorrycc](https://github.com/sorrycc) in [#1636](https://github.com/umijs/mako/pull/1636)
+- feat: add transform plugin hook by [@sorrycc](https://github.com/sorrycc) in [#1637](https://github.com/umijs/mako/pull/1637)
+- feat: add transformInclude plugin hook by [@sorrycc](https://github.com/sorrycc) in [#1639](https://github.com/umijs/mako/pull/1639)
+- fix: import namespace optimize panic with nested for of stmt by [@stormslowly](https://github.com/stormslowly) in [#1640](https://github.com/umijs/mako/pull/1640)
+- fix: duplicate\_package\_checker panic when package.json has no version field by [@sorrycc](https://github.com/sorrycc) in [#1634](https://github.com/umijs/mako/pull/1634)
+
+## 0.9.0
+
+`2024-10-14`
+
+- feat: add loadInclude plugin hook by [@sorrycc](https://github.com/sorrycc) in [#1630](https://github.com/umijs/mako/pull/1630)
+- feat: add { isEntry } for resolve\_id plugin hook by [@sorrycc](https://github.com/sorrycc) in [#1631](https://github.com/umijs/mako/pull/1631)
+- feat: upgrade swc\_core to 0.101.x by [@stormslowly](https://github.com/stormslowly) in [#1444](https://github.com/umijs/mako/pull/1444)
+- fix: hash not stable caused by module concatenate by [@Jinbao1001](https://github.com/Jinbao1001) in [#1610](https://github.com/umijs/mako/pull/1610)
+
+## 0.8.15
+
+`2024-10-10`
+
+* feat: disable webp to base64 by [@Jinbao1001](https://github.com/Jinbao1001) in [#1602](https://github.com/umijs/mako/pull/1602)
+* feat: add resolve_id plugin hook by [@sorrycc](https://github.com/sorrycc) in [#1625](https://github.com/umijs/mako/pull/1625)
+* refactor: napi threadsafe function by [@xusd320](https://github.com/xusd320) in [#1608](https://github.com/umijs/mako/pull/1608)
+* refactor: config codes organization by [@xusd320](https://github.com/xusd320) in [#1618](https://github.com/umijs/mako/pull/1618)
+* fix(bundler-mako): experimental config should be merged deeply by [@sorrycc](https://github.com/sorrycc) in [#1617](https://github.com/umijs/mako/pull/1617)
+* fix: clickToComponent don't work by [@sorrycc](https://github.com/sorrycc) in [#1620](https://github.com/umijs/mako/pull/1620)
+* fix: duplicate_package_checker panic when no package.json is supplied by [@sorrycc](https://github.com/sorrycc) in [#1621](https://github.com/umijs/mako/pull/1621)
+* fix: file_stem index out of bound by [@Jinbao1001](https://github.com/Jinbao1001) in [#1623](https://github.com/umijs/mako/pull/1623)
+
+## 0.8.14
+
+`2024-09-25`
+
+* fix: bundler-mako dev server load chunks failed with 504 error code by [@stormslowly](https://github.com/stormslowly) in [#1612](https://github.com/umijs/mako/pull/1612)
+
+## 0.8.13
+
+`2024-09-23`
+
+* fix: chunk_loading_global  by [@xusd320](https://github.com/xusd320) in [#1590](https://github.com/umijs/mako/pull/1590)
+* fix: devServer put static serve proxy after umi proxy middleware  by [@whyer11](https://github.com/whyer11) in [#1558](https://github.com/umijs/mako/pull/1558)
+* revert: import namespace optimize  by [@stormslowly](https://github.com/stormslowly) in [#1606](https://github.com/umijs/mako/pull/1606)
+
+## 0.8.12
+
+`2024-09-13`
+
+* fix(tree-shaking): detect export var side effects by [@stormslowly](https://github.com/stormslowly) in [#1579](https://github.com/umijs/mako/pull/1579)
+* fix: bad output when chunk_loading_global containing quotation mark by [@xusd320](https://github.com/xusd320) in [#1582](https://github.com/umijs/mako/pull/1582)
+* chore: ➕ add a subdot cli tool script for debug  module/chunk graph  by [@stormslowly](https://github.com/stormslowly) in [#1585](https://github.com/umijs/mako/pull/1585)
+* fix(win): copy don't work under windows by [@sorrycc](https://github.com/sorrycc) in [#1587](https://github.com/umijs/mako/pull/1587)
+* fix(win): module id should be win_pathed by [@sorrycc](https://github.com/sorrycc) in [#1588](https://github.com/umijs/mako/pull/1588)
+* feat(tree-shaking): optimize import namespace used all exports to partial used of source modules by [@stormslowly](https://github.com/stormslowly) in [#1584](https://github.com/umijs/mako/pull/1584)
+* fix: merge mako config by [@hualigushi](https://github.com/hualigushi) in [#1578](https://github.com/umijs/mako/pull/1578)
+* fix:clear deps should not panic when module not found by [@Jinbao1001](https://github.com/Jinbao1001) in [#1581](https://github.com/umijs/mako/pull/1581)
+* Revert "fix: merge mako config" by [@stormslowly](https://github.com/stormslowly) in [#1589](https://github.com/umijs/mako/pull/1589)
+* fix: watch too many file error by [@Jinbao1001](https://github.com/Jinbao1001) in [#1550](https://github.com/umijs/mako/pull/1550)
+* feat: support numeric module Id by [@Jinbao1001](https://github.com/Jinbao1001) in [#1561](https://github.com/umijs/mako/pull/1561)
+
+## 0.8.11
+
+`2024-09-10`
+
+* fix: env_replacer should not replace user defined variable in scope by [@xusd320](https://github.com/xusd320) in [#1577](https://github.com/umijs/mako/pull/1577)
+
+## 0.8.10
+
+`2024-09-05`
+
+* feat: support linux arm64 gnu by [@xusd320](https://github.com/xusd320) in [#1570](https://github.com/umijs/mako/pull/1570)
+* fix: parse_path failed under windows by [@sorrycc](https://github.com/sorrycc) in [#1571](https://github.com/umijs/mako/pull/1571)
+* feat: support runtime global module registry by [@xusd320](https://github.com/xusd320) in [#1574](https://github.com/umijs/mako/pull/1574)
+* feat: add bundle for windows  by [@sorrycc](https://github.com/sorrycc) in [#1575](https://github.com/umijs/mako/pull/1575)
+
+## 0.8.8
+
+`2024-09-05`
+
+* perf: group chunks with right first dfs by [@xusd320](https://github.com/xusd320) in [#1554](https://github.com/umijs/mako/pull/1554)
+* refactor: unify base64 utils by [@xusd320](https://github.com/xusd320) in [#1557](https://github.com/umijs/mako/pull/1557)
+* Revert "refactor: Unify the static server in bundler-mako and devServer" by [@stormslowly](https://github.com/stormslowly) in [#1556](https://github.com/umijs/mako/pull/1556)
+* fix: define env by [@xusd320](https://github.com/xusd320) in [#1551](https://github.com/umijs/mako/pull/1551)
+* fix: When hmr=none,mako does not take effect by [@Wu-kung](https://github.com/Wu-kung) in [#1552](https://github.com/umijs/mako/pull/1552)
+* fix: 🐛 concatenated module exported namespace should sort key  by [@stormslowly](https://github.com/stormslowly) in [#1564](https://github.com/umijs/mako/pull/1564)
+* fix: camel case in napi binding params by [@xusd320](https://github.com/xusd320) in [#1565](https://github.com/umijs/mako/pull/1565)
+
+## 0.8.7
+
+`2024-08-30`
+
+* refactor: 🎨 assign tpl's span to literal string by [@stormslowly](https://github.com/umijs/mako/pull/1529)
+* perf: reapply pr 1509 and sourcemap missing when chain_map is empty by [@xusd320](https://github.com/umijs/mako/pull/1542)
+* chore: ✨ strip span when parsing define's expression by [@stormslowly](https://github.com/umijs/mako/pull/1540)
+* feat: support to control crossorigin for async chunk scripts and links by [@PeachScript](https://github.com/umijs/mako/)pull/1539
+* refactory:  in str-impl chunk generate, remove cm when  merge_code_and_sourcemap by [@stormslowly](https://github.com/umijs/mako/pull/1541)
+* fix: entry support sub paths by [@sorrycc](https://github.com/umijs/mako/pull/1547)
+* fix: filename too long when use pnpm by [@Jinbao1001](https://github.com/umijs/mako/pull/1421)
+* refactor: Unify the static server in bundler-mako and devServer by [@whyer11](https://github.com/umijs/mako/pull/1468)
+* feat: #1491 add duplicate package checker plugin by [@jeasonnow](https://github.com/umijs/mako/pull/1496)
+* fix: #1478 support react class-component hot-update by [@jeasonnow](https://github.com/umijs/mako/pull/1489)
+* fix(plugin:emotion): panic when target to chrome 40 by [@stormslowly](https://github.com/umijs/mako/pull/1527)
+
+## 0.8.6
+
+`2024-08-26`
+
+- revert: [#1538](https://github.com/umijs/mako/pull/1475) and [#1538](https://github.com/umijs/mako/pull/1509) by [@xusd320](https://github.com/xusd320) in [#1538](https://github.com/umijs/mako/pull/1538)
+
+
+## 0.8.5
+
+`2024-08-26`
+
+- feat: support aarch64-unknown-linux-musl by [@stormslowly](https://github.com/stormslowly) in [#1535](https://github.com/umijs/mako/pull/1535)
+
 ## 0.8.4
 
 `2024-08-23`
 
 - fix: should not alias define XXX to process.env.XXX by [@xusd320](https://github.com/xusd320) in [#1504](https://github.com/umijs/mako/pull/1526)
+
+## 0.8.3
+
+`2024-08-22`
+
+- fix: wrong file extension for map file paths in stat.json by [@stormslowly](https://github.com/stormslowly) in [#1506](https://github.com/umijs/mako/pull/1506)
+- fix: resolve failed when package use `node` as key by [@sorrycc](https://github.com/sorrycc) in [#1516](https://github.com/umijs/mako/pull/1516)
+- perf: merge source map, speed up generation by 800% by [@xusd320](https://github.com/xusd320) in [#1509](https://github.com/umijs/mako/pull/1509)
+- perf: optimize group_chunks, speed up group_chunks by 500% by [@xusd320](https://github.com/xusd320) in [#1475](https://github.com/umijs/mako/pull/1475)
+- refactor: improve regex convention for px2rem config by [@xiaohuoni](https://github.com/xiaohuoni) in [#1469](https://github.com/umijs/mako/pull/1469)
+- refactor: improve behavior of define config by [@xusd320](https://github.com/xusd320) in [#1505](https://github.com/umijs/mako/pull/1505)
 
 ## 0.8.2
 
@@ -27,10 +170,10 @@
 
 `2024-08-08`
 
-* [Breaking Change] refactor: not write stats.json anymore by [@xusd320](https://github.com/xusd320) in https://github.com/umijs/mako/pull/1485
-* feat: less support "globalVars" by [@gin-lsl](https://github.com/gin-lsl) in https://github.com/umijs/mako/pull/1465
-* feat(bundler-mako): generate dynamicImportToRequire from babel and webpack config by [@PeachScript](https://github.com/PeachScript) in https://github.com/umijs/mako/pull/1479
-* refactor: avoid underscore prefix for chunk file name by [@PeachScript](https://github.com/PeachScript) in https://github.com/umijs/mako/pull/1471
+* [Breaking Change] refactor: not write stats.json anymore by [@xusd320](https://github.com/xusd320) in [#1485](https://github.com/umijs/mako/pull/1485)
+* feat: less support "globalVars" by [@gin-lsl](https://github.com/gin-lsl) in [#1465](https://github.com/umijs/mako/pull/1465)
+* feat(bundler-mako): generate dynamicImportToRequire from babel and webpack config by [@PeachScript](https://github.com/PeachScript) in [#1479](https://github.com/umijs/mako/pull/1479)
+* refactor: avoid underscore prefix for chunk file name by [@PeachScript](https://github.com/PeachScript) in [#1471](https://github.com/umijs/mako/pull/1471)
 
 ## 0.7.9
 
@@ -41,7 +184,7 @@
 - feat: sass option support function by [@xiaohuoni](https://github.com/xiaohuoni) in [#1461](https://github.com/umijs/mako/pull/1461)
 - fix: double value lose by [@xiaohuoni](https://github.com/xiaohuoni) in [#1462](https://github.com/umijs/mako/pull/1462)
 - perf: use hashlink, speed up codeSplitting by 300% when building big project by [@xusd320](https://github.com/xusd320) in [#1460](https://github.com/umijs/mako/pull/1460)
-- perf(tree-shaking): parallelize tree shaking module map init by [@stormslowly](https://github.com/stormslowly) in https://github.com/umijs/mako/pull/1452
+- perf(tree-shaking): parallelize tree shaking module map init by [@stormslowly](https://github.com/stormslowly) in [#1452](https://github.com/umijs/mako/pull/1452)
 
 ## 0.7.8
 

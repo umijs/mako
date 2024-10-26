@@ -9,9 +9,9 @@ fn build_tokio_runtime() -> tokio::runtime::Runtime {
     tokio::runtime::Builder::new_multi_thread()
         .enable_io()
         .worker_threads(2)
-        .thread_name("tokio-worker")
+        .thread_name("Mako-tokio-worker")
         .build()
-        .expect("failed to create tokio runtime.")
+        .expect("Mako: failed to create tokio runtime.")
 }
 
 pub fn spawn<F>(future: F) -> tokio::task::JoinHandle<F::Output>

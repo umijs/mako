@@ -82,6 +82,7 @@ exports.dev = async function (opts) {
   assert(opts, 'opts should be supplied');
   checkConfig(opts);
   const express = require('express');
+  const proxy = require('express-http-proxy');
   const app = express();
   const port = opts.port || 8000;
   const hmrPort = opts.port + 1;
@@ -112,60 +113,27 @@ exports.dev = async function (opts) {
   });
   app.use('/__/hmr-ws', wsProxy);
 
-  const outputPath = path.resolve(opts.cwd, opts.config.outputPath || 'dist');
-
-  function processReqURL(publicPath, reqURL) {
-    if (!publicPath.startsWith('/')) {
-      publicPath = '/' + publicPath;
-    }
-    return reqURL.startsWith(publicPath)
-      ? reqURL.slice(publicPath.length - 1)
-      : reqURL;
-  }
-
-  if (opts.config.publicPath) {
-    app.use((req, _res, next) => {
-      req.url = processReqURL(opts.config.publicPath, req.url);
-      next();
-    });
-  }
-
-  // serve dist files
-  app.use(express.static(outputPath));
-
-  if (process.env.SSU === 'true') {
-    // for ssu cache chunks
-
-    app.use(function (req, res, next) {
-      if (req.method !== 'GET' && req.method !== 'HEAD') {
-        return next();
-      }
-
-      let proxy = createProxyMiddleware({
-        target: `http://127.0.0.1:${hmrPort}`,
-        selfHandleResponse: true,
-        onProxyRes: (proxyRes, req, res) => {
-          if (proxyRes.statusCode !== 200) {
-            next();
-          } else {
-            proxyRes.pipe(res);
-          }
-        },
-        onError: (err, req, res) => {
-          next();
-        },
-      });
-
-      proxy(req, res, () => {
-        next();
-      });
-    });
-  }
-
   // proxy
   if (opts.config.proxy) {
     createProxy(opts.config.proxy, app);
   }
+
+  app.use(
+    proxy(`http://127.0.0.1:${hmrPort}`, {
+      proxyReqOptDecorator: function (proxyReqOpts) {
+        // keep alive is on by default https://nodejs.org/docs/latest/api/http.html#httpglobalagent
+        // 禁用 keep-alive
+        proxyReqOpts.agent = false;
+        return proxyReqOpts;
+      },
+      filter: function (req, res) {
+        return req.method == 'GET' || req.method == 'HEAD';
+      },
+      skipToNextHandlerFilter: function (proxyRes) {
+        return proxyRes.statusCode !== 200;
+      },
+    }),
+  );
 
   // after middlewares
   (opts.afterMiddlewares || []).forEach((m) => {
@@ -208,7 +176,11 @@ exports.dev = async function (opts) {
   // mako dev
   const { build } = require('@umijs/mako');
   const makoConfig = await getMakoConfig(opts);
-  makoConfig.hmr = {};
+  if (process.env.HMR === 'none') {
+    makoConfig.hmr = false;
+  } else {
+    makoConfig.hmr = {};
+  }
   makoConfig.devServer = { port: hmrPort, host: opts.host };
   makoConfig.plugins = makoConfig.plugins || [];
   makoConfig.plugins.push({
@@ -453,6 +425,7 @@ async function getMakoConfig(opts) {
   }
   const webpackConfig = webpackChainConfig.toConfig();
   let umd = false;
+  let crossOriginLoading = false;
   let { dynamicImportToRequire } = opts.config;
   if (webpackConfig.output) {
     // handle asyncChunks config
@@ -466,6 +439,11 @@ async function getMakoConfig(opts) {
       webpackConfig.output.library
     ) {
       umd = webpackConfig.output.library;
+    }
+
+    // handle crossOriginLoading config
+    if (webpackConfig.output.crossOriginLoading) {
+      crossOriginLoading = webpackConfig.output.crossOriginLoading;
     }
   }
 
@@ -611,7 +589,7 @@ async function getMakoConfig(opts) {
 
   const makoConfig = {
     entry: opts.entry,
-    output: { path: outputPath },
+    output: { path: outputPath, crossOriginLoading },
     resolve: {
       alias: generatorAlias,
     },
@@ -658,6 +636,8 @@ async function getMakoConfig(opts) {
       plugins: opts.config.lessLoader?.plugins,
     },
     analyze: analyze || process.env.ANALYZE ? {} : undefined,
+    sass: sassLoader,
+    ...mako,
     experimental: {
       webpackSyntaxValidate: [],
       requireContext: true,
@@ -665,9 +645,8 @@ async function getMakoConfig(opts) {
         ignores: ['node_modules', '\\.umi'],
         graphviz: false,
       },
+      ...mako.experimental,
     },
-    sass: sassLoader,
-    ...mako,
   };
 
   return makoConfig;

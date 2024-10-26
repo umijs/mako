@@ -23,9 +23,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
+      - uses: ./.github/actions/rustup
+        with: 
+          clippy: false
+          save-cache: false
+          restore-cache: false
       - name: Run tests
         run: cargo test -p mako
         env:

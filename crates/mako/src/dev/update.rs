@@ -10,7 +10,7 @@ use tracing::debug;
 use crate::build::BuildError;
 use crate::compiler::Compiler;
 use crate::generate::transform::transform_modules;
-use crate::module::{Dependency, Module, ModuleId, ResolveTypeFlags};
+use crate::module::{Dependency, Module, ModuleId, ResolveType};
 use crate::module_graph::ModuleGraph;
 use crate::resolve::{self, clear_resolver_cache};
 
@@ -186,12 +186,27 @@ impl Compiler {
         for (path, update_type) in paths {
             match update_type {
                 UpdateType::Add => {
+                    self.context.plugin_driver.watch_changes(
+                        &path.to_string_lossy(),
+                        "create",
+                        &self.context,
+                    )?;
                     added.push(path);
                 }
                 UpdateType::Remove => {
+                    self.context.plugin_driver.watch_changes(
+                        &path.to_string_lossy(),
+                        "delete",
+                        &self.context,
+                    )?;
                     removed.push(path);
                 }
                 UpdateType::Modify => {
+                    self.context.plugin_driver.watch_changes(
+                        &path.to_string_lossy(),
+                        "update",
+                        &self.context,
+                    )?;
                     modified.push(path);
                 }
             }
@@ -451,33 +466,17 @@ impl Diff {
             return true;
         }
 
-        let new_deps = new_dependencies
+        let new_deps: HashMap<&ModuleId, &ResolveType> = new_dependencies
             .iter()
-            .fold(HashMap::new(), |mut map, (module_id, dep)| {
-                let flag: ResolveTypeFlags = (&dep.resolve_type).into();
+            .map(|(module_id, dep)| (module_id, &dep.resolve_type))
+            .collect();
 
-                map.entry(module_id.clone())
-                    .and_modify(|e: &mut ResolveTypeFlags| {
-                        e.insert(flag);
-                    })
-                    .or_insert(flag);
-                map
-            });
+        let original: HashMap<&ModuleId, &ResolveType> = module_graph
+            .get_dependencies(module_id)
+            .into_iter()
+            .map(|(module_id, dep)| (module_id, &dep.resolve_type))
+            .collect();
 
-        let original = module_graph.get_dependencies(module_id).into_iter().fold(
-            HashMap::new(),
-            |mut map, (module_id, dep)| {
-                let flag: ResolveTypeFlags = (&dep.resolve_type).into();
-                map.entry(module_id.clone())
-                    .and_modify(|e: &mut ResolveTypeFlags| e.insert(flag))
-                    .or_insert(flag);
-                map
-            },
-        );
-
-        // there is an edge case we need to consider later
-        // if an edge ResolveTypeFlag(Sync + Async) changes to ResolveTypeFlag(Sync), is it
-        // changed nor not ?
         !new_deps.eq(&original)
     }
 }

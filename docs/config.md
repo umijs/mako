@@ -161,6 +161,31 @@ Specify the devServer configuration.
 
 Specify the source map type.
 
+### duplicatePackageChecker
+
+- Type: `{ verbose: boolean, showHelp: boolean, emitError: boolean } | false`
+- Default: `false`
+
+Configuration for duplicate package checker.
+
+Child configuration items:
+
+- `verbose`: Whether to output detailed information.
+- `showHelp`: Whether to show help information.
+- `emitError`: Whether to emit an error when duplicate packages are found.
+
+Example:
+
+```json
+{
+  "duplicatePackageChecker": {
+    "verbose": true,
+    "showHelp": true,
+    "emitError": false
+  }
+}
+```
+
 ### dynamicImportToRequire
 
 - Type: `boolean`
@@ -270,6 +295,34 @@ e.g.
 }
 ```
 
+### experimental.magicComment
+
+- Type: boolean
+- Default: false
+
+Experimental configuration, whether to support magic comments like webpack.
+
+e.g.
+
+```ts
+{
+  experimental: {
+    magicComment: true,
+  },
+}
+```
+
+the magic comment is like below:
+
+```ts
+import(/* makoChunkName: 'myChunk' */ "./lazy");
+import(/* webpackChunkName: 'myChunk' */ "./lazy");
+new Worker(/* makoChunkName: 'myWorker' */ new URL("./worker", import.meta.url));
+new Worker(/* webpackChunkName: 'myWorker' */ new URL("./worker", import.meta.url));
+import(/* makoIgnore: true */ "./foo");
+import(/* webpackIgnore: true */ "./foo");
+```
+
 ### externals
 
 - Type: `Record<string, string>`
@@ -367,10 +420,27 @@ Notice: This configuration can only be used with umd, because injecting CSS is n
 
 ### inlineLimit
 
-- Type: `number`
-- Default: `10000`
+- Type: `string[]`
+- Default: `[]`
 
 Specify the size limit of the assets file that needs to be converted to `base64` format.
+
+
+### inlineExcludesExtensions
+
+- Type: `string[]`
+- Default: `[]`
+
+Excludes assets file extension list that don't need to be converted to `base64` format.
+
+e.g.
+
+```ts
+{
+  "inlineExcludesExtensions": ["webp"]
+}
+```
+
 
 ### less
 
@@ -432,7 +502,7 @@ Specify the build mode, `"development"` or `"production"`.
 
 ### moduleIdStrategy
 
-- Type: `"named" | "hashed"`
+- Type: `"named" | "hashed" | "numeric"`
 - Default: `"named"` when mode is development, `"hashed"` when mode is production
 
 Specify the strategy for generating moduleId.
@@ -446,8 +516,8 @@ Whether to enable node polyfill.
 
 ### output
 
-- Type: `{ path: string, mode: "bundle" | "bundless", esVersion: "es3" | "es5" | "es2015" | "es2016" | "es2017" | "es2018" | "es2019" | "es2020" | "es2021" | "es2022" | "esnext", meta: boolean, chunkLoadingGlobal: string, preserveModules: boolean, preserveModulesRoot: string }`
-- Default: `{ path: "dist", mode: "bundle", esVersion: "es2022", meta: false, chunkLoadingGlobal: "", preserveModules: false, preserveModulesRoot: "" }`
+- Type: `{ path: string, mode: "bundle" | "bundless", esVersion: "es3" | "es5" | "es2015" | "es2016" | "es2017" | "es2018" | "es2019" | "es2020" | "es2021" | "es2022" | "esnext", meta: boolean, chunkLoadingGlobal: string, preserveModules: boolean, preserveModulesRoot: string; crossOriginLoading: false | "anonymous" | "use-credentials" }`
+- Default: `{ path: "dist", mode: "bundle", esVersion: "es2022", meta: false, chunkLoadingGlobal: "", preserveModules: false, preserveModulesRoot: "", crossOriginLoading: false }`
 
 Output related configuration.
 
@@ -458,6 +528,8 @@ Output related configuration.
 - `chunkLoadingGlobal`, global variable name for `chunk loading`
 - `preserveModules`, whether to preserve the module directory structure (Bundless Only)
 - `preserveModulesRoot`, preserve the root directory of the module directory structure (Bundless Only)
+- `crossOriginLoading`, control the `crossorigin` attribute of the `script` tag and `link` tag for load async chunks
+- `globalModuleRegistry`, whether enable shared module registry across multi entries
 
 ### optimization
 
@@ -489,7 +561,9 @@ Specify the plugins to use.
 // JSHooks
 {
   name?: string;
+  enforce?: "pre" | "post";
   buildStart?: () => void;
+  buildEnd?: () => void;
   generateEnd?: (data: {
     isFirstCompile: boolean;
     time: number;
@@ -499,7 +573,13 @@ Specify the plugins to use.
       ...
     };
   }) => void;
+  writeBundle?: () => void;
+  watchChanges?: (id: string, params: { event: "create" | "delete" | "update" }) => void;
   load?: (filePath: string) => Promise<{ content: string, type: 'css'|'js'|'jsx'|'ts'|'tsx' }>;
+  loadInclude?: (filePath: string) => boolean;
+  resolveId?: (id: string, importer: string, { isEntry: bool }) => Promise<{ id: string, external: bool }>;
+  transform?: (content: string, id: string) => Promise<{ content: string, type: 'css'|'js'|'jsx'|'ts'|'tsx' }>;
+  transformInclude?: (filePath: string) => Promise<boolean> | boolean;
 }
 ```
 
@@ -771,3 +851,4 @@ e.g. If you want to ignore the `foo` directory under root directory, you can set
 - Default: `true`
 
 Whether to write the build result to disk when mode is development.
+

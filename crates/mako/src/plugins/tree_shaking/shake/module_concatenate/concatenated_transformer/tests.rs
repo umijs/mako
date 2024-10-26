@@ -10,9 +10,10 @@ use super::super::ConcatenateContext;
 use super::utils::describe_export_map;
 use super::ConcatenatedTransform;
 use crate::ast::js_ast::JsAst;
+use crate::ast::DUMMY_CTXT;
 use crate::compiler::Context;
 use crate::config::{Config, Mode, OptimizationConfig};
-use crate::module::ModuleId;
+use crate::module::{ImportType, ModuleId};
 
 #[test]
 fn test_import_default_from_inner() {
@@ -616,7 +617,8 @@ fn test_export_from_var() {
     let mut ccn_ctx = ConcatenateContext {
         modules_exports_map: hashmap! {
             ModuleId::from("src/index.js") => hashmap! {
-                "default".to_string() => (quote_ident!("src_index_default"), None)
+                "default".to_string() => (quote_ident!(DUMMY_CTXT,"src_index_default"),
+                    None)
             }
         },
         ..Default::default()
@@ -639,6 +641,54 @@ fn test_export_from_default() {
     assert_eq!(ccn_ctx.top_level_vars, expected_top_vars);
 }
 
+#[test]
+fn test_export_decl_vars_import_as_namespace() {
+    let mut ccn_ctx = ConcatenateContext::default();
+    let mut imported_type = ImportType::empty();
+    imported_type.insert(ImportType::Namespace);
+
+    let code = inner_trans_code_imported_as(
+        "export const a =1;export const b = 1",
+        &mut ccn_ctx,
+        imported_type,
+    );
+
+    assert_eq!(
+        code,
+        r#"
+const a = 1;
+const b = 1;
+var __$m_mut_js_ns = {};
+__mako_require__.e(__$m_mut_js_ns, {
+    a: function() {
+        return a;
+    },
+    b: function() {
+        return b;
+    }
+});
+    "#
+        .trim()
+    );
+    assert_eq!(
+        ccn_ctx.top_level_vars,
+        hashset!(
+            "a".to_string(),
+            "b".to_string(),
+            "__$m_mut_js_ns".to_string()
+        )
+    );
+    assert_eq!(
+        describe_export_map(&ccn_ctx),
+        r#"
+* => __$m_mut_js_ns
+a => a
+b => b
+"#
+        .trim()
+    );
+}
+
 fn concatenate_context_fixture_with_inner_module() -> ConcatenateContext {
     ConcatenateContext {
         top_level_vars: hashset! {
@@ -650,10 +700,10 @@ fn concatenate_context_fixture_with_inner_module() -> ConcatenateContext {
         },
         modules_exports_map: hashmap! {
             ModuleId::from("src/index.js") => hashmap!{
-                "*".to_string() => (quote_ident!("inner_namespace"), None),
-                "default".to_string() => ( quote_ident!("inner_default_export"), None),
-                "foo".to_string() => (quote_ident!("bar") ,None),
-                "named".to_string() => (quote_ident!("named"), None)
+                "*".to_string() => (quote_ident!(DUMMY_CTXT,"inner_namespace"), None),
+                "default".to_string() => ( quote_ident!(DUMMY_CTXT,"inner_default_export"), None),
+                "foo".to_string() => (quote_ident!(DUMMY_CTXT,"bar") ,None),
+                "named".to_string() => (quote_ident!(DUMMY_CTXT,"named"), None)
             },
             ModuleId::from("src/no_exports.js") => hashmap!{},
         },
@@ -666,7 +716,11 @@ fn concatenate_context_fixture_with_inner_module() -> ConcatenateContext {
     }
 }
 
-fn inner_trans_code(code: &str, concatenate_context: &mut ConcatenateContext) -> String {
+fn inner_trans_code_imported_as(
+    code: &str,
+    concatenate_context: &mut ConcatenateContext,
+    imported_type: ImportType,
+) -> String {
     let context = Arc::new(Context {
         config: Config {
             devtool: None,
@@ -687,7 +741,7 @@ fn inner_trans_code(code: &str, concatenate_context: &mut ConcatenateContext) ->
     let src_to_module = hashmap! {
         "./src".to_string() => ModuleId::from("src/index.js"),
         "./no_exports".to_string() => ModuleId::from("src/no_exports.js"),
-    "external".to_string() => ModuleId::from("external")
+        "external".to_string() => ModuleId::from("external")
     };
 
     GLOBALS.set(&context.meta.script.globals, || {
@@ -698,6 +752,7 @@ fn inner_trans_code(code: &str, concatenate_context: &mut ConcatenateContext) ->
             &context,
             ast.top_level_mark,
         );
+        inner.imported(imported_type);
 
         ast.ast.visit_mut_with(&mut resolver(
             ast.unresolved_mark,
@@ -718,4 +773,8 @@ fn inner_trans_code(code: &str, concatenate_context: &mut ConcatenateContext) ->
             .trim()
             .to_string()
     })
+}
+
+fn inner_trans_code(code: &str, concatenate_context: &mut ConcatenateContext) -> String {
+    inner_trans_code_imported_as(code, concatenate_context, ImportType::empty())
 }

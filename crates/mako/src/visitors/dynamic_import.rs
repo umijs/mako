@@ -9,7 +9,9 @@ use swc_core::ecma::utils::{
 };
 use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
+use super::dep_replacer::miss_throw_stmt;
 use crate::ast::utils::{is_dynamic_import, promise_all, require_ensure};
+use crate::ast::DUMMY_CTXT;
 use crate::compiler::Context;
 use crate::generate::chunk::ChunkId;
 use crate::visitors::dep_replacer::DependenciesToReplace;
@@ -42,11 +44,7 @@ impl<'a> VisitMut for DynamicImport<'a> {
             let insert_at = n
                 .body
                 .iter()
-                .position(|module_item| {
-                    !module_item
-                        .as_stmt()
-                        .map_or(false, |stmt| stmt.is_directive())
-                })
+                .position(|module_item| !module_item.directive_continue())
                 .unwrap();
 
             let (id, _) = self
@@ -82,8 +80,33 @@ impl<'a> VisitMut for DynamicImport<'a> {
                     ..
                 } = &mut call_expr.args[0]
                 {
-                    // note: the source is replaced!
-                    let resolved_source = source.value.clone().to_string();
+                    if self
+                        .dep_to_replace
+                        .missing
+                        .contains_key(source.value.as_ref())
+                    {
+                        call_expr.args[0] = ExprOrSpread {
+                            spread: None,
+                            expr: Box::new(miss_throw_stmt(source.value.as_ref())),
+                        };
+                        return;
+                    }
+
+                    let resolved_info = self.dep_to_replace.resolved.get(source.value.as_ref());
+
+                    // e.g.
+                    // import(/* webpackIgnore: true */ "foo")
+                    // will be ignored
+                    if resolved_info.is_none() {
+                        return;
+                    }
+
+                    let resolved_info = resolved_info
+                        // If the identifier is not in dep_to_replace.missing,
+                        // it must be resolved, so unwrap is safe here.
+                        .unwrap();
+
+                    let resolved_source = &resolved_info.0;
                     let _chunk_ids = {
                         let chunk_id: ChunkId = resolved_source.clone().into();
                         let chunk_graph = &self.context.chunk_graph.read().unwrap();
@@ -120,25 +143,28 @@ impl<'a> VisitMut for DynamicImport<'a> {
                     // e.g.
                     // Promise.all([ require.ensure("id") ]).then(require.bind(require, "id"))
                     // Promise.all([ require.ensure("d1"), require.ensure("id)]).then(require.bind(require, "id"))
+
                     // version 2
                     // require.ensure2("id").then(require.bind(require,"id"))
 
                     *expr = {
                         // let load_promise = self.make_load_promise(&chunk_ids);
-                        let load_promise = self.make_load_promise_2(&resolved_source);
+                        let load_promise = self.make_load_promise_2(resolved_source);
 
-                        let lazy_require_call = member_expr!(DUMMY_SP, __mako_require__.bind)
-                            .as_call(
+                        let lazy_require_call =
+                            member_expr!(DUMMY_CTXT, DUMMY_SP, __mako_require__.bind).as_call(
                                 DUMMY_SP,
                                 vec![
                                     quote_ident!("__mako_require__").as_arg(),
                                     quote_str!(resolved_source.clone()).as_arg(),
                                 ],
                             );
-                        let dr_call = member_expr!(DUMMY_SP, __mako_require__.dr).as_call(
-                            DUMMY_SP,
-                            vec![self.interop.clone().as_arg(), lazy_require_call.as_arg()],
-                        );
+
+                        let dr_call = member_expr!(DUMMY_CTXT, DUMMY_SP, __mako_require__.dr)
+                            .as_call(
+                                DUMMY_SP,
+                                vec![self.interop.clone().as_arg(), lazy_require_call.as_arg()],
+                            );
 
                         member_expr!(@EXT, DUMMY_SP, load_promise.into(), then)
                             .as_call(call_expr.span, vec![dr_call.as_arg()])
@@ -152,11 +178,11 @@ impl<'a> VisitMut for DynamicImport<'a> {
 
 impl DynamicImport<'_> {
     fn make_load_promise_2(&self, module_id: &str) -> Expr {
-        member_expr!(DUMMY_SP, __mako_require__.ensure2)
+        member_expr!(DUMMY_CTXT, DUMMY_SP, __mako_require__.ensure2)
             .as_call(DUMMY_SP, vec![quote_str!(module_id).as_arg()])
     }
 
-    fn make_load_promise(&self, chunk_ids: &Vec<String>) -> Expr {
+    fn make_load_promise(&self, chunk_ids: &[String]) -> Expr {
         let to_ensure_elems = chunk_ids
             .iter()
             .map(|c_id| {
@@ -217,7 +243,8 @@ Promise.all([
         let dep_to_replace = DependenciesToReplace {
             resolved: maplit::hashmap! {
                 "@swc/helpers/_/_interop_require_wildcard".to_string() =>
-                ("hashed_helper".to_string(), "dummy".into())
+                ("hashed_helper".to_string(), "dummy".into()),
+                "foo".to_string() => ("foo".to_string(), "foo".to_string())
             },
             missing: HashMap::new(),
         };

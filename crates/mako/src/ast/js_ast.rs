@@ -2,8 +2,6 @@ use std::fmt;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
-use swc_core::base::try_with_handler;
-use swc_core::common::errors::HANDLER;
 use swc_core::common::util::take::Take;
 use swc_core::common::{FileName, Mark, Spanned, GLOBALS};
 use swc_core::ecma::ast::{EsVersion, Module};
@@ -11,8 +9,8 @@ use swc_core::ecma::codegen::text_writer::JsWriter;
 use swc_core::ecma::codegen::{Config as JsCodegenConfig, Emitter};
 use swc_core::ecma::parser::error::SyntaxError;
 use swc_core::ecma::parser::lexer::Lexer;
-use swc_core::ecma::parser::{EsConfig, Parser, StringInput, Syntax, TsConfig};
-use swc_core::ecma::transforms::base::helpers::{inject_helpers, Helpers, HELPERS};
+use swc_core::ecma::parser::{EsSyntax, Parser, StringInput, Syntax, TsSyntax};
+use swc_core::ecma::transforms::base::helpers::inject_helpers;
 use swc_core::ecma::utils::contains_top_level_await;
 use swc_core::ecma::visit;
 use swc_core::ecma::visit::{VisitMutWith, VisitWith};
@@ -23,7 +21,6 @@ use crate::ast::{error, utils};
 use crate::compiler::Context;
 use crate::config::{DevtoolConfig, Mode, OutputMode};
 use crate::module::Dependency;
-use crate::plugin::PluginTransformJsParam;
 use crate::utils::base64_encode;
 use crate::visitors::dep_analyzer::DepAnalyzer;
 
@@ -45,13 +42,13 @@ impl fmt::Debug for JsAst {
 impl JsAst {
     pub fn new(file: &File, context: Arc<Context>) -> Result<Self> {
         let fm = context.meta.script.cm.new_source_file(
-            FileName::Real(file.relative_path.to_path_buf()),
+            FileName::Real(file.relative_path.to_path_buf()).into(),
             file.get_content_raw(),
         );
         let comments = context.meta.script.origin_comments.read().unwrap();
         let extname = &file.extname;
         let syntax = if extname == "ts" || extname == "tsx" {
-            Syntax::Typescript(TsConfig {
+            Syntax::Typescript(TsSyntax {
                 tsx: extname == "tsx",
                 decorators: true,
                 ..Default::default()
@@ -60,7 +57,7 @@ impl JsAst {
             let jsx = file.is_content_jsx()
                 || extname == "jsx"
                 || (extname == "js" && !file.is_under_node_modules);
-            Syntax::Es(EsConfig {
+            Syntax::Es(EsSyntax {
                 jsx,
                 decorators: true,
                 decorators_before_export: true,
@@ -134,78 +131,50 @@ impl JsAst {
         &mut self,
         mut_visitors: &mut Vec<Box<dyn visit::VisitMut>>,
         folders: &mut Vec<Box<dyn visit::Fold>>,
-        file: &File,
         should_inject_helpers: bool,
-        context: Arc<Context>,
+        _context: Arc<Context>,
     ) -> Result<()> {
-        let cm = context.meta.script.cm.clone();
-        GLOBALS.set(&context.meta.script.globals, || {
-            try_with_handler(cm, Default::default(), |handler| {
-                HELPERS.set(&Helpers::new(true), || {
-                    HANDLER.set(handler, || {
-                        let ast = &mut self.ast;
+        let ast = &mut self.ast;
 
-                        // visitors
-                        for visitor in mut_visitors {
-                            ast.visit_mut_with(visitor.as_mut());
-                        }
+        // visitors
+        for visitor in mut_visitors {
+            ast.visit_mut_with(visitor.as_mut());
+        }
 
-                        // folders
-                        let body = ast.body.take();
-                        let mut module = Module {
-                            span: ast.span,
-                            shebang: ast.shebang.clone(),
-                            body,
-                        };
-                        for folder in folders {
-                            module = folder.as_mut().fold_module(module);
-                        }
-                        ast.body = module.body;
+        // folders
+        let mut module = ast.take();
+        for folder in folders {
+            module = folder.as_mut().fold_module(module);
+        }
+        *ast = module;
 
-                        // transform with plugin
-                        context.plugin_driver.transform_js(
-                            &PluginTransformJsParam {
-                                handler,
-                                path: file.path.to_str().unwrap(),
-                                top_level_mark: self.top_level_mark,
-                                unresolved_mark: self.unresolved_mark,
-                            },
-                            ast,
-                            &context,
-                        )?;
+        // FIXME: remove this, it's special logic
+        // inject helpers
+        // why need to handle cjs specially?
+        // because the ast is currently a module, not a program
+        // if not handled specially, the injected helpers will all be in esm format
+        // which is not as expected in the cjs scenario
+        // ref: https://github.com/umijs/mako/pull/831
+        if should_inject_helpers {
+            if utils::is_esm(ast) {
+                ast.visit_mut_with(&mut inject_helpers(self.unresolved_mark));
+            } else {
+                let body = ast.body.take();
+                let mut script_ast = swc_core::ecma::ast::Script {
+                    span: ast.span,
+                    shebang: ast.shebang.clone(),
+                    body: body.into_iter().map(|i| i.stmt().unwrap()).collect(),
+                };
+                script_ast.visit_mut_with(&mut inject_helpers(self.unresolved_mark));
+                ast.body = script_ast.body.into_iter().map(|i| i.into()).collect();
+            }
+        }
 
-                        // FIXME: remove this, it's special logic
-                        // inject helpers
-                        // why need to handle cjs specially?
-                        // because the ast is currently a module, not a program
-                        // if not handled specially, the injected helpers will all be in esm format
-                        // which is not as expected in the cjs scenario
-                        // ref: https://github.com/umijs/mako/pull/831
-                        if should_inject_helpers {
-                            if utils::is_esm(ast) {
-                                ast.visit_mut_with(&mut inject_helpers(self.unresolved_mark));
-                            } else {
-                                let body = ast.body.take();
-                                let mut script_ast = swc_core::ecma::ast::Script {
-                                    span: ast.span,
-                                    shebang: ast.shebang.clone(),
-                                    body: body.into_iter().map(|i| i.stmt().unwrap()).collect(),
-                                };
-                                script_ast
-                                    .visit_mut_with(&mut inject_helpers(self.unresolved_mark));
-                                ast.body = script_ast.body.into_iter().map(|i| i.into()).collect();
-                            }
-                        }
-
-                        Ok(())
-                    })
-                })
-            })
-        })
+        Ok(())
     }
 
     pub fn analyze_deps(&self, context: Arc<Context>) -> Vec<Dependency> {
-        let mut visitor = DepAnalyzer::new(self.unresolved_mark);
+        let mut visitor = DepAnalyzer::new(self.unresolved_mark, context.clone());
         GLOBALS.set(&context.meta.script.globals, || {
             self.ast.visit_with(&mut visitor);
             visitor.dependencies

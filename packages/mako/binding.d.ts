@@ -5,9 +5,11 @@
 
 export interface JsHooks {
   name?: string;
+  enforce?: string;
   load?: (
     filePath: string,
   ) => Promise<{ content: string; type: 'css' | 'js' } | void> | void;
+  loadInclude?: (filePath: string) => Promise<bool> | bool;
   generateEnd?: (data: {
     isFirstCompile: boolean;
     time: number;
@@ -49,8 +51,46 @@ export interface JsHooks {
       endTime: number;
     };
   }) => void;
+  writeBundle?: () => Promise<void>;
+  watchChanges?: (
+    id: string,
+    change: { event: 'create' | 'delete' | 'update' },
+  ) => Promise<void> | void;
   onGenerateFile?: (path: string, content: Buffer) => Promise<void>;
   buildStart?: () => Promise<void>;
+  buildEnd?: () => Promise<void>;
+  resolveId?: (
+    source: string,
+    importer: string,
+    { isEntry: bool },
+  ) => Promise<{ id: string }>;
+  transform?: (
+    content: { content: string; type: 'css' | 'js' },
+    path: string,
+  ) => Promise<{ content: string; type: 'css' | 'js' } | void> | void;
+  transformInclude?: (filePath: string) => Promise<bool> | bool;
+}
+export interface WriteFile {
+  path: string;
+  content: Buffer;
+}
+export interface LoadResult {
+  content: string;
+  type: string;
+}
+export interface WatchChangesParams {
+  event: string;
+}
+export interface ResolveIdResult {
+  id: string;
+  external: boolean | null;
+}
+export interface ResolveIdParams {
+  isEntry: boolean;
+}
+export interface TransformResult {
+  content: string;
+  type: string;
 }
 export interface BuildParams {
   root: string;
@@ -125,6 +165,7 @@ export interface BuildParams {
     providers?: Record<string, string[]>;
     publicPath?: string;
     inlineLimit?: number;
+    inlineExcludesExtensions?: string[];
     targets?: Record<string, number>;
     platform?: 'node' | 'browser';
     hmr?: false | {};
@@ -223,4 +264,4 @@ export interface BuildParams {
   plugins: Array<JsHooks>;
   watch: boolean;
 }
-export function build(buildParams: BuildParams): Promise<void>;
+export declare function build(buildParams: BuildParams): Promise<void>;

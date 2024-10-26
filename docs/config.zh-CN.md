@@ -75,7 +75,7 @@
       // 将被拆分到框架 chunk 的 Node 模块
       frameworkPackages: [ "react", "antd" ],
       // （可选）被拆分的 node 模块的最小大小
-      lib_min_size: 160000
+      libMinSize: 160000
     }
   }
 }
@@ -160,6 +160,31 @@
 - 默认值：`"source-map"`
 
 指定源映射类型。
+
+### duplicatePackageChecker
+
+- 类型：`{ verbose: boolean, showHelp: boolean, emitError: boolean } | false`
+- 默认值：`false`
+
+重复包检查器的配置。
+
+子配置项：
+
+- `verbose`：是否输出详细信息。
+- `showHelp`：是否显示帮助信息。
+- `emitError`：发现重复包时是否抛出错误。
+
+示例：
+
+```json
+{
+  "duplicatePackageChecker": {
+    "verbose": true,
+    "showHelp": true,
+    "emitError": false
+  }
+}
+```
 
 ### dynamicImportToRequire
 
@@ -271,6 +296,32 @@ e.g.
 }
 ```
 
+### experimental.magicComment
+
+- 类型: boolean
+- 默认值: false
+
+实验性配置，是否支持通过类似 webpack 的魔法注释。
+
+e.g.
+
+```ts
+{
+  experimental: {
+    magicComment: true,
+  },
+}
+```
+魔法注释如下：
+```ts
+import(/* makoChunkName: 'myChunk' */  "./lazy");
+import(/* webpackChunkName: 'myChunk' */  "./lazy");
+new Worker(/* makoChunkName: 'myWorker' */  new URL("./worker", import.meta.url));
+new Worker(/* webpackChunkName: 'myWorker' */  new URL("./worker", import.meta.url));
+import(/* makoIgnore: true */ "./foo");
+import(/* webpackIgnore: true */ "./foo");
+```
+
 ### externals
 
 - 类型：`Record<string, string>`
@@ -373,6 +424,22 @@ e.g.
 
 指定需要转换为 `base64` 格式的资产文件的大小限制。
 
+
+### inlineExcludesExtensions
+
+- 类型: `string[]`
+- 默认值: `[]`
+
+指定不需要转换为 `base64` 格式的资产文件的后缀名列表。
+
+例如：
+
+```ts
+{
+  "inlineExcludesExtensions": ["webp"]
+}
+```
+
 ### less
 
 - 类型：`{ modifyVars?: Record<string, string>, globalVars?: Record<string, string>, sourceMap?: { sourceMapFileInline?: boolean, outputSourceFiles?: boolean }, math?: "always" | "strict" | "parens-division" | "parens" | "strict-legacy" | number, plugins?: ([string, Record<string, any>]|string)[] }`
@@ -447,8 +514,8 @@ e.g.
 
 ### output
 
-- 类型：`{ path: string, mode: "bundle" | "bundless", esVersion: "es3" | "es5" | "es2015" | "es2016" | "es2017" | "es2018" | "es2019" | "es2020" | "es2021" | "es2022" | "esnext", meta: boolean, chunkLoadingGlobal: string, preserveModules: boolean, preserveModulesRoot: string }`
-- 默认值：`{ path: "dist", mode: "bundle", esVersion: "es2022", meta: false, chunkLoadingGlobal: "", preserveModules: false, preserveModulesRoot: "" }`
+- 类型：`{ path: string, mode: "bundle" | "bundless", esVersion: "es3" | "es5" | "es2015" | "es2016" | "es2017" | "es2018" | "es2019" | "es2020" | "es2021" | "es2022" | "esnext", meta: boolean, chunkLoadingGlobal: string, preserveModules: boolean, preserveModulesRoot: string; crossOriginLoading: false | "anonymous" | "use-credentials" }`
+- 默认值：`{ path: "dist", mode: "bundle", esVersion: "es2022", meta: false, chunkLoadingGlobal: "", preserveModules: false, preserveModulesRoot: "", crossOriginLoading: false }`
 
 输出相关配置。
 
@@ -459,6 +526,8 @@ e.g.
 - `chunkLoadingGlobal`，`chunk loading` 的全局变量名称
 - `preserveModules`，是否保留模块目录结构（仅适用于 Bundless）
 - `preserveModulesRoot`，是否保留模块目录结构的根目录（仅限 Bundless）
+- `crossOriginLoading`，控制异步 chunk 加载时 `script` 及 `link` 标签的 `crossorigin` 属性值
+- `globalModuleRegistry`，是否允许在多 entry 之间共享模块注册中心
 
 ### optimization
 
@@ -490,7 +559,9 @@ e.g.
 // JSHooks
 {
   name?: string;
+  enforce?: "pre" | "post";
   buildStart?: () => void;
+  buildEnd?: () => void;
   generateEnd?: (data: {
     isFirstCompile: boolean;
     time: number;
@@ -500,7 +571,13 @@ e.g.
       ...
     };
   }) => void;
+  writeBundle?: () => void;
+  watchChanges?: (id: string, params: { event: "create" | "delete" | "update" }) => void;
   load?: (filePath: string) => Promise<{ content: string, type: 'css'|'js'|'jsx'|'ts'|'tsx' }>;
+  loadInclude?: (filePath: string) => boolean;
+  resolveId?: (id: string, importer: string, { isEntry: bool }) => Promise<{ id: string, external: bool }>;
+  transform?: (content: string, id: string) => Promise<{ content: string, type: 'css'|'js'|'jsx'|'ts'|'tsx' }>;
+  transformInclude?: (filePath: string) => Promise<boolean> | boolean;
 }
 ```
 

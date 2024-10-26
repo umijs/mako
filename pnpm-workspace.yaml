@@ -1,8 +1,9 @@
 packages:
-  - 'examples/*'
-  - 'client'
-  - 'crates/binding'
-  - 'packages/*'
-  - 'crates/mako/test/compile/auto-code-splitting'
-  - 'e2e/fixtures.umi/react-16'
-  - 'e2e/fixtures.umi/config.less.plugins'
+  - "examples/*"
+  - "client"
+  - "crates/binding"
+  - "packages/*"
+  - "crates/mako/test/compile/auto-code-splitting"
+  - "e2e/fixtures.umi/react-16"
+  - "e2e/fixtures.umi/config.less.plugins"
+  - "e2e/fixtures.umi/stable-hash"

@@ -11,6 +11,7 @@ use anyhow::Result;
 use rayon::prelude::*;
 use swc_core::common::util::take::Take;
 use swc_core::common::GLOBALS;
+use swc_core::ecma::transforms::base::helpers::{Helpers, HELPERS};
 
 use self::skip_module::skip_module_optimize;
 use crate::compiler::Context;
@@ -134,7 +135,7 @@ pub fn optimize_modules(module_graph: &mut ModuleGraph, context: &Arc<Context>) 
     let mut current_index: usize = 0;
     let len = tree_shake_modules_ids.len();
 
-    {
+    GLOBALS.set(&context.meta.script.globals, || {
         mako_profile_scope!("tree-shake");
 
         while current_index < len {
@@ -142,15 +143,16 @@ pub fn optimize_modules(module_graph: &mut ModuleGraph, context: &Arc<Context>) 
                 "tree-shake-module",
                 &tree_shake_modules_ids[current_index].id
             );
-
-            current_index = shake_module(
-                module_graph,
-                &tree_shake_modules_ids,
-                &tree_shake_modules_map,
-                current_index,
-            );
+            HELPERS.set(&Helpers::new(true), || {
+                current_index = shake_module(
+                    module_graph,
+                    &tree_shake_modules_ids,
+                    &tree_shake_modules_map,
+                    current_index,
+                );
+            });
         }
-    }
+    });
 
     {
         mako_profile_scope!("update ast");
@@ -575,7 +577,7 @@ fn shake_module(
     // add all dynamic imported dependencies as [UsedExports::All]
     for (dep, edge) in module_graph.get_dependencies(tree_shake_module_id) {
         match edge.resolve_type {
-            ResolveType::DynamicImport | ResolveType::Worker => {
+            ResolveType::DynamicImport(_) | ResolveType::Worker(_) => {
                 if let Some(ref_cell) = tree_shake_modules_map.get(dep) {
                     let mut tree_shake_module = ref_cell.borrow_mut();
                     if tree_shake_module.use_all_exports()

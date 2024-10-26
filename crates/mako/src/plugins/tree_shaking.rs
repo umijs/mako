@@ -9,6 +9,7 @@ use crate::compiler::Context;
 use crate::module_graph::ModuleGraph;
 use crate::plugin::{Plugin, PluginTransformJsParam};
 
+mod collect_explicit_prop;
 mod module;
 mod module_side_effects_flag;
 mod remove_useless_stmts;
@@ -55,13 +56,14 @@ impl VisitMut for TopLevelDeclSplitter {
             if let ModuleItem::Stmt(Stmt::Decl(Decl::Var(var_decl))) = module_item {
                 if var_decl.decls.len() > 1 {
                     let declarators = var_decl.decls.take();
-
+                    let ctxt = var_decl.ctxt;
                     let kind = var_decl.kind;
 
                     let items = declarators
                         .into_iter()
                         .map(|decl| {
                             let i: ModuleItem = VarDecl {
+                                ctxt,
                                 span: decl.span,
                                 kind,
                                 declare: false,

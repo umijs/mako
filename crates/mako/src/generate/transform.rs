@@ -5,6 +5,7 @@ use std::time::Instant;
 
 use anyhow::{Error, Result};
 use regex::Regex;
+use swc_core::base::try_with_handler;
 use swc_core::common::errors::HANDLER;
 use swc_core::common::GLOBALS;
 use swc_core::css::ast;
@@ -16,12 +17,12 @@ use swc_core::ecma::transforms::base::hygiene::hygiene_with_config;
 use swc_core::ecma::transforms::module::import_analysis::import_analyzer;
 use swc_core::ecma::transforms::module::util::ImportInterop;
 use swc_core::ecma::visit::VisitMutWith;
-use swc_error_reporters::handler::try_with_handler;
 use tracing::debug;
 
 use crate::ast::js_ast::JsAst;
 use crate::compiler::{Compiler, Context};
-use crate::module::{Dependency, ModuleAst, ModuleId, ModuleType, ResolveType};
+use crate::module::{generate_module_id, Dependency, ModuleAst, ModuleId, ModuleType, ResolveType};
+use crate::share::helpers::SWC_HELPERS;
 use crate::utils::thread_pool;
 use crate::visitors::async_module::{mark_async, AsyncModule};
 use crate::visitors::common_js::common_js;
@@ -88,12 +89,26 @@ pub fn transform_modules_in_thread(
                     (
                         dep.source.clone(),
                         (
-                            if dep.resolve_type == ResolveType::Worker {
-                                let chunk_id = id.generate(&context);
-                                let chunk_graph = context.chunk_graph.read().unwrap();
-                                chunk_graph.chunk(&chunk_id.into()).unwrap().filename()
-                            } else {
-                                id.generate(&context)
+                            match &dep.resolve_type {
+                                ResolveType::Worker(import_options) => {
+                                    let chunk_id = match import_options.get_chunk_name() {
+                                        Some(chunk_name) => {
+                                            generate_module_id(chunk_name, &context)
+                                        }
+                                        None => id.generate(&context),
+                                    };
+                                    let chunk_graph = context.chunk_graph.read().unwrap();
+                                    chunk_graph.chunk(&chunk_id.into()).unwrap().filename()
+                                }
+                                ResolveType::DynamicImport(import_options) => {
+                                    match import_options.get_chunk_name() {
+                                        Some(chunk_name) => {
+                                            generate_module_id(chunk_name, &context)
+                                        }
+                                        None => id.generate(&context),
+                                    }
+                                }
+                                _ => id.generate(&context),
                             },
                             id.id.clone(),
                         ),
@@ -147,13 +162,7 @@ pub fn transform_modules_in_thread(
 }
 
 fn insert_swc_helper_replace(map: &mut HashMap<String, (String, String)>, context: &Arc<Context>) {
-    let helpers = vec![
-        "@swc/helpers/_/_interop_require_default",
-        "@swc/helpers/_/_interop_require_wildcard",
-        "@swc/helpers/_/_export_star",
-    ];
-
-    helpers.into_iter().for_each(|h| {
+    SWC_HELPERS.into_iter().for_each(|h| {
         let m_id: ModuleId = h.to_string().into();
         map.insert(m_id.id.clone(), (m_id.generate(context), h.to_string()));
     });
@@ -218,7 +227,6 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()>
                             to_replace: dep_map,
                             context,
                             unresolved_mark,
-                            top_level_mark,
                         };
                         ast.ast.visit_mut_with(&mut dep_replacer);
 
@@ -250,7 +258,6 @@ pub fn transform_js_generate(transform_js_param: TransformJsParam) -> Result<()>
                         let origin_comments = context.meta.script.origin_comments.read().unwrap();
                         let swc_comments = origin_comments.get_swc_comments();
                         ast.ast.visit_mut_with(&mut fixer(Some(swc_comments)));
-
                         Ok(())
                     })
                 })
@@ -328,7 +335,7 @@ mod tests {
     }
 
     fn transform_css_code(content: &str, path: Option<&str>) -> String {
-        let path = if let Some(p) = path { p } else { "test.css" };
+        let path = path.unwrap_or("test.css");
         let context: Arc<Context> = Arc::new(Default::default());
         let mut ast = CssAst::build(path, content, context.clone(), false).unwrap();
         transform_css_generate(&mut ast.ast, &context);

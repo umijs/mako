@@ -1285,6 +1285,34 @@ runTest('add missing dep after watch start', async () => {
   );
 });
 
+runTest('add missing dynamic import after watch start', async () => {
+  await commonTest(
+    {
+      '/src/index.tsx': `
+        import React from 'react';
+        import ReactDOM from "react-dom/client";
+        const App = React.lazy(() => import('./App'))
+        ReactDOM.createRoot(document.getElementById("root")!).render(<><App /><section>{Math.random()}</section></>);
+      `,
+    },
+    (lastResult) => {
+      assert.equal(lastResult.html, '', 'Initial render');
+    },
+    {
+      '/src/App.tsx': `
+        function App() {
+          return <div>App</div>;
+        }
+        export default App;
+      `,
+    },
+    (thisResult) => {
+      assert.equal(thisResult.html, '<div>App</div>', 'Second render');
+    },
+    true,
+  );
+});
+
 runTest('issue: 861', async () => {
   write(
     normalizeFiles({
@@ -1558,6 +1586,94 @@ ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
   );
 });
 
+runTest(
+  'link npm packages: import a not exit file then add it without main entry',
+  async () => {
+    await commonTest(
+      async () => {
+        write(
+          normalizeFiles({
+            '/src/index.tsx': `
+import React from 'react';
+import ReactDOM from "react-dom/client";
+import { foo } from "mako-test-package-link/lib1";
+
+function App() {
+  return <div>{foo}<section>{Math.random()}</section></div>;
+}
+ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
+    `,
+          }),
+        );
+        writePackage(
+          'mako-test-package-link',
+          normalizeFiles({
+            'package.json': `
+{
+  "name": "mako-test-package-link",
+  "version": "1.0.0",
+  "exports": {
+    "./lib1": {
+      "import": "./lib1/index.js"
+    },
+    "./lib2": {
+    "import": "./lib2/index.js"
+    }
+  }
+}
+  `,
+
+            'lib1/index.js': `
+const foo = 'foo';
+export { foo };
+  `,
+          }),
+        );
+        execSync(
+          'cd ./tmp/packages/mako-test-package-link && pnpm link --global',
+        );
+        execSync('pnpm link --global mako-test-package-link');
+      },
+      (lastResult) => {
+        assert.equal(lastResult.html, '<div>foo</div>', 'Initial render');
+      },
+      async () => {
+        // add import to added file
+        write(
+          normalizeFiles({
+            '/src/index.tsx': `
+import React from 'react';
+import ReactDOM from "react-dom/client";
+import { foo } from "mako-test-package-link/lib1";
+import { bar } from "mako-test-package-link/lib2";
+
+function App() {
+  return <div>{foo}{bar}<section>{Math.random()}</section></div>;
+}
+ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
+    `,
+          }),
+        );
+        await delay(DELAY_TIME);
+        // add files
+        writePackage(
+          'mako-test-package-link',
+          normalizeFiles({
+            'lib2/index.js': `
+        const bar = 'bar';
+        export { bar };
+      `,
+          }),
+        );
+      },
+      (thisResult) => {
+        assert.equal(thisResult.html, '<div>foobar</div>', 'Second render');
+      },
+      true,
+    );
+  },
+);
+
 runTest('change async import to import', async () => {
   write(
     normalizeFiles({
@@ -1719,7 +1835,7 @@ runTest('js: response correct content-type', async () => {
       const headers = response.headers();
       assert.equal(
         headers['content-type'],
-        'application/javascript; charset=utf-8',
+        'text/javascript; charset=utf-8',
         'hot-update content-type',
       );
       cleanup({ process, browser });
@@ -1737,6 +1853,58 @@ export default () => {
   });
   await delay(DELAY_TIME);
 });
+
+runTest('change async import magic comment chunk name', async () => {
+  write(
+    normalizeFiles({
+      '/src/App.tsx': `
+      export default () => {
+        return <div>App</div>;
+      };`,
+      '/src/index.tsx': `
+      import React from 'react';
+      import ReactDOM from "react-dom/client";
+      const App = React.lazy(() => import(/* webpackChunkName: 'chunkApp' */ './App'))
+      ReactDOM.createRoot(document.getElementById("root")!).render(<><App /><section>{Math.random()}</section></>);
+          `,
+      './mako.config.json': JSON.stringify({
+        experimental: {
+          magicComment: true,
+        },
+      }),
+    }),
+  );
+  const { process } = await startMakoDevServer();
+  await delay(DELAY_TIME);
+  const { browser, page } = await startBrowser();
+  let lastResult;
+  let thisResult;
+  let isReload;
+  lastResult = normalizeHtml(await getRootHtml(page));
+  console.log('last html', lastResult.html);
+  assert.equal(lastResult.html, '<div>App</div>', 'Initial render');
+  write({
+    '/src/App.tsx': `
+      export default () => {
+        return <div>App Modified</div>;
+      };`,
+    '/src/index.tsx': `
+      import React from 'react';
+      import ReactDOM from "react-dom/client";
+      const App = React.lazy(() => import(/* webpackChunkName: 'chunkAppNew' */ './App'))
+      ReactDOM.createRoot(document.getElementById("root")!).render(<><App /><section>{Math.random()}</section></>);
+   `,
+  });
+  await delay(DELAY_TIME);
+  thisResult = normalizeHtml(await getRootHtml(page));
+  console.log(`new html`, thisResult.html);
+  assert.equal(thisResult.html, '<div>App Modified</div>', 'Initial render 2');
+  isReload = lastResult.random !== thisResult.random;
+  assert.equal(isReload, true, 'isReload');
+  lastResult = thisResult;
+  await cleanup({ process, browser });
+});
+
 function normalizeFiles(files, makoConfig = {}) {
   return {
     '/public/index.html': `
