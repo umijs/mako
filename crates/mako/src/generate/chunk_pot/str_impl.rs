@@ -11,12 +11,12 @@ use swc_core::ecma::codegen::{Config as JsCodegenConfig, Emitter};
 
 use crate::ast::sourcemap::{build_source_map, RawSourceMap};
 use crate::compiler::Context;
-use crate::generate::chunk::Chunk;
+use crate::generate::chunk::{Chunk, ChunkType};
 use crate::generate::chunk_pot::ast_impl::{render_css_chunk, render_css_chunk_no_cache};
 use crate::generate::chunk_pot::util::runtime_code;
 use crate::generate::chunk_pot::ChunkPot;
 use crate::generate::generate_chunks::{ChunkFile, ChunkFileType};
-use crate::module::{Module, ModuleAst};
+use crate::module::{generate_module_id, Module, ModuleAst};
 use crate::ternary;
 
 pub(super) fn render_entry_js_chunk(
@@ -60,14 +60,21 @@ pub(super) fn render_entry_js_chunk(
         ));
     }
 
+    let chunk_root_module_id = match &chunk.chunk_type {
+        ChunkType::Entry(module_id, _, false) | ChunkType::Worker(module_id) => {
+            generate_module_id(&module_id.id, context)
+        }
+        _ => panic!("only entry chunk or worker chunk can be rendered here."),
+    };
+
     // var cssInstalledChunks = { "chunk_id": 0 }
     let init_install_css_chunk = format!(
         r#"var cssInstalledChunks = {{ "{}" : 0 }};"#,
-        pot.chunk_id.clone()
+        chunk_root_module_id
     );
 
     lines.push(init_install_css_chunk);
-    lines.push(format!("var e = \"{}\";", pot.chunk_id));
+    lines.push(format!("var e = \"{}\";", chunk_root_module_id));
 
     let runtime_content = runtime_code(context)?.replace("_%full_hash%_", &hmr_hash.to_string());
 
